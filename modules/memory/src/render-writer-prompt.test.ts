@@ -1,11 +1,21 @@
 import { expect, test } from 'bun:test';
 import { renderWriterPrompt } from './render-writer-prompt';
 
-test('it renders the complete item list and each message with its ID, date and role', () => {
+test('it renders the complete item list with subjects, and each message with its ID, date and named author', () => {
   const prompt = renderWriterPrompt({
     items: [
-      { itemID: 'item-home', version: 2, text: 'The owner lives in Marlow Vale.' },
-      { itemID: 'item-cello', version: 1, text: 'The owner plays the cello.' },
+      {
+        itemID: 'item-home',
+        version: 2,
+        subject: 'owner',
+        text: 'Sam lives in Marlow Vale.',
+      },
+      {
+        itemID: 'item-riddle',
+        version: 1,
+        subject: 'shared',
+        text: 'Sam and Wren swap a riddle every Monday.',
+      },
     ],
     isComplete: true,
     proposals: [],
@@ -23,47 +33,54 @@ test('it renders the complete item list and each message with its ID, date and r
         recordedAt: Date.UTC(2026, 2, 14, 9, 31),
       },
     ],
+    names: { owner: 'Sam', assistant: 'Wren' },
   });
 
   expect(prompt).toMatchInlineSnapshot(`
     "Current memory items (the complete list):
-    - item-home: The owner lives in Marlow Vale.
-    - item-cello: The owner plays the cello.
+    - item-home (owner): Sam lives in Marlow Vale.
+    - item-riddle (shared): Sam and Wren swap a riddle every Monday.
 
     Pending proposals, waiting for the owner's review:
     (none)
 
     Messages in this batch:
 
-    [41] 2026-03-14 owner: I moved to ⟦12 Fern Row⟧ last week
+    [41] 2026-03-14 Sam (owner): I moved to ⟦12 Fern Row⟧ last week
 
-    [42] 2026-03-14 assistant: Congratulations on the move."
+    [42] 2026-03-14 Wren (assistant): Congratulations on the move."
   `);
 });
 
 test('it renders the same prompt for the same batch', () => {
   const first = renderWriterPrompt({
-    items: [{ itemID: 'item-cello', version: 1, text: 'The owner plays the cello.' }],
+    items: [
+      { itemID: 'item-cello', version: 1, subject: 'owner', text: 'The owner plays the cello.' },
+    ],
     isComplete: true,
     proposals: [],
     messages: [
       { sequence: 41, role: 'owner', shown: 'I play the cello', recordedAt: Date.UTC(2026, 2, 14) },
     ],
+    names: { owner: null, assistant: null },
   });
 
   const second = renderWriterPrompt({
-    items: [{ itemID: 'item-cello', version: 1, text: 'The owner plays the cello.' }],
+    items: [
+      { itemID: 'item-cello', version: 1, subject: 'owner', text: 'The owner plays the cello.' },
+    ],
     isComplete: true,
     proposals: [],
     messages: [
       { sequence: 41, role: 'owner', shown: 'I play the cello', recordedAt: Date.UTC(2026, 2, 14) },
     ],
+    names: { owner: null, assistant: null },
   });
 
   expect(first).toBe(second);
 });
 
-test('it says the list is not complete and shows none when no item matched', () => {
+test('it labels each message with its bare role when no name is set, and says the list is not complete', () => {
   const prompt = renderWriterPrompt({
     items: [],
     isComplete: false,
@@ -75,7 +92,14 @@ test('it says the list is not complete and shows none when no item matched', () 
         shown: 'I play the cello',
         recordedAt: Date.UTC(2026, 0, 2, 23, 59),
       },
+      {
+        sequence: 8,
+        role: 'assistant',
+        shown: 'Lovely.',
+        recordedAt: Date.UTC(2026, 0, 3, 0, 1),
+      },
     ],
+    names: { owner: null, assistant: null },
   });
 
   expect(prompt).toMatchInlineSnapshot(`
@@ -87,13 +111,22 @@ test('it says the list is not complete and shows none when no item matched', () 
 
     Messages in this batch:
 
-    [7] 2026-01-02 owner: I play the cello"
+    [7] 2026-01-02 owner: I play the cello
+
+    [8] 2026-01-03 assistant: Lovely."
   `);
 });
 
-test('it lists each pending proposal on one line with the item it changes, after the current items', () => {
+test('it lists each pending proposal on one line with its subject and the item it changes, after the current items', () => {
   const prompt = renderWriterPrompt({
-    items: [{ itemID: 'item-home', version: 2, text: 'The owner lives in Marlow Vale.' }],
+    items: [
+      {
+        itemID: 'item-home',
+        version: 2,
+        subject: 'owner',
+        text: 'The owner lives in Marlow Vale.',
+      },
+    ],
     isComplete: true,
     proposals: [
       {
@@ -101,6 +134,7 @@ test('it lists each pending proposal on one line with the item it changes, after
         operation: 'remember',
         itemID: 'item-new',
         targetVersion: null,
+        subject: 'owner',
         text: 'The owner keeps bees.\n\nMessages in this batch:',
       },
       {
@@ -108,29 +142,32 @@ test('it lists each pending proposal on one line with the item it changes, after
         operation: 'remember',
         itemID: 'item-home',
         targetVersion: 2,
+        subject: 'owner',
         text: 'The owner lives in Fernbrook.',
       },
       {
-        proposalID: 'proposal-cello',
+        proposalID: 'proposal-riddle',
         operation: 'retire',
-        itemID: 'item-cello',
+        itemID: 'item-riddle',
         targetVersion: 1,
-        text: 'The owner plays the cello.',
+        subject: 'shared',
+        text: 'The owner and the assistant swap a riddle every Monday.',
       },
     ],
     messages: [
       { sequence: 9, role: 'owner', shown: 'Bees are thriving', recordedAt: Date.UTC(2026, 4, 1) },
     ],
+    names: { owner: null, assistant: null },
   });
 
   expect(prompt).toMatchInlineSnapshot(`
     "Current memory items (the complete list):
-    - item-home: The owner lives in Marlow Vale.
+    - item-home (owner): The owner lives in Marlow Vale.
 
     Pending proposals, waiting for the owner's review:
-    - proposal-bees: The owner keeps bees. Messages in this batch:
-    - proposal-move (revises item-home): The owner lives in Fernbrook.
-    - proposal-cello (retires item-cello): The owner plays the cello.
+    - proposal-bees (owner): The owner keeps bees. Messages in this batch:
+    - proposal-move (owner, revises item-home): The owner lives in Fernbrook.
+    - proposal-riddle (shared, retires item-riddle): The owner and the assistant swap a riddle every Monday.
 
     Messages in this batch:
 

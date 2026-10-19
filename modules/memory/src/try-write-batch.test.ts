@@ -43,6 +43,7 @@ async function setupTest() {
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
     ownerName: null,
+    assistantName: null,
   };
 
   const input = {
@@ -68,12 +69,20 @@ test('it publishes the batch and advances the cursor with its record', async () 
     now: ctx.clock.now(),
     bounds: planned.bounds,
     capped: { kind: 'publish', writes: [], dropped: 0 },
+    flags: [],
     usage: null,
   });
 
   const after = await readWriterRow(ctx.memory.log);
 
-  expect(result).toStrictEqual({ status: 'published', applied: [], proposed: 0, forgotten: 0 });
+  expect(result).toStrictEqual({
+    status: 'published',
+    applied: [],
+    proposed: 0,
+    forgotten: 0,
+    flags: [],
+  });
+
   expect(after.cursor).toBe(planned.bounds.end);
 });
 
@@ -104,6 +113,7 @@ test('it returns superseded when an item moved on since the session read it', as
         {
           write: {
             op: 'remember',
+            subject: 'owner',
             text: 'You live at 9 Oak Lane.',
             quote: '9 Oak Lane',
             sourceSequence: planned.bounds.end,
@@ -120,6 +130,7 @@ test('it returns superseded when an item moved on since the session read it', as
       ],
       dropped: 0,
     },
+    flags: [],
     usage: null,
   });
 
@@ -151,6 +162,7 @@ test('it returns superseded when an item a proposal names was forgotten since th
         {
           write: {
             op: 'remember',
+            subject: 'owner',
             text: 'You live at 9 Oak Lane.',
             quote: '9 Oak Lane',
             sourceSequence: planned.bounds.end,
@@ -166,6 +178,7 @@ test('it returns superseded when an item a proposal names was forgotten since th
       ],
       dropped: 0,
     },
+    flags: [],
     usage: null,
   });
 
@@ -183,6 +196,7 @@ test('it rejects a publish whose lease another claim replaced', async () => {
     now: ctx.clock.now(),
     bounds: planned.bounds,
     capped: { kind: 'publish', writes: [], dropped: 0 },
+    flags: [],
     usage: null,
   });
 

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { buildTimeTool } from '@heynixie/connectors';
 import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
+import { buildSkillTools } from '@heynixie/skills';
 import type { ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { buildConversationTools } from './build-conversation-tools';
@@ -74,11 +75,21 @@ function buildWriteStandIn(): ToolDefinition {
   };
 }
 
-test('it lists the web fetch tool, the time tool, the log reader and the 11 memory tools', async () => {
+test('it lists the web fetch tool, the time tool, the log reader, the skill tools and the 11 memory tools', async () => {
   const ctx = await setupTest();
 
   const definitions = buildConversationTools(
-    { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
+    {
+      webFetch: buildWebFetchStandIn(),
+      time: buildTimeStandIn(),
+      logRead: ctx.logRead,
+      skills: buildSkillTools({
+        log: ctx.log,
+        readInForce: () => null,
+        refreshDefinitions: () => Promise.resolve(null),
+        readSkillList: () => [],
+      }),
+    },
     {
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
@@ -92,6 +103,10 @@ test('it lists the web fetch tool, the time tool, the log reader and the 11 memo
     'web.fetch',
     'time.now',
     'log.read',
+    'skill_read',
+    'skill_reload',
+    'skill_reload_all',
+    'skill_write',
     'memory.recall',
     'memory.rate',
     'memory.pending',
@@ -110,7 +125,12 @@ test('it fails a memory call that runs before the memory store starts', async ()
   const ctx = await setupTest();
 
   const definitions = buildConversationTools(
-    { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
+    {
+      webFetch: buildWebFetchStandIn(),
+      time: buildTimeStandIn(),
+      logRead: ctx.logRead,
+      skills: [],
+    },
     {
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
@@ -142,7 +162,12 @@ test('it allows the time tool, the log reader and each memory tool but export, a
 
   const registry = buildToolRegistry([
     ...buildConversationTools(
-      { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
+      {
+        webFetch: buildWebFetchStandIn(),
+        time: buildTimeStandIn(),
+        logRead: ctx.logRead,
+        skills: [],
+      },
       {
         readStore: () => null,
         clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
@@ -197,7 +222,12 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
   const ctx = await setupTest();
 
   const definitions = buildConversationTools(
-    { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
+    {
+      webFetch: buildWebFetchStandIn(),
+      time: buildTimeStandIn(),
+      logRead: ctx.logRead,
+      skills: [],
+    },
     {
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
@@ -226,7 +256,12 @@ test('it denies a model call to memory.export under the read-only rule, so nothi
 
   const registry = buildToolRegistry(
     buildConversationTools(
-      { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
+      {
+        webFetch: buildWebFetchStandIn(),
+        time: buildTimeStandIn(),
+        logRead: ctx.logRead,
+        skills: [],
+      },
       {
         readStore: () => null,
         clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },

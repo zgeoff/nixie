@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildActions } from './build-actions';
 import { createSandboxAdapter } from './create-sandbox-adapter';
+import { refreshDefinitions } from './refresh-definitions';
 import type { ServerPartValues } from './server-part-values';
 import { startConversationEndpoint } from './start-conversation-endpoint';
 import { startWebFetch } from './start-web-fetch';
@@ -64,9 +65,10 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'tool_endpoint',
     needs: ['inputs', 'context', 'web_fetch', 'actions'],
-    uses: ['memory'],
+    uses: ['memory', 'server_parts'],
     start: (parts) => {
       const options = parts.get('inputs').options;
+      const inForce = parts.get('context').inForce;
 
       return startConversationEndpoint(
         {
@@ -78,6 +80,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           webFetch: parts.get('web_fetch').tool,
           queue: parts.get('actions').queue,
           readStore: () => parts.find('memory'),
+          readInForce: () => inForce.read(),
+          refreshDefinitions: () => refreshDefinitions(parts.find('server_parts'), inForce),
         },
       );
     },

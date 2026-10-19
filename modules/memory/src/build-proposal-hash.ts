@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { MemoryKind } from './types';
+import type { MemorySubject } from './types';
 
 export interface ProposalOperation {
   readonly operation: 'remember' | 'retire';
@@ -13,9 +13,10 @@ export interface ProposalOperation {
   // makes the text unreadable
   readonly salt: string;
 
-  // the kind of the item, which only a self-note's hash names, so a fact's hash stays as it was
-  // before kinds
-  readonly itemKind?: MemoryKind;
+  // the subject of the item, which only a self-note's or a shared item's hash names, under the key
+  // itemKind that self-notes took first, so an owner item's hash and a pending self-note's hash
+  // stay as they were before subjects
+  readonly subject?: MemorySubject;
 }
 
 // The action hash of a memory proposal: SHA-256 over its exact operation in a fixed field order,
@@ -30,7 +31,9 @@ export function buildProposalHash(operation: ProposalOperation): string {
     text: operation.text.normalize('NFC'),
     quote: operation.quote?.normalize('NFC') ?? null,
     salt: operation.salt,
-    ...(operation.itemKind === 'self' ? { itemKind: 'self' } : {}),
+    ...(operation.subject === undefined || operation.subject === 'owner'
+      ? {}
+      : { itemKind: operation.subject }),
   });
 
   return `sha256:${createHash('sha256').update(canonical).digest('hex')}`;

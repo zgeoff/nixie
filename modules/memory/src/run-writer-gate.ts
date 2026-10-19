@@ -69,7 +69,9 @@ async function collectVerdicts(
     if (source !== undefined && !isRepeat) {
       const verdict = await collection.gate.check(write, source, lookups.batch);
 
-      collection.onGated({ write, verdict });
+      if (verdict !== null) {
+        collection.onGated({ write, verdict });
+      }
     }
   }
 }

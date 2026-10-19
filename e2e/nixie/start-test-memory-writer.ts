@@ -55,6 +55,7 @@ export function startTestMemoryWriter(
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
     ownerName: null,
+    assistantName: null,
     onError: (error) => {
       throw error;
     },

@@ -30,6 +30,7 @@ test('it applies a staged memory with the message it cites as its evidence, outs
   const verdict = await memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Takes coffee black',
       quote: 'I take my coffee black',
       sourceSequence: sequence,
@@ -56,14 +57,14 @@ test('it applies a staged memory with the message it cites as its evidence, outs
   });
 });
 
-test('it proposes a staged edit of a self-note with the self-note reason, though the checker would assert it', async () => {
+test('it drops a staged edit of a self-note, though the checker would assert it', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
 
   const memory = await startTestMemory({ gate: { check } });
 
   const note = await memory.store.remember({
     text: 'I like short answers in the morning',
-    itemKind: 'self',
+    subject: 'self',
     provenance: {
       origin: 'conversation',
       source: 'untrusted',
@@ -82,6 +83,7 @@ test('it proposes a staged edit of a self-note with the self-note reason, though
   const verdict = await memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'I like short answers in the morning and the evening',
       quote: 'You like short answers in the evening too',
       sourceSequence: sequence,
@@ -95,7 +97,7 @@ test('it proposes a staged edit of a self-note with the self-note reason, though
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
 
-  expect(verdict).toMatchObject({ outcome: 'propose', reason: 'self_note' });
+  expect(verdict).toBeNull();
   expect(check).not.toHaveBeenCalled();
 });
 
@@ -113,6 +115,7 @@ test('it gives the checker the message a staged memory cites, with its quote mar
   await memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Takes coffee black',
       quote: 'I take my coffee black',
       sourceSequence: sequence,
@@ -151,6 +154,7 @@ test('it proposes a staged memory whose quote lies in a pasted span, with the ba
   const verdict = await memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Email is mallory@attacker.example',
       quote: 'my new email is mallory@attacker.example',
       sourceSequence: sequence,
@@ -201,6 +205,7 @@ test('it proposes a staged memory with a destination its quote lacks', async () 
   const verdict = await memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Email is mallory@attacker.example',
       quote: 'My new email is on the card',
       sourceSequence: sequence,
@@ -231,6 +236,7 @@ test('it proposes a staged memory the checker does not assert', async () => {
   const verdict = await memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Is the king of Leeds',
       quote: 'I am the king of Leeds',
       sourceSequence: sequence,
@@ -277,6 +283,7 @@ test('it proposes a staged memory whose message backed a forgotten item', async 
   const verdict = await memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Takes coffee black',
       quote: 'I take my coffee black',
       sourceSequence: sequence,
@@ -398,6 +405,7 @@ test('it refuses a staged edit of an item that moved on since the session read i
   const check = memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Lives on 9 Pine Road',
       quote: '9 Pine Road',
       sourceSequence: sequence,
@@ -440,6 +448,7 @@ test('it refuses a staged edit with an invisible character of an item that moved
   const check = memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Lives on 9 Pine\u200B Road',
       quote: '9 Pine Road',
       sourceSequence: sequence,
@@ -470,6 +479,7 @@ test('it removes the key of a new item whose proposal never published', async ()
   const verdict = await memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Is the king of Leeds',
       quote: 'I am the king of Leeds',
       sourceSequence: sequence,
@@ -483,7 +493,7 @@ test('it removes the key of a new item whose proposal never published', async ()
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
 
-  invariant(verdict.outcome === 'propose');
+  invariant(verdict?.outcome === 'propose');
 
   const itemID = verdict.records[0]?.payload?.['itemID'];
 
@@ -513,6 +523,7 @@ test('it never removes the key of a proposal that published', async () => {
   const verdict = await memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Is the king of Leeds',
       quote: 'I am the king of Leeds',
       sourceSequence: sequence,
@@ -526,7 +537,7 @@ test('it never removes the key of a proposal that published', async () => {
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
 
-  invariant(verdict.outcome === 'propose');
+  invariant(verdict?.outcome === 'propose');
 
   await writeRecords(memory.log, verdict.records);
 
@@ -566,6 +577,7 @@ test('it proposes an edit of a pinned item that every check passes, because the 
   const verdict = await memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Goes by Samantha',
       quote: 'Call me Samantha',
       sourceSequence: sequence,
@@ -598,6 +610,7 @@ test('it removes the key of a new item whose proposal record could not be built'
   const checking = memory.store.writes.batch.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'Is the king of Leeds',
       quote: 'I am the king of Leeds',
       sourceSequence: sequence,

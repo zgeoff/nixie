@@ -5,7 +5,14 @@ import type { GatedWrite } from './write-memory-batch';
 test('it publishes every write of a batch within the cap', () => {
   const gated: GatedWrite[] = [
     {
-      write: { op: 'remember', text: 'Cello.', quote: 'cello', sourceSequence: 1, target: null },
+      write: {
+        op: 'remember',
+        subject: 'owner',
+        text: 'Cello.',
+        quote: 'cello',
+        sourceSequence: 1,
+        target: null,
+      },
       verdict: { outcome: 'propose', reason: 'checker', records: [], plan: null },
     },
   ];
@@ -34,11 +41,25 @@ test('it splits a batch over the cap with several of your messages', () => {
     },
     [
       {
-        write: { op: 'remember', text: 'Cello.', quote: 'cello', sourceSequence: 1, target: null },
+        write: {
+          op: 'remember',
+          subject: 'owner',
+          text: 'Cello.',
+          quote: 'cello',
+          sourceSequence: 1,
+          target: null,
+        },
         verdict: { outcome: 'propose', reason: 'checker', records: [], plan: null },
       },
       {
-        write: { op: 'remember', text: 'Vale.', quote: 'Vale', sourceSequence: 3, target: null },
+        write: {
+          op: 'remember',
+          subject: 'owner',
+          text: 'Vale.',
+          quote: 'Vale',
+          sourceSequence: 3,
+          target: null,
+        },
         verdict: { outcome: 'propose', reason: 'checker', records: [], plan: null },
       },
     ],
@@ -49,7 +70,14 @@ test('it splits a batch over the cap with several of your messages', () => {
 
 test('it keeps the first proposals up to the cap and counts the rest as dropped for one message', () => {
   const applied: GatedWrite = {
-    write: { op: 'remember', text: 'Cello.', quote: 'cello', sourceSequence: 1, target: null },
+    write: {
+      op: 'remember',
+      subject: 'owner',
+      text: 'Cello.',
+      quote: 'cello',
+      sourceSequence: 1,
+      target: null,
+    },
     verdict: {
       outcome: 'apply',
       source: 'owner',
@@ -60,17 +88,38 @@ test('it keeps the first proposals up to the cap and counts the rest as dropped 
   };
 
   const first: GatedWrite = {
-    write: { op: 'remember', text: 'Dog.', quote: 'dog', sourceSequence: 1, target: null },
+    write: {
+      op: 'remember',
+      subject: 'owner',
+      text: 'Dog.',
+      quote: 'dog',
+      sourceSequence: 1,
+      target: null,
+    },
     verdict: { outcome: 'propose', reason: 'checker', records: [], plan: null },
   };
 
   const second: GatedWrite = {
-    write: { op: 'remember', text: 'Cat.', quote: 'cat', sourceSequence: 1, target: null },
+    write: {
+      op: 'remember',
+      subject: 'owner',
+      text: 'Cat.',
+      quote: 'cat',
+      sourceSequence: 1,
+      target: null,
+    },
     verdict: { outcome: 'propose', reason: 'checker', records: [], plan: null },
   };
 
   const third: GatedWrite = {
-    write: { op: 'remember', text: 'Hen.', quote: 'hen', sourceSequence: 1, target: null },
+    write: {
+      op: 'remember',
+      subject: 'owner',
+      text: 'Hen.',
+      quote: 'hen',
+      sourceSequence: 1,
+      target: null,
+    },
     verdict: { outcome: 'propose', reason: 'checker', records: [], plan: null },
   };
 

@@ -1,14 +1,13 @@
+import { definitionsFormats } from './definitions-formats';
 import type { ParseProblem } from './definitions-parse-error';
 import { DefinitionsParseError } from './definitions-parse-error';
 import { manifestPath } from './manifest-path';
+import { manifestSchema } from './manifest-schema';
 import { parseConversationSkills } from './parse-conversation-skills';
 import { parseSkills } from './parse-skills';
 import type { ParsedDefinitions, Snapshot } from './types';
 
 const personaPath = 'persona.md';
-
-// the first format whose seed applies the skills; format 1 lists their files as unapplied
-const skillsFormat = 2;
 
 // Reads what the seed applies: the format version, the persona, and from format 2 on, the skills.
 // Every other file only has to parse, and the seed lists it as unapplied. A file that fails to
@@ -17,7 +16,7 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
   const texts = decodeFiles(snapshot.files);
   const formatVersion = parseManifest(texts.get(manifestPath));
   const persona = parsePersona(texts.get(personaPath));
-  const hasSkills = formatVersion >= skillsFormat;
+  const hasSkills = formatVersion >= definitionsFormats.skills;
   const skills = hasSkills ? parseSkills(snapshot, texts) : [];
 
   const conversationSkills = hasSkills
@@ -56,11 +55,6 @@ function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
   return new Map(decoded.map((file) => [file.path, file.text ?? '']));
 }
 
-// The definitions format this release writes. It reads this format and the one before, because an
-// image upgrade and a definitions change land in either order.
-const formatVersion = 2;
-const readableFormats = [formatVersion - 1, formatVersion].filter((version) => version >= 1);
-
 function parseManifest(text: string | undefined): number {
   if (text === undefined) {
     throw new DefinitionsParseError([
@@ -68,7 +62,14 @@ function parseManifest(text: string | undefined): number {
     ]);
   }
 
-  const format = getFormat(parseYAML(manifestPath, text));
+  const manifest = parseYAML(manifestPath, text);
+  const result = manifestSchema.safeParse(manifest);
+
+  if (result.success) {
+    return result.data.format;
+  }
+
+  const format = getFormat(manifest);
 
   if (typeof format !== 'number' || !Number.isInteger(format)) {
     throw new DefinitionsParseError([
@@ -76,14 +77,16 @@ function parseManifest(text: string | undefined): number {
     ]);
   }
 
-  if (!readableFormats.includes(format)) {
-    const readable = readableFormats.join(' or ');
+  if (!definitionsFormats.readable.includes(format)) {
+    const readable = definitionsFormats.readable.join(' or ');
     const reason = `format ${format} is not one this release reads, which is ${readable}`;
 
     throw new DefinitionsParseError([{ path: manifestPath, reason }]);
   }
 
-  return format;
+  throw new DefinitionsParseError([
+    { path: manifestPath, reason: 'skills must be a list of skill names' },
+  ]);
 }
 
 function getFormat(manifest: unknown): unknown {

@@ -21,6 +21,7 @@ test('it releases the verdicts it gathered when a later check throws', async () 
     [
       {
         op: 'remember',
+        subject: 'owner',
         text: 'Lives in Oslo',
         quote: 'I live in Oslo',
         sourceSequence: 4,
@@ -28,6 +29,7 @@ test('it releases the verdicts it gathered when a later check throws', async () 
       },
       {
         op: 'remember',
+        subject: 'owner',
         text: 'Plays cello',
         quote: 'I play cello',
         sourceSequence: 5,
@@ -55,6 +57,7 @@ test('it skips a write that repeats the text of an item the session was shown', 
     [
       {
         op: 'remember',
+        subject: 'owner',
         text: 'Lives in Oslo',
         quote: 'I live in Oslo',
         sourceSequence: 4,
@@ -70,4 +73,29 @@ test('it skips a write that repeats the text of an item the session was shown', 
 
   expect(gated).toStrictEqual([]);
   expect(check).not.toHaveBeenCalled();
+});
+
+test('it leaves out a write that the gate drops', async () => {
+  const check = mock(() => Promise.resolve(null));
+
+  const gated = await runWriterGate(
+    { check, release: () => Promise.resolve() },
+    [
+      {
+        op: 'remember',
+        subject: 'owner',
+        text: 'I like short answers',
+        quote: 'You like short answers',
+        sourceSequence: 4,
+        target: { itemID: 'item-1', version: 1 },
+      },
+    ],
+    {
+      findSource: (sequence) => ({ sequence, text: 'You like short answers', spans: [] }),
+      isShownText: () => false,
+      batch: { bounds: { start: 0, end: 4 }, model: 'claude-writer-1' },
+    },
+  );
+
+  expect(gated).toStrictEqual([]);
 });

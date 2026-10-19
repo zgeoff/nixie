@@ -50,6 +50,9 @@ const pendingProposalSchema = z.object({
   itemID: z.string(),
   targetVersion: z.int().nullable(),
   isPinned: z.boolean(),
+  subject: z.enum(['owner', 'self', 'shared']),
+
+  // self for a self-note and fact for every other subject, as the release before reads it
   kind: z.enum(['fact', 'self']),
   reason: reviewReasonSchema,
   actionHash: z.string(),
@@ -82,10 +85,13 @@ const historyVersionSchema = z.object({
   text: z.string().nullable(),
 });
 
-// What a host command shows of an item: its kind, a fact or a self-note, its state, and each
+// What a host command shows of an item: its subject, owner, shared or self, its state, and each
 // version oldest first.
 const itemHistorySchema = z.object({
   itemID: z.string(),
+  subject: z.enum(['owner', 'self', 'shared']),
+
+  // self for a self-note and fact for every other subject, as the release before reads it
   kind: z.enum(['fact', 'self']),
   state: z.enum(['active', 'retired', 'forgetting', 'forgotten']),
   versions: z.array(historyVersionSchema),
@@ -154,6 +160,12 @@ const hostSessionSchema = z.object({
   lastUsedAt: z.date(),
 });
 
+const subjectCountSchema = z.object({
+  owner: z.int().nonnegative(),
+  shared: z.int().nonnegative(),
+  self: z.int().nonnegative(),
+});
+
 // Every memory procedure waits for the memory store to start, and keeps the code of each error
 // the memory store refuses a request with.
 const memory = oc.errors({
@@ -217,6 +229,9 @@ export const hostContract = {
         .input(proposalAnswerSchema.extend({ reason: z.string().max(500).regex(/\S/u).optional() }))
         .output(z.object({ proposalID: z.string() })),
     },
+
+    // How many items and proposals each subject holds.
+    subjects: memory.output(z.object({ items: subjectCountSchema, proposals: subjectCountSchema })),
     items: {
       read: memory.input(z.strictObject({ itemID: z.string().min(1) })).output(itemHistorySchema),
 

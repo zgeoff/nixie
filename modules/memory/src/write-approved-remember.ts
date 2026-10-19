@@ -2,6 +2,7 @@ import type { Kysely } from 'kysely';
 import { buildApprovalExtras } from './build-approval-extras';
 import { buildApprovedProvenance } from './build-approved-provenance';
 import type { ProposalAnswer } from './gate-types';
+import { getRowSubject } from './get-row-subject';
 import { parseEvidence } from './parse-evidence';
 import type { OpenedProposal } from './read-open-proposal';
 import type { MemoryTables, StoreParts, VersionRef } from './types';
@@ -51,7 +52,7 @@ export function writeApprovedRemember(
         ? {}
         : { evidence, evidenceQuote: opened.text.quote }),
       ...(row.is_pinned === 1 ? { isPinned: true } : {}),
-      itemKind: row.kind,
+      subject: getRowSubject(row),
     },
     extras,
   );

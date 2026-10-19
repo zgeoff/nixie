@@ -13,6 +13,10 @@ export interface DefinitionsPollOptions {
 
   // resolves false when the seed refused the source's snapshot
   readonly seed: () => Promise<boolean>;
+
+  // a refused snapshot is pending from a seed outside the poll, such as a skill reload's, so the
+  // next probe seeds even on the token of the poll's last good seed; none when absent
+  readonly isRefused?: () => boolean;
   readonly clock: Clock;
   readonly intervalMs: number;
 
@@ -124,7 +128,8 @@ function planWait(options: DefinitionsPollOptions, failures: number): number {
 }
 
 // Probes once and seeds on a new token. A refused seed clears the token, so the next probe seeds what
-// it finds even when that is the revision of the last good seed, which clears the refusal.
+// it finds even when that is the revision of the last good seed, which clears the refusal. A refusal
+// from a seed outside the poll leaves the token, so the probe seeds on it as well.
 async function runProbe(
   options: DefinitionsPollOptions,
   lastToken: string | null,
@@ -136,7 +141,9 @@ async function runProbe(
 
     options.onProbed({ isChanged });
 
-    if (isChanged && !(await options.seed())) {
+    const needsSeed = isChanged || (options.isRefused?.() ?? false);
+
+    if (needsSeed && !(await options.seed())) {
       return { token: null, isFailed: true };
     }
 

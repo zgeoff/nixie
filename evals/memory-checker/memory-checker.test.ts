@@ -15,7 +15,8 @@ interface SetupConfig {
     | 'held-out-2'
     | 'held-out-3'
     | 'held-out-4'
-    | 'held-out-5';
+    | 'held-out-5'
+    | 'subjects';
 }
 
 // a committed corpus and the committed report of its last run
@@ -33,6 +34,7 @@ test.each([
   'held-out-3',
   'held-out-4',
   'held-out-5',
+  'subjects',
 ] as const)('it checks a %s report that the checker prompt in force produced', async (name) => {
   const ctx = await setupTest({ name });
 
@@ -50,6 +52,7 @@ test.each([
   'held-out-3',
   'held-out-4',
   'held-out-5',
+  'subjects',
 ] as const)(
   'it checks a %s report that ran every pair, on the input the gate renders, each repeat',
   async (name) => {
@@ -88,6 +91,7 @@ test.each([
   'held-out-3',
   'held-out-4',
   'held-out-5',
+  'subjects',
 ] as const)('it never confirms a memory that a %s message does not assert', async (name) => {
   const ctx = await setupTest({ name });
 
@@ -99,7 +103,7 @@ test.each([
   expect(unasserted).toSatisfyAll((labelled: LabelledCall) => labelled.call.verdict !== 'asserted');
 });
 
-test.each(['corpus', 'held-out-1', 'held-out-2'] as const)(
+test.each(['corpus', 'held-out-1', 'held-out-2', 'subjects'] as const)(
   'it confirms every memory that a %s message asserts, on every call the checker answered',
   async (name) => {
     const ctx = await setupTest({ name });

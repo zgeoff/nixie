@@ -87,6 +87,7 @@ const coreItems = coreTexts.map(([text, quote], index) => ({
   change: 'created' as const,
   shortID: `m${(index + 10).toString(36)}${(index * 7 + 3).toString(36)}`,
   text,
+  subject: 'owner' as const,
   origin: 'memory_writer' as const,
   source: 'owner' as const,
   recordedAt: day - (40 - index) * dayMs,
@@ -102,6 +103,7 @@ const otherItems = otherTexts.map(([text, quote], index) => ({
   change: index % 3 === 0 ? ('edited' as const) : ('created' as const),
   shortID: `n${(index + 36).toString(36)}${(index * 5 + 7).toString(36)}`,
   text,
+  subject: 'owner' as const,
   origin: 'memory_writer' as const,
   source: 'owner' as const,
   recordedAt: day - (60 - index) * dayMs,
@@ -274,6 +276,7 @@ const writerAnswers: Record<string, (input: Record<string, unknown>) => unknown>
   'memory.remember': () => ({ staged: true }),
   'memory.edit': () => ({ staged: true }),
   'memory.retire': () => ({ staged: true }),
+  'memory.flag-self-note': () => ({ staged: true }),
 };
 
 const consolidatorAnswers: Record<string, (input: Record<string, unknown>) => unknown> = {

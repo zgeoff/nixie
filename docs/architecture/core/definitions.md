@@ -71,6 +71,13 @@ written before the seed checked a skill. The seed applies no other file, and lis
 record as unapplied. Each unapplied YAML or JSON file must still parse, so a broken rule file fails
 the snapshot before rules ever apply, and the error lists each file with its fault.
 
+nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the
+`definitions-manifest.schema.json` asset, so a definitions repo checks its manifest against the
+formats a release reads without a copy of nixie. The seed parses the manifest with the same schema
+that the published one comes from, and a test fails when the committed file differs from it. The
+published schema covers the manifest alone, so only the seed checks the persona, the other files and
+that each listed skill exists.
+
 ## Skills
 
 A skill is a folder under `skills/` in the

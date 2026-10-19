@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { readWriterRow } from './read-writer-row';
@@ -33,6 +33,7 @@ async function setupTest(options: TestMemoryOptions = {}) {
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
     ownerName: null,
+    assistantName: null,
   };
 
   const input = {
@@ -76,6 +77,7 @@ test('it publishes no proposal for an edit whose item moved on after the gate, a
       ...ctx.parts,
       ...buildStubWriterSession({
         op: 'remember',
+        subject: 'owner',
         text: 'Lives on 9 Oak Lane',
         quote: '9 Oak Lane',
         sourceSequence: planned.bounds.end,
@@ -109,6 +111,7 @@ test('it extracts the batch again after a moved-on edit, and proposes the edit a
     ...ctx.parts,
     ...buildStubWriterSession({
       op: 'remember',
+      subject: 'owner',
       text: 'Lives on 9 Oak Lane',
       quote: '9 Oak Lane',
       sourceSequence: planned.bounds.end,
@@ -182,6 +185,7 @@ test('it never runs the checker on an edit whose item moved on during extraction
       ...ctx.parts,
       ...buildStubWriterSession({
         op: 'remember',
+        subject: 'owner',
         text: 'Lives on 9 Oak Lane',
         quote: '9 Oak Lane',
         sourceSequence: planned.bounds.end,
@@ -236,6 +240,7 @@ test("it applies a write the checker confirms with both the writer's and the che
       ...ctx.parts,
       ...buildStubWriterSession({
         op: 'remember',
+        subject: 'owner',
         text: 'Keeps bees on the roof',
         quote: 'I keep bees on the roof',
         sourceSequence: sequence,
@@ -261,4 +266,42 @@ test("it applies a write the checker confirms with both the writer's and the che
       checkerModel: 'claude-checker-1',
     },
   ]);
+});
+
+test('it publishes a flag as a record in the conversation, and creates no item or proposal', async () => {
+  const ctx = await setupTest();
+  const planned = await writePlannedBatch(ctx.memory.log, ['You always pick the jazz station.']);
+
+  await runWriterBatch(
+    {
+      ...ctx.parts,
+      ...buildStubWriterSession({
+        op: 'flag',
+        text: 'The assistant favours the jazz station.',
+        sourceSequence: planned.bounds.end,
+      }),
+    },
+    { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+  );
+
+  const [flags, recalled, pending] = await Promise.all([
+    readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['memory.self_note_flagged'] }),
+    ctx.memory.store.recall({ limit: 10 }),
+    ctx.memory.store.proposals.listPending(),
+  ]);
+
+  expect(flags.map((entry) => entry.record)).toMatchObject([
+    {
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { sourceSequence: planned.bounds.end },
+      erasable: {
+        status: 'readable',
+        fields: { text: 'The assistant favours the jazz station.' },
+      },
+    },
+  ]);
+
+  expect(recalled.items).toStrictEqual([]);
+  expect(pending).toStrictEqual([]);
 });

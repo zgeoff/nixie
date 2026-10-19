@@ -87,7 +87,7 @@ test('it lists self-notes apart from facts', async () => {
   await Promise.all([
     store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Plays the cello' }] }),
     store.memoryItems.create({
-      kind: 'self',
+      subject: 'self',
       shortID: 'p7x2rd',
       versions: [{ origin: 'conversation', text: 'Enjoys a slow morning question' }],
     }),
@@ -116,7 +116,7 @@ test('it reads the next page from the self-notes when the first page holds only 
   );
 
   await store.memoryItems.create({
-    kind: 'self',
+    subject: 'self',
     shortID: 'p7x2rd',
     versions: [{ origin: 'conversation', text: 'Enjoys hearing about bicycles' }],
   });
@@ -141,7 +141,7 @@ test('it finds self-notes apart from facts', async () => {
   await Promise.all([
     store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Walks by the river' }] }),
     store.memoryItems.create({
-      kind: 'self',
+      subject: 'self',
       shortID: 'p7x2rd',
       versions: [{ origin: 'conversation', text: 'Likes hearing about the river' }],
     }),
@@ -167,7 +167,7 @@ test('it marks a retired self-note with a self-note badge', async () => {
   await createDeviceSession();
 
   await store.memoryItems.create({
-    kind: 'self',
+    subject: 'self',
     shortID: 'p7x2rd',
     state: 'retired',
     versions: [

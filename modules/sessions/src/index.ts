@@ -34,6 +34,8 @@ export { renderOwnerText } from './render-owner-text';
 export { renderMemoryItem } from './render-memory-item';
 export type { NextVersion } from './render-memory-line';
 export { renderMemoryLine } from './render-memory-line';
+export type { SubjectItem } from './render-subject-groups';
+export { renderSubjectGroups } from './render-subject-groups';
 export type { ConversationRunner, ConversationRunnerOptions } from './start-conversation-runner';
 
 export type {

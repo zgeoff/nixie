@@ -4,6 +4,7 @@ import { definitionsMigration } from './definitions-migration';
 import { eventLogMigration } from './event-log-migration';
 import { memoryKindsMigration } from './memory-kinds-migration';
 import { memoryMigrations } from './memory-migrations';
+import { memorySubjectsMigration } from './memory-subjects-migration';
 import { recordAttachmentsMigration } from './record-attachments-migration';
 import { sandboxesMigration } from './sandboxes-migration';
 import { skillsMigration } from './skills-migration';
@@ -25,6 +26,7 @@ export const nixieSchema: BuildSchema = {
     recordAttachmentsMigration,
     memoryKindsMigration,
     skillsMigration,
+    memorySubjectsMigration,
   ],
   oldestReader: 0,
 };

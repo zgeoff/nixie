@@ -14,6 +14,7 @@ test('it binds a merge to the versions the session read and takes the least trus
           text: 'Is allergic to peanuts',
           source: 'owner',
           isPinned: false,
+          subject: 'owner',
         },
       ],
       [
@@ -24,6 +25,7 @@ test('it binds a merge to the versions the session read and takes the least trus
           text: 'Has a peanut allergy',
           source: 'untrusted',
           isPinned: false,
+          subject: 'owner',
         },
       ],
     ]),
@@ -53,6 +55,55 @@ test('it binds a merge to the versions the session read and takes the least trus
   ]);
 });
 
+test('it refuses a merge of an owner fact and a shared item, and stages no diff', () => {
+  const staging = createConsolidationStaging();
+
+  const run = staging.open(
+    new Map([
+      [
+        'item-1',
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Calls the garden shed the cabin',
+          source: 'owner',
+          isPinned: false,
+          subject: 'owner',
+        },
+      ],
+      [
+        'item-2',
+        {
+          shortID: 'w8n4c6t1rb',
+          version: 1,
+          text: 'Calls the garden shed the cabin',
+          source: 'owner',
+          isPinned: false,
+          subject: 'shared',
+        },
+      ],
+    ]),
+    30,
+  );
+
+  const result = staging.stage([
+    {
+      kind: 'merge',
+      itemIDs: ['item-1', 'item-2'],
+      text: 'Calls the garden shed the cabin',
+      reason: 'Both items hold the same name.',
+    },
+  ]);
+
+  expect(result).toStrictEqual({
+    status: 'refused',
+    reason:
+      'change 1: items k3x9m2p7qa and w8n4c6t1rb have different subjects, owner and shared; merge only items of one subject',
+  });
+
+  expect(run.close()).toBeNull();
+});
+
 test('it binds a retirement to the version the session read and keeps its item source', () => {
   const staging = createConsolidationStaging();
 
@@ -66,6 +117,7 @@ test('it binds a retirement to the version the session read and keeps its item s
           text: 'Is in Lisbon until May',
           source: 'owner_data',
           isPinned: false,
+          subject: 'owner',
         },
       ],
     ]),
@@ -97,6 +149,7 @@ test('it puts a pinned input first in a merge, so the merged item stays pinned',
           text: 'Has a peanut allergy',
           source: 'owner',
           isPinned: false,
+          subject: 'owner',
         },
       ],
       [
@@ -107,6 +160,7 @@ test('it puts a pinned input first in a merge, so the merged item stays pinned',
           text: 'Is allergic to peanuts',
           source: 'owner',
           isPinned: true,
+          subject: 'owner',
         },
       ],
     ]),
@@ -142,6 +196,7 @@ test('it binds a change to the version a recall showed the session', () => {
     text: 'owner likes. tea green',
     source: 'owner',
     isPinned: false,
+    subject: 'owner',
   });
 
   staging.stage([
@@ -221,7 +276,14 @@ test('it refuses a diff over the most changes a run allows', () => {
     new Map([
       [
         'item-1',
-        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Keeps bees',
+          source: 'owner',
+          isPinned: false,
+          subject: 'owner',
+        },
       ],
       [
         'item-2',
@@ -231,6 +293,7 @@ test('it refuses a diff over the most changes a run allows', () => {
           text: 'Sings in a choir',
           source: 'owner',
           isPinned: false,
+          subject: 'owner',
         },
       ],
     ]),
@@ -255,7 +318,14 @@ test('it takes the short ID the session read, and binds the change to the item i
     new Map([
       [
         'item-1',
-        { shortID: 'k3x9m2p7qa', version: 2, text: 'Keeps bees', source: 'owner', isPinned: false },
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 2,
+          text: 'Keeps bees',
+          source: 'owner',
+          isPinned: false,
+          subject: 'owner',
+        },
       ],
     ]),
     30,
@@ -273,7 +343,14 @@ test('it refuses a diff that names one item in 2 changes, by its short ID and it
     new Map([
       [
         'item-1',
-        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Keeps bees',
+          source: 'owner',
+          isPinned: false,
+          subject: 'owner',
+        },
       ],
     ]),
     30,
@@ -297,7 +374,14 @@ test('it refuses a change to an item the session was never shown, and stages not
     new Map([
       [
         'item-1',
-        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Keeps bees',
+          source: 'owner',
+          isPinned: false,
+          subject: 'owner',
+        },
       ],
     ]),
     30,
@@ -354,7 +438,14 @@ test.each([
     new Map([
       [
         'item-1',
-        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Keeps bees',
+          source: 'owner',
+          isPinned: false,
+          subject: 'owner',
+        },
       ],
       [
         'item-2',
@@ -364,6 +455,7 @@ test.each([
           text: 'Keeps honeybees',
           source: 'owner',
           isPinned: false,
+          subject: 'owner',
         },
       ],
     ]),
@@ -383,7 +475,14 @@ test('it refuses a change with no reason the owner can read', () => {
     new Map([
       [
         'item-1',
-        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Keeps bees',
+          source: 'owner',
+          isPinned: false,
+          subject: 'owner',
+        },
       ],
     ]),
     30,
@@ -402,7 +501,14 @@ test('it refuses new text that holds an invisible formatting character', () => {
     new Map([
       [
         'item-1',
-        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Keeps bees',
+          source: 'owner',
+          isPinned: false,
+          subject: 'owner',
+        },
       ],
     ]),
     30,
@@ -431,6 +537,7 @@ test('it refuses new text that brings in a destination none of its items holds',
           text: 'Banks with the credit union',
           source: 'owner',
           isPinned: false,
+          subject: 'owner',
         },
       ],
     ]),
@@ -465,6 +572,7 @@ test('it keeps a destination that one of the merged items holds', () => {
           text: 'Email is sam@example.test',
           source: 'owner',
           isPinned: false,
+          subject: 'owner',
         },
       ],
       [
@@ -475,6 +583,7 @@ test('it keeps a destination that one of the merged items holds', () => {
           text: 'Uses email for work',
           source: 'owner',
           isPinned: false,
+          subject: 'owner',
         },
       ],
     ]),
@@ -502,7 +611,14 @@ test('it refuses a rewrite that keeps the current text', () => {
     new Map([
       [
         'item-1',
-        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Keeps bees',
+          source: 'owner',
+          isPinned: false,
+          subject: 'owner',
+        },
       ],
     ]),
     30,

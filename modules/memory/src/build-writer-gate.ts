@@ -15,6 +15,10 @@ export function buildWriterGate(parts: StoreParts): WriterGate {
     check: async (write, source, batch) => {
       const checked = await runBatchGate(parts, write, source);
 
+      if (checked === null) {
+        return null;
+      }
+
       const gate = checked.gate;
 
       if (gate.status === 'pass') {

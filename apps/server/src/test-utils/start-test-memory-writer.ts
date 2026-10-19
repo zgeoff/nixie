@@ -186,6 +186,7 @@ async function startTestWriterRunner(
     config: writerConfigSchema.parse({ batch_messages: 1, ...wiring.options.writerConfig }),
     getPersona: () => '',
     ownerName: null,
+    assistantName: null,
     onError: (error) => {
       throw error;
     },

@@ -10,7 +10,7 @@ import { writeProposalRejection } from './write-proposal-rejection';
 // their lapses, and the conversation's own rejected edits.
 export function buildMemoryProposals(parts: StoreParts): MemoryProposals {
   return {
-    listPending: () => readPendingProposals(parts),
+    listPending: (filter) => readPendingProposals(parts, filter),
     approve: (answer) => writeProposalApproval(parts, answer),
     reject: (rejection) => writeProposalRejection(parts, rejection),
     lapse: () => runProposalLapses(parts),

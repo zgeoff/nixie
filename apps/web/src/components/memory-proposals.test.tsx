@@ -53,7 +53,7 @@ test('it marks a self-note proposal with a self-note badge and why it waits for 
   await setupTest();
 
   await store.memoryProposals.create({
-    kind: 'self',
+    subject: 'self',
     origin: 'conversation',
     reason: 'self_note',
     text: 'Enjoys a slow morning question',

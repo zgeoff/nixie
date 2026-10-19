@@ -6,7 +6,7 @@ import type { WriteGroup } from './build-write-group';
 import { createSealedProposal } from './create-sealed-proposal';
 import { findMatchingProposal } from './find-matching-proposal';
 import type { ReviewReason, WriteCaller } from './gate-types';
-import type { MemoryKind, MemoryTables, QuoteEvidence, StoreParts } from './types';
+import type { MemorySubject, MemoryTables, QuoteEvidence, StoreParts } from './types';
 import type { PendingProposal } from './write-proposal-record';
 import { writeProposalRecord } from './write-proposal-record';
 
@@ -25,8 +25,8 @@ export interface ProposalPlan {
   readonly caller: WriteCaller;
   readonly group: WriteGroup;
 
-  // the kind of the item the proposal creates or changes, a fact when unset
-  readonly itemKind?: MemoryKind;
+  // the subject of the item the proposal creates or changes, owner when unset
+  readonly subject?: MemorySubject;
 }
 
 // The proposal a write made, or the pending one it merged into.

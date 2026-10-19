@@ -1,5 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { z } from 'zod';
 import { readForgottenSequences } from './read-forgotten-sequences';
 import type { IndexEntry } from './start-memory-index';
 import type { MemoryContext } from './types';
@@ -10,9 +11,9 @@ export interface MessageEntries {
   readonly through: number;
 }
 
-// Reads the text of each of your messages after the sequence for the message indexes, each keyed by
-// its sequence. A message whose key is gone, or one that backed a forgotten item, stays out, so a
-// forget never comes back through a past message.
+// Reads the words you typed in each of your messages after the sequence, each keyed by its
+// sequence. A message with no typed words, one whose key is gone, or one that backed a forgotten
+// item stays out, so neither a paste nor a forget comes back as your past message.
 export async function readMessageEntries(
   context: Pick<MemoryContext, 'log'>,
   afterSequence: number,
@@ -50,7 +51,7 @@ async function collectReadableEntries(
   );
 
   return records.flatMap((record) => {
-    const text = findMessageText(record);
+    const text = findTypedText(record);
 
     return text === null || forgotten.has(record.sequence)
       ? []
@@ -58,13 +59,31 @@ async function collectReadableEntries(
   });
 }
 
-// the message's words, or null once a forget erased them
-function findMessageText(record: LogRecord): string | null {
+const messageSpans = z.array(z.object({ start: z.int(), end: z.int(), source: z.string() }));
+
+// your typed spans, with a line break for each other span so words beside a paste never join; the
+// whole text when no span carries a label, as from a client that sends none; null with no typed
+// words, or once a forget erased them
+function findTypedText(record: LogRecord): string | null {
   if (record.erasable.status !== 'readable') {
     return null;
   }
 
-  const text = record.erasable.fields['text'];
+  const fields = record.erasable.fields;
+  const text = fields['text'];
 
-  return typeof text === 'string' && text.trim() !== '' ? text : null;
+  if (typeof text !== 'string') {
+    return null;
+  }
+
+  const spans = messageSpans.safeParse(fields['spans']);
+
+  const typed =
+    spans.success && spans.data.some((span) => span.source !== 'unknown')
+      ? spans.data
+          .map((span) => (span.source === 'typed' ? text.slice(span.start, span.end) : '\n'))
+          .join('')
+      : text;
+
+  return typed.trim() === '' ? null : typed;
 }

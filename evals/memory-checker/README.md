@@ -35,27 +35,26 @@ directly from an imp works only with Haiku.
 
 ## Results
 
-Sonnet 5.5 at low effort, with the 10 s timeout and the reason asked before the verdict, once with
-memories about "the owner" and once with the owner named Sam. The committed reports are the named
-run:
+Sonnet 5.5 at low effort, with the 10 s timeout and the reason asked before the verdict, on the
+prompt with the rules for whom a memory is about, and with the owner named Sam:
 
-| Set        | Owner     | Wrong confirmations | Misses  | Failed calls | Cost  |
-| ---------- | --------- | ------------------- | ------- | ------------ | ----- |
-| corpus     | the owner | 0 of 117            | 0 of 93 | 0 of 210     | $0.55 |
-| corpus     | Sam       | 0 of 117            | 0 of 93 | 0 of 210     | $0.60 |
-| held-out-1 | the owner | 0 of 42             | 0 of 36 | 0 of 78      | $0.21 |
-| held-out-1 | Sam       | 0 of 42             | 0 of 36 | 0 of 78      | $0.21 |
-| held-out-2 | the owner | 0 of 42             | 0 of 36 | 0 of 78      | $0.22 |
-| held-out-2 | Sam       | 0 of 42             | 0 of 36 | 0 of 78      | $0.22 |
-| held-out-3 | the owner | 0 of 42             | 0 of 30 | 0 of 72      | $0.19 |
-| held-out-3 | Sam       | 0 of 42             | 0 of 30 | 0 of 72      | $0.20 |
-| held-out-4 | the owner | 0 of 42             | 0 of 33 | 0 of 75      | $0.19 |
-| held-out-4 | Sam       | 0 of 42             | 0 of 33 | 0 of 75      | $0.20 |
-| held-out-5 | the owner | 0 of 39             | 0 of 36 | 0 of 75      | $0.23 |
-| held-out-5 | Sam       | 0 of 39             | 0 of 36 | 0 of 75      | $0.21 |
+| Set        | Wrong confirmations | Misses  | Failed calls | Cost  |
+| ---------- | ------------------- | ------- | ------------ | ----- |
+| corpus     | 0 of 117            | 0 of 93 | 0 of 210     | $0.54 |
+| held-out-1 | 0 of 42             | 0 of 36 | 0 of 78      | $0.19 |
+| held-out-2 | 0 of 42             | 0 of 36 | 0 of 78      | $0.19 |
+| held-out-3 | 0 of 42             | 0 of 30 | 0 of 72      | $0.17 |
+| held-out-4 | 0 of 42             | 0 of 33 | 0 of 75      | $0.19 |
+| held-out-5 | 0 of 39             | 0 of 36 | 0 of 75      | $0.19 |
+| subjects   | 0 of 27             | 0 of 9  | 0 of 36      | $0.12 |
+
+The first run of held-out-3 on this prompt confirmed "The owner's daughter has a tutor" from "When
+does my daughter's tutor start charging the new rate?" in 1 of 3 calls, and timed out on another,
+and a second run passed; the committed report is the second run. The prompt before those rules
+passed every set both with memories about "the owner" and with the owner named Sam.
 
 A failed call times out or gives no readable answer, and it answers unsure, which sends the write to
-review. The p95 latency ran from 3.2 s to 5.7 s across the sets. The prompt was tuned on the corpus.
+review. The p95 latency ran from 3.6 s to 7.8 s across the sets. The prompt was tuned on the corpus.
 Each held-out set was written and committed, with its labels, before any run, and its pass rule was
 no wrong confirmation:
 
@@ -71,6 +70,9 @@ no wrong confirmation:
 - [held-out-4.json](held-out-4.json) scored the final prompt, which no change followed, and passed.
 - [held-out-5.json](held-out-5.json) holds memories that keep the owner's distinctive words, beside
   jokes and similes stated as facts, and passed with and without the owner's name.
+- [subjects.json](subjects.json) holds memories about the owner built from what the message says
+  about the assistant, such as "you clearly love thunderstorms", beside deals and names the owner
+  shares with the assistant, and passed.
 
 The first measurement, before the prompt took the evidence mark and the rule that a memory may keep
 the message's own condition or attribution, ran Haiku 5.5, Sonnet 5.5 and Opus 5.5 over the same

@@ -24,10 +24,15 @@ const itemTextSchema = z.string().max(2000).regex(/\S/u);
 const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer']);
 const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
 
-// a fact about you, or a self-note, which nixie writes about itself
+// whose an item is: a fact about you, something shared between you and nixie, or a self-note, which
+// nixie writes about itself
+const subjectSchema = z.enum(['owner', 'self', 'shared']);
+
+// the field the release before reads in place of the subject: self for a self-note, and fact for
+// every other item
 const kindSchema = z.enum(['fact', 'self']);
 
-// An item as the view lists it: its kind, its current version's text while its key exists, and when
+// An item as the view lists it: its subject, its current version's text while its key exists, and when
 // it was created, last changed and forgotten. A forgotten item carries no text and its forget's
 // time.
 const memoryItemSchema = z.object({
@@ -42,6 +47,7 @@ const memoryItemSchema = z.object({
   source: sourceSchema,
   state: z.enum(['active', 'retired', 'forgetting', 'forgotten']),
   status: z.enum(['readable', 'shredded', 'unreadable']),
+  subject: subjectSchema,
   text: z.string().optional(),
   version: z.int().positive(),
 });
@@ -128,6 +134,7 @@ const memoryProposalSchema = z.object({
   reason: reviewReasonSchema,
   source: sourceSchema,
   sources: z.array(proposalSourceSchema),
+  subject: subjectSchema,
   targetVersion: z.int().positive().nullable(),
   text: z.string(),
 });

@@ -42,6 +42,7 @@ test('it publishes an applied write as a version the writer made', async () => {
       {
         write: {
           op: 'remember',
+          subject: 'owner',
           text: 'You live at 4 Elm Row.',
           quote: '4 Elm Row',
           sourceSequence: planned.bounds.end,
@@ -56,6 +57,7 @@ test('it publishes an applied write as a version the writer made', async () => {
         },
       },
     ],
+    flags: [],
     buildRecords: () => [],
   });
 
@@ -66,6 +68,7 @@ test('it publishes an applied write as a version the writer made', async () => {
     applied: [{ itemID: expect.toBeString(), version: 1 }],
     proposed: 0,
     forgotten: 0,
+    flags: [],
   });
 
   expect(recalled.items).toMatchObject([
@@ -75,64 +78,6 @@ test('it publishes an applied write as a version the writer made', async () => {
       source: 'owner',
       model: 'claude-writer-1',
     },
-  ]);
-});
-
-test("it merges the writer's edit of a self-note into the conversation's pending edit of the same text", async () => {
-  const ctx = await setupTest();
-
-  const note = await ctx.memory.store.remember({
-    text: 'I like short answers in the morning',
-    itemKind: 'self',
-    provenance: {
-      origin: 'conversation',
-      source: 'untrusted',
-      taskID: 'conversation',
-      proposalID: null,
-      checks: null,
-    },
-  });
-
-  await ctx.memory.store.writes.remember({
-    text: 'I like short answers all day',
-    target: note,
-    caller: {
-      origin: 'conversation',
-      thread: 'conversation',
-      taskID: 'conversation',
-      runID: 'conversation',
-      model: 'claude-opus-5-5',
-    },
-  });
-
-  const planned = await writePlannedBatch(ctx.memory.log, ['You like short answers all day']);
-
-  const write = {
-    op: 'remember',
-    text: 'I like short answers all day',
-    quote: 'short answers all day',
-    sourceSequence: planned.bounds.end,
-    target: note,
-  } as const;
-
-  const verdict = await ctx.memory.store.writes.batch.check(
-    write,
-    { sequence: planned.bounds.end, text: 'You like short answers all day', spans: [] },
-    { bounds: planned.bounds, model: 'claude-writer-1' },
-  );
-
-  await ctx.memory.store.writeBatch({
-    lease: ctx.lease,
-    clock: ctx.clock,
-    bounds: planned.bounds,
-    writes: [{ write, verdict }],
-    buildRecords: () => [],
-  });
-
-  const pending = await ctx.memory.store.proposals.listPending();
-
-  expect(pending.map((proposal) => proposal.sources.map((source) => source.origin))).toStrictEqual([
-    ['conversation', 'memory_writer'],
   ]);
 });
 
@@ -151,6 +96,7 @@ test('it publishes every item the writer creates as a fact, never a self-note', 
       {
         write: {
           op: 'remember',
+          subject: 'owner',
           text: 'You like short answers.',
           quote: 'keep answers short',
           sourceSequence: planned.bounds.end,
@@ -165,12 +111,13 @@ test('it publishes every item the writer creates as a fact, never a self-note', 
         },
       },
     ],
+    flags: [],
     buildRecords: () => [],
   });
 
   const recalled = await ctx.memory.store.recall({});
 
-  expect(recalled.items).toMatchObject([{ text: 'You like short answers.', kind: 'fact' }]);
+  expect(recalled.items).toMatchObject([{ text: 'You like short answers.', subject: 'owner' }]);
 });
 
 test('it publishes a proposal records and counts the proposal', async () => {
@@ -185,6 +132,7 @@ test('it publishes a proposal records and counts the proposal', async () => {
       {
         write: {
           op: 'remember',
+          subject: 'owner',
           text: 'You live at 9 Oak Lane.',
           quote: '9 Oak Lane',
           sourceSequence: planned.bounds.end,
@@ -205,12 +153,20 @@ test('it publishes a proposal records and counts the proposal', async () => {
         },
       },
     ],
+    flags: [],
     buildRecords: () => [],
   });
 
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, thread: 'memory-writer' });
 
-  expect(result).toStrictEqual({ status: 'published', applied: [], proposed: 1, forgotten: 0 });
+  expect(result).toStrictEqual({
+    status: 'published',
+    applied: [],
+    proposed: 1,
+    forgotten: 0,
+    flags: [],
+  });
+
   expect(entries.map((entry) => entry.record.kind)).toContain('test.proposal');
 });
 
@@ -238,6 +194,7 @@ test('it rejects a batch whose proposal names an item that moved on since the se
       {
         write: {
           op: 'remember',
+          subject: 'owner',
           text: 'You live at 9 Oak Lane.',
           quote: '9 Oak Lane',
           sourceSequence: planned.bounds.end,
@@ -258,6 +215,7 @@ test('it rejects a batch whose proposal names an item that moved on since the se
         },
       },
     ],
+    flags: [],
     buildRecords: () => [],
   });
 
@@ -273,6 +231,7 @@ test('it advances the cursor with the batch own records in the same publish', as
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
+    flags: [],
     buildRecords: (outcome) => [
       {
         kind: 'memory.batch_published',
@@ -313,6 +272,7 @@ test('it leaves out a write whose source was forgotten and counts it', async () 
       {
         write: {
           op: 'remember',
+          subject: 'owner',
           text: 'Your sister is called Robin.',
           quote: 'My sister is called Robin',
           sourceSequence: planned.bounds.end,
@@ -327,13 +287,97 @@ test('it leaves out a write whose source was forgotten and counts it', async () 
         },
       },
     ],
+    flags: [],
     buildRecords: () => [],
   });
 
   const recalled = await ctx.memory.store.recall({ limit: 10 });
 
-  expect(result).toStrictEqual({ status: 'published', applied: [], proposed: 0, forgotten: 1 });
+  expect(result).toStrictEqual({
+    status: 'published',
+    applied: [],
+    proposed: 0,
+    forgotten: 1,
+    flags: [],
+  });
+
   expect(recalled.items).toStrictEqual([]);
+});
+
+test('it keeps a flag whose source is readable, and leaves out one whose source was forgotten', async () => {
+  const ctx = await setupTest();
+
+  const planned = await writePlannedBatch(ctx.memory.log, [
+    'You always pick the jazz station.',
+    'You hum when you think, it is sweet.',
+  ]);
+
+  const [first, second] = planned.sequences;
+
+  invariant(first !== undefined && second !== undefined);
+
+  await removeMessageKey(ctx.memory.log, second);
+
+  const result = await ctx.memory.store.writeBatch({
+    lease: ctx.lease,
+    clock: ctx.clock,
+    bounds: planned.bounds,
+    writes: [],
+    flags: [
+      { text: 'The assistant favours the jazz station.', sourceSequence: first },
+      { text: 'The assistant hums while it thinks.', sourceSequence: second },
+    ],
+    buildRecords: () => [],
+  });
+
+  expect(result).toStrictEqual({
+    status: 'published',
+    applied: [],
+    proposed: 0,
+    forgotten: 0,
+    flags: [{ text: 'The assistant favours the jazz station.', sourceSequence: first }],
+  });
+});
+
+test('it applies a shared write as a shared item', async () => {
+  const ctx = await setupTest();
+  const planned = await writePlannedBatch(ctx.memory.log, ['Our deal: a riddle every Monday.']);
+
+  await ctx.memory.store.writeBatch({
+    lease: ctx.lease,
+    clock: ctx.clock,
+    bounds: planned.bounds,
+    writes: [
+      {
+        write: {
+          op: 'remember',
+          subject: 'shared',
+          text: 'The owner and the assistant swap a riddle every Monday.',
+          quote: 'a riddle every Monday',
+          sourceSequence: planned.bounds.end,
+          target: null,
+        },
+        verdict: {
+          outcome: 'apply',
+          source: 'owner',
+          checks: { quote: 'exact' },
+          evidence: { recordSequence: planned.bounds.end, start: 10, end: 31 },
+          model: 'claude-writer-1',
+        },
+      },
+    ],
+    flags: [],
+    buildRecords: () => [],
+  });
+
+  const recalled = await ctx.memory.store.recall({ limit: 10 });
+
+  expect(recalled.items).toMatchObject([
+    {
+      subject: 'shared',
+      text: 'The owner and the assistant swap a riddle every Monday.',
+    },
+  ]);
 });
 
 test('it returns superseded for a batch the cursor no longer waits on', async () => {
@@ -348,6 +392,7 @@ test('it returns superseded for a batch the cursor no longer waits on', async ()
       {
         write: {
           op: 'remember',
+          subject: 'owner',
           text: 'You live at 4 Elm Row.',
           quote: '4 Elm Row',
           sourceSequence: planned.bounds.end,
@@ -362,6 +407,7 @@ test('it returns superseded for a batch the cursor no longer waits on', async ()
         },
       },
     ],
+    flags: [],
     buildRecords: () => [],
   });
 
@@ -380,6 +426,7 @@ test('it rejects a publish under a lease another claim replaced', async () => {
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
+    flags: [],
     buildRecords: () => [],
   });
 
@@ -399,6 +446,7 @@ test('it rejects a publish after the lease expired', async () => {
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
+    flags: [],
     buildRecords: () => [],
   });
 
@@ -421,6 +469,7 @@ test('it rejects a publish whose lease expired while it waited for the delivery 
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
+    flags: [],
     buildRecords: (outcome) => [
       {
         kind: 'memory.batch_published',
@@ -477,6 +526,7 @@ test('it leaves out a write whose message backed an item forgotten after the gat
       {
         write: {
           op: 'remember',
+          subject: 'owner',
           text: 'You live at 4 Elm Row.',
           quote: '4 Elm Row',
           sourceSequence: planned.bounds.end,
@@ -491,8 +541,15 @@ test('it leaves out a write whose message backed an item forgotten after the gat
         },
       },
     ],
+    flags: [],
     buildRecords: () => [],
   });
 
-  expect(result).toStrictEqual({ status: 'published', applied: [], proposed: 0, forgotten: 1 });
+  expect(result).toStrictEqual({
+    status: 'published',
+    applied: [],
+    proposed: 0,
+    forgotten: 1,
+    flags: [],
+  });
 });
