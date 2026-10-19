@@ -18,6 +18,9 @@ export interface ModelRecordFields<Payload> {
 
   // the model's own words, which go in the record's erasable fields
   readonly text?: string;
+
+  // the summary of the model's reasoning, erasable beside the text, so a forget removes it too
+  readonly summary?: string;
 }
 
 // A record of model output, encoded through its kind's codec. Its plain payload names the model and
@@ -32,10 +35,15 @@ export function buildModelRecord<Kind extends RecordKind, Payload extends ModelF
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the payload less the model fields, with them added back, is the payload, which TypeScript cannot see through the generic
   const payload = full as Payload;
 
+  const erasable = {
+    ...(fields.text === undefined ? {} : { text: fields.text }),
+    ...(fields.summary === undefined ? {} : { summary: fields.summary }),
+  };
+
   return {
     kind: codec.kind,
     definitions: source.definitions(),
     payload: codec.encode(payload),
-    ...(fields.text === undefined ? {} : { erasable: { text: fields.text } }),
+    ...(Object.keys(erasable).length === 0 ? {} : { erasable }),
   };
 }
