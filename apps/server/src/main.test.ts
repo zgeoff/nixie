@@ -462,11 +462,16 @@ test('it applies a remembered fact that the owner typed, with their words as its
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+  // the turn runs the model, the memory checker and the model again, so it waits as long as a sent
+  // message's reply does
+  await waitForCondition(
+    async () => {
+      const page = await ctx.client.conversation.read({ thread: 'conversation' });
 
-    return page.records.some((record) => record.message?.text === 'Noted.');
-  });
+      return page.records.some((record) => record.message?.text === 'Noted.');
+    },
+    { timeoutMs: 30_000 },
+  );
 
   ctx.sendSignal('SIGTERM');
 
