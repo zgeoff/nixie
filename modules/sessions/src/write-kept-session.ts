@@ -19,7 +19,7 @@ export async function writeKeptSession(spec: KeptSessionSpec): Promise<void> {
     await spec.from.suspension.wake();
   }
 
-  const source = await findSessionFiles(spec.from, spec.command, spec.sessionID);
+  const source = await readSessionFiles(spec.from, spec.command, spec.sessionID);
   const target = await spec.to.resolveHome(spec.command.env);
 
   const targetDir = join(
@@ -66,10 +66,10 @@ interface SessionFiles {
   readonly files: readonly string[];
 }
 
-// Finds the session's files in the sandbox, under the first project folder that holds its
+// Reads the list of the session's files from the sandbox, under the first project folder that holds its
 // transcript. A sandbox that holds no transcript of the session throws. Each list reaches only the
 // transcripts and the session's own side folder, so other sessions' files never fill its cap.
-async function findSessionFiles(
+async function readSessionFiles(
   sandbox: Sandbox,
   command: GuestCommand,
   sessionID: string,
