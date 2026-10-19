@@ -85,7 +85,7 @@
     "postinstall": "bun run --cwd apps/web codegen",
     "prepare": "command -v git > /dev/null 2>&1 && lefthook install --force || true",
     "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md AGENTS.md ':(glob)docs/**/*.md' ':(glob)research/**/*.md' .claude/skills/project-docs-writing .claude/skills/project-testing && bash .claude/skills/skill-writing/scripts/check-skill.sh && bash .claude/skills/code-style/scripts/check-project-verbs.sh",
-    "test": "bun run models && bun test",
+    "test": "bun run models && bun test --parallel",
     "typecheck": "tsc --noEmit && turbo run typecheck"
   },
   "devDependencies": {
