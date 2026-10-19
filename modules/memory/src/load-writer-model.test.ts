@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
-import { findWriterModel } from './find-writer-model';
+import { loadWriterModel } from './load-writer-model';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
 
@@ -35,7 +35,7 @@ test('it finds the model the version holds', async () => {
   });
 
   const row = await ctx.readVersionRow(item.itemID);
-  const model = await findWriterModel(ctx.memory.log, row);
+  const model = await loadWriterModel(ctx.memory.log, row);
 
   expect(model).toBe('claude-writer-2');
 });
@@ -86,7 +86,7 @@ test('it finds the model of the batch that applied a writer version that holds n
   ]);
 
   const row = await ctx.readVersionRow(item.itemID);
-  const model = await findWriterModel(ctx.memory.log, row);
+  const model = await loadWriterModel(ctx.memory.log, row);
 
   expect(model).toBe('claude-writer-1');
 });
@@ -137,7 +137,7 @@ test('it finds no model for a writer version the next batch did not apply', asyn
   ]);
 
   const row = await ctx.readVersionRow(item.itemID);
-  const model = await findWriterModel(ctx.memory.log, row);
+  const model = await loadWriterModel(ctx.memory.log, row);
 
   expect(model).toBeNull();
 });
@@ -158,7 +158,7 @@ test('it finds no model for a writer version with no batch published after it', 
   });
 
   const row = await ctx.readVersionRow(item.itemID);
-  const model = await findWriterModel(ctx.memory.log, row);
+  const model = await loadWriterModel(ctx.memory.log, row);
 
   expect(model).toBeNull();
 });

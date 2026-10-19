@@ -1,8 +1,8 @@
 import type { Log } from '@heynixie/log';
 import { findRecordKeys } from '@heynixie/log';
 import { findCheckerModel } from './find-checker-model';
-import { findWriterModel } from './find-writer-model';
 import { getItemShortID } from './get-item-short-id';
+import { loadWriterModel } from './load-writer-model';
 import type { MemoryExport, MemoryExportItem } from './memory-export-schema';
 import { memoryExportSchemaVersion } from './memory-export-schema-version';
 import { parseChecks } from './parse-checks';
@@ -195,7 +195,7 @@ async function buildVersion(row: MemoryVersionRow, parts: ItemParts): Promise<Ex
       taskID: row.task_id,
       proposalID: row.proposal_id,
       checks,
-      writerModel: await findWriterModel(parts.log, row),
+      writerModel: await loadWriterModel(parts.log, row),
       checkerModel: findCheckerModel(checks),
       snapshotHash: row.snapshot_hash,
       recordedAt: new Date(row.recorded_at).toISOString(),

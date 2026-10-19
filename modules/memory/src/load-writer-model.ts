@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { MemoryVersionRow } from './types';
 
-// the part of a batch's published record that names what it applied and the model that wrote it
 const appliedVersion = z.object({ itemID: z.string(), version: z.int() });
 
 const publishedBatch = z.object({
@@ -11,10 +10,10 @@ const publishedBatch = z.object({
   model: z.string().nullable(),
 });
 
-// Finds the model that wrote a version. A version the memory writer applied before its versions
+// Loads the model that wrote a version. A version the memory writer applied before its versions
 // kept the model holds none, so it takes the model of the batch that applied it: that batch's
 // published record commits after its versions, in the same transaction and the writer's thread.
-export async function findWriterModel(
+export async function loadWriterModel(
   log: Pick<Log, 'writer'>,
   row: MemoryVersionRow,
 ): Promise<string | null> {
