@@ -110,3 +110,28 @@ test('it prints the liveness report and exits 0 from health --live when the serv
     ['{"status":"ready","parts":{"process":{"isReady":true,"reason":null}}}'],
   ]);
 });
+
+test('it exits 1 from health when the server answers ready with a part report that lacks its reason', async () => {
+  const ctx = await setupTest();
+
+  const server = Bun.serve({
+    hostname: '127.0.0.1',
+    port: 0,
+    fetch: () => Response.json({ status: 'ready', parts: { database: { isReady: true } } }),
+  });
+
+  onTestFinished(() => server.stop(true));
+
+  const config = await readFile(ctx.configPath, 'utf8');
+
+  await writeFile(ctx.configPath, config.replace('  port: 0\n', `  port: ${server.port}\n`));
+
+  const exitCode = await runCLI(['health', '--config', ctx.configPath], ctx.io);
+
+  expect(exitCode).toBe(1);
+
+  expect(ctx.io.log).toHaveBeenCalledExactlyOnceWith(
+    'command.failed',
+    expect.objectContaining({ command: 'health' }),
+  );
+});
