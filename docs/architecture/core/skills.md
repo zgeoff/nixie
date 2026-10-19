@@ -35,4 +35,5 @@ task with no skills gets no catalog.
 
 The catalog has a cap: a share of the context window that the conversation's CLI works in, which the
 deployment configuration's `skills` section sets. Past the cap, the catalog lists the remaining
-skills by name alone, so the model still knows each one exists.
+skills by name alone, so the model still knows each one exists. The catalog never drops a name, so a
+names-only catalog that is longer than the cap stays whole and goes past it.
