@@ -3,6 +3,7 @@ import { toErrorFields } from '@heynixie/logger';
 import type { ServerReset, ServerResetOptions } from './run-server-reset';
 import { runServerReset } from './run-server-reset';
 import type { Cleanup } from './types';
+import { waitForSettled } from './wait-for-settled';
 
 export interface ServerResetControl {
   // runs the reset; a request while one runs gets that reset's answer
@@ -86,12 +87,4 @@ async function runStoppedReset(options: ServerResetControlOptions): Promise<Serv
       await options.work.stop();
     },
   });
-}
-
-async function waitForSettled(pending: Promise<unknown> | null): Promise<void> {
-  try {
-    await pending;
-  } catch {
-    // the caller that started the work reports its failure
-  }
 }

@@ -2,6 +2,7 @@ import type { SeedResult } from '@heynixie/definitions';
 import { runSeed } from '@heynixie/definitions';
 import { buildSeedLogFields } from './build-seed-log-fields';
 import type { ServerParts } from './types';
+import { waitForSettled } from './wait-for-settled';
 
 // the server parts a seed reads and updates
 export type SeedParts = Pick<
@@ -30,15 +31,6 @@ async function waitThenSeed(
   await previous;
 
   return runOneSeed(parts);
-}
-
-// the seed's own caller receives its failure, so the next seed waits only for it to settle
-async function waitForSettled(seed: Promise<SeedResult>): Promise<void> {
-  try {
-    await seed;
-  } catch {
-    // the next seed runs whatever this one's outcome
-  }
 }
 
 async function runOneSeed(parts: SeedParts): Promise<SeedResult> {
