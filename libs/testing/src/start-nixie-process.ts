@@ -60,7 +60,7 @@ export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
   const child = startChild(options, channel.receive);
   const stderr = collectText(child.stderr);
 
-  const exited = waitForExit(child, (exit) => {
+  const exited = waitForExit(child, stderr.done, (exit) => {
     channel.close(new Error(`nixie exited with ${formatExit(exit)}: ${stderr.read()}`));
   });
 
@@ -119,8 +119,14 @@ type NixieChild = ReturnType<typeof startChild>;
 
 type OnExit = (exit: NixieExit) => void;
 
-async function waitForExit(child: NixieChild, onExit: OnExit): Promise<NixieExit> {
-  await child.exited;
+// The exit can land before the last of stderr is read, so it waits for both: the message then holds
+// everything nixie wrote before it exited.
+async function waitForExit(
+  child: NixieChild,
+  stderrDone: Promise<void>,
+  onExit: OnExit,
+): Promise<NixieExit> {
+  await Promise.all([child.exited, stderrDone]);
 
   const exit = { code: child.exitCode, signal: child.signalCode };
 
@@ -129,18 +135,25 @@ async function waitForExit(child: NixieChild, onExit: OnExit): Promise<NixieExit
   return exit;
 }
 
-function collectText(stream: ReadableStream<Uint8Array>): { readonly read: () => string } {
+interface CollectedText {
+  readonly read: () => string;
+
+  // resolves once the stream has ended and every chunk is read
+  readonly done: Promise<void>;
+}
+
+function collectText(stream: ReadableStream<Uint8Array>): CollectedText {
   const text = { value: '' };
 
   const decoder = new TextDecoder();
 
-  void (async () => {
+  const done = (async () => {
     for await (const chunk of stream) {
       text.value += decoder.decode(chunk, { stream: true });
     }
   })();
 
-  return { read: () => text.value };
+  return { read: () => text.value, done };
 }
 
 function formatExit(exit: NixieExit): string {
