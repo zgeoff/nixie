@@ -15,9 +15,14 @@ interface TestLog {
   readonly clock: TestClock;
 }
 
+interface TestLogOptions {
+  // how long the key store waits for another connection's lock, 5 s by default
+  readonly keyStoreBusyTimeoutMs?: number;
+}
+
 // Starts a writer on a fresh data directory and a test clock, with a new deployment key and the
 // log's own projections. When the test finishes it stops the writer, then removes the directory.
-export async function startTestLog(): Promise<TestLog> {
+export async function startTestLog(options: TestLogOptions = {}): Promise<TestLog> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -28,7 +33,11 @@ export async function startTestLog(): Promise<TestLog> {
 
   const clock = buildTestClock(Date.parse('2026-10-16T09:00:00Z'));
 
-  const writer = await startWriter({ dataDir, clock });
+  const writer = await startWriter({
+    dataDir,
+    clock,
+    keyStoreBusyTimeoutMs: options.keyStoreBusyTimeoutMs,
+  });
 
   stack.defer(() => writer.stop());
 

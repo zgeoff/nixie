@@ -14,6 +14,7 @@ export interface BrowserFilePick {
   // the CSS selector of the file input
   readonly selector: string;
   readonly files: readonly BrowserFile[];
+  readonly timeoutMs?: number;
 }
 
 // Sets files on the page's file input as a pick in the browser's file dialog does, once the page
@@ -36,7 +37,7 @@ export async function setBrowserFiles(view: Bun.WebView, input: BrowserFilePick)
         throw new Error(`the page shows no ${input.selector}`);
       }
     },
-    { timeout: 10_000 },
+    { timeout: input.timeoutMs ?? 10_000 },
   );
 
   const root = await view.cdp('DOM.getDocument');

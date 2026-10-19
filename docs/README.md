@@ -35,6 +35,8 @@ below, and planned work lives in Linear.
 
 - [Architecture overview](architecture/overview.md) — the path of a tool call, the client path, the
   topology, the data and the cross-cutting rules, on one page
+- [Code layout](architecture/code-layout.md) — the workspace folders, the packages, the boundary
+  tags and import zones, the module packages, and the tests, test builds and checks
 
 ### Core
 
@@ -111,6 +113,8 @@ below, and planned work lives in Linear.
 
 - [The server](architecture/deployment/server.md) — configuration and secrets, the start sequence,
   health per part, envelope-only logs, stopping and the nixie image
+- [Deployment configuration](architecture/deployment/configuration.md) — the YAML file, what it
+  holds, its schema and credential references, and how it is mounted
 - [Host commands](architecture/deployment/host-commands.md) — the nixie command on the image's PATH,
   the commands a deployment runs, the control socket, sessions, the reset and memory
 - [Names in impd](architecture/deployment/impd-names.md) — the names of nixie's imps, sandbox images
@@ -141,8 +145,6 @@ rests on.
 
 - [Slice plan](https://linear.app/zgeoff/document/slice-plan-f056442e64a3) — the first build in 9
   ordered slices, each with its scope, what it needs first and its acceptance checks, in Linear
-- [Code layout](design/platform/code-layout.md) — the workspace folders, package boundaries, the
-  module packages, the images and the checks
 - [Skills](design/platform/skills.md) — skills in the definitions, vendoring and the lock, versions
   and reload, skill lists, the skill tools, the catalog, scripts and skills that nixie writes
 
@@ -206,11 +208,9 @@ rests on.
 
 ### Deployment
 
-- [Deployment design index](design/platform/deployment/README.md) — the 5 deployment docs
+- [Deployment design index](design/platform/deployment/README.md) — the 4 deployment docs
 - [Deployment](design/platform/deployment/deployment.md) — the first build, the host, the images,
   secrets, seeding the definitions, health, and Kubernetes
-- [Deployment configuration](design/platform/deployment/configuration.md) — the YAML file, what it
-  holds, its schema, and how it is mounted
 - [Backup and restore](design/platform/deployment/backup-and-restore.md) — the backup sidecar,
   Restic snapshots, the key repo and forget, the offsite replica, and restoring on a new host
 - [Release pipeline](design/platform/deployment/release-pipeline.md) — the worker, code and backup

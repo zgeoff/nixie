@@ -114,6 +114,7 @@ test('it returns superseded when an item moved on since the session read it', as
             source: 'owner',
             checks: { quote: 'exact' },
             evidence: { recordSequence: planned.bounds.end, start: 12, end: 22 },
+            model: 'claude-writer-1',
           },
         },
       ],

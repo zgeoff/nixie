@@ -1,12 +1,16 @@
 import { expect, mock, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { readWriterRow } from './read-writer-row';
 import { runWriterBatch } from './run-writer-batch';
+import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { buildStubWriterSession } from './test-utils/build-stub-writer-session';
 import { claimWriterLease } from './test-utils/claim-writer-lease';
 import { registerFaultPointAction } from './test-utils/register-fault-point-action';
 import type { TestMemoryOptions } from './test-utils/start-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
+import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import { writePlannedBatch } from './test-utils/write-planned-batch';
 import { writerConfigSchema } from './writer-config-schema';
 
@@ -192,4 +196,69 @@ test('it never runs the checker on an edit whose item moved on during extraction
   expect(result).toStrictEqual({ next: 'continue', timers: [] });
   expect(check).not.toHaveBeenCalled();
   expect(pending).toStrictEqual([]);
+});
+
+test("it applies a write the checker confirms with both the writer's and the checker's models", async () => {
+  const ctx = await setupTest({
+    gate: {
+      check: () =>
+        Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted', model: 'claude-checker-1' })),
+    },
+  });
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.writer_started',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'memory-writer',
+      payload: { startSequence: 0, at: 1_000_000 },
+    },
+  ]);
+
+  // the quote check passes only on words you typed, so the message records its typed span
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'I keep bees on the roof.',
+    spans: [{ start: 0, end: 24, source: 'typed' }],
+  });
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.batch_planned',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'memory-writer',
+      payload: { start: 0, end: sequence, mode: 'live', at: 1_000_000 },
+    },
+  ]);
+
+  await runWriterBatch(
+    {
+      ...ctx.parts,
+      ...buildStubWriterSession({
+        op: 'remember',
+        text: 'Keeps bees on the roof',
+        quote: 'I keep bees on the roof',
+        sourceSequence: sequence,
+        itemID: null,
+      }),
+    },
+    { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+  );
+
+  const recalled = await ctx.memory.store.recall({ query: 'bees' });
+
+  const [item] = recalled.items;
+
+  invariant(item);
+
+  const detail = await ctx.memory.store.view.readItem(item.itemID);
+
+  expect(detail?.versions).toMatchObject([
+    {
+      origin: 'memory_writer',
+      source: 'owner',
+      writerModel: 'claude-test-1',
+      checkerModel: 'claude-checker-1',
+    },
+  ]);
 });

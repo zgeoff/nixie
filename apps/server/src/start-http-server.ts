@@ -1,6 +1,7 @@
 import type { APIContext, ReadViewMemory } from '@heynixie/api';
 import { buildAPIApp } from '@heynixie/api';
 import type { Writer } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import { Elysia } from 'elysia';
 import type { APIGate } from './build-api-gate';
 import type { StartState } from './build-start-state';
@@ -16,6 +17,7 @@ export interface HTTPServerOptions {
   readonly tools: Tools;
   readonly apiContext: APIContext;
   readonly cleanup: Cleanup;
+  readonly log: Logger;
 
   // the memory store once it starts, which the memory view reads
   readonly readMemory: ReadViewMemory;
@@ -33,6 +35,7 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
     dataDir: options.config.server.dataDir,
     clock: options.apiContext.clock,
     cleanup: options.cleanup,
+    log: options.log,
   });
 
   const app = new Elysia().use(health).use(buildAPIApp(options.apiContext, options.readMemory));

@@ -4,8 +4,9 @@
   // suite's mods by their paths, so no import reaches their files
   "ignore": [".claude/**", "docs/design/**", "evals/sdk-contract/mods/**"],
   "ignoreWorkspaces": ["research/**"],
-  // the shared oxlint config loads this plugin, which knip cannot see through
-  "ignoreDependencies": ["@stylistic/eslint-plugin"],
+  // the shared oxlint config loads the plugin, and the synced skill-gate hook in .claude/ imports
+  // the package, so knip sees neither
+  "ignoreDependencies": ["@stylistic/eslint-plugin", "@zgeoff/skill-gate"],
   "workspaces": {
     // a crash test spawns the test build of nixie by its path, so no import reaches it
     "e2e": { "entry": ["nixie/main.ts"] },
