@@ -230,7 +230,7 @@ async function runInputCall(
       ],
     });
 
-    const result = await buildToolResultEntry(turn, run, reply.toolUse);
+    const result = await runStubToolCall(turn, run, reply.toolUse);
 
     state.entries.push(result);
 
@@ -262,7 +262,8 @@ interface StubToolUse {
   readonly input: Readonly<Record<string, unknown>>;
 }
 
-async function buildToolResultEntry(
+// calls the tool through the guest's route and returns its result as the session's next entry
+async function runStubToolCall(
   turn: TurnFrame,
   run: StubGuestRun,
   toolUse: StubToolUse,
