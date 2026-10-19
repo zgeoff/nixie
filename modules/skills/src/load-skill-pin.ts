@@ -3,9 +3,9 @@ import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { skillsPinnedCodec } from './skills-pinned-codec';
 
-// The skill versions a task runs with, from the newest pin on its thread, in name order, or null
-// before the task's first pin.
-export async function findSkillPin(log: Log, thread: string): Promise<readonly SkillRef[] | null> {
+// Loads the skill versions a task runs with from the newest pin record on its thread in the log, in
+// name order, or null before the task's first pin.
+export async function loadSkillPin(log: Log, thread: string): Promise<readonly SkillRef[] | null> {
   const [newest] = await readRecords(log, {
     afterSequence: 0,
     thread,

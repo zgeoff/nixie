@@ -6,7 +6,7 @@ import type {
 } from '@heynixie/definitions';
 import { loadSkillVersions } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
-import { findSkillPin } from './find-skill-pin';
+import { loadSkillPin } from './load-skill-pin';
 import { recordSkillPin } from './record-skill-pin';
 
 export interface TaskSkillsQuery {
@@ -47,7 +47,7 @@ export async function loadOrPinTaskSkills(
 
 // the task's newest pin, or a first pin from the definitions in force
 async function readOrRecordPin(log: Log, query: TaskSkillsQuery): Promise<readonly SkillRef[]> {
-  const pin = await findSkillPin(log, query.thread);
+  const pin = await loadSkillPin(log, query.thread);
 
   if (pin !== null) {
     return pin;
