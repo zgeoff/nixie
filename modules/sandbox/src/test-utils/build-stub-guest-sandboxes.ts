@@ -47,6 +47,9 @@ export interface StubGuestSandboxes {
   // the ID of the sandbox each purge frame reached, in order
   readonly purged: readonly string[];
 
+  // the ID of each sandbox the adapter holds and has not destroyed
+  readonly readSandboxIDs: () => readonly string[];
+
   // appends replies to the queue the guests answer from, one per model call, in order; a call past
   // the queue's end gets a default reply
   readonly addReplies: (...replies: readonly StubGuestReply[]) => void;
@@ -119,6 +122,7 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
     turns: state.turns,
     summaries: state.summaries,
     purged: state.purged,
+    readSandboxIDs: () => [...state.sandboxes.keys()],
     addReplies: (...replies) => {
       state.replies.push(...replies);
     },

@@ -471,6 +471,7 @@ test('it lists the sandboxes the recorder holds for an owner, and drops one it d
   const listed = await ctx.stub.adapter.list(ctx.spec.owner);
 
   expect(listed.map((sandbox) => sandbox.id)).toStrictEqual([second.id]);
+  expect(ctx.stub.readSandboxIDs()).toStrictEqual([second.id]);
 
   const records = await ctx.recorder.readSandboxRecords();
 

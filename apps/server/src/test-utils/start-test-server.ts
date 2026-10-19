@@ -5,9 +5,11 @@ import { join } from 'node:path';
 import type { LogRecord } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import type { SandboxAdapter } from '@heynixie/sandbox';
+import type { StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ToolDefinition, ToolEndpoint, ToolEndpointOptions } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import { buildTestFakeSandboxes } from './build-test-fake-sandboxes';
 import { buildTestSandboxes } from './build-test-sandboxes';
 import { startTestLog } from './start-test-log';
 
@@ -47,12 +49,37 @@ export interface TestServerTools {
 // needs the log the server starts.
 export type BuildTestServerTools = (context: TasksContext) => TestServerTools;
 
+export interface TestServerOptions {
+  // runs the conversation on the stateful fake guest in place of the process double, and returns it
+  // on the server as guest
+  readonly fakeGuest?: boolean;
+}
+
+interface FakeGuestOptions {
+  readonly fakeGuest: true;
+}
+
+export interface FakeGuestTestServer extends TestServer {
+  readonly guest: StubGuestSandboxes;
+}
+
 // Starts the parts of a test build the conversation runs on: a writer on a fresh data directory, a
 // tool endpoint with the tools given or built, or none, and the process double whose sandboxes a
-// test can retire. It stops them, after every part the test deferred, when it finishes.
+// test can retire, or the fake guest when asked. It stops them, after every part the test deferred.
+export function startTestServer(
+  tools: TestServerTools | BuildTestServerTools | undefined,
+  options: FakeGuestOptions,
+): Promise<FakeGuestTestServer>;
+
+export function startTestServer(
+  tools?: TestServerTools | BuildTestServerTools,
+  options?: TestServerOptions,
+): Promise<TestServer>;
+
 export async function startTestServer(
   tools?: TestServerTools | BuildTestServerTools,
-): Promise<TestServer> {
+  options: TestServerOptions = {},
+): Promise<TestServer | FakeGuestTestServer> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -75,20 +102,36 @@ export async function startTestServer(
 
   stack.defer(() => endpoint.stop());
 
-  return {
-    dataDir,
-    context,
-    endpoint,
-    ...buildTestSandboxes({
+  const fake =
+    options.fakeGuest === true
+      ? buildTestFakeSandboxes({
+          log: context.log,
+          definitions: context.definitions,
+          toolTarget: endpoint.getToolTarget,
+        })
+      : null;
+
+  const sandboxes =
+    fake ??
+    buildTestSandboxes({
       log: context.log,
       definitions: context.definitions,
       toolTarget: endpoint.getToolTarget,
       rootDir: join(dataDir, 'sandboxes'),
-    }),
+    });
+
+  return {
+    dataDir,
+    context,
+    endpoint,
+    ...sandboxes,
     defer: (stop) => {
       stack.defer(stop);
     },
-    readSandboxIDs: () => readdir(join(dataDir, 'sandboxes')),
+    readSandboxIDs: () =>
+      fake === null
+        ? readdir(join(dataDir, 'sandboxes'))
+        : Promise.resolve(fake.guest.readSandboxIDs()),
     readRecords: async () => {
       const entries = await readRecords(log, { afterSequence: 0, limit: 1000 });
 

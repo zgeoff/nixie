@@ -197,3 +197,14 @@ test('it records your typed messages on a thread and returns their sequences', a
     },
   ]);
 });
+
+test('it runs the sandboxes on the fake guest when asked, and returns the guest', async () => {
+  const server = await startTestServer(undefined, { fakeGuest: true });
+
+  expect(server.sandboxes).toMatchObject({ id: 'stub-guest' });
+  expect(server.guest.turns).toStrictEqual([]);
+
+  const ids = await server.readSandboxIDs();
+
+  expect(ids).toStrictEqual([]);
+});
