@@ -204,6 +204,28 @@ test('it gives the conversation only the skills that the manifest lists', () => 
   expect(parsed.conversationSkills).toStrictEqual(['tide-tables']);
 });
 
+test('it gives the conversation each listed skill once, in name order', () => {
+  const files = new Map([
+    [
+      'nixie.yaml',
+      new TextEncoder().encode('format: 2\nskills: [tide-tables, bird-log, tide-tables]\n'),
+    ],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    [
+      'skills/tide-tables/SKILL.md',
+      new TextEncoder().encode('---\nname: tide-tables\ndescription: Reads a tide table.\n---\n'),
+    ],
+    [
+      'skills/bird-log/SKILL.md',
+      new TextEncoder().encode('---\nname: bird-log\ndescription: Logs a bird sighting.\n---\n'),
+    ],
+  ]);
+
+  const parsed = parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] });
+
+  expect(parsed.conversationSkills).toStrictEqual(['bird-log', 'tide-tables']);
+});
+
 test('it refuses a manifest skill list that names no skill', () => {
   const files = new Map([
     ['nixie.yaml', new TextEncoder().encode('format: 2\nskills: [tide-table]\n')],

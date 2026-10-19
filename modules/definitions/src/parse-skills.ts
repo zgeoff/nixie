@@ -73,11 +73,19 @@ function splitSkillFolders(
     const folder = folders.get(name) ?? { bytes: new Map(), texts: new Map() };
 
     folder.bytes.set(rest.join('/'), bytes);
-    folder.texts.set(rest.join('/'), texts.get(path) ?? '');
+    folder.texts.set(rest.join('/'), restoreByteOrderMark(bytes, texts.get(path) ?? ''));
     folders.set(name, folder);
   }
 
   return { folders, problems };
+}
+
+// The UTF-8 decoder drops a byte order mark that opens a file, so a skill's text gains it back from
+// the bytes: the hidden-character check then refuses it, and the text keeps to the hashed bytes.
+function restoreByteOrderMark(bytes: Uint8Array, text: string): string {
+  const hasMark = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+
+  return hasMark && !text.startsWith('﻿') ? `﻿${text}` : text;
 }
 
 interface SkillCheck {

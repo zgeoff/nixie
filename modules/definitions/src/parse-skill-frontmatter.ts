@@ -2,24 +2,6 @@ import { z } from 'zod';
 import { skillNamePattern } from './skill-name-pattern';
 import type { SkillFrontmatter } from './types';
 
-// The fields nixie reads, with the format's limits. The format leaves other fields to each product,
-// so the schema keeps them out of the skill and refuses none.
-const frontmatterSchema = z.object({
-  name: z
-    .string()
-    .min(1)
-    .max(64)
-    .regex(skillNamePattern, 'use lowercase letters, digits and single hyphens inside the name'),
-  description: z
-    .string()
-    .max(1024)
-    .refine((description) => description.trim().length > 0, 'the description is empty'),
-  license: z.string().min(1).optional(),
-  compatibility: z.string().min(1).max(500).optional(),
-  metadata: z.record(z.string(), z.string()).optional(),
-  'allowed-tools': z.string().optional(),
-});
-
 // The parts of a SKILL.md: its frontmatter, and the body after it.
 export interface SkillDocument {
   readonly frontmatter: SkillFrontmatter;
@@ -64,6 +46,24 @@ export function parseSkillFrontmatter(text: string): SkillDocument | readonly st
     body: text.slice(match[0].length),
   };
 }
+
+// The fields nixie reads, with the format's limits. The format leaves other fields to each product,
+// so the schema keeps them out of the skill and refuses none.
+const frontmatterSchema = z.object({
+  name: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(skillNamePattern, 'use lowercase letters, digits and single hyphens inside the name'),
+  description: z
+    .string()
+    .max(1024)
+    .refine((description) => description.trim().length > 0, 'the description is empty'),
+  license: z.string().min(1).optional(),
+  compatibility: z.string().min(1).max(500).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
+  'allowed-tools': z.string().optional(),
+});
 
 function parseYAML(yaml: string): unknown {
   try {

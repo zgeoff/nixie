@@ -10,7 +10,7 @@ async function setupTest() {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-skill-pin-record-'));
+  const dir = await mkdtemp(join(tmpdir(), 'nixie-skill-pin-'));
 
   stack.defer(() => rm(dir, { recursive: true, force: true }));
 
@@ -26,7 +26,7 @@ async function setupTest() {
   return { log: { writer, deploymentKey, projections: [] } };
 }
 
-test('it pins the listed skills the definitions hold, in name order, and skips a name they lack', async () => {
+test('it pins the listed skills in name order and records the pin', async () => {
   const ctx = await setupTest();
 
   const skills = await recordSkillPin(ctx.log, {
@@ -35,27 +35,67 @@ test('it pins the listed skills the definitions hold, in name order, and skips a
       snapshotHash: 'snapshot-a',
       personaVersion: 'persona-a',
       skills: [
-        { name: 'tide-tables', skillHash: 'hash-a', origin: 'definitions' },
-        { name: 'bird-log', skillHash: 'hash-b', origin: 'vendored' },
-        { name: 'pdf-forms', skillHash: 'hash-c', origin: 'vendored' },
+        { name: 'tide-tables', skillHash: 'hash-tides', origin: 'definitions' },
+        { name: 'bird-log', skillHash: 'hash-birds', origin: 'vendored' },
+        { name: 'star-chart', skillHash: 'hash-stars', origin: 'definitions' },
       ],
     },
-    list: ['tide-tables', 'bird-log', 'star-chart'],
+    list: ['tide-tables', 'bird-log', 'moon-phase'],
   });
 
   const pins = await readRecords(ctx.log, { afterSequence: 0, kinds: ['skills.pinned'] });
 
   expect(skills).toStrictEqual([
-    { name: 'bird-log', skillHash: 'hash-b', origin: 'vendored' },
-    { name: 'tide-tables', skillHash: 'hash-a', origin: 'definitions' },
+    { name: 'bird-log', skillHash: 'hash-birds', origin: 'vendored' },
+    { name: 'tide-tables', skillHash: 'hash-tides', origin: 'definitions' },
   ]);
 
-  expect(pins.map((entry) => entry.record)).toMatchObject([
+  expect(pins.map((entry) => entry.record.payload)).toStrictEqual([
     {
-      kind: 'skills.pinned',
+      skills: [
+        { name: 'bird-log', skillHash: 'hash-birds', origin: 'vendored' },
+        { name: 'tide-tables', skillHash: 'hash-tides', origin: 'definitions' },
+      ],
+    },
+  ]);
+});
+
+test('it gives 2 racing first pins of one thread the pin that committed, and records one', async () => {
+  const ctx = await setupTest();
+
+  const results = await Promise.all([
+    recordSkillPin(ctx.log, {
       thread: 'task-a',
-      definitions: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
-      payload: { skills },
+      inForce: {
+        snapshotHash: 'snapshot-a',
+        personaVersion: 'persona-a',
+        skills: [{ name: 'tide-tables', skillHash: 'hash-old', origin: 'definitions' }],
+      },
+      list: ['tide-tables'],
+    }),
+    recordSkillPin(ctx.log, {
+      thread: 'task-a',
+      inForce: {
+        snapshotHash: 'snapshot-b',
+        personaVersion: 'persona-a',
+        skills: [{ name: 'tide-tables', skillHash: 'hash-new', origin: 'definitions' }],
+      },
+      list: ['tide-tables'],
+    }),
+  ]);
+
+  const pins = await readRecords(ctx.log, { afterSequence: 0, kinds: ['skills.pinned'] });
+
+  expect(pins).toHaveLength(1);
+  expect(results[0]).toStrictEqual(results[1]);
+
+  expect(pins.map((entry) => entry.record.payload)).toStrictEqual([
+    {
+      skills: results[0].map((skill) => ({
+        name: skill.name,
+        skillHash: skill.skillHash,
+        origin: skill.origin,
+      })),
     },
   ]);
 });

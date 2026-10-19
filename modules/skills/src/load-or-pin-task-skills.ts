@@ -24,10 +24,10 @@ export interface TaskSkill extends SkillVersion {
   readonly origin: SkillOrigin;
 }
 
-// Loads the skill versions a task runs with, in name order. A task's first load pins it to the
-// versions of its list in the definitions in force, so a later seed reaches the task only through
-// a reload. Before the first seed, a task has no skills and no pin.
-export async function loadTaskSkills(
+// Loads the skill versions a task runs with, in name order. A task's first load records a pin to the
+// versions of its list in the definitions in force, so a later seed leaves the task on its pin.
+// Before the first seed, a task has no skills and no pin.
+export async function loadOrPinTaskSkills(
   log: Log,
   query: TaskSkillsQuery,
 ): Promise<readonly TaskSkill[]> {
