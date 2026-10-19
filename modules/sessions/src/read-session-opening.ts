@@ -141,5 +141,5 @@ async function readReplayedNote(
 
   const span = { after: first.after, through: last.after };
 
-  return span.through > span.after ? query.readTurnNote(span) : null;
+  return span.through > span.after ? query.readTurnNote({ span, isNewSession: true }) : null;
 }

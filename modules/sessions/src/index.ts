@@ -12,6 +12,7 @@ export type {
 
 export { buildStatusRegistry } from './build-status-registry';
 export { buildDefaultStatus } from './build-default-status';
+export { buildCompactionHeadsUpKind } from './build-compaction-heads-up-kind';
 export type { RetriedTurn } from './build-retried-turn-kind';
 export { buildRetriedTurnKind } from './build-retried-turn-kind';
 export { decodeInboxUUID } from './decode-inbox-uuid';
@@ -61,6 +62,7 @@ export type {
   SessionDefinitions,
   TurnNote,
   TurnNoteRange,
+  TurnNoteRequest,
 } from './types';
 
 export type { SessionsRecordKind } from './sessions-record-kind';
