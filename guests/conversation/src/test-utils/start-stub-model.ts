@@ -11,7 +11,8 @@ type ScriptedReply =
     };
 
 // The usage defaults to 10 input tokens and no cache tokens, and a test sets more to fill the
-// context the CLI counts.
+// context the CLI counts. A reply with thinking carries a summarized thinking block, with its
+// signature, before its text or tool_use block, and reports its thinking tokens in the usage.
 type ScriptedMessage = (
   | { readonly text: string }
   | {
@@ -24,6 +25,11 @@ type ScriptedMessage = (
   readonly inputTokens?: number;
   readonly cacheReadTokens?: number;
   readonly cacheWriteTokens?: number;
+  readonly thinking?: {
+    readonly summary: string;
+    readonly signature: string;
+    readonly thinkingTokens: number;
+  };
 };
 
 // One request the stub model received, with its body parsed.
@@ -137,16 +143,22 @@ function renderAuthFailure(message: string): Response {
 
 function renderWhole(reply: ScriptedMessage, model: string): Response {
   const block = buildBlock(reply);
+  const thinking = reply.thinking;
 
   return Response.json({
     id: `msg_${crypto.randomUUID()}`,
     type: 'message',
     role: 'assistant',
     model,
-    content: [block],
+    content: thinking === undefined ? [block] : [buildThinkingBlock(thinking), block],
     stop_reason: 'toolUse' in reply ? 'tool_use' : 'end_turn',
     stop_sequence: null,
-    usage: buildUsage(reply, 5),
+    usage: {
+      ...buildUsage(reply, 5),
+      ...(thinking === undefined
+        ? {}
+        : { output_tokens_details: { thinking_tokens: thinking.thinkingTokens } }),
+    },
   });
 }
 
@@ -163,9 +175,17 @@ function buildUsage(reply: ScriptedMessage, outputTokens: number): Record<string
   };
 }
 
+type ScriptedThinking = NonNullable<ScriptedMessage['thinking']>;
+
+function buildThinkingBlock(thinking: ScriptedThinking): Readonly<Record<string, unknown>> {
+  return { type: 'thinking', thinking: thinking.summary, signature: thinking.signature };
+}
+
 function renderStream(reply: ScriptedMessage, model: string): Response {
   const block = buildBlock(reply);
   const isTool = 'toolUse' in reply;
+  const thinkingEvents = buildThinkingStreamEvents(reply.thinking);
+  const index = thinkingEvents.length === 0 ? 0 : 1;
 
   const events = [
     {
@@ -181,23 +201,31 @@ function renderStream(reply: ScriptedMessage, model: string): Response {
         usage: buildUsage(reply, 1),
       },
     },
+    ...thinkingEvents,
     {
       type: 'content_block_start',
-      index: 0,
+      index,
       content_block: isTool ? { ...block, input: {} } : { type: 'text', text: '' },
     },
     {
       type: 'content_block_delta',
-      index: 0,
+      index,
       delta: isTool
         ? { type: 'input_json_delta', partial_json: JSON.stringify(reply.toolUse.input) }
         : { type: 'text_delta', text: reply.text },
     },
-    { type: 'content_block_stop', index: 0 },
+    { type: 'content_block_stop', index },
     {
       type: 'message_delta',
       delta: { stop_reason: isTool ? 'tool_use' : 'end_turn', stop_sequence: null },
-      usage: { output_tokens: 5 },
+
+      // a message_delta reports output tokens alone; the input and cache counts came in message_start
+      usage: {
+        output_tokens: 5,
+        ...(reply.thinking === undefined
+          ? {}
+          : { output_tokens_details: { thinking_tokens: reply.thinking.thinkingTokens } }),
+      },
     },
     { type: 'message_stop' },
   ];
@@ -206,6 +234,32 @@ function renderStream(reply: ScriptedMessage, model: string): Response {
     events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(''),
     { headers: { 'content-type': 'text/event-stream' } },
   );
+}
+
+interface StreamEvent {
+  readonly type: string;
+  readonly [key: string]: unknown;
+}
+
+function buildThinkingStreamEvents(thinking: ScriptedMessage['thinking']): readonly StreamEvent[] {
+  if (thinking === undefined) {
+    return [];
+  }
+
+  return [
+    { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } },
+    {
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'thinking_delta', thinking: thinking.summary },
+    },
+    {
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'signature_delta', signature: thinking.signature },
+    },
+    { type: 'content_block_stop', index: 0 },
+  ];
 }
 
 function buildBlock(reply: ScriptedMessage): Readonly<Record<string, unknown>> {

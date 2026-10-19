@@ -10,13 +10,16 @@ const sessionPointSchema = z
 const tokenCountSchema = z.int().nonnegative();
 const toolUseSchema = z.object({ id: z.string(), name: z.string() }).readonly();
 
-// one assistant message: its text, and the tools it asked for by the name the model sees
+// one assistant message: its text, the tools it asked for by the name the model sees, and the
+// reasoning summary the model gives under the summarized thinking display. The summary rides a
+// thinking-only message, so it is absent on a message that carries only the reply's text.
 const assistantFrameSchema = z
   .object({
     type: z.literal('assistant'),
     messageID: z.uuid(),
     text: z.string(),
     toolUses: z.array(toolUseSchema).readonly(),
+    summary: z.string().optional(),
   })
   .readonly();
 
@@ -46,9 +49,9 @@ const contextSchema = z
   })
   .readonly();
 
-// a model turn ended at a result; boundary is the session's last chain entry, where the next turn
-// resumes, isError marks a result a model API error ended, terminalReason is the SDK's reason for
-// the end, and context is absent when no main-chain call reported its usage
+// a model turn ended at a result; boundary is the session's last chain entry where the next turn
+// resumes, isError marks an end a model API error caused, terminalReason is the SDK's end reason,
+// context is absent when no main-chain call reported usage, and thinkingTokens is the turn's total
 const endedFrameSchema = z
   .object({
     type: z.literal('ended'),
@@ -59,6 +62,7 @@ const endedFrameSchema = z
     terminalReason: z.string().optional(),
     turns: z.int().nonnegative(),
     usage: usageSchema,
+    thinkingTokens: tokenCountSchema.optional(),
     context: contextSchema.optional(),
   })
   .readonly();
