@@ -152,7 +152,6 @@ function resolveGuestHome(
   return { copyPath: join('/', below), ownPath: home };
 }
 
-// the path relative to the directory, or null for a path outside it
 function findPathBelow(dir: string, path: string): string | null {
   const below = relative(dir, path);
 
