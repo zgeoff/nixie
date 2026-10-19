@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
+import invariant from 'tiny-invariant';
 import { buildMockSandboxSpec } from './build-mock-sandbox-spec';
 import { buildStubGuestSandboxes } from './build-stub-guest-sandboxes';
 import { runGuestFrame } from './run-guest-frame';
@@ -35,7 +36,9 @@ test('it returns every frame the guest answers with, in order, and the ended fra
     { type: 'ended', subtype: 'success' },
   ]);
 
-  expect(run.ended).toBe(run.frames[2] ?? null);
+  invariant(run.ended !== null);
+
+  expect(run.frames.at(-1)).toBe(run.ended);
 });
 
 test('it returns no ended frame for a guest that fails', async () => {
