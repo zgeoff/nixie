@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -54,13 +54,15 @@ test('it answers readiness from the last impd report while a later impd check ha
     dataDir: ctx.dataDir,
     clock: ctx.clock,
     cleanup: ctx.cleanup,
+    log: () => {},
   });
 
-  // readiness answers 200 once the first round's reports land, just before the interval's sleep
+  // readiness answers ready once the first round's reports land, just before the interval's sleep
   await waitForCondition(async () => {
     const response = await app.handle(new Request('http://nixie.test/health/ready'));
+    const body: unknown = await response.json();
 
-    return response.status === 200;
+    return JSON.stringify(body).includes('"status":"ready"');
   });
 
   stub.answerWith(() => Promise.withResolvers<RuntimeReport>().promise);
@@ -72,6 +74,64 @@ test('it answers readiness from the last impd report while a later impd check ha
     Array.from({ length: 3 }, () => app.handle(new Request('http://nixie.test/health/ready'))),
   );
 
+  const bodies: unknown[] = await Promise.all(responses.map((response) => response.json()));
+
   expect(responses.map((response) => response.status)).toStrictEqual([200, 200, 200]);
+  expect(bodies).toSatisfyAll((body) => JSON.stringify(body).includes('"status":"ready"'));
   expect(stub.check).toHaveBeenCalledTimes(2);
+});
+
+test('it answers readiness with 200 and the status degraded, and logs the imp host by name, once an impd check outlasts its timeout', async () => {
+  const ctx = await setupTest();
+
+  const state = buildStartState({ isReady: true, reason: null });
+
+  state.update({
+    definitions: { isReady: true, reason: null },
+    areImagesAdded: true,
+    conversation: { isReady: true, reason: null },
+    areRunnersStarted: true,
+  });
+
+  const log = mock();
+
+  const app = await startServerHealth({
+    writer: ctx.writer,
+    state,
+    adapter: { checkRuntime: () => Promise.withResolvers<RuntimeReport>().promise },
+    dataDir: ctx.dataDir,
+    clock: ctx.clock,
+    cleanup: ctx.cleanup,
+    log,
+  });
+
+  // the disk check settles and ends its timeout, so only the impd check's timeout still sleeps
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+
+  ctx.clock.advance(2000);
+
+  await waitForCondition(async () => {
+    const response = await app.handle(new Request('http://nixie.test/health/ready'));
+    const body: unknown = await response.json();
+
+    return response.status === 200 && JSON.stringify(body).includes('"status":"degraded"');
+  });
+
+  const response = await app.handle(new Request('http://nixie.test/health/ready'));
+
+  expect(response.status).toBe(200);
+
+  expect(response.json()).resolves.toMatchObject({
+    status: 'degraded',
+    dependencies: {
+      imp_host: { isReady: false, reason: 'the check took longer than 2000 ms' },
+      disk: { isReady: true, reason: null },
+    },
+  });
+
+  expect(log).toHaveBeenCalledWith(
+    'health.part_unready',
+    { probe: 'ready', part: 'imp_host', reason: 'the check took longer than 2000 ms' },
+    'warn',
+  );
 });

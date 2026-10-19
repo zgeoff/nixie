@@ -9,10 +9,12 @@ export interface PartReport {
 // check outlasts its timeout, so a check that calls another service ends that call.
 export type PartCheck = (signal?: AbortSignal) => Promise<PartReport>;
 
-// The answer of a liveness or a readiness request: ready only when every part is ready. A readiness
-// answer adds the advisory parts, which never change its status.
+// The answer of a liveness or a readiness request: unready when a part is unready. A readiness
+// answer adds the dependency parts, which make a ready status degraded when one fails, and the
+// advisory parts, which never change the status.
 export interface HealthReport {
-  readonly status: 'ready' | 'unready';
+  readonly status: 'ready' | 'degraded' | 'unready';
   readonly parts: Readonly<Record<string, PartReport>>;
+  readonly dependencies?: Readonly<Record<string, PartReport>>;
   readonly advisory?: Readonly<Record<string, PartReport>>;
 }

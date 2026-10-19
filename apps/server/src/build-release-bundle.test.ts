@@ -28,7 +28,7 @@ test('it builds a test bundle with every test-build ID the server reaches', asyn
   expect(bundle.testBuildIDs).toStrictEqual(testBuildIDs);
 }, 60_000);
 
-test('it builds a release bundle that answers live, and not ready while impd does not answer', async () => {
+test('it builds a release bundle that answers live, and degraded while impd does not answer', async () => {
   const ctx = await setupTest();
 
   await buildReleaseBundle(ctx.outdir);
@@ -46,10 +46,11 @@ test('it builds a release bundle that answers live, and not ready while impd doe
   ]);
 
   expect(live.status).toBe(200);
-  expect(ready.status).toBe(503);
+  expect(ready.status).toBe(200);
 
   expect(ready.json()).resolves.toMatchObject({
-    parts: { imp_host: { isReady: false, reason: 'impd does not answer' } },
+    status: 'degraded',
+    dependencies: { imp_host: { isReady: false, reason: 'impd does not answer' } },
   });
 }, 60_000);
 

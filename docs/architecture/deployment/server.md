@@ -97,20 +97,28 @@ sidecar's first checkout can, therefore seeds within seconds.
 
 ## Health
 
-The health endpoint serves liveness and readiness, each as a report with one entry per part, and a
-status of 200 when every part is ready or 503 when one is not. An unready part carries a short
-reason, never an error's message, because a message can quote what the part was working on.
+The health endpoint serves liveness and readiness, each as a report with one entry per part. An
+unready part carries a short reason, never an error's message, because a message can quote what the
+part was working on. Liveness answers 200 when every part is ready and 503 when one is not. It holds
+when the process answers and the database answers a query.
 
-Liveness holds when the process answers and the database answers a query. Readiness lists the parts
-this build holds:
+Readiness sorts its parts into three tiers, because the probe that reads it takes nixie out of its
+Service, and nixie runs as the only endpoint there:
 
-| Part             | Ready when                                                  |
-| ---------------- | ----------------------------------------------------------- |
-| database         | Migrations finished and the integrity check at start passed |
-| definitions      | The last seed applied, with no refused snapshot pending     |
-| imp host         | impd answers, and every image in the manifest is added      |
-| conversation imp | Its sandbox started and the runners started                 |
-| disk             | The data volume is under the fill limit                     |
+| Part               | Tier       | Ready when                                                  |
+| ------------------ | ---------- | ----------------------------------------------------------- |
+| database           | readiness  | Migrations finished and the integrity check at start passed |
+| definitions        | readiness  | The last seed applied, with no refused snapshot pending     |
+| imp host           | dependency | impd answers, and every image in the manifest is added      |
+| conversation imp   | dependency | Its sandbox started and the runners started                 |
+| disk               | dependency | The data volume is under the fill limit                     |
+| conversation turns | advisory   | The conversation's turns are not failing                    |
+
+A readiness part that fails makes the status unready and the answer 503, because nixie cannot answer
+a request without it. A dependency part that fails makes the status degraded and the answer 200, so
+a slow impd or a full disk keeps the API and the web UI answering, and the report's body names the
+part. An advisory part shows in the body and never changes the status. A deployment alerts on a
+status that stays degraded, because the probe never sees one.
 
 Every readiness check reads state that nixie holds in memory, so a readiness request never waits on
 another service. A refresh loop checks impd and the data volume on an interval and keeps each
@@ -119,23 +127,26 @@ probe waits. When impd stops answering, readiness shows it up to one interval an
 later, because the round in flight ends before the next one checks impd again. The other parts read
 state that the start sequence and the runners keep. The conversation imp stays unready until the
 runners start, so a start step that keeps failing after the conversation imp starts, such as writing
-the start record, leaves nixie unready instead of ready with no runner claiming work. Each check
-runs under a timeout, so a part that hangs reports unready instead of holding the endpoint. The
-image's health check calls the same endpoint from inside the container.
+the start record, leaves nixie degraded instead of ready with no runner claiming work. Each check
+runs under a timeout, so a part that hangs reports unready instead of holding the endpoint.
 
-Readiness gates routing, so it holds only the parts without which nixie cannot answer a request. The
-readiness report adds advisory parts, which show in its body and never change its status. The
-conversation turns part is advisory: it turns unready once the conversation's errors in a row reach
-the error limit, with the sandbox host's code when the last turn failed there, and the next turn
-that commits clears it. A turn that the model API refused for its credential turns the part unready
-at once, because no retry passes until the credential changes. The start sequence reads the
-conversation's stored errors in a row once the database passes its check at start, so a restart
-while turns fail keeps the part unready instead of reporting turns that no run has checked. That
-read counts errors and never their cause, so a restart after a credential failure under the error
-limit reports the part ready until the retried turn fails again. A database that fails its check
-leaves the part unready, because the start reads nothing from it. A turn that fails because an imp
-cannot wake therefore leaves nixie in its Service, and the API, the web UI and the health endpoint
-keep answering while the conversation retries.
+Each part that turns unready writes a warning to the log with its name and reason, and writes again
+when its reason changes or it turns ready. A probe that failed therefore leaves the name of its part
+in the log after the container runtime's events age out. The image's health check runs
+`nixie health`, which exits 0 only on the status ready, so a Compose deployment waits for every
+part, the dependency parts included.
+
+The conversation turns part turns unready once the conversation's errors in a row reach the error
+limit, with the sandbox host's code when the last turn failed there, and the next turn that commits
+clears it. A turn that the model API refused for its credential turns the part unready at once,
+because no retry passes until the credential changes. The start sequence reads the conversation's
+stored errors in a row once the database passes its check at start, so a restart while turns fail
+keeps the part unready instead of reporting turns that no run has checked. That read counts errors
+and never their cause, so a restart after a credential failure under the error limit reports the
+part ready until the retried turn fails again. A database that fails its check leaves the part
+unready, because the start reads nothing from it. A turn that fails because an imp cannot wake
+therefore leaves nixie in its Service, and the API, the web UI and the health endpoint keep
+answering while the conversation retries.
 
 ## Logs
 

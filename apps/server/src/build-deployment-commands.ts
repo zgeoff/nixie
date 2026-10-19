@@ -1,16 +1,20 @@
+import { z } from 'zod';
 import { loadDeploymentConfig } from './load-deployment-config';
 import { loadSandboxManifest } from './load-sandbox-manifest';
 import type { CLIIO, Command } from './types';
 
-// The commands a deployment's checks run in the container: health prints the running server's
-// readiness report, or its liveness report with --live, and exits 0 when the server answers ready;
-// sandbox-manifest prints each sandbox kind's image with the name nixie gives it in impd.
+// The commands a deployment's checks run in the container: health prints the readiness report, or
+// the liveness report with --live, and exits 0 only on the status ready, degraded included as a
+// failure; sandbox-manifest prints each sandbox kind's image with the name nixie gives it in impd.
 export function buildDeploymentCommands(): readonly (readonly [string, Command])[] {
   return [
     ['health', (flags, io) => runHealth(flags.config, flags.live, io)],
     ['sandbox-manifest', (flags, io) => runSandboxManifest(flags.manifest, io)],
   ];
 }
+
+// the part of a health answer the exit code reads
+const healthAnswerSchema = z.object({ status: z.string() });
 
 // the container runtime's check from inside the container, where a wildcard address answers on
 // loopback
@@ -26,7 +30,7 @@ async function runHealth(configPath: string, isLive: boolean, io: CLIIO): Promis
 
   io.print(report);
 
-  return response.ok ? 0 : 1;
+  return healthAnswerSchema.parse(JSON.parse(report)).status === 'ready' ? 0 : 1;
 }
 
 // the manifest as the server loads it, so a manifest the server refuses fails here too
