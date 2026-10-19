@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import { makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer, buildMockWriteCaller, startTestMemory } from './test-utils';
@@ -444,6 +445,56 @@ test('it never returns a message for a query that matches only its pasted words'
   expect(result.messages).toStrictEqual([]);
 });
 
+test('it returns a message that matches on words typed after its paste', async () => {
+  const memory = await startTestMemory();
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'garden',
+    text: 'Check the greenhttps://example.test/seedshouse tonight',
+    spans: [
+      { start: 0, end: 15, source: 'typed' },
+      { start: 15, end: 41, source: 'pasted' },
+      { start: 41, end: 54, source: 'typed' },
+    ],
+  });
+
+  const result = await memory.store.recallMessages({
+    query: 'tonight',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages.map((message) => message.sequence)).toStrictEqual([sequence]);
+});
+
+test('it never joins the typed words on either side of a paste into one word', async () => {
+  const memory = await startTestMemory();
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'garden',
+    text: 'Check the greenhttps://example.test/seedshouse tonight',
+    spans: [
+      { start: 0, end: 15, source: 'typed' },
+      { start: 15, end: 41, source: 'pasted' },
+      { start: 41, end: 54, source: 'typed' },
+    ],
+  });
+
+  const result = await memory.store.recallMessages({
+    query: 'greenhouse',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages).toStrictEqual([]);
+});
+
 test('it never places a message by the meaning of its pasted words', async () => {
   const memory = await startTestMemory({
     semanticSearch: {
@@ -480,6 +531,34 @@ test('it never places a message by the meaning of its pasted words', async () =>
 
   expect(result.messages.map((message) => message.sequence)).toStrictEqual([typed]);
   expect(result.searchMode).toBe('hybrid');
+});
+
+test('it matches the whole text of a message recorded without spans', async () => {
+  const memory = await startTestMemory();
+
+  const [record] = await writeRecords(memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'garden',
+      contentSource: 'owner',
+      payload: {},
+      erasable: { text: 'The tomatoes need staking' },
+    },
+  ]);
+
+  invariant(record);
+
+  const result = await memory.store.recallMessages({
+    query: 'tomatoes',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages.map((message) => message.sequence)).toStrictEqual([record.sequence]);
 });
 
 test('it matches the whole text of a message whose client labelled no span', async () => {
