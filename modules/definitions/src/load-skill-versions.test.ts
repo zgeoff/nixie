@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
 import { createPathSource } from './create-path-source';
-import { findSkillVersions } from './find-skill-versions';
+import { loadSkillVersions } from './load-skill-versions';
 import { runSeed } from './run-seed';
 
 // the writer's data directory holds the definitions root too, so one removal cleans up both
@@ -56,7 +56,7 @@ test('it reads each seeded skill version by its content hash, with its frontmatt
 
   const skillHash = seeded.inForce?.skills.at(0)?.skillHash ?? '';
 
-  const versions = await findSkillVersions(ctx.writer.db, [skillHash, 'f'.repeat(64)]);
+  const versions = await loadSkillVersions(ctx.writer.db, [skillHash, 'f'.repeat(64)]);
 
   expect([...versions.values()]).toStrictEqual([
     {
@@ -77,7 +77,7 @@ test('it reads each seeded skill version by its content hash, with its frontmatt
 
 test('it reads no versions for no hashes', async () => {
   const ctx = await setupTest();
-  const versions = await findSkillVersions(ctx.writer.db, []);
+  const versions = await loadSkillVersions(ctx.writer.db, []);
 
   expect(versions).toStrictEqual(new Map());
 });

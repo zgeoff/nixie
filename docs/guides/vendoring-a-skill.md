@@ -82,7 +82,10 @@ rm -rf skills/<name>
 cp -R <upstream_checkout>/skills/<name> skills/<name>
 ```
 
-Then follow steps 2 to 5, and replace the skill's lock entry with the new one. A changed file with
-the old entry makes the seed refuse the snapshot, so an edit to a vendored skill always goes through
-a new pin. To make the skill your own instead, remove its lock entry: a skill with no entry is
-yours.
+Then follow steps 2 to 5, and replace the skill's lock entry with the new one. At step 5, the next
+seed's record lists the skill among the changed skills, because the seed lists a skill it already
+held whose content hash moved as changed, not added.
+
+A changed file with the old entry makes the seed refuse the snapshot, so an edit to a vendored skill
+always goes through a new pin. To make the skill your own instead, remove its lock entry: a skill
+with no entry is yours.
