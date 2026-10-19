@@ -64,7 +64,8 @@ async function writeForgetStart(itemID: string): Promise<MemoryForgetResult> {
   return writeForgetCompletion(itemID);
 }
 
-// the cleanup of a forget that began, which a completed forget needs no more
+// the cleanup of a forget that began, which removes the item's key and which a completed forget
+// needs no more
 async function writeForgetCompletion(itemID: string): Promise<MemoryForgetResult> {
   await store.memoryItems.update((query) => query.where({ itemID }), {
     data(draft) {
@@ -72,6 +73,7 @@ async function writeForgetCompletion(itemID: string): Promise<MemoryForgetResult
 
       draft.state = 'forgotten';
       draft.isPinned = false;
+      draft.isShredded = true;
     },
   });
 

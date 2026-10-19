@@ -59,6 +59,50 @@ test('it streams a reply as server-sent events when the request asks', async () 
   expect(text).toEndWith('event: message_stop\ndata: {"type":"message_stop"}\n\n');
 });
 
+test('it answers a reply that scripts thinking with a thinking block before the reply and the thinking tokens in its usage', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies({
+    text: 'done',
+    thinking: { summary: 'I reason it through.', signature: 'sig-blob', thinkingTokens: 20 },
+  });
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  const body = await response.json();
+
+  expect(body).toMatchObject({
+    content: [
+      { type: 'thinking', thinking: 'I reason it through.', signature: 'sig-blob' },
+      { type: 'text', text: 'done' },
+    ],
+    usage: { output_tokens: 5, output_tokens_details: { thinking_tokens: 20 } },
+  });
+});
+
+test('it streams a thinking block with its signature and the thinking tokens when a reply scripts thinking', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies({
+    text: 'done',
+    thinking: { summary: 'I reason it through.', signature: 'sig-blob', thinkingTokens: 20 },
+  });
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', stream: true, messages: [] }),
+  });
+
+  const text = await response.text();
+
+  expect(text).toInclude('"thinking_delta","thinking":"I reason it through."');
+  expect(text).toInclude('"signature_delta","signature":"sig-blob"');
+  expect(text).toInclude('"output_tokens_details":{"thinking_tokens":20}');
+});
+
 test('it reports the input tokens a scripted reply sets, and 10 for one that sets none', async () => {
   const ctx = setupTest();
 
