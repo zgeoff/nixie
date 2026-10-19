@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildActions } from './build-actions';
-import { buildSandboxAdapter } from './build-sandbox-adapter';
+import { createSandboxAdapter } from './create-sandbox-adapter';
 import type { ServerPartValues } from './server-part-values';
 import { startConversationEndpoint } from './start-conversation-endpoint';
 import { startWebFetch } from './start-web-fetch';
@@ -20,7 +20,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const apiContext = parts.get('context').apiContext;
 
       return Promise.resolve(
-        buildSandboxAdapter({
+        createSandboxAdapter({
           recorder: buildSandboxRecorder({
             log: apiContext.log,
             definitions: apiContext.definitions,

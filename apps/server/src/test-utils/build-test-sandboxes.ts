@@ -1,7 +1,7 @@
 import type { Definitions, Log } from '@heynixie/log';
 import type { ToolTargetResolver } from '@heynixie/sandbox';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
-import { buildSandboxAdapter } from '../build-sandbox-adapter';
+import { createSandboxAdapter } from '../create-sandbox-adapter';
 import type { TestSandboxes } from './build-retirable-sandboxes';
 import { buildRetirableSandboxes } from './build-retirable-sandboxes';
 
@@ -17,7 +17,7 @@ export interface TestSandboxesOptions {
 // The test build's process double, wrapped so a test can retire an owner's sandboxes, which the
 // owner then replaces. Everything else reaches the double unchanged.
 export function buildTestSandboxes(options: TestSandboxesOptions): TestSandboxes {
-  const adapter = buildSandboxAdapter({
+  const adapter = createSandboxAdapter({
     recorder: buildSandboxRecorder({ log: options.log, definitions: options.definitions }),
     toolTarget: options.toolTarget,
     sandbox: { adapter: 'test' },
