@@ -46,7 +46,7 @@
           },
           {
             "name": "imp-client",
-            "modules": ["@zgeoff/imp-client"],
+            "modules": ["@impz/client"],
             "allow": ["imp-client"],
             "reason": "only adapters/sandbox-imp imports imp's client"
           },
