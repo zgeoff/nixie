@@ -1,6 +1,12 @@
 import type { Transaction } from 'kysely';
 import type { DefinitionsTables, ParsedSkill } from './types';
 
+export interface SnapshotSkills {
+  readonly snapshotHash: string;
+  readonly skills: readonly ParsedSkill[];
+  readonly conversationSkills: readonly string[];
+}
+
 // Writes each skill's version under its content hash and the snapshot's list of skills, each
 // marked when the conversation's list holds it. A version or a snapshot seen before keeps its
 // first rows, because the hashes cover what the rows hold.
@@ -42,10 +48,4 @@ export async function writeSkillRows(
     )
     .onConflict((conflict) => conflict.doNothing())
     .execute();
-}
-
-export interface SnapshotSkills {
-  readonly snapshotHash: string;
-  readonly skills: readonly ParsedSkill[];
-  readonly conversationSkills: readonly string[];
 }

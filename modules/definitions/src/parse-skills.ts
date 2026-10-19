@@ -5,7 +5,8 @@ import { findHiddenCharacter } from './find-hidden-character';
 import type { SkillDocument } from './parse-skill-frontmatter';
 import { parseSkillFrontmatter } from './parse-skill-frontmatter';
 import type { SkillsLock } from './parse-skills-lock';
-import { parseSkillsLock, skillsLockPath } from './parse-skills-lock';
+import { parseSkillsLock } from './parse-skills-lock';
+import { skillsLockPath } from './skills-lock-path';
 import type { ParsedSkill, Snapshot } from './types';
 
 // Reads every skill under skills/ and runs the seed checks on each: the frontmatter and its name, no
