@@ -4,7 +4,6 @@ import { runDefinitionsSeed } from './run-definitions-seed';
 import { startDefinitionsPoll } from './start-definitions-poll';
 import type { Cleanup, ServerParts } from './types';
 
-// the server parts the poll reads, beside the parts each seed reads and updates
 export type SeedPollParts = SeedParts & {
   readonly config: {
     readonly definitions: Pick<ServerParts['config']['definitions'], 'probeIntervalMs'>;
