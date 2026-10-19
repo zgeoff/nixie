@@ -1,0 +1,20 @@
+{
+  "name": "@heynixie/skills",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/compaction": "workspace:*",
+    "@heynixie/definitions": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
+    "zod": "catalog:"
+  }
+}

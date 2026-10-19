@@ -234,6 +234,7 @@ test('it answers a message with a reply that used a tool, with each step in the 
     'task.created',
     'owner_message',
     'task.step_started',
+    'skills.pinned',
     'memory.recalled',
     'tool_called',
     'tool_result',

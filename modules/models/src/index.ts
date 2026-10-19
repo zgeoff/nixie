@@ -16,6 +16,7 @@ export { modelSessionSummarizedCodec } from './model-session-summarized-codec';
 export { modelTurnEndedCodec } from './model-turn-ended-codec';
 export { modelsConfigSchema } from './models-config-schema';
 export { resolveModelCredentials } from './resolve-model-credentials';
+export { getCLIContextWindow } from './get-cli-context-window';
 export { resolveRoleProfile } from './resolve-role-profile';
 export { toTurnProfile } from './to-turn-profile';
 
