@@ -1,4 +1,5 @@
-import type { GuestFrame, HostFrame } from '@heynixie/wire';
+import type { GuestFrame, HostFrame, SessionPoint } from '@heynixie/wire';
+import invariant from 'tiny-invariant';
 import type { StubGuestDisk, StubSessionEntry } from './build-stub-guest-disk';
 import { countTokenEstimate } from './count-token-estimate';
 import { readStubGuestHistory } from './read-stub-guest-history';
@@ -70,76 +71,156 @@ export async function runStubGuestTurn(
   }
 
   try {
-    return await runReplies(turn, run, read.history);
+    return await runInputs(turn, run, read.history);
   } catch (error) {
     return [{ type: 'failed', reason: 'error', detail: String(error) }];
   }
 }
 
-async function runReplies(
+// the CLI answers each inbox message of the turn in its own model call, and reports a result for
+// each, all in the one fork
+async function runInputs(
   turn: TurnFrame,
   run: StubGuestRun,
   history: readonly StubSessionEntry[],
 ): Promise<readonly GuestFrame[]> {
-  const inputs = turn.input.map((message): StubSessionEntry => ({
-    uuid: message.uuid,
-    role: 'user',
-    text: message.text,
-    tokens: countTokenEstimate(message.text),
-  }));
-
-  const entries = [...history, ...inputs];
+  const fork = { sessionID: crypto.randomUUID(), contextSize: run.takeContextSize() };
+  const entries: StubSessionEntry[] = [...history];
   const frames: GuestFrame[] = [];
-  let replyCount = 0;
 
-  for (;;) {
+  // the last chain entry that is not the CLI's own message for an overflow
+  let committed: SessionPoint | null = turn.resume;
+
+  for (const message of turn.input) {
+    const input: StubSessionEntry = {
+      uuid: message.uuid,
+      role: 'user',
+      text: message.text,
+      tokens: countTokenEstimate(message.text),
+    };
+
+    const start = entries.length;
+
+    entries.push(input);
+
+    const answer = await runInputCall(turn, run, { entries, fork });
+
+    frames.push(...answer.frames);
+
+    if (answer.overflow !== null) {
+      run.disk.writeSession(run.home, fork.sessionID, entries);
+
+      return [...frames, buildOverflowEnded(entries, { fork, committed }, answer.overflow)];
+    }
+
+    const last = entries.at(-1);
+
+    invariant(last, 'an answered input leaves an entry');
+
+    committed = { sessionID: fork.sessionID, messageID: last.uuid };
+
+    frames.push(buildEnded(turn, entries, { start, point: committed }));
+  }
+
+  run.disk.writeSession(run.home, fork.sessionID, entries);
+
+  return frames;
+}
+
+interface ForkState {
+  readonly sessionID: string;
+
+  // the context size a test set for the turn, until the first reply uses it
+  contextSize: number | null;
+}
+
+interface AnswerState {
+  readonly entries: StubSessionEntry[];
+  readonly fork: ForkState;
+}
+
+interface InputAnswer {
+  readonly frames: readonly GuestFrame[];
+
+  // the reason the call was refused for a prompt past the window, or null
+  readonly overflow: 'blocking_limit' | 'prompt_too_long' | null;
+}
+
+// answers one inbox message: each tool use the model asks for, then the reply that ends the call
+async function runInputCall(
+  turn: TurnFrame,
+  run: StubGuestRun,
+  state: AnswerState,
+): Promise<InputAnswer> {
+  const input = state.entries.at(-1);
+
+  invariant(input, 'the input is the last entry');
+
+  const frames: GuestFrame[] = [];
+
+  for (let replyCount = 1; ; replyCount += 1) {
     const reply = run.takeReply();
 
     if ('overflow' in reply) {
-      return [...frames, ...buildOverflowFrames(turn, run, entries, reply.overflow)];
+      const message = {
+        uuid: crypto.randomUUID(),
+        role: 'assistant',
+        text: overflowText,
+        tokens: 0,
+      } as const;
+
+      state.entries.push(message);
+      frames.push({ type: 'assistant', messageID: message.uuid, text: overflowText, toolUses: [] });
+
+      return { frames, overflow: reply.overflow };
     }
 
-    replyCount += 1;
+    const entry = buildAssistantEntry(reply, state);
 
-    const entry = buildAssistantEntry(reply);
+    state.entries.push(entry);
 
-    entries.push(entry);
-
-    // the CLI reports the inbox messages the model read with its first reply
+    // the CLI reports the inbox message the model read with its first reply
     if (replyCount === 1) {
-      frames.push({ type: 'read', uuids: inputs.map((input) => input.uuid) });
+      frames.push({ type: 'read', uuids: [input.uuid] });
     }
 
     if ('text' in reply) {
       frames.push({ type: 'assistant', messageID: entry.uuid, text: reply.text, toolUses: [] });
 
-      return [...frames, buildEndedFrame(turn, run, { entries, history, replyCount })];
+      return { frames, overflow: null };
     }
-
-    const toolID = `toolu_${crypto.randomUUID().replaceAll('-', '')}`;
 
     frames.push({
       type: 'assistant',
       messageID: entry.uuid,
       text: '',
-      toolUses: [{ id: toolID, name: reply.toolUse.name }],
+      toolUses: [
+        { id: `toolu_${crypto.randomUUID().replaceAll('-', '')}`, name: reply.toolUse.name },
+      ],
     });
 
     const result = await buildToolResultEntry(turn, run, reply.toolUse);
 
-    entries.push(result);
+    state.entries.push(result);
   }
 }
 
-function buildAssistantEntry(reply: Exclude<StubGuestReply, { overflow: unknown }>) {
-  const text = 'text' in reply ? reply.text : JSON.stringify(reply.toolUse);
+const overflowText = 'Prompt is too long';
 
-  return {
-    uuid: crypto.randomUUID(),
-    role: 'assistant',
-    text,
-    tokens: countTokenEstimate(text),
-  } as const;
+// a reply's entry, raised by the gap to the context size a test set when it is the first of the turn
+function buildAssistantEntry(
+  reply: Exclude<StubGuestReply, { overflow: unknown }>,
+  state: AnswerState,
+): StubSessionEntry {
+  const text = 'text' in reply ? reply.text : JSON.stringify(reply.toolUse);
+  const tokens = countTokenEstimate(text);
+  const target = state.fork.contextSize;
+
+  state.fork.contextSize = null;
+
+  const gap = target === null ? 0 : Math.max(0, target - countTokens(state.entries) - tokens);
+
+  return { uuid: crypto.randomUUID(), role: 'assistant', text, tokens: tokens + gap };
 }
 
 interface StubToolUse {
@@ -174,91 +255,64 @@ async function buildToolResultEntry(
   };
 }
 
-interface TurnEnd {
-  readonly entries: readonly StubSessionEntry[];
-  readonly history: readonly StubSessionEntry[];
-  readonly replyCount: number;
+interface EndedPoint {
+  // the index of the call's input among the entries
+  readonly start: number;
+  readonly point: SessionPoint;
 }
 
-// writes the fork and ends the turn at its last entry, with the fork's context size
-function buildEndedFrame(turn: TurnFrame, run: StubGuestRun, end: TurnEnd): GuestFrame {
-  const sized = buildFilledEntries(end.entries, run.takeContextSize());
-  const sessionID = crypto.randomUUID();
-
-  run.disk.writeSession(run.home, sessionID, sized);
-
-  const last = sized.at(-1);
-
-  if (last === undefined) {
-    throw new Error('a turn always writes an entry');
-  }
-
-  const fresh = sized.slice(end.history.length);
+// the result of one answered input, at its last chain entry, with the session's context size
+function buildEnded(
+  turn: TurnFrame,
+  entries: readonly StubSessionEntry[],
+  ended: EndedPoint,
+): GuestFrame {
+  const fresh = entries.slice(ended.start);
 
   return {
     type: 'ended',
-    boundary: { sessionID, messageID: last.uuid },
+    boundary: ended.point,
     subtype: 'success',
     stopReason: 'end_turn',
-    turns: end.replyCount,
+    turns: fresh.filter((entry) => entry.role === 'assistant').length,
     usage: {
       inputTokens: countTokens(fresh.filter((entry) => entry.role === 'user')),
       outputTokens: countTokens(fresh.filter((entry) => entry.role === 'assistant')),
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
     },
-    context: { size: countTokens(sized), window: turn.profile.contextTokens ?? defaultWindow },
+    context: { size: countTokens(entries), window: turn.profile.contextTokens ?? defaultWindow },
   };
 }
 
-// the CLI answers a call past the window with its own message, and the turn ends at the point it
-// resumed, so a retry forks the session before the overflow
-function buildOverflowFrames(
-  turn: TurnFrame,
-  run: StubGuestRun,
+interface OverflowState {
+  readonly fork: ForkState;
+
+  // the last chain entry before the overflow, or null when the session has none
+  readonly committed: SessionPoint | null;
+}
+
+// the CLI answers a call past the window with its own message, and the result ends at the last
+// entry before it, so a retry forks the session before the overflow
+function buildOverflowEnded(
   entries: readonly StubSessionEntry[],
+  state: OverflowState,
   reason: 'blocking_limit' | 'prompt_too_long',
-): readonly GuestFrame[] {
-  const message: StubSessionEntry = {
-    uuid: crypto.randomUUID(),
-    role: 'assistant',
-    text: 'Prompt is too long',
-    tokens: 0,
+): GuestFrame {
+  const message = entries.at(-1);
+
+  invariant(message, 'an overflow leaves the CLI message');
+
+  return {
+    type: 'ended',
+    boundary: state.committed ?? { sessionID: state.fork.sessionID, messageID: message.uuid },
+    subtype: 'success',
+    stopReason: 'stop_sequence',
+    isError: true,
+    terminalReason: reason,
+    turns: 1,
+    usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
   };
-
-  const sessionID = crypto.randomUUID();
-
-  run.disk.writeSession(run.home, sessionID, [...entries, message]);
-
-  return [
-    { type: 'assistant', messageID: message.uuid, text: message.text, toolUses: [] },
-    {
-      type: 'ended',
-      boundary: turn.resume ?? { sessionID, messageID: message.uuid },
-      subtype: 'success',
-      stopReason: 'stop_sequence',
-      isError: true,
-      terminalReason: reason,
-      turns: 1,
-      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    },
-  ];
-}
-
-// raises the last entry's tokens so the session's context reaches the size a test set
-function buildFilledEntries(
-  entries: readonly StubSessionEntry[],
-  size: number | null,
-): readonly StubSessionEntry[] {
-  const last = entries.at(-1);
-
-  if (size === null || last === undefined) {
-    return entries;
-  }
-
-  const gap = Math.max(0, size - countTokens(entries));
-
-  return [...entries.slice(0, -1), { ...last, tokens: last.tokens + gap }];
 }
 
 function countTokens(entries: readonly StubSessionEntry[]): number {

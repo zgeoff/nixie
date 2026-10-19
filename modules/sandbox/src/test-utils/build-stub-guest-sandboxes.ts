@@ -57,6 +57,9 @@ export interface StubGuestSandboxes {
   // makes the next turn that ends reach this context size, in tokens, unless it already passed it
   readonly setContextSize: (tokens: number) => void;
 
+  // the path of each file on any sandbox's disk whose text includes the text
+  readonly collectFilesWithText: (text: string) => readonly string[];
+
   // removes every session from the disk of each sandbox the owner holds, as a sandbox that lost its
   // disk has none
   readonly removeSessions: (owner: string) => void;
@@ -131,6 +134,12 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
     setContextSize: (tokens) => {
       state.contextSize = tokens;
     },
+    collectFilesWithText: (text) =>
+      [...state.sandboxes.values()].flatMap((own) =>
+        [...own.disk.files]
+          .filter(([, content]) => new TextDecoder().decode(content).includes(text))
+          .map(([path]) => path),
+      ),
     removeSessions: (owner) => {
       for (const own of collectOwned(state, owner)) {
         own.disk.removeAllSessions();

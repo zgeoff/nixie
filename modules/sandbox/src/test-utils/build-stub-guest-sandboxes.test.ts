@@ -512,3 +512,48 @@ test('it records every frame the guests receive, in order, with the sandbox they
   expect(ctx.stub.turns).toStrictEqual([turn]);
   expect(ctx.stub.summaries).toStrictEqual([summarize]);
 });
+
+test('it finds the files that hold a text, and none once a purge removed them', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  await ctx.runGuest(
+    sandbox,
+    buildMockTurnFrame({ input: [{ uuid: crypto.randomUUID(), text: 'the blue flowerpot' }] }),
+  );
+
+  const held = ctx.stub.collectFilesWithText('blue flowerpot');
+
+  await ctx.runGuest(sandbox, { type: 'purge' });
+
+  expect(held).toStrictEqual([expect.toEndWith('.jsonl')]);
+  expect(ctx.stub.collectFilesWithText('blue flowerpot')).toStrictEqual([]);
+});
+
+test('it answers each inbox message of a turn in its own call, with a result for each, in one session', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+
+  const input = [
+    { uuid: '6e697869-0000-8000-8000-000000000001', text: 'Say a fruit.' },
+    { uuid: '6e697869-0000-8000-8000-000000000002', text: 'Another.' },
+  ];
+
+  const frames = await ctx.runGuest(sandbox, buildMockTurnFrame({ input }));
+
+  expect(frames).toMatchObject([
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
+    { type: 'assistant', text: 'APPLE' },
+    { type: 'ended' },
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000002'] },
+    { type: 'assistant', text: 'BANANA' },
+    { type: 'ended' },
+  ]);
+
+  const [first, second] = frames.filter((frame) => frame.type === 'ended');
+
+  expect(first?.boundary.sessionID).toBe(second?.boundary.sessionID);
+  expect(first?.boundary.messageID).not.toBe(second?.boundary.messageID);
+});

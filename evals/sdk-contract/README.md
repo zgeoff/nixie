@@ -17,9 +17,10 @@ model's prose wherever the SDK exposes the answer.
 - `resume-at`: in a fork that resumes with `resumeSessionAt` and `forkSession`, the model answers
   from the boundary after a later turn and after an aborted one, and the original session keeps
   every entry. A resume at a boundary that a compaction left out fails with
-  `No message found with message.uuid of:`.
-  [Crash recovery](../../docs/design/platform/core/tasks.md#crash-recovery) resumes at the step
-  boundary and matches that message.
+  `No message found with message.uuid of:`, and a resume of a session that the config directory does
+  not hold fails with `No conversation found with session ID:`, which the guest reports as
+  `session_missing`. [Crash recovery](../../docs/design/platform/core/tasks.md#crash-recovery)
+  resumes at the step boundary and matches that message.
 - `pinned-core`: a resume with `snapshot: false` sends a changed system prompt, and a resume with
   the default snapshot keeps the recorded one, so
   [the pinned core](../../docs/design/platform/memory/context.md#the-pinned-core) sets the snapshot

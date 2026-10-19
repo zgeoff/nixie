@@ -20,7 +20,7 @@ export interface ConversationDriverOptions {
 }
 
 // What the guests received while one owner message ran its step.
-export interface ConversationStep {
+interface ConversationStep {
   readonly turns: readonly TurnFrame[];
   readonly summaries: readonly SummarizeFrame[];
 

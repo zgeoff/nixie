@@ -7,7 +7,7 @@ type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 
 // The guest's side of one turn: the messages the host sent into it, one at a time.
-export interface StubGuest {
+interface StubGuest {
   readonly waitForMessage: () => Promise<InboxMessage>;
 }
 

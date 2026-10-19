@@ -190,3 +190,24 @@ test.skipIf(!isContractRun)(
   },
   300_000,
 );
+
+test.skipIf(!isContractRun)(
+  'it ends a resume of a session the config directory does not hold in an error result that names the missing session',
+  async () => {
+    const ctx = await setupTest();
+
+    const sessionID = crypto.randomUUID();
+
+    const run = await runContractQuery({
+      prompt: 'What is the code word? Answer with the word only.',
+      options: { ...ctx.options, resume: sessionID, forkSession: true },
+    });
+
+    expect(run.messages.at(-1)).toMatchObject({
+      type: 'result',
+      subtype: 'error_during_execution',
+      errors: [expect.stringMatching(/^No conversation found with session ID: /u)],
+    });
+  },
+  300_000,
+);
