@@ -1,7 +1,16 @@
 import { toErrorFields } from '@heynixie/logger';
+import type { SeedParts } from './run-definitions-seed';
 import { runDefinitionsSeed } from './run-definitions-seed';
 import { startDefinitionsPoll } from './start-definitions-poll';
-import type { ServerParts } from './types';
+import type { Cleanup, ServerParts } from './types';
+
+// the server parts the poll reads, beside the parts each seed reads and updates
+export type SeedPollParts = SeedParts & {
+  readonly config: {
+    readonly definitions: Pick<ServerParts['config']['definitions'], 'probeIntervalMs'>;
+  };
+  readonly cleanup: Pick<Cleanup, 'defer'>;
+};
 
 interface SeedPollOptions {
   // the seed at start was refused, so the poll retries it within seconds
@@ -11,7 +20,7 @@ interface SeedPollOptions {
 // Probes the definitions source on the configured interval, 5 min by default, and from 1 s after a
 // failure. Each probe logs definitions.probed, and only a seed logs definitions.seeded, so the log
 // shows the poll alive while the definitions stay the same.
-export async function startSeedPoll(parts: ServerParts, options: SeedPollOptions): Promise<void> {
+export async function startSeedPoll(parts: SeedPollParts, options: SeedPollOptions): Promise<void> {
   const poll = startDefinitionsPoll({
     probe: parts.source.probe,
     seed: async () => {
