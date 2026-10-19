@@ -57,7 +57,7 @@ function readExportItems(log: ExportLog): AsyncGenerator<MemoryExportItem, void,
     const last = page.at(-1);
 
     return {
-      items: await buildExportItems(log, page),
+      items: await loadExportItems(log, page),
       next: rows.length > pageSize && last !== undefined ? last.created_sequence : null,
     };
   });
@@ -100,7 +100,7 @@ function readItemRows(log: ExportLog, after: number): Promise<readonly ItemRow[]
     .execute();
 }
 
-async function buildExportItems(
+async function loadExportItems(
   log: ExportLog,
   rows: readonly ItemRow[],
 ): Promise<readonly MemoryExportItem[]> {
@@ -116,7 +116,7 @@ async function buildExportItems(
   return Promise.all(
     rows.map((row) =>
       isReadable(row.state)
-        ? buildReadableItem(
+        ? loadReadableItem(
             { ...row, state: row.state },
             { log, key: keys.get(row.item_id), versions: versionsByItem.get(row.item_id) ?? [] },
           )
@@ -160,21 +160,21 @@ interface ItemParts {
   readonly versions: readonly MemoryVersionRow[];
 }
 
-async function buildReadableItem(row: ReadableRow, parts: ItemParts): Promise<MemoryExportItem> {
+async function loadReadableItem(row: ReadableRow, parts: ItemParts): Promise<MemoryExportItem> {
   return {
     itemID: row.item_id,
     shortID: getItemShortID(row),
     state: row.state,
     isPinned: row.is_pinned === 1,
     kind: row.kind,
-    versions: await Promise.all(parts.versions.map((version) => buildVersion(version, parts))),
+    versions: await Promise.all(parts.versions.map((version) => loadExportVersion(version, parts))),
   };
 }
 
 type ExportVersion = Extract<MemoryExportItem, { versions: unknown }>['versions'][number];
 
 // a version whose key or ciphertext fails exports with no text and no quote
-async function buildVersion(row: MemoryVersionRow, parts: ItemParts): Promise<ExportVersion> {
+async function loadExportVersion(row: MemoryVersionRow, parts: ItemParts): Promise<ExportVersion> {
   const opened = await readViewText(parts.key, {
     itemID: row.item_id,
     version: row.version,
