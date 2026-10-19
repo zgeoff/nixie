@@ -1,9 +1,10 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 import type { ParseProblem } from './definitions-parse-error';
 import { skillsLockPath } from './skills-lock-path';
+import { skillsLockSchema } from './skills-lock-schema';
 
 // each vendored skill's lock entry by its name
-export type SkillsLock = z.infer<typeof lockSchema>;
+export type SkillsLock = z.infer<typeof skillsLockSchema>;
 
 export interface ParsedSkillsLock {
   readonly entries: SkillsLock;
@@ -18,7 +19,7 @@ export function parseSkillsLock(text: string | undefined): ParsedSkillsLock {
     return { entries: {}, problems: [] };
   }
 
-  const parsed = lockSchema.safeParse(parseJSON(text));
+  const parsed = skillsLockSchema.safeParse(parseJSON(text));
 
   if (parsed.success) {
     return { entries: parsed.data, problems: [] };
@@ -34,17 +35,6 @@ export function parseSkillsLock(text: string | undefined): ParsedSkillsLock {
 
   return { entries: {}, problems };
 }
-
-// One vendored skill's lock entry: where it came from, the full commit it was copied at, and the content
-// hash of its folder.
-const lockEntrySchema = z.strictObject({
-  source: z.url({ protocol: /^https$/u }),
-  path: z.string().min(1),
-  commit: z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u, 'use the full commit SHA'),
-  contentHash: z.string().regex(/^[0-9a-f]{64}$/u, 'use the hex SHA-256 of the skill folder'),
-});
-
-const lockSchema = z.record(z.string(), lockEntrySchema);
 
 // a lock that fails to parse fails the schema as a non-object
 function parseJSON(text: string): unknown {

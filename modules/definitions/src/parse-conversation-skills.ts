@@ -1,5 +1,6 @@
-import { z } from 'zod';
 import { DefinitionsParseError } from './definitions-parse-error';
+import { manifestPath } from './manifest-path';
+import { manifestSkillsSchema } from './manifest-skills-schema';
 import type { ParsedSkill } from './types';
 
 // Reads the conversation's skill list from the skills field of nixie.yaml, in name order, or every
@@ -35,6 +36,3 @@ export function parseConversationSkills(
 
   return [...new Set(listed)].toSorted();
 }
-
-const manifestPath = 'nixie.yaml';
-const manifestSkillsSchema = z.looseObject({ skills: z.array(z.string()).optional() });
