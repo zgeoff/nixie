@@ -146,6 +146,52 @@ test('it seeds the skills in force again with their files', async () => {
   ]);
 });
 
+test("it keeps a skill's frontmatter fields through a reset", async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+
+  await Promise.all([
+    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n'),
+    writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
+    writeFile(
+      join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+      '---\nname: tide-tables\ndescription: Reads a tide table.\ncompatibility: Needs Python 3.\nmetadata:\n  team: harbour\n  version: "1.2"\n---\n# Tides\n',
+    ),
+  ]);
+
+  const seeded = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  await runLogReset(ctx.log, {
+    keptTables: [],
+    readKept: (tx) => findResetSeed(tx),
+    writeFirstRecords: async (tx, seed) => {
+      invariant(seed);
+
+      await writeResetSeed(tx, ctx.log, seed);
+    },
+  });
+
+  invariant(seeded.inForce);
+
+  const skills = await loadSnapshotSkills(ctx.writer.db, seeded.inForce.snapshotHash);
+
+  expect(skills.map((skill) => skill.frontmatter)).toStrictEqual([
+    {
+      name: 'tide-tables',
+      description: 'Reads a tide table.',
+      license: null,
+      compatibility: 'Needs Python 3.',
+      allowedTools: null,
+      metadata: { team: 'harbour', version: '1.2' },
+    },
+  ]);
+});
+
 test("it keeps the conversation's skill list through storage and a reset", async () => {
   const ctx = await setupTest();
 
