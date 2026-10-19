@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { countTextTokens } from '@heynixie/compaction';
 import {
   buildMockSandboxSpec,
   buildStubGuestSandboxes,
@@ -14,7 +15,7 @@ async function setupTest() {
 
   const stub = buildStubGuestSandboxes({
     recorder: recorder.recorder,
-    countTokens: (text) => Math.ceil(text.length / 4),
+    countTokens: countTextTokens,
   });
 
   const spec = buildMockSandboxSpec({ kind: 'conversation', owner: 'conversation' });
@@ -27,7 +28,7 @@ test("it carries the session under the project folder that the destination guest
 
   const stub = buildStubGuestSandboxes({
     recorder: ctx.recorder,
-    countTokens: (text) => Math.ceil(text.length / 4),
+    countTokens: countTextTokens,
     hostRoot: '/srv/sandboxes',
   });
 
