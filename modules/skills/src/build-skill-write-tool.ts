@@ -61,7 +61,6 @@ export function buildSkillWriteTool(context: SkillToolsContext): ToolDefinition 
   };
 }
 
-// the input as the input schema accepted it
 const writeArguments = z.object({
   name: z.string(),
   files: z.object({ path: z.string(), text: z.string() }).array(),
