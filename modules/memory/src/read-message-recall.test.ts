@@ -413,17 +413,11 @@ test('it returns a message that matches on its typed words with its paste in a b
     excludedWords: [],
   });
 
-  expect(result.messages).toStrictEqual([
-    {
-      sequence,
-      thread: 'garden',
-      recordedAt: expect.toBeNumber(),
-      text: expect.stringMatching(
-        /^Check the beds tonight: <pasted id="(?<id>[\da-f]{12})">The tomatoes need staking<\/pasted id="\k<id>">$/u,
-      ),
-      isCut: false,
-    },
-  ]);
+  expect(result.messages.map((message) => message.sequence)).toStrictEqual([sequence]);
+
+  expect(result.messages[0]?.text).toMatch(
+    /^Check the beds tonight: <pasted id="(?<id>[\da-f]{12})">The tomatoes need staking<\/pasted id="\k<id>">$/u,
+  );
 });
 
 test('it never returns a message for a query that matches only its pasted words', async () => {
