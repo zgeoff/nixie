@@ -1,5 +1,6 @@
 // A stand-in for a test build of nixie, for the harness's own tests. With STUB_NIXIE_REFUSE set, it
-// exits with code 3 before it is ready, as a nixie that finds the writer lock held does.
+// exits with code 3 before it is ready, as a nixie that finds the writer lock held does. With
+// STUB_NIXIE_LATE_STDERR set too, a child it leaves behind writes to its stderr once it has exited.
 import { startHarnessLink } from '../start-harness-link';
 
 const link = startHarnessLink();
@@ -38,6 +39,23 @@ link.registerOperation('startChild', () => {
 
   return child.pid;
 });
+
+// the child holds the stub's stderr open and waits for the stub's exit, so its line always lands
+// after the exit
+const lateStderrScript = `
+while (true) {
+  try { process.kill(${process.pid}, 0); } catch { break; }
+  await Bun.sleep(10);
+}
+process.stderr.write('the last words\\n');
+`;
+
+if (process.env['STUB_NIXIE_LATE_STDERR'] === '1') {
+  Bun.spawn([process.execPath, '-e', lateStderrScript], {
+    detached: true,
+    stdio: ['ignore', 'ignore', 'inherit'],
+  }).unref();
+}
 
 if (process.env['STUB_NIXIE_REFUSE'] === '1') {
   process.stderr.write('the stub refused to start\n');
