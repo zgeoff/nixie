@@ -16,6 +16,9 @@ export function runConversationStep(run: ConversationRun, input: StepInput): Pro
     const definitions = run.getDefinitions();
 
     const marks = await readSessionMarks(run.context, input.taskID);
+    const catalog = await run.loadOrPinSkillCatalog?.(input.taskID);
+
+    const skillCatalog = catalog ?? null;
 
     const position = pickSessionPosition({
       marks,
@@ -24,7 +27,7 @@ export function runConversationStep(run: ConversationRun, input: StepInput): Pro
       threshold: run.compaction.threshold,
     });
 
-    const step = { run, input, signal, definitions, marks, position };
+    const step = { run, input, signal, definitions, skillCatalog, marks, position };
 
     if (isSessionLive(position) && canSessionTake(position.state, 'compact')) {
       return runCompactionStep(step, position.boundary);

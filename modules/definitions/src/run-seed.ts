@@ -3,6 +3,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
+import { buildSkillChanges } from './build-skill-changes';
 import { findDefinitionsInForce } from './find-definitions-in-force';
 import { parseDefinitions } from './parse-definitions';
 import type {
@@ -11,9 +12,11 @@ import type {
   DefinitionsSource,
   DefinitionsTables,
   ParsedDefinitions,
+  SkillRef,
   Snapshot,
   SnapshotPolicy,
 } from './types';
+import { writeSkillRows } from './write-skill-rows';
 
 export interface SeedOptions {
   readonly log: Log;
@@ -50,7 +53,12 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
     return { status: 'refused', error: read, inForce };
   }
 
-  const built = buildDefinitionsSnapshot({ persona: read.parsed.persona, policy: options.policy });
+  const built = buildDefinitionsSnapshot({
+    persona: read.parsed.persona,
+    policy: options.policy,
+    skills: read.parsed.skills,
+    conversationSkills: read.parsed.conversationSkills,
+  });
 
   return withWriteTransaction(options.log.writer, async (tx) => {
     const inForce = await findDefinitionsInForce(tx);
@@ -59,7 +67,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       return { status: 'unchanged', inForce };
     }
 
-    return applySeed(tx, options, { ...read, built });
+    return applySeed(tx, options, { ...read, built, previous: inForce });
   });
 }
 
@@ -82,6 +90,11 @@ interface SeedPlan extends ReadDefinitions {
   readonly built: DefinitionsSnapshot;
 }
 
+interface AppliedPlan extends SeedPlan {
+  // the definitions the seed replaces, which its skill notice compares with
+  readonly previous: DefinitionsInForce | null;
+}
+
 function isSameSeed(
   inForce: DefinitionsInForce,
   plan: SeedPlan & { readonly sourceID: string },
@@ -97,11 +110,17 @@ function isSameSeed(
 async function applySeed(
   tx: Transaction<unknown>,
   options: SeedOptions,
-  plan: SeedPlan,
+  plan: AppliedPlan,
 ): Promise<SeedResult> {
   const seededAt = options.log.writer.clock.now();
 
   await writeSnapshotRows(tx, plan, seededAt);
+
+  await writeSkillRows(tx, {
+    snapshotHash: plan.built.snapshotHash,
+    skills: plan.parsed.skills,
+    conversationSkills: plan.parsed.conversationSkills,
+  });
 
   const record = await writeSeedRecord(tx, options, plan);
 
@@ -117,6 +136,8 @@ async function applySeed(
     persona: plan.built.persona,
     policyHash: plan.built.policyHash,
     recordSequence: record.sequence,
+    skills: plan.parsed.skills.map((skill) => toSkillRef(skill)),
+    conversationSkills: plan.parsed.conversationSkills,
   };
 
   await writeSeedRow(tx, inForce);
@@ -152,11 +173,18 @@ async function writeSnapshotRows(
     .execute();
 }
 
+function toSkillRef(skill: SkillRef): SkillRef {
+  return { name: skill.name, skillHash: skill.skillHash, origin: skill.origin };
+}
+
 async function writeSeedRecord(
   tx: Transaction<unknown>,
   options: SeedOptions,
-  plan: SeedPlan,
+  plan: AppliedPlan,
 ): Promise<LogRecord> {
+  const skills = plan.parsed.skills.map((skill) => toSkillRef(skill));
+  const skillChanges = buildSkillChanges(plan.previous?.skills ?? [], skills);
+
   const [record] = await writeRecordsInTransaction(tx, options.log, [
     {
       kind: 'definitions_seeded',
@@ -171,6 +199,12 @@ async function writeSeedRecord(
         contentHash: plan.snapshot.contentHash,
         formatVersion: plan.parsed.formatVersion,
         policyHash: plan.built.policyHash,
+        skills: skills.map((skill) => ({
+          name: skill.name,
+          skillHash: skill.skillHash,
+          origin: skill.origin,
+        })),
+        skillChanges: { ...skillChanges },
         unapplied: plan.parsed.unapplied,
         skipped: plan.snapshot.skipped,
       },

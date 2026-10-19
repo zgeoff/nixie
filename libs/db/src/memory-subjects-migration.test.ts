@@ -39,8 +39,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 17', () => {
-  expect(nixieSchema.migrations.indexOf(memorySubjectsMigration) + 1).toBe(17);
+test('it moves the schema to version 18', () => {
+  expect(nixieSchema.migrations.indexOf(memorySubjectsMigration) + 1).toBe(18);
 });
 
 test('it maps each self-note item to the self subject and every other item to owner', async () => {

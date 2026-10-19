@@ -104,7 +104,7 @@ console.log(`${role} ${model} ${effort}: ${sessions.length} sessions, ${proxy.ca
 // 12 turns on one session, each resuming at the last turn's boundary, as the conversation does
 async function runConversation(): Promise<readonly SessionResult[]> {
   const home = await mkdtemp(join(tmpdir(), 'turn-tokens-'));
-  const systemPrompt = renderSystemPrompt(fixtures.persona, lines);
+  const systemPrompt = renderSystemPrompt(fixtures.persona, null, lines);
   const results: SessionResult[] = [];
   let resume: { sessionID: string; messageID: string } | null = null;
 
@@ -267,7 +267,7 @@ async function runConsolidator(): Promise<readonly SessionResult[]> {
 
 // simulated: a job run as one fresh session on the conversation's prompt, opening and tools
 async function runTasks(): Promise<readonly SessionResult[]> {
-  const systemPrompt = renderSystemPrompt(fixtures.persona, lines);
+  const systemPrompt = renderSystemPrompt(fixtures.persona, null, lines);
   const opening = await renderSessionOpening(lines);
   const results: SessionResult[] = [];
 

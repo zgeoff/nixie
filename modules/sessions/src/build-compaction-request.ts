@@ -31,7 +31,7 @@ export function buildCompactionRequest(
     contextSize: cause.contextSize,
     failures: step.marks.compactionFailures,
     signal: step.signal,
-    systemPrompt: renderSystemPrompt(step.definitions.persona, { ownerName }),
+    systemPrompt: renderSystemPrompt(step.definitions.persona, step.skillCatalog, { ownerName }),
     at: formatMessageTime(now, null, { defaultZone: run.defaultZone, now }),
     ownerName,
   };
