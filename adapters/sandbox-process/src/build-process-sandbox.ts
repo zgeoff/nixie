@@ -159,31 +159,30 @@ function findPathBelow(dir: string, path: string): string | null {
   return below === '..' || below.startsWith(`..${sep}`) || isAbsolute(below) ? null : below;
 }
 
-async function collectGuestFiles(
+function collectGuestFiles(
   fsRoot: string,
   dir: string,
   options: CollectFilesOptions = {},
 ): Promise<readonly string[]> {
   const root = resolveGuestPath(fsRoot, dir);
 
-  try {
-    return await collectFilesBelow(root, options.maxDepth ?? Number.POSITIVE_INFINITY);
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      return [];
-    }
-
-    throw error;
-  }
+  return collectFilesBelow(root, options.maxDepth ?? Number.POSITIVE_INFINITY);
 }
 
-// a walk that reads one folder level per step, so a bounded depth reads no folder below it
+// a walk that reads one folder level per step, so a bounded depth reads no folder below it; a folder
+// that is gone when its read comes lists nothing, and its siblings keep their files
 async function collectFilesBelow(dir: string, depth: number): Promise<readonly string[]> {
   if (depth < 1) {
     return [];
   }
 
-  const entries = await readdir(dir, { withFileTypes: true });
+  const entries = await readdir(dir, { withFileTypes: true }).catch((error: unknown) => {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return [];
+    }
+
+    throw error;
+  });
 
   const listed = await Promise.all(
     entries.map(async (entry) => {
