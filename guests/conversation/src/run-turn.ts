@@ -223,8 +223,8 @@ function collectText(content: AssistantMessage['message']['content']): string {
   return content.flatMap((block) => (block.type === 'text' ? [block.text] : [])).join('\n\n');
 }
 
-// the summarized display puts the model's reasoning in the thinking blocks' text; the signature
-// that rides alongside it is never read
+// the reasoning is the thinking blocks' text; the signature beside it is the API's encrypted copy
+// that only the API reads back, so nixie cannot use it and leaves it out of the recorded reasoning
 function collectSummary(content: AssistantMessage['message']['content']): string {
   return content
     .flatMap((block) => (block.type === 'thinking' ? [block.thinking] : []))
