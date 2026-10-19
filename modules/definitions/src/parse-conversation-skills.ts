@@ -2,9 +2,6 @@ import { z } from 'zod';
 import { DefinitionsParseError } from './definitions-parse-error';
 import type { ParsedSkill } from './types';
 
-const manifestPath = 'nixie.yaml';
-const manifestSkillsSchema = z.looseObject({ skills: z.array(z.string()).optional() });
-
 // Reads the conversation's skill list from the skills field of nixie.yaml, in name order, or every
 // skill when the field is unset. A listed name with no skill folder fails the snapshot, because a
 // typo would otherwise hide a skill without a trace.
@@ -38,3 +35,6 @@ export function parseConversationSkills(
 
   return [...new Set(listed)].toSorted();
 }
+
+const manifestPath = 'nixie.yaml';
+const manifestSkillsSchema = z.looseObject({ skills: z.array(z.string()).optional() });
