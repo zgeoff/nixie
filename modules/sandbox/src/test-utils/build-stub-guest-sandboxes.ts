@@ -262,7 +262,7 @@ interface GuestSandbox {
 
 // the guest of one spawn: it records each frame it receives and answers from the sandbox's disk
 function startGuest(state: StubState, sandbox: GuestSandbox, home: string | undefined) {
-  const buildAnswer = (
+  const runWithGuestHome = (
     run: (home: string) => Promise<readonly GuestFrame[]> | readonly GuestFrame[],
   ) =>
     home === undefined
@@ -282,7 +282,7 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
       }
     },
     onTurn: (turn, guest) =>
-      buildAnswer((guestHome) =>
+      runWithGuestHome((guestHome) =>
         runStubGuestTurn(turn, {
           sandboxID: sandbox.id,
           owner: sandbox.spec.owner,
@@ -305,7 +305,7 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
         }),
       ),
     onSummary: (frame) =>
-      buildAnswer((guestHome) =>
+      runWithGuestHome((guestHome) =>
         runStubGuestSummary(frame, {
           disk: sandbox.own.disk,
           home: guestHome,
@@ -313,7 +313,7 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
         }),
       ),
     onPurge: () =>
-      buildAnswer((guestHome) => {
+      runWithGuestHome((guestHome) => {
         sandbox.own.disk.removeState(guestHome);
 
         return [{ type: 'purged' }];
