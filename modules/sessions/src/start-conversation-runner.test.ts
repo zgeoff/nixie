@@ -14,7 +14,7 @@ interface RunnerConfig {
   readonly models: ReturnType<typeof buildMockModelsConfig>;
   readonly credential: string;
   readonly toolNames: readonly string[];
-  readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote'>;
+  readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote' | 'loadOrPinSkillCatalog'>;
 
   // a recorder for the server's log, for a test that reads its warnings
   readonly log?: ConversationRunnerOptions['log'];
@@ -999,6 +999,35 @@ test('it records the persona and policy hashes in force on the opening of a sess
         personaHash: 'sha256:persona-wren',
         policyHash: 'sha256:policy-read-only',
       },
+    },
+  ]);
+});
+
+test('it puts the skill catalog of the conversation in the system prompt after the persona', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const loadOrPinSkillCatalog = mock(() =>
+    Promise.resolve('<skills>\n- tide-tables: Reads a tide table.\n</skills>'),
+  );
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    memory: { loadOrPinSkillCatalog },
+  });
+
+  await ctx.sendMessage(runner, 'When is high water?');
+
+  expect(loadOrPinSkillCatalog).toHaveBeenCalledExactlyOnceWith('conversation');
+
+  expect(ctx.sandboxes.turns).toMatchObject([
+    {
+      systemPrompt: expect.toStartWith(
+        'You are nixie.\n\n<skills>\n- tide-tables: Reads a tide table.\n</skills>\n\n',
+      ),
     },
   ]);
 });

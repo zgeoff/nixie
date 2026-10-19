@@ -55,8 +55,8 @@ test('it reports the subject counts before and after the migration that a copy o
   const report = await runSubjectMigrationDryRun(ctx.path);
 
   expect(report).toStrictEqual({
-    from: 16,
-    to: 17,
+    from: 17,
+    to: 18,
     before: {
       items: { owner: 2, shared: 0, self: 1 },
       proposals: { owner: 0, shared: 0, self: 0 },
@@ -77,7 +77,7 @@ test('it leaves the database it reads at the schema it found', async () => {
   const columns = await sql`select name from pragma_table_info('memory_items')
     where name = 'subject'`.execute(ctx.db);
 
-  expect(version.rows).toStrictEqual([{ version: 16 }]);
+  expect(version.rows).toStrictEqual([{ version: 17 }]);
   expect(columns.rows).toStrictEqual([]);
 });
 

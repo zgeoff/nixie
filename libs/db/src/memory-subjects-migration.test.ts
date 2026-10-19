@@ -39,8 +39,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 17', () => {
-  expect(nixieSchema.migrations.indexOf(memorySubjectsMigration) + 1).toBe(17);
+test('it moves the schema to version 18', () => {
+  expect(nixieSchema.migrations.indexOf(memorySubjectsMigration) + 1).toBe(18);
 });
 
 test('it maps each self-note item to the self subject and every other item to owner', async () => {
@@ -106,6 +106,34 @@ test('it runs again without a change', async () => {
   const rows = await sql`select kind, subject from memory_items`.execute(ctx.db);
 
   expect(rows.rows).toStrictEqual([{ kind: 'self', subject: 'self' }]);
+});
+
+test('it keeps the shared subject of an item and a proposal when it runs again', async () => {
+  const ctx = await setupTest();
+
+  await ctx.db.transaction().execute((tx) => memorySubjectsMigration.up(tx));
+
+  await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
+    updated_sequence, short_id, kind, subject) values
+    ('c91f3e06-7a2b-4d58-8e14-6b0d2f9a7c35', 1, 'active', 0, 1, 1, 'm2hx6p9rke', 'fact',
+      'shared')`.execute(ctx.db);
+
+  await sql`insert into memory_proposals (proposal_id, item_id, is_new_item, operation,
+    target_version, is_pinned, review_reason, status, action_hash, sealed, origin, source, cap_group,
+    created_sequence, created_at, lapse_at, kind, subject) values
+    ('e4b8a1f5-9c3d-4a27-b6e0-7d2f5c8a1b43', 'c91f3e06-7a2b-4d58-8e14-6b0d2f9a7c35', 1, 'remember',
+      null, 0, 'no_quote', 'pending', 'hash-b', 'sealed-b', 'conversation', 'owner', 'group-b', 1,
+      1767225600000, 1767830400000, 'fact', 'shared')`.execute(ctx.db);
+
+  await ctx.db.transaction().execute((tx) => memorySubjectsMigration.up(tx));
+
+  const [items, proposals] = await Promise.all([
+    sql`select subject from memory_items`.execute(ctx.db),
+    sql`select subject from memory_proposals`.execute(ctx.db),
+  ]);
+
+  expect(items.rows).toStrictEqual([{ subject: 'shared' }]);
+  expect(proposals.rows).toStrictEqual([{ subject: 'shared' }]);
 });
 
 test('it leaves a row that the release before inserts afterwards with no subject', async () => {

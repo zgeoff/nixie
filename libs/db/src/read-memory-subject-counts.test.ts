@@ -7,6 +7,7 @@ import { nixieSchema } from './nixie-schema';
 import { readMemorySubjectCounts } from './read-memory-subject-counts';
 import { runMigrations } from './run-migrations';
 import { startDatabase } from './start-database';
+import { makeAfterQueryPlugin } from './test-utils/make-after-query-plugin';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -97,6 +98,54 @@ test('it counts a row the release before wrote with no subject by its kind', asy
   expect(counts).toStrictEqual({
     items: { owner: 1, shared: 0, self: 1 },
     proposals: { owner: 0, shared: 0, self: 0 },
+  });
+});
+
+test('it reads both counts from one snapshot while another connection commits between them', async () => {
+  const ctx = await setupTest();
+
+  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.dir });
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.proposal_created', 'snapshot-a', '{}')`.execute(ctx.db);
+
+  await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
+    updated_sequence, short_id, subject) values
+    ('3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', 1, 'active', 0, 1, 1, 'b7kq2m9xza', 'owner')`.execute(
+    ctx.db,
+  );
+
+  await sql`insert into memory_proposals (proposal_id, item_id, is_new_item, operation, is_pinned,
+    review_reason, status, action_hash, sealed, origin, source, cap_group, created_sequence,
+    created_at, lapse_at, subject) values
+    ('5b1d7e3a-2c9f-4a60-8d4e-7f2a1c6b9e05', '3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', 0, 'remember',
+      0, 'no_quote', 'pending', 'sha256:a1', 'sealed-a', 'conversation', 'untrusted', 'group-a', 1,
+      1767225600000, 1767312000000, 'owner')`.execute(ctx.db);
+
+  // the other connection waits for no lock, so its write either commits at once or is refused
+  const other = startDatabase(join(ctx.dir, 'nixie.db'), { busyTimeoutMs: 0 });
+
+  onTestFinished(() => other.destroy());
+
+  await sql`select 1`.execute(other);
+
+  // after the item count, the other connection moves the item and its proposal to shared at once
+  const counted = ctx.db.withPlugin(
+    makeAfterQueryPlugin(2, async () => {
+      await Promise.allSettled([
+        other.transaction().execute(async (tx) => {
+          await sql`update memory_items set subject = 'shared'`.execute(tx);
+          await sql`update memory_proposals set subject = 'shared'`.execute(tx);
+        }),
+      ]);
+    }),
+  );
+
+  const counts = await readMemorySubjectCounts(counted);
+
+  expect(counts).toStrictEqual({
+    items: { owner: 1, shared: 0, self: 0 },
+    proposals: { owner: 1, shared: 0, self: 0 },
   });
 });
 

@@ -26,7 +26,6 @@ async function runMemorySubjects(flags: CLIFlags, io: CLIIO): Promise<number> {
   return 0;
 }
 
-// the dry run never reaches the server, because it reads a database file no server holds
 async function runDryRun(database: string | undefined, io: CLIIO): Promise<number> {
   if (database === undefined || database === '') {
     io.print('nixie memory-subjects --dry-run takes --database <path> of a nixie.db to copy');

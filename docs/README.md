@@ -53,7 +53,7 @@ below, and planned work lives in Linear.
 - [Actions](architecture/core/actions.md) — the action queue, outcomes, attempts, retries and what
   the model sees
 - [The definitions](architecture/core/definitions.md) — sources, the content hash, the definitions
-  format, the snapshot hash and seeding
+  format, the seed checks on skills, the snapshot hash and seeding
 - [Model profiles](architecture/core/model-profiles.md) — profiles, the role map, credential
   references and the model on each record
 - [Conversation turns](architecture/core/conversation-turns.md) — the guest, what a query holds,
@@ -62,6 +62,8 @@ below, and planned work lives in Linear.
   the status registry, the replay over the recent turns and the opening record
 - [Compaction](architecture/core/compaction.md) — the compaction step, the summary instruction,
   failure and overflow, the summary record and forgetting
+- [Skills](architecture/core/skills.md) — skill lists, the pin a task keeps, and the catalog in the
+  system prompt with its cap
 - [Crash tests](architecture/core/crash-tests.md) — the test build, the harness link and its clock,
   the scripted model, the provider double and the oracle
 
@@ -121,6 +123,11 @@ below, and planned work lives in Linear.
   stages, the sandbox manifest, publishing, attestations and the compatibility checks
 - [Kubernetes](architecture/deployment/kubernetes.md) — the reference manifests, nixie's pod and its
   mounts, impd and the address ranges, and the ingress
+
+## Guides
+
+- [Vendoring a skill](guides/vendoring-a-skill.md) — copy a published skill into your definitions at
+  a pinned commit, compute its content hash and add its lock entry
 
 ## Runbooks
 

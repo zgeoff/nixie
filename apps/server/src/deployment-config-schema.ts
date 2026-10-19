@@ -6,6 +6,7 @@ import {
   memoryConfigSchema,
   writerConfigSchema,
 } from '@heynixie/memory';
+import { skillsConfigSchema } from '@heynixie/skills';
 import { tasksConfigSchema } from '@heynixie/tasks';
 import { z } from 'zod';
 import { modelSections } from './model-sections';
@@ -30,6 +31,7 @@ export const deploymentConfigSchema = z
     memory_writer: writerConfigSchema.default(writerConfigSchema.parse({})),
     memory: memoryConfigSchema.default(memoryConfigSchema.parse({})),
     memory_consolidation: consolidationConfigSchema.default(consolidationConfigSchema.parse({})),
+    skills: skillsConfigSchema.default(skillsConfigSchema.parse({})),
   })
   .superRefine((config, issues) => {
     if (config.sandbox.adapter === 'imp' && config.imp === undefined) {

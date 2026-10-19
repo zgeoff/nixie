@@ -25,7 +25,11 @@ async function setupTest() {
   return {
     ...tasks,
     sandboxes,
-    startRunner: (summaryTokens = 2000) =>
+    startRunner: (
+      summaryTokens = 2000,
+      loadOrPinSkillCatalog: (taskID: string) => Promise<string | null> = () =>
+        Promise.resolve(null),
+    ) =>
       startConversationRunner({
         context: tasks.context,
         profile: { profile: buildMockModelProfile(), credential: 'not-a-real-key' },
@@ -47,6 +51,7 @@ async function setupTest() {
           readShortIDs: () => Promise.resolve(new Map()),
         }),
         compaction: { summaryTokens },
+        loadOrPinSkillCatalog,
         log: () => {},
       }),
     runNextStep: (runner: Runner) => runNextStep(tasks.context, runner.runStep),
@@ -330,6 +335,25 @@ test('it asks once to cut a summary past the token cap, on the summary fork, and
       erasable: { fields: { text: 'Open threads: the gauge report.' } },
     },
   ]);
+});
+
+test('it gives the summary call the skill catalog after the persona', async () => {
+  const ctx = await setupTest();
+
+  const runner = await ctx.startRunner(2000, () =>
+    Promise.resolve('<skills>\n- tide-tables: Reads a tide table.\n</skills>'),
+  );
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ contextSize: 170_000 })));
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+  await ctx.runNextStep(runner);
+
+  const prompt = ctx.sandboxes.summaries[0]?.systemPrompt ?? '';
+
+  expect(prompt).toStartWith(
+    'You are nixie.\n\n<skills>\n- tide-tables: Reads a tide table.\n</skills>',
+  );
 });
 
 test('it gives the summary call and its cut request the rules for pasted text and system messages', async () => {
