@@ -35,6 +35,7 @@ export type {
   ExecStream,
   FileSpec,
   GrantSpec,
+  GuestHome,
   RunSpec,
   RuntimeReport,
   Sandbox,

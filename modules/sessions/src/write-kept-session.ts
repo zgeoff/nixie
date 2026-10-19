@@ -1,5 +1,5 @@
 import { join, relative } from 'node:path';
-import type { FileSpec, GuestCommand, Sandbox } from '@heynixie/sandbox';
+import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 
 export interface KeptSessionSpec {
   // the sandbox the conversation leaves, which still holds the session
@@ -13,57 +13,44 @@ export interface KeptSessionSpec {
 
 // Writes the session's transcript and side folder from the sandbox the conversation leaves into
 // the one that replaces it, under the project folder that the new guest's own path names. It
-// overwrites what a stopped copy left, and wakes a sleeping old sandbox first for the read.
+// overwrites a stopped copy, and wakes a sleeping old sandbox, whose guest may run the list.
 export async function writeKeptSession(spec: KeptSessionSpec): Promise<void> {
   if (spec.from.suspension.kind === 'memory') {
     await spec.from.suspension.wake();
   }
 
-  const files = await readKeptFiles(spec.from, spec.command, spec.sessionID);
-  const target = await readGuestLayout(spec.to, spec.command, spec.sessionID);
+  const source = await findSessionFiles(spec.from, spec.command, spec.sessionID);
+  const target = await spec.to.resolveHome(spec.command.env);
 
   const targetDir = join(
-    target.guestHome,
+    target.copyPath,
     configProjectsDir,
-    buildProjectName(join(target.home, workDirName)),
+    buildProjectName(join(target.ownPath, workDirName)),
   );
 
   const transcript = `${spec.sessionID}.jsonl`;
+
+  const files = await spec.from.copyOut(source.files.map((file) => join(source.projectDir, file)));
 
   // the transcript lands under a staged name, so a copy that fails partway leaves no session to
   // resume; the guest removes the staged file with the other stale sessions
   await spec.to.copyIn(
     files.map((file) => {
-      const name = file.path === transcript ? `${transcript}${stagedSuffix}` : file.path;
+      const path = relative(source.projectDir, file.path);
+      const name = path === transcript ? `${transcript}${stagedSuffix}` : path;
 
       return { path: join(targetDir, name), content: file.content };
     }),
   );
 
-  await applyStagedTranscript(spec, targetDir, transcript);
+  // the move publishes the transcript in one step, once every file of the session has landed
+  await spec.to.applyMove(
+    join(targetDir, `${transcript}${stagedSuffix}`),
+    join(targetDir, transcript),
+  );
 }
 
 const stagedSuffix = '.copy';
-
-// Renames the staged transcript to the name the CLI resumes, in one step inside the guest, once
-// every file of the session has landed.
-async function applyStagedTranscript(
-  spec: KeptSessionSpec,
-  targetDir: string,
-  transcript: string,
-): Promise<void> {
-  const result = await spec.to.exec({
-    argv: ['mv', '-f', '--', `${transcript}${stagedSuffix}`, transcript],
-    env: spec.command.env,
-    cwd: targetDir,
-  });
-
-  if (result.code !== 0) {
-    const stderr = new TextDecoder().decode(result.stderr.bytes);
-
-    throw new Error(`the sandbox ${spec.to.id} did not publish the session transcript: ${stderr}`);
-  }
-}
 
 // the CLI's projects folder under the guest's home, as the guest sets CLAUDE_CONFIG_DIR
 const configProjectsDir = '.claude/projects';
@@ -71,77 +58,44 @@ const configProjectsDir = '.claude/projects';
 // the guest's working directory under its home, which getWorkDir in the conversation guest sets
 const workDirName = 'conversation';
 
-// Reads the session's files out of the sandbox, each with its path inside the project folder. A
-// sandbox that holds no transcript of the session throws.
-async function readKeptFiles(
+interface SessionFiles {
+  // the project folder that holds the session, as a path the sandbox's copyOut takes
+  readonly projectDir: string;
+
+  // the session's files, relative to the project folder: <id>.jsonl, and <id>/... for the side folder
+  readonly files: readonly string[];
+}
+
+// Finds the session's files in the sandbox, under the first project folder that holds its
+// transcript. A sandbox that holds no transcript of the session throws.
+async function findSessionFiles(
   sandbox: Sandbox,
   command: GuestCommand,
   sessionID: string,
-): Promise<readonly FileSpec[]> {
-  const source = await readGuestLayout(sandbox, command, sessionID);
+): Promise<SessionFiles> {
+  const home = await sandbox.resolveHome(command.env);
 
-  const transcript = source.files.find((file) => isTranscript(file, sessionID));
+  const projectsDir = join(home.copyPath, configProjectsDir);
+
+  const listed = await sandbox.collectFiles(projectsDir);
+
+  const transcript = listed
+    .map((path) => path.split('/'))
+    .find((parts) => parts.length === 2 && parts[1] === `${sessionID}.jsonl`);
 
   if (transcript === undefined) {
     throw new Error(`the sandbox ${sandbox.id} holds no transcript of session ${sessionID}`);
   }
 
-  const projectDir = join(source.guestHome, configProjectsDir, transcript.split('/')[0] ?? '');
+  const project = `${transcript[0] ?? ''}/`;
 
-  const files = await sandbox.copyOut(
-    source.files
-      .map((file) => join(source.guestHome, configProjectsDir, file))
-      .filter((path) => path.startsWith(`${projectDir}/`)),
-  );
-
-  return files.map((file) => ({ path: relative(projectDir, file.path), content: file.content }));
-}
-
-function isTranscript(file: string, sessionID: string): boolean {
-  return file.endsWith(`/${sessionID}.jsonl`);
-}
-
-interface GuestLayout {
-  // the guest's home as a path the sandbox's copyIn and copyOut take
-  readonly guestHome: string;
-
-  // the guest's home as its own processes see it, which the CLI's project folder name comes from
-  readonly home: string;
-
-  // the session's files, relative to the projects folder, such as <project>/<id>.jsonl
-  readonly files: readonly string[];
-}
-
-// Prints the guest's home from the guest's root and as its processes see it, which differ in a
-// process sandbox that maps a host folder to the root, then the session's files.
-const layoutScript = `root=$(pwd -P) && home=$(cd "$HOME" && pwd -P) || exit 1
-case $home in "$root"*) ;; *) echo "HOME $home is outside the guest root $root" >&2; exit 1 ;; esac
-printf '%s\\n%s\\n' "/\${home#"$root"}" "$home"
-cd "$home/${configProjectsDir}" 2>/dev/null || exit 0
-find . -mindepth 2 \\( -path "./*/$1.jsonl" -o -path "./*/$1/*" \\) -type f`;
-
-async function readGuestLayout(
-  sandbox: Sandbox,
-  command: GuestCommand,
-  sessionID: string,
-): Promise<GuestLayout> {
-  const result = await sandbox.exec({
-    argv: ['sh', '-c', layoutScript, 'sh', sessionID],
-    env: command.env,
-    cwd: '/',
-  });
-
-  if (result.code !== 0 || result.stdout.isCut) {
-    const stderr = new TextDecoder().decode(result.stderr.bytes);
-
-    throw new Error(`the sandbox ${sandbox.id} did not list its session files: ${stderr}`);
-  }
-
-  const lines = new TextDecoder().decode(result.stdout.bytes).split('\n');
-
-  const [guestHome = '', home = '', ...files] = lines.filter((line) => line !== '');
-
-  return { guestHome, home, files: files.map((file) => file.replace(/^\.\//u, '')) };
+  return {
+    projectDir: join(projectsDir, project),
+    files: listed
+      .filter((path) => path.startsWith(project))
+      .map((path) => path.slice(project.length))
+      .filter((file) => file === `${sessionID}.jsonl` || file.startsWith(`${sessionID}/`)),
+  };
 }
 
 // The CLI's project folder name for a working directory: every character but a letter or a digit

@@ -407,6 +407,110 @@ test('it refuses to copy in a relative path', async () => {
   );
 });
 
+test("it gives the sandbox's own directory as the home of a guest whose command sets no HOME", async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+  const home = await sandbox.resolveHome({});
+
+  expect(home).toStrictEqual({
+    copyPath: '/',
+    ownPath: join(ctx.rootDir, sandbox.id, 'fs'),
+  });
+});
+
+test("it gives the command's HOME as the guest sees it, and as the path below the sandbox's directory", async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  const home = join(ctx.rootDir, sandbox.id, 'fs/home/nixie');
+
+  const resolved = await sandbox.resolveHome({ HOME: home });
+
+  expect(resolved).toStrictEqual({
+    copyPath: '/home/nixie',
+    ownPath: home,
+  });
+});
+
+test("it refuses a HOME outside the sandbox's directory", async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  expect(sandbox.resolveHome({ HOME: ctx.rootDir })).rejects.toThrow(
+    `HOME ${ctx.rootDir} is outside the guest root ${join(ctx.rootDir, sandbox.id, 'fs')}`,
+  );
+});
+
+test('it lists every file under a directory at any depth, relative to it', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: '/work/a.txt', content: new TextEncoder().encode('a') },
+    { path: '/work/deep/b.txt', content: new TextEncoder().encode('b') },
+    { path: '/other/c.txt', content: new TextEncoder().encode('c') },
+  ]);
+
+  const listed = await sandbox.collectFiles('/work');
+
+  expect(listed).toIncludeSameMembers(['a.txt', 'deep/b.txt']);
+});
+
+test('it lists no file under a missing directory', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+  const listed = await sandbox.collectFiles('/missing');
+
+  expect(listed).toStrictEqual([]);
+});
+
+test('it moves a file over the one at the target, leaving none at the source', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: '/work/new.txt', content: new TextEncoder().encode('new') },
+    { path: '/work/old.txt', content: new TextEncoder().encode('old') },
+  ]);
+
+  await sandbox.applyMove('/work/new.txt', '/work/old.txt');
+
+  const [moved] = await sandbox.copyOut(['/work/old.txt']);
+  const listed = await sandbox.collectFiles('/work');
+
+  expect(new TextDecoder().decode(moved?.content)).toBe('new');
+  expect(listed).toStrictEqual(['old.txt']);
+});
+
+test('it refuses to move a file onto a directory, and keeps the file', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: '/work/a.txt', content: new TextEncoder().encode('a') },
+    { path: '/work/dir/b.txt', content: new TextEncoder().encode('b') },
+  ]);
+
+  const failure = await sandbox.applyMove('/work/a.txt', '/work/dir').then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  const listed = await sandbox.collectFiles('/work');
+
+  expect(failure).toMatchObject({ code: 'EISDIR' });
+  expect(listed).toIncludeSameMembers(['a.txt', 'dir/b.txt']);
+});
+
+test('it refuses to move a file out of the sandbox', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  expect(sandbox.applyMove('/work/a.txt', '/../a.txt')).rejects.toThrow(
+    'a guest path must stay inside the sandbox: /../a.txt',
+  );
+});
+
 test('it refuses an exec while the sandbox sleeps', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());

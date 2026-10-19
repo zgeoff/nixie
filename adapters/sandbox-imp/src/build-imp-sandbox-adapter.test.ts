@@ -493,6 +493,110 @@ test('it refuses to copy out a guest path that climbs', async () => {
   );
 });
 
+test("it gives the command's HOME as both forms of the guest's home", async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+  const home = await sandbox.resolveHome({ HOME: '/home/nixie' });
+
+  expect(home).toStrictEqual({
+    copyPath: '/home/nixie',
+    ownPath: '/home/nixie',
+  });
+});
+
+test('it refuses the home of a guest command with no HOME', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  expect(sandbox.resolveHome({})).rejects.toThrow('the guest command sets no HOME');
+});
+
+test('it refuses a HOME that is not an absolute guest path', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  expect(sandbox.resolveHome({ HOME: 'home/nixie' })).rejects.toThrow(
+    'a guest path must be absolute and must not climb: home/nixie',
+  );
+});
+
+test('it lists every file under a directory at any depth, relative to it, through the guest', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: join(ctx.dir, 'work/a.txt'), content: new TextEncoder().encode('a') },
+    { path: join(ctx.dir, 'work/deep/b c.txt'), content: new TextEncoder().encode('b') },
+    { path: join(ctx.dir, 'other/c.txt'), content: new TextEncoder().encode('c') },
+  ]);
+
+  const listed = await sandbox.collectFiles(join(ctx.dir, 'work'));
+
+  expect(listed).toIncludeSameMembers(['a.txt', 'deep/b c.txt']);
+});
+
+test('it lists no file under a missing directory', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+  const listed = await sandbox.collectFiles(join(ctx.dir, 'missing'));
+
+  expect(listed).toStrictEqual([]);
+});
+
+test('it moves a file over the one at the target through the guest, leaving none at the source', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: join(ctx.dir, 'work/new.txt'), content: new TextEncoder().encode('new') },
+    { path: join(ctx.dir, 'work/old.txt'), content: new TextEncoder().encode('old') },
+  ]);
+
+  await sandbox.applyMove(join(ctx.dir, 'work/new.txt'), join(ctx.dir, 'work/old.txt'));
+
+  const [moved] = await sandbox.copyOut([join(ctx.dir, 'work/old.txt')]);
+  const listed = await sandbox.collectFiles(join(ctx.dir, 'work'));
+
+  expect(new TextDecoder().decode(moved?.content)).toBe('new');
+  expect(listed).toStrictEqual(['old.txt']);
+});
+
+test('it refuses to move a file onto a directory, and keeps the file', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: join(ctx.dir, 'work/a.txt'), content: new TextEncoder().encode('a') },
+    { path: join(ctx.dir, 'work/dir/b.txt'), content: new TextEncoder().encode('b') },
+  ]);
+
+  const failure = await sandbox
+    .applyMove(join(ctx.dir, 'work/a.txt'), join(ctx.dir, 'work/dir'))
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  expect(failure).toMatchObject({
+    message: expect.toStartWith(
+      `move of ${join(ctx.dir, 'work/a.txt')} to ${join(ctx.dir, 'work/dir')} failed with 1`,
+    ),
+  });
+
+  const listed = await sandbox.collectFiles(join(ctx.dir, 'work'));
+
+  expect(listed).toIncludeSameMembers(['a.txt', 'dir/b.txt']);
+});
+
+test('it refuses to list a guest path that climbs', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  expect(sandbox.collectFiles('/tmp/../etc')).rejects.toThrow(
+    'a guest path must be absolute and must not climb: /tmp/../etc',
+  );
+});
+
 test('it lets a restarted adapter list and destroy what the last one made, for recovery', async () => {
   const ctx = await setupTest();
 

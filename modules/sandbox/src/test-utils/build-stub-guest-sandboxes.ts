@@ -2,15 +2,7 @@ import { join } from 'node:path';
 import type { GuestFrame, HostFrame } from '@heynixie/wire';
 import { createSandboxID } from '../create-sandbox-id';
 import { requireSandboxSpec } from '../require-sandbox-spec';
-import type {
-  ExecResult,
-  FileSpec,
-  RunSpec,
-  Sandbox,
-  SandboxAdapter,
-  SandboxRecorder,
-  SandboxSpec,
-} from '../types';
+import type { FileSpec, Sandbox, SandboxAdapter, SandboxRecorder, SandboxSpec } from '../types';
 import type { StubGuestDisk } from './build-stub-guest-disk';
 import { buildStubGuestDisk } from './build-stub-guest-disk';
 import { runStubGuestSummary } from './run-stub-guest-summary';
@@ -224,11 +216,7 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
   return {
     id,
     spec,
-    exec: async (command) => {
-      await requireAwake();
-
-      return runCommand(own.disk, command);
-    },
+    exec: () => Promise.reject(new Error('the stub sandbox runs no command')),
     spawn: async (command) => {
       await requireAwake();
 
@@ -247,6 +235,25 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
       }
 
       return Promise.all(paths.map((path) => readFile(own.disk, path)));
+    },
+    resolveHome: (env) => {
+      const home = env['HOME'];
+
+      return home === undefined
+        ? Promise.reject(new Error('the guest command sets no HOME'))
+        : Promise.resolve({ copyPath: home, ownPath: home });
+    },
+
+    // a list and a move run in the guest, as imp runs them, so a sleeping sandbox refuses them
+    collectFiles: async (dir) => {
+      await requireAwake();
+
+      return collectFiles(own.disk, dir);
+    },
+    applyMove: async (from, to) => {
+      await requireAwake();
+
+      applyMove(own.disk, from, to);
     },
     toolRoute: () => Promise.resolve({ url: 'http://127.0.0.1:8901' }),
     suspension: {
@@ -343,78 +350,30 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
   });
 }
 
-const noOutput = { bytes: new Uint8Array(0), totalBytes: 0, isCut: false };
-
-// The two commands the host runs in a sandbox to carry a session over: the script that lists the
-// session's files, and the move that publishes the staged transcript. Anything else is refused.
-function runCommand(disk: StubGuestDisk, command: RunSpec): ExecResult {
-  const [program, flag, , name, sessionID] = command.argv;
-  const home = command.env?.['HOME'];
-
-  if (program === 'sh' && flag === '-c' && name === 'sh' && sessionID !== undefined) {
-    return home === undefined
-      ? buildFailure('HOME is not set')
-      : buildSuccess(`${home}\n${home}\n${collectSessionFiles(disk, home, sessionID)}`);
-  }
-
-  if (program === 'mv' && command.argv.length === 5 && command.cwd !== undefined) {
-    return applyMove(
-      disk,
-      join(command.cwd, command.argv[3] ?? ''),
-      join(command.cwd, command.argv[4] ?? ''),
-    );
-  }
-
-  return buildFailure(`the stub sandbox runs no command like ${command.argv.join(' ')}`);
-}
-
-// each file of the session under the projects folder, relative to it, as the find in the script prints
-function collectSessionFiles(disk: StubGuestDisk, home: string, sessionID: string): string {
-  const projectsDir = `${join(home, '.claude/projects')}/`;
+// every file under the directory, relative to it; the disk holds files only, so a directory is the
+// prefix its files share
+function collectFiles(disk: StubGuestDisk, dir: string): readonly string[] {
+  const prefix = join(dir, '/');
 
   return [...disk.files.keys()]
-    .filter((path) => path.startsWith(projectsDir))
-    .map((path) => path.slice(projectsDir.length))
-    .filter((path) => new RegExp(`^[^/]+/${sessionID}(\\.jsonl|/.+)$`, 'u').test(path))
-    .map((path) => `./${path}\n`)
-    .join('');
+    .filter((path) => path.startsWith(prefix))
+    .map((path) => path.slice(prefix.length));
 }
 
-function applyMove(disk: StubGuestDisk, from: string, to: string): ExecResult {
+// a rename: it replaces a file at the target, and fails on a missing source or a directory target
+function applyMove(disk: StubGuestDisk, from: string, to: string): void {
   const content = disk.files.get(from);
 
   if (content === undefined) {
-    return buildFailure(`mv: cannot stat '${from}': No such file or directory`);
+    throw new Error(`ENOENT: no such file or directory, rename '${from}' -> '${to}'`);
+  }
+
+  if ([...disk.files.keys()].some((path) => path.startsWith(`${to}/`))) {
+    throw new Error(`EISDIR: illegal operation on a directory, rename '${from}' -> '${to}'`);
   }
 
   disk.files.delete(from);
   disk.files.set(to, content);
-
-  return buildSuccess('');
-}
-
-function buildSuccess(stdout: string): ExecResult {
-  const bytes = new TextEncoder().encode(stdout);
-
-  return {
-    code: 0,
-    signal: null,
-    stdout: { bytes, totalBytes: bytes.length, isCut: false },
-    stderr: noOutput,
-    durationMs: 0,
-  };
-}
-
-function buildFailure(message: string): ExecResult {
-  const bytes = new TextEncoder().encode(message);
-
-  return {
-    code: 1,
-    signal: null,
-    stdout: noOutput,
-    stderr: { bytes, totalBytes: bytes.length, isCut: false },
-    durationMs: 0,
-  };
 }
 
 function readFile(disk: StubGuestDisk, path: string): Promise<FileSpec> {

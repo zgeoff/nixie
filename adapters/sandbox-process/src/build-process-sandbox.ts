@@ -1,7 +1,8 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import type {
   FileSpec,
+  GuestHome,
   ProcessIO,
   RunSpec,
   Sandbox,
@@ -50,6 +51,9 @@ export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
     },
     copyIn: (files) => writeGuestFiles(ctx.fsRoot, files),
     copyOut: (paths) => Promise.all(paths.map((path) => readGuestFile(ctx.fsRoot, path))),
+    resolveHome: (env) => Promise.try(() => resolveGuestHome(ctx.fsRoot, env)),
+    collectFiles: (dir) => collectGuestFiles(ctx.fsRoot, dir),
+    applyMove: (from, to) => applyGuestMove(ctx.fsRoot, from, to),
     toolRoute: async () => {
       if (!ctx.spec.toolRoute) {
         return null;
@@ -118,4 +122,40 @@ async function readGuestFile(fsRoot: string, path: string): Promise<FileSpec> {
   const content = await readFile(resolveGuestPath(fsRoot, path));
 
   return { path, content: new Uint8Array(content) };
+}
+
+// The guest's processes start with HOME at the sandbox's own directory unless the command's env
+// sets it, and the guest's root is that directory, so the copy path is the home below it.
+function resolveGuestHome(fsRoot: string, env: Readonly<Record<string, string>>): GuestHome {
+  const home = env['HOME'] ?? fsRoot;
+  const below = relative(fsRoot, home);
+
+  if (!isAbsolute(home) || below === '..' || below.startsWith(`..${sep}`)) {
+    throw new Error(`HOME ${home} is outside the guest root ${fsRoot}`);
+  }
+
+  return { copyPath: join('/', below), ownPath: home };
+}
+
+async function collectGuestFiles(fsRoot: string, dir: string): Promise<readonly string[]> {
+  const root = resolveGuestPath(fsRoot, dir);
+
+  const entries = await readdir(root, { recursive: true, withFileTypes: true }).catch(
+    (error: unknown) => {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+        return [];
+      }
+
+      throw error;
+    },
+  );
+
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => relative(root, join(entry.parentPath, entry.name)));
+}
+
+// a rename, which replaces a file at the target in one step
+async function applyGuestMove(fsRoot: string, from: string, to: string): Promise<void> {
+  await rename(resolveGuestPath(fsRoot, from), resolveGuestPath(fsRoot, to));
 }
