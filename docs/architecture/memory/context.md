@@ -134,10 +134,13 @@ The store keeps a keyword index and a vector index over the user's messages, bui
 indexes are, with each entry keyed by the message's record sequence. Both live in process memory,
 and each start rebuilds them from every readable message, so a forgotten message's words never
 outlive the process. The indexes hold the user's messages on every thread, and never a reply, a tool
-result or a summary, because those are model text or outside content. Before each search, the store
-indexes the messages recorded since the last one. While the vector index is ready, it waits for
-their vectors, so the message one turn sent matches by meaning on the next. While the vector index
-rebuilds after a start, the search places keyword matches alone and never waits for the rebuild.
+result or a summary, because those are model text or outside content. Each entry holds only the
+spans the user typed, so a message matches on the user's own words and never on a paste or a drop. A
+message with labelled spans and no typed text has no entry. A message whose client labelled no span
+keeps its whole text in its entry. Before each search, the store indexes the messages recorded since
+the last one. While the vector index is ready, it waits for their vectors, so the message one turn
+sent matches by meaning on the next. While the vector index rebuilds after a start, the search
+places keyword matches alone and never waits for the rebuild.
 
 The indexes rank sequences and never supply the text. Under the delivery lock, the store reads each
 candidate again and leaves out a message whose key is gone or that backed a forgotten item, so a
