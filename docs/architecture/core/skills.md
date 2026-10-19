@@ -23,8 +23,8 @@ on the version it pinned, as [0013](../../decisions/0013-definition-versioning.m
 its persona. A skill version stays in the database after a seed replaces it, so a pinned version
 stays readable. Before the first seed, a task has no skills and records no pin.
 
-The conversation is one long task, so its pin holds until a reload moves it on. Each conversation
-step reads the pin as it begins, and the turn and the compaction request render the same catalog.
+The conversation is one long task, so it keeps the versions of its first pin. Each conversation step
+reads the pin as it begins, and the turn and the compaction request render the same catalog.
 
 ## The catalog
 
