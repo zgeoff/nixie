@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildMockSandboxSpec, setupTestRecorder } from '@heynixie/sandbox/test-utils';
@@ -119,9 +119,13 @@ test('it leaves no resumable transcript when the publish of the staged copy fail
 
   await Bun.write(join(fromProject, `${sessionID}.jsonl`), '{"uuid":"a"}\n');
 
-  // a read-only folder where the transcript goes, so the mv into it fails
-  await mkdir(join(toProject, `${sessionID}.jsonl`), { recursive: true });
-  await chmod(join(toProject, `${sessionID}.jsonl`), 0o555);
+  // a folder where the transcript goes, so mv moves the staged copy into it, onto a folder of the
+  // staged copy's name, which mv cannot overwrite with a file whatever user runs it
+  await mkdir(join(toProject, `${sessionID}.jsonl`, `${sessionID}.jsonl.copy`), {
+    recursive: true,
+  });
+
+  await Bun.write(join(toProject, `${sessionID}.jsonl`, `${sessionID}.jsonl.copy`, 'held'), '');
 
   const failure = await writeKeptSession({ from, to, command: ctx.command, sessionID }).then(
     () => null,
