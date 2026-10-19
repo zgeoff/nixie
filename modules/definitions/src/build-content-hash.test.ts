@@ -48,6 +48,11 @@ test('it matches the hash that the vendoring guide computes over a skill folder'
 
   await writeFile(join(ctx.dir, 'skills', 'pdf-forms', 'SKILL.md'), skill);
   await writeFile(join(ctx.dir, 'skills', 'pdf-forms', 'scripts', 'fill.py'), script);
+  await writeFile(join(ctx.dir, 'skills', 'pdf-forms', '-example.txt'), 'example\n');
+
+  // U+FF21 sorts before U+1F600 by code point and after it by UTF-16 code unit
+  await writeFile(join(ctx.dir, 'skills', 'pdf-forms', '\u{FF21}.md'), 'wide\n');
+  await writeFile(join(ctx.dir, 'skills', 'pdf-forms', '\u{1F600}.md'), 'smile\n');
   await writeFile(join(ctx.dir, 'skills', 'pdf-forms', '.git', 'HEAD'), 'ref: main\n');
 
   const command = snippet.replaceAll(/^ {3}/gmu, '').replace('<name>', 'pdf-forms');
@@ -56,6 +61,9 @@ test('it matches the hash that the vendoring guide computes over a skill folder'
   const files = new Map([
     ['SKILL.md', new TextEncoder().encode(skill)],
     ['scripts/fill.py', new TextEncoder().encode(script)],
+    ['-example.txt', new TextEncoder().encode('example\n')],
+    ['\u{FF21}.md', new TextEncoder().encode('wide\n')],
+    ['\u{1F600}.md', new TextEncoder().encode('smile\n')],
   ]);
 
   expect(run.stdout.toString().trim()).toBe(buildContentHash(files));
