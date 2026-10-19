@@ -14,15 +14,17 @@ export interface ConversationMemory {
   readonly defaultZone: string;
 }
 
-// The conversation's tools that reach no memory store: web fetch, the time tool and the log reader.
+// The conversation's tools that reach no memory store: web fetch, the time tool, the log reader
+// and the skill tools.
 export interface ConversationReaders {
   readonly webFetch: ToolDefinition;
   readonly time: ToolDefinition;
   readonly logRead: ToolDefinition;
+  readonly skills: readonly ToolDefinition[];
 }
 
-// Builds the conversation's tool definitions: the web fetch tool, the time tool, the log reader
-// and the 11 memory tools. The registry exists before the memory store starts, so the memory tools
+// Builds the conversation's tool definitions: the web fetch tool, the time tool, the log reader,
+// the skill tools and the 11 memory tools. The registry exists before the memory store starts, so the memory tools
 // reach the store through readStore. A call before the store starts throws.
 export function buildConversationTools(
   readers: ConversationReaders,
@@ -42,6 +44,7 @@ export function buildConversationTools(
     readers.webFetch,
     readers.time,
     readers.logRead,
+    ...readers.skills,
     ...buildMemoryTools(
       {
         recall: (request) => requireStore().recall(request),
