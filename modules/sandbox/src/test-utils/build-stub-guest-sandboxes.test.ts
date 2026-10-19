@@ -525,6 +525,21 @@ test('it refuses the home of a guest command with no HOME', async () => {
   expect(sandbox.resolveHome({})).rejects.toThrow('the guest command sets no HOME');
 });
 
+test("it gives a guest command with no HOME the guest's root, which is the sandbox's folder under the host root", async () => {
+  const ctx = await setupTest();
+
+  const stub = buildStubGuestSandboxes({
+    recorder: ctx.recorder.recorder,
+    countTokens: (text) => Math.ceil(text.length / 4),
+    hostRoot: '/srv/sandboxes',
+  });
+
+  const sandbox = await stub.adapter.create(ctx.spec);
+  const home = await sandbox.resolveHome({});
+
+  expect(home).toStrictEqual({ copyPath: '/', ownPath: `/srv/sandboxes/${sandbox.id}` });
+});
+
 test('it lists every file under a directory at any depth, relative to it', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);

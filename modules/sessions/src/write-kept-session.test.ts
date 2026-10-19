@@ -19,8 +19,41 @@ async function setupTest() {
 
   const spec = buildMockSandboxSpec({ kind: 'conversation', owner: 'conversation' });
 
-  return { adapter: stub.adapter, spec };
+  return { recorder: recorder.recorder, adapter: stub.adapter, spec };
 }
+
+test("it carries the session under the project folder that the destination guest's own home names", async () => {
+  const ctx = await setupTest();
+
+  const stub = buildStubGuestSandboxes({
+    recorder: ctx.recorder,
+    countTokens: (text) => Math.ceil(text.length / 4),
+    hostRoot: '/srv/sandboxes',
+  });
+
+  const from = await stub.adapter.create(ctx.spec);
+  const to = await stub.adapter.create(ctx.spec);
+
+  const sessionID = crypto.randomUUID();
+
+  await from.copyIn([
+    {
+      path: `/.claude/projects/-srv-sandboxes-${from.id}-conversation/${sessionID}.jsonl`,
+      content: new TextEncoder().encode('{"uuid":"a"}\n'),
+    },
+  ]);
+
+  await writeKeptSession({ from, to, command: { argv: ['guest'], env: {} }, sessionID });
+
+  const landed = await to.collectFiles('/.claude/projects');
+
+  const [transcript] = await to.copyOut([
+    `/.claude/projects/-srv-sandboxes-${to.id}-conversation/${sessionID}.jsonl`,
+  ]);
+
+  expect(landed).toStrictEqual([`-srv-sandboxes-${to.id}-conversation/${sessionID}.jsonl`]);
+  expect(new TextDecoder().decode(transcript?.content)).toBe('{"uuid":"a"}\n');
+});
 
 test('it carries the transcript and side folder into the replacement, with no staged copy left', async () => {
   const ctx = await setupTest();

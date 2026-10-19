@@ -2,7 +2,14 @@ import { join } from 'node:path';
 import type { GuestFrame, HostFrame } from '@heynixie/wire';
 import { createSandboxID } from '../create-sandbox-id';
 import { requireSandboxSpec } from '../require-sandbox-spec';
-import type { FileSpec, Sandbox, SandboxAdapter, SandboxRecorder, SandboxSpec } from '../types';
+import type {
+  FileSpec,
+  GuestHome,
+  Sandbox,
+  SandboxAdapter,
+  SandboxRecorder,
+  SandboxSpec,
+} from '../types';
 import type { StubGuestDisk } from './build-stub-guest-disk';
 import { buildStubGuestDisk } from './build-stub-guest-disk';
 import { runStubGuestSummary } from './run-stub-guest-summary';
@@ -24,6 +31,11 @@ export interface StubGuestSandboxesOptions {
   // the tokens a text adds to the context, which each session entry's size and the context size
   // the guest reports come from
   readonly countTokens: (text: string) => number;
+
+  // the host folder that holds each sandbox's own folder, as the process sandbox's root does: a
+  // command with no HOME then has its home at the guest's root, which is that folder on the host;
+  // with none, such a command has no home
+  readonly hostRoot?: string;
 }
 
 // A host frame as one sandbox's guest received it.
@@ -236,13 +248,7 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
 
       return Promise.all(paths.map((path) => readFile(own.disk, path)));
     },
-    resolveHome: (env) => {
-      const home = env['HOME'];
-
-      return home === undefined
-        ? Promise.reject(new Error('the guest command sets no HOME'))
-        : Promise.resolve({ copyPath: home, ownPath: home });
-    },
+    resolveHome: (env) => Promise.try(() => resolveHome(state.options.hostRoot, id, env)),
 
     // a list and a move run in the guest, as imp runs them, so a sleeping sandbox refuses them
     collectFiles: async (dir, options) => {
@@ -348,6 +354,26 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
         return [{ type: 'purged' }];
       }),
   });
+}
+
+// The HOME a command sets is the guest's home in both forms. A command with no HOME has its home at
+// the guest's root, whose own path is the sandbox's folder under the host root, if one is given.
+function resolveHome(
+  hostRoot: string | undefined,
+  id: string,
+  env: Readonly<Record<string, string>>,
+): GuestHome {
+  const home = env['HOME'];
+
+  if (home !== undefined) {
+    return { copyPath: home, ownPath: home };
+  }
+
+  if (hostRoot === undefined) {
+    throw new Error('the guest command sets no HOME');
+  }
+
+  return { copyPath: '/', ownPath: join(hostRoot, id) };
 }
 
 // every file under the directory down to the depth, relative to it; the disk holds files only, so a
