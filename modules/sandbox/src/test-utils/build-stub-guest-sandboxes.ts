@@ -299,6 +299,9 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
           callTool: state.options.callTool,
           countTokens: state.options.countTokens,
           takeMessage: () => guest.takeMessage?.(),
+
+          // a guest with no signal is one no host stops
+          signal: guest.signal ?? new AbortController().signal,
         }),
       ),
     onSummary: (frame) =>

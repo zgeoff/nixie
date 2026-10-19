@@ -683,6 +683,35 @@ test('it answers a live message that arrives during a tool call, in the same ses
   expect(first?.boundary.sessionID).toBe(second?.boundary.sessionID);
 });
 
+test('it writes no transcript from a turn the host stopped during a tool call, so a purge after the stop holds', async () => {
+  const release = Promise.withResolvers<string>();
+
+  const ctx = await setupTest({ callTool: () => release.promise });
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies({ toolUse: { name: 'mcp__nixie__notes_read', input: {} } });
+
+  const stream = await sandbox.spawn({ argv: ['guest'], env, maxMessageBytes: 1 << 20 });
+
+  const turn = buildMockTurnFrame({
+    input: [{ uuid: crypto.randomUUID(), text: 'the blue flowerpot' }],
+  });
+
+  // the turn runs up to its tool call within the send, and waits there on the release
+  await stream.send(encodeTurnFrame(turn));
+
+  const stopping = stream.stop();
+
+  await runGuestFrame(sandbox, { type: 'purge' });
+
+  release.resolve('Buy oat milk.');
+
+  const exited = await stopping;
+
+  expect(exited.signal).toBe('SIGTERM');
+  expect(ctx.stub.collectFilesWithText('blue flowerpot')).toStrictEqual([]);
+});
+
 test('it keeps the inputs that completed before a later input fails, and resumes from them', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);

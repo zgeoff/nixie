@@ -1,3 +1,4 @@
+import { once } from 'node:events';
 import type { GuestFrame, HostFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { StubGuestDisk, StubSessionEntry } from './build-stub-guest-disk';
@@ -54,6 +55,9 @@ export interface StubGuestRun {
 
   // the next live message that reached the guest and no input has taken, or undefined when none
   readonly takeMessage: () => InboxMessage | undefined;
+
+  // aborts when the host stops the guest: a tool call in flight ends, and the turn writes nothing
+  readonly signal: AbortSignal;
 }
 
 // the window of a profile that sets no context cap, the smallest the CLI assumes for any model
@@ -111,6 +115,11 @@ async function runInputs(
     const answer = await runInputCall(turn, run, { entries, fork, progress }).catch(
       (error: unknown) => new Error(String(error)),
     );
+
+    // a stopped guest writes no transcript, so a session the host removed after the stop stays gone
+    if (run.signal.aborted) {
+      return frames;
+    }
 
     if (answer instanceof Error) {
       // the inputs that completed keep their transcript and their frames, as the guest keeps them
@@ -292,7 +301,7 @@ async function runStubToolCall(
     throw new Error('the stub guest has no route to the tools');
   }
 
-  const result = await run.callTool({
+  const call = run.callTool({
     sandboxID: run.sandboxID,
     owner: run.owner,
     token: turn.tools.token,
@@ -302,12 +311,37 @@ async function runStubToolCall(
     input: toolUse.input,
   });
 
+  const result = await waitForToolResult(call, run.signal);
+
   return {
     uuid: crypto.randomUUID(),
     role: 'user',
     text: result,
     tokens: run.countTokens(result),
   };
+}
+
+// the tool's result, or the signal's reason once the host stops the guest, as a killed guest stops
+// waiting on its call
+async function waitForToolResult(call: Promise<string>, signal: AbortSignal): Promise<string> {
+  signal.throwIfAborted();
+
+  // ends the wait on the abort once the call settles first
+  const settled = new AbortController();
+
+  const waitForStop = async (): Promise<never> => {
+    await once(signal, 'abort', { signal: settled.signal });
+
+    signal.throwIfAborted();
+
+    invariant(false, 'the abort event fires only on an aborted signal');
+  };
+
+  try {
+    return await Promise.race([call, waitForStop()]);
+  } finally {
+    settled.abort();
+  }
 }
 
 interface EndedPoint {
