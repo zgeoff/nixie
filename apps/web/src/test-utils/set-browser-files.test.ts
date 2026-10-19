@@ -1,5 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { checkBrowserSkip } from './check-browser-skip';
 import { setBrowserFiles } from './set-browser-files';
+
+// Bun 1.4.2's skipIf takes a boolean and has no in-body skip. Outside CI these tests skip when no
+// browser starts, and the run prints why; CI always runs them.
+const browserSkip = await checkBrowserSkip();
 
 // The helper drives a headless Chrome or Chromium, which Bun finds on PATH, in a standard install
 // location, or at BUN_CHROME_PATH.
@@ -29,28 +34,31 @@ async function setupTest() {
   return { view };
 }
 
-test('it sets the files on the input, with their names and bytes, as a pick does', async () => {
-  const ctx = await setupTest();
+test.skipIf(browserSkip.isSkipped)(
+  'it sets the files on the input, with their names and bytes, as a pick does',
+  async () => {
+    const ctx = await setupTest();
 
-  await setBrowserFiles(ctx.view, {
-    selector: '#picker',
-    files: [
-      { name: 'swatch.png', bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) },
-      { name: 'tile.jpg', bytes: new Uint8Array([0xff, 0xd8]) },
-    ],
-  });
+    await setBrowserFiles(ctx.view, {
+      selector: '#picker',
+      files: [
+        { name: 'swatch.png', bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) },
+        { name: 'tile.jpg', bytes: new Uint8Array([0xff, 0xd8]) },
+      ],
+    });
 
-  const picked: unknown = await ctx.view.evaluate(`Promise.all(
+    const picked: unknown = await ctx.view.evaluate(`Promise.all(
     [...document.querySelector('#picker').files].map(async (file) => [file.name, [...new Uint8Array(await file.arrayBuffer())]]),
   )`);
 
-  expect(picked).toStrictEqual([
-    ['swatch.png', [0x89, 0x50, 0x4e, 0x47]],
-    ['tile.jpg', [0xff, 0xd8]],
-  ]);
-});
+    expect(picked).toStrictEqual([
+      ['swatch.png', [0x89, 0x50, 0x4e, 0x47]],
+      ['tile.jpg', [0xff, 0xd8]],
+    ]);
+  },
+);
 
-test('it refuses a page that never shows the input', async () => {
+test.skipIf(browserSkip.isSkipped)('it refuses a page that never shows the input', async () => {
   const ctx = await setupTest();
 
   const set = setBrowserFiles(ctx.view, {
