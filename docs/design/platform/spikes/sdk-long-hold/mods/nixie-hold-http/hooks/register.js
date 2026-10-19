@@ -16,8 +16,8 @@ async function handleToolCall($, e, next) {
   if (!e.command.includes('MARK_HOLD')) {
     return next(e);
   }
-  const base = await $.env.get('NIXIE_DECIDER_URL'),
-    started = Date.now();
+  const base = await $.env.get('NIXIE_DECIDER_URL');
+  const started = Date.now();
   await $.ui.log(`nixie hold start budget=${JSON.stringify(next.budget)}`, { to: 'debug' });
   if ((await readDecision($, `${base}/decide?tool_use_id=${e.tool_use_id}`, started)) === 'allow') {
     return next(e);

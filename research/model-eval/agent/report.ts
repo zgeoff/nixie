@@ -92,9 +92,9 @@ function collectGroups<T>(items: T[], key: (item: T) => string): Map<string, T[]
 function buildMemoryRows(pairs: [Run, Judged][], group: (run: Run) => string): string[][] {
   return [...collectGroups(pairs, ([run]) => group(run)).entries()].map(([name, items]) => {
     const evidence = items
-        .map(([, judged]) => judged.evidence)
-        .filter((item) => item && item.checked > 0),
-      verdicts = items.map(([, judged]) => judged.verdict);
+      .map(([, judged]) => judged.evidence)
+      .filter((item) => item && item.checked > 0);
+    const verdicts = items.map(([, judged]) => judged.verdict);
     return [
       name,
       String(items.length),
@@ -139,23 +139,23 @@ function buildDayRows(pairs: [Run, Judged][]): string[][] {
 
 function buildDetail(run: Run, judged: Judged | undefined): string {
   const calls = run.calls
-      .map(
-        (call) =>
-          `<li><code>${formatHtml(call.name)}</code> ${formatHtml(JSON.stringify(call.args))} → ${call.result.isError ? '<b class="bad">' : ''}${formatHtml(call.result.text)}${call.result.isError ? '</b>' : ''}</li>`,
-      )
-      .join(''),
-    memory = run.memory
-      .map(
-        (entry) =>
-          `<li>${formatHtml(entry.id)} [${formatHtml(entry.source ?? '')}] ${formatHtml(entry.fact)}</li>`,
-      )
-      .join(''),
-    turns = run.turns
-      .map(
-        (turn) =>
-          `<div class="turn"><div class="label">${formatHtml(turn.label)}</div><div class="owner">${formatHtml(turn.prompt.slice(0, 300))}${turn.prompt.length > 300 ? '…' : ''}</div><div class="reply">${formatHtml(turn.reply)}</div></div>`,
-      )
-      .join('');
+    .map(
+      (call) =>
+        `<li><code>${formatHtml(call.name)}</code> ${formatHtml(JSON.stringify(call.args))} → ${call.result.isError ? '<b class="bad">' : ''}${formatHtml(call.result.text)}${call.result.isError ? '</b>' : ''}</li>`,
+    )
+    .join('');
+  const memory = run.memory
+    .map(
+      (entry) =>
+        `<li>${formatHtml(entry.id)} [${formatHtml(entry.source ?? '')}] ${formatHtml(entry.fact)}</li>`,
+    )
+    .join('');
+  const turns = run.turns
+    .map(
+      (turn) =>
+        `<div class="turn"><div class="label">${formatHtml(turn.label)}</div><div class="owner">${formatHtml(turn.prompt.slice(0, 300))}${turn.prompt.length > 300 ? '…' : ''}</div><div class="reply">${formatHtml(turn.reply)}</div></div>`,
+    )
+    .join('');
   return `<details><summary>${formatHtml(getKey(run))}${run.error ? ` <b class="bad">${formatHtml(run.error)}</b>` : ''}</summary>
 <h4>Tool calls</h4><ol>${calls}</ol>${run.task === 'memory' ? `<h4>Memory after</h4><ul>${memory}</ul>` : ''}
 <h4>Turns</h4>${turns}<h4>Judge</h4><pre>${formatHtml(JSON.stringify(judged ?? {}, null, 2))}</pre></details>`;
@@ -163,25 +163,25 @@ function buildDetail(run: Run, judged: Judged | undefined): string {
 
 function buildPage(runs: Run[], judged: Map<string, Judged>): string {
   const allPairs = runs.flatMap((run): [Run, Judged][] => {
-      const verdict = judged.get(getKey(run));
-      return verdict ? [[run, verdict]] : [];
-    }),
-    day = allPairs.filter(([run]) => run.task === 'day'),
-    memory = allPairs.filter(([run]) => run.task === 'memory'),
-    memoryHead = [
-      'Group',
-      'Runs',
-      'Entries',
-      'Supported',
-      'Invented',
-      'Misattributed',
-      'Outdated entry updated',
-      'Loops found (of 4)',
-      'Loops invented',
-      'Gender assumed',
-      'Bad quotes',
-      'Time',
-    ];
+    const verdict = judged.get(getKey(run));
+    return verdict ? [[run, verdict]] : [];
+  });
+  const day = allPairs.filter(([run]) => run.task === 'day');
+  const memory = allPairs.filter(([run]) => run.task === 'memory');
+  const memoryHead = [
+    'Group',
+    'Runs',
+    'Entries',
+    'Supported',
+    'Invented',
+    'Misattributed',
+    'Outdated entry updated',
+    'Loops found (of 4)',
+    'Loops invented',
+    'Gender assumed',
+    'Bad quotes',
+    'Time',
+  ];
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Agent eval</title>
 <style>:root{--bg:#f7f7f5;--card:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#deded8;--bad:#c92a2a}
 @media (prefers-color-scheme:dark){:root{--bg:#161615;--card:#1f1f1d;--text:#ecece8;--muted:#9a9a93;--line:#34342f;--bad:#ff6b6b}}
@@ -209,10 +209,10 @@ th:first-child,td:first-child{text-align:left}details{background:var(--card);bor
 </body></html>`;
 }
 
-const dir = process.argv[2] ?? '',
-  judged = new Map(readLines<Judged>(join(dir, 'judged.jsonl')).map((row) => [row.key, row])),
-  runs = readLines<Run>(join(dir, 'runs.jsonl')).toSorted((a, b) =>
-    getKey(a).localeCompare(getKey(b)),
-  );
+const dir = process.argv[2] ?? '';
+const judged = new Map(readLines<Judged>(join(dir, 'judged.jsonl')).map((row) => [row.key, row]));
+const runs = readLines<Run>(join(dir, 'runs.jsonl')).toSorted((a, b) =>
+  getKey(a).localeCompare(getKey(b)),
+);
 writeFileSync(join(dir, 'report.html'), buildPage(runs, judged));
 console.log(`wrote ${join(dir, 'report.html')} with ${runs.length} runs`);

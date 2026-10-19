@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@heynixie/sandbox": "workspace:*",
-    "@zgeoff/imp-client": "catalog:",
+    "@impz/client": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

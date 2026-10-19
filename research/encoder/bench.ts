@@ -64,8 +64,8 @@ const itemIDs = ITEMS.map((item) => item.id);
 const messageVectors = await embedInBatches(embed, toQueries(QUESTIONS.map((question) => question.message)), 32);
 const keywordVectors = await embedInBatches(embed, toQueries(QUESTIONS.map((question) => question.keywords)), 32);
 const scoreQuestions = (vectors: Float32Array[]): { recall: number; mrr: number } => {
-  let recall = 0,
-    mrr = 0;
+  let recall = 0;
+  let mrr = 0;
   QUESTIONS.forEach((question, index) => {
     const ranked = rankVectors(vectors[index] as Float32Array, itemVectors).map((row) => itemIDs[row]);
     const found = question.gold.filter((id) => ranked.slice(0, 5).includes(id)).length;

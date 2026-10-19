@@ -25,8 +25,8 @@ export interface Settings {
   tools: string[];
 }
 
-const here = import.meta.dir,
-  tokens = new Map<string, string>();
+const here = import.meta.dir;
+const tokens = new Map<string, string>();
 
 function printStderr(data: string): void {
   for (const line of data.trimEnd().split('\n')) {
@@ -76,8 +76,8 @@ function readToken(profile: Profile): string {
   if (profile.authToken) {
     return profile.authToken;
   }
-  const command = profile.authTokenCommand ?? '',
-    token = tokens.get(command) ?? execSync(command, { encoding: 'utf8' }).trim();
+  const command = profile.authTokenCommand ?? '';
+  const token = tokens.get(command) ?? execSync(command, { encoding: 'utf8' }).trim();
   tokens.set(command, token);
   return token;
 }

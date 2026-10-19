@@ -61,8 +61,8 @@ for (const cores of ['all', '2'] as const) {
 console.log('| Candidate | Cores | Load ms | Query ms | Batch ms/item | RSS loaded MB | RSS peak MB | 30 pairs | 75 msg R@5 | 75 kw R@5 | MRR msg |');
 console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
 for (const row of results) {
-  const message = row.questionsMessage as { recall: number; mrr: number },
-    keywords = row.questionsKeywords as { recall: number };
+  const message = row.questionsMessage as { recall: number; mrr: number };
+  const keywords = row.questionsKeywords as { recall: number };
   console.log(
     `| ${row.id} | ${String(row.cores)} | ${fix(row.loadMs, 0)} | ${fix(row.singleMsMedian, 1)} | ${fix(row.batchMsPerItem, 2)} | ${String(row.rssLoadedMB)} | ${String(row.rssPeakMB)} | ${fix(Number(row.pairRecall) * 30, 0)}/30 | ${fix(message.recall, 2)} | ${fix(keywords.recall, 2)} | ${fix(message.mrr, 2)} |`,
   );

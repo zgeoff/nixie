@@ -23,12 +23,12 @@ async function handleToolCall($, e, next) {
   if (!e.command.includes('MARK_HOLD')) {
     return next(e);
   }
-  const base = await $.env.get('NIXIE_DECIDER_URL'),
-    started = Date.now(),
-    verdict = await waitForDecision($, {
-      budget: next.budget,
-      url: `${base}/decide?tool_use_id=${e.tool_use_id}`,
-    });
+  const base = await $.env.get('NIXIE_DECIDER_URL');
+  const started = Date.now();
+  const verdict = await waitForDecision($, {
+    budget: next.budget,
+    url: `${base}/decide?tool_use_id=${e.tool_use_id}`,
+  });
   if (verdict.decision === 'allow') {
     return next(e);
   }

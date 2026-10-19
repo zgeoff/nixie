@@ -1,4 +1,3 @@
-// oxlint-disable one-var -- spike code
 // The isomorphic link. Server rendering calls nixie's API over the private network and forwards
 // the device session from the browser's cookie as a bearer token. The browser calls nixie's public
 // URL straight, and its cookie rides along. Start holds no session of its own in either branch.

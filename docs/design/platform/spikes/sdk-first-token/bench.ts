@@ -45,8 +45,8 @@ function readFlag(name: string): string | undefined {
 
 // Starts the clock, then calls open(), so the SDK's own setup counts toward the turn.
 async function readOne(open: () => Query): Promise<Turn> {
-  const clockStart = performance.now(),
-    session = open();
+  const clockStart = performance.now();
+  const session = open();
   try {
     return await readTurn(session[Symbol.asyncIterator](), () => clockStart, { text: '' });
   } finally {
@@ -118,8 +118,8 @@ async function readStreamTurns(
 
 // stream: one query() with a prompt stream; turns 2 and 3 reach a process that is already up.
 async function runStream(model: string, withTools: boolean): Promise<Turn[]> {
-  const input: Stream = { closed: false, events: new EventTarget(), queue: [] },
-    session = query({ options: buildOptions(model, withTools), prompt: sendQueued(input) });
+  const input: Stream = { closed: false, events: new EventTarget(), queue: [] };
+  const session = query({ options: buildOptions(model, withTools), prompt: sendQueued(input) });
   try {
     return await readStreamTurns(session[Symbol.asyncIterator](), input, []);
   } finally {
@@ -146,42 +146,42 @@ async function waitClaim(spare: SpareProcess): Promise<void> {
 
 // The clock starts at claim(), which binds the spare to a folder and sends the prompt.
 async function runClaim(spare: SpareProcess, options: ClaimTarget): Promise<Turn[]> {
-  const refusal = waitClaim(spare),
-    turn = await readOne(() => spare.claim({ options, prompt: prompts[0] ?? '' }));
+  const refusal = waitClaim(spare);
+  const turn = await readOne(() => spare.claim({ options, prompt: prompts[0] ?? '' }));
   await refusal;
   return [turn];
 }
 
 // prewarm: a parked spare with host-level options; the clock starts at claim().
 async function runPrewarm(model: string, withTools: boolean): Promise<Turn[]> {
-  const { cwd, model: _model, ...hostOptions } = buildOptions(model, withTools),
-    spare = await prewarm({ options: hostOptions });
+  const { cwd, model: _model, ...hostOptions } = buildOptions(model, withTools);
+  const spare = await prewarm({ options: hostOptions });
   await Bun.sleep(500);
   return runClaim(spare, { cwd: cwd ?? scratch, model });
 }
 
 const models = (
-    readFlag('--models') ?? 'claude-haiku-4-5-20251001,claude-haiku-5-5,claude-sonnet-5-5'
-  ).split(','),
-  modes = (readFlag('--modes')?.split(',') ?? [
-    'fresh',
-    'cold',
-    'resume',
-    'stream',
-    'startup',
-    'prewarm',
-  ]) as Mode[],
-  out = readFlag('--out') ?? 'results/run.jsonl',
-  runners: Record<Mode, (model: string, withTools: boolean) => Promise<Turn[]>> = {
-    cold: (model, withTools) => runColdResume(model, withTools, 'cold'),
-    fresh: (model, withTools) => runColdResume(model, withTools, 'fresh'),
-    prewarm: runPrewarm,
-    resume: (model, withTools) => runColdResume(model, withTools, 'resume'),
-    startup: runStartup,
-    stream: runStream,
-  },
-  samples = Number(readFlag('--samples') ?? '10'),
-  toolCounts = (readFlag('--tools') ?? '0,3').split(',').map(Number);
+  readFlag('--models') ?? 'claude-haiku-4-5-20251001,claude-haiku-5-5,claude-sonnet-5-5'
+).split(',');
+const modes = (readFlag('--modes')?.split(',') ?? [
+  'fresh',
+  'cold',
+  'resume',
+  'stream',
+  'startup',
+  'prewarm',
+]) as Mode[];
+const out = readFlag('--out') ?? 'results/run.jsonl';
+const runners: Record<Mode, (model: string, withTools: boolean) => Promise<Turn[]>> = {
+  cold: (model, withTools) => runColdResume(model, withTools, 'cold'),
+  fresh: (model, withTools) => runColdResume(model, withTools, 'fresh'),
+  prewarm: runPrewarm,
+  resume: (model, withTools) => runColdResume(model, withTools, 'resume'),
+  startup: runStartup,
+  stream: runStream,
+};
+const samples = Number(readFlag('--samples') ?? '10');
+const toolCounts = (readFlag('--tools') ?? '0,3').split(',').map(Number);
 
 // Each row holds the host's 1-minute load average, to spot turns slowed by other work.
 function writeTurns(cell: Cell, turns: Turn[]): void {

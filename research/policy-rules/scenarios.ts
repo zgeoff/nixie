@@ -1,4 +1,4 @@
-/* oxlint-disable no-nested-ternary, max-lines, max-lines-per-function, max-statements, one-var, sort-vars, no-loop-func, prefer-spread -- a throwaway spike keeps each question in one readable pass */
+/* oxlint-disable no-nested-ternary, max-lines, max-lines-per-function, max-statements, no-loop-func, prefer-spread -- a throwaway spike keeps each question in one readable pass */
 // Question 4: how many prompts do scripted scenarios raise against the starter
 // rule set with auto-mode off, and from which causes? Each scenario is a fixed
 // sequence of tool calls; no model runs.
@@ -22,8 +22,8 @@ interface Scenario {
   steps: Step[];
 }
 
-const HOUR = 3600,
-  BOOK = { sam: 'sam@example.com' };
+const HOUR = 3600;
+const BOOK = { sam: 'sam@example.com' };
 
 function buildTalk(typed: string): {
   context: 'conversation';
@@ -403,18 +403,18 @@ function getGroupKey(policy: Policy, call: Call): string {
 }
 
 function buildAlwaysRule(policy: Policy, call: Call, index: number): Rule {
-  const destinations = getDestinations(policy, call),
-    checks = Object.entries(call.args)
-      .filter(
-        ([key, value]) =>
-          !(findTool(policy, call.tool)?.destinationArgs ?? []).includes(key) &&
-          typeof value !== 'object',
-      )
-      .map(([key, value]) => ({
-        arg: key,
-        op: 'eq' as const,
-        value: value as string | number | boolean,
-      }));
+  const destinations = getDestinations(policy, call);
+  const checks = Object.entries(call.args)
+    .filter(
+      ([key, value]) =>
+        !(findTool(policy, call.tool)?.destinationArgs ?? []).includes(key) &&
+        typeof value !== 'object',
+    )
+    .map(([key, value]) => ({
+      arg: key,
+      op: 'eq' as const,
+      value: value as string | number | boolean,
+    }));
   return {
     id: `always-${index}`,
     outcome: 'allow',
@@ -426,34 +426,34 @@ function buildAlwaysRule(policy: Policy, call: Call, index: number): Rule {
 
 function runScenarios(): void {
   const lift: Rule = {
-      id: 'lift-small-shopping',
-      outcome: 'allow',
-      tools: ['shop.buy'],
-      destinations: ['shop.example'],
-      lift: { perAction: 20, budget: 'shopping-month' },
-    },
-    totals = new Map<string, number>();
-  let defects = 0,
-    fromSearch = 0,
-    mismatches = 0;
+    id: 'lift-small-shopping',
+    outcome: 'allow',
+    tools: ['shop.buy'],
+    destinations: ['shop.example'],
+    lift: { perAction: 20, budget: 'shopping-month' },
+  };
+  const totals = new Map<string, number>();
+  let defects = 0;
+  let fromSearch = 0;
+  let mismatches = 0;
   for (const scenario of SCENARIOS) {
-    const policy = makePolicy([lift]),
-      ledger: Ledger = { spent: new Map() },
-      always = new Set<string>(),
-      approvals = new Map<string, number>(),
-      lines: string[] = [];
+    const policy = makePolicy([lift]);
+    const ledger: Ledger = { spent: new Map() };
+    const always = new Set<string>();
+    const approvals = new Map<string, number>();
+    const lines: string[] = [];
     let prompts = 0;
     scenario.steps.forEach((step, index) => {
-      const call: Call = { ...step.call, time: step.at ?? 0 },
-        decision = getDecision(policy, call, ledger);
-      let cause = decision.cause,
-        gap = '';
+      const call: Call = { ...step.call, time: step.at ?? 0 };
+      const decision = getDecision(policy, call, ledger);
+      let cause = decision.cause;
+      let gap = '';
       if (decision.outcome === 'ask') {
         prompts += 1;
-        const key = getGroupKey(policy, call),
-          verbatim = getDestinations(policy, call).every((destination) =>
-            isNamedVerbatim(call, destination),
-          );
+        const key = getGroupKey(policy, call);
+        const verbatim = getDestinations(policy, call).every((destination) =>
+          isNamedVerbatim(call, destination),
+        );
         if (cause !== 'always_ask' && cause !== 'ask_rule' && call.owner?.requested && verbatim) {
           cause = 'direct_request';
         } else if (cause !== 'always_ask' && always.has(key)) {
@@ -488,9 +488,9 @@ function runScenarios(): void {
           (ledger.spent.get('shopping-month') ?? 0) + Number(call.args[tool.amountArg]),
         );
       }
-      const expected = step.expectPrompt,
-        wanted = expected ? 'ask' : step.expectDeny ? 'deny' : 'allow',
-        ok = decision.outcome === wanted && (wanted !== 'ask' || cause === expected);
+      const expected = step.expectPrompt;
+      const wanted = expected ? 'ask' : step.expectDeny ? 'deny' : 'allow';
+      const ok = decision.outcome === wanted && (wanted !== 'ask' || cause === expected);
       if (!ok) {
         mismatches += 1;
       }
