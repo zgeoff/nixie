@@ -32,6 +32,10 @@ const caseSchema = z
 
     // the item an edit_not_add case must edit
     target: z.string().min(1).nullable(),
+
+    // the regular expressions, matched without case, that the text of the write the rule asks for
+    // must match, such as the exception a correction adds
+    patterns: z.array(z.string().min(1)).readonly(),
   })
   .readonly();
 

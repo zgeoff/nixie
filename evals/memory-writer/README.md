@@ -3,7 +3,8 @@
 This eval checks that the [memory writer](../../docs/architecture/memory/writer.md) keeps track of
 who is who: it files a fact about you as yours, files something between you and the assistant as
 shared, and flags what you say about the assistant instead of writing it in your name. Each case is
-one invented batch with the rule that every run of it must meet.
+one invented batch with the rule that every run of it must meet, and the patterns that the text of
+the write the rule asks for must match, such as the exception a correction adds.
 
 [cases.json](cases.json) holds 8 cases:
 
@@ -44,5 +45,5 @@ cases filed no owner item in any of their 6 runs. The prompt before subjects, ru
 alone, filed an owner item in all 6 runs, such as "Sam wants the assistant to be human-like and not
 a tool".
 
-In one run of `flip-human-like`, the writer filed a shared item that holds your wish for the
-assistant, beside a flag; the other 2 runs only flagged.
+In 2 runs of `flip-human-like`, the writer filed a shared item that holds your wish for the
+assistant, beside a flag; the third run only flagged.

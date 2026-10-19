@@ -20,6 +20,7 @@ test('it renders the production prompts over the case, with the guest names of t
       ],
       rule: 'shared_item',
       target: null,
+      patterns: [],
     },
     tools,
   );
@@ -68,6 +69,7 @@ test('it gives the same input the same hash, and another case another hash', () 
       messages: [{ role: 'owner', text: 'I switched to oat milk.' }],
       rule: 'owner_item',
       target: null,
+      patterns: [],
     },
     tools,
   );
@@ -80,6 +82,7 @@ test('it gives the same input the same hash, and another case another hash', () 
       messages: [{ role: 'owner', text: 'I switched to oat milk.' }],
       rule: 'owner_item',
       target: null,
+      patterns: [],
     },
     tools,
   );
@@ -92,6 +95,7 @@ test('it gives the same input the same hash, and another case another hash', () 
       messages: [{ role: 'owner', text: 'I switched to soy milk.' }],
       rule: 'owner_item',
       target: null,
+      patterns: [],
     },
     tools,
   );

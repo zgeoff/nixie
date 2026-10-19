@@ -103,7 +103,7 @@ test.each([
   expect(unasserted).toSatisfyAll((labelled: LabelledCall) => labelled.call.verdict !== 'asserted');
 });
 
-test.each(['corpus', 'held-out-1', 'held-out-2'] as const)(
+test.each(['corpus', 'held-out-1', 'held-out-2', 'subjects'] as const)(
   'it confirms every memory that a %s message asserts, on every call the checker answered',
   async (name) => {
     const ctx = await setupTest({ name });

@@ -26,6 +26,7 @@ test('it loads each case with its items, its messages and its rule', async () =>
         messages: [{ role: 'owner' as const, text: 'I switched to oat milk.' }],
         rule: 'owner_item' as const,
         target: null,
+        patterns: ['oat milk'],
       },
     ],
   };
@@ -53,6 +54,7 @@ test('it refuses an item whose subject is self', async () => {
           messages: [{ role: 'owner', text: 'I switched to oat milk.' }],
           rule: 'owner_item',
           target: null,
+          patterns: [],
         },
       ],
     }),
@@ -79,6 +81,7 @@ test('it refuses a case with a rule it does not know', async () => {
           messages: [{ role: 'owner', text: 'I switched to oat milk.' }],
           rule: 'some_item',
           target: null,
+          patterns: [],
         },
       ],
     }),

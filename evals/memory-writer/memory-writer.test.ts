@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { buildWriterTools, createWriterStaging } from '@heynixie/memory';
 import { buildWriterEvalInput } from '../test-utils/build-writer-eval-input';
+import { checkWriterRule } from '../test-utils/check-writer-rule';
 import { loadWriterCases } from '../test-utils/load-writer-cases';
 import type { WriterCall } from '../test-utils/load-writer-report';
 import { loadWriterReport } from '../test-utils/load-writer-report';
@@ -46,77 +47,23 @@ test('it checks a report in which every run finished', async () => {
   expect(ctx.report.calls).toSatisfyAll((call: WriterCall) => call.failure === null);
 });
 
-test.each([
-  ['plain-owner-fact', 'owner'],
-  ['nickname-shared', 'shared'],
-] as const)('it passes %s: every run files a new %s item', async (id, subject) => {
+test("it meets each case's rule on every run", async () => {
   const ctx = await setupTest();
 
-  const runs = ctx.report.calls.filter((call) => call.case === id);
+  const rules = new Map(ctx.cases.cases.map((writerCase) => [writerCase.id, writerCase]));
 
-  expect(runs).toHaveLength(ctx.report.repeats);
+  const findings = ctx.report.calls.map((call) => {
+    const writerCase = rules.get(call.case);
 
-  expect(runs).toSatisfyAll((call: WriterCall) =>
-    call.writes.some(
-      (write) => write.op === 'remember' && write.itemID === null && write.subject === subject,
-    ),
-  );
-});
+    return {
+      case: call.case,
+      repeat: call.repeat,
+      finding:
+        writerCase === undefined
+          ? 'the case is not in the corpus'
+          : checkWriterRule(writerCase, call),
+    };
+  });
 
-test('it passes deal-correction: every run edits the deal and adds no item', async () => {
-  const ctx = await setupTest();
-
-  const runs = ctx.report.calls.filter((call) => call.case === 'deal-correction');
-
-  expect(runs).toHaveLength(ctx.report.repeats);
-
-  expect(runs).toSatisfyAll(
-    (call: WriterCall) =>
-      call.writes.some(
-        (write) =>
-          write.op === 'remember' && write.itemID === 'item-practice' && write.subject === 'shared',
-      ) && call.writes.every((write) => write.itemID !== null),
-  );
-});
-
-test.each(['mixed-item', 'assistant-taste'])(
-  'it passes %s: every run flags a possible self-note and writes nothing',
-  async (id) => {
-    const ctx = await setupTest();
-
-    const runs = ctx.report.calls.filter((call) => call.case === id);
-
-    expect(runs).toHaveLength(ctx.report.repeats);
-
-    expect(runs).toSatisfyAll(
-      (call: WriterCall) => call.writes.length === 0 && call.flags.length > 0,
-    );
-  },
-);
-
-test.each(['flip-persona-check-in', 'flip-human-like'])(
-  'it passes %s: no run files an owner item',
-  async (id) => {
-    const ctx = await setupTest();
-
-    const runs = ctx.report.calls.filter((call) => call.case === id);
-
-    expect(runs).toHaveLength(ctx.report.repeats);
-
-    expect(runs).toSatisfyAll((call: WriterCall) =>
-      call.writes.every((write) => write.subject !== 'owner'),
-    );
-  },
-);
-
-test('it passes nickname-assistant-only: no run writes or flags anything', async () => {
-  const ctx = await setupTest();
-
-  const runs = ctx.report.calls.filter((call) => call.case === 'nickname-assistant-only');
-
-  expect(runs).toHaveLength(ctx.report.repeats);
-
-  expect(runs).toSatisfyAll(
-    (call: WriterCall) => call.writes.length === 0 && call.flags.length === 0,
-  );
+  expect(findings).toSatisfyAll((entry: (typeof findings)[number]) => entry.finding === null);
 });

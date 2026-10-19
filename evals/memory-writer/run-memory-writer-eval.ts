@@ -1,12 +1,10 @@
-// oxlint-disable no-restricted-imports -- the eval runs the writer's session through the Agent SDK
-
 // Runs each case through the production writer prompts and tools on the writer's model, with the
 // query options the guest uses, and writes the report the eval suite checks. It calls the model
 // with the local Claude Code login, so CI never runs it (see the README).
 import { mkdtemp } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk';
+import type { SDKResultMessage, SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk';
 import { createSdkMcpServer, query } from '@anthropic-ai/claude-agent-sdk';
 import type { JSONObject } from '@heynixie/log';
 import { buildWriterTools, createWriterStaging } from '@heynixie/memory';
@@ -114,7 +112,7 @@ interface SessionResult {
 }
 
 // One writer session with the guest's query options: nixie's tools alone, served in process, the
-// system prompt verbatim, and no settings, skills or memory of the CLI's own.
+// prompts verbatim, and no settings, skills, memory or compaction of the CLI's own.
 async function runSession(
   input: WriterEvalInput,
   tools: readonly ToolDefinition[],
@@ -137,6 +135,15 @@ async function runSession(
       settingSources: [],
       strictMcpConfig: true,
       skills: [],
+      verbatimPrompts: true,
+      settings: {
+        disableBundledSkills: true,
+        autoMemoryEnabled: false,
+        autoDreamEnabled: false,
+        autoCompactEnabled: false,
+        precomputeCompactionEnabled: false,
+        idleCompaction: false,
+      },
       mcpServers: { nixie: server },
       systemPrompt: { type: 'custom', prompt: input.systemPrompt, snapshot: false },
       cwd: home,
@@ -160,7 +167,7 @@ async function runSession(
     for await (const message of session) {
       if (message.type === 'result') {
         return {
-          failure: message.subtype === 'success' ? null : message.subtype,
+          failure: findResultFailure(message),
           inputTokens: message.usage.input_tokens + (message.usage.cache_read_input_tokens ?? 0),
           outputTokens: message.usage.output_tokens,
         };
@@ -173,6 +180,16 @@ async function runSession(
   }
 
   return { failure: 'the session ended with no result', inputTokens: 0, outputTokens: 0 };
+}
+
+// why a session's result ends the run early: an error subtype, or a success that holds the API
+// error the turn ended on in place of the model's reply
+function findResultFailure(message: SDKResultMessage): string | null {
+  if (message.subtype !== 'success') {
+    return message.subtype;
+  }
+
+  return message.is_error ? `api error: ${message.result}` : null;
 }
 
 // A production writer tool as the SDK serves it. The SDK takes a zod shape, so the shape comes

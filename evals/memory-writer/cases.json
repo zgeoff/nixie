@@ -17,7 +17,8 @@
         }
       ],
       "rule": "owner_item",
-      "target": null
+      "target": null,
+      "patterns": ["oat milk"]
     },
     {
       "id": "mixed-item",
@@ -39,7 +40,8 @@
         }
       ],
       "rule": "flag_only",
-      "target": null
+      "target": null,
+      "patterns": []
     },
     {
       "id": "nickname-shared",
@@ -55,7 +57,8 @@
         }
       ],
       "rule": "shared_item",
-      "target": null
+      "target": null,
+      "patterns": ["porch talk"]
     },
     {
       "id": "deal-correction",
@@ -77,7 +80,8 @@
         }
       ],
       "rule": "edit_not_add",
-      "target": "item-practice"
+      "target": "item-practice",
+      "patterns": ["remind", "(except|not|no|apart from|other than|but|skip)[^.]*fridays?"]
     },
     {
       "id": "assistant-taste",
@@ -93,7 +97,8 @@
         }
       ],
       "rule": "flag_only",
-      "target": null
+      "target": null,
+      "patterns": []
     },
     {
       "id": "flip-persona-check-in",
@@ -113,7 +118,8 @@
         }
       ],
       "rule": "no_owner_item",
-      "target": null
+      "target": null,
+      "patterns": []
     },
     {
       "id": "flip-human-like",
@@ -141,7 +147,8 @@
         }
       ],
       "rule": "no_owner_item",
-      "target": null
+      "target": null,
+      "patterns": []
     },
     {
       "id": "nickname-assistant-only",
@@ -161,7 +168,8 @@
         }
       ],
       "rule": "nothing",
-      "target": null
+      "target": null,
+      "patterns": []
     }
   ]
 }
