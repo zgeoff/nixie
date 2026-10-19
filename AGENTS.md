@@ -17,7 +17,8 @@ The rules a task needs are not repeated here. Load the skill for the work before
 
 ## Repo structure
 
-nixie is one Bun workspace. Every package is private, takes the name `@heynixie/<folder>`, and is
+nixie is one Bun workspace, which the [code layout](docs/architecture/code-layout.md) describes.
+Every package is private and takes the name `@heynixie/<folder>`. A package that others import is
 consumed as source through an `exports` map that points at `src/index.ts`.
 
 ```text
@@ -66,7 +67,8 @@ Boundaries:
 
 The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package:
 
-- The Agent SDK: `guests/conversation`.
+- The Agent SDK: `guests/conversation`. The SDK contract suite and its eval helpers in `evals/` may
+  import it too, because they check the SDK itself.
 - imp's client: `adapters/sandbox-imp`.
 - `bun:sqlite` and the Kysely dialect: `libs/db`.
 
