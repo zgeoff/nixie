@@ -185,7 +185,8 @@ function findApprovalRefusal(
 }
 
 // a revision binds to the version of the close match the view showed, which must still be active
-// or retired, and of the proposal's kind, which nixie's API answers as a revision target it refuses
+// or retired, and of the proposal's kind, which nixie's API answers as a revision target it refuses;
+// a pinned proposal's revision must also leave the item active
 function findRevisionTargetRefusal(
   proposal: StoredProposal,
   target: NonNullable<ApprovalInput['revisionOf']>,
@@ -201,9 +202,14 @@ function findRevisionTargetRefusal(
     return { cause: 'moved', proposalID, status: 'stale' };
   }
 
-  return item.kind === proposal.kind
-    ? null
-    : { code: 'REVISION_TARGET', proposalID, status: 'refused' };
+  if (item.kind !== proposal.kind) {
+    return { code: 'REVISION_TARGET', proposalID, status: 'refused' };
+  }
+
+  // a revision keeps a retired item retired, and only an active item joins the pinned core
+  return item.state === 'retired' && proposal.isPinned
+    ? { code: 'WRONG_STATE', proposalID, status: 'refused' }
+    : null;
 }
 
 // the active item of the proposal's kind a new item's text matches, case aside, unless the answer

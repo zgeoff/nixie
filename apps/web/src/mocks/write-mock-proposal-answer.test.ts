@@ -357,6 +357,38 @@ test('it applies a revision of a retired item, and the item stays retired', asyn
   ]);
 });
 
+test('it refuses a pinned proposal as a revision of a retired item, and writes nothing', async () => {
+  const item = await store.memoryItems.create({
+    state: 'retired',
+    versions: [{ state: 'retired', text: 'Keeps bees on the roof' }],
+  });
+
+  const proposal = await store.memoryProposals.create({
+    isPinned: true,
+    text: 'Keeps two hives on the roof',
+  });
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+    revisionOf: { itemID: item.itemID, version: 1 },
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(outcome).toStrictEqual({
+    code: 'WRONG_STATE',
+    proposalID: proposal.proposalID,
+    status: 'refused',
+  });
+
+  expect(stored?.versions).toHaveLength(1);
+  expect(store.records.all()).toStrictEqual([]);
+});
+
 test('it refuses a revision that takes the pinned core past its budget, and writes nothing', async () => {
   await store.memoryItems.create({ isPinned: true, versions: [{ text: 'b'.repeat(7960) }] });
 
