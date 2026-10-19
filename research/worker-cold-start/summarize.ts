@@ -26,8 +26,8 @@ function readField(sample: Sample, path: string): number | undefined {
 }
 
 function printRows(phase: string, groupKey: string, paths: string[], isGood: (s: Sample) => boolean) {
-  const samples = load(phase),
-    bad = samples.filter((sample) => !isGood(sample)).length;
+  const samples = load(phase);
+  const bad = samples.filter((sample) => !isGood(sample)).length;
   console.log(`\n## ${phase} (${bad} failed samples left out)\n`);
   console.log('| Group | Mode | Field | n | Median | p90 |');
   console.log('| --- | --- | --- | --: | --: | --: |');
@@ -41,8 +41,8 @@ function printRows(phase: string, groupKey: string, paths: string[], isGood: (s:
           .map((sample) => readField(sample, path))
           .filter((value) => value !== undefined);
         if (values.length > 0) {
-          const median = pickPercentile(values, 0.5),
-            p90 = pickPercentile(values, 0.9);
+          const median = pickPercentile(values, 0.5);
+          const p90 = pickPercentile(values, 0.9);
           console.log(`| ${group} | ${mode} | ${path} | ${values.length} | ${median} | ${p90} |`);
         }
       }

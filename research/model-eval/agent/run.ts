@@ -124,51 +124,51 @@ interface TurnResult {
 }
 
 const CONFIGS: Record<string, Config> = {
-    'glm-default': { harness: 'sdk', profile: 'glm' },
-    'glm-low': { effort: 'low', harness: 'sdk', profile: 'glm' },
-    'glm-flash-default': { harness: 'sdk', model: 'glm-5.3-flash', profile: 'glm' },
-    'glm-flash-low': { effort: 'low', harness: 'sdk', model: 'glm-5.3-flash', profile: 'glm' },
-    'haiku-low': { effort: 'low', harness: 'sdk', model: 'claude-haiku-5-5' },
-    'luna-low': { effort: 'low', harness: 'codex', model: 'gpt-6-luna' },
-    'muse-low': { effort: 'low', harness: 'sdk', profile: 'muse' },
-  },
-  QUIET_FEATURES = [
-    'apps',
-    'browser_use',
-    'browser_use_external',
-    'computer_use',
-    'goals',
-    'hooks',
-    'image_generation',
-    'in_app_browser',
-    'multi_agent',
-    'plugin_sharing',
-    'plugins',
-    'realtime_conversation',
-    'remote_plugin',
-    'shell_snapshot',
-    'shell_tool',
-    'skill_mcp_dependency_install',
-    'skill_search',
-    'sleep_tool',
-    'tool_suggest',
-    'unified_exec',
-    'view_image',
-    'workspace_dependencies',
-    'worktrees',
-  ],
-  TOOL_NAMES = [
-    'memory_search',
-    'memory_write',
-    'memory_update',
-    'reminder_create',
-    'calendar_list',
-    'calendar_create',
-    'message_draft',
-    'web_search',
-  ],
-  agentDir = import.meta.dir,
-  caseDir = resolve(readFlag(process.argv, '--memory-case') ?? join(agentDir, 'memory/example'));
+  'glm-default': { harness: 'sdk', profile: 'glm' },
+  'glm-low': { effort: 'low', harness: 'sdk', profile: 'glm' },
+  'glm-flash-default': { harness: 'sdk', model: 'glm-5.3-flash', profile: 'glm' },
+  'glm-flash-low': { effort: 'low', harness: 'sdk', model: 'glm-5.3-flash', profile: 'glm' },
+  'haiku-low': { effort: 'low', harness: 'sdk', model: 'claude-haiku-5-5' },
+  'luna-low': { effort: 'low', harness: 'codex', model: 'gpt-6-luna' },
+  'muse-low': { effort: 'low', harness: 'sdk', profile: 'muse' },
+};
+const QUIET_FEATURES = [
+  'apps',
+  'browser_use',
+  'browser_use_external',
+  'computer_use',
+  'goals',
+  'hooks',
+  'image_generation',
+  'in_app_browser',
+  'multi_agent',
+  'plugin_sharing',
+  'plugins',
+  'realtime_conversation',
+  'remote_plugin',
+  'shell_snapshot',
+  'shell_tool',
+  'skill_mcp_dependency_install',
+  'skill_search',
+  'sleep_tool',
+  'tool_suggest',
+  'unified_exec',
+  'view_image',
+  'workspace_dependencies',
+  'worktrees',
+];
+const TOOL_NAMES = [
+  'memory_search',
+  'memory_write',
+  'memory_update',
+  'reminder_create',
+  'calendar_list',
+  'calendar_create',
+  'message_draft',
+  'web_search',
+];
+const agentDir = import.meta.dir;
+const caseDir = resolve(readFlag(process.argv, '--memory-case') ?? join(agentDir, 'memory/example'));
 
 function readTurns(path: string): Turn[] {
   return readFileSync(path, 'utf8')
@@ -248,8 +248,8 @@ async function* sendTurns(session: Session): AsyncGenerator<SDKUserMessage> {
   if (session.index >= session.job.turns.length) {
     return;
   }
-  const answered = once(session.events, 'result'),
-    turn = session.job.turns[session.index];
+  const answered = once(session.events, 'result');
+  const turn = session.job.turns[session.index];
   session.started = Date.now();
   yield {
     message: { content: turn?.text ?? '', role: 'user' },
@@ -306,9 +306,9 @@ function buildSdkOptions(job: Job, config: Config, dir: string) {
 
 // Claude Code path: Haiku on the subscription, GLM and Muse through their profiles and the proxy.
 async function runSdk(job: Job, config: Config, dir: string): Promise<TurnResult[]> {
-  const options = buildSdkOptions(job, config, dir),
-    results: TurnResult[] = [],
-    session: Session = { events: new EventTarget(), index: 0, job, started: Date.now() };
+  const options = buildSdkOptions(job, config, dir);
+  const results: TurnResult[] = [];
+  const session: Session = { events: new EventTarget(), index: 0, job, started: Date.now() };
   for await (const message of query({
     options,
     prompt: sendTurns(session),
@@ -357,27 +357,27 @@ default_tools_approval_mode = "approve"
 
 async function runCodexExec(session: CodexSession, turn: Turn): Promise<CodexOutput> {
   const child = Bun.spawn(
-      [
-        'codex',
-        'exec',
-        ...(session.thread ? ['resume', session.thread] : []),
-        '--strict-config',
-        '--skip-git-repo-check',
-        '--json',
-        turn.text,
-      ],
-      {
-        cwd: session.dir,
-        env: { CODEX_HOME: session.home, HOME: session.fakeHome, PATH: process.env.PATH ?? '' },
-        stderr: 'pipe',
-        stdin: 'ignore',
-        stdout: 'pipe',
-      },
-    ),
-    [stdout, stderr] = await Promise.all([
-      new Response(child.stdout).text(),
-      new Response(child.stderr).text(),
-    ]);
+    [
+      'codex',
+      'exec',
+      ...(session.thread ? ['resume', session.thread] : []),
+      '--strict-config',
+      '--skip-git-repo-check',
+      '--json',
+      turn.text,
+    ],
+    {
+      cwd: session.dir,
+      env: { CODEX_HOME: session.home, HOME: session.fakeHome, PATH: process.env.PATH ?? '' },
+      stderr: 'pipe',
+      stdin: 'ignore',
+      stdout: 'pipe',
+    },
+  );
+  const [stdout, stderr] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
   await child.exited;
   return { exitCode: child.exitCode, stderr, stdout };
 }
@@ -422,9 +422,9 @@ function buildCodexResult(session: CodexSession, done: CodexTurn): TurnResult {
 }
 
 async function runCodexTurn(session: CodexSession, turn: Turn): Promise<void> {
-  const began = Date.now(),
-    captured = await runCodexExec(session, turn),
-    parsed = parseCodexEvents(captured.stdout);
+  const began = Date.now();
+  const captured = await runCodexExec(session, turn);
+  const parsed = parseCodexEvents(captured.stdout);
   session.thread ??= parsed.find((event) => event.thread_id)?.thread_id;
   session.results.push(buildCodexResult(session, { began, captured, parsed, turn }));
   session.total = readCodexUsage(session, parsed);
@@ -440,9 +440,9 @@ async function runCodexTurns(session: CodexSession, turns: Turn[]): Promise<void
 
 // Codex path: one `codex exec` per turn, resuming the same thread, as in codex-converse.ts.
 async function runCodex(job: Job, config: Config, dir: string): Promise<TurnResult[]> {
-  const fakeHome = mkdtempSync(join(tmpdir(), 'agent-home-')),
-    home = mkdtempSync(join(tmpdir(), 'agent-codex-')),
-    session: CodexSession = { dir, fakeHome, home, results: [], thread: undefined, total: 0 };
+  const fakeHome = mkdtempSync(join(tmpdir(), 'agent-home-'));
+  const home = mkdtempSync(join(tmpdir(), 'agent-codex-'));
+  const session: CodexSession = { dir, fakeHome, home, results: [], thread: undefined, total: 0 };
   writeFileSync(join(dir, 'system.md'), job.system);
   writeFileSync(join(home, 'config.toml'), buildCodexConfig(job, config, dir));
   symlinkSync(join(homedir(), '.codex', 'auth.json'), join(home, 'auth.json'));
@@ -507,8 +507,8 @@ function buildRow(run: JobRun, outcome: Outcome) {
 }
 
 async function writeRow(run: JobRun, config: Config, outFile: string): Promise<void> {
-  const outcome = await runHarness(run.job, config, run.dir),
-    row = buildRow(run, outcome);
+  const outcome = await runHarness(run.job, config, run.dir);
+  const row = buildRow(run, outcome);
   appendFileSync(outFile, `${JSON.stringify(row)}\n`);
   console.log(
     `${getKey(run.job)} ${row.error ? `FAIL ${row.error}` : 'ok'} ${(row.durationMs / 1000).toFixed(0)}s calls=${row.calls.length}`,
@@ -516,9 +516,9 @@ async function writeRow(run: JobRun, config: Config, outFile: string): Promise<v
 }
 
 async function runJob(job: Job, outFile: string): Promise<void> {
-  const config = readConfig(job),
-    dir = mkdtempSync(join(tmpdir(), 'agent-run-')),
-    started = Date.now();
+  const config = readConfig(job);
+  const dir = mkdtempSync(join(tmpdir(), 'agent-run-'));
+  const started = Date.now();
   if (job.seed) {
     copyFileSync(job.seed, join(dir, 'seed.json'));
   }
@@ -544,13 +544,13 @@ function readOutFile(argv: string[]): string {
 }
 
 function planJobs(argv: string[], outFile: string): Job[] {
-  const configs = (readFlag(argv, '--configs') ?? Object.keys(CONFIGS).join(',')).split(','),
-    done = new Set(readJsonLines(outFile).map((row) => getKey(row as JobKey))),
-    jobs = buildJobs(
-      readFlag(argv, '--task') ?? 'all',
-      configs,
-      Number(readFlag(argv, '--samples') ?? '1'),
-    );
+  const configs = (readFlag(argv, '--configs') ?? Object.keys(CONFIGS).join(',')).split(',');
+  const done = new Set(readJsonLines(outFile).map((row) => getKey(row as JobKey)));
+  const jobs = buildJobs(
+    readFlag(argv, '--task') ?? 'all',
+    configs,
+    Number(readFlag(argv, '--samples') ?? '1'),
+  );
 
   // Interleave configs so slow models do not all queue at the end.
   return jobs
@@ -564,9 +564,9 @@ function planJobs(argv: string[], outFile: string): Job[] {
 }
 
 async function runAll(argv: string[]): Promise<void> {
-  const file = readOutFile(argv),
-    jobCount = Number(readFlag(argv, '--jobs') ?? '4'),
-    jobs = planJobs(argv, file);
+  const file = readOutFile(argv);
+  const jobCount = Number(readFlag(argv, '--jobs') ?? '4');
+  const jobs = planJobs(argv, file);
   console.log(`${jobs.length} runs, ${jobCount} at a time`);
   await Promise.all(Array.from({ length: jobCount }, () => runWorker(jobs, file)));
 }

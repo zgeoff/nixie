@@ -1,4 +1,4 @@
-/* oxlint-disable one-var, no-await-in-loop, max-lines -- one sequential fixture runner with bounded recovery polls */
+/* oxlint-disable no-await-in-loop, max-lines -- one sequential fixture runner with bounded recovery polls */
 import { Database } from 'bun:sqlite';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

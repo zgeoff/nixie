@@ -12,8 +12,8 @@ interface HoldArgs {
   port: number;
 }
 
-const owner = { decidedAt: 0 },
-  started = Date.now();
+const owner = { decidedAt: 0 };
+const started = Date.now();
 
 function formatElapsed(): string {
   return `${((Date.now() - started) / 1000).toFixed(1)}s`.padStart(7);
@@ -118,13 +118,13 @@ function printMessage(message: SDKMessage): void {
 }
 
 async function run(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2)),
-    server = Bun.serve({
-      fetch: (request) => handleOwnerRequest(request, args),
-      hostname: '127.0.0.1',
-      idleTimeout: 0,
-      port: args.port,
-    });
+  const args = parseArgs(process.argv.slice(2));
+  const server = Bun.serve({
+    fetch: (request) => handleOwnerRequest(request, args),
+    hostname: '127.0.0.1',
+    idleTimeout: 0,
+    port: args.port,
+  });
   try {
     for await (const message of startSession(args)) {
       printMessage(message);

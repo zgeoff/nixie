@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { ORPCError, createImpClient } from '@zgeoff/imp-client';
+import { ORPCError, createImpClient } from '@impz/client';
 import { startStubImpd } from './start-stub-impd';
 
 test('it refuses a call with the error in the envelope the imp client reads', () => {

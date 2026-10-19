@@ -1,7 +1,8 @@
-/* oxlint-disable max-lines, max-statements, max-params, no-nested-ternary, one-var, sort-vars -- a throwaway spike keeps each question in one readable pass */
+/* oxlint-disable max-lines, max-statements, max-params, no-nested-ternary -- a throwaway spike keeps each question in one readable pass */
 // A throwaway prototype of nixie's rule engine: rule format, the decision
 // pipeline, canonical hashing and the widening check. Not product code.
 import { createHash } from 'node:crypto';
+import { match } from 'ts-pattern';
 
 export type Outcome = 'allow' | 'ask' | 'deny';
 
@@ -130,14 +131,14 @@ function toNfc(value: unknown): unknown {
 
 // glob with `*` only, anchored at both ends
 export function isGlobMatch(rawPattern: string, rawText: string): boolean {
-  const pattern = rawPattern.normalize('NFC'),
-    text = rawText.normalize('NFC'),
-    parts = pattern.split('*');
+  const pattern = rawPattern.normalize('NFC');
+  const text = rawText.normalize('NFC');
+  const parts = pattern.split('*');
   if (parts.length === 1) {
     return pattern === text;
   }
-  const first = parts[0] ?? '',
-    last = parts.at(-1) ?? '';
+  const first = parts[0] ?? '';
+  const last = parts.at(-1) ?? '';
   if (!text.startsWith(first) || !text.endsWith(last) || text.length < first.length + last.length) {
     return false;
   }
@@ -163,22 +164,12 @@ function isCheckMet(check: Check, args: Record<string, unknown>, all: boolean): 
   if (values.length === 0 || values[0] === undefined) {
     return false;
   }
-  const isPassing = (value: unknown): boolean => {
-    switch (check.op) {
-      case 'eq': {
-        return value === toNfc(check.value);
-      }
-      case 'in': {
-        return (toNfc(check.values) as unknown[]).includes(value);
-      }
-      case 'matches': {
-        return typeof value === 'string' && isGlobMatch(check.pattern, value);
-      }
-      default: {
-        return false;
-      }
-    }
-  };
+  const isPassing = (value: unknown): boolean =>
+    match(check)
+      .with({ op: 'eq' }, (eq) => value === toNfc(eq.value))
+      .with({ op: 'in' }, (inList) => (toNfc(inList.values) as unknown[]).includes(value))
+      .with({ op: 'matches' }, (glob) => typeof value === 'string' && isGlobMatch(glob.pattern, value))
+      .exhaustive();
   return all ? values.every((value) => isPassing(value)) : values.some((value) => isPassing(value));
 }
 
@@ -205,8 +196,8 @@ export function getEffects(policy: Policy, call: Call): Effect[] {
 }
 
 export function getDestinations(policy: Policy, call: Call): string[] {
-  const tool = findTool(policy, call.tool),
-    out: string[] = [];
+  const tool = findTool(policy, call.tool);
+  const out: string[] = [];
   for (const arg of tool?.destinationArgs ?? []) {
     for (const value of toList(readArg(call.args, arg))) {
       if (typeof value === 'string') {
@@ -238,12 +229,12 @@ export function isRuleMatch(policy: Policy, rule: Rule, call: Call): boolean {
   // an allow rule covers a call only when it covers every effect; a deny or
   // ask rule catches a call with any listed effect
   if (rule.effects) {
-    const effects = getEffects(policy, call),
-      listed = new Set(rule.effects),
-      hit =
-        rule.outcome === 'allow'
-          ? effects.length > 0 && effects.every((effect) => listed.has(effect))
-          : effects.some((effect) => listed.has(effect));
+    const effects = getEffects(policy, call);
+    const listed = new Set(rule.effects);
+    const hit =
+      rule.outcome === 'allow'
+        ? effects.length > 0 && effects.every((effect) => listed.has(effect))
+        : effects.some((effect) => listed.has(effect));
     if (!hit) {
       return false;
     }
@@ -255,13 +246,13 @@ export function isRuleMatch(policy: Policy, rule: Rule, call: Call): boolean {
     return false;
   }
   if (rule.destinations) {
-    const destinations = getDestinations(policy, call),
-      isFit = (destination: string): boolean =>
-        (rule.destinations ?? []).some((pattern) => isGlobMatch(pattern, destination)),
-      covered =
-        rule.outcome === 'allow'
-          ? destinations.every((destination) => isFit(destination))
-          : destinations.some((destination) => isFit(destination));
+    const destinations = getDestinations(policy, call);
+    const isFit = (destination: string): boolean =>
+      (rule.destinations ?? []).some((pattern) => isGlobMatch(pattern, destination));
+    const covered =
+      rule.outcome === 'allow'
+        ? destinations.every((destination) => isFit(destination))
+        : destinations.some((destination) => isFit(destination));
     if (!covered) {
       return false;
     }
@@ -303,8 +294,8 @@ function isWordChar(char: string | undefined): boolean {
 }
 
 function hasWholeWord(text: string, word: string): boolean {
-  const haystack = text.normalize('NFC').toLowerCase(),
-    needle = word.normalize('NFC').toLowerCase();
+  const haystack = text.normalize('NFC').toLowerCase();
+  const needle = word.normalize('NFC').toLowerCase();
   let at = haystack.indexOf(needle);
   while (at !== -1) {
     if (!isWordChar(haystack[at - 1]) && !isWordChar(haystack[at + needle.length])) {
@@ -343,15 +334,15 @@ export function getDecision(policy: Policy, call: Call, ledger: Ledger): Decisio
   if (call.toolList && !call.toolList.includes(call.tool)) {
     return { outcome: 'deny', stage: 'scope', detail: 'tool not on the job list' };
   }
-  const matched = policy.rules.filter((rule) => isRuleMatch(policy, rule, call)),
-    denies = matched.filter((rule) => rule.outcome === 'deny');
+  const matched = policy.rules.filter((rule) => isRuleMatch(policy, rule, call));
+  const denies = matched.filter((rule) => rule.outcome === 'deny');
   if (denies.length > 0) {
     return { outcome: 'deny', stage: 'rules', rule: pickFirstId(denies) };
   }
-  const effects = getEffects(policy, call),
-    amount = tool.amountArg === undefined ? 0 : Number(readArg(call.args, tool.amountArg) ?? 0),
-    allows = matched.filter((rule) => rule.outcome === 'allow'),
-    gated = effects.filter((effect) => ALWAYS_ASK.has(effect));
+  const effects = getEffects(policy, call);
+  const amount = tool.amountArg === undefined ? 0 : Number(readArg(call.args, tool.amountArg) ?? 0);
+  const allows = matched.filter((rule) => rule.outcome === 'allow');
+  const gated = effects.filter((effect) => ALWAYS_ASK.has(effect));
   if (gated.length > 0) {
     const lift = allows.find(
       (rule) => rule.lift !== undefined && hasBudgetRoom(policy, ledger, rule.lift, amount),
@@ -360,9 +351,9 @@ export function getDecision(policy: Policy, call: Call, ledger: Ledger): Decisio
       return { outcome: 'ask', stage: 'always_ask', cause: 'always_ask', detail: gated.join(',') };
     }
   }
-  const destinations = getDestinations(policy, call),
-    consent = hasConsent(call, destinations),
-    outside = destinations.filter((destination) => !isStanding(policy, call, destination, allows));
+  const destinations = getDestinations(policy, call);
+  const consent = hasConsent(call, destinations);
+  const outside = destinations.filter((destination) => !isStanding(policy, call, destination, allows));
   if (outside.length > 0 && !consent) {
     return {
       outcome: 'ask',
@@ -512,8 +503,8 @@ export function hasGlobCover(a: string, b: string): boolean {
   }
   const parts = a.split('*');
   if (parts.length === 2) {
-    const [prefix = '', suffix = ''] = parts,
-      bParts = b.split('*');
+    const [prefix = '', suffix = ''] = parts;
+    const bParts = b.split('*');
     return (bParts[0] ?? '').startsWith(prefix) && (bParts.at(-1) ?? '').endsWith(suffix);
   }
   return false;
@@ -546,29 +537,24 @@ function isImplied(strong: Check, weak: Check): boolean {
   }
   const strongValues: unknown[] | undefined =
     strong.op === 'eq' ? [strong.value] : strong.op === 'in' ? strong.values : undefined;
-  switch (weak.op) {
-    case 'eq': {
-      return strongValues?.length === 1 && strongValues[0] === weak.value;
-    }
-    case 'in': {
-      return (
+  return match(weak)
+    .with({ op: 'eq' }, (eq) => strongValues?.length === 1 && strongValues[0] === eq.value)
+    .with(
+      { op: 'in' },
+      (inList) =>
         strongValues !== undefined &&
-        strongValues.every((value) => weak.values.includes(value as string))
-      );
-    }
-    case 'matches': {
+        strongValues.every((value) => inList.values.includes(value as string)),
+    )
+    .with({ op: 'matches' }, (glob) => {
       if (strong.op === 'matches') {
-        return hasGlobCover(weak.pattern, strong.pattern);
+        return hasGlobCover(glob.pattern, strong.pattern);
       }
       return (
         strongValues !== undefined &&
-        strongValues.every((value) => typeof value === 'string' && isGlobMatch(weak.pattern, value))
+        strongValues.every((value) => typeof value === 'string' && isGlobMatch(glob.pattern, value))
       );
-    }
-    default: {
-      return false;
-    }
-  }
+    })
+    .exhaustive();
 }
 
 // every call that `narrow` matches, `wide` matches too

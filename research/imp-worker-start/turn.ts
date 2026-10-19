@@ -72,32 +72,32 @@ function buildServers(tools: number, mcpUrl: string): Record<string, McpServerCo
 }
 
 const brokerVariables = [
-    'HTTPS_PROXY',
-    'https_proxy',
-    'NO_PROXY',
-    'no_proxy',
-    'NODE_USE_ENV_PROXY',
-    'SSL_CERT_FILE',
-    'NODE_EXTRA_CA_CERTS',
-  ],
-  mcpUrl = readTools() > 0 ? readEnv('NIXIE_MCP_URL') : '',
-  options: Options = {
-    allowedTools: [],
+  'HTTPS_PROXY',
+  'https_proxy',
+  'NO_PROXY',
+  'no_proxy',
+  'NODE_USE_ENV_PROXY',
+  'SSL_CERT_FILE',
+  'NODE_EXTRA_CA_CERTS',
+];
+const mcpUrl = readTools() > 0 ? readEnv('NIXIE_MCP_URL') : '';
+const options: Options = {
+  allowedTools: [],
 
-    // A neutral working directory: the CLI's system prompt carries it even with no built-in tools.
-    cwd: mkdtempSync(join(tmpdir(), 'nixie-turn-')),
-    env: buildEnv(readEnv('NIXIE_PLACEMENT'), mcpUrl),
-    includePartialMessages: true,
-    maxTurns: 1,
-    mcpServers: buildServers(readTools(), mcpUrl),
-    model: readEnv('NIXIE_MODEL') || 'claude-haiku-5-5',
-    permissionMode: 'default',
-    settingSources: [],
-    strictMcpConfig: true,
-    tools: [],
-  },
-  prompt = 'Reply with one short sentence that says you are ready. Do not call any tool.',
-  started = performance.now();
+  // A neutral working directory: the CLI's system prompt carries it even with no built-in tools.
+  cwd: mkdtempSync(join(tmpdir(), 'nixie-turn-')),
+  env: buildEnv(readEnv('NIXIE_PLACEMENT'), mcpUrl),
+  includePartialMessages: true,
+  maxTurns: 1,
+  mcpServers: buildServers(readTools(), mcpUrl),
+  model: readEnv('NIXIE_MODEL') || 'claude-haiku-5-5',
+  permissionMode: 'default',
+  settingSources: [],
+  strictMcpConfig: true,
+  tools: [],
+};
+const prompt = 'Reply with one short sentence that says you are ready. Do not call any tool.';
+const started = performance.now();
 
 let sawText = false;
 

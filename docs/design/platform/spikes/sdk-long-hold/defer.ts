@@ -22,15 +22,15 @@ interface DeferArgs {
 }
 
 const prompts: Record<string, string> = {
-    batch:
-      'In one single response, make two Bash tool calls in parallel: `echo batch-one-ran` and ' +
-      '`echo batch-two-ran`. Then quote both results.',
-    start:
-      'Run the shell command `echo deferred-call-ran` with the Bash tool once, then quote the ' +
-      'result exactly.',
-  },
-  results = new EventTarget(),
-  started = Date.now();
+  batch:
+    'In one single response, make two Bash tool calls in parallel: `echo batch-one-ran` and ' +
+    '`echo batch-two-ran`. Then quote both results.',
+  start:
+    'Run the shell command `echo deferred-call-ran` with the Bash tool once, then quote the ' +
+    'result exactly.',
+};
+const results = new EventTarget();
+const started = Date.now();
 
 function formatElapsed(): string {
   return `${((Date.now() - started) / 1000).toFixed(1)}s`.padStart(7);

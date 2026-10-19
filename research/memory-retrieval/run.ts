@@ -1,4 +1,4 @@
-/* oxlint-disable max-statements, no-await-in-loop, one-var, sort-vars -- a throwaway spike that runs each model in turn */
+/* oxlint-disable max-statements, no-await-in-loop -- a throwaway spike that runs each model in turn */
 // Compares keyword search, FTS5 with BM25 ranking, vectors, and BM25 fused with vectors over the
 // synthetic memory items, then times an in-memory FTS5 index over a synthetic event log.
 import { Database } from 'bun:sqlite';
@@ -60,8 +60,8 @@ function buildFtsRanker(db: Database): Ranker {
 }
 
 function buildFts(): { db: Database; ms: number; bytes: number } {
-  const start = performance.now(),
-    db = new Database(':memory:');
+  const start = performance.now();
+  const db = new Database(':memory:');
   db.run("create virtual table items using fts5(id unindexed, text, tokenize='porter unicode61')");
   const insert = db.prepare('insert into items (id, text) values (?, ?)');
   db.transaction(() => {
@@ -69,24 +69,24 @@ function buildFts(): { db: Database; ms: number; bytes: number } {
       insert.run(item.id, item.text);
     }
   })();
-  const ms = performance.now() - start,
-    pages = db
-      .query<{ n: number }, []>(
-        'select page_count * page_size as n from pragma_page_count, pragma_page_size',
-      )
-      .get();
+  const ms = performance.now() - start;
+  const pages = db
+    .query<{ n: number }, []>(
+      'select page_count * page_size as n from pragma_page_count, pragma_page_size',
+    )
+    .get();
   return { bytes: pages?.n ?? 0, db, ms };
 }
 
 type Embed = (texts: string[]) => Promise<Float32Array[]>;
 
 async function loadEmbedder(model: string): Promise<{ embed: Embed; loadMs: number }> {
-  const start = performance.now(),
-    extractor = await pipeline('feature-extraction', model, { dtype: 'fp32' });
+  const start = performance.now();
+  const extractor = await pipeline('feature-extraction', model, { dtype: 'fp32' });
   const encodeTexts: Embed = async (texts) => {
-    const output = await extractor(texts, { normalize: true, pooling: 'mean' }),
-      [rows, dims] = output.dims as [number, number],
-      data = output.data as Float32Array;
+    const output = await extractor(texts, { normalize: true, pooling: 'mean' });
+    const [rows, dims] = output.dims as [number, number];
+    const data = output.data as Float32Array;
     return Array.from({ length: rows }, (_, row) => data.slice(row * dims, (row + 1) * dims));
   };
   return { embed: encodeTexts, loadMs: performance.now() - start };
@@ -138,8 +138,8 @@ interface Score {
 
 function getScore(ranking: string[], gold: string[]): Score {
   const countHits = (k: number): number =>
-      gold.filter((id) => ranking.slice(0, k).includes(id)).length / gold.length,
-    first = ranking.findIndex((id) => gold.includes(id));
+    gold.filter((id) => ranking.slice(0, k).includes(id)).length / gold.length;
+  const first = ranking.findIndex((id) => gold.includes(id));
   return { mrr: first === -1 ? 0 : 1 / (first + 1), r10: countHits(10), r5: countHits(5) };
 }
 
@@ -155,13 +155,13 @@ function getMean(scores: Score[]): Score {
   };
 }
 
-const TYPES: QuestionType[] = ['lexical', 'paraphrase', 'latest', 'multi'],
-  FORMS = ['message', 'keywords'] as const;
+const TYPES: QuestionType[] = ['lexical', 'paraphrase', 'latest', 'multi'];
+const FORMS = ['message', 'keywords'] as const;
 
 function printScores(name: string, rank: Ranker): void {
   for (const form of FORMS) {
-    const rows: string[] = [],
-      all: Score[] = [];
+    const rows: string[] = [];
+    const all: Score[] = [];
     for (const type of TYPES) {
       const scores = QUESTIONS.filter((question) => question.type === type).map(
         (question: Question) => getScore(rank(question[form]), question.gold),
@@ -202,10 +202,10 @@ function buildLogMessages(count: number): string[] {
 }
 
 function runLogIndex(count: number): void {
-  const messages = buildLogMessages(count),
-    rssBefore = process.memoryUsage().rss,
-    start = performance.now(),
-    db = new Database(':memory:');
+  const messages = buildLogMessages(count);
+  const rssBefore = process.memoryUsage().rss;
+  const start = performance.now();
+  const db = new Database(':memory:');
   db.run("create virtual table log using fts5(text, tokenize='porter unicode61')");
   const insert = db.prepare('insert into log (text) values (?)');
   db.transaction(() => {
@@ -213,24 +213,24 @@ function runLogIndex(count: number): void {
       insert.run(message);
     }
   })();
-  const buildMs = performance.now() - start,
-    size = db
-      .query<{ n: number }, []>(
-        'select page_count * page_size as n from pragma_page_count, pragma_page_size',
-      )
-      .get(),
-    query = db.query<{ rowid: number }, [string]>(
-      'select rowid from log where log match ? order by bm25(log) limit 10',
-    ),
-    queryStart = performance.now();
+  const buildMs = performance.now() - start;
+  const size = db
+    .query<{ n: number }, []>(
+      'select page_count * page_size as n from pragma_page_count, pragma_page_size',
+    )
+    .get();
+  const query = db.query<{ rowid: number }, [string]>(
+    'select rowid from log where log match ? order by bm25(log) limit 10',
+  );
+  const queryStart = performance.now();
   for (const question of QUESTIONS) {
     const queryTerms = splitTerms(question.message);
     if (queryTerms.length > 0) {
       query.all(queryTerms.map((term) => `"${term}"`).join(' OR '));
     }
   }
-  const queryMs = (performance.now() - queryStart) / QUESTIONS.length,
-    textBytes = messages.reduce((sum, message) => sum + message.length, 0);
+  const queryMs = (performance.now() - queryStart) / QUESTIONS.length;
+  const textBytes = messages.reduce((sum, message) => sum + message.length, 0);
   console.log(
     `log ${count} messages, ${(textBytes / 1e6).toFixed(1)} MB text: build ${buildMs.toFixed(0)} ms, index ${((size?.n ?? 0) / 1e6).toFixed(1)} MB, rss +${((process.memoryUsage().rss - rssBefore) / 1e6).toFixed(0)} MB, query ${queryMs.toFixed(2)} ms`,
   );
@@ -246,9 +246,9 @@ for (const question of QUESTIONS) {
   }
 }
 
-const keyword = buildKeywordRanker(),
-  fts = buildFts(),
-  bm25 = buildFtsRanker(fts.db);
+const keyword = buildKeywordRanker();
+const fts = buildFts();
+const bm25 = buildFtsRanker(fts.db);
 console.log(
   `${ITEMS.length} items, ${QUESTIONS.length} questions; scores are recall@5/recall@10/MRR`,
 );
@@ -262,19 +262,19 @@ const models = (process.env.MODELS ?? 'Xenova/all-MiniLM-L6-v2,Xenova/bge-small-
   ',',
 );
 for (const model of models.filter(Boolean)) {
-  const embedder = await loadEmbedder(model),
-    itemStart = performance.now(),
-    itemVectors = await embedder.embed(ITEMS.map((item) => item.text)),
-    perItem = (performance.now() - itemStart) / ITEMS.length,
-    queries = [...new Set(QUESTIONS.flatMap((question) => [question.message, question.keywords]))],
-    queryStart = performance.now(),
-    queryVectors = await embedder.embed(queries),
-    perQuery = (performance.now() - queryStart) / queries.length,
-    vectors = buildVectorRanker(
-      itemVectors,
-      new Map(queries.map((query, index) => [query, queryVectors[index] ?? new Float32Array()])),
-    ),
-    short = model.split('/').at(-1) ?? model;
+  const embedder = await loadEmbedder(model);
+  const itemStart = performance.now();
+  const itemVectors = await embedder.embed(ITEMS.map((item) => item.text));
+  const perItem = (performance.now() - itemStart) / ITEMS.length;
+  const queries = [...new Set(QUESTIONS.flatMap((question) => [question.message, question.keywords]))];
+  const queryStart = performance.now();
+  const queryVectors = await embedder.embed(queries);
+  const perQuery = (performance.now() - queryStart) / queries.length;
+  const vectors = buildVectorRanker(
+    itemVectors,
+    new Map(queries.map((query, index) => [query, queryVectors[index] ?? new Float32Array()])),
+  );
+  const short = model.split('/').at(-1) ?? model;
   console.log(
     `${short}: load ${embedder.loadMs.toFixed(0)} ms, ${perItem.toFixed(1)} ms per item in one batch, ${perQuery.toFixed(1)} ms per query`,
   );

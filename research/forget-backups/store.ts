@@ -1,4 +1,4 @@
-/* oxlint-disable no-await-in-loop, one-var, sort-vars -- writes run one item after another */
+/* oxlint-disable no-await-in-loop -- writes run one item after another */
 // A memory database that holds only ciphertext, and a key store in a separate file.
 import { Database } from 'bun:sqlite';
 import type { Sealed } from './crypto.ts';
@@ -35,8 +35,8 @@ export function createDb(path: string): Database {
 }
 
 export function createKeyStore(path: string, secureDelete: boolean): Database {
-  const keys = new Database(path, { create: true }),
-    mode = secureDelete ? 'ON' : 'OFF';
+  const keys = new Database(path, { create: true });
+  const mode = secureDelete ? 'ON' : 'OFF';
   keys.run('PRAGMA journal_mode = WAL');
   keys.run('PRAGMA synchronous = FULL');
   keys.run(`PRAGMA secure_delete = ${mode}`);
@@ -52,9 +52,9 @@ function buildAad(itemId: string, version: number): string {
 }
 
 function writeVersion(db: Database, write: VersionWrite): void {
-  const kind = write.version === 1 ? 'memory_created' : 'memory_changed',
-    iv = write.sealed.iv,
-    data = write.sealed.data;
+  const kind = write.version === 1 ? 'memory_created' : 'memory_changed';
+  const iv = write.sealed.iv;
+  const data = write.sealed.data;
   db.transaction(() => {
     db.query('INSERT OR REPLACE INTO items (id, version, iv, data) VALUES (?, ?, ?, ?)').run(
       write.itemId,
@@ -81,12 +81,12 @@ export async function createItem(
   itemId: string,
   versions: string[],
 ): Promise<void> {
-  const key = await createItemKey(),
-    wrapped = await encodeItemKey(key, stores.deploymentKey);
+  const key = await createItemKey();
+  const wrapped = await encodeItemKey(key, stores.deploymentKey);
   stores.keys.query('INSERT INTO item_keys (item_id, wrapped) VALUES (?, ?)').run(itemId, wrapped);
   for (const [index, text] of versions.entries()) {
-    const version = index + 1,
-      sealed = await encodeText(key, text, buildAad(itemId, version));
+    const version = index + 1;
+    const sealed = await encodeText(key, text, buildAad(itemId, version));
     writeVersion(stores.db, { itemId, sealed, version });
   }
 }
@@ -117,19 +117,19 @@ export async function writeNextVersion(
     throw new Error(`no key for ${itemId}`);
   }
   const row = stores.db.query('SELECT version FROM items WHERE id = ?').get(itemId) as {
-      version: number;
-    },
-    version = row.version + 1,
-    sealed = await encodeText(key, text, buildAad(itemId, version));
+    version: number;
+  };
+  const version = row.version + 1;
+  const sealed = await encodeText(key, text, buildAad(itemId, version));
   writeVersion(stores.db, { itemId, sealed, version });
   return version;
 }
 
 export async function readCurrent(stores: Stores, itemId: string): Promise<string | undefined> {
-  const key = await getItemKey(stores, itemId),
-    row = stores.db
-      .query('SELECT version, iv, data FROM items WHERE id = ?')
-      .get(itemId) as VersionRow | null;
+  const key = await getItemKey(stores, itemId);
+  const row = stores.db
+    .query('SELECT version, iv, data FROM items WHERE id = ?')
+    .get(itemId) as VersionRow | null;
   if (!key || !row) {
     return undefined;
   }
@@ -137,11 +137,11 @@ export async function readCurrent(stores: Stores, itemId: string): Promise<strin
 }
 
 export async function readHistory(stores: Stores, itemId: string): Promise<(string | undefined)[]> {
-  const key = await getItemKey(stores, itemId),
-    rows = stores.db
-      .query('SELECT version, iv, data FROM item_history WHERE item_id = ? ORDER BY version')
-      .all(itemId) as VersionRow[],
-    texts: (string | undefined)[] = [];
+  const key = await getItemKey(stores, itemId);
+  const rows = stores.db
+    .query('SELECT version, iv, data FROM item_history WHERE item_id = ? ORDER BY version')
+    .all(itemId) as VersionRow[];
+  const texts: (string | undefined)[] = [];
   for (const row of rows) {
     if (key) {
       const text = await decodeText(key, row, buildAad(itemId, row.version));
