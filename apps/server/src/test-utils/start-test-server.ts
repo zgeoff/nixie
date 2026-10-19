@@ -10,7 +10,7 @@ import type { TasksContext } from '@heynixie/tasks';
 import type { ToolDefinition, ToolEndpoint, ToolEndpointOptions } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildTestFakeSandboxes } from './build-test-fake-sandboxes';
-import { buildTestSandboxes } from './build-test-sandboxes';
+import { createTestSandboxes } from './create-test-sandboxes';
 import { startTestLog } from './start-test-log';
 
 export interface TestServer {
@@ -113,7 +113,7 @@ export async function startTestServer(
 
   const sandboxes =
     fake ??
-    buildTestSandboxes({
+    createTestSandboxes({
       log: context.log,
       definitions: context.definitions,
       toolTarget: endpoint.getToolTarget,

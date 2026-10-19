@@ -1,14 +1,14 @@
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
-import { buildTestSandboxes } from './build-test-sandboxes';
+import { createTestSandboxes } from './create-test-sandboxes';
 import { startTestServer } from './start-test-server';
 
 // the sandboxes on the test server's writer and tool endpoint, in a folder of their own
 async function setupTest() {
   const server = await startTestServer();
 
-  return buildTestSandboxes({
+  return createTestSandboxes({
     log: server.context.log,
     definitions: server.context.definitions,
     toolTarget: server.endpoint.getToolTarget,
