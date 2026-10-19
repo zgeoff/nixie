@@ -22,11 +22,7 @@ export function buildStubWriterSession(write: StubStagedWrite): StubWriterSessio
   const staging = createWriterStaging();
 
   const runSession = mock(() => {
-    if (write.op === 'flag') {
-      staging.flag({ text: write.text, sourceSequence: write.sourceSequence });
-    } else {
-      staging.stage(write);
-    }
+    applyStubWrite(staging, write);
 
     return Promise.resolve({
       inputTokens: 100,
@@ -40,4 +36,21 @@ export function buildStubWriterSession(write: StubStagedWrite): StubWriterSessio
     staging,
     model: { model: 'claude-test-1', profile: 'writer-direct', runSession },
   };
+}
+
+// stages a write through the tool its op names; a new op fails the type check until it has a branch
+function applyStubWrite(staging: WriterStaging, write: StubStagedWrite): void {
+  if (write.op === 'flag') {
+    staging.flag({ text: write.text, sourceSequence: write.sourceSequence });
+
+    return;
+  }
+
+  if (write.op === 'remember' || write.op === 'retire') {
+    staging.stage(write);
+
+    return;
+  }
+
+  write satisfies never;
 }

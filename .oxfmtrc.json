@@ -12,10 +12,11 @@
     "apps/web/src/routeTree.gen.ts",
     // written by panda codegen on install
     "apps/web/src/styled-system/**",
-    // written by run-openapi-document.ts and run-config-json-schema.ts, and by release-please on
-    // each release
+    // written by run-openapi-document.ts, run-config-json-schema.ts and run-manifest-json-schema.ts,
+    // and by release-please on each release
     "libs/contract/openapi.json",
     "apps/server/config.schema.json",
+    "modules/definitions/definitions-manifest.schema.json",
     "CHANGELOG.md",
     ".release-please-manifest.json",
     // design spikes are throwaway code; only their Markdown is formatted

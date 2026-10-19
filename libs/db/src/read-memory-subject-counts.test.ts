@@ -7,7 +7,7 @@ import { nixieSchema } from './nixie-schema';
 import { readMemorySubjectCounts } from './read-memory-subject-counts';
 import { runMigrations } from './run-migrations';
 import { startDatabase } from './start-database';
-import { makeAfterQueryPlugin } from './test-utils/make-after-query-plugin';
+import { buildAfterQueryPlugin } from './test-utils/build-after-query-plugin';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -131,7 +131,7 @@ test('it reads both counts from one snapshot while another connection commits be
 
   // after the item count, the other connection moves the item and its proposal to shared at once
   const counted = ctx.db.withPlugin(
-    makeAfterQueryPlugin(2, async () => {
+    buildAfterQueryPlugin(2, async () => {
       await Promise.allSettled([
         other.transaction().execute(async (tx) => {
           await sql`update memory_items set subject = 'shared'`.execute(tx);

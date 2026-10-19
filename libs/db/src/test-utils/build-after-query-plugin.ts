@@ -1,8 +1,8 @@
 import type { KyselyPlugin } from 'kysely';
 
-// Makes a Kysely plugin that runs the action once, after the result of the handle's nth query and
+// Builds a Kysely plugin that runs the action once, after the result of the handle's nth query and
 // before the caller sees it, so a test can commit another connection's write between 2 reads.
-export function makeAfterQueryPlugin(
+export function buildAfterQueryPlugin(
   queryNumber: number,
   action: () => Promise<void>,
 ): KyselyPlugin {

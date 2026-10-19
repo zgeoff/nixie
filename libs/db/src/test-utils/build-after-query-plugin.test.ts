@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sql } from 'kysely';
 import { startDatabase } from '../start-database';
-import { makeAfterQueryPlugin } from './make-after-query-plugin';
+import { buildAfterQueryPlugin } from './build-after-query-plugin';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -33,7 +33,7 @@ test('it runs the action once, after the result of the query it names', async ()
     return Promise.resolve();
   });
 
-  const db = ctx.db.withPlugin(makeAfterQueryPlugin(2, action));
+  const db = ctx.db.withPlugin(buildAfterQueryPlugin(2, action));
 
   for (const value of [1, 2, 3]) {
     const result = await sql<{ value: number }>`select ${value} as value`.execute(db);
