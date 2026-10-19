@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import type { RuntimeReport } from '@heynixie/sandbox';
 import { buildStubCheck, buildTestClock, waitForCondition } from '@heynixie/testing';
 import { buildCleanup } from './build-cleanup';
@@ -93,7 +94,7 @@ test('it answers readiness with 200 and the status degraded, and logs the imp ho
     areRunnersStarted: true,
   });
 
-  const log = mock();
+  const log = mock<Logger>();
 
   const app = await startServerHealth({
     writer: ctx.writer,

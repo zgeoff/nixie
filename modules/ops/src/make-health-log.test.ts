@@ -1,8 +1,9 @@
 import { expect, mock, test } from 'bun:test';
+import type { Logger } from '@heynixie/logger';
 import { makeHealthLog } from './make-health-log';
 
 test('it logs a part that is unready at its first answer once, with its name and reason', () => {
-  const log = mock();
+  const log = mock<Logger>();
   const recordReport = makeHealthLog(log);
 
   recordReport('ready', {
@@ -25,7 +26,7 @@ test('it logs a part that is unready at its first answer once, with its name and
 });
 
 test('it logs an unready part again when its reason changes', () => {
-  const log = mock();
+  const log = mock<Logger>();
   const recordReport = makeHealthLog(log);
 
   recordReport('ready', {
@@ -55,7 +56,7 @@ test('it logs an unready part again when its reason changes', () => {
 });
 
 test('it logs a part that turns ready again, by name', () => {
-  const log = mock();
+  const log = mock<Logger>();
   const recordReport = makeHealthLog(log);
 
   recordReport('ready', {
@@ -81,7 +82,7 @@ test('it logs a part that turns ready again, by name', () => {
 });
 
 test('it logs nothing while every part stays ready', () => {
-  const log = mock();
+  const log = mock<Logger>();
   const recordReport = makeHealthLog(log);
 
   recordReport('live', {
@@ -93,7 +94,7 @@ test('it logs nothing while every part stays ready', () => {
 });
 
 test('it logs a liveness part apart from the readiness part of the same name', () => {
-  const log = mock();
+  const log = mock<Logger>();
   const recordReport = makeHealthLog(log);
 
   recordReport('ready', {
@@ -121,7 +122,7 @@ test('it logs a liveness part apart from the readiness part of the same name', (
 });
 
 test('it logs a failing advisory part by name', () => {
-  const log = mock();
+  const log = mock<Logger>();
   const recordReport = makeHealthLog(log);
 
   recordReport('ready', {

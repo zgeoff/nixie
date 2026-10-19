@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import type { Logger } from '@heynixie/logger';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { buildHealthApp } from './build-health-app';
 
@@ -228,7 +229,7 @@ test('it answers liveness per part, apart from readiness', async () => {
 });
 
 test('it logs the name and reason of a dependency part that turns unready', async () => {
-  const log = mock();
+  const log = mock<Logger>();
 
   const app = buildHealthApp({
     liveness: {
