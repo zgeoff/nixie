@@ -147,6 +147,24 @@ test('it offers the model nixie tools alone, on the profile model, with the plac
   ]);
 });
 
+test('it sends a message of /clear to the model as text, never as a CLI command', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'Nothing to clear here.' });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: '/clear' }],
+    }),
+    ctx.deps,
+  );
+
+  const request = ctx.model.requests.findLast((candidate) => candidate.path === '/v1/messages');
+
+  expect(request?.body?.messages).toPartiallyContain({ role: 'user', content: '/clear' });
+});
+
 test('it stops the turn with no model output when nixie tool server stays unreachable', async () => {
   const ctx = await setupTest();
 
