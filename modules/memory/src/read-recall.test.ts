@@ -314,7 +314,9 @@ test('it leaves the excluded words of a query out of the match when asked', asyn
 test('it finds an unpinned match when more pinned matches rank first than recall ranks at most', async () => {
   const ctx = await setupTest();
 
-  // 101 short pinned items, each ranking above the longer unpinned one
+  // 101 short pinned items, each ranking above the longer unpinned one. The count passes the
+  // ranking's cap of 100, and each pinned write reads every pinned item to check the core's budget,
+  // so the writes take seconds on a small host and the test sets a longer limit
   await Promise.all(
     Array.from({ length: 101 }, (_, index) =>
       ctx.memory.store.remember({
@@ -343,7 +345,7 @@ test('it finds an unpinned match when more pinned matches rank first than recall
   });
 
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([unpinned.itemID]);
-});
+}, 30_000);
 
 test('it leaves out a match below the score floor', async () => {
   const ctx = await setupTest();
