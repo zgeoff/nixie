@@ -19,6 +19,9 @@ export async function startSeedPoll(parts: ServerParts, options: SeedPollOptions
 
       return seeded.status !== 'refused';
     },
+
+    // a skill reload seeds over the same parts, and its refusal leaves the definitions unready
+    isRefused: () => !parts.state.read().definitions.isReady,
     clock: parts.context.clock,
     intervalMs: parts.config.definitions.probeIntervalMs,
     retryDelayMs: 1000,

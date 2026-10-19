@@ -11,6 +11,25 @@ test('it resolves once the work rejects', async () => {
   await expect(waitForSettled(failed)).toResolve();
 });
 
+test('it stays pending until the work settles', async () => {
+  const work = Promise.withResolvers<string>();
+  const settled = waitForSettled(work.promise);
+  const turn = Promise.withResolvers<'pending'>();
+
+  // a macrotask runs after every queued microtask, so a settled wait would win the race first
+  setImmediate(() => {
+    turn.resolve('pending');
+  });
+
+  const early = await Promise.race([settled, turn.promise]);
+
+  work.resolve('seeded');
+
+  await expect(settled).toResolve();
+
+  expect(early).toBe('pending');
+});
+
 test('it resolves when there is no work to wait for', async () => {
   await expect(waitForSettled(null)).toResolve();
 });

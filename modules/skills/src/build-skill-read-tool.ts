@@ -84,7 +84,6 @@ export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
   };
 }
 
-// the input as the input schema accepted it
 const readArguments = z.object({ name: z.string(), path: z.string().optional() });
 
 function buildBodyOutcome(skill: TaskSkill): ToolOutcome {

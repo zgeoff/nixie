@@ -32,5 +32,4 @@ export function buildSkillReloadTool(context: SkillToolsContext): ToolDefinition
   };
 }
 
-// the input as the input schema accepted it
 const reloadArguments = z.object({ name: z.string() });
