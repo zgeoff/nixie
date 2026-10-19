@@ -55,6 +55,7 @@ test('it keeps the first proposals up to the cap and counts the rest as dropped 
       source: 'owner',
       checks: {},
       evidence: { recordSequence: 1, start: 0, end: 5 },
+      model: 'claude-writer-1',
     },
   };
 

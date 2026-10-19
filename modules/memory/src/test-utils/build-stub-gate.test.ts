@@ -21,6 +21,7 @@ test('it applies a write whose quote is in its source, with the quote as the evi
     source: 'owner',
     checks: { quote: 'exact' },
     evidence: { recordSequence: 12, start: 11, end: 20 },
+    model: 'claude-test-1',
   });
 });
 

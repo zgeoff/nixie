@@ -1,4 +1,5 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import { memoryExportSchema } from './memory-export-schema';
 import type { TestMemoryOptions } from './test-utils/start-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -93,6 +94,59 @@ test('it exports an active item with its text, its quote and its provenance, and
         },
       ],
     },
+  ]);
+});
+
+test("it exports the writer's model from the batch that applied a version whose row holds none", async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.writer_started',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'memory-writer',
+      payload: { startSequence: 0, at: 1_000_000 },
+    },
+  ]);
+
+  // a version the writer applied before its versions kept the model
+  const item = await ctx.memory.store.remember({
+    text: 'Rents allotment plot 14',
+    provenance: {
+      origin: 'memory_writer',
+      source: 'owner',
+      taskID: 'memory-writer',
+      proposalID: null,
+      checks: null,
+      thread: 'memory-writer',
+    },
+  });
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.batch_published',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'memory-writer',
+      payload: {
+        start: 0,
+        end: 1,
+        mode: 'catch_up',
+        at: 1_000_000,
+        applied: [{ itemID: item.itemID, version: 1 }],
+        proposed: 0,
+        dropped: 0,
+        catchUpEnded: false,
+        model: 'writer-model-1',
+        profile: 'writer-direct',
+        usage: { inputTokens: 100, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      },
+    },
+  ]);
+
+  const text = await ctx.readExportText(Date.parse('2026-10-14T08:00:00.000Z'));
+
+  expect(memoryExportSchema.safeParse(JSON.parse(text)).data?.items).toMatchObject([
+    { versions: [{ provenance: { writerModel: 'writer-model-1' } }] },
   ]);
 });
 

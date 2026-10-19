@@ -54,6 +54,9 @@ export type GateVerdict =
       readonly source: ContentSource;
       readonly checks: JSONObject;
       readonly evidence: QuoteEvidence;
+
+      // the model of the batch's session, which wrote the version
+      readonly model: string;
     }
   | {
       readonly outcome: 'propose';
