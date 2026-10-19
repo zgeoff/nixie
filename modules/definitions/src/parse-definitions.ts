@@ -7,6 +7,9 @@ import type { ParsedDefinitions, Snapshot } from './types';
 
 const personaPath = 'persona.md';
 
+// the first format whose seed applies the skills; format 1 lists their files as unapplied
+const skillsFormat = 2;
+
 // Reads what the seed applies: the format version, the persona, and from format 2 on, the skills.
 // Every other file only has to parse, and the seed lists it as unapplied. A file that fails to
 // decode or parse, or a skill that fails a seed check, fails the whole snapshot.
@@ -30,9 +33,6 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
 
   return { formatVersion, persona, skills, conversationSkills, unapplied };
 }
-
-// the first format whose seed applies the skills; format 1 lists their files as unapplied
-const skillsFormat = 2;
 
 function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
   const decoder = new TextDecoder('utf-8', { fatal: true });
