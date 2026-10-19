@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
-import { findSkillPin } from './find-skill-pin';
+import { loadSkillPin } from './load-skill-pin';
 import { recordSkillPin } from './record-skill-pin';
 import { recordSkillReload } from './record-skill-reload';
 
@@ -50,7 +50,7 @@ test('it reads the skills of the newest reload over an earlier pin', async () =>
     },
   });
 
-  const pin = await findSkillPin(ctx.log, 'task-a');
+  const pin = await loadSkillPin(ctx.log, 'task-a');
 
   expect(pin).toStrictEqual([{ name: 'tide-tables', skillHash: 'hash-b', origin: 'definitions' }]);
 });
@@ -89,7 +89,7 @@ test('it reads the skills of the newest of 2 reloads', async () => {
     },
   });
 
-  const pin = await findSkillPin(ctx.log, 'task-a');
+  const pin = await loadSkillPin(ctx.log, 'task-a');
 
   expect(pin).toStrictEqual([{ name: 'bird-log', skillHash: 'hash-c', origin: 'vendored' }]);
 });
@@ -107,7 +107,7 @@ test('it finds no pin for a thread whose only pin is on another thread', async (
     list: ['tide-tables'],
   });
 
-  const pin = await findSkillPin(ctx.log, 'task-a');
+  const pin = await loadSkillPin(ctx.log, 'task-a');
 
   expect(pin).toBeNull();
 });

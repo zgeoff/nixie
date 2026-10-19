@@ -1,7 +1,7 @@
 import type { DefinitionsInForce, SkillRef } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { findSkillPin } from './find-skill-pin';
+import { loadSkillPin } from './load-skill-pin';
 import { skillsPinnedCodec } from './skills-pinned-codec';
 import { writePinRecord } from './write-pin-record';
 
@@ -40,7 +40,7 @@ export async function recordSkillPin(log: Log, input: SkillPinInput): Promise<re
     return skills;
   }
 
-  const pin = await findSkillPin(log, input.thread);
+  const pin = await loadSkillPin(log, input.thread);
 
   // the transaction refused the first pin because a pin on the thread had committed
   invariant(pin);

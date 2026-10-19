@@ -3,7 +3,7 @@ import type { ParseProblem } from './definitions-parse-error';
 
 export const skillsLockPath = 'skills/skills.lock.json';
 
-// each vendored skill's pin by its name
+// each vendored skill's lock entry by its name
 export type SkillsLock = z.infer<typeof lockSchema>;
 
 export interface ParsedSkillsLock {
@@ -36,7 +36,7 @@ export function parseSkillsLock(text: string | undefined): ParsedSkillsLock {
   return { entries: {}, problems };
 }
 
-// One vendored skill's pin: where it came from, the full commit it was copied at, and the content
+// One vendored skill's lock entry: where it came from, the full commit it was copied at, and the content
 // hash of its folder.
 const lockEntrySchema = z.strictObject({
   source: z.url({ protocol: /^https$/u }),
