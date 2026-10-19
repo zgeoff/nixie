@@ -3,8 +3,9 @@
 A vendored skill is a copy of someone else's skill in your definitions repo, pinned to the upstream
 commit it came from and to the content hash of its folder. The pin lives in
 `skills/skills.lock.json`, and the seed refuses a snapshot in which a vendored skill's files differ
-from its pin, so a change to the skill reaches nixie only through a pull request you merge. nixie
-never installs a skill from a registry, so vendoring is the one way a published skill reaches it.
+from its pin. The seed cannot tell who changed the pin, so make every change to a vendored skill and
+its pin in a pull request that you review before you merge it. nixie never installs a skill from a
+registry, so vendoring is the one way a published skill reaches it.
 [The definitions](../architecture/core/definitions.md#skills) covers every check the seed runs on a
 skill.
 
