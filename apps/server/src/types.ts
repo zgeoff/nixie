@@ -88,6 +88,10 @@ export interface CLIFlags {
   // a reset keeps the live device sessions, and runs only once the user confirms it
   readonly 'keep-sessions': boolean;
   readonly yes: boolean;
+
+  // the subjects migration's dry run, on a copy of the database file at database
+  readonly 'dry-run': boolean;
+  readonly database?: string;
 }
 
 export type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => Promise<number>;
