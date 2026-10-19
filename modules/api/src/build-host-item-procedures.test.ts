@@ -22,6 +22,7 @@ test('#read shows an item with its state and every version, oldest first', async
   expect(shown).toStrictEqual({
     itemID: item.itemID,
     subject: 'owner',
+    kind: 'fact',
     state: 'active',
     versions: [
       {

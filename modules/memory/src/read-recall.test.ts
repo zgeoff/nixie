@@ -89,6 +89,34 @@ test('it returns only the items of the subjects the recall names', async () => {
   expect(listed.items.map((item) => item.text)).toStrictEqual(['The garden hose leaks at the tap']);
 });
 
+test('it fills a limited recall with the subjects it names when better matches of other subjects fill every place', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ctx.memory.store.remember({
+      text: 'The garden hose leaks at the garden tap',
+      provenance: buildMockProvenance(),
+    }),
+    ctx.memory.store.remember({
+      text: 'The garden gate sticks in the garden after rain',
+      provenance: buildMockProvenance(),
+    }),
+    ctx.memory.store.remember({
+      text: 'The gnome is called Sir Pebble in the garden between the owner and the assistant',
+      subject: 'shared',
+      provenance: buildMockProvenance(),
+    }),
+  ]);
+
+  const result = await ctx.memory.store.recall({
+    query: 'garden',
+    limit: 1,
+    subjects: ['shared'],
+  });
+
+  expect(result.items.map((item) => item.subject)).toStrictEqual(['shared']);
+});
+
 test('it reads a self-note that the release before wrote with no subject as a self-note', async () => {
   const ctx = await setupTest();
 

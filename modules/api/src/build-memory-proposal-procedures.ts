@@ -4,6 +4,7 @@ import type { ViewProposal } from '@heynixie/memory';
 import { apiImplementer } from './api-implementer';
 import { requireCaller } from './require-caller';
 import { requireViewMemory } from './require-view-memory';
+import { toContractKind } from './to-contract-kind';
 import type { APIContext, Identity, ReadViewMemory, ViewMemoryStore } from './types';
 import type { ProposalAnswerAction, ProposalOutcome } from './write-proposal-answer';
 import { writeProposalAnswer } from './write-proposal-answer';
@@ -82,7 +83,7 @@ function toContractProposal(proposal: ViewProposal) {
     itemID: proposal.itemID,
     targetVersion: proposal.targetVersion,
     isPinned: proposal.isPinned,
-    kind: proposal.subject === 'self' ? ('self' as const) : ('fact' as const),
+    kind: toContractKind(proposal.subject),
     subject: proposal.subject,
     reason: proposal.reason,
     actionHash: proposal.actionHash,

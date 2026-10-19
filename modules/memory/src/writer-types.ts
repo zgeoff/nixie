@@ -74,11 +74,13 @@ export type GateVerdict =
 // the source record it cites, never against a window of recent messages, and runs outside the
 // publish transaction.
 export interface WriterGate {
+  // the verdict, or null for a write the gate drops: an edit of a self-note, which the note-taker
+  // never makes, because a self-note is nixie's own voice about itself
   readonly check: (
     write: StagedWrite,
     source: SourceMessage,
     batch: GateBatch,
-  ) => Promise<GateVerdict>;
+  ) => Promise<GateVerdict | null>;
 
   // removes what the gate made for each proposal that never published, such as a new item's key,
   // once the batch publishes, splits or fails

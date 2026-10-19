@@ -69,5 +69,5 @@ test('it holds a write with an empty quote as a proposal', async () => {
     { bounds: { start: 0, end: 12 }, model: 'claude-test-1' },
   );
 
-  expect(verdict.outcome).toBe('propose');
+  expect(verdict?.outcome).toBe('propose');
 });

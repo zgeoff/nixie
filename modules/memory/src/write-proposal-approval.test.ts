@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { findItemKey } from './find-item-key';
+import { SelfNoteError } from './self-note-error';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
 import { createProposal } from './test-utils/create-proposal';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -712,6 +713,45 @@ test('it refuses to apply an edit proposal as a revision of another item', async
   await approval.catch(() => {});
 
   expect(approval).rejects.toMatchObject({ code: 'REVISION_TARGET' });
+});
+
+test('it refuses to apply a shared proposal as a revision of a fact about the owner, and leaves the fact as it was', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Calls the garden shed the cabin',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.writes.remember({
+    text: 'The owner and the assistant call the garden shed the cabin',
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const approval = memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+    revisionOf: { itemID: item.itemID, version: item.version },
+  });
+
+  await approval.catch(() => {});
+
+  const history = await memory.store.readHistory(item.itemID);
+
+  expect(approval).rejects.toThrowWithMessage(
+    SelfNoteError,
+    `memory item ${item.itemID} is not a shared item, so it cannot take this text`,
+  );
+
+  expect(history?.versions).toMatchObject([
+    { version: 1, text: 'Calls the garden shed the cabin' },
+  ]);
 });
 
 test('it applies one of 2 reworded proposals approved at once, and holds the other for the item the first created', async () => {

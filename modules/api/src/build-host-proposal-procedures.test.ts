@@ -22,6 +22,7 @@ test('#list lists each pending proposal with its text and the hash an answer bin
       targetVersion: null,
       isPinned: false,
       subject: 'owner',
+      kind: 'fact',
       reason: 'no_quote',
       actionHash: proposal.actionHash,
       origin: 'conversation',

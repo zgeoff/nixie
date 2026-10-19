@@ -1,6 +1,7 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { hostImplementer } from './host-implementer';
 import { requireHostMemory } from './require-host-memory';
+import { toContractKind } from './to-contract-kind';
 import type { ReadHostMemory } from './types';
 
 // Builds the host procedures over one memory item: show it with its history, and write your own
@@ -21,6 +22,7 @@ export function buildHostItemProcedures(readMemory: ReadHostMemory) {
       return {
         itemID: history.itemID,
         subject: history.subject,
+        kind: toContractKind(history.subject),
         state: history.state,
         versions: history.versions.map((version) => ({
           version: version.version,

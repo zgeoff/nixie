@@ -56,7 +56,7 @@ test('it applies a staged memory with the message it cites as its evidence, outs
   });
 });
 
-test('it proposes a staged edit of a self-note with the self-note reason, though the checker would assert it', async () => {
+test('it drops a staged edit of a self-note, though the checker would assert it', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
 
   const memory = await startTestMemory({ gate: { check } });
@@ -95,7 +95,7 @@ test('it proposes a staged edit of a self-note with the self-note reason, though
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
 
-  expect(verdict).toMatchObject({ outcome: 'propose', reason: 'self_note' });
+  expect(verdict).toBeNull();
   expect(check).not.toHaveBeenCalled();
 });
 
@@ -483,7 +483,7 @@ test('it removes the key of a new item whose proposal never published', async ()
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
 
-  invariant(verdict.outcome === 'propose');
+  invariant(verdict?.outcome === 'propose');
 
   const itemID = verdict.records[0]?.payload?.['itemID'];
 
@@ -526,7 +526,7 @@ test('it never removes the key of a proposal that published', async () => {
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
 
-  invariant(verdict.outcome === 'propose');
+  invariant(verdict?.outcome === 'propose');
 
   await writeRecords(memory.log, verdict.records);
 

@@ -223,6 +223,40 @@ test('it returns a proposal with the sentence for its reason, not an error, for 
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
 });
 
+test.each(['shared', 'self'] as const)(
+  'it proposes a memory with the %s subject the call names',
+  async (subject) => {
+    const ctx = await setupTest();
+
+    const tool = ctx.registry.findTool('memory.remember');
+
+    invariant(tool);
+
+    await tool.definition.run(
+      {
+        callID: 'call-1',
+        tool: 'memory.remember',
+        input: { text: 'Calls the garden shed the cabin', subject },
+        toolUseID: null,
+      },
+      {
+        run: {
+          runID: 'run-1',
+          thread: 'conversation',
+          tools: [],
+          model: { model: 'test-model', profile: 'standard' },
+        },
+      },
+    );
+
+    const pending = await ctx.memory.store.proposals.listPending();
+
+    expect(pending.map((proposal) => [proposal.subject, proposal.text])).toStrictEqual([
+      [subject, 'Calls the garden shed the cabin'],
+    ]);
+  },
+);
+
 test('it gives the token sentence for a fact with a number its typed quote lacks', async () => {
   const ctx = await setupTest({ gate: { ownerName: 'Avery' } });
 

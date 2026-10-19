@@ -1,3 +1,4 @@
+import { parseArgs } from 'node:util';
 import { Glob } from 'bun';
 
 // Renames a memory item's kind, fact or self, to its subject, owner, self or shared, in every
@@ -16,7 +17,7 @@ const replacements: readonly (readonly [RegExp, string])[] = [
   [/\bkindSchema\b/gu, 'subjectSchema'],
 ];
 
-const roots = process.argv.slice(2);
+const roots = parseArgs({ allowPositionals: true }).positionals;
 
 const glob = new Glob('**/*.{ts,tsx}');
 

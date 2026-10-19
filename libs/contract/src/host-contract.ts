@@ -51,6 +51,9 @@ const pendingProposalSchema = z.object({
   targetVersion: z.int().nullable(),
   isPinned: z.boolean(),
   subject: z.enum(['owner', 'self', 'shared']),
+
+  // self for a self-note and fact for every other subject, as the release before reads it
+  kind: z.enum(['fact', 'self']),
   reason: reviewReasonSchema,
   actionHash: z.string(),
   origin: memoryOriginSchema,
@@ -87,6 +90,9 @@ const historyVersionSchema = z.object({
 const itemHistorySchema = z.object({
   itemID: z.string(),
   subject: z.enum(['owner', 'self', 'shared']),
+
+  // self for a self-note and fact for every other subject, as the release before reads it
+  kind: z.enum(['fact', 'self']),
   state: z.enum(['active', 'retired', 'forgetting', 'forgotten']),
   versions: z.array(historyVersionSchema),
 });
