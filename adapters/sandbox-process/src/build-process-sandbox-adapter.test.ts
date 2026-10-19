@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, realpath, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
@@ -416,6 +416,27 @@ test("it gives the sandbox's own directory as the home of a guest whose command 
     copyPath: '/',
     ownPath: join(ctx.rootDir, sandbox.id, 'fs'),
   });
+});
+
+test('it gives the home under the real path of a root reached through a symlink', async () => {
+  const ctx = await setupTest();
+  const linkDir = await mkdtemp(join(tmpdir(), 'nixie-sandbox-link-'));
+
+  onTestFinished(() => rm(linkDir, { recursive: true, force: true }));
+
+  await symlink(ctx.rootDir, join(linkDir, 'root'));
+
+  const linked = buildProcessSandboxAdapter({
+    recorder: ctx.recorder,
+    rootDir: join(linkDir, 'root'),
+    toolTarget: () => ({ path: join(ctx.rootDir, 'tools.sock') }),
+  });
+
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec(), linked);
+  const home = await sandbox.resolveHome({});
+  const realRoot = await realpath(ctx.rootDir);
+
+  expect(home).toStrictEqual({ copyPath: '/', ownPath: join(realRoot, sandbox.id, 'fs') });
 });
 
 test("it gives the command's HOME as the guest sees it, and as the path below the sandbox's directory", async () => {
