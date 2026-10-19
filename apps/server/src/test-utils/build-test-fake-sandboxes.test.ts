@@ -3,6 +3,7 @@ import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { decodeTurnFrame, encodeTurnFrame, guestFrameSchema } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { buildTestFakeSandboxes } from './build-test-fake-sandboxes';
 import { buildTestNotesTools } from './build-test-notes-tools';
 import { startTestServer } from './start-test-server';
@@ -84,7 +85,7 @@ test("it gives a tool use of the guest's reply the result of the run's real endp
     .decode(transcript.content)
     .split('\n')
     .filter((line) => line !== '')
-    .map((line) => JSON.parse(line) as { readonly role: string; readonly text: string });
+    .map((line) => z.object({ role: z.string(), text: z.string() }).parse(JSON.parse(line)));
 
   // the input, the tool use, its result, then the reply
   const toolResult = entries.at(2);

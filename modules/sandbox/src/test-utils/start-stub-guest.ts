@@ -139,7 +139,7 @@ function runFirstFrame(
   return hooks.onTurn(first, guest);
 }
 
-// the guest's inbox; a wait rejects with the signal's reason once the signal aborts
+// the guest's inbox; a wait rejects, with the signal's reason as the cause, once the signal aborts
 function buildMessageQueue(signal: AbortSignal): {
   readonly push: (message: InboxMessage) => void;
   readonly wait: () => Promise<InboxMessage>;
@@ -152,7 +152,7 @@ function buildMessageQueue(signal: AbortSignal): {
     'abort',
     () => {
       for (const waiter of waiting.splice(0)) {
-        waiter.reject(signal.reason);
+        waiter.reject(buildStoppedError(signal));
       }
     },
     { once: true },
@@ -177,7 +177,7 @@ function buildMessageQueue(signal: AbortSignal): {
       }
 
       if (signal.aborted) {
-        return Promise.reject(signal.reason);
+        return Promise.reject(buildStoppedError(signal));
       }
 
       const next = Promise.withResolvers<InboxMessage>();
@@ -187,4 +187,10 @@ function buildMessageQueue(signal: AbortSignal): {
       return next.promise;
     },
   };
+}
+
+function buildStoppedError(signal: AbortSignal): Error {
+  return new Error('the stub guest stopped while it waited for a message', {
+    cause: signal.reason,
+  });
 }
