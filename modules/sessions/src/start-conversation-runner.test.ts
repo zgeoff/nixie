@@ -136,6 +136,156 @@ test('it records each reply with the model and the profile in force, never what 
   ]);
 });
 
+test('it records the reply with the turn summary in its erasable fields and the thinking tokens in its payload', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'assistant',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d010',
+      text: '',
+      toolUses: [],
+      summary: 'I compared the ferries by arrival time.',
+    },
+    {
+      type: 'assistant',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+      text: 'The 09:25 ferry reaches the north pier by 08:55.',
+      toolUses: [],
+    },
+    {
+      type: 'ended',
+      boundary: {
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+      },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      thinkingTokens: 236,
+    },
+  ]);
+
+  await ctx.writeMessage('Which ferry?');
+  await ctx.runNextStep(runner);
+
+  const records = await ctx.readKinds('model.reply');
+
+  expect(records).toMatchObject([
+    {
+      thread: 'conversation',
+      payload: {
+        model: 'claude-test-1',
+        profile: 'chat-direct',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+        thinkingTokens: 236,
+      },
+      erasable: {
+        status: 'readable',
+        fields: {
+          text: 'The 09:25 ferry reaches the north pier by 08:55.',
+          summary: 'I compared the ferries by arrival time.',
+        },
+      },
+    },
+  ]);
+});
+
+test('it joins the turn summaries onto the last reply and records the thinking tokens there alone', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'assistant',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d022',
+      text: '',
+      toolUses: [],
+      summary: 'I list the ferries.',
+    },
+    {
+      type: 'assistant',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d020',
+      text: 'Let me check the timetable.',
+      toolUses: [],
+    },
+    {
+      type: 'assistant',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d023',
+      text: '',
+      toolUses: [],
+      summary: 'The 09:25 reaches the pier by 08:55.',
+    },
+    {
+      type: 'assistant',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d021',
+      text: 'Take the 09:25 ferry.',
+      toolUses: [],
+    },
+    {
+      type: 'ended',
+      boundary: {
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d021',
+      },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      thinkingTokens: 300,
+    },
+  ]);
+
+  await ctx.writeMessage('Which ferry?');
+  await ctx.runNextStep(runner);
+
+  const records = await ctx.readKinds('model.reply');
+
+  expect(records).toHaveLength(2);
+
+  expect(records.at(0)?.payload).toStrictEqual({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d020',
+  });
+
+  expect(records.at(0)?.erasable).toStrictEqual({
+    status: 'readable',
+    fields: { text: 'Let me check the timetable.' },
+  });
+
+  expect(records.at(1)?.payload).toStrictEqual({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d021',
+    thinkingTokens: 300,
+  });
+
+  expect(records.at(1)?.erasable).toStrictEqual({
+    status: 'readable',
+    fields: {
+      text: 'Take the 09:25 ferry.',
+      summary: 'I list the ferries.\n\nThe 09:25 reaches the pier by 08:55.',
+    },
+  });
+});
+
 test('it records the new model on the next reply once the conversation role points at another profile', async () => {
   const ctx = await setupTest();
 

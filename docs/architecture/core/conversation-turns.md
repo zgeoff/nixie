@@ -199,21 +199,29 @@ outside any element, after its stamp, because it holds the user's own words.
 
 ## Records of a turn
 
-The guest reports each assistant message with its text and the tools it asked for, and ends with the
-boundary, the stop reason, the SDK's reason for the end, the count of model calls, the token usage
-and the context. The SDK gives a context past its window an end reason of its own, apart from every
-other model API error, so the host tells an overflow from a refused request on that reason alone. An
-overflowed turn ends with the CLI's own message that the prompt is too long, and the guest keeps the
-boundary off that message: at the turn's last other chain entry, or at its resume point when the
-turn wrote no other entry. The step commits that boundary, so a retry forks the session before the
-overflow. One exception: a fresh session that overflows at its first model call has neither, and its
-boundary stays on the CLI's message. The usage sums every model call in the turn, so it measures
-cost and not how full the context stands. The context is therefore the last main-chain model call's
-input, cache-read and cache-write tokens, beside the window nixie compacts within. The step turns
-these into records on the conversation's thread: a reply record per message with text, whose text is
-erasable, and one turn-ended record with the usage, the end reason and the context. Each record
-holds the model ID and the profile's ID from the profile nixie gave the turn, never from the guest's
-frames ([model profiles](./model-profiles.md#records-of-model-output)).
+The guest asks the model for its reasoning as a summary, which the model gives as a thinking-only
+message ahead of the one that carries the reply. The guest reports each assistant message with its
+text, the tools it asked for and the reasoning summary that message holds, and ends with the
+boundary, the stop reason, the SDK's reason for the end, the count of model calls, the token usage,
+the turn's count of thinking tokens and the context. The model API reports the thinking tokens once
+for the whole turn, never per message. The reply drops the signature that rides the summary, the
+model API's own encrypted copy of the reasoning that nixie cannot read. The SDK gives a context past
+its window an end reason of its own, apart from every other model API error, so the host tells an
+overflow from a refused request on that reason alone. An overflowed turn ends with the CLI's own
+message that the prompt is too long, and the guest keeps the boundary off that message: at the
+turn's last other chain entry, or at its resume point when the turn wrote no other entry. The step
+commits that boundary, so a retry forks the session before the overflow. One exception: a fresh
+session that overflows at its first model call has neither, and its boundary stays on the CLI's
+message. The usage sums every model call in the turn, so it measures cost and not how full the
+context stands. The context is therefore the last main-chain model call's input, cache-read and
+cache-write tokens, beside the window nixie compacts within. The step turns these into records on
+the conversation's thread: a reply record per message with text, whose text is erasable, and one
+turn-ended record with the usage, the end reason and the context. The turn's last reply keeps the
+model's reasoning: the summary joined from the turn's thinking sits in the reply's erasable fields,
+so a forget removes it with the reply, and the thinking-token count sits in the plain payload, so a
+projection reads the count without a key and it outlives a forgotten reply. Each record holds the
+model ID and the profile's ID from the profile nixie gave the turn, never from the guest's frames
+([model profiles](./model-profiles.md#records-of-model-output)).
 
 The step returns to waiting once it commits, because the conversation always waits for the user's
 next message. A turn that fails for any reason but a lost session, such as a disconnected tool
