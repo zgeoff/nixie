@@ -9,8 +9,10 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "catalog:",
     "@heynixie/conversation": "workspace:*",
+    "@heynixie/log": "workspace:*",
     "@heynixie/memory": "workspace:*",
     "@heynixie/sessions": "workspace:*",
+    "@heynixie/tools": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
