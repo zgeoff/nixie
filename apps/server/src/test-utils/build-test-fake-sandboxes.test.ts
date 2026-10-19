@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { decodeTurnFrame, encodeTurnFrame, guestFrameSchema } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
+import invariant from 'tiny-invariant';
 import { buildTestFakeSandboxes } from './build-test-fake-sandboxes';
 import { buildTestNotesTools } from './build-test-notes-tools';
 import { startTestServer } from './start-test-server';
@@ -69,6 +70,26 @@ test("it gives a tool use of the guest's reply the result of the run's real endp
   const messages = await Array.fromAsync(stream.messages);
 
   const frames = messages.map((message) => decodeTurnFrame(guestFrameSchema, message));
+  const ended = frames.at(-1);
+
+  invariant(ended?.type === 'ended');
+
+  const [transcript] = await sandbox.copyOut([
+    `/home/nixie/.claude/projects/-home-nixie-conversation/${ended.boundary.sessionID}.jsonl`,
+  ]);
+
+  invariant(transcript !== undefined);
+
+  const entries = new TextDecoder()
+    .decode(transcript.content)
+    .split('\n')
+    .filter((line) => line !== '')
+    .map((line) => JSON.parse(line) as { readonly role: string; readonly text: string });
+
+  // the input, the tool use, its result, then the reply
+  const toolResult = entries.at(2);
+
+  invariant(toolResult !== undefined);
 
   expect(frames.map((frame) => frame.type)).toStrictEqual([
     'read',
@@ -76,4 +97,16 @@ test("it gives a tool use of the guest's reply the result of the run's real endp
     'assistant',
     'ended',
   ]);
+
+  expect(entries.map((entry) => entry.role)).toStrictEqual([
+    'user',
+    'assistant',
+    'user',
+    'assistant',
+  ]);
+
+  expect(JSON.parse(toolResult.text)).toMatchObject({
+    content: [],
+    structuredContent: { text: 'Buy oat milk.' },
+  });
 });
