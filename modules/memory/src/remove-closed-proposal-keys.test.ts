@@ -85,11 +85,12 @@ test('it never removes the key of a pending proposal', async () => {
   expect(keys.get(row.item_id)).toBeInstanceOf(CryptoKey);
 });
 
-// each blocked checkpoint waits out the database's busy timeout before it reports the reader
+// each blocked checkpoint waits out the key store's busy timeout, 50 ms here, before it reports the reader
 test('it finishes on the next lapse sweep a key removal whose checkpoint a reader blocked', async () => {
   const clock = buildTestClock(1_000_000);
 
   const memory = await startTestMemory({
+    keyStoreBusyTimeoutMs: 50,
     gate: {
       clock,
       limits: { evidenceWindow: 20, proposalLapseMs: 5000, proposalCap: 10, closeMatchScore: 0.6 },
@@ -112,4 +113,4 @@ test('it finishes on the next lapse sweep a key removal whose checkpoint a reade
 
   expect(blocked).toBe('blocked');
   expect(stat(join(memory.dataDir, 'keys.db-wal'))).resolves.toMatchObject({ size: 0 });
-}, 20_000);
+});

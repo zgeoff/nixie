@@ -19,6 +19,10 @@ export interface StartWriterOptions {
 
   // the system clock by default; a test build passes the clock its test steps
   readonly clock?: Clock;
+
+  // how long the key store waits for another connection's lock; the database's default when absent,
+  // and a test passes a short one to reach the busy path quickly
+  readonly keyStoreBusyTimeoutMs?: number | undefined;
 }
 
 // Makes this process the database's one writer, in the order a release on the host needs: refuse a
@@ -39,7 +43,7 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
       requireWriter: (tx) => requireWriterEpoch(tx, epoch),
     });
 
-    const keys = await startKeyStore(options.dataDir);
+    const keys = await startKeyStore(options.dataDir, options.keyStoreBusyTimeoutMs);
 
     return {
       dataDir: options.dataDir,

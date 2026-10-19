@@ -5,6 +5,10 @@ import type { Transaction } from 'kysely';
 // the key store needs, because a deleted key otherwise stays in the file's free pages.
 export interface DatabaseOptions {
   readonly secureDelete?: boolean;
+
+  // how long a statement, and the switch to WAL, waits for another connection's lock before SQLite
+  // reports it busy; defaultBusyTimeoutMs when absent
+  readonly busyTimeoutMs?: number | undefined;
 }
 
 // The messages between the dialect on the main thread and the SQLite worker. Each request carries an

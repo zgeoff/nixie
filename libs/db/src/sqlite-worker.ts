@@ -54,13 +54,15 @@ function runRequest(request: WorkerRequest): WorkerQueryResult {
   return runTransactionStep(state.database, request.sql, request.parameters);
 }
 
-const busyTimeoutMs = 5000;
+const defaultBusyTimeoutMs = 5000;
 
 // busy_timeout comes first, so the statements after it wait for another connection's lock. WAL lets
 // readers run beside the writer, and FULL fsyncs every commit so a claimed outside action survives
 // a power loss.
 function startConnection(path: string, options: DatabaseOptions): Database {
   const database = new Database(path, { create: true, strict: true });
+
+  const busyTimeoutMs = options.busyTimeoutMs ?? defaultBusyTimeoutMs;
 
   database.run(`pragma busy_timeout = ${String(busyTimeoutMs)}`);
 
