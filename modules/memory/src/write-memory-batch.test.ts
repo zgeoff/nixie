@@ -362,6 +362,7 @@ test('it applies a shared write as a shared item', async () => {
           source: 'owner',
           checks: { quote: 'exact' },
           evidence: { recordSequence: planned.bounds.end, start: 10, end: 31 },
+          model: 'claude-writer-1',
         },
       },
     ],

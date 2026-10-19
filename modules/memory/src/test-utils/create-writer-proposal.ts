@@ -4,6 +4,7 @@ import type { MemoryProposal } from '../gate-types';
 import { readWriterRow } from '../read-writer-row';
 import { runWriterBatch } from '../run-writer-batch';
 import { writerConfigSchema } from '../writer-config-schema';
+import type { WriterSubject } from '../writer-types';
 import { buildStubWriterSession } from './build-stub-writer-session';
 import { claimWriterLease } from './claim-writer-lease';
 import type { TestMemory } from './start-test-memory';
@@ -14,6 +15,9 @@ export interface WriterProposalRequest {
   readonly message: string;
   readonly text: string;
   readonly quote: string;
+
+  // the subject the writer stages, owner when unset
+  readonly subject?: WriterSubject;
 }
 
 // Runs one memory writer batch over the message through the store's real batch gate, which holds
@@ -44,7 +48,7 @@ export async function createWriterProposal(
       assistantName: null,
       ...buildStubWriterSession({
         op: 'remember',
-        subject: 'owner',
+        subject: request.subject ?? 'owner',
         text: request.text,
         quote: request.quote,
         sourceSequence: planned.bounds.end,

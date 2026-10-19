@@ -276,6 +276,7 @@ const writerAnswers: Record<string, (input: Record<string, unknown>) => unknown>
   'memory.remember': () => ({ staged: true }),
   'memory.edit': () => ({ staged: true }),
   'memory.retire': () => ({ staged: true }),
+  'memory.flag-self-note': () => ({ staged: true }),
 };
 
 const consolidatorAnswers: Record<string, (input: Record<string, unknown>) => unknown> = {

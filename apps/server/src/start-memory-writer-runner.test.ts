@@ -84,6 +84,7 @@ test('it carries a flagged self-note as an events line on the next turn, and fil
         clock: ctx.memory.context.clock,
         ownerName: null,
         defaultZone: 'UTC',
+        compaction: { threshold: 0.8, headsUp: 0.7 },
       },
       () => ctx.memory.store,
     ),

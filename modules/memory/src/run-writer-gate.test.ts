@@ -83,6 +83,7 @@ test('it leaves out a write that the gate drops', async () => {
     [
       {
         op: 'remember',
+        subject: 'owner',
         text: 'I like short answers',
         quote: 'You like short answers',
         sourceSequence: 4,
