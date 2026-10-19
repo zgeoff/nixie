@@ -1,6 +1,6 @@
 export { findSkillPin } from './find-skill-pin';
-export type { TaskSkill, TaskSkillsQuery } from './load-task-skills';
-export { loadTaskSkills } from './load-task-skills';
+export type { TaskSkill, TaskSkillsQuery } from './load-or-pin-task-skills';
+export { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 export type { SkillPinInput } from './record-skill-pin';
 export { recordSkillPin } from './record-skill-pin';
 export type { SkillCatalog } from './render-skill-catalog';

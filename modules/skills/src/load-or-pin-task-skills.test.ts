@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { readRecords, startWriter } from '@heynixie/log';
-import { loadTaskSkills } from './load-task-skills';
+import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 
 // the writer's data directory holds the definitions root too, so one removal cleans up both
 async function setupTest() {
@@ -52,7 +52,7 @@ test('it keeps a task on the skill version it first loaded after a seed changes 
 
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  await loadTaskSkills(ctx.log, {
+  await loadOrPinTaskSkills(ctx.log, {
     thread: 'conversation',
     inForce: first.inForce,
     list: first.inForce?.conversationSkills ?? [],
@@ -65,7 +65,7 @@ test('it keeps a task on the skill version it first loaded after a seed changes 
 
   const second = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  const skills = await loadTaskSkills(ctx.log, {
+  const skills = await loadOrPinTaskSkills(ctx.log, {
     thread: 'conversation',
     inForce: second.inForce,
     list: second.inForce?.conversationSkills ?? [],
@@ -102,7 +102,7 @@ test('it pins a task on its first load to the skills on its list, and records th
 
   const tideTables = seeded.inForce?.skills.find((skill) => skill.name === 'tide-tables');
 
-  const skills = await loadTaskSkills(ctx.log, {
+  const skills = await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
     inForce: seeded.inForce,
     list: ['tide-tables'],
@@ -139,7 +139,7 @@ test("it pins a task that first loads after a seed to the new version, apart fro
 
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  await loadTaskSkills(ctx.log, {
+  await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
     inForce: first.inForce,
     list: ['tide-tables'],
@@ -152,13 +152,13 @@ test("it pins a task that first loads after a seed to the new version, apart fro
 
   const second = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  const taskA = await loadTaskSkills(ctx.log, {
+  const taskA = await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
     inForce: second.inForce,
     list: ['tide-tables'],
   });
 
-  const taskB = await loadTaskSkills(ctx.log, {
+  const taskB = await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-b',
     inForce: second.inForce,
     list: ['tide-tables'],
@@ -175,7 +175,13 @@ test("it pins a task that first loads after a seed to the new version, apart fro
 
 test('it gives a task no skills and records no pin before the first seed', async () => {
   const ctx = await setupTest();
-  const skills = await loadTaskSkills(ctx.log, { thread: 'conversation', inForce: null, list: [] });
+
+  const skills = await loadOrPinTaskSkills(ctx.log, {
+    thread: 'conversation',
+    inForce: null,
+    list: [],
+  });
+
   const pins = await readRecords(ctx.log, { afterSequence: 0, kinds: ['skills.pinned'] });
 
   expect(skills).toStrictEqual([]);
