@@ -1,4 +1,5 @@
 import type { Clock } from '@heynixie/clock';
+import type { CompactionSettings } from '@heynixie/compaction';
 import type { Log } from '@heynixie/log';
 import type { AnswerQuoteSource, StartedMemoryStore } from '@heynixie/memory';
 import {
@@ -7,8 +8,12 @@ import {
   buildProposalAnswerKind,
   buildProposalMergeKind,
 } from '@heynixie/memory';
-import type { TurnNote, TurnNoteRange } from '@heynixie/sessions';
-import { buildEventRegistry, buildRetriedTurnKind } from '@heynixie/sessions';
+import type { TurnNote, TurnNoteRequest } from '@heynixie/sessions';
+import {
+  buildCompactionHeadsUpKind,
+  buildEventRegistry,
+  buildRetriedTurnKind,
+} from '@heynixie/sessions';
 import { buildRestartKind } from './build-restart-kind';
 import { readTurnNotes } from './read-turn-notes';
 
@@ -21,6 +26,9 @@ export interface TurnNoteReaderOptions {
 
   // the zone events show in until one of the owner's messages carries a zone
   readonly defaultZone: string;
+
+  // the shares of the window at which the conversation's session compacts and hears it is near
+  readonly compaction: Pick<CompactionSettings, 'threshold' | 'headsUp'>;
 }
 
 // Makes the reader of the note before each turn: the events, memory changes included, whose kinds
@@ -29,7 +37,7 @@ export interface TurnNoteReaderOptions {
 export function makeTurnNoteReader(
   options: TurnNoteReaderOptions,
   memory: () => StartedMemoryStore,
-): (span?: TurnNoteRange) => Promise<TurnNote> {
+): (request?: TurnNoteRequest) => Promise<TurnNote> {
   const store: AnswerQuoteSource = {
     recall: (request) => memory().recall(request),
     proposals: {
@@ -44,7 +52,8 @@ export function makeTurnNoteReader(
     buildProposalAnswerKind(options.log, store),
     buildRestartKind(options.log),
     buildRetriedTurnKind(options.log),
+    buildCompactionHeadsUpKind(options.log, options.compaction),
   ]);
 
-  return (span) => readTurnNotes({ ...options, events }, span);
+  return (request) => readTurnNotes({ ...options, events }, request);
 }

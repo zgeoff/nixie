@@ -54,7 +54,11 @@ async function runTokenTurn(
 ): Promise<CompletedTurn> {
   plan.signal.throwIfAborted();
 
-  const [url, note] = await Promise.all([getToolURL(run, plan.signal), readTurnNote(run)]);
+  const [url, note] = await Promise.all([
+    getToolURL(run, plan.signal),
+    readTurnNote(run, plan.resume === null),
+  ]);
+
   const opening = await readOpeningBatch(run.context.log, input.inbox, plan);
 
   const sent = new Set(opening.batch.records.map((record) => record.sequence));
@@ -100,8 +104,10 @@ async function runTokenTurn(
   }
 }
 
-function readTurnNote(run: ConversationRun): Promise<TurnNote | null> {
-  return run.readTurnNote === undefined ? Promise.resolve(null) : run.readTurnNote();
+function readTurnNote(run: ConversationRun, isNewSession: boolean): Promise<TurnNote | null> {
+  return run.readTurnNote === undefined
+    ? Promise.resolve(null)
+    : run.readTurnNote({ isNewSession });
 }
 
 // a forget that aborted the turn while the route was read stops the turn before a guest starts
