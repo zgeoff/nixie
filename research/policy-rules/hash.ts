@@ -1,4 +1,4 @@
-/* oxlint-disable no-nested-ternary, max-lines-per-function, max-statements, one-var, sort-vars, no-map-spread -- a throwaway spike keeps each question in one readable pass */
+/* oxlint-disable no-nested-ternary, max-lines-per-function, max-statements, no-map-spread -- a throwaway spike keeps each question in one readable pass */
 // Question 2: is the snapshot hash stable across reordered but equivalent
 // definitions, and does every real change move it?
 import assert from 'node:assert/strict';
@@ -6,8 +6,8 @@ import type { Definitions, Rule } from './engine.ts';
 import { buildSnapshotHash } from './engine.ts';
 import { makePolicy } from './starter.ts';
 
-const JOB = '# Morning report\n\nSummarise today’s calendar and unread mail.\n',
-  PERSONA = '# Persona\n\nWarm, brief, and direct.\n\nNever uses emoji.\n';
+const JOB = '# Morning report\n\nSummarise today’s calendar and unread mail.\n';
+const PERSONA = '# Persona\n\nWarm, brief, and direct.\n\nNever uses emoji.\n';
 
 function buildDefs(): Definitions {
   return {
@@ -53,29 +53,29 @@ function toReversedKeys<T extends object>(value: T): T {
 
 function buildScrambled(defs: Definitions, seed: number): Definitions {
   const rules = defs.policy.rules.map((rule) => {
-      const flipped: Rule = toReversedKeys({ ...rule });
-      if (flipped.effects) {
-        flipped.effects = flipped.effects.toReversed();
-      }
-      if (flipped.tools) {
-        flipped.tools = [...flipped.tools, ...flipped.tools].toReversed();
-      }
-      if (flipped.checks) {
-        const copies = structuredClone(flipped.checks).map((check) =>
-          check.op === 'in'
-            ? { ...check, values: check.values.toReversed() }
-            : check.op === 'eq' && typeof check.value === 'string'
-              ? { ...check, value: check.value.normalize('NFD') }
-              : check,
-        );
-        flipped.checks = [...copies, ...structuredClone(copies)].toReversed();
-      }
-      return flipped;
-    }),
-    order =
-      seed % 2 === 0
-        ? rules.toReversed()
-        : [...rules.slice(seed % rules.length), ...rules.slice(0, seed % rules.length)];
+    const flipped: Rule = toReversedKeys({ ...rule });
+    if (flipped.effects) {
+      flipped.effects = flipped.effects.toReversed();
+    }
+    if (flipped.tools) {
+      flipped.tools = [...flipped.tools, ...flipped.tools].toReversed();
+    }
+    if (flipped.checks) {
+      const copies = structuredClone(flipped.checks).map((check) =>
+        check.op === 'in'
+          ? { ...check, values: check.values.toReversed() }
+          : check.op === 'eq' && typeof check.value === 'string'
+            ? { ...check, value: check.value.normalize('NFD') }
+            : check,
+      );
+      flipped.checks = [...copies, ...structuredClone(copies)].toReversed();
+    }
+    return flipped;
+  });
+  const order =
+    seed % 2 === 0
+      ? rules.toReversed()
+      : [...rules.slice(seed % rules.length), ...rules.slice(0, seed % rules.length)];
   return {
     persona: seed % 3 === 0 ? `﻿${defs.persona.replaceAll('\n', '\r\n')}\n\n` : defs.persona,
     jobs: defs.jobs
@@ -96,8 +96,8 @@ function buildScrambled(defs: Definitions, seed: number): Definitions {
 }
 
 function runHash(): void {
-  const defs = buildDefs(),
-    base = buildSnapshotHash(defs);
+  const defs = buildDefs();
+  const base = buildSnapshotHash(defs);
   let drift = 0;
   for (let seed = 0; seed < 1000; seed += 1) {
     if (buildSnapshotHash(buildScrambled(defs, seed)) !== base) {

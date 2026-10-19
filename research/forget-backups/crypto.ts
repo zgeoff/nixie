@@ -1,8 +1,7 @@
-// oxlint-disable sort-vars
 // AES-256-GCM per memory item, with each item key wrapped by a deployment key through AES-KW.
-const IV_BYTES = 12,
-  encoder = new TextEncoder(),
-  decoder = new TextDecoder();
+const IV_BYTES = 12;
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
 export interface Sealed {
   iv: Uint8Array<ArrayBuffer>;
@@ -36,12 +35,12 @@ export function decodeItemKey(wrapped: Uint8Array, deploymentKey: CryptoKey): Pr
 
 // The item ID and version are additional data, so a ciphertext cannot move to another row.
 export async function encodeText(key: CryptoKey, text: string, aad: string): Promise<Sealed> {
-  const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES)),
-    data = await crypto.subtle.encrypt(
-      { additionalData: encoder.encode(aad), iv, name: 'AES-GCM' },
-      key,
-      encoder.encode(text),
-    );
+  const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
+  const data = await crypto.subtle.encrypt(
+    { additionalData: encoder.encode(aad), iv, name: 'AES-GCM' },
+    key,
+    encoder.encode(text),
+  );
   return { data: new Uint8Array(data), iv };
 }
 

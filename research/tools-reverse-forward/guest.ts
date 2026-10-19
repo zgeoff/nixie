@@ -1,19 +1,19 @@
-// oxlint-disable one-var, sort-vars, no-await-in-loop, promise/avoid-new -- sequential measurements, grouped spike setup
+// oxlint-disable no-await-in-loop, promise/avoid-new -- sequential measurements
 import { mkdtempSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
-const url = process.env.SPIKE_TOOLS_URL ?? '',
-  mode = process.argv[2] ?? 'bench',
-  started = performance.now();
+const url = process.env.SPIKE_TOOLS_URL ?? '';
+const mode = process.argv[2] ?? 'bench';
+const started = performance.now();
 function emit(event: string, fields: Record<string, unknown>): void {
   console.log(JSON.stringify({ event, ms: performance.now() - started, ...fields }));
 }
 if (mode === 'bench') {
   const samples: number[] = [];
   for (let index = 0; index < 110; index += 1) {
-    const start = performance.now(),
-      response = await fetch(`${url}/bench`);
+    const start = performance.now();
+    const response = await fetch(`${url}/bench`);
     if (!((await response.json()) as { ok?: boolean }).ok) {
       throw new Error('bad response');
     }
@@ -23,14 +23,14 @@ if (mode === 'bench') {
   }
   samples.sort((a, b) => a - b);
   emit('bench', { samples: samples.length, p50: samples[49], p95: samples[94], p99: samples[98] });
-  const streamStart = performance.now(),
-    response = await fetch(`${url}/stream`),
-    reader = response.body?.getReader();
+  const streamStart = performance.now();
+  const response = await fetch(`${url}/stream`);
+  const reader = response.body?.getReader();
   if (!reader) {
     throw new Error('missing stream body');
   }
-  let firstMs = 0,
-    text = '';
+  let firstMs = 0;
+  let text = '';
   while (true) {
     const chunk = await reader.read();
     if (chunk.done) {
@@ -76,16 +76,16 @@ if (mode === 'bench') {
     emit(event, { targetKind });
   }
 } else {
-  const home = mkdtempSync('/tmp/nixie-route-home-'),
-    env: Record<string, string> = {
-      HOME: home,
-      CLAUDE_CONFIG_DIR: `${home}/.claude`,
-      PATH: process.env.PATH ?? '',
-      ANTHROPIC_API_KEY: 'broker-placeholder',
-      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
-      NO_PROXY: process.env.NO_PROXY ?? '127.0.0.1,localhost',
-      no_proxy: process.env.NO_PROXY ?? '127.0.0.1,localhost',
-    };
+  const home = mkdtempSync('/tmp/nixie-route-home-');
+  const env: Record<string, string> = {
+    HOME: home,
+    CLAUDE_CONFIG_DIR: `${home}/.claude`,
+    PATH: process.env.PATH ?? '',
+    ANTHROPIC_API_KEY: 'broker-placeholder',
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+    NO_PROXY: process.env.NO_PROXY ?? '127.0.0.1,localhost',
+    no_proxy: process.env.NO_PROXY ?? '127.0.0.1,localhost',
+  };
   for (const name of [
     'HTTPS_PROXY',
     'https_proxy',
@@ -98,9 +98,9 @@ if (mode === 'bench') {
       env[name] = value;
     }
   }
-  let connected = false,
-    tool = false,
-    succeeded = false;
+  let connected = false;
+  let tool = false;
+  let succeeded = false;
   for await (const message of query({
     prompt: 'Call ping once, then stop.',
     options: {

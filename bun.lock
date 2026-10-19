@@ -504,6 +504,9 @@
     "research/connector-account-pick": {
       "name": "@heynixie/spike-connector-account-pick",
       "version": "0.0.0",
+      "dependencies": {
+        "ts-pattern": "5.9.0",
+      },
       "devDependencies": {
         "@types/bun": "1.4.2",
       },
@@ -552,6 +555,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "0.3.296",
+        "ts-pattern": "5.9.0",
       },
     },
     "research/paste-spans": {
@@ -564,6 +568,9 @@
     "research/policy-rules": {
       "name": "@heynixie/spike-policy-rules",
       "version": "0.0.0",
+      "dependencies": {
+        "ts-pattern": "5.9.0",
+      },
     },
     "research/replica-encryption": {
       "name": "@heynixie/spike-replica-encryption",

@@ -1,4 +1,4 @@
-/* oxlint-disable one-var, no-await-in-loop, typescript/no-non-null-assertion -- sequential fixture phases with required schema rows */
+/* oxlint-disable no-await-in-loop, typescript/no-non-null-assertion -- sequential fixture phases with required schema rows */
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

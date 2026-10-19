@@ -38,8 +38,8 @@ const HELP = `commands:
     /persona <file>       switch the persona file and restart
     /mode replace|append  switch the system prompt mode and restart
     /model <id>           switch the model and restart
-    /quit                 end the chat (Ctrl-D works too)`,
-  here = import.meta.dir;
+    /quit                 end the chat (Ctrl-D works too)`;
+const here = import.meta.dir;
 
 function writeTranscript(session: Session, text: string): void {
   appendFileSync(session.transcript, `${text}\n\n`);
@@ -63,11 +63,11 @@ function emitTurnDone(session: Session): void {
 
 function printAssistant(session: Session, message: SDKAssistantMessage): void {
   const text = message.message.content
-      .flatMap((block) => (block.type === 'text' ? [block.text] : []))
-      .join(''),
-    tools = message.message.content.flatMap((block) =>
-      block.type === 'tool_use' ? [`${block.name} ${JSON.stringify(block.input)}`] : [],
-    );
+    .flatMap((block) => (block.type === 'text' ? [block.text] : []))
+    .join('');
+  const tools = message.message.content.flatMap((block) =>
+    block.type === 'tool_use' ? [`${block.name} ${JSON.stringify(block.input)}`] : [],
+  );
   for (const tool of tools) {
     console.log(`\n[tool ${tool.slice(0, 200)}]`);
     writeTranscript(session, `> tool: ${tool}`);
@@ -78,8 +78,8 @@ function printAssistant(session: Session, message: SDKAssistantMessage): void {
 }
 
 function printResult(session: Session, message: SDKResultMessage): void {
-  const cost = message.total_cost_usd ? ` cost=$${message.total_cost_usd.toFixed(4)}` : '',
-    failed = message.subtype !== 'success' || message.is_error;
+  const cost = message.total_cost_usd ? ` cost=$${message.total_cost_usd.toFixed(4)}` : '';
+  const failed = message.subtype !== 'success' || message.is_error;
   console.log(`\n[turn done${failed ? ` ${message.subtype}` : ''}${cost}]`);
   if (failed && message.subtype === 'success') {
     console.log(`[error ${message.result}]`);
@@ -132,12 +132,12 @@ function writeHeader(session: Session, header: Header): void {
 }
 
 function startSession(settings: Settings, persona: string): Session {
-  const options = buildOptions(settings, persona),
-    session = {
-      aborter: new AbortController(),
-      events: new EventTarget(),
-      transcript: join(here, 'transcripts', `${new Date().toISOString().replaceAll(':', '-')}.md`),
-    } as Session;
+  const options = buildOptions(settings, persona);
+  const session = {
+    aborter: new AbortController(),
+    events: new EventTarget(),
+    transcript: join(here, 'transcripts', `${new Date().toISOString().replaceAll(':', '-')}.md`),
+  } as Session;
   mkdirSync(join(here, 'transcripts'), { recursive: true });
   session.query = query({ options, prompt: readInput(session) });
   session.done = readSession(session);
@@ -158,12 +158,12 @@ async function removeSession(session: Session): Promise<void> {
 
 async function sendTurn(session: Session, text: string): Promise<void> {
   const message: SDKUserMessage = {
-      message: { content: text, role: 'user' },
-      parent_tool_use_id: null,
-      type: 'user',
-      uuid: randomUUID(),
-    },
-    turnDone = once(session.events, 'turn-done');
+    message: { content: text, role: 'user' },
+    parent_tool_use_id: null,
+    type: 'user',
+    uuid: randomUUID(),
+  };
+  const turnDone = once(session.events, 'turn-done');
   writeTranscript(session, `**owner:** ${text}`);
   session.events.dispatchEvent(new CustomEvent('input', { detail: message }));
   await turnDone;
@@ -180,8 +180,8 @@ function buildChanges(value: string | undefined): Record<string, Partial<Setting
 
 // Returns the new settings when a command needs a restart, or null when it does not.
 function applyCommand(settings: Settings, line: string): Settings | null {
-  const [command, value] = line.split(/\s+/u, 2),
-    change = buildChanges(value)[command ?? ''];
+  const [command, value] = line.split(/\s+/u, 2);
+  const change = buildChanges(value)[command ?? ''];
   if (!change) {
     console.log(HELP);
     return null;
@@ -214,8 +214,8 @@ async function resetSession(chat: Chat, next: Settings): Promise<void> {
 
 // Reads one line, handles it, then calls itself, so only one turn runs at a time.
 async function runLoop(chat: Chat): Promise<void> {
-  const line = await chat.terminal.question('\nyou> ', { signal: chat.stop.signal }),
-    text = line.trim();
+  const line = await chat.terminal.question('\nyou> ', { signal: chat.stop.signal });
+  const text = line.trim();
   if (text === '/quit') {
     return;
   }

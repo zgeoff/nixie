@@ -52,14 +52,14 @@ async function collectOutput(
   stream: ReadableStream<Uint8Array>,
   origin: number,
 ): Promise<{ frameMs: number | undefined; lines: Line[]; stdout: Uint8Array }> {
-  const decoder = new TextDecoder(),
-    lines: Line[] = [],
-    chunks: Uint8Array[] = [];
-  let buffer = '',
-    frameMs: number | undefined;
+  const decoder = new TextDecoder();
+  const lines: Line[] = [];
+  const chunks: Uint8Array[] = [];
+  let buffer = '';
+  let frameMs: number | undefined;
   for await (const chunk of stream) {
-    const at = readElapsed(origin),
-      parts = (buffer + decoder.decode(chunk, { stream: true })).split('\n');
+    const at = readElapsed(origin);
+    const parts = (buffer + decoder.decode(chunk, { stream: true })).split('\n');
     chunks.push(chunk);
     buffer = parts.pop() ?? '';
     for (const part of parts) {
@@ -78,18 +78,18 @@ function hasWholeFrame(bytes: Buffer): boolean {
 
 async function run(command: string[], origin: number, input?: Uint8Array): Promise<RunResult> {
   const child = Bun.spawn(command, {
-      stderr: 'pipe',
-      stdin: input ? 'pipe' : 'ignore',
-      stdout: 'pipe',
-    }),
-    output = collectOutput(child.stdout, origin);
+    stderr: 'pipe',
+    stdin: input ? 'pipe' : 'ignore',
+    stdout: 'pipe',
+  });
+  const output = collectOutput(child.stdout, origin);
   if (input && child.stdin) {
     child.stdin.write(input);
     await child.stdin.end();
   }
-  const { frameMs, lines, stdout } = await output,
-    code = await child.exited,
-    stderr = await new Response(child.stderr).text();
+  const { frameMs, lines, stdout } = await output;
+  const code = await child.exited;
+  const stderr = await new Response(child.stderr).text();
   return {
     code,
     frameMs,
@@ -226,13 +226,13 @@ const fetchLimits = ['--cpus', '1', '--memory', '512m', '--memory-swap', '512m']
 
 // A fresh sandbox per fetch, against one fetcher process per fetch in a long-lived sandbox.
 async function runFetch(samples: number): Promise<void> {
-  const image = readEnv('SPIKE_FETCH_IMAGE'),
-    box = readEnv('SPIKE_FETCH_BOX'),
-    frame = buildFetchFrame(),
-    commands: Record<string, string[]> = {
-      exec: ['docker', 'exec', '-i', box, '/usr/local/bin/bun', '/app/fetch.js'],
-      fresh: ['docker', 'run', '-i', '--rm', ...fetchLimits, image],
-    };
+  const image = readEnv('SPIKE_FETCH_IMAGE');
+  const box = readEnv('SPIKE_FETCH_BOX');
+  const frame = buildFetchFrame();
+  const commands: Record<string, string[]> = {
+    exec: ['docker', 'exec', '-i', box, '/usr/local/bin/bun', '/app/fetch.js'],
+    fresh: ['docker', 'run', '-i', '--rm', ...fetchLimits, image],
+  };
   for (let index = 0; index < samples; index += 1) {
     for (const route of pickOrder(['fresh', 'exec'], index)) {
       for (const mode of ['cold', 'warm']) {
@@ -254,12 +254,12 @@ async function runFetch(samples: number): Promise<void> {
 }
 
 const phases: Record<string, (samples: number) => Promise<void>> = {
-    fetch: runFetch,
-    start: runStart,
-    turn: runTurn,
-  },
-  [phase = '', count = '10'] = process.argv.slice(2),
-  runPhase = phases[phase];
+  fetch: runFetch,
+  start: runStart,
+  turn: runTurn,
+};
+const [phase = '', count = '10'] = process.argv.slice(2);
+const runPhase = phases[phase];
 
 if (!runPhase) {
   throw new Error(`unknown phase ${phase}`);

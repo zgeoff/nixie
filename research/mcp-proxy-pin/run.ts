@@ -1,4 +1,4 @@
-// oxlint-disable no-await-in-loop, max-statements, one-var, zgeoff/no-await-args -- each case runs alone, in printed order
+// oxlint-disable no-await-in-loop, max-statements, zgeoff/no-await-args -- each case runs alone, in printed order
 // Drives the proxy through each change to the stand-in server and prints every decision.
 import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

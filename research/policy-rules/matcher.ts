@@ -1,33 +1,33 @@
-/* oxlint-disable max-statements, one-var, sort-vars -- a throwaway spike keeps each question in one readable pass */
+/* oxlint-disable max-statements -- a throwaway spike keeps each question in one readable pass */
 // Question 1: does every sample call get exactly one decision, the same one
 // whatever the rule order, and which calls fall through to "no rule matched"?
 import type { Call, ContextKind, Decision, Ledger, Rule } from './engine.ts';
 import { getDecision, toCanonical } from './engine.ts';
 import { TOOLS, makePolicy } from './starter.ts';
 
-const CONTEXTS: ContextKind[] = ['conversation', 'task', 'job'],
-  ARGS: Record<string, Record<string, unknown>[]> = {
-    'mail.send': [
-      { to: ['partner@example.com'] },
-      { to: ['sam@example.com'] },
-      { to: ['stranger@example.net'] },
-      { to: ['sam@example.com', 'stranger@example.net'] },
-    ],
-    'mail.reply': [{ to: ['sender@example.org'] }, { to: ['stranger@example.net'] }],
-    'calendar.invite': [{ attendees: ['partner@example.com'] }, { attendees: ['new@example.net'] }],
-    'booking.reserve': [{ venue: 'venue:copper-pot-riverside' }],
-    'shop.buy': [
-      { merchant: 'shop.example', amount: 12 },
-      { merchant: 'shop.example', amount: 30 },
-      { merchant: 'other.example', amount: 5 },
-    ],
-    'notify.owner': [{ to: 'owner' }],
-    'job.create': [
-      { tools: ['calendar.list', 'mail.search', 'notify.owner'] },
-      { tools: ['mail.search', 'mail.label'] },
-      { tools: ['mail.search', 'mail.reply'] },
-    ],
-  };
+const CONTEXTS: ContextKind[] = ['conversation', 'task', 'job'];
+const ARGS: Record<string, Record<string, unknown>[]> = {
+  'mail.send': [
+    { to: ['partner@example.com'] },
+    { to: ['sam@example.com'] },
+    { to: ['stranger@example.net'] },
+    { to: ['sam@example.com', 'stranger@example.net'] },
+  ],
+  'mail.reply': [{ to: ['sender@example.org'] }, { to: ['stranger@example.net'] }],
+  'calendar.invite': [{ attendees: ['partner@example.com'] }, { attendees: ['new@example.net'] }],
+  'booking.reserve': [{ venue: 'venue:copper-pot-riverside' }],
+  'shop.buy': [
+    { merchant: 'shop.example', amount: 12 },
+    { merchant: 'shop.example', amount: 30 },
+    { merchant: 'other.example', amount: 5 },
+  ],
+  'notify.owner': [{ to: 'owner' }],
+  'job.create': [
+    { tools: ['calendar.list', 'mail.search', 'notify.owner'] },
+    { tools: ['mail.search', 'mail.label'] },
+    { tools: ['mail.search', 'mail.reply'] },
+  ],
+};
 
 // conflicting extras: a lift, a deny that overlaps an allow, a narrow ask
 const EXTRA: Rule[] = [
@@ -71,8 +71,8 @@ function sortBySeed<T>(items: T[], seed: number): T[] {
   let state = seed;
   for (let index = out.length - 1; index > 0; index -= 1) {
     state = (state * 1_103_515_245 + 12_345) % 2_147_483_648;
-    const pick = state % (index + 1),
-      held = out[index] as T;
+    const pick = state % (index + 1);
+    const held = out[index] as T;
     out[index] = out[pick] as T;
     out[pick] = held;
   }
@@ -80,13 +80,13 @@ function sortBySeed<T>(items: T[], seed: number): T[] {
 }
 
 function runMatcher(): void {
-  const policy = makePolicy(EXTRA),
-    ledger: Ledger = { spent: new Map() },
-    calls = buildCalls(),
-    valid = new Set(['allow', 'ask', 'deny']);
+  const policy = makePolicy(EXTRA);
+  const ledger: Ledger = { spent: new Map() };
+  const calls = buildCalls();
+  const valid = new Set(['allow', 'ask', 'deny']);
   let unstable = 0;
-  const byStage = new Map<string, number>(),
-    fallThrough: string[] = [];
+  const byStage = new Map<string, number>();
+  const fallThrough: string[] = [];
   for (const call of calls) {
     const base: Decision = getDecision(policy, call, ledger);
     if (!valid.has(base.outcome)) {

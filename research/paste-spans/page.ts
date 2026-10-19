@@ -1,4 +1,3 @@
-/* oxlint-disable one-var -- the page keeps its state in separate bindings */
 // Runs in the page: follows a textarea through beforeinput and input with the shipped span logic,
 // the way the web client's composer does, and logs each event. Served by device.ts, it posts each
 // log entry to the server.

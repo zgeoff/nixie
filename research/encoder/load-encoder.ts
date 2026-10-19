@@ -4,6 +4,7 @@
 import { mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { match } from 'ts-pattern';
 import type { Candidate } from './candidates.ts';
 
 export type Embed = (texts: string[]) => Promise<Float32Array[]>;
@@ -20,21 +21,12 @@ export async function loadEncoder(candidate: Candidate): Promise<Embed> {
 }
 
 async function loadRunner(candidate: Candidate): Promise<Embed> {
-  switch (candidate.runner) {
-    case 'transformers': {
-      return loadTransformersEncoder(candidate);
-    }
-    case 'ort-wasm':
-    case 'ort-node': {
-      return loadORTEncoder(candidate);
-    }
-    case 'fastembed': {
-      return loadFastembedEncoder(candidate);
-    }
-    case 'static': {
-      return loadStaticEncoder(candidate);
-    }
-  }
+  return match(candidate.runner)
+    .with('transformers', () => loadTransformersEncoder(candidate))
+    .with('ort-wasm', 'ort-node', () => loadORTEncoder(candidate))
+    .with('fastembed', () => loadFastembedEncoder(candidate))
+    .with('static', () => loadStaticEncoder(candidate))
+    .exhaustive();
 }
 
 async function loadTransformersEncoder(candidate: Candidate): Promise<Embed> {
@@ -44,15 +36,15 @@ async function loadTransformersEncoder(candidate: Candidate): Promise<Embed> {
   const
     sessionOptions = THREADS > 0 ? { intraOpNumThreads: THREADS, interOpNumThreads: 1 } : {};
   if (candidate.pooling === 'none') {
-    const tokenizer = await AutoTokenizer.from_pretrained(candidate.model),
-      model = await AutoModel.from_pretrained(candidate.model, {
-        dtype: candidate.dtype,
-        session_options: sessionOptions,
-      });
+    const tokenizer = await AutoTokenizer.from_pretrained(candidate.model);
+    const model = await AutoModel.from_pretrained(candidate.model, {
+      dtype: candidate.dtype,
+      session_options: sessionOptions,
+    });
     return async (texts) => {
-      const inputs = await tokenizer(texts, { padding: true, truncation: true }),
-        output = await model(inputs),
-        tensor = output.sentence_embedding;
+      const inputs = await tokenizer(texts, { padding: true, truncation: true });
+      const output = await model(inputs);
+      const tensor = output.sentence_embedding;
       return splitRows(tensor.data as Float32Array, tensor.dims as [number, number], true);
     };
   }
@@ -95,20 +87,20 @@ async function loadORTEncoder(candidate: Candidate): Promise<Embed> {
       }
     });
   }
-  const modelPath = path.join(MODELS_DIR, candidate.model, `onnx/${fileName}`),
-    options = wasm
-      ? { executionProviders: ['wasm'] }
-      : { executionProviders: ['cpu'], ...(THREADS > 0 ? { interOpNumThreads: 1, intraOpNumThreads: THREADS } : {}) };
-  const tokenizer = new Tokenizer(tokenizerJSON, tokenizerConfig),
-    session = wasm
-      ? await ort.InferenceSession.create(new Uint8Array(modelBytes), options)
-      : await ort.InferenceSession.create(modelPath, options),
-    maxLength = 512;
+  const modelPath = path.join(MODELS_DIR, candidate.model, `onnx/${fileName}`);
+  const options = wasm
+    ? { executionProviders: ['wasm'] }
+    : { executionProviders: ['cpu'], ...(THREADS > 0 ? { interOpNumThreads: 1, intraOpNumThreads: THREADS } : {}) };
+  const tokenizer = new Tokenizer(tokenizerJSON, tokenizerConfig);
+  const session = wasm
+    ? await ort.InferenceSession.create(new Uint8Array(modelBytes), options)
+    : await ort.InferenceSession.create(modelPath, options);
+  const maxLength = 512;
   return async (texts) => {
-    const encoded = texts.map((text) => tokenizer.encode(text).ids.slice(0, maxLength)),
-      width = Math.max(...encoded.map((ids) => ids.length)),
-      ids = new BigInt64Array(texts.length * width),
-      mask = new BigInt64Array(texts.length * width);
+    const encoded = texts.map((text) => tokenizer.encode(text).ids.slice(0, maxLength));
+    const width = Math.max(...encoded.map((ids) => ids.length));
+    const ids = new BigInt64Array(texts.length * width);
+    const mask = new BigInt64Array(texts.length * width);
     encoded.forEach((row, rowIndex) => {
       row.forEach((id, column) => {
         ids[rowIndex * width + column] = BigInt(id);
@@ -131,8 +123,8 @@ async function loadORTEncoder(candidate: Candidate): Promise<Embed> {
     if (!output) {
       throw new Error('the model has no last_hidden_state output');
     }
-    const data = output.data as Float32Array,
-      dims = output.dims[2] ?? 0;
+    const data = output.data as Float32Array;
+    const dims = output.dims[2] ?? 0;
     return encoded.map((row, rowIndex) => {
       const base = rowIndex * width * dims;
       if (candidate.pooling === 'cls') {
@@ -180,12 +172,12 @@ async function loadStaticEncoder(candidate: Candidate): Promise<Embed> {
       .catch(() => ({})),
   ]);
   await readModelFile(candidate.model, 'model.safetensors');
-  const tokenizer = new Tokenizer(tokenizerJSON, tokenizerConfig),
-    { table, dims } = await loadSafetensors(path.join(dir, 'model.safetensors'));
+  const tokenizer = new Tokenizer(tokenizerJSON, tokenizerConfig);
+  const { table, dims } = await loadSafetensors(path.join(dir, 'model.safetensors'));
   return async (texts) =>
     texts.map((text) => {
-      const ids = tokenizer.encode(text, { add_special_tokens: false }).ids,
-        vector = new Float32Array(dims);
+      const ids = tokenizer.encode(text, { add_special_tokens: false }).ids;
+      const vector = new Float32Array(dims);
       for (const id of ids) {
         const offset = id * dims;
         for (let index = 0; index < dims; index += 1) {
@@ -215,18 +207,18 @@ async function readModelFile(model: string, name: string): Promise<Buffer> {
 
 // reads only the header and the one tensor, so the weights sit in memory once
 async function loadSafetensors(filePath: string): Promise<{ table: Float32Array; dims: number }> {
-  const file = Bun.file(filePath),
-    headerLength = Number(Buffer.from(await file.slice(0, 8).arrayBuffer()).readBigUInt64LE(0)),
-    header = JSON.parse(await file.slice(8, 8 + headerLength).text()) as Record<
-      string,
-      { dtype: string; shape: number[]; data_offsets: [number, number] }
-    >,
-    entry = Object.entries(header).find(([name]) => name !== '__metadata__')?.[1];
+  const file = Bun.file(filePath);
+  const headerLength = Number(Buffer.from(await file.slice(0, 8).arrayBuffer()).readBigUInt64LE(0));
+  const header = JSON.parse(await file.slice(8, 8 + headerLength).text()) as Record<
+    string,
+    { dtype: string; shape: number[]; data_offsets: [number, number] }
+  >;
+  const entry = Object.entries(header).find(([name]) => name !== '__metadata__')?.[1];
   if (!entry || entry.dtype !== 'F32' || entry.shape.length !== 2) {
     throw new Error(`unexpected safetensors tensor: ${JSON.stringify(entry)}`);
   }
-  const start = 8 + headerLength + entry.data_offsets[0],
-    end = 8 + headerLength + entry.data_offsets[1];
+  const start = 8 + headerLength + entry.data_offsets[0];
+  const end = 8 + headerLength + entry.data_offsets[1];
   return { dims: entry.shape[1] ?? 0, table: new Float32Array(await file.slice(start, end).arrayBuffer()) };
 }
 

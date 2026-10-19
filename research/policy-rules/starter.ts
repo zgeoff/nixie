@@ -1,4 +1,3 @@
-/* oxlint-disable one-var -- a throwaway spike */
 // Sample tool registry and the starter rule set the design proposes.
 import type { Policy, Rule, ToolDecl } from './engine.ts';
 
@@ -48,8 +47,8 @@ export const STARTER_RULES: Rule[] = [
 const CAUTIOUS_DROP = new Set(['allow-service-writes', 'allow-sends-within-limits']);
 
 export function makePolicy(extra: Rule[] = []): Policy {
-  const cautious = process.env.STARTER === 'cautious',
-    starter = STARTER_RULES.filter((rule) => !cautious || !CAUTIOUS_DROP.has(rule.id));
+  const cautious = process.env.STARTER === 'cautious';
+  const starter = STARTER_RULES.filter((rule) => !cautious || !CAUTIOUS_DROP.has(rule.id));
   return {
     tools: TOOLS,
     rules: [...starter, ...extra],

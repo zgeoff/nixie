@@ -1,4 +1,3 @@
-// oxlint-disable one-var -- grouped spike setup
 import { McpServer, createMcpHandler } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { startMock } from './mock.ts';

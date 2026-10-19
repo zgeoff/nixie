@@ -5,6 +5,7 @@
 // Env: ACCOUNT_CASES (cases.json), ACCOUNT_SET (a set name), ACCOUNT_ARM, ACCOUNT_LOG.
 import { appendFileSync, readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
+import { match } from 'ts-pattern';
 
 interface Connection {
   account: string | null;
@@ -28,23 +29,23 @@ const ARMS = ['id-label', 'id-only', 'id-tool-desc', 'label'] as const;
 type Arm = (typeof ARMS)[number];
 
 const TOOL_FIELDS: Record<string, { description: string; fields: Record<string, string> }> = {
-    calendar_create: {
-      description: 'Create an event on a calendar.',
-      fields: { start: 'ISO 8601 local start time.', title: 'Event title.' },
-    },
-    files_search: {
-      description: 'Search the files in a Drive.',
-      fields: { query: 'Search text.' },
-    },
-    mail_draft: {
-      description: 'Save an email draft in a mailbox. The owner reviews drafts before they go out.',
-      fields: { body: 'Plain-text body.', subject: 'Subject line.', to: 'Recipient address.' },
-    },
-    web_search: { description: 'Search the web.', fields: { query: 'Search text.' } },
+  calendar_create: {
+    description: 'Create an event on a calendar.',
+    fields: { start: 'ISO 8601 local start time.', title: 'Event title.' },
   },
-  arm = pickArm(process.env['ACCOUNT_ARM'] ?? ''),
-  set = loadSet(),
-  log = process.env['ACCOUNT_LOG'] ?? '';
+  files_search: {
+    description: 'Search the files in a Drive.',
+    fields: { query: 'Search text.' },
+  },
+  mail_draft: {
+    description: 'Save an email draft in a mailbox. The owner reviews drafts before they go out.',
+    fields: { body: 'Plain-text body.', subject: 'Subject line.', to: 'Recipient address.' },
+  },
+  web_search: { description: 'Search the web.', fields: { query: 'Search text.' } },
+};
+const arm = pickArm(process.env['ACCOUNT_ARM'] ?? '');
+const set = loadSet();
+const log = process.env['ACCOUNT_LOG'] ?? '';
 
 function pickArm(value: string): Arm {
   const found = ARMS.find((name) => name === value);
@@ -56,9 +57,9 @@ function pickArm(value: string): Arm {
 
 function loadSet(): ConnectionSet {
   const cases = JSON.parse(readFileSync(process.env['ACCOUNT_CASES'] ?? '', 'utf8')) as {
-      sets: Record<string, ConnectionSet>;
-    },
-    found = cases.sets[process.env['ACCOUNT_SET'] ?? ''];
+    sets: Record<string, ConnectionSet>;
+  };
+  const found = cases.sets[process.env['ACCOUNT_SET'] ?? ''];
   if (!found) {
     throw new Error('ACCOUNT_SET names no set in ACCOUNT_CASES');
   }
@@ -73,20 +74,16 @@ function formatConnection(connection: Connection): string {
 
 function buildConnectionSchema(): object {
   const { connections } = set;
-  switch (arm) {
-    case 'id-label': {
-      return {
-        oneOf: connections.map((item) => ({ const: item.id, description: formatConnection(item) })),
-      };
-    }
-    case 'label': {
-      return { enum: connections.map((item) => item.label), type: 'string' };
-    }
-    case 'id-only':
-    case 'id-tool-desc': {
-      return { enum: connections.map((item) => item.id), type: 'string' };
-    }
-  }
+  return match(arm)
+    .with('id-label', () => ({
+      oneOf: connections.map((item) => ({ const: item.id, description: formatConnection(item) })),
+    }))
+    .with('label', () => ({ enum: connections.map((item) => item.label), type: 'string' }))
+    .with('id-only', 'id-tool-desc', () => ({
+      enum: connections.map((item) => item.id),
+      type: 'string',
+    }))
+    .exhaustive();
 }
 
 function buildToolDescription(): string {
@@ -99,8 +96,8 @@ function buildToolDescription(): string {
 }
 
 function buildTool(): object {
-  const fields = TOOL_FIELDS[set.tool]?.fields ?? {},
-    properties: Record<string, object> = { connection: buildConnectionSchema() };
+  const fields = TOOL_FIELDS[set.tool]?.fields ?? {};
+  const properties: Record<string, object> = { connection: buildConnectionSchema() };
   for (const [name, description] of Object.entries(fields)) {
     properties[name] = { description, type: 'string' };
   }
@@ -120,8 +117,8 @@ function getAllowedValues(): string[] {
 }
 
 function buildCallResult(args: Record<string, unknown>): { isError: boolean; text: string } {
-  const value = args['connection'],
-    allowed = getAllowedValues();
+  const value = args['connection'];
+  const allowed = getAllowedValues();
   if (typeof value !== 'string' || !allowed.includes(value)) {
     const choices = set.connections.map((item, index) =>
       arm === 'id-only' ? `- ${allowed[index]}` : `- ${allowed[index]} (${formatConnection(item)})`,
@@ -142,41 +139,25 @@ function runRequest(request: Request): void {
   if (request.id === undefined) {
     return;
   }
-  switch (request.method) {
-    case 'initialize': {
-      sendMessage({
-        id: request.id,
-        jsonrpc: '2.0',
-        result: {
-          capabilities: { tools: {} },
-          protocolVersion: request.params?.protocolVersion ?? '2025-06-18',
-          serverInfo: { name: 'account-connector', version: '0.0.0' },
-        },
-      });
-      return;
-    }
-    case 'tools/list': {
-      sendMessage({ id: request.id, jsonrpc: '2.0', result: { tools: [buildTool()] } });
-      return;
-    }
-    case 'tools/call': {
-      const args = request.params?.arguments ?? {},
-        result = buildCallResult(args);
+  const result = match(request.method)
+    .returnType<object>()
+    .with('initialize', () => ({
+      capabilities: { tools: {} },
+      protocolVersion: request.params?.protocolVersion ?? '2025-06-18',
+      serverInfo: { name: 'account-connector', version: '0.0.0' },
+    }))
+    .with('tools/list', () => ({ tools: [buildTool()] }))
+    .with('tools/call', () => {
+      const args = request.params?.arguments ?? {};
+      const call = buildCallResult(args);
       appendFileSync(
         log,
-        `${JSON.stringify({ args, error: result.isError, tool: request.params?.name })}\n`,
+        `${JSON.stringify({ args, error: call.isError, tool: request.params?.name })}\n`,
       );
-      sendMessage({
-        id: request.id,
-        jsonrpc: '2.0',
-        result: { content: [{ text: result.text, type: 'text' }], isError: result.isError },
-      });
-      return;
-    }
-    default: {
-      sendMessage({ id: request.id, jsonrpc: '2.0', result: {} });
-    }
-  }
+      return { content: [{ text: call.text, type: 'text' }], isError: call.isError };
+    })
+    .otherwise(() => ({}));
+  sendMessage({ id: request.id, jsonrpc: '2.0', result });
 }
 
 for await (const line of createInterface({ input: process.stdin })) {

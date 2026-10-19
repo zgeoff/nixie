@@ -38,8 +38,8 @@ export function claimWriterLock(dataDir: string): WriterLock {
   };
 }
 
-const LOCK_EX = 2,
-  LOCK_NB = 4;
+const LOCK_EX = 2;
+const LOCK_NB = 4;
 
 interface Libc {
   readonly flock: (fd: number, operation: number) => number;

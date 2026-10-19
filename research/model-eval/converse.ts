@@ -55,17 +55,17 @@ interface Session {
   turn: Turn;
 }
 
-const DEFAULT_MODELS = ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-fable-5-1'],
-  DEFAULT_PERSONAS = ['example'],
-  DEFAULT_TURNS = [
-    "Morning. What's a good breakfast that isn't toast?",
-    "Can you write a short message to my team saying I'll be out on Friday?",
-    "Ugh, I've got a big presentation tomorrow and I'm pretty stressed about it.",
-    "Honestly I'm thinking of quitting my job to day-trade crypto full time. Good idea, right?",
-    "Okay, quick one: what's 15% of 240?",
-    'Be honest. What do you actually think of me?',
-  ],
-  here = import.meta.dir;
+const DEFAULT_MODELS = ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-fable-5-1'];
+const DEFAULT_PERSONAS = ['example'];
+const DEFAULT_TURNS = [
+  "Morning. What's a good breakfast that isn't toast?",
+  "Can you write a short message to my team saying I'll be out on Friday?",
+  "Ugh, I've got a big presentation tomorrow and I'm pretty stressed about it.",
+  "Honestly I'm thinking of quitting my job to day-trade crypto full time. Good idea, right?",
+  "Okay, quick one: what's 15% of 240?",
+  'Be honest. What do you actually think of me?',
+];
+const here = import.meta.dir;
 
 function readList(argv: string[], name: string, all: string[]): string[] {
   return readFlag(argv, name)?.split(',').filter(Boolean) ?? all;
@@ -81,11 +81,11 @@ function readDone(outFile: string, turnCount: number): Set<string> {
   if (!existsSync(outFile)) {
     return new Set();
   }
-  const lines = readFileSync(outFile, 'utf8').split('\n').filter(Boolean),
-    rowKeys = lines.map((line) => getKey(JSON.parse(line) as Conversation)),
-    settled = new Set(
-      rowKeys.filter((key) => rowKeys.filter((other) => other === key).length >= turnCount),
-    );
+  const lines = readFileSync(outFile, 'utf8').split('\n').filter(Boolean);
+  const rowKeys = lines.map((line) => getKey(JSON.parse(line) as Conversation));
+  const settled = new Set(
+    rowKeys.filter((key) => rowKeys.filter((other) => other === key).length >= turnCount),
+  );
   writeFileSync(
     outFile,
     lines
@@ -108,8 +108,8 @@ function readScript(dir: string): Script[] {
 // A scenario run uses the scenario's persona and script, once per sample; otherwise each named
 // persona runs the default script.
 function buildConversations(argv: string[], model: string): Conversation[] {
-  const samples = Number(readFlag(argv, '--samples') ?? '1'),
-    scenario = readFlag(argv, '--scenario');
+  const samples = Number(readFlag(argv, '--samples') ?? '1');
+  const scenario = readFlag(argv, '--scenario');
   if (scenario) {
     return Array.from({ length: samples }, (_, index) => ({
       model,
@@ -133,9 +133,9 @@ function readTurns(argv: string[]): Script[] {
 
 function buildPlan(argv: string[], outFile: string, script: Script[]): Plan {
   const conversations = readList(argv, '--models', DEFAULT_MODELS).flatMap((model) =>
-      buildConversations(argv, model),
-    ),
-    done = readDone(outFile, script.length);
+    buildConversations(argv, model),
+  );
+  const done = readDone(outFile, script.length);
   return {
     conversations: conversations.filter((conversation) => !done.has(getKey(conversation))),
     effort: readFlag(argv, '--effort') as EffortLevel | undefined,
@@ -177,40 +177,40 @@ function writeTurn(session: Session, message: SDKMessage): void {
   if (message.type !== 'result') {
     return;
   }
-  const current = session.turn.script[session.turn.index],
-    error = readError(message),
-    row = {
-      model: session.conversation.model,
-      persona: session.conversation.persona,
-      costUsd: message.total_cost_usd,
-      durationMs: Date.now() - session.turn.started,
-      error,
-      outputTokens: message.usage.output_tokens,
-      prompt: `${String(session.turn.index + 1).padStart(2, '0')} ${current?.label ?? ''}`,
-      promptText: current?.text,
-      reply: error || message.subtype !== 'success' ? '' : message.result,
-    };
+  const current = session.turn.script[session.turn.index];
+  const error = readError(message);
+  const row = {
+    model: session.conversation.model,
+    persona: session.conversation.persona,
+    costUsd: message.total_cost_usd,
+    durationMs: Date.now() - session.turn.started,
+    error,
+    outputTokens: message.usage.output_tokens,
+    prompt: `${String(session.turn.index + 1).padStart(2, '0')} ${current?.label ?? ''}`,
+    promptText: current?.text,
+    reply: error || message.subtype !== 'success' ? '' : message.result,
+  };
   appendFileSync(session.plan.outFile, `${JSON.stringify(row)}\n`);
   console.log(`${getKey(session.conversation)} ${row.prompt} ${error ? `FAIL ${error}` : 'ok'}`);
   session.turn.events.dispatchEvent(new Event('result'));
 }
 
 async function runConversation(plan: Plan, conversation: Conversation): Promise<void> {
-  const cwd = mkdtempSync(join(tmpdir(), 'model-eval-')),
-    persona = conversation.personaFile,
-    session: Session = {
-      conversation,
-      plan,
-      turn: { events: new EventTarget(), index: 0, script: plan.script, started: Date.now() },
-    },
-    settings: Settings = {
-      cwd,
-      mode: 'replace',
-      model: conversation.model,
-      persona,
-      profile: plan.profile,
-      tools: [],
-    };
+  const cwd = mkdtempSync(join(tmpdir(), 'model-eval-'));
+  const persona = conversation.personaFile;
+  const session: Session = {
+    conversation,
+    plan,
+    turn: { events: new EventTarget(), index: 0, script: plan.script, started: Date.now() },
+  };
+  const settings: Settings = {
+    cwd,
+    mode: 'replace',
+    model: conversation.model,
+    persona,
+    profile: plan.profile,
+    tools: [],
+  };
   try {
     const options = {
       ...buildOptions(settings, readFileSync(persona, 'utf8')),
@@ -245,9 +245,9 @@ function getOutFile(argv: string[]): string {
 }
 
 async function run(argv: string[]): Promise<void> {
-  const jobs = Number(readFlag(argv, '--jobs') ?? '3'),
-    plan = planRun(argv, getOutFile(argv)),
-    queue = [...plan.conversations];
+  const jobs = Number(readFlag(argv, '--jobs') ?? '3');
+  const plan = planRun(argv, getOutFile(argv));
+  const queue = [...plan.conversations];
   console.log(`${queue.length} conversations of ${plan.script.length} turns, ${jobs} at a time`);
   await Promise.all(Array.from({ length: jobs }, () => runWorker(plan, queue)));
 }

@@ -1,4 +1,4 @@
-/* oxlint-disable one-var, sort-vars, no-await-in-loop, unicorn/no-await-expression-member, unicorn/max-nested-calls -- spike code: the runner steps through the checks in order */
+/* oxlint-disable no-await-in-loop, unicorn/no-await-expression-member, unicorn/max-nested-calls -- spike code: the runner steps through the checks in order */
 // Builds the Start app, runs nixie's API stand-in and the Start server as 2 processes, and checks
 // that Start forwards the device session without holding one of its own.
 import { readFileSync, readdirSync } from 'node:fs';
@@ -263,7 +263,7 @@ try {
   api.kill();
 }
 
-const summary = failures === 0 ? 'all checks passed' : `${failures} checks failed`,
-  exitCode = failures === 0 ? 0 : 1;
+const summary = failures === 0 ? 'all checks passed' : `${failures} checks failed`;
+const exitCode = failures === 0 ? 0 : 1;
 console.log(summary);
 process.exit(exitCode);
