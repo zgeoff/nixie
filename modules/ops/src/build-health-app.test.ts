@@ -228,6 +228,38 @@ test('it answers liveness per part, apart from readiness', async () => {
   });
 });
 
+test('it logs the name and reason of a liveness part that turns unready', async () => {
+  const log = mock<Logger>();
+
+  const app = buildHealthApp({
+    liveness: {
+      process: () => Promise.resolve({ isReady: true, reason: null }),
+      database: () => Promise.reject(new Error('the database is closed')),
+    },
+    readiness: {
+      database: () => Promise.resolve({ isReady: true, reason: null }),
+      definitions: () => Promise.resolve({ isReady: true, reason: null }),
+    },
+    dependencies: {
+      imp_host: () => Promise.resolve({ isReady: true, reason: null }),
+      conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
+      disk: () => Promise.resolve({ isReady: true, reason: null }),
+    },
+    advisory: {
+      conversation_turns: () => Promise.resolve({ isReady: true, reason: null }),
+    },
+    log,
+  });
+
+  await app.handle(new Request('http://nixie/health/live'));
+
+  expect(log).toHaveBeenCalledExactlyOnceWith(
+    'health.part_unready',
+    { probe: 'live', part: 'database', reason: 'the check failed: Error' },
+    'warn',
+  );
+});
+
 test('it logs the name and reason of a dependency part that turns unready', async () => {
   const log = mock<Logger>();
 

@@ -404,6 +404,7 @@
         "elysia": "catalog:",
         "kysely": "catalog:",
         "xstate": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@heynixie/log": "workspace:*",

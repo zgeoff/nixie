@@ -1,5 +1,4 @@
-import { healthStatuses } from '@heynixie/ops';
-import { z } from 'zod';
+import { healthReportSchema } from '@heynixie/ops';
 import { loadDeploymentConfig } from './load-deployment-config';
 import { loadSandboxManifest } from './load-sandbox-manifest';
 import type { CLIIO, Command } from './types';
@@ -13,9 +12,6 @@ export function buildDeploymentCommands(): readonly (readonly [string, Command])
     ['sandbox-manifest', (flags, io) => runSandboxManifest(flags.manifest, io)],
   ];
 }
-
-// the part of a health answer the exit code reads, with the statuses the health endpoint reports
-const healthAnswerSchema = z.object({ status: z.enum(healthStatuses) });
 
 // the container runtime's check from inside the container, where a wildcard address answers on
 // loopback
@@ -31,7 +27,7 @@ async function runHealth(configPath: string, isLive: boolean, io: CLIIO): Promis
 
   io.print(report);
 
-  return healthAnswerSchema.parse(JSON.parse(report)).status === 'ready' ? 0 : 1;
+  return healthReportSchema.parse(JSON.parse(report)).status === 'ready' ? 0 : 1;
 }
 
 // the manifest as the server loads it, so a manifest the server refuses fails here too
