@@ -61,6 +61,56 @@ test('it finds a token you only pasted', async () => {
   expect(token).toStrictEqual({ kind: 'email', key: 'sam@example.com', raw: 'sam@example.com' });
 });
 
+test('it finds a token you typed only in a message past the limit', async () => {
+  const ctx = await setupTest();
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Send the tide report to sam@example.com',
+    spans: [{ start: 0, end: 39, source: 'typed' }],
+  });
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Thanks, that works',
+    spans: [{ start: 0, end: 18, source: 'typed' }],
+  });
+
+  const token = await checkUntypedToken(ctx.memory.log, {
+    thread: 'conversation',
+    limit: 1,
+    text: 'Email the report to sam@example.com.',
+    ownText: '',
+  });
+
+  expect(token).toStrictEqual({ kind: 'email', key: 'sam@example.com', raw: 'sam@example.com' });
+});
+
+test('it passes a token you typed in an older message within the limit', async () => {
+  const ctx = await setupTest();
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Send the tide report to sam@example.com',
+    spans: [{ start: 0, end: 39, source: 'typed' }],
+  });
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Thanks, that works',
+    spans: [{ start: 0, end: 18, source: 'typed' }],
+  });
+
+  const token = await checkUntypedToken(ctx.memory.log, {
+    thread: 'conversation',
+    limit: 2,
+    text: 'Email the report to sam@example.com.',
+    ownText: '',
+  });
+
+  expect(token).toBeNull();
+});
+
 test('it finds a token you typed only on another thread', async () => {
   const ctx = await setupTest();
 
