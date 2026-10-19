@@ -1,6 +1,6 @@
 import { SandboxHostError } from '@heynixie/sandbox';
-import type { ImpClient } from '@zgeoff/imp-client';
-import { CLIENT_VERSION, ORPCError, createImpClient, openReverseForward } from '@zgeoff/imp-client';
+import type { ImpClient } from '@impz/client';
+import { ORPCError, createImpClient, openReverseForward } from '@impz/client';
 import type { ImpPort } from './types';
 
 export interface ImpConnection {
@@ -100,46 +100,25 @@ function buildLifecycleCalls(client: ImpClient): LifecycleCalls {
   };
 }
 
-// One system.info call, which the signal ends, such as on a half-open connection. The client's
-// checkServer makes the same call with no signal, so the version check runs here on its answer.
+// One system.info call through the client's version check, which the signal ends, such as on a
+// half-open connection; the check returns the answer it read, so the features come from it too
 async function readFeatures(
   client: ImpClient,
   signal: AbortSignal | undefined,
 ): ReturnType<ImpPort['readFeatures']> {
   const options = signal === undefined ? {} : { signal };
 
-  const info = await client.system.info(undefined, options);
+  const check = await client.checkServer(options);
 
-  if (!isSpokenImpd(info.version) && !isRenamedImpd(info.version)) {
-    throw new Error(`impd ${info.version} does not speak imp client ${CLIENT_VERSION}`);
+  if (!check.compatible) {
+    throw new Error(`impd ${check.serverVersion} does not speak imp client ${check.clientVersion}`);
   }
 
   return {
-    publicEgress: info.features?.publicEgress === true,
-    isEgressEnforced: info.egress?.isEnforced === true,
-    hasBackupOptOut: info.features?.backupOptOut === true,
+    publicEgress: check.info.features?.publicEgress === true,
+    isEgressEnforced: check.info.egress?.isEnforced === true,
+    hasBackupOptOut: check.info.features?.backupOptOut === true,
   };
-}
-
-// the client's own checkServer rule for a client past 1.0.0: impd speaks it when they share a major
-function isSpokenImpd(serverVersion: string): boolean {
-  const major = findMajor(serverVersion);
-
-  return major !== null && major === findMajor(CLIENT_VERSION);
-}
-
-const MAJOR = /^(?<major>\d+)\.\d+\.\d+/u;
-
-function findMajor(version: string): string | null {
-  return MAJOR.exec(version)?.groups?.['major'] ?? null;
-}
-
-// impd 2 renamed imp to impz and kept the wire API of impd 1.6, which this 1.x client speaks; the
-// client's own check refuses any other major, so nixie accepts major 2 until it takes a 2.x client
-const RENAMED_IMPD = /^2\.\d+\.\d+/u;
-
-function isRenamedImpd(serverVersion: string): boolean {
-  return RENAMED_IMPD.test(serverVersion);
 }
 
 // impd's error for a call it refuses, such as RAM_BUDGET_EXCEEDED when its memory budget is full,
