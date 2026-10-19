@@ -27,7 +27,8 @@ async function setupTest() {
     sandboxes,
     startRunner: (
       summaryTokens = 2000,
-      readSkillCatalog: (taskID: string) => Promise<string | null> = () => Promise.resolve(null),
+      loadOrPinSkillCatalog: (taskID: string) => Promise<string | null> = () =>
+        Promise.resolve(null),
     ) =>
       startConversationRunner({
         context: tasks.context,
@@ -50,7 +51,7 @@ async function setupTest() {
           readShortIDs: () => Promise.resolve(new Map()),
         }),
         compaction: { summaryTokens },
-        readSkillCatalog,
+        loadOrPinSkillCatalog,
         log: () => {},
       }),
     runNextStep: (runner: Runner) => runNextStep(tasks.context, runner.runStep),

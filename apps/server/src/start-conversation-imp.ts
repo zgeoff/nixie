@@ -10,7 +10,7 @@ import type { SessionCleanupCause } from '@heynixie/sessions';
 import type { RunStep } from '@heynixie/tasks';
 import { buildVersionStatus } from './build-version-status';
 import { makeConversationReadinessStep } from './make-conversation-readiness-step';
-import { makeSkillCatalogReader } from './make-skill-catalog-reader';
+import { makeSkillCatalogLoader } from './make-skill-catalog-loader';
 import { makeTurnNoteReader } from './make-turn-note-reader';
 import { startConversation } from './start-conversation';
 import { toSessionDefinitions } from './to-session-definitions';
@@ -50,7 +50,7 @@ export async function startConversationImp(
       },
       memory,
     ),
-    readSkillCatalog: makeSkillCatalogReader({
+    loadOrPinSkillCatalog: makeSkillCatalogLoader({
       log: parts.context.log,
       readInForce: () => parts.inForce.read(),
       profile: resolveRoleProfile(parts.config.models, 'conversation'),

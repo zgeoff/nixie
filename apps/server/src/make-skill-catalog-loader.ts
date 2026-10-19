@@ -5,7 +5,7 @@ import { getCLIContextWindow } from '@heynixie/models';
 import type { SkillsConfig } from '@heynixie/skills';
 import { loadOrPinTaskSkills, renderSkillCatalog } from '@heynixie/skills';
 
-export interface SkillCatalogReaderOptions {
+export interface SkillCatalogLoaderOptions {
   readonly log: Log;
 
   // the definitions in force, whose conversation list a task's first read pins
@@ -16,10 +16,11 @@ export interface SkillCatalogReaderOptions {
   readonly skills: SkillsConfig;
 }
 
-// Makes the reader of the conversation's skill catalog before each step: the skills the task is
-// pinned to, within its share of the context window the conversation's CLI works in.
-export function makeSkillCatalogReader(
-  options: SkillCatalogReaderOptions,
+// Makes the loader of the conversation's skill catalog before each step: the skills the task is
+// pinned to, within its share of the context window the conversation's CLI works in. A task's first
+// load writes its pin from the definitions in force.
+export function makeSkillCatalogLoader(
+  options: SkillCatalogLoaderOptions,
 ): (taskID: string) => Promise<string | null> {
   const window = options.profile.contextTokens ?? getCLIContextWindow(options.profile.model);
   const capTokens = Math.floor(window * options.skills.catalogShare);
