@@ -381,7 +381,16 @@ test('it keeps a tool-call turn working under the summarized display, with a sum
     { type: 'assistant', messageID: expect.toBeString(), text: 'You need milk.', toolUses: [] },
   ]);
 
-  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', subtype: 'success' });
+  const ended = ctx.frames.at(-1);
+
+  if (ended?.type !== 'ended') {
+    throw new Error('the turn did not end');
+  }
+
+  expect(ended.subtype).toBe('success');
+
+  // the result reports the turn's thinking tokens once, as the total across both model calls
+  expect(ended.thinkingTokens).toBe(46);
 });
 
 test('it keeps a resumed session working under the summarized display', async () => {
