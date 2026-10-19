@@ -80,6 +80,46 @@ test('it lists the skills past the cap by name alone', () => {
   expect(countTextTokens(catalog.text ?? '')).toBeLessThanOrEqual(75);
 });
 
+test('it keeps the descriptions that fit the cap and lists the rest by name', () => {
+  const catalog = renderSkillCatalog(
+    [
+      {
+        name: 'bird-log',
+        frontmatter: {
+          name: 'bird-log',
+          description: 'Logs a bird sighting.',
+          license: null,
+          compatibility: null,
+          allowedTools: null,
+          metadata: {},
+        },
+      },
+      {
+        name: 'tide-tables',
+        frontmatter: {
+          name: 'tide-tables',
+          description:
+            'Reads the tide table for a harbour, gives the times and heights of the next high and low water, and warns when a spring tide or a storm surge will reach the quay.',
+          license: null,
+          compatibility: null,
+          allowedTools: null,
+          metadata: {},
+        },
+      },
+    ],
+    90,
+  );
+
+  expect(catalog.isCut).toBeTrue();
+
+  expect(catalog.text).toEndWith(
+    'nixie decides on.\n- bird-log: Logs a bird sighting.\n' +
+      '- More skills, without descriptions: tide-tables\n</skills>',
+  );
+
+  expect(countTextTokens(catalog.text ?? '')).toBeLessThanOrEqual(90);
+});
+
 test('it renders no catalog for a task with no skills', () => {
   expect(renderSkillCatalog([], 4000)).toStrictEqual({ text: null, isCut: false });
 });
