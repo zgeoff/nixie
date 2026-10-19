@@ -81,7 +81,7 @@ async function runSkillWrite(
     return { status: 'error', message: 'no definitions are in force yet' };
   }
 
-  const checked = checkSkillFiles(name, new Map(files.map((file) => [file.path, file.text])));
+  const checked = checkSkillFiles(name, files);
 
   if (isProblemList(checked)) {
     const problems = checked.map((problem) => `${problem.path}: ${problem.reason}`);

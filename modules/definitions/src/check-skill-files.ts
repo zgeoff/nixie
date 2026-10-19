@@ -2,16 +2,18 @@ import { normalize } from 'node:path/posix';
 import { defaultSizeLimits } from './default-size-limits';
 import type { ParseProblem } from './definitions-parse-error';
 import { DefinitionsParseError } from './definitions-parse-error';
+import { findHiddenCharacter } from './find-hidden-character';
+import { isDefinitionsPath } from './is-definitions-path';
 import { parseSkills } from './parse-skills';
 import { skillNamePattern } from './skill-name-pattern';
 import type { ParsedSkill, SizeLimits } from './types';
 
-// Runs the seed checks on a skill that nixie writes: a name the format allows, each path inside the
-// skill's folder, the size limits a snapshot keeps to, and every check the seed runs on a skill in
-// the definitions. It returns the checked skill, or every problem it found.
+// Runs the seed checks on a skill that nixie writes: a name the format allows, each path as the
+// definitions source would read it, the size limits a snapshot keeps to, and every check the seed
+// runs on a skill, on the files whose paths pass. It returns the checked skill, or every problem.
 export function checkSkillFiles(
   name: string,
-  files: ReadonlyMap<string, string>,
+  files: readonly { readonly path: string; readonly text: string }[],
   limits: SizeLimits = defaultSizeLimits,
 ): ParsedSkill | readonly ParseProblem[] {
   if (!skillNamePattern.test(name) || name.length > 64) {
@@ -22,22 +24,25 @@ export function checkSkillFiles(
 
   const encoder = new TextEncoder();
 
-  const entries = [...files].map(([path, text]) => ({ path, text, bytes: encoder.encode(text) }));
+  const paths = files.map((file) => file.path);
+
+  const entries = files.map((file, index) => ({
+    path: `skills/${name}/${file.path}`,
+    text: file.text,
+    bytes: encoder.encode(file.text),
+    pathProblem: findPathProblem(name, paths, index),
+  }));
+
+  const kept = entries.filter((entry) => entry.pathProblem === null);
 
   const problems = [
-    ...entries.flatMap((entry) => findPathProblems(name, entry.path)),
-    ...entries
-      .filter((entry, index) =>
-        entries.slice(0, index).some((other) => normalize(other.path) === normalize(entry.path)),
-      )
-      .map((entry) => ({
-        path: `skills/${name}/${entry.path}`,
-        reason: 'the path names a file that an earlier path names',
-      })),
+    ...entries.flatMap((entry) =>
+      entry.pathProblem === null ? [] : [{ path: entry.path, reason: entry.pathProblem }],
+    ),
     ...entries
       .filter((entry) => entry.bytes.byteLength > limits.maxFileBytes)
       .map((entry) => ({
-        path: `skills/${name}/${entry.path}`,
+        path: entry.path,
         reason: `the file is past the ${String(limits.maxFileBytes)}-byte limit`,
       })),
     ...(entries.reduce((total, entry) => total + entry.bytes.byteLength, 0) > limits.maxTotalBytes
@@ -50,19 +55,27 @@ export function checkSkillFiles(
       : []),
   ];
 
-  if (problems.length > 0) {
+  // a skill whose every path failed has no files left for the seed checks to read
+  if (kept.length === 0 && files.length > 0) {
     return problems;
   }
 
-  const paths = entries.map((entry) => `skills/${name}/${normalize(entry.path)}`);
-
-  return tryParseSkill(
-    new Map(entries.map((entry, index) => [paths[index] ?? '', entry.bytes])),
-    new Map(entries.map((entry, index) => [paths[index] ?? '', entry.text])),
+  const checked = tryParseSkill(
+    new Map(kept.map((entry) => [entry.path, entry.bytes])),
+    new Map(kept.map((entry) => [entry.path, entry.text])),
   );
+
+  if (isProblemList(checked)) {
+    return [...problems, ...checked];
+  }
+
+  return problems.length > 0 ? problems : checked;
 }
 
-function findPathProblems(name: string, path: string): readonly ParseProblem[] {
+// The reason the path at the index fails, or null. A path names a file inside the skill's folder in
+// the plain form the definitions source reads, so 2 paths name one file only when they are equal.
+function findPathProblem(name: string, paths: readonly string[], index: number): string | null {
+  const path = paths[index] ?? '';
   const normalized = normalize(path);
 
   const isOutside =
@@ -72,9 +85,42 @@ function findPathProblems(name: string, path: string): readonly ParseProblem[] {
     normalized === '..' ||
     normalized.startsWith('../');
 
-  return isOutside
-    ? [{ path: `skills/${name}/${path}`, reason: "the path is outside the skill's folder" }]
-    : [];
+  if (isOutside) {
+    return "the path is outside the skill's folder";
+  }
+
+  if (normalized !== path || path.endsWith('/')) {
+    return 'write the path in its plain form, with no ./, // or final /';
+  }
+
+  if (!isDefinitionsPath(`skills/${name}/${path}`)) {
+    return 'the definitions source skips a path with a part that starts with a dot';
+  }
+
+  const hidden = findHiddenCharacter(path);
+
+  if (hidden !== null) {
+    return `the path holds ${hidden.codePoint}, a hidden or bidirectional control character`;
+  }
+
+  return findCollision(paths, index);
+}
+
+// A folder on a disk that ignores case holds SKILL.md and skill.md as one file, and no path can be
+// both a file and the folder of another.
+function findCollision(paths: readonly string[], index: number): string | null {
+  const path = paths[index] ?? '';
+  const folded = path.toLowerCase();
+
+  if (paths.slice(0, index).some((other) => other.toLowerCase() === folded)) {
+    return 'the path names a file that an earlier path names';
+  }
+
+  if (paths.some((other) => other.toLowerCase().startsWith(`${folded}/`))) {
+    return 'the path names a file that another path uses as a folder';
+  }
+
+  return null;
 }
 
 function tryParseSkill(
@@ -92,4 +138,10 @@ function tryParseSkill(
 
     throw error;
   }
+}
+
+function isProblemList(
+  checked: ParsedSkill | readonly ParseProblem[],
+): checked is readonly ParseProblem[] {
+  return Array.isArray(checked);
 }
