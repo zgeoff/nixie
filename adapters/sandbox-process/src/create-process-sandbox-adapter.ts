@@ -1,6 +1,6 @@
 import { mkdirSync, realpathSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import type {
   Sandbox,
   SandboxAdapter,
@@ -34,6 +34,9 @@ export function createProcessSandboxAdapter(input: ProcessSandboxOptions): Sandb
   // the root through its symlinks, resolved once, so a guest's home is the path its processes see
   const options = { ...input, rootDir: createRealRootDir(input.rootDir) };
 
+  // the root as configured, which a command's HOME may name instead of the real path
+  const aliasRootDir = resolve(input.rootDir);
+
   const live = new Map<string, ProcessState>();
 
   const brokerEnv = pickBrokerEnv(options.hostEnv ?? {});
@@ -59,6 +62,7 @@ export function createProcessSandboxAdapter(input: ProcessSandboxOptions): Sandb
       id,
       spec,
       fsRoot: join(options.rootDir, id, 'fs'),
+      aliasFsRoot: join(aliasRootDir, id, 'fs'),
       state,
       remove: () => removeSandbox(id),
     });

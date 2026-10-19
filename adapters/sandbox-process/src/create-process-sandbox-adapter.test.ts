@@ -439,6 +439,56 @@ test('it gives the home under the real path of a root reached through a symlink'
   expect(home).toStrictEqual({ copyPath: '/', ownPath: join(realRoot, sandbox.id, 'fs') });
 });
 
+test('it gives a HOME named through the symlink of the root under the real path, before the HOME exists', async () => {
+  const ctx = await setupTest();
+  const linkDir = await mkdtemp(join(tmpdir(), 'nixie-sandbox-link-'));
+
+  onTestFinished(() => rm(linkDir, { recursive: true, force: true }));
+
+  await symlink(ctx.rootDir, join(linkDir, 'root'));
+
+  const linked = createProcessSandboxAdapter({
+    recorder: ctx.recorder,
+    rootDir: join(linkDir, 'root'),
+    toolTarget: () => ({ path: join(ctx.rootDir, 'tools.sock') }),
+  });
+
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec(), linked);
+
+  const home = await sandbox.resolveHome({
+    HOME: join(linkDir, 'root', sandbox.id, 'fs/home/nixie'),
+  });
+
+  const realRoot = await realpath(ctx.rootDir);
+
+  expect(home).toStrictEqual({
+    copyPath: '/home/nixie',
+    ownPath: join(realRoot, sandbox.id, 'fs/home/nixie'),
+  });
+});
+
+test("it refuses a HOME named through the symlink of the root but outside the sandbox's directory", async () => {
+  const ctx = await setupTest();
+  const linkDir = await mkdtemp(join(tmpdir(), 'nixie-sandbox-link-'));
+
+  onTestFinished(() => rm(linkDir, { recursive: true, force: true }));
+
+  await symlink(ctx.rootDir, join(linkDir, 'root'));
+
+  const linked = createProcessSandboxAdapter({
+    recorder: ctx.recorder,
+    rootDir: join(linkDir, 'root'),
+    toolTarget: () => ({ path: join(ctx.rootDir, 'tools.sock') }),
+  });
+
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec(), linked);
+  const realRoot = await realpath(ctx.rootDir);
+
+  expect(sandbox.resolveHome({ HOME: join(linkDir, 'root', 'other/fs') })).rejects.toThrow(
+    `HOME ${join(linkDir, 'root', 'other/fs')} is outside the guest root ${join(realRoot, sandbox.id, 'fs')}`,
+  );
+});
+
 test("it gives the command's HOME as the guest sees it, and as the path below the sandbox's directory", async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());

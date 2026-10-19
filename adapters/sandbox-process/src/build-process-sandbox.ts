@@ -29,6 +29,9 @@ export interface ProcessSandboxContext {
 
   // the sandbox's own directory, which stands in for the guest's filesystem
   readonly fsRoot: string;
+
+  // the same directory under the root as configured, before its symlinks resolve
+  readonly aliasFsRoot: string;
   readonly state: ProcessState;
   readonly remove: () => Promise<void>;
 }
@@ -52,7 +55,7 @@ export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
     },
     copyIn: (files) => writeGuestFiles(ctx.fsRoot, files),
     copyOut: (paths) => Promise.all(paths.map((path) => readGuestFile(ctx.fsRoot, path))),
-    resolveHome: (env) => Promise.try(() => resolveGuestHome(ctx.fsRoot, env)),
+    resolveHome: (env) => Promise.try(() => resolveGuestHome(ctx, env)),
     collectFiles: (dir, options) => collectGuestFiles(ctx.fsRoot, dir, options),
     applyMove: (from, to) => applyGuestMove(ctx.fsRoot, from, to),
     toolRoute: async () => {
@@ -126,16 +129,34 @@ async function readGuestFile(fsRoot: string, path: string): Promise<FileSpec> {
 }
 
 // The guest's processes start with HOME at the sandbox's own directory unless the command's env
-// sets it, and the guest's root is that directory, so the copy path is the home below it.
-function resolveGuestHome(fsRoot: string, env: Readonly<Record<string, string>>): GuestHome {
-  const home = env['HOME'] ?? fsRoot;
-  const below = relative(fsRoot, home);
+// sets it, and the guest's root is that directory, so the copy path is the home below it. A HOME
+// under the root as configured moves to the real root, since it may not exist yet to resolve.
+function resolveGuestHome(
+  ctx: Pick<ProcessSandboxContext, 'fsRoot' | 'aliasFsRoot'>,
+  env: Readonly<Record<string, string>>,
+): GuestHome {
+  const given = env['HOME'] ?? ctx.fsRoot;
 
-  if (!isAbsolute(home) || below === '..' || below.startsWith(`..${sep}`)) {
-    throw new Error(`HOME ${home} is outside the guest root ${fsRoot}`);
+  if (!isAbsolute(given)) {
+    throw new Error(`HOME ${given} is outside the guest root ${ctx.fsRoot}`);
+  }
+
+  const aliasBelow = findPathBelow(ctx.aliasFsRoot, given);
+  const home = aliasBelow === null ? given : join(ctx.fsRoot, aliasBelow);
+  const below = findPathBelow(ctx.fsRoot, home);
+
+  if (below === null) {
+    throw new Error(`HOME ${given} is outside the guest root ${ctx.fsRoot}`);
   }
 
   return { copyPath: join('/', below), ownPath: home };
+}
+
+// the path relative to the directory, or null for a path outside it
+function findPathBelow(dir: string, path: string): string | null {
+  const below = relative(dir, path);
+
+  return below === '..' || below.startsWith(`..${sep}`) || isAbsolute(below) ? null : below;
 }
 
 async function collectGuestFiles(
