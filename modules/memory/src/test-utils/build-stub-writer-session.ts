@@ -38,19 +38,29 @@ export function buildStubWriterSession(write: StubStagedWrite): StubWriterSessio
   };
 }
 
-// stages a write through the tool its op names; a new op fails the type check until it has a branch
-function applyStubWrite(staging: WriterStaging, write: StubStagedWrite): void {
-  if (write.op === 'flag') {
+type StubOp = StubStagedWrite['op'];
+
+type StubWriteOf<Op extends StubOp> = Extract<StubStagedWrite, { readonly op: Op }>;
+
+// the tool each op stages through, one entry per op, so a new op fails the type check until it has
+// its own entry
+const stubWriteAppliers: {
+  readonly [Op in StubOp]: (staging: WriterStaging, write: StubWriteOf<Op>) => void;
+} = {
+  flag: (staging, write) => {
     staging.flag({ text: write.text, sourceSequence: write.sourceSequence });
-
-    return;
-  }
-
-  if (write.op === 'remember' || write.op === 'retire') {
+  },
+  remember: (staging, write) => {
     staging.stage(write);
+  },
+  retire: (staging, write) => {
+    staging.stage(write);
+  },
+};
 
-    return;
-  }
+function applyStubWrite<Op extends StubOp>(staging: WriterStaging, write: StubWriteOf<Op>): void {
+  const applier: (staging: WriterStaging, write: StubWriteOf<Op>) => void =
+    stubWriteAppliers[write.op];
 
-  write satisfies never;
+  applier(staging, write);
 }
