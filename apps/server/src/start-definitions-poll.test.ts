@@ -84,6 +84,35 @@ test('it skips the seed for a probe token it seeded already', async () => {
   expect(seed).toHaveBeenCalledOnce();
 });
 
+test('it seeds a probe token it seeded already while a seed outside the poll is refused', async () => {
+  const ctx = setupTest();
+  const seed = mock(() => Promise.resolve(true));
+
+  const poll = startDefinitionsPoll({
+    probe: () => Promise.resolve('rev-1'),
+    seed,
+    isRefused: () => true,
+    clock: ctx.clock,
+    intervalMs: 60_000,
+    retryDelayMs: 1000,
+    isRefusedAtStart: false,
+    onProbed: () => {},
+    onError: () => {},
+  });
+
+  onTestFinished(() => poll.stop());
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(() => seed.mock.calls.length === 2);
+
+  expect(seed).toHaveBeenCalledTimes(2);
+});
+
 test('it seeds again on a new probe token', async () => {
   const ctx = setupTest();
   const seed = mock(() => Promise.resolve(true));

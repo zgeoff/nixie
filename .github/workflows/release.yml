@@ -3,7 +3,7 @@
 # goes through one stage per job, each after the one before succeeds: the sandbox images, the nixie
 # image with their digests, the web image, the migrations and the config schema in the release
 # notes, a pull of each sandbox image with no credentials, the version tag on every image, and the
-# release.json and config.schema.json assets.
+# release.json, config.schema.json and definitions-manifest.schema.json assets.
 #
 # A manual run on a release tag rebuilds that release from its commit. Re-running the failed
 # jobs of a run resumes from the stage that failed with the same digests.
@@ -344,7 +344,7 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
 
       # a re-run replaces the assets of an earlier attempt, so it publishes the same files
-      - name: Publish release.json and the config schema
+      - name: Publish release.json, the config schema and the definitions manifest schema
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
