@@ -51,14 +51,21 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
     exit.resolve(ended);
   };
 
+  // a script that throws ends the guest as the real one does: a failed frame, then exit code 0
   const runScript = async (first: Exclude<HostFrame, { type: 'message' }>) => {
-    const frames = await runFirstFrame(hooks, first, {
-      waitForMessage: inbox.wait,
-      takeMessage: inbox.take,
-    });
+    try {
+      const frames = await runFirstFrame(hooks, first, {
+        waitForMessage: inbox.wait,
+        takeMessage: inbox.take,
+      });
 
-    for (const frame of frames) {
-      await writer.write(encodeTurnFrame(frame));
+      for (const frame of frames) {
+        await writer.write(encodeTurnFrame(frame));
+      }
+    } catch (error) {
+      const failed = { type: 'failed', reason: 'error', detail: String(error) } as const;
+
+      await writer.write(encodeTurnFrame(failed)).catch(() => {});
     }
 
     await stopGuest({ code: 0, signal: null, stderr: noStderr });

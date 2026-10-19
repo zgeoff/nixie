@@ -349,6 +349,28 @@ test('it writes the summary as a fork that the next turn resumes from its bounda
   expect(frames.map((frame) => frame.type)).toStrictEqual(['read', 'assistant', 'ended']);
 });
 
+test('it fails a turn that resumes a malformed transcript, and ends its output', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  const sessionID = crypto.randomUUID();
+
+  await sandbox.copyIn([
+    {
+      path: `/home/nixie/.claude/projects/-home-nixie-conversation/${sessionID}.jsonl`,
+      content: new TextEncoder().encode('not a transcript\n'),
+    },
+  ]);
+
+  const resume = { sessionID, messageID: crypto.randomUUID() };
+
+  const frames = await ctx.runGuest(sandbox, buildMockTurnFrame({ resume }));
+
+  expect(frames).toStrictEqual([
+    { type: 'failed', reason: 'error', detail: expect.toStartWith('SyntaxError') },
+  ]);
+});
+
 test('it fails a summary of a session the sandbox does not hold', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
