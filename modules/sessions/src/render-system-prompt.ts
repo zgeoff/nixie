@@ -2,7 +2,7 @@ import type { MemoryLineOptions } from './types';
 
 // Renders the system prompt: the persona, the skill catalog, the note-taker line, and the rules for
 // pasted text and images and for system messages. It holds nothing about memory, so it changes only
-// when the definitions or the task's skill versions change, and stays the head of the cached prefix.
+// with the definitions, the task's skill versions or the catalog's cap.
 export function renderSystemPrompt(
   persona: string,
   skillCatalog: string | null,
