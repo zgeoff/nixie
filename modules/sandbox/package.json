@@ -18,6 +18,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@faker-js/faker": "catalog:"
+    "@faker-js/faker": "catalog:",
+    "tiny-invariant": "catalog:"
   }
 }

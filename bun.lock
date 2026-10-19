@@ -437,6 +437,7 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
+        "tiny-invariant": "catalog:",
       },
     },
     "modules/sessions": {

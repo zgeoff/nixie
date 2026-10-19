@@ -1,18 +1,12 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
-import type { ScriptedModelRequest } from '@heynixie/testing';
-import { startScriptedModel } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { startConversation } from './start-conversation';
+import { buildConversationDriver } from './test-utils/build-conversation-driver';
 import { buildTestModelsConfig } from './test-utils/build-test-models-config';
 import { buildTestNotesTools } from './test-utils/build-test-notes-tools';
-import { collectFilesWithText } from './test-utils/collect-files-with-text';
-import { sendTestMessage } from './test-utils/send-test-message';
 import { startTestMemoryStore } from './test-utils/start-test-memory-store';
 import { startTestServer } from './test-utils/start-test-server';
-
-// root reads a file whatever its mode, so the unreadable transcript fails no copy under root; Bun
-// 1.4.2's skipIf takes a boolean and has no in-body skip
-const isRoot = process.getuid?.() === 0;
 
 interface RunnerConfig {
   // the conversation image's name, whose change replaces the conversation's sandbox
@@ -31,17 +25,13 @@ interface TestOptions {
   readonly encoderTopics?: readonly (readonly string[])[];
 }
 
-// a test server, the scripted model, a recorder for the server's log, the folder of the process
-// double's sandboxes, a memory store whose forget cleans up the sessions of the runner a test
-// started last, and a start of the conversation that stops the runner before it, as a deploy does
+// a test server on the fake guest, a memory store whose forget cleans up the sessions of the runner
+// a test started last, a start that stops the runner before it as a deploy does, and a driver that
+// sends your message to the runner last started
 async function setupTest(options: TestOptions = {}) {
-  const server = await startTestServer(options.tools);
+  const server = await startTestServer(options.tools, { fakeGuest: true });
 
-  const model = startScriptedModel();
   const log = mock<Parameters<typeof startConversation>[0]['log']>();
-
-  onTestFinished(() => model.stop());
-
   const context = server.context;
 
   // before a runner starts, no session holds anything to clean up
@@ -56,16 +46,14 @@ async function setupTest(options: TestOptions = {}) {
   return {
     ...server,
     context,
-    model,
     memory,
     log,
-    sandboxesDir: `${server.dataDir}/sandboxes`,
     startRunner: async (config: RunnerConfig) => {
       await runners.last?.stop();
 
       runners.last = await startConversation({
         context,
-        models: buildTestModelsConfig({ modelURL: model.url, ...config }),
+        models: buildTestModelsConfig({ modelURL: 'http://127.0.0.1:1', ...config }),
         ...(config.memorySettings === undefined ? {} : { memorySettings: config.memorySettings }),
         secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
         sandboxes: server.sandboxes,
@@ -85,27 +73,35 @@ async function setupTest(options: TestOptions = {}) {
 
       return runners.last;
     },
-    readLastRequest: () =>
-      model.requests.findLast((request) => request.path === '/v1/messages')?.body ?? null,
+    conversation: buildConversationDriver({
+      context,
+      guest: server.guest,
+      getRunStep: () => {
+        invariant(runners.last);
+
+        return runners.last.runStep;
+      },
+    }),
   };
 }
 
 test('it runs each turn in the conversation guest on the role profile and resumes at the boundary', async () => {
   const ctx = await setupTest();
 
-  const [runner] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+  ctx.guest.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Say a fruit.');
-  await sendTestMessage(ctx.context, runner.runStep, 'Another.');
-
+  const first = await ctx.conversation.send('Say a fruit.');
+  const second = await ctx.conversation.send('Another.');
   const records = await ctx.readRecords();
 
-  expect(records.filter((record) => record.kind === 'model.reply')).toMatchObject([
+  const replies = records.filter((record) => record.kind === 'model.reply');
+
+  expect(replies).toMatchObject([
     {
       payload: { model: 'claude-test-1', profile: 'chat-direct' },
       erasable: { fields: { text: 'APPLE' } },
@@ -116,13 +112,21 @@ test('it runs each turn in the conversation guest on the role profile and resume
     },
   ]);
 
-  expect(ctx.model.requests.filter((request) => request.path === '/v1/messages')).toMatchObject([
-    { headers: { 'x-api-key': 'imp-broker-placeholder' }, body: { model: 'claude-test-1' } },
-    { headers: { 'x-api-key': 'imp-broker-placeholder' }, body: { model: 'claude-test-1' } },
-  ]);
+  expect(first).toMatchObject({
+    profile: { model: 'claude-test-1', authHeader: 'x-api-key', effort: 'low' },
+  });
 
-  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude('APPLE');
-}, 30_000);
+  expect(second).toMatchObject({
+    profile: { model: 'claude-test-1', authHeader: 'x-api-key', effort: 'low' },
+  });
+
+  expect(first.resume).toBeNull();
+
+  // the first turn ended at its reply, which the next turn resumes at
+  expect(second).toMatchObject({
+    resume: { sessionID: expect.toBeString(), messageID: replies[0]?.payload['messageID'] },
+  });
+});
 
 test('it resumes the session after a change to the policy alone, and decides the next tool call on the new policy', async () => {
   const notes = buildTestNotesTools('Buy oat milk.');
@@ -131,7 +135,7 @@ test('it resumes the session after a change to the policy alone, and decides the
 
   const callNotes = { toolUse: { name: 'mcp__nixie__notes_read', input: {} } };
 
-  const [runner] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
       toolNames: ['notes_read'],
@@ -144,44 +148,47 @@ test('it resumes the session after a change to the policy alone, and decides the
     createConversationTask(ctx.context),
   ]);
 
-  ctx.model.addReplies(callNotes, { text: 'It says oat milk.' }, callNotes, { text: 'I may not.' });
+  ctx.guest.addReplies(callNotes, { text: 'It says oat milk.' }, callNotes, { text: 'I may not.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'What did my note say?');
+  await ctx.conversation.send('What did my note say?');
 
   notes.setEffects(['send']);
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Read it again.');
-
+  const second = await ctx.conversation.send('Read it again.');
   const records = await ctx.readRecords();
 
-  // only the resumed transcript holds the first turn's tool result
   expect({
     opened: records.filter((record) => record.kind === 'model.session_opened'),
     decisions: records.filter((record) => record.kind === 'tool_called').map((r) => r.decision),
-    isResumed: JSON.stringify(ctx.readLastRequest()?.messages).includes('Buy oat milk.'),
   }).toMatchObject({
     opened: [{ payload: { kind: 'first', policyHash: 'policy:read' } }],
     decisions: [
       { outcome: 'allow', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } },
       { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } },
     ],
-    isResumed: true,
   });
-}, 30_000);
 
-test('it opens a session and runs a turn on a profile whose context cap is at the window the CLI assumes', async () => {
+  // the second turn resumes the first turn's session instead of rebuilding it
+  expect(second.resume).toStrictEqual({
+    sessionID: expect.toBeString(),
+    messageID: expect.toBeString(),
+  });
+});
+
+test('it opens a session and passes the context cap of the profile to the guest in its turn', async () => {
   const ctx = await setupTest();
 
-  const [runner] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab', contextTokens: 200_000 }),
     createConversationTask(ctx.context),
   ]);
 
-  ctx.model.addReplies({ text: 'PLUM' });
+  ctx.guest.addReplies({ text: 'PLUM' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Name a fruit.');
-
+  const turn = await ctx.conversation.send('Name a fruit.');
   const records = await ctx.readRecords();
+
+  expect(turn.profile.contextTokens).toBe(200_000);
 
   expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
     { payload: { kind: 'first' } },
@@ -190,12 +197,12 @@ test('it opens a session and runs a turn on a profile whose context cap is at th
   expect(records.filter((record) => record.kind === 'model.reply')).toMatchObject([
     { payload: { model: 'claude-test-1' }, erasable: { fields: { text: 'PLUM' } } },
   ]);
-}, 30_000);
+});
 
 test('it opens a new session with a pinned item and the line that says where it came from in the first message, and leaves it out of the system prompt', async () => {
   const ctx = await setupTest();
 
-  const [item, runner] = await Promise.all([
+  const [item] = await Promise.all([
     ctx.memory.remember({
       text: 'Goes by Sam',
       isPinned: true,
@@ -211,28 +218,25 @@ test('it opens a new session with a pinned item and the line that says where it 
     createConversationTask(ctx.context),
   ]);
 
-  ctx.model.addReplies({ text: 'You go by Sam.' });
+  ctx.guest.addReplies({ text: 'You go by Sam.' });
 
-  const [shortIDs] = await Promise.all([
+  const [shortIDs, turn] = await Promise.all([
     ctx.memory.readShortIDs([item.itemID]),
-    sendTestMessage(ctx.context, runner.runStep, 'What do I go by?'),
+    ctx.conversation.send('What do I go by?'),
   ]);
 
-  const request = ctx.readLastRequest();
   const shortID = String(shortIDs.get(item.itemID));
 
-  expect(JSON.stringify(request?.system)).not.toInclude('Goes by Sam');
+  expect(turn.systemPrompt).not.toInclude('Goes by Sam');
 
   // the item's day is the day the test runs, so the line's day reads as a placeholder
-  expect(
-    JSON.stringify(request?.messages).replace(/ v1 · \d{1,2} \w{3} · /u, ' v1 · <day> · '),
-  ).toMatch(
+  expect(turn.input[0]?.text.replace(/ v1 · \d{1,2} \w{3} · /u, ' v1 · <day> · ')).toMatch(
     new RegExp(
-      String.raw`^\[\{"role":"user","content":"<system-message type=\\"pinned-memory\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\nAbout the owner:\\n- Goes by Sam\\n  ${shortID} v1 · <day> · the owner said this\\n<\/system-message id=\\"\k<blockID>\\">\\n\\n<system-message type=\\"status\\"`,
+      String.raw`^<system-message type="pinned-memory" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\nAbout the owner:\n- Goes by Sam\n  ${shortID} v1 · <day> · the owner said this\n<\/system-message id="\k<blockID>">\n\n<system-message type="status"`,
       'u',
     ),
   );
-}, 30_000);
+});
 
 test('it keeps the system prompt the same bytes when a pinned item is edited during a session, and sends the change note before the next message', async () => {
   const ctx = await setupTest();
@@ -245,63 +249,60 @@ test('it keeps the system prompt the same bytes when a pinned item is edited dur
     checks: null,
   } as const;
 
-  const [item, runner] = await Promise.all([
+  const [item] = await Promise.all([
     ctx.memory.remember({ text: 'Goes by Sam', isPinned: true, provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  ctx.model.addReplies({ text: 'Hello, Sam.' }, { text: 'You go by Sasha now.' });
+  ctx.guest.addReplies({ text: 'Hello, Sam.' }, { text: 'You go by Sasha now.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Hi.');
-
-  const before = JSON.stringify(ctx.readLastRequest()?.system);
+  const first = await ctx.conversation.send('Hi.');
 
   await ctx.memory.remember({ text: 'Goes by Sasha', target: item, provenance });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'What do I go by?');
+  const second = await ctx.conversation.send('What do I go by?');
 
-  expect(JSON.stringify(ctx.readLastRequest()?.system)).toBe(before);
+  expect(second.systemPrompt).toBe(first.systemPrompt);
 
-  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toMatch(
-    /<system-message type=\\"pinned-memory-changes\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\n- Changed \[(?<shortID>[\da-z]+)\]:\\n  - Goes by Sasha\\n    \k<shortID> v2 · [^\\]+ · the owner said this\\n<\/system-message id=\\"\k<blockID>\\">\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
+  expect(second.input[0]?.text).toMatch(
+    /<system-message type="pinned-memory-changes" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\n- Changed \[(?<shortID>[\da-z]+)\]:\n  - Goes by Sasha\n    \k<shortID> v2 · [^\n]+ · the owner said this\n<\/system-message id="\k<blockID>">\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
   );
-}, 30_000);
+});
 
 test('it rebuilds the session with the recent turns once a replaced sandbox has lost the session', async () => {
   const ctx = await setupTest();
 
-  const [first] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+  ctx.guest.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
 
-  await sendTestMessage(ctx.context, first.runStep, 'Say a fruit.');
+  await ctx.conversation.send('Say a fruit.');
 
-  // with every transcript gone, the replacement has no session to carry over
-  await Bun.$`find . -name '*.jsonl' -delete`.cwd(ctx.sandboxesDir);
+  // with every session gone, the replacement has no session to carry over
+  ctx.guest.removeSessions(conversationTaskID);
 
-  const second = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
+  await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
 
-  await sendTestMessage(ctx.context, second.runStep, 'Another.');
-
+  const turn = await ctx.conversation.send('Another.');
   const records = await ctx.readRecords();
 
-  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toSatisfy(
-    (messages: string) =>
-      messages.includes(String.raw`<system-message type=\"recent-turns\"`) &&
-      messages.includes(String.raw`] owner: Say a fruit.\n[`) &&
-      messages.includes(String.raw`] nixie: APPLE\n</system-message id=\"`) &&
-      messages.includes(String.raw`, UTC] Another.`),
-  );
+  const opening = turn.input[0]?.text;
+
+  expect(turn.resume).toBeNull();
+  expect(opening).toInclude('<system-message type="recent-turns"');
+  expect(opening).toInclude('] owner: Say a fruit.\n[');
+  expect(opening).toInclude('] nixie: APPLE\n</system-message id="');
+  expect(opening).toInclude(', UTC] Another.');
 
   expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
     { payload: { kind: 'first' } },
     { payload: { kind: 'rebuild', reason: 'lost', recentRecords: 2 } },
   ]);
-}, 30_000);
+});
 
 test('it removes every session file that holds a forgotten item', async () => {
   const ctx = await setupTest();
@@ -314,7 +315,7 @@ test('it removes every session file that holds a forgotten item', async () => {
     checks: null,
   } as const;
 
-  const [key, runner] = await Promise.all([
+  const [key] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
@@ -324,22 +325,22 @@ test('it removes every session file that holds a forgotten item', async () => {
     ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
-  ctx.model.addReplies({ text: 'Under the flowerpot.' });
+  ctx.guest.addReplies({ text: 'Under the flowerpot.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
+  await ctx.conversation.send('Where is the spare key?');
 
-  const held = await collectFilesWithText(`${ctx.dataDir}/sandboxes`, 'blue flowerpot');
+  const held = ctx.guest.collectFilesWithText('blue flowerpot');
 
   await ctx.memory.forget({ target: key, provenance });
 
-  const left = await collectFilesWithText(`${ctx.dataDir}/sandboxes`, 'blue flowerpot');
+  const left = ctx.guest.collectFilesWithText('blue flowerpot');
 
   expect(held).toSatisfy((paths: readonly string[]) =>
-    paths.some((path) => path.includes('/fs/.claude/projects/')),
+    paths.some((path) => path.includes('/.claude/projects/')),
   );
 
   expect(left).toStrictEqual([]);
-}, 30_000);
+});
 
 test('it runs the turn after a forget on a rebuilt session without the forgotten item', async () => {
   const ctx = await setupTest();
@@ -352,7 +353,7 @@ test('it runs the turn after a forget on a rebuilt session without the forgotten
     checks: null,
   } as const;
 
-  const [key, runner] = await Promise.all([
+  const [key] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
@@ -362,124 +363,123 @@ test('it runs the turn after a forget on a rebuilt session without the forgotten
     ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
-  ctx.model.addReplies({ text: 'Under the flowerpot.' }, { text: 'You are welcome.' });
+  ctx.guest.addReplies({ text: 'Under the flowerpot.' }, { text: 'You are welcome.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
-
+  await ctx.conversation.send('Where is the spare key?');
   await ctx.memory.forget({ target: key, provenance });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Thanks.');
-
+  const turn = await ctx.conversation.send('Thanks.');
   const records = await ctx.readRecords();
 
-  expect(JSON.stringify(ctx.readLastRequest())).toSatisfy(
-    (request: string) => request.includes('Thanks.') && !request.includes('blue flowerpot'),
+  expect(turn.resume).toBeNull();
+
+  expect(JSON.stringify(turn)).toSatisfy(
+    (sent: string) => sent.includes('Thanks.') && !sent.includes('blue flowerpot'),
   );
 
   expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
     { payload: { kind: 'first' } },
     { payload: { kind: 'rebuild', reason: 'forget' } },
   ]);
-}, 30_000);
+});
 
 test('it summarizes a session past 0.8 of its window in the guest, and opens the next session from the summary alone', async () => {
   const ctx = await setupTest();
 
-  const [runner] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  // the first reply reports a context past 0.8 of the 200,000-token window; the second answers the
-  // compaction instruction
-  ctx.model.addReplies(
-    { text: 'The gauge reads 3.2 m.', inputTokens: 170_000 },
-    { text: 'Open threads: the gauge report is due on Friday.' },
-    { text: 'It will read 3.4 m.' },
-  );
+  // the first turn ends with a context past 0.8 of the 200,000-token window
+  ctx.guest.setContextSize(170_000);
 
-  await sendTestMessage(ctx.context, runner.runStep, 'What does the tide gauge read?');
-
-  // the step this message wakes compacts first, and the next one opens the new session
-  await sendTestMessage(ctx.context, runner.runStep, 'And tomorrow?');
-  await sendTestMessage(ctx.context, runner.runStep, 'Is that high?');
-
-  const records = await ctx.readRecords();
-
-  // the summary call forks the session after the first turn and adds the instruction to it
-  expect(ctx.model.requests).toSatisfyAny((request: ScriptedModelRequest) => {
-    const sent = JSON.stringify(request.body);
-
-    return sent.includes('nixie is closing this session now') && sent.includes('3.2 m.');
-  });
-
-  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toSatisfy(
-    (messages: string) =>
-      messages.includes('Open threads: the gauge report is due on Friday.') &&
-      messages.includes('Is that high?') &&
-      !messages.includes('The gauge reads 3.2 m.'),
-  );
-
-  expect(records.filter((record) => record.kind === 'model.session_summarized')).toMatchObject([
-    {
-      payload: { trigger: 'threshold', contextSize: expect.toBeWithin(170_000, 171_000) },
-      erasable: { fields: { text: 'Open threads: the gauge report is due on Friday.' } },
-    },
-  ]);
-}, 30_000);
-
-test('it compacts a session whose turn overflows the window with its own summary, and the CLI never compacts it', async () => {
-  const ctx = await setupTest();
-
-  const [runner] = await Promise.all([
-    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
-    createConversationTask(ctx.context),
-  ]);
-
-  // the second turn's call is refused past the window; the CLI could only go on by compacting
-  // itself, so the next reply answers nixie's compaction instruction, and the last two answer the
-  // two messages on the new session
-  ctx.model.addReplies(
+  ctx.guest.addReplies(
     { text: 'The gauge reads 3.2 m.' },
-    { refusal: 'prompt is too long: 210000 tokens > 200000 maximum' },
-    { text: 'Open threads: the gauge report is due on Friday.' },
     { text: 'It will read 3.4 m.' },
     { text: 'No, that is a normal tide.' },
   );
 
-  await sendTestMessage(ctx.context, runner.runStep, 'What does the tide gauge read?');
+  await ctx.conversation.send('What does the tide gauge read?');
 
-  // the overflowed step compacts and leaves its message unread; the next one opens the new session
-  await sendTestMessage(ctx.context, runner.runStep, 'And tomorrow?');
-  await sendTestMessage(ctx.context, runner.runStep, 'Is that high?');
-
+  // the step this message wakes compacts first, and the next one opens the new session
+  const compaction = await ctx.conversation.sendForStep('And tomorrow?');
+  const opening = await ctx.conversation.send('Is that high?');
   const records = await ctx.readRecords();
 
-  expect(records.filter((record) => record.kind === 'model.session_summarized')).toMatchObject([
+  const summary = 'Summary of the session: 2 entries, the last reply was "The gauge reads 3.2 m.".';
+
+  // the summary call forks the session after the first turn and adds the instruction to it
+  expect(compaction.turns).toStrictEqual([]);
+
+  expect(compaction.summaries).toMatchObject([
     {
-      payload: { trigger: 'overflow' },
-      erasable: { fields: { text: 'Open threads: the gauge report is due on Friday.' } },
+      resume: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+      instruction: expect.toInclude('nixie is closing this session now'),
     },
   ]);
 
-  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toSatisfy(
-    (messages: string) =>
-      messages.includes('Open threads: the gauge report is due on Friday.') &&
-      messages.includes('And tomorrow?') &&
-      !messages.includes('The gauge reads 3.2 m.'),
+  expect(opening.resume).toBeNull();
+  expect(opening.input[0]?.text).toInclude(summary);
+  expect(opening.input[0]?.text).toInclude('And tomorrow?');
+  expect(opening.input[0]?.text).not.toInclude('What does the tide gauge read?');
+  expect(opening.input[1]?.text).toInclude('Is that high?');
+
+  expect(records.filter((record) => record.kind === 'model.session_summarized')).toMatchObject([
+    {
+      payload: { trigger: 'threshold', contextSize: expect.toBeWithin(170_000, 171_000) },
+      erasable: { fields: { text: summary } },
+    },
+  ]);
+});
+
+test('it compacts a session whose turn overflows the window with its own summary', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  // the second turn's call is refused past the window, and the last two replies answer the two
+  // messages on the new session
+  ctx.guest.addReplies(
+    { text: 'The gauge reads 3.2 m.' },
+    { overflow: 'prompt_too_long' },
+    { text: 'It will read 3.4 m.' },
+    { text: 'No, that is a normal tide.' },
   );
+
+  await ctx.conversation.send('What does the tide gauge read?');
+
+  // the overflowed step compacts and leaves its message unread; the next one opens the new session
+  await ctx.conversation.sendForStep('And tomorrow?');
+
+  const opening = await ctx.conversation.send('Is that high?');
+  const records = await ctx.readRecords();
+
+  const summary = 'Summary of the session: 2 entries, the last reply was "The gauge reads 3.2 m.".';
+
+  expect(records.filter((record) => record.kind === 'model.session_summarized')).toMatchObject([
+    { payload: { trigger: 'overflow' }, erasable: { fields: { text: summary } } },
+  ]);
+
+  expect(opening.resume).toBeNull();
+  expect(opening.input[0]?.text).toInclude(summary);
+  expect(opening.input[0]?.text).toInclude('And tomorrow?');
+  expect(opening.input[0]?.text).not.toInclude('What does the tide gauge read?');
 
   expect(records.filter((record) => record.kind === 'model.reply')).toMatchObject([
     { erasable: { fields: { text: 'The gauge reads 3.2 m.' } } },
     { erasable: { fields: { text: 'It will read 3.4 m.' } } },
     { erasable: { fields: { text: 'No, that is a normal tide.' } } },
   ]);
-}, 30_000);
+});
 
 test('it erases the summary when you forget a memory item, and opens the next session with no summary', async () => {
   const ctx = await setupTest();
 
-  const [key, runner] = await Promise.all([
+  const [key] = await Promise.all([
     ctx.memory.remember({
       text: 'The spare key sits under the blue flowerpot',
       provenance: {
@@ -494,51 +494,51 @@ test('it erases the summary when you forget a memory item, and opens the next se
     createConversationTask(ctx.context),
   ]);
 
-  ctx.model.addReplies(
-    { text: 'Under the flowerpot.', inputTokens: 170_000 },
-    { text: 'Open threads: the spare key under the blue flowerpot.' },
-    { text: 'You asked about a key.' },
-  );
+  ctx.guest.setContextSize(170_000);
+  ctx.guest.addReplies({ text: 'Under the flowerpot.' }, { text: 'You asked about a key.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
-  await sendTestMessage(ctx.context, runner.runStep, 'Thanks.');
+  await ctx.conversation.send('Where is the spare key?');
+
+  // the step this message wakes compacts first and sends no turn
+  await ctx.conversation.sendForStep('Thanks.');
 
   await ctx.memory.forget({
     target: key,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'What was I asking about?');
-
+  const turn = await ctx.conversation.send('What was I asking about?');
   const records = await ctx.readRecords();
 
   expect(records.filter((record) => record.kind === 'model.session_summarized')).toMatchObject([
     { erasable: { status: 'shredded' } },
   ]);
 
-  expect(JSON.stringify(ctx.readLastRequest())).toSatisfy(
-    (request: string) =>
-      request.includes('What was I asking about?') && !request.includes('Open threads:'),
+  expect(turn.resume).toBeNull();
+
+  expect(JSON.stringify(turn)).toSatisfy(
+    (sent: string) =>
+      sent.includes('What was I asking about?') && !sent.includes('Summary of the session'),
   );
-}, 30_000);
+});
 
 test('it resumes the session on a sandbox that a new image replaced between two turns', async () => {
   const ctx = await setupTest();
 
-  const [before] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+  ctx.guest.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
 
-  await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
+  await ctx.conversation.send('Say a fruit.');
+  await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
 
-  const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
-
-  await sendTestMessage(ctx.context, after.runStep, 'Another.');
-
+  const turn = await ctx.conversation.send('Another.');
   const records = await ctx.readRecords();
+
+  const reply = records.find((record) => record.kind === 'model.reply');
 
   expect(records.filter((record) => record.kind === 'sandbox.destroyed')).toHaveLength(1);
 
@@ -546,26 +546,31 @@ test('it resumes the session on a sandbox that a new image replaced between two 
     { payload: { kind: 'first' } },
   ]);
 
-  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude('APPLE');
-}, 30_000);
+  // the new sandbox resumes the first turn's reply, which the old sandbox's session carried over
+  expect(turn).toMatchObject({
+    resume: { sessionID: expect.toBeString(), messageID: reply?.payload['messageID'] },
+  });
+});
 
 test('it resumes the session on a sandbox that replaced a retired one between two turns', async () => {
   const ctx = await setupTest();
 
-  const [before] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
+  await ctx.conversation.send('Say a fruit.');
 
   // as the imp adapter retires an imp that impd still backs up
   const retired = await ctx.retireSandboxes(conversationTaskID);
-  const after = await ctx.startRunner({ image: 'nixie-conversation-0123456789ab' });
 
-  await sendTestMessage(ctx.context, after.runStep, 'Another.');
+  await ctx.startRunner({ image: 'nixie-conversation-0123456789ab' });
 
+  const turn = await ctx.conversation.send('Another.');
   const records = await ctx.readRecords();
+
+  expect(turn.resume).not.toBeNull();
 
   expect(
     records
@@ -576,17 +581,17 @@ test('it resumes the session on a sandbox that replaced a retired one between tw
   expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
     { payload: { kind: 'first' } },
   ]);
-}, 30_000);
+});
 
 test('it takes the session into a replacement that a stopped start left beside the old sandbox', async () => {
   const ctx = await setupTest();
 
-  const [before] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
+  await ctx.conversation.send('Say a fruit.');
 
   // the replacement a start made before it stopped, with neither the session copy nor the destroy
   const sandboxes = await ctx.sandboxes.list(conversationTaskID);
@@ -597,98 +602,93 @@ test('it takes the session into a replacement that a stopped start left beside t
     ),
   );
 
-  const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
+  await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
 
-  await sendTestMessage(ctx.context, after.runStep, 'Another.');
-
+  const turn = await ctx.conversation.send('Another.');
   const records = await ctx.readRecords();
+
+  expect(turn.resume).not.toBeNull();
 
   expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
     { payload: { kind: 'first' } },
   ]);
-}, 30_000);
+});
 
 test('it wakes a sleeping sandbox to take its session before it replaces it', async () => {
   const ctx = await setupTest();
 
-  const [before] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
+  await ctx.conversation.send('Say a fruit.');
 
   const [asleep] = await ctx.sandboxes.list(conversationTaskID);
 
   if (asleep?.suspension.kind !== 'memory') {
-    throw new Error('the process double sleeps its sandboxes');
+    throw new Error('the stub guest sandbox sleeps');
   }
 
   await asleep.suspension.sleep();
+  await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
 
-  const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
+  const turn = await ctx.conversation.send('Another.');
 
-  await sendTestMessage(ctx.context, after.runStep, 'Another.');
-
+  expect(turn.resume).not.toBeNull();
   expect(ctx.log).not.toHaveBeenCalled();
-}, 30_000);
+});
 
-test.skipIf(isRoot)(
-  'it starts the new sandbox and the next turn on a fresh session when the session copy fails',
-  async () => {
-    const ctx = await setupTest();
-
-    const [before] = await Promise.all([
-      ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
-      createConversationTask(ctx.context),
-    ]);
-
-    await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
-
-    const transcripts = await collectFilesWithText(ctx.sandboxesDir, 'Say a fruit.');
-
-    // a transcript its guest cannot read fails the copy out of the old sandbox
-    await Bun.$`chmod 000 ${transcripts}`.cwd(ctx.sandboxesDir);
-
-    const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
-
-    await sendTestMessage(ctx.context, after.runStep, 'Another.');
-
-    const records = await ctx.readRecords();
-
-    expect(ctx.log).toHaveBeenCalledExactlyOnceWith('conversation.session_copy_failed', {
-      toSandboxID: expect.toBeString(),
-      reason: expect.toInclude('EACCES'),
-    });
-
-    expect(
-      records.filter(
-        (record) => record.kind === 'model.session_opened' && record.payload['kind'] === 'rebuild',
-      ),
-    ).toHaveLength(1);
-  },
-  30_000,
-);
-
-test('it starts a fresh session on the new sandbox when the old sandbox no longer holds the session', async () => {
+test('it starts the new sandbox and the next turn on a fresh session when the session copy fails', async () => {
   const ctx = await setupTest();
 
-  const [before] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
+  await ctx.conversation.send('Say a fruit.');
 
-  const transcripts = await collectFilesWithText(ctx.sandboxesDir, 'Say a fruit.');
+  // the old sandbox cannot read its transcript
+  ctx.guest.failCopyOut(conversationTaskID, 'EACCES: permission denied');
 
-  await Bun.$`rm ${transcripts}`.cwd(ctx.sandboxesDir);
+  await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
 
-  const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
-
-  await sendTestMessage(ctx.context, after.runStep, 'Another.');
-
+  const turn = await ctx.conversation.send('Another.');
   const records = await ctx.readRecords();
+
+  expect(turn.resume).toBeNull();
+
+  expect(ctx.log).toHaveBeenCalledExactlyOnceWith('conversation.session_copy_failed', {
+    toSandboxID: expect.toBeString(),
+    reason: expect.toInclude('EACCES'),
+  });
+
+  expect(
+    records.filter(
+      (record) => record.kind === 'model.session_opened' && record.payload['kind'] === 'rebuild',
+    ),
+  ).toHaveLength(1);
+});
+
+test('it starts a fresh session on the new sandbox when the old sandbox no longer holds the session', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  await ctx.conversation.send('Say a fruit.');
+
+  ctx.guest.removeSessions(conversationTaskID);
+
+  await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
+
+  const turn = await ctx.conversation.send('Another.');
+  const records = await ctx.readRecords();
+
+  expect(turn.resume).toBeNull();
 
   expect(ctx.log).toHaveBeenCalledExactlyOnceWith('conversation.session_copy_failed', {
     toSandboxID: expect.toBeString(),
@@ -700,7 +700,7 @@ test('it starts a fresh session on the new sandbox when the old sandbox no longe
       (record) => record.kind === 'model.session_opened' && record.payload['kind'] === 'rebuild',
     ),
   ).toHaveLength(1);
-}, 30_000);
+});
 
 test('it gives the next best match the slot of an item the session already holds', async () => {
   const ctx = await setupTest();
@@ -713,7 +713,7 @@ test('it gives the next best match the slot of an item the session already holds
     checks: null,
   } as const;
 
-  const [flowerpot, garage, runner] = await Promise.all([
+  const [flowerpot, garage] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.memory.remember({ text: 'A second spare key hangs in the garage', provenance }),
     ctx.startRunner({
@@ -732,11 +732,11 @@ test('it gives the next best match the slot of an item the session already holds
     ctx.memory.remember({ text: 'Runs a half marathon each spring', provenance }),
   ]);
 
-  ctx.model.addReplies({ text: 'Under the flowerpot.' }, { text: 'In the garage.' });
+  ctx.guest.addReplies({ text: 'Under the flowerpot.' }, { text: 'In the garage.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Is the spare key under the blue flowerpot?');
-  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
+  await ctx.conversation.send('Is the spare key under the blue flowerpot?');
 
+  const turn = await ctx.conversation.send('Where is the spare key?');
   const records = await ctx.readRecords();
 
   expect(
@@ -745,10 +745,10 @@ test('it gives the next best match the slot of an item the session already holds
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[{ ...flowerpot }], [{ ...garage }]]);
 
-  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toMatch(
-    /<system-message type=\\"retrieved-memory\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\nAbout the owner:\\n- A second spare key hangs in the garage\\n(?:[^<]*\\n)?<\/system-message id=\\"\k<blockID>\\">/u,
+  expect(turn.input[0]?.text).toMatch(
+    /<system-message type="retrieved-memory" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\nAbout the owner:\n- A second spare key hangs in the garage\n(?:[^<]*\n)?<\/system-message id="\k<blockID>">/u,
   );
-}, 30_000);
+});
 
 test('it retrieves a matching item of each subject, each under its own heading', async () => {
   const ctx = await setupTest();
@@ -761,7 +761,7 @@ test('it retrieves a matching item of each subject, each under its own heading',
     checks: null,
   } as const;
 
-  const [owner, shared, self, runner] = await Promise.all([
+  const [owner, shared, self] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.memory.remember({
       text: 'The owner and the assistant call the spare key the brass friend',
@@ -786,13 +786,12 @@ test('it retrieves a matching item of each subject, each under its own heading',
     ctx.memory.remember({ text: 'Runs a half marathon each spring', provenance }),
   ]);
 
-  ctx.model.addReplies({ text: 'Under the flowerpot.' });
+  ctx.guest.addReplies({ text: 'Under the flowerpot.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
-
+  const turn = await ctx.conversation.send('Where is the spare key?');
   const records = await ctx.readRecords();
 
-  const sent = JSON.stringify(ctx.readLastRequest()?.messages);
+  const sent = turn.input[0]?.text ?? '';
 
   expect(
     records
@@ -800,16 +799,14 @@ test('it retrieves a matching item of each subject, each under its own heading',
       .flatMap((record) => record.payload['retrieved']),
   ).toIncludeSameMembers([{ ...owner }, { ...shared }, { ...self }]);
 
-  expect(sent).toInclude(
-    String.raw`About the owner:\n- The spare key sits under the blue flowerpot`,
-  );
+  expect(sent).toInclude('About the owner:\n- The spare key sits under the blue flowerpot');
 
   expect(sent).toInclude(
-    String.raw`Between you and the owner:\n- The owner and the assistant call the spare key the brass friend`,
+    'Between you and the owner:\n- The owner and the assistant call the spare key the brass friend',
   );
 
-  expect(sent).toInclude(String.raw`- I like the riddle of where the spare key went`);
-}, 30_000);
+  expect(sent).toInclude('- I like the riddle of where the spare key went');
+});
 
 test('it retrieves an item again in the session that opens after a compaction', async () => {
   const ctx = await setupTest();
@@ -822,7 +819,7 @@ test('it retrieves an item again in the session that opens after a compaction', 
     checks: null,
   } as const;
 
-  const [key, runner] = await Promise.all([
+  const [key] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
@@ -830,16 +827,15 @@ test('it retrieves an item again in the session that opens after a compaction', 
     ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
-  // the first reply reports a context past 0.8 of the window, so the next step compacts
-  ctx.model.addReplies(
-    { text: 'APPLE', inputTokens: 170_000 },
-    { text: 'Open threads: the owner asked about a key.' },
-    { text: 'BANANA' },
-  );
+  // the first turn ends with a context past 0.8 of the window, so the next step compacts
+  ctx.guest.setContextSize(170_000);
+  ctx.guest.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
-  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key again?');
-  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key now?');
+  await ctx.conversation.send('Where is the spare key?');
+
+  // the step this message wakes compacts first and sends no turn
+  await ctx.conversation.sendForStep('Where is the spare key again?');
+  await ctx.conversation.send('Where is the spare key now?');
 
   const records = await ctx.readRecords();
 
@@ -850,7 +846,7 @@ test('it retrieves an item again in the session that opens after a compaction', 
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[{ ...key }], [{ ...key }]]);
-}, 30_000);
+});
 
 test('it retrieves an item again on a rebuilt session that lost the turn it came in', async () => {
   const ctx = await setupTest();
@@ -863,7 +859,7 @@ test('it retrieves an item again on a rebuilt session that lost the turn it came
     checks: null,
   } as const;
 
-  const [key, first] = await Promise.all([
+  const [key] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
@@ -871,14 +867,13 @@ test('it retrieves an item again on a rebuilt session that lost the turn it came
     ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
-  await sendTestMessage(ctx.context, first.runStep, 'Where is the spare key?');
+  await ctx.conversation.send('Where is the spare key?');
 
-  // with every transcript gone, the replacement has no session to carry over
-  await Bun.$`find . -name '*.jsonl' -delete`.cwd(ctx.sandboxesDir);
+  // with every session gone, the replacement has no session to carry over
+  ctx.guest.removeSessions(conversationTaskID);
 
-  const second = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
-
-  await sendTestMessage(ctx.context, second.runStep, 'Where is the spare key again?');
+  await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
+  await ctx.conversation.send('Where is the spare key again?');
 
   const records = await ctx.readRecords();
 
@@ -892,7 +887,7 @@ test('it retrieves an item again on a rebuilt session that lost the turn it came
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[{ ...key }], [{ ...key }]]);
-}, 30_000);
+});
 
 test('it retrieves an edited item even though the session holds its earlier version', async () => {
   const ctx = await setupTest();
@@ -905,7 +900,7 @@ test('it retrieves an edited item even though the session holds its earlier vers
     checks: null,
   } as const;
 
-  const [key, runner] = await Promise.all([
+  const [key] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
@@ -913,9 +908,9 @@ test('it retrieves an edited item even though the session holds its earlier vers
     ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
-  ctx.model.addReplies({ text: 'Under the flowerpot.' }, { text: 'Under the doormat.' });
+  ctx.guest.addReplies({ text: 'Under the flowerpot.' }, { text: 'Under the doormat.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
+  await ctx.conversation.send('Where is the spare key?');
 
   const edited = await ctx.memory.remember({
     text: 'The spare key sits under the doormat',
@@ -923,7 +918,7 @@ test('it retrieves an edited item even though the session holds its earlier vers
     provenance,
   });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key again?');
+  await ctx.conversation.send('Where is the spare key again?');
 
   const records = await ctx.readRecords();
 
@@ -932,7 +927,7 @@ test('it retrieves an edited item even though the session holds its earlier vers
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[{ ...key }], [{ ...edited }]]);
-}, 30_000);
+});
 
 test("it matches your message to an item on its other words and never on the agent's name", async () => {
   const ctx = await setupTest();
@@ -945,7 +940,7 @@ test("it matches your message to an item on its other words and never on the age
     checks: null,
   } as const;
 
-  const [bun, runner] = await Promise.all([
+  const [bun] = await Promise.all([
     ctx.memory.remember({ text: 'Switched the server scripts from Node to Bun', provenance }),
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
@@ -963,9 +958,9 @@ test("it matches your message to an item on its other words and never on the age
     ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
   ]);
 
-  ctx.model.addReplies({ text: 'Bun is quick.' });
+  ctx.guest.addReplies({ text: 'Bun is quick.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'nix, what do you think about bun');
+  await ctx.conversation.send('nix, what do you think about bun');
 
   const records = await ctx.readRecords();
 
@@ -974,7 +969,7 @@ test("it matches your message to an item on its other words and never on the age
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[{ ...bun }]]);
-}, 30_000);
+});
 
 test('it places an item by meaning on a turn whose message shares no word with it', async () => {
   const ctx = await setupTest({
@@ -989,7 +984,7 @@ test('it places an item by meaning on a turn whose message shares no word with i
     checks: null,
   } as const;
 
-  const [boiler, runner] = await Promise.all([
+  const [boiler] = await Promise.all([
     ctx.memory.remember({ text: 'The boiler service is booked for the 14th', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
@@ -999,9 +994,9 @@ test('it places an item by meaning on a turn whose message shares no word with i
 
   await ctx.memory.waitForSemanticIndex();
 
-  ctx.model.addReplies({ text: 'On the 14th.' });
+  ctx.guest.addReplies({ text: 'On the 14th.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'When is the heating engineer coming?');
+  await ctx.conversation.send('When is the heating engineer coming?');
 
   const records = await ctx.readRecords();
 
@@ -1010,7 +1005,7 @@ test('it places an item by meaning on a turn whose message shares no word with i
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[{ ...boiler }]]);
-}, 30_000);
+});
 
 test("it retrieves nothing for a message that is only the agent's name", async () => {
   const ctx = await setupTest();
@@ -1023,7 +1018,7 @@ test("it retrieves nothing for a message that is only the agent's name", async (
     checks: null,
   } as const;
 
-  const [runner] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
       memorySettings: { agentNames: ['Nix', 'Nixie'], ownerName: 'Avery' },
@@ -1037,9 +1032,9 @@ test("it retrieves nothing for a message that is only the agent's name", async (
     ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
   ]);
 
-  ctx.model.addReplies({ text: 'Yes?' });
+  ctx.guest.addReplies({ text: 'Yes?' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'nix?');
+  await ctx.conversation.send('nix?');
 
   const records = await ctx.readRecords();
 
@@ -1048,7 +1043,7 @@ test("it retrieves nothing for a message that is only the agent's name", async (
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[]]);
-}, 30_000);
+});
 
 test('it retrieves nothing for a message that is only your name', async () => {
   const ctx = await setupTest();
@@ -1061,7 +1056,7 @@ test('it retrieves nothing for a message that is only your name', async () => {
     checks: null,
   } as const;
 
-  const [runner] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
       memorySettings: { agentNames: ['Nix', 'Nixie'], ownerName: 'Avery' },
@@ -1075,9 +1070,9 @@ test('it retrieves nothing for a message that is only your name', async () => {
     ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
   ]);
 
-  ctx.model.addReplies({ text: 'Hello.' });
+  ctx.guest.addReplies({ text: 'Hello.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, "It's Avery.");
+  await ctx.conversation.send("It's Avery.");
 
   const records = await ctx.readRecords();
 
@@ -1086,7 +1081,7 @@ test('it retrieves nothing for a message that is only your name', async () => {
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[]]);
-}, 30_000);
+});
 
 test('it places up to 2 self-notes in their own labelled block beside 5 facts', async () => {
   const ctx = await setupTest();
@@ -1102,7 +1097,7 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
   const note = { ...provenance, origin: 'conversation', model: 'claude-opus-5-5' } as const;
 
   // with no score floor, 9 matches need no items beside them to pass it
-  const [runner] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
       memorySettings: { retrievalMinScore: 0 },
@@ -1119,11 +1114,11 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
     ctx.memory.remember({ text: 'Gave up sweet tea after a long cold winter', provenance }),
   ]);
 
-  ctx.model.addReplies({ text: 'Mint, then.' });
+  ctx.guest.addReplies({ text: 'Mint, then.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Which tea should I try?');
+  const turn = await ctx.conversation.send('Which tea should I try?');
 
-  const opening = String(ctx.readLastRequest()?.messages?.[0]?.content);
+  const opening = turn.input[0]?.text ?? '';
 
   expect(opening).toMatch(
     /type="retrieved-memory" [^>]+>\nFrom your memory[^\n]+\nAbout the owner:(?:\n- [^\n]+\n {2}[^\n]+){5}\n<\/system-message/u,
@@ -1145,7 +1140,7 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
       <short ID> v1 · <day> · you wrote this · claude-opus-5-5
     </system-message id="<block ID>">"
   `);
-}, 30_000);
+});
 
 test("it lists the self-notes it places beside the facts in the recall record and the turn's record", async () => {
   const ctx = await setupTest();
@@ -1162,12 +1157,15 @@ test("it lists the self-notes it places beside the facts in the recall record an
 
   // with no score floor, 9 matches need no items beside them to pass it; the longest fact and the
   // longest note rank last
-  const [runner, , smell, calming, , ...facts] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
       memorySettings: { retrievalMinScore: 0 },
     }),
     createConversationTask(ctx.context),
+  ]);
+
+  const [smell, calming, , ...facts] = await Promise.all([
     ctx.memory.remember({ text: 'I like the smell of tea', provenance: note, subject: 'self' }),
     ctx.memory.remember({ text: 'I find tea calming', provenance: note, subject: 'self' }),
     ctx.memory.remember({ text: 'I do so like a cup of tea', provenance: note, subject: 'self' }),
@@ -1179,9 +1177,9 @@ test("it lists the self-notes it places beside the facts in the recall record an
     ctx.memory.remember({ text: 'Gave up sweet tea after a long cold winter', provenance }),
   ]);
 
-  ctx.model.addReplies({ text: 'Mint, then.' });
+  ctx.guest.addReplies({ text: 'Mint, then.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Which tea should I try?');
+  await ctx.conversation.send('Which tea should I try?');
 
   const records = await ctx.readRecords();
 
@@ -1200,7 +1198,7 @@ test("it lists the self-notes it places beside the facts in the recall record an
       [smell, calming, ...facts.slice(0, 5)].map((ref): unknown => expect.objectContaining(ref)),
     ),
   ]);
-}, 30_000);
+});
 
 test('it places no self-note block when the cap is 0', async () => {
   const ctx = await setupTest();
@@ -1216,7 +1214,7 @@ test('it places no self-note block when the cap is 0', async () => {
   const note = { ...provenance, origin: 'conversation', model: 'claude-opus-5-5' } as const;
 
   // with no score floor, both matches need no items beside them to pass it
-  const [kettle, runner] = await Promise.all([
+  const [kettle] = await Promise.all([
     ctx.memory.remember({ text: 'Keeps a tin of tea by the kettle', provenance }),
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
@@ -1226,10 +1224,9 @@ test('it places no self-note block when the cap is 0', async () => {
     ctx.memory.remember({ text: 'I find tea calming', provenance: note, subject: 'self' }),
   ]);
 
-  ctx.model.addReplies({ text: 'Mint, then.' });
+  ctx.guest.addReplies({ text: 'Mint, then.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'Which tea should I try?');
-
+  const turn = await ctx.conversation.send('Which tea should I try?');
   const records = await ctx.readRecords();
 
   expect(
@@ -1238,15 +1235,15 @@ test('it places no self-note block when the cap is 0', async () => {
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[{ ...kettle }]]);
 
-  expect(JSON.stringify(ctx.readLastRequest()?.messages)).not.toInclude('retrieved-self-notes');
-}, 30_000);
+  expect(turn.input[0]?.text).not.toInclude('retrieved-self-notes');
+});
 
 test('it places at most 3 of your past messages that match a new message by meaning, each with its thread and day', async () => {
   const ctx = await setupTest({
     encoderTopics: [['boiler', 'heating', 'radiator', 'furnace', 'engineer'], ['hazelnuts']],
   });
 
-  const [runner] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
@@ -1261,10 +1258,9 @@ test('it places at most 3 of your past messages that match a new message by mean
 
   await ctx.memory.waitForSemanticIndex();
 
-  ctx.model.addReplies({ text: 'On Friday.' });
+  ctx.guest.addReplies({ text: 'On Friday.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'When is the heating engineer coming?');
-
+  const turn = await ctx.conversation.send('When is the heating engineer coming?');
   const records = await ctx.readRecords();
 
   const matching = expect.toBeOneOf([clanks, cold, booked, old]);
@@ -1275,30 +1271,30 @@ test('it places at most 3 of your past messages that match a new message by mean
       .map((record) => record.payload['retrievedMessages']),
   ).toStrictEqual([[matching, matching, matching]]);
 
-  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toMatch(
-    /<system-message type=\\"retrieved-messages\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\nEarlier messages from the owner [^\\]+\\n- \d{1,2} [A-Z][a-z]{2} · thread garden · event \d+\\n {2}[^\\]+\\n- [^<]+<\/system-message id=\\"\k<blockID>\\">/u,
+  expect(turn.input[0]?.text).toMatch(
+    /<system-message type="retrieved-messages" id="(?<blockID>[\da-f]{12})" at="[^"]+">\nEarlier messages from the owner [^\n]+\n- \d{1,2} [A-Z][a-z]{2} · thread garden · event \d+\n {2}[^\n]+\n- [^<]+<\/system-message id="\k<blockID>">/u,
   );
-}, 30_000);
+});
 
 test('it leaves out a past message that the session already holds and places the next match', async () => {
   const ctx = await setupTest({
     encoderTopics: [['boiler', 'heating', 'furnace', 'engineer'], ['hazelnuts']],
   });
 
-  const [runner] = await Promise.all([
+  await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
   await ctx.memory.waitForSemanticIndex();
 
-  ctx.model.addReplies({ text: 'That sounds loud.' }, { text: 'On Friday.' });
+  ctx.guest.addReplies({ text: 'That sounds loud.' }, { text: 'On Friday.' });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'The boiler clanks at night');
+  await ctx.conversation.send('The boiler clanks at night');
 
   const booked = await ctx.writeOwnerMessages('garden', ['Booked the furnace check for Friday']);
 
-  await sendTestMessage(ctx.context, runner.runStep, 'When is the heating engineer coming?');
+  await ctx.conversation.send('When is the heating engineer coming?');
 
   const records = await ctx.readRecords();
 
@@ -1307,4 +1303,4 @@ test('it leaves out a past message that the session already holds and places the
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrievedMessages']),
   ).toStrictEqual([[], booked]);
-}, 30_000);
+});
