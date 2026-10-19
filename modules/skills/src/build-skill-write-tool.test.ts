@@ -257,6 +257,123 @@ test('it records a destination the owner never typed and the definitions lack', 
   ]);
 });
 
+test('it records an untyped destination that only a reference file holds', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const seeded = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  const tool = buildSkillWriteTool({
+    log: ctx.log,
+    readInForce: () => seeded.inForce,
+    refreshDefinitions: () => Promise.resolve(seeded.inForce),
+    readSkillList: () => [],
+  });
+
+  await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'skill_write',
+      input: {
+        name: 'tide-report',
+        files: [
+          {
+            path: 'SKILL.md',
+            text: '---\nname: tide-report\ndescription: Mails the tide report.\n---\nMail it to the address in references/contacts.md.\n',
+          },
+          { path: 'references/contacts.md', text: 'Harbour office: ops@example.net\n' },
+        ],
+      },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  const proposals = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['skills.write_proposed'],
+  });
+
+  expect(proposals.map((entry) => entry.record.payload)).toMatchObject([
+    { untypedToken: { kind: 'email', raw: 'ops@example.net' } },
+  ]);
+});
+
+test('it refuses 2 files at one path, and records no proposal', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const seeded = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  const tool = buildSkillWriteTool({
+    log: ctx.log,
+    readInForce: () => seeded.inForce,
+    refreshDefinitions: () => Promise.resolve(seeded.inForce),
+    readSkillList: () => [],
+  });
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'skill_write',
+      input: {
+        name: 'tide-tables',
+        files: [
+          {
+            path: 'SKILL.md',
+            text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+          },
+          {
+            path: 'SKILL.md',
+            text: '---\nname: tide-tables\ndescription: Reads a tide chart.\n---\n# Charts\n',
+          },
+        ],
+      },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  const proposals = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['skills.write_proposed'],
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      'the skill fails the seed checks: skills/tide-tables/SKILL.md: the path names a file that an earlier path names',
+  });
+
+  expect(proposals).toStrictEqual([]);
+});
+
 test('it records no untyped token for a destination that the persona holds', async () => {
   const ctx = await setupTest();
 
