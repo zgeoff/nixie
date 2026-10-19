@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-// oxlint-disable one-var, sort-vars, max-statements -- spike code, grouped for reading rather than sorted
+// oxlint-disable max-statements -- spike code, grouped for reading
 // A local stand-in for the Messages API. It scripts 2 replies: a tool_use block that calls the
 // target tool, then, once a tool_result arrives, a short text reply. It records every request so the
 // run can show what the CLI sent to the model.
@@ -50,9 +50,9 @@ function hasToolResult(messages: ApiMessage[]): boolean {
 }
 
 function buildBlock(body: Record<string, unknown>, target: Target): Record<string, unknown> {
-  const messages = (body.messages ?? []) as ApiMessage[],
-    tools = (body.tools ?? []) as ApiTool[],
-    tool = tools.find((candidate) => candidate.name.endsWith(`__${target.suffix}`));
+  const messages = (body.messages ?? []) as ApiMessage[];
+  const tools = (body.tools ?? []) as ApiTool[];
+  const tool = tools.find((candidate) => candidate.name.endsWith(`__${target.suffix}`));
   if (hasToolResult(messages) || !tool) {
     return { text: tool ? 'done' : 'no target tool in the request', type: 'text' };
   }
@@ -65,35 +65,35 @@ function buildBlock(body: Record<string, unknown>, target: Target): Record<strin
 }
 
 function renderStream(block: Record<string, unknown>, model: string): Response {
-  const isTool = block.type === 'tool_use',
-    start = isTool ? { ...block, input: {} } : { text: '', type: 'text' },
-    delta = isTool
-      ? { partial_json: JSON.stringify(block.input), type: 'input_json_delta' }
-      : { text: block.text, type: 'text_delta' },
-    events = [
-      {
-        message: {
-          content: [],
-          id: `msg_${crypto.randomUUID().slice(0, 8)}`,
-          model,
-          role: 'assistant',
-          stop_reason: null,
-          stop_sequence: null,
-          type: 'message',
-          usage: { input_tokens: 10, output_tokens: 1 },
-        },
-        type: 'message_start',
+  const isTool = block.type === 'tool_use';
+  const start = isTool ? { ...block, input: {} } : { text: '', type: 'text' };
+  const delta = isTool
+    ? { partial_json: JSON.stringify(block.input), type: 'input_json_delta' }
+    : { text: block.text, type: 'text_delta' };
+  const events = [
+    {
+      message: {
+        content: [],
+        id: `msg_${crypto.randomUUID().slice(0, 8)}`,
+        model,
+        role: 'assistant',
+        stop_reason: null,
+        stop_sequence: null,
+        type: 'message',
+        usage: { input_tokens: 10, output_tokens: 1 },
       },
-      { content_block: start, index: 0, type: 'content_block_start' },
-      { delta, index: 0, type: 'content_block_delta' },
-      { index: 0, type: 'content_block_stop' },
-      {
-        delta: { stop_reason: isTool ? 'tool_use' : 'end_turn', stop_sequence: null },
-        type: 'message_delta',
-        usage: { output_tokens: 5 },
-      },
-      { type: 'message_stop' },
-    ];
+      type: 'message_start',
+    },
+    { content_block: start, index: 0, type: 'content_block_start' },
+    { delta, index: 0, type: 'content_block_delta' },
+    { index: 0, type: 'content_block_stop' },
+    {
+      delta: { stop_reason: isTool ? 'tool_use' : 'end_turn', stop_sequence: null },
+      type: 'message_delta',
+      usage: { output_tokens: 5 },
+    },
+    { type: 'message_stop' },
+  ];
   return new Response(events.map((event) => encodeEvent(event)).join(''), {
     headers: { 'content-type': 'text/event-stream' },
   });
@@ -113,35 +113,35 @@ function renderJson(block: Record<string, unknown>, model: string): Response {
 }
 
 export function startMock(): Mock {
-  const requests: MockRequest[] = [],
-    target = { input: {} as Record<string, unknown>, suffix: '' },
-    server = Bun.serve({
-      async fetch(request) {
-        const pathname = new URL(request.url).pathname,
-          text = request.method === 'POST' ? await request.text() : '',
-          body = text ? (JSON.parse(text) as Record<string, unknown>) : undefined;
-        requests.push({ body, method: request.method, path: pathname });
-        if (pathname === '/v1/messages/count_tokens') {
-          return Response.json({ input_tokens: 10 });
-        }
-        if (pathname !== '/v1/messages' || !body) {
-          return new Response('not found\n', { status: 404 });
-        }
-        if (request.headers.get('x-api-key') !== 'route-model-test-value') {
-          return new Response('missing injected test credential', { status: 401 });
-        }
-        console.log(JSON.stringify({ event: 'model', injected: true }));
-        const block = buildBlock(body, target),
-          model = String(body.model ?? 'mock');
-        return body.stream ? renderStream(block, model) : renderJson(block, model);
-      },
-      hostname: process.env.SPIKE_BIND ?? '127.0.0.1',
-      port: Number(process.env.SPIKE_MODEL_PORT ?? '0'),
-      tls: {
-        cert: readFileSync(process.env.SPIKE_CERT ?? ''),
-        key: readFileSync(process.env.SPIKE_KEY ?? ''),
-      },
-    });
+  const requests: MockRequest[] = [];
+  const target = { input: {} as Record<string, unknown>, suffix: '' };
+  const server = Bun.serve({
+    async fetch(request) {
+      const pathname = new URL(request.url).pathname;
+      const text = request.method === 'POST' ? await request.text() : '';
+      const body = text ? (JSON.parse(text) as Record<string, unknown>) : undefined;
+      requests.push({ body, method: request.method, path: pathname });
+      if (pathname === '/v1/messages/count_tokens') {
+        return Response.json({ input_tokens: 10 });
+      }
+      if (pathname !== '/v1/messages' || !body) {
+        return new Response('not found\n', { status: 404 });
+      }
+      if (request.headers.get('x-api-key') !== 'route-model-test-value') {
+        return new Response('missing injected test credential', { status: 401 });
+      }
+      console.log(JSON.stringify({ event: 'model', injected: true }));
+      const block = buildBlock(body, target);
+      const model = String(body.model ?? 'mock');
+      return body.stream ? renderStream(block, model) : renderJson(block, model);
+    },
+    hostname: process.env.SPIKE_BIND ?? '127.0.0.1',
+    port: Number(process.env.SPIKE_MODEL_PORT ?? '0'),
+    tls: {
+      cert: readFileSync(process.env.SPIKE_CERT ?? ''),
+      key: readFileSync(process.env.SPIKE_KEY ?? ''),
+    },
+  });
   return {
     requests,
     setTarget(suffix, input) {

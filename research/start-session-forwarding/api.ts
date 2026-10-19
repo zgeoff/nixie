@@ -1,4 +1,4 @@
-/* oxlint-disable one-var, max-statements, max-lines-per-function, no-await-in-loop -- spike code, grouped for reading; the log stream waits for each append in turn */
+/* oxlint-disable max-statements, max-lines-per-function, no-await-in-loop -- spike code, grouped for reading; the log stream waits for each append in turn */
 // nixie's API stand-in: oRPC through Elysia. It is the one place that checks a device session. A
 // call carries the session as the browser's cookie or as a bearer token, and every call needs the
 // custom header that a cross-site form cannot send.

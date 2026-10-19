@@ -4,7 +4,7 @@
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-// oxlint-disable no-await-in-loop, sort-vars -- samples run one at a time, in timed order
+// oxlint-disable no-await-in-loop -- samples run one at a time, in timed order
 
 interface Line {
   at: number;
@@ -51,12 +51,12 @@ function parseLine(text: string): Record<string, unknown> {
 
 // Stamps each stdout line on arrival, relative to `origin`, and parses JSON lines.
 async function collectLines(stream: ReadableStream<Uint8Array>, origin: number): Promise<Line[]> {
-  const decoder = new TextDecoder(),
-    lines: Line[] = [];
+  const decoder = new TextDecoder();
+  const lines: Line[] = [];
   let buffer = '';
   for await (const chunk of stream) {
-    const at = readElapsed(origin),
-      parts = (buffer + decoder.decode(chunk, { stream: true })).split('\n');
+    const at = readElapsed(origin);
+    const parts = (buffer + decoder.decode(chunk, { stream: true })).split('\n');
     buffer = parts.pop() ?? '';
     for (const part of parts) {
       lines.push({ at, data: parseLine(part) });
@@ -66,10 +66,10 @@ async function collectLines(stream: ReadableStream<Uint8Array>, origin: number):
 }
 
 async function run(command: string[], origin: number, env = buildImpEnv()): Promise<RunResult> {
-  const child = Bun.spawn(command, { env, stderr: 'pipe', stdout: 'pipe' }),
-    lines = await collectLines(child.stdout, origin),
-    code = await child.exited,
-    stderr = await new Response(child.stderr).text();
+  const child = Bun.spawn(command, { env, stderr: 'pipe', stdout: 'pipe' });
+  const lines = await collectLines(child.stdout, origin);
+  const code = await child.exited;
+  const stderr = await new Response(child.stderr).text();
   return { code, lines, stderr: stderr.slice(-2000), totalMs: readElapsed(origin) };
 }
 
@@ -139,8 +139,8 @@ function runHostTurn(tools: number, origin: number): Promise<RunResult> {
 }
 
 function buildCreateArgs(name: string): string[] {
-  const image = readEnv('SPIKE_TEMPLATE'),
-    allow = readEnv('SPIKE_ALLOW');
+  const image = readEnv('SPIKE_TEMPLATE');
+  const allow = readEnv('SPIKE_ALLOW');
   return ['new', name, '--image', image, '--memory', '2g', '--policy', 'box', '--allow', allow];
 }
 
@@ -153,12 +153,12 @@ async function runSleep(box: string): Promise<number> {
 
 async function runLifecycle(samples: number): Promise<void> {
   for (let index = 0; index < samples; index += 1) {
-    const name = `nixie-spike-c${index}`,
-      origin = performance.now(),
-      newMs = await runImp(buildCreateArgs(name)),
-      execMs = await runImp(['exec', name, '--', 'true']),
-      toAnswerMs = readElapsed(origin),
-      grantMs = await runImp(['grant', name, readEnv('SPIKE_SECRET')]);
+    const name = `nixie-spike-c${index}`;
+    const origin = performance.now();
+    const newMs = await runImp(buildCreateArgs(name));
+    const execMs = await runImp(['exec', name, '--', 'true']);
+    const toAnswerMs = readElapsed(origin);
+    const grantMs = await runImp(['grant', name, readEnv('SPIKE_SECRET')]);
 
     // SPIKE_TAG files warm-up creates apart.
     writeSample(process.env.SPIKE_TAG ?? 'lifecycle', { execMs, grantMs, newMs, toAnswerMs });
@@ -169,10 +169,10 @@ async function runLifecycle(samples: number): Promise<void> {
 async function runWake(samples: number): Promise<void> {
   const box = readEnv('SPIKE_BOX');
   for (let index = 0; index < samples; index += 1) {
-    const sleepMs = await runSleep(box),
-      origin = performance.now(),
-      wakeMs = await runImp(['wake', box]),
-      execMs = await runImp(['exec', box, '--', 'true']);
+    const sleepMs = await runSleep(box);
+    const origin = performance.now();
+    const wakeMs = await runImp(['wake', box]);
+    const execMs = await runImp(['exec', box, '--', 'true']);
     writeSample('wake', { execMs, sleepMs, toAnswerMs: readElapsed(origin), wakeMs });
 
     // A few seconds awake keeps the guest from being young at the next sleep.
@@ -181,11 +181,11 @@ async function runWake(samples: number): Promise<void> {
 }
 
 async function runSdkSample(placement: string, box: string, tools: number): Promise<void> {
-  const origin = performance.now(),
-    result =
-      placement === 'host'
-        ? await runHostTurn(tools, origin)
-        : await run(buildImpTurnCommand(box, tools), origin);
+  const origin = performance.now();
+  const result =
+    placement === 'host'
+      ? await runHostTurn(tools, origin)
+      : await run(buildImpTurnCommand(box, tools), origin);
   writeSample('sdk', { placement, tools, ...collectMilestones(result) });
 }
 
@@ -204,11 +204,11 @@ async function runSdk(samples: number): Promise<void> {
 // A new imp from the prepared image to the first text of a turn with 3 tools.
 async function runE2eNew(samples: number): Promise<void> {
   for (let index = 0; index < samples; index += 1) {
-    const name = `nixie-spike-e${index}`,
-      origin = performance.now(),
-      newMs = await runImp(buildCreateArgs(name)),
-      grantMs = await runImp(['grant', name, readEnv('SPIKE_SECRET')]),
-      turn = await run(buildImpTurnCommand(name, 3), origin);
+    const name = `nixie-spike-e${index}`;
+    const origin = performance.now();
+    const newMs = await runImp(buildCreateArgs(name));
+    const grantMs = await runImp(['grant', name, readEnv('SPIKE_SECRET')]);
+    const turn = await run(buildImpTurnCommand(name, 3), origin);
     writeSample('e2e-new', { grantMs, newMs, ...collectMilestones(turn) });
     await runImp(['rm', name]);
   }
@@ -218,8 +218,8 @@ async function runE2eNew(samples: number): Promise<void> {
 async function runE2eWake(samples: number): Promise<void> {
   const box = readEnv('SPIKE_BOX');
   for (let index = 0; index < samples; index += 1) {
-    const sleepMs = await runSleep(box),
-      turn = await run(buildImpTurnCommand(box, 3), performance.now());
+    const sleepMs = await runSleep(box);
+    const turn = await run(buildImpTurnCommand(box, 3), performance.now());
     writeSample('e2e-wake', { sleepMs, ...collectMilestones(turn) });
   }
 }
@@ -230,16 +230,16 @@ async function runCli(samples: number): Promise<void> {
   }
 }
 
-const [phase = '', samplesText = '10'] = process.argv.slice(2),
-  phases: Record<string, (samples: number) => Promise<void>> = {
-    cli: runCli,
-    'e2e-new': runE2eNew,
-    'e2e-wake': runE2eWake,
-    lifecycle: runLifecycle,
-    sdk: runSdk,
-    wake: runWake,
-  },
-  runPhase = phases[phase];
+const [phase = '', samplesText = '10'] = process.argv.slice(2);
+const phases: Record<string, (samples: number) => Promise<void>> = {
+  cli: runCli,
+  'e2e-new': runE2eNew,
+  'e2e-wake': runE2eWake,
+  lifecycle: runLifecycle,
+  sdk: runSdk,
+  wake: runWake,
+};
+const runPhase = phases[phase];
 if (!runPhase) {
   throw new Error(`unknown phase ${phase}; one of ${Object.keys(phases).join(', ')}`);
 }

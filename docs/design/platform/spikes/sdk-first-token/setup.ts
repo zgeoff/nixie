@@ -8,15 +8,15 @@ import { z } from 'zod';
 
 // scratch keeps every run's sessions and config out of the owner's ~/.claude. --no-thinking turns
 // extended thinking off; otherwise each model keeps Claude Code's default.
-export const noThinking = process.argv.includes('--no-thinking'),
-  persona =
-    'You are Nixie, a warm and brief personal assistant. Answer in one or two short sentences.',
-  prompts = [
-    'Suggest one name for a goldfish.',
-    'Give me one more, a little sillier.',
-    'Which of the two would a child like more?',
-  ],
-  scratch = mkdtempSync(join(tmpdir(), 'sdk-first-token-'));
+export const noThinking = process.argv.includes('--no-thinking');
+export const persona =
+  'You are Nixie, a warm and brief personal assistant. Answer in one or two short sentences.';
+export const prompts = [
+  'Suggest one name for a goldfish.',
+  'Give me one more, a little sillier.',
+  'Which of the two would a child like more?',
+];
+export const scratch = mkdtempSync(join(tmpdir(), 'sdk-first-token-'));
 
 function buildStubResult(text: string): Promise<{ content: { text: string; type: 'text' }[] }> {
   return Promise.resolve({ content: [{ text, type: 'text' }] });
@@ -68,8 +68,8 @@ export function buildEnv(configDir = join(scratch, 'config')): Record<string, st
 }
 
 export function buildOptions(model: string, withTools: boolean, freshConfig = false): Options {
-  const configDir = freshConfig ? mkdtempSync(join(scratch, 'config-')) : undefined,
-    cwd = mkdtempSync(join(scratch, 'cwd-'));
+  const configDir = freshConfig ? mkdtempSync(join(scratch, 'config-')) : undefined;
+  const cwd = mkdtempSync(join(scratch, 'cwd-'));
   return {
     allowedTools: withTools
       ? ['mcp__nixie__memory_search', 'mcp__nixie__reminder_create', 'mcp__nixie__run_code']

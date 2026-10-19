@@ -1,4 +1,4 @@
-/* oxlint-disable max-lines, max-statements, one-var, sort-vars, unicorn/prefer-single-call -- a throwaway spike */
+/* oxlint-disable max-lines, max-statements, unicorn/prefer-single-call -- a throwaway spike */
 // Synthetic memory items for a fictional owner, Sam Rivera. Every name, address and account is
 // invented, and each item is one row: a kind, the fact as text, and the date it was stored.
 
@@ -763,9 +763,9 @@ const NOTES: string[] = [
 ];
 
 function formatDate(index: number): string {
-  const month = String((index % 12) + 1).padStart(2, '0'),
-    year = index % 2 === 0 ? 2025 : 2026,
-    day = String((index % 27) + 1).padStart(2, '0');
+  const month = String((index % 12) + 1).padStart(2, '0');
+  const year = index % 2 === 0 ? 2025 : 2026;
+  const day = String((index % 27) + 1).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 

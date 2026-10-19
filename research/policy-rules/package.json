@@ -6,5 +6,8 @@
   "scripts": {
     "spike": "bun matcher.ts && bun hash.ts && bun widening.ts && bun scenarios.ts",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ts-pattern": "5.9.0"
   }
 }

@@ -1,17 +1,17 @@
-// oxlint-disable one-var, sort-vars, no-await-in-loop -- sequential lifecycle and transport measurements
+// oxlint-disable no-await-in-loop -- sequential lifecycle and transport measurements
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const cli = process.env.IMP_CLI ?? 'impz',
-  api = process.env.IMP_URL ?? '',
-  work = process.env.SPIKE_WORK ?? '',
-  data = process.env.SPIKE_DEV_DATA ?? '',
-  bridge = process.env.SPIKE_BRIDGE ?? '172.17.0.1',
-  box = 'nixie-route-probe',
-  secret = 'nixie-route-probe-model',
-  token = crypto.randomUUID(),
-  here = import.meta.dir,
-  results = join(here, 'results', crypto.randomUUID());
+const cli = process.env.IMP_CLI ?? 'impz';
+const api = process.env.IMP_URL ?? '';
+const work = process.env.SPIKE_WORK ?? '';
+const data = process.env.SPIKE_DEV_DATA ?? '';
+const bridge = process.env.SPIKE_BRIDGE ?? '172.17.0.1';
+const box = 'nixie-route-probe';
+const secret = 'nixie-route-probe-model';
+const token = crypto.randomUUID();
+const here = import.meta.dir;
+const results = join(here, 'results', crypto.randomUUID());
 if (
   !/^http:\/\/(?:localhost|127\.0\.0\.1):\d+$/u.test(api) ||
   !process.env.IMP_TOKEN ||
@@ -43,9 +43,9 @@ async function runCommand(args: string[], input?: string): Promise<string> {
 function runImp(...args: string[]): Promise<string> {
   return runCommand([cli, ...args]);
 }
-const boxesJson = await runImp('ls', '--json'),
-  boxes = JSON.parse(boxesJson) as { name: string }[],
-  secrets = await runImp('secret', 'ls');
+const boxesJson = await runImp('ls', '--json');
+const boxes = JSON.parse(boxesJson) as { name: string }[];
+const secrets = await runImp('secret', 'ls');
 if (boxes.some((row) => row.name === box) || secrets.includes(secret)) {
   throw new Error('Probe names already exist; refusing to overwrite them.');
 }
@@ -67,10 +67,10 @@ await runCommand([
   '-addext',
   `subjectAltName=DNS:localhost,IP:${bridge}`,
 ]);
-const upstreamPath = join(data, 'broker-test-upstreams.json'),
-  previousUpstreams = existsSync(upstreamPath) ? readFileSync(upstreamPath) : undefined,
-  certPath = join(work, 'cert.pem'),
-  cert = readFileSync(certPath, 'utf8');
+const upstreamPath = join(data, 'broker-test-upstreams.json');
+const previousUpstreams = existsSync(upstreamPath) ? readFileSync(upstreamPath) : undefined;
+const certPath = join(work, 'cert.pem');
+const cert = readFileSync(certPath, 'utf8');
 writeFileSync(
   upstreamPath,
   JSON.stringify({
@@ -91,9 +91,9 @@ const serve = Bun.spawn(['bun', join(here, 'serve.ts')], {
   stdout: Bun.file(join(work, 'serve.log')),
   stderr: Bun.file(join(work, 'serve-error.log')),
 });
-let proxy: ReturnType<typeof Bun.spawn> | null = null,
-  madeBox = false,
-  madeSecret = false;
+let proxy: ReturnType<typeof Bun.spawn> | null = null;
+let madeBox = false;
+let madeSecret = false;
 async function waitForTools(url: string): Promise<void> {
   const stop = Date.now() + 30_000;
   while (Date.now() < stop) {

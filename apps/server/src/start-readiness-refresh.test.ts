@@ -69,7 +69,7 @@ test('it reports the imp runtime ready once impd answers again after a call that
 
   // impd answers every oRPC call in the RPC protocol's envelope, and only system.info reaches it
   answer.answerWith(() =>
-    Promise.resolve(Response.json({ json: { version: '1.6.0', features: {}, egress: {} } })),
+    Promise.resolve(Response.json({ json: { version: '2.0.0', features: {}, egress: {} } })),
   );
 
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
