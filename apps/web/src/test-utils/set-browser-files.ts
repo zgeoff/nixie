@@ -14,8 +14,6 @@ export interface BrowserFilePick {
   // the CSS selector of the file input
   readonly selector: string;
   readonly files: readonly BrowserFile[];
-
-  // how long to wait for the page to show the input, in milliseconds; 10 s by default
   readonly timeoutMs?: number;
 }
 
