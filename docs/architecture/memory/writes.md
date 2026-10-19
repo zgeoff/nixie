@@ -105,11 +105,12 @@ quote and checks beside them.
 
 ## Self-notes
 
-A self-note is an item that nixie writes about itself, such as its tastes or how something landed
-with the user, and every one waits for the user's review. An item takes its kind, a fact or a
-self-note, when it is created, and no edit changes it, so an edit of a self-note is a self-note
-write whatever kind the call asks for. `memory.remember` takes the kind, and `memory.edit` takes
-none.
+A self-note is an item whose subject is self: nixie writes it about itself, in its own voice, such
+as its tastes or how something landed with the user, and every one waits for the user's review. An
+item takes its subject when it is created, and no edit changes it, so an edit of a self-note is a
+self-note write whatever subject the call asks for. The conversation's `memory.remember` takes the
+subject, and `memory.edit` takes none. A shared item runs through the same gate as an item about the
+user, so it needs a quote of the user's own typed words to apply at once.
 
 Nothing of the user's backs a self-note, so the quote check and the checker have nothing to judge,
 and the gate skips both. It runs the hidden-character check and the token check, which compares the
@@ -120,10 +121,10 @@ typed. An approved self-note takes outside content as its source.
 
 Only the conversation creates a self-note, because only a persona thread speaks as nixie. A
 self-note write from a task or from the memory writer fails before any check runs and writes
-nothing, and the writer's own tools take no kind at all. A self-note that asks for a pin fails the
-same way, because the store never pins one. A proposal merges only with a pending proposal of the
-same kind, and its close match on approval looks only at items of its own kind, so a fact never
-revises a self-note.
+nothing, and so does the memory writer's edit of a self-note. A self-note that asks for a pin waits
+for review as any self-note does. A proposal merges only with a pending proposal of the same
+subject, and its close match on approval looks only at items of its own subject, so an item about
+the user never revises a self-note.
 
 The conversation's retire of a self-note skips the intent gate and applies at once, with a notice
 entry whose undo brings the note back. A retirement only narrows what the conversation reads, and

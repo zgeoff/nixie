@@ -117,7 +117,7 @@ export type {
   Encoder,
   ForgetRequest,
   MemoryChange,
-  MemoryKind,
+  MemorySubject,
   MemoryContext,
   MemoryOrigin,
   MemoryState,

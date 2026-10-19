@@ -75,7 +75,7 @@ export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
 }
 
 // the changes an item's state allows: none once a forget began, even while its text still opens,
-// a retire takes an item out of the pinned core, and a self-note never joins it
+// and a retire takes an item out of the pinned core; an item of any subject joins it
 function pickChanges(item: MemoryItem): readonly MemoryChange[] {
   if (item.state === 'forgetting' || item.state === 'forgotten') {
     return [];
@@ -89,7 +89,7 @@ function pickChanges(item: MemoryItem): readonly MemoryChange[] {
     return ['retire', 'unpin'];
   }
 
-  return item.kind === 'self' ? ['retire'] : ['retire', 'pin'];
+  return ['retire', 'pin'];
 }
 
 const labels = { pin: 'Pin', restore: 'Restore', retire: 'Retire', unpin: 'Unpin' };

@@ -6,8 +6,8 @@ interface MemoryChangeErrors {
 }
 
 // Turns an error the memory store refused a change with into the typed error the contract
-// declares for its code, such as a stale version's STALE_VERSION, and leaves any other error as it
-// is. A self-note's refusal, such as a pin of one, reads as the wrong state for that change.
+// declares for its code, such as STALE_VERSION, and leaves any other error as it is. A self-note's
+// refusal, such as an edit across subjects, reads as the wrong state for that change.
 export function toMemoryChangeError(error: unknown, errors: MemoryChangeErrors): unknown {
   const code = error instanceof Error && 'code' in error ? error.code : null;
 

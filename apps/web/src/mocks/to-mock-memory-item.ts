@@ -25,11 +25,12 @@ export function toMockMemoryItem(item: StoredMemoryItem): MemoryItem {
     forgottenAt: item.forgottenAt,
     isPinned: item.isPinned,
     itemID: item.itemID,
-    kind: item.kind,
+    kind: item.subject === 'self' ? ('self' as const) : ('fact' as const),
     origin: current.origin,
     shortID: item.shortID,
     source: current.source,
     state: item.state,
+    subject: item.subject,
     ...(isGone
       ? { status: 'shredded' as const }
       : { status: 'readable' as const, text: current.text }),

@@ -64,8 +64,8 @@ export async function readTurnRetrieval(
   });
 
   return {
-    items: result.items.filter((item) => item.kind === 'fact'),
-    selfNotes: result.items.filter((item) => item.kind === 'self'),
+    items: result.items.filter((item) => item.subject !== 'self'),
+    selfNotes: result.items.filter((item) => item.subject === 'self'),
     messages,
   };
 }

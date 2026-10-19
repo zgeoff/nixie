@@ -4,6 +4,7 @@ import type { ApprovedProposal } from './build-version-approval';
 import { buildVersionApproval } from './build-version-approval';
 import { decodeVersionText } from './decode-version-text';
 import { getItemShortID } from './get-item-short-id';
+import { getRowSubject } from './get-row-subject';
 import { toReviewReason } from './to-review-reason';
 import type {
   MemoryItemRow,
@@ -101,7 +102,7 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
       itemID: item.row.item_id,
       shortID: getItemShortID(item.row),
       isPinned: item.row.is_pinned === 1,
-      kind: item.row.kind,
+      subject: getRowSubject(item.row),
       ...current,
       ...(item.includeHistory ? { history: readable } : {}),
     };

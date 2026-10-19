@@ -110,6 +110,7 @@ async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promis
           text: item.text,
           source: item.source,
           isPinned: item.isPinned,
+          subject: item.subject,
         },
       ]),
     ),

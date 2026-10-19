@@ -24,7 +24,7 @@ export async function writeGatedRetirement(
   // the conversation's retire of its own self-note applies at once with a notice and undo, because
   // a retirement only narrows what the conversation reads and the undo brings the note back
   const gate =
-    item.kind === 'self' && request.caller.origin === 'conversation'
+    item.subject === 'self' && request.caller.origin === 'conversation'
       ? selfNoteRetirement
       : await runIntentGate(parts.context, {
           target: request.target,

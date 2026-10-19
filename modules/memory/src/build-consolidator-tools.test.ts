@@ -137,11 +137,25 @@ test('it stages the diff and returns how many changes it holds', async () => {
     new Map([
       [
         'item-1',
-        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Keeps bees',
+          source: 'owner',
+          isPinned: false,
+          subject: 'owner',
+        },
       ],
       [
         'item-2',
-        { shortID: 'w8n4c6t1rb', version: 2, text: 'keeps bee', source: 'owner', isPinned: false },
+        {
+          shortID: 'w8n4c6t1rb',
+          version: 2,
+          text: 'keeps bee',
+          source: 'owner',
+          isPinned: false,
+          subject: 'owner',
+        },
       ],
     ]),
     30,

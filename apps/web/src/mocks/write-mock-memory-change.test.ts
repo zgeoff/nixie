@@ -161,13 +161,13 @@ test('it refuses a pin that takes the core past its budget', async () => {
   expect(result).toStrictEqual({ status: 'core_full' });
 });
 
-test('it refuses a pin of a self-note as the wrong state', async () => {
+test('it pins a self-note, as nixie pins an item of any subject', async () => {
   const item = await store.memoryItems.create({
-    kind: 'self',
+    subject: 'self',
     versions: [{ origin: 'conversation', text: 'Enjoys a slow morning question' }],
   });
 
-  const result = await writeMockMemoryChange({
+  await writeMockMemoryChange({
     change: 'pin',
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     isPinned: true,
@@ -175,5 +175,7 @@ test('it refuses a pin of a self-note as the wrong state', async () => {
     version: 1,
   });
 
-  expect(result).toStrictEqual({ status: 'wrong_state' });
+  expect(
+    store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }))?.isPinned,
+  ).toBe(true);
 });

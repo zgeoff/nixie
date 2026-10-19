@@ -50,6 +50,9 @@ const pendingProposalSchema = z.object({
   itemID: z.string(),
   targetVersion: z.int().nullable(),
   isPinned: z.boolean(),
+  subject: z.enum(['owner', 'self', 'shared']),
+
+  // self for a self-note and fact for every other subject, as the release before reads it
   kind: z.enum(['fact', 'self']),
   reason: reviewReasonSchema,
   actionHash: z.string(),
@@ -82,10 +85,13 @@ const historyVersionSchema = z.object({
   text: z.string().nullable(),
 });
 
-// What a host command shows of an item: its kind, a fact or a self-note, its state, and each
+// What a host command shows of an item: its subject, owner, shared or self, its state, and each
 // version oldest first.
 const itemHistorySchema = z.object({
   itemID: z.string(),
+  subject: z.enum(['owner', 'self', 'shared']),
+
+  // self for a self-note and fact for every other subject, as the release before reads it
   kind: z.enum(['fact', 'self']),
   state: z.enum(['active', 'retired', 'forgetting', 'forgotten']),
   versions: z.array(historyVersionSchema),

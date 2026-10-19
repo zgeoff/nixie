@@ -8,6 +8,9 @@
   // the package, so knip sees neither
   "ignoreDependencies": ["@stylistic/eslint-plugin", "@zgeoff/skill-gate"],
   "workspaces": {
+    // a codemod in scripts ran once by its path and stays as the record of a mechanical change, so
+    // no import reaches it
+    ".": { "entry": ["scripts/*.ts"] },
     // a crash test spawns the test build of nixie by its path, so no import reaches it
     "e2e": { "entry": ["nixie/main.ts"] },
     // a test spawns the stub program as its own process, so no import reaches it

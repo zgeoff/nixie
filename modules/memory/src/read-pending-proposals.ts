@@ -1,14 +1,25 @@
 import { findRecordKeys } from '@heynixie/log';
 import { decodeProposalText } from './decode-proposal-text';
-import type { MemoryProposal, MemoryProposalRow, ProposalSource } from './gate-types';
+import type {
+  MemoryProposal,
+  MemoryProposalRow,
+  PendingFilter,
+  ProposalSource,
+} from './gate-types';
+import { getRowSubject } from './get-row-subject';
 import { parseEvidence } from './parse-evidence';
+import { subjectColumn } from './subject-column';
 import { toReviewReason } from './to-review-reason';
 import type { MemoryTables, StoreParts } from './types';
 
 // Reads the proposals that wait for your answer, oldest first, with their text opened and every
 // source that proposed each one. A proposal whose item was forgotten has no key left, so it reads
-// as nothing and drops out of the list.
-export async function readPendingProposals(parts: StoreParts): Promise<readonly MemoryProposal[]> {
+// as nothing and drops out of the list. A filter keeps only the proposals of its subjects.
+export async function readPendingProposals(
+  parts: StoreParts,
+  filter: PendingFilter = {},
+): Promise<readonly MemoryProposal[]> {
+  const subjects = filter.subjects;
   const log = parts.context.log;
 
   const rows = await log.writer.db
@@ -17,6 +28,7 @@ export async function readPendingProposals(parts: StoreParts): Promise<readonly 
     .selectAll()
     .where('status', '=', 'pending')
     .where('lapse_at', '>', parts.context.gate.clock.now())
+    .$if(subjects !== undefined, (query) => query.where(subjectColumn, 'in', subjects ?? []))
     .orderBy('created_sequence')
     .execute();
 
@@ -43,7 +55,7 @@ export async function readPendingProposals(parts: StoreParts): Promise<readonly 
         itemID: row.item_id,
         targetVersion: row.target_version,
         isPinned: row.is_pinned === 1,
-        kind: row.kind,
+        subject: getRowSubject(row),
         reason: toReviewReason(row.review_reason),
         actionHash: row.action_hash,
         origin: row.origin,

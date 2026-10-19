@@ -71,3 +71,27 @@ test('it skips a write that repeats the text of an item the session was shown', 
   expect(gated).toStrictEqual([]);
   expect(check).not.toHaveBeenCalled();
 });
+
+test('it leaves out a write that the gate drops', async () => {
+  const check = mock(() => Promise.resolve(null));
+
+  const gated = await runWriterGate(
+    { check, release: () => Promise.resolve() },
+    [
+      {
+        op: 'remember',
+        text: 'I like short answers',
+        quote: 'You like short answers',
+        sourceSequence: 4,
+        target: { itemID: 'item-1', version: 1 },
+      },
+    ],
+    {
+      findSource: (sequence) => ({ sequence, text: 'You like short answers', spans: [] }),
+      isShownText: () => false,
+      batch: { bounds: { start: 0, end: 4 }, model: 'claude-writer-1' },
+    },
+  );
+
+  expect(gated).toStrictEqual([]);
+});
