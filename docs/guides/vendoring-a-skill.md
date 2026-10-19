@@ -1,13 +1,13 @@
 # Vendoring a skill
 
 A vendored skill is a copy of someone else's skill in your definitions repo, pinned to the upstream
-commit it came from and to the content hash of its folder. The pin lives in
-`skills/skills.lock.json`, and the seed refuses a snapshot in which a vendored skill's files differ
-from its pin. The seed cannot tell who changed the pin, so make every change to a vendored skill and
-its pin in a pull request that you review before you merge it. nixie never installs a skill from a
-registry, so vendoring is the one way a published skill reaches it.
-[The definitions](../architecture/core/definitions.md#skills) covers every check the seed runs on a
-skill.
+commit it came from and to the content hash of its folder. Its lock entry in
+`skills/skills.lock.json` holds both, and the seed refuses a snapshot in which a vendored skill's
+files differ from its lock entry. The seed cannot tell who changed the lock entry, so make every
+change to a vendored skill and its lock entry in a pull request that you review before you merge it.
+nixie never installs a skill from a registry, so vendoring is the one way a published skill reaches
+it. [The definitions](../architecture/core/definitions.md#skills) covers every check the seed runs
+on a skill.
 
 ## Before you start
 
@@ -69,7 +69,8 @@ skill.
    Expect: the next seed's record lists the skill among the added skills. A refused seed keeps the
    definitions in force and names each file at fault.
 
-nixie requires no publisher signature. The pin and your review of the pull request stand in for one.
+nixie requires no publisher signature. The lock entry and your review of the pull request stand in
+for one.
 
 ## Updating a vendored skill
 
@@ -87,5 +88,5 @@ seed's record lists the skill among the changed skills, because the seed lists a
 held whose content hash moved as changed, not added.
 
 A changed file with the old entry makes the seed refuse the snapshot, so an edit to a vendored skill
-always goes through a new pin. To make the skill your own instead, remove its lock entry: a skill
-with no entry is yours.
+needs a new lock entry. To make the skill your own instead, remove its lock entry: a skill with no
+entry is yours.
