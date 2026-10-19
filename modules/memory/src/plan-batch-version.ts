@@ -35,6 +35,6 @@ export function planBatchVersion(
     provenance,
     evidenceQuote: write.quote,
     evidence: verdict.evidence,
-    ...(write.target === null ? {} : { target: write.target }),
+    ...(write.target === null ? { subject: write.subject } : { target: write.target }),
   });
 }

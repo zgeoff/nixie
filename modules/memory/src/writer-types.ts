@@ -1,7 +1,7 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { ContentSource, JSONObject, RecordInput } from '@heynixie/log';
 import type { Selectable } from 'kysely';
-import type { QuoteEvidence, VersionRef } from './types';
+import type { MemorySubject, QuoteEvidence, VersionRef } from './types';
 import type { ProposalPlan } from './write-memory-proposal';
 
 // One record of the conversation as the writer reads it: your message, with each pasted span
@@ -29,11 +29,16 @@ export interface SourceMessage {
   readonly spans: readonly SourceSpan[];
 }
 
+// The subjects the note-taker writes: a fact about you, or one between you and the assistant. A
+// note about the assistant is the assistant's own to write, so the note-taker only flags one.
+export type WriterSubject = Exclude<MemorySubject, 'self'>;
+
 // A change the writer's model staged during a batch. The host binds each target to the version
 // the session was shown, never to a version the model sent.
 export type StagedWrite =
   | {
       readonly op: 'remember';
+      readonly subject: WriterSubject;
       readonly text: string;
       readonly quote: string;
       readonly sourceSequence: number;
@@ -45,6 +50,13 @@ export type StagedWrite =
       readonly sourceSequence: number;
       readonly target: VersionRef;
     };
+
+// A possible self-note the writer's model flagged for the assistant, from your message it cites. It
+// creates no item: the assistant reads it as an event and decides whether to write the note.
+export interface StagedFlag {
+  readonly text: string;
+  readonly sourceSequence: number;
+}
 
 // What the content gate decided for one staged write: apply it at once with the source and the
 // evidence the checks set, or hold it as a proposal whose records the gate built.

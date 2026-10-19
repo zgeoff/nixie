@@ -2,10 +2,11 @@ import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
 import type { WriterStaging } from './create-writer-staging';
 import type { MemoryStore } from './types';
+import { writerSubjects } from './writer-subjects';
 
-// Builds the memory writer's 4 tools, which stage a batch's changes instead of applying them, so a
-// session that dies leaves nothing behind. As in the conversation, recall declares read, the rest
-// declare note, remember only creates an item, and edit is the one tool that changes its text.
+// Builds the memory writer's 5 tools, which stage a batch's changes, so a dying session leaves
+// nothing behind. Remember and edit take the subject owner or shared, so the schema refuses a
+// self-note, and a flag of a possible self-note creates no item.
 export function buildWriterTools(
   store: Pick<MemoryStore, 'recall'>,
   staging: WriterStaging,
@@ -16,6 +17,7 @@ export function buildWriterTools(
     buildRememberTool(staging),
     buildEditTool(staging),
     buildRetireTool(staging),
+    buildFlagSelfNoteTool(staging),
   ];
 }
 
@@ -26,6 +28,8 @@ const stagedOutput = {
   additionalProperties: false,
 };
 
+// a remember or an edit names the subject of its memory, which is never the assistant's self-note
+const subjectInput = { type: 'string', enum: writerSubjects };
 const stagedResult: ToolOutcome = { status: 'ok', result: { staged: true } };
 
 const recallOutput = {
@@ -35,8 +39,12 @@ const recallOutput = {
       type: 'array',
       items: {
         type: 'object',
-        properties: { itemID: { type: 'string' }, text: { type: 'string' } },
-        required: ['itemID', 'text'],
+        properties: {
+          itemID: { type: 'string' },
+          subject: { type: 'string', enum: writerSubjects },
+          text: { type: 'string' },
+        },
+        required: ['itemID', 'subject', 'text'],
       },
     },
   },
@@ -77,15 +85,22 @@ function buildRecallTool(
         query: input.query,
         limit: topItems,
         thread: context.run.thread,
+        subjects: writerSubjects,
       });
 
       for (const item of result.items) {
-        staging.show(item.itemID, item.version, item.text);
+        staging.show(item.itemID, { version: item.version, subject: item.subject }, item.text);
       }
 
       return {
         status: 'ok',
-        result: { items: result.items.map((item) => ({ itemID: item.itemID, text: item.text })) },
+        result: {
+          items: result.items.map((item) => ({
+            itemID: item.itemID,
+            subject: item.subject,
+            text: item.text,
+          })),
+        },
       };
     },
   };
@@ -97,16 +112,18 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
   return {
     name: 'memory.remember',
     description:
-      'Stages one durable fact about the owner as a new memory item. To change a current item, ' +
-      'use memory.edit. quote is the exact words from the owner message whose ID is sourceID.',
+      'Stages one durable fact as a new memory item: about the owner (subject owner), or ' +
+      'between the owner and the assistant (subject shared). To change a current item, use ' +
+      'memory.edit. quote is the exact words from the owner message whose ID is sourceID.',
     input: {
       type: 'object',
       properties: {
+        subject: subjectInput,
         text: { type: 'string', minLength: 1, maxLength: 2000 },
         quote: { type: 'string', minLength: 1, maxLength: 2000 },
         sourceID: { type: 'integer', minimum: 1 },
       },
-      required: ['text', 'quote', 'sourceID'],
+      required: ['subject', 'text', 'quote', 'sourceID'],
       additionalProperties: false,
     },
     output: stagedOutput,
@@ -125,6 +142,7 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
         toOutcome(
           staging.stage({
             op: 'remember',
+            subject: input.subject,
             text: input.text,
             quote: input.quote,
             sourceSequence: input.sourceID,
@@ -136,24 +154,31 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
   };
 }
 
-const rememberArguments = z.object({ text: z.string(), quote: z.string(), sourceID: z.int() });
+const rememberArguments = z.object({
+  subject: z.enum(writerSubjects),
+  text: z.string(),
+  quote: z.string(),
+  sourceID: z.int(),
+});
 
 // An edit names its item, and the staging area binds it to the version a recall showed the session.
 function buildEditTool(staging: WriterStaging): ToolDefinition {
   return {
     name: 'memory.edit',
     description:
-      'Stages the new full text of a current item, by its itemID, when the owner updates or ' +
-      'contradicts it. quote is the exact words from the owner message whose ID is sourceID.',
+      'Stages the new full text of a current item, by its itemID and with its subject, when the ' +
+      'owner updates, corrects or contradicts it. quote is the exact words from the owner ' +
+      'message whose ID is sourceID.',
     input: {
       type: 'object',
       properties: {
         itemID: { type: 'string' },
+        subject: subjectInput,
         text: { type: 'string', minLength: 1, maxLength: 2000 },
         quote: { type: 'string', minLength: 1, maxLength: 2000 },
         sourceID: { type: 'integer', minimum: 1 },
       },
-      required: ['itemID', 'text', 'quote', 'sourceID'],
+      required: ['itemID', 'subject', 'text', 'quote', 'sourceID'],
       additionalProperties: false,
     },
     output: stagedOutput,
@@ -172,6 +197,7 @@ function buildEditTool(staging: WriterStaging): ToolDefinition {
         toOutcome(
           staging.stage({
             op: 'remember',
+            subject: input.subject,
             text: input.text,
             quote: input.quote,
             sourceSequence: input.sourceID,
@@ -185,6 +211,7 @@ function buildEditTool(staging: WriterStaging): ToolDefinition {
 
 const editArguments = z.object({
   itemID: z.string(),
+  subject: z.enum(writerSubjects),
   text: z.string(),
   quote: z.string(),
   sourceID: z.int(),
@@ -234,6 +261,44 @@ function buildRetireTool(staging: WriterStaging): ToolDefinition {
 }
 
 const retireArguments = z.object({ itemID: z.string(), quote: z.string(), sourceID: z.int() });
+
+// A flag of a possible self-note, which the assistant reads as an event and creates no item.
+function buildFlagSelfNoteTool(staging: WriterStaging): ToolDefinition {
+  return {
+    name: 'memory.flag-self-note',
+    description:
+      'Flags something about the assistant, which an owner message says, as a possible ' +
+      'self-note for the assistant to write in its own voice. It creates no memory item. text ' +
+      'is one short line about the assistant, and sourceID is the ID of the owner message.',
+    input: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', minLength: 1, maxLength: 500 },
+        sourceID: { type: 'integer', minimum: 1 },
+      },
+      required: ['text', 'sourceID'],
+      additionalProperties: false,
+    },
+    output: stagedOutput,
+    declaration: {
+      effects: ['note'],
+      destinations: [],
+      amount: null,
+      content: ['text'],
+      results: { staged: 'owner_data' },
+    },
+    execution: 'direct',
+    run: (call) => {
+      const input = flagArguments.parse(call.input);
+
+      return Promise.resolve(
+        toOutcome(staging.flag({ text: input.text, sourceSequence: input.sourceID })),
+      );
+    },
+  };
+}
+
+const flagArguments = z.object({ text: z.string(), sourceID: z.int() });
 
 function toOutcome(result: ReturnType<WriterStaging['stage']>): ToolOutcome {
   return result.status === 'staged' ? stagedResult : { status: 'error', message: result.reason };

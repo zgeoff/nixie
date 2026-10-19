@@ -28,7 +28,12 @@ test.each([
     const remember = {
       toolUse: {
         name: 'mcp__nixie__memory_remember',
-        input: { text: 'You live at 4 Elm Row.', quote: '4 Elm Row', sourceID: sequence },
+        input: {
+          subject: 'owner',
+          text: 'You live at 4 Elm Row.',
+          quote: '4 Elm Row',
+          sourceID: sequence,
+        },
       },
     };
 
@@ -121,7 +126,12 @@ test.each([
     const remember = {
       toolUse: {
         name: 'mcp__nixie__memory_remember',
-        input: { text: 'You live at 4 Elm Row.', quote: '4 Elm Row', sourceID: sequence },
+        input: {
+          subject: 'owner',
+          text: 'You live at 4 Elm Row.',
+          quote: '4 Elm Row',
+          sourceID: sequence,
+        },
       },
     };
 

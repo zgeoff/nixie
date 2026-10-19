@@ -24,6 +24,7 @@ export async function startWriterTask(
     config: parts.config.memory_writer,
     getPersona: () => parts.inForce.read()?.persona ?? '',
     ownerName: parts.config.owner.name,
+    assistantName: parts.config.agent.names[0] ?? null,
     onError: (error) => {
       parts.onFailure(error);
     },

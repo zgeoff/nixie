@@ -21,6 +21,7 @@ test('it releases the verdicts it gathered when a later check throws', async () 
     [
       {
         op: 'remember',
+        subject: 'owner',
         text: 'Lives in Oslo',
         quote: 'I live in Oslo',
         sourceSequence: 4,
@@ -28,6 +29,7 @@ test('it releases the verdicts it gathered when a later check throws', async () 
       },
       {
         op: 'remember',
+        subject: 'owner',
         text: 'Plays cello',
         quote: 'I play cello',
         sourceSequence: 5,
@@ -55,6 +57,7 @@ test('it skips a write that repeats the text of an item the session was shown', 
     [
       {
         op: 'remember',
+        subject: 'owner',
         text: 'Lives in Oslo',
         quote: 'I live in Oslo',
         sourceSequence: 4,
@@ -80,6 +83,7 @@ test('it leaves out a write that the gate drops', async () => {
     [
       {
         op: 'remember',
+        subject: 'owner',
         text: 'I like short answers',
         quote: 'You like short answers',
         sourceSequence: 4,

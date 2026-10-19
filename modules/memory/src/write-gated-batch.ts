@@ -6,7 +6,7 @@ import { tryWriteBatch } from './try-write-batch';
 import { writeBatchPlan } from './write-batch-plan';
 import type { GatedWrite } from './write-memory-batch';
 import type { WriterParts, WriterStepState } from './writer-parts';
-import type { WriterUsage } from './writer-types';
+import type { StagedFlag, WriterUsage } from './writer-types';
 
 export interface WriterBatchStep {
   readonly next: StepResult['next'];
@@ -16,6 +16,7 @@ export interface WriterBatchStep {
 interface GatedBatch extends WriterStepState {
   readonly batch: WriterBatch;
   readonly gated: readonly GatedWrite[];
+  readonly flags: readonly StagedFlag[];
   readonly usage: WriterUsage | null;
 }
 

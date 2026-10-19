@@ -121,10 +121,11 @@ typed. An approved self-note takes outside content as its source.
 
 Only the conversation creates a self-note, because only a persona thread speaks as nixie. A
 self-note write from a task or from the memory writer fails before any check runs and writes
-nothing, and so does the memory writer's edit of a self-note. A self-note that asks for a pin waits
-for review as any self-note does. A proposal merges only with a pending proposal of the same
-subject, and its close match on approval looks only at items of its own subject, so an item about
-the user never revises a self-note.
+nothing, and so does the memory writer's edit of a self-note. The memory writer's tools take no self
+subject, and the writer [flags a possible self-note](./writer.md#flags-of-possible-self-notes) for
+nixie to write instead. A self-note that asks for a pin waits for review as any self-note does. A
+proposal merges only with a pending proposal of the same subject, and its close match on approval
+looks only at items of its own subject, so an item about the user never revises a self-note.
 
 The conversation's retire of a self-note skips the intent gate and applies at once, with a notice
 entry whose undo brings the note back. A retirement only narrows what the conversation reads, and

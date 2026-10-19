@@ -22,6 +22,7 @@ export type MemoryRecordKind =
   | 'memory.proposal_shared_noted'
   | 'memory.proposed'
   | 'memory.rated'
+  | 'memory.self_note_flagged'
   | 'memory.self_noted'
   | 'memory.shared_noted'
   | 'memory.version_added'

@@ -49,6 +49,8 @@ export { memoryWriterTaskID } from './memory-writer-task-id';
 export type { AnswerQuoteSource, ProposalAnswerEvent } from './build-proposal-answer-kind';
 export { buildProposalAnswerKind } from './build-proposal-answer-kind';
 export { buildCatchUpKind } from './build-catch-up-kind';
+export type { SelfNoteFlagEvent } from './build-self-note-flag-kind';
+export { buildSelfNoteFlagKind } from './build-self-note-flag-kind';
 export { buildMemoryChangeKind } from './build-memory-change-kind';
 export type { HostMemory, HostMemoryStore } from './build-host-memory';
 export { buildHostMemory } from './build-host-memory';

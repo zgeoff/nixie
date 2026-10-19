@@ -6,6 +6,7 @@ import { findItemKey } from './find-item-key';
 import { SelfNoteError } from './self-note-error';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
 import { createProposal } from './test-utils/create-proposal';
+import { createWriterProposal } from './test-utils/create-writer-proposal';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
@@ -154,6 +155,29 @@ test('it marks a self-note in records of their own, so its proposal and version 
     { proposalID: pending.proposalID },
     { itemID: approved.itemID },
     { itemID: approved.itemID },
+  ]);
+});
+
+test("it creates a shared item when you approve the note-taker's shared proposal", async () => {
+  const memory = await startTestMemory();
+
+  const pending = await createWriterProposal(memory, {
+    message: 'Let us call the allotment shed the hive house.',
+    text: 'The owner and the assistant call the allotment shed the hive house.',
+    quote: 'call the allotment shed the hive house',
+    subject: 'shared',
+  });
+
+  await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const recalled = await memory.store.recall({});
+
+  expect(recalled.items.map((item) => [item.itemID, item.subject])).toStrictEqual([
+    [pending.itemID, 'shared'],
   ]);
 });
 

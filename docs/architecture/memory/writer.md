@@ -55,30 +55,59 @@ took in. When none of the user's earlier messages wait, that batch runs with no 
 Each batch runs one fresh model session in the writer's own worker sandbox on the conversation
 image, never the conversation's sandbox, because the replies it reads can carry outside content. A
 fresh session keeps one batch's reading from steering the next. The system prompt holds the persona
-in force before the writer's rules, so the writer frames what it stores the way the assistant speaks
-of the user. The persona costs no capture: a rerun of the same live batches with and without it
-stored the same facts and applied no bad candidate either way. It costs input only, because every
-batch sends the persona again. The writer's rules ask for each memory as one plain factual sentence
-that names the user by the name in the owner section of the deployment configuration, or calls the
-user "the owner" when the section sets none, so the writer's items read like the ones the
+in force, introduced as the assistant's persona for reference, before the writer's rules, so the
+writer frames what it stores the way the assistant speaks of the user. The persona costs no capture:
+a rerun of the same live batches with and without it stored the same facts and applied no bad
+candidate either way. It costs input only, because every batch sends the persona again.
+
+The rules tell the writer who is who, because a persona that says "you are" the assistant, beside
+the user's own "you" addressed to the assistant, lets a model file a fact about the assistant as one
+about the user. The writer is the note-taker and never the assistant. Each message carries its
+author's configured name and role, such as the user's name with `(owner)` and the assistant's name
+with `(assistant)`, or the bare role where no name is set. A "you" in the user's messages means the
+assistant. Every memory the writer stages has a subject: owner, for a fact about the user, or
+shared, for something between the user and the assistant, such as a deal, a nickname the user uses
+or a running joke. A nickname or a joke that only the assistant used gives no memory.
+
+The rules ask for each memory as one plain factual sentence that names the user by the name in the
+owner section of the deployment configuration, or calls the user "the owner" when the section sets
+none, and a shared memory names the assistant too, so the writer's items read like the ones the
 conversation saves. The rules keep the user's own distinctive words where those words carry the
-meaning, because a generic paraphrase loses what made the fact worth saving.
+meaning, because a generic paraphrase loses what made the fact worth saving. A correction of a fact
+or a deal edits the item that holds it and never adds a second item.
 
 The prompt holds the batch's records with their sequences, the user's pasted spans marked, a marker
 line for each image the user sent and never its bytes, the active items, and the pending proposals
-with the item each one changes. It lists every active item while the list fits its budget, else the
-items a keyword recall over the batch finds. A rule tells the writer to stage nothing for a fact
-that a pending proposal already holds, even in other words, because the gate merges only a proposal
-of the same text. The session's tools are recall, remember, edit and retire, and they stage writes
-instead of applying them. Remember only creates an item, and edit is the one tool that changes an
-item's text, as in the conversation. None of them takes an item's kind, so every item the writer
-creates is a fact, and only the conversation writes a [self-note](./writes.md#self-notes). Staging
-refuses a write that cites a record outside the batch, a change to an item the session was never
-shown, and a second change to the same item, and the refusal goes back to the model at once. Staging
-binds each change to the version the session was shown, never to a version the model sent.
+with the item each one changes, each with its subject. It lists every active item while the list
+fits its budget, else the items a keyword recall over the batch finds. Neither the list nor a recall
+shows a self-note, and the pending proposals leave out a self-note's, because a self-note is the
+assistant's own to write. A rule tells the writer to stage nothing for a fact that a pending
+proposal already holds, even in other words, because the gate merges only a proposal of the same
+text.
+
+The session's tools are recall, remember, edit, retire and flag-self-note. Remember only creates an
+item, and edit is the one tool that changes an item's text, as in the conversation. Remember and
+edit take the subject owner or shared, and their input schema refuses self, so only the conversation
+writes a [self-note](./writes.md#self-notes). Recall, remember, edit and retire stage writes instead
+of applying them. Staging refuses a write that cites a record outside the batch, a change to an item
+the session was never shown, a second change to the same item, and an edit that changes its item's
+subject, and the refusal goes back to the model at once. Staging binds each change to the version
+the session was shown, never to a version the model sent.
 
 A batch's staging belongs to the step that opened it. A step that lost its lease and stops late
 closes only its own staging, so it never empties the staging of the step that replaced it.
+
+### Flags of possible self-notes
+
+When the user says something about the assistant worth keeping, the writer flags it instead of
+writing it: flag-self-note takes one line and the user's message it came from, and creates no item.
+A fact that mixes the user and the assistant becomes the user's or the shared part and a flag for
+the assistant's part, and the writer never splits a current item. The batch publishes each flag
+whose message is still readable as a record of its own in the conversation's thread, with the line
+in its erasable fields. The conversation's events block lists it as the note-taker's nudge, not a
+note: "possible self-note:" with the line and the event number of the user's message, and the advice
+to write the self-note in the assistant's own voice if it rings true and to let it go if not. A flag
+whose line a forget erased lists nothing.
 
 ## Publishing
 
@@ -141,13 +170,14 @@ and in a live batch, and check that the batch publishes once.
 ## Changes the conversation hears of
 
 A conversation turn hears of memory that changed outside it through
-[the events block](../core/conversation-turns.md#the-events-block), where memory registers three
-kinds of event. A memory change is an item that anything but the conversation itself wrote, such as
-a writer batch or an edit in the memory view. Each item lists once, at its latest version in the
+[the events block](../core/conversation-turns.md#the-events-block), where memory registers its kinds
+of event. A memory change is an item that anything but the conversation itself wrote, such as a
+writer batch or an edit in the memory view. Each item lists once, at its latest version in the
 block's range, with its current text. The catch-up's items appear as one event that counts them,
 because the catch-up covers conversation the user already had. A merge names each of the
 conversation's pending proposals that another source proposed again, so the conversation knows its
-proposal merged and still waits.
+proposal merged and still waits. A flag of a possible self-note lists as the note-taker's nudge, as
+[flags of possible self-notes](#flags-of-possible-self-notes) sets out.
 
 The block reads a listed item's text through a recall marked as a turn note's, and only after its
 cap, so the recall records no item the block leaves out. A rating binds to the newest recall without

@@ -82,5 +82,8 @@ function buildBatchProposalPlan(reviewed: ReviewedWrite, batch: GateBatch): Prop
     checkerReason: review.checkerReason,
     caller,
     group: buildWriteGroup(caller, null),
+    ...(reviewed.write.op === 'remember' && reviewed.write.target === null
+      ? { subject: reviewed.write.subject }
+      : {}),
   };
 }
