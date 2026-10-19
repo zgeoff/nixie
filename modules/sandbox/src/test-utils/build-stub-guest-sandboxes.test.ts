@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
-import type { HostFrame } from '@heynixie/wire';
 import { decodeTurnFrame, encodeTurnFrame, guestFrameSchema } from '@heynixie/wire';
 import { buildMockSummarizeFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import type { SandboxSpec } from '../types';
 import { buildMockSandboxSpec } from './build-mock-sandbox-spec';
 import { buildStubGuestSandboxes } from './build-stub-guest-sandboxes';
@@ -335,6 +335,54 @@ test('it writes the summary as a fork that the next turn resumes from its bounda
   expect(run.frames.map((frame) => frame.type)).toStrictEqual(['read', 'assistant', 'ended']);
 });
 
+test('it writes the fork as the resumed transcript, then the instruction, then the summary', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies({ text: 'The gauge reads 3.2 m.' });
+
+  const first = await runGuestFrame(
+    sandbox,
+    buildMockTurnFrame({ input: [{ uuid: crypto.randomUUID(), text: 'Read the gauge.' }] }),
+  );
+
+  invariant(first.ended !== null);
+
+  const summary = await runGuestFrame(
+    sandbox,
+    buildMockSummarizeFrame({
+      resume: first.ended.boundary,
+      instruction: 'Write a summary of this session.',
+    }),
+  );
+
+  const summarized = summary.frames.find((frame) => frame.type === 'summarized');
+
+  invariant(summarized);
+
+  const [fork] = await sandbox.copyOut([
+    `/home/nixie/.claude/projects/-home-nixie-conversation/${summarized.boundary.sessionID}.jsonl`,
+  ]);
+
+  invariant(fork !== undefined);
+
+  const entries = new TextDecoder()
+    .decode(fork.content)
+    .split('\n')
+    .filter((line) => line !== '')
+    .map((line) => z.object({ role: z.string(), text: z.string() }).parse(JSON.parse(line)));
+
+  expect(entries).toStrictEqual([
+    { role: 'user', text: 'Read the gauge.' },
+    { role: 'assistant', text: 'The gauge reads 3.2 m.' },
+    { role: 'user', text: 'Write a summary of this session.' },
+    {
+      role: 'assistant',
+      text: 'Summary of the session: 2 entries, the last reply was "The gauge reads 3.2 m.".',
+    },
+  ]);
+});
+
 test('it fails a turn that resumes a malformed transcript, and ends its output', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
@@ -634,16 +682,9 @@ test('it answers each inbox message of a turn in its own call, with a result for
 
 test('it answers a live message that arrives during a tool call, in the same session', async () => {
   const live = { uuid: '6e697869-0000-8000-8000-000000000009', text: 'Also, the milk.' };
-  const streams: { send?: (frame: HostFrame) => Promise<void> } = {};
+  const release = Promise.withResolvers<string>();
 
-  const ctx = await setupTest({
-    callTool: async () => {
-      await streams.send?.({ type: 'message', message: live });
-
-      return 'Buy oat milk.';
-    },
-  });
-
+  const ctx = await setupTest({ callTool: () => release.promise });
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
 
   ctx.stub.addReplies(
@@ -654,9 +695,11 @@ test('it answers a live message that arrives during a tool call, in the same ses
 
   const stream = await sandbox.spawn({ argv: ['guest'], env, maxMessageBytes: 1 << 20 });
 
-  streams.send = (frame) => stream.send(encodeTurnFrame(frame));
-
+  // the turn runs up to its tool call within the send, and waits there on the release
   await stream.send(encodeTurnFrame(buildMockTurnFrame()));
+  await stream.send(encodeTurnFrame({ type: 'message', message: live }));
+
+  release.resolve('Buy oat milk.');
 
   const messages = await Array.fromAsync(stream.messages);
 
