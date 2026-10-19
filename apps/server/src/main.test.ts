@@ -781,7 +781,7 @@ test('it answers liveness per part', async () => {
   });
 }, 60_000);
 
-test('it answers readiness per part, with the slice 1 parts and the advisory parts only', async () => {
+test('it answers readiness per part, with the slice 1 parts, the dependency parts and the advisory parts only', async () => {
   const ctx = await setupTest();
   const ready = await fetch(`${ctx.url}/health/ready`);
   const readyReport: unknown = await ready.json();
@@ -793,6 +793,8 @@ test('it answers readiness per part, with the slice 1 parts and the advisory par
     parts: {
       database: { isReady: true, reason: null },
       definitions: { isReady: true, reason: null },
+    },
+    dependencies: {
       imp_host: { isReady: true, reason: null },
       conversation_imp: { isReady: true, reason: null },
       disk: { isReady: true, reason: null },

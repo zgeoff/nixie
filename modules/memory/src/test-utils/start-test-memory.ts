@@ -30,6 +30,9 @@ export interface TestMemoryOptions {
 
   // the encoder the vector index runs; with none, search reads keywords only
   readonly semanticSearch?: SemanticSearch;
+
+  // how long the key store waits for another connection's lock, 5 s by default
+  readonly keyStoreBusyTimeoutMs?: number;
 }
 
 // Starts a writer on a fresh data directory with the log's and the memory projections, and a store

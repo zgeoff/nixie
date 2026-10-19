@@ -25,6 +25,7 @@ function setupTest() {
       database: () => Promise.resolve({ isReady: true, reason: null }),
     },
     ...buildReadinessChecks(state, { read: () => ({ isReady: true, reason: null }) }),
+    log: () => {},
   });
 
   return { state, app };
@@ -150,6 +151,8 @@ test('it keeps readiness at 200 and shows the failing turns in its advisory part
     parts: {
       database: { isReady: true, reason: null },
       definitions: { isReady: true, reason: null },
+    },
+    dependencies: {
       imp_host: { isReady: true, reason: null },
       conversation_imp: { isReady: true, reason: null },
       disk: { isReady: true, reason: null },
@@ -186,6 +189,8 @@ test('it reports the conversation turns as not ready on readiness after one turn
     parts: {
       database: { isReady: true, reason: null },
       definitions: { isReady: true, reason: null },
+    },
+    dependencies: {
       imp_host: { isReady: true, reason: null },
       conversation_imp: { isReady: true, reason: null },
       disk: { isReady: true, reason: null },

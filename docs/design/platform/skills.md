@@ -156,8 +156,8 @@ The system prompt holds the catalog, after the persona: one line per skill on th
 with its name and description, in name order. The catalog changes only when a task starts or
 reloads, so the [prompt cache](memory/context.md#the-prompt) holds. The catalog has a size cap, 2%
 of the model's context window by default and set in the
-[deployment configuration](deployment/configuration.md). Past the cap, the catalog lists the names
-of the remaining skills without descriptions, and the live view flags it.
+[deployment configuration](../../architecture/deployment/configuration.md). Past the cap, the
+catalog lists the names of the remaining skills without descriptions, and the live view flags it.
 
 ## Scripts
 

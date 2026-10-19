@@ -178,9 +178,20 @@ unanswered offer has no moment at which it closes.
 ## Provenance
 
 nixie sets every provenance field from the calling step, never from the tool's arguments: the origin
-from the run's thread, the task, and the model ID of the call that asked. A version whose checks all
-passed takes the user's words as its source and holds each check's verdict. Any other write has no
-version until the user approves it.
+from the run's thread, the task, and the model ID of the call that asked. A version that the memory
+writer applies names the model of its batch's session. The checker's verdict among the checks names
+the checker's model. A version that no checker judged names no checker model: a write whose token
+check failed, which stops before the checker, or an edit of a self-note, which goes to review before
+any check of its quote. A version whose checks all passed takes the user's words as its source and
+holds each check's verdict. Any other write has no version until the user approves it.
+
+A version's source labels its text, never its evidence. A proposal takes outside content as its
+source even when its quote lies in the user's message, because no check tied the text to the quote:
+the text holds a token the quote lacks, the checker did not confirm the claim, or the write edits a
+self-note, which always waits for review. The user's approval keeps that source. The approval
+confirms that the user wants the text kept, and never that the user typed it, so the conversation
+reads the item as unconfirmed and approved ([how an item reads](./context.md#how-an-item-reads)). An
+approval of the user's own edit takes the user as its source, because the words are then the user's.
 
 The user's allow rule on a content-gate tool lets a write through that tool skip the quote and the
 checker. The gate looks up the rule by the tool the write came through, `memory.edit` for a write

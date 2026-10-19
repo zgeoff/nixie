@@ -15,7 +15,10 @@ export async function startTestStore(
   wiring: StoreWiring,
   options: TestMemoryOptions,
 ): Promise<Pick<TestMemory, 'writer' | 'log' | 'store'>> {
-  const writer = await startWriter({ dataDir: wiring.dataDir });
+  const writer = await startWriter({
+    dataDir: wiring.dataDir,
+    keyStoreBusyTimeoutMs: options.keyStoreBusyTimeoutMs,
+  });
 
   wiring.defer(() => writer.stop());
 

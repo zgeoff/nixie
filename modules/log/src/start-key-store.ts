@@ -6,8 +6,11 @@ import { sql } from 'kysely';
 // Opens keys.db beside nixie.db, so a database backup holds only ciphertext. Secure delete wipes a
 // deleted key from the free pages. The store has no migrations, because a copy taken before one
 // would keep every key deleted after it.
-export async function startKeyStore(dataDir: string): Promise<Kysely<unknown>> {
-  const keys = startDatabase(join(dataDir, 'keys.db'), { secureDelete: true });
+export async function startKeyStore(
+  dataDir: string,
+  busyTimeoutMs?: number,
+): Promise<Kysely<unknown>> {
+  const keys = startDatabase(join(dataDir, 'keys.db'), { secureDelete: true, busyTimeoutMs });
 
   try {
     await sql`create table if not exists record_keys (

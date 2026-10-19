@@ -37,9 +37,12 @@ nothing to the size, because a session's opening leaves it out.
 
 An item's history holds every version, oldest first, each with its provenance: its change and state,
 its origin and source, the task and proposal behind it, the verdict of each write check, the model
-of the call that wrote it and the model of the checker that judged its quote. A version with
-evidence carries the quote's offsets and the text of the message the offsets point into, so the view
-shows the quote inside its message. The view reads that message only while the version's own text is
+of the call that wrote it and the model of the checker that judged its quote. A version the memory
+writer applied whose row holds no model takes the model from the record of the batch that applied
+it. The source labels the version's text, so an approved proposal reads as outside content beside a
+quote from the user's message ([provenance](./writes.md#provenance)). A version with evidence
+carries the quote's offsets and the text of the message the offsets point into, so the view shows
+the quote inside its message. The view reads that message only while the version's own text is
 readable. A forgotten item therefore never shows the words it came from, even while the user's
 message still holds them. A message forgotten on its own reads as a gap beside a readable version.
 

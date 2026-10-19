@@ -28,6 +28,11 @@ The suite fails when a report came from another prompt, skipped a pair or render
 differently from the gate. It fails when a call confirms a memory that any set's message does not
 assert, and when an answered call misses one that a tuning set's message asserts.
 
+On a cloud imp, run the eval this same way, through the imp's Claude Code login. The imp's broker
+forwards a subscription token, which the Messages API takes for Haiku but refuses for Sonnet with a
+429 `rate_limit_error` when the request does not come from Claude Code. A runner that calls the API
+directly from an imp works only with Haiku.
+
 ## Results
 
 Sonnet 5.5 at low effort, with the 10 s timeout and the reason asked before the verdict, once with

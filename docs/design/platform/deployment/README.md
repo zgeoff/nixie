@@ -6,8 +6,6 @@ records the split between the nixie repo, the definitions repo and the deploymen
 
 - [Deployment](deployment.md) — the first build, the host, the images, secrets, seeding the
   definitions, health, and Kubernetes
-- [Deployment configuration](configuration.md) — the YAML file, what it holds, its schema, and how
-  it is mounted
 - [Backup and restore](backup-and-restore.md) — the backup sidecar, Restic snapshots, the key repo
   and forget, the offsite replica, and restoring on a new host
 - [Release pipeline](release-pipeline.md) — the worker, code and backup images, pinned binary
