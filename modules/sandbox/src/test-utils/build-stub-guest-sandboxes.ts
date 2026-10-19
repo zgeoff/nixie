@@ -57,17 +57,19 @@ export interface StubGuestSandboxes {
   // makes the next turn that ends reach this context size, in tokens, unless it already passed it
   readonly setContextSize: (tokens: number) => void;
 
-  // removes every session from the sandbox's disk, as a sandbox that lost its disk has none
-  readonly removeSessions: (sandboxID: string) => void;
+  // removes every session from the disk of each sandbox the owner holds, as a sandbox that lost its
+  // disk has none
+  readonly removeSessions: (owner: string) => void;
 
-  // makes each later copy out of the sandbox fail with this reason
-  readonly failCopyOut: (sandboxID: string, reason: string) => void;
+  // makes each later copy out of the sandboxes the owner holds fail with this reason
+  readonly failCopyOut: (owner: string, reason: string) => void;
 }
 
 const adapterID = 'stub-guest';
 const defaultReply = 'Hello.';
 
 interface SandboxState {
+  readonly owner: string;
   readonly disk: StubGuestDisk;
   isAsleep: boolean;
   copyOutFailure: string | null;
@@ -129,23 +131,21 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
     setContextSize: (tokens) => {
       state.contextSize = tokens;
     },
-    removeSessions: (sandboxID) => {
-      getState(state, sandboxID).disk.removeAllSessions();
+    removeSessions: (owner) => {
+      for (const own of collectOwned(state, owner)) {
+        own.disk.removeAllSessions();
+      }
     },
-    failCopyOut: (sandboxID, reason) => {
-      getState(state, sandboxID).copyOutFailure = reason;
+    failCopyOut: (owner, reason) => {
+      for (const own of collectOwned(state, owner)) {
+        own.copyOutFailure = reason;
+      }
     },
   };
 }
 
-function getState(state: StubState, sandboxID: string): SandboxState {
-  const found = state.sandboxes.get(sandboxID);
-
-  if (found === undefined) {
-    throw new Error(`the stub adapter holds no sandbox ${sandboxID}`);
-  }
-
-  return found;
+function collectOwned(state: StubState, owner: string): readonly SandboxState[] {
+  return [...state.sandboxes.values()].filter((own) => own.owner === owner);
 }
 
 // Writes the created record before it makes anything, as a real adapter does, then the grants.
@@ -170,6 +170,7 @@ async function createSandbox(state: StubState, spec: SandboxSpec): Promise<Sandb
 
 function buildSandbox(state: StubState, id: string, spec: SandboxSpec): Sandbox {
   const own = state.sandboxes.get(id) ?? {
+    owner: spec.owner,
     disk: buildStubGuestDisk(),
     isAsleep: false,
     copyOutFailure: null,

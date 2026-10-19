@@ -336,12 +336,12 @@ test('it removes the sessions on a purge and answers purged', async () => {
 
 test('it loses the sessions of the sandbox a test removes them from, and keeps the sessions of another', async () => {
   const ctx = await setupTest();
-  const lost = await ctx.stub.adapter.create(ctx.spec);
+  const lost = await ctx.stub.adapter.create({ ...ctx.spec, owner: 'lost-owner' });
   const kept = await ctx.stub.adapter.create(ctx.spec);
   const onLost = await ctx.runEnded(lost, buildMockTurnFrame());
   const onKept = await ctx.runEnded(kept, buildMockTurnFrame());
 
-  ctx.stub.removeSessions(lost.id);
+  ctx.stub.removeSessions('lost-owner');
 
   const frames = await ctx.runGuest(lost, buildMockTurnFrame({ resume: onLost.boundary }));
 
@@ -413,7 +413,7 @@ test('it fails each copy out of a sandbox a test makes fail, with the reason giv
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
 
-  ctx.stub.failCopyOut(sandbox.id, 'EACCES: permission denied');
+  ctx.stub.failCopyOut(ctx.spec.owner, 'EACCES: permission denied');
 
   expect(sandbox.copyOut(['/home/nixie/.claude/projects/x/y.jsonl'])).rejects.toThrow(
     'EACCES: permission denied',
