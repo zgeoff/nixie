@@ -28,6 +28,90 @@ test('it counts every event the range held, those past the cap of 10 included', 
   expect(block.text).toEndWith('\n…and 2 more');
 });
 
+test('it lists every event of an uncapped kind past the cap of 10, and counts only the others past it', async () => {
+  const registry = buildEventRegistry([
+    {
+      name: 'doorbell',
+      read: () =>
+        Promise.resolve(
+          Array.from({ length: 12 }, (_, minute) => ({
+            sequence: minute + 1,
+            at: Date.UTC(2025, 9, 14, 9, minute),
+            detail: null,
+          })),
+        ),
+      render: () => 'The doorbell rang.',
+    },
+    {
+      name: 'smoke_alarm',
+      read: () =>
+        Promise.resolve([{ sequence: 13, at: Date.UTC(2025, 9, 14, 9, 30), detail: null }]),
+      render: () => 'The smoke alarm went off.',
+      isUncapped: true,
+    },
+  ]);
+
+  const block = await readEventsBlock(
+    registry,
+    { after: 0, through: 13 },
+    { ownerName: 'Avery', timeZone: 'UTC' },
+  );
+
+  expect(block.count).toBe(13);
+
+  expect(block.text?.split('\n').slice(-2)).toStrictEqual([
+    '- Tue 14 Oct, 09:30, UTC · The smoke alarm went off.',
+    '…and 2 more',
+  ]);
+});
+
+test.each([
+  ['a new session', { isNewSession: true }],
+  ['a replay', { isReplay: true }],
+])('it leaves a session-bound kind out of the block for %s', async (_label, read) => {
+  const registry = buildEventRegistry([
+    {
+      name: 'doorbell',
+      read: () => Promise.resolve([{ sequence: 1, at: Date.UTC(2025, 9, 14, 9, 0), detail: null }]),
+      render: () => 'The doorbell rang.',
+    },
+    {
+      name: 'kettle',
+      read: () => Promise.resolve([{ sequence: 2, at: Date.UTC(2025, 9, 14, 9, 5), detail: null }]),
+      render: () => 'The kettle boiled.',
+      isSessionBound: true,
+    },
+  ]);
+
+  const block = await readEventsBlock(
+    registry,
+    { after: 0, through: 2 },
+    { ownerName: 'Avery', timeZone: 'UTC', ...read },
+  );
+
+  expect(block.count).toBe(1);
+  expect(block.text).toEndWith('\n- Tue 14 Oct, 09:00, UTC · The doorbell rang.');
+});
+
+test('it lists a session-bound kind in the block before a resumed turn', async () => {
+  const registry = buildEventRegistry([
+    {
+      name: 'kettle',
+      read: () => Promise.resolve([{ sequence: 2, at: Date.UTC(2025, 9, 14, 9, 5), detail: null }]),
+      render: () => 'The kettle boiled.',
+      isSessionBound: true,
+    },
+  ]);
+
+  const block = await readEventsBlock(
+    registry,
+    { after: 0, through: 2 },
+    { ownerName: 'Avery', timeZone: 'UTC', isNewSession: false },
+  );
+
+  expect(block.text).toEndWith('\n- Tue 14 Oct, 09:05, UTC · The kettle boiled.');
+});
+
 test('it heads a replay with the turns it covers, not the time since the last turn', async () => {
   const registry = buildEventRegistry([
     {

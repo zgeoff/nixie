@@ -50,6 +50,23 @@ The step writes nothing before its commit, and the summary call leaves the sessi
 was. A rerun after a crash therefore forks from the same boundary, writes the summary again, and
 only one copy commits.
 
+## The heads-up
+
+The model hears once a session that compaction is near, so it can write a self-note or a memory, or
+flag a moment, while the detail is still in its context. The deployment configuration sets a
+heads-up share of the window under the threshold. The first turn of a session that ends at or past
+the heads-up and under the threshold gives one line in the next turn's
+[events block](./conversation-turns.md#the-events-block), with the tokens left before the threshold
+and the threshold's share of the window. The line is a plain system notice and never a persona line,
+as every event is. The block's cap never hides the line, because no later note gives it again. A
+turn that opens a new session gets no line, because the new session's context no longer holds what
+the old one read.
+
+The heads-up event kind derives the line from the turn-ended records. A turn counts only when no
+earlier turn since the session's opening record reached the heads-up, so the line comes again only
+after a compaction or another new session. A turn that ends at or past the threshold gets no line,
+because the next step compacts the session before any turn reads the block.
+
 ## The instruction
 
 The instruction tells the model that nixie closes the session, what the next session opens with, and

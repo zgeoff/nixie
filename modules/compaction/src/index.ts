@@ -1,5 +1,6 @@
 export { compactionConfigSchema } from './compaction-config-schema';
 export { countTextTokens } from './count-text-tokens';
+export { findCompactionHeadsUp } from './find-compaction-heads-up';
 export type { SessionSummary } from './find-session-summary';
 export { findSessionSummary } from './find-session-summary';
 export { isCompactionDue } from './is-compaction-due';

@@ -1,7 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import { findMessageTimeZone } from '@heynixie/connectors';
 import type { Log } from '@heynixie/log';
-import type { EventRegistry, TurnNote, TurnNoteRange } from '@heynixie/sessions';
+import type { EventRegistry, TurnNote, TurnNoteRange, TurnNoteRequest } from '@heynixie/sessions';
 import { formatMessageTime, readEventsBlock, readTurnNoteRange } from '@heynixie/sessions';
 import { renderSystemMessage } from '@heynixie/wire';
 
@@ -24,8 +24,10 @@ export interface TurnNotesOptions {
 // zone of the owner's newest message, as the time tool answers.
 export async function readTurnNotes(
   options: TurnNotesOptions,
-  span?: TurnNoteRange,
+  request: TurnNoteRequest = {},
 ): Promise<TurnNote> {
+  const span = request.span;
+
   const range = await readNoteRange(options.log, span);
 
   const isReplay = span !== undefined;
@@ -38,6 +40,7 @@ export async function readTurnNotes(
     ownerName: options.ownerName,
     timeZone,
     isReplay,
+    isNewSession: request.isNewSession === true,
   });
 
   const now = new Date(options.clock.now());
