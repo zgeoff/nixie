@@ -8,8 +8,8 @@ import { startTestLog } from './test-utils/start-test-log';
 import { writeKeyStoreCheckpoint } from './write-key-store-checkpoint';
 import { writeRecords } from './write-records';
 
-function setupTest() {
-  return startTestLog();
+function setupTest(options: { readonly keyStoreBusyTimeoutMs?: number } = {}) {
+  return startTestLog(options);
 }
 
 test("it empties the key store's WAL", async () => {
@@ -30,9 +30,23 @@ test("it empties the key store's WAL", async () => {
   expect(wal.size).toBe(0);
 });
 
-// the checkpoint waits out the database's busy timeout before it reports the reader
+test('it finishes with a short busy timeout when no connection holds a read', async () => {
+  const ctx = await setupTest({ keyStoreBusyTimeoutMs: 50 });
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:aa11' },
+      erasable: { text: 'a message with a key' },
+    },
+  ]);
+
+  await expect(writeKeyStoreCheckpoint(ctx.log, null)).toResolve();
+});
+
+// the key store waits out its busy timeout, 50 ms here, before it reports the reader
 test('it refuses while another connection holds a read on the key store', async () => {
-  const ctx = await setupTest();
+  const ctx = await setupTest({ keyStoreBusyTimeoutMs: 50 });
 
   await writeRecords(ctx.log, [
     {
@@ -50,4 +64,4 @@ test('it refuses while another connection holds a read on the key store', async 
   await sql`select count(*) from record_keys`.execute(reader);
 
   expect(writeKeyStoreCheckpoint(ctx.log, null)).rejects.toBeInstanceOf(KeyStoreBusyError);
-}, 15_000);
+});
