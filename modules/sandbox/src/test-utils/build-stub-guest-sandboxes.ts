@@ -116,12 +116,16 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
       get: async (id) => {
         const row = await options.recorder.findRow(adapterID, id);
 
-        return row === null ? null : buildSandbox(state, row.sandboxID, row.spec);
+        return row === null
+          ? null
+          : buildSandbox(state, row.sandboxID, row.spec, registerSandboxState(state, row));
       },
       list: async (owner) => {
         const rows = await options.recorder.list(adapterID, owner);
 
-        return rows.map((row) => buildSandbox(state, row.sandboxID, row.spec));
+        return rows.map((row) =>
+          buildSandbox(state, row.sandboxID, row.spec, registerSandboxState(state, row)),
+        );
       },
       addSecret: () => Promise.resolve(),
       addImage: () => Promise.resolve(),
@@ -178,19 +182,36 @@ async function createSandbox(state: StubState, spec: SandboxSpec): Promise<Sandb
     });
   }
 
-  return buildSandbox(state, id, spec);
+  return buildSandbox(state, id, spec, registerSandboxState(state, { sandboxID: id, spec }));
 }
 
-function buildSandbox(state: StubState, id: string, spec: SandboxSpec): Sandbox {
-  const own = state.sandboxes.get(id) ?? {
-    owner: spec.owner,
+interface SandboxRow {
+  readonly sandboxID: string;
+  readonly spec: SandboxSpec;
+}
+
+// the sandbox's state in the registry, with an empty disk registered for a sandbox it lacks, such
+// as one a restarted adapter finds in the recorder
+function registerSandboxState(state: StubState, row: SandboxRow): SandboxState {
+  const registered = state.sandboxes.get(row.sandboxID);
+
+  if (registered !== undefined) {
+    return registered;
+  }
+
+  const own = {
+    owner: row.spec.owner,
     disk: buildStubGuestDisk(),
     isAsleep: false,
     copyOutFailure: null,
   };
 
-  state.sandboxes.set(id, own);
+  state.sandboxes.set(row.sandboxID, own);
 
+  return own;
+}
+
+function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: SandboxState): Sandbox {
   // the process double refuses a call to a sleeping sandbox, so a test that forgets a wake fails
   const requireAwake = () => {
     if (own.isAsleep) {
@@ -299,6 +320,7 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
           callTool: state.options.callTool,
           countTokens: state.options.countTokens,
           takeMessage: () => guest.takeMessage?.(),
+          ...(guest.emit === undefined ? {} : { emit: guest.emit }),
 
           // a guest with no signal is one no host stops
           signal: guest.signal ?? new AbortController().signal,

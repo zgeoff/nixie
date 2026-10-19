@@ -57,7 +57,12 @@ export interface StubGuestRun {
   readonly takeMessage: () => InboxMessage | undefined;
 
   // aborts when the host stops the guest: a tool call in flight ends, and the turn writes nothing
+  // more
   readonly signal: AbortSignal;
+
+  // sends the frames of each input that completes, before the next input starts; without it the
+  // turn returns every frame at its end
+  readonly emit?: (frames: readonly GuestFrame[]) => void;
 }
 
 // the window of a profile that sets no context cap, the smallest the CLI assumes for any model
@@ -116,7 +121,7 @@ async function runInputs(
       (error: unknown) => new Error(String(error)),
     );
 
-    // a stopped guest writes no transcript, so a session the host removed after the stop stays gone
+    // a stopped guest writes nothing more, so a session the host removed after the stop stays gone
     if (run.signal.aborted) {
       return frames;
     }
@@ -149,6 +154,10 @@ async function runInputs(
 
     frames.push(buildEnded(turn, entries, { start, point: progress.committed }));
 
+    // the CLI keeps each completed input on disk and sends its result at once, so a later stop
+    // leaves both in place
+    run.disk.writeSession(run.home, fork.sessionID, entries);
+    run.emit?.(frames.splice(0));
     const live = run.takeMessage();
 
     if (live !== undefined) {

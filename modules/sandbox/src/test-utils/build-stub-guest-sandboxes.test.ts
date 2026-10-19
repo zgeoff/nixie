@@ -755,6 +755,51 @@ test('it writes no transcript from a turn the host stopped during a tool call, s
   expect(ctx.stub.collectFilesWithText('blue flowerpot')).toStrictEqual([]);
 });
 
+test('it keeps the frames and transcript of an input that completed before a stop', async () => {
+  const release = Promise.withResolvers<string>();
+
+  const ctx = await setupTest({ callTool: () => release.promise });
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies(
+    { text: 'APPLE' },
+    { toolUse: { name: 'mcp__nixie__notes_read', input: {} } },
+  );
+
+  const stream = await sandbox.spawn({ argv: ['guest'], env, maxMessageBytes: 1 << 20 });
+
+  const input = [
+    { uuid: '6e697869-0000-8000-8000-000000000001', text: 'Say a fruit.' },
+    { uuid: '6e697869-0000-8000-8000-000000000002', text: 'Read my notes.' },
+  ];
+
+  await stream.send(encodeTurnFrame(buildMockTurnFrame({ input })));
+
+  // the first input's three frames arrive while the second waits at its tool call
+  const messages = stream.messages[Symbol.asyncIterator]();
+  const sent = [await messages.next(), await messages.next(), await messages.next()];
+
+  await stream.stop();
+
+  const after = await messages.next();
+
+  expect(
+    sent.map((read) => {
+      invariant(read.done !== true);
+
+      return decodeTurnFrame(guestFrameSchema, read.value);
+    }),
+  ).toMatchObject([
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
+    { type: 'assistant', text: 'APPLE' },
+    { type: 'ended' },
+  ]);
+
+  expect(after.done).toBe(true);
+  expect(ctx.stub.collectFilesWithText('APPLE')).toStrictEqual([expect.toEndWith('.jsonl')]);
+  expect(ctx.stub.collectFilesWithText('Read my notes.')).toStrictEqual([]);
+});
+
 test('it keeps the inputs that completed before a later input fails, and resumes from them', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
