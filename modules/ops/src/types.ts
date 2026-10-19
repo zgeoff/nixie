@@ -1,3 +1,5 @@
+import type { HealthStatus } from './health-statuses';
+
 // One part's answer to a health check. reason says why the part is not ready, and is null when it
 // is.
 export interface PartReport {
@@ -13,7 +15,7 @@ export type PartCheck = (signal?: AbortSignal) => Promise<PartReport>;
 // answer adds the dependency parts, which make a ready status degraded when one fails, and the
 // advisory parts, which never change the status.
 export interface HealthReport {
-  readonly status: 'ready' | 'degraded' | 'unready';
+  readonly status: HealthStatus;
   readonly parts: Readonly<Record<string, PartReport>>;
   readonly dependencies?: Readonly<Record<string, PartReport>>;
   readonly advisory?: Readonly<Record<string, PartReport>>;

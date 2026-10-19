@@ -7,6 +7,8 @@ export { checkDisk } from './check-disk';
 export { checkParts } from './check-parts';
 export type { AdvisoryPart, DependencyPart, HealthPart, LivenessPart } from './health-parts';
 export { advisoryParts, dependencyParts, healthParts, livenessParts } from './health-parts';
+export type { HealthStatus } from './health-statuses';
+export { healthStatuses } from './health-statuses';
 export type { PartRefresh } from './start-part-refresh';
 export { startPartRefresh } from './start-part-refresh';
 export type { HealthReport, PartCheck, PartReport } from './types';

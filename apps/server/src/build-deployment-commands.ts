@@ -1,3 +1,4 @@
+import { healthStatuses } from '@heynixie/ops';
 import { z } from 'zod';
 import { loadDeploymentConfig } from './load-deployment-config';
 import { loadSandboxManifest } from './load-sandbox-manifest';
@@ -13,8 +14,8 @@ export function buildDeploymentCommands(): readonly (readonly [string, Command])
   ];
 }
 
-// the part of a health answer the exit code reads
-const healthAnswerSchema = z.object({ status: z.string() });
+// the part of a health answer the exit code reads, with the statuses the health endpoint reports
+const healthAnswerSchema = z.object({ status: z.enum(healthStatuses) });
 
 // the container runtime's check from inside the container, where a wildcard address answers on
 // loopback
