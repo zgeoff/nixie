@@ -31,6 +31,7 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
             defaultZone: 'UTC',
           }),
           logRead: buildLogReadTool(context.log),
+          skills: [],
         },
         {
           readStore: () => stores.current,

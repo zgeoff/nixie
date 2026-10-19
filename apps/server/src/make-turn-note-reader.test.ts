@@ -1,4 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
+import { recordSkillPin, skillsReloadedCodec } from '@heynixie/skills';
 import { createConversationTask } from '@heynixie/tasks';
 import { startScriptedModel } from '@heynixie/testing';
 import { makeTurnNoteReader } from './make-turn-note-reader';
@@ -127,6 +129,42 @@ test('it warns the next turn once that compaction is near after a turn ends at 1
       /Compaction in about 18k tokens \(at 80% of the window\)\. Save anything worth keeping now\./gu,
     ),
   ).toHaveLength(1);
+}, 30_000);
+
+test("it names a skill that a reload on the conversation's thread changed in the next turn's note", async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'High tide is at noon.' }, { text: 'Noted.' });
+
+  await sendTestMessage(ctx.context, ctx.first.runStep, 'When is high tide?');
+
+  await recordSkillPin(ctx.context.log, {
+    thread: 'conversation',
+    inForce: {
+      snapshotHash: 'snapshot-a',
+      personaVersion: 'persona-a',
+      skills: [{ name: 'tide-tables', skillHash: 'hash-old', origin: 'definitions' }],
+    },
+    list: ['tide-tables'],
+  });
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'skills.reloaded',
+      thread: 'conversation',
+      definitions: { snapshotHash: 'snapshot-b', personaVersion: 'persona-a' },
+      payload: skillsReloadedCodec.encode({
+        skills: [{ name: 'tide-tables', skillHash: 'hash-new', origin: 'definitions' }],
+        changes: [{ name: 'tide-tables', oldHash: 'hash-old', newHash: 'hash-new' }],
+      }),
+    },
+  ]);
+
+  await sendTestMessage(ctx.context, ctx.first.runStep, 'And tomorrow?');
+
+  expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toInclude(
+    'Your skills changed: tide-tables has a new version.',
+  );
 }, 30_000);
 
 test('it gives no compaction warning to a rebuilt session after a turn of the old one ends at 142,000 of 200,000 tokens', async () => {

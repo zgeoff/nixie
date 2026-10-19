@@ -466,6 +466,8 @@
         "@heynixie/compaction": "workspace:*",
         "@heynixie/definitions": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/sessions": "workspace:*",
+        "@heynixie/tools": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
         "zod": "catalog:",

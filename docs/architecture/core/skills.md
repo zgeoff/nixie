@@ -4,7 +4,7 @@ A skill is a procedure from the user's definitions in the Agent Skills format: a
 `SKILL.md` and the files it refers to. A task keeps the skill versions it started with, the
 conversation sees a catalog of its skills in the system prompt, and a skill grants nothing, so every
 action it describes still passes the decision point as an ordinary tool call. `modules/skills` owns
-the pins and the catalog, under [0038](../../decisions/0038-skills.md).
+the pins, the catalog and the skill tools, under [0038](../../decisions/0038-skills.md).
 [The definitions](./definitions.md#skills) covers the checks the seed runs on each skill and how
 each version is kept.
 
@@ -22,8 +22,8 @@ later read takes the newest pin on the thread, so a seed that changes a skill le
 on the version it pinned. A skill version stays in the database after a seed replaces it, so a
 pinned version stays readable. Before the first seed, a task has no skills and records no pin.
 
-The conversation is one long task, so it keeps the versions of its first pin. Each conversation step
-reads the pin as it begins, and the turn and the compaction request render the same catalog. A
+The conversation is one long task, so its pin holds until a reload moves it on. Each conversation
+step reads the pin as it begins, and the turn and the compaction request render the same catalog. A
 persona change works differently: the next step reads the persona in force and opens a new session,
 and the skill pin stays as it was.
 
@@ -39,3 +39,32 @@ deployment configuration's `skills` section sets. A larger share or a model prof
 window can bring back descriptions with no change to the pin. Past the cap, the catalog lists the
 remaining skills by name alone, so the model still knows each one exists. The catalog never drops a
 name, so a names-only catalog that is longer than the cap stays whole and goes past it.
+
+## The skill tools
+
+The conversation's tool endpoint serves three skill tools, and each one acts only on a skill that
+the caller's list or the task's pin holds. A run other than the conversation has an empty skill list
+on that endpoint, so it reads no skill.
+
+| Tool               | Effect | Returns                                                      |
+| ------------------ | ------ | ------------------------------------------------------------ |
+| `skill_read`       | `read` | The pinned version's instructions and file list, or one file |
+| `skill_reload`     | `note` | The named skill's old and new version                        |
+| `skill_reload_all` | `note` | The old and new version of each skill on the list or the pin |
+
+`skill_read` serves the pinned version. Without a path, it returns the instructions without their
+frontmatter and the paths of the skill's other files. With a path, it returns that one file, and it
+refuses a path that leaves the skill's folder. Every field it returns from a skill's text is
+untrusted, because a vendored skill is someone else's text.
+
+A reload takes a fresh snapshot from the definitions source and seeds it when its revision is new.
+The reload then moves the task to the versions in force and writes a reload record on the task's
+thread, which holds the new pin and each skill's old and new version. The server runs one seed at a
+time, so a reload and the definitions poll never commit an older revision after a newer one. Reloads
+on one thread run one at a time too, so each one plans from the pin the one before it wrote. A skill
+that left the caller's list or the definitions leaves the pin, and a skill that joined the list
+joins it.
+
+The next turn's catalog renders the new pin. The turn's events note names each skill the reload
+changed and tells the model to read the skill again, because a body it read before the reload stays
+in its context.
