@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { countTextTokens } from '@heynixie/compaction';
 import { renderSkillCatalog } from './render-skill-catalog';
 
 test('it renders one line per skill in name order after the catalog head', () => {
@@ -73,9 +74,10 @@ test('it lists the skills past the cap by name alone', () => {
   expect(catalog.isCut).toBeTrue();
 
   expect(catalog.text).toEndWith(
-    '- bird-log: Logs a bird sighting with its place and time.\n' +
-      '- More skills, without descriptions: tide-tables\n</skills>',
+    'nixie decides on.\n- More skills, without descriptions: bird-log, tide-tables\n</skills>',
   );
+
+  expect(countTextTokens(catalog.text ?? '')).toBeLessThanOrEqual(75);
 });
 
 test('it renders no catalog for a task with no skills', () => {
