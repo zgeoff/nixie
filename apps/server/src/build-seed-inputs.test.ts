@@ -36,6 +36,8 @@ test("it changes the snapshot hash when the queue check's tool declaration chang
   const hashes = [tool, changed].map(
     (logTool) =>
       buildDefinitionsSnapshot({
+        skills: [],
+        conversationSkills: [],
         persona: '# Persona\n',
         policy: buildSeedInputs(config, {
           definitions: [],
