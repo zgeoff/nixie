@@ -236,7 +236,6 @@ function renderStream(reply: ScriptedMessage, model: string): Response {
   );
 }
 
-// one server-sent event of the stream: its `type` names the event, and the rest is its payload
 interface StreamEvent {
   readonly type: string;
   readonly [key: string]: unknown;
