@@ -13,4 +13,5 @@ export { skillsConfigSchema } from './skills-config-schema';
 export { skillsPinnedCodec } from './skills-pinned-codec';
 export type { SkillsRecordKind } from './skills-record-kind';
 export { skillsReloadedCodec } from './skills-reloaded-codec';
+export { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 export type { SkillToolsContext } from './types';

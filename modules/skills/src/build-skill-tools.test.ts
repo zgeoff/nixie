@@ -27,7 +27,7 @@ async function setupTest() {
   return { log: { writer, deploymentKey, projections: [] } };
 }
 
-test('it builds skill_read, skill_reload and skill_reload_all, which the registry accepts', async () => {
+test('it builds skill_read, skill_reload, skill_reload_all and skill_write, which the registry accepts', async () => {
   const ctx = await setupTest();
 
   const tools = buildSkillTools({
@@ -43,7 +43,8 @@ test('it builds skill_read, skill_reload and skill_reload_all, which the registr
     ['skill_read', ['read']],
     ['skill_reload', ['note']],
     ['skill_reload_all', ['note']],
+    ['skill_write', ['note']],
   ]);
 
-  expect(registry.findTool('skill_reload_all')).not.toBeNull();
+  expect(registry.findTool('skill_write')).not.toBeNull();
 });
