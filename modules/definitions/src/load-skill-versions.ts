@@ -1,9 +1,9 @@
 import type { Kysely } from 'kysely';
 import type { DefinitionsTables, SkillFrontmatter, SkillVersion } from './types';
 
-// The skill versions under the given content hashes, by hash. A hash with no version is missing
-// from the result, which only a hash from outside the seed can give.
-export async function findSkillVersions(
+// Loads the skill versions under the given content hashes from the database, by hash. A hash with
+// no version is missing from the map, which only a hash from outside the seed can give.
+export async function loadSkillVersions(
   db: Kysely<unknown>,
   skillHashes: readonly string[],
 ): Promise<ReadonlyMap<string, SkillVersion>> {
