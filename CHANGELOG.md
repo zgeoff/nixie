@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.35.0](https://github.com/zgeoff/nixie/compare/v0.34.0...v0.35.0) (2026-10-19)
+
+
+### Features
+
+* **geo-915:** record the model's reasoning summary and thinking tokens ([#420](https://github.com/zgeoff/nixie/issues/420)) ([2f87974](https://github.com/zgeoff/nixie/commit/2f879740d03ab9969225a131622bdc0338a621f4))
+
+
+### Bug Fixes
+
+* **geo-1166:** show the writer's model on writer-applied versions ([#423](https://github.com/zgeoff/nixie/issues/423)) ([f636037](https://github.com/zgeoff/nixie/commit/f636037df9fb6ed361fd18303b3b95301b67d562))
+* **geo-1447:** report degraded, not unready, while a dependency fails ([#428](https://github.com/zgeoff/nixie/issues/428)) ([06ee24f](https://github.com/zgeoff/nixie/commit/06ee24f9a8469f73f2ffcbad0612baa305ed6299))
+
 ## [0.34.0](https://github.com/zgeoff/nixie/compare/v0.33.2...v0.34.0) (2026-10-19)
 
 
