@@ -186,6 +186,41 @@ test("it keeps the conversation's skill list through storage and a reset", async
   expect(after?.skills.map((skill) => skill.name)).toStrictEqual(['bird-log', 'tide-tables']);
 });
 
+test('it keeps an empty conversation skill list through storage and a reset, beside the skill', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+
+  await Promise.all([
+    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\nskills: []\n'),
+    writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
+    writeFile(
+      join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+      '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+    ),
+  ]);
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  const before = await findDefinitionsInForce(ctx.writer.db);
+
+  await runLogReset(ctx.log, {
+    keptTables: [],
+    readKept: (tx) => findResetSeed(tx),
+    writeFirstRecords: async (tx, seed) => {
+      invariant(seed);
+
+      await writeResetSeed(tx, ctx.log, seed);
+    },
+  });
+
+  const after = await findDefinitionsInForce(ctx.writer.db);
+
+  expect(before?.conversationSkills).toStrictEqual([]);
+  expect(after?.conversationSkills).toStrictEqual([]);
+  expect(after?.skills.map((skill) => skill.name)).toStrictEqual(['tide-tables']);
+});
+
 test('it leaves the next seed of the same definitions unchanged', async () => {
   const ctx = await setupTest();
 
