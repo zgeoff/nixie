@@ -64,8 +64,8 @@ prints why when no browser starts, through
 [`checkBrowserSkip`](../../../apps/web/src/test-utils/check-browser-skip.ts). CI never skips them.
 Chrome and Chromium stop at startup when `TMPDIR` is too long for their socket path, so on such a
 host set `TMPDIR` to a short directory or point `BUN_CHROME_PATH` at Playwright's
-`chrome-headless-shell`, which opens no such socket. Chrome and the web build both stop under a
-`ulimit -v` cap, because they reserve more address space than they use.
+`chrome-headless-shell`, which opens no such socket. Chrome stops under a `ulimit -v` cap, because
+it reserves more address space than it uses, so the browser suites skip there.
 
 Plain `bun test` runs the crash suites in `e2e/crash/`, which spawn the test build of nixie from
 [`e2e/nixie/main.ts`](../../../e2e/nixie/main.ts) as a child process and drive it through
