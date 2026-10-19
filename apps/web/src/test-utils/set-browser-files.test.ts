@@ -55,6 +55,7 @@ test('it refuses a page that never shows the input', async () => {
 
   const set = setBrowserFiles(ctx.view, {
     selector: '#missing',
+    timeoutMs: 200,
     files: [{ name: 'swatch.png', bytes: new Uint8Array([0x89]) }],
   });
 
@@ -62,4 +63,4 @@ test('it refuses a page that never shows the input', async () => {
 
   // the condition wait adds the test document to the message, after the helper's own words
   expect(set).rejects.toThrowWithMessage(Error, /^the page shows no #missing/u);
-}, 20_000);
+});

@@ -26,6 +26,7 @@ export function buildWriterGate(parts: StoreParts): WriterGate {
           source: gate.source,
           checks: gate.checks,
           evidence: gate.evidence,
+          model: batch.model,
         };
       }
 

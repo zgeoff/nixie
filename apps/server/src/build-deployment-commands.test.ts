@@ -71,10 +71,11 @@ async function setupHealthTest() {
     fetch: (request) =>
       new URL(request.url).pathname === '/health/live'
         ? Response.json({ status: 'ready', parts: { process: { isReady: true, reason: null } } })
-        : Response.json(
-            { status: 'starting', parts: { imp_host: { isReady: false, reason: 'impd refused' } } },
-            { status: 503 },
-          ),
+        : Response.json({
+            status: 'degraded',
+            parts: { database: { isReady: true, reason: null } },
+            dependencies: { imp_host: { isReady: false, reason: 'impd refused' } },
+          }),
   });
 
   onTestFinished(() => server.stop(true));
@@ -86,14 +87,16 @@ async function setupHealthTest() {
   return ctx;
 }
 
-test('it prints the readiness report and exits 1 from health when the server is not ready', async () => {
+test('it prints the readiness report and exits 1 from health when the server answers degraded', async () => {
   const ctx = await setupHealthTest();
   const exitCode = await runCLI(['health', '--config', ctx.configPath], ctx.io);
 
   expect(exitCode).toBe(1);
 
   expect(ctx.io.print.mock.calls).toStrictEqual([
-    ['{"status":"starting","parts":{"imp_host":{"isReady":false,"reason":"impd refused"}}}'],
+    [
+      '{"status":"degraded","parts":{"database":{"isReady":true,"reason":null}},"dependencies":{"imp_host":{"isReady":false,"reason":"impd refused"}}}',
+    ],
   ]);
 });
 
@@ -106,4 +109,29 @@ test('it prints the liveness report and exits 0 from health --live when the serv
   expect(ctx.io.print.mock.calls).toStrictEqual([
     ['{"status":"ready","parts":{"process":{"isReady":true,"reason":null}}}'],
   ]);
+});
+
+test('it exits 1 from health when the server answers ready with a part report that lacks its reason', async () => {
+  const ctx = await setupTest();
+
+  const server = Bun.serve({
+    hostname: '127.0.0.1',
+    port: 0,
+    fetch: () => Response.json({ status: 'ready', parts: { database: { isReady: true } } }),
+  });
+
+  onTestFinished(() => server.stop(true));
+
+  const config = await readFile(ctx.configPath, 'utf8');
+
+  await writeFile(ctx.configPath, config.replace('  port: 0\n', `  port: ${server.port}\n`));
+
+  const exitCode = await runCLI(['health', '--config', ctx.configPath], ctx.io);
+
+  expect(exitCode).toBe(1);
+
+  expect(ctx.io.log).toHaveBeenCalledExactlyOnceWith(
+    'command.failed',
+    expect.objectContaining({ command: 'health' }),
+  );
 });

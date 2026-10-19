@@ -11,8 +11,8 @@ sandbox of its own: the conversation, each worker, each code run, and each sessi
 coding adapter. It covers the sandbox lifecycle, a network policy that denies by default, credential
 injection the sandbox's code never sees, running a command, and the route back to nixie's tools. The
 first build implements imp only, and a container adapter is sketched to keep the interface honest. A
-[test build](../code-layout.md#test-builds) runs each guest through a process double instead, so CI
-needs no imp host.
+[test build](../../../architecture/code-layout.md#test-builds) runs each guest through a process
+double instead, so CI needs no imp host.
 
 ## The interface
 

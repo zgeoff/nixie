@@ -7,13 +7,14 @@ the host, outside the sandbox, and every call passes a decision point before it 
 effects reach outside nixie becomes an action on a durable queue, so a crash never runs it twice.
 [The product overview](../overview.md) says what nixie is for and who it works for.
 
-The code is one Bun workspace, laid out by the [code layout](../design/platform/code-layout.md):
-domain modules under `modules/`, adapters to outside systems under `adapters/`, shared libraries
-under `libs/`, and the deployables under `apps/`. Modules never import adapters and never form a
-cycle, so the server, as the composition root, passes each module what it needs from the others. The
-conversation runs each turn as a task step that spawns a model loop in its long-lived sandbox
-([conversation turns](./core/conversation-turns.md)), on the model profile that the deployment
-configuration maps to the conversation role ([model profiles](./core/model-profiles.md)).
+The code is one Bun workspace, which the [code layout](./code-layout.md) describes: domain modules
+under `modules/`, adapters to outside systems under `adapters/`, the programs that run inside a
+sandbox under `guests/`, shared libraries under `libs/`, and the deployables under `apps/`. Modules
+never import adapters and never form a cycle, so the server, as the composition root, passes each
+module what it needs from the others. The conversation runs each turn as a task step that spawns a
+model loop in its long-lived sandbox ([conversation turns](./core/conversation-turns.md)), on the
+model profile that the deployment configuration maps to the conversation role
+([model profiles](./core/model-profiles.md)).
 
 ## The path of a tool call
 

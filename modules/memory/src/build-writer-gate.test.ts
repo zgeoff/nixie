@@ -52,6 +52,7 @@ test('it applies a staged memory with the message it cites as its evidence, outs
       checker: { verdict: 'asserted', model: 'claude-checker-1', failure: null },
     },
     evidence: { recordSequence: sequence, start: 12, end: 34 },
+    model: 'claude-writer-1',
   });
 });
 
@@ -326,6 +327,7 @@ test('it applies a staged retirement the checker confirms against the item text'
       checker: { verdict: 'asserted', model: 'claude-checker-1', failure: null },
     },
     evidence: { recordSequence: sequence, start: 0, end: 25 },
+    model: 'claude-writer-1',
   });
 
   expect(check).toHaveBeenCalledExactlyOnceWith({
