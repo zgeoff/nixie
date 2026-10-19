@@ -8,7 +8,7 @@ import type { ItemHistory } from './view-types';
 // diff, and your own changes to an item, its forget included.
 export type HostMemoryStore = Pick<
   MemoryStore,
-  'remember' | 'retire' | 'restore' | 'pin' | 'forget' | 'readHistory' | 'countSubjects'
+  'remember' | 'retire' | 'restore' | 'pin' | 'forget' | 'readHistory' | 'readSubjectCounts'
 > & { readonly proposals: MemoryProposals; readonly consolidations: MemoryConsolidations };
 
 // An answer to a proposal or a change, bound to the action hash the host command showed.
@@ -56,7 +56,7 @@ export interface HostMemory {
     answers: readonly HostChangeAnswer[],
   ) => Promise<readonly ChangeOutcome[]>;
   readonly rejectChange: (answer: HostChangeAnswer) => Promise<void>;
-  readonly countSubjects: () => Promise<MemorySubjectCounts>;
+  readonly readSubjectCounts: () => Promise<MemorySubjectCounts>;
 }
 
 // The memory store as the host commands reach it. An answer comes from a shell in nixie's
@@ -82,7 +82,7 @@ export function buildHostMemory(store: HostMemoryStore): HostMemory {
       ),
     rejectChange: (answer) =>
       store.consolidations.reject({ ...answer, identityID: hostIdentityID }),
-    countSubjects: () => store.countSubjects(),
+    readSubjectCounts: () => store.readSubjectCounts(),
   };
 }
 

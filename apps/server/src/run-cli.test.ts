@@ -164,7 +164,6 @@ test('it exits 1 from check-encoder when the encoder folder holds no model', asy
   );
 });
 
-// the test starts the API, the memory store and the socket, and a pin then reads the pinned core
 test('it pins a self-note from memory-pin', async () => {
   const ctx = await setupTest();
   const api = await startTestAPI();

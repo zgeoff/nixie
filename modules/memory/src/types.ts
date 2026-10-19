@@ -253,7 +253,7 @@ export interface MemoryStore {
   readonly readHistory: (itemID: string) => Promise<ItemHistory | null>;
 
   // how many items and proposals each subject holds, as the subjects migration's dry run counts them
-  readonly countSubjects: () => Promise<MemorySubjectCounts>;
+  readonly readSubjectCounts: () => Promise<MemorySubjectCounts>;
 
   // keeps the model's ratings of what the thread's latest recall delivered; changes no item
   readonly rate: (request: RateRequest) => Promise<void>;

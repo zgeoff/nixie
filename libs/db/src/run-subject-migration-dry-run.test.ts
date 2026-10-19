@@ -85,6 +85,22 @@ test('it refuses a path that holds no database', async () => {
   const ctx = await setupTest();
 
   expect(runSubjectMigrationDryRun(`${ctx.path}.missing`)).rejects.toMatchObject({
-    code: 'ENOENT',
+    code: 'SQLITE_CANTOPEN',
   });
+});
+
+test('it counts the rows a database still holds only in its write-ahead log, while its writer stays open', async () => {
+  const ctx = await setupTest();
+
+  await sql`pragma wal_autocheckpoint = 0`.execute(ctx.db);
+
+  await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
+    updated_sequence, short_id, kind) values
+    ('3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', 1, 'active', 0, 1, 1, 'b7kq2m9xza', 'self')`.execute(
+    ctx.db,
+  );
+
+  const report = await runSubjectMigrationDryRun(ctx.path);
+
+  expect(report.before.items).toStrictEqual({ owner: 0, shared: 0, self: 1 });
 });

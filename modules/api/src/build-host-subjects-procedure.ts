@@ -6,6 +6,6 @@ import type { ReadHostMemory } from './types';
 // operator compares with the subjects migration's dry run once the release starts.
 export function buildHostSubjectsProcedure(readMemory: ReadHostMemory) {
   return hostImplementer.memory.subjects.handler((options) =>
-    requireHostMemory(readMemory, options.errors.MEMORY_NOT_STARTED).countSubjects(),
+    requireHostMemory(readMemory, options.errors.MEMORY_NOT_STARTED).readSubjectCounts(),
   );
 }

@@ -96,4 +96,6 @@ The subjects command counts the memory items and proposals of each subject, owne
 from the running server. Its dry run reads no server: it copies a database file the operator names,
 such as a backup, runs every migration of the build on the copy, and prints the counts before and
 after, so the operator sees what the release's migrations do to memory before the release starts.
-The dry run never opens the file it names, so it leaves a backup as it found it.
+The dry run reads the file it names only through a read-only connection, which copies one snapshot
+of the database and its write-ahead log, so it never changes the database and a server that writes
+meanwhile never splits the copy.

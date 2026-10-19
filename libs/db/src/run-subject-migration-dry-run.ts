@@ -1,9 +1,10 @@
-import { copyFile, mkdtemp, rm, stat } from 'node:fs/promises';
+import { Database } from 'bun:sqlite';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { MemorySubjectCounts } from './count-memory-subjects';
-import { countMemorySubjects } from './count-memory-subjects';
 import { nixieSchema } from './nixie-schema';
+import type { MemorySubjectCounts } from './read-memory-subject-counts';
+import { readMemorySubjectCounts } from './read-memory-subject-counts';
 import { runMigrations } from './run-migrations';
 import { startDatabase } from './start-database';
 
@@ -17,23 +18,22 @@ export interface SubjectMigrationReport {
 }
 
 // Runs every migration this build writes on a copy of the database at path, such as a backup, and
-// reports the subject counts before and after. It copies the file and its write-ahead log byte for
-// byte and never opens the original, so the dry run leaves the database as it found it.
+// reports the subject counts before and after. It reads the original only through a read-only
+// connection, whose copy is one snapshot, so a server that writes meanwhile never splits the copy.
 export async function runSubjectMigrationDryRun(path: string): Promise<SubjectMigrationReport> {
   const dir = await mkdtemp(join(tmpdir(), 'nixie-subjects-dry-run-'));
 
   try {
     const copyPath = join(dir, 'nixie.db');
 
-    await copyFile(path, copyPath);
-    await createWriteAheadLogCopy(path, copyPath);
+    createSnapshotCopy(path, copyPath);
 
     const db = startDatabase(copyPath);
 
     try {
-      const before = await countMemorySubjects(db);
+      const before = await readMemorySubjectCounts(db);
       const migration = await runMigrations(db, { schema: nixieSchema, copyDir: dir });
-      const after = await countMemorySubjects(db);
+      const after = await readMemorySubjectCounts(db);
 
       return { from: migration.from, to: migration.to, before, after };
     } finally {
@@ -44,11 +44,13 @@ export async function runSubjectMigrationDryRun(path: string): Promise<SubjectMi
   }
 }
 
-// a database closed uncleanly keeps writes in its log, which the copy needs to count them
-async function createWriteAheadLogCopy(path: string, copyPath: string): Promise<void> {
-  const log = await stat(`${path}-wal`).catch(() => null);
+// copies the database, with the writes its log holds, in one read transaction
+function createSnapshotCopy(path: string, copyPath: string): void {
+  const source = new Database(path, { readonly: true });
 
-  if (log !== null) {
-    await copyFile(`${path}-wal`, `${copyPath}-wal`);
+  try {
+    source.run('vacuum into ?', [copyPath]);
+  } finally {
+    source.close();
   }
 }

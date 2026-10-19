@@ -13,17 +13,17 @@ export interface SubjectCount {
   readonly self: number;
 }
 
-// Counts the memory items and proposals of each subject. A database from before subjects counts
-// each self-note kind as self and every other row as owner, as the subjects migration maps them,
-// and a database from before memory counts none.
-export async function countMemorySubjects(db: Kysely<unknown>): Promise<MemorySubjectCounts> {
-  return {
-    items: await countTableSubjects(db, 'memory_items'),
-    proposals: await countTableSubjects(db, 'memory_proposals'),
-  };
+// Reads how many memory items and proposals each subject holds, in one transaction so both counts
+// see the same batches. A row with no subject counts by its kind, as the subjects migration maps
+// it, and a database from before memory counts none.
+export function readMemorySubjectCounts(db: Kysely<unknown>): Promise<MemorySubjectCounts> {
+  return db.transaction().execute(async (tx) => ({
+    items: await readTableSubjectCounts(tx, 'memory_items'),
+    proposals: await readTableSubjectCounts(tx, 'memory_proposals'),
+  }));
 }
 
-async function countTableSubjects(
+async function readTableSubjectCounts(
   db: Kysely<unknown>,
   table: 'memory_items' | 'memory_proposals',
 ): Promise<SubjectCount> {
