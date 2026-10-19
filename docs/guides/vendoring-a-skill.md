@@ -12,26 +12,32 @@ skill.
 
 - A checkout of your definitions repo whose `nixie.yaml` holds `format: 2`. Format 1 lists every
   file under `skills/` as unapplied.
-- bash with GNU `find`, `sort` and `sha256sum`. On macOS, install coreutils, or swap `sha256sum` for
-  `shasum -a 256`.
+- bash with GNU `find` and `sha256sum`, and Perl 5. On macOS, install coreutils, or swap `sha256sum`
+  for `shasum -a 256`.
 
 ## Steps
 
 1. Copy the skill's folder from the upstream repo at a full commit SHA into `skills/<name>/`, with
-   LF line endings. The folder name must match the `name` field in the skill's `SKILL.md`.
+   LF line endings. The folder name must match the `name` field in the skill's `SKILL.md`. The
+   `mkdir` creates `skills/` in a repo that holds no skill yet, because `cp` creates only the last
+   folder of its target.
 
    ```bash
    git -C <upstream_checkout> checkout <full_commit_sha>
+   mkdir -p skills
    cp -R <upstream_checkout>/skills/<name> skills/<name>
    ```
 
 2. Compute the folder's content hash from the definitions root. The parentheses run the hash in a
-   subshell inside the folder, so your shell stays at the root:
+   subshell inside the folder, so your shell stays at the root. The Perl line sorts the paths by
+   their UTF-16 code units, the order the seed hashes them in:
 
    ```bash
    ( cd skills/<name>
      { printf 'nixie-definitions-v1\n'
-       find . -type f ! -path '*/.*' | sed 's|^\./||' | LC_ALL=C sort | while IFS= read -r f; do
+       find . -type f ! -path '*/.*' | sed 's|^\./||' \
+         | perl -CS -MEncode -e 'print sort { encode("UTF-16BE", $a) cmp encode("UTF-16BE", $b) } <STDIN>' \
+         | while IFS= read -r f; do
          printf '%s\t%s\t%s\n' "$f" "$(wc -c < "$f" | tr -d ' ')" "$(sha256sum "$f" | cut -d' ' -f1)"
        done; } | sha256sum | cut -d' ' -f1 )
    ```
