@@ -232,7 +232,9 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
     spawn: async (command) => {
       await requireAwake();
 
-      return startGuest(state, { id, spec, own }, command.env?.['HOME']);
+      const home = findGuestHome(state.options.hostRoot, id, command.env ?? {});
+
+      return startGuest(state, { id, spec, own }, home);
     },
     copyIn: (files) => {
       for (const file of files) {
@@ -295,11 +297,11 @@ interface GuestSandbox {
 }
 
 // the guest of one spawn: it records each frame it receives and answers from the sandbox's disk
-function startGuest(state: StubState, sandbox: GuestSandbox, home: string | undefined) {
+function startGuest(state: StubState, sandbox: GuestSandbox, home: GuestHome | null) {
   const runWithGuestHome = (
-    run: (home: string) => Promise<readonly GuestFrame[]> | readonly GuestFrame[],
+    run: (home: GuestHome) => Promise<readonly GuestFrame[]> | readonly GuestFrame[],
   ) =>
-    home === undefined
+    home === null
       ? [{ type: 'failed', reason: 'error', detail: 'the conversation guest needs HOME' } as const]
       : run(home);
 
@@ -356,24 +358,35 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
   });
 }
 
-// The HOME a command sets is the guest's home in both forms. A command with no HOME has its home at
-// the guest's root, whose own path is the sandbox's folder under the host root, if one is given.
 function resolveHome(
   hostRoot: string | undefined,
   id: string,
   env: Readonly<Record<string, string>>,
 ): GuestHome {
+  const home = findGuestHome(hostRoot, id, env);
+
+  if (home === null) {
+    throw new Error('the guest command sets no HOME');
+  }
+
+  return home;
+}
+
+// The HOME a command sets is the guest's home in both forms. A command with no HOME has its home at
+// the guest's root, whose own path is the sandbox's folder under the host root; with no host root it
+// has none.
+function findGuestHome(
+  hostRoot: string | undefined,
+  id: string,
+  env: Readonly<Record<string, string>>,
+): GuestHome | null {
   const home = env['HOME'];
 
   if (home !== undefined) {
     return { copyPath: home, ownPath: home };
   }
 
-  if (hostRoot === undefined) {
-    throw new Error('the guest command sets no HOME');
-  }
-
-  return { copyPath: '/', ownPath: join(hostRoot, id) };
+  return hostRoot === undefined ? null : { copyPath: '/', ownPath: join(hostRoot, id) };
 }
 
 // every file under the directory down to the depth, relative to it; the disk holds files only, so a

@@ -540,6 +540,27 @@ test("it gives a guest command with no HOME the guest's root, which is the sandb
   expect(home).toStrictEqual({ copyPath: '/', ownPath: `/srv/sandboxes/${sandbox.id}` });
 });
 
+test('it runs a turn with no HOME under the host root, in the project folder of the guest root', async () => {
+  const ctx = await setupTest();
+
+  const stub = buildStubGuestSandboxes({
+    recorder: ctx.recorder.recorder,
+    countTokens: (text) => Math.ceil(text.length / 4),
+    hostRoot: '/srv/sandboxes',
+  });
+
+  const sandbox = await stub.adapter.create(ctx.spec);
+  const run = await runGuestFrame(sandbox, buildMockTurnFrame(), {});
+
+  invariant(run.ended !== null);
+
+  const listed = await sandbox.collectFiles('/.claude/projects');
+
+  expect(listed).toStrictEqual([
+    `-srv-sandboxes-${sandbox.id}-conversation/${run.ended.boundary.sessionID}.jsonl`,
+  ]);
+});
+
 test('it lists every file under a directory at any depth, relative to it', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);

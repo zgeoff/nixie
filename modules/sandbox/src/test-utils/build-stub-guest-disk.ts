@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { z } from 'zod';
+import type { GuestHome } from '../types';
 
 // One chain entry of a session: the uuid the SDK stamps on it, who wrote it, its text, and a rough
 // count of the tokens it adds to the context.
@@ -19,20 +20,20 @@ export interface StubGuestDisk {
   readonly files: Map<string, Uint8Array<ArrayBuffer>>;
 
   // the session's entries from its transcript under the home, or null when the home holds none
-  readonly readSession: (home: string, sessionID: string) => readonly StubSessionEntry[] | null;
+  readonly readSession: (home: GuestHome, sessionID: string) => readonly StubSessionEntry[] | null;
 
   // writes the transcript of a session, one JSON line per entry, as the CLI does
   readonly writeSession: (
-    home: string,
+    home: GuestHome,
     sessionID: string,
     entries: readonly StubSessionEntry[],
   ) => void;
 
   // removes every transcript, staged copy and side folder but the kept session's
-  readonly removeSessionsExcept: (home: string, keep: string | null) => void;
+  readonly removeSessionsExcept: (home: GuestHome, keep: string | null) => void;
 
   // removes the CLI's config folder and the working directory, as a purge does
-  readonly removeState: (home: string) => void;
+  readonly removeState: (home: GuestHome) => void;
 
   // removes every session transcript and side folder, whatever the home
   readonly removeAllSessions: () => void;
@@ -62,7 +63,7 @@ export function buildStubGuestDisk(): StubGuestDisk {
       );
     },
     removeSessionsExcept: (home, keep) => {
-      const projectsDir = `${join(home, configProjectsDir)}/`;
+      const projectsDir = `${join(home.copyPath, configProjectsDir)}/`;
 
       for (const path of files.keys()) {
         if (path.startsWith(projectsDir) && !isKeptSession(path.slice(projectsDir.length), keep)) {
@@ -71,7 +72,7 @@ export function buildStubGuestDisk(): StubGuestDisk {
       }
     },
     removeState: (home) => {
-      const roots = [join(home, '.claude'), join(home, workDirName)];
+      const roots = [join(home.copyPath, '.claude'), join(home.copyPath, workDirName)];
 
       for (const path of files.keys()) {
         if (roots.some((root) => path.startsWith(`${root}/`))) {
@@ -89,10 +90,12 @@ export function buildStubGuestDisk(): StubGuestDisk {
   };
 }
 
-// the CLI's project folder for the guest's working directory: its path with every character but a
-// letter or a digit turned into a hyphen
-function getProjectDir(home: string): string {
-  return join(home, configProjectsDir, join(home, workDirName).replaceAll(/[^a-zA-Z0-9]/gu, '-'));
+// the CLI's project folder for the guest's working directory: the path its own processes see, with
+// every character but a letter or a digit turned into a hyphen
+function getProjectDir(home: GuestHome): string {
+  const workDir = join(home.ownPath, workDirName);
+
+  return join(home.copyPath, configProjectsDir, workDir.replaceAll(/[^a-zA-Z0-9]/gu, '-'));
 }
 
 // a path under the projects folder is <project>/<id>.jsonl or <project>/<id>/<side file>

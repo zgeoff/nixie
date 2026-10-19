@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { buildStubGuestDisk } from './build-stub-guest-disk';
 import { readStubGuestHistory } from './read-stub-guest-history';
 
-const home = '/home/nixie';
+const home = { copyPath: '/home/nixie', ownPath: '/home/nixie' };
 
 const first = {
   uuid: '6e697869-0000-8000-8000-000000000001',
