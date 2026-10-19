@@ -17,11 +17,11 @@ function readPrompts(): Map<string, string> {
 }
 
 function readRows(dir: string): Record<string, unknown>[] {
-  const prompts = readPrompts(),
-    rows = readFileSync(join(dir, 'results.jsonl'), 'utf8')
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as Record<string, unknown>);
+  const prompts = readPrompts();
+  const rows = readFileSync(join(dir, 'results.jsonl'), 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
   for (const row of rows) {
     row.promptText ??= prompts.get(String(row.prompt));
   }

@@ -1,11 +1,11 @@
 // Forwards a profile's requests to its endpoint and drops the system blocks that the CLI adds before
 // the persona, so a non-Anthropic model sees only the persona as its system prompt.
 const cliBlocks = new Set([
-    "You are Claude Code, Anthropic's official CLI for Claude.",
-    "You are Claude Code, Anthropic's official CLI for Claude, running within the Claude Agent SDK.",
-    "You are a Claude agent, built on Anthropic's Claude Agent SDK.",
-  ]),
-  proxies = new Map<string, string>();
+  "You are Claude Code, Anthropic's official CLI for Claude.",
+  "You are Claude Code, Anthropic's official CLI for Claude, running within the Claude Agent SDK.",
+  "You are a Claude agent, built on Anthropic's Claude Agent SDK.",
+]);
+const proxies = new Map<string, string>();
 
 interface TextBlock {
   text?: string;
@@ -37,9 +37,9 @@ async function readBody(request: Request): Promise<string | undefined> {
 }
 
 async function sendUpstream(target: string, request: Request): Promise<Response> {
-  const body = await readBody(request),
-    headers = new Headers(request.headers),
-    url = new URL(request.url);
+  const body = await readBody(request);
+  const headers = new Headers(request.headers);
+  const url = new URL(request.url);
 
   // Ask for an uncompressed reply: fetch would decompress it but keep the encoding header.
   headers.set('accept-encoding', 'identity');

@@ -11,8 +11,8 @@ export interface Heard {
   vadEndAt: number;
 }
 
-const windowSamples = 512,
-  windowMs = (windowSamples / sampleRate) * 1000;
+const windowSamples = 512;
+const windowMs = (windowSamples / sampleRate) * 1000;
 
 // The caller's audio holds speech up to speechEndSample, then silence. The clock that matters
 // starts when the last speech sample reaches the detector.
@@ -24,7 +24,8 @@ export async function listenToCaller(
 ): Promise<Heard> {
   vad.reset();
   const startedAt = performance.now();
-  let speechEndAt: number | undefined, vadEndAt: number | undefined;
+  let speechEndAt: number | undefined;
+  let vadEndAt: number | undefined;
   for (let offset = 0, index = 0; offset < audio.length; offset += windowSamples, index++) {
     // The window arrives at its place in the schedule, as a microphone delivers it. A late wake or
     // a slow decode before it counts toward the latency, never against it.

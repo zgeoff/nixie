@@ -21,21 +21,21 @@ import { createSpeechToText, createTextToSpeech, createVad, sampleRate } from '.
 
 // The persona asks for the opening acknowledgement from decision 0040.
 const persona = [
-    'You are Nixie, a warm and brief personal assistant on a voice call.',
-    'Open every reply with a short acknowledgement of two to four words, such as "Sure, let me think." or "Good question.",',
-    'that never claims an outcome or makes a promise.',
-    'Then answer in two or three short spoken sentences, with no lists and no markdown.',
-  ].join(' '),
-  model = 'claude-haiku-5-5',
-  out = readFlag('--out') ?? 'results/bench.jsonl',
-  rounds = Number(readFlag('--rounds') ?? 2),
-  bargeIns = Number(readFlag('--barge-ins') ?? 3),
-  silenceMs = Number(readFlag('--silence-ms') ?? 500),
-  sttName = (readFlag('--stt') ?? 'zipformer') as SpeechToTextName,
-  ttsName = (readFlag('--tts') ?? 'piper') as TextToSpeechName,
-  // The barge-in starts this long after nixie's first audio starts to play.
-  bargeInAfterMs = Number(readFlag('--barge-in-after-ms') ?? 1500),
-  control = process.argv.includes('--control');
+  'You are Nixie, a warm and brief personal assistant on a voice call.',
+  'Open every reply with a short acknowledgement of two to four words, such as "Sure, let me think." or "Good question.",',
+  'that never claims an outcome or makes a promise.',
+  'Then answer in two or three short spoken sentences, with no lists and no markdown.',
+].join(' ');
+const model = 'claude-haiku-5-5';
+const out = readFlag('--out') ?? 'results/bench.jsonl';
+const rounds = Number(readFlag('--rounds') ?? 2);
+const bargeIns = Number(readFlag('--barge-ins') ?? 3);
+const silenceMs = Number(readFlag('--silence-ms') ?? 500);
+const sttName = (readFlag('--stt') ?? 'zipformer') as SpeechToTextName;
+const ttsName = (readFlag('--tts') ?? 'piper') as TextToSpeechName;
+// The barge-in starts this long after nixie's first audio starts to play.
+const bargeInAfterMs = Number(readFlag('--barge-in-after-ms') ?? 1500);
+const control = process.argv.includes('--control');
 
 function readFlag(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -146,9 +146,9 @@ function startReply(tts: TextToSpeech): {
   stop: () => void;
 } {
   const reply: Reply = { sentences: [], text: '' };
-  let pending = '',
-    queue = Promise.resolve(),
-    stopped = false;
+  let pending = '';
+  let queue = Promise.resolve();
+  let stopped = false;
   // Queues the text after the last sentence break, once the turn's text is complete.
   function flushPending(): void {
     if (pending.trim()) {
@@ -198,9 +198,9 @@ function startReply(tts: TextToSpeech): {
 // Plays the sentences back to back from the first one's ready time, and counts each wait for a
 // sentence that was not ready when the one before it finished.
 function planPlayback(sentences: Sentence[]): { gaps: number; gapMs: number; playEndAt: number } {
-  let playEndAt = 0,
-    gaps = 0,
-    gapMs = 0;
+  let playEndAt = 0;
+  let gaps = 0;
+  let gapMs = 0;
   for (const sentence of sentences) {
     if (playEndAt > 0 && sentence.readyAt > playEndAt) {
       gaps++;
@@ -212,20 +212,20 @@ function planPlayback(sentences: Sentence[]): { gaps: number; gapMs: number; pla
 }
 
 mkdirSync(dirname(out), { recursive: true });
-const stt = createSpeechToText(control ? 'zipformer' : sttName),
-  tts: TextToSpeech = control
-    ? {
-        name: 'piper',
-        sampleRate,
-        speak: () =>
-          Promise.resolve({ firstChunkMs: 0, sampleRate, samples: new Float32Array(), totalMs: 0 }),
-      }
-    : createTextToSpeech(ttsName),
-  endVad = createVad(silenceMs),
-  onsetVad = createVad(silenceMs),
-  stream: Stream = { closed: false, events: new EventTarget(), queue: [] },
-  session = query({ options: buildOptions(), prompt: sendQueued(stream) }),
-  messages = session[Symbol.asyncIterator]();
+const stt = createSpeechToText(control ? 'zipformer' : sttName);
+const tts: TextToSpeech = control
+  ? {
+      name: 'piper',
+      sampleRate,
+      speak: () =>
+        Promise.resolve({ firstChunkMs: 0, sampleRate, samples: new Float32Array(), totalMs: 0 }),
+    }
+  : createTextToSpeech(ttsName);
+const endVad = createVad(silenceMs);
+const onsetVad = createVad(silenceMs);
+const stream: Stream = { closed: false, events: new EventTarget(), queue: [] };
+const session = query({ options: buildOptions(), prompt: sendQueued(stream) });
+const messages = session[Symbol.asyncIterator]();
 await tts.speak('Hello.');
 
 interface TurnResult extends ResultFields {
@@ -244,8 +244,8 @@ async function readTurn(onText: (delta: string, at: number) => void): Promise<Tu
     if (next.done) {
       throw new Error('the session ended mid-turn');
     }
-    const message: SDKMessage = next.value,
-      at = performance.now();
+    const message: SDKMessage = next.value;
+    const at = performance.now();
     if (message.type === 'stream_event' && message.parent_tool_use_id === null) {
       const { event } = message;
       if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
@@ -282,12 +282,12 @@ function writeRow(row: Record<string, unknown>): void {
 }
 
 async function runTurn(index: number): Promise<{ heard: Heard; reply: Reply }> {
-  const line = await loadCallerLine(index),
-    heard = control
-      ? buildTypedLine(line.text)
-      : await listenToCaller(line.audio, line.speechEndSample, stt.start(), endVad),
-    speaker = startReply(tts),
-    promptAt = performance.now();
+  const line = await loadCallerLine(index);
+  const heard = control
+    ? buildTypedLine(line.text)
+    : await listenToCaller(line.audio, line.speechEndSample, stt.start(), endVad);
+  const speaker = startReply(tts);
+  const promptAt = performance.now();
   sendPrompt(stream, heard.transcript);
   const result = await readTurn(speaker.addText);
   await speaker.finish();
@@ -301,20 +301,20 @@ function buildTypedLine(text: string): Heard {
 }
 
 function writeTurnRow(kind: string, round: number, index: number, heard: Heard, reply: Reply): void {
-  const end = heard.speechEndAt,
-    first = reply.sentences[0],
-    last = reply.sentences.at(-1),
-    playback = planPlayback(reply.sentences),
-    // A control turn speaks nothing, so its row holds no audio or playback times.
-    audio = control
-      ? {}
-      : {
-          firstAudioMs: first ? first.readyAt - end : undefined,
-          fullAudioMs: last ? last.readyAt - end : undefined,
-          gapMs: playback.gapMs,
-          gaps: playback.gaps,
-          playEndMs: playback.playEndAt - end,
-        };
+  const end = heard.speechEndAt;
+  const first = reply.sentences[0];
+  const last = reply.sentences.at(-1);
+  const playback = planPlayback(reply.sentences);
+  // A control turn speaks nothing, so its row holds no audio or playback times.
+  const audio = control
+    ? {}
+    : {
+        firstAudioMs: first ? first.readyAt - end : undefined,
+        fullAudioMs: last ? last.readyAt - end : undefined,
+        gapMs: playback.gapMs,
+        gaps: playback.gaps,
+        playEndMs: playback.playEndAt - end,
+      };
   writeRow({
     ...audio,
     ackWords: first?.text.split(/\s+/).length,
@@ -355,15 +355,15 @@ for (let round = 0; round < rounds; round++) {
 // Barge-in: the caller talks over a long reply. The onset detector hears the caller's audio from
 // the barge-in's start; playback stops when it reports speech, and the turn is interrupted if the
 // model is still writing.
-const bargeLine = await loadCallerLine(lines.length),
-  longIndex = lines.length + 1;
+const bargeLine = await loadCallerLine(lines.length);
+const longIndex = lines.length + 1;
 for (let trial = 0; trial < bargeIns; trial++) {
-  const line = await loadCallerLine(longIndex),
-    heard = await listenToCaller(line.audio, line.speechEndSample, stt.start(), endVad),
-    speaker = startReply(tts);
+  const line = await loadCallerLine(longIndex);
+  const heard = await listenToCaller(line.audio, line.speechEndSample, stt.start(), endVad);
+  const speaker = startReply(tts);
   sendPrompt(stream, heard.transcript);
-  let resultSeen = false,
-    turnError: unknown;
+  let resultSeen = false;
+  let turnError: unknown;
   const turn = readTurn(speaker.addText).then((result) => {
     resultSeen = true;
     // The last sentence joins the queue as soon as the text ends, as on an ordinary turn.
@@ -385,8 +385,8 @@ for (let trial = 0; trial < bargeIns; trial++) {
     }
     await Bun.sleep(5);
   }
-  const playStartAt = speaker.reply.sentences[0]?.readyAt ?? performance.now(),
-    bargeStartAt = playStartAt + bargeInAfterMs;
+  const playStartAt = speaker.reply.sentences[0]?.readyAt ?? performance.now();
+  const bargeStartAt = playStartAt + bargeInAfterMs;
   await waitUntil(bargeStartAt);
   onsetVad.reset();
   const window = 512;
@@ -400,15 +400,15 @@ for (let trial = 0; trial < bargeIns; trial++) {
     }
   }
   speaker.stop();
-  const interruptedAt = performance.now(),
-    wasWriting = !resultSeen;
+  const interruptedAt = performance.now();
+  const wasWriting = !resultSeen;
   if (wasWriting) {
     await session.interrupt();
   }
-  const result = await turn,
-    sentences = await speaker.finish(),
-    heardMs = (detectedAt ?? interruptedAt) - playStartAt,
-    spoken = planPlayback(sentences);
+  const result = await turn;
+  const sentences = await speaker.finish();
+  const heardMs = (detectedAt ?? interruptedAt) - playStartAt;
+  const spoken = planPlayback(sentences);
   writeRow({
     bargeInAfterMs,
     costUSD: result.costUSD,
@@ -427,12 +427,12 @@ for (let trial = 0; trial < bargeIns; trial++) {
   console.log(`barge-in ${trial}: detected after ${detectedAt === undefined ? '-' : Math.round(detectedAt - bargeStartAt)} ms`);
   // The caller's barge-in line becomes the next prompt, as it would on a call.
   const after = await listenToCaller(
-      bargeLine.audio,
-      bargeLine.speechEndSample,
-      stt.start(),
-      endVad,
-    ),
-    next = startReply(tts);
+    bargeLine.audio,
+    bargeLine.speechEndSample,
+    stt.start(),
+    endVad,
+  );
+  const next = startReply(tts);
   sendPrompt(stream, after.transcript);
   const nextResult = await readTurn(next.addText);
   await next.finish();

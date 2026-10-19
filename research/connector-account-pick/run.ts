@@ -40,29 +40,29 @@ interface Job {
 }
 
 const CONFIGS: Record<string, { effort: string; model: string }> = {
-    'haiku-low': { effort: 'low', model: 'claude-haiku-5-5' },
-    'opus-low': { effort: 'low', model: 'claude-opus-5-5' },
-    'sonnet-low': { effort: 'low', model: 'claude-sonnet-5-5' },
-  },
-  here = import.meta.dir,
-  casesPath = join(here, 'cases.json'),
-  cases = JSON.parse(readFileSync(casesPath, 'utf8')) as Cases,
-  argv = process.argv,
-  out = resolve(readFlag(argv, '--out') ?? 'results/account'),
-  resultsPath = join(out, 'results.jsonl'),
-  configs = (readFlag(argv, '--configs') ?? 'haiku-low').split(','),
-  arms = (readFlag(argv, '--arms') ?? 'id-label,id-only,id-tool-desc,label').split(','),
-  samples = Number(readFlag(argv, '--samples') ?? '1'),
-  jobs = Number(readFlag(argv, '--jobs') ?? '6'),
-  systemPrompt = [
-    `You are the personal assistant of ${cases.owner}. Act through your tools.`,
-    `When a request does not make clear which of ${cases.owner}'s accounts to use, ask which one before you act.`,
-    'Today is 2026-10-15.',
-  ].join(' ');
+  'haiku-low': { effort: 'low', model: 'claude-haiku-5-5' },
+  'opus-low': { effort: 'low', model: 'claude-opus-5-5' },
+  'sonnet-low': { effort: 'low', model: 'claude-sonnet-5-5' },
+};
+const here = import.meta.dir;
+const casesPath = join(here, 'cases.json');
+const cases = JSON.parse(readFileSync(casesPath, 'utf8')) as Cases;
+const argv = process.argv;
+const out = resolve(readFlag(argv, '--out') ?? 'results/account');
+const resultsPath = join(out, 'results.jsonl');
+const configs = (readFlag(argv, '--configs') ?? 'haiku-low').split(',');
+const arms = (readFlag(argv, '--arms') ?? 'id-label,id-only,id-tool-desc,label').split(',');
+const samples = Number(readFlag(argv, '--samples') ?? '1');
+const jobs = Number(readFlag(argv, '--jobs') ?? '6');
+const systemPrompt = [
+  `You are the personal assistant of ${cases.owner}. Act through your tools.`,
+  `When a request does not make clear which of ${cases.owner}'s accounts to use, ask which one before you act.`,
+  'Today is 2026-10-15.',
+].join(' ');
 
 mkdirSync(out, { recursive: true });
-const done = collectDoneKeys(),
-  queue = planJobs().filter((job) => !done.has(buildKey(job)));
+const done = collectDoneKeys();
+const queue = planJobs().filter((job) => !done.has(buildKey(job)));
 console.log(`${queue.length} runs to do, ${done.size} already done`);
 await Promise.all(Array.from({ length: jobs }, () => drainQueue()));
 
@@ -125,10 +125,10 @@ async function runJob(job: Job): Promise<Record<string, unknown> & { calls: unkn
   if (!config) {
     throw new Error(`no config ${job.config}`);
   }
-  const dir = mkdtempSync(join(tmpdir(), 'account-eval-')),
-    log = join(dir, 'calls.jsonl'),
-    tool = cases.sets[job.item.set]?.tool ?? '',
-    mcpPath = join(dir, 'mcp.json');
+  const dir = mkdtempSync(join(tmpdir(), 'account-eval-'));
+  const log = join(dir, 'calls.jsonl');
+  const tool = cases.sets[job.item.set]?.tool ?? '';
+  const mcpPath = join(dir, 'mcp.json');
   mkdirSync(join(dir, 'cwd'));
   writeFileSync(
     mcpPath,
@@ -147,38 +147,38 @@ async function runJob(job: Job): Promise<Record<string, unknown> & { calls: unkn
       },
     }),
   );
-  const started = Date.now(),
-    output = await runClaude(
-      [
-        '-p',
-        job.item.prompt,
-        '--model',
-        config.model,
-        '--effort',
-        config.effort,
-        '--system-prompt',
-        systemPrompt,
-        '--tools',
-        '',
-        '--mcp-config',
-        mcpPath,
-        '--strict-mcp-config',
-        '--no-session-persistence',
-        '--max-turns',
-        '4',
-        '--output-format',
-        'json',
-        '--allowedTools',
-        `mcp__acct__${tool}`,
-      ],
-      join(dir, 'cwd'),
-    ),
-    calls = existsSync(log)
-      ? readFileSync(log, 'utf8')
-          .split('\n')
-          .filter(Boolean)
-          .map((line) => JSON.parse(line) as unknown)
-      : [];
+  const started = Date.now();
+  const output = await runClaude(
+    [
+      '-p',
+      job.item.prompt,
+      '--model',
+      config.model,
+      '--effort',
+      config.effort,
+      '--system-prompt',
+      systemPrompt,
+      '--tools',
+      '',
+      '--mcp-config',
+      mcpPath,
+      '--strict-mcp-config',
+      '--no-session-persistence',
+      '--max-turns',
+      '4',
+      '--output-format',
+      'json',
+      '--allowedTools',
+      `mcp__acct__${tool}`,
+    ],
+    join(dir, 'cwd'),
+  );
+  const calls = existsSync(log)
+    ? readFileSync(log, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line) as unknown)
+    : [];
   rmSync(dir, { force: true, recursive: true });
   const base = {
     arm: job.arm,
@@ -216,10 +216,10 @@ async function runClaude(
   args: string[],
   cwd: string,
 ): Promise<{ code: number | null; stderr: string; stdout: string }> {
-  const child = spawn('claude', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] }),
-    timer = setTimeout(() => child.kill('SIGKILL'), 180_000);
-  let stdout = '',
-    stderr = '';
+  const child = spawn('claude', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+  const timer = setTimeout(() => child.kill('SIGKILL'), 180_000);
+  let stdout = '';
+  let stderr = '';
   child.stdout.on('data', (chunk: Buffer) => {
     stdout += chunk.toString();
   });

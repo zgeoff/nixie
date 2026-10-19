@@ -36,15 +36,15 @@ export function buildRunScore(
   calls: Call[],
 ): RunScore {
   const toValue = (connection: Connection): string =>
-      arm === 'label' ? connection.label : connection.id,
-    allowed = connections.map(toValue),
-    target = connections.find((connection) => connection.label === item.expect),
-    expected = target ? toValue(target) : null,
-    outcomes = calls.map((call) => pickCallOutcome(call, allowed, expected)),
-    first = outcomes[0] ?? 'none',
-    wrongAccountCalls = outcomes.filter((outcome) => outcome === 'wrong-account').length,
-    invalidCalls = outcomes.filter((outcome) => outcome === 'invalid').length,
-    lastGood = calls.findLast((call) => !call.error);
+    arm === 'label' ? connection.label : connection.id;
+  const allowed = connections.map(toValue);
+  const target = connections.find((connection) => connection.label === item.expect);
+  const expected = target ? toValue(target) : null;
+  const outcomes = calls.map((call) => pickCallOutcome(call, allowed, expected));
+  const first = outcomes[0] ?? 'none';
+  const wrongAccountCalls = outcomes.filter((outcome) => outcome === 'wrong-account').length;
+  const invalidCalls = outcomes.filter((outcome) => outcome === 'invalid').length;
+  const lastGood = calls.findLast((call) => !call.error);
   let final: RunScore['final'] = 'none';
   if (lastGood) {
     const value = lastGood.args.connection;

@@ -39,8 +39,8 @@ interface Row extends Cell {
   reportedModel: string | undefined;
 }
 
-const DEFAULT_MODELS = ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-4-5-20251001'],
-  here = import.meta.dir;
+const DEFAULT_MODELS = ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-4-5-20251001'];
+const here = import.meta.dir;
 
 function readList(argv: string[], name: string, all: string[]): string[] {
   return readFlag(argv, name)?.split(',').filter(Boolean) ?? all;
@@ -98,8 +98,8 @@ function getOutFile(argv: string[]): string {
 
 // Skips the cells that the output file already holds, so a stopped run picks up where it ended.
 function planRun(argv: string[], outFile: string): Run {
-  const done = readDone(outFile),
-    prompts = readPrompts();
+  const done = readDone(outFile);
+  const prompts = readPrompts();
   return {
     cells: buildCells(argv, prompts).filter((cell) => !done.has(getKey(cell))),
     outFile,
@@ -123,25 +123,25 @@ function readRow(row: Row, message: SDKMessage): void {
 }
 
 async function runCell(plan: Run, cell: Cell): Promise<Row> {
-  const cwd = mkdtempSync(join(tmpdir(), 'model-eval-')),
-    row: Row = {
-      ...cell,
-      costUsd: undefined,
-      durationMs: 0,
-      error: undefined,
-      outputTokens: undefined,
-      reply: '',
-      reportedModel: undefined,
-    },
-    settings: Settings = {
-      cwd,
-      mode: 'replace',
-      model: cell.model,
-      persona: join(here, 'personas', `${cell.persona}.md`),
-      profile: plan.profile,
-      tools: [],
-    },
-    started = Date.now();
+  const cwd = mkdtempSync(join(tmpdir(), 'model-eval-'));
+  const row: Row = {
+    ...cell,
+    costUsd: undefined,
+    durationMs: 0,
+    error: undefined,
+    outputTokens: undefined,
+    reply: '',
+    reportedModel: undefined,
+  };
+  const settings: Settings = {
+    cwd,
+    mode: 'replace',
+    model: cell.model,
+    persona: join(here, 'personas', `${cell.persona}.md`),
+    profile: plan.profile,
+    tools: [],
+  };
+  const started = Date.now();
   try {
     const options = {
       ...buildOptions(settings, readFileSync(settings.persona, 'utf8')),
@@ -176,9 +176,9 @@ async function runWorker(plan: Run, queue: Cell[]): Promise<void> {
 }
 
 async function run(argv: string[]): Promise<void> {
-  const jobs = Number(readFlag(argv, '--jobs') ?? '4'),
-    plan = planRun(argv, getOutFile(argv)),
-    queue = [...plan.cells];
+  const jobs = Number(readFlag(argv, '--jobs') ?? '4');
+  const plan = planRun(argv, getOutFile(argv));
+  const queue = [...plan.cells];
   console.log(`${plan.cells.length} cells to run, ${jobs} at a time, into ${plan.outFile}`);
   await Promise.all(Array.from({ length: jobs }, () => runWorker(plan, queue)));
 }

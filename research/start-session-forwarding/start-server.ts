@@ -1,4 +1,3 @@
-// oxlint-disable one-var -- spike code
 // Serves the built Start app as its own process on Bun: static client assets from dist/client, and
 // every other request through Start's server entry.
 import { join } from 'node:path';
@@ -14,8 +13,8 @@ const server = Bun.serve({
   async fetch(request) {
     const pathname = new URL(request.url).pathname;
     if (pathname.startsWith('/assets/')) {
-      const file = Bun.file(join(clientDir, pathname)),
-        found = await file.exists();
+      const file = Bun.file(join(clientDir, pathname));
+      const found = await file.exists();
       if (found) {
         return new Response(file);
       }

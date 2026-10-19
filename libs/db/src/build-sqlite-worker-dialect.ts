@@ -67,9 +67,10 @@ interface PendingRequest {
 }
 
 function startSqliteWorker(): SqliteWorker {
-  const ids = { next: 0 },
-    pending = new Map<number, PendingRequest>(),
-    worker = new Worker(new URL(getSqliteWorkerFile(), import.meta.url).href);
+  const ids = { next: 0 };
+
+  const pending = new Map<number, PendingRequest>();
+  const worker = new Worker(new URL(getSqliteWorkerFile(), import.meta.url).href);
 
   worker.addEventListener('message', (event: MessageEvent<WorkerResponse>) => {
     const request = pending.get(event.data.id);
@@ -91,8 +92,8 @@ function startSqliteWorker(): SqliteWorker {
 
   return {
     send(request) {
-      const id = ids.next,
-        promise = Promise.withResolvers<WorkerQueryResult>();
+      const id = ids.next;
+      const promise = Promise.withResolvers<WorkerQueryResult>();
 
       ids.next += 1;
 

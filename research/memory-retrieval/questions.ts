@@ -1,4 +1,3 @@
-/* oxlint-disable one-var -- a throwaway spike */
 // Questions in 2 forms: the owner message for per-turn retrieval, and recall-tool keywords.
 // Types: lexical shares a word with gold, paraphrase does not, latest has only the current version
 // as gold, and multi needs several items.

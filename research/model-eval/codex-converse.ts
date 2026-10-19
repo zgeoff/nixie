@@ -45,33 +45,33 @@ interface CodexEvent {
 }
 
 // Codex reports these items itself when a feature is off; they are not tool calls by the model.
-const NOTICE_ITEMS = new Set(['agent_message', 'error', 'reasoning']),
-  QUIET_FEATURES = [
-    'apps',
-    'browser_use',
-    'browser_use_external',
-    'code_mode_host',
-    'computer_use',
-    'goals',
-    'hooks',
-    'image_generation',
-    'in_app_browser',
-    'multi_agent',
-    'plugin_sharing',
-    'plugins',
-    'realtime_conversation',
-    'remote_plugin',
-    'shell_snapshot',
-    'shell_tool',
-    'skill_mcp_dependency_install',
-    'skill_search',
-    'sleep_tool',
-    'tool_suggest',
-    'unified_exec',
-    'view_image',
-    'workspace_dependencies',
-    'worktrees',
-  ];
+const NOTICE_ITEMS = new Set(['agent_message', 'error', 'reasoning']);
+const QUIET_FEATURES = [
+  'apps',
+  'browser_use',
+  'browser_use_external',
+  'code_mode_host',
+  'computer_use',
+  'goals',
+  'hooks',
+  'image_generation',
+  'in_app_browser',
+  'multi_agent',
+  'plugin_sharing',
+  'plugins',
+  'realtime_conversation',
+  'remote_plugin',
+  'shell_snapshot',
+  'shell_tool',
+  'skill_mcp_dependency_install',
+  'skill_search',
+  'sleep_tool',
+  'tool_suggest',
+  'unified_exec',
+  'view_image',
+  'workspace_dependencies',
+  'worktrees',
+];
 
 function readScript(dir: string): Script[] {
   const sections = readFileSync(join(dir, 'script.md'), 'utf8').split(/^## /mu).slice(1);
@@ -110,9 +110,9 @@ enabled = false
 }
 
 function createConversation(plan: Plan, persona: string): Conversation {
-  const codexHome = mkdtempSync(join(tmpdir(), 'model-eval-codex-')),
-    fakeHome = mkdtempSync(join(tmpdir(), 'model-eval-home-')),
-    workDir = mkdtempSync(join(tmpdir(), 'model-eval-'));
+  const codexHome = mkdtempSync(join(tmpdir(), 'model-eval-codex-'));
+  const fakeHome = mkdtempSync(join(tmpdir(), 'model-eval-home-'));
+  const workDir = mkdtempSync(join(tmpdir(), 'model-eval-'));
   appendFileSync(join(codexHome, 'config.toml'), buildConfig(plan));
   symlinkSync(join(homedir(), '.codex', 'auth.json'), join(codexHome, 'auth.json'));
   return {
@@ -127,13 +127,13 @@ function createConversation(plan: Plan, persona: string): Conversation {
 
 function parseEvents(stdout: string): Reply {
   const events = stdout
-      .split('\n')
-      .filter((line) => line.startsWith('{'))
-      .map((line) => JSON.parse(line) as CodexEvent),
-    failed = events.find((event) => event.type === 'turn.failed' || event.type === 'error'),
-    items = events.flatMap((event) =>
-      event.type === 'item.completed' && event.item ? [event.item] : [],
-    );
+    .split('\n')
+    .filter((line) => line.startsWith('{'))
+    .map((line) => JSON.parse(line) as CodexEvent);
+  const failed = events.find((event) => event.type === 'turn.failed' || event.type === 'error');
+  const items = events.flatMap((event) =>
+    event.type === 'item.completed' && event.item ? [event.item] : [],
+  );
   return {
     durationMs: 0,
     error: failed ? JSON.stringify(failed) : undefined,
@@ -165,13 +165,13 @@ function startCodex(
 }
 
 async function sendTurn(conversation: Conversation, text: string): Promise<Reply> {
-  const begin = Date.now(),
-    child = startCodex(conversation, text),
-    output = await Promise.all([
-      new Response(child.stdout).text(),
-      new Response(child.stderr).text(),
-    ]),
-    reply = parseEvents(output[0]);
+  const begin = Date.now();
+  const child = startCodex(conversation, text);
+  const output = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
+  const reply = parseEvents(output[0]);
   await child.exited;
   reply.durationMs = Date.now() - begin;
   if (child.exitCode !== 0 && !reply.error) {
@@ -186,18 +186,18 @@ async function writeTurn(
   index: number,
   current: Script,
 ): Promise<void> {
-  const result = await sendTurn(conversation, current.text),
-    row = {
-      model: conversation.plan.model,
-      persona: conversation.persona,
-      durationMs: result.durationMs,
-      error: result.error,
-      outputTokens: result.outputTokens - conversation.outputTotal,
-      prompt: `${String(index + 1).padStart(2, '0')} ${current.label}`,
-      promptText: current.text,
-      reply: result.reply,
-      toolItems: result.toolItems,
-    };
+  const result = await sendTurn(conversation, current.text);
+  const row = {
+    model: conversation.plan.model,
+    persona: conversation.persona,
+    durationMs: result.durationMs,
+    error: result.error,
+    outputTokens: result.outputTokens - conversation.outputTotal,
+    prompt: `${String(index + 1).padStart(2, '0')} ${current.label}`,
+    promptText: current.text,
+    reply: result.reply,
+    toolItems: result.toolItems,
+  };
   conversation.thread ??= result.thread;
   conversation.outputTotal = result.outputTokens;
   appendFileSync(conversation.plan.outFile, `${JSON.stringify(row)}\n`);
@@ -234,8 +234,8 @@ async function runWorker(plan: Plan, queue: string[]): Promise<void> {
 }
 
 function planRun(argv: string[]): Plan {
-  const out = readFlag(argv, '--out'),
-    scenario = readFlag(argv, '--scenario');
+  const out = readFlag(argv, '--out');
+  const scenario = readFlag(argv, '--scenario');
   if (!out || !scenario) {
     throw new Error('--out <dir> and --scenario <dir> are required');
   }
@@ -250,13 +250,13 @@ function planRun(argv: string[]): Plan {
 }
 
 async function run(argv: string[]): Promise<void> {
-  const jobs = Number(readFlag(argv, '--jobs') ?? '2'),
-    name = basename(resolve(readFlag(argv, '--scenario') ?? '')),
-    plan = planRun(argv),
-    queue = Array.from(
-      { length: Number(readFlag(argv, '--samples') ?? '1') },
-      (_, index) => `${name}#${index + 1}`,
-    );
+  const jobs = Number(readFlag(argv, '--jobs') ?? '2');
+  const name = basename(resolve(readFlag(argv, '--scenario') ?? ''));
+  const plan = planRun(argv);
+  const queue = Array.from(
+    { length: Number(readFlag(argv, '--samples') ?? '1') },
+    (_, index) => `${name}#${index + 1}`,
+  );
   console.log(`${queue.length} conversations of ${plan.script.length} turns on ${plan.model}`);
   await Promise.all(Array.from({ length: jobs }, () => runWorker(plan, queue)));
 }

@@ -6,8 +6,8 @@ import { isFailedTurn } from './is-failed-turn.ts';
 
 type Row = Record<string, unknown>;
 
-const gateMs = 2500,
-  [stagesPath, ...callPaths] = process.argv.slice(2);
+const gateMs = 2500;
+const [stagesPath, ...callPaths] = process.argv.slice(2);
 
 function loadRows(path: string | undefined): Row[] {
   return path
@@ -53,15 +53,15 @@ function splitBy(rows: Row[], key: (row: Row) => string): Map<string, Row[]> {
   return groups;
 }
 
-const stages = loadRows(stagesPath),
-  calls = callPaths.flatMap((path) => loadRows(path));
+const stages = loadRows(stagesPath);
+const calls = callPaths.flatMap((path) => loadRows(path));
 
 const sttRows = [...splitBy(
   stages.filter((row) => row.stage === 'stt'),
   (row) => `${String(row.stt)}, ${String(row.silenceMs)} ms pause`,
 )].map(([name, rows]) => {
-  const errors = collectNumbers(rows, 'wordErrors').reduce((a, b) => a + b, 0),
-    words = collectNumbers(rows, 'words').reduce((a, b) => a + b, 0);
+  const errors = collectNumbers(rows, 'wordErrors').reduce((a, b) => a + b, 0);
+  const words = collectNumbers(rows, 'words').reduce((a, b) => a + b, 0);
   return [
     name,
     String(rows.length),
@@ -92,9 +92,9 @@ console.log(
 
 // A failed turn produced no reply to time, so the timing tables leave it out and the last line
 // counts it.
-const turns = calls.filter((row) => row.kind === 'turn' && !isFailedTurn(row)),
-  cellOf = (row: Row): string => `${String(row.stt)} + ${String(row.tts)}`,
-  cells = splitBy(turns, cellOf);
+const turns = calls.filter((row) => row.kind === 'turn' && !isFailedTurn(row));
+const cellOf = (row: Row): string => `${String(row.stt)} + ${String(row.tts)}`;
+const cells = splitBy(turns, cellOf);
 console.log('\n### End to end, from the end of speech\n');
 console.log(
   renderTable(
@@ -148,7 +148,7 @@ console.log(
   ),
 );
 
-const cost = collectNumbers(calls, 'costUSD').reduce((a, b) => a + b, 0),
-  // An interrupted turn ends without success by design, so only whole turns count as failures.
-  failed = calls.filter((row) => row.kind !== 'barge-in' && isFailedTurn(row)).length;
+const cost = collectNumbers(calls, 'costUSD').reduce((a, b) => a + b, 0);
+// An interrupted turn ends without success by design, so only whole turns count as failures.
+const failed = calls.filter((row) => row.kind !== 'barge-in' && isFailedTurn(row)).length;
 console.log(`\nModel cost: $${cost.toFixed(4)} over ${calls.length} turns; ${failed} turns did not end in success.`);

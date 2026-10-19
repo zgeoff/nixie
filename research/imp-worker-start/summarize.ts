@@ -23,8 +23,8 @@ function printRow(label: string, samples: Sample[], path: string): void {
     .map((sample) => readField(sample, path))
     .filter((value) => value !== undefined);
   if (values.length > 0) {
-    const median = pickPercentile(values, 0.5),
-      p90 = pickPercentile(values, 0.9);
+    const median = pickPercentile(values, 0.5);
+    const p90 = pickPercentile(values, 0.9);
     console.log(`| ${label} | ${path} | ${values.length} | ${median} | ${p90} |`);
   }
 }
@@ -60,43 +60,43 @@ function printCell(label: string, samples: Sample[], paths: string[]): void {
 }
 
 const cells: Record<string, string[]> = {
-    cli: ['lsMs'],
-    'e2e-new': [
-      'newMs',
-      'grantMs',
-      'query.arrivedMs',
-      'init.arrivedMs',
-      'first_text.arrivedMs',
-      'result.arrivedMs',
-      'query.processStartMs',
-      'init.ms',
-      'first_text.ms',
-    ],
-    'e2e-wake': [
-      'query.arrivedMs',
-      'init.arrivedMs',
-      'first_text.arrivedMs',
-      'result.arrivedMs',
-      'query.processStartMs',
-      'init.ms',
-      'first_text.ms',
-    ],
-    lifecycle: ['newMs', 'execMs', 'toAnswerMs', 'grantMs'],
-    wake: ['sleepMs', 'wakeMs', 'execMs', 'toAnswerMs'],
-  },
-  phases = new Set(
-    readdirSync('results')
-      .filter((name) => name.endsWith('.jsonl'))
-      .map((name) => name.replace(/\.jsonl$/u, '')),
-  ),
-  turnFields = [
+  cli: ['lsMs'],
+  'e2e-new': [
+    'newMs',
+    'grantMs',
+    'query.arrivedMs',
+    'init.arrivedMs',
+    'first_text.arrivedMs',
+    'result.arrivedMs',
     'query.processStartMs',
     'init.ms',
     'first_text.ms',
-    'result.ms',
-    'result.apiMs',
+  ],
+  'e2e-wake': [
+    'query.arrivedMs',
+    'init.arrivedMs',
     'first_text.arrivedMs',
-  ];
+    'result.arrivedMs',
+    'query.processStartMs',
+    'init.ms',
+    'first_text.ms',
+  ],
+  lifecycle: ['newMs', 'execMs', 'toAnswerMs', 'grantMs'],
+  wake: ['sleepMs', 'wakeMs', 'execMs', 'toAnswerMs'],
+};
+const phases = new Set(
+  readdirSync('results')
+    .filter((name) => name.endsWith('.jsonl'))
+    .map((name) => name.replace(/\.jsonl$/u, '')),
+);
+const turnFields = [
+  'query.processStartMs',
+  'init.ms',
+  'first_text.ms',
+  'result.ms',
+  'result.apiMs',
+  'first_text.arrivedMs',
+];
 
 console.log('| cell | field | n | median ms | p90 ms |');
 console.log('| --- | --- | --- | --- | --- |');
