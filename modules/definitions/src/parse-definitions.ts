@@ -89,6 +89,18 @@ function parseManifest(text: string | undefined): number {
   ]);
 }
 
+function parseYAML(path: string, text: string): unknown {
+  try {
+    return Bun.YAML.parse(text);
+  } catch (error) {
+    throw new DefinitionsParseError([{ path, reason: formatError(error) }]);
+  }
+}
+
+function formatError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function getFormat(manifest: unknown): unknown {
   return manifest !== null && typeof manifest === 'object' && 'format' in manifest
     ? manifest.format
@@ -129,16 +141,4 @@ function requireParsable(files: readonly TextFile[]): void {
   if (problems.length > 0) {
     throw new DefinitionsParseError(problems);
   }
-}
-
-function parseYAML(path: string, text: string): unknown {
-  try {
-    return Bun.YAML.parse(text);
-  } catch (error) {
-    throw new DefinitionsParseError([{ path, reason: formatError(error) }]);
-  }
-}
-
-function formatError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

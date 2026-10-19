@@ -1,6 +1,6 @@
 import type { SealedAttachment } from './decode-attachment';
 import { decodeAttachment } from './decode-attachment';
-import { findRecordKeys } from './find-record-keys';
+import { readRecordKeys } from './read-record-keys';
 import type { Log, LogTables, RecordAttachments } from './types';
 
 // Reads and decrypts the attachments of each record named, in the order written, keyed by the
@@ -30,7 +30,7 @@ export async function readRecordAttachments(
     .orderBy('record_attachments.position')
     .execute();
 
-  const keys = await findRecordKeys(log, [
+  const keys = await readRecordKeys(log, [
     ...new Set(rows.flatMap((row) => (row.key_id === null ? [] : [row.key_id]))),
   ]);
 

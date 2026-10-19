@@ -18,6 +18,8 @@ interface ThreadPage {
   readonly lastStepEnd: ContractRecord | null;
 }
 
+const DEFAULT_LIMIT = 50;
+
 // Reads one page of a thread, newest last, its newest step end, and the log sequence the page was
 // read at. Nothing read is past that sequence, so a client that follows the log from it misses no
 // record and repeats none. Answers null when no thread has the ID.
@@ -42,7 +44,7 @@ export async function readThreadPage(
     .select(sql<number>`coalesce(max(sequence), 0)`.as('sequence'))
     .executeTakeFirstOrThrow();
 
-  const window = await findPageWindow(context, {
+  const window = await readPageWindow(context, {
     thread: input.thread,
     before: Math.min(input.beforeSequence ?? Number.POSITIVE_INFINITY, last.sequence + 1),
     limit: input.limit ?? DEFAULT_LIMIT,
@@ -65,8 +67,6 @@ export async function readThreadPage(
   };
 }
 
-const DEFAULT_LIMIT = 50;
-
 interface PageBounds {
   readonly thread: string;
   readonly before: number;
@@ -81,7 +81,7 @@ interface PageWindow {
 
 // the newest records below the bound, found by sequence alone, so the page reads forward from its
 // oldest record and decrypts only what it returns
-async function findPageWindow(context: APIContext, bounds: PageBounds): Promise<PageWindow> {
+async function readPageWindow(context: APIContext, bounds: PageBounds): Promise<PageWindow> {
   const newest = await context.log.writer.db
     .$extendTables<APITables>()
     .selectFrom('records')
@@ -100,6 +100,12 @@ async function findPageWindow(context: APIContext, bounds: PageBounds): Promise<
     hasEarlier: newest.length > bounds.limit,
   };
 }
+
+const stepEndKinds: readonly RecordKind[] = [
+  'task.step_committed',
+  'task.step_errored',
+  'task.revived',
+];
 
 // the newest record on the thread that ended a step, at or before the sequence the page was read at
 async function readLastStepEnd(
@@ -132,9 +138,3 @@ async function readLastStepEnd(
 
   return record === undefined ? null : toContractRecord(record);
 }
-
-const stepEndKinds: readonly RecordKind[] = [
-  'task.step_committed',
-  'task.step_errored',
-  'task.revived',
-];

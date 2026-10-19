@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
-import { buildServerContext } from './build-server-context';
 import { buildStartState } from './build-start-state';
+import { createServerContext } from './create-server-context';
 import { refreshDefinitions } from './refresh-definitions';
 import type { SeedPollParts } from './start-seed-poll';
 import { startSeedPoll } from './start-seed-poll';
@@ -26,9 +26,9 @@ async function setupTest() {
 test('it reports the definitions ready within seconds of a checkout that lands after a restart', async () => {
   const ctx = await setupTest();
 
-  const definitionsDir = join(ctx.dir, 'definitions');
+  const definitionsDir = join(ctx.directory, 'definitions');
 
-  await rename(definitionsDir, join(ctx.dir, 'checkout'));
+  await rename(definitionsDir, join(ctx.directory, 'checkout'));
 
   const again = ctx.startAgain();
 
@@ -36,7 +36,7 @@ test('it reports the definitions ready within seconds of a checkout that lands a
 
   await again.waitForLogEvent('ready');
 
-  await rename(join(ctx.dir, 'checkout'), definitionsDir);
+  await rename(join(ctx.directory, 'checkout'), definitionsDir);
 
   const landedAt = Date.now();
 
@@ -69,13 +69,13 @@ test('it reports the definitions ready again once the source returns to its last
   await writeFile(join(root, 'persona.md'), '# Persona\n');
   await writeFile(join(root, 'skills', 'tide-tables', 'SKILL.md'), skill);
 
-  const context = await buildServerContext(log.writer, log.deploymentKey, () => null);
+  const context = await createServerContext(log.writer, log.deploymentKey, () => null);
 
   const clock = buildTestClock(0);
 
   const parts: SeedPollParts = {
     context: { ...context.apiContext, clock },
-    source: createPathSource({ dir: root }),
+    source: createPathSource({ directory: root }),
     policy: { rules: [], tools: [] },
     inForce: context.inForce,
     state: buildStartState({ isReady: true, reason: null }),

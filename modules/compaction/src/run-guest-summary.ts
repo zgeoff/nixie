@@ -35,7 +35,7 @@ export async function runGuestSummary(spec: GuestSummarySpec): Promise<GuestSumm
     // a signal that aborted while the guest started never fires its listener
     spec.signal.throwIfAborted();
 
-    const frames = await collectSummaryFrames(stream, spec.frame);
+    const frames = await readSummaryFrames(stream, spec.frame);
 
     spec.signal.throwIfAborted();
 
@@ -62,7 +62,7 @@ function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
   };
 }
 
-async function collectSummaryFrames(
+async function readSummaryFrames(
   stream: ExecStream,
   frame: SummarizeFrame,
 ): Promise<readonly GuestFrame[]> {

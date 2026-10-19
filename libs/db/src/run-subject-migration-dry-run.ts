@@ -21,10 +21,10 @@ export interface SubjectMigrationReport {
 // reports the subject counts before and after. It reads the original only through a read-only
 // connection, whose copy is one snapshot, so a server that writes meanwhile never splits the copy.
 export async function runSubjectMigrationDryRun(path: string): Promise<SubjectMigrationReport> {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-subjects-dry-run-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-subjects-dry-run-'));
 
   try {
-    const copyPath = join(dir, 'nixie.db');
+    const copyPath = join(directory, 'nixie.db');
 
     createSnapshotCopy(path, copyPath);
 
@@ -32,7 +32,7 @@ export async function runSubjectMigrationDryRun(path: string): Promise<SubjectMi
 
     try {
       const before = await readMemorySubjectCounts(db);
-      const migration = await runMigrations(db, { schema: nixieSchema, copyDir: dir });
+      const migration = await runMigrations(db, { schema: nixieSchema, copyDir: directory });
       const after = await readMemorySubjectCounts(db);
 
       return { from: migration.from, to: migration.to, before, after };
@@ -40,7 +40,7 @@ export async function runSubjectMigrationDryRun(path: string): Promise<SubjectMi
       await db.destroy();
     }
   } finally {
-    await rm(dir, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true });
   }
 }
 

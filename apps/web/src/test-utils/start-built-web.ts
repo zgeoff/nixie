@@ -1,11 +1,11 @@
 import { expect, onTestFinished } from 'bun:test';
 import { waitFor } from '@testing-library/react';
-import { buildWebOnce } from './build-web-once';
+import { runWebBuildOnce } from './run-web-build-once';
 
 // Runs the built web server on a free loopback port against the API at apiURL, and resolves once it
 // answers its liveness check. The first call in the process waits for the Vite build.
 export async function startBuiltWeb(apiURL: string): Promise<{ url: string }> {
-  const serverPath = await buildWebOnce();
+  const serverPath = await runWebBuildOnce();
 
   const portProbe = Bun.serve({ fetch: () => new Response(), hostname: '127.0.0.1', port: 0 });
   const port = portProbe.port;

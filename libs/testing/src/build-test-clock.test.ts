@@ -33,8 +33,8 @@ test('it wakes sleepers earliest first', async () => {
   const clock = buildTestClock(0);
   const woken: string[] = [];
 
-  const waitAndRecord = async (name: string, ms: number): Promise<void> => {
-    await clock.sleep(ms);
+  const waitAndRecord = async (name: string, durationMs: number): Promise<void> => {
+    await clock.sleep(durationMs);
 
     woken.push(name);
   };

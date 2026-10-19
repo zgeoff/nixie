@@ -48,17 +48,17 @@ export async function runOracle(nixie: TestNixie): Promise<OracleReport> {
     const records = await nixie.readRecords();
 
     return {
-      repeatedStepKeys: findRepeats(
+      repeatedStepKeys: collectRepeats(
         records.filter((record) => record.kind === 'task.step_committed'),
         (record) => record.stepKey,
       ),
-      repeatedActions: findRepeats(
+      repeatedActions: collectRepeats(
         records.filter((record) => record.kind === 'action.queued'),
         (record) => `${record.stepKey} ${String(record.payload['actionHash'])}`,
       ),
-      strayCalls: findStrayCalls(nixie, records),
+      strayCalls: collectStrayCalls(nixie, records),
       ...recovery,
-      projectionDrift: await findProjectionDrift(context.log),
+      projectionDrift: await readProjectionDrift(context.log),
     };
   } finally {
     await testLog.writer.stop();
@@ -93,7 +93,7 @@ async function runRecoveryChecks(context: TasksContext, nixie: TestNixie): Promi
         .filter((task) => isUnready(task))
         .map((task) => `${index}:${String(task['task_id'])}`),
     ),
-    changedEndStates: findChangedEndStates([
+    changedEndStates: collectChangedEndStates([
       ...recovered.map((state) => state.tasks),
       before,
       states.at(-1)?.tasks ?? [],
@@ -111,7 +111,7 @@ function isUnready(task: Readonly<Record<string, unknown>>): boolean {
 }
 
 // each task whose state, once done or failed, differs in a later read of the tasks
-function findChangedEndStates(
+function collectChangedEndStates(
   reads: readonly (readonly Readonly<Record<string, unknown>>[])[],
 ): readonly string[] {
   const ended = new Map<unknown, unknown>();
@@ -134,7 +134,7 @@ function findChangedEndStates(
   return [...changed];
 }
 
-function findRepeats<T>(items: readonly T[], getKey: (item: T) => unknown): readonly string[] {
+function collectRepeats<T>(items: readonly T[], getKey: (item: T) => unknown): readonly string[] {
   const counts = new Map<string, number>();
 
   for (const item of items) {
@@ -146,7 +146,7 @@ function findRepeats<T>(items: readonly T[], getKey: (item: T) => unknown): read
   return [...counts].filter(([, count]) => count > 1).map(([key]) => key);
 }
 
-function findStrayCalls(
+function collectStrayCalls(
   nixie: TestNixie,
   records: Awaited<ReturnType<TestNixie['readRecords']>>,
 ): readonly (string | null)[] {
@@ -168,7 +168,7 @@ function findStrayCalls(
 }
 
 // every projection's table and the projection changes, before and after a rebuild
-async function findProjectionDrift(log: Log): Promise<readonly string[]> {
+async function readProjectionDrift(log: Log): Promise<readonly string[]> {
   const tables = [...log.projections.map((projection) => projection.table), 'projection_changes'];
   const readTables = () => Promise.all(tables.map((table) => readTable(log.writer.db, table)));
 

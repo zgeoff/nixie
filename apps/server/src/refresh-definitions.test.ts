@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, loadSnapshotSkills } from '@heynixie/definitions';
 import invariant from 'tiny-invariant';
-import { buildServerContext } from './build-server-context';
 import { buildStartState } from './build-start-state';
+import { createServerContext } from './create-server-context';
 import { refreshDefinitions } from './refresh-definitions';
 import type { SeedParts } from './run-definitions-seed';
 import { startTestLog } from './test-utils/start-test-log';
@@ -28,7 +28,7 @@ async function setupTest() {
 
   await mkdir(root);
 
-  const context = await buildServerContext(log.writer, log.deploymentKey, () => null);
+  const context = await createServerContext(log.writer, log.deploymentKey, () => null);
 
   return { root, context, writer: log.writer };
 }
@@ -41,7 +41,7 @@ test('it seeds a new revision and returns the definitions it put in force', asyn
 
   const parts: SeedParts = {
     context: ctx.context.apiContext,
-    source: createPathSource({ dir: ctx.root }),
+    source: createPathSource({ directory: ctx.root }),
     policy: { rules: [], tools: [] },
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
@@ -67,7 +67,7 @@ test('it keeps the last good definitions in force when the source refuses a snap
 
   const parts: SeedParts = {
     context: ctx.context.apiContext,
-    source: createPathSource({ dir: ctx.root }),
+    source: createPathSource({ directory: ctx.root }),
     policy: { rules: [], tools: [] },
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),

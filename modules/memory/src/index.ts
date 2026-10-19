@@ -157,7 +157,7 @@ export type {
   WriterUsage,
 } from './writer-types';
 
-export { findTypedQuote } from './find-typed-quote';
+export { getTypedQuote } from './get-typed-quote';
 export type { UntypedTokenQuery } from './check-untyped-token';
 export { checkUntypedToken } from './check-untyped-token';
 export { removeImageOfferKeys } from './remove-image-offer-keys';

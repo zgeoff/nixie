@@ -1,7 +1,7 @@
 import { buildWriteGroup } from './build-write-group';
-import { findNewestMessage } from './find-newest-message';
 import { ForgottenEvidenceError } from './forgotten-evidence-error';
 import type { OfferAnswerOutcome, OfferAnswerRequest } from './gate-types';
+import { readNewestMessage } from './read-newest-message';
 import { readOfferAnswer } from './read-offer-answer';
 import type { OfferYes } from './read-typed-yes';
 import { removeOfferKey } from './remove-offer-key';
@@ -44,7 +44,7 @@ async function writeConfirmedOffer(
 ): Promise<VersionRef> {
   const caller = request.caller;
 
-  const newest = await findNewestMessage(parts.context.log, caller.thread);
+  const newest = await readNewestMessage(parts.context.log, caller.thread);
 
   const group = buildWriteGroup(caller, newest);
 

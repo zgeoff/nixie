@@ -16,6 +16,10 @@ export interface RankedMatch extends MatchScores {
   readonly itemID: string;
 }
 
+// the rank offset from the reciprocal rank fusion paper, which keeps the first few ranks from
+// outweighing an item that both lists place
+const fusionK = 60;
+
 // Fuses the keyword and vector rankings by reciprocal rank, each list giving an item 1 / (k + rank),
 // because BM25 and cosine similarity share no scale. An item both lists rank high comes first, and
 // equal sums keep the keyword order.
@@ -46,7 +50,3 @@ export function mergeRankings(
     .toSorted((first, second) => second.fused - first.fused)
     .map((entry) => entry.match);
 }
-
-// the rank offset from the reciprocal rank fusion paper, which keeps the first few ranks from
-// outweighing an item that both lists place
-const fusionK = 60;

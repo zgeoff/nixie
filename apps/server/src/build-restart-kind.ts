@@ -12,6 +12,22 @@ export interface RestartEvent {
   readonly changes: StartChanges | null;
 }
 
+// the most starts one note reads, past which the block's count of more stops growing
+const readLimit = 1000;
+
+// a start recorded before the changes were has none
+const changesPayload = z.object({
+  addedTools: z.array(z.string()),
+  removedTools: z.array(z.string()),
+  isPersonaUpdated: z.boolean(),
+});
+
+const startPayload = z.object({
+  version: z.string(),
+  previousVersion: z.string().nullable(),
+  changes: changesPayload.nullable().default(null),
+});
+
 // The event kind for a nixie restart, read from each start's record.
 export function buildRestartKind(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
@@ -49,22 +65,6 @@ export function buildRestartKind(
     },
   };
 }
-
-// the most starts one note reads, past which the block's count of more stops growing
-const readLimit = 1000;
-
-// a start recorded before the changes were has none
-const changesPayload = z.object({
-  addedTools: z.array(z.string()),
-  removedTools: z.array(z.string()),
-  isPersonaUpdated: z.boolean(),
-});
-
-const startPayload = z.object({
-  version: z.string(),
-  previousVersion: z.string().nullable(),
-  changes: changesPayload.nullable().default(null),
-});
 
 // each change by name only, so the line stays short however much a release changed
 function formatChanges(changes: StartChanges): readonly string[] {

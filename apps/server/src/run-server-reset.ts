@@ -1,7 +1,7 @@
 import type { APIContext, KeptSession } from '@heynixie/api';
 import { readKeptSessions, writeKeptSessions } from '@heynixie/api';
 import type { ResetSeed } from '@heynixie/definitions';
-import { findResetSeed, writeResetSeed } from '@heynixie/definitions';
+import { readResetSeed, writeResetSeed } from '@heynixie/definitions';
 import type { LogReset, LogResetOptions } from '@heynixie/log';
 import { runLogReset, writeRecordsInTransaction } from '@heynixie/log';
 import type { StaleSandboxesOptions } from '@heynixie/sandbox';
@@ -27,7 +27,7 @@ export interface ServerReset {
 // the log and keeps the live sessions. A failed destroy stops it before it removes anything, and a
 // turn still running loses its lease row, so its commit writes nothing.
 export async function runServerReset(options: ServerResetOptions): Promise<ServerReset> {
-  if ((await findResetSeed(options.context.log.writer.db)) === null) {
+  if ((await readResetSeed(options.context.log.writer.db)) === null) {
     throw new Error('no definitions are in force yet, so the reset has nothing to start from');
   }
 
@@ -45,7 +45,7 @@ export async function runServerReset(options: ServerResetOptions): Promise<Serve
   const reset = await runLogReset(options.context.log, {
     keptTables: ['identities'],
     readKept: async (tx) => ({
-      seed: await findResetSeed(tx),
+      seed: await readResetSeed(tx),
       sessions: await readKeptSessions(tx, options.context),
     }),
     writeFirstRecords: async (tx, read, logReset) => {

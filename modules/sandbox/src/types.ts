@@ -58,7 +58,7 @@ export interface SandboxAdapter {
   readonly id: string;
   readonly boundary: 'microvm' | 'container' | 'process';
   readonly create: (spec: SandboxSpec) => Promise<Sandbox>;
-  readonly get: (id: string) => Promise<Sandbox | null>;
+  readonly read: (id: string) => Promise<Sandbox | null>;
 
   // every sandbox this adapter made for the owner that is not yet destroyed, for crash recovery
   readonly list: (owner: string) => Promise<readonly Sandbox[]>;
@@ -210,7 +210,7 @@ export interface Sandbox {
   // every file under the directory down to the options' depth, or at any depth with none, relative
   // to it; none for a missing directory
   readonly readFilePaths: (
-    dir: string,
+    directory: string,
     options?: ReadFilePathsOptions,
   ) => Promise<readonly string[]>;
 
@@ -258,7 +258,7 @@ export interface SandboxRow {
 // How an adapter writes its sandboxes' records and reads them back.
 export interface SandboxRecorder {
   readonly write: (event: SandboxEvent) => Promise<void>;
-  readonly findRow: (adapter: string, sandboxID: string) => Promise<SandboxRow | null>;
+  readonly readRow: (adapter: string, sandboxID: string) => Promise<SandboxRow | null>;
   readonly list: (adapter: string, owner: string) => Promise<readonly SandboxRow[]>;
 }
 

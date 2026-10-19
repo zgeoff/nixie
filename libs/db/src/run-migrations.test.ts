@@ -13,15 +13,15 @@ async function setupTest() {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-migrations-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-migrations-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
-  const db = startDatabase(join(dir, 'nixie.db'));
+  const db = startDatabase(join(directory, 'nixie.db'));
 
   stack.defer(() => db.destroy());
 
-  return { dir, db };
+  return { directory, db };
 }
 
 test('it runs each pending migration and records the schema it writes and its oldest reader', async () => {
@@ -45,7 +45,7 @@ test('it runs each pending migration and records the schema it writes and its ol
       ],
       oldestReader: 1,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   const stored = await sql`select version, oldest_reader from schema_version`.execute(ctx.db);
@@ -79,7 +79,7 @@ test('it rolls back a failed migration together with its schema version', async 
       ],
       oldestReader: 0,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   await run.catch(() => {});
@@ -116,7 +116,7 @@ test('it rolls back a migration that writes the schema version itself', async ()
       ],
       oldestReader: 0,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   await run.catch(() => {});
@@ -150,7 +150,7 @@ test('it copies the database with VACUUM INTO before the first migration of a re
       ],
       oldestReader: 0,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   await sql`insert into notes (id) values ('n1')`.execute(ctx.db);
@@ -173,16 +173,21 @@ test('it copies the database with VACUUM INTO before the first migration of a re
       ],
       oldestReader: 0,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
-  const copy = new Database(join(ctx.dir, 'nixie-schema-1.db'), { readonly: true });
+  const copy = new Database(join(ctx.directory, 'nixie-schema-1.db'), { readonly: true });
 
   onTestFinished(() => {
     copy.close();
   });
 
-  expect(report).toStrictEqual({ from: 1, to: 2, copyPath: join(ctx.dir, 'nixie-schema-1.db') });
+  expect(report).toStrictEqual({
+    from: 1,
+    to: 2,
+    copyPath: join(ctx.directory, 'nixie-schema-1.db'),
+  });
+
   expect(copy.query('select version from schema_version').all()).toStrictEqual([{ version: 1 }]);
   expect(copy.query('select id from notes').all()).toStrictEqual([{ id: 'n1' }]);
 });
@@ -202,12 +207,12 @@ test('it takes no copy of a database that holds no schema yet', async () => {
       ],
       oldestReader: 0,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   expect(report.copyPath).toBeNull();
 
-  const names = await readdir(ctx.dir);
+  const names = await readdir(ctx.directory);
 
   expect(names.toSorted()).toStrictEqual(['nixie.db', 'nixie.db-shm', 'nixie.db-wal']);
 });
@@ -227,13 +232,13 @@ test('it takes no copy when no migration is pending', async () => {
     oldestReader: 0,
   };
 
-  await runMigrations(ctx.db, { schema, copyDir: ctx.dir });
+  await runMigrations(ctx.db, { schema, copyDir: ctx.directory });
 
-  const report = await runMigrations(ctx.db, { schema, copyDir: ctx.dir });
+  const report = await runMigrations(ctx.db, { schema, copyDir: ctx.directory });
 
   expect(report).toStrictEqual({ from: 1, to: 1, copyPath: null });
 
-  const names = await readdir(ctx.dir);
+  const names = await readdir(ctx.directory);
 
   expect(names.toSorted()).toStrictEqual(['nixie.db', 'nixie.db-shm', 'nixie.db-wal']);
 });
@@ -248,8 +253,8 @@ test('it refuses a schema newer than the build reads, and names the copy to rest
     ctx.db,
   );
 
-  await writeFile(join(ctx.dir, 'nixie-schema-1.db'), '');
-  await writeFile(join(ctx.dir, 'nixie-schema-2.db'), '');
+  await writeFile(join(ctx.directory, 'nixie-schema-1.db'), '');
+  await writeFile(join(ctx.directory, 'nixie-schema-2.db'), '');
 
   const run = runMigrations(ctx.db, {
     schema: {
@@ -259,14 +264,14 @@ test('it refuses a schema newer than the build reads, and names the copy to rest
       ],
       oldestReader: 0,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   await run.catch(() => {});
 
   expect(run).rejects.toThrowWithMessage(
     Error,
-    `database schema 3 needs a build that writes schema 3 or later, and this build writes schema 2: restore ${join(ctx.dir, 'nixie-schema-2.db')}, the copy taken before an upgrade`,
+    `database schema 3 needs a build that writes schema 3 or later, and this build writes schema 2: restore ${join(ctx.directory, 'nixie-schema-2.db')}, the copy taken before an upgrade`,
   );
 });
 
@@ -282,14 +287,14 @@ test('it tells a refused build to restore a backup when no older copy exists', a
 
   const run = runMigrations(ctx.db, {
     schema: { migrations: [{ name: 'one', up: () => Promise.resolve() }], oldestReader: 0 },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   await run.catch(() => {});
 
   expect(run).rejects.toThrowWithMessage(
     Error,
-    `database schema 3 needs a build that writes schema 3 or later, and this build writes schema 1: no copy of schema 1 or older sits in ${ctx.dir}, so restore a backup`,
+    `database schema 3 needs a build that writes schema 3 or later, and this build writes schema 1: no copy of schema 1 or older sits in ${ctx.directory}, so restore a backup`,
   );
 });
 
@@ -311,7 +316,7 @@ test('it opens a newer schema that the build can still read, and leaves it as it
       ],
       oldestReader: 0,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   const stored = await sql`select version, oldest_reader from schema_version`.execute(ctx.db);
@@ -335,7 +340,7 @@ test('it runs the writer check first in every transaction and applies nothing wh
       ],
       oldestReader: 0,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
     requireWriter: () => Promise.reject(new Error('stale writer')),
   });
 
@@ -362,7 +367,7 @@ test('it keeps the child rows when a migration rebuilds their parent table', asy
 
   await runMigrations(ctx.db, {
     schema: { migrations: [createTables], oldestReader: 0 },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   await sql`insert into tasks (id) values ('t1')`.execute(ctx.db);
@@ -387,7 +392,7 @@ test('it keeps the child rows when a migration rebuilds their parent table', asy
       ],
       oldestReader: 0,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   const steps = await sql`select id from steps`.execute(ctx.db);
@@ -417,7 +422,7 @@ test('it fails a migration that leaves a foreign key violation', async () => {
       ],
       oldestReader: 0,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   await run.catch(() => {});
@@ -438,19 +443,22 @@ test('it lets the build before read a database that a failed upgrade left betwee
   const one: Migration = { name: 'one', up: () => Promise.resolve() };
   const two: Migration = { name: 'two', up: () => Promise.resolve() };
 
-  await runMigrations(ctx.db, { schema: { migrations: [one], oldestReader: 0 }, copyDir: ctx.dir });
+  await runMigrations(ctx.db, {
+    schema: { migrations: [one], oldestReader: 0 },
+    copyDir: ctx.directory,
+  });
 
   await runMigrations(ctx.db, {
     schema: {
       migrations: [one, two, { name: 'three', up: () => Promise.reject(new Error('failed')) }],
       oldestReader: 3,
     },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   }).catch(() => {});
 
   const report = await runMigrations(ctx.db, {
     schema: { migrations: [one, two], oldestReader: 0 },
-    copyDir: ctx.dir,
+    copyDir: ctx.directory,
   });
 
   expect(report).toStrictEqual({ from: 2, to: 2, copyPath: null });

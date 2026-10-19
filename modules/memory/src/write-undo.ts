@@ -9,7 +9,7 @@ export function writeUndo(parts: StoreParts, request: UndoRequest): Promise<Vers
   return writeMemoryVersion(parts, {
     requirement: { target: request.target, operation: 'undo', states: ['active', 'retired'] },
     provenance: request.provenance,
-    buildVersion: async (readEarlier, current) => {
+    readNextVersion: async (readEarlier, current) => {
       const earlier = await readEarlier(Math.max(current - 1, 1));
 
       return {

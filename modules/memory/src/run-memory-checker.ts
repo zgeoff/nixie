@@ -1,9 +1,9 @@
 import type { JSONObject } from '@heynixie/log';
 import type { CheckerAnswer } from '@heynixie/sessions';
 import { buildGateReview } from './build-gate-review';
-import type { QuoteEvidenceResult } from './find-quote-evidence';
 import type { ContentGateRequest, ContentGateResult } from './gate-types';
 import { pickCheckerReviewReason } from './pick-checker-review-reason';
+import type { QuoteEvidenceResult } from './read-quote-evidence';
 import { renderCheckerInput } from './render-checker-input';
 import { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';
 import type { MemoryContext } from './types';

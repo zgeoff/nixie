@@ -8,23 +8,28 @@ import { loadSecrets } from '../load-secrets';
 import { writeBootFiles } from './write-boot-files';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-boot-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-boot-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { dir };
+  return { directory };
 }
 
 test('it writes a configuration that loads, with the scripted model as the conversation', async () => {
   const ctx = await setupTest();
-  const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', { config: [], secrets: [] });
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+  });
+
   const config = await loadDeploymentConfig(files.configPath);
 
   expect(config.server).toStrictEqual({
-    dataDir: join(ctx.dir, 'data'),
+    dataDir: join(ctx.directory, 'data'),
     hostname: '127.0.0.1',
     port: 0,
-    secretsFile: join(ctx.dir, 'secrets.yaml'),
+    secretsFile: join(ctx.directory, 'secrets.yaml'),
     logLevel: 'info',
   });
 
@@ -33,14 +38,18 @@ test('it writes a configuration that loads, with the scripted model as the conve
 
 test('it writes secrets that its sops stand-in decrypts, with the key it returns', async () => {
   const ctx = await setupTest();
-  const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', { config: [], secrets: [] });
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+  });
 
   const secrets = await loadSecrets({
-    path: join(ctx.dir, 'secrets.yaml'),
+    path: join(ctx.directory, 'secrets.yaml'),
     sopsArgv: [files.sopsPath],
   });
 
-  const text = await readFile(join(ctx.dir, 'secrets.yaml'), 'utf8');
+  const text = await readFile(join(ctx.directory, 'secrets.yaml'), 'utf8');
 
   expect(secrets.models).toStrictEqual({ model_credentials: { scripted: 'scripted-model-key' } });
   expect(text).toInclude(`deployment_key: ${files.deploymentKey}`);
@@ -48,7 +57,12 @@ test('it writes secrets that its sops stand-in decrypts, with the key it returns
 
 test('it writes a sandbox manifest that loads', async () => {
   const ctx = await setupTest();
-  const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', { config: [], secrets: [] });
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+  });
+
   const images = await loadSandboxManifest(files.manifestPath);
 
   expect(images.fetch.name).toBe('nixie-fetch-ffffffffffff');
@@ -57,7 +71,7 @@ test('it writes a sandbox manifest that loads', async () => {
 test('it appends the extra lines to the configuration', async () => {
   const ctx = await setupTest();
 
-  const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', {
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
     config: ['tasks:', '  runners: 5'],
     secrets: [],
   });
@@ -70,7 +84,7 @@ test('it appends the extra lines to the configuration', async () => {
 test('it writes the log level into the server section', async () => {
   const ctx = await setupTest();
 
-  const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', {
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
     config: [],
     secrets: [],
     logLevel: 'error',
@@ -83,7 +97,12 @@ test('it writes the log level into the server section', async () => {
 
 test('it selects the test sandbox when no adapter is named', async () => {
   const ctx = await setupTest();
-  const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', { config: [], secrets: [] });
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+  });
+
   const config = await loadDeploymentConfig(files.configPath);
 
   expect(config.sandbox).toStrictEqual({ adapter: 'test' });
@@ -92,7 +111,7 @@ test('it selects the test sandbox when no adapter is named', async () => {
 test('it selects the adapter it names', async () => {
   const ctx = await setupTest();
 
-  const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', {
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
     config: [],
     secrets: [],
     sandboxAdapter: 'imp',
@@ -106,13 +125,13 @@ test('it selects the adapter it names', async () => {
 test('it appends the extra lines to the secrets file', async () => {
   const ctx = await setupTest();
 
-  const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', {
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
     config: [],
     secrets: ['settings:', '  owner_name: Wren Halloway'],
   });
 
   const secrets = await loadSecrets({
-    path: join(ctx.dir, 'secrets.yaml'),
+    path: join(ctx.directory, 'secrets.yaml'),
     sopsArgv: [files.sopsPath],
   });
 

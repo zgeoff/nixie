@@ -7,40 +7,6 @@ import { memoryWriteOutput } from './memory-write-output';
 import { runWriteCall } from './run-write-call';
 import type { ItemIDStore } from './types';
 
-// Builds memory.remember, which declares note and runs each new item about you or shared with you
-// through the content gate, and sends each new self-note to your review.
-export function buildRememberTool(
-  memory: ModelWriteStore & Pick<ItemIDStore, 'readShortIDs'>,
-): ToolDefinition {
-  return {
-    name: 'memory.remember',
-    description: rememberDescription,
-    input: rememberInput,
-    output: memoryWriteOutput,
-    declaration: {
-      effects: ['note'],
-      destinations: [],
-      amount: null,
-      content: ['text', 'quote'],
-      results: {
-        status: 'owner_data',
-        itemID: 'owner_data',
-        version: 'owner_data',
-        proposalID: 'owner_data',
-        reason: 'owner_data',
-        merged: 'owner_data',
-      },
-    },
-    execution: 'direct',
-    run: (call, context) =>
-      runWriteCall(memory, () => memory.writes.remember(buildRememberRequest(call, context))),
-
-    // the text is the item's, which the version holds under the item's key, and the quote can
-    // repeat it before the gate checks the quote
-    recordInput: makeInputRecorder(['text', 'quote']),
-  };
-}
-
 const rememberDescription =
   'Stores one fact as a new memory item. To change an item that exists, use memory.edit. Pass ' +
   "quote: the exact words from one of the owner's own messages that state the fact, and that " +
@@ -78,6 +44,48 @@ const rememberInput = {
   additionalProperties: false,
 };
 
+// Builds memory.remember, which declares note and runs each new item about you or shared with you
+// through the content gate, and sends each new self-note to your review.
+export function buildRememberTool(
+  memory: ModelWriteStore & Pick<ItemIDStore, 'readShortIDs'>,
+): ToolDefinition {
+  return {
+    name: 'memory.remember',
+    description: rememberDescription,
+    input: rememberInput,
+    output: memoryWriteOutput,
+    declaration: {
+      effects: ['note'],
+      destinations: [],
+      amount: null,
+      content: ['text', 'quote'],
+      results: {
+        status: 'owner_data',
+        itemID: 'owner_data',
+        version: 'owner_data',
+        proposalID: 'owner_data',
+        reason: 'owner_data',
+        merged: 'owner_data',
+      },
+    },
+    execution: 'direct',
+    run: (call, context) =>
+      runWriteCall(memory, () => memory.writes.remember(buildRememberRequest(call, context))),
+
+    // the text is the item's, which the version holds under the item's key, and the quote can
+    // repeat it before the gate checks the quote
+    recordInput: makeInputRecorder(['text', 'quote']),
+  };
+}
+
+const rememberArguments = z.object({
+  text: z.string(),
+  quote: z.string().optional(),
+  eventID: z.string().optional(),
+  pin: z.boolean().optional(),
+  subject: z.enum(['owner', 'self', 'shared']).optional(),
+});
+
 function buildRememberRequest(call: ToolCall, context: ToolContext): GatedRememberRequest {
   const input = rememberArguments.parse(call.input);
 
@@ -90,11 +98,3 @@ function buildRememberRequest(call: ToolCall, context: ToolContext): GatedRememb
     ...(input.subject === undefined ? {} : { subject: input.subject }),
   };
 }
-
-const rememberArguments = z.object({
-  text: z.string(),
-  quote: z.string().optional(),
-  eventID: z.string().optional(),
-  pin: z.boolean().optional(),
-  subject: z.enum(['owner', 'self', 'shared']).optional(),
-});

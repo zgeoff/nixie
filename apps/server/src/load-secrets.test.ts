@@ -6,12 +6,12 @@ import { loadSecrets } from './load-secrets';
 
 // a directory for the secrets file, and the stub that decrypts it as sops would
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-secrets-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-secrets-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
   return {
-    path: join(dir, 'secrets.yaml'),
+    path: join(directory, 'secrets.yaml'),
     sopsArgv: [process.execPath, join(import.meta.dir, 'test-utils/run-stub-sops.ts')],
   };
 }

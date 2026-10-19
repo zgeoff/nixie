@@ -143,6 +143,14 @@ function buildApprovalCall(requests: readonly ApprovalRequest[]): AnswerCall {
   };
 }
 
+function buildTexts(
+  requests: readonly { readonly proposal: MemoryProposal }[],
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    requests.map((request) => [request.proposal.proposalID, request.proposal.text]),
+  );
+}
+
 function buildRejectionCall(requests: readonly RejectionRequest[]): AnswerCall {
   return {
     kind: 'reject',
@@ -154,12 +162,4 @@ function buildRejectionCall(requests: readonly RejectionRequest[]): AnswerCall {
       ...(request.reason === undefined ? {} : { reason: request.reason }),
     })),
   };
-}
-
-function buildTexts(
-  requests: readonly { readonly proposal: MemoryProposal }[],
-): Readonly<Record<string, string>> {
-  return Object.fromEntries(
-    requests.map((request) => [request.proposal.proposalID, request.proposal.text]),
-  );
 }

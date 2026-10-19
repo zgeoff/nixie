@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildHealthApp } from '@heynixie/ops';
+import { createHealthApp } from '@heynixie/ops';
 import { SandboxHostError } from '@heynixie/sandbox';
 import { ModelAuthError } from '@heynixie/sessions';
 import { buildReadinessChecks } from './build-readiness-checks';
@@ -19,7 +19,7 @@ function setupTest() {
     areRunnersStarted: true,
   });
 
-  const app = buildHealthApp({
+  const app = createHealthApp({
     liveness: {
       process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => Promise.resolve({ isReady: true, reason: null }),

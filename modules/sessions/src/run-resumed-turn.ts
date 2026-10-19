@@ -2,7 +2,7 @@ import type { StepResult } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
 import { buildStepResult } from './build-step-result';
 import { isContextOverflow } from './is-context-overflow';
-import { isSessionImagesFull } from './is-session-images-full';
+import { probeSessionImagesFull } from './probe-session-images-full';
 import { readSessionTurn } from './read-session-turn';
 import { runOpenedTurn } from './run-opened-turn';
 import { runOverflowCompaction } from './run-overflow-compaction';
@@ -20,12 +20,27 @@ export async function runResumedTurn(
   step: SessionStep,
   session: ResumedSession,
 ): Promise<StepResult> {
-  const isFull = await isSessionImagesFull(step.run, {
+  const isFull = await probeSessionImagesFull(step.run, {
     inbox: step.input.inbox,
     images: step.marks.images,
   });
 
   return isFull ? runRebuiltTurn(step, session, 'images') : runBoundaryTurn(step, session);
+}
+
+// the session cannot take the turn, so the turn runs on a rebuilt one
+async function runRebuiltTurn(
+  step: SessionStep,
+  session: ResumedSession,
+  reason: 'lost' | 'images',
+): Promise<StepResult> {
+  const opened = await readSessionTurn(step, true);
+
+  return runOpenedTurn(opened, {
+    source: { definitions: step.run.context.definitions, model: step.run.model },
+    start: { kind: 'rebuild', reason, lostSessionID: session.boundary.sessionID },
+    before: session.plan.before,
+  });
 }
 
 // The turn runs at the boundary, or on a rebuilt session when the guest lost it, with the context
@@ -54,19 +69,4 @@ async function runBoundaryTurn(step: SessionStep, session: ResumedSession): Prom
   const memory = { ...turn.context, invalidatedThrough: turn.invalidatedThrough };
 
   return buildStepResult(source, { ...resumed.completed, memory }, session.plan.before);
-}
-
-// the session cannot take the turn, so the turn runs on a rebuilt one
-async function runRebuiltTurn(
-  step: SessionStep,
-  session: ResumedSession,
-  reason: 'lost' | 'images',
-): Promise<StepResult> {
-  const opened = await readSessionTurn(step, true);
-
-  return runOpenedTurn(opened, {
-    source: { definitions: step.run.context.definitions, model: step.run.model },
-    start: { kind: 'rebuild', reason, lostSessionID: session.boundary.sessionID },
-    before: session.plan.before,
-  });
 }

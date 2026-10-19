@@ -17,6 +17,31 @@ export interface ConversationProps {
   readonly navigation?: ReactNode;
 }
 
+// The page fills the window: the messages scroll, and the composer stays below them in view.
+const layout = css({ display: 'flex', flexDirection: 'column', height: '100dvh' });
+
+// A slim bar above the messages that holds the links to other views and the page's settings,
+// aligned with the column.
+const header = css({ borderBottomWidth: '1px', paddingBlock: '1' });
+
+const headerRow = css({
+  alignItems: 'baseline',
+  display: 'flex',
+  fontSize: 'sm',
+  gap: '4',
+  justifyContent: 'space-between',
+  marginInline: 'auto',
+  maxWidth: '3xl',
+  paddingInline: '4',
+  '& > label': { marginInlineStart: 'auto' },
+});
+
+const composerBar = css({
+  borderTopWidth: '1px',
+  paddingBlock: '3',
+  '& > form': { marginInline: 'auto', maxWidth: '3xl', paddingInline: '4', width: 'full' },
+});
+
 // The conversation: the page the API returned, the records the live stream adds after it, and
 // the messages this device sent that the conversation does not show yet. Messages stand alone,
 // and every other record folds into the step it belongs to.
@@ -71,29 +96,14 @@ export function Conversation(props: ConversationProps): ReactNode {
   );
 }
 
-// The page fills the window: the messages scroll, and the composer stays below them in view.
-const layout = css({ display: 'flex', flexDirection: 'column', height: '100dvh' });
-
-// A slim bar above the messages that holds the links to other views and the page's settings,
-// aligned with the column.
-const header = css({ borderBottomWidth: '1px', paddingBlock: '1' });
-
-const headerRow = css({
-  alignItems: 'baseline',
-  display: 'flex',
+const notice = css({
+  color: 'textMuted',
   fontSize: 'sm',
-  gap: '4',
-  justifyContent: 'space-between',
   marginInline: 'auto',
   maxWidth: '3xl',
+  paddingBlock: '2',
   paddingInline: '4',
-  '& > label': { marginInlineStart: 'auto' },
-});
-
-const composerBar = css({
-  borderTopWidth: '1px',
-  paddingBlock: '3',
-  '& > form': { marginInline: 'auto', maxWidth: '3xl', paddingInline: '4', width: 'full' },
+  width: 'full',
 });
 
 // Sits above the messages while the live stream keeps failing, and goes once it connects again.
@@ -104,13 +114,3 @@ function LiveUpdatesNotice(): ReactNode {
     </p>
   );
 }
-
-const notice = css({
-  color: 'textMuted',
-  fontSize: 'sm',
-  marginInline: 'auto',
-  maxWidth: '3xl',
-  paddingBlock: '2',
-  paddingInline: '4',
-  width: 'full',
-});

@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { decodeRatingNote } from './decode-rating-note';
-import { findItemKey } from './find-item-key';
 import { MemoryRatingError } from './memory-rating-error';
+import { readItemKey } from './read-item-key';
 import { requireSealedNote } from './require-sealed-note';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { createMemoryItem } from './test-utils/create-memory-item';
@@ -25,7 +25,7 @@ test("it seals the note under its item's key", async () => {
     note: 'it was out of date',
   });
 
-  const key = await findItemKey(ctx.memory.log, tram.itemID);
+  const key = await readItemKey(ctx.memory.log, tram.itemID);
 
   invariant(key);
 

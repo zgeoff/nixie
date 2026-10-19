@@ -3,6 +3,18 @@ import { css } from '../styled-system/css';
 import type { ThemeChoice } from '../use-theme-choice';
 import { useThemeChoice } from '../use-theme-choice';
 
+// The picker sits on its own line at the end of its row.
+const picker = css({ color: 'textMuted', display: 'block', fontSize: 'sm', textAlign: 'end' });
+
+const select = css({
+  backgroundColor: 'canvas',
+  borderColor: 'borderStrong',
+  borderRadius: 'sm',
+  borderWidth: '1px',
+  color: 'text',
+  paddingInline: '1',
+});
+
 // Picks the theme for this device: the system's, or light or dark whatever the system says.
 export function ThemePicker(): ReactNode {
   const theme = useThemeChoice();
@@ -24,18 +36,6 @@ export function ThemePicker(): ReactNode {
     </label>
   );
 }
-
-// The picker sits on its own line at the end of its row.
-const picker = css({ color: 'textMuted', display: 'block', fontSize: 'sm', textAlign: 'end' });
-
-const select = css({
-  backgroundColor: 'canvas',
-  borderColor: 'borderStrong',
-  borderRadius: 'sm',
-  borderWidth: '1px',
-  color: 'text',
-  paddingInline: '1',
-});
 
 function toThemeChoice(value: string): ThemeChoice {
   return value === 'dark' || value === 'light' ? value : 'system';

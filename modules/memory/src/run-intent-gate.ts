@@ -1,8 +1,8 @@
 import type { LogTables } from '@heynixie/log';
 import { sql } from 'kysely';
 import { buildGateReview } from './build-gate-review';
-import { findQuoteEvidence } from './find-quote-evidence';
 import type { ContentGateResult } from './gate-types';
+import { readQuoteEvidence } from './read-quote-evidence';
 import { runRetirementChecker } from './run-retirement-checker';
 import type { MemoryContext, VersionRef } from './types';
 
@@ -22,7 +22,7 @@ export async function runIntentGate(
   context: Pick<MemoryContext, 'log' | 'gate'>,
   request: IntentGateRequest,
 ): Promise<ContentGateResult> {
-  if (!(await hasReadVersion(context, request))) {
+  if (!(await probeReadVersion(context, request))) {
     return buildGateReview('ambiguous_target', { checks: { read: 'fail' } });
   }
 
@@ -30,7 +30,7 @@ export async function runIntentGate(
     return buildGateReview('no_quote', { checks: { read: 'pass', quote: 'fail' } });
   }
 
-  const found = await findQuoteEvidence(context.log, {
+  const found = await readQuoteEvidence(context.log, {
     thread: request.thread,
     quote: request.intentQuote,
     window: context.gate.limits.evidenceWindow,
@@ -45,7 +45,7 @@ export async function runIntentGate(
 
 // A recall record lists each item and version it delivered to the thread, so the thread read the
 // target when one of them names it.
-async function hasReadVersion(
+async function probeReadVersion(
   context: Pick<MemoryContext, 'log'>,
   request: IntentGateRequest,
 ): Promise<boolean> {

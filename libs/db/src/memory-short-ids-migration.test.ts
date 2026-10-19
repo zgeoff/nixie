@@ -13,14 +13,14 @@ async function setupTest() {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-short-ids-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-short-ids-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
   const statements: string[] = [];
 
   const db = new Kysely<unknown>({
-    dialect: buildSqliteWorkerDialect(join(dir, 'nixie.db')),
+    dialect: buildSqliteWorkerDialect(join(directory, 'nixie.db')),
     log: (event) => {
       statements.push(event.query.sql);
     },
@@ -37,7 +37,7 @@ async function setupTest() {
       ),
       oldestReader: 0,
     },
-    copyDir: dir,
+    copyDir: directory,
   });
 
   return { db, statements };

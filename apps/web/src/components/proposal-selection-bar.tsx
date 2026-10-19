@@ -16,6 +16,15 @@ export interface ProposalSelectionBarProps {
   readonly drafts: Readonly<Record<string, string>>;
 }
 
+const bar = css({
+  alignItems: 'end',
+  display: 'flex',
+  flexWrap: 'wrap',
+  fontSize: 'sm',
+  gap: '2',
+  paddingBlock: '2',
+});
+
 // The answers to every selected proposal at once, each its own checked action: approve them, each
 // with your edited text where you edited it, or reject them with one optional reason.
 export function ProposalSelectionBar(props: ProposalSelectionBarProps): ReactNode {
@@ -72,15 +81,6 @@ export function ProposalSelectionBar(props: ProposalSelectionBarProps): ReactNod
     </div>
   );
 }
-
-const bar = css({
-  alignItems: 'end',
-  display: 'flex',
-  flexWrap: 'wrap',
-  fontSize: 'sm',
-  gap: '2',
-  paddingBlock: '2',
-});
 
 interface SelectAllProps extends ProposalSelectionBarProps {
   readonly chosen: number;

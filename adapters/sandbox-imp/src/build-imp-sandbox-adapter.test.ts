@@ -25,23 +25,23 @@ interface AdapterConfig {
 async function setupTest() {
   const recorder = await setupTestRecorder();
   const imp = await startFakeImp();
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-sandbox-imp-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-sandbox-imp-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
-  startStubToolEndpoint(join(dir, 'tools.sock'));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
+  startStubToolEndpoint(join(directory, 'tools.sock'));
 
   const buildAdapter = (config: AdapterConfig = {}) =>
     buildImpSandboxAdapter({
       port: imp.port,
       recorder: recorder.recorder,
       config: { publicEgress: config.publicEgress ?? null },
-      toolTarget: () => config.toolTarget ?? { path: join(dir, 'tools.sock') },
+      toolTarget: () => config.toolTarget ?? { path: join(directory, 'tools.sock') },
       guestToolPort: imp.guestToolPort,
     });
 
   return {
     imp,
-    dir,
+    directory,
     adapter: buildAdapter(),
     buildAdapter,
     recorder: recorder.recorder,
@@ -202,7 +202,7 @@ test('it gets a sandbox whose imp impd still backs up as retired', async () => {
 
   ctx.imp.created[0] = { ...created, backup: true };
 
-  const found = await ctx.adapter.get(sandbox.id);
+  const found = await ctx.adapter.read(sandbox.id);
 
   expect(found?.isRetired).toBeTrue();
 });
@@ -476,10 +476,10 @@ test('it copies a file in and back out through the guest', async () => {
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
 
   await sandbox.copyIn([
-    { path: join(ctx.dir, 'work', 'in.txt'), content: new TextEncoder().encode('hello') },
+    { path: join(ctx.directory, 'work', 'in.txt'), content: new TextEncoder().encode('hello') },
   ]);
 
-  const [out] = await sandbox.copyOut([join(ctx.dir, 'work', 'in.txt')]);
+  const [out] = await sandbox.copyOut([join(ctx.directory, 'work', 'in.txt')]);
 
   expect(new TextDecoder().decode(out?.content)).toBe('hello');
 });
@@ -525,12 +525,12 @@ test('it lists every file under a directory at any depth, relative to it, throug
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
 
   await sandbox.copyIn([
-    { path: join(ctx.dir, 'work/a.txt'), content: new TextEncoder().encode('a') },
-    { path: join(ctx.dir, 'work/deep/b c.txt'), content: new TextEncoder().encode('b') },
-    { path: join(ctx.dir, 'other/c.txt'), content: new TextEncoder().encode('c') },
+    { path: join(ctx.directory, 'work/a.txt'), content: new TextEncoder().encode('a') },
+    { path: join(ctx.directory, 'work/deep/b c.txt'), content: new TextEncoder().encode('b') },
+    { path: join(ctx.directory, 'other/c.txt'), content: new TextEncoder().encode('c') },
   ]);
 
-  const listed = await sandbox.readFilePaths(join(ctx.dir, 'work'));
+  const listed = await sandbox.readFilePaths(join(ctx.directory, 'work'));
 
   expect(listed).toIncludeSameMembers(['a.txt', 'deep/b c.txt']);
 });
@@ -540,12 +540,12 @@ test('it lists no file deeper than the depth bound through the guest', async () 
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
 
   await sandbox.copyIn([
-    { path: join(ctx.dir, 'work/a.txt'), content: new TextEncoder().encode('a') },
-    { path: join(ctx.dir, 'work/one/b.txt'), content: new TextEncoder().encode('b') },
-    { path: join(ctx.dir, 'work/one/two/c.txt'), content: new TextEncoder().encode('c') },
+    { path: join(ctx.directory, 'work/a.txt'), content: new TextEncoder().encode('a') },
+    { path: join(ctx.directory, 'work/one/b.txt'), content: new TextEncoder().encode('b') },
+    { path: join(ctx.directory, 'work/one/two/c.txt'), content: new TextEncoder().encode('c') },
   ]);
 
-  const listed = await sandbox.readFilePaths(join(ctx.dir, 'work'), { maxDepth: 2 });
+  const listed = await sandbox.readFilePaths(join(ctx.directory, 'work'), { maxDepth: 2 });
 
   expect(listed).toIncludeSameMembers(['a.txt', 'one/b.txt']);
 });
@@ -561,20 +561,20 @@ test('it refuses a listing that passes the output cap, rather than return part o
       '-c',
       'mkdir -p "$1" && cd "$1" && for i in $(seq 6000); do : > "$2$i"; done',
       'sh',
-      join(ctx.dir, 'work'),
+      join(ctx.directory, 'work'),
       'x'.repeat(200),
     ],
   });
 
-  expect(sandbox.readFilePaths(join(ctx.dir, 'work'))).rejects.toThrow(
-    `listing ${join(ctx.dir, 'work')} failed: the list passes 1048576 bytes`,
+  expect(sandbox.readFilePaths(join(ctx.directory, 'work'))).rejects.toThrow(
+    `listing ${join(ctx.directory, 'work')} failed: the list passes 1048576 bytes`,
   );
 });
 
 test('it lists no file under a missing directory', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
-  const listed = await sandbox.readFilePaths(join(ctx.dir, 'missing'));
+  const listed = await sandbox.readFilePaths(join(ctx.directory, 'missing'));
 
   expect(listed).toStrictEqual([]);
 });
@@ -584,14 +584,14 @@ test('it moves a file over the one at the target through the guest, leaving none
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
 
   await sandbox.copyIn([
-    { path: join(ctx.dir, 'work/new.txt'), content: new TextEncoder().encode('new') },
-    { path: join(ctx.dir, 'work/old.txt'), content: new TextEncoder().encode('old') },
+    { path: join(ctx.directory, 'work/new.txt'), content: new TextEncoder().encode('new') },
+    { path: join(ctx.directory, 'work/old.txt'), content: new TextEncoder().encode('old') },
   ]);
 
-  await sandbox.applyMove(join(ctx.dir, 'work/new.txt'), join(ctx.dir, 'work/old.txt'));
+  await sandbox.applyMove(join(ctx.directory, 'work/new.txt'), join(ctx.directory, 'work/old.txt'));
 
-  const [moved] = await sandbox.copyOut([join(ctx.dir, 'work/old.txt')]);
-  const listed = await sandbox.readFilePaths(join(ctx.dir, 'work'));
+  const [moved] = await sandbox.copyOut([join(ctx.directory, 'work/old.txt')]);
+  const listed = await sandbox.readFilePaths(join(ctx.directory, 'work'));
 
   expect(new TextDecoder().decode(moved?.content)).toBe('new');
   expect(listed).toStrictEqual(['old.txt']);
@@ -602,12 +602,12 @@ test('it refuses to move a file onto a directory, and keeps the file', async () 
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
 
   await sandbox.copyIn([
-    { path: join(ctx.dir, 'work/a.txt'), content: new TextEncoder().encode('a') },
-    { path: join(ctx.dir, 'work/dir/b.txt'), content: new TextEncoder().encode('b') },
+    { path: join(ctx.directory, 'work/a.txt'), content: new TextEncoder().encode('a') },
+    { path: join(ctx.directory, 'work/dir/b.txt'), content: new TextEncoder().encode('b') },
   ]);
 
   const failure = await sandbox
-    .applyMove(join(ctx.dir, 'work/a.txt'), join(ctx.dir, 'work/dir'))
+    .applyMove(join(ctx.directory, 'work/a.txt'), join(ctx.directory, 'work/dir'))
     .then(
       () => null,
       (error: unknown) => error,
@@ -615,11 +615,11 @@ test('it refuses to move a file onto a directory, and keeps the file', async () 
 
   expect(failure).toMatchObject({
     message: expect.toStartWith(
-      `move of ${join(ctx.dir, 'work/a.txt')} to ${join(ctx.dir, 'work/dir')} failed with 1`,
+      `move of ${join(ctx.directory, 'work/a.txt')} to ${join(ctx.directory, 'work/dir')} failed with 1`,
     ),
   });
 
-  const listed = await sandbox.readFilePaths(join(ctx.dir, 'work'));
+  const listed = await sandbox.readFilePaths(join(ctx.directory, 'work'));
 
   expect(listed).toIncludeSameMembers(['a.txt', 'dir/b.txt']);
 });
@@ -646,7 +646,7 @@ test('it lets a restarted adapter list and destroy what the last one made, for r
 
   await orphan?.destroy();
 
-  const found = await restarted.get(made.id);
+  const found = await restarted.read(made.id);
 
   expect(orphan?.spec).toStrictEqual(spec);
   expect(found).toBeNull();
@@ -667,7 +667,7 @@ test('it rejects the exit of a session that impd loses after a stop', async () =
 test('it fails only the guest connection to a tool endpoint that is down', async () => {
   const ctx = await setupTest();
 
-  const adapter = ctx.buildAdapter({ toolTarget: { path: join(ctx.dir, 'missing.sock') } });
+  const adapter = ctx.buildAdapter({ toolTarget: { path: join(ctx.directory, 'missing.sock') } });
 
   const sandbox = await adapter.create(buildMockSandboxSpec({ toolRoute: true }));
   const route = await sandbox.toolRoute();

@@ -20,7 +20,7 @@ export async function loadSessionTranscript(
   configDir: string,
   sessionID: string,
 ): Promise<readonly TranscriptEntry[]> {
-  const path = await findTranscriptPath(configDir, sessionID);
+  const path = await readTranscriptPath(configDir, sessionID);
 
   if (path === null) {
     throw new Error(`no transcript for session ${sessionID} in ${configDir}`);
@@ -35,7 +35,7 @@ export async function loadSessionTranscript(
 }
 
 // the CLI keeps each session under a folder named for its working directory
-async function findTranscriptPath(configDir: string, sessionID: string): Promise<string | null> {
+async function readTranscriptPath(configDir: string, sessionID: string): Promise<string | null> {
   const projects = join(configDir, 'projects');
 
   const folders = await readdir(projects).catch(() => []);

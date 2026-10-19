@@ -5,9 +5,9 @@ import invariant from 'tiny-invariant';
 import type { ConsolidationConfigInput } from './consolidation-config-schema';
 import { consolidationConfigSchema } from './consolidation-config-schema';
 import { startMemoryConsolidator } from './start-memory-consolidator';
-import type { StubConsolidatorSession } from './test-utils/build-stub-consolidator-session';
-import { buildStubConsolidatorSession } from './test-utils/build-stub-consolidator-session';
 import { createMemoryItem } from './test-utils/create-memory-item';
+import type { StubConsolidatorSession } from './test-utils/create-stub-consolidator-session';
+import { createStubConsolidatorSession } from './test-utils/create-stub-consolidator-session';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 // A test memory on a test clock, with the task projections, and a step runner that starts the
@@ -76,7 +76,7 @@ test('it proposes a merge of duplicate items and a retirement of a stale one, ea
   });
 
   await ctx.runStep(
-    buildStubConsolidatorSession([
+    createStubConsolidatorSession([
       {
         kind: 'merge',
         itemIDs: [allergy.itemID, duplicate.itemID],
@@ -121,7 +121,7 @@ test('it shows the session the persona, the rules and every active item, and no 
 
   const shortIDs = await ctx.memory.store.readShortIDs([bees.itemID, choir.itemID]);
 
-  const session = buildStubConsolidatorSession([]);
+  const session = createStubConsolidatorSession([]);
 
   await ctx.runStep(session);
 
@@ -147,7 +147,7 @@ test('it keeps the summary of a conflict it left alone, sealed under the key of 
   ]);
 
   const result = await ctx.runStep(
-    buildStubConsolidatorSession(
+    createStubConsolidatorSession(
       [],
       'Two items conflict and stay unchanged: one says oat milk, the other says black.',
     ),
@@ -180,7 +180,7 @@ test('it shows no diff once a forget erases the summary of a run that proposed n
   ]);
 
   await ctx.runStep(
-    buildStubConsolidatorSession([], 'Two items about coffee conflict and stay unchanged.'),
+    createStubConsolidatorSession([], 'Two items about coffee conflict and stay unchanged.'),
   );
 
   await ctx.memory.store.forget({
@@ -202,7 +202,7 @@ test('it lets the summary of a run that proposed no change lapse at the lapse ti
   ]);
 
   await ctx.runStep(
-    buildStubConsolidatorSession([], 'Two items about coffee conflict and stay unchanged.'),
+    createStubConsolidatorSession([], 'Two items about coffee conflict and stay unchanged.'),
   );
 
   ctx.clock.advance(7 * 24 * 60 * 60 * 1000);
@@ -217,7 +217,7 @@ test('it records a run with no session when fewer than 2 items are active', asyn
 
   await createMemoryItem(ctx.memory.store, { text: 'Keeps bees on the roof' });
 
-  const session = buildStubConsolidatorSession([]);
+  const session = createStubConsolidatorSession([]);
 
   const result = await ctx.runStep(session);
 
@@ -236,7 +236,7 @@ test('it records a run with no session when fewer than 2 items are active', asyn
 test('it records a run with no session when the complete list holds no item', async () => {
   const ctx = await setupTest();
 
-  const session = buildStubConsolidatorSession([]);
+  const session = createStubConsolidatorSession([]);
 
   const result = await ctx.runStep(session);
 
@@ -259,7 +259,7 @@ test('it runs the session on a list cut at the budget, even when the cut list ho
 
   const shortIDs = await ctx.memory.store.readShortIDs([bees.itemID]);
 
-  const session = buildStubConsolidatorSession([]);
+  const session = createStubConsolidatorSession([]);
 
   // 'Keeps bees on the roof' takes 6 tokens and 24 of overhead, so 40 fits it and no second item
   await ctx.runStep(session, { item_list_tokens: 40 });
@@ -279,7 +279,7 @@ test('it runs the session on a list cut at the budget, even when the cut list ho
 test('it waits a whole period after the last run before it runs again', async () => {
   const ctx = await setupTest();
 
-  const session = buildStubConsolidatorSession([]);
+  const session = createStubConsolidatorSession([]);
 
   await ctx.runStep(session);
 
@@ -302,14 +302,14 @@ test('it holds the next run while a change of the last diff waits, until that ch
   await createMemoryItem(ctx.memory.store, { text: 'Sings in a choir' });
 
   await ctx.runStep(
-    buildStubConsolidatorSession([
+    createStubConsolidatorSession([
       { kind: 'retire', itemIDs: [trip.itemID], reason: 'The trip has ended.' },
     ]),
   );
 
   ctx.clock.advance(7 * 24 * 60 * 60 * 1000 - 1);
 
-  const session = buildStubConsolidatorSession([]);
+  const session = createStubConsolidatorSession([]);
 
   const result = await ctx.runStep(session);
 
@@ -324,14 +324,14 @@ test('it lapses the last diff once its lapse time passes, and runs again', async
   await createMemoryItem(ctx.memory.store, { text: 'Sings in a choir' });
 
   await ctx.runStep(
-    buildStubConsolidatorSession([
+    createStubConsolidatorSession([
       { kind: 'retire', itemIDs: [trip.itemID], reason: 'The trip has ended.' },
     ]),
   );
 
   ctx.clock.advance(7 * 24 * 60 * 60 * 1000);
 
-  const session = buildStubConsolidatorSession([]);
+  const session = createStubConsolidatorSession([]);
 
   const result = await ctx.runStep(session);
 
@@ -345,7 +345,7 @@ test('it waits the retry time after a failed session, and stages nothing', async
   await createMemoryItem(ctx.memory.store, { text: 'Keeps bees' });
   await createMemoryItem(ctx.memory.store, { text: 'Sings in a choir' });
 
-  const session = buildStubConsolidatorSession([]);
+  const session = createStubConsolidatorSession([]);
 
   session.model.runSession.mockImplementation(() =>
     Promise.reject(new Error('the provider refused the call')),

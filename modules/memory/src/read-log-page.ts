@@ -56,16 +56,13 @@ export async function readLogPage(
     return { entries: [], next: null };
   }
 
-  const scan = await collectPageEntries(log, query, bounds);
+  const scan = await readPageEntries(log, query, bounds);
 
   return { entries: scan.entries, next: scan.after >= bounds.through ? null : scan.after };
 }
 
 // the kinds a thread's reader sees: your messages, the replies, and each tool's result
 const entryKinds: readonly RecordKind[] = ['owner_message', 'model.reply', 'tool_result'];
-const batchSize = 100;
-const scanLimit = 500;
-const textLimit = 2000;
 
 interface SequenceBounds {
   readonly after: number;
@@ -104,7 +101,10 @@ interface PageScan {
   readonly scanned: number;
 }
 
-async function collectPageEntries(
+const batchSize = 100;
+const scanLimit = 500;
+
+async function readPageEntries(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   query: LogPageQuery,
   bounds: SequenceBounds,
@@ -132,6 +132,10 @@ async function collectPageEntries(
   }
 
   return scan;
+}
+
+function normalizeSearchText(text: string): string {
+  return text.normalize('NFKC').toLocaleLowerCase('en-US').trim();
 }
 
 interface EntryFilter {
@@ -172,6 +176,9 @@ interface ScannedEntry {
   readonly plain: string | null;
 }
 
+const spanFields = z.object({ start: z.int(), end: z.int(), source: z.string() });
+const ownerFields = z.object({ text: z.string(), spans: z.array(spanFields).optional() });
+
 // your message renders as the conversation shows it, with each paste in its own block and a marker
 // line for each image; the page never holds an image's bytes, so memory learns only your words
 function buildScannedEntry(record: LogRecord): ScannedEntry {
@@ -188,7 +195,7 @@ function buildScannedEntry(record: LogRecord): ScannedEntry {
     };
   }
 
-  const text = record.kind === 'model.reply' ? readReplyText(fields) : readToolText(fields);
+  const text = record.kind === 'model.reply' ? parseReplyText(fields) : formatToolText(fields);
 
   return {
     entry: { ...base, role: record.kind === 'model.reply' ? 'assistant' : 'tool', text },
@@ -200,19 +207,17 @@ function renderOwnerEntry(record: LogRecord): string {
   return [renderOwnerText(record), ...renderImageMarkers(record)].join('\n');
 }
 
-function readReplyText(fields: JSONObject | null): string | null {
+const replyFields = z.object({ text: z.string() });
+
+function parseReplyText(fields: JSONObject | null): string | null {
   const parsed = replyFields.safeParse(fields);
 
   return parsed.success ? parsed.data.text : null;
 }
 
-function readToolText(fields: JSONObject | null): string | null {
+function formatToolText(fields: JSONObject | null): string | null {
   return fields === null ? null : JSON.stringify(fields);
 }
-
-const spanFields = z.object({ start: z.int(), end: z.int(), source: z.string() });
-const ownerFields = z.object({ text: z.string(), spans: z.array(spanFields).optional() });
-const replyFields = z.object({ text: z.string() });
 
 // a record's time can step back past a clock change, so each entry is checked against the range
 function isInRange(entry: LogEntry, query: LogPageQuery): boolean {
@@ -237,9 +242,7 @@ function hasEveryWord(plain: string | null, words: readonly string[]): boolean {
   return words.every((word) => text.includes(word));
 }
 
-function normalizeSearchText(text: string): string {
-  return text.normalize('NFKC').toLocaleLowerCase('en-US').trim();
-}
+const textLimit = 2000;
 
 // a long text is cut to textLimit characters
 function toShownEntry(entry: LogEntry): LogEntry {

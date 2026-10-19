@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import type { CheckerAnswer } from './checker-types';
 
+const checkerOutput = z.object({
+  verdict: z.enum(['asserted', 'not_asserted', 'unsure']),
+  reason: z.string(),
+});
+
 // Reads the checker's structured output into an answer from the model. An answer that breaks the
 // shape reads as unsure, so a garbled reply never lets a write through.
 export function parseCheckerAnswer(output: unknown, model: string): CheckerAnswer {
@@ -12,8 +17,3 @@ export function parseCheckerAnswer(output: unknown, model: string): CheckerAnswe
 
   return { verdict: parsed.data.verdict, reason: parsed.data.reason, model, failure: null };
 }
-
-const checkerOutput = z.object({
-  verdict: z.enum(['asserted', 'not_asserted', 'unsure']),
-  reason: z.string(),
-});

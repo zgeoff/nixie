@@ -22,6 +22,21 @@ export interface HarnessLink {
   readonly sendReady: () => void;
 }
 
+const processChannel: HarnessChannel = {
+  send: (message) => {
+    if (process.send === undefined) {
+      throw new Error('nixie runs without the crash harness IPC channel');
+    }
+
+    process.send(message);
+  },
+  subscribe: (onMessage) => {
+    process.on('message', (message: HarnessMessage) => {
+      onMessage(message);
+    });
+  },
+};
+
 // Starts the link from the clock time and the armed fault points the harness passed in the
 // environment. Two operations are built in: advance, which moves the clock and, with settle, waits
 // for every sleeper it woke to sleep again, and arm, which holds one more fault point.
@@ -81,21 +96,6 @@ export function startHarnessLink(
   };
 }
 
-const processChannel: HarnessChannel = {
-  send: (message) => {
-    if (process.send === undefined) {
-      throw new Error('nixie runs without the crash harness IPC channel');
-    }
-
-    process.send(message);
-  },
-  subscribe: (onMessage) => {
-    process.on('message', (message: HarnessMessage) => {
-      onMessage(message);
-    });
-  },
-};
-
 // an arm and how many more arrivals it holds
 interface HeldArm {
   readonly arm: FaultPointArm;
@@ -109,30 +109,12 @@ function parseArms(text: string | undefined): HeldArm[] {
   return parsed.map((arm) => buildHeldArm(arm));
 }
 
-function runArm(arms: HeldArm[], args: unknown): null {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
-  arms.push(buildHeldArm(args as FaultPointArm));
-
-  return null;
-}
-
 function buildHeldArm(arm: FaultPointArm): HeldArm {
   return { arm, held: { remaining: arm.times ?? 1 } };
 }
 
-function isArmMatch(candidate: HeldArm, point: string, work: FaultPointWork): boolean {
-  const arm = candidate.arm;
-
-  return (
-    candidate.held.remaining > 0 &&
-    arm.point === point &&
-    (arm.kind === undefined || arm.kind === work.kind) &&
-    (arm.workID === undefined || arm.workID === work.id)
-  );
-}
-
 interface AdvanceArgs {
-  readonly ms: number;
+  readonly durationMs: number;
   readonly settle?: boolean;
 
   // how long an advance waits for the sleepers it woke to sleep again
@@ -146,7 +128,7 @@ async function runAdvance(clock: TestClock, args: unknown): Promise<{ readonly s
   const advance = args as AdvanceArgs;
   const before = clock.countSleepers();
 
-  clock.advance(advance.ms);
+  clock.advance(advance.durationMs);
 
   if (advance.settle !== true) {
     return { settled: false };
@@ -159,6 +141,13 @@ async function runAdvance(clock: TestClock, args: unknown): Promise<{ readonly s
   }
 
   return { settled: clock.countSleepers() >= before };
+}
+
+function runArm(arms: HeldArm[], args: unknown): null {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
+  arms.push(buildHeldArm(args as FaultPointArm));
+
+  return null;
 }
 
 async function runRequest(
@@ -186,4 +175,15 @@ async function runRequest(
 
     channel.send({ type: 'reply', requestID: request.requestID, error: message });
   }
+}
+
+function isArmMatch(candidate: HeldArm, point: string, work: FaultPointWork): boolean {
+  const arm = candidate.arm;
+
+  return (
+    candidate.held.remaining > 0 &&
+    arm.point === point &&
+    (arm.kind === undefined || arm.kind === work.kind) &&
+    (arm.workID === undefined || arm.workID === work.id)
+  );
 }

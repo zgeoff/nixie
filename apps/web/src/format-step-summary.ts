@@ -58,20 +58,6 @@ function formatTools(step: StepActivity): string {
   return tools.length === 0 ? 'no tools' : tools.join('; ');
 }
 
-// 12.3s under a minute, and 1m 5s from a minute on
-function formatDuration(durationMs: number): string {
-  const seconds = Math.max(0, durationMs) / 1000;
-
-  return seconds < 60
-    ? `${seconds.toFixed(1)}s`
-    : `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
-}
-
-// web_fetch reads as "web fetch"
-function formatToolName(tool: string): string {
-  return tool.replaceAll(/[_.]+/gu, ' ');
-}
-
 const targetLimit = 60;
 
 // The input's first text value, and a URL's host name alone.
@@ -86,4 +72,18 @@ function formatTarget(input: Readonly<Record<string, unknown>> | undefined): str
   const target = host === undefined || host === '' ? text : host.replace(/^www\./u, '');
 
   return target.length > targetLimit ? `${target.slice(0, targetLimit)}…` : target;
+}
+
+// web_fetch reads as "web fetch"
+function formatToolName(tool: string): string {
+  return tool.replaceAll(/[_.]+/gu, ' ');
+}
+
+// 12.3s under a minute, and 1m 5s from a minute on
+function formatDuration(durationMs: number): string {
+  const seconds = Math.max(0, durationMs) / 1000;
+
+  return seconds < 60
+    ? `${seconds.toFixed(1)}s`
+    : `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
 }

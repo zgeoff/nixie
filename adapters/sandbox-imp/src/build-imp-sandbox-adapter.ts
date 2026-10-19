@@ -69,8 +69,8 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
           await options.port.removeImp(id);
         },
       }),
-    get: async (id) => {
-      const row = await options.recorder.findRow('imp', id);
+    read: async (id) => {
+      const row = await options.recorder.readRow('imp', id);
 
       return row ? getRowSandbox(row) : null;
     },
@@ -97,71 +97,6 @@ function makeRowSandboxReader(
     sleeping.setAsleep(row.sandboxID, row.state === 'sleeping');
 
     return getSandbox(row.sandboxID, row.spec, isBackedUp === true);
-  };
-}
-
-// A release names each image by its kind and digest, so impd pulls a name once. A held name matches,
-// with no add impd could refuse, when its digest or the digest its ref pins is the release's. Any
-// other is refused, because a spec that names it would run an image the manifest never pinned.
-function makeImageAdder(port: ImpPort): SandboxAdapter['addImage'] {
-  return async (image) => {
-    const digest = findPinnedDigest(image.ref);
-
-    if (digest === undefined) {
-      throw new Error(`the image ${image.name} is not pinned by digest: ${image.ref}`);
-    }
-
-    const images = await port.listImages();
-
-    const held = images.find((row) => row.name === image.name);
-
-    if (held === undefined) {
-      await createImpImage(port, { name: image.name, digest, ref: image.ref });
-    } else if (held.digest !== digest && findPinnedDigest(held.ref) !== digest) {
-      throw new Error(
-        `impd holds the image ${image.name} at ${held.digest} from ${held.ref}, not ${digest}`,
-      );
-    }
-  };
-}
-
-// impd's refusal names neither the image nor the ref, so the start step's log could not say which
-// image the host owner has to add
-async function createImpImage(
-  port: ImpPort,
-  image: Parameters<ImpPort['addImage']>[0],
-): Promise<void> {
-  try {
-    await port.addImage(image);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-
-    throw new Error(`impd did not add the image ${image.name} from ${image.ref}: ${reason}`, {
-      cause: error,
-    });
-  }
-}
-
-function findPinnedDigest(ref: string): string | undefined {
-  return /@(?<digest>sha256:[\da-f]{64})$/u.exec(ref)?.groups?.['digest'];
-}
-
-// A secret stays under its name once stored, because a sandbox's grant may name it; a caller with a
-// new value stores it under a new name.
-function makeSecretAdder(port: ImpPort): SandboxAdapter['addSecret'] {
-  return async (secret) => {
-    if ((await port.readSecretHosts(secret.name)) !== null) {
-      return;
-    }
-
-    await port.addSecret({
-      name: secret.name,
-      value: secret.value,
-      host: secret.host,
-      ...(secret.header === 'bearer'
-        ? { header: 'authorization', scheme: 'bearer' }
-        : { header: 'x-api-key', scheme: 'raw' }),
-    });
   };
 }
 
@@ -224,6 +159,71 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
   await sandbox.toolRoute();
 
   return sandbox;
+}
+
+// A secret stays under its name once stored, because a sandbox's grant may name it; a caller with a
+// new value stores it under a new name.
+function makeSecretAdder(port: ImpPort): SandboxAdapter['addSecret'] {
+  return async (secret) => {
+    if ((await port.readSecretHosts(secret.name)) !== null) {
+      return;
+    }
+
+    await port.addSecret({
+      name: secret.name,
+      value: secret.value,
+      host: secret.host,
+      ...(secret.header === 'bearer'
+        ? { header: 'authorization', scheme: 'bearer' }
+        : { header: 'x-api-key', scheme: 'raw' }),
+    });
+  };
+}
+
+// A release names each image by its kind and digest, so impd pulls a name once. A held name matches,
+// with no add impd could refuse, when its digest or the digest its ref pins is the release's. Any
+// other is refused, because a spec that names it would run an image the manifest never pinned.
+function makeImageAdder(port: ImpPort): SandboxAdapter['addImage'] {
+  return async (image) => {
+    const digest = findPinnedDigest(image.ref);
+
+    if (digest === undefined) {
+      throw new Error(`the image ${image.name} is not pinned by digest: ${image.ref}`);
+    }
+
+    const images = await port.listImages();
+
+    const held = images.find((row) => row.name === image.name);
+
+    if (held === undefined) {
+      await createImpImage(port, { name: image.name, digest, ref: image.ref });
+    } else if (held.digest !== digest && findPinnedDigest(held.ref) !== digest) {
+      throw new Error(
+        `impd holds the image ${image.name} at ${held.digest} from ${held.ref}, not ${digest}`,
+      );
+    }
+  };
+}
+
+function findPinnedDigest(ref: string): string | undefined {
+  return /@(?<digest>sha256:[\da-f]{64})$/u.exec(ref)?.groups?.['digest'];
+}
+
+// impd's refusal names neither the image nor the ref, so the start step's log could not say which
+// image the host owner has to add
+async function createImpImage(
+  port: ImpPort,
+  image: Parameters<ImpPort['addImage']>[0],
+): Promise<void> {
+  try {
+    await port.addImage(image);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+
+    throw new Error(`impd did not add the image ${image.name} from ${image.ref}: ${reason}`, {
+      cause: error,
+    });
+  }
 }
 
 // the runtime is ready while impd answers

@@ -87,6 +87,15 @@ async function readHeadsUp(
   };
 }
 
+// a turn whose model calls reported no usage gives no context
+function toContext(record: LogRecord): ContextSize | null {
+  const ended = modelTurnEndedCodec.tryDecodePartial(record.payload);
+
+  return ended?.contextSize === undefined || ended.contextWindow === undefined
+    ? null
+    : { size: ended.contextSize, window: ended.contextWindow };
+}
+
 interface TurnSpan {
   readonly after: number;
   readonly before: number;
@@ -119,15 +128,6 @@ async function readEarlierHeadsUp(
   }
 
   return readEarlierHeadsUp(log, headsUp, { after: span.after, before: oldest.record.sequence });
-}
-
-// a turn whose model calls reported no usage gives no context
-function toContext(record: LogRecord): ContextSize | null {
-  const ended = modelTurnEndedCodec.tryDecodePartial(record.payload);
-
-  return ended?.contextSize === undefined || ended.contextWindow === undefined
-    ? null
-    : { size: ended.contextSize, window: ended.contextWindow };
 }
 
 function formatTokens(tokens: number): string {

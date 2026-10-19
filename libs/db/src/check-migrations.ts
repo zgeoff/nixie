@@ -36,18 +36,18 @@ export interface MigrationCheck {
   readonly readableByReleaseBefore: boolean;
 }
 
-// Checks the migrations against the last release on a scratch database in dir: the released ones
+// Checks the migrations against the last release on a scratch database in directory: the released ones
 // must build the schema they built at the release, and a build that keeps its schema readable adds
 // only expand statements. With no release before it (released null), every migration passes.
 export async function checkMigrations(
   schema: BuildSchema,
   released: ReleasedSchema | null,
-  dir: string,
+  directory: string,
 ): Promise<MigrationCheck> {
   const releasedNames = released?.migrations ?? [];
   const readableByReleaseBefore = schema.oldestReader <= releasedNames.length;
 
-  const run = await runRecordedMigrations(schema.migrations, releasedNames.length, dir);
+  const run = await runRecordedMigrations(schema.migrations, releasedNames.length, directory);
 
   const added = collectAddedSchema(run.added.flatMap((migration) => migration.statements));
   const lint = released !== null && readableByReleaseBefore;
@@ -86,12 +86,12 @@ const transactionControl = /^(?:begin|commit|rollback|savepoint|release)\b/u;
 async function runRecordedMigrations(
   migrations: readonly Migration[],
   releasedCount: number,
-  dir: string,
+  directory: string,
 ): Promise<RecordedRun> {
   const statements: string[] = [];
 
   const db = new Kysely<unknown>({
-    dialect: buildSqliteWorkerDialect(join(dir, 'check-migrations.db')),
+    dialect: buildSqliteWorkerDialect(join(directory, 'check-migrations.db')),
     log: (event) => {
       if (!transactionControl.test(event.query.sql.trim().toLowerCase())) {
         statements.push(event.query.sql);
@@ -102,7 +102,7 @@ async function runRecordedMigrations(
   try {
     await runMigrations(db, {
       schema: { migrations: migrations.slice(0, releasedCount), oldestReader: 0 },
-      copyDir: dir,
+      copyDir: directory,
     });
 
     const objects = await readSchemaObjects(db);
@@ -148,41 +148,8 @@ async function runAddedMigrations(
   return recorded;
 }
 
-function collectChangedObjects(
-  released: readonly SchemaObject[],
-  built: readonly SchemaObject[],
-): string[] {
-  const builtByName = new Map(built.map((object) => [object.name, object]));
-  const releasedNames = new Set(released.map((object) => object.name));
-
-  const differing = released.filter((object) => {
-    const match = builtByName.get(object.name);
-
-    return (
-      match === undefined ||
-      match.type !== object.type ||
-      match.tableName !== object.tableName ||
-      match.sql !== object.sql
-    );
-  });
-
-  return [
-    ...differing.map((object) => object.name),
-    ...built.filter((object) => !releasedNames.has(object.name)).map((object) => object.name),
-  ];
-}
-
 const createTable = /^create table (?:if not exists )?(?<table>[^\s(]+)/u;
-
-const createIndex =
-  /^create (?<unique>unique )?index (?:if not exists )?\S+ on (?<table>[^\s(]+) ?\((?<columns>[^)]*)\)/u;
-
-const createTrigger =
-  /^create trigger (?:if not exists )?\S+ (?:before |after |instead of )?(?:insert|update|delete)(?: of .*?)? on (?<table>\S+)/u;
-
 const addColumn = /^alter table (?<table>\S+) add (?:column )?(?<definition>.+)$/u;
-const update = /^update (?<table>\S+) set (?<assignments>.+?)(?: where .*)?$/u;
-const select = /^select\b/u;
 
 // What the added migrations build that the release before never reads or writes: the tables they
 // create, and each column they add that an old insert leaves null, as table.column.
@@ -211,6 +178,44 @@ function collectAddedSchema(statements: readonly string[]): AddedSchema {
   };
 }
 
+function normalizeStatement(statement: string): string {
+  return statement.trim().replaceAll(/\s+/gu, ' ').toLowerCase();
+}
+
+function normalizeTable(table: string): string {
+  return table.replaceAll(/["`[\]]/gu, '').replace(/^main\./u, '');
+}
+
+function buildColumnName(table: string, column: string): string {
+  return `${normalizeTable(table)}.${normalizeTable(column)}`;
+}
+
+function collectChangedObjects(
+  released: readonly SchemaObject[],
+  built: readonly SchemaObject[],
+): string[] {
+  const builtByName = new Map(built.map((object) => [object.name, object]));
+  const releasedNames = new Set(released.map((object) => object.name));
+
+  const differing = released.filter((object) => {
+    const match = builtByName.get(object.name);
+
+    return (
+      match === undefined ||
+      match.type !== object.type ||
+      match.tableName !== object.tableName ||
+      match.sql !== object.sql
+    );
+  });
+
+  return [
+    ...differing.map((object) => object.name),
+    ...built.filter((object) => !releasedNames.has(object.name)).map((object) => object.name),
+  ];
+}
+
+const select = /^select\b/u;
+
 // A new table, a read, an index or a column an old insert still satisfies, a trigger on a new table,
 // or a backfill of a column the release adds: the release before reads and writes around each.
 function isExpandStatement(statement: string, added: AddedSchema): boolean {
@@ -226,6 +231,9 @@ function isExpandStatement(statement: string, added: AddedSchema): boolean {
   );
 }
 
+const createIndex =
+  /^create (?<unique>unique )?index (?:if not exists )?\S+ on (?<table>[^\s(]+) ?\((?<columns>[^)]*)\)/u;
+
 // a unique index passes only on a table the release creates, or on columns it adds that the release
 // before leaves null, because a unique index admits any number of nulls
 function isExpandIndex(statement: string, added: AddedSchema): boolean {
@@ -235,39 +243,6 @@ function isExpandIndex(statement: string, added: AddedSchema): boolean {
     index !== undefined &&
     (index['unique'] === undefined ||
       isAddedSchema(added, index['table'] ?? '', splitColumns(index['columns'] ?? '')))
-  );
-}
-
-// a constrained column passes only on a table the release creates
-function isExpandColumn(statement: string, added: AddedSchema): boolean {
-  const column = addColumn.exec(statement)?.groups;
-
-  return (
-    column !== undefined &&
-    (added.tables.includes(normalizeTable(column['table'] ?? '')) ||
-      isOptionalColumn(column['definition'] ?? ''))
-  );
-}
-
-// a trigger passes only on a table the release creates, which the release before never writes; its
-// log reset drops and restores every trigger the schema holds
-function isExpandTrigger(statement: string, added: AddedSchema): boolean {
-  const table = createTrigger.exec(statement)?.groups?.['table'];
-
-  return table !== undefined && added.tables.includes(normalizeTable(table));
-}
-
-// an update that sets only columns the release adds, which the release before never reads
-function isBackfill(statement: string, added: AddedSchema): boolean {
-  const backfill = update.exec(statement)?.groups;
-
-  return (
-    backfill !== undefined &&
-    isAddedSchema(
-      added,
-      backfill['table'] ?? '',
-      splitAssignedColumns(backfill['assignments'] ?? ''),
-    )
   );
 }
 
@@ -285,18 +260,15 @@ function splitColumns(columns: string): readonly string[] {
   return columns.split(',').map((column) => column.trim().split(' ').at(0) ?? '');
 }
 
-// the column each assignment of an update sets; an assignment it cannot read names no column, so
-// the update passes only when every assignment reads as column = value
-function splitAssignedColumns(assignments: string): readonly string[] {
-  return assignments
-    .split(',')
-    .map(
-      (assignment) => /^(?<column>[^\s=]+) ?=/u.exec(assignment.trim())?.groups?.['column'] ?? '',
-    );
-}
+// a constrained column passes only on a table the release creates
+function isExpandColumn(statement: string, added: AddedSchema): boolean {
+  const column = addColumn.exec(statement)?.groups;
 
-function buildColumnName(table: string, column: string): string {
-  return `${normalizeTable(table)}.${normalizeTable(column)}`;
+  return (
+    column !== undefined &&
+    (added.tables.includes(normalizeTable(column['table'] ?? '')) ||
+      isOptionalColumn(column['definition'] ?? ''))
+  );
 }
 
 // an insert that leaves the column out still succeeds: no check, and a default for not null
@@ -307,10 +279,39 @@ function isOptionalColumn(definition: string): boolean {
   );
 }
 
-function normalizeStatement(statement: string): string {
-  return statement.trim().replaceAll(/\s+/gu, ' ').toLowerCase();
+const createTrigger =
+  /^create trigger (?:if not exists )?\S+ (?:before |after |instead of )?(?:insert|update|delete)(?: of .*?)? on (?<table>\S+)/u;
+
+// a trigger passes only on a table the release creates, which the release before never writes; its
+// log reset drops and restores every trigger the schema holds
+function isExpandTrigger(statement: string, added: AddedSchema): boolean {
+  const table = createTrigger.exec(statement)?.groups?.['table'];
+
+  return table !== undefined && added.tables.includes(normalizeTable(table));
 }
 
-function normalizeTable(table: string): string {
-  return table.replaceAll(/["`[\]]/gu, '').replace(/^main\./u, '');
+const update = /^update (?<table>\S+) set (?<assignments>.+?)(?: where .*)?$/u;
+
+// an update that sets only columns the release adds, which the release before never reads
+function isBackfill(statement: string, added: AddedSchema): boolean {
+  const backfill = update.exec(statement)?.groups;
+
+  return (
+    backfill !== undefined &&
+    isAddedSchema(
+      added,
+      backfill['table'] ?? '',
+      splitAssignedColumns(backfill['assignments'] ?? ''),
+    )
+  );
+}
+
+// the column each assignment of an update sets; an assignment it cannot read names no column, so
+// the update passes only when every assignment reads as column = value
+function splitAssignedColumns(assignments: string): readonly string[] {
+  return assignments
+    .split(',')
+    .map(
+      (assignment) => /^(?<column>[^\s=]+) ?=/u.exec(assignment.trim())?.groups?.['column'] ?? '',
+    );
 }

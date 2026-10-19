@@ -12,11 +12,11 @@ async function setupTest() {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-triggers-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-triggers-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
-  const db = startDatabase(join(dir, 'nixie.db'));
+  const db = startDatabase(join(directory, 'nixie.db'));
 
   stack.defer(() => db.destroy());
 

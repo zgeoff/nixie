@@ -3,5 +3,5 @@
 // sleep resolves early, never rejects, when its signal aborts.
 export interface Clock {
   readonly now: () => number;
-  readonly sleep: (ms: number, signal?: AbortSignal) => Promise<void>;
+  readonly sleep: (durationMs: number, signal?: AbortSignal) => Promise<void>;
 }

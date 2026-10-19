@@ -96,22 +96,6 @@ async function writeRecord(
   return { ...record, erasable: buildWrittenErasable(pending.input.erasable, pending.sealed) };
 }
 
-async function writeAttachments(
-  tx: Transaction<unknown>,
-  sequence: number,
-  attachments: readonly Uint8Array<ArrayBuffer>[],
-): Promise<void> {
-  if (attachments.length === 0) {
-    return;
-  }
-
-  await tx
-    .$extendTables<LogTables>()
-    .insertInto('record_attachments')
-    .values(attachments.map((sealed, position) => ({ sequence, position, sealed })))
-    .execute();
-}
-
 function buildRecordValues(pending: PendingRecord, recordedAt: number) {
   const input = pending.input;
   const sealed = pending.sealed;
@@ -135,6 +119,22 @@ function buildRecordValues(pending: PendingRecord, recordedAt: number) {
     key_id: sealed?.keyID ?? null,
     sealed: sealed?.sealed ?? null,
   };
+}
+
+async function writeAttachments(
+  tx: Transaction<unknown>,
+  sequence: number,
+  attachments: readonly Uint8Array<ArrayBuffer>[],
+): Promise<void> {
+  if (attachments.length === 0) {
+    return;
+  }
+
+  await tx
+    .$extendTables<LogTables>()
+    .insertInto('record_attachments')
+    .values(attachments.map((sealed, position) => ({ sequence, position, sealed })))
+    .execute();
 }
 
 function buildWrittenErasable(

@@ -1,8 +1,8 @@
 import { withWriteTransaction } from '@heynixie/log';
 import { buildInputHash } from './build-input-hash';
-import type { ClientAction } from './find-client-action';
-import { findClientAction } from './find-client-action';
-import { isLiveIdentity } from './is-live-identity';
+import { probeLiveIdentity } from './probe-live-identity';
+import type { ClientAction } from './read-client-action';
+import { readClientAction } from './read-client-action';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
 import type { APIContext, Identity } from './types';
 import { writeClientAction } from './write-client-action';
@@ -30,8 +30,8 @@ export async function writeRecordForget(
 ): Promise<RecordForgetResult> {
   const result = await withWriteTransaction(context.log.writer, async (tx) => {
     const [live, earlier] = await Promise.all([
-      isLiveIdentity(tx, context, caller.identityID),
-      findClientAction(tx, input.clientActionID),
+      probeLiveIdentity(tx, context, caller.identityID),
+      readClientAction(tx, input.clientActionID),
     ]);
 
     const inputHash = buildInputHash({ thread: input.thread, sequence: input.sequence });

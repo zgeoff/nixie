@@ -52,7 +52,7 @@ export function startStubChangingToolServer(form: StubToolForm): StubChangingToo
   const released = Promise.withResolvers<void>();
 
   const handler = createMcpHandler(() =>
-    buildChangingServer(() => state.form, {
+    createChangingServer(() => state.form, {
       onCall: (call) => {
         calls.push(call);
       },
@@ -133,7 +133,7 @@ interface CallHooks {
 }
 
 // oxlint-disable-next-line typescript/no-deprecated -- the high-level McpServer needs a zod schema per tool, and the stub lists one plain schema as nixie's endpoint does
-function buildChangingServer(readForm: () => StubToolForm, hooks: CallHooks): Server {
+function createChangingServer(readForm: () => StubToolForm, hooks: CallHooks): Server {
   // oxlint-disable-next-line typescript/no-deprecated -- as above
   const server = new Server(
     { name: 'nixie', version: '0.0.0' },

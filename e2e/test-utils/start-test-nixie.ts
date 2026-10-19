@@ -61,6 +61,9 @@ export interface TestNixieOptions {
   readonly memoryWriter?: boolean;
 }
 
+// a turn runs the real SDK in a guest process, which takes a few seconds on a slow host
+const recordTimeoutMs = 30_000;
+
 // Sets up a crash test: a fresh data directory, the scripted model and the provider double in the
 // test process, where their records survive every kill, and the crash harness at 1,000,000 ms.
 export async function startTestNixie(options: TestNixieOptions = {}): Promise<TestNixie> {
@@ -99,6 +102,24 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
   };
 }
 
+type TestDoubles = Pick<TestNixie, 'model' | 'provider' | 'writerModel'>;
+
+function startDoubles(stack: AsyncDisposableStack): TestDoubles {
+  const model = startScriptedModel();
+
+  stack.defer(() => model.stop());
+
+  const writerModel = startScriptedModel();
+
+  stack.defer(() => writerModel.stop());
+
+  const provider = startProviderDouble();
+
+  stack.defer(() => provider.stop());
+
+  return { model, writerModel, provider };
+}
+
 type NixieEnv = Readonly<Record<string, string>>;
 
 function startNixieHarness(stack: AsyncDisposableStack, env: NixieEnv): CrashHarness {
@@ -112,6 +133,59 @@ function startNixieHarness(stack: AsyncDisposableStack, env: NixieEnv): CrashHar
   stack.defer(() => harness.stop());
 
   return harness;
+}
+
+type LogReader = Pick<TestNixie, 'readRecords' | 'readRows'>;
+
+type Database = ReturnType<typeof startDatabase>;
+
+interface RecordRow {
+  readonly sequence: number;
+  readonly kind: string;
+  readonly thread: string | null;
+  readonly step_key: string | null;
+  readonly payload: string;
+}
+
+// mapped types, because Kysely's table map needs the index signature an interface lacks
+type ReaderTables = Readonly<{ records: RecordRow }>;
+
+type AnyTables = Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+
+// A read connection beside nixie, opened on the first read once nixie has made the database.
+function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader {
+  const reader: { db: Database | null } = { db: null };
+
+  const getReader = (): Database => {
+    reader.db ??= startDatabase(join(dataDir, 'nixie.db'));
+
+    return reader.db;
+  };
+
+  stack.defer(() => reader.db?.destroy());
+
+  return {
+    readRecords: async () => {
+      const rows = await getReader()
+        .$extendTables<ReaderTables>()
+        .selectFrom('records')
+        .select(['sequence', 'kind', 'thread', 'step_key', 'payload'])
+        .orderBy('sequence')
+        .execute();
+
+      return rows.map((row) => ({
+        sequence: row.sequence,
+        kind: row.kind,
+        thread: row.thread,
+        stepKey: row.step_key,
+
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the log stores JSON
+        payload: JSON.parse(row.payload) as Readonly<Record<string, unknown>>,
+      }));
+    },
+    readRows: (table) =>
+      getReader().$extendTables<AnyTables>().selectFrom(table).selectAll().execute(),
+  };
 }
 
 // Wraps the harness so each start holds at the end of its recovery while the test reads the leases
@@ -155,78 +229,4 @@ async function readRecoveredState(
   onState({ leases: await readRows('leases'), tasks: await readRows('tasks') });
 
   nixie.release(arrival);
-}
-
-// a turn runs the real SDK in a guest process, which takes a few seconds on a slow host
-const recordTimeoutMs = 30_000;
-
-type TestDoubles = Pick<TestNixie, 'model' | 'provider' | 'writerModel'>;
-
-function startDoubles(stack: AsyncDisposableStack): TestDoubles {
-  const model = startScriptedModel();
-
-  stack.defer(() => model.stop());
-
-  const writerModel = startScriptedModel();
-
-  stack.defer(() => writerModel.stop());
-
-  const provider = startProviderDouble();
-
-  stack.defer(() => provider.stop());
-
-  return { model, writerModel, provider };
-}
-
-type LogReader = Pick<TestNixie, 'readRecords' | 'readRows'>;
-
-// A read connection beside nixie, opened on the first read once nixie has made the database.
-function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader {
-  const reader: { db: Database | null } = { db: null };
-
-  const getReader = (): Database => {
-    reader.db ??= startDatabase(join(dataDir, 'nixie.db'));
-
-    return reader.db;
-  };
-
-  stack.defer(() => reader.db?.destroy());
-
-  return {
-    readRecords: async () => {
-      const rows = await getReader()
-        .$extendTables<ReaderTables>()
-        .selectFrom('records')
-        .select(['sequence', 'kind', 'thread', 'step_key', 'payload'])
-        .orderBy('sequence')
-        .execute();
-
-      return rows.map((row) => ({
-        sequence: row.sequence,
-        kind: row.kind,
-        thread: row.thread,
-        stepKey: row.step_key,
-
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the log stores JSON
-        payload: JSON.parse(row.payload) as Readonly<Record<string, unknown>>,
-      }));
-    },
-    readRows: (table) =>
-      getReader().$extendTables<AnyTables>().selectFrom(table).selectAll().execute(),
-  };
-}
-
-type Database = ReturnType<typeof startDatabase>;
-
-// mapped types, because Kysely's table map needs the index signature an interface lacks
-type ReaderTables = Readonly<{ records: RecordRow }>;
-
-type AnyTables = Readonly<Record<string, Readonly<Record<string, unknown>>>>;
-
-interface RecordRow {
-  readonly sequence: number;
-  readonly kind: string;
-  readonly thread: string | null;
-  readonly step_key: string | null;
-  readonly payload: string;
 }

@@ -2,9 +2,9 @@ import { expect, test } from 'bun:test';
 import { toCanonicalJSON } from './to-canonical-json';
 
 test('it sorts the keys of every object, nested ones included', () => {
-  expect(toCanonicalJSON({ b: 1, a: { d: [{ f: 1, e: 2 }], c: null } })).toBe(
-    '{"a":{"c":null,"d":[{"e":2,"f":1}]},"b":1}',
-  );
+  expect(
+    toCanonicalJSON({ zeta: 1, alpha: { delta: [{ gamma: 1, epsilon: 2 }], beta: null } }),
+  ).toBe('{"alpha":{"beta":null,"delta":[{"epsilon":2,"gamma":1}]},"zeta":1}');
 });
 
 test('it gives the same text for the same object built in any key order', () => {

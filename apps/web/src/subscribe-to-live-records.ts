@@ -91,8 +91,6 @@ interface Attempt {
   readonly connected: boolean;
 }
 
-type RecordEvents = Awaited<ReturnType<ContractClient['records']['follow']>>;
-
 // Reads one connection of the stream until it ends, drops or the caller aborts. The API checks the
 // session before it opens the stream, so a stream that opens is one the API accepted: only that
 // clears the unavailable notice, and it resets the backoff unless the API then ends it.
@@ -115,6 +113,8 @@ async function readRecordStream(
 
   return drainRecordStream(options, events, afterSequence);
 }
+
+type RecordEvents = Awaited<ReturnType<ContractClient['records']['follow']>>;
 
 // Opens the stream, or resolves with nothing when the request fails or the API refuses it.
 async function tryStartRecordStream(

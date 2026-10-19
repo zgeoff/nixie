@@ -1,8 +1,3 @@
-// One reply the stub model gives: a text block that ends the turn, or a tool_use block that asks
-// for a tool by its name as the model sees it, such as mcp__nixie__note_read. A gate holds the
-// reply until it resolves, so a test can keep a turn running.
-export type ScriptedReply = ScriptedMessage | ScriptedRefusal | ScriptedAuthFailure;
-
 type ScriptedMessage = (
   | { readonly text: string }
   | {
@@ -31,12 +26,10 @@ interface ScriptedAuthFailure {
   readonly gate?: Promise<void>;
 }
 
-// One request the stub model received, with its body parsed.
-export interface ScriptedModelRequest {
-  readonly path: string;
-  readonly headers: Readonly<Record<string, string>>;
-  readonly body: ScriptedModelBody | null;
-}
+// One reply the stub model gives: a text block that ends the turn, or a tool_use block that asks
+// for a tool by its name as the model sees it, such as mcp__nixie__note_read. A gate holds the
+// reply until it resolves, so a test can keep a turn running.
+export type ScriptedReply = ScriptedMessage | ScriptedRefusal | ScriptedAuthFailure;
 
 interface ScriptedModelBody {
   readonly model?: string;
@@ -44,6 +37,13 @@ interface ScriptedModelBody {
   readonly system?: unknown;
   readonly messages?: readonly { readonly role: string; readonly content: unknown }[];
   readonly tools?: readonly { readonly name: string }[];
+}
+
+// One request the stub model received, with its body parsed.
+export interface ScriptedModelRequest {
+  readonly path: string;
+  readonly headers: Readonly<Record<string, string>>;
+  readonly body: ScriptedModelBody | null;
 }
 
 export interface ScriptedModel {
@@ -128,6 +128,13 @@ function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]):
   return reply.gate === undefined ? { response } : { response, gate: reply.gate };
 }
 
+function renderRefusal(message: string): Response {
+  return Response.json(
+    { type: 'error', error: { type: 'invalid_request_error', message } },
+    { status: 400 },
+  );
+}
+
 function buildReplyResponse(reply: ScriptedReply, model: string, isStream: boolean): Response {
   if ('refusal' in reply) {
     return renderRefusal(reply.refusal);
@@ -140,33 +147,11 @@ function buildReplyResponse(reply: ScriptedReply, model: string, isStream: boole
   return isStream ? renderStream(reply, model) : renderWhole(reply, model);
 }
 
-function renderRefusal(message: string): Response {
-  return Response.json(
-    { type: 'error', error: { type: 'invalid_request_error', message } },
-    { status: 400 },
-  );
-}
-
 function renderAuthFailure(message: string): Response {
   return Response.json(
     { type: 'error', error: { type: 'authentication_error', message } },
     { status: 401, headers: { 'x-should-retry': 'false' } },
   );
-}
-
-function renderWhole(reply: ScriptedMessage, model: string): Response {
-  const block = buildBlock(reply);
-
-  return Response.json({
-    id: `msg_${crypto.randomUUID()}`,
-    type: 'message',
-    role: 'assistant',
-    model,
-    content: [block],
-    stop_reason: 'toolUse' in reply ? 'tool_use' : 'end_turn',
-    stop_sequence: null,
-    usage: { input_tokens: reply.inputTokens ?? 10, output_tokens: 5 },
-  });
 }
 
 function renderStream(reply: ScriptedMessage, model: string): Response {
@@ -225,4 +210,19 @@ function buildBlock(reply: ScriptedMessage): Readonly<Record<string, unknown>> {
   }
 
   return { type: 'text', text: reply.text };
+}
+
+function renderWhole(reply: ScriptedMessage, model: string): Response {
+  const block = buildBlock(reply);
+
+  return Response.json({
+    id: `msg_${crypto.randomUUID()}`,
+    type: 'message',
+    role: 'assistant',
+    model,
+    content: [block],
+    stop_reason: 'toolUse' in reply ? 'tool_use' : 'end_turn',
+    stop_sequence: null,
+    usage: { input_tokens: reply.inputTokens ?? 10, output_tokens: 5 },
+  });
 }

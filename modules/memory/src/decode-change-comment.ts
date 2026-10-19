@@ -1,6 +1,8 @@
 import { defineSealedCodec } from './define-sealed-codec';
 import { sealedTextSchema } from './sealed-text-schema';
 
+const changeComment = defineSealedCodec('consolidation-comment/', sealedTextSchema);
+
 // Opens what encodeChangeComment sealed. A wrong key, another change's ID or a changed byte rejects.
 export async function decodeChangeComment(
   key: CryptoKey,
@@ -11,5 +13,3 @@ export async function decodeChangeComment(
 
   return comment.text;
 }
-
-const changeComment = defineSealedCodec('consolidation-comment/', sealedTextSchema);

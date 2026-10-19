@@ -89,6 +89,7 @@ export const definitionsPollMachine = setup({
   states: {
     waiting: {
       invoke: {
+        // oxlint-disable-next-line zgeoff/no-abbreviated-names -- xstate fixes the `src` key
         src: 'wait',
         input: (entered) => entered.context,
         onDone: { target: 'probing' },
@@ -97,6 +98,7 @@ export const definitionsPollMachine = setup({
     },
     probing: {
       invoke: {
+        // oxlint-disable-next-line zgeoff/no-abbreviated-names -- xstate fixes the `src` key
         src: 'probe',
         input: (entered) => entered.context,
         onDone: [

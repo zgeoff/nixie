@@ -19,6 +19,12 @@ export interface StubHTTPToolServer {
   readonly stop: () => Promise<void>;
 }
 
+interface RouteState {
+  isDropping: boolean;
+  resets: number;
+  readonly sockets: Set<Socket>;
+}
+
 // Starts nixie's tool server as the guest reaches it in production: a Streamable HTTP MCP server
 // named nixie, with one tool, note_read, behind a loopback route the guest connects to. The route
 // relays each connection to the server, or resets it at once while the test drops connections.
@@ -87,12 +93,6 @@ function buildNoteServer(): Server {
   }));
 
   return server;
-}
-
-interface RouteState {
-  isDropping: boolean;
-  resets: number;
-  readonly sockets: Set<Socket>;
 }
 
 function startRelay(client: Socket, port: number, state: RouteState): void {

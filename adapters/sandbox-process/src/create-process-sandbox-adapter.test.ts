@@ -35,7 +35,7 @@ async function setupTest(config: SetupConfig = {}) {
   startStubToolEndpoint(join(rootDir, 'tools.sock'));
 
   // a test that needs the host's environment passes it here, as the server passes its own
-  const buildAdapter = (hostEnv: Readonly<Record<string, string>> = {}) =>
+  const createAdapter = (hostEnv: Readonly<Record<string, string>> = {}) =>
     createProcessSandboxAdapter({
       recorder: recorder.recorder,
       rootDir,
@@ -44,7 +44,7 @@ async function setupTest(config: SetupConfig = {}) {
       ...(config.killGraceMs === undefined ? {} : { killGraceMs: config.killGraceMs }),
     });
 
-  const adapter = buildAdapter();
+  const adapter = createAdapter();
 
   const createSandbox = async (
     spec: SandboxSpec,
@@ -60,7 +60,7 @@ async function setupTest(config: SetupConfig = {}) {
   return {
     adapter,
     rootDir,
-    buildAdapter,
+    createAdapter,
     createSandbox,
     recorder: recorder.recorder,
     readSandboxRecords: recorder.readSandboxRecords,
@@ -112,13 +112,13 @@ test('it lets a restarted adapter list and destroy what the last one made', asyn
   const ctx = await setupTest();
   const made = await ctx.adapter.create(buildMockSandboxSpec({ owner: 'task-1:step-2' }));
 
-  const restarted = ctx.buildAdapter();
+  const restarted = ctx.createAdapter();
 
   const [orphan] = await restarted.list('task-1:step-2');
 
   await orphan?.destroy();
 
-  const found = await restarted.get(made.id);
+  const found = await restarted.read(made.id);
   const hasDirectory = await Bun.file(join(ctx.rootDir, made.id, 'fs')).exists();
 
   expect(orphan?.id).toBe(made.id);
@@ -202,7 +202,7 @@ test('it passes the grant placeholders and keeps the loopback on NO_PROXY', asyn
 test("it passes the host's broker variables to a guest with a grant", async () => {
   const ctx = await setupTest();
 
-  const adapter = ctx.buildAdapter({
+  const adapter = ctx.createAdapter({
     HTTPS_PROXY: 'http://10.0.0.5:7081',
     NODE_EXTRA_CA_CERTS: '/etc/broker/ca.pem',
     NO_PROXY: 'internal.example',
@@ -228,7 +228,7 @@ test("it passes the host's broker variables to a guest with a grant", async () =
 test('it passes no broker variable to a guest without a grant', async () => {
   const ctx = await setupTest();
 
-  const adapter = ctx.buildAdapter({ HTTPS_PROXY: 'http://10.0.0.5:7081' });
+  const adapter = ctx.createAdapter({ HTTPS_PROXY: 'http://10.0.0.5:7081' });
 
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec({ grants: [] }), adapter);
   const result = await sandbox.exec({ argv: ['sh', '-c', 'echo "[$HTTPS_PROXY]"'] });

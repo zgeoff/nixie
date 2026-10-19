@@ -5,12 +5,15 @@ import invariant from 'tiny-invariant';
 import type { WriterLock } from './types';
 import { WriterLockHeldError } from './writer-lock-held-error';
 
+const LOCK_EX = 2;
+const LOCK_NB = 4;
+
 // Takes an exclusive flock on the data directory, the volume's mount root, and never on nixie.db:
 // closing any descriptor on nixie.db drops every POSIX lock the process holds on it, SQLite's
 // included. The kernel frees the lock when the process dies or calls release.
 export function claimWriterLock(dataDir: string): WriterLock {
   const fd = openSync(dataDir, 'r');
-  const libc = getLibc();
+  const libc = readLibc();
 
   if (libc.flock(fd, LOCK_EX | LOCK_NB) !== 0) {
     const errno = libc.readErrno();
@@ -38,9 +41,6 @@ export function claimWriterLock(dataDir: string): WriterLock {
   };
 }
 
-const LOCK_EX = 2;
-const LOCK_NB = 4;
-
 interface Libc {
   readonly flock: (fd: number, operation: number) => number;
   readonly readErrno: () => number;
@@ -50,7 +50,7 @@ interface Libc {
 const libcCache: { libc: Libc | null } = { libc: null };
 
 // Bun has no flock, so the lock calls libc's through FFI: glibc or musl on Linux, and macOS
-function getLibc(): Libc {
+function readLibc(): Libc {
   libcCache.libc ??= loadLibc();
 
   return libcCache.libc;
@@ -72,7 +72,7 @@ function loadLibc(): Libc {
     };
   }
 
-  const library = dlopen(findLinuxLibc(), {
+  const library = dlopen(resolveLinuxLibc(), {
     flock: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
     __errno_location: { args: [], returns: FFIType.ptr },
   });
@@ -86,9 +86,16 @@ function loadLibc(): Libc {
   };
 }
 
+// libc always returns the thread's errno location, and a user-space address fits in a number
+function readPointedInt(pointer: Pointer | bigint | null): number {
+  invariant(typeof pointer === 'number', 'libc returned no errno location');
+
+  return read.i32(pointer, 0);
+}
+
 const MUSL_ARCH: Partial<Record<NodeJS.Architecture, string>> = { arm64: 'aarch64', x64: 'x86_64' };
 
-function findLinuxLibc(): string {
+function resolveLinuxLibc(): string {
   const muslArch = MUSL_ARCH[process.arch];
 
   if (muslArch !== undefined && existsSync(`/lib/ld-musl-${muslArch}.so.1`)) {
@@ -96,11 +103,4 @@ function findLinuxLibc(): string {
   }
 
   return 'libc.so.6';
-}
-
-// libc always returns the thread's errno location, and a user-space address fits in a number
-function readPointedInt(pointer: Pointer | bigint | null): number {
-  invariant(typeof pointer === 'number', 'libc returned no errno location');
-
-  return read.i32(pointer, 0);
 }

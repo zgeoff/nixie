@@ -2,6 +2,8 @@ import { z } from 'zod';
 import type { MemoryProposalRow } from './gate-types';
 import type { Provenance } from './types';
 
+const checksColumn = z.record(z.string(), z.json());
+
 // An approved proposal keeps its origin, source and model, so outside content stays labelled as
 // such. Your edited text takes you as its origin and its source.
 export function buildApprovedProvenance(row: MemoryProposalRow, isEdited: boolean): Provenance {
@@ -16,5 +18,3 @@ export function buildApprovedProvenance(row: MemoryProposalRow, isEdited: boolea
     ? { ...base, origin: 'owner', source: 'owner', model: null }
     : { ...base, origin: row.origin, source: row.source, model: row.model };
 }
-
-const checksColumn = z.record(z.string(), z.json());

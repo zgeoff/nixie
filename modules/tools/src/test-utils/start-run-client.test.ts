@@ -5,17 +5,17 @@ import { join } from 'node:path';
 import { startRunClient } from './start-run-client';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-run-client-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-run-client-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { dir };
+  return { directory };
 }
 
 test('it sends the run token over the run socket', async () => {
   const ctx = await setupTest();
 
-  const socketPath = join(ctx.dir, 'run.sock');
+  const socketPath = join(ctx.directory, 'run.sock');
   const authorizations: (string | null)[] = [];
 
   const server = Bun.serve({
@@ -45,7 +45,7 @@ test('it sends the run token over the run socket', async () => {
 test('it sends the token given in place of the run token', async () => {
   const ctx = await setupTest();
 
-  const socketPath = join(ctx.dir, 'run.sock');
+  const socketPath = join(ctx.directory, 'run.sock');
   const authorizations: (string | null)[] = [];
 
   const server = Bun.serve({

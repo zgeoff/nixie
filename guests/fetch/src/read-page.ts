@@ -32,8 +32,6 @@ export async function readPage(url: string, options: PageReaderOptions): Promise
   }
 }
 
-const redirectStatuses: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
-
 async function readRedirectChain(
   url: string,
   options: PageReaderOptions,
@@ -56,6 +54,8 @@ async function readRedirectChain(
     hop.count += 1;
   }
 }
+
+const redirectStatuses: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
 
 // one hop: the checks, then the request to the checked address, then the page or the redirect
 async function readHop(

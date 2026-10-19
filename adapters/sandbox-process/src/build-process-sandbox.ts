@@ -56,7 +56,7 @@ export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
     copyIn: (files) => writeGuestFiles(ctx.fsRoot, files),
     copyOut: (paths) => Promise.all(paths.map((path) => readGuestFile(ctx.fsRoot, path))),
     resolveHome: (env) => Promise.try(() => resolveGuestHome(ctx, env)),
-    readFilePaths: (dir, options) => readGuestFilePaths(ctx.fsRoot, dir, options),
+    readFilePaths: (directory, options) => readGuestFilePaths(ctx.fsRoot, directory, options),
     applyMove: (from, to) => applyGuestMove(ctx.fsRoot, from, to),
     toolRoute: async () => {
       if (!ctx.spec.toolRoute) {
@@ -152,30 +152,30 @@ function resolveGuestHome(
   return { copyPath: join('/', below), ownPath: home };
 }
 
-function findPathBelow(dir: string, path: string): string | null {
-  const below = relative(dir, path);
+function findPathBelow(directory: string, path: string): string | null {
+  const below = relative(directory, path);
 
   return below === '..' || below.startsWith(`..${sep}`) || isAbsolute(below) ? null : below;
 }
 
 function readGuestFilePaths(
   fsRoot: string,
-  dir: string,
+  directory: string,
   options: ReadFilePathsOptions = {},
 ): Promise<readonly string[]> {
-  const root = resolveGuestPath(fsRoot, dir);
+  const root = resolveGuestPath(fsRoot, directory);
 
   return readFilePathsBelow(root, options.maxDepth ?? Number.POSITIVE_INFINITY);
 }
 
 // a walk that reads one folder level per step, so a bounded depth reads no folder below it; a folder
 // that is gone when its read comes lists nothing, and its siblings keep their files
-async function readFilePathsBelow(dir: string, depth: number): Promise<readonly string[]> {
+async function readFilePathsBelow(directory: string, depth: number): Promise<readonly string[]> {
   if (depth < 1) {
     return [];
   }
 
-  const entries = await readdir(dir, { withFileTypes: true }).catch((error: unknown) => {
+  const entries = await readdir(directory, { withFileTypes: true }).catch((error: unknown) => {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       return [];
     }
@@ -186,7 +186,7 @@ async function readFilePathsBelow(dir: string, depth: number): Promise<readonly 
   const listed = await Promise.all(
     entries.map(async (entry) => {
       if (entry.isDirectory()) {
-        const below = await readFilePathsBelow(join(dir, entry.name), depth - 1);
+        const below = await readFilePathsBelow(join(directory, entry.name), depth - 1);
 
         return below.map((path) => join(entry.name, path));
       }

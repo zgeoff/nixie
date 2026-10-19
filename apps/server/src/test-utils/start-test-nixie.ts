@@ -26,7 +26,7 @@ export interface TestNixieOptions {
 }
 
 export interface TestNixie extends BootFiles {
-  readonly dir: string;
+  readonly directory: string;
   readonly model: ScriptedModel;
 
   // every line nixie wrote to stdout and stderr so far
@@ -64,15 +64,15 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-main-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-main-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
   const model = startScriptedModel();
 
   stack.defer(() => model.stop());
 
-  const files = await writeBootFiles(dir, model.url, {
+  const files = await writeBootFiles(directory, model.url, {
     config: options.extraConfig ?? [],
     secrets: options.extraSecrets ?? [],
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
@@ -81,11 +81,11 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
     sandboxAdapter: options.entry === undefined ? 'test' : 'imp',
   });
 
-  return startNixieRun({ dir, model, files, entry: options.entry, stack });
+  return startNixieRun({ directory, model, files, entry: options.entry, stack });
 }
 
 interface TestNixieFiles {
-  readonly dir: string;
+  readonly directory: string;
   readonly model: ScriptedModel;
   readonly files: BootFiles;
   readonly entry: string | undefined;
@@ -134,7 +134,7 @@ function buildServeArgs(files: BootFiles): readonly string[] {
 }
 
 interface TestNixieParts {
-  readonly dir: string;
+  readonly directory: string;
   readonly model: ScriptedModel;
   readonly files: BootFiles;
   readonly child: Bun.Subprocess<'ignore', 'pipe', 'pipe'>;
@@ -145,12 +145,12 @@ function buildTestNixie(parts: TestNixieParts): TestNixie {
   const output = buildOutput();
   const waitForLogEvent = makeLogEventWaiter(() => parts.child.exitCode, output);
 
-  void collectOutput(parts.child.stdout, output);
-  void collectOutput(parts.child.stderr, output);
+  void pipeOutput(parts.child.stdout, output);
+  void pipeOutput(parts.child.stderr, output);
 
   return {
     ...parts.files,
-    dir: parts.dir,
+    directory: parts.directory,
     model: parts.model,
     readOutput: output.read,
     waitForLogEvent,
@@ -197,7 +197,7 @@ function makeLogEventWaiter(
   output: Output,
 ): TestNixie['waitForLogEvent'] {
   return async (event) => {
-    const findLine = () => readLogLines(output.read()).find((line) => line['event'] === event);
+    const findLine = () => parseLogLines(output.read()).find((line) => line['event'] === event);
 
     await waitForCondition(() => findLine() !== undefined || readExitCode() !== null, {
       timeoutMs: 30_000,
@@ -213,19 +213,19 @@ function makeLogEventWaiter(
   };
 }
 
-async function collectOutput(stream: ReadableStream<Uint8Array>, output: Output): Promise<void> {
+const logLineSchema = z.record(z.string(), z.unknown()).readonly();
+
+function parseLogLines(text: string): readonly Readonly<Record<string, unknown>>[] {
+  return text
+    .split('\n')
+    .filter((line) => line.startsWith('{'))
+    .map((line) => logLineSchema.parse(JSON.parse(line)));
+}
+
+async function pipeOutput(stream: ReadableStream<Uint8Array>, output: Output): Promise<void> {
   const decoder = new TextDecoder();
 
   for await (const chunk of stream) {
     output.append(decoder.decode(chunk, { stream: true }));
   }
-}
-
-const logLineSchema = z.record(z.string(), z.unknown()).readonly();
-
-function readLogLines(text: string): readonly Readonly<Record<string, unknown>>[] {
-  return text
-    .split('\n')
-    .filter((line) => line.startsWith('{'))
-    .map((line) => logLineSchema.parse(JSON.parse(line)));
 }

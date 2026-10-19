@@ -3,11 +3,11 @@ import invariant from 'tiny-invariant';
 
 export interface StubTimer {
   // starts a timer as the platform's setTimeout does, and returns its stop
-  readonly startTimer: (onTimeout: () => void, ms: number) => () => void;
+  readonly startTimer: (onTimeout: () => void, delayMs: number) => () => void;
 
   // moves time forward and fires every timer whose due time it passed, earliest first, including
   // the timers that those callbacks start
-  readonly advance: (ms: number) => void;
+  readonly advance: (durationMs: number) => void;
 
   // waits until a timer is pending, moves time to the earliest one's due time and fires it, and
   // resolves with how long that timer waited
@@ -30,8 +30,8 @@ export function buildStubTimer(): StubTimer {
 
   const pending = new Set<PendingTimer>();
 
-  const runTimersFor = (ms: number): void => {
-    const target = state.now + ms;
+  const runTimersFor = (durationMs: number): void => {
+    const target = state.now + durationMs;
     let next = findEarliestDue([...pending], target);
 
     // Time steps to each due time in turn, so a timer that a callback starts counts from the
@@ -50,8 +50,8 @@ export function buildStubTimer(): StubTimer {
   };
 
   return {
-    startTimer: (onTimeout, ms) => {
-      const timer: PendingTimer = { dueAt: state.now + ms, onTimeout, startedAt: state.now };
+    startTimer: (onTimeout, delayMs) => {
+      const timer: PendingTimer = { dueAt: state.now + delayMs, onTimeout, startedAt: state.now };
 
       pending.add(timer);
 
@@ -87,6 +87,6 @@ function findEarliestDue(
 ): PendingTimer | undefined {
   return pending
     .filter((timer) => timer.dueAt <= target)
-    .toSorted((a, b) => a.dueAt - b.dueAt)
+    .toSorted((first, second) => first.dueAt - second.dueAt)
     .at(0);
 }

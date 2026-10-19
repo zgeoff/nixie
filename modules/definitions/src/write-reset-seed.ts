@@ -2,7 +2,7 @@ import type { Log } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
-import type { ResetSeed } from './find-reset-seed';
+import type { ResetSeed } from './read-reset-seed';
 import type { DefinitionsInForce, DefinitionsTables } from './types';
 import { writeSkillRows } from './write-skill-rows';
 

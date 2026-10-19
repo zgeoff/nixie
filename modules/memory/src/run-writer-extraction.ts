@@ -72,10 +72,6 @@ export async function runWriterExtraction(
   };
 }
 
-function buildSpeakerNames(parts: WriterParts): SpeakerNames {
-  return { owner: parts.ownerName, assistant: parts.assistantName };
-}
-
 // each readable record, with your pasted spans marked and a marker line for each image
 function buildBatchMessages(batch: WriterBatch): readonly BatchMessage[] {
   return batch.entries.flatMap((entry) => {
@@ -90,6 +86,10 @@ function buildBatchMessages(batch: WriterBatch): readonly BatchMessage[] {
 
     return [{ sequence: entry.sequence, role: entry.role, shown, recordedAt: entry.recordedAt }];
   });
+}
+
+function buildSpeakerNames(parts: WriterParts): SpeakerNames {
+  return { owner: parts.ownerName, assistant: parts.assistantName };
 }
 
 interface SessionRequest {

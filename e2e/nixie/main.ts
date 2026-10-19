@@ -8,7 +8,7 @@ import {
   setFaultPointHandler,
   startTaskRunners,
 } from '@heynixie/tasks';
-import { collectDescendants, startHarnessLink, stopProcesses } from '@heynixie/testing';
+import { readDescendants, startHarnessLink, stopProcesses } from '@heynixie/testing';
 import { readNixieEnv } from './read-nixie-env';
 import { registerHarnessOperations } from './register-harness-operations';
 import { runTestTaskStep } from './run-test-task-step';
@@ -117,7 +117,7 @@ function stopWithError(error: unknown): never {
 // A guest leads its own process group, so it outlives a nixie that exits. A host that loses nixie
 // loses its sandboxes too, so the test build kills every process it started before it exits.
 function stopProcessTree(code: number): never {
-  stopProcesses(collectDescendants(process.pid));
+  stopProcesses(readDescendants(process.pid));
 
   process.exit(code);
 }

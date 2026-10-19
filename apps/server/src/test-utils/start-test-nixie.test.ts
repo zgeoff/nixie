@@ -60,7 +60,7 @@ test('it removes its directory once the test finishes', async () => {
   const nixie = await startTestNixie();
 
   onTestFinished(() => {
-    expect(stat(nixie.dir)).rejects.toThrow();
+    expect(stat(nixie.directory)).rejects.toThrow();
   });
 
   const listening = await nixie.waitForLogEvent('http.listening');

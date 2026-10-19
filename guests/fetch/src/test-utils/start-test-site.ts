@@ -8,6 +8,12 @@ export interface TestSiteOptions {
   readonly fetch: (request: Request) => Response | Promise<Response>;
 }
 
+// a request as it arrived, copied before the handler runs, since Bun reuses a Request after it
+interface RecordedRequest {
+  readonly url: string;
+  readonly headers: Readonly<Record<string, string>>;
+}
+
 export interface TestSite {
   readonly port: number;
 
@@ -16,12 +22,6 @@ export interface TestSite {
 
   // every request the site received, in order
   readonly requests: readonly RecordedRequest[];
-}
-
-// a request as it arrived, copied before the handler runs, since Bun reuses a Request after it
-interface RecordedRequest {
-  readonly url: string;
-  readonly headers: Readonly<Record<string, string>>;
 }
 
 // Starts an HTTPS site on 127.0.0.1 with a self-signed certificate for the names, and stops it when

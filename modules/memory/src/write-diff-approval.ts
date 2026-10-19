@@ -20,6 +20,16 @@ export async function writeDiffApproval(
   return outcomes;
 }
 
+// the store's refusals of one change; any other error, such as a failed database, stops the diff
+const refusalCodes: ReadonlySet<string> = new Set([
+  'NOT_FOUND',
+  'PROPOSAL_HASH',
+  'PROPOSAL_CLOSED',
+  'STALE_VERSION',
+  'WRONG_STATE',
+  'PINNED_CORE_FULL',
+]);
+
 async function tryApproveChange(parts: StoreParts, answer: ChangeAnswer): Promise<ChangeOutcome> {
   try {
     const versions = await writeChangeApproval(parts, answer);
@@ -35,13 +45,3 @@ async function tryApproveChange(parts: StoreParts, answer: ChangeAnswer): Promis
     return { changeID: answer.changeID, status: 'refused', code };
   }
 }
-
-// the store's refusals of one change; any other error, such as a failed database, stops the diff
-const refusalCodes: ReadonlySet<string> = new Set([
-  'NOT_FOUND',
-  'PROPOSAL_HASH',
-  'PROPOSAL_CLOSED',
-  'STALE_VERSION',
-  'WRONG_STATE',
-  'PINNED_CORE_FULL',
-]);

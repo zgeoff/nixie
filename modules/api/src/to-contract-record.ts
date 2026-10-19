@@ -20,6 +20,9 @@ import {
 } from '@heynixie/tasks';
 import { toolCalledCodec, toolResultCodec } from '@heynixie/tools';
 
+// your message, and a reply from the conversation's model
+const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.reply']);
+
 // Turns a log record into the record a client renders, or null for one in no thread, which no
 // client view shows. A forgotten message or reply keeps its place with no text, and a payload that
 // does not fit its kind's codec gives none of its fields.
@@ -48,9 +51,6 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
     ...(toolCall === undefined ? {} : { toolCall }),
   };
 }
-
-// your message, and a reply from the conversation's model
-const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.reply']);
 
 type Message = NonNullable<ContractRecord['message']>;
 
@@ -166,6 +166,10 @@ function toToolCall(record: LogRecord): ToolCall | undefined {
     ...(call.outcome === undefined ? {} : { outcome: call.outcome }),
     ...(call.tool === undefined ? {} : { tool: call.tool }),
   };
+}
+
+function isJSONObject(value: JSONValue | undefined): value is JSONObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 type Recall = NonNullable<ContractRecord['recall']>;
@@ -302,8 +306,4 @@ function toForget(record: LogRecord): Pick<ContractRecord, 'forget'> {
   const sequence = codec?.tryDecodePartial(record.payload)?.recordSequence;
 
   return sequence === undefined ? {} : { forget: { sequence } };
-}
-
-function isJSONObject(value: JSONValue | undefined): value is JSONObject {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

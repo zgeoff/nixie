@@ -3,10 +3,19 @@ import type { WriteInTransaction } from '@heynixie/memory';
 import { ProposalClosedError } from '@heynixie/memory';
 import type { Kysely, Transaction } from 'kysely';
 import { buildInputHash } from './build-input-hash';
-import { findClientAction } from './find-client-action';
-import { isLiveIdentity } from './is-live-identity';
+import { probeLiveIdentity } from './probe-live-identity';
+import { readClientAction } from './read-client-action';
 import type { APIContext, Identity } from './types';
 import { writeClientAction } from './write-client-action';
+
+type StaleCause = 'lapsed' | 'answered' | 'moved' | 'changed' | 'gone';
+
+type RefusalCode =
+  | 'CLIENT_ACTION_ID_REUSED'
+  | 'PINNED_CORE_FULL'
+  | 'RETIREMENT_EDIT'
+  | 'REVISION_TARGET'
+  | 'WRONG_STATE';
 
 // The outcome of one answer to a proposal, as the contract declares it.
 export type ProposalOutcome =
@@ -18,15 +27,6 @@ export type ProposalOutcome =
     }
   | { readonly proposalID: string; readonly status: 'stale'; readonly cause: StaleCause }
   | { readonly proposalID: string; readonly status: 'refused'; readonly code: RefusalCode };
-
-type StaleCause = 'lapsed' | 'answered' | 'moved' | 'changed' | 'gone';
-
-type RefusalCode =
-  | 'CLIENT_ACTION_ID_REUSED'
-  | 'PINNED_CORE_FULL'
-  | 'RETIREMENT_EDIT'
-  | 'REVISION_TARGET'
-  | 'WRONG_STATE';
 
 export interface ProposalAnswerAction {
   readonly clientActionID: string;
@@ -55,7 +55,7 @@ export async function writeProposalAnswer(
   const query = { context, caller, action, inputHash: buildInputHash(action.input) };
 
   // a committed answer closes its proposal, so a retry finds its first outcome before it runs
-  const earlier = await findEarlierOutcome(context.log.writer.db, query);
+  const earlier = await readEarlierOutcome(context.log.writer.db, query);
 
   if (earlier !== null) {
     return earlier;
@@ -67,7 +67,7 @@ export async function writeProposalAnswer(
     return outcome ?? action.committed;
   } catch (error) {
     // an overlapping call with the same ID may have committed first and closed the proposal
-    const committed = await findEarlierOutcome(context.log.writer.db, query);
+    const committed = await readEarlierOutcome(context.log.writer.db, query);
 
     return committed ?? requireErrorOutcome(action.proposalID, error);
   }
@@ -82,11 +82,11 @@ interface AnswerQuery {
 
 // the first outcome of an action whose ID came before: its own for the same caller, procedure and
 // input, or a refusal of the reused ID
-async function findEarlierOutcome(
+async function readEarlierOutcome(
   db: Kysely<unknown>,
   query: AnswerQuery,
 ): Promise<ProposalOutcome | null> {
-  const earlier = await findClientAction(db, query.action.clientActionID);
+  const earlier = await readClientAction(db, query.action.clientActionID);
 
   if (earlier === null) {
     return null;
@@ -108,11 +108,11 @@ async function findEarlierOutcome(
 async function writeCheckedResult(tx: Transaction<unknown>, query: AnswerQuery): Promise<void> {
   const caller = query.caller;
 
-  if (!(await isLiveIdentity(tx, query.context, caller.identityID))) {
+  if (!(await probeLiveIdentity(tx, query.context, caller.identityID))) {
     throw new SettledAnswerError(null);
   }
 
-  const settled = await findEarlierOutcome(tx, query);
+  const settled = await readEarlierOutcome(tx, query);
 
   if (settled !== null) {
     throw new SettledAnswerError(settled);

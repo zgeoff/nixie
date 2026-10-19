@@ -1,5 +1,5 @@
 import type { APIContext, ReadViewMemory } from '@heynixie/api';
-import { buildAPIApp } from '@heynixie/api';
+import { createAPIApp } from '@heynixie/api';
 import type { Writer } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { Elysia } from 'elysia';
@@ -38,7 +38,7 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
     log: options.log,
   });
 
-  const app = new Elysia().use(health).use(buildAPIApp(options.apiContext, options.readMemory));
+  const app = new Elysia().use(health).use(createAPIApp(options.apiContext, options.readMemory));
 
   const http = Bun.serve({
     hostname: options.config.server.hostname,

@@ -18,7 +18,7 @@ export interface FakeForwardOptions {
 // the imp's loopback port, and relays each connection as impd does. Its listener and connections
 // close at a lost stop, as when the imp's VM stops, and when the test finishes.
 export function startFakeForward(options: FakeForwardOptions): SleepingForward {
-  const ending = buildEnding();
+  const ending = createEnding();
 
   const sockets = new Set<Socket>();
 
@@ -62,7 +62,7 @@ interface Ending {
 }
 
 // a forward that ends before it listens never listens, and its listening rejects, as impd's does
-function buildEnding(): Ending {
+function createEnding(): Ending {
   const listening = Promise.withResolvers<unknown>();
   const ended = Promise.withResolvers<{ readonly kind: string }>();
   let isEnded = false;

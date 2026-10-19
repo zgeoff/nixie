@@ -2,7 +2,7 @@ import type { RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { buildMergeRecord } from './build-merge-record';
-import { findMatchingProposal } from './find-matching-proposal';
+import { readMatchingProposal } from './read-matching-proposal';
 import type { MemoryTables, StoreParts } from './types';
 import type { GatedWrite } from './write-memory-batch';
 
@@ -45,7 +45,7 @@ async function writeProposalRecords(
   const match =
     plan === null
       ? null
-      : await findMatchingProposal(tx.$extendTables<MemoryTables>(), parts, plan);
+      : await readMatchingProposal(tx.$extendTables<MemoryTables>(), parts, plan);
 
   const records =
     match === null || plan === null

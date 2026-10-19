@@ -24,6 +24,15 @@ import { startMemoryWriterRunner } from '../start-memory-writer-runner';
 import { runTaskSteps } from './run-task-steps';
 import type { TestServer } from './start-test-server';
 
+interface WriterStart {
+  readonly context?: TasksContext;
+}
+
+interface WriterRun {
+  readonly probeDone?: () => Promise<boolean>;
+  readonly steps?: Readonly<Record<string, RunStep>>;
+}
+
 export interface TestMemoryWriter {
   // the server's context on a test clock that starts at 1,000,000 ms
   readonly context: TasksContext;
@@ -41,7 +50,7 @@ export interface TestMemoryWriter {
   readonly start: (start?: WriterStart) => Promise<MemoryWriterRunner>;
 
   // runs the writer's steps, and any other task's step the test passes, until the tasks settle or
-  // isDone holds
+  // probeDone holds
   readonly run: (run?: WriterRun) => Promise<void>;
 
   // every active item, through recall
@@ -56,15 +65,6 @@ export interface TestMemoryWriterOptions {
 
   // the writer's settings as the deployment configuration writes them, over one message a batch
   readonly writerConfig?: WriterConfigInput;
-}
-
-interface WriterStart {
-  readonly context?: TasksContext;
-}
-
-interface WriterRun {
-  readonly isDone?: () => Promise<boolean>;
-  readonly steps?: Readonly<Record<string, RunStep>>;
 }
 
 // Starts memory on a test server: the store, a scripted model for the writer, and the writer on
@@ -143,6 +143,25 @@ async function startTestStore(
   return store;
 }
 
+// with no checker from the test, the writer checks its batches through the stub gate, so the
+// store's own checker fails closed
+function buildClosedGate(clock: TestClock): GateContext {
+  return {
+    check: () =>
+      Promise.resolve({
+        verdict: 'unsure',
+        reason: 'no checker is wired',
+        model: 'no-checker',
+        failure: 'error',
+      }),
+    clock,
+    findAllowRule: findNoAllowRule,
+    limits: defaultGateLimits,
+    ownerName: null,
+    ownerPronouns: defaultOwnerPronouns,
+  };
+}
+
 interface WriterWiring {
   readonly context: TasksContext;
   readonly model: ScriptedModel;
@@ -210,29 +229,10 @@ async function runWriterSteps(wiring: StepsWiring, run: WriterRun = {}): Promise
 
   await runTaskSteps(wiring.context, {
     steps: { ...run.steps, 'memory-writer': wiring.writer.runStep },
-    advance: (ms) => {
-      wiring.clock.advance(ms);
+    advance: (durationMs) => {
+      wiring.clock.advance(durationMs);
     },
-    ...(run.isDone === undefined ? {} : { isDone: run.isDone }),
+    ...(run.probeDone === undefined ? {} : { probeDone: run.probeDone }),
     maxSteps: 20,
   });
-}
-
-// with no checker from the test, the writer checks its batches through the stub gate, so the
-// store's own checker fails closed
-function buildClosedGate(clock: TestClock): GateContext {
-  return {
-    check: () =>
-      Promise.resolve({
-        verdict: 'unsure',
-        reason: 'no checker is wired',
-        model: 'no-checker',
-        failure: 'error',
-      }),
-    clock,
-    findAllowRule: findNoAllowRule,
-    limits: defaultGateLimits,
-    ownerName: null,
-    ownerPronouns: defaultOwnerPronouns,
-  };
 }

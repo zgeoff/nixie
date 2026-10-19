@@ -16,7 +16,7 @@ function renderCanonicalJSON(value: JSONValue): string {
 
   if (typeof value === 'object' && value !== null) {
     const entries = Object.entries(value)
-      .toSorted(([a], [b]) => (a < b ? -1 : 1))
+      .toSorted(([left], [right]) => (left < right ? -1 : 1))
       .map(([key, item]) => `${JSON.stringify(key)}:${renderCanonicalJSON(item)}`);
 
     return `{${entries.join(',')}}`;

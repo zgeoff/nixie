@@ -16,6 +16,10 @@ export interface ActionRunnersOptions {
   readonly pollMs?: number;
 }
 
+const DEFAULT_SIZE = 4;
+const DEFAULT_LEASE_MS = 60_000;
+const DEFAULT_POLL_MS = 1000;
+
 // Starts the action runners: a pool that claims each due action through the same claim path as a
 // task step, and runs one attempt of it per claim.
 export function startActionRunners(
@@ -33,7 +37,3 @@ export function startActionRunners(
     onError: options.onError,
   });
 }
-
-const DEFAULT_SIZE = 4;
-const DEFAULT_LEASE_MS = 60_000;
-const DEFAULT_POLL_MS = 1000;

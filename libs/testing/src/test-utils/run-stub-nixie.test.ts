@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { startNixieProcess } from '../start-nixie-process';
 import { stopProcesses } from '../stop-processes';
-import { isProcessGone } from './is-process-gone';
+import { probeProcessGone } from './probe-process-gone';
 
 function setupTest() {
   return { entry: join(import.meta.dir, 'run-stub-nixie.ts') };
@@ -59,7 +59,7 @@ test('it starts a child that keeps running and answers with its PID', async () =
     stopProcesses([childPID]);
   });
 
-  expect(isProcessGone(childPID)).toBe(false);
+  expect(probeProcessGone(childPID)).toBe(false);
 });
 
 test('it leaves a sleeper that an advance wakes and that does not sleep again', async () => {
@@ -73,7 +73,7 @@ test('it leaves a sleeper that an advance wakes and that does not sleep again', 
   await nixie.request('sleepOnce', 1000);
 
   expect(
-    nixie.request('advance', { ms: 1000, settle: true, settleTimeoutMs: 200 }),
+    nixie.request('advance', { durationMs: 1000, settle: true, settleTimeoutMs: 200 }),
   ).resolves.toStrictEqual({ settled: false });
 });
 
@@ -88,7 +88,7 @@ test('it starts a poll that sleeps again each time an advance wakes it', async (
   await nixie.request('startPoll', 1000);
 
   expect(
-    nixie.request('advance', { ms: 1000, settle: true, settleTimeoutMs: 200 }),
+    nixie.request('advance', { durationMs: 1000, settle: true, settleTimeoutMs: 200 }),
   ).resolves.toStrictEqual({ settled: true });
 });
 

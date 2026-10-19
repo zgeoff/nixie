@@ -1,5 +1,5 @@
 import type { Log } from '@heynixie/log';
-import { findRecordKeys } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import { findCheckerModel } from './find-checker-model';
 import { getItemShortID } from './get-item-short-id';
 import { getRowSubject } from './get-row-subject';
@@ -48,6 +48,8 @@ export async function* readMemoryExport(
 
 type ExportLog = Pick<Log, 'deploymentKey' | 'writer'>;
 
+const pageSize = 100;
+
 // every item in the order it was created, a page at a time, each page read after the last
 // sequence of the page before it
 function readExportItems(log: ExportLog): AsyncGenerator<MemoryExportItem, void, undefined> {
@@ -63,8 +65,6 @@ function readExportItems(log: ExportLog): AsyncGenerator<MemoryExportItem, void,
     };
   });
 }
-
-const pageSize = 100;
 
 interface ItemRow {
   readonly item_id: string;
@@ -110,7 +110,7 @@ async function loadExportItems(
   const readableIDs = rows.filter((row) => isReadable(row.state)).map((row) => row.item_id);
 
   const [keys, versions] = await Promise.all([
-    findRecordKeys(log, readableIDs),
+    readRecordKeys(log, readableIDs),
     readVersionRows(log, readableIDs),
   ]);
 
@@ -130,10 +130,6 @@ async function loadExportItems(
 
 function isReadable(state: MemoryState): state is 'active' | 'retired' {
   return state === 'active' || state === 'retired';
-}
-
-function toISOTime(time: number | null): string | null {
-  return time === null ? null : new Date(time).toISOString();
 }
 
 // every version of the named items, oldest first within each item
@@ -204,4 +200,8 @@ async function loadExportVersion(row: MemoryVersionRow, parts: ItemParts): Promi
       recordedAt: new Date(row.recorded_at).toISOString(),
     },
   };
+}
+
+function toISOTime(time: number | null): string | null {
+  return time === null ? null : new Date(time).toISOString();
 }

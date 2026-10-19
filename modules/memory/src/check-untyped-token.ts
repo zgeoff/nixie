@@ -1,7 +1,7 @@
 import type { Log } from '@heynixie/log';
-import type { DestinationToken } from './find-destination-tokens';
+import type { DestinationToken } from './collect-destination-tokens';
+import { collectTypedSegments } from './collect-typed-segments';
 import { findMissingToken } from './find-missing-token';
-import { findTypedSegments } from './find-typed-segments';
 import { readOwnerMessages } from './read-owner-messages';
 
 export interface UntypedTokenQuery {
@@ -25,7 +25,7 @@ export async function checkUntypedToken(
 ): Promise<DestinationToken | null> {
   const messages = await readOwnerMessages(log, { thread: query.thread, limit: query.limit });
 
-  const typed = messages.flatMap((message) => findTypedSegments(message)).join('\n');
+  const typed = messages.flatMap((message) => collectTypedSegments(message)).join('\n');
 
   return findMissingToken(query.text, `${typed}\n${query.ownText}`);
 }

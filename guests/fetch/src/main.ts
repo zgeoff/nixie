@@ -7,10 +7,10 @@ import { withFetchDirectory } from './with-fetch-directory';
 
 // The fetcher's entry point: one process per fetch, inside a new temporary directory. nixie sends
 // one request frame on stdin and reads one reply frame from stdout.
-await withFetchDirectory(tmpdir(), async (dir) => {
-  process.chdir(dir);
+await withFetchDirectory(tmpdir(), async (directory) => {
+  process.chdir(directory);
 
-  process.env['TMPDIR'] = dir;
+  process.env['TMPDIR'] = directory;
 
   await runFetcher(
     {

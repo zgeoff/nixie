@@ -2,8 +2,8 @@ import type { JSONObject } from '@heynixie/log';
 import type { WriteInTransaction } from '@heynixie/memory';
 import type { Transaction } from 'kysely';
 import { buildInputHash } from './build-input-hash';
-import { findClientAction } from './find-client-action';
-import { isLiveIdentity } from './is-live-identity';
+import { probeLiveIdentity } from './probe-live-identity';
+import { readClientAction } from './read-client-action';
 import type { APIContext, Identity } from './types';
 import { writeClientAction } from './write-client-action';
 
@@ -35,7 +35,7 @@ export async function writeMemoryChange(
 
   try {
     await action.apply(async (tx) => {
-      const settled = await findSettledOutcome(tx, { context, caller, action, inputHash });
+      const settled = await readSettledOutcome(tx, { context, caller, action, inputHash });
 
       if (settled !== null) {
         throw new SettledChangeError(settled);
@@ -70,13 +70,13 @@ interface SettledQuery {
 
 // the outcome a call gets without a change: refused for a caller no longer live, and for an ID
 // that came before, applied for the same caller, procedure and input, or reused
-async function findSettledOutcome(
+async function readSettledOutcome(
   tx: Transaction<unknown>,
   query: SettledQuery,
 ): Promise<MemoryChangeOutcome | null> {
   const [live, earlier] = await Promise.all([
-    isLiveIdentity(tx, query.context, query.caller.identityID),
-    findClientAction(tx, query.action.clientActionID),
+    probeLiveIdentity(tx, query.context, query.caller.identityID),
+    readClientAction(tx, query.action.clientActionID),
   ]);
 
   if (!live) {

@@ -91,7 +91,7 @@ export interface RecallLineOptions {
 // result takes the most cautious one. Each version comes with the line that says where it came
 // from. The model names items by short ID, or by an item ID it read before short IDs.
 export function buildRecallTool(
-  memory: Pick<StartedMemoryStore, 'recall'> & Pick<ItemIDStore, 'findItemIDs'>,
+  memory: Pick<StartedMemoryStore, 'recall'> & Pick<ItemIDStore, 'readItemIDMap'>,
   options: RecallLineOptions,
 ): ToolDefinition {
   return {
@@ -140,9 +140,18 @@ export function buildRecallTool(
   };
 }
 
+const recallArguments = z.object({
+  query: z.string().optional(),
+  itemIDs: z.array(z.string()).optional(),
+  includeRetired: z.boolean().optional(),
+  includeHistory: z.boolean().optional(),
+  after: z.string().optional(),
+  limit: z.int().optional(),
+});
+
 // the request a call makes, with each ID the model passed read as the item ID it names
 async function readRecallRequest(
-  memory: Pick<ItemIDStore, 'findItemIDs'>,
+  memory: Pick<ItemIDStore, 'readItemIDMap'>,
   callInput: unknown,
   thread: string,
 ): Promise<RecallRequest> {
@@ -174,22 +183,6 @@ function toItemJSON(item: RecalledItem, lines: MemoryLineOptions): JSONObject {
   };
 }
 
-// a version from an item's history, which names the version after it, if any
-function toPastVersionJSON(
-  item: RecalledItem,
-  version: RecalledVersion,
-  lines: MemoryLineOptions,
-): JSONObject {
-  const after = item.history?.find((later) => later.version === version.version + 1);
-
-  const next =
-    after === undefined
-      ? null
-      : { ref: `${item.shortID} v${after.version}`, isRetirement: after.change === 'retired' };
-
-  return toVersionJSON({ ...version, shortID: item.shortID }, lines, next);
-}
-
 // a version with the line under it, which for a past version names the version after it
 function toVersionJSON(
   version: RecalledVersion & { readonly shortID: string },
@@ -207,11 +200,18 @@ function toVersionJSON(
   };
 }
 
-const recallArguments = z.object({
-  query: z.string().optional(),
-  itemIDs: z.array(z.string()).optional(),
-  includeRetired: z.boolean().optional(),
-  includeHistory: z.boolean().optional(),
-  after: z.string().optional(),
-  limit: z.int().optional(),
-});
+// a version from an item's history, which names the version after it, if any
+function toPastVersionJSON(
+  item: RecalledItem,
+  version: RecalledVersion,
+  lines: MemoryLineOptions,
+): JSONObject {
+  const after = item.history?.find((later) => later.version === version.version + 1);
+
+  const next =
+    after === undefined
+      ? null
+      : { ref: `${item.shortID} v${after.version}`, isRetirement: after.change === 'retired' };
+
+  return toVersionJSON({ ...version, shortID: item.shortID }, lines, next);
+}

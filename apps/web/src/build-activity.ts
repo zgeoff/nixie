@@ -83,6 +83,20 @@ export type ActivityItem =
   | { readonly kind: 'reset'; readonly record: LiveRecord }
   | StepActivity;
 
+// a rating by the recall record it rates and the version it rates
+type Ratings = Readonly<Record<string, MemoryRating>>;
+
+interface ActivityState {
+  readonly items: ActivityItem[];
+  readonly ratings: Ratings;
+
+  // the step whose end has not arrived yet
+  open: StepActivity | null;
+
+  // records before the next step starts
+  pending: LiveRecord[];
+}
+
 // Groups a thread's records for the view: each message stands alone, a reset stands alone at the
 // start of the log it begins, and every other record folds into the step it belongs to. A record before a step, such as the task's creation, folds
 // into the step that follows it; one after the last step forms a group of its own.
@@ -95,22 +109,12 @@ export function buildActivity(records: readonly LiveRecord[]): readonly Activity
   };
 
   for (const record of records) {
-    applyRecord(state, record);
+    foldRecord(state, record);
   }
 
   return state.pending.length === 0
     ? state.items
     : [...state.items, buildStep(state.pending, 'done', state.ratings)];
-}
-
-// a rating by the recall record it rates and the version it rates
-type Ratings = Readonly<Record<string, MemoryRating>>;
-
-function buildRatingKey(
-  recallSequence: number,
-  item: Pick<RecalledMemory, 'itemID' | 'version'>,
-): string {
-  return `${recallSequence}:${item.itemID}@${item.version}`;
 }
 
 // Gathers every rating in the records by what it rates, so a rating in a later step reaches the
@@ -140,29 +144,19 @@ function collectRatings(records: readonly LiveRecord[]): Ratings {
   );
 }
 
-interface ActivityState {
-  readonly items: ActivityItem[];
-  readonly ratings: Ratings;
-
-  // the step whose end has not arrived yet
-  open: StepActivity | null;
-
-  // records before the next step starts
-  pending: LiveRecord[];
+function buildRatingKey(
+  recallSequence: number,
+  item: Pick<RecalledMemory, 'itemID' | 'version'>,
+): string {
+  return `${recallSequence}:${item.itemID}@${item.version}`;
 }
-
-const stepEnds: Readonly<Record<string, StepStatus>> = {
-  'task.step_committed': 'done',
-  'task.step_errored': 'failed',
-  'task.step_interrupted': 'interrupted',
-};
 
 // your message and the conversation's reply, which stand alone with or without their text
 const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
 
 // Adds one record to the groups: a message stands alone, a forgotten one too, a reset too, and any
 // other record joins the open step.
-function applyRecord(state: ActivityState, record: LiveRecord): void {
+function foldRecord(state: ActivityState, record: LiveRecord): void {
   if (record.message !== undefined || messageKinds.has(record.kind)) {
     state.items.push({ kind: 'message', record });
   } else if (record.kind === 'log_reset') {
@@ -173,7 +167,7 @@ function applyRecord(state: ActivityState, record: LiveRecord): void {
 
     state.items.push(state.open);
   } else if (state.open === null) {
-    applyRecordOutsideStep(state, record);
+    foldRecordOutsideStep(state, record);
   } else {
     const index = state.items.indexOf(state.open);
 
@@ -186,24 +180,6 @@ function applyRecord(state: ActivityState, record: LiveRecord): void {
     state.items[index] = step;
     state.open = step.status === 'running' ? step : null;
   }
-}
-
-// With no step open, a record waits for the next step. A page can start partway through a step, so
-// a step's end closes the waiting records as that step, with the status the end records.
-function applyRecordOutsideStep(state: ActivityState, record: LiveRecord): void {
-  const endStatus = stepEnds[record.kind];
-
-  if (endStatus === undefined) {
-    state.pending.push(record);
-  } else {
-    state.items.push(buildStep([...state.pending, record], endStatus, state.ratings));
-
-    state.pending = [];
-  }
-}
-
-function pickStatus(record: LiveRecord, step: StepActivity): StepStatus {
-  return stepEnds[record.kind] ?? step.status;
 }
 
 function buildStep(
@@ -245,16 +221,11 @@ function buildStep(
   };
 }
 
-// a recall's versions, each with the rating that names it
-function collectMemories(record: LiveRecord, ratings: Ratings): readonly RecalledMemory[] {
-  return (record.recall?.items ?? []).map((item) => {
-    const rating = ratings[buildRatingKey(record.sequence, item)];
-
-    return rating === undefined
-      ? item
-      : { itemID: item.itemID, rating, score: item.score, version: item.version };
-  });
-}
+const stepEnds: Readonly<Record<string, StepStatus>> = {
+  'task.step_committed': 'done',
+  'task.step_errored': 'failed',
+  'task.step_interrupted': 'interrupted',
+};
 
 // the time from the step's start record to its end record
 function findDuration(records: readonly LiveRecord[]): number | undefined {
@@ -288,4 +259,33 @@ function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
   }
 
   return [...calls.values()];
+}
+
+// a recall's versions, each with the rating that names it
+function collectMemories(record: LiveRecord, ratings: Ratings): readonly RecalledMemory[] {
+  return (record.recall?.items ?? []).map((item) => {
+    const rating = ratings[buildRatingKey(record.sequence, item)];
+
+    return rating === undefined
+      ? item
+      : { itemID: item.itemID, rating, score: item.score, version: item.version };
+  });
+}
+
+// With no step open, a record waits for the next step. A page can start partway through a step, so
+// a step's end closes the waiting records as that step, with the status the end records.
+function foldRecordOutsideStep(state: ActivityState, record: LiveRecord): void {
+  const endStatus = stepEnds[record.kind];
+
+  if (endStatus === undefined) {
+    state.pending.push(record);
+  } else {
+    state.items.push(buildStep([...state.pending, record], endStatus, state.ratings));
+
+    state.pending = [];
+  }
+}
+
+function pickStatus(record: LiveRecord, step: StepActivity): StepStatus {
+  return stepEnds[record.kind] ?? step.status;
 }
