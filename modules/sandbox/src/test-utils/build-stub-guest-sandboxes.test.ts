@@ -491,7 +491,7 @@ test('it carries a session into a sandbox through the host copy, and the next tu
 
   const projectsDir = '/home/nixie/.claude/projects';
 
-  const [file] = await from.collectFiles(projectsDir);
+  const [file] = await from.readFilePaths(projectsDir);
 
   invariant(file !== undefined);
 
@@ -554,7 +554,7 @@ test('it runs a turn with no HOME under the host root, in the project folder of 
 
   invariant(run.ended !== null);
 
-  const listed = await sandbox.collectFiles('/.claude/projects');
+  const listed = await sandbox.readFilePaths('/.claude/projects');
 
   expect(listed).toStrictEqual([
     `-srv-sandboxes-${sandbox.id}-conversation/${run.ended.boundary.sessionID}.jsonl`,
@@ -571,7 +571,7 @@ test('it lists every file under a directory at any depth, relative to it', async
     { path: '/home/nixie/workshop/c.txt', content: new TextEncoder().encode('c') },
   ]);
 
-  const listed = await sandbox.collectFiles('/home/nixie/work');
+  const listed = await sandbox.readFilePaths('/home/nixie/work');
 
   expect(listed).toIncludeSameMembers(['a.txt', 'deep/b.txt']);
 });
@@ -586,7 +586,7 @@ test('it lists no file deeper than the depth bound', async () => {
     { path: '/home/nixie/work/one/two/c.txt', content: new TextEncoder().encode('c') },
   ]);
 
-  const listed = await sandbox.collectFiles('/home/nixie/work', { maxDepth: 2 });
+  const listed = await sandbox.readFilePaths('/home/nixie/work', { maxDepth: 2 });
 
   expect(listed).toIncludeSameMembers(['a.txt', 'one/b.txt']);
 });
@@ -594,7 +594,7 @@ test('it lists no file deeper than the depth bound', async () => {
 test('it lists no file under a directory the sandbox does not hold', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
-  const listed = await sandbox.collectFiles('/home/nixie/.claude/projects');
+  const listed = await sandbox.readFilePaths('/home/nixie/.claude/projects');
 
   expect(listed).toStrictEqual([]);
 });
@@ -611,7 +611,7 @@ test('it moves a file over the one at the target, leaving none at the source', a
   await sandbox.applyMove('/home/nixie/new.txt', '/home/nixie/old.txt');
 
   const [moved] = await sandbox.copyOut(['/home/nixie/old.txt']);
-  const listed = await sandbox.collectFiles('/home/nixie');
+  const listed = await sandbox.readFilePaths('/home/nixie');
 
   expect(new TextDecoder().decode(moved?.content)).toBe('new');
   expect(listed).toStrictEqual(['old.txt']);
@@ -646,7 +646,7 @@ test('it refuses to move a file onto a directory, and keeps the file', async () 
     ),
   );
 
-  const listed = await sandbox.collectFiles('/home/nixie');
+  const listed = await sandbox.readFilePaths('/home/nixie');
 
   expect(listed).toIncludeSameMembers(['a.txt', 'dir/b.txt']);
 });
@@ -686,13 +686,13 @@ test('it refuses a spawn, a list and a move on a sleeping sandbox until it wakes
 
   const refused = await Promise.allSettled([
     sandbox.spawn({ argv: ['guest'], env, maxMessageBytes: 1024 }),
-    sandbox.collectFiles('/home/nixie'),
+    sandbox.readFilePaths('/home/nixie'),
     sandbox.applyMove('/home/nixie/a.txt', '/home/nixie/b.txt'),
   ]);
 
   await sandbox.suspension.wake();
 
-  const woken = await sandbox.collectFiles('/home/nixie');
+  const woken = await sandbox.readFilePaths('/home/nixie');
 
   expect(refused.map((result) => result.status)).toStrictEqual([
     'rejected',

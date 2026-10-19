@@ -110,7 +110,7 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
     copyIn: () => Promise.resolve(),
     copyOut: () => Promise.resolve([]),
     resolveHome: () => Promise.reject(new Error('the stub runs no exec')),
-    collectFiles: () => Promise.reject(new Error('the stub runs no exec')),
+    readFilePaths: () => Promise.reject(new Error('the stub runs no exec')),
     applyMove: () => Promise.reject(new Error('the stub runs no exec')),
     toolRoute: () => Promise.resolve(null),
     suspension: { kind: 'none' },

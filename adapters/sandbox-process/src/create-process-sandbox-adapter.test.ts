@@ -522,7 +522,7 @@ test('it lists every file under a directory at any depth, relative to it', async
     { path: '/other/c.txt', content: new TextEncoder().encode('c') },
   ]);
 
-  const listed = await sandbox.collectFiles('/work');
+  const listed = await sandbox.readFilePaths('/work');
 
   expect(listed).toIncludeSameMembers(['a.txt', 'deep/b.txt']);
 });
@@ -537,7 +537,7 @@ test('it lists no file deeper than the depth bound', async () => {
     { path: '/work/one/two/c.txt', content: new TextEncoder().encode('c') },
   ]);
 
-  const listed = await sandbox.collectFiles('/work', { maxDepth: 2 });
+  const listed = await sandbox.readFilePaths('/work', { maxDepth: 2 });
 
   expect(listed).toIncludeSameMembers(['a.txt', 'one/b.txt']);
 });
@@ -545,7 +545,7 @@ test('it lists no file deeper than the depth bound', async () => {
 test('it lists no file under a missing directory', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
-  const listed = await sandbox.collectFiles('/missing');
+  const listed = await sandbox.readFilePaths('/missing');
 
   expect(listed).toStrictEqual([]);
 });
@@ -562,7 +562,7 @@ test('it moves a file over the one at the target, leaving none at the source', a
   await sandbox.applyMove('/work/new.txt', '/work/old.txt');
 
   const [moved] = await sandbox.copyOut(['/work/old.txt']);
-  const listed = await sandbox.collectFiles('/work');
+  const listed = await sandbox.readFilePaths('/work');
 
   expect(new TextDecoder().decode(moved?.content)).toBe('new');
   expect(listed).toStrictEqual(['old.txt']);
@@ -582,7 +582,7 @@ test('it refuses to move a file onto a directory, and keeps the file', async () 
     (error: unknown) => error,
   );
 
-  const listed = await sandbox.collectFiles('/work');
+  const listed = await sandbox.readFilePaths('/work');
 
   expect(failure).toMatchObject({ code: 'EISDIR' });
   expect(listed).toIncludeSameMembers(['a.txt', 'dir/b.txt']);

@@ -530,7 +530,7 @@ test('it lists every file under a directory at any depth, relative to it, throug
     { path: join(ctx.dir, 'other/c.txt'), content: new TextEncoder().encode('c') },
   ]);
 
-  const listed = await sandbox.collectFiles(join(ctx.dir, 'work'));
+  const listed = await sandbox.readFilePaths(join(ctx.dir, 'work'));
 
   expect(listed).toIncludeSameMembers(['a.txt', 'deep/b c.txt']);
 });
@@ -545,7 +545,7 @@ test('it lists no file deeper than the depth bound through the guest', async () 
     { path: join(ctx.dir, 'work/one/two/c.txt'), content: new TextEncoder().encode('c') },
   ]);
 
-  const listed = await sandbox.collectFiles(join(ctx.dir, 'work'), { maxDepth: 2 });
+  const listed = await sandbox.readFilePaths(join(ctx.dir, 'work'), { maxDepth: 2 });
 
   expect(listed).toIncludeSameMembers(['a.txt', 'one/b.txt']);
 });
@@ -566,7 +566,7 @@ test('it refuses a listing that passes the output cap, rather than return part o
     ],
   });
 
-  expect(sandbox.collectFiles(join(ctx.dir, 'work'))).rejects.toThrow(
+  expect(sandbox.readFilePaths(join(ctx.dir, 'work'))).rejects.toThrow(
     `listing ${join(ctx.dir, 'work')} failed: the list passes 1048576 bytes`,
   );
 });
@@ -574,7 +574,7 @@ test('it refuses a listing that passes the output cap, rather than return part o
 test('it lists no file under a missing directory', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
-  const listed = await sandbox.collectFiles(join(ctx.dir, 'missing'));
+  const listed = await sandbox.readFilePaths(join(ctx.dir, 'missing'));
 
   expect(listed).toStrictEqual([]);
 });
@@ -591,7 +591,7 @@ test('it moves a file over the one at the target through the guest, leaving none
   await sandbox.applyMove(join(ctx.dir, 'work/new.txt'), join(ctx.dir, 'work/old.txt'));
 
   const [moved] = await sandbox.copyOut([join(ctx.dir, 'work/old.txt')]);
-  const listed = await sandbox.collectFiles(join(ctx.dir, 'work'));
+  const listed = await sandbox.readFilePaths(join(ctx.dir, 'work'));
 
   expect(new TextDecoder().decode(moved?.content)).toBe('new');
   expect(listed).toStrictEqual(['old.txt']);
@@ -619,7 +619,7 @@ test('it refuses to move a file onto a directory, and keeps the file', async () 
     ),
   });
 
-  const listed = await sandbox.collectFiles(join(ctx.dir, 'work'));
+  const listed = await sandbox.readFilePaths(join(ctx.dir, 'work'));
 
   expect(listed).toIncludeSameMembers(['a.txt', 'dir/b.txt']);
 });
@@ -628,7 +628,7 @@ test('it refuses to list a guest path that climbs', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
 
-  expect(sandbox.collectFiles('/tmp/../etc')).rejects.toThrow(
+  expect(sandbox.readFilePaths('/tmp/../etc')).rejects.toThrow(
     'a guest path must be absolute and must not climb: /tmp/../etc',
   );
 });

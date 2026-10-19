@@ -1,10 +1,10 @@
 import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import type {
-  CollectFilesOptions,
   FileSpec,
   GuestHome,
   ProcessIO,
+  ReadFilePathsOptions,
   RunSpec,
   Sandbox,
   SandboxRecorder,
@@ -56,7 +56,7 @@ export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
     copyIn: (files) => writeGuestFiles(ctx.fsRoot, files),
     copyOut: (paths) => Promise.all(paths.map((path) => readGuestFile(ctx.fsRoot, path))),
     resolveHome: (env) => Promise.try(() => resolveGuestHome(ctx, env)),
-    collectFiles: (dir, options) => collectGuestFiles(ctx.fsRoot, dir, options),
+    readFilePaths: (dir, options) => readGuestFilePaths(ctx.fsRoot, dir, options),
     applyMove: (from, to) => applyGuestMove(ctx.fsRoot, from, to),
     toolRoute: async () => {
       if (!ctx.spec.toolRoute) {
@@ -158,19 +158,19 @@ function findPathBelow(dir: string, path: string): string | null {
   return below === '..' || below.startsWith(`..${sep}`) || isAbsolute(below) ? null : below;
 }
 
-function collectGuestFiles(
+function readGuestFilePaths(
   fsRoot: string,
   dir: string,
-  options: CollectFilesOptions = {},
+  options: ReadFilePathsOptions = {},
 ): Promise<readonly string[]> {
   const root = resolveGuestPath(fsRoot, dir);
 
-  return collectFilesBelow(root, options.maxDepth ?? Number.POSITIVE_INFINITY);
+  return readFilePathsBelow(root, options.maxDepth ?? Number.POSITIVE_INFINITY);
 }
 
 // a walk that reads one folder level per step, so a bounded depth reads no folder below it; a folder
 // that is gone when its read comes lists nothing, and its siblings keep their files
-async function collectFilesBelow(dir: string, depth: number): Promise<readonly string[]> {
+async function readFilePathsBelow(dir: string, depth: number): Promise<readonly string[]> {
   if (depth < 1) {
     return [];
   }
@@ -186,7 +186,7 @@ async function collectFilesBelow(dir: string, depth: number): Promise<readonly s
   const listed = await Promise.all(
     entries.map(async (entry) => {
       if (entry.isDirectory()) {
-        const below = await collectFilesBelow(join(dir, entry.name), depth - 1);
+        const below = await readFilePathsBelow(join(dir, entry.name), depth - 1);
 
         return below.map((path) => join(entry.name, path));
       }

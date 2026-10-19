@@ -165,7 +165,7 @@ test('it refuses every file call but the guest spawn', async () => {
 
   const refused = await Promise.allSettled([
     sandbox.resolveHome({ HOME: '/home/nixie' }),
-    sandbox.collectFiles('/home/nixie'),
+    sandbox.readFilePaths('/home/nixie'),
     sandbox.applyMove('/home/nixie/a', '/home/nixie/b'),
   ]);
 

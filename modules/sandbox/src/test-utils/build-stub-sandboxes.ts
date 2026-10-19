@@ -198,7 +198,7 @@ function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
     copyIn: requireSpawnOnly,
     copyOut: requireSpawnOnly,
     resolveHome: requireSpawnOnly,
-    collectFiles: requireSpawnOnly,
+    readFilePaths: requireSpawnOnly,
     applyMove: requireSpawnOnly,
     toolRoute: () => Promise.resolve({ url: 'http://127.0.0.1:8901' }),
     suspension: { kind: 'none' },

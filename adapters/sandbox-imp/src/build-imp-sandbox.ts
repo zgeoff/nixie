@@ -1,9 +1,9 @@
 import type {
-  CollectFilesOptions,
   ExecResult,
   ExecSpec,
   FileSpec,
   GuestHome,
+  ReadFilePathsOptions,
   Sandbox,
   SandboxRecorder,
   SandboxSpec,
@@ -53,7 +53,7 @@ export function buildImpSandbox(ctx: ImpSandboxContext): Sandbox {
     copyIn: (files) => writeGuestFiles(ctx, files),
     copyOut: (paths) => Promise.all(paths.map((path) => readGuestFile(ctx, path))),
     resolveHome: (env) => Promise.try(() => resolveGuestHome(env)),
-    collectFiles: (dir, options) => collectGuestFiles(ctx, dir, options),
+    readFilePaths: (dir, options) => readGuestFilePaths(ctx, dir, options),
     applyMove: (from, to) => applyGuestMove(ctx, from, to),
     toolRoute: async () => {
       await startRoute(ctx);
@@ -211,10 +211,10 @@ const listScript = '[ -d "$1" ] || exit 0; cd -- "$1" && shift && find . "$@" -t
 
 // The list comes back through the output cap, which guards against a guest that prints without end,
 // so a caller that needs only the top of a tree bounds the depth, and deeper files never fill it.
-async function collectGuestFiles(
+async function readGuestFilePaths(
   ctx: ImpSandboxContext,
   dir: string,
-  options: CollectFilesOptions = {},
+  options: ReadFilePathsOptions = {},
 ): Promise<readonly string[]> {
   requireGuestPath(dir);
 

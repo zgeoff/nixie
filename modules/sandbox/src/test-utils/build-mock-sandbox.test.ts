@@ -19,7 +19,7 @@ test('it builds a default sandbox', () => {
     copyIn: expect.toBeFunction(),
     copyOut: expect.toBeFunction(),
     resolveHome: expect.toBeFunction(),
-    collectFiles: expect.toBeFunction(),
+    readFilePaths: expect.toBeFunction(),
     applyMove: expect.toBeFunction(),
     toolRoute: expect.toBeFunction(),
     suspension: { kind: 'none' },

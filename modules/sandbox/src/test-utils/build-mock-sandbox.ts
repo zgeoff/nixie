@@ -13,7 +13,7 @@ export function buildMockSandbox(overrides: Partial<Sandbox> = {}): Sandbox {
     copyIn: requireUnused,
     copyOut: requireUnused,
     resolveHome: requireUnused,
-    collectFiles: requireUnused,
+    readFilePaths: requireUnused,
     applyMove: requireUnused,
     toolRoute: requireUnused,
     suspension: { kind: 'none' },

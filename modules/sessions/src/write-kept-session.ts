@@ -78,7 +78,7 @@ async function readSessionFiles(
 
   const projectsDir = join(home.copyPath, configProjectsDir);
 
-  const transcripts = await sandbox.collectFiles(projectsDir, { maxDepth: 2 });
+  const transcripts = await sandbox.readFilePaths(projectsDir, { maxDepth: 2 });
 
   const transcript = transcripts
     .map((path) => path.split('/'))
@@ -90,7 +90,7 @@ async function readSessionFiles(
 
   const projectDir = join(projectsDir, transcript[0] ?? '');
 
-  const sideFiles = await sandbox.collectFiles(join(projectDir, sessionID));
+  const sideFiles = await sandbox.readFilePaths(join(projectDir, sessionID));
 
   return {
     projectDir,

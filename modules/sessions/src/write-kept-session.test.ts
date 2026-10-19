@@ -46,7 +46,7 @@ test("it carries the session under the project folder that the destination guest
 
   await writeKeptSession({ from, to, command: { argv: ['guest'], env: {} }, sessionID });
 
-  const landed = await to.collectFiles('/.claude/projects');
+  const landed = await to.readFilePaths('/.claude/projects');
 
   const [transcript] = await to.copyOut([
     `/.claude/projects/-srv-sandboxes-${to.id}-conversation/${sessionID}.jsonl`,
@@ -86,7 +86,7 @@ test('it carries the transcript and side folder into the replacement, with no st
     sessionID,
   });
 
-  const landed = await to.collectFiles('/home/nixie/.claude/projects');
+  const landed = await to.readFilePaths('/home/nixie/.claude/projects');
 
   const [transcript] = await to.copyOut([
     `/home/nixie/.claude/projects/-home-nixie-conversation/${sessionID}.jsonl`,
@@ -131,16 +131,16 @@ test("it lists only the transcripts and the session's own side folder, and copie
     },
   ]);
 
-  const lists = mock(source.collectFiles);
+  const lists = mock(source.readFilePaths);
 
   await writeKeptSession({
-    from: { ...source, collectFiles: lists },
+    from: { ...source, readFilePaths: lists },
     to,
     command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
     sessionID,
   });
 
-  const landed = await to.collectFiles('/home/nixie/.claude/projects');
+  const landed = await to.readFilePaths('/home/nixie/.claude/projects');
 
   expect(lists.mock.calls).toStrictEqual([
     ['/home/nixie/.claude/projects', { maxDepth: 2 }],
@@ -178,7 +178,7 @@ test('it wakes a sleeping old sandbox before it lists the session', async () => 
     sessionID,
   });
 
-  const landed = await to.collectFiles('/home/nixie/.claude/projects');
+  const landed = await to.readFilePaths('/home/nixie/.claude/projects');
 
   expect(landed).toStrictEqual([`-home-nixie-conversation/${sessionID}.jsonl`]);
 });
@@ -244,7 +244,7 @@ test('it leaves no resumable transcript when the move of the staged copy fails',
     (error: unknown) => error,
   );
 
-  const landed = await to.collectFiles('/home/nixie/.claude/projects');
+  const landed = await to.readFilePaths('/home/nixie/.claude/projects');
 
   expect(failure).toMatchObject({ message: expect.toStartWith('EISDIR') });
 
