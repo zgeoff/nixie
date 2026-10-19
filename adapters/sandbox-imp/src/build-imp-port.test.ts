@@ -92,6 +92,20 @@ test('it refuses to read the features of an impd past the major of the client', 
   expect(port.readFeatures()).rejects.toThrow(/^impd 3\.0\.0 does not speak imp client 2\./u);
 });
 
+test('it refuses to read the features of an impd before the major of the client', () => {
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: () => Response.json({ json: { version: '1.6.0', features: {}, egress: {} } }),
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  expect(port.readFeatures()).rejects.toThrow(/^impd 1\.6\.0 does not speak imp client 2\./u);
+});
+
 test('it reads the features of an impd of the major of the client', () => {
   const impd = Bun.serve({
     port: 0,

@@ -110,6 +110,7 @@ async function readFeatures(
 
   const check = await client.checkServer(options);
 
+  // the client speaks only an impd of its own major, so this 2.x client refuses an impd 1.x
   if (!check.compatible) {
     throw new Error(`impd ${check.serverVersion} does not speak imp client ${check.clientVersion}`);
   }
