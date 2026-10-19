@@ -108,3 +108,19 @@ test('it exits with code 3 before it is ready when told to refuse', async () => 
   expect(exit).toStrictEqual({ code: 3, signal: null });
   expect(nixie.ready).rejects.toThrow('the stub refused to start');
 });
+
+test('it leaves a child that writes to its stderr after it exits when told to write late', async () => {
+  const ctx = setupTest();
+
+  const nixie = startNixieProcess({
+    entry: ctx.entry,
+    env: { STUB_NIXIE_REFUSE: '1', STUB_NIXIE_LATE_STDERR: '1' },
+    clockMs: 0,
+  });
+
+  onTestFinished(() => nixie.kill());
+
+  await nixie.exited;
+
+  expect(nixie.readStderr()).toBe('the stub refused to start\nthe last words\n');
+});
