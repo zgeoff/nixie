@@ -208,3 +208,15 @@ test('it runs the sandboxes on the fake guest when asked, and returns the guest'
 
   expect(ids).toStrictEqual([]);
 });
+
+test('it reads the ID of each sandbox the fake guest holds', async () => {
+  const server = await startTestServer(undefined, { fakeGuest: true });
+
+  const sandbox = await server.sandboxes.create(
+    buildMockSandboxSpec({ kind: 'conversation', owner: 'conversation' }),
+  );
+
+  const ids = await server.readSandboxIDs();
+
+  expect(ids).toStrictEqual([sandbox.id]);
+});
