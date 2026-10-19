@@ -175,7 +175,7 @@ test('it resumes the session after a change to the policy alone, and decides the
   });
 });
 
-test('it opens a session and runs a turn on a profile whose context cap is at the window the CLI assumes', async () => {
+test('it opens a session and passes the context cap of the profile to the guest in its turn', async () => {
   const ctx = await setupTest();
 
   await Promise.all([
@@ -433,7 +433,7 @@ test('it summarizes a session past 0.8 of its window in the guest, and opens the
   ]);
 });
 
-test('it compacts a session whose turn overflows the window with its own summary, and the CLI never compacts it', async () => {
+test('it compacts a session whose turn overflows the window with its own summary', async () => {
   const ctx = await setupTest();
 
   await Promise.all([

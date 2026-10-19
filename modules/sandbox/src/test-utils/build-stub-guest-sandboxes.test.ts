@@ -384,12 +384,9 @@ test('it carries a session into a sandbox through the host copy, and the next tu
     cwd: `${guestHome}/.claude/projects/${file?.split('/')[1]}`,
   });
 
-  expect({ guestHome, home, code: layout.code, published: published.code }).toStrictEqual({
-    guestHome: '/home/nixie',
-    home: '/home/nixie',
-    code: 0,
-    published: 0,
-  });
+  expect([guestHome, home]).toStrictEqual(['/home/nixie', '/home/nixie']);
+  expect(layout.code).toBe(0);
+  expect(published.code).toBe(0);
 
   const resumed = await ctx.runEnded(to, buildMockTurnFrame({ resume: first.boundary }));
 
