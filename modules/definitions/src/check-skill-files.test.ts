@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildContentHash } from './build-content-hash';
 import { checkSkillFiles } from './check-skill-files';
 
 test('it returns the checked skill for a folder that passes every check', () => {
@@ -38,6 +39,10 @@ test('it refuses a name the format does not allow', () => {
     {
       path: 'skills/../tide-tables/',
       reason: 'use lowercase letters, digits and single hyphens',
+    },
+    {
+      path: 'skills/../tide-tables/SKILL.md',
+      reason: 'the name tide-tables differs from its folder name ../tide-tables',
     },
   ]);
 });
@@ -242,6 +247,34 @@ test('it refuses a skill whose frontmatter names another folder', () => {
 
 test('it refuses a skill with no files', () => {
   expect(checkSkillFiles('tide-tables', [])).toStrictEqual([
-    { path: 'skills/', reason: 'the skill has no files' },
+    { path: 'skills/tide-tables/', reason: 'the skill has no files' },
   ]);
+});
+
+test('it reports the problems of the files beside a name the format does not allow', () => {
+  expect(
+    checkSkillFiles('../tide-tables', [{ path: 'SKILL.md', text: '# Tides\n' }]),
+  ).toStrictEqual([
+    {
+      path: 'skills/../tide-tables/',
+      reason: 'use lowercase letters, digits and single hyphens',
+    },
+    {
+      path: 'skills/../tide-tables/SKILL.md',
+      reason: 'the file does not open with YAML frontmatter between --- lines',
+    },
+  ]);
+});
+
+test('it checks and hashes a file with CRLF line endings as the seed reads it, with LF', () => {
+  const lf = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  const seeded = new Map([['SKILL.md', new TextEncoder().encode(lf)]]);
+
+  expect(
+    checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: lf.replaceAll('\n', '\r\n') }]),
+  ).toMatchObject({
+    skillHash: buildContentHash(seeded),
+    files: new Map([['SKILL.md', lf]]),
+  });
 });
