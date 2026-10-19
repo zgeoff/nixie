@@ -478,6 +478,76 @@ test('it keeps the skill version of an earlier snapshot after a seed changes the
   ]);
 });
 
+test('it shares an unchanged skill version between the snapshots of a persona change', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  const policy = { rules: [], tools: [] };
+
+  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona, edited\n');
+
+  const second = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const firstSkills = await loadSnapshotSkills(ctx.writer.db, first.inForce?.snapshotHash ?? '');
+  const secondSkills = await loadSnapshotSkills(ctx.writer.db, second.inForce?.snapshotHash ?? '');
+
+  expect(second.status).toBe('seeded');
+  expect(second.inForce?.snapshotHash).not.toBe(first.inForce?.snapshotHash);
+
+  expect(secondSkills.map((skill) => skill.files.get('SKILL.md'))).toStrictEqual([
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  ]);
+
+  expect(secondSkills).toStrictEqual(firstSkills);
+});
+
+test('it refuses a skill file that opens with a byte order mark', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'ports.md'),
+    new Uint8Array([0xef, 0xbb, 0xbf, ...new TextEncoder().encode('# Ports\n')]),
+  );
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  expect(result).toMatchObject({
+    status: 'refused',
+    error: {
+      name: 'DefinitionsParseError',
+      problems: [
+        {
+          path: 'skills/tide-tables/ports.md',
+          reason: 'line 1 holds U+FEFF, a hidden or bidirectional control character',
+        },
+      ],
+    },
+    inForce: null,
+  });
+});
+
 test('it refuses a skill that holds a bidirectional control character, and keeps the last seed', async () => {
   const ctx = await setupTest();
 
