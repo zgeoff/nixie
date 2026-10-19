@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.37.0](https://github.com/zgeoff/nixie/compare/v0.36.0...v0.37.0) (2026-10-19)
+
+
+### Features
+
+* **geo-1319:** count memory subjects and dry-run the subjects migration ([#389](https://github.com/zgeoff/nixie/issues/389)) ([bc0c6cd](https://github.com/zgeoff/nixie/commit/bc0c6cd845c952aa7e924950392cec86720056bd))
+* **geo-1319:** give each memory item a subject: owner, self or shared ([#387](https://github.com/zgeoff/nixie/issues/387)) ([376026e](https://github.com/zgeoff/nixie/commit/376026e1fcd8fb031e303c3beff95578a9739a6d))
+* **geo-1319:** give the note-taker subjects and a self-note flag ([#397](https://github.com/zgeoff/nixie/issues/397)) ([61f94c7](https://github.com/zgeoff/nixie/commit/61f94c7dda44c8add6f6f97ed9e3c50df521da0c))
+
+
+### Bug Fixes
+
+* **geo-1478:** index only the words you typed in each past message ([#452](https://github.com/zgeoff/nixie/issues/452)) ([93753da](https://github.com/zgeoff/nixie/commit/93753da88e47d4838d2dc910072a896b13850cb4))
+
 ## [0.36.0](https://github.com/zgeoff/nixie/compare/v0.35.1...v0.36.0) (2026-10-19)
 
 
