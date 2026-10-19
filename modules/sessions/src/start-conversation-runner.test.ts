@@ -14,7 +14,7 @@ interface RunnerConfig {
   readonly models: ReturnType<typeof buildMockModelsConfig>;
   readonly credential: string;
   readonly toolNames: readonly string[];
-  readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote' | 'readSkillCatalog'>;
+  readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote' | 'loadOrPinSkillCatalog'>;
 
   // a recorder for the server's log, for a test that reads its warnings
   readonly log?: ConversationRunnerOptions['log'];
@@ -1008,7 +1008,7 @@ test('it puts the skill catalog of the conversation in the system prompt after t
 
   await createConversationTask(ctx.context);
 
-  const readSkillCatalog = mock(() =>
+  const loadOrPinSkillCatalog = mock(() =>
     Promise.resolve('<skills>\n- tide-tables: Reads a tide table.\n</skills>'),
   );
 
@@ -1016,12 +1016,12 @@ test('it puts the skill catalog of the conversation in the system prompt after t
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
     toolNames: ['notes_read'],
-    memory: { readSkillCatalog },
+    memory: { loadOrPinSkillCatalog },
   });
 
   await ctx.sendMessage(runner, 'When is high water?');
 
-  expect(readSkillCatalog).toHaveBeenCalledExactlyOnceWith('conversation');
+  expect(loadOrPinSkillCatalog).toHaveBeenCalledExactlyOnceWith('conversation');
 
   expect(ctx.sandboxes.turns).toMatchObject([
     {

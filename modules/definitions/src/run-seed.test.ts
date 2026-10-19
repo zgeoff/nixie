@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { Projection } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { buildContentHash } from './build-content-hash';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
@@ -469,13 +470,24 @@ test('it keeps the skill version of an earlier snapshot after a seed changes the
     '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides, by port\n',
   );
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const second = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  const skills = await loadSnapshotSkills(ctx.writer.db, first.inForce?.snapshotHash ?? '');
+  invariant(first.inForce !== null && second.inForce !== null);
 
-  expect(skills.map((skill) => skill.files.get('SKILL.md'))).toStrictEqual([
+  const firstSkills = await loadSnapshotSkills(ctx.writer.db, first.inForce.snapshotHash);
+  const secondSkills = await loadSnapshotSkills(ctx.writer.db, second.inForce.snapshotHash);
+
+  expect(firstSkills.map((skill) => skill.files.get('SKILL.md'))).toStrictEqual([
     '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
   ]);
+
+  expect(secondSkills.map((skill) => skill.files.get('SKILL.md'))).toStrictEqual([
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides, by port\n',
+  ]);
+
+  expect(secondSkills.map((skill) => skill.skillHash)).not.toStrictEqual(
+    firstSkills.map((skill) => skill.skillHash),
+  );
 });
 
 test('it shares an unchanged skill version between the snapshots of a persona change', async () => {
@@ -497,11 +509,14 @@ test('it shares an unchanged skill version between the snapshots of a persona ch
   await writeFile(join(ctx.root, 'persona.md'), '# Persona, edited\n');
 
   const second = await runSeed({ log: ctx.log, source: ctx.source, policy });
-  const firstSkills = await loadSnapshotSkills(ctx.writer.db, first.inForce?.snapshotHash ?? '');
-  const secondSkills = await loadSnapshotSkills(ctx.writer.db, second.inForce?.snapshotHash ?? '');
+
+  invariant(first.inForce !== null && second.inForce !== null);
+
+  const firstSkills = await loadSnapshotSkills(ctx.writer.db, first.inForce.snapshotHash);
+  const secondSkills = await loadSnapshotSkills(ctx.writer.db, second.inForce.snapshotHash);
 
   expect(second.status).toBe('seeded');
-  expect(second.inForce?.snapshotHash).not.toBe(first.inForce?.snapshotHash);
+  expect(second.inForce.snapshotHash).not.toBe(first.inForce.snapshotHash);
 
   expect(secondSkills.map((skill) => skill.files.get('SKILL.md'))).toStrictEqual([
     '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
@@ -696,7 +711,7 @@ test('it refuses a vendored skill whose files differ from its lock entry', async
   const ctx = await setupTest();
 
   const vendored = '---\nname: pdf-forms\ndescription: Fills PDF forms.\n---\n# Forms\n';
-  const pinned = buildContentHash(new Map([['SKILL.md', new TextEncoder().encode(vendored)]]));
+  const locked = buildContentHash(new Map([['SKILL.md', new TextEncoder().encode(vendored)]]));
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
@@ -709,7 +724,7 @@ test('it refuses a vendored skill whose files differ from its lock entry', async
         source: 'https://github.com/example/skills',
         path: 'skills/pdf-forms',
         commit: '3f6c1a528e0b4d7a9c215b7e4f0d9a133f6c1a52',
-        contentHash: pinned,
+        contentHash: locked,
       },
     }),
   );
@@ -732,7 +747,7 @@ test('it refuses a vendored skill whose files differ from its lock entry', async
       problems: [
         {
           path: 'skills/pdf-forms/',
-          reason: expect.toEndWith(`and the entry pins ${pinned}`),
+          reason: expect.toEndWith(`and the entry holds ${locked}`),
         },
       ],
     },

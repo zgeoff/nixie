@@ -13,7 +13,7 @@ export async function runSkillReload(
   run: ToolRun,
   name: string | null,
 ): Promise<ToolOutcome> {
-  const chains = getReloadChains(context.log.writer);
+  const chains = registerReloadChains(context.log.writer);
   const reload = waitThenReload(chains.get(run.thread), context, run, name);
   const tail = waitForSettled(reload);
 
@@ -31,7 +31,8 @@ export async function runSkillReload(
 // each writer's reloads by thread: the end of the newest reload on the thread, which never rejects
 const reloadChains = new WeakMap<object, Map<string, Promise<void>>>();
 
-function getReloadChains(writer: object): Map<string, Promise<void>> {
+// registers the writer's chains in the cache on its first reload, and returns them
+function registerReloadChains(writer: object): Map<string, Promise<void>> {
   const chains = reloadChains.get(writer) ?? new Map<string, Promise<void>>();
 
   reloadChains.set(writer, chains);

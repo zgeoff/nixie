@@ -16,7 +16,7 @@ export function runConversationStep(run: ConversationRun, input: StepInput): Pro
     const definitions = run.getDefinitions();
 
     const marks = await readSessionMarks(run.context, input.taskID);
-    const catalog = await run.readSkillCatalog?.(input.taskID);
+    const catalog = await run.loadOrPinSkillCatalog?.(input.taskID);
 
     const skillCatalog = catalog ?? null;
 
