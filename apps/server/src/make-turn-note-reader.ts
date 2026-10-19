@@ -8,7 +8,7 @@ import {
   buildProposalAnswerKind,
   buildProposalMergeKind,
 } from '@heynixie/memory';
-import type { TurnNote, TurnNoteRange } from '@heynixie/sessions';
+import type { TurnNote, TurnNoteRequest } from '@heynixie/sessions';
 import {
   buildCompactionHeadsUpKind,
   buildEventRegistry,
@@ -37,7 +37,7 @@ export interface TurnNoteReaderOptions {
 export function makeTurnNoteReader(
   options: TurnNoteReaderOptions,
   memory: () => StartedMemoryStore,
-): (span?: TurnNoteRange) => Promise<TurnNote> {
+): (request?: TurnNoteRequest) => Promise<TurnNote> {
   const store: AnswerQuoteSource = {
     recall: (request) => memory().recall(request),
     proposals: {
@@ -55,5 +55,5 @@ export function makeTurnNoteReader(
     buildCompactionHeadsUpKind(options.log, options.compaction),
   ]);
 
-  return (span) => readTurnNotes({ ...options, events }, span);
+  return (request) => readTurnNotes({ ...options, events }, request);
 }

@@ -128,3 +128,25 @@ test('it warns the next turn once that compaction is near after a turn ends at 1
     ),
   ).toHaveLength(1);
 }, 30_000);
+
+test('it gives no compaction warning to a rebuilt session after a turn of the old one ends at 142,000 of 200,000 tokens', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { text: 'The kettle is on.', inputTokens: 142_000 },
+    { text: 'Two sugars.' },
+  );
+
+  await sendTestMessage(ctx.context, ctx.first.runStep, 'Is the kettle on?');
+
+  // with every transcript gone, the replacement has no session to carry over
+  await Bun.$`find . -name '*.jsonl' -delete`.cwd(ctx.sandboxesDir);
+
+  const second = await ctx.startRunner('nixie-conversation-ba9876543210');
+
+  await sendTestMessage(ctx.context, second.runStep, 'How many sugars?');
+
+  expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).not.toInclude(
+    'Compaction in about',
+  );
+}, 30_000);

@@ -58,7 +58,9 @@ heads-up share of the window under the threshold. The first turn of a session th
 the heads-up and under the threshold gives one line in the next turn's
 [events block](./conversation-turns.md#the-events-block), with the tokens left before the threshold
 and the threshold's share of the window. The line is a plain system notice and never a persona line,
-as every event is. The block's cap never hides the line, because no later note gives it again.
+as every event is. The block's cap never hides the line, because no later note gives it again. A
+turn that opens a new session gets no line, because the new session's context no longer holds what
+the old one read.
 
 The heads-up event kind derives the line from the turn-ended records. A turn counts only when no
 earlier turn since the session's opening record reached the heads-up, so the line comes again only

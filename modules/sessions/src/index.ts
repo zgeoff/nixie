@@ -62,6 +62,7 @@ export type {
   SessionDefinitions,
   TurnNote,
   TurnNoteRange,
+  TurnNoteRequest,
 } from './types';
 
 export type { SessionsRecordKind } from './sessions-record-kind';

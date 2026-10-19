@@ -25,6 +25,9 @@ export function buildCompactionHeadsUpKind(
 
     // a later note never repeats the heads-up, so the cap never hides it
     isUncapped: true,
+
+    // a new session's context no longer holds what the turn that warned had read
+    isSessionBound: true,
     read: async (range) => {
       const records = await readRecords(log, {
         afterSequence: range.after,
