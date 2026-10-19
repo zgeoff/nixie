@@ -163,12 +163,15 @@ are the root `e2e/`, which holds whole-program suites such as the
 against the code. A guest keeps its test helpers inside its own package, because `libs/testing` is
 server-only.
 
-The tests that run the Agent SDK's `query()` live in `guests/conversation`, the one product package
-that imports the SDK. They run against the scripted model from the crash test harness, so no test
-needs an imp or a real model. Whole-program suites in `e2e/` run nixie with the sandbox double,
-which starts the conversation guest as a local process, so the SDK still loads only from its own
-package. An eval run that calls a real model is a script a contributor runs by hand, and its suite
-checks only the committed report.
+The product tests that run the Agent SDK's `query()` live in `guests/conversation`, the one product
+package that imports the SDK. They run against the scripted model from the crash test harness, so
+none of them needs an imp or a real model. One exception: the
+[SDK contract suite](../../evals/sdk-contract/README.md) in `evals/` runs SDK queries against a real
+model, to check the SDK behaviours nixie relies on. Its probes run only with `NIXIE_SDK_CONTRACT=1`
+and a model credential, and skip otherwise, so a plain `bun test` never calls a model. Whole-program
+suites in `e2e/` run nixie with the sandbox double, which starts the conversation guest as a local
+process, so the SDK still loads only from its own package. An eval run that calls a real model is a
+script a contributor runs by hand, and its suite checks only the committed report.
 
 ### Test builds
 
