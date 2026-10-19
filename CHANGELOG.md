@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.1](https://github.com/zgeoff/nixie/compare/v0.35.0...v0.35.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **geo-391:** deliver every checker prompt as written ([#410](https://github.com/zgeoff/nixie/issues/410)) ([707dff1](https://github.com/zgeoff/nixie/commit/707dff1f761a6c35dba4abb344f970e2612ae9a6))
+
 ## [0.35.0](https://github.com/zgeoff/nixie/compare/v0.34.0...v0.35.0) (2026-10-19)
 
 
