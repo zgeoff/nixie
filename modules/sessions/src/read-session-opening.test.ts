@@ -241,7 +241,11 @@ test('it carries the note again over the span from the oldest recent turn throug
     readTurnNote,
   });
 
-  expect(readTurnNote).toHaveBeenCalledExactlyOnceWith({ after: 0, through: 3 });
+  expect(readTurnNote).toHaveBeenCalledExactlyOnceWith({
+    span: { after: 0, through: 3 },
+    isNewSession: true,
+  });
+
   expect(opening.blocks.at(-1)).toBe('REPLAYED NOTE');
   expect(opening.record.recentEvents).toBe(1);
 });
@@ -293,7 +297,10 @@ test('it starts the span where the note of the oldest kept turn started, so an e
     readTurnNote,
   });
 
-  expect(readTurnNote).toHaveBeenCalledExactlyOnceWith({ after: 1, through: 4 });
+  expect(readTurnNote).toHaveBeenCalledExactlyOnceWith({
+    span: { after: 1, through: 4 },
+    isNewSession: true,
+  });
 });
 
 test('it carries no note again for a session with no recent turn', async () => {

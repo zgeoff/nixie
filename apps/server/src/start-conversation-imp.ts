@@ -44,6 +44,7 @@ export async function startConversationImp(
         clock: parts.context.clock,
         ownerName: parts.config.owner.name,
         defaultZone: parts.config.time.default_zone,
+        compaction: parts.config.compaction,
       },
       memory,
     ),

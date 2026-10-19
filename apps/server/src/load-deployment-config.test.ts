@@ -47,7 +47,7 @@ test('it reads every section, with the default of each setting the file leaves o
     },
     owner: { name: null, pronouns: { they: 'they', their: 'their' } },
     agent: { names: [] },
-    compaction: { threshold: 0.8, summaryTokens: 2000 },
+    compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 },
     sandbox: { adapter: 'imp' },
     imp: {
       url: 'http://127.0.0.1:7070',

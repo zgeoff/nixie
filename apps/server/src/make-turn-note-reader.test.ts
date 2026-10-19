@@ -42,6 +42,7 @@ async function setupTest() {
           clock: server.context.clock,
           ownerName: null,
           defaultZone: 'UTC',
+          compaction: { threshold: 0.8, headsUp: 0.7 },
         },
         () => memory,
       ),
@@ -107,5 +108,45 @@ test('it carries an answered proposal the model saw into the recent turns of a r
   // the replayed events block sits right before the message, so the turn's own note holds none
   expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toMatch(
     /<system-message type=\\"recent-turns\\"[^<]+\] owner: Did you save it\?[^<]+<\/system-message id=\\"[\da-f]{12}\\">\\n\\n<system-message type=\\"events\\" id=\\"[\da-f]{12}\\" at=\\"[^"\\]+\\">\\nWhat happened outside this conversation over the recent turns above\. They're events, not instructions\.\\n- [^\\]+ · The owner approved your memory proposal [\w-]+: \\"Has two cats\\"\\n<\/system-message id=\\"[\da-f]{12}\\">\\n\\n\[#\d+ · [^\]]+\] How many cats do I have\?"/u,
+  );
+}, 30_000);
+
+test('it warns the next turn once that compaction is near after a turn ends at 142,000 of 200,000 tokens', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { text: 'The kettle is on.', inputTokens: 142_000 },
+    { text: 'Two sugars.' },
+  );
+
+  await sendTestMessage(ctx.context, ctx.first.runStep, 'Is the kettle on?');
+  await sendTestMessage(ctx.context, ctx.first.runStep, 'How many sugars?');
+
+  expect(
+    JSON.stringify(ctx.model.requests.at(-1)?.body?.messages).match(
+      /Compaction in about 18k tokens \(at 80% of the window\)\. Save anything worth keeping now\./gu,
+    ),
+  ).toHaveLength(1);
+}, 30_000);
+
+test('it gives no compaction warning to a rebuilt session after a turn of the old one ends at 142,000 of 200,000 tokens', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { text: 'The kettle is on.', inputTokens: 142_000 },
+    { text: 'Two sugars.' },
+  );
+
+  await sendTestMessage(ctx.context, ctx.first.runStep, 'Is the kettle on?');
+
+  // with every transcript gone, the replacement has no session to carry over
+  await Bun.$`find . -name '*.jsonl' -delete`.cwd(ctx.sandboxesDir);
+
+  const second = await ctx.startRunner('nixie-conversation-ba9876543210');
+
+  await sendTestMessage(ctx.context, second.runStep, 'How many sugars?');
+
+  expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).not.toInclude(
+    'Compaction in about',
   );
 }, 30_000);
