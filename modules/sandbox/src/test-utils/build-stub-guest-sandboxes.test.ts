@@ -334,6 +334,21 @@ test('it summarizes the session at the resume point from its own transcript, at 
   ]);
 });
 
+test('it writes the summary as a fork that the next turn resumes from its boundary', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+  const first = await ctx.runEnded(sandbox, buildMockTurnFrame());
+  const summary = await ctx.runGuest(sandbox, buildMockSummarizeFrame({ resume: first.boundary }));
+
+  const summarized = summary.find((frame) => frame.type === 'summarized');
+
+  invariant(summarized);
+
+  const frames = await ctx.runGuest(sandbox, buildMockTurnFrame({ resume: summarized.boundary }));
+
+  expect(frames.map((frame) => frame.type)).toStrictEqual(['read', 'assistant', 'ended']);
+});
+
 test('it fails a summary of a session the sandbox does not hold', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
