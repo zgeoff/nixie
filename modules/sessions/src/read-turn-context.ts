@@ -16,8 +16,9 @@ import type {
 export interface TurnContextQuery {
   readonly taskID: string;
 
-  // the persona's text the step read, which the system prompt renders
+  // the persona's text the step read, and the task's skill catalog, which the system prompt renders
   readonly persona: string;
+  readonly skillCatalog: string | null;
 
   // the inbox records the turn takes
   readonly batch: readonly LogRecord[];
@@ -69,7 +70,7 @@ export async function readTurnContext(
   const changes = await readCoreChanges(memory, query, { core, lines });
 
   return {
-    systemPrompt: renderSystemPrompt(query.persona, lines),
+    systemPrompt: renderSystemPrompt(query.persona, query.skillCatalog, lines),
     pinnedMemory,
     preamble: renderTurnPreamble({ changes, retrieval, thread: query.taskID, at }, lines),
     pinnedCore: core.map((item) => toMemoryRef(item)),

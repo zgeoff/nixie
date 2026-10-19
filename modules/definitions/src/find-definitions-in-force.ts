@@ -36,6 +36,14 @@ export async function findDefinitionsInForce(
     return null;
   }
 
+  const skills = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('snapshot_skills')
+    .select(['name', 'skill_hash', 'origin', 'in_conversation'])
+    .where('snapshot_hash', '=', row.snapshot_hash)
+    .orderBy('name')
+    .execute();
+
   return {
     seededAt: new Date(row.seeded_at),
     sourceID: row.source_id,
@@ -48,5 +56,13 @@ export async function findDefinitionsInForce(
     persona: row.instructions,
     policyHash: row.policy_hash,
     recordSequence: row.record_sequence,
+    skills: skills.map((skill) => ({
+      name: skill.name,
+      skillHash: skill.skill_hash,
+      origin: skill.origin,
+    })),
+    conversationSkills: skills
+      .filter((skill) => skill.in_conversation === 1)
+      .map((skill) => skill.name),
   };
 }

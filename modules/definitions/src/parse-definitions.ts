@@ -1,26 +1,36 @@
+import { definitionsFormats } from './definitions-formats';
 import type { ParseProblem } from './definitions-parse-error';
 import { DefinitionsParseError } from './definitions-parse-error';
+import { manifestPath } from './manifest-path';
 import { manifestSchema } from './manifest-schema';
+import { parseConversationSkills } from './parse-conversation-skills';
+import { parseSkills } from './parse-skills';
 import type { ParsedDefinitions, Snapshot } from './types';
 
-const manifestPath = 'nixie.yaml';
 const personaPath = 'persona.md';
 
-// Reads what the seed applies from a snapshot: the format version from nixie.yaml and the persona
-// from persona.md. Slice 1 applies nothing else, so every other file only has to parse, and the
-// seed lists it as unapplied. A file that fails to decode or parse fails the whole snapshot.
+// Reads what the seed applies: the format version, the persona, and from format 2 on, the skills.
+// Every other file only has to parse, and the seed lists it as unapplied. A file that fails to
+// decode or parse, or a skill that fails a seed check, fails the whole snapshot.
 export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
   const texts = decodeFiles(snapshot.files);
   const formatVersion = parseManifest(texts.get(manifestPath));
   const persona = parsePersona(texts.get(personaPath));
+  const hasSkills = formatVersion >= definitionsFormats.skills;
+  const skills = hasSkills ? parseSkills(snapshot, texts) : [];
+
+  const conversationSkills = hasSkills
+    ? parseConversationSkills(texts.get(manifestPath) ?? '', skills)
+    : [];
 
   const unapplied = [...texts.keys()]
     .filter((path) => path !== manifestPath && path !== personaPath)
+    .filter((path) => !hasSkills || !path.startsWith('skills/'))
     .toSorted();
 
   requireParsable(unapplied.map((path) => [path, texts.get(path) ?? '']));
 
-  return { formatVersion, persona, unapplied };
+  return { formatVersion, persona, skills, conversationSkills, unapplied };
 }
 
 function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
@@ -67,10 +77,16 @@ function parseManifest(text: string | undefined): number {
     ]);
   }
 
-  const readable = [...manifestSchema.shape.format.values].join(' or ');
-  const reason = `format ${format} is not one this release reads, which is ${readable}`;
+  if (!definitionsFormats.readable.includes(format)) {
+    const readable = definitionsFormats.readable.join(' or ');
+    const reason = `format ${format} is not one this release reads, which is ${readable}`;
 
-  throw new DefinitionsParseError([{ path: manifestPath, reason }]);
+    throw new DefinitionsParseError([{ path: manifestPath, reason }]);
+  }
+
+  throw new DefinitionsParseError([
+    { path: manifestPath, reason: 'skills must be a list of skill names' },
+  ]);
 }
 
 function getFormat(manifest: unknown): unknown {

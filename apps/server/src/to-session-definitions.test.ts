@@ -15,6 +15,8 @@ test('it reads the persona, its hash and the policy hash from the definitions in
       persona: 'You are Wren, a calm helper.',
       policyHash: 'sha256:policy-read-only',
       recordSequence: 3,
+      skills: [],
+      conversationSkills: [],
     }),
   ).toStrictEqual({
     persona: 'You are Wren, a calm helper.',

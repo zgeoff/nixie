@@ -1,10 +1,19 @@
 import { z } from 'zod';
+import { definitionsFormats } from './definitions-formats';
+import { manifestSkillsSchema } from './manifest-skills-schema';
 
-// The definitions format this release writes. It reads this format and the one before, because an
-// image upgrade and a definitions change land in either order.
-const formatVersion = 1;
-const readableFormats = [formatVersion - 1, formatVersion].filter((version) => version >= 1);
+const formatsBeforeSkills = definitionsFormats.readable.filter(
+  (version) => version < definitionsFormats.skills,
+);
 
-// nixie.yaml as the seed reads it: a format this release reads. The seed reads no other key, so the
-// manifest may hold more.
-export const manifestSchema = z.looseObject({ format: z.literal(readableFormats) });
+const formatsWithSkills = definitionsFormats.readable.filter(
+  (version) => version >= definitionsFormats.skills,
+);
+
+// nixie.yaml as the seed reads it: a format this release reads and, from the skills format on, the
+// conversation's skill list. The seed reads no other key, so the manifest may hold more, and it
+// ignores the skill list under an earlier format.
+export const manifestSchema = z.union([
+  z.looseObject({ format: z.literal(formatsBeforeSkills) }),
+  manifestSkillsSchema.extend({ format: z.literal(formatsWithSkills) }),
+]);
