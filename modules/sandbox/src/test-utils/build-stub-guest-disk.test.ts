@@ -1,7 +1,17 @@
 import { expect, test } from 'bun:test';
 import { buildStubGuestDisk } from './build-stub-guest-disk';
 
-const home = '/home/nixie';
+const home = { copyPath: '/home/nixie', ownPath: '/home/nixie' };
+
+test('it names the project folder from the path the guest sees, under the path a copy takes', () => {
+  const disk = buildStubGuestDisk();
+
+  disk.writeSession({ copyPath: '/', ownPath: '/srv/sandboxes/box-1' }, 'one', []);
+
+  expect([...disk.files.keys()]).toStrictEqual([
+    '/.claude/projects/-srv-sandboxes-box-1-conversation/one.jsonl',
+  ]);
+});
 
 const entry = {
   uuid: '6e697869-0000-8000-8000-000000000001',

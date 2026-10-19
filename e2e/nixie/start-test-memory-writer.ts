@@ -6,7 +6,7 @@ import { buildStubGate } from '@heynixie/memory/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import type { MemoryWriterRunner } from '@heynixie/server';
-import { buildSandboxAdapter, startMemoryWriterRunner } from '@heynixie/server';
+import { createSandboxAdapter, startMemoryWriterRunner } from '@heynixie/server';
 import type { TasksContext } from '@heynixie/tasks';
 import type { TestTools } from './start-test-tools';
 
@@ -38,7 +38,7 @@ export function startTestMemoryWriter(
       roles: { conversation: 'writer-test', 'memory-writer': 'writer-test' },
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
-    sandboxes: buildSandboxAdapter({
+    sandboxes: createSandboxAdapter({
       recorder: buildSandboxRecorder({ log: context.log, definitions: context.definitions }),
       toolTarget: tools.endpoint.getToolTarget,
 

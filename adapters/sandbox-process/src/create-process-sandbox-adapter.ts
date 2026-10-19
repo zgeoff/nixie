@@ -1,5 +1,6 @@
+import { mkdirSync, realpathSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import type {
   Sandbox,
   SandboxAdapter,
@@ -29,7 +30,13 @@ export interface ProcessSandboxOptions {
 // The test sandbox, a test-build double that runs each guest as a local process. It is NOT a
 // security boundary: a guest reads whatever nixie's user can and reaches any network the host does.
 // It records and refuses as imp does, but passes each grant's placeholders instead of injecting it.
-export function buildProcessSandboxAdapter(options: ProcessSandboxOptions): SandboxAdapter {
+export function createProcessSandboxAdapter(input: ProcessSandboxOptions): SandboxAdapter {
+  // the root through its symlinks, resolved once, so a guest's home is the path its processes see
+  const options = { ...input, rootDir: createRealRootDir(input.rootDir) };
+
+  // the root as configured, which a command's HOME may name instead of the real path
+  const aliasRootDir = resolve(input.rootDir);
+
   const live = new Map<string, ProcessState>();
 
   const brokerEnv = pickBrokerEnv(options.hostEnv ?? {});
@@ -55,6 +62,7 @@ export function buildProcessSandboxAdapter(options: ProcessSandboxOptions): Sand
       id,
       spec,
       fsRoot: join(options.rootDir, id, 'fs'),
+      aliasFsRoot: join(aliasRootDir, id, 'fs'),
       state,
       remove: () => removeSandbox(id),
     });
@@ -84,6 +92,12 @@ export function buildProcessSandboxAdapter(options: ProcessSandboxOptions): Sand
     // the double's runtime is this process, which answers while it runs
     checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
   };
+}
+
+function createRealRootDir(rootDir: string): string {
+  mkdirSync(rootDir, { recursive: true });
+
+  return realpathSync(rootDir);
 }
 
 interface ProcessSandboxes {

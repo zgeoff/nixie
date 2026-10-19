@@ -179,6 +179,22 @@ export type Suspension =
     }
   | { readonly kind: 'none' };
 
+// The guest's home in its two forms, which differ in a sandbox that maps a host folder to the
+// guest's root, as the process sandbox does.
+export interface GuestHome {
+  // the path that copyIn, copyOut, readFilePaths and applyMove take
+  readonly copyPath: string;
+
+  // the path the guest's own processes see
+  readonly ownPath: string;
+}
+
+export interface ReadFilePathsOptions {
+  // the most path segments a listed file's relative path holds, as find's -maxdepth counts them: a
+  // file directly in the directory is 1 deep, and a file in a folder of it is 2 deep
+  readonly maxDepth?: number;
+}
+
 export interface Sandbox {
   readonly id: string;
   readonly spec: SandboxSpec;
@@ -186,6 +202,20 @@ export interface Sandbox {
   readonly spawn: (command: SpawnSpec) => Promise<ExecStream>;
   readonly copyIn: (files: readonly FileSpec[]) => Promise<void>;
   readonly copyOut: (paths: readonly string[]) => Promise<readonly FileSpec[]>;
+
+  // the home of a guest that runs with this env, from what the adapter knows, with no probe; it
+  // rejects a HOME outside the sandbox
+  readonly resolveHome: (env: Readonly<Record<string, string>>) => Promise<GuestHome>;
+
+  // every file under the directory down to the options' depth, or at any depth with none, relative
+  // to it; none for a missing directory
+  readonly readFilePaths: (
+    dir: string,
+    options?: ReadFilePathsOptions,
+  ) => Promise<readonly string[]>;
+
+  // moves one file to another path in one step, replacing a file there
+  readonly applyMove: (from: string, to: string) => Promise<void>;
   readonly toolRoute: () => Promise<ToolRoute | null>;
   readonly suspension: Suspension;
   readonly destroy: () => Promise<void>;

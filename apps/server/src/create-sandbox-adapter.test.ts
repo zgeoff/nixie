@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
-import { buildSandboxAdapter } from './build-sandbox-adapter';
+import { createSandboxAdapter } from './create-sandbox-adapter';
 import { startTestServer } from './test-utils/start-test-server';
 
 // The parts of a test build that the adapter wires to, from the test server. The stack's disposal
@@ -21,7 +21,7 @@ async function setupTest() {
 test('it wires the test sandbox, the process double, when the configuration selects it', async () => {
   const ctx = await setupTest();
 
-  const adapter = buildSandboxAdapter({
+  const adapter = createSandboxAdapter({
     recorder: buildSandboxRecorder({
       log: ctx.context.log,
       definitions: ctx.context.definitions,
@@ -38,7 +38,7 @@ test('it wires the test sandbox, the process double, when the configuration sele
 test('it wires the imp adapter in a test build when the configuration selects imp', async () => {
   const ctx = await setupTest();
 
-  const adapter = buildSandboxAdapter({
+  const adapter = createSandboxAdapter({
     recorder: buildSandboxRecorder({
       log: ctx.context.log,
       definitions: ctx.context.definitions,
@@ -65,7 +65,7 @@ test('it refuses the test sandbox in a release build', async () => {
   });
 
   expect(() =>
-    buildSandboxAdapter({
+    createSandboxAdapter({
       recorder: buildSandboxRecorder({
         log: ctx.context.log,
         definitions: ctx.context.definitions,

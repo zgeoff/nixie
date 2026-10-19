@@ -1,8 +1,10 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import type {
   FileSpec,
+  GuestHome,
   ProcessIO,
+  ReadFilePathsOptions,
   RunSpec,
   Sandbox,
   SandboxRecorder,
@@ -27,6 +29,9 @@ export interface ProcessSandboxContext {
 
   // the sandbox's own directory, which stands in for the guest's filesystem
   readonly fsRoot: string;
+
+  // the same directory under the root as configured, before its symlinks resolve
+  readonly aliasFsRoot: string;
   readonly state: ProcessState;
   readonly remove: () => Promise<void>;
 }
@@ -50,6 +55,9 @@ export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
     },
     copyIn: (files) => writeGuestFiles(ctx.fsRoot, files),
     copyOut: (paths) => Promise.all(paths.map((path) => readGuestFile(ctx.fsRoot, path))),
+    resolveHome: (env) => Promise.try(() => resolveGuestHome(ctx, env)),
+    readFilePaths: (dir, options) => readGuestFilePaths(ctx.fsRoot, dir, options),
+    applyMove: (from, to) => applyGuestMove(ctx.fsRoot, from, to),
     toolRoute: async () => {
       if (!ctx.spec.toolRoute) {
         return null;
@@ -118,4 +126,79 @@ async function readGuestFile(fsRoot: string, path: string): Promise<FileSpec> {
   const content = await readFile(resolveGuestPath(fsRoot, path));
 
   return { path, content: new Uint8Array(content) };
+}
+
+// The guest's processes start with HOME at the sandbox's own directory unless the command's env
+// sets it, and the guest's root is that directory, so the copy path is the home below it. A HOME
+// under the root as configured moves to the real root, since it may not exist yet to resolve.
+function resolveGuestHome(
+  ctx: Pick<ProcessSandboxContext, 'fsRoot' | 'aliasFsRoot'>,
+  env: Readonly<Record<string, string>>,
+): GuestHome {
+  const given = env['HOME'] ?? ctx.fsRoot;
+
+  if (!isAbsolute(given)) {
+    throw new Error(`HOME ${given} is outside the guest root ${ctx.fsRoot}`);
+  }
+
+  const aliasBelow = findPathBelow(ctx.aliasFsRoot, given);
+  const home = aliasBelow === null ? given : join(ctx.fsRoot, aliasBelow);
+  const below = findPathBelow(ctx.fsRoot, home);
+
+  if (below === null) {
+    throw new Error(`HOME ${given} is outside the guest root ${ctx.fsRoot}`);
+  }
+
+  return { copyPath: join('/', below), ownPath: home };
+}
+
+function findPathBelow(dir: string, path: string): string | null {
+  const below = relative(dir, path);
+
+  return below === '..' || below.startsWith(`..${sep}`) || isAbsolute(below) ? null : below;
+}
+
+function readGuestFilePaths(
+  fsRoot: string,
+  dir: string,
+  options: ReadFilePathsOptions = {},
+): Promise<readonly string[]> {
+  const root = resolveGuestPath(fsRoot, dir);
+
+  return readFilePathsBelow(root, options.maxDepth ?? Number.POSITIVE_INFINITY);
+}
+
+// a walk that reads one folder level per step, so a bounded depth reads no folder below it; a folder
+// that is gone when its read comes lists nothing, and its siblings keep their files
+async function readFilePathsBelow(dir: string, depth: number): Promise<readonly string[]> {
+  if (depth < 1) {
+    return [];
+  }
+
+  const entries = await readdir(dir, { withFileTypes: true }).catch((error: unknown) => {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return [];
+    }
+
+    throw error;
+  });
+
+  const listed = await Promise.all(
+    entries.map(async (entry) => {
+      if (entry.isDirectory()) {
+        const below = await readFilePathsBelow(join(dir, entry.name), depth - 1);
+
+        return below.map((path) => join(entry.name, path));
+      }
+
+      return entry.isFile() ? [entry.name] : [];
+    }),
+  );
+
+  return listed.flat();
+}
+
+// a rename, which replaces a file at the target in one step
+async function applyGuestMove(fsRoot: string, from: string, to: string): Promise<void> {
+  await rename(resolveGuestPath(fsRoot, from), resolveGuestPath(fsRoot, to));
 }

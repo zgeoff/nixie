@@ -1,4 +1,5 @@
 import type { GuestFrame, SessionPoint } from '@heynixie/wire';
+import type { GuestHome } from '../types';
 import type { StubGuestDisk, StubSessionEntry } from './build-stub-guest-disk';
 
 type HistoryRead =
@@ -9,7 +10,7 @@ type HistoryRead =
 // CLI gives for a session the disk does not hold or a point the session does not hold.
 interface GuestDiskRef {
   readonly disk: StubGuestDisk;
-  readonly home: string;
+  readonly home: GuestHome;
 }
 
 export function readStubGuestHistory(run: GuestDiskRef, resume: SessionPoint | null): HistoryRead {

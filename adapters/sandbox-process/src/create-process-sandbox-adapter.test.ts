@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, realpath, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
@@ -12,7 +12,7 @@ import {
 } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import { buildProcessSandboxAdapter } from './build-process-sandbox-adapter';
+import { createProcessSandboxAdapter } from './create-process-sandbox-adapter';
 
 interface SetupConfig {
   // the stop's kill deadline, when a test needs one shorter than the default
@@ -36,7 +36,7 @@ async function setupTest(config: SetupConfig = {}) {
 
   // a test that needs the host's environment passes it here, as the server passes its own
   const buildAdapter = (hostEnv: Readonly<Record<string, string>> = {}) =>
-    buildProcessSandboxAdapter({
+    createProcessSandboxAdapter({
       recorder: recorder.recorder,
       rootDir,
       toolTarget: () => ({ path: join(rootDir, 'tools.sock') }),
@@ -404,6 +404,196 @@ test('it refuses to copy in a relative path', async () => {
 
   expect(sandbox.copyIn([{ path: 'work/in.txt', content: new Uint8Array() }])).rejects.toThrow(
     'a guest path must be absolute: work/in.txt',
+  );
+});
+
+test("it gives the sandbox's own directory as the home of a guest whose command sets no HOME", async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+  const home = await sandbox.resolveHome({});
+
+  expect(home).toStrictEqual({
+    copyPath: '/',
+    ownPath: join(ctx.rootDir, sandbox.id, 'fs'),
+  });
+});
+
+test('it gives the home under the real path of a root reached through a symlink', async () => {
+  const ctx = await setupTest();
+  const linkDir = await mkdtemp(join(tmpdir(), 'nixie-sandbox-link-'));
+
+  onTestFinished(() => rm(linkDir, { recursive: true, force: true }));
+
+  await symlink(ctx.rootDir, join(linkDir, 'root'));
+
+  const linked = createProcessSandboxAdapter({
+    recorder: ctx.recorder,
+    rootDir: join(linkDir, 'root'),
+    toolTarget: () => ({ path: join(ctx.rootDir, 'tools.sock') }),
+  });
+
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec(), linked);
+  const home = await sandbox.resolveHome({});
+  const realRoot = await realpath(ctx.rootDir);
+
+  expect(home).toStrictEqual({ copyPath: '/', ownPath: join(realRoot, sandbox.id, 'fs') });
+});
+
+test('it gives a HOME named through the symlink of the root under the real path, before the HOME exists', async () => {
+  const ctx = await setupTest();
+  const linkDir = await mkdtemp(join(tmpdir(), 'nixie-sandbox-link-'));
+
+  onTestFinished(() => rm(linkDir, { recursive: true, force: true }));
+
+  await symlink(ctx.rootDir, join(linkDir, 'root'));
+
+  const linked = createProcessSandboxAdapter({
+    recorder: ctx.recorder,
+    rootDir: join(linkDir, 'root'),
+    toolTarget: () => ({ path: join(ctx.rootDir, 'tools.sock') }),
+  });
+
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec(), linked);
+
+  const home = await sandbox.resolveHome({
+    HOME: join(linkDir, 'root', sandbox.id, 'fs/home/nixie'),
+  });
+
+  const realRoot = await realpath(ctx.rootDir);
+
+  expect(home).toStrictEqual({
+    copyPath: '/home/nixie',
+    ownPath: join(realRoot, sandbox.id, 'fs/home/nixie'),
+  });
+});
+
+test("it refuses a HOME named through the symlink of the root but outside the sandbox's directory", async () => {
+  const ctx = await setupTest();
+  const linkDir = await mkdtemp(join(tmpdir(), 'nixie-sandbox-link-'));
+
+  onTestFinished(() => rm(linkDir, { recursive: true, force: true }));
+
+  await symlink(ctx.rootDir, join(linkDir, 'root'));
+
+  const linked = createProcessSandboxAdapter({
+    recorder: ctx.recorder,
+    rootDir: join(linkDir, 'root'),
+    toolTarget: () => ({ path: join(ctx.rootDir, 'tools.sock') }),
+  });
+
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec(), linked);
+  const realRoot = await realpath(ctx.rootDir);
+
+  expect(sandbox.resolveHome({ HOME: join(linkDir, 'root', 'other/fs') })).rejects.toThrow(
+    `HOME ${join(linkDir, 'root', 'other/fs')} is outside the guest root ${join(realRoot, sandbox.id, 'fs')}`,
+  );
+});
+
+test("it gives the command's HOME as the guest sees it, and as the path below the sandbox's directory", async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  const home = join(ctx.rootDir, sandbox.id, 'fs/home/nixie');
+
+  const resolved = await sandbox.resolveHome({ HOME: home });
+
+  expect(resolved).toStrictEqual({
+    copyPath: '/home/nixie',
+    ownPath: home,
+  });
+});
+
+test("it refuses a HOME outside the sandbox's directory", async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  expect(sandbox.resolveHome({ HOME: ctx.rootDir })).rejects.toThrow(
+    `HOME ${ctx.rootDir} is outside the guest root ${join(ctx.rootDir, sandbox.id, 'fs')}`,
+  );
+});
+
+test('it lists every file under a directory at any depth, relative to it', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: '/work/a.txt', content: new TextEncoder().encode('a') },
+    { path: '/work/deep/b.txt', content: new TextEncoder().encode('b') },
+    { path: '/other/c.txt', content: new TextEncoder().encode('c') },
+  ]);
+
+  const listed = await sandbox.readFilePaths('/work');
+
+  expect(listed).toIncludeSameMembers(['a.txt', 'deep/b.txt']);
+});
+
+test('it lists no file deeper than the depth bound', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: '/work/a.txt', content: new TextEncoder().encode('a') },
+    { path: '/work/one/b.txt', content: new TextEncoder().encode('b') },
+    { path: '/work/one/two/c.txt', content: new TextEncoder().encode('c') },
+  ]);
+
+  const listed = await sandbox.readFilePaths('/work', { maxDepth: 2 });
+
+  expect(listed).toIncludeSameMembers(['a.txt', 'one/b.txt']);
+});
+
+test('it lists no file under a missing directory', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+  const listed = await sandbox.readFilePaths('/missing');
+
+  expect(listed).toStrictEqual([]);
+});
+
+test('it moves a file over the one at the target, leaving none at the source', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: '/work/new.txt', content: new TextEncoder().encode('new') },
+    { path: '/work/old.txt', content: new TextEncoder().encode('old') },
+  ]);
+
+  await sandbox.applyMove('/work/new.txt', '/work/old.txt');
+
+  const [moved] = await sandbox.copyOut(['/work/old.txt']);
+  const listed = await sandbox.readFilePaths('/work');
+
+  expect(new TextDecoder().decode(moved?.content)).toBe('new');
+  expect(listed).toStrictEqual(['old.txt']);
+});
+
+test('it refuses to move a file onto a directory, and keeps the file', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: '/work/a.txt', content: new TextEncoder().encode('a') },
+    { path: '/work/dir/b.txt', content: new TextEncoder().encode('b') },
+  ]);
+
+  const failure = await sandbox.applyMove('/work/a.txt', '/work/dir').then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  const listed = await sandbox.readFilePaths('/work');
+
+  expect(failure).toMatchObject({ code: 'EISDIR' });
+  expect(listed).toIncludeSameMembers(['a.txt', 'dir/b.txt']);
+});
+
+test('it refuses to move a file out of the sandbox', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  expect(sandbox.applyMove('/work/a.txt', '/../a.txt')).rejects.toThrow(
+    'a guest path must stay inside the sandbox: /../a.txt',
   );
 });
 

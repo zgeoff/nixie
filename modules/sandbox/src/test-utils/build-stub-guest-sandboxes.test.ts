@@ -489,25 +489,16 @@ test('it carries a session into a sandbox through the host copy, and the next tu
 
   invariant(first.ended !== null);
 
-  const sessionID = first.ended.boundary.sessionID;
+  const projectsDir = '/home/nixie/.claude/projects';
 
-  const layout = await from.exec({ argv: ['sh', '-c', 'script', 'sh', sessionID], env, cwd: '/' });
+  const [file] = await from.readFilePaths(projectsDir);
 
-  const [guestHome, home, file] = new TextDecoder().decode(layout.stdout.bytes).split('\n');
+  invariant(file !== undefined);
 
-  const copied = await from.copyOut([`${guestHome}/.claude/projects/${file?.slice(2)}`]);
+  const copied = await from.copyOut([`${projectsDir}/${file}`]);
 
   await to.copyIn(copied.map((entry) => ({ path: `${entry.path}.copy`, content: entry.content })));
-
-  const published = await to.exec({
-    argv: ['mv', '-f', '--', `${sessionID}.jsonl.copy`, `${sessionID}.jsonl`],
-    env,
-    cwd: `${guestHome}/.claude/projects/${file?.split('/')[1]}`,
-  });
-
-  expect([guestHome, home]).toStrictEqual(['/home/nixie', '/home/nixie']);
-  expect(layout.code).toBe(0);
-  expect(published.code).toBe(0);
+  await to.applyMove(`${projectsDir}/${file}.copy`, `${projectsDir}/${file}`);
 
   const resumed = await runGuestFrame(to, buildMockTurnFrame({ resume: first.ended.boundary }));
 
@@ -516,17 +507,148 @@ test('it carries a session into a sandbox through the host copy, and the next tu
   expect(resumed.ended.boundary.sessionID).not.toBe(first.ended.boundary.sessionID);
 });
 
-test('it lists no session file for a sandbox that holds no transcript of the session', async () => {
+test("it gives the command's HOME as both forms of the guest's home", async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+  const home = await sandbox.resolveHome({ HOME: '/home/nixie' });
+
+  expect(home).toStrictEqual({
+    copyPath: '/home/nixie',
+    ownPath: '/home/nixie',
+  });
+});
+
+test('it refuses the home of a guest command with no HOME', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
 
-  const layout = await sandbox.exec({
-    argv: ['sh', '-c', 'script', 'sh', crypto.randomUUID()],
-    env,
-    cwd: '/',
+  expect(sandbox.resolveHome({})).rejects.toThrow('the guest command sets no HOME');
+});
+
+test("it gives a guest command with no HOME the guest's root, which is the sandbox's folder under the host root", async () => {
+  const ctx = await setupTest();
+
+  const stub = buildStubGuestSandboxes({
+    recorder: ctx.recorder.recorder,
+    countTokens: (text) => Math.ceil(text.length / 4),
+    hostRoot: '/srv/sandboxes',
   });
 
-  expect(new TextDecoder().decode(layout.stdout.bytes)).toBe('/home/nixie\n/home/nixie\n');
+  const sandbox = await stub.adapter.create(ctx.spec);
+  const home = await sandbox.resolveHome({});
+
+  expect(home).toStrictEqual({ copyPath: '/', ownPath: `/srv/sandboxes/${sandbox.id}` });
+});
+
+test('it runs a turn with no HOME under the host root, in the project folder of the guest root', async () => {
+  const ctx = await setupTest();
+
+  const stub = buildStubGuestSandboxes({
+    recorder: ctx.recorder.recorder,
+    countTokens: (text) => Math.ceil(text.length / 4),
+    hostRoot: '/srv/sandboxes',
+  });
+
+  const sandbox = await stub.adapter.create(ctx.spec);
+  const run = await runGuestFrame(sandbox, buildMockTurnFrame(), {});
+
+  invariant(run.ended !== null);
+
+  const listed = await sandbox.readFilePaths('/.claude/projects');
+
+  expect(listed).toStrictEqual([
+    `-srv-sandboxes-${sandbox.id}-conversation/${run.ended.boundary.sessionID}.jsonl`,
+  ]);
+});
+
+test('it lists every file under a directory at any depth, relative to it', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  await sandbox.copyIn([
+    { path: '/home/nixie/work/a.txt', content: new TextEncoder().encode('a') },
+    { path: '/home/nixie/work/deep/b.txt', content: new TextEncoder().encode('b') },
+    { path: '/home/nixie/workshop/c.txt', content: new TextEncoder().encode('c') },
+  ]);
+
+  const listed = await sandbox.readFilePaths('/home/nixie/work');
+
+  expect(listed).toIncludeSameMembers(['a.txt', 'deep/b.txt']);
+});
+
+test('it lists no file deeper than the depth bound', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  await sandbox.copyIn([
+    { path: '/home/nixie/work/a.txt', content: new TextEncoder().encode('a') },
+    { path: '/home/nixie/work/one/b.txt', content: new TextEncoder().encode('b') },
+    { path: '/home/nixie/work/one/two/c.txt', content: new TextEncoder().encode('c') },
+  ]);
+
+  const listed = await sandbox.readFilePaths('/home/nixie/work', { maxDepth: 2 });
+
+  expect(listed).toIncludeSameMembers(['a.txt', 'one/b.txt']);
+});
+
+test('it lists no file under a directory the sandbox does not hold', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+  const listed = await sandbox.readFilePaths('/home/nixie/.claude/projects');
+
+  expect(listed).toStrictEqual([]);
+});
+
+test('it moves a file over the one at the target, leaving none at the source', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  await sandbox.copyIn([
+    { path: '/home/nixie/new.txt', content: new TextEncoder().encode('new') },
+    { path: '/home/nixie/old.txt', content: new TextEncoder().encode('old') },
+  ]);
+
+  await sandbox.applyMove('/home/nixie/new.txt', '/home/nixie/old.txt');
+
+  const [moved] = await sandbox.copyOut(['/home/nixie/old.txt']);
+  const listed = await sandbox.readFilePaths('/home/nixie');
+
+  expect(new TextDecoder().decode(moved?.content)).toBe('new');
+  expect(listed).toStrictEqual(['old.txt']);
+});
+
+test('it refuses to move a file the sandbox does not hold', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  expect(sandbox.applyMove('/home/nixie/a.txt', '/home/nixie/b.txt')).rejects.toThrow(
+    "ENOENT: no such file or directory, rename '/home/nixie/a.txt' -> '/home/nixie/b.txt'",
+  );
+});
+
+test('it refuses to move a file onto a directory, and keeps the file', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  await sandbox.copyIn([
+    { path: '/home/nixie/a.txt', content: new TextEncoder().encode('a') },
+    { path: '/home/nixie/dir/b.txt', content: new TextEncoder().encode('b') },
+  ]);
+
+  const failure = await sandbox.applyMove('/home/nixie/a.txt', '/home/nixie/dir').then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  expect(failure).toStrictEqual(
+    new Error(
+      "EISDIR: illegal operation on a directory, rename '/home/nixie/a.txt' -> '/home/nixie/dir'",
+    ),
+  );
+
+  const listed = await sandbox.readFilePaths('/home/nixie');
+
+  expect(listed).toIncludeSameMembers(['a.txt', 'dir/b.txt']);
 });
 
 test('it fails each copy out of a sandbox a test makes fail, with the reason given', async () => {
@@ -540,15 +662,16 @@ test('it fails each copy out of a sandbox a test makes fail, with the reason giv
   );
 });
 
-test('it refuses a command it does not know', async () => {
+test('it refuses every command', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
-  const result = await sandbox.exec({ argv: ['rm', '-rf', '/'], env, cwd: '/' });
 
-  expect(result.code).toBe(1);
+  expect(sandbox.exec({ argv: ['true'], env, cwd: '/' })).rejects.toThrow(
+    'the stub sandbox runs no command',
+  );
 });
 
-test('it refuses a spawn and an exec on a sleeping sandbox until it wakes', async () => {
+test('it refuses a spawn, a list and a move on a sleeping sandbox until it wakes', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
 
@@ -558,19 +681,26 @@ test('it refuses a spawn and an exec on a sleeping sandbox until it wakes', asyn
     throw new Error('the stub sandbox sleeps');
   }
 
+  await sandbox.copyIn([{ path: '/home/nixie/a.txt', content: new TextEncoder().encode('a') }]);
   await sandbox.suspension.sleep();
 
   const refused = await Promise.allSettled([
-    sandbox.exec({ argv: ['sh'], env, cwd: '/' }),
     sandbox.spawn({ argv: ['guest'], env, maxMessageBytes: 1024 }),
+    sandbox.readFilePaths('/home/nixie'),
+    sandbox.applyMove('/home/nixie/a.txt', '/home/nixie/b.txt'),
   ]);
 
   await sandbox.suspension.wake();
 
-  const woken = await sandbox.exec({ argv: ['sh'], env, cwd: '/' });
+  const woken = await sandbox.readFilePaths('/home/nixie');
 
-  expect(refused.map((result) => result.status)).toStrictEqual(['rejected', 'rejected']);
-  expect(woken.code).toBe(1);
+  expect(refused.map((result) => result.status)).toStrictEqual([
+    'rejected',
+    'rejected',
+    'rejected',
+  ]);
+
+  expect(woken).toStrictEqual(['a.txt']);
 
   const records = await ctx.recorder.readSandboxRecords();
 

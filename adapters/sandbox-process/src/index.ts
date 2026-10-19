@@ -1,2 +1,2 @@
-export type { ProcessSandboxOptions } from './build-process-sandbox-adapter';
-export { buildProcessSandboxAdapter } from './build-process-sandbox-adapter';
+export type { ProcessSandboxOptions } from './create-process-sandbox-adapter';
+export { createProcessSandboxAdapter } from './create-process-sandbox-adapter';

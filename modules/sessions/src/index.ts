@@ -68,5 +68,3 @@ export type {
 } from './types';
 
 export type { SessionsRecordKind } from './sessions-record-kind';
-export type { KeptSessionSpec } from './write-kept-session';
-export { writeKeptSession } from './write-kept-session';

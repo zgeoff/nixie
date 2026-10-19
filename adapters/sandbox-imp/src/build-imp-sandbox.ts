@@ -2,6 +2,8 @@ import type {
   ExecResult,
   ExecSpec,
   FileSpec,
+  GuestHome,
+  ReadFilePathsOptions,
   Sandbox,
   SandboxRecorder,
   SandboxSpec,
@@ -50,6 +52,9 @@ export function buildImpSandbox(ctx: ImpSandboxContext): Sandbox {
     },
     copyIn: (files) => writeGuestFiles(ctx, files),
     copyOut: (paths) => Promise.all(paths.map((path) => readGuestFile(ctx, path))),
+    resolveHome: (env) => Promise.try(() => resolveGuestHome(env)),
+    readFilePaths: (dir, options) => readGuestFilePaths(ctx, dir, options),
+    applyMove: (from, to) => applyGuestMove(ctx, from, to),
     toolRoute: async () => {
       await startRoute(ctx);
 
@@ -184,6 +189,62 @@ async function readGuestFile(ctx: ImpSandboxContext, path: string): Promise<File
   }
 
   return { path, content: content.bytes };
+}
+
+// The imp's root is the guest's own, so both forms of the home are the HOME the command runs with,
+// which the guest command always sets, since the imp's default lies in the image.
+function resolveGuestHome(env: Readonly<Record<string, string>>): GuestHome {
+  const home = env['HOME'];
+
+  if (home === undefined) {
+    throw new Error('the guest command sets no HOME');
+  }
+
+  requireGuestPath(home);
+
+  return { copyPath: home, ownPath: home };
+}
+
+// a missing directory lists nothing; the arguments after the directory bound find's depth, and find
+// separates the paths with NUL, which no path holds
+const listScript = '[ -d "$1" ] || exit 0; cd -- "$1" && shift && find . "$@" -type f -print0';
+
+// The list comes back through the output cap, which guards against a guest that prints without end,
+// so a caller that needs only the top of a tree bounds the depth, and deeper files never fill it.
+async function readGuestFilePaths(
+  ctx: ImpSandboxContext,
+  dir: string,
+  options: ReadFilePathsOptions = {},
+): Promise<readonly string[]> {
+  requireGuestPath(dir);
+
+  const depth = options.maxDepth === undefined ? [] : ['-maxdepth', String(options.maxDepth)];
+
+  const io = await startImpProcess(ctx, { argv: ['sh', '-c', listScript, 'sh', dir, ...depth] });
+  const result = await runCommand(io, undefined, undefined);
+
+  requireSuccess(result, `listing ${dir}`);
+
+  if (result.stdout.isCut) {
+    throw new Error(`listing ${dir} failed: the list passes ${result.stdout.bytes.length} bytes`);
+  }
+
+  return new TextDecoder()
+    .decode(result.stdout.bytes)
+    .split('\0')
+    .filter((path) => path !== '')
+    .map((path) => path.slice('./'.length));
+}
+
+// mv renames within the imp's filesystem, which replaces a file at the target in one step
+async function applyGuestMove(ctx: ImpSandboxContext, from: string, to: string): Promise<void> {
+  requireGuestPath(from);
+  requireGuestPath(to);
+
+  const io = await startImpProcess(ctx, { argv: ['mv', '-f', '-T', '--', from, to] });
+  const result = await runCommand(io, undefined, undefined);
+
+  requireSuccess(result, `move of ${from} to ${to}`);
 }
 
 function requireGuestPath(path: string): void {

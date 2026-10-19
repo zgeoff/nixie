@@ -1,6 +1,7 @@
 import { once } from 'node:events';
 import type { GuestFrame, HostFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import type { GuestHome } from '../types';
 import type { StubGuestDisk, StubSessionEntry } from './build-stub-guest-disk';
 import { readStubGuestHistory } from './read-stub-guest-history';
 
@@ -41,7 +42,7 @@ export interface StubGuestRun {
   readonly disk: StubGuestDisk;
 
   // the guest's home, which its session state sits under
-  readonly home: string;
+  readonly home: GuestHome;
 
   // the next reply, or the default when none is queued
   readonly takeReply: () => StubGuestReply;

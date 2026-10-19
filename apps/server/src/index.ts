@@ -1,5 +1,5 @@
-export type { SandboxAdapterOptions } from './build-sandbox-adapter';
-export { buildSandboxAdapter } from './build-sandbox-adapter';
+export type { SandboxAdapterOptions } from './create-sandbox-adapter';
+export { createSandboxAdapter } from './create-sandbox-adapter';
 export type { DeploymentConfig } from './deployment-config-schema';
 export { deploymentConfigSchema } from './deployment-config-schema';
 export { loadDeploymentConfig } from './load-deployment-config';

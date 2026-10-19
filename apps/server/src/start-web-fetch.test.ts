@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { buildSandboxSpec } from '@heynixie/sandbox';
 import { buildImpPort, buildImpSandboxAdapter, parseImpConfig } from '@heynixie/sandbox-imp';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
-import { buildSandboxAdapter } from './build-sandbox-adapter';
+import { createSandboxAdapter } from './create-sandbox-adapter';
 import { fetchImageArgv, startWebFetch } from './start-web-fetch';
 import { buildConnectProbe } from './test-utils/build-connect-probe';
 import { checkIsolationTargets } from './test-utils/check-isolation-targets';
@@ -41,7 +41,7 @@ async function setupTest() {
 test("it fetches through a new fetcher process in a test build's fetch sandbox", async () => {
   const ctx = await setupTest();
 
-  const adapter = buildSandboxAdapter({
+  const adapter = createSandboxAdapter({
     recorder: ctx.recorder,
     toolTarget: () => ({ path: '/nonexistent.sock' }),
     sandbox: { adapter: 'test' },

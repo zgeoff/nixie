@@ -1,6 +1,6 @@
 import type { SandboxAdapter, SandboxRecorder, ToolTargetResolver } from '@heynixie/sandbox';
 import { buildImpPort, buildImpSandboxAdapter } from '@heynixie/sandbox-imp';
-import { buildProcessSandboxAdapter } from '@heynixie/sandbox-process';
+import { createProcessSandboxAdapter } from '@heynixie/sandbox-process';
 import type { SandboxSettings } from './resolve-sandbox-settings';
 
 export interface SandboxAdapterOptions {
@@ -18,13 +18,13 @@ export interface SandboxAdapterOptions {
   readonly hostEnv: Readonly<Record<string, string | undefined>>;
 }
 
-// Builds the sandbox adapter the configuration selects: imp, or the test sandbox, the process double
-// that is no security boundary. The release bundle defines NIXIE_TEST_BUILD as false, so it holds
-// no part of the double, and the configuration's schema refuses the test sandbox in a release.
-export function buildSandboxAdapter(options: SandboxAdapterOptions): SandboxAdapter {
+// Creates the sandbox adapter the configuration selects: imp, or the test sandbox, the process
+// double that is no security boundary. The release bundle holds no part of the double, and the
+// configuration's schema refuses the test sandbox in a release.
+export function createSandboxAdapter(options: SandboxAdapterOptions): SandboxAdapter {
   if (options.sandbox.adapter === 'test') {
     if (NIXIE_TEST_BUILD) {
-      return buildProcessSandboxAdapter({
+      return createProcessSandboxAdapter({
         recorder: options.recorder,
         rootDir: options.testRootDir,
         toolTarget: options.toolTarget,

@@ -3,9 +3,8 @@ import type { GuestFrame, HostFrame } from '@heynixie/wire';
 import { createSandboxID } from '../create-sandbox-id';
 import { requireSandboxSpec } from '../require-sandbox-spec';
 import type {
-  ExecResult,
   FileSpec,
-  RunSpec,
+  GuestHome,
   Sandbox,
   SandboxAdapter,
   SandboxRecorder,
@@ -32,6 +31,11 @@ export interface StubGuestSandboxesOptions {
   // the tokens a text adds to the context, which each session entry's size and the context size
   // the guest reports come from
   readonly countTokens: (text: string) => number;
+
+  // the host folder that holds each sandbox's own folder, as the process sandbox's root does: a
+  // command with no HOME then has its home at the guest's root, which is that folder on the host;
+  // with none, such a command has no home
+  readonly hostRoot?: string;
 }
 
 // A host frame as one sandbox's guest received it.
@@ -224,15 +228,13 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
   return {
     id,
     spec,
-    exec: async (command) => {
-      await requireAwake();
-
-      return runCommand(own.disk, command);
-    },
+    exec: () => Promise.reject(new Error('the stub sandbox runs no command')),
     spawn: async (command) => {
       await requireAwake();
 
-      return startGuest(state, { id, spec, own }, command.env?.['HOME']);
+      const home = findGuestHome(state.options.hostRoot, id, command.env ?? {});
+
+      return startGuest(state, { id, spec, own }, home);
     },
     copyIn: (files) => {
       for (const file of files) {
@@ -247,6 +249,19 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
       }
 
       return Promise.all(paths.map((path) => readFile(own.disk, path)));
+    },
+    resolveHome: (env) => Promise.try(() => resolveHome(state.options.hostRoot, id, env)),
+
+    // a list and a move run in the guest, as imp runs them, so a sleeping sandbox refuses them
+    readFilePaths: async (dir, options) => {
+      await requireAwake();
+
+      return collectDiskPaths(own.disk, dir, options?.maxDepth ?? Number.POSITIVE_INFINITY);
+    },
+    applyMove: async (from, to) => {
+      await requireAwake();
+
+      applyMove(own.disk, from, to);
     },
     toolRoute: () => Promise.resolve({ url: 'http://127.0.0.1:8901' }),
     suspension: {
@@ -282,11 +297,11 @@ interface GuestSandbox {
 }
 
 // the guest of one spawn: it records each frame it receives and answers from the sandbox's disk
-function startGuest(state: StubState, sandbox: GuestSandbox, home: string | undefined) {
+function startGuest(state: StubState, sandbox: GuestSandbox, home: GuestHome | null) {
   const runWithGuestHome = (
-    run: (home: string) => Promise<readonly GuestFrame[]> | readonly GuestFrame[],
+    run: (home: GuestHome) => Promise<readonly GuestFrame[]> | readonly GuestFrame[],
   ) =>
-    home === undefined
+    home === null
       ? [{ type: 'failed', reason: 'error', detail: 'the conversation guest needs HOME' } as const]
       : run(home);
 
@@ -343,78 +358,62 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
   });
 }
 
-const noOutput = { bytes: new Uint8Array(0), totalBytes: 0, isCut: false };
+function resolveHome(
+  hostRoot: string | undefined,
+  id: string,
+  env: Readonly<Record<string, string>>,
+): GuestHome {
+  const home = findGuestHome(hostRoot, id, env);
 
-// The two commands the host runs in a sandbox to carry a session over: the script that lists the
-// session's files, and the move that publishes the staged transcript. Anything else is refused.
-function runCommand(disk: StubGuestDisk, command: RunSpec): ExecResult {
-  const [program, flag, , name, sessionID] = command.argv;
-  const home = command.env?.['HOME'];
-
-  if (program === 'sh' && flag === '-c' && name === 'sh' && sessionID !== undefined) {
-    return home === undefined
-      ? buildFailure('HOME is not set')
-      : buildSuccess(`${home}\n${home}\n${collectSessionFiles(disk, home, sessionID)}`);
+  if (home === null) {
+    throw new Error('the guest command sets no HOME');
   }
 
-  if (program === 'mv' && command.argv.length === 5 && command.cwd !== undefined) {
-    return applyMove(
-      disk,
-      join(command.cwd, command.argv[3] ?? ''),
-      join(command.cwd, command.argv[4] ?? ''),
-    );
-  }
-
-  return buildFailure(`the stub sandbox runs no command like ${command.argv.join(' ')}`);
+  return home;
 }
 
-// each file of the session under the projects folder, relative to it, as the find in the script prints
-function collectSessionFiles(disk: StubGuestDisk, home: string, sessionID: string): string {
-  const projectsDir = `${join(home, '.claude/projects')}/`;
+// The HOME a command sets is the guest's home in both forms. A command with no HOME has its home at
+// the guest's root, whose own path is the sandbox's folder under the host root; with no host root it
+// has none.
+function findGuestHome(
+  hostRoot: string | undefined,
+  id: string,
+  env: Readonly<Record<string, string>>,
+): GuestHome | null {
+  const home = env['HOME'];
+
+  if (home !== undefined) {
+    return { copyPath: home, ownPath: home };
+  }
+
+  return hostRoot === undefined ? null : { copyPath: '/', ownPath: join(hostRoot, id) };
+}
+
+// every file under the directory down to the depth, relative to it; the disk holds files only, so a
+// directory is the prefix its files share
+function collectDiskPaths(disk: StubGuestDisk, dir: string, maxDepth: number): readonly string[] {
+  const prefix = join(dir, '/');
 
   return [...disk.files.keys()]
-    .filter((path) => path.startsWith(projectsDir))
-    .map((path) => path.slice(projectsDir.length))
-    .filter((path) => new RegExp(`^[^/]+/${sessionID}(\\.jsonl|/.+)$`, 'u').test(path))
-    .map((path) => `./${path}\n`)
-    .join('');
+    .filter((path) => path.startsWith(prefix))
+    .map((path) => path.slice(prefix.length))
+    .filter((path) => path.split('/').length <= maxDepth);
 }
 
-function applyMove(disk: StubGuestDisk, from: string, to: string): ExecResult {
+// a rename: it replaces a file at the target, and fails on a missing source or a directory target
+function applyMove(disk: StubGuestDisk, from: string, to: string): void {
   const content = disk.files.get(from);
 
   if (content === undefined) {
-    return buildFailure(`mv: cannot stat '${from}': No such file or directory`);
+    throw new Error(`ENOENT: no such file or directory, rename '${from}' -> '${to}'`);
+  }
+
+  if ([...disk.files.keys()].some((path) => path.startsWith(`${to}/`))) {
+    throw new Error(`EISDIR: illegal operation on a directory, rename '${from}' -> '${to}'`);
   }
 
   disk.files.delete(from);
   disk.files.set(to, content);
-
-  return buildSuccess('');
-}
-
-function buildSuccess(stdout: string): ExecResult {
-  const bytes = new TextEncoder().encode(stdout);
-
-  return {
-    code: 0,
-    signal: null,
-    stdout: { bytes, totalBytes: bytes.length, isCut: false },
-    stderr: noOutput,
-    durationMs: 0,
-  };
-}
-
-function buildFailure(message: string): ExecResult {
-  const bytes = new TextEncoder().encode(message);
-
-  return {
-    code: 1,
-    signal: null,
-    stdout: noOutput,
-    stderr: { bytes, totalBytes: bytes.length, isCut: false },
-    durationMs: 0,
-  };
 }
 
 function readFile(disk: StubGuestDisk, path: string): Promise<FileSpec> {

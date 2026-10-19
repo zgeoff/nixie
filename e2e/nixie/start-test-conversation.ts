@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { makeLogger } from '@heynixie/logger';
 import { modelsConfigSchema } from '@heynixie/models';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
-import { buildSandboxAdapter, startConversation } from '@heynixie/server';
+import { createSandboxAdapter, startConversation } from '@heynixie/server';
 import type { TasksContext } from '@heynixie/tasks';
 import type { TestTools } from './start-test-tools';
 
@@ -28,7 +28,7 @@ export function startTestConversation(
       roles: { conversation: 'chat-test' },
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
-    sandboxes: buildSandboxAdapter({
+    sandboxes: createSandboxAdapter({
       recorder: buildSandboxRecorder({ log: context.log, definitions: context.definitions }),
       toolTarget: tools.endpoint.getToolTarget,
 
