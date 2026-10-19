@@ -26,7 +26,7 @@ export function parseSkills(
   const problems = [
     ...lock.problems,
     ...split.problems,
-    ...findOrphanedEntries(entries, split.folders),
+    ...collectOrphanedEntries(entries, split.folders),
     ...checked.flatMap((check) => check.problems),
   ];
 
@@ -101,8 +101,8 @@ function checkSkill(name: string, folder: SkillFolder, lock: SkillsLock): SkillC
   const entry = Object.hasOwn(lock, name) ? lock[name] : undefined;
 
   const problems = [
-    ...findFrontmatterProblems(name, document).map((reason) => ({ path: skillPath, reason })),
-    ...findHiddenProblems(name, folder.texts),
+    ...collectFrontmatterProblems(name, document).map((reason) => ({ path: skillPath, reason })),
+    ...collectHiddenProblems(name, folder.texts),
     ...(entry === undefined || entry.contentHash === skillHash
       ? []
       : [
@@ -110,7 +110,7 @@ function checkSkill(name: string, folder: SkillFolder, lock: SkillsLock): SkillC
             path: `skills/${name}/`,
             reason:
               `the files differ from the lock entry: the folder hashes to ${skillHash}, ` +
-              `and the entry pins ${entry.contentHash}`,
+              `and the entry holds ${entry.contentHash}`,
           },
         ]),
   ];
@@ -130,7 +130,7 @@ function checkSkill(name: string, folder: SkillFolder, lock: SkillsLock): SkillC
   return { skill, problems: [] };
 }
 
-function findFrontmatterProblems(
+function collectFrontmatterProblems(
   name: string,
   document: SkillDocument | readonly string[],
 ): readonly string[] {
@@ -147,7 +147,7 @@ function isProblemList(document: SkillDocument | readonly string[]): document is
   return Array.isArray(document);
 }
 
-function findHiddenProblems(
+function collectHiddenProblems(
   name: string,
   texts: ReadonlyMap<string, string>,
 ): readonly ParseProblem[] {
@@ -169,8 +169,8 @@ function findHiddenProblems(
   });
 }
 
-// a lock entry with no skill folder pins nothing, such as the stale entry of a removed skill
-function findOrphanedEntries(
+// a lock entry with no skill folder locks nothing, such as the stale entry of a removed skill
+function collectOrphanedEntries(
   lock: SkillsLock,
   folders: ReadonlyMap<string, SkillFolder>,
 ): readonly ParseProblem[] {
