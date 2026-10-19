@@ -12,6 +12,8 @@ export { findDefinitionsInForce } from './find-definitions-in-force';
 export type { ResetSeed } from './find-reset-seed';
 export { findResetSeed } from './find-reset-seed';
 export { isDefinitionsPath } from './is-definitions-path';
+export { loadSkillVersions } from './load-skill-versions';
+export { loadSnapshotSkills } from './load-snapshot-skills';
 export type { SeedOptions, SeedResult } from './run-seed';
 export { runSeed } from './run-seed';
 export { SnapshotError } from './snapshot-error';
@@ -21,8 +23,13 @@ export type {
   DefinitionsSnapshot,
   DefinitionsSource,
   ParsedDefinitions,
+  ParsedSkill,
   PolicyRule,
   SizeLimits,
+  SkillFrontmatter,
+  SkillOrigin,
+  SkillRef,
+  SkillVersion,
   Snapshot,
   SnapshotPolicy,
   SourceKind,

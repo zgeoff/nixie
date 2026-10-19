@@ -96,7 +96,9 @@ async function findCandidates(parts: StoreParts, query: CandidateQuery): Promise
   const named = request.versions?.map((ref) => ref.itemID) ?? request.itemIDs;
 
   if (named !== undefined) {
-    return { itemIDs: [...new Set(named)].slice(0, query.limit), next: null };
+    const kept = await findNamedSubjectIDs(parts, [...new Set(named)], request.subjects);
+
+    return { itemIDs: kept.slice(0, query.limit), next: null };
   }
 
   const rows = await parts.context.log.writer.db
@@ -218,6 +220,34 @@ async function findSubjectRankedMatches(
 }
 
 // the active items of every subject but these, which leave the ranking before its limit applies
+// the named items of the subjects a recall keeps, in the order named, so an item of another subject
+// never takes a place under the limit
+async function findNamedSubjectIDs(
+  parts: StoreParts,
+  named: readonly string[],
+  subjects: readonly MemorySubject[] | undefined,
+): Promise<readonly string[]> {
+  if (subjects === undefined || named.length === 0) {
+    return named;
+  }
+
+  if (subjects.length === 0) {
+    return [];
+  }
+
+  const rows = await parts.context.log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('item_id')
+    .where('item_id', 'in', named)
+    .where(subjectColumn, 'in', subjects)
+    .execute();
+
+  const kept = new Set(rows.map((row) => row.item_id));
+
+  return named.filter((itemID) => kept.has(itemID));
+}
+
 async function readOtherSubjectIDs(
   parts: StoreParts,
   subjects: readonly MemorySubject[],

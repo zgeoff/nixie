@@ -117,7 +117,22 @@ test('#memory.listItems lists a self-note with its subject', async () => {
 
   const page = await buildTestClient(ctx.url, laptop.token).memory.listItems({ state: 'active' });
 
-  expect(page.items).toMatchObject([{ itemID: item.itemID, subject: 'self' }]);
+  expect(page.items).toMatchObject([{ itemID: item.itemID, subject: 'self', kind: 'self' }]);
+});
+
+test('#memory.listItems lists a shared item with its subject and the fact kind', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const item = await ctx.memory.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    subject: 'shared',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const page = await buildTestClient(ctx.url, laptop.token).memory.listItems({ state: 'active' });
+
+  expect(page.items).toMatchObject([{ itemID: item.itemID, subject: 'shared', kind: 'fact' }]);
 });
 
 test('#memory.findItems finds a self-note with its subject', async () => {
@@ -134,7 +149,7 @@ test('#memory.findItems finds a self-note with its subject', async () => {
     query: 'timetable',
   });
 
-  expect(found.items).toMatchObject([{ itemID: item.itemID, subject: 'self' }]);
+  expect(found.items).toMatchObject([{ itemID: item.itemID, subject: 'self', kind: 'self' }]);
 });
 
 test('#memory.listItems refuses a cursor that no page returned', async () => {

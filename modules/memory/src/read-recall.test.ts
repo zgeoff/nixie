@@ -139,6 +139,29 @@ test('it reads a self-note that the release before wrote with no subject as a se
   expect(result.items).toMatchObject([{ itemID: note.itemID, subject: 'self' }]);
 });
 
+test('it fills a limited recall of named items with the subjects it names when an item of another subject comes first', async () => {
+  const ctx = await setupTest();
+
+  const owner = await ctx.memory.store.remember({
+    text: 'The garden hose leaks at the tap',
+    provenance: buildMockProvenance(),
+  });
+
+  const shared = await ctx.memory.store.remember({
+    text: 'The gnome is called Sir Pebble between the owner and the assistant',
+    subject: 'shared',
+    provenance: buildMockProvenance(),
+  });
+
+  const result = await ctx.memory.store.recall({
+    itemIDs: [owner.itemID, shared.itemID],
+    subjects: ['shared'],
+    limit: 1,
+  });
+
+  expect(result.items.map((item) => item.itemID)).toStrictEqual([shared.itemID]);
+});
+
 test('it returns a matching self-note when more facts match than the largest recall holds', async () => {
   const ctx = await setupTest();
 

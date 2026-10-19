@@ -12,6 +12,7 @@ export async function readSessionTurn(
   const context = await readTurnContext(step.run, {
     taskID: step.input.taskID,
     persona: step.definitions.persona,
+    skillCatalog: step.skillCatalog,
     batch: step.input.inbox.slice(0, inboxBatchLimit),
     previousCore: step.marks.previousCore,
     isNewSession,
