@@ -98,7 +98,7 @@
         "@faker-js/faker": "catalog:",
         "@heynixie/testing": "workspace:*",
         "@modelcontextprotocol/client": "catalog:",
-        "ajv": "8.20.0",
+        "ajv": "catalog:",
         "ajv-formats": "3.0.1",
         "release-please": "17.11.2",
       },
@@ -340,6 +340,9 @@
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
         "zod": "catalog:",
+      },
+      "devDependencies": {
+        "ajv": "catalog:",
       },
     },
     "modules/log": {
@@ -675,6 +678,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
+    "ajv": "8.20.0",
     "babel-plugin-react-compiler": "1.0.0",
     "elysia": "1.4.30",
     "fake-indexeddb": "6.2.5",

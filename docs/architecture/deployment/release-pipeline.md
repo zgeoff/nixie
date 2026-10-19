@@ -65,9 +65,10 @@ flowchart LR
    fails while a sandbox package is private.
 6. **Tag.** The workflow gives the version tag to each image's digest: the sandbox images first,
    then web, then nixie.
-7. **Assets.** The workflow uploads the committed `config.schema.json` to the GitHub release, then
-   builds and uploads `release.json`, replacing the assets of an earlier attempt. `release.json`
-   goes last, so a reader that finds it finds the schema it points to.
+7. **Assets.** The workflow uploads the committed `config.schema.json` and
+   `definitions-manifest.schema.json` to the GitHub release, then builds and uploads `release.json`,
+   replacing the assets of an earlier attempt. `release.json` goes last, so a reader that finds it
+   finds the schema it points to.
 
 The nixie image needs the sandbox digests, so the sandbox images go first. A failed nixie build
 stops the release before a web image exists that calls an API no image serves. The tag stage comes
@@ -106,6 +107,10 @@ contract that changes only in step with the readers.
   and leaves out the rules that span keys, such as a role that points at a missing profile, which
   nixie refuses at start. Its time zones are the canonical names, so it refuses an alias that nixie
   reads and never passes a zone that nixie refuses.
+
+A definitions repo, not a deployment, reads `definitions-manifest.schema.json`, the JSON Schema of
+its `nixie.yaml`, which [the definitions format](../core/definitions.md#the-definitions-format)
+covers.
 
 The assets stage runs last because a deployment that finds `release.json` pins the images it lists,
 so every image must carry its version tag first. The release notes keep the same facts for a person,
