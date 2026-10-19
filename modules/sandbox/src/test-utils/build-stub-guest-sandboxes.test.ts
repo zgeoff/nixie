@@ -269,6 +269,34 @@ test('it calls the tool a reply asks for and replies after it, in the same turn'
   ]);
 });
 
+test('it ends a turn that overflows after a tool use at the tool result the next turn resumes from', async () => {
+  const ctx = await setupTest({ callTool: () => Promise.resolve('Buy oat milk.') });
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies(
+    { toolUse: { name: 'mcp__nixie__notes_read', input: {} } },
+    { overflow: 'prompt_too_long' },
+  );
+
+  const frames = await ctx.runGuest(sandbox, buildMockTurnFrame());
+
+  const ended = frames.at(-1);
+
+  invariant(ended?.type === 'ended');
+
+  const assistantIDs = frames.flatMap((frame) =>
+    frame.type === 'assistant' ? [frame.messageID] : [],
+  );
+
+  expect(assistantIDs).toHaveLength(2);
+  expect(ended).toMatchObject({ isError: true, terminalReason: 'prompt_too_long' });
+  expect(assistantIDs).not.toContain(ended.boundary.messageID);
+
+  const next = await ctx.runEnded(sandbox, buildMockTurnFrame({ resume: ended.boundary }));
+
+  expect(next.isError).toBeUndefined();
+});
+
 test('it fails a turn whose reply asks for a tool when the guest has no route to the tools', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);

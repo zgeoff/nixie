@@ -88,8 +88,9 @@ async function runInputs(
   const entries: StubSessionEntry[] = [...history];
   const frames: GuestFrame[] = [];
 
-  // the last chain entry that is not the CLI's own message for an overflow
-  let committed: SessionPoint | null = turn.resume;
+  // the last chain entry that is not the CLI's own message for an overflow, advanced as each
+  // entry of the chain completes
+  const progress: ProgressState = { committed: turn.resume };
 
   for (const message of turn.input) {
     const input: StubSessionEntry = {
@@ -103,23 +104,26 @@ async function runInputs(
 
     entries.push(input);
 
-    const answer = await runInputCall(turn, run, { entries, fork });
+    const answer = await runInputCall(turn, run, { entries, fork, progress });
 
     frames.push(...answer.frames);
 
     if (answer.overflow !== null) {
       run.disk.writeSession(run.home, fork.sessionID, entries);
 
-      return [...frames, buildOverflowEnded(entries, { fork, committed }, answer.overflow)];
+      return [
+        ...frames,
+        buildOverflowEnded(entries, { fork, committed: progress.committed }, answer.overflow),
+      ];
     }
 
     const last = entries.at(-1);
 
     invariant(last, 'an answered input leaves an entry');
 
-    committed = { sessionID: fork.sessionID, messageID: last.uuid };
+    progress.committed = { sessionID: fork.sessionID, messageID: last.uuid };
 
-    frames.push(buildEnded(turn, entries, { start, point: committed }));
+    frames.push(buildEnded(turn, entries, { start, point: progress.committed }));
   }
 
   run.disk.writeSession(run.home, fork.sessionID, entries);
@@ -134,9 +138,15 @@ interface ForkState {
   contextSize: number | null;
 }
 
+interface ProgressState {
+  // the last chain entry that is not the CLI's own message for an overflow, or null when none
+  committed: SessionPoint | null;
+}
+
 interface AnswerState {
   readonly entries: StubSessionEntry[];
   readonly fork: ForkState;
+  readonly progress: ProgressState;
 }
 
 interface InputAnswer {
@@ -202,6 +212,8 @@ async function runInputCall(
     const result = await buildToolResultEntry(turn, run, reply.toolUse);
 
     state.entries.push(result);
+
+    state.progress.committed = { sessionID: state.fork.sessionID, messageID: result.uuid };
   }
 }
 

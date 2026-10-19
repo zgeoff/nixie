@@ -57,6 +57,12 @@ export function buildConversationDriver(options: ConversationDriverOptions): Con
     send: async (text) => {
       const step = await sendForStep(text);
 
+      if (step.error !== null) {
+        throw new Error(`the step errored: ${String(step.error.error)}`, {
+          cause: step.error.error,
+        });
+      }
+
       const turn = step.turns.at(-1);
 
       invariant(turn, 'the step sent no turn to the guest');
