@@ -4,7 +4,7 @@ import type {
   SkillRef,
   SkillVersion,
 } from '@heynixie/definitions';
-import { findSkillVersions } from '@heynixie/definitions';
+import { loadSkillVersions } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
 import { findSkillPin } from './find-skill-pin';
 import { recordSkillPin } from './record-skill-pin';
@@ -33,7 +33,7 @@ export async function loadOrPinTaskSkills(
 ): Promise<readonly TaskSkill[]> {
   const pin = await readOrRecordPin(log, query);
 
-  const versions = await findSkillVersions(
+  const versions = await loadSkillVersions(
     log.writer.db,
     pin.map((skill) => skill.skillHash),
   );

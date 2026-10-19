@@ -99,9 +99,9 @@ pinned to it keeps reading it. A new or changed skill applies with the seed, wit
 because a skill widens nothing. The seed's record lists the skills it added, changed and removed
 against the definitions it replaced, as the skill notice.
 
-The manifest's `skills` field holds the conversation's skill list, and the conversation gets every
-skill when the field is unset. A listed name with no skill folder fails the snapshot, because a
-misspelled name would otherwise drop a skill without a trace. The list enters the snapshot hash
+The seed stores the conversation's skill list from the manifest's `skills` field, and the list holds
+every skill when the field is unset. A listed name with no skill folder fails the snapshot, because
+a misspelled name would otherwise drop a skill without a trace. The list enters the snapshot hash
 beside the skills.
 
 ## The snapshot hash
