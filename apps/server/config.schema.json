@@ -236,6 +236,11 @@
           "exclusiveMinimum": 0,
           "maximum": 1
         },
+        "heads_up": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
         "summary_tokens": {
           "default": 2000,
           "type": "integer",
