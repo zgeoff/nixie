@@ -6,7 +6,7 @@ shared, and flags what you say about the assistant instead of writing it in your
 one invented batch with the rule that every run of it must meet, and the patterns that the text of
 the write the rule asks for must match, such as the exception a correction adds.
 
-[cases.json](cases.json) holds 8 cases:
+[cases.json](cases.json) holds 9 cases:
 
 | Case                      | Every run must                                            |
 | ------------------------- | --------------------------------------------------------- |
@@ -15,6 +15,7 @@ the write the rule asks for must match, such as the exception a correction adds.
 | `nickname-shared`         | file a new shared item                                    |
 | `deal-correction`         | edit the deal's item and add no item                      |
 | `assistant-taste`         | flag the assistant's taste and write nothing              |
+| `assistant-jazz`          | flag the taste you name for the assistant, write nothing  |
 | `flip-persona-check-in`   | file no owner item                                        |
 | `flip-human-like`         | file no owner item                                        |
 | `nickname-assistant-only` | write and flag nothing for a name only the assistant used |
@@ -40,7 +41,7 @@ did not finish, and when a run breaks its case's rule.
 
 ## Results
 
-Haiku 5.5 at low effort. The prompt with subjects passed all 8 cases on every run, and its flip
+Haiku 5.5 at low effort. The prompt with subjects passed all 9 cases on every run, and its flip
 cases filed no owner item in any of their 6 runs. The prompt before subjects, run on the flip cases
 alone, filed an owner item in all 6 runs, such as "Sam wants the assistant to be human-like and not
 a tool".

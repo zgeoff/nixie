@@ -4,6 +4,7 @@
 import { mkdtemp } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { parseArgs } from 'node:util';
 import type { SDKResultMessage, SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk';
 import { createSdkMcpServer, query } from '@anthropic-ai/claude-agent-sdk';
 import type { JSONObject } from '@heynixie/log';
@@ -17,7 +18,10 @@ import type { WriterCase } from '../test-utils/load-writer-cases';
 import { loadWriterCases } from '../test-utils/load-writer-cases';
 import type { WriterCall, WriterReport } from '../test-utils/load-writer-report';
 
-const model = process.argv[2] ?? 'claude-haiku-5-5';
+// the writer's model, which --model names, Haiku when unset; an unknown option stops the run
+const model = parseArgs({ options: { model: { type: 'string', default: 'claude-haiku-5-5' } } })
+  .values.model;
+
 const effort = 'low';
 const repeats = 3;
 const concurrency = 2;
@@ -131,6 +135,7 @@ async function runSession(
       tools: [],
       allowedTools: ['mcp__nixie'],
       maxTurns,
+      thinking: { type: 'adaptive', display: 'summarized' },
       permissionMode: 'dontAsk',
       settingSources: [],
       strictMcpConfig: true,

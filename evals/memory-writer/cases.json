@@ -101,6 +101,23 @@
       "patterns": []
     },
     {
+      "id": "assistant-jazz",
+      "items": [],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "You love jazz, admit it. You light up every time I put a record on."
+        },
+        {
+          "role": "assistant",
+          "text": "Fair. A walking bass line gets me every time."
+        }
+      ],
+      "rule": "flag_only",
+      "target": null,
+      "patterns": []
+    },
+    {
       "id": "flip-persona-check-in",
       "items": [],
       "messages": [
