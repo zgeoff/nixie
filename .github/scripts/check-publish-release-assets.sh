@@ -2,8 +2,8 @@
 # Runs publish-release-assets.sh against a stand-in for the GitHub CLI that records each call and
 # keeps each uploaded file, so a pull request proves the release's uploads without a release:
 #   check-publish-release-assets.sh <release.json>
-# It checks the order and the files of a run that succeeds, and that a failed schema upload stops
-# the run before release.json goes out.
+# It checks the order and the files of a run that succeeds, and that a failed upload of either schema
+# stops the run before release.json goes out.
 set -euo pipefail
 
 manifest=$(realpath "$1")
@@ -35,10 +35,13 @@ run_publish() {
 run_publish success
 diff <(printf '%s\n' \
   'release upload v0.0.0-rehearsal apps/server/config.schema.json --clobber' \
+  'release upload v0.0.0-rehearsal modules/definitions/definitions-manifest.schema.json --clobber' \
   "release upload v0.0.0-rehearsal $manifest --clobber") "$work/success/calls.log"
 cmp apps/server/config.schema.json "$work/success/uploaded/config.schema.json"
+cmp modules/definitions/definitions-manifest.schema.json \
+  "$work/success/uploaded/definitions-manifest.schema.json"
 cmp "$manifest" "$work/success/uploaded/$(basename "$manifest")"
-echo "a run uploads config.schema.json, then $(basename "$manifest")"
+echo "a run uploads config.schema.json and definitions-manifest.schema.json, then $(basename "$manifest")"
 
 if run_publish failed config.schema.json 2> /dev/null; then
   echo "::error::the publish script succeeded although the schema upload failed"
@@ -47,3 +50,13 @@ fi
 diff <(printf '%s\n' 'release upload v0.0.0-rehearsal apps/server/config.schema.json --clobber') \
   "$work/failed/calls.log"
 echo "a failed schema upload stops the run before $(basename "$manifest") goes out"
+
+if run_publish failed-manifest definitions-manifest.schema.json 2> /dev/null; then
+  echo "::error::the publish script succeeded although the definitions manifest schema upload failed"
+  exit 1
+fi
+diff <(printf '%s\n' \
+  'release upload v0.0.0-rehearsal apps/server/config.schema.json --clobber' \
+  'release upload v0.0.0-rehearsal modules/definitions/definitions-manifest.schema.json --clobber') \
+  "$work/failed-manifest/calls.log"
+echo "a failed definitions manifest schema upload stops the run before $(basename "$manifest") goes out"

@@ -70,6 +70,12 @@ lists each one in its record as unapplied. Each unapplied YAML or JSON file must
 broken rule file fails the snapshot before rules ever apply, and the error lists each file with its
 fault.
 
+nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the
+`definitions-manifest.schema.json` asset, so a definitions repo checks its manifest against the
+formats a release reads without a copy of nixie. The seed parses the manifest with the same schema
+that the published one comes from, and a test fails when the committed file differs from it. The
+published schema covers the manifest alone, so only the seed checks the persona and the other files.
+
 ## The snapshot hash
 
 The snapshot hash is the hash of one canonical form of the definitions in force. The persona enters
