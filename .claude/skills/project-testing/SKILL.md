@@ -47,10 +47,12 @@ changes the SDK version, and posts the result as the `sdk-contract` commit statu
 
 The memory encoder's suites run the real model from `node_modules/.cache/nixie-encoder`, which
 `bun run models` fills with the pinned model files after checking each one. `bun run test` runs it
-before `bun test`. Plain `bun test` skips those suites when the files are missing, and CI, where the
-`CI` variable is set, fails them instead, so a run there never passes without the model. The spikes
-under `research/` and `docs/design/` run by hand, so the root [`bunfig.toml`](../../../bunfig.toml)
-skips them.
+before `bun test --parallel`, which spreads the test files over one worker process per CPU core and
+starts each file in a fresh global object. A file therefore never sees a global that another file
+set, and a test that only passes after another file breaks there. Plain `bun test` skips those
+suites when the files are missing, and CI, where the `CI` variable is set, fails them instead, so a
+run there never passes without the model. The spikes under `research/` and `docs/design/` run by
+hand, so the root [`bunfig.toml`](../../../bunfig.toml) skips them.
 
 The web server's browser suite drives a headless Chrome or Chromium through `Bun.WebView`, so
 `bun test` needs one that Bun finds on `PATH`, in a standard install location, or at
