@@ -45,8 +45,6 @@ function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
   return new Map(decoded.map((file) => [file.path, file.text ?? '']));
 }
 
-// The manifest schema decides which manifests the seed reads, and the reasons below explain why it
-// refused one.
 function parseManifest(text: string | undefined): number {
   if (text === undefined) {
     throw new DefinitionsParseError([
