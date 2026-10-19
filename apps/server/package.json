@@ -32,6 +32,7 @@
     "@heynixie/sandbox-imp": "workspace:*",
     "@heynixie/sandbox-process": "workspace:*",
     "@heynixie/sessions": "workspace:*",
+    "@heynixie/skills": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "@heynixie/wire": "workspace:*",

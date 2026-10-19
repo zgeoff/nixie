@@ -1030,6 +1030,18 @@
         }
       },
       "additionalProperties": false
+    },
+    "skills": {
+      "type": "object",
+      "properties": {
+        "catalog_share": {
+          "default": 0.02,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 0.5
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": [

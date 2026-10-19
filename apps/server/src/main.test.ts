@@ -234,6 +234,7 @@ test('it answers a message with a reply that used a tool, with each step in the 
     'task.created',
     'owner_message',
     'task.step_started',
+    'skills.pinned',
     'memory.recalled',
     'tool_called',
     'tool_result',
@@ -462,11 +463,16 @@ test('it applies a remembered fact that the owner typed, with their words as its
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+  // the turn runs the model, the memory checker and the model again, so it waits as long as a sent
+  // message's reply does
+  await waitForCondition(
+    async () => {
+      const page = await ctx.client.conversation.read({ thread: 'conversation' });
 
-    return page.records.some((record) => record.message?.text === 'Noted.');
-  });
+      return page.records.some((record) => record.message?.text === 'Noted.');
+    },
+    { timeoutMs: 30_000 },
+  );
 
   ctx.sendSignal('SIGTERM');
 
