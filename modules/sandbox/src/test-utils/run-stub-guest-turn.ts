@@ -206,7 +206,17 @@ async function runInputCall(
       return { frames, overflow: reply.overflow };
     }
 
-    const entry = buildAssistantEntry(reply, state, run.countTokens);
+    // the context size a test set applies to the first reply of the turn, then lapses
+    const contextSize = state.fork.contextSize;
+
+    state.fork.contextSize = null;
+
+    const entry = buildAssistantEntry(reply, {
+      uuid: crypto.randomUUID(),
+      entries: state.entries,
+      contextSize,
+      countTokens: run.countTokens,
+    });
 
     state.entries.push(entry);
 
@@ -240,21 +250,31 @@ async function runInputCall(
 
 const overflowText = 'Prompt is too long';
 
-// a reply's entry, raised by the gap to the context size a test set when it is the first of the turn
+interface AssistantEntrySpec {
+  readonly uuid: string;
+
+  // the session's entries before the reply
+  readonly entries: readonly StubSessionEntry[];
+
+  // the context size the reply must raise the session to, or null to let its own size stand
+  readonly contextSize: number | null;
+  readonly countTokens: (text: string) => number;
+}
+
+// a reply's entry, raised by the gap to the context size given
 function buildAssistantEntry(
   reply: Exclude<StubGuestReply, { overflow: unknown }>,
-  state: AnswerState,
-  countTextTokens: (text: string) => number,
+  spec: AssistantEntrySpec,
 ): StubSessionEntry {
   const text = 'text' in reply ? reply.text : JSON.stringify(reply.toolUse);
-  const tokens = countTextTokens(text);
-  const target = state.fork.contextSize;
+  const tokens = spec.countTokens(text);
 
-  state.fork.contextSize = null;
+  const gap =
+    spec.contextSize === null
+      ? 0
+      : Math.max(0, spec.contextSize - countTokens(spec.entries) - tokens);
 
-  const gap = target === null ? 0 : Math.max(0, target - countTokens(state.entries) - tokens);
-
-  return { uuid: crypto.randomUUID(), role: 'assistant', text, tokens: tokens + gap };
+  return { uuid: spec.uuid, role: 'assistant', text, tokens: tokens + gap };
 }
 
 interface StubToolUse {
