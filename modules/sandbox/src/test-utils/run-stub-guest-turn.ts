@@ -1,4 +1,4 @@
-import type { GuestFrame, HostFrame, SessionPoint } from '@heynixie/wire';
+import type { GuestFrame, HostFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { StubGuestDisk, StubSessionEntry } from './build-stub-guest-disk';
 import { countTokenEstimate } from './count-token-estimate';
@@ -49,6 +49,9 @@ export interface StubGuestRun {
   // the context size the turn must end at, once, or null to let the session's own size stand
   readonly takeContextSize: () => number | null;
   readonly callTool: StubGuestToolCaller | undefined;
+
+  // the next live message that reached the guest and no input has taken, or undefined when none
+  readonly takeMessage: () => InboxMessage | undefined;
 }
 
 // the window of a profile that sets no context cap, the smallest the CLI assumes for any model
@@ -58,7 +61,7 @@ const toolPrefix = 'mcp__nixie__';
 // Runs one turn as the conversation guest does: it removes every session but the resumed one, forks
 // that session at the resume point, adds the input and each reply, and ends at the fork's last entry.
 // An overflow ends the turn at the resume point without moving the chain.
-export async function runStubGuestTurn(
+export function runStubGuestTurn(
   turn: TurnFrame,
   run: StubGuestRun,
 ): Promise<readonly GuestFrame[]> {
@@ -67,14 +70,10 @@ export async function runStubGuestTurn(
   const read = readStubGuestHistory(run, turn.resume);
 
   if ('failure' in read) {
-    return [read.failure];
+    return Promise.resolve([read.failure]);
   }
 
-  try {
-    return await runInputs(turn, run, read.history);
-  } catch (error) {
-    return [{ type: 'failed', reason: 'error', detail: String(error) }];
-  }
+  return runInputs(turn, run, read.history);
 }
 
 // the CLI answers each inbox message of the turn in its own model call, and reports a result for
@@ -92,7 +91,10 @@ async function runInputs(
   // entry of the chain completes
   const progress: ProgressState = { committed: turn.resume };
 
-  for (const message of turn.input) {
+  // the turn's inbox, then each live message that arrived while the turn ran, as the guest reads
+  const queue = [...turn.input];
+
+  for (let message = queue.shift(); message !== undefined; message = queue.shift()) {
     const input: StubSessionEntry = {
       uuid: message.uuid,
       role: 'user',
@@ -104,7 +106,18 @@ async function runInputs(
 
     entries.push(input);
 
-    const answer = await runInputCall(turn, run, { entries, fork, progress });
+    const answer = await runInputCall(turn, run, { entries, fork, progress }).catch(
+      (error: unknown) => new Error(String(error)),
+    );
+
+    if (answer instanceof Error) {
+      // the inputs that completed keep their transcript and their frames, as the guest keeps them
+      if (progress.committed !== turn.resume) {
+        run.disk.writeSession(run.home, fork.sessionID, entries);
+      }
+
+      return [...frames, { type: 'failed', reason: 'error', detail: answer.message }];
+    }
 
     frames.push(...answer.frames);
 
@@ -124,6 +137,12 @@ async function runInputs(
     progress.committed = { sessionID: fork.sessionID, messageID: last.uuid };
 
     frames.push(buildEnded(turn, entries, { start, point: progress.committed }));
+
+    const live = run.takeMessage();
+
+    if (live !== undefined) {
+      queue.push(live);
+    }
   }
 
   run.disk.writeSession(run.home, fork.sessionID, entries);

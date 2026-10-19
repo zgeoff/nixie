@@ -277,7 +277,7 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
         state.purged.push(sandbox.id);
       }
     },
-    onTurn: (turn) =>
+    onTurn: (turn, guest) =>
       buildAnswer((guestHome) =>
         runStubGuestTurn(turn, {
           sandboxID: sandbox.id,
@@ -293,6 +293,7 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
             return size;
           },
           callTool: state.options.callTool,
+          takeMessage: () => guest.takeMessage?.(),
         }),
       ),
     onSummary: (frame) =>

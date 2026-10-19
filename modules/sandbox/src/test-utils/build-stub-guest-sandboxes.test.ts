@@ -582,3 +582,83 @@ test('it answers each inbox message of a turn in its own call, with a result for
   expect(first?.boundary.sessionID).toBe(second?.boundary.sessionID);
   expect(first?.boundary.messageID).not.toBe(second?.boundary.messageID);
 });
+
+test('it answers a live message that arrives during a tool call, in the same session', async () => {
+  const live = { uuid: '6e697869-0000-8000-8000-000000000009', text: 'Also, the milk.' };
+  const streams: { send?: (frame: HostFrame) => Promise<void> } = {};
+
+  const ctx = await setupTest({
+    callTool: async () => {
+      await streams.send?.({ type: 'message', message: live });
+
+      return 'Buy oat milk.';
+    },
+  });
+
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies(
+    { toolUse: { name: 'mcp__nixie__notes_read', input: {} } },
+    { text: 'It says oat milk.' },
+    { text: 'Noted the milk.' },
+  );
+
+  const stream = await sandbox.spawn({ argv: ['guest'], env, maxMessageBytes: 1 << 20 });
+
+  streams.send = (frame) => stream.send(encodeTurnFrame(frame));
+
+  await stream.send(encodeTurnFrame(buildMockTurnFrame()));
+
+  const messages = await Array.fromAsync(stream.messages);
+
+  const frames = messages.map((message) => decodeTurnFrame(guestFrameSchema, message));
+
+  expect(frames.map((frame) => frame.type)).toStrictEqual([
+    'read',
+    'assistant',
+    'assistant',
+    'ended',
+    'read',
+    'assistant',
+    'ended',
+  ]);
+
+  expect(frames).toContainEqual({ type: 'read', uuids: [live.uuid] });
+  expect(frames).toContainEqual(expect.objectContaining({ text: 'Noted the milk.' }));
+
+  const [first, second] = frames.filter((frame) => frame.type === 'ended');
+
+  expect(first?.boundary.sessionID).toBe(second?.boundary.sessionID);
+});
+
+test('it keeps the inputs that completed before a later input fails, and resumes from them', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies(
+    { text: 'APPLE' },
+    { toolUse: { name: 'mcp__nixie__notes_read', input: {} } },
+  );
+
+  const input = [
+    { uuid: '6e697869-0000-8000-8000-000000000001', text: 'Say a fruit.' },
+    { uuid: '6e697869-0000-8000-8000-000000000002', text: 'Read my notes.' },
+  ];
+
+  const frames = await ctx.runGuest(sandbox, buildMockTurnFrame({ input }));
+
+  expect(frames).toMatchObject([
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
+    { type: 'assistant', text: 'APPLE' },
+    { type: 'ended' },
+    { type: 'failed', reason: 'error' },
+  ]);
+
+  const ended = frames.at(2);
+
+  invariant(ended?.type === 'ended');
+
+  const next = await ctx.runEnded(sandbox, buildMockTurnFrame({ resume: ended.boundary }));
+
+  expect(next.isError).toBeUndefined();
+});

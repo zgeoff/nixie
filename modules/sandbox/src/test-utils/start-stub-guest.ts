@@ -9,6 +9,9 @@ type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 // The guest's side of one turn: the messages the host sent into it, one at a time.
 interface StubGuest {
   readonly waitForMessage: () => Promise<InboxMessage>;
+
+  // the next message that has arrived and nothing has taken, or undefined when none
+  readonly takeMessage?: () => InboxMessage | undefined;
 }
 
 // Answers one turn frame with the guest frames the stub sends back before it exits.
@@ -49,7 +52,10 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
   };
 
   const runScript = async (first: Exclude<HostFrame, { type: 'message' }>) => {
-    const frames = await runFirstFrame(hooks, first, { waitForMessage: inbox.wait });
+    const frames = await runFirstFrame(hooks, first, {
+      waitForMessage: inbox.wait,
+      takeMessage: inbox.take,
+    });
 
     for (const frame of frames) {
       await writer.write(encodeTurnFrame(frame));
@@ -101,6 +107,7 @@ function runFirstFrame(
 function buildMessageQueue(): {
   readonly push: (message: InboxMessage) => void;
   readonly wait: () => Promise<InboxMessage>;
+  readonly take: () => InboxMessage | undefined;
 } {
   const queued: InboxMessage[] = [];
   const waiting: ((message: InboxMessage) => void)[] = [];
@@ -115,6 +122,7 @@ function buildMessageQueue(): {
         waiter(message);
       }
     },
+    take: () => queued.shift(),
     wait: () => {
       const message = queued.shift();
 
