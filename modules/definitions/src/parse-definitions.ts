@@ -1,10 +1,10 @@
 import type { ParseProblem } from './definitions-parse-error';
 import { DefinitionsParseError } from './definitions-parse-error';
+import { manifestPath } from './manifest-path';
 import { parseConversationSkills } from './parse-conversation-skills';
 import { parseSkills } from './parse-skills';
 import type { ParsedDefinitions, Snapshot } from './types';
 
-const manifestPath = 'nixie.yaml';
 const personaPath = 'persona.md';
 
 // Reads what the seed applies: the format version, the persona, and from format 2 on, the skills.
