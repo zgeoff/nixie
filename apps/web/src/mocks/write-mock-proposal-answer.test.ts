@@ -329,13 +329,13 @@ test('it answers a revision of an item that does not exist as stale', async () =
   expect(outcome).toMatchObject({ cause: 'gone', status: 'stale' });
 });
 
-test('it refuses a revision of an item that is no longer active', async () => {
+test('it applies a revision of a retired item, and the item stays retired', async () => {
   const item = await store.memoryItems.create({
     state: 'retired',
-    versions: [{ state: 'retired' }],
+    versions: [{ state: 'retired', text: 'Keeps bees on the roof' }],
   });
 
-  const proposal = await store.memoryProposals.create({});
+  const proposal = await store.memoryProposals.create({ text: 'Keeps two hives on the roof' });
 
   const outcome = await writeMockProposalAnswer({
     answer: 'approve',
@@ -346,7 +346,103 @@ test('it refuses a revision of an item that is no longer active', async () => {
     revisionOf: { itemID: item.itemID, version: 1 },
   });
 
-  expect(outcome).toMatchObject({ code: 'WRONG_STATE', status: 'refused' });
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(outcome).toStrictEqual({ proposalID: proposal.proposalID, status: 'applied' });
+  expect(stored?.state).toBe('retired');
+
+  expect(stored?.versions).toMatchObject([
+    { state: 'retired', text: 'Keeps bees on the roof' },
+    { change: 'edited', state: 'retired', text: 'Keeps two hives on the roof' },
+  ]);
+});
+
+test('it refuses a pinned proposal as a revision of a retired item, and writes nothing', async () => {
+  const item = await store.memoryItems.create({
+    state: 'retired',
+    versions: [{ state: 'retired', text: 'Keeps bees on the roof' }],
+  });
+
+  const proposal = await store.memoryProposals.create({
+    isPinned: true,
+    text: 'Keeps two hives on the roof',
+  });
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+    revisionOf: { itemID: item.itemID, version: 1 },
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(outcome).toStrictEqual({
+    code: 'WRONG_STATE',
+    proposalID: proposal.proposalID,
+    status: 'refused',
+  });
+
+  expect(stored?.versions).toHaveLength(1);
+  expect(store.records.all()).toStrictEqual([]);
+});
+
+test('it refuses a revision that takes the pinned core past its budget, and writes nothing', async () => {
+  await store.memoryItems.create({ isPinned: true, versions: [{ text: 'b'.repeat(7960) }] });
+
+  const item = await store.memoryItems.create({
+    isPinned: true,
+    versions: [{ text: 'Keeps bees on the roof' }],
+  });
+
+  const proposal = await store.memoryProposals.create({
+    text: 'Keeps bees on the roof and in the back garden',
+  });
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+    revisionOf: { itemID: item.itemID, version: 1 },
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(outcome).toStrictEqual({
+    code: 'PINNED_CORE_FULL',
+    proposalID: proposal.proposalID,
+    status: 'refused',
+  });
+
+  expect(stored?.versions).toHaveLength(1);
+  expect(store.records.all()).toStrictEqual([]);
+  expect(store.memoryActions.all()).toStrictEqual([]);
+});
+
+test('it applies a revision of a pinned item that still fits the pinned core', async () => {
+  await store.memoryItems.create({ isPinned: true, versions: [{ text: 'b'.repeat(7960) }] });
+
+  const item = await store.memoryItems.create({
+    isPinned: true,
+    versions: [{ text: 'Keeps bees on the roof' }],
+  });
+
+  const proposal = await store.memoryProposals.create({ text: 'Keeps bees on the back roof' });
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+    revisionOf: { itemID: item.itemID, version: 1 },
+  });
+
+  expect(outcome).toStrictEqual({ proposalID: proposal.proposalID, status: 'applied' });
 });
 
 test('it refuses a revision target for a proposal that already names its item', async () => {
