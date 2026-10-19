@@ -16,6 +16,7 @@ async function setupTest(options: { readonly callTool?: StubGuestToolCaller } = 
 
   const stub = buildStubGuestSandboxes({
     recorder: recorder.recorder,
+    countTokens: (text) => Math.ceil(text.length / 4),
     ...(options.callTool === undefined ? {} : { callTool: options.callTool }),
   });
 

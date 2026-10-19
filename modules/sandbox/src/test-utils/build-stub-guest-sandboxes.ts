@@ -28,6 +28,10 @@ export interface StubGuestSandboxesOptions {
 
   // how the guest calls a tool the model asks for; a tool use with none fails the turn
   readonly callTool?: StubGuestToolCaller;
+
+  // the tokens a text adds to the context, which each session entry's size and the context size
+  // the guest reports come from
+  readonly countTokens: (text: string) => number;
 }
 
 // A host frame as one sandbox's guest received it.
@@ -293,12 +297,17 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
             return size;
           },
           callTool: state.options.callTool,
+          countTokens: state.options.countTokens,
           takeMessage: () => guest.takeMessage?.(),
         }),
       ),
     onSummary: (frame) =>
       buildAnswer((guestHome) =>
-        runStubGuestSummary(frame, { disk: sandbox.own.disk, home: guestHome }),
+        runStubGuestSummary(frame, {
+          disk: sandbox.own.disk,
+          home: guestHome,
+          countTokens: state.options.countTokens,
+        }),
       ),
     onPurge: () =>
       buildAnswer((guestHome) => {

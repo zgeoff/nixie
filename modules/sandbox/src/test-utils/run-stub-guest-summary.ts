@@ -1,5 +1,4 @@
 import type { GuestFrame, HostFrame } from '@heynixie/wire';
-import { countTokenEstimate } from './count-token-estimate';
 import { readStubGuestHistory } from './read-stub-guest-history';
 import type { StubGuestRun } from './run-stub-guest-turn';
 
@@ -10,7 +9,7 @@ type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 // removes no session.
 export function runStubGuestSummary(
   frame: SummarizeFrame,
-  run: Pick<StubGuestRun, 'disk' | 'home'>,
+  run: Pick<StubGuestRun, 'disk' | 'home' | 'countTokens'>,
 ): readonly GuestFrame[] {
   const read = readStubGuestHistory(run, frame.resume);
 
@@ -25,14 +24,14 @@ export function runStubGuestSummary(
     uuid: crypto.randomUUID(),
     role: 'user',
     text: frame.instruction,
-    tokens: countTokenEstimate(frame.instruction),
+    tokens: run.countTokens(frame.instruction),
   } as const;
 
   const summary = {
     uuid: crypto.randomUUID(),
     role: 'assistant',
     text,
-    tokens: countTokenEstimate(text),
+    tokens: run.countTokens(text),
   } as const;
 
   const sessionID = crypto.randomUUID();

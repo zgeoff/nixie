@@ -1,3 +1,4 @@
+import { countTextTokens } from '@heynixie/compaction';
 import type { Definitions, Log } from '@heynixie/log';
 import type { ToolTargetResolver } from '@heynixie/sandbox';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
@@ -32,6 +33,7 @@ export function buildTestFakeSandboxes(options: TestFakeSandboxesOptions): TestF
         name: call.name,
         input: call.input,
       }),
+    countTokens: countTextTokens,
   });
 
   return { ...buildRetirableSandboxes(guest.adapter), guest };

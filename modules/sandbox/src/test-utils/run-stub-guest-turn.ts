@@ -1,7 +1,6 @@
 import type { GuestFrame, HostFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { StubGuestDisk, StubSessionEntry } from './build-stub-guest-disk';
-import { countTokenEstimate } from './count-token-estimate';
 import { readStubGuestHistory } from './read-stub-guest-history';
 
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
@@ -49,6 +48,9 @@ export interface StubGuestRun {
   // the context size the turn must end at, once, or null to let the session's own size stand
   readonly takeContextSize: () => number | null;
   readonly callTool: StubGuestToolCaller | undefined;
+
+  // the tokens a text adds to the context
+  readonly countTokens: (text: string) => number;
 
   // the next live message that reached the guest and no input has taken, or undefined when none
   readonly takeMessage: () => InboxMessage | undefined;
@@ -99,7 +101,7 @@ async function runInputs(
       uuid: message.uuid,
       role: 'user',
       text: message.text,
-      tokens: countTokenEstimate(message.text),
+      tokens: run.countTokens(message.text),
     };
 
     const start = entries.length;
@@ -204,7 +206,7 @@ async function runInputCall(
       return { frames, overflow: reply.overflow };
     }
 
-    const entry = buildAssistantEntry(reply, state);
+    const entry = buildAssistantEntry(reply, state, run.countTokens);
 
     state.entries.push(entry);
 
@@ -242,9 +244,10 @@ const overflowText = 'Prompt is too long';
 function buildAssistantEntry(
   reply: Exclude<StubGuestReply, { overflow: unknown }>,
   state: AnswerState,
+  countTextTokens: (text: string) => number,
 ): StubSessionEntry {
   const text = 'text' in reply ? reply.text : JSON.stringify(reply.toolUse);
-  const tokens = countTokenEstimate(text);
+  const tokens = countTextTokens(text);
   const target = state.fork.contextSize;
 
   state.fork.contextSize = null;
@@ -282,7 +285,7 @@ async function buildToolResultEntry(
     uuid: crypto.randomUUID(),
     role: 'user',
     text: result,
-    tokens: countTokenEstimate(result),
+    tokens: run.countTokens(result),
   };
 }
 
