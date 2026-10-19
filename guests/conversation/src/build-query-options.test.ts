@@ -31,6 +31,15 @@ test('it reads a bearer credential placeholder from ANTHROPIC_AUTH_TOKEN', () =>
   expect(options.env).not.toContainKey('ANTHROPIC_API_KEY');
 });
 
+test('it asks the model for the summarized thinking display', () => {
+  const options = buildQueryOptions(buildMockTurnFrame({ profile: { authHeader: 'x-api-key' } }), {
+    env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+    toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
+  });
+
+  expect(options.thinking).toStrictEqual({ type: 'adaptive', display: 'summarized' });
+});
+
 test('it passes the broker proxy settings on by name and nothing else from the guest env', () => {
   const options = buildQueryOptions(buildMockTurnFrame({ profile: { authHeader: 'x-api-key' } }), {
     env: {

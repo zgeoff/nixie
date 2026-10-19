@@ -31,6 +31,10 @@ export function buildQueryOptions(
     tools: [],
     allowedTools: context.toolServer === null ? [] : [`mcp__${toolServerName}`],
     ...(context.toolServer === null ? { maxTurns: 1 } : {}),
+
+    // the effort drives how much the model thinks; summarized turns the empty thinking block into a
+    // readable summary the log keeps beside the reply
+    thinking: { type: 'adaptive', display: 'summarized' },
     permissionMode: 'dontAsk',
     settingSources: [],
     strictMcpConfig: true,

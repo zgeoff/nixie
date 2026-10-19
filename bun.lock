@@ -390,6 +390,8 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
       },
     },
     "modules/ops": {
