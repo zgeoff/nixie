@@ -92,6 +92,35 @@ test('it no longer reads the text of a forgotten item’s proposals', async () =
   expect(readMockPendingProposals()).toStrictEqual([]);
 });
 
+test('it no longer reads the proposals of an item whose stalled forget a retry completed', async () => {
+  const item = await store.memoryItems.create({
+    failsForgetCleanup: true,
+    isShredded: false,
+    versions: [{ text: 'Keeps bees on the roof' }],
+  });
+
+  await store.memoryProposals.create({
+    itemID: item.itemID,
+    operation: 'retire',
+    targetVersion: 1,
+    text: 'Keeps bees on the roof',
+  });
+
+  await writeMockMemoryForget({
+    clientActionID: '6b3f9d2e-4a1c-4e7b-8d5f-0c2a6e9b1f38',
+    itemID: item.itemID,
+    version: 1,
+  });
+
+  await writeMockMemoryForget({
+    clientActionID: '6b3f9d2e-4a1c-4e7b-8d5f-0c2a6e9b1f38',
+    itemID: item.itemID,
+    version: 1,
+  });
+
+  expect(readMockPendingProposals()).toStrictEqual([]);
+});
+
 test('it reads the proposals of a forgetting item whose cleanup stalled before it removed the key', async () => {
   const item = await store.memoryItems.create({
     isShredded: false,
