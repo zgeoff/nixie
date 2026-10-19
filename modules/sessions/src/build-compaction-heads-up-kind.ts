@@ -13,9 +13,6 @@ export interface CompactionHeadsUp {
   readonly threshold: number;
 }
 
-// the most turn ends one note reads, past which the block's count of more stops growing
-const readLimit = 1000;
-
 // The event kind that warns the model that compaction is near, from the first turn of a session to
 // end past the heads-up, so the warning comes again only after a new session opens, as one does
 // after each compaction.
@@ -47,6 +44,9 @@ export function buildCompactionHeadsUpKind(
       `Compaction in about ${formatTokens(detail.tokensLeft)} tokens (at ${String(Math.round(detail.threshold * 100))}% of the window). Save anything worth keeping now.`,
   };
 }
+
+// the most turn ends one note reads, past which the block's count of more stops growing
+const readLimit = 1000;
 
 async function readHeadsUp(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
