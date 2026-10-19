@@ -493,7 +493,7 @@ test('it carries a session into a sandbox through the host copy, and the next tu
 
   const [file] = await from.collectFiles(projectsDir);
 
-  invariant(file);
+  invariant(file !== undefined);
 
   const copied = await from.copyOut([`${projectsDir}/${file}`]);
 
