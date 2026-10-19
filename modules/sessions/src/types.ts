@@ -188,9 +188,10 @@ export interface ConversationRun {
   // the definitions in force, read as each step begins so a new seed reaches the next step
   readonly getDefinitions: () => SessionDefinitions;
 
-  // the catalog of the skills the conversation is pinned to, read as each step begins, or null
-  // when it has none; a conversation with no skill reader gets no catalog
-  readonly readSkillCatalog?: (taskID: string) => Promise<string | null>;
+  // the catalog of the skills the conversation is pinned to, loaded as each step begins, or null
+  // when it has none; the first load pins the task, and a conversation with no loader gets no
+  // catalog
+  readonly loadOrPinSkillCatalog?: (taskID: string) => Promise<string | null>;
 
   // the note of what happened outside the conversation since its last turn, such as memory changes
   // and events, which goes before the turn's first message, and the sequence it covers; given a
