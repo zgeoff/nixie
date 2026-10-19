@@ -22,19 +22,19 @@ type Key = 'mode' | 'model' | 'tools';
 
 // requestToText is the time from the CLI's model request to the first text token.
 const fields = [
-    'init',
-    'requesting',
-    'firstThinking',
-    'firstText',
-    'result',
-    'requestToText',
-    'ttftStreamMs',
-  ] as const,
-  keyLabels: Record<Key, (row: Row) => string> = {
-    mode: (row) => `${row.mode}#${row.turnIndex ?? 0}`,
-    model: (row) => row.model,
-    tools: (row) => String(row.tools),
-  };
+  'init',
+  'requesting',
+  'firstThinking',
+  'firstText',
+  'result',
+  'requestToText',
+  'ttftStreamMs',
+] as const;
+const keyLabels: Record<Key, (row: Row) => string> = {
+  mode: (row) => `${row.mode}#${row.turnIndex ?? 0}`,
+  model: (row) => row.model,
+  tools: (row) => String(row.tools),
+};
 
 function readField(row: Row, field: (typeof fields)[number]): number | undefined {
   if (field === 'requestToText') {
@@ -60,11 +60,11 @@ function formatStats(values: number[]): string {
 
 // Groups rows into cells, and reports failed rows on stderr.
 function collectCells(path: string, keys: Key[]): Map<string, Row[]> {
-  const cells = new Map<string, Row[]>(),
-    rows = readFileSync(path, 'utf8')
-      .trim()
-      .split('\n')
-      .map((line) => JSON.parse(line) as Row);
+  const cells = new Map<string, Row[]>();
+  const rows = readFileSync(path, 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as Row);
   for (const row of rows) {
     const key = keys.map((name) => keyLabels[name](row)).join(' | ');
     if (row.error || row.isError) {

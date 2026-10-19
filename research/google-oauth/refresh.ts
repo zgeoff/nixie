@@ -1,5 +1,4 @@
 // Refreshes the stored token and checks one call per API. Prints no secret. Run on day 1 and day 8.
-// A throwaway script reads top to bottom, and its steps depend on each other in order.
 import { $ } from 'bun';
 
 const clientJSON = await $`op read op://nixie/google-oauth-client/google-oauth-client.json`.text();

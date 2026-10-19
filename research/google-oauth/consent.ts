@@ -1,6 +1,5 @@
 // Runs the OAuth consent once with a loopback redirect and PKCE, stores the refresh token in the
 // nixie vault, and checks one call per API. Prints no secret.
-// A throwaway script reads top to bottom, and its steps depend on each other in order.
 import { $ } from 'bun';
 
 const scopes = [
