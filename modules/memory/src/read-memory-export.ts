@@ -1,6 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { findRecordKeys } from '@heynixie/log';
 import { findCheckerModel } from './find-checker-model';
+import { findWriterModel } from './find-writer-model';
 import { getItemShortID } from './get-item-short-id';
 import type { MemoryExport, MemoryExportItem } from './memory-export-schema';
 import { memoryExportSchemaVersion } from './memory-export-schema-version';
@@ -117,7 +118,7 @@ async function buildExportItems(
       isReadable(row.state)
         ? buildReadableItem(
             { ...row, state: row.state },
-            { key: keys.get(row.item_id), versions: versionsByItem.get(row.item_id) ?? [] },
+            { log, key: keys.get(row.item_id), versions: versionsByItem.get(row.item_id) ?? [] },
           )
         : Promise.resolve({ itemID: row.item_id, forgottenAt: toISOTime(row.forgotten_at) }),
     ),
@@ -154,6 +155,7 @@ function readVersionRows(
 type ReadableRow = Omit<ItemRow, 'state'> & { readonly state: 'active' | 'retired' };
 
 interface ItemParts {
+  readonly log: ExportLog;
   readonly key: CryptoKey | null | undefined;
   readonly versions: readonly MemoryVersionRow[];
 }
@@ -165,18 +167,15 @@ async function buildReadableItem(row: ReadableRow, parts: ItemParts): Promise<Me
     state: row.state,
     isPinned: row.is_pinned === 1,
     kind: row.kind,
-    versions: await Promise.all(parts.versions.map((version) => buildVersion(version, parts.key))),
+    versions: await Promise.all(parts.versions.map((version) => buildVersion(version, parts))),
   };
 }
 
 type ExportVersion = Extract<MemoryExportItem, { versions: unknown }>['versions'][number];
 
 // a version whose key or ciphertext fails exports with no text and no quote
-async function buildVersion(
-  row: MemoryVersionRow,
-  key: CryptoKey | null | undefined,
-): Promise<ExportVersion> {
-  const opened = await readViewText(key, {
+async function buildVersion(row: MemoryVersionRow, parts: ItemParts): Promise<ExportVersion> {
+  const opened = await readViewText(parts.key, {
     itemID: row.item_id,
     version: row.version,
     sealed: row.sealed,
@@ -196,7 +195,7 @@ async function buildVersion(
       taskID: row.task_id,
       proposalID: row.proposal_id,
       checks,
-      writerModel: row.model,
+      writerModel: await findWriterModel(parts.log, row),
       checkerModel: findCheckerModel(checks),
       snapshotHash: row.snapshot_hash,
       recordedAt: new Date(row.recorded_at).toISOString(),

@@ -1,6 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { findCheckerModel } from './find-checker-model';
 import { findItemKey } from './find-item-key';
+import { findWriterModel } from './find-writer-model';
 import { parseChecks } from './parse-checks';
 import { parseEvidence } from './parse-evidence';
 import { readEvidenceMessage } from './read-evidence-message';
@@ -43,7 +44,11 @@ export async function readItemDetail(
     return read;
   };
 
-  const versions = await Promise.all(rows.map((row) => readViewVersion(row, { key, readMessage })));
+  const findModel = (row: MemoryVersionRow): Promise<string | null> => findWriterModel(log, row);
+
+  const versions = await Promise.all(
+    rows.map((row) => readViewVersion(row, { key, readMessage, findModel })),
+  );
 
   return { ...item, versions };
 }
@@ -51,6 +56,7 @@ export async function readItemDetail(
 interface VersionReaders {
   readonly key: CryptoKey | null | undefined;
   readonly readMessage: (sequence: number) => Promise<EvidenceMessage>;
+  readonly findModel: (row: MemoryVersionRow) => Promise<string | null>;
 }
 
 async function readViewVersion(
@@ -76,7 +82,7 @@ async function readViewVersion(
     taskID: row.task_id,
     proposalID: row.proposal_id,
     checks,
-    writerModel: row.model,
+    writerModel: await readers.findModel(row),
     checkerModel: findCheckerModel(checks),
     evidenceQuote: opened.evidenceQuote,
     evidence:
