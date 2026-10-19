@@ -63,21 +63,7 @@ export interface DefinitionsSnapshot {
   readonly form: string;
 }
 
-// What the seed reads from a snapshot. unapplied lists each file the seed left out, in path order,
-// such as a rule file before slice 3 seeds rules.
-export interface ParsedDefinitions {
-  readonly formatVersion: number;
-  readonly persona: string;
-
-  // every skill that passed the seed checks, in name order; none before format 2
-  readonly skills: readonly ParsedSkill[];
-
-  // the skills field of nixie.yaml in name order, every skill when it is unset
-  readonly conversationSkills: readonly string[];
-  readonly unapplied: readonly string[];
-}
-
-// Where a skill came from: your own definitions, or a vendored copy that skills.lock.json pins.
+// Where a skill came from: your own definitions, or a vendored copy that skills.lock.json records.
 export type SkillOrigin = 'definitions' | 'vendored';
 
 // The SKILL.md fields nixie reads. allowedTools is shown and never granted.
@@ -101,6 +87,20 @@ export interface SkillVersion {
 
 export interface ParsedSkill extends SkillVersion {
   readonly origin: SkillOrigin;
+}
+
+// What the seed reads from a snapshot. unapplied lists each file the seed left out, in path order,
+// such as a rule file before slice 3 seeds rules.
+export interface ParsedDefinitions {
+  readonly formatVersion: number;
+  readonly persona: string;
+
+  // every skill that passed the seed checks, in name order; none before format 2
+  readonly skills: readonly ParsedSkill[];
+
+  // the skills field of nixie.yaml in name order, every skill when it is unset
+  readonly conversationSkills: readonly string[];
+  readonly unapplied: readonly string[];
 }
 
 // A skill in force: its name, the version it is at, and where it came from.
