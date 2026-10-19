@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.0](https://github.com/zgeoff/nixie/compare/v0.33.2...v0.34.0) (2026-10-19)
+
+
+### Features
+
+* **geo-1358:** warn the conversation before its session compacts ([#408](https://github.com/zgeoff/nixie/issues/408)) ([9d0d72a](https://github.com/zgeoff/nixie/commit/9d0d72aed1b3bdbe19491193d6fb57572e0006bb))
+
 ## [0.33.2](https://github.com/zgeoff/nixie/compare/v0.33.1...v0.33.2) (2026-10-18)
 
 

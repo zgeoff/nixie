@@ -202,6 +202,10 @@ async function emitAssistant(
 
   await emitReads(deps, state, [message.user_message_uuid, ...(message.user_message_uuids ?? [])]);
 
+  // the summarized display gives the model's reasoning as its own thinking-only message, ahead of
+  // the message that carries the reply's text
+  const summary = collectSummary(message.message.content);
+
   await deps.emit({
     type: 'assistant',
     messageID: message.uuid,
@@ -209,6 +213,7 @@ async function emitAssistant(
     toolUses: message.message.content.flatMap((block) =>
       block.type === 'tool_use' ? [{ id: block.id, name: block.name }] : [],
     ),
+    ...(summary === '' ? {} : { summary }),
   });
 
   return 'continue';
@@ -216,6 +221,14 @@ async function emitAssistant(
 
 function collectText(content: AssistantMessage['message']['content']): string {
   return content.flatMap((block) => (block.type === 'text' ? [block.text] : [])).join('\n\n');
+}
+
+// the reasoning is the thinking blocks' text; the signature beside it is the API's encrypted copy
+// that only the API reads back, so nixie cannot use it and leaves it out of the recorded reasoning
+function collectSummary(content: AssistantMessage['message']['content']): string {
+  return content
+    .flatMap((block) => (block.type === 'thinking' ? [block.thinking] : []))
+    .join('\n\n');
 }
 
 // a tool result is a chain entry too, and a turn can end on one
@@ -323,6 +336,10 @@ function buildEnded(
   boundary: SessionPoint,
   state: TurnState,
 ): GuestFrame {
+  // the model API reports the turn's thinking tokens once, in the result's usage; the per-message
+  // usage never carries them, so the count is the turn's total and not one message's
+  const thinkingTokens = message.usage.output_tokens_details.thinking_tokens;
+
   return {
     type: 'ended',
     boundary,
@@ -337,6 +354,7 @@ function buildEnded(
       cacheReadTokens: message.usage.cache_read_input_tokens,
       cacheWriteTokens: message.usage.cache_creation_input_tokens,
     },
+    ...(thinkingTokens === 0 ? {} : { thinkingTokens }),
     ...(state.contextSize === null
       ? {}
       : { context: { size: state.contextSize, window: state.compactWindow } }),
