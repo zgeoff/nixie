@@ -1,5 +1,6 @@
 import type { ContractOutputs } from '@heynixie/contract';
 import type { ReadonlyDeep } from '../types';
+import { readMockPinnedCore } from './read-mock-pinned-core';
 import { store } from './store';
 
 export type MockProposalOutcome = ContractOutputs['memory']['approveProposals']['outcomes'][number];
@@ -144,7 +145,16 @@ async function writeApproval(
     return { item: match, proposalID: proposal.proposalID, status: 'close_match' };
   }
 
-  await applyApproval(proposal, input, text);
+  const itemID = input.revisionOf?.itemID ?? proposal.itemID;
+  const item = store.memoryItems.findFirst((query) => query.where({ itemID }));
+  const state = pickVersionState(proposal, input, item);
+  const isPinned = proposal.isPinned || item?.isPinned === true;
+
+  if (state === 'active' && isPinned && !hasCoreRoom(itemID, text)) {
+    return { code: 'PINNED_CORE_FULL', proposalID: proposal.proposalID, status: 'refused' };
+  }
+
+  await applyApproval(proposal, input, { itemID, state, text });
 
   await writeClosedProposal(proposal, {
     answer: input.editedText === undefined ? 'approved' : 'edited',
@@ -175,7 +185,7 @@ function findApprovalRefusal(
 }
 
 // a revision binds to the version of the close match the view showed, which must still be active
-// and of the proposal's kind, which nixie's API answers as a revision target it refuses
+// or retired, and of the proposal's kind, which nixie's API answers as a revision target it refuses
 function findRevisionTargetRefusal(
   proposal: StoredProposal,
   target: NonNullable<ApprovalInput['revisionOf']>,
@@ -189,10 +199,6 @@ function findRevisionTargetRefusal(
 
   if (item.versions.length !== target.version) {
     return { cause: 'moved', proposalID, status: 'stale' };
-  }
-
-  if (item.state !== 'active') {
-    return { code: 'WRONG_STATE', proposalID, status: 'refused' };
   }
 
   return item.kind === proposal.kind
@@ -227,22 +233,55 @@ function findCloseMatch(proposal: StoredProposal, input: ApprovalInput, text: st
     : { itemID: item.itemID, text: current.text, version: item.versions.length };
 }
 
+type StoredItem = ReadonlyDeep<NonNullable<ReturnType<typeof store.memoryItems.findFirst>>>;
+
+type VersionState = 'active' | 'retired';
+
+// the state the approved version takes: a retirement retires the item, and a revision keeps the
+// state of the item it revises, as nixie's store plans it
+function pickVersionState(
+  proposal: StoredProposal,
+  input: ApprovalInput,
+  item: StoredItem | undefined,
+): VersionState {
+  if (proposal.operation === 'retire') {
+    return 'retired';
+  }
+
+  return input.revisionOf !== undefined && item?.state === 'retired' ? 'retired' : 'active';
+}
+
+// whether the pinned core stays inside its budget once the item's text is the given text, where
+// the item's earlier version leaves the count, as nixie's store checks it
+function hasCoreRoom(itemID: string, text: string): boolean {
+  const core = readMockPinnedCore();
+  const earlier = core.items.find((item) => item.itemID === itemID)?.text ?? '';
+
+  return core.tokens - Math.ceil(earlier.length / 4) + Math.ceil(text.length / 4) <= core.budget;
+}
+
+interface ApprovedVersion {
+  readonly itemID: string;
+  readonly state: VersionState;
+  readonly text: string;
+}
+
 // adds the version the approval applies: a new item, a revision of a close match, or the change
 // the proposal binds to
 async function applyApproval(
   proposal: StoredProposal,
   input: ApprovalInput,
-  text: string,
+  approved: ApprovedVersion,
 ): Promise<void> {
-  const itemID = input.revisionOf?.itemID ?? proposal.itemID;
+  const itemID = approved.itemID;
   const isEdited = input.editedText !== undefined;
 
   const version = {
     origin: isEdited ? ('owner' as const) : proposal.origin,
     proposalID: proposal.proposalID,
     source: isEdited ? ('owner' as const) : proposal.source,
-    state: proposal.operation === 'retire' ? ('retired' as const) : ('active' as const),
-    text,
+    state: approved.state,
+    text: approved.text,
   };
 
   const item = store.memoryItems.findFirst((query) => query.where({ itemID }));
