@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { startWriter } from '@heynixie/log';
+import { buildToolRegistry } from '@heynixie/tools';
+import invariant from 'tiny-invariant';
 import { buildSkillReadTool } from './build-skill-read-tool';
 
 // the writer's data directory holds the definitions root too, so one removal cleans up both
@@ -84,6 +86,30 @@ test('it returns the instructions without their frontmatter and the list of the 
       text: '# Tides\n',
       files: ['convert.py', 'references/ports.md'],
     },
+  });
+});
+
+test("it labels a skill's text and file list as untrusted, and its name and version as the owner's", async () => {
+  const ctx = await setupTest();
+
+  const registry = buildToolRegistry([
+    buildSkillReadTool({
+      log: ctx.log,
+      readInForce: () => null,
+      refreshDefinitions: () => Promise.resolve(null),
+      readSkillList: () => [],
+    }),
+  ]);
+
+  const tool = registry.findTool('skill_read');
+
+  invariant(tool);
+
+  expect(tool.definition.declaration.results).toStrictEqual({
+    skill: 'owner_data',
+    version: 'owner_data',
+    text: 'untrusted',
+    files: 'untrusted',
   });
 });
 
