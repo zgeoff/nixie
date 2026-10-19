@@ -77,7 +77,9 @@ export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
         return { status: 'error', message: `the skill ${name} is not on your skill list` };
       }
 
-      return input.path === undefined ? readSkillBody(skill) : readSkillFile(skill, input.path);
+      return input.path === undefined
+        ? buildBodyOutcome(skill)
+        : buildFileOutcome(skill, input.path);
     },
   };
 }
@@ -85,7 +87,7 @@ export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
 // the input as the input schema accepted it
 const readArguments = z.object({ name: z.string(), path: z.string().optional() });
 
-function readSkillBody(skill: TaskSkill): ToolOutcome {
+function buildBodyOutcome(skill: TaskSkill): ToolOutcome {
   const text = skill.files.get('SKILL.md') ?? '';
   const body = text.replace(/^---\n[\s\S]*?\n---(?:\n|$)/u, '');
 
@@ -100,7 +102,7 @@ function readSkillBody(skill: TaskSkill): ToolOutcome {
   };
 }
 
-function readSkillFile(skill: TaskSkill, path: string): ToolOutcome {
+function buildFileOutcome(skill: TaskSkill, path: string): ToolOutcome {
   const normalized = normalize(path);
 
   if (path.startsWith('/') || normalized === '..' || normalized.startsWith('../')) {
