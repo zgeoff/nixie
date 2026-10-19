@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { parseSkillsLock } from './parse-skills-lock';
 
-test('it reads each vendored skill pin by its name', () => {
+test('it reads the lock entry of each vendored skill by its name', () => {
   const entry = {
     source: 'https://github.com/example/skills',
     path: 'skills/pdf-forms',
@@ -15,11 +15,11 @@ test('it reads each vendored skill pin by its name', () => {
   });
 });
 
-test('it reads no pins when the definitions hold no lock', () => {
+test('it reads no lock entries when the definitions hold no lock', () => {
   expect(parseSkillsLock(undefined)).toStrictEqual({ entries: {}, problems: [] });
 });
 
-test('it refuses a pin to a short commit', () => {
+test('it refuses a lock entry with a short commit', () => {
   const entry = {
     source: 'https://github.com/example/skills',
     path: 'skills/pdf-forms',
@@ -35,7 +35,7 @@ test('it refuses a pin to a short commit', () => {
   });
 });
 
-test('it refuses a pin to a source that is not an https URL', () => {
+test('it refuses a lock entry with a source that is not an https URL', () => {
   const entry = {
     source: 'http://github.com/example/skills',
     path: 'skills/pdf-forms',
