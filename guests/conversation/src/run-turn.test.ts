@@ -70,6 +70,7 @@ test('it gives every query() nixie tools alone, no settings, skills or SDK memor
     {
       tools: [],
       allowedTools: ['mcp__nixie'],
+      thinking: { type: 'adaptive', display: 'summarized' },
       permissionMode: 'dontAsk',
       settingSources: [],
       strictMcpConfig: true,
@@ -290,6 +291,168 @@ test('it reports the context of the last model call and the profile cap at the t
     usage: { inputTokens: 500, cacheReadTokens: 68_000, cacheWriteTokens: 6700 },
     context: { size: 41_000, window: 400_000 },
   });
+});
+
+test('it carries the reasoning summary on the thinking frame, the thinking tokens on the turn end, and no signature on any frame', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({
+    text: 'The 09:25 ferry reaches the north pier by 08:55.',
+    thinking: {
+      summary: 'I list the ferries, then take the earliest that reaches the pier by 08:55.',
+      signature: 'c2lnbmF0dXJlLWJsb2I=',
+      thinkingTokens: 236,
+    },
+  });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Which ferry?' }],
+    }),
+    ctx.deps,
+  );
+
+  const reply = ctx.frames.at(2);
+
+  if (reply?.type !== 'assistant') {
+    throw new Error('the third frame is not an assistant frame');
+  }
+
+  expect(ctx.frames).toStrictEqual([
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
+    {
+      type: 'assistant',
+      messageID: expect.toBeString(),
+      text: '',
+      toolUses: [],
+      summary: 'I list the ferries, then take the earliest that reaches the pier by 08:55.',
+    },
+    {
+      type: 'assistant',
+      messageID: expect.toBeString(),
+      text: 'The 09:25 ferry reaches the north pier by 08:55.',
+      toolUses: [],
+    },
+    {
+      type: 'ended',
+      boundary: { sessionID: expect.toBeString(), messageID: reply.messageID },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      isError: false,
+      terminalReason: 'completed',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      thinkingTokens: 236,
+      context: { size: 10, window: 200_000 },
+    },
+  ]);
+
+  expect(JSON.stringify(ctx.frames)).not.toInclude('c2lnbmF0dXJlLWJsb2I');
+});
+
+test('it keeps a tool-call turn working under the summarized display, with a summary on each reply that thought', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    {
+      toolUse: { name: 'mcp__nixie__note_read', input: { name: 'groceries' } },
+      thinking: { summary: 'I read the groceries note.', signature: 'c2ln', thinkingTokens: 12 },
+    },
+    {
+      text: 'You need milk.',
+      thinking: { summary: 'The note lists milk.', signature: 'c2ln', thinkingTokens: 34 },
+    },
+  );
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  const assistants = ctx.frames.filter((frame) => frame.type === 'assistant');
+
+  expect(assistants).toStrictEqual([
+    {
+      type: 'assistant',
+      messageID: expect.toBeString(),
+      text: '',
+      toolUses: [],
+      summary: 'I read the groceries note.',
+    },
+    {
+      type: 'assistant',
+      messageID: expect.toBeString(),
+      text: '',
+      toolUses: [{ id: expect.toBeString(), name: 'mcp__nixie__note_read' }],
+    },
+    {
+      type: 'assistant',
+      messageID: expect.toBeString(),
+      text: '',
+      toolUses: [],
+      summary: 'The note lists milk.',
+    },
+    { type: 'assistant', messageID: expect.toBeString(), text: 'You need milk.', toolUses: [] },
+  ]);
+
+  const ended = ctx.frames.at(-1);
+
+  if (ended?.type !== 'ended') {
+    throw new Error('the turn did not end');
+  }
+
+  expect(ended.subtype).toBe('success');
+
+  // the result reports the turn's thinking tokens once, as the total across both model calls
+  expect(ended.thinkingTokens).toBe(46);
+});
+
+test('it keeps a resumed session working under the summarized display', async () => {
+  const ctx = await setupTest();
+
+  const runTurnAt = async (text: string, resume: SessionPoint | null) => {
+    await runTurn(
+      buildMockTurnFrame({
+        profile: { baseURL: ctx.model.url },
+        resume,
+        input: [{ uuid: crypto.randomUUID(), text }],
+      }),
+      { ...ctx.deps, toolServer: buildStubToolServer().config },
+    );
+
+    const last = ctx.frames.at(-1);
+
+    if (last?.type !== 'ended') {
+      throw new Error('the turn did not end');
+    }
+
+    return last.boundary;
+  };
+
+  ctx.model.addReplies(
+    { text: 'APPLE', thinking: { summary: 'I greet.', signature: 'c2ln', thinkingTokens: 5 } },
+    {
+      text: 'BANANA',
+      thinking: { summary: 'I recall the apple.', signature: 'c2ln', thinkingTokens: 7 },
+    },
+  );
+
+  const first = await runTurnAt('one', null);
+  const rerun = await runTurnAt('two', first);
+
+  const summaries = ctx.frames.flatMap((frame) =>
+    frame.type === 'assistant' && frame.summary !== undefined ? [frame.summary] : [],
+  );
+
+  const messages = JSON.stringify(ctx.model.requests.at(-1)?.body?.messages);
+
+  expect(summaries).toStrictEqual(['I greet.', 'I recall the apple.']);
+  expect(messages).toInclude('APPLE');
+  expect(rerun.sessionID).not.toBe(first.sessionID);
 });
 
 test('it marks the turn end as an error when the model API refuses the request', async () => {

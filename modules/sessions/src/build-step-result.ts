@@ -82,15 +82,26 @@ export function buildStepResult(
 
 // a record per reply with text, and one for the turn's end with the memory it placed
 function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
+  const replies = completed.turn.assistants.filter((assistant) => assistant.text !== '');
+  const reasoning = buildTurnReasoning(completed.turn);
+
   return [
-    ...completed.turn.assistants
-      .filter((assistant) => assistant.text !== '')
-      .map((assistant) =>
-        buildModelRecord(source, modelReplyCodec, {
-          payload: { messageID: assistant.messageID },
-          text: assistant.text,
-        }),
-      ),
+    ...replies.map((assistant, index) => {
+      // the summarized display gives the reasoning as its own message and reports the thinking
+      // tokens once per turn, so the turn's joined summary and total count sit on its last reply
+      const isLast = index === replies.length - 1;
+
+      return buildModelRecord(source, modelReplyCodec, {
+        payload: {
+          messageID: assistant.messageID,
+          ...(isLast && reasoning.thinkingTokens > 0
+            ? { thinkingTokens: reasoning.thinkingTokens }
+            : {}),
+        },
+        text: assistant.text,
+        ...(isLast && reasoning.summary !== '' ? { summary: reasoning.summary } : {}),
+      });
+    }),
     buildModelRecord(source, modelTurnEndedCodec, {
       payload: {
         ...buildTurnSummary(completed.turn),
@@ -107,6 +118,24 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
       },
     }),
   ];
+}
+
+interface TurnReasoning {
+  readonly summary: string;
+  readonly thinkingTokens: number;
+}
+
+function buildTurnReasoning(turn: GuestTurn): TurnReasoning {
+  const summary = turn.assistants
+    .flatMap((assistant) => (assistant.summary === undefined ? [] : [assistant.summary]))
+    .join('\n\n');
+
+  const thinkingTokens = turn.ended.reduce(
+    (total, frame) => total + (frame.thinkingTokens ?? 0),
+    0,
+  );
+
+  return { summary, thinkingTokens };
 }
 
 type EndedFrame = GuestTurn['ended'][number];
