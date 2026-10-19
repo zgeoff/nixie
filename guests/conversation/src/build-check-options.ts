@@ -2,9 +2,8 @@ import { join } from 'node:path';
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
 import type { CheckRequest } from '@heynixie/wire';
 
-// Builds the options of a checker query(): no tools, MCP server, settings, skills, memory, prompt
-// dispatch, CLI compaction or saved session, and a JSON verdict as the structured output.
-// options.env replaces the CLI's environment, so each variable goes in by name.
+// Builds the options of a checker query(). options.env replaces the CLI's environment, so each
+// variable goes in by name.
 export function buildCheckOptions(
   request: CheckRequest,
   env: Readonly<Record<string, string | undefined>>,
