@@ -32,6 +32,27 @@ test('it opens the database in WAL mode with a full sync on every commit', async
   expect(synchronous.rows).toStrictEqual([{ synchronous: 2 }]);
 });
 
+test('it waits 5 s for another connection by default', async () => {
+  const ctx = await setupTest();
+  const result = await sql<{ timeout: number }>`pragma busy_timeout`.execute(ctx.db);
+
+  expect(result.rows).toStrictEqual([{ timeout: 5000 }]);
+});
+
+test('it waits for another connection as long as the caller asks', async () => {
+  const ctx = await setupTest();
+
+  const short = new Kysely<unknown>({
+    dialect: buildSqliteWorkerDialect(`${ctx.path}-short`, { busyTimeoutMs: 50 }),
+  });
+
+  ctx.stack.defer(() => short.destroy());
+
+  const result = await sql<{ timeout: number }>`pragma busy_timeout`.execute(short);
+
+  expect(result.rows).toStrictEqual([{ timeout: 50 }]);
+});
+
 test('it leaves secure delete off unless the caller asks for it', async () => {
   const ctx = await setupTest();
 

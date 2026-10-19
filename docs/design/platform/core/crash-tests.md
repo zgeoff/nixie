@@ -35,8 +35,9 @@ designs applied whole or not at all.
 ## The harness
 
 The harness drives nixie through 5 hooks, and every hook exists only in a
-[test build](../code-layout.md#test-builds). The scripted model and the provider double run in the
-test process, outside the nixie process that a test kills, so their records survive every kill.
+[test build](../../../architecture/code-layout.md#test-builds). The scripted model and the provider
+double run in the test process, outside the nixie process that a test kills, so their records
+survive every kill.
 
 1. **Fault points.** Each transition in the core has a stable fault point ID. When a test names a
    point, the runner that reaches it pauses there and reports that it arrived. Other runners carry

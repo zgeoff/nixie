@@ -53,9 +53,9 @@ place of stages 3 to 9. The fixed rule allows a call whose effects are only `rea
 stage. The model receives the rule's ID and sentence as the tool result. **Why:** proposals arrive
 in slice 3, so a call that would ask has nowhere to wait.
 
-A [test build](../code-layout.md#test-builds) registers one more rule, `test.allow-send`, which
-allows `test.send` from the crash tests' test connector. A release build holds only the fixed rule.
-Slice 3 replaces both rules with the full pipeline and your seeded rules.
+A [test build](../../../architecture/code-layout.md#test-builds) registers one more rule,
+`test.allow-send`, which allows `test.send` from the crash tests' test connector. A release build
+holds only the fixed rule. Slice 3 replaces both rules with the full pipeline and your seeded rules.
 
 ## Effects
 

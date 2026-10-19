@@ -45,7 +45,7 @@
             "name": "agent-sdk",
             "modules": ["@anthropic-ai/claude-agent-sdk"],
             "allow": ["agent-sdk"],
-            "reason": "only guests/conversation imports the Agent SDK"
+            "reason": "only guests/conversation, and the evals that check the Agent SDK itself, import the Agent SDK"
           },
           {
             "name": "imp-client",

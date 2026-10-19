@@ -215,14 +215,15 @@ nixie handles `SIGTERM` itself, because Bun as PID 1 ignores it.
 
 ## Deployment configuration
 
-nixie reads its settings from one YAML file that the [deployment configuration](configuration.md)
-design covers. The deployment repo chooses how a merged pin reaches its hosts, where it keeps the
-recovery key, the backup backends, the heartbeat endpoint, the [model profiles](../core/models.md)
-with the role map, and any overrides of the [budget defaults](../policy/budgets.md#model-cost).
-These are configuration under 0020, not platform choices. Backups use the S3-compatible and other
-backends that Restic and rclone support, and nixie adopts no cloud provider. Every deployment
-honours writer shutdown, migrations, image compatibility and recovery, whether it runs on Compose or
-Kubernetes. The deployment checks that its recovery key decrypts the secrets on a clean host.
+nixie reads its settings from one YAML file that the
+[deployment configuration](../../../architecture/deployment/configuration.md) covers. The deployment
+repo chooses how a merged pin reaches its hosts, where it keeps the recovery key, the backup
+backends, the heartbeat endpoint, the [model profiles](../core/models.md) with the role map, and any
+overrides of the [budget defaults](../policy/budgets.md#model-cost). These are configuration under
+0020, not platform choices. Backups use the S3-compatible and other backends that Restic and rclone
+support, and nixie adopts no cloud provider. Every deployment honours writer shutdown, migrations,
+image compatibility and recovery, whether it runs on Compose or Kubernetes. The deployment checks
+that its recovery key decrypts the secrets on a clean host.
 
 ## Kubernetes
 

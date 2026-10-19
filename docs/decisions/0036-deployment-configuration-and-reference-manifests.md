@@ -1,17 +1,17 @@
 # 0036: Deployment configuration and reference manifests
 
 - Date: 2026-10-10
-- Updated: 2026-10-12
+- Updated: 2026-10-18
 - Status: decided
-- Design: [deployment configuration](../design/platform/deployment/configuration.md),
-  [deployment](../design/platform/deployment/deployment.md#kubernetes),
-  [code layout](../design/platform/code-layout.md#the-folders)
+- Architecture: [deployment configuration](../architecture/deployment/configuration.md),
+  [Kubernetes](../architecture/deployment/kubernetes.md),
+  [code layout](../architecture/code-layout.md#the-folders)
 
 nixie reads its deployment settings from one YAML file, validated by a zod schema at start. The file
 holds the model profiles, the role map, the internal address ranges, the definitions source, the web
 fetch limits and every other setting a design leaves to the deployment. It never holds a secret:
-secrets stay in the encrypted secrets file. A JSON schema generated from the zod schema documents
-the file in `docs/reference/`.
+secrets stay in the encrypted secrets file. A JSON Schema generated from the zod schema documents
+the file, and each release publishes it.
 
 nixie ships generic reference Kubernetes manifests in `deploy/kubernetes/`, beside the Compose
 recipe in `deploy/compose/`. They cover the StatefulSet, the web Deployment, the ingress with its
@@ -45,3 +45,5 @@ detail. A deployment repo keeps its own version of them.
 ## Changes
 
 - 2026-10-12: the live checks left the repo, so the manifests no longer give them a target.
+- 2026-10-18: the generated JSON Schema ships with each release instead of in `docs/reference/`, and
+  the record links the configuration and Kubernetes docs in the architecture docs.

@@ -11,9 +11,11 @@
   },
   "dependencies": {
     "@heynixie/clock": "workspace:*",
+    "@heynixie/logger": "workspace:*",
     "elysia": "catalog:",
     "kysely": "catalog:",
-    "xstate": "catalog:"
+    "xstate": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@heynixie/log": "workspace:*",

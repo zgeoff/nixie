@@ -52,6 +52,7 @@ test('it publishes an applied write as a version the writer made', async () => {
           source: 'owner',
           checks: { quote: 'exact' },
           evidence: { recordSequence: planned.bounds.end, start: 10, end: 19 },
+          model: 'claude-writer-1',
         },
       },
     ],
@@ -68,7 +69,12 @@ test('it publishes an applied write as a version the writer made', async () => {
   });
 
   expect(recalled.items).toMatchObject([
-    { text: 'You live at 4 Elm Row.', origin: 'memory_writer', source: 'owner' },
+    {
+      text: 'You live at 4 Elm Row.',
+      origin: 'memory_writer',
+      source: 'owner',
+      model: 'claude-writer-1',
+    },
   ]);
 });
 
@@ -155,6 +161,7 @@ test('it publishes every item the writer creates as a fact, never a self-note', 
           source: 'owner',
           checks: { quote: 'exact' },
           evidence: { recordSequence: planned.bounds.end, start: 19, end: 37 },
+          model: 'claude-writer-1',
         },
       },
     ],
@@ -316,6 +323,7 @@ test('it leaves out a write whose source was forgotten and counts it', async () 
           source: 'owner',
           checks: { quote: 'exact' },
           evidence: { recordSequence: planned.bounds.end, start: 0, end: 25 },
+          model: 'claude-writer-1',
         },
       },
     ],
@@ -350,6 +358,7 @@ test('it returns superseded for a batch the cursor no longer waits on', async ()
           source: 'owner',
           checks: { quote: 'exact' },
           evidence: { recordSequence: planned.bounds.end, start: 10, end: 19 },
+          model: 'claude-writer-1',
         },
       },
     ],
@@ -478,6 +487,7 @@ test('it leaves out a write whose message backed an item forgotten after the gat
           source: 'owner',
           checks: { quote: 'exact' },
           evidence: { recordSequence: planned.bounds.end, start: 10, end: 19 },
+          model: 'claude-writer-1',
         },
       },
     ],
