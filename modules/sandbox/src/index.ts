@@ -29,6 +29,7 @@ export type {
   CollectedOutput,
   Egress,
   ExecExit,
+  CollectFilesOptions,
   ExecResult,
   ExecSpec,
   GuestCommand,

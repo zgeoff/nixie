@@ -535,6 +535,21 @@ test('it lists every file under a directory at any depth, relative to it, throug
   expect(listed).toIncludeSameMembers(['a.txt', 'deep/b c.txt']);
 });
 
+test('it lists no file deeper than the depth bound through the guest', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: join(ctx.dir, 'work/a.txt'), content: new TextEncoder().encode('a') },
+    { path: join(ctx.dir, 'work/one/b.txt'), content: new TextEncoder().encode('b') },
+    { path: join(ctx.dir, 'work/one/two/c.txt'), content: new TextEncoder().encode('c') },
+  ]);
+
+  const listed = await sandbox.collectFiles(join(ctx.dir, 'work'), { maxDepth: 2 });
+
+  expect(listed).toIncludeSameMembers(['a.txt', 'one/b.txt']);
+});
+
 test('it lists no file under a missing directory', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec());

@@ -540,6 +540,21 @@ test('it lists every file under a directory at any depth, relative to it', async
   expect(listed).toIncludeSameMembers(['a.txt', 'deep/b.txt']);
 });
 
+test('it lists no file deeper than the depth bound', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  await sandbox.copyIn([
+    { path: '/home/nixie/work/a.txt', content: new TextEncoder().encode('a') },
+    { path: '/home/nixie/work/one/b.txt', content: new TextEncoder().encode('b') },
+    { path: '/home/nixie/work/one/two/c.txt', content: new TextEncoder().encode('c') },
+  ]);
+
+  const listed = await sandbox.collectFiles('/home/nixie/work', { maxDepth: 2 });
+
+  expect(listed).toIncludeSameMembers(['a.txt', 'one/b.txt']);
+});
+
 test('it lists no file under a directory the sandbox does not hold', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);

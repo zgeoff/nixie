@@ -1,6 +1,7 @@
 import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import type {
+  CollectFilesOptions,
   FileSpec,
   GuestHome,
   ProcessIO,
@@ -52,7 +53,7 @@ export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
     copyIn: (files) => writeGuestFiles(ctx.fsRoot, files),
     copyOut: (paths) => Promise.all(paths.map((path) => readGuestFile(ctx.fsRoot, path))),
     resolveHome: (env) => Promise.try(() => resolveGuestHome(ctx.fsRoot, env)),
-    collectFiles: (dir) => collectGuestFiles(ctx.fsRoot, dir),
+    collectFiles: (dir, options) => collectGuestFiles(ctx.fsRoot, dir, options),
     applyMove: (from, to) => applyGuestMove(ctx.fsRoot, from, to),
     toolRoute: async () => {
       if (!ctx.spec.toolRoute) {
@@ -137,22 +138,45 @@ function resolveGuestHome(fsRoot: string, env: Readonly<Record<string, string>>)
   return { copyPath: join('/', below), ownPath: home };
 }
 
-async function collectGuestFiles(fsRoot: string, dir: string): Promise<readonly string[]> {
+async function collectGuestFiles(
+  fsRoot: string,
+  dir: string,
+  options: CollectFilesOptions = {},
+): Promise<readonly string[]> {
   const root = resolveGuestPath(fsRoot, dir);
 
-  const entries = await readdir(root, { recursive: true, withFileTypes: true }).catch(
-    (error: unknown) => {
-      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-        return [];
+  try {
+    return await collectFilesBelow(root, options.maxDepth ?? Number.POSITIVE_INFINITY);
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+// a walk that reads one folder level per step, so a bounded depth reads no folder below it
+async function collectFilesBelow(dir: string, depth: number): Promise<readonly string[]> {
+  if (depth < 1) {
+    return [];
+  }
+
+  const entries = await readdir(dir, { withFileTypes: true });
+
+  const listed = await Promise.all(
+    entries.map(async (entry) => {
+      if (entry.isDirectory()) {
+        const below = await collectFilesBelow(join(dir, entry.name), depth - 1);
+
+        return below.map((path) => join(entry.name, path));
       }
 
-      throw error;
-    },
+      return entry.isFile() ? [entry.name] : [];
+    }),
   );
 
-  return entries
-    .filter((entry) => entry.isFile())
-    .map((entry) => relative(root, join(entry.parentPath, entry.name)));
+  return listed.flat();
 }
 
 // a rename, which replaces a file at the target in one step

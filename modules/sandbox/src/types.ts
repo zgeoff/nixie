@@ -189,6 +189,12 @@ export interface GuestHome {
   readonly ownPath: string;
 }
 
+export interface CollectFilesOptions {
+  // the most path segments a listed file's relative path holds, as find's -maxdepth counts them: a
+  // file directly in the directory is 1 deep, and a file in a folder of it is 2 deep
+  readonly maxDepth?: number;
+}
+
 export interface Sandbox {
   readonly id: string;
   readonly spec: SandboxSpec;
@@ -201,8 +207,9 @@ export interface Sandbox {
   // rejects a HOME outside the sandbox
   readonly resolveHome: (env: Readonly<Record<string, string>>) => Promise<GuestHome>;
 
-  // every file under the directory, at any depth, relative to it; none for a missing directory
-  readonly collectFiles: (dir: string) => Promise<readonly string[]>;
+  // every file under the directory down to the options' depth, or at any depth with none, relative
+  // to it; none for a missing directory
+  readonly collectFiles: (dir: string, options?: CollectFilesOptions) => Promise<readonly string[]>;
 
   // moves one file to another path in one step, replacing a file there
   readonly applyMove: (from: string, to: string) => Promise<void>;

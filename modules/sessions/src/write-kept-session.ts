@@ -67,7 +67,8 @@ interface SessionFiles {
 }
 
 // Finds the session's files in the sandbox, under the first project folder that holds its
-// transcript. A sandbox that holds no transcript of the session throws.
+// transcript. A sandbox that holds no transcript of the session throws. Each list reaches only the
+// transcripts and the session's own side folder, so other sessions' files never fill its cap.
 async function findSessionFiles(
   sandbox: Sandbox,
   command: GuestCommand,
@@ -77,9 +78,9 @@ async function findSessionFiles(
 
   const projectsDir = join(home.copyPath, configProjectsDir);
 
-  const listed = await sandbox.collectFiles(projectsDir);
+  const transcripts = await sandbox.collectFiles(projectsDir, { maxDepth: 2 });
 
-  const transcript = listed
+  const transcript = transcripts
     .map((path) => path.split('/'))
     .find((parts) => parts.length === 2 && parts[1] === `${sessionID}.jsonl`);
 
@@ -87,14 +88,13 @@ async function findSessionFiles(
     throw new Error(`the sandbox ${sandbox.id} holds no transcript of session ${sessionID}`);
   }
 
-  const project = `${transcript[0] ?? ''}/`;
+  const projectDir = join(projectsDir, transcript[0] ?? '');
+
+  const sideFiles = await sandbox.collectFiles(join(projectDir, sessionID));
 
   return {
-    projectDir: join(projectsDir, project),
-    files: listed
-      .filter((path) => path.startsWith(project))
-      .map((path) => path.slice(project.length))
-      .filter((file) => file === `${sessionID}.jsonl` || file.startsWith(`${sessionID}/`)),
+    projectDir,
+    files: [`${sessionID}.jsonl`, ...sideFiles.map((file) => join(sessionID, file))],
   };
 }
 

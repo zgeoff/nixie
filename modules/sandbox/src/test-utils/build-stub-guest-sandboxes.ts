@@ -245,10 +245,10 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
     },
 
     // a list and a move run in the guest, as imp runs them, so a sleeping sandbox refuses them
-    collectFiles: async (dir) => {
+    collectFiles: async (dir, options) => {
       await requireAwake();
 
-      return collectFiles(own.disk, dir);
+      return collectFiles(own.disk, dir, options?.maxDepth ?? Number.POSITIVE_INFINITY);
     },
     applyMove: async (from, to) => {
       await requireAwake();
@@ -350,14 +350,15 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: string | unde
   });
 }
 
-// every file under the directory, relative to it; the disk holds files only, so a directory is the
-// prefix its files share
-function collectFiles(disk: StubGuestDisk, dir: string): readonly string[] {
+// every file under the directory down to the depth, relative to it; the disk holds files only, so a
+// directory is the prefix its files share
+function collectFiles(disk: StubGuestDisk, dir: string, maxDepth: number): readonly string[] {
   const prefix = join(dir, '/');
 
   return [...disk.files.keys()]
     .filter((path) => path.startsWith(prefix))
-    .map((path) => path.slice(prefix.length));
+    .map((path) => path.slice(prefix.length))
+    .filter((path) => path.split('/').length <= maxDepth);
 }
 
 // a rename: it replaces a file at the target, and fails on a missing source or a directory target

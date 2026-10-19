@@ -1,4 +1,5 @@
 import type {
+  CollectFilesOptions,
   ExecResult,
   ExecSpec,
   FileSpec,
@@ -52,7 +53,7 @@ export function buildImpSandbox(ctx: ImpSandboxContext): Sandbox {
     copyIn: (files) => writeGuestFiles(ctx, files),
     copyOut: (paths) => Promise.all(paths.map((path) => readGuestFile(ctx, path))),
     resolveHome: (env) => Promise.try(() => resolveGuestHome(env)),
-    collectFiles: (dir) => collectGuestFiles(ctx, dir),
+    collectFiles: (dir, options) => collectGuestFiles(ctx, dir, options),
     applyMove: (from, to) => applyGuestMove(ctx, from, to),
     toolRoute: async () => {
       await startRoute(ctx);
@@ -204,13 +205,22 @@ function resolveGuestHome(env: Readonly<Record<string, string>>): GuestHome {
   return { copyPath: home, ownPath: home };
 }
 
-// a missing directory lists nothing; find separates the paths with NUL, which no path holds
-const listScript = '[ -d "$1" ] || exit 0; cd -- "$1" && find . -type f -print0';
+// a missing directory lists nothing; the arguments after the directory bound find's depth, and find
+// separates the paths with NUL, which no path holds
+const listScript = '[ -d "$1" ] || exit 0; cd -- "$1" && shift && find . "$@" -type f -print0';
 
-async function collectGuestFiles(ctx: ImpSandboxContext, dir: string): Promise<readonly string[]> {
+// The list comes back through the output cap, which guards against a guest that prints without end,
+// so a caller that needs only the top of a tree bounds the depth, and deeper files never fill it.
+async function collectGuestFiles(
+  ctx: ImpSandboxContext,
+  dir: string,
+  options: CollectFilesOptions = {},
+): Promise<readonly string[]> {
   requireGuestPath(dir);
 
-  const io = await startImpProcess(ctx, { argv: ['sh', '-c', listScript, 'sh', dir] });
+  const depth = options.maxDepth === undefined ? [] : ['-maxdepth', String(options.maxDepth)];
+
+  const io = await startImpProcess(ctx, { argv: ['sh', '-c', listScript, 'sh', dir, ...depth] });
   const result = await runCommand(io, undefined, undefined);
 
   requireSuccess(result, `listing ${dir}`);

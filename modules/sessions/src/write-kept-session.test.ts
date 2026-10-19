@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import {
   buildMockSandboxSpec,
   buildStubGuestSandboxes,
@@ -64,6 +64,59 @@ test('it carries the transcript and side folder into the replacement, with no st
   ]);
 
   expect(new TextDecoder().decode(transcript?.content)).toBe('{"uuid":"a"}\n');
+});
+
+test("it lists only the transcripts and the session's own side folder, and copies no other session's files", async () => {
+  const ctx = await setupTest();
+  const source = await ctx.adapter.create(ctx.spec);
+  const to = await ctx.adapter.create(ctx.spec);
+
+  const sessionID = crypto.randomUUID();
+  const otherID = crypto.randomUUID();
+
+  await source.copyIn([
+    {
+      path: `/home/nixie/.claude/projects/-home-nixie-conversation/${sessionID}.jsonl`,
+      content: new TextEncoder().encode('{"uuid":"a"}\n'),
+    },
+    {
+      path: `/home/nixie/.claude/projects/-home-nixie-conversation/${sessionID}/subagents/agent-1.jsonl`,
+      content: new TextEncoder().encode('{"uuid":"b"}\n'),
+    },
+    {
+      path: `/home/nixie/.claude/projects/-home-nixie-conversation/${otherID}.jsonl`,
+      content: new TextEncoder().encode('{"uuid":"c"}\n'),
+    },
+    {
+      path: `/home/nixie/.claude/projects/-home-nixie-conversation/${otherID}/subagents/agent-2.jsonl`,
+      content: new TextEncoder().encode('{"uuid":"d"}\n'),
+    },
+    {
+      path: `/home/nixie/.claude/projects/-home-nixie-other/${otherID}/subagents/agent-3.jsonl`,
+      content: new TextEncoder().encode('{"uuid":"e"}\n'),
+    },
+  ]);
+
+  const lists = mock(source.collectFiles);
+
+  await writeKeptSession({
+    from: { ...source, collectFiles: lists },
+    to,
+    command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
+    sessionID,
+  });
+
+  const landed = await to.collectFiles('/home/nixie/.claude/projects');
+
+  expect(lists.mock.calls).toStrictEqual([
+    ['/home/nixie/.claude/projects', { maxDepth: 2 }],
+    [`/home/nixie/.claude/projects/-home-nixie-conversation/${sessionID}`],
+  ]);
+
+  expect(landed).toIncludeSameMembers([
+    `-home-nixie-conversation/${sessionID}.jsonl`,
+    `-home-nixie-conversation/${sessionID}/subagents/agent-1.jsonl`,
+  ]);
 });
 
 test('it wakes a sleeping old sandbox before it lists the session', async () => {
