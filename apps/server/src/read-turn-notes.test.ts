@@ -178,7 +178,7 @@ test('it reads the note over a span given, headed as the turns it covers, and le
       ownerName: 'Avery',
       defaultZone: 'Australia/Sydney',
     },
-    { after: 0, through: last.sequence },
+    { span: { after: 0, through: last.sequence }, isNewSession: true },
   );
 
   expect({

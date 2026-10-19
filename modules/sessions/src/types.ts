@@ -195,7 +195,7 @@ export interface ConversationRun {
   // the note of what happened outside the conversation since its last turn, such as memory changes
   // and events, which goes before the turn's first message, and the sequence it covers; given a
   // span, the note a new session's recent turns carry again over that span
-  readonly readTurnNote?: (span?: TurnNoteRange) => Promise<TurnNote>;
+  readonly readTurnNote?: (request?: TurnNoteRequest) => Promise<TurnNote>;
 
   // the lines of a new session's status, each read when the session opens
   readonly status: StatusRegistry;
@@ -303,6 +303,13 @@ export interface TurnNoteRange {
   readonly through: number;
 }
 
+// What a turn note covers: a span a new session's recent turns carry again, or by default the
+// range since the last turn's note, and whether the turn opens a new session.
+export interface TurnNoteRequest {
+  readonly span?: TurnNoteRange;
+  readonly isNewSession?: boolean;
+}
+
 // One thing that happened outside the conversation, as its event kind read it from the log.
 export interface NotedEvent<Detail> {
   // the sequence of the record it came from, which orders events of every kind, oldest first
@@ -334,6 +341,14 @@ export interface EventKind<Detail> {
     events: readonly NotedEvent<Detail>[],
   ) => Promise<readonly NotedEvent<Detail>[]>;
   readonly render: (detail: Detail, settings: EventSettings) => string;
+
+  // whether the block lists every event of this kind outside its cap, for a notice that no later
+  // note gives again
+  readonly isUncapped?: boolean;
+
+  // whether this kind's events speak of the session the last turn ran in, so the block leaves them
+  // out of a new session's notes
+  readonly isSessionBound?: boolean;
 }
 
 // An event as the registry read it, before the block picks the events it lists.
@@ -357,4 +372,6 @@ export type EventRegistry = readonly {
   readonly name: string;
   readonly read: (range: TurnNoteRange) => Promise<readonly ReadEvent[]>;
   readonly complete: (events: readonly ReadEvent[]) => Promise<readonly BoundEvent[]>;
+  readonly isUncapped: boolean;
+  readonly isSessionBound: boolean;
 }[];

@@ -38,7 +38,7 @@ test('it summarizes a task session and returns the summary record through its la
   ]);
 
   const outcome = await runSessionCompaction(
-    { ...ctx.run, compaction: { threshold: 0.8, summaryTokens: 2000 } },
+    { ...ctx.run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
     {
       taskID: 'task-7',
       resume: {
@@ -82,7 +82,7 @@ test('it sends the summary call the task profile, the system prompt and an instr
   const ctx = await setupTest();
 
   await runSessionCompaction(
-    { ...ctx.run, compaction: { threshold: 0.8, summaryTokens: 2000 } },
+    { ...ctx.run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
     {
       taskID: 'task-7',
       resume: {
@@ -131,7 +131,7 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
   ]);
 
   const outcome = await runSessionCompaction(
-    { ...ctx.run, compaction: { threshold: 0.8, summaryTokens: 100 } },
+    { ...ctx.run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 100 } },
     {
       taskID: 'task-7',
       resume: {
@@ -167,7 +167,7 @@ test('it returns a failure record with the count in a row when the summary call 
   ]);
 
   const outcome = await runSessionCompaction(
-    { ...ctx.run, compaction: { threshold: 0.8, summaryTokens: 2000 } },
+    { ...ctx.run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
     {
       taskID: 'task-7',
       resume: {
@@ -207,7 +207,7 @@ test('it throws the abort reason instead of a failure record when the signal abo
   const ctx = await setupTest();
 
   const compaction = runSessionCompaction(
-    { ...ctx.run, compaction: { threshold: 0.8, summaryTokens: 2000 } },
+    { ...ctx.run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
     {
       taskID: 'task-7',
       resume: {
