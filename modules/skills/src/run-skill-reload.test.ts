@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { readRecords, startWriter } from '@heynixie/log';
-import { loadTaskSkills } from './load-task-skills';
+import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 import { runSkillReload } from './run-skill-reload';
 
 // the writer's data directory holds the definitions root too, so one removal cleans up both
@@ -59,7 +59,7 @@ test('it moves one skill to the version a fresh seed holds and records its old a
 
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  const pinned = await loadTaskSkills(ctx.log, {
+  const pinned = await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
     inForce: first.inForce,
     list: ['bird-log', 'tide-tables'],
@@ -92,7 +92,7 @@ test('it moves one skill to the version a fresh seed holds and records its old a
     'tide-tables',
   );
 
-  const skills = await loadTaskSkills(ctx.log, {
+  const skills = await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
     inForce: first.inForce,
     list: ['bird-log', 'tide-tables'],
@@ -156,7 +156,12 @@ test('it moves every skill, joins one the list gained and drops one the definiti
 
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  await loadTaskSkills(ctx.log, { thread: 'task-a', inForce: first.inForce, list: ['bird-log'] });
+  await loadOrPinTaskSkills(ctx.log, {
+    thread: 'task-a',
+    inForce: first.inForce,
+    list: ['bird-log'],
+  });
+
   await rm(join(ctx.root, 'skills', 'bird-log'), { recursive: true });
 
   const outcome = await runSkillReload(
@@ -176,7 +181,7 @@ test('it moves every skill, joins one the list gained and drops one the definiti
     null,
   );
 
-  const skills = await loadTaskSkills(ctx.log, {
+  const skills = await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
     inForce: first.inForce,
     list: ['bird-log', 'tide-tables'],
@@ -221,7 +226,7 @@ test("it drops a pinned skill that left the caller's list when a reload names it
 
   const seeded = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  await loadTaskSkills(ctx.log, {
+  await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
     inForce: seeded.inForce,
     list: ['tide-tables'],
@@ -243,7 +248,7 @@ test("it drops a pinned skill that left the caller's list when a reload names it
     'tide-tables',
   );
 
-  const skills = await loadTaskSkills(ctx.log, {
+  const skills = await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
     inForce: seeded.inForce,
     list: [],

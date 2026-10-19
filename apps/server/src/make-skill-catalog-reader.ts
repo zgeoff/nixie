@@ -3,7 +3,7 @@ import type { Log } from '@heynixie/log';
 import type { ModelProfile } from '@heynixie/models';
 import { getCLIContextWindow } from '@heynixie/models';
 import type { SkillsConfig } from '@heynixie/skills';
-import { loadTaskSkills, renderSkillCatalog } from '@heynixie/skills';
+import { loadOrPinTaskSkills, renderSkillCatalog } from '@heynixie/skills';
 
 export interface SkillCatalogReaderOptions {
   readonly log: Log;
@@ -27,7 +27,7 @@ export function makeSkillCatalogReader(
   return async (taskID) => {
     const inForce = options.readInForce();
 
-    const skills = await loadTaskSkills(options.log, {
+    const skills = await loadOrPinTaskSkills(options.log, {
       thread: taskID,
       inForce,
       list: inForce?.conversationSkills ?? [],

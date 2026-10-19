@@ -1,6 +1,6 @@
 import type { ToolOutcome, ToolRun } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
-import { loadTaskSkills } from './load-task-skills';
+import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 import { planSkillReload } from './plan-skill-reload';
 import { recordSkillReload } from './record-skill-reload';
 import type { SkillToolsContext } from './types';
@@ -21,7 +21,7 @@ export async function runSkillReload(
 
   const list = context.readSkillList(run, inForce);
 
-  const skills = await loadTaskSkills(context.log, { thread: run.thread, inForce, list });
+  const skills = await loadOrPinTaskSkills(context.log, { thread: run.thread, inForce, list });
 
   if (name !== null && !list.includes(name) && !skills.some((skill) => skill.name === name)) {
     return { status: 'error', message: `the skill ${name} is not on your skill list` };

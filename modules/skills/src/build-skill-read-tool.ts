@@ -1,8 +1,8 @@
 import { normalize } from 'node:path/posix';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
-import type { TaskSkill } from './load-task-skills';
-import { loadTaskSkills } from './load-task-skills';
+import type { TaskSkill } from './load-or-pin-task-skills';
+import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 import type { SkillToolsContext } from './types';
 
 // the input as the input schema accepted it
@@ -71,7 +71,7 @@ export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
       const name = input.name;
       const inForce = context.readInForce();
 
-      const skills = await loadTaskSkills(context.log, {
+      const skills = await loadOrPinTaskSkills(context.log, {
         thread: tool.run.thread,
         inForce,
         list: context.readSkillList(tool.run, inForce),
