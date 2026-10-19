@@ -29,6 +29,9 @@ export function buildCompactionHeadsUpKind(
     // a new session's context no longer holds what the turn that warned had read
     isSessionBound: true,
     read: async (range) => {
+      // the most turn ends one note reads, past which the block's count of more stops growing
+      const readLimit = 1000;
+
       const records = await readRecords(log, {
         afterSequence: range.after,
         beforeSequence: range.through + 1,
@@ -47,9 +50,6 @@ export function buildCompactionHeadsUpKind(
       `Compaction in about ${formatTokens(detail.tokensLeft)} tokens (at ${String(Math.round(detail.threshold * 100))}% of the window). Save anything worth keeping now.`,
   };
 }
-
-// the most turn ends one note reads, past which the block's count of more stops growing
-const readLimit = 1000;
 
 async function readHeadsUp(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
@@ -92,9 +92,6 @@ interface TurnSpan {
   readonly before: number;
 }
 
-// the turn ends one read of a session's earlier turns takes
-const pageSize = 100;
-
 // The newest earlier turn of the session that ended past the heads-up, read a page at a time back
 // to the session's opening, or null when none did.
 async function readEarlierHeadsUp(
@@ -102,6 +99,9 @@ async function readEarlierHeadsUp(
   headsUp: number,
   span: TurnSpan,
 ): Promise<LogRecord | null> {
+  // the turn ends one read of a session's earlier turns takes
+  const pageSize = 100;
+
   const page = await readRecords(log, {
     afterSequence: span.after,
     beforeSequence: span.before,
