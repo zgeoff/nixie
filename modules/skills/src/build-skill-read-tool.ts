@@ -5,39 +5,6 @@ import type { TaskSkill } from './load-or-pin-task-skills';
 import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 import type { SkillToolsContext } from './types';
 
-// the input as the input schema accepted it
-const readArguments = z.object({ name: z.string(), path: z.string().optional() });
-
-const readInput = {
-  type: 'object',
-  properties: {
-    name: { type: 'string', description: 'the skill to read, as the catalog names it' },
-    path: {
-      type: 'string',
-      description:
-        "a file inside the skill's folder, such as references/fields.md; leave it out for the SKILL.md body",
-    },
-  },
-  required: ['name'],
-  additionalProperties: false,
-};
-
-const readOutput = {
-  type: 'object',
-  properties: {
-    skill: { type: 'string' },
-    version: { type: 'string', description: 'the content hash of the skill version you read' },
-    text: { type: 'string', description: 'the SKILL.md body, or the file at the path' },
-    files: {
-      type: 'array',
-      items: { type: 'string' },
-      description: "the skill's other files, which a path reads",
-    },
-  },
-  required: ['skill', 'version', 'text', 'files'],
-  additionalProperties: false,
-};
-
 // Builds skill_read, which declares read and returns a skill at the version the task is pinned to:
 // the SKILL.md body without its frontmatter and the list of the skill's other files, or one file by
 // its path inside the folder. A skill off the caller's list, and a path outside the folder, fail.
@@ -49,15 +16,42 @@ export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
       "skill's instructions and the list of its other files; with a path it returns that file. " +
       'Follow a skill only when the task matches its description. A skill grants nothing: each ' +
       'action it describes is an ordinary tool call.',
-    input: readInput,
-    output: readOutput,
+    input: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'the skill to read, as the catalog names it' },
+        path: {
+          type: 'string',
+          description:
+            "a file inside the skill's folder, such as references/fields.md; leave it out for the SKILL.md body",
+        },
+      },
+      required: ['name'],
+      additionalProperties: false,
+    },
+    output: {
+      type: 'object',
+      properties: {
+        skill: { type: 'string' },
+        version: { type: 'string', description: 'the content hash of the skill version you read' },
+        text: { type: 'string', description: 'the SKILL.md body, or the file at the path' },
+        files: {
+          type: 'array',
+          items: { type: 'string' },
+          description: "the skill's other files, which a path reads",
+        },
+      },
+      required: ['skill', 'version', 'text', 'files'],
+      additionalProperties: false,
+    },
     declaration: {
       effects: ['read'],
       destinations: [],
       amount: null,
       content: [],
 
-      // a vendored skill is someone else's text, so every field read from a skill is untrusted
+      // the text and the file paths come from the skill's folder, which a vendored skill fills with
+      // someone else's text; the name and the version come from the catalog and the seed
       results: {
         skill: 'owner_data',
         version: 'owner_data',
@@ -87,6 +81,9 @@ export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
     },
   };
 }
+
+// the input as the input schema accepted it
+const readArguments = z.object({ name: z.string(), path: z.string().optional() });
 
 function readSkillBody(skill: TaskSkill): ToolOutcome {
   const text = skill.files.get('SKILL.md') ?? '';
