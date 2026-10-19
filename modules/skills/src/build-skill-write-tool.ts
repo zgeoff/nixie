@@ -1,6 +1,6 @@
 import { createShortID } from '@heynixie/db';
 import type { DefinitionsInForce, ParseProblem, ParsedSkill } from '@heynixie/definitions';
-import { checkSkillFiles, findSkillVersions } from '@heynixie/definitions';
+import { checkSkillFiles, loadSkillVersions } from '@heynixie/definitions';
 import { writeRecords } from '@heynixie/log';
 import { checkUntypedToken, defaultGateLimits } from '@heynixie/memory';
 import type { ToolCall, ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
@@ -141,7 +141,7 @@ async function readOwnText(
   context: SkillToolsContext,
   inForce: DefinitionsInForce,
 ): Promise<string> {
-  const versions = await findSkillVersions(
+  const versions = await loadSkillVersions(
     context.log.writer.db,
     inForce.skills.map((skill) => skill.skillHash),
   );
