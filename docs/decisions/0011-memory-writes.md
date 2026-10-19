@@ -1,7 +1,7 @@
 # 0011: Which memory writes skip review
 
 - Date: 2026-10-08
-- Updated: 2026-10-16
+- Updated: 2026-10-18
 - Status: decided
 - Design: [memory writes](../design/platform/memory/writes.md)
 - Research:
@@ -34,9 +34,9 @@ cannot reach. The memory reads as text the model wrote, with your quote kept as 
 
 A self-note is an item that nixie writes about itself, such as its tastes or how something landed
 with you. No words of yours back it, so every self-note is a proposal, and only the conversation
-writes one. A self-note is never pinned, and it reaches the conversation labelled with the model
-that wrote it and its date. An allow rule that skips review for a self-note must name that kind of
-item, so a rule on `memory.remember` alone never covers one.
+writes one. You can pin an active self-note as you pin any other item, and it reaches the
+conversation labelled with the model that wrote it and its date. An allow rule that skips review for
+a self-note must name that kind of item, so a rule on `memory.remember` alone never covers one.
 
 Dictated text never counts as evidence. A `dictated` span is text that a voice client transcribed
 from speech. A memory write whose quote touches a `dictated` span becomes a proposal, and during a
@@ -117,3 +117,4 @@ you answer when you choose, singly or through the approval digest from
 - 2026-10-14: an allow rule covers only the tool it names, so a rule on `memory.remember` never
   covers an edit through `memory.edit`.
 - 2026-10-15: record 0042, Dictated text and memory, merged into this record.
+- 2026-10-18: you can pin an active self-note, as you can pin an item of any subject.
