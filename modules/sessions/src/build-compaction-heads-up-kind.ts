@@ -25,6 +25,9 @@ export function buildCompactionHeadsUpKind(
 ): EventKind<CompactionHeadsUp> {
   return {
     name: 'compaction_heads_up',
+
+    // a later note never repeats the heads-up, so the cap never hides it
+    isUncapped: true,
     read: async (range) => {
       const records = await readRecords(log, {
         afterSequence: range.after,

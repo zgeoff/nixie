@@ -8,9 +8,9 @@ export interface EventsBlock {
   readonly count: number;
 }
 
-// Reads every registered kind's events in the range, picks the oldest up to the cap, and has each
-// kind complete only its listed events, so nothing past the cap is read in full or recorded as
-// delivered. It renders the events block, or null when nothing happened.
+// Reads every registered kind's events in the range, picks every uncapped kind's events and the
+// oldest others up to the cap, and has each kind complete only its listed events, so nothing past
+// the cap is read in full or recorded as delivered. It renders the block, or null for no events.
 export async function readEventsBlock(
   registry: EventRegistry,
   range: TurnNoteRange,
@@ -18,8 +18,14 @@ export async function readEventsBlock(
 ): Promise<EventsBlock> {
   const read = await Promise.all(registry.map((kind) => kind.read(range)));
 
+  const uncapped = new Set(registry.filter((kind) => kind.isUncapped).map((kind) => kind.name));
+
   const events = read.flat().toSorted((left, right) => left.sequence - right.sequence);
-  const listed = events.slice(0, eventsCap);
+
+  const listed = [
+    ...events.filter((event) => uncapped.has(event.kind)),
+    ...events.filter((event) => !uncapped.has(event.kind)).slice(0, eventsCap),
+  ];
 
   const completed = await Promise.all(
     registry.map((kind) => kind.complete(listed.filter((event) => event.kind === kind.name))),

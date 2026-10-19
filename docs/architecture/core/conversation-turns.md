@@ -228,9 +228,10 @@ The conversation hears of what happened outside it through the events block, whi
 user's message on the next turn. The block lists memory that changed outside the conversation, the
 user's answers to memory proposals, nixie's restarts, the conversation's own turns that failed and
 were retried, and the warning that compaction is near, each after its time, oldest first, up to a
-cap and then a count of the rest. A turn after which nothing happened gets no block. The block reads
-a range of the log, from the sequence the last turn's note covered to the log's head, so the next
-turn's note starts where this one ends and no event appears twice.
+cap and then a count of the rest. One exception: a kind whose notice no later note gives again, such
+as the compaction warning, lists every event outside the cap. A turn after which nothing happened
+gets no block. The block reads a range of the log, from the sequence the last turn's note covered to
+the log's head, so the next turn's note starts where this one ends and no event appears twice.
 
 Each kind of event is one entry in a registry: its name, how it reads its events in a range of the
 log, and how one event's line renders. The block merges every entry's events by sequence, so a new

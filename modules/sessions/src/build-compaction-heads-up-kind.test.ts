@@ -48,6 +48,55 @@ test('it renders the heads-up as a system notice with the tokens left, as the ev
   );
 });
 
+test('it lists the heads-up after ten earlier events fill the block', async () => {
+  const ctx = await setupTest();
+
+  const earlier = await writeRecords(
+    ctx.tasks.context.log,
+    Array.from({ length: 10 }, () => ({
+      kind: 'model.turn_ended' as const,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'task-garden',
+    })),
+  );
+
+  const [, turn] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { contextSize: 142_000, contextWindow: 200_000 },
+    },
+  ]);
+
+  invariant(turn);
+
+  const note = await readEventsNote(
+    buildEventRegistry([
+      {
+        name: 'doorbell',
+        read: () =>
+          Promise.resolve(
+            earlier.map((record) => ({ sequence: record.sequence, at: 0, detail: null })),
+          ),
+        render: () => 'The doorbell rang.',
+      },
+      buildCompactionHeadsUpKind(ctx.tasks.context.log, { threshold: 0.8, headsUp: 0.7 }),
+    ]),
+    { after: 0, through: turn.sequence },
+    { ownerName: null, timeZone: 'UTC' },
+  );
+
+  expect(note?.split('\n').at(-1)).toEndWith(
+    ' · Compaction in about 18k tokens (at 80% of the window). Save anything worth keeping now.',
+  );
+});
+
 test('it gives exactly one heads-up for a session whose turns cross the heads-up and stay past it', async () => {
   const ctx = await setupTest();
 

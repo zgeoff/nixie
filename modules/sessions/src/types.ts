@@ -327,6 +327,10 @@ export interface EventKind<Detail> {
     events: readonly NotedEvent<Detail>[],
   ) => Promise<readonly NotedEvent<Detail>[]>;
   readonly render: (detail: Detail, settings: EventSettings) => string;
+
+  // whether the block lists every event of this kind outside its cap, for a notice that no later
+  // note gives again
+  readonly isUncapped?: boolean;
 }
 
 // An event as the registry read it, before the block picks the events it lists.
@@ -350,4 +354,5 @@ export type EventRegistry = readonly {
   readonly name: string;
   readonly read: (range: TurnNoteRange) => Promise<readonly ReadEvent[]>;
   readonly complete: (events: readonly ReadEvent[]) => Promise<readonly BoundEvent[]>;
+  readonly isUncapped: boolean;
 }[];
