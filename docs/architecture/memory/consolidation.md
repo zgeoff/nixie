@@ -53,6 +53,8 @@ reason going back to the model, in these cases:
 - a change names an item the session was never shown, in its prompt or through a recall;
 - a change has the wrong shape: a merge needs 2 or more items and new text, a rewrite one item and
   new text, and a retirement one item and no text;
+- a merge names items of different subjects, because the merged item keeps its first input's subject
+  and would drop the others' from recall;
 - the new text holds a destination-like token, such as an email address or a URL, that none of the
   change's items holds.
 

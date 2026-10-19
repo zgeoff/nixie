@@ -29,7 +29,7 @@ test('it reads a readable item with every version and a forgotten item as only i
         shortID: active.shortID,
         state: 'active',
         isPinned: false,
-        kind: 'fact',
+        subject: 'owner',
         versions: [
           {
             version: 1,
@@ -56,12 +56,12 @@ test('it reads a readable item with every version and a forgotten item as only i
   });
 });
 
-test('it heads the file with schema version 2, the export time and the mock snapshot hash', () => {
+test('it heads the file with schema version 3, the export time and the mock snapshot hash', () => {
   const chunks = readMockMemoryExport(new Date('2026-10-14T08:00:00.000Z'));
 
   expect(JSON.parse(chunks.join(''))).toStrictEqual({
     header: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:mock',
     },

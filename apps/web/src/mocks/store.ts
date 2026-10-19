@@ -185,7 +185,7 @@ const memoryItems = new Collection({
   schema: z.object({
     forgottenAt: z.date().nullable().default(null),
     isPinned: z.boolean().default(false),
-    kind: z.enum(['fact', 'self']).default('fact'),
+    subject: z.enum(['owner', 'self', 'shared']).default('owner'),
 
     // whether the first forget's session cleanup fails after the forget began, as a guest that does
     // not answer fails it, so the item stays forgetting until a retry of that forget
@@ -261,7 +261,7 @@ const memoryProposals = new Collection({
     evidence: proposalEvidenceSchema.nullable().default(null),
     isPinned: z.boolean().default(false),
     itemID: z.uuid().default(() => faker.string.uuid()),
-    kind: z.enum(['fact', 'self']).default('fact'),
+    subject: z.enum(['owner', 'self', 'shared']).default('owner'),
     lapseAt: z.date().default(() => faker.date.soon({ days: 7 })),
     operation: z.enum(['remember', 'retire']).default('remember'),
     origin: z.enum(['owner', 'conversation', 'task', 'memory_writer']).default('memory_writer'),

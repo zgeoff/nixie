@@ -31,6 +31,7 @@ async function setupTest() {
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
     ownerName: null,
+    assistantName: null,
     onError: () => {},
   };
 

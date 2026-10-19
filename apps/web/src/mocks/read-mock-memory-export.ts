@@ -6,7 +6,7 @@ import type { StoredMemoryItem } from './to-mock-memory-item';
 // item. A forgotten item, and a forgetting one, is only its ID and the time its forget completed.
 export function readMockMemoryExport(exportedAt: Date): readonly string[] {
   const header = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     exportedAt: exportedAt.toISOString(),
     snapshotHash: 'sha256:mock',
   };
@@ -28,7 +28,7 @@ function toExportItem(item: StoredMemoryItem) {
     shortID: item.shortID,
     state: item.state,
     isPinned: item.isPinned,
-    kind: item.kind,
+    subject: item.subject,
     versions: item.versions.map((version, index) => ({
       version: index + 1,
       change: version.change,

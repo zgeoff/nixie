@@ -86,6 +86,8 @@ const CLI_OPTIONS = {
   reason: { type: 'string' },
   'keep-sessions': { type: 'boolean', default: false },
   yes: { type: 'boolean', default: false },
+  'dry-run': { type: 'boolean', default: false },
+  database: { type: 'string' },
 } as const;
 
 interface CLIParams {

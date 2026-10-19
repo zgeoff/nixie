@@ -5,6 +5,7 @@ import { buildDeploymentCommands } from './build-deployment-commands';
 import { buildMemoryCommands } from './build-memory-commands';
 import { buildResetCommands } from './build-reset-commands';
 import { buildSessionCommands } from './build-session-commands';
+import { buildSubjectCommands } from './build-subject-commands';
 import { checkEncoder } from './check-encoder';
 import { parseCLIArgs } from './parse-cli-args';
 import type { ParsedCLIArgs } from './parse-cli-args';
@@ -54,6 +55,7 @@ const commands = new Map<string, Command>([
   ...buildResetCommands(),
   ...buildMemoryCommands(),
   ...buildConsolidationCommands(),
+  ...buildSubjectCommands(),
 ]);
 
 // Bun as PID 1 ignores SIGTERM unless the process handles it, so serve waits for the signal

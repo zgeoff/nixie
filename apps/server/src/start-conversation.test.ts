@@ -232,7 +232,7 @@ test('it opens a new session with a pinned item and the line that says where it 
   // the item's day is the day the test runs, so the line's day reads as a placeholder
   expect(turn.input[0]?.text.replace(/ v1 · \d{1,2} \w{3} · /u, ' v1 · <day> · ')).toMatch(
     new RegExp(
-      String.raw`^<system-message type="pinned-memory" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\n- Goes by Sam\n  ${shortID} v1 · <day> · the owner said this\n<\/system-message id="\k<blockID>">\n\n<system-message type="status"`,
+      String.raw`^<system-message type="pinned-memory" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\nAbout the owner:\n- Goes by Sam\n  ${shortID} v1 · <day> · the owner said this\n<\/system-message id="\k<blockID>">\n\n<system-message type="status"`,
       'u',
     ),
   );
@@ -746,8 +746,66 @@ test('it gives the next best match the slot of an item the session already holds
   ).toStrictEqual([[{ ...flowerpot }], [{ ...garage }]]);
 
   expect(turn.input[0]?.text).toMatch(
-    /<system-message type="retrieved-memory" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\n- A second spare key hangs in the garage\n(?:[^<]*\n)?<\/system-message id="\k<blockID>">/u,
+    /<system-message type="retrieved-memory" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\nAbout the owner:\n- A second spare key hangs in the garage\n(?:[^<]*\n)?<\/system-message id="\k<blockID>">/u,
   );
+});
+
+test('it retrieves a matching item of each subject, each under its own heading', async () => {
+  const ctx = await setupTest();
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const [owner, shared, self] = await Promise.all([
+    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.memory.remember({
+      text: 'The owner and the assistant call the spare key the brass friend',
+      subject: 'shared',
+      provenance,
+    }),
+    ctx.memory.remember({
+      text: 'I like the riddle of where the spare key went',
+      subject: 'self',
+      provenance,
+    }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+
+    // BM25 scores a word in half the index at nothing, so the keys need 6 items beside them to
+    // pass the score floor
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
+    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
+    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
+    ctx.memory.remember({ text: 'Runs a half marathon each spring', provenance }),
+  ]);
+
+  ctx.guest.addReplies({ text: 'Under the flowerpot.' });
+
+  const turn = await ctx.conversation.send('Where is the spare key?');
+  const records = await ctx.readRecords();
+
+  const sent = turn.input[0]?.text ?? '';
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .flatMap((record) => record.payload['retrieved']),
+  ).toIncludeSameMembers([{ ...owner }, { ...shared }, { ...self }]);
+
+  expect(sent).toInclude('About the owner:\n- The spare key sits under the blue flowerpot');
+
+  expect(sent).toInclude(
+    'Between you and the owner:\n- The owner and the assistant call the spare key the brass friend',
+  );
+
+  expect(sent).toInclude('- I like the riddle of where the spare key went');
 });
 
 test('it retrieves an item again in the session that opens after a compaction', async () => {
@@ -1045,9 +1103,9 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
       memorySettings: { retrievalMinScore: 0 },
     }),
     createConversationTask(ctx.context),
-    ctx.memory.remember({ text: 'I like the smell of tea', provenance: note, itemKind: 'self' }),
-    ctx.memory.remember({ text: 'I find tea calming', provenance: note, itemKind: 'self' }),
-    ctx.memory.remember({ text: 'I do so like a cup of tea', provenance: note, itemKind: 'self' }),
+    ctx.memory.remember({ text: 'I like the smell of tea', provenance: note, subject: 'self' }),
+    ctx.memory.remember({ text: 'I find tea calming', provenance: note, subject: 'self' }),
+    ctx.memory.remember({ text: 'I do so like a cup of tea', provenance: note, subject: 'self' }),
     ctx.memory.remember({ text: 'Drinks tea black', provenance }),
     ctx.memory.remember({ text: 'Brews mint tea nightly', provenance }),
     ctx.memory.remember({ text: 'Keeps a tin of tea at work', provenance }),
@@ -1063,7 +1121,7 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
   const opening = turn.input[0]?.text ?? '';
 
   expect(opening).toMatch(
-    /type="retrieved-memory" [^>]+>\nFrom your memory[^\n]+(?:\n- [^\n]+\n {2}[^\n]+){5}\n<\/system-message/u,
+    /type="retrieved-memory" [^>]+>\nFrom your memory[^\n]+\nAbout the owner:(?:\n- [^\n]+\n {2}[^\n]+){5}\n<\/system-message/u,
   );
 
   // block IDs, times, short IDs and days change on each run, so each reads as a mark
@@ -1108,9 +1166,9 @@ test("it lists the self-notes it places beside the facts in the recall record an
   ]);
 
   const [smell, calming, , ...facts] = await Promise.all([
-    ctx.memory.remember({ text: 'I like the smell of tea', provenance: note, itemKind: 'self' }),
-    ctx.memory.remember({ text: 'I find tea calming', provenance: note, itemKind: 'self' }),
-    ctx.memory.remember({ text: 'I do so like a cup of tea', provenance: note, itemKind: 'self' }),
+    ctx.memory.remember({ text: 'I like the smell of tea', provenance: note, subject: 'self' }),
+    ctx.memory.remember({ text: 'I find tea calming', provenance: note, subject: 'self' }),
+    ctx.memory.remember({ text: 'I do so like a cup of tea', provenance: note, subject: 'self' }),
     ctx.memory.remember({ text: 'Drinks tea black', provenance }),
     ctx.memory.remember({ text: 'Brews mint tea nightly', provenance }),
     ctx.memory.remember({ text: 'Keeps a tin of tea at work', provenance }),
@@ -1163,7 +1221,7 @@ test('it places no self-note block when the cap is 0', async () => {
       memorySettings: { retrievalSelfNotes: 0, retrievalMinScore: 0 },
     }),
     createConversationTask(ctx.context),
-    ctx.memory.remember({ text: 'I find tea calming', provenance: note, itemKind: 'self' }),
+    ctx.memory.remember({ text: 'I find tea calming', provenance: note, subject: 'self' }),
   ]);
 
   ctx.guest.addReplies({ text: 'Mint, then.' });

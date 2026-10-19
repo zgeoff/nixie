@@ -1,6 +1,8 @@
 import type { ScriptedReply } from '@heynixie/testing';
 
 export interface RememberCall {
+  // the memory's subject, owner unless the call names shared
+  readonly subject?: 'owner' | 'shared';
   readonly text: string;
   readonly quote: string;
 
@@ -11,5 +13,7 @@ export interface RememberCall {
 // Builds the scripted model reply that calls the writer's memory.remember tool, as the guest names
 // it.
 export function buildRememberReply(call: RememberCall): ScriptedReply {
-  return { toolUse: { name: 'mcp__nixie__memory_remember', input: { ...call } } };
+  return {
+    toolUse: { name: 'mcp__nixie__memory_remember', input: { subject: 'owner', ...call } },
+  };
 }

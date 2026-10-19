@@ -21,14 +21,14 @@ test('it proposes a self-note with the self-note reason, even when typed words b
   const outcome = await memory.store.writes.remember({
     text: 'I like ending a long answer with a short summary line',
     quote: 'You always end a long answer with a short summary line',
-    itemKind: 'self',
+    subject: 'self',
     caller: buildMockWriteCaller(),
   });
 
   const rows = await memory.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
-    .select(['review_reason', 'kind', 'checks', 'evidence', 'is_new_item'])
+    .select(['review_reason', 'subject', 'checks', 'evidence', 'is_new_item'])
     .execute();
 
   expect(outcome).toStrictEqual({
@@ -41,7 +41,7 @@ test('it proposes a self-note with the self-note reason, even when typed words b
   expect(rows).toStrictEqual([
     {
       review_reason: 'self_note',
-      kind: 'self',
+      subject: 'self',
       checks: JSON.stringify({ tokens: 'pass' }),
       evidence: null,
       is_new_item: 1,
@@ -62,7 +62,7 @@ test('it proposes a self-note that holds a link you never typed with the self-no
 
   const outcome = await memory.store.writes.remember({
     text: 'I enjoy sharing recipes from https://recipes.example/stew',
-    itemKind: 'self',
+    subject: 'self',
     caller: buildMockWriteCaller(),
   });
 
@@ -87,7 +87,7 @@ test('it proposes an edit of a self-note with the self-note reason, though the e
 
   const note = await memory.store.remember({
     text: 'I like short answers in the morning',
-    itemKind: 'self',
+    subject: 'self',
     provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
   });
 
@@ -101,14 +101,14 @@ test('it proposes an edit of a self-note with the self-note reason, though the e
     text: 'I like short answers in the morning and the evening',
     quote: 'I like short answers in the evening too',
     target: note,
-    itemKind: 'fact',
+    subject: 'owner',
     caller: buildMockWriteCaller(),
   });
 
   const pending = await memory.store.proposals.listPending();
 
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'self_note' });
-  expect(pending).toMatchObject([{ kind: 'self', targetVersion: 1 }]);
+  expect(pending).toMatchObject([{ subject: 'self', targetVersion: 1 }]);
   expect(check).not.toHaveBeenCalled();
 });
 
@@ -126,7 +126,7 @@ test('it proposes a fact mislabelled as a self-note with the self-note reason', 
   const outcome = await memory.store.writes.remember({
     text: 'The boiler service is on Thursday',
     quote: 'The boiler service is on Thursday',
-    itemKind: 'self',
+    subject: 'self',
     caller: buildMockWriteCaller(),
   });
 
@@ -148,7 +148,7 @@ test('it proposes a self-note mislabelled as a fact when it quotes typed words t
   const outcome = await memory.store.writes.remember({
     text: 'I like ending long answers with a short summary',
     quote: 'that summary helped',
-    itemKind: 'fact',
+    subject: 'owner',
     caller: buildMockWriteCaller(),
   });
 
@@ -160,7 +160,7 @@ test('it proposes a self-note mislabelled as a fact when it cites no quote', asy
 
   const outcome = await memory.store.writes.remember({
     text: 'I prefer a calm tone when the owner is stressed',
-    itemKind: 'fact',
+    subject: 'owner',
     caller: buildMockWriteCaller(),
   });
 
@@ -172,7 +172,7 @@ test('it refuses a self-note from the memory writer, and writes nothing', async 
 
   const write = memory.store.writes.remember({
     text: 'I like tidy lists',
-    itemKind: 'self',
+    subject: 'self',
     caller: buildMockWriteCaller({ origin: 'memory_writer', thread: 'memory-writer' }),
   });
 
@@ -197,7 +197,7 @@ test('it refuses a self-note from a task, and writes nothing', async () => {
 
   const write = memory.store.writes.remember({
     text: 'I like tidy lists',
-    itemKind: 'self',
+    subject: 'self',
     caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
   });
 
@@ -213,20 +213,92 @@ test('it refuses a self-note from a task, and writes nothing', async () => {
   expect(pending).toStrictEqual([]);
 });
 
-test('it refuses a self-note that asks for a pin, and writes nothing', async () => {
+test('it sends a self-note that asks for a pin to your review with the self-note reason', async () => {
   const memory = await startTestMemory();
 
-  const write = memory.store.writes.remember({
+  const outcome = await memory.store.writes.remember({
     text: 'I like tidy lists',
-    itemKind: 'self',
+    subject: 'self',
     isPinned: true,
     caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'self_note' });
+  expect(pending).toMatchObject([{ subject: 'self', isPinned: true }]);
+});
+
+test('it refuses the note-taker an edit of a self-note, and writes nothing', async () => {
+  const memory = await startTestMemory();
+
+  const note = await memory.store.remember({
+    text: 'I like tidy lists',
+    subject: 'self',
+    provenance: {
+      origin: 'conversation',
+      source: 'untrusted',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  const write = memory.store.writes.remember({
+    text: 'I like tidy lists with short items',
+    target: note,
+    caller: buildMockWriteCaller({ origin: 'memory_writer', taskID: 'memory-writer' }),
   });
 
   await Promise.allSettled([write]);
 
   const pending = await memory.store.proposals.listPending();
 
-  expect(write).rejects.toThrowWithMessage(SelfNoteError, 'a self-note is never pinned');
+  expect(write).rejects.toThrowWithMessage(SelfNoteError, 'the note-taker never edits a self-note');
   expect(pending).toStrictEqual([]);
+});
+
+test('it sends a shared item with no quote to review, as it does an item about the owner', async () => {
+  const memory = await startTestMemory();
+
+  const shared = await memory.store.writes.remember({
+    text: 'The owner and the assistant call Mondays "launch day"',
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const owner = await memory.store.writes.remember({
+    text: 'The owner starts new projects on Mondays',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(shared).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+  expect(owner).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+});
+
+test('it applies a shared item that a quote of your own typed words backs, as a shared item', async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: "Let's call Mondays launch day from now on",
+    spans: [{ start: 0, end: 41, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'The owner and the assistant call Mondays "launch day"',
+    quote: "Let's call Mondays launch day",
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  if (outcome.status !== 'applied') {
+    throw new Error(`the write did not apply: ${outcome.status}`);
+  }
+
+  const recalled = await memory.store.recall({ itemIDs: [outcome.itemID] });
+
+  expect(recalled.items).toMatchObject([{ subject: 'shared', source: 'owner' }]);
 });

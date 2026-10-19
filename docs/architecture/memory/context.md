@@ -13,9 +13,10 @@ search of a task's brief on its first turn, and a tool that searches past messag
 ## The pinned core
 
 The pinned core is the set of active items the user pinned, such as their name. A new session
-renders it in its first message, each item with the line that says where it came from and how it
-came up, in pin order. That message stays in the session's transcript, so a pin never changes the
-system prompt or the cached prefix of the history after it.
+renders it in its first message under a heading for each subject, the user's items first, then the
+shared items, then self-notes, each item with the line that says where it came from and how it came
+up, in pin order within its subject. That message stays in the session's transcript, so a pin never
+changes the system prompt or the cached prefix of the history after it.
 
 A resumed session holds the core as it stood when the session opened, and the model's own earlier
 turns, which can repeat a value the user since changed. Each turn reads the core again, and the turn
@@ -30,12 +31,12 @@ them, so the note survives a restart and needs no state outside the log.
 The core has a token budget, configurable in the deployment configuration, because it rides in the
 cached prefix of every session and a long core costs every turn that reads it. The store refuses a
 pin, or an edit or undo of a pinned item, that would take the core past the budget, with the
-`PINNED_CORE_FULL` error code, so the user unpins something first. The store counts each item as the
-opening renders it, quote included, because a long quote takes as much of the prefix as a long text.
-Only the item's date differs in that count: every date counts at its widest, with a two-digit day
-and a year, so the count never depends on the day an item was saved. The store counts tokens as a
-fixed share of characters, which needs no tokenizer and errs toward the larger count for English
-text.
+`PINNED_CORE_FULL` error code, so the user unpins something first. The store counts the core as the
+opening renders it, each subject's heading and each item's quote included, because a long quote or a
+heading with the user's name takes as much of the prefix as a long text. Only the item's date
+differs in that count: every date counts at its widest, with a two-digit day and a year, so the
+count never depends on the day an item was saved. The store counts tokens as a fixed share of
+characters, which needs no tokenizer and errs toward the larger count for English text.
 
 ## How an item reads
 
@@ -109,13 +110,18 @@ its opening recalled, because the step's first recall served the lost session. A
 version, which the session has not seen, so an edited item matches again. A recall that the model
 calls itself excludes nothing.
 
-The same search places [self-notes](./writes.md#self-notes) beside the facts, up to a configurable
-number of their own, so a match about nixie never takes a fact's slot and facts never crowd the
-notes out. The notes go in a block of their own after the retrieved items, under a label that calls
-them the model's own notes about itself, which the user approved, and not instructions. Each note
-shows its text and one line with its short ID, version, date and the model that wrote it, so the
-model reads a note as an earlier model's view of itself and not as a fact about the user. The turn's
-records list the notes with the items, so a note the session holds takes no slot on the next turn.
+The retrieved block puts the user's items and the shared items each under a heading of its own, so
+the model reads a deal or a nickname as something between it and the user and never as a fact about
+the user alone.
+
+The same search places [self-notes](./writes.md#self-notes) beside the other items, up to a
+configurable number of their own, so a match about nixie never takes a fact's slot and facts never
+crowd the notes out. The notes go in a block of their own after the retrieved items, under a label
+that calls them the model's own notes about itself, which the user approved, and not instructions.
+Each note shows its text and one line with its short ID, version, date and the model that wrote it,
+so the model reads a note as an earlier model's view of itself and not as a fact about the user. The
+turn's records list the notes with the items, so a note the session holds takes no slot on the next
+turn.
 
 The blocks before the first message keep one order: a new session's opening, the pinned-core change
 note, the retrieved items, the retrieved self-notes, the past messages, then
@@ -134,10 +140,13 @@ The store keeps a keyword index and a vector index over the user's messages, bui
 indexes are, with each entry keyed by the message's record sequence. Both live in process memory,
 and each start rebuilds them from every readable message, so a forgotten message's words never
 outlive the process. The indexes hold the user's messages on every thread, and never a reply, a tool
-result or a summary, because those are model text or outside content. Before each search, the store
-indexes the messages recorded since the last one. While the vector index is ready, it waits for
-their vectors, so the message one turn sent matches by meaning on the next. While the vector index
-rebuilds after a start, the search places keyword matches alone and never waits for the rebuild.
+result or a summary, because those are model text or outside content. Each entry holds only the
+spans the user typed, so a message matches on the user's own words and never on a paste or a drop. A
+message with labelled spans and no typed text has no entry. A message whose client labelled no span
+keeps its whole text in its entry. Before each search, the store indexes the messages recorded since
+the last one. While the vector index is ready, it waits for their vectors, so the message one turn
+sent matches by meaning on the next. While the vector index rebuilds after a start, the search
+places keyword matches alone and never waits for the rebuild.
 
 The indexes rank sequences and never supply the text. Under the delivery lock, the store reads each
 candidate again and leaves out a message whose key is gone or that backed a forgotten item, so a

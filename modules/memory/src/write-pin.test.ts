@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { LogTables } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
-import { SelfNoteError } from './self-note-error';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
@@ -12,51 +11,36 @@ async function setupTest() {
   return { memory, db: memory.writer.db.$extendTables<MemoryTables>() };
 }
 
-test('it refuses to pin a self-note for you and for the conversation', async () => {
-  const ctx = await setupTest();
+test.each(['owner', 'shared', 'self'] as const)(
+  'it pins an item whose subject is %s',
+  async (subject) => {
+    const ctx = await setupTest();
 
-  const note = await ctx.memory.store.remember({
-    text: 'I like tidy lists',
-    itemKind: 'self',
-    provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
-  });
+    const item = await ctx.memory.store.remember({
+      text: 'Tidy lists are part of the plan',
+      subject,
+      provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
+    });
 
-  const byOwner = ctx.memory.store.pin({
-    itemID: note.itemID,
-    isPinned: true,
-    provenance: buildMockProvenance(),
-  });
+    await ctx.memory.store.pin({
+      itemID: item.itemID,
+      isPinned: true,
+      version: item.version,
+      provenance: buildMockProvenance({ origin: 'conversation' }),
+    });
 
-  const byConversation = ctx.memory.store.pin({
-    itemID: note.itemID,
-    isPinned: true,
-    version: note.version,
-    provenance: buildMockProvenance({ origin: 'conversation' }),
-  });
+    const core = await ctx.memory.store.readPinnedCore();
 
-  await Promise.allSettled([byOwner, byConversation]);
-
-  const core = await ctx.memory.store.readPinnedCore();
-
-  expect(byOwner).rejects.toThrowWithMessage(
-    SelfNoteError,
-    `memory item ${note.itemID} is a self-note, and a self-note is never pinned`,
-  );
-
-  expect(byConversation).rejects.toThrowWithMessage(
-    SelfNoteError,
-    `memory item ${note.itemID} is a self-note, and a self-note is never pinned`,
-  );
-
-  expect(core).toStrictEqual([]);
-});
+    expect(core).toMatchObject([{ itemID: item.itemID, subject }]);
+  },
+);
 
 test('it unpins a self-note', async () => {
   const ctx = await setupTest();
 
   const note = await ctx.memory.store.remember({
     text: 'I like tidy lists',
-    itemKind: 'self',
+    subject: 'self',
     provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
   });
 

@@ -383,15 +383,14 @@ test('it offers no change for an item a forget began, even while its text still 
   ).toBeNull();
 });
 
-test('it offers no pin on a self-note', async () => {
+test('it offers a pin on a self-note', async () => {
   await setupTest();
 
-  await store.memoryItems.create({ kind: 'self', shortID: 'k3m9qa', versions: [{}] });
+  await store.memoryItems.create({ subject: 'self', shortID: 'k3m9qa', versions: [{}] });
 
   const rendered = render(<MemoryView />);
 
   const item = await rendered.findByRole('listitem', { name: 'k3m9qa' });
 
-  expect(within(item).getByRole('button', { name: 'Retire' })).toBeInTheDocument();
-  expect(within(item).queryByRole('button', { name: 'Pin' })).toBeNull();
+  expect(within(item).getByRole('button', { name: 'Pin' })).toBeInTheDocument();
 });

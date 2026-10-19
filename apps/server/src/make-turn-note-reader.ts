@@ -7,6 +7,7 @@ import {
   buildMemoryChangeKind,
   buildProposalAnswerKind,
   buildProposalMergeKind,
+  buildSelfNoteFlagKind,
 } from '@heynixie/memory';
 import type { TurnNote, TurnNoteRequest } from '@heynixie/sessions';
 import {
@@ -14,6 +15,8 @@ import {
   buildEventRegistry,
   buildRetriedTurnKind,
 } from '@heynixie/sessions';
+import { buildSkillReloadKind } from '@heynixie/skills';
+import { conversationTaskID } from '@heynixie/tasks';
 import { buildRestartKind } from './build-restart-kind';
 import { readTurnNotes } from './read-turn-notes';
 
@@ -50,9 +53,11 @@ export function makeTurnNoteReader(
     buildCatchUpKind(options.log),
     buildProposalMergeKind(options.log),
     buildProposalAnswerKind(options.log, store),
+    buildSelfNoteFlagKind(options.log),
     buildRestartKind(options.log),
     buildRetriedTurnKind(options.log),
     buildCompactionHeadsUpKind(options.log, options.compaction),
+    buildSkillReloadKind(options.log, conversationTaskID),
   ]);
 
   return (request) => readTurnNotes({ ...options, events }, request);

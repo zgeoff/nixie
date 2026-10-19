@@ -18,10 +18,24 @@ test('it returns the pending proposal the memory writer made of the staged write
     targetVersion: null,
     origin: 'memory_writer',
     reason: 'quote_not_typed',
+    subject: 'owner',
     text: 'The owner keeps bees.',
     quote: 'I keep bees',
     sources: [{ origin: 'memory_writer', thread: 'memory-writer' }],
   });
 
   expect(pending.map((entry) => entry.proposalID)).toStrictEqual([proposal.proposalID]);
+});
+
+test('it stages the write with the subject the request names', async () => {
+  const memory = await startTestMemory();
+
+  const proposal = await createWriterProposal(memory, {
+    message: 'Let us call the allotment shed the hive house.',
+    text: 'The owner and the assistant call the allotment shed the hive house.',
+    quote: 'call the allotment shed the hive house',
+    subject: 'shared',
+  });
+
+  expect(proposal.subject).toBe('shared');
 });

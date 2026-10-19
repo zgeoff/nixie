@@ -3,13 +3,20 @@ import { withWriteTransaction } from '@heynixie/log';
 import type { Lease } from '@heynixie/tasks';
 import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
+import type { ReadableWrites } from './find-readable-writes';
 import { findReadableWrites } from './find-readable-writes';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { StoreParts, VersionRef } from './types';
 import { updateVersionIndex } from './update-version-index';
 import { writeAppliedVersions } from './write-applied-versions';
 import { writePublishedRecords } from './write-published-records';
-import type { BatchBounds, GateVerdict, StagedWrite, WriterTables } from './writer-types';
+import type {
+  BatchBounds,
+  GateVerdict,
+  StagedFlag,
+  StagedWrite,
+  WriterTables,
+} from './writer-types';
 
 // One write of a batch with the gate's verdict on it.
 export interface GatedWrite {
@@ -17,12 +24,14 @@ export interface GatedWrite {
   readonly verdict: GateVerdict;
 }
 
-// What the batch kept once every source was read again: the versions it applied, and how many
-// proposals it published and how many writes it left out because their source became unreadable.
+// What the batch kept once every source was read again: the versions it applied, how many
+// proposals it published and how many writes it left out because their source became unreadable,
+// and the flags whose source is still readable.
 export interface BatchOutcome {
   readonly applied: readonly VersionRef[];
   readonly proposed: number;
   readonly forgotten: number;
+  readonly flags: readonly StagedFlag[];
 }
 
 export interface BatchPublication {
@@ -34,6 +43,9 @@ export interface BatchPublication {
   readonly clock: { readonly now: () => number };
   readonly bounds: BatchBounds;
   readonly writes: readonly GatedWrite[];
+
+  // the possible self-notes the session flagged, which publish as events and create no item
+  readonly flags: readonly StagedFlag[];
 
   // the batch's own records, such as the advanced cursor and the notice, built from what it kept
   readonly buildRecords: (outcome: BatchOutcome) => readonly RecordInput[];
@@ -96,10 +108,13 @@ async function writeBatchInTransaction(
     return { status: 'superseded' };
   }
 
-  const kept = await findReadableWrites(parts, tx, publication.writes);
+  const readable = await findReadableWrites(parts, tx, publication);
+
+  const kept = readable.writes;
+
   const written = await writeAppliedVersions(parts, tx, kept);
 
-  const outcome = buildBatchOutcome(publication, kept, written);
+  const outcome = buildBatchOutcome(publication, readable, written);
 
   await writePublishedRecords(parts, tx, { kept, records: publication.buildRecords(outcome) });
 
@@ -112,13 +127,16 @@ async function writeBatchInTransaction(
 
 function buildBatchOutcome(
   publication: BatchPublication,
-  kept: readonly GatedWrite[],
+  readable: ReadableWrites,
   written: WrittenVersions,
 ): BatchOutcome {
+  const kept = readable.writes;
+
   return {
     applied: written.map((version) => version.ref),
     proposed: kept.filter((gated) => gated.verdict.outcome === 'propose').length,
     forgotten: publication.writes.length - kept.length,
+    flags: readable.flags,
   };
 }
 

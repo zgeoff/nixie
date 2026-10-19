@@ -23,12 +23,12 @@ async function setupTest(config: TestMemoryOptions = {}) {
   };
 }
 
-test('it exports a self-note with its kind', async () => {
+test('it exports a self-note with its subject', async () => {
   const ctx = await setupTest();
 
   await ctx.memory.store.remember({
     text: 'I like ending a long answer with a short summary line',
-    itemKind: 'self',
+    subject: 'self',
     provenance: {
       origin: 'conversation',
       source: 'untrusted',
@@ -42,7 +42,10 @@ test('it exports a self-note with its kind', async () => {
   const text = await ctx.readExportText(Date.parse('2026-10-14T08:00:00.000Z'));
 
   expect(memoryExportSchema.safeParse(JSON.parse(text)).data?.items).toMatchObject([
-    { kind: 'self', versions: [{ text: 'I like ending a long answer with a short summary line' }] },
+    {
+      subject: 'self',
+      versions: [{ text: 'I like ending a long answer with a short summary line' }],
+    },
   ]);
 });
 
@@ -72,7 +75,7 @@ test('it exports an active item with its text, its quote and its provenance, and
       shortID: expect.toBeString(),
       state: 'active',
       isPinned: false,
-      kind: 'fact',
+      subject: 'owner',
       versions: [
         {
           version: 1,
@@ -223,7 +226,7 @@ test("it heads the file with the export time, the schema version and the definit
 
   expect(JSON.parse(text)).toStrictEqual({
     header: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },

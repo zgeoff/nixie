@@ -28,6 +28,7 @@ test('it lists an item at its current version, with the times of its first and l
     source: 'owner',
     state: 'active',
     status: 'readable',
+    subject: 'owner',
     text: 'Plays the cello on Fridays',
     version: 2,
   });

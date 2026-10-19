@@ -3,9 +3,9 @@ import type { MemoryProposal } from './gate-types';
 import type { MemoryExportRequest } from './read-memory-export';
 import type {
   MemoryChange,
-  MemoryKind,
   MemoryOrigin,
   MemoryState,
+  MemorySubject,
   QuoteEvidence,
   RecalledVersion,
   VersionRef,
@@ -26,7 +26,7 @@ export type HistoryVersion = Omit<
 export interface ItemHistory {
   readonly itemID: string;
   readonly state: MemoryState;
-  readonly kind: MemoryKind;
+  readonly subject: MemorySubject;
   readonly versions: readonly HistoryVersion[];
 }
 
@@ -44,8 +44,8 @@ export type ViewItem = ViewText & {
   readonly state: MemoryState;
   readonly isPinned: boolean;
 
-  // a fact about you or a self-note, which the view lists apart
-  readonly kind: MemoryKind;
+  // whose the item is: the view lists self-notes apart
+  readonly subject: MemorySubject;
   readonly version: number;
   readonly origin: MemoryOrigin;
   readonly source: ContentSource;

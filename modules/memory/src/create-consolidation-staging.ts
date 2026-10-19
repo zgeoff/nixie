@@ -2,15 +2,17 @@ import type { ContentSource } from '@heynixie/log';
 import type { ChangeKind, StagedChange } from './consolidation-types';
 import { findMissingToken } from './find-missing-token';
 import { pickLeastTrustedSource } from './pick-least-trusted-source';
+import type { MemorySubject } from './types';
 
 // An item the session was shown: the short ID the model names it by, the version it read, the text
-// and source of that version, and whether the item is pinned.
+// and source of that version, whether the item is pinned, and whose it is.
 interface ShownItem {
   readonly shortID: string;
   readonly version: number;
   readonly text: string;
   readonly source: ContentSource;
   readonly isPinned: boolean;
+  readonly subject: MemorySubject;
 }
 
 // A change as the session asks for it: its kind, the items it names, its new text for a merge or a
@@ -215,7 +217,24 @@ function planChange(run: RunView, request: ChangeRequest): PlannedChange {
     };
   }
 
+  const mixed = findMixedSubject(inputs);
+
+  if (mixed !== null) {
+    return { refusal: mixed };
+  }
+
   return buildStagedChange(request, sortSurvivorFirst(inputs));
+}
+
+// a merge keeps one item's subject, so its inputs must share it: a shared item merged into an
+// owner fact would leave the shared memory
+function findMixedSubject(inputs: readonly NamedInput[]): string | null {
+  const [first, ...rest] = inputs;
+  const other = rest.find((input) => input.item.subject !== first?.item.subject);
+
+  return first === undefined || other === undefined
+    ? null
+    : `items ${first.item.shortID} and ${other.item.shortID} have different subjects, ${first.item.subject} and ${other.item.subject}; merge only items of one subject`;
 }
 
 // the shape each kind takes: a merge names 2 or more items and gives their text, a rewrite names

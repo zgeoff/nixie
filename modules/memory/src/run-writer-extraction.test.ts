@@ -25,6 +25,7 @@ async function setupTest() {
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
     ownerName: null,
+    assistantName: null,
   };
 
   return { memory, parts };
@@ -54,6 +55,7 @@ test('it shows the writer the pending proposals beside the current items, with t
 
   const session = buildStubWriterSession({
     op: 'remember',
+    subject: 'owner',
     text: 'The owner reacts badly to hazelnuts.',
     quote: 'Hazelnuts make me ill',
     sourceSequence: planned.bounds.end,
@@ -68,10 +70,10 @@ test('it shows the writer the pending proposals beside the current items, with t
 
   const listed = [
     'Current memory items (the complete list):',
-    `- ${item.itemID}: The owner plays the cello.`,
+    `- ${item.itemID} (owner): The owner plays the cello.`,
     '',
     "Pending proposals, waiting for the owner's review:",
-    `- ${held.proposalID}: The owner is allergic to hazelnuts.`,
+    `- ${held.proposalID} (owner): The owner is allergic to hazelnuts.`,
   ].join('\n');
 
   expect(session.model.runSession).toHaveBeenCalledWith(
@@ -90,6 +92,7 @@ test('it shows the writer the image markers of your message on the lines after i
 
   const session = buildStubWriterSession({
     op: 'remember',
+    subject: 'owner',
     text: 'The owner painted the fence green.',
     quote: 'I painted the fence green.',
     sourceSequence: planned.bounds.end,
@@ -131,12 +134,13 @@ test('it shows the writer the image markers of your message on the lines after i
   );
 });
 
-test('it tells the writer to name the owner by the configured name', async () => {
+test('it tells the writer to name the owner and the assistant by their configured names', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I play the cello on Sundays.']);
 
   const session = buildStubWriterSession({
     op: 'remember',
+    subject: 'owner',
     text: 'Avery plays the cello on Sundays.',
     quote: 'I play the cello on Sundays.',
     sourceSequence: planned.bounds.end,
@@ -146,7 +150,7 @@ test('it tells the writer to name the owner by the configured name', async () =>
   const batch = await readWriterBatch(ctx.memory.log, planned.bounds);
 
   await runWriterExtraction(
-    { ...ctx.parts, ...session, ownerName: 'Avery' },
+    { ...ctx.parts, ...session, ownerName: 'Avery', assistantName: 'Wren' },
     batch,
     new AbortController().signal,
   );
@@ -154,8 +158,77 @@ test('it tells the writer to name the owner by the configured name', async () =>
   expect(session.model.runSession).toHaveBeenCalledWith(
     expect.objectContaining({
       systemPrompt: expect.toInclude(
-        '- Write the memory text as one plain sentence that names the owner "Avery".',
+        '- Write an owner memory as one plain sentence that names the owner "Avery", and a shared memory as one plain sentence that names the owner "Avery" and the assistant "Wren".',
       ),
+      prompt: expect.toInclude('Avery (owner): I play the cello on Sundays.'),
     }),
   );
+});
+
+test('it shows the writer only the pending proposals it may write, and never a self-note', async () => {
+  const ctx = await setupTest();
+
+  const held = await ctx.memory.store.writes.remember({
+    text: 'The owner is allergic to hazelnuts.',
+    caller: buildMockWriteCaller(),
+  });
+
+  await ctx.memory.store.writes.remember({
+    text: 'I find hazelnut jokes tiresome.',
+    subject: 'self',
+    caller: buildMockWriteCaller(),
+  });
+
+  const planned = await writePlannedBatch(ctx.memory.log, ['Hazelnuts make me ill, careful.']);
+
+  const session = buildStubWriterSession({
+    op: 'remember',
+    subject: 'owner',
+    text: 'The owner reacts badly to hazelnuts.',
+    quote: 'Hazelnuts make me ill',
+    sourceSequence: planned.bounds.end,
+    itemID: null,
+  });
+
+  const batch = await readWriterBatch(ctx.memory.log, planned.bounds);
+
+  await runWriterExtraction({ ...ctx.parts, ...session }, batch, new AbortController().signal);
+
+  invariant(held.status === 'proposed');
+
+  const proposals = [
+    "Pending proposals, waiting for the owner's review:",
+    `- ${held.proposalID} (owner): The owner is allergic to hazelnuts.`,
+    '',
+    'Messages in this batch:',
+  ].join('\n');
+
+  expect(session.model.runSession).toHaveBeenCalledWith(
+    expect.objectContaining({ prompt: expect.toInclude(proposals) }),
+  );
+});
+
+test('it returns the flags the session staged beside its writes', async () => {
+  const ctx = await setupTest();
+  const planned = await writePlannedBatch(ctx.memory.log, ['You always pick the jazz station.']);
+
+  const session = buildStubWriterSession({
+    op: 'flag',
+    text: 'The assistant favours the jazz station.',
+    sourceSequence: planned.bounds.end,
+  });
+
+  const batch = await readWriterBatch(ctx.memory.log, planned.bounds);
+
+  const extracted = await runWriterExtraction(
+    { ...ctx.parts, ...session },
+    batch,
+    new AbortController().signal,
+  );
+
+  expect(extracted.writes).toStrictEqual([]);
+
+  expect(extracted.flags).toStrictEqual([
+    { text: 'The assistant favours the jazz station.', sourceSequence: planned.bounds.end },
+  ]);
 });

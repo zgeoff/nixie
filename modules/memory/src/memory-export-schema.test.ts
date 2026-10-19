@@ -2,9 +2,9 @@ import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { memoryExportSchema } from './memory-export-schema';
 
-test('it accepts the version 2 export file the fixture holds, a self-note included', async () => {
+test('it accepts the version 3 export file the fixture holds, a self-note included', async () => {
   const fixture: unknown = await Bun.file(
-    join(import.meta.dir, 'fixtures', 'memory-export-v2.json'),
+    join(import.meta.dir, 'fixtures', 'memory-export-v3.json'),
   ).json();
 
   const parsed: unknown = memoryExportSchema.safeParse(fixture).data;
@@ -15,7 +15,7 @@ test('it accepts the version 2 export file the fixture holds, a self-note includ
 test('it rejects a forgotten item that carries more than its ID and time', () => {
   const result = memoryExportSchema.safeParse({
     header: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },
@@ -49,7 +49,7 @@ test('it rejects a file of another schema version', () => {
 test('it rejects a readable item with no version', () => {
   const result = memoryExportSchema.safeParse({
     header: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },
@@ -59,7 +59,7 @@ test('it rejects a readable item with no version', () => {
         shortID: 'k3x9m2p7qa',
         state: 'active',
         isPinned: false,
-        kind: 'fact',
+        subject: 'owner',
         versions: [],
       },
     ],
@@ -71,7 +71,7 @@ test('it rejects a readable item with no version', () => {
 test('it rejects a readable item with no kind', () => {
   const result = memoryExportSchema.safeParse({
     header: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },

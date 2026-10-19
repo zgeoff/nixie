@@ -4,7 +4,7 @@ import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { VersionRef } from './types';
 import type { BatchOutcome } from './write-memory-batch';
 import type { WriterParts } from './writer-parts';
-import type { BatchBounds, BatchMode, WriterRow, WriterUsage } from './writer-types';
+import type { BatchBounds, BatchMode, StagedFlag, WriterRow, WriterUsage } from './writer-types';
 
 export interface PublishedBatch {
   readonly row: WriterRow;
@@ -17,8 +17,8 @@ export interface PublishedBatch {
   readonly outcome: BatchOutcome;
 }
 
-// The batch's record, which advances the cursor, and its notices: a live batch that applied writes
-// adds a quiet notice, a catch-up batch adds none, and the batch that ends the catch-up adds one
+// The batch's record, which advances the cursor, its notices and a record for each flag it kept: a
+// live batch that applied writes adds a quiet notice, and the batch that ends the catch-up adds one
 // notice with the count of everything the catch-up remembered.
 export function buildBatchRecords(
   parts: Pick<WriterParts, 'context' | 'model'>,
@@ -38,7 +38,9 @@ export function buildBatchRecords(
       : []),
   ];
 
-  return [buildPublishedRecord(parts, batch), ...notices];
+  const flags = batch.outcome.flags.map((flag) => buildFlagRecord(parts, flag));
+
+  return [buildPublishedRecord(parts, batch), ...notices, ...flags];
 }
 
 function buildPublishedRecord(
@@ -84,6 +86,19 @@ function buildNotice(parts: Pick<WriterParts, 'context'>, fields: NoticeFields):
       count: fields.count,
       isQuiet: true,
     },
+  };
+}
+
+// The flag's text is the model's line about your message, so it goes in the erasable fields and
+// counts as outside content. It sits in the conversation's thread, beside the notices.
+function buildFlagRecord(parts: Pick<WriterParts, 'context'>, flag: StagedFlag): RecordInput {
+  return {
+    kind: 'memory.self_note_flagged',
+    definitions: parts.context.definitions(),
+    thread: conversationTaskID,
+    contentSource: 'untrusted',
+    payload: { sourceSequence: flag.sourceSequence },
+    erasable: { text: flag.text },
   };
 }
 

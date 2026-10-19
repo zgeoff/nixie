@@ -91,3 +91,11 @@ memory view does, so its version records the user as origin and source, and the 
 stay in the item's history. An edit, a retirement and a restore name the version the user read, and
 the store refuses one whose item moved past that version. A pin adds no version, because it changes
 where the item shows and not what it says.
+
+The subjects command counts the memory items and proposals of each subject, owner, shared or self,
+from the running server. Its dry run reads no server: it copies a database file the operator names,
+such as a backup, runs every migration of the build on the copy, and prints the counts before and
+after, so the operator sees what the release's migrations do to memory before the release starts.
+The dry run reads the file it names only through a read-only connection, which copies one snapshot
+of the database and its write-ahead log, so it never changes the database and a server that writes
+meanwhile never splits the copy.

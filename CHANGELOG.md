@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.37.0](https://github.com/zgeoff/nixie/compare/v0.36.0...v0.37.0) (2026-10-19)
+
+
+### Features
+
+* **geo-1319:** count memory subjects and dry-run the subjects migration ([#389](https://github.com/zgeoff/nixie/issues/389)) ([bc0c6cd](https://github.com/zgeoff/nixie/commit/bc0c6cd845c952aa7e924950392cec86720056bd))
+* **geo-1319:** give each memory item a subject: owner, self or shared ([#387](https://github.com/zgeoff/nixie/issues/387)) ([376026e](https://github.com/zgeoff/nixie/commit/376026e1fcd8fb031e303c3beff95578a9739a6d))
+* **geo-1319:** give the note-taker subjects and a self-note flag ([#397](https://github.com/zgeoff/nixie/issues/397)) ([61f94c7](https://github.com/zgeoff/nixie/commit/61f94c7dda44c8add6f6f97ed9e3c50df521da0c))
+
+
+### Bug Fixes
+
+* **geo-1478:** index only the words you typed in each past message ([#452](https://github.com/zgeoff/nixie/issues/452)) ([93753da](https://github.com/zgeoff/nixie/commit/93753da88e47d4838d2dc910072a896b13850cb4))
+
+## [0.36.0](https://github.com/zgeoff/nixie/compare/v0.35.1...v0.36.0) (2026-10-19)
+
+
+### Features
+
+* **geo-1476:** publish the definitions manifest schema in each release ([#440](https://github.com/zgeoff/nixie/issues/440)) ([1da50a0](https://github.com/zgeoff/nixie/commit/1da50a0462511dab0c37e785173dd64aee54a988))
+* **geo-391:** add skill_read and the skill reload tools ([#414](https://github.com/zgeoff/nixie/issues/414)) ([fdf2566](https://github.com/zgeoff/nixie/commit/fdf2566069d06e4b22840a9c56c8e37bc09f178b))
+* **geo-391:** check and seed skills from definitions format 2 ([#411](https://github.com/zgeoff/nixie/issues/411)) ([5dd05ee](https://github.com/zgeoff/nixie/commit/5dd05ee7c2a8d5c62758f33406cecdd1436e1c6b))
+* **geo-391:** propose skills that nixie writes with skill_write ([#415](https://github.com/zgeoff/nixie/issues/415)) ([2e617ad](https://github.com/zgeoff/nixie/commit/2e617ad0a69358b189c34d8a70b47f2d0f3189bb))
+* **geo-391:** show a pinned skill catalog in the system prompt ([#413](https://github.com/zgeoff/nixie/issues/413)) ([03f84f6](https://github.com/zgeoff/nixie/commit/03f84f63d663a39d15d7299affec5645974da60a))
+
 ## [0.35.1](https://github.com/zgeoff/nixie/compare/v0.35.0...v0.35.1) (2026-10-19)
 
 

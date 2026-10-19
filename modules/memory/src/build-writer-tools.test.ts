@@ -14,38 +14,76 @@ async function setupTest() {
   return { memory, staging, registry };
 }
 
-test('it declares read for recall and note for remember, edit and retire', async () => {
+test('it declares read for recall and note for remember, edit, retire and the flag', async () => {
   const ctx = await setupTest();
 
-  const effects = ['memory.recall', 'memory.remember', 'memory.edit', 'memory.retire'].map(
-    (name) => [name, ctx.registry.findTool(name)?.definition.declaration.effects],
-  );
+  const effects = [
+    'memory.recall',
+    'memory.remember',
+    'memory.edit',
+    'memory.retire',
+    'memory.flag-self-note',
+  ].map((name) => [name, ctx.registry.findTool(name)?.definition.declaration.effects]);
 
   expect(effects).toStrictEqual([
     ['memory.recall', ['read']],
     ['memory.remember', ['note']],
     ['memory.edit', ['note']],
     ['memory.retire', ['note']],
+    ['memory.flag-self-note', ['note']],
   ]);
 });
 
-test('it takes no kind on any write tool, so the writer cannot stage a self-note', async () => {
+test('it takes the subject owner or shared on remember and edit, and none on retire or the flag', async () => {
   const ctx = await setupTest();
 
-  const inputs = ['memory.remember', 'memory.edit', 'memory.retire'].map((name) => {
-    const input = ctx.registry.findTool(name)?.definition.input;
+  const inputs = ['memory.remember', 'memory.edit', 'memory.retire', 'memory.flag-self-note'].map(
+    (name) => {
+      const input = ctx.registry.findTool(name)?.definition.input;
 
-    return [name, Object.keys(input?.['properties'] ?? {}), input?.['additionalProperties']];
-  });
+      return [name, Object.keys(input?.['properties'] ?? {}), input?.['additionalProperties']];
+    },
+  );
 
   expect(inputs).toStrictEqual([
-    ['memory.remember', ['text', 'quote', 'sourceID'], false],
-    ['memory.edit', ['itemID', 'text', 'quote', 'sourceID'], false],
+    ['memory.remember', ['subject', 'text', 'quote', 'sourceID'], false],
+    ['memory.edit', ['itemID', 'subject', 'text', 'quote', 'sourceID'], false],
     ['memory.retire', ['itemID', 'quote', 'sourceID'], false],
+    ['memory.flag-self-note', ['text', 'sourceID'], false],
   ]);
 });
 
-test('it stages a new item that cites your message in the batch', async () => {
+test.each([
+  ['memory.remember', { subject: 'self', text: 'Likes puns', quote: 'puns', sourceID: 1 }],
+  [
+    'memory.edit',
+    { itemID: 'item-a', subject: 'self', text: 'Likes puns', quote: 'puns', sourceID: 1 },
+  ],
+])(
+  'it refuses the subject self on %s, so the note-taker never writes a self-note',
+  async (name, input) => {
+    const ctx = await setupTest();
+
+    const check = ctx.registry.findTool(name)?.parseInput(input);
+
+    expect(check).toMatchObject({ isValid: false });
+  },
+);
+
+test.each([
+  ['memory.remember', 'owner', { text: 'Keeps bees', quote: 'bees', sourceID: 1 }],
+  ['memory.remember', 'shared', { text: 'Keeps bees', quote: 'bees', sourceID: 1 }],
+  ['memory.edit', 'owner', { itemID: 'item-a', text: 'Keeps bees', quote: 'bees', sourceID: 1 }],
+  ['memory.edit', 'shared', { itemID: 'item-a', text: 'Keeps bees', quote: 'bees', sourceID: 1 }],
+])('it accepts %s with the subject %s', async (name, subject, input) => {
+  const ctx = await setupTest();
+
+  const check = ctx.registry.findTool(name)?.parseInput({ ...input, subject });
+
+  expect(check).toStrictEqual({ isValid: true });
+});
+
+test('it stages a new item that cites your message in the batch, with its subject', async () => {
   const ctx = await setupTest();
 
   const tool = ctx.registry.findTool('memory.remember');
@@ -61,7 +99,7 @@ test('it stages a new item that cites your message in the batch', async () => {
     {
       callID: 'call-1',
       tool: 'memory.remember',
-      input: { text: 'You keep bees.', quote: 'I keep bees', sourceID: 12 },
+      input: { subject: 'owner', text: 'You keep bees.', quote: 'I keep bees', sourceID: 12 },
       toolUseID: null,
     },
     {
@@ -79,6 +117,7 @@ test('it stages a new item that cites your message in the batch', async () => {
   expect(staged.close()).toStrictEqual([
     {
       op: 'remember',
+      subject: 'owner',
       text: 'You keep bees.',
       quote: 'I keep bees',
       sourceSequence: 12,
@@ -103,7 +142,7 @@ test('it returns a write that cites a message outside the batch to the model as 
     {
       callID: 'call-1',
       tool: 'memory.remember',
-      input: { text: 'You keep bees.', quote: 'I keep bees', sourceID: 40 },
+      input: { subject: 'owner', text: 'You keep bees.', quote: 'I keep bees', sourceID: 40 },
       toolUseID: null,
     },
     {
@@ -131,7 +170,7 @@ test('it stages a retirement bound to the version the session was shown', async 
 
   const staged = ctx.staging.open({
     sources: new Map([[12, { sequence: 12, text: 'I gave the bees away.', spans: [] }]]),
-    shown: new Map([['item-bees', 3]]),
+    shown: new Map([['item-bees', { version: 3, subject: 'owner' }]]),
   });
 
   await tool.definition.run(
@@ -161,7 +200,7 @@ test('it stages a retirement bound to the version the session was shown', async 
   ]);
 });
 
-test('it delivers the items a recall finds', async () => {
+test('it delivers the items a recall finds with their subjects, and never a self-note', async () => {
   const ctx = await setupTest();
 
   const tool = ctx.registry.findTool('memory.recall');
@@ -169,6 +208,18 @@ test('it delivers the items a recall finds', async () => {
   const item = await ctx.memory.store.remember({
     text: 'Keeps bees on the roof',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'I like the bees on the roof',
+    subject: 'self',
+    provenance: {
+      origin: 'conversation',
+      source: 'owner',
+      taskID: null,
+      proposalID: null,
+      checks: null,
+    },
   });
 
   invariant(tool);
@@ -187,7 +238,7 @@ test('it delivers the items a recall finds', async () => {
 
   expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { items: [{ itemID: item.itemID, text: 'Keeps bees on the roof' }] },
+    result: { items: [{ itemID: item.itemID, subject: 'owner', text: 'Keeps bees on the roof' }] },
   });
 });
 
@@ -227,6 +278,7 @@ test('it binds an edit to the version a recall showed', async () => {
       tool: 'memory.edit',
       input: {
         itemID: item.itemID,
+        subject: 'owner',
         text: 'Keeps bees in the garden',
         quote: 'in the garden',
         sourceID: 12,
@@ -257,6 +309,7 @@ test('it returns an edit of an item the session was never shown to the model as 
       tool: 'memory.edit',
       input: {
         itemID: 'item-bees',
+        subject: 'owner',
         text: 'Keeps bees in the garden',
         quote: 'in the garden',
         sourceID: 12,
@@ -279,20 +332,113 @@ test('it returns an edit of an item the session was never shown to the model as 
   });
 });
 
+test('it stages a flag of a possible self-note, which writes no item', async () => {
+  const ctx = await setupTest();
+
+  const tool = ctx.registry.findTool('memory.flag-self-note');
+
+  invariant(tool);
+
+  const staged = ctx.staging.open({
+    sources: new Map([
+      [12, { sequence: 12, text: 'You always pick the jazz station.', spans: [] }],
+    ]),
+    shown: new Map(),
+  });
+
+  const outcome = await tool.definition.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.flag-self-note',
+      input: { text: 'The assistant favours the jazz station.', sourceID: 12 },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'memory-writer',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({ status: 'ok', result: { staged: true } });
+
+  expect(staged.readFlags()).toStrictEqual([
+    { text: 'The assistant favours the jazz station.', sourceSequence: 12 },
+  ]);
+
+  expect(staged.close()).toStrictEqual([]);
+});
+
+test('it returns a flag that cites a message outside the batch to the model as an error', async () => {
+  const ctx = await setupTest();
+
+  const tool = ctx.registry.findTool('memory.flag-self-note');
+
+  invariant(tool);
+
+  ctx.staging.open({
+    sources: new Map([
+      [12, { sequence: 12, text: 'You always pick the jazz station.', spans: [] }],
+    ]),
+    shown: new Map(),
+  });
+
+  const outcome = await tool.definition.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.flag-self-note',
+      input: { text: 'The assistant favours the jazz station.', sourceID: 40 },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'memory-writer',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: "sourceID 40 is not one of the owner's messages in this batch",
+  });
+});
+
 test.each([
   [
     'a remember with an itemID',
     'memory.remember',
-    { text: 'x', quote: 'x', sourceID: 1, itemID: 'item-a' },
+    { subject: 'owner', text: 'x', quote: 'x', sourceID: 1, itemID: 'item-a' },
   ],
-  ['a remember with no sourceID', 'memory.remember', { text: 'x', quote: 'x' }],
-  ['an edit with no itemID', 'memory.edit', { text: 'x', quote: 'x', sourceID: 1 }],
-  ['an edit with no quote', 'memory.edit', { itemID: 'item-a', text: 'x', sourceID: 1 }],
+  ['a remember with no sourceID', 'memory.remember', { subject: 'owner', text: 'x', quote: 'x' }],
+  ['a remember with no subject', 'memory.remember', { text: 'x', quote: 'x', sourceID: 1 }],
+  [
+    'an edit with no itemID',
+    'memory.edit',
+    { subject: 'owner', text: 'x', quote: 'x', sourceID: 1 },
+  ],
+  [
+    'an edit with no quote',
+    'memory.edit',
+    { itemID: 'item-a', subject: 'owner', text: 'x', sourceID: 1 },
+  ],
+  [
+    'an edit with no subject',
+    'memory.edit',
+    { itemID: 'item-a', text: 'x', quote: 'x', sourceID: 1 },
+  ],
   [
     'an edit with a version',
     'memory.edit',
-    { itemID: 'item-a', version: 1, text: 'x', quote: 'x', sourceID: 1 },
+    { itemID: 'item-a', version: 1, subject: 'owner', text: 'x', quote: 'x', sourceID: 1 },
   ],
+  ['a flag with a subject', 'memory.flag-self-note', { subject: 'self', text: 'x', sourceID: 1 }],
+  ['a flag with no sourceID', 'memory.flag-self-note', { text: 'x' }],
 ])('it refuses %s', async (_label, name, input) => {
   const ctx = await setupTest();
 

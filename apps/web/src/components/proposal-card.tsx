@@ -78,7 +78,7 @@ function ProposalDetails(props: ProposalDetailsProps): ReactNode {
   return (
     <>
       <p className={meta}>
-        {proposal.kind === 'self' ? <SelfNoteBadge /> : null}
+        {proposal.subject === 'self' ? <SelfNoteBadge /> : null}
         {formatReviewReason(proposal.reason)}
       </p>
       <p className={meta}>

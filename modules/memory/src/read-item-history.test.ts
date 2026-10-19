@@ -30,7 +30,7 @@ test('it reads every version of an item with its provenance, oldest first', asyn
   expect(history).toStrictEqual({
     itemID: item.itemID,
     state: 'active',
-    kind: 'fact',
+    subject: 'owner',
     versions: [
       {
         version: 1,
@@ -56,12 +56,12 @@ test('it reads every version of an item with its provenance, oldest first', asyn
   });
 });
 
-test("it reads a self-note's history with its kind", async () => {
+test("it reads a self-note's history with its subject", async () => {
   const ctx = await setupTest();
 
   const note = await ctx.memory.store.remember({
     text: 'I like opening with a question',
-    itemKind: 'self',
+    subject: 'self',
     provenance: {
       origin: 'conversation',
       source: 'untrusted',
@@ -73,7 +73,7 @@ test("it reads a self-note's history with its kind", async () => {
 
   const history = await ctx.memory.store.readHistory(note.itemID);
 
-  expect(history?.kind).toBe('self');
+  expect(history?.subject).toBe('self');
 });
 
 test('it reads the history of an item that does not exist as null', async () => {

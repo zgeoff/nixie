@@ -1,6 +1,7 @@
 import type { MemoryProposal } from '@heynixie/memory';
 import { hostImplementer } from './host-implementer';
 import { requireHostMemory } from './require-host-memory';
+import { toContractKind } from './to-contract-kind';
 import type { ReadHostMemory } from './types';
 
 // Builds the host procedures over the pending memory proposals: list them, and approve or reject
@@ -55,7 +56,8 @@ function buildPendingEntry(proposal: MemoryProposal) {
     itemID: proposal.itemID,
     targetVersion: proposal.targetVersion,
     isPinned: proposal.isPinned,
-    kind: proposal.kind,
+    subject: proposal.subject,
+    kind: toContractKind(proposal.subject),
     reason: proposal.reason,
     actionHash: proposal.actionHash,
     origin: proposal.origin,

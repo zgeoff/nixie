@@ -5,11 +5,12 @@ import type { CappedBatch } from './plan-proposal-cap';
 import { StaleVersionError } from './stale-version-error';
 import type { PublishResult } from './write-memory-batch';
 import type { WriterParts, WriterStepState } from './writer-parts';
-import type { BatchBounds, WriterUsage } from './writer-types';
+import type { BatchBounds, StagedFlag, WriterUsage } from './writer-types';
 
 export interface BatchToWrite extends WriterStepState {
   readonly bounds: BatchBounds;
   readonly capped: Extract<CappedBatch, { readonly kind: 'publish' }>;
+  readonly flags: readonly StagedFlag[];
   readonly usage: WriterUsage | null;
 }
 
@@ -31,6 +32,7 @@ export async function tryWriteBatch(
       clock: parts.context.clock,
       bounds: batch.bounds,
       writes: batch.capped.writes,
+      flags: batch.flags,
       buildRecords: (outcome) =>
         buildBatchRecords(parts, {
           row: batch.row,

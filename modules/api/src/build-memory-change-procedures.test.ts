@@ -1,5 +1,4 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
 import type { PinnedCoreView } from '@heynixie/memory';
 import {
   defaultGateLimits,
@@ -332,31 +331,26 @@ test('#memory.pin refuses a pin that takes the pinned core past its budget', asy
   expect(pin).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
 });
 
-test('#memory.pin refuses to pin a self-note as the wrong state, and writes nothing', async () => {
+test('#memory.pin pins a self-note', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const item = await ctx.memory.remember({
     text: 'Enjoys a slow morning question more than a quick one',
-    itemKind: 'self',
+    subject: 'self',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const before = await readRecords(ctx.context.log, { afterSequence: 0, limit: 1000 });
-
-  const pin = buildTestClient(ctx.url, laptop.token).memory.pin({
+  await buildTestClient(ctx.url, laptop.token).memory.pin({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     itemID: item.itemID,
     version: 1,
     isPinned: true,
   });
 
-  await pin.catch(() => {});
+  const core = await ctx.memory.readPinnedCore();
 
-  const after = await readRecords(ctx.context.log, { afterSequence: 0, limit: 1000 });
-
-  expect(pin).rejects.toMatchObject({ code: 'WRONG_STATE' });
-  expect(after).toHaveLength(before.length);
+  expect(core).toMatchObject([{ itemID: item.itemID, subject: 'self' }]);
 });
 
 test('#memory.pin answers a retry with its first result after the pinned core filled', async () => {

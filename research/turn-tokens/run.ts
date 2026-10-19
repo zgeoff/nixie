@@ -224,9 +224,11 @@ async function runWriter(): Promise<readonly SessionResult[]> {
   const items = [...fixtures.coreItems, ...fixtures.otherItems.slice(0, 10)].map((item) => ({
     itemID: item.shortID,
     version: item.version,
+    subject: 'owner' as const,
     text: item.text,
   }));
-  const systemPrompt = renderWriterSystemPrompt(fixtures.persona, fixtures.ownerName);
+  const names = { owner: fixtures.ownerName, assistant: null };
+  const systemPrompt = renderWriterSystemPrompt(fixtures.persona, names);
   const results: SessionResult[] = [];
 
   for (let start = 0; start < messages.length; start += 4) {
@@ -235,6 +237,7 @@ async function runWriter(): Promise<readonly SessionResult[]> {
       isComplete: false,
       proposals: [],
       messages: messages.slice(start, start + 4),
+      names,
     });
     // oxlint-disable-next-line no-await-in-loop -- the writer runs one batch at a time
     const result = await runGuestSession(`batch-${start / 4 + 1}`, 'memory-writer', {

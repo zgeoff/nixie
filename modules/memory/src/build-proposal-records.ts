@@ -4,7 +4,7 @@ import type { PendingProposal } from './write-proposal-record';
 
 // The memory.proposed record of a sealed proposal, with its lapse time from the gate's clock. Its
 // text stays sealed, so the record's own content source is untrusted. A new self-note's proposal
-// takes a mark of its own after it, which the release before skips.
+// takes a mark of its own after it, and so does a shared one, which the release before skips.
 export function buildProposalRecords(
   parts: Pick<StoreParts, 'context'>,
   pending: PendingProposal,
@@ -36,17 +36,24 @@ export function buildProposalRecords(
     },
   };
 
-  if (plan.target !== null || plan.itemKind !== 'self') {
+  const subject = plan.subject ?? 'owner';
+
+  if (plan.target !== null || subject === 'owner') {
     return [proposed];
   }
 
   return [
     proposed,
     {
-      kind: 'memory.proposal_self_noted',
+      kind: proposalMarkKinds[subject],
       definitions: parts.context.definitions(),
       thread: plan.caller.thread,
       payload: { proposalID: pending.sealed.proposalID },
     },
   ];
 }
+
+const proposalMarkKinds = {
+  self: 'memory.proposal_self_noted',
+  shared: 'memory.proposal_shared_noted',
+} as const;
