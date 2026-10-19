@@ -57,7 +57,12 @@ test('it reads the seed in force with its snapshot row and the payload of its re
 
   const seeded = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  const built = buildDefinitionsSnapshot({ persona: '# Persona\n\nCalm and short.\n', policy });
+  const built = buildDefinitionsSnapshot({
+    skills: [],
+    conversationSkills: [],
+    persona: '# Persona\n\nCalm and short.\n',
+    policy,
+  });
 
   const seed = await findResetSeed(ctx.writer.db);
 
@@ -76,8 +81,11 @@ test('it reads the seed in force with its snapshot row and the payload of its re
       contentHash: seeded.inForce.contentHash,
       formatVersion: 1,
       policyHash: built.policyHash,
+      skills: [],
+      skillChanges: { added: [], changed: [], removed: [] },
       unapplied: [],
       skipped: [],
     },
+    skills: [],
   });
 });

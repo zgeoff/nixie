@@ -4,6 +4,7 @@ import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { ResetSeed } from './find-reset-seed';
 import type { DefinitionsInForce, DefinitionsTables } from './types';
+import { writeSkillRows } from './write-skill-rows';
 
 // Seeds the definitions in force again as the first record of a reset log, inside the reset's
 // transaction, with the payload of the seed it repeats, so the next start finds them unchanged.
@@ -13,6 +14,12 @@ export async function writeResetSeed(
   seed: ResetSeed,
 ): Promise<DefinitionsInForce> {
   await writeSnapshotRows(tx, seed);
+
+  await writeSkillRows(tx, {
+    snapshotHash: seed.inForce.snapshotHash,
+    skills: seed.skills,
+    conversationSkills: seed.inForce.conversationSkills,
+  });
 
   const [record] = await writeRecordsInTransaction(tx, log, [
     {

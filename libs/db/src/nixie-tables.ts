@@ -252,6 +252,19 @@ export interface NixieTables {
     readonly spec: string;
     readonly created_sequence: number;
   };
+  readonly skill_versions: {
+    readonly skill_hash: string;
+    readonly name: string;
+    readonly frontmatter: string;
+    readonly files: string;
+  };
+  readonly snapshot_skills: {
+    readonly snapshot_hash: string;
+    readonly name: string;
+    readonly skill_hash: string;
+    readonly origin: string;
+    readonly in_conversation: number;
+  };
   readonly tasks: {
     readonly task_id: string;
     readonly is_conversation: number;
