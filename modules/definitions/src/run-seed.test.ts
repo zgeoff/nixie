@@ -449,6 +449,40 @@ test('it names the skills a later seed changes and removes in its record', async
   ]);
 });
 
+test("it stores a skill's frontmatter fields with its version", async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\ncompatibility: Needs Python 3.\nmetadata:\n  team: harbour\n  version: "1.2"\n---\n# Tides\n',
+  );
+
+  const seeded = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  invariant(seeded.inForce !== null);
+
+  const skills = await loadSnapshotSkills(ctx.writer.db, seeded.inForce.snapshotHash);
+
+  expect(skills.map((skill) => skill.frontmatter)).toStrictEqual([
+    {
+      name: 'tide-tables',
+      description: 'Reads a tide table.',
+      license: null,
+      compatibility: 'Needs Python 3.',
+      allowedTools: null,
+      metadata: { team: 'harbour', version: '1.2' },
+    },
+  ]);
+});
+
 test('it keeps the skill version of an earlier snapshot after a seed changes the skill', async () => {
   const ctx = await setupTest();
 
