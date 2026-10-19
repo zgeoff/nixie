@@ -624,7 +624,10 @@ test('it answers a live message that arrives during a tool call, in the same ses
   ]);
 
   expect(frames).toContainEqual({ type: 'read', uuids: [live.uuid] });
-  expect(frames).toContainEqual(expect.objectContaining({ text: 'Noted the milk.' }));
+
+  expect(
+    frames.some((frame) => frame.type === 'assistant' && frame.text === 'Noted the milk.'),
+  ).toBe(true);
 
   const [first, second] = frames.filter((frame) => frame.type === 'ended');
 
