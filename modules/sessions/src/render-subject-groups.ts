@@ -1,11 +1,14 @@
 import { renderMemoryItem } from './render-memory-item';
 import type { MemoryItem, MemoryLineOptions } from './types';
 
+// A memory item with the fields its line renders and its subject.
+export type SubjectItem = Parameters<typeof renderMemoryItem>[0] & Pick<MemoryItem, 'subject'>;
+
 // Renders memory items under a heading for each subject, in the order owner, shared, self, and
 // leaves out a subject with no item. Each group keeps its items' order, so the pinned core stays in
 // pin order within a subject and retrieval in rank order.
-export function renderSubjectGroups(
-  items: readonly MemoryItem[],
+export function renderSubjectGroups<Item extends SubjectItem>(
+  items: readonly Item[],
   options: MemoryLineOptions,
 ): readonly string[] {
   const owner = options.ownerName ?? 'the owner';

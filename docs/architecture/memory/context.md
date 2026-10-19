@@ -31,12 +31,12 @@ them, so the note survives a restart and needs no state outside the log.
 The core has a token budget, configurable in the deployment configuration, because it rides in the
 cached prefix of every session and a long core costs every turn that reads it. The store refuses a
 pin, or an edit or undo of a pinned item, that would take the core past the budget, with the
-`PINNED_CORE_FULL` error code, so the user unpins something first. The store counts each item as the
-opening renders it, quote included, because a long quote takes as much of the prefix as a long text.
-Only the item's date differs in that count: every date counts at its widest, with a two-digit day
-and a year, so the count never depends on the day an item was saved. The store counts tokens as a
-fixed share of characters, which needs no tokenizer and errs toward the larger count for English
-text.
+`PINNED_CORE_FULL` error code, so the user unpins something first. The store counts the core as the
+opening renders it, each subject's heading and each item's quote included, because a long quote or a
+heading with the user's name takes as much of the prefix as a long text. Only the item's date
+differs in that count: every date counts at its widest, with a two-digit day and a year, so the
+count never depends on the day an item was saved. The store counts tokens as a fixed share of
+characters, which needs no tokenizer and errs toward the larger count for English text.
 
 ## How an item reads
 

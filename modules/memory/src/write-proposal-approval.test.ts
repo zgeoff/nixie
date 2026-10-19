@@ -68,6 +68,46 @@ test('it creates a self-note when you approve its proposal, and recall reads it 
   ]);
 });
 
+test('it keeps the kind the release before reads as self on the rows of an approved self-note and its proposal', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.writes.remember({
+    text: 'Dry jokes land better with the owner than puns',
+    subject: 'self',
+    caller: buildMockWriteCaller({ model: 'claude-opus-5-5' }),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const approved = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  invariant(approved.status === 'applied');
+
+  const db = memory.log.writer.db.$extendTables<MemoryTables>();
+
+  const [item, proposal] = await Promise.all([
+    db
+      .selectFrom('memory_items')
+      .select(['kind', 'subject'])
+      .where('item_id', '=', approved.itemID)
+      .executeTakeFirst(),
+    db
+      .selectFrom('memory_proposals')
+      .select(['kind', 'subject'])
+      .where('proposal_id', '=', pending.proposalID)
+      .executeTakeFirst(),
+  ]);
+
+  expect(item).toStrictEqual({ kind: 'self', subject: 'self' });
+  expect(proposal).toStrictEqual({ kind: 'self', subject: 'self' });
+});
+
 test('it marks a self-note in records of their own, so its proposal and version records hold only the keys the release before reads', async () => {
   const memory = await startTestMemory();
 
@@ -554,6 +594,64 @@ test('it holds an approval whose text an active item closely matches, and report
 
   expect(remaining.map((proposal) => proposal.proposalID)).toStrictEqual([pending.proposalID]);
   expect(history).toBeNull();
+});
+
+test('it applies a shared proposal whose text only an owner item matches', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.remember({
+    text: 'Calls the garden shed the cabin',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.writes.remember({
+    text: 'Calls the garden shed the cabin',
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const result = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  expect(result).toStrictEqual({ status: 'applied', itemID: pending.itemID, version: 1 });
+});
+
+test('it holds a shared proposal whose text a shared item closely matches, and reports that item', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Calls the garden shed the cabin.',
+    subject: 'shared',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.writes.remember({
+    text: 'Calls the garden shed the cabin',
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const result = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  expect(result).toStrictEqual({
+    status: 'close_match',
+    item: { itemID: item.itemID, version: 1, text: 'Calls the garden shed the cabin.' },
+  });
 });
 
 test('it holds a self-note whose text a self-note closely matches when more facts rank above that self-note than the match reads', async () => {

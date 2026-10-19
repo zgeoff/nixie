@@ -750,6 +750,67 @@ test('it gives the next best match the slot of an item the session already holds
   );
 }, 30_000);
 
+test('it retrieves a matching item of each subject, each under its own heading', async () => {
+  const ctx = await setupTest();
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const [owner, shared, self, runner] = await Promise.all([
+    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.memory.remember({
+      text: 'The owner and the assistant call the spare key the brass friend',
+      subject: 'shared',
+      provenance,
+    }),
+    ctx.memory.remember({
+      text: 'I like the riddle of where the spare key went',
+      subject: 'self',
+      provenance,
+    }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+
+    // BM25 scores a word in half the index at nothing, so the keys need 6 items beside them to
+    // pass the score floor
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
+    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
+    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
+    ctx.memory.remember({ text: 'Runs a half marathon each spring', provenance }),
+  ]);
+
+  ctx.model.addReplies({ text: 'Under the flowerpot.' });
+
+  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
+
+  const records = await ctx.readRecords();
+
+  const sent = JSON.stringify(ctx.readLastRequest()?.messages);
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .flatMap((record) => record.payload['retrieved']),
+  ).toIncludeSameMembers([{ ...owner }, { ...shared }, { ...self }]);
+
+  expect(sent).toInclude(
+    String.raw`About the owner:\n- The spare key sits under the blue flowerpot`,
+  );
+
+  expect(sent).toInclude(
+    String.raw`Between you and the owner:\n- The owner and the assistant call the spare key the brass friend`,
+  );
+
+  expect(sent).toInclude(String.raw`- I like the riddle of where the spare key went`);
+}, 30_000);
+
 test('it retrieves an item again in the session that opens after a compaction', async () => {
   const ctx = await setupTest();
 

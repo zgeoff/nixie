@@ -2,6 +2,7 @@ import type { Approval, ContentSource, JSONObject, RecordInput } from '@heynixie
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Kysely, Transaction } from 'kysely';
 import { encodeVersionText } from './encode-version-text';
+import { getRowSubject } from './get-row-subject';
 import { MemoryStateError } from './memory-state-error';
 import type { ReadableVersion } from './read-version';
 import { readVersion } from './read-version';
@@ -105,6 +106,7 @@ export async function writeVersionInTransaction(
     plan,
     ref,
     shortID: versionKey.shortID,
+    subject: item === null ? (plan.subject ?? 'owner') : getRowSubject(item),
     next,
     wasPinned: item?.is_pinned === 1,
   });
@@ -129,6 +131,7 @@ interface PinnableVersion {
   readonly plan: VersionPlan;
   readonly ref: VersionRef;
   readonly shortID: string;
+  readonly subject: MemorySubject;
   readonly next: NewVersion;
 
   // whether the item was pinned before this version
@@ -155,6 +158,7 @@ async function encodePinnableVersion(
     await requireVersionCoreRoom(parts, db, {
       itemID: version.ref.itemID,
       shortID: version.shortID,
+      subject: version.subject,
       version: version.ref.version,
       text: version.next.text.text,
       origin: provenance.origin,

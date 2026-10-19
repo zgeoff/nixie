@@ -16,6 +16,7 @@ test('it stages the diff into the open run, bound to the versions shown, and end
           text: 'Is in Lisbon until May',
           source: 'owner',
           isPinned: false,
+          subject: 'owner',
         },
       ],
     ]),
@@ -57,6 +58,7 @@ test('it stages the diff again in each later run, bound to the versions that run
     text: 'Is in Lisbon until May',
     source: 'owner',
     isPinned: false,
+    subject: 'owner',
   } as const;
 
   const first = stub.staging.open(new Map([['item-1', { ...item, version: 3 }]]), 30);
@@ -82,6 +84,7 @@ test('it stages the summary it is given beside an empty diff', async () => {
     text: 'Drinks green tea',
     source: 'owner',
     isPinned: false,
+    subject: 'owner',
   } as const;
 
   const run = stub.staging.open(new Map([['item-1', item]]), 30);
