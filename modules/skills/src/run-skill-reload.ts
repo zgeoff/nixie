@@ -6,9 +6,60 @@ import { recordSkillReload } from './record-skill-reload';
 import type { SkillToolsContext } from './types';
 
 // Runs a reload for a skill tool: it seeds a fresh snapshot, moves one named skill, or with no name
-// every skill, to the version then in force, and records each skill's old and new hash. A name
-// that is neither pinned nor on the caller's list fails.
+// every skill, to the version then in force, and records each skill's old and new hash. Reloads on
+// one thread run one at a time, so each plans from the pin the one before it wrote.
 export async function runSkillReload(
+  context: SkillToolsContext,
+  run: ToolRun,
+  name: string | null,
+): Promise<ToolOutcome> {
+  const chains = getReloadChains(context.log.writer);
+  const reload = waitThenReload(chains.get(run.thread), context, run, name);
+  const tail = waitForSettled(reload);
+
+  chains.set(run.thread, tail);
+
+  await tail;
+
+  if (chains.get(run.thread) === tail) {
+    chains.delete(run.thread);
+  }
+
+  return reload;
+}
+
+// each writer's reloads by thread: the end of the newest reload on the thread, which never rejects
+const reloadChains = new WeakMap<object, Map<string, Promise<void>>>();
+
+function getReloadChains(writer: object): Map<string, Promise<void>> {
+  const chains = reloadChains.get(writer) ?? new Map<string, Promise<void>>();
+
+  reloadChains.set(writer, chains);
+
+  return chains;
+}
+
+async function waitThenReload(
+  previous: Promise<void> | undefined,
+  context: SkillToolsContext,
+  run: ToolRun,
+  name: string | null,
+): Promise<ToolOutcome> {
+  await previous;
+
+  return runOneReload(context, run, name);
+}
+
+async function waitForSettled(reload: Promise<ToolOutcome>): Promise<void> {
+  try {
+    await reload;
+  } catch {
+    // the caller of the reload gets its failure, so the chain only waits for it to end
+  }
+}
+
+// A name that is neither pinned nor on the caller's list fails.
+async function runOneReload(
   context: SkillToolsContext,
   run: ToolRun,
   name: string | null,
