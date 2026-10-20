@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { buildGitHubDefinitionsRepo } from './build-github-definitions-repo';
 import { startStubGitHub } from './test-utils/start-stub-github';
@@ -265,6 +265,30 @@ test('it closes a pull request', async () => {
   await repo.closePullRequest(1);
 
   expect(github.readPulls()[0]?.state).toBe('closed');
+});
+
+test.each([
+  ['an answer of the wrong shape', '{}'],
+  ['an answer that is not JSON', 'not json'],
+])('it refuses %s with no status', async (_, answer) => {
+  const answerAnyRequest = () => new Response(answer);
+  const server = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: answerAnyRequest });
+
+  onTestFinished(() => server.stop(true));
+
+  const repo = buildGitHubDefinitionsRepo({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+    apiURL: `http://127.0.0.1:${server.port}`,
+  });
+
+  const refusal = await repo.readFile('nixie.yaml', 'main').then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  expect(refusal).toMatchObject({ name: 'GitHubRequestError', status: null });
 });
 
 test('it refuses a request GitHub refuses, with its status and never the token', async () => {
