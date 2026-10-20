@@ -1,4 +1,6 @@
-import type { Decision, EnvelopeRecord, JSONObject, RecordRow } from './types';
+import { decisionSchema } from './decision-schema';
+import { parseJSONObject } from './parse-json-object';
+import type { EnvelopeRecord, RecordRow } from './types';
 
 // Turns a records row into the envelope a projection folds and a reader receives.
 export function buildEnvelopeRecord(row: RecordRow): EnvelopeRecord {
@@ -15,16 +17,12 @@ export function buildEnvelopeRecord(row: RecordRow): EnvelopeRecord {
     stepKey: row.step_key,
     parent: row.parent,
     contentSource: row.content_source,
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- appendRecord wrote a Decision
-    decision: row.decision === null ? null : (JSON.parse(row.decision) as Decision),
+    decision: row.decision === null ? null : decisionSchema.parse(JSON.parse(row.decision)),
     promptCause: row.prompt_cause,
     approval:
       row.proposal_id === null || row.approval_id === null || row.action_hash === null
         ? null
         : { proposalID: row.proposal_id, approvalID: row.approval_id, actionHash: row.action_hash },
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- appendRecord wrote a JSONObject
-    payload: JSON.parse(row.payload) as JSONObject,
+    payload: parseJSONObject(row.payload),
   };
 }

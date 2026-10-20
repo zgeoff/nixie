@@ -20,7 +20,7 @@ async function setupTest() {
     mock(() => Promise.resolve()),
   );
 
-  const runners = { last: null as Awaited<ReturnType<typeof startConversation>> | null };
+  const runners: { last: Awaited<ReturnType<typeof startConversation>> | null } = { last: null };
 
   const startRunner = async (image: string) => {
     await runners.last?.stop();

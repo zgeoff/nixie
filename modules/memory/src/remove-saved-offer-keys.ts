@@ -16,9 +16,9 @@ export async function removeSavedOfferKeys(parts: StoreParts): Promise<void> {
     .innerJoin('records', (join) =>
       join.on((eb) =>
         eb(
-          'records.sequence',
+          sql`json_extract(memory_versions.checks, '$.offer.sequence')`,
           '=',
-          sql<number>`json_extract(memory_versions.checks, '$.offer.sequence')`,
+          eb.ref('records.sequence'),
         ),
       ),
     )

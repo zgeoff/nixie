@@ -1,5 +1,5 @@
 import type { JSONObject, Log, RecordWithChanges } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
+import { JSON_OBJECT_SCHEMA, readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import type { MemoryProposal } from '../gate-types';
 
@@ -38,8 +38,7 @@ export async function readApprovalRecords(
         return typeof value === 'string' ? (placeholders.get(value) ?? value) : value;
       });
 
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a parse of a stringified JSONObject
-      return restored as JSONObject;
+      return JSON_OBJECT_SCHEMA.parse(restored);
     });
 }
 

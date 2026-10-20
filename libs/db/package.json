@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@paralleldrive/cuid2": "catalog:",
+    "@zgeoff/kysely-bun-sqlite": "catalog:",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "zod": "catalog:"

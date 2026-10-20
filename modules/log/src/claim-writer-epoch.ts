@@ -1,6 +1,8 @@
+import { readQueryRows } from '@heynixie/db';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 
 // Raises the writer epoch by one in a single transaction and returns the new value. The table
 // predates every migration, because the epoch rises before the first one runs. BEGIN IMMEDIATE
@@ -12,11 +14,13 @@ export function claimWriterEpoch(db: Kysely<unknown>): Promise<number> {
       epoch integer not null
     ) strict`.execute(tx);
 
-    const result = await sql<{ epoch: number }>`insert into writer_epoch (id, epoch) values (1, 1)
-      on conflict (id) do update set epoch = epoch + 1
-      returning epoch`.execute(tx);
-
-    const [row] = result.rows;
+    const [row] = await readQueryRows(
+      sql`insert into writer_epoch (id, epoch) values (1, 1)
+        on conflict (id) do update set epoch = epoch + 1
+        returning epoch`,
+      tx,
+      z.object({ epoch: z.number() }),
+    );
 
     // the upsert writes the one row and returns it
     invariant(row);

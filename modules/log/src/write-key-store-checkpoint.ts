@@ -1,12 +1,10 @@
+import { readQueryRows } from '@heynixie/db';
 import { sql } from 'kysely';
+import { z } from 'zod';
 import { KeyStoreBusyError } from './key-store-busy-error';
 import type { Log } from './types';
 
-interface CheckpointResult {
-  readonly busy: number;
-  readonly log: number;
-  readonly checkpointed: number;
-}
+const checkpointSchema = z.object({ busy: z.number(), log: z.number(), checkpointed: z.number() });
 
 // Moves every frame out of the key store's WAL and truncates it, so a deleted key leaves no copy on
 // disk. It throws when another connection's read held frames in place; a later call finishes the
@@ -15,11 +13,11 @@ export async function writeKeyStoreCheckpoint(
   log: Pick<Log, 'writer'>,
   keyID: string | null,
 ): Promise<void> {
-  const result = await sql<CheckpointResult>`pragma wal_checkpoint(truncate)`.execute(
+  const [checkpoint] = await readQueryRows(
+    sql`pragma wal_checkpoint(truncate)`,
     log.writer.keys,
+    checkpointSchema,
   );
-
-  const checkpoint = result.rows.at(0);
 
   if (
     checkpoint === undefined ||

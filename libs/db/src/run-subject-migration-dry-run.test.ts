@@ -70,9 +70,7 @@ test('it leaves the database it reads at the schema it found', async () => {
 
   await runSubjectMigrationDryRun(ctx.path);
 
-  const version = await sql<{ version: number }>`select version from schema_version`.execute(
-    ctx.db,
-  );
+  const version = await sql`select version from schema_version`.execute(ctx.db);
 
   const columns = await sql`select name from pragma_table_info('memory_items')
     where name = 'subject'`.execute(ctx.db);

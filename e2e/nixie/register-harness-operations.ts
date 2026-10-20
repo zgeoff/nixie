@@ -2,14 +2,14 @@ import { closeSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
+import { z } from 'zod';
 
 // Registers the operations a crash test asks the test build of nixie to run, by name. Each write
 // returns the sequence or the ID it made, and releaseWriterLock is the stale writer test's hook.
 export function registerHarnessOperations(link: HarnessLink, context: TasksContext): void {
-  link.registerOperation('sendMessage', async (args) => {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
-    const message = args as { readonly thread: string; readonly text: string };
+  const messageSchema = z.object({ thread: z.string(), text: z.string() });
 
+  link.registerOperation('sendMessage', messageSchema, async (message) => {
     const [record] = await writeInboxRecords(context, [
       {
         kind: 'owner_message',
@@ -22,22 +22,16 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
     return record?.sequence ?? null;
   });
 
-  link.registerOperation('createTask', (args) => {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
-    const task = args as { readonly brief: string };
+  link.registerOperation('createTask', z.object({ brief: z.string() }), (task) =>
+    createTask(context, task.brief),
+  );
 
-    return createTask(context, task.brief);
-  });
-
-  link.registerOperation('finishTask', async (args) => {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
-    const taskID = (args as { readonly taskID: string }).taskID;
-
+  link.registerOperation('finishTask', z.object({ taskID: z.string() }), async (task) => {
     const [record] = await writeInboxRecords(context, [
       {
         kind: 'owner_message',
         definitions: context.definitions(),
-        thread: taskID,
+        thread: task.taskID,
         payload: { finish: true },
       },
     ]);
@@ -47,7 +41,7 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
 
   // closes the descriptor that holds the writer lock without stopping nixie, as a bug would, so
   // another process takes the lock while this one still writes
-  link.registerOperation('releaseWriterLock', () => {
+  link.registerOperation('releaseWriterLock', z.null(), () => {
     removeLockDescriptor(context.log.writer.dataDir);
 
     return null;

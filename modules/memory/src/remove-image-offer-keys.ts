@@ -14,7 +14,7 @@ export async function removeImageOfferKeys(
     .selectFrom('records')
     .select('key_id')
     .where('kind', '=', 'memory.image_offered')
-    .where(sql<number>`json_extract(payload, '$.messageSequence')`, '=', messageSequence)
+    .where(sql`json_extract(payload, '$.messageSequence')`, '=', messageSequence)
     .where('key_id', 'is not', null)
     .execute();
 

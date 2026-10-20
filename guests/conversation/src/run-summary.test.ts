@@ -18,8 +18,10 @@ async function setupTest() {
 
   onTestFinished(() => model.stop());
 
+  const frames: GuestFrame[] = [];
+
   const io = {
-    frames: [] as GuestFrame[],
+    frames,
 
     // the guest's own environment: its home, its path, and the placeholder the grant replaces
     env: { HOME: home, PATH: process.env['PATH'] ?? '', ANTHROPIC_API_KEY: 'imp-placeholder' },

@@ -8,8 +8,10 @@ export { hostContract } from './host-contract';
 export { imageLimits } from './image-limits';
 export { isTimeZone } from './is-time-zone';
 export { pickSpanSource } from './pick-span-source';
+export { proposalOutcomeSchema } from './proposal-outcome-schema';
 export { renderSessionCookie } from './render-session-cookie';
 export { sessionCookieName } from './session-cookie-name';
+export { spanSchema } from './span-schema';
 
 export type {
   ContractClient,

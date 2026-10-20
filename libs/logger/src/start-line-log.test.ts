@@ -15,7 +15,7 @@ test('it writes the line before the log call returns, in order with what the pro
 
   output.push('{"ok":false}\n');
 
-  expect(output.map((text) => JSON.parse(text) as unknown)).toMatchObject([
+  expect(output.map((text): unknown => JSON.parse(text))).toMatchObject([
     { event: 'command.failed', level: 'error', command: 'memory-show' },
     { ok: false },
   ]);

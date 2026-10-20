@@ -1,5 +1,7 @@
 import type { Kysely } from 'kysely';
-import type { DefinitionsTables, ParsedSkill, SkillFrontmatter } from './types';
+import { storedSkillFilesSchema } from './stored-skill-files-schema';
+import { storedSkillFrontmatterSchema } from './stored-skill-frontmatter-schema';
+import type { DefinitionsTables, ParsedSkill } from './types';
 
 // Loads every skill a snapshot holds, with its files, in name order; none for a snapshot without
 // skills.
@@ -26,11 +28,7 @@ export async function loadSnapshotSkills(
     name: row.name,
     skillHash: row.skill_hash,
     origin: row.origin,
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the seed wrote the frontmatter
-    frontmatter: JSON.parse(row.frontmatter) as SkillFrontmatter,
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the seed wrote the files
-    files: new Map(Object.entries(JSON.parse(row.files) as Record<string, string>)),
+    frontmatter: storedSkillFrontmatterSchema.parse(JSON.parse(row.frontmatter)),
+    files: storedSkillFilesSchema.parse(JSON.parse(row.files)),
   }));
 }

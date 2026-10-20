@@ -11,5 +11,5 @@
     "verbatimModuleSyntax": true,
     "moduleDetection": "force"
   },
-  "files": ["./nixie-test-build.d.ts"]
+  "files": ["./nixie-test-build.d.ts", "./bun-serve-options.d.ts"]
 }

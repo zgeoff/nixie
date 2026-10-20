@@ -25,7 +25,7 @@ export async function readRecordForget(
     .selectFrom('records')
     .select(['sequence', 'recorded_at'])
     .where('kind', '=', query.kind)
-    .where(sql<number>`json_extract(payload, '$.recordSequence')`, '=', query.sequence)
+    .where(sql`json_extract(payload, '$.recordSequence')`, '=', query.sequence)
     .orderBy('sequence')
     .executeTakeFirst();
 

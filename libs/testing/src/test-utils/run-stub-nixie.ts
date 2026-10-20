@@ -1,37 +1,38 @@
 // A stand-in for a test build of nixie, for the harness's own tests. With STUB_NIXIE_REFUSE set, it
 // exits with code 3 before it is ready, as a nixie that finds the writer lock held does. With
 // STUB_NIXIE_LATE_STDERR set too, a child it leaves behind writes to its stderr once it has exited.
+import { z } from 'zod';
 import { startHarnessLink } from '../start-harness-link';
 
 const link = startHarnessLink();
 
-link.registerOperation('now', () => link.clock.now());
+link.registerOperation('now', z.null(), () => link.clock.now());
 
-link.registerOperation('hold', async (args) => {
-  await link.waitAtFaultPoint('stub.point', { kind: 'stub', id: String(args) });
+link.registerOperation('hold', z.string(), async (workID) => {
+  await link.waitAtFaultPoint('stub.point', { kind: 'stub', id: workID });
 
   return 'released';
 });
 
 // a sleeper that never sleeps again once it wakes, as a step that an advance starts
-link.registerOperation('sleepOnce', (args) => {
-  void link.clock.sleep(Number(args));
+link.registerOperation('sleepOnce', z.number(), (durationMs) => {
+  void link.clock.sleep(durationMs);
 
   return null;
 });
 
 // a loop that sleeps again each time it wakes, as a runner
-link.registerOperation('startPoll', (args) => {
+link.registerOperation('startPoll', z.number(), (intervalMs) => {
   void (async () => {
     for (;;) {
-      await link.clock.sleep(Number(args));
+      await link.clock.sleep(intervalMs);
     }
   })();
 
   return null;
 });
 
-link.registerOperation('startChild', () => {
+link.registerOperation('startChild', z.null(), () => {
   const child = Bun.spawn(['sleep', '60'], {
     detached: true,
     stdio: ['ignore', 'ignore', 'ignore'],
