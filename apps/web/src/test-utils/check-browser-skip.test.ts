@@ -13,6 +13,17 @@ test('it fails in CI when the browser does not start, and never skips there', ()
   ).rejects.toThrowWithMessage(Error, 'Chrome process closed the pipe');
 });
 
+test('it fails in CI with an Error when the browser start rejects with a non-error', () => {
+  expect(
+    checkBrowserSkip({
+      env: { CI: 'true' },
+      // oxlint-disable-next-line eslint/prefer-promise-reject-errors -- the test needs a rejection that is not an Error
+      openView: () => Promise.reject('closed'),
+      print: () => {},
+    }),
+  ).rejects.toStrictEqual(new Error('"closed"', { cause: 'closed' }));
+});
+
 test('it runs the browser tests in CI when the browser starts', async () => {
   const openView = mock(() => Promise.resolve());
 
