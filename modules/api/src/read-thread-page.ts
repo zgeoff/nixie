@@ -40,7 +40,11 @@ export async function readThreadPage(
 
   const last = await db
     .selectFrom('records')
-    .select((eb) => eb.fn.coalesce(eb.fn.max('sequence'), eb.lit(0)).as('sequence'))
+    .select((expressionBuilder) =>
+      expressionBuilder.fn
+        .coalesce(expressionBuilder.fn.max('sequence'), expressionBuilder.lit(0))
+        .as('sequence'),
+    )
     .executeTakeFirstOrThrow();
 
   const window = await readPageWindow(context, {

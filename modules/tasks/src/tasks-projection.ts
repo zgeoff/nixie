@@ -108,7 +108,7 @@ function buildTaskUpdate(
     return {
       state: parsed.nextState,
       read_cursor: parsed.readCursor,
-      committed_steps: (eb) => eb('committed_steps', '+', 1),
+      committed_steps: (expressionBuilder) => expressionBuilder('committed_steps', '+', 1),
       started_step_key: null,
       step_errors: 0,
       session_boundary: parsed.sessionBoundary,

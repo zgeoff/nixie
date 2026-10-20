@@ -24,7 +24,11 @@ export async function* subscribeToThreadRecords(
   const head = await context.log.writer.db
     .$extendTables<APITables>()
     .selectFrom('records')
-    .select((eb) => eb.fn.coalesce(eb.fn.max('sequence'), eb.lit(0)).as('sequence'))
+    .select((expressionBuilder) =>
+      expressionBuilder.fn
+        .coalesce(expressionBuilder.fn.max('sequence'), expressionBuilder.lit(0))
+        .as('sequence'),
+    )
     .executeTakeFirstOrThrow();
 
   // a start past the head would skip the record that revokes the caller, so the stream reads from
