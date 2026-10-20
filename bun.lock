@@ -30,6 +30,9 @@
         "@heynixie/definitions": "workspace:*",
         "zod": "catalog:",
       },
+      "devDependencies": {
+        "tiny-invariant": "catalog:",
+      },
     },
     "adapters/encoder-onnx": {
       "name": "@heynixie/encoder-onnx",

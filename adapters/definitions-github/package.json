@@ -13,5 +13,8 @@
   "dependencies": {
     "@heynixie/definitions": "workspace:*",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "tiny-invariant": "catalog:"
   }
 }

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { buildGitHubDefinitionsRepo } from './build-github-definitions-repo';
 import { startStubGitHub } from './test-utils/start-stub-github';
 
@@ -163,9 +164,8 @@ test('it refuses a request GitHub refuses, with its status and never the token',
     (error: unknown) => error,
   );
 
-  expect(refusal).toMatchObject({
-    name: 'GitHubRequestError',
-    status: 401,
-    message: expect.not.stringContaining('token-b'),
-  });
+  invariant(refusal instanceof Error);
+
+  expect(refusal).toMatchObject({ name: 'GitHubRequestError', status: 401 });
+  expect(refusal.message).not.toInclude('token-b');
 });
