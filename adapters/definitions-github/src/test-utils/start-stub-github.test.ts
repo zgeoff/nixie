@@ -376,3 +376,22 @@ test('it refuses a second open pull request from one head with 422', async () =>
 
   expect(second.status).toBe(422);
 });
+
+test.each([['git/refs/heads/main', { force: true }]])(
+  'it refuses PATCH %s with a body that lacks a field with 422',
+  async (route, body) => {
+    const github = startStubGitHub({
+      repository: 'harbour/definitions',
+      base: 'main',
+      token: 'token-a',
+    });
+
+    const response = await fetch(`${github.url}/repos/harbour/definitions/${route}`, {
+      method: 'PATCH',
+      headers: { authorization: 'Bearer token-a' },
+      body: JSON.stringify(body),
+    });
+
+    expect(response.status).toBe(422);
+  },
+);

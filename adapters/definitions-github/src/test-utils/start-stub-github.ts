@@ -1,4 +1,5 @@
 import { onTestFinished } from 'bun:test';
+import { z } from 'zod';
 
 export interface StubGitHubOptions {
   // owner/name of the one repo it serves, its base branch, and the token it accepts
@@ -211,6 +212,8 @@ function answerTreeRead(state: StubState, sha: string, query: URLSearchParams): 
   });
 }
 
+const refUpdateSchema = z.object({ sha: z.string(), force: z.boolean().optional() });
+
 function answerRef(state: StubState, isUpdate: boolean, branch: string, body: unknown): Response {
   const head = state.refs.get(branch);
 
@@ -224,8 +227,13 @@ function answerRef(state: StubState, isUpdate: boolean, branch: string, body: un
     return Response.json({ object: { sha: head } });
   }
 
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the adapter under test sends it
-  const update = body as { sha: string; force?: boolean };
+  const parsed = refUpdateSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return invalidRequest();
+  }
+
+  const update = parsed.data;
 
   if (update.force !== true && !hasAncestor(state, update.sha, head)) {
     return Response.json({ message: 'Update is not a fast forward' }, { status: 422 });
@@ -234,6 +242,11 @@ function answerRef(state: StubState, isUpdate: boolean, branch: string, body: un
   state.refs.set(branch, update.sha);
 
   return Response.json({ object: { sha: update.sha } });
+}
+
+// GitHub refuses a body that lacks a field the route needs, or holds one of the wrong type
+function invalidRequest(): Response {
+  return Response.json({ message: 'Invalid request' }, { status: 422 });
 }
 
 // whether the commit is the ancestor or descends from it, which a fast-forward update needs
