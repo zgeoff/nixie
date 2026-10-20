@@ -292,6 +292,7 @@
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/sessions": "workspace:*",
+        "@heynixie/skills": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@orpc/server": "catalog:",
@@ -475,6 +476,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/async": "workspace:*",
+        "@heynixie/clock": "workspace:*",
         "@heynixie/compaction": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/definitions": "workspace:*",
@@ -485,6 +487,9 @@
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
         "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
       },
     },
     "modules/tasks": {

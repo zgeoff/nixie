@@ -1,5 +1,7 @@
 import { createFirstEnrolmentCode } from '@heynixie/api';
+import { toErrorFields } from '@heynixie/logger';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
+import { startSkillLapseSweep } from '@heynixie/skills';
 import { createConversationTask } from '@heynixie/tasks';
 import { makeRetriedStart } from './make-retried-start';
 import { runDefinitionsSeed } from './run-definitions-seed';
@@ -67,6 +69,23 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       startSeedPoll(reader.get('server_parts'), {
         isRefusedAtStart: reader.get('definitions_seed').status === 'refused',
       }),
+  },
+  {
+    // a skill proposal left unanswered lapses, and the conversation hears of it in its next turn
+    name: 'skill_lapse_sweep',
+    needs: ['server_parts', 'start_record'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+
+      const sweep = startSkillLapseSweep({
+        context: parts.context,
+        onError: (error) => {
+          parts.log('skills.lapse_failed', toErrorFields(error));
+        },
+      });
+
+      await parts.cleanup.defer(() => sweep.stop());
+    },
   },
   {
     // the first device signs in with the code nixie prints at start while no device holds a session

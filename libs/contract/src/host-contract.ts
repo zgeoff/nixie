@@ -181,6 +181,52 @@ const memory = oc.errors({
   SELF_NOTE_REFUSED: { message: 'a self-note never takes that change', status: 409 },
 });
 
+// one file of a skill, by its path inside the skill's folder
+const skillFileSchema = z.object({ path: z.string(), text: z.string() });
+
+// What a host command shows of a pending skill proposal: its files, the version of the skill in
+// force now, which the review diffs each file against, the token check's result, and the skill
+// hash an answer binds to.
+const pendingSkillProposalSchema = z.object({
+  proposalID: z.string(),
+  name: z.string(),
+  skillHash: z.string(),
+
+  // the version in force when nixie proposed the skill, or null for a new skill
+  baseHash: z.string().nullable(),
+  files: z.array(skillFileSchema),
+
+  // the version in force now, or null when none is; a vendored one comes from skills.lock.json
+  inForce: z
+    .object({
+      skillHash: z.string(),
+      origin: z.enum(['definitions', 'vendored']),
+      files: z.array(skillFileSchema),
+    })
+    .nullable(),
+
+  // the first destination-like token in the files that you never typed and your definitions lack,
+  // or null when the token check passed
+  untypedToken: z.object({ kind: z.string(), raw: z.string() }).nullable(),
+  thread: z.string().nullable(),
+  provenance: z.object({ runID: z.string(), callID: z.string(), profile: z.string() }),
+  createdAt: z.date(),
+  lapseAt: z.date(),
+});
+
+// An answer to a skill proposal binds to the skill hash skill-pending showed.
+const skillAnswerSchema = z.strictObject({
+  proposalID: z.string().min(1),
+  skillHash: z.string().min(1),
+});
+
+// Every skill proposal procedure keeps the code of each error the answer is refused with.
+const skills = oc.errors({
+  NOT_FOUND: { message: 'nothing has that ID', status: 404 },
+  PROPOSAL_HASH: { message: 'the skill hash names other files', status: 409 },
+  PROPOSAL_CLOSED: { message: 'the proposal is answered or lapsed', status: 409 },
+});
+
 export const hostContract = {
   // Resets the log and keeps the live device sessions. The answer arrives once the reset
   // finished, and the server then stops.
@@ -258,6 +304,22 @@ export const hostContract = {
         .input(z.strictObject({ answers: z.array(changeAnswerSchema).min(1).max(30) }))
         .output(z.object({ outcomes: z.array(changeOutcomeSchema) })),
       reject: memory.input(changeAnswerSchema).output(z.object({ changeID: z.string() })),
+    },
+  },
+  skills: {
+    proposals: {
+      list: skills.output(z.array(pendingSkillProposalSchema)),
+
+      // An approval names the pull request on your definitions that carries the skill, which runs
+      // once that pull request merges.
+      approve: skills
+        .input(skillAnswerSchema.extend({ pullRequestURL: z.url() }))
+        .output(z.object({ proposalID: z.string() })),
+
+      // A rejection's reason is what the conversation reads in its next turn.
+      reject: skills
+        .input(skillAnswerSchema.extend({ reason: z.string().max(500).regex(/\S/u) }))
+        .output(z.object({ proposalID: z.string() })),
     },
   },
 };
