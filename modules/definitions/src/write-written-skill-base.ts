@@ -28,9 +28,9 @@ export async function writeWrittenSkillBase(
 
   await tables
     .updateTable('written_skills')
-    .set((eb) => ({
-      base_hash: eb.ref('definitions_hash'),
-      base_origin: eb.ref('definitions_origin'),
+    .set((expressionBuilder) => ({
+      base_hash: expressionBuilder.ref('definitions_hash'),
+      base_origin: expressionBuilder.ref('definitions_origin'),
       updated_at: change.at,
     }))
     .where('approval_id', '=', change.approvalID)
