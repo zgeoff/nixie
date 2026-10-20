@@ -227,9 +227,33 @@ function answerRef(state: StubState, isUpdate: boolean, branch: string, body: un
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the adapter under test sends it
   const update = body as { sha: string; force?: boolean };
 
+  if (update.force !== true && !hasAncestor(state, update.sha, head)) {
+    return Response.json({ message: 'Update is not a fast forward' }, { status: 422 });
+  }
+
   state.refs.set(branch, update.sha);
 
   return Response.json({ object: { sha: update.sha } });
+}
+
+// whether the commit is the ancestor or descends from it, which a fast-forward update needs
+function hasAncestor(state: StubState, commit: string, ancestor: string): boolean {
+  const pending = [commit];
+
+  const seen = new Set<string>();
+
+  for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
+    if (next === ancestor) {
+      return true;
+    }
+
+    if (!seen.has(next)) {
+      seen.add(next);
+      pending.push(...(state.commits.get(next)?.parents ?? []));
+    }
+  }
+
+  return false;
 }
 
 function answerPullUpdate(state: StubState, pullNumber: number, body: unknown): Response {

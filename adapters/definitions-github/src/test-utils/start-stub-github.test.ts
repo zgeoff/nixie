@@ -187,6 +187,77 @@ test('it builds a tree on a base tree, writing and removing files, and a commit 
   );
 });
 
+test('it refuses an update that is not a fast forward without force with 422, and keeps the branch', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  github.writeBaseFile('nixie.yaml', 'format: 2\n');
+
+  const response = await fetch(`${github.url}/repos/harbour/definitions/git/refs/heads/main`, {
+    method: 'PATCH',
+    headers: { authorization: 'Bearer token-a' },
+    body: JSON.stringify({ sha: 'commit-0' }),
+  });
+
+  expect(response.status).toBe(422);
+  expect(github.readBranchFiles('main')).toStrictEqual(new Map([['nixie.yaml', 'format: 2\n']]));
+});
+
+test('it moves a branch back to an older commit on a forced update', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  github.writeBaseFile('nixie.yaml', 'format: 2\n');
+
+  const response = await fetch(`${github.url}/repos/harbour/definitions/git/refs/heads/main`, {
+    method: 'PATCH',
+    headers: { authorization: 'Bearer token-a' },
+    body: JSON.stringify({ sha: 'commit-0', force: true }),
+  });
+
+  expect(response.status).toBe(200);
+  expect(github.readBranchFiles('main')).toStrictEqual(new Map());
+});
+
+test('it moves a branch forward to a commit that descends from its head without force', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  await fetch(`${github.url}/repos/harbour/definitions/git/refs`, {
+    method: 'POST',
+    headers: { authorization: 'Bearer token-a' },
+    body: JSON.stringify({ ref: 'refs/heads/side', sha: 'commit-0' }),
+  });
+
+  github.writeBaseFile('nixie.yaml', 'format: 2\n');
+
+  const ref = await fetch(`${github.url}/repos/harbour/definitions/git/ref/heads/main`, {
+    headers: { authorization: 'Bearer token-a' },
+  });
+
+  const refJSON: unknown = await ref.json();
+
+  const head = z.object({ object: z.object({ sha: z.string() }) }).parse(refJSON);
+
+  const response = await fetch(`${github.url}/repos/harbour/definitions/git/refs/heads/side`, {
+    method: 'PATCH',
+    headers: { authorization: 'Bearer token-a' },
+    body: JSON.stringify({ sha: head.object.sha }),
+  });
+
+  expect(response.status).toBe(200);
+  expect(github.readBranchFiles('side')).toStrictEqual(new Map([['nixie.yaml', 'format: 2\n']]));
+});
+
 test('it refuses to update a branch that is missing with 422', async () => {
   const github = startStubGitHub({
     repository: 'harbour/definitions',
