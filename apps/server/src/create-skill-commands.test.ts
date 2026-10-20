@@ -1,7 +1,9 @@
 import { expect, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { checkSkillFiles } from '@heynixie/definitions';
 import { waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
@@ -196,6 +198,84 @@ test('it lists a new version beside the version in force with the untyped token,
 }, 60_000);
 
 // the refusal comes before the command reads its configuration, so no server runs
+test('it approves your edited files in place of the proposal, and puts them in force', async () => {
+  const ctx = await setupTest();
+
+  const definitions = join(ctx.directory, 'definitions');
+  const proposedText = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  const editedFiles = [
+    {
+      path: 'SKILL.md',
+      text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides, by port\n',
+    },
+  ];
+
+  const edited = checkSkillFiles('tide-tables', editedFiles);
+
+  invariant('skillHash' in edited);
+
+  await writeFile(join(definitions, 'nixie.yaml'), 'format: 2\n');
+
+  ctx.model.addReplies(
+    {
+      toolUse: {
+        name: 'mcp__nixie__skill_write',
+        input: { name: 'tide-tables', files: [{ path: 'SKILL.md', text: proposedText }] },
+      },
+    },
+    { text: 'Proposed.' },
+  );
+
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Write a tide tables skill.',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Proposed.');
+  });
+
+  const listed = await runHostCommand(ctx.configPath, ['skill-pending']);
+
+  const [{ proposalID, skillHash }] = z
+    .tuple([z.object({ proposalID: z.string(), skillHash: z.string() })])
+    .parse(JSON.parse(listed.stdout));
+
+  const approved = await runHostCommand(ctx.configPath, [
+    'skill-approve',
+    proposalID,
+    '--hash',
+    skillHash,
+    '--files',
+    JSON.stringify(editedFiles),
+  ]);
+
+  ctx.sendSignal('SIGTERM');
+
+  const run = await ctx.waitForExit();
+
+  const seeds = run.records.filter((record) => record.kind === 'definitions_seeded');
+
+  expect(JSON.parse(approved.stdout)).toStrictEqual({
+    proposalID,
+    approvalID: expect.toBeString(),
+    skillHash: edited.skillHash,
+  });
+
+  expect(run.records.filter((record) => record.kind === 'skills.write_approved')).toMatchObject([
+    { payload: { proposalID, skillHash: edited.skillHash, isEdited: true } },
+  ]);
+
+  expect(seeds.at(-1)).toMatchObject({
+    payload: { skills: [{ name: 'tide-tables', skillHash: edited.skillHash, origin: 'nixie' }] },
+  });
+}, 60_000);
+
 test('it refuses an approval with no --hash, and reaches no server', async () => {
   const refused = await runHostCommand('/nonexistent/config.yaml', ['skill-approve', 'k3x9m2p7qa']);
 
