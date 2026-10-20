@@ -50,6 +50,15 @@ test('it refuses an export repo that is not owner/name', () => {
   expect(result.error?.issues).toPartiallyContain({ path: ['export', 'repository'] });
 });
 
+test('it refuses an export API that is not https', () => {
+  const result = definitionsConfigSchema.safeParse({
+    source: { kind: 'path', path: '/etc/nixie/definitions' },
+    export: { repository: 'harbour/definitions', api_url: 'http://api.example.test' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['export', 'api_url'] });
+});
+
 test('it refuses a source kind that no slice has built', () => {
   const result = definitionsConfigSchema.safeParse({
     source: { kind: 'git', path: '/etc/nixie/definitions' },
