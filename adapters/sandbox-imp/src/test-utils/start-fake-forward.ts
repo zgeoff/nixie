@@ -2,6 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { once } from 'node:events';
 import type { Server, Socket } from 'node:net';
 import { createServer } from 'node:net';
+import { waitForSettled } from '@heynixie/async';
 import type { ImpPort } from '../types';
 import type { SleepingForward } from './build-fake-sleeps';
 
@@ -67,6 +68,7 @@ function buildEnding(): Ending {
   const ended = Promise.withResolvers<{ readonly kind: string }>();
   let isEnded = false;
 
+  // marks the rejection handled, so a forward that never listens raises no unhandled rejection
   void waitForSettled(listening.promise);
 
   return {
@@ -83,15 +85,6 @@ function buildEnding(): Ending {
       ended.resolve({ kind });
     },
   };
-}
-
-// marks the rejection handled, so a forward that never listens raises no unhandled rejection
-async function waitForSettled(promise: Promise<unknown>): Promise<void> {
-  try {
-    await promise;
-  } catch {
-    // the forward's owner reads the rejection from listening
-  }
 }
 
 function startGuestRelay(options: FakeForwardOptions, sockets: Set<Socket>, socket: Socket): void {

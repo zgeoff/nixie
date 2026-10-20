@@ -1,3 +1,4 @@
+import { waitForSettled } from '@heynixie/async';
 import { toErrorFields } from '@heynixie/logger';
 import { buildCleanup } from './build-cleanup';
 import { serverPartDeclarations } from './server-part-declarations';
@@ -84,6 +85,7 @@ function makeStop(
     stops.cleanup.abort();
     stops.work.abort();
 
+    // the start failure report reads the rejection
     await waitForSettled(graph.done);
 
     await stops.waitForReset();
@@ -91,12 +93,4 @@ function makeStop(
 
     options.log('stopped');
   };
-}
-
-async function waitForSettled(ready: Promise<void>): Promise<void> {
-  try {
-    await ready;
-  } catch {
-    // the start failure report reads the rejection
-  }
 }

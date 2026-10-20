@@ -1,8 +1,8 @@
 import type { JSONObject } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import invariant from 'tiny-invariant';
-import { findDefinitionsInForce } from './find-definitions-in-force';
 import { loadSnapshotSkills } from './load-snapshot-skills';
+import { readDefinitionsInForce } from './read-definitions-in-force';
 import type { DefinitionsInForce, DefinitionsTables, ParsedSkill } from './types';
 
 // What a reset carries into the new log of the definitions in force: the seed, the snapshot row
@@ -21,8 +21,8 @@ export interface ResetSeed {
 
 // Reads the definitions in force with everything a reset needs to seed them again, or null before
 // the first seed.
-export async function findResetSeed(db: Kysely<unknown>): Promise<ResetSeed | null> {
-  const inForce = await findDefinitionsInForce(db);
+export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | null> {
+  const inForce = await readDefinitionsInForce(db);
 
   if (inForce === null) {
     return null;

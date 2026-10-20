@@ -1,4 +1,4 @@
-import { findDefinitionsInForce, loadSkillVersions } from '@heynixie/definitions';
+import { loadSkillVersions, readDefinitionsInForce } from '@heynixie/definitions';
 import { readSkillProposals } from './read-skill-proposals';
 import { skillProposalLapseMs } from './skill-proposal-lapse-ms';
 import type { PendingSkillProposal, SkillProposalContext } from './types';
@@ -21,7 +21,7 @@ export async function readPendingSkillProposals(
     return [];
   }
 
-  const inForce = await findDefinitionsInForce(db);
+  const inForce = await readDefinitionsInForce(db);
 
   const refs = inForce?.skills ?? [];
 

@@ -1,9 +1,9 @@
+import { waitForSettled } from '@heynixie/async';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import type { ServerReset, ServerResetOptions } from './run-server-reset';
 import { runServerReset } from './run-server-reset';
 import type { Cleanup } from './types';
-import { waitForSettled } from './wait-for-settled';
 
 export interface ServerResetControl {
   // runs the reset; a request while one runs gets that reset's answer

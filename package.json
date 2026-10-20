@@ -27,7 +27,7 @@
       "@babel/core": "8.0.7",
       "@faker-js/faker": "10.6.0",
       "@huggingface/tokenizers": "0.2.0",
-      "@impz/client": "2.7.0",
+      "@impz/client": "2.8.1",
       "@logtape/logtape": "2.4.1",
       "@modelcontextprotocol/client": "2.3.1",
       "@modelcontextprotocol/server": "2.3.1",
@@ -86,7 +86,7 @@
     "postinstall": "bun run --cwd apps/web codegen",
     "prepare": "command -v git > /dev/null 2>&1 && lefthook install --force || true",
     "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md AGENTS.md ':(glob)docs/**/*.md' ':(glob)research/**/*.md' .claude/skills/project-docs-writing .claude/skills/project-testing && bash .claude/skills/skill-writing/scripts/check-skill.sh && bash .claude/skills/code-style/scripts/check-project-verbs.sh",
-    "test": "bun run models && bun test --parallel",
+    "test": "bun run models && bun test --parallel --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.browser.test.ts' && bun test --preload ./apps/web/src/test-utils/start-browser.ts .browser.test.ts",
     "typecheck": "tsc --noEmit && turbo run typecheck"
   },
   "devDependencies": {
