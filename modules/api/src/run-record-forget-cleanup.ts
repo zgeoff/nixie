@@ -4,8 +4,8 @@ import invariant from 'tiny-invariant';
 import { findRecordForget } from './find-record-forget';
 import type { APIContext, APITables } from './types';
 
-// Finishes a forget that record.forget_started began: it deletes the record's key and each key of an
-// image offer for it, runs the session cleanup and commits record.forgotten, each safe to rerun.
+// Finishes a forget that record.forget_started began: it deletes the record's key and each image
+// offer key for it, runs the session cleanup and commits record.forgotten, each safe to rerun.
 // Before the conversation starts the forget stays begun, and the start sequence finishes it.
 export async function runRecordForgetCleanup(
   context: APIContext,

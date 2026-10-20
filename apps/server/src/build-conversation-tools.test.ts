@@ -116,8 +116,6 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
     'memory.remember',
     'memory.edit',
     'memory.retire',
-    'memory.offer_image',
-    'memory.answer_offer',
     'memory.diff',
     'memory.comment',
     'memory.export',
@@ -195,8 +193,6 @@ test('it allows the time tool, the log reader and each memory tool but export, a
     'memory.remember',
     'memory.edit',
     'memory.retire',
-    'memory.offer_image',
-    'memory.answer_offer',
     'memory.diff',
     'memory.comment',
   ];

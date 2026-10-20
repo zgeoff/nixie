@@ -20,14 +20,17 @@ version, its state, whether it is pinned, its [short ID](../core/database.md#sho
 subject, and the sequences that created it and last changed it. The subject says whose the item is:
 owner for a fact about the user, shared for something between the user and nixie, such as a deal, a
 nickname or a running joke, and self for a [self-note](./writes.md#self-notes) that nixie writes
-about itself. An item's subject is owner unless a subject mark follows the record that creates it,
-so no later version changes the subject. The mark is a record of its own, as is the mark on a new
-item's proposal, because the release before reads a version or a proposal record as a strict shape
-and skips a record of a kind it does not know. A self-note's mark keeps the record kind that the
-release before reads as a self-note, and the row keeps the kind column that release reads, so a
-rollback by one release still tells a self-note from a fact. A row that the release before writes
-holds no subject, and the store reads its subject from its kind. The model reads and names an item
-by its short ID, and the store keys everything else, the item's key included, by the item's UUID.
+about itself.
+
+An item's subject is owner unless a subject mark follows the record that creates it, so no later
+version changes the subject. The mark is a record of its own, as is the mark on a new item's
+proposal, because the release before reads a version or a proposal record as a strict shape and
+skips a record of a kind it does not know. A self-note's mark keeps the record kind that the release
+before reads as a self-note, and the row keeps the kind column that release reads, so a rollback by
+one release still tells a self-note from a fact. A row that the release before writes holds no
+subject, and the store reads its subject from its kind. The model reads and names an item by its
+short ID, and the store keys everything else, the item's key included, by the item's UUID.
+
 The versions table holds one row per version: what changed, the state that version gave the item,
 the sealed text, and the provenance. A version's provenance is its origin (the user, the
 conversation, a task or the memory writer), its source of content, the task and proposal behind it,
@@ -137,12 +140,14 @@ start rebuilds the keyword index from the readable active items. A version's rec
 invalidation record: after the record commits, still under the delivery lock, the store replaces the
 item's entry with its current text or drops an item that left the active state. A query matches any
 of its words, and the store quotes each word, so no character a caller sends reads as FTS5 syntax.
+
 The index leaves function words, such as "to" and "a", out of both the query and the text it stores.
 BM25 weighs a word by how few items hold it and not by what it means, so a function word that one
 item holds would score as high as a topic word and bring back an item the query says nothing about.
 The filter covers the stored text too, because the porter tokenizer stems some content words to a
-function word, such as "one" to "on". A word in capitals, such as "US", is an acronym and stays. A
-query can also set a score floor, which drops each match whose BM25 score falls below it, and can
+function word, such as "one" to "on". A word in capitals, such as "US", is an acronym and stays.
+
+A query can also set a score floor, which drops each match whose BM25 score falls below it, and can
 leave pinned items out. BM25 gives no weight to a word that half the items hold, so in an index of 1
 or 2 items every match scores about zero, and a floor above zero drops every match.
 [Per-turn retrieval](./context.md#per-turn-retrieval) uses both, so a word that half the items share
@@ -199,20 +204,18 @@ one the server passes in from the conversation, and
 
 ## The model's tools
 
-The model reaches memory through 10 tools over the same interface:
+The model reaches memory through 8 tools over the same interface:
 
-| Tool                  | Effect | Does                                                       |
-| --------------------- | ------ | ---------------------------------------------------------- |
-| `memory.recall`       | `read` | Recalls items by query, by ID or a page at a time          |
-| `memory.pending`      | `read` | Lists the proposals that wait for the user's review        |
-| `memory.remember`     | `note` | Creates an item, with a quote                              |
-| `memory.edit`         | `note` | Edits an item at a version it read, with a quote           |
-| `memory.retire`       | `note` | Retires an item at a version it read, with an intent quote |
-| `memory.offer_image`  | `note` | Offers to remember what an image of the user's shows       |
-| `memory.answer_offer` | `note` | Passes on the user's answer to that offer                  |
-| `memory.diff`         | `read` | Shows the pending consolidation diff                       |
-| `memory.comment`      | `note` | Leaves a comment on one change of that diff                |
-| `memory.rate`         | `note` | Rates how the items of the thread's latest recall worked   |
+| Tool              | Effect | Does                                                       |
+| ----------------- | ------ | ---------------------------------------------------------- |
+| `memory.recall`   | `read` | Recalls items by query, by ID or a page at a time          |
+| `memory.pending`  | `read` | Lists the proposals that wait for the user's review        |
+| `memory.remember` | `note` | Creates an item, with a quote or a photo as its source     |
+| `memory.edit`     | `note` | Edits an item at a version it read, with a quote           |
+| `memory.retire`   | `note` | Retires an item at a version it read, with an intent quote |
+| `memory.diff`     | `read` | Shows the pending consolidation diff                       |
+| `memory.comment`  | `note` | Leaves a comment on one change of that diff                |
+| `memory.rate`     | `note` | Rates how the items of the thread's latest recall worked   |
 
 Creating and editing are separate tools because the tool list is where the model learns what it can
 do, and a model that finds editing only in the description of a create tool can miss it. Rating has

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { findHeldRecordKeys } from './find-held-record-keys';
-import { createAnsweredOffer } from './test-utils/create-answered-offer';
 import { startTestMemory } from './test-utils/start-test-memory';
+import { writeImageOfferRecord } from './test-utils/write-image-offer-record';
 
 async function setupTest() {
   const memory = await startTestMemory();
@@ -11,14 +11,20 @@ async function setupTest() {
 
 test('it finds the held keys among more IDs than one statement can bind', async () => {
   const ctx = await setupTest();
-  const offer = await createAnsweredOffer(ctx.memory, { text: 'The owner bakes rye bread' });
+
+  const offer = await writeImageOfferRecord(ctx.memory.log, {
+    thread: 'conversation',
+    messageSequence: 1,
+    image: 1,
+    text: 'The owner bakes rye bread',
+  });
 
   const held = await findHeldRecordKeys(ctx.memory.log, [
     ...Array.from({ length: 70_000 }, () => crypto.randomUUID()),
-    offer.offerKeyID,
+    offer.keyID,
   ]);
 
-  expect(held).toStrictEqual([offer.offerKeyID]);
+  expect(held).toStrictEqual([offer.keyID]);
 });
 
 test('it finds no keys for no IDs', async () => {

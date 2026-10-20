@@ -3,16 +3,12 @@ import type { MemoryWrites } from './gate-types';
 import type { StoreParts } from './types';
 import { writeGatedRemember } from './write-gated-remember';
 import { writeGatedRetirement } from './write-gated-retirement';
-import { writeImageOffer } from './write-image-offer';
-import { writeOfferAnswer } from './write-offer-answer';
 
 // The gated write paths of the model and the memory writer over the store's parts.
 export function buildMemoryWrites(parts: StoreParts): MemoryWrites {
   return {
     remember: (request) => writeGatedRemember(parts, request),
     retire: (request) => writeGatedRetirement(parts, request),
-    offerImage: (request) => writeImageOffer(parts, request),
-    answerOffer: (request) => writeOfferAnswer(parts, request),
     batch: buildWriterGate(parts),
   };
 }
