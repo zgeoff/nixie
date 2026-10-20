@@ -47,6 +47,84 @@ test('it serves a file on the base branch as base64, and 404 for a missing one',
   expect(missing.status).toBe(404);
 });
 
+test('it serves a file at a commit after the base branch moves past it', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  github.writeBaseFile('nixie.yaml', 'format: 2\n');
+
+  const ref = await fetch(`${github.url}/repos/harbour/definitions/git/ref/heads/main`, {
+    headers: { authorization: 'Bearer token-a' },
+  });
+
+  const refJSON: unknown = await ref.json();
+
+  const pinned = z.object({ object: z.object({ sha: z.string() }) }).parse(refJSON);
+
+  github.writeBaseFile('nixie.yaml', 'format: 2\nskills: []\n');
+
+  const found = await fetch(
+    `${github.url}/repos/harbour/definitions/contents/nixie.yaml?ref=${pinned.object.sha}`,
+    { headers: { authorization: 'Bearer token-a' } },
+  );
+
+  const file: unknown = await found.json();
+
+  expect(file).toStrictEqual({
+    content: Buffer.from('format: 2\n').toString('base64'),
+    encoding: 'base64',
+  });
+});
+
+test("it lists a commit's tree recursively, each folder and each file", async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  github.writeBaseFile('skills/tide-tables/SKILL.md', '# Tides\n');
+
+  const response = await fetch(
+    `${github.url}/repos/harbour/definitions/git/trees/main?recursive=1`,
+    { headers: { authorization: 'Bearer token-a' } },
+  );
+
+  const tree: unknown = await response.json();
+
+  expect(tree).toStrictEqual({
+    sha: 'main',
+    tree: [
+      { path: 'skills', type: 'tree' },
+      { path: 'skills/tide-tables', type: 'tree' },
+      { path: 'skills/tide-tables/SKILL.md', type: 'blob' },
+    ],
+    truncated: false,
+  });
+});
+
+test('it marks a recursive tree cut short once told to', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  github.truncateTrees();
+
+  const response = await fetch(
+    `${github.url}/repos/harbour/definitions/git/trees/main?recursive=1`,
+    { headers: { authorization: 'Bearer token-a' } },
+  );
+
+  const tree: unknown = await response.json();
+
+  expect(tree).toMatchObject({ truncated: true });
+});
+
 test('it builds a tree on a base tree, writing and removing files, and a commit a new branch points at', async () => {
   const github = startStubGitHub({
     repository: 'harbour/definitions',

@@ -3,7 +3,33 @@ import invariant from 'tiny-invariant';
 import { buildGitHubDefinitionsRepo } from './build-github-definitions-repo';
 import { startStubGitHub } from './test-utils/start-stub-github';
 
-test('it reads a file on the base branch, and null for a missing one', async () => {
+test("it reads the base branch's newest commit as the base revision", async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  github.writeBaseFile('nixie.yaml', 'format: 2\n');
+
+  const repo = buildGitHubDefinitionsRepo({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+    apiURL: github.url,
+  });
+
+  const first = await repo.readBaseRevision();
+
+  github.writeBaseFile('persona.md', '# Persona\n');
+
+  const second = await repo.readBaseRevision();
+
+  expect(first).toBeString();
+  expect(second).not.toBe(first);
+});
+
+test('it reads a file at a revision, and null for a missing one', async () => {
   const github = startStubGitHub({
     repository: 'harbour/definitions',
     base: 'main',
@@ -19,14 +45,88 @@ test('it reads a file on the base branch, and null for a missing one', async () 
     apiURL: github.url,
   });
 
-  const found = await repo.readFile('skills/skills.lock.json');
-  const missing = await repo.readFile('nixie.yaml');
+  const revision = await repo.readBaseRevision();
+  const found = await repo.readFile('skills/skills.lock.json', revision);
+  const missing = await repo.readFile('nixie.yaml', revision);
 
   expect(found).toBe('{}\n');
   expect(missing).toBeNull();
 });
 
-test("it opens a pull request from a branch that holds the change on the base branch's newest commit", async () => {
+test('it reads a file at the pinned revision after the base branch moves', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  github.writeBaseFile('skills/skills.lock.json', '{}\n');
+
+  const repo = buildGitHubDefinitionsRepo({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+    apiURL: github.url,
+  });
+
+  const revision = await repo.readBaseRevision();
+
+  github.writeBaseFile('skills/skills.lock.json', '{"star-chart":{}}\n');
+
+  const pinned = await repo.readFile('skills/skills.lock.json', revision);
+
+  expect(pinned).toBe('{}\n');
+});
+
+test('it lists the files under a folder at a revision, nested ones included', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  github.writeBaseFile('skills/tide-tables/SKILL.md', '# Tides\n');
+  github.writeBaseFile('skills/tide-tables/scripts/read.ts', '\n');
+  github.writeBaseFile('skills/star-chart/SKILL.md', '# Stars\n');
+
+  const repo = buildGitHubDefinitionsRepo({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+    apiURL: github.url,
+  });
+
+  const revision = await repo.readBaseRevision();
+  const listed = await repo.readFolder('skills/tide-tables', revision);
+
+  expect(listed).toIncludeSameMembers(['SKILL.md', 'scripts/read.ts']);
+});
+
+test('it refuses a folder listing that GitHub cut short', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  github.writeBaseFile('skills/tide-tables/SKILL.md', '# Tides\n');
+  github.truncateTrees();
+
+  const repo = buildGitHubDefinitionsRepo({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+    apiURL: github.url,
+  });
+
+  const revision = await repo.readBaseRevision();
+
+  expect(repo.readFolder('skills/tide-tables', revision)).rejects.toThrow(
+    `the tree of ${revision} is too large to read whole`,
+  );
+});
+
+test('it opens a pull request from a branch that holds the change on the pinned revision', async () => {
   const github = startStubGitHub({
     repository: 'harbour/definitions',
     base: 'main',
@@ -43,15 +143,22 @@ test("it opens a pull request from a branch that holds the change on the base br
     apiURL: github.url,
   });
 
-  const pullRequest = await repo.writePullRequest({
-    branch: 'nixie/skill/tide-tables',
-    title: 'Update the tide-tables skill to the version nixie wrote',
-    body: 'Merge it.\n',
-    files: new Map([
-      ['skills/tide-tables/SKILL.md', '# Tides\n'],
-      ['skills/tide-tables/old.md', null],
-    ]),
-  });
+  const revision = await repo.readBaseRevision();
+
+  github.writeBaseFile('persona.md', '# Persona\n');
+
+  const pullRequest = await repo.writePullRequest(
+    {
+      branch: 'nixie/skill/tide-tables',
+      title: 'Update the tide-tables skill to the version nixie wrote',
+      body: 'Merge it.\n',
+      files: new Map([
+        ['skills/tide-tables/SKILL.md', '# Tides\n'],
+        ['skills/tide-tables/old.md', null],
+      ]),
+    },
+    revision,
+  );
 
   expect(pullRequest).toStrictEqual({
     number: 1,
@@ -77,7 +184,7 @@ test("it opens a pull request from a branch that holds the change on the base br
   ]);
 });
 
-test('it rebuilds the branch on the moved base and updates the open pull request', async () => {
+test('it rebuilds the branch on a later revision and updates the open pull request', async () => {
   const github = startStubGitHub({
     repository: 'harbour/definitions',
     base: 'main',
@@ -91,21 +198,31 @@ test('it rebuilds the branch on the moved base and updates the open pull request
     apiURL: github.url,
   });
 
-  await repo.writePullRequest({
-    branch: 'nixie/skill/tide-tables',
-    title: 'Add the tide-tables skill that nixie wrote',
-    body: 'First.\n',
-    files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
-  });
+  const first = await repo.readBaseRevision();
+
+  await repo.writePullRequest(
+    {
+      branch: 'nixie/skill/tide-tables',
+      title: 'Add the tide-tables skill that nixie wrote',
+      body: 'First.\n',
+      files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
+    },
+    first,
+  );
 
   github.writeBaseFile('persona.md', '# Persona\n');
 
-  const pullRequest = await repo.writePullRequest({
-    branch: 'nixie/skill/tide-tables',
-    title: 'Add the tide-tables skill that nixie wrote',
-    body: 'Second.\n',
-    files: new Map([['skills/tide-tables/SKILL.md', '# Tides by port\n']]),
-  });
+  const second = await repo.readBaseRevision();
+
+  const pullRequest = await repo.writePullRequest(
+    {
+      branch: 'nixie/skill/tide-tables',
+      title: 'Add the tide-tables skill that nixie wrote',
+      body: 'Second.\n',
+      files: new Map([['skills/tide-tables/SKILL.md', '# Tides by port\n']]),
+    },
+    second,
+  );
 
   expect(pullRequest.number).toBe(1);
 
@@ -133,12 +250,17 @@ test('it closes a pull request', async () => {
     apiURL: github.url,
   });
 
-  await repo.writePullRequest({
-    branch: 'nixie/skill/tide-tables',
-    title: 'Add the tide-tables skill that nixie wrote',
-    body: 'First.\n',
-    files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
-  });
+  const revision = await repo.readBaseRevision();
+
+  await repo.writePullRequest(
+    {
+      branch: 'nixie/skill/tide-tables',
+      title: 'Add the tide-tables skill that nixie wrote',
+      body: 'First.\n',
+      files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
+    },
+    revision,
+  );
 
   await repo.closePullRequest(1);
 
@@ -159,7 +281,7 @@ test('it refuses a request GitHub refuses, with its status and never the token',
     apiURL: github.url,
   });
 
-  const refusal = await repo.readFile('nixie.yaml').then(
+  const refusal = await repo.readBaseRevision().then(
     () => null,
     (error: unknown) => error,
   );

@@ -136,7 +136,9 @@ test('#list shows the pull request that carries a written skill to the definitio
   await runSkillExports({
     log: ctx.log,
     repo: {
+      readBaseRevision: () => Promise.resolve('revision-a'),
       readFile: () => Promise.resolve(null),
+      readFolder: () => Promise.resolve([]),
       writePullRequest: () =>
         Promise.resolve({ number: 3, url: 'https://github.test/harbour/definitions/pull/3' }),
       closePullRequest: () => Promise.resolve(),

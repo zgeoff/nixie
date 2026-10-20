@@ -25,6 +25,9 @@ export interface StubGitHub {
   // the files at a branch's head, or null when the branch is missing
   readonly readBranchFiles: (branch: string) => ReadonlyMap<string, string> | null;
   readonly readPulls: () => readonly StubGitHubPull[];
+
+  // marks every recursive tree read cut short, as GitHub does past its size limit
+  readonly truncateTrees: () => void;
 }
 
 interface StubCommit {
@@ -39,6 +42,7 @@ interface StubState {
   readonly refs: Map<string, string>;
   readonly pulls: StubGitHubPull[];
   readonly nextSHA: () => string;
+  readonly isTruncated: () => boolean;
 }
 
 // A stand-in for the part of GitHub's REST API that the definitions export calls, on a loopback
@@ -46,6 +50,7 @@ interface StubState {
 // file or pull request with 404, as GitHub does. It stops when the test finishes.
 export function startStubGitHub(options: StubGitHubOptions): StubGitHub {
   let count = 0;
+  let isTruncated = false;
 
   const state: StubState = {
     options,
@@ -58,6 +63,7 @@ export function startStubGitHub(options: StubGitHubOptions): StubGitHub {
 
       return count.toString(16).padStart(40, '0');
     },
+    isTruncated: () => isTruncated,
   };
 
   const answerStubRequest = (request: Request) => answerRequest(state, request);
@@ -80,6 +86,9 @@ export function startStubGitHub(options: StubGitHubOptions): StubGitHub {
 
     readBranchFiles: (branch) => readBranch(state, branch),
     readPulls: () => [...state.pulls],
+    truncateTrees: () => {
+      isTruncated = true;
+    },
   };
 }
 
@@ -115,11 +124,17 @@ function answerRoute(
   const content = /^GET contents\/(?<path>.+)$/u.exec(route)?.groups?.['path'];
 
   if (content !== undefined) {
-    const text = readBranch(state, query.get('ref') ?? '')?.get(decodeURIComponent(content));
+    const text = readRevision(state, query.get('ref') ?? '')?.get(decodeURIComponent(content));
 
     return text === undefined
       ? notFound()
       : Response.json({ content: Buffer.from(text).toString('base64'), encoding: 'base64' });
+  }
+
+  const tree = /^GET git\/trees\/(?<sha>.+)$/u.exec(route)?.groups?.['sha'];
+
+  if (tree !== undefined) {
+    return answerTreeRead(state, decodeURIComponent(tree), query);
   }
 
   const ref = /^(?<method>GET|PATCH) git\/refs?\/heads\/(?<branch>.+)$/u.exec(route)?.groups;
@@ -155,11 +170,45 @@ function answerRoute(
   return answers[route]?.() ?? notFound();
 }
 
+// the files at a branch's head or at a commit, as GitHub reads a ref that names either
+function readRevision(state: StubState, ref: string): ReadonlyMap<string, string> | null {
+  const commit = state.commits.get(ref);
+
+  return commit === undefined ? readBranch(state, ref) : (state.trees.get(commit.tree) ?? null);
+}
+
 function readBranch(state: StubState, branch: string): ReadonlyMap<string, string> | null {
   const head = state.refs.get(branch);
   const commit = head === undefined ? undefined : state.commits.get(head);
 
   return commit === undefined ? null : (state.trees.get(commit.tree) ?? null);
+}
+
+// a recursive tree read lists each folder and each file under the commit or tree it names
+function answerTreeRead(state: StubState, sha: string, query: URLSearchParams): Response {
+  const files = state.trees.get(sha) ?? readRevision(state, sha);
+
+  if (files === null || query.get('recursive') !== '1') {
+    return notFound();
+  }
+
+  const folders = new Set(
+    [...files.keys()].flatMap((path) =>
+      path
+        .split('/')
+        .slice(0, -1)
+        .map((_, index, segments) => segments.slice(0, index + 1).join('/')),
+    ),
+  );
+
+  return Response.json({
+    sha,
+    tree: [
+      ...[...folders].map((path) => ({ path, type: 'tree' })),
+      ...[...files.keys()].map((path) => ({ path, type: 'blob' })),
+    ],
+    truncated: state.isTruncated(),
+  });
 }
 
 function answerRef(state: StubState, isUpdate: boolean, branch: string, body: unknown): Response {

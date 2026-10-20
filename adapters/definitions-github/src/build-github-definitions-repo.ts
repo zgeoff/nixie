@@ -15,22 +15,36 @@ export interface GitHubDefinitionsOptions {
 }
 
 const contentSchema = z.object({ content: z.string(), encoding: z.literal('base64') });
+const shaSchema = z.object({ sha: z.string() });
+const refSchema = z.object({ object: shaSchema });
+const treeEntrySchema = z.object({ path: z.string(), type: z.string() });
+const treeSchema = z.object({ tree: z.array(treeEntrySchema), truncated: z.boolean() });
 
 // Builds the definitions repo on GitHub, through its REST API. A change becomes one commit on the
-// base branch's newest commit, which replaces the change's branch with a forced update, so each
-// export of a skill carries only its newest version.
+// base revision the export pinned, which replaces the change's branch with a forced update, so
+// each export of a skill carries only its newest version.
 export function buildGitHubDefinitionsRepo(options: GitHubDefinitionsOptions): DefinitionsRepo {
   const send = makeGitHubSender(options);
   const repo = `/repos/${options.repository}`;
 
   return {
-    readFile: async (path) => {
+    readBaseRevision: async () => {
+      const ref = await send({
+        method: 'GET',
+        path: `${repo}/git/ref/heads/${options.base}`,
+        schema: refSchema,
+      });
+
+      return ref.object.sha;
+    },
+
+    readFile: async (path, revision) => {
       const encoded = path.split('/').map((segment) => encodeURIComponent(segment));
 
       const file = await allowMissing(
         send({
           method: 'GET',
-          path: `${repo}/contents/${encoded.join('/')}?ref=${encodeURIComponent(options.base)}`,
+          path: `${repo}/contents/${encoded.join('/')}?ref=${encodeURIComponent(revision)}`,
           schema: contentSchema,
         }),
       );
@@ -38,8 +52,27 @@ export function buildGitHubDefinitionsRepo(options: GitHubDefinitionsOptions): D
       return file === null ? null : Buffer.from(file.content, 'base64').toString('utf8');
     },
 
-    writePullRequest: async (change) => {
-      const commit = await writeChangeCommit(send, repo, options.base, change);
+    readFolder: async (path, revision) => {
+      const tree = await send({
+        method: 'GET',
+        path: `${repo}/git/trees/${encodeURIComponent(revision)}?recursive=1`,
+        schema: treeSchema,
+      });
+
+      // GitHub cuts a recursive tree past its size limit, which would hide a file to remove
+      if (tree.truncated) {
+        throw new Error(`the tree of ${revision} is too large to read whole`);
+      }
+
+      const prefix = `${path}/`;
+
+      return tree.tree
+        .filter((entry) => entry.type === 'blob' && entry.path.startsWith(prefix))
+        .map((entry) => entry.path.slice(prefix.length));
+    },
+
+    writePullRequest: async (change, revision) => {
+      const commit = await writeChangeCommit(send, repo, revision, change);
 
       await writeBranch(send, repo, change.branch, commit);
 
@@ -119,26 +152,18 @@ async function allowMissing<Value>(lookup: Promise<Value>): Promise<Value | null
   }
 }
 
-const shaSchema = z.object({ sha: z.string() });
-const refSchema = z.object({ object: shaSchema });
 const commitSchema = z.object({ sha: z.string(), tree: shaSchema });
 
-// one commit on the base branch's newest commit that writes and removes the change's files
+// one commit on the pinned base revision that writes and removes the change's files
 async function writeChangeCommit(
   send: GitHubSender,
   repo: string,
-  base: string,
+  revision: string,
   change: DefinitionsChange,
 ): Promise<string> {
-  const ref = await send({
-    method: 'GET',
-    path: `${repo}/git/ref/heads/${base}`,
-    schema: refSchema,
-  });
-
   const parent = await send({
     method: 'GET',
-    path: `${repo}/git/commits/${ref.object.sha}`,
+    path: `${repo}/git/commits/${encodeURIComponent(revision)}`,
     schema: commitSchema,
   });
 
