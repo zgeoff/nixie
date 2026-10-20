@@ -1,6 +1,11 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import invariant from 'tiny-invariant';
+import { checkBrowserSkip } from './test-utils/check-browser-skip';
+
+// Bun 1.4.2's skipIf takes a boolean and has no in-body skip. Outside CI these tests skip when no
+// browser starts, and the run prints why; CI always runs them.
+const browserSkip = await checkBrowserSkip();
 
 // normalizeImage needs a browser's decoder and canvas, so these tests run it in a headless Chrome or
 // Chromium, which Bun finds on PATH, in a standard install location, or at BUN_CHROME_PATH.
@@ -43,11 +48,13 @@ async function setupTest() {
   return { view };
 }
 
-test('it scales a large photo to a long edge of 1568 px and drops its EXIF data, location included', async () => {
-  const ctx = await setupTest();
+test.skipIf(browserSkip.isSkipped)(
+  'it scales a large photo to a long edge of 1568 px and drops its EXIF data, location included',
+  async () => {
+    const ctx = await setupTest();
 
-  // a 3000 by 2000 JPEG with an EXIF segment that holds an invented location, after the start marker
-  const result: unknown = await ctx.view.evaluate(`(async () => {
+    // a 3000 by 2000 JPEG with an EXIF segment that holds an invented location, after the start marker
+    const result: unknown = await ctx.view.evaluate(`(async () => {
     const canvas = new OffscreenCanvas(3000, 2000);
     const context = canvas.getContext('2d');
     context.fillStyle = '#4a7';
@@ -70,20 +77,24 @@ test('it scales a large photo to a long edge of 1568 px and drops its EXIF data,
     };
   })()`);
 
-  expect(result).toStrictEqual({
-    type: 'image/jpeg',
-    width: 1568,
-    height: 1045,
-    hadTag: true,
-    hasExif: false,
-    hasTag: false,
-  });
-}, 60_000);
+    expect(result).toStrictEqual({
+      type: 'image/jpeg',
+      width: 1568,
+      height: 1045,
+      hadTag: true,
+      hasExif: false,
+      hasTag: false,
+    });
+  },
+  60_000,
+);
 
-test('it keeps a small screenshot at its size, as a PNG', async () => {
-  const ctx = await setupTest();
+test.skipIf(browserSkip.isSkipped)(
+  'it keeps a small screenshot at its size, as a PNG',
+  async () => {
+    const ctx = await setupTest();
 
-  const result: unknown = await ctx.view.evaluate(`(async () => {
+    const result: unknown = await ctx.view.evaluate(`(async () => {
     const canvas = new OffscreenCanvas(800, 600);
     canvas.getContext('2d').fillRect(10, 10, 100, 100);
     const screenshot = await canvas.convertToBlob({ type: 'image/png' });
@@ -93,17 +104,23 @@ test('it keeps a small screenshot at its size, as a PNG', async () => {
     return { type: image.type, width: bitmap.width, height: bitmap.height };
   })()`);
 
-  expect(result).toStrictEqual({ type: 'image/png', width: 800, height: 600 });
-}, 60_000);
+    expect(result).toStrictEqual({ type: 'image/png', width: 800, height: 600 });
+  },
+  60_000,
+);
 
-test('it refuses bytes the browser cannot decode with an unreadable-image error', async () => {
-  const ctx = await setupTest();
+test.skipIf(browserSkip.isSkipped)(
+  'it refuses bytes the browser cannot decode with an unreadable-image error',
+  async () => {
+    const ctx = await setupTest();
 
-  const result: unknown = await ctx.view.evaluate(`(async () => {
+    const result: unknown = await ctx.view.evaluate(`(async () => {
     const { normalizeImage } = await import('/normalize-image.js');
     return normalizeImage(new File([new TextEncoder().encode('not an image')], 'notes.png', { type: 'image/png' }))
       .then(() => 'decoded', (error) => error.name);
   })()`);
 
-  expect(result).toBe('ImageUnreadableError');
-}, 60_000);
+    expect(result).toBe('ImageUnreadableError');
+  },
+  60_000,
+);

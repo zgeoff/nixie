@@ -1,5 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { checkBrowserSkip } from './check-browser-skip';
 import { setupSignedInBrowser } from './setup-signed-in-browser';
+
+// Bun 1.4.2's skipIf takes a boolean and has no in-body skip. Outside CI these tests skip when no
+// browser starts, and the run prints why; CI always runs them.
+const browserSkip = await checkBrowserSkip();
 
 // The helper drives a headless Chrome or Chromium, which Bun finds on PATH, in a standard install
 // location, or at BUN_CHROME_PATH.
@@ -36,10 +41,13 @@ async function setupTest() {
   return { appURL: `http://127.0.0.1:${app.port}`, cookies, view };
 }
 
-test('it opens the app with the session cookie on the first request', async () => {
-  const ctx = await setupTest();
+test.skipIf(browserSkip.isSkipped)(
+  'it opens the app with the session cookie on the first request',
+  async () => {
+    const ctx = await setupTest();
 
-  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: 'device-token-4417' });
+    await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: 'device-token-4417' });
 
-  expect(ctx.cookies.at(0)).toBe('nixie_session=device-token-4417');
-});
+    expect(ctx.cookies.at(0)).toBe('nixie_session=device-token-4417');
+  },
+);
