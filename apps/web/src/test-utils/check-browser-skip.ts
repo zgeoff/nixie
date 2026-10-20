@@ -35,7 +35,7 @@ export async function checkBrowserSkip(probe: BrowserProbe = {}): Promise<Browse
     return { isSkipped: false, reason: null };
   }
 
-  const reason = failure instanceof Error ? failure.message : String(failure);
+  const reason = failure instanceof Error ? failure.message : Bun.inspect(failure);
   const print = probe.print ?? console.warn;
 
   print(`the browser tests skip outside CI: the browser did not start (${reason})`);
