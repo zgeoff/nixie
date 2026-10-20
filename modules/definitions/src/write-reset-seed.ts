@@ -17,6 +17,7 @@ export async function writeResetSeed(
 
   await writeSkillRows(tx, {
     snapshotHash: seed.inForce.snapshotHash,
+    versions: seed.skills,
     skills: seed.skills,
     conversationSkills: seed.inForce.conversationSkills,
   });

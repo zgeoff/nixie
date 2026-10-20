@@ -111,6 +111,33 @@ every skill when the field is unset. A listed name with no skill folder fails th
 a misspelled name would otherwise drop a skill without a trace. The list enters the snapshot hash
 beside the skills.
 
+### Skills that nixie wrote
+
+A skill that nixie wrote goes into force when the user approves it, before the user's definitions
+hold it. The store of written skills keeps one row for each approval that applied a skill: the
+version, the approval's ID, and the version of the skill in the user's definitions when the approval
+applied it, which is the base. Each seed lays every written skill in force over the skills it
+parsed, so the written version replaces the definitions' version, or joins the skills when the
+definitions lack it. A new written skill joins the conversation's skill list, because the
+conversation wrote it, and a written version of an existing skill keeps that skill's place on the
+list. The snapshot hash covers the result with each written skill's origin as nixie, so every record
+names the skills that nixie wrote.
+
+The seed compares each written skill with the definitions' version of it:
+
+- **The definitions hold the written version.** The user merged it, so the seed marks the written
+  skill adopted and the skill's origin becomes the definitions.
+- **The definitions hold the base, or lack a new skill.** The written skill stays in force.
+- **The definitions hold another version.** The user changed the skill before the written version
+  reached the definitions. The written skill stays in force, and its row keeps the definitions'
+  version beside the base, which shows the conflict.
+
+An approval or a retirement takes effect at once through a seed of the definitions in force: it
+reads the user's skills back from the seed in force and lays the written skills over them again,
+without a fresh snapshot from the source. A second approved version of a written skill supersedes
+the first and keeps its base. Each state change goes through one transition table, in which only a
+written skill in force moves, once: to adopted, superseded or retired.
+
 ## The snapshot hash
 
 The snapshot hash is the hash of one canonical form of the definitions in force. The persona enters

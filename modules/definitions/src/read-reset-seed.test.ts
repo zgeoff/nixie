@@ -83,6 +83,8 @@ test('it reads the seed in force with its snapshot row and the payload of its re
       policyHash: built.policyHash,
       skills: [],
       skillChanges: { added: [], changed: [], removed: [] },
+      writtenSkills: [],
+      adoptedSkills: [],
       unapplied: [],
       skipped: [],
     },

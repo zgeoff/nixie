@@ -3,15 +3,18 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Projection } from '@heynixie/log';
-import { startWriter } from '@heynixie/log';
+import { startWriter, withWriteTransaction } from '@heynixie/log';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { buildContentHash } from './build-content-hash';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
+import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
 import { loadSnapshotSkills } from './load-snapshot-skills';
+import { readWrittenSkills } from './read-written-skills';
 import { runSeed } from './run-seed';
+import { writeWrittenSkill } from './write-written-skill';
 
 // the writer's data directory holds the definitions root too, so one removal cleans up both
 async function setupTest(config: { readonly projections?: readonly Projection[] } = {}) {
@@ -787,4 +790,159 @@ test('it refuses a vendored skill whose files differ from its lock entry', async
     },
     inForce: null,
   });
+});
+
+test('it lays a skill that nixie wrote over the definitions and names its approval', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm.\n');
+
+  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  expect(result).toMatchObject({
+    status: 'seeded',
+    inForce: {
+      skills: [{ name: 'tide-tables', skillHash: skill.skillHash, origin: 'nixie' }],
+      conversationSkills: ['tide-tables'],
+    },
+    record: {
+      payload: {
+        skillChanges: { added: ['tide-tables'], changed: [], removed: [] },
+        writtenSkills: [
+          { name: 'tide-tables', approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31' },
+        ],
+        adoptedSkills: [],
+      },
+    },
+  });
+});
+
+test('it marks a skill that nixie wrote as yours once the definitions hold its version', async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+
+  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const states = await sql<{ state: string }>`select state from written_skills`.execute(
+    ctx.writer.db,
+  );
+
+  expect(result).toMatchObject({
+    status: 'seeded',
+    inForce: {
+      skills: [{ name: 'tide-tables', skillHash: skill.skillHash, origin: 'definitions' }],
+    },
+    record: {
+      payload: {
+        writtenSkills: [],
+        adoptedSkills: [
+          { name: 'tide-tables', approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31' },
+        ],
+      },
+    },
+  });
+
+  expect(states.rows).toStrictEqual([{ state: 'adopted' }]);
+});
+
+test('it keeps a skill that nixie wrote in force over a definitions change, beside the version beneath it', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [
+    {
+      path: 'SKILL.md',
+      text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides, by port\n',
+    },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  const edited =
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides, by hour\n';
+
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), edited);
+
+  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const written = await readWrittenSkills(ctx.writer.db);
+
+  const editedFiles = new Map([['SKILL.md', new TextEncoder().encode(edited)]]);
+
+  expect(result.inForce?.skills).toStrictEqual([
+    { name: 'tide-tables', skillHash: skill.skillHash, origin: 'nixie' },
+  ]);
+
+  expect(written).toMatchObject([
+    {
+      name: 'tide-tables',
+      definitions: { skillHash: buildContentHash(editedFiles), origin: 'definitions' },
+    },
+  ]);
 });

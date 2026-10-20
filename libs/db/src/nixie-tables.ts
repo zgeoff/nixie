@@ -264,6 +264,7 @@ export interface NixieTables {
     readonly skill_hash: string;
     readonly origin: string;
     readonly in_conversation: number;
+    readonly approval_id: string | null;
   };
   readonly tasks: {
     readonly task_id: string;
@@ -293,5 +294,18 @@ export interface NixieTables {
     readonly set_sequence: number;
     readonly fired_at: number | null;
     readonly fired_sequence: number | null;
+  };
+  readonly written_skills: {
+    readonly approval_id: string;
+    readonly proposal_id: string;
+    readonly name: string;
+    readonly skill_hash: string;
+    readonly state: string;
+    readonly base_hash: string | null;
+    readonly base_origin: string | null;
+    readonly definitions_hash: string | null;
+    readonly definitions_origin: string | null;
+    readonly approved_at: number;
+    readonly updated_at: number;
   };
 }

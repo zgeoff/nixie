@@ -1,9 +1,10 @@
 import type { JSONObject } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import invariant from 'tiny-invariant';
+import type { SnapshotSkill } from './load-snapshot-skills';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
-import type { DefinitionsInForce, DefinitionsTables, ParsedSkill } from './types';
+import type { DefinitionsInForce, DefinitionsTables } from './types';
 
 // What a reset carries into the new log of the definitions in force: the seed, the snapshot row
 // it points at, and the payload of the record that seeded it.
@@ -16,7 +17,7 @@ export interface ResetSeed {
   readonly payload: JSONObject;
 
   // the skills the snapshot holds, with their files
-  readonly skills: readonly ParsedSkill[];
+  readonly skills: readonly SnapshotSkill[];
 }
 
 type SeedRecordTables = Readonly<{
