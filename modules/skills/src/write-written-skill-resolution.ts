@@ -1,5 +1,6 @@
 import { writeWrittenSkillBase, writeWrittenSkillState } from '@heynixie/definitions';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { match } from 'ts-pattern';
 import { skillsWrittenResolvedCodec } from './skills-written-resolved-codec';
 import type { SkillAnswerContext } from './types';
 
@@ -22,10 +23,12 @@ export async function writeWrittenSkillResolution(
   await withWriteTransaction(log.writer, async (tx) => {
     const at = context.clock.now();
 
-    const name =
-      resolution.keep === 'definitions'
-        ? await writeWrittenSkillState(tx, { approvalID: resolution.approvalID, to: 'retired', at })
-        : await writeWrittenSkillBase(tx, { approvalID: resolution.approvalID, at });
+    const name = await match(resolution.keep)
+      .with('definitions', () =>
+        writeWrittenSkillState(tx, { approvalID: resolution.approvalID, to: 'retired', at }),
+      )
+      .with('nixie', () => writeWrittenSkillBase(tx, { approvalID: resolution.approvalID, at }))
+      .exhaustive();
 
     await writeRecordsInTransaction(tx, log, [
       {
