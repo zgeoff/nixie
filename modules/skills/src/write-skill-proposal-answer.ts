@@ -3,14 +3,10 @@ import { checkSkillFiles, readDefinitionsInForce, writeWrittenSkill } from '@hey
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import { canMoveSkillProposal } from './can-move-skill-proposal';
+import invariant from 'tiny-invariant';
+import { findAnswerRefusal } from './find-answer-refusal';
 import { readSkillProposals } from './read-skill-proposals';
 import { SkillProposalCheckError } from './skill-proposal-check-error';
-import { SkillProposalClosedError } from './skill-proposal-closed-error';
-import { SkillProposalHashError } from './skill-proposal-hash-error';
-import { skillProposalLapseMs } from './skill-proposal-lapse-ms';
-import { SkillProposalNotFoundError } from './skill-proposal-not-found-error';
-import { SkillProposalStaleError } from './skill-proposal-stale-error';
 import { skillsWriteApprovedCodec } from './skills-write-approved-codec';
 import { skillsWriteRejectedCodec } from './skills-write-rejected-codec';
 import type {
@@ -58,8 +54,7 @@ export async function writeSkillProposalAnswer(
   return result;
 }
 
-// The proposal the answer names, once it is found, open, under the answer's skill hash, and over
-// the version of the skill in force.
+// The proposal the answer names, once findAnswerRefusal finds no reason to refuse the answer.
 async function readOpenProposal(
   tx: Transaction<unknown>,
   context: SkillProposalContext,
@@ -67,32 +62,24 @@ async function readOpenProposal(
 ): Promise<SkillProposalState> {
   const [state] = await readSkillProposals(tx, [answer.proposalID]);
 
-  if (state === undefined) {
-    throw new SkillProposalNotFoundError(answer.proposalID);
+  const currentHash = state === undefined ? null : await readCurrentHash(tx, state.proposal.name);
+  const refusal = findAnswerRefusal({ answer, state, now: context.clock.now(), currentHash });
+
+  if (refusal !== null) {
+    throw refusal;
   }
 
-  // a proposal past its lapse time stands lapsed before the sweep records its lapse
-  const isPastLapse = state.proposedAt + skillProposalLapseMs <= context.clock.now();
-  const status = state.outcome ?? (isPastLapse ? 'lapsed' : 'pending');
-  const outcome = answer.answer === 'approve' ? 'approved' : 'rejected';
-
-  if (!canMoveSkillProposal(status, outcome)) {
-    throw new SkillProposalClosedError(answer.proposalID, status);
-  }
-
-  if (state.proposal.skillHash !== answer.skillHash) {
-    throw new SkillProposalHashError(answer.proposalID);
-  }
-
-  const inForce = await readDefinitionsInForce(tx);
-
-  const current = inForce?.skills.find((skill) => skill.name === state.proposal.name);
-
-  if ((current?.skillHash ?? null) !== state.proposal.baseHash) {
-    throw new SkillProposalStaleError(answer.proposalID);
-  }
+  // findAnswerRefusal refuses an answer to a proposal no record holds
+  invariant(state);
 
   return state;
+}
+
+// the version of the skill in force, or null when none is
+async function readCurrentHash(tx: Transaction<unknown>, name: string): Promise<string | null> {
+  const inForce = await readDefinitionsInForce(tx);
+
+  return inForce?.skills.find((skill) => skill.name === name)?.skillHash ?? null;
 }
 
 // the open proposal an approval closes, and your edited files, or null to apply the proposal's
