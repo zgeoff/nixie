@@ -2,7 +2,7 @@ import type { LogTables } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import { skillProposalOutcomes } from './skill-proposal-outcomes';
-import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
+import { skillProposalSchema } from './skill-proposal-schema';
 import type { SkillProposalState } from './types';
 
 // Reads skill proposals from their records, oldest first, each with the outcome of the record that
@@ -48,7 +48,7 @@ export async function readSkillProposals(
   );
 
   return proposed.map((row) => ({
-    proposal: skillsWriteProposedCodec.decode(JSON.parse(row.payload)),
+    proposal: skillProposalSchema.parse(JSON.parse(row.payload)),
     thread: row.thread,
     proposedAt: row.recorded_at,
     outcome: closed.get(row.proposal_id) ?? null,
