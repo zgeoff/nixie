@@ -135,9 +135,11 @@ The seed compares each written skill with the definitions' version of it:
 
 An approval or a retirement takes effect at once through a seed of the definitions in force: it
 reads the user's skills back from the seed in force and lays the written skills over them again,
-without a fresh snapshot from the source. A second approved version of a written skill supersedes
-the first and keeps its base. Each state change goes through one transition table, in which only a
-written skill in force moves, once: to adopted, superseded or retired.
+without a fresh snapshot from the source. The store keeps the change when that seed fails, and the
+definitions poll seeds again while the store and the snapshot in force disagree, even on an
+unchanged source. A second approved version of a written skill supersedes the first and keeps its
+base. Each state change goes through one transition table, in which only a written skill in force
+moves, once: to adopted, superseded or retired.
 
 ## The snapshot hash
 

@@ -15,6 +15,7 @@ export { readResetSeed } from './read-reset-seed';
 export { isDefinitionsPath } from './is-definitions-path';
 export { loadSkillVersions } from './load-skill-versions';
 export { loadSnapshotSkills } from './load-snapshot-skills';
+export { probeWrittenSkillsPending } from './probe-written-skills-pending';
 export type { SeedOptions, SeedResult } from './run-seed';
 export { runSeed } from './run-seed';
 export { runWrittenSkillSeed } from './run-written-skill-seed';
