@@ -71,7 +71,7 @@ export interface CLIFlags {
   readonly encoder: string;
   readonly live: boolean;
 
-  // the action hash a memory answer binds to
+  // the action hash a memory answer binds to, or the skill hash a skill answer binds to
   readonly hash?: string;
 
   // an approval held for a close match: apply it as a revision of <itemID>@<version>, or as a new
@@ -84,6 +84,9 @@ export interface CLIFlags {
 
   // a rejection's reason, which the conversation reads in its next turn
   readonly reason?: string;
+
+  // the pull request on the definitions that carries an approved skill
+  readonly 'pull-request'?: string;
 
   // a reset keeps the live device sessions, and runs only once the user confirms it
   readonly 'keep-sessions': boolean;

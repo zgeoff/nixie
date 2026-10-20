@@ -128,7 +128,9 @@ async function waitForExit(
 ): Promise<NixieExit> {
   await Promise.all([child.exited, stderrDone]);
 
-  const exit = { code: child.exitCode, signal: child.signalCode };
+  // Bun gives a signal with no name, such as a real-time one, as its number
+  const signal = child.signalCode === null ? null : String(child.signalCode);
+  const exit = { code: child.exitCode, signal };
 
   onExit(exit);
 

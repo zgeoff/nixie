@@ -84,3 +84,20 @@ The token check is the one that memory writes run under an allow rule, in
 appears in what the user typed in their latest messages on the thread, or in the persona or a skill
 in force. The proposal records the first token that fails, so the review shows a destination the
 user never named.
+
+The user reviews a proposal through the skill host commands, which list each pending proposal with
+its files, the version of the skill in force at the time of the listing, and the outcome of the
+token check, so a diff of each file against the version in force shows what the proposal changes. An
+answer names the proposal and its skill hash, and the server refuses an answer under another hash,
+or to a proposal that an answer or a lapse closed, and records nothing. A record of the answer
+closes the proposal on the thread that wrote it:
+
+- An approval names the pull request on the definitions source that carries the skill. The skill
+  runs only once that pull request merges and a seed brings it in, so the approval itself changes no
+  definitions in force.
+- A rejection holds the user's reason in its erasable fields.
+- A proposal that waits past its lapse time with no answer lapses. An hourly sweep records each
+  lapse, and the listing leaves out a proposal past its lapse time before the sweep reaches it.
+
+The conversation's next turn names each of its proposals that closed, with the pull request of an
+approval and the reason for a rejection, so the model learns why the user turned a skill down.

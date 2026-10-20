@@ -2,6 +2,7 @@ import { buildHostConsolidationProcedures } from './build-host-consolidation-pro
 import { buildHostItemProcedures } from './build-host-item-procedures';
 import { buildHostProposalProcedures } from './build-host-proposal-procedures';
 import { buildHostSessionProcedures } from './build-host-session-procedures';
+import { buildHostSkillProposalProcedures } from './build-host-skill-proposal-procedures';
 import { buildHostSubjectsProcedure } from './build-host-subjects-procedure';
 import { hostImplementer } from './host-implementer';
 import type { HostRouterOptions } from './types';
@@ -17,5 +18,6 @@ export function buildHostRouter(options: HostRouterOptions) {
       consolidation: buildHostConsolidationProcedures(options.readMemory),
       subjects: buildHostSubjectsProcedure(options.readMemory),
     },
+    skills: { proposals: buildHostSkillProposalProcedures(options.context) },
   });
 }
