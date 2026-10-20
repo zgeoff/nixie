@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { buildWebOnce } from './build-web-once';
 
@@ -15,4 +15,29 @@ test('it builds the web server entry once and shares it', async () => {
   ).exists();
 
   expect(built).toBeTrue();
+}, 120_000);
+
+// the child runs the shared-build test above under the cap, and its title filter keeps it from
+// running this test again
+test('it builds the web server entry under an address-space cap', async () => {
+  const child = Bun.spawn(
+    [
+      'sh',
+      '-c',
+      'ulimit -v 8000000 && exec "$0" test "$1" -t "$2"',
+      process.execPath,
+      join(import.meta.dir, 'build-web-once.test.ts'),
+      'it builds the web server entry once and shares it',
+    ],
+    { cwd: import.meta.dir, stderr: 'pipe', stdout: 'ignore' },
+  );
+
+  onTestFinished(() => {
+    child.kill();
+  });
+
+  const [exitCode, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()]);
+
+  expect(stderr).toInclude('\n 1 pass\n');
+  expect(exitCode).toBe(0);
 }, 120_000);
