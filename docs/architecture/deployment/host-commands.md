@@ -2,11 +2,11 @@
 
 A host command is one of nixie's commands that an operator or a deployment's scripts run inside
 nixie's container, beside the running server: it issues an enrolment code, reports health, lists the
-sandbox images, answers a memory proposal or resets the event log. The image puts a `nixie` command
-on the PATH, so a script runs `nixie enrol-code` and never names the bundle's file or any other path
-in the image. The commands are the whole interface a deployment has into the container, so nixie may
-move its files, its database and its data directory between releases without breaking a deployment
-that calls only the commands.
+sandbox images, answers a memory or skill proposal, or resets the event log. The image puts a
+`nixie` command on the PATH, so a script runs `nixie enrol-code` and never names the bundle's file
+or any other path in the image. The commands are the whole interface a deployment has into the
+container, so nixie may move its files, its database and its data directory between releases without
+breaking a deployment that calls only the commands.
 
 [The server](server.md) covers the process the commands talk to, [Kubernetes](kubernetes.md) covers
 the pod a deployment runs them in, and [names in impd](impd-names.md) covers the names that the
@@ -91,6 +91,12 @@ memory view does, so its version records the user as origin and source, and the 
 stay in the item's history. An edit, a retirement and a restore name the version the user read, and
 the store refuses one whose item moved past that version. A pin adds no version, because it changes
 where the item shows and not what it says.
+
+The skill host commands list the pending skill proposals and approve or reject one, as
+[the skills](../core/skills.md#skills-that-nixie-writes) describes. An approval names the pull
+request that carries the skill, and a rejection needs a reason, which the conversation reads in its
+next turn. The commands record the answer and change no definitions: the skill joins the definitions
+only through the seed, once its pull request merges.
 
 The subjects command counts the memory items and proposals of each subject, owner, shared or self,
 from the running server. Its dry run reads no server: it copies a database file the operator names,

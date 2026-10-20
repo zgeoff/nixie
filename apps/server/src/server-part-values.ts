@@ -39,5 +39,6 @@ export interface ServerPartValues {
   readonly conversation_task: void;
   readonly runners: void;
   readonly seed_poll: void;
+  readonly skill_lapse_sweep: void;
   readonly ready: void;
 }
