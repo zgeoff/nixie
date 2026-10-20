@@ -6,6 +6,7 @@ import { buildTimeTool } from '@heynixie/connectors';
 import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import { buildSkillTools } from '@heynixie/skills';
+import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { buildConversationTools } from './build-conversation-tools';
 import { startTestLog } from './test-utils/start-test-log';
@@ -59,6 +60,7 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
       logRead: ctx.logRead,
       skills: buildSkillTools({
         log: ctx.log,
+        clock: buildTestClock(0),
         readInForce: () => null,
         refreshDefinitions: () => Promise.resolve(null),
         readSkillList: () => [],
@@ -81,6 +83,7 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
     'skill_reload',
     'skill_reload_all',
     'skill_write',
+    'skill_pending',
     'memory.recall',
     'memory.rate',
     'memory.pending',

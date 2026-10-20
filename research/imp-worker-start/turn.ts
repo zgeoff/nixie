@@ -49,7 +49,7 @@ function buildEnv(placement: string, mcpUrl: string): Record<string, string> {
   return {
     ...base,
     ...collectBrokerEnv(mcpUrl),
-    CLAUDE_CODE_OAUTH_TOKEN: 'imp-broker-placeholder',
+    CLAUDE_CODE_OAUTH_TOKEN: 'nixie-broker-placeholder',
   };
 }
 

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildSkillWriteTool } from './build-skill-write-tool';
@@ -53,6 +54,7 @@ test('it proposes a new skill for review and records its files and the run that 
   const registry = buildToolRegistry([
     buildSkillWriteTool({
       log: ctx.log,
+      clock: buildTestClock(0),
       readInForce: () => seeded.inForce,
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
       readSkillList: () => [],
@@ -149,6 +151,7 @@ test('it records the version in force that a change to a skill would replace', a
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
@@ -217,6 +220,7 @@ test('it records a destination the owner never typed and the definitions lack', 
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
@@ -271,6 +275,7 @@ test('it records an untyped destination that only a reference file holds', async
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
@@ -326,6 +331,7 @@ test('it refuses 2 files at one path, and records no proposal', async () => {
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
@@ -388,6 +394,7 @@ test('it records no untyped token for a destination that the persona holds', asy
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
@@ -451,6 +458,7 @@ test('it records no untyped token for a destination that a skill in force holds 
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
@@ -503,6 +511,7 @@ test('it refuses a skill that fails a seed check, and records no proposal', asyn
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
@@ -561,6 +570,7 @@ test('it refuses a skill with every problem the seed checks find, and records no
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
@@ -626,6 +636,7 @@ test('it refuses files that match the version in force', async () => {
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
@@ -667,6 +678,7 @@ test('it refuses a write before the first seed', async () => {
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => null,
     refreshDefinitions: () => Promise.resolve(null),
     readSkillList: () => [],

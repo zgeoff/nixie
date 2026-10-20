@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { readRecords, startWriter } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 import { runSkillReload } from './run-skill-reload';
 
@@ -78,6 +79,7 @@ test('it moves one skill to the version a fresh seed holds and records its old a
   const outcome = await runSkillReload(
     {
       log: ctx.log,
+      clock: buildTestClock(0),
       readInForce: () => first.inForce,
       refreshDefinitions: () =>
         runSeed({ log: ctx.log, source: ctx.source, policy }).then((seeded) => seeded.inForce),
@@ -174,6 +176,7 @@ test('it moves both skills when 2 reloads of one thread name different skills at
 
   const context = {
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => first.inForce,
     refreshDefinitions: async () => {
       const seeded = await runSeed({ log: ctx.log, source: ctx.source, policy });
@@ -244,6 +247,7 @@ test('it runs the next reload of a thread after one fails, and gives the failure
   const failed = runSkillReload(
     {
       log: ctx.log,
+      clock: buildTestClock(0),
       readInForce: () => first.inForce,
       refreshDefinitions: () => Promise.reject(new Error('the definitions source is down')),
       readSkillList: () => ['tide-tables'],
@@ -255,6 +259,7 @@ test('it runs the next reload of a thread after one fails, and gives the failure
   const next = runSkillReload(
     {
       log: ctx.log,
+      clock: buildTestClock(0),
       readInForce: () => first.inForce,
       refreshDefinitions: async () => {
         const seeded = await runSeed({ log: ctx.log, source: ctx.source, policy });
@@ -315,6 +320,7 @@ test('it moves every skill, joins one the list gained and drops one the definiti
   const outcome = await runSkillReload(
     {
       log: ctx.log,
+      clock: buildTestClock(0),
       readInForce: () => first.inForce,
       refreshDefinitions: () =>
         runSeed({ log: ctx.log, source: ctx.source, policy }).then((seeded) => seeded.inForce),
@@ -383,6 +389,7 @@ test("it drops a pinned skill that left the caller's list when a reload names it
   const outcome = await runSkillReload(
     {
       log: ctx.log,
+      clock: buildTestClock(0),
       readInForce: () => seeded.inForce,
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
       readSkillList: () => [],
@@ -443,6 +450,7 @@ test("it refuses a skill that is neither pinned nor on the caller's list, and re
   const outcome = await runSkillReload(
     {
       log: ctx.log,
+      clock: buildTestClock(0),
       readInForce: () => seeded.inForce,
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
       readSkillList: () => ['tide-tables'],
@@ -472,6 +480,7 @@ test('it fails a reload before the first seed', async () => {
   const outcome = await runSkillReload(
     {
       log: ctx.log,
+      clock: buildTestClock(0),
       readInForce: () => null,
       refreshDefinitions: () => Promise.resolve(null),
       readSkillList: () => [],

@@ -2,8 +2,8 @@ import { expect, test } from 'bun:test';
 import { buildModelGrant } from './build-model-grant';
 
 test.each([
-  ['bearer', { ANTHROPIC_AUTH_TOKEN: 'imp-broker-placeholder' }],
-  ['x-api-key', { ANTHROPIC_API_KEY: 'imp-broker-placeholder' }],
+  ['bearer', { ANTHROPIC_AUTH_TOKEN: 'nixie-broker-placeholder' }],
+  ['x-api-key', { ANTHROPIC_API_KEY: 'nixie-broker-placeholder' }],
 ] as const)('it puts a placeholder where the CLI reads a %s credential', (header, env) => {
   expect(
     buildModelGrant({

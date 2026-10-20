@@ -42,7 +42,7 @@ name, so a names-only catalog that is longer than the cap stays whole and goes p
 
 ## The skill tools
 
-The conversation's tool endpoint serves four skill tools. Each of the three that read or reload acts
+The conversation's tool endpoint serves five skill tools. Each of the three that read or reload acts
 only on a skill that the caller's list or the task's pin holds. A run other than the conversation
 has an empty skill list on that endpoint, so it reads no skill.
 
@@ -52,6 +52,7 @@ has an empty skill list on that endpoint, so it reads no skill.
 | `skill_reload`     | `note` | The named skill's old and new version                        |
 | `skill_reload_all` | `note` | The old and new version of each skill on the list or the pin |
 | `skill_write`      | `note` | The proposal's short ID, pending approval                    |
+| `skill_pending`    | `read` | Each skill proposal that waits for the user's answer         |
 
 `skill_read` serves the pinned version. Without a path, it returns the instructions without their
 frontmatter and the paths of the skill's other files. With a path, it returns that one file, and it
@@ -98,6 +99,13 @@ closes the proposal on the thread that wrote it:
 - A rejection holds the user's reason in its erasable fields.
 - A proposal that waits past its lapse time with no answer lapses. An hourly sweep records each
   lapse, and the listing leaves out a proposal past its lapse time before the sweep reaches it.
+
+`skill_pending` lists the pending proposals to the model, oldest first, so the model knows what it
+proposed after a compaction drops the turn it proposed in, and never proposes a skill that already
+waits. Each entry gives the proposal's short ID, the skill's name, whether it is a new skill or a
+new version and the version it replaces, and its age. The tool lists and never answers, because only
+the user approves or rejects a proposal. The model wrote each name, so the result counts as
+untrusted, as `memory.pending` does in [the memory store](../memory/store.md#the-models-tools).
 
 The conversation's next turn names each of its proposals that closed, with the pull request of an
 approval and the reason for a rejection, so the model learns why the user turned a skill down.

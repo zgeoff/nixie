@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
+import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildConversationSkillTools } from './build-conversation-skill-tools';
@@ -46,6 +47,7 @@ async function setupTest() {
   const registry = buildToolRegistry(
     buildConversationSkillTools({
       log: context.apiContext.log,
+      clock: buildTestClock(0),
       readInForce: () => context.inForce.read(),
       refreshDefinitions: () => refreshDefinitions(parts, context.inForce),
     }),
