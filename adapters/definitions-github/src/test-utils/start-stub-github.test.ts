@@ -405,6 +405,25 @@ test('it refuses a pull request update to a state GitHub lacks with 422', async 
   expect(github.readPulls()[0]?.state).toBe('open');
 });
 
+test.each([
+  ['git/trees', { tree: [] }],
+  ['git/trees', { base_tree: 'tree-0', tree: [{ path: 'nixie.yaml' }] }],
+])('it refuses POST %s with a body that lacks a field with 422', async (route, body) => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  const response = await fetch(`${github.url}/repos/harbour/definitions/${route}`, {
+    method: 'POST',
+    headers: { authorization: 'Bearer token-a' },
+    body: JSON.stringify(body),
+  });
+
+  expect(response.status).toBe(422);
+});
+
 test.each([['git/refs/heads/main', { force: true }]])(
   'it refuses PATCH %s with a body that lacks a field with 422',
   async (route, body) => {

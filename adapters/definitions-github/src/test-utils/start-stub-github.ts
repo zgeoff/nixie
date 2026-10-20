@@ -314,20 +314,30 @@ function toPullJSON(state: StubState, pull: StubGitHubPull) {
   };
 }
 
+// a tree entry writes its content, or removes its path with a null sha
+const treeEntrySchema = z.union([
+  z.object({ path: z.string(), content: z.string() }),
+  z.object({ path: z.string(), sha: z.null() }),
+]);
+
+const treeSchema = z.object({ base_tree: z.string(), tree: z.array(treeEntrySchema) });
+
 function answerTree(state: StubState, body: unknown): Response {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the adapter under test sends it
-  const request = body as {
-    base_tree: string;
-    tree: { path: string; content?: string; sha?: string | null }[];
-  };
+  const parsed = treeSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return invalidRequest();
+  }
+
+  const request = parsed.data;
 
   const files = new Map(state.trees.get(request.base_tree));
 
   for (const entry of request.tree) {
-    if (entry.content === undefined) {
-      files.delete(entry.path);
-    } else {
+    if ('content' in entry) {
       files.set(entry.path, entry.content);
+    } else {
+      files.delete(entry.path);
     }
   }
 
