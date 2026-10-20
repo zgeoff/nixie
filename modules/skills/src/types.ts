@@ -4,10 +4,11 @@ import type { Definitions, Log } from '@heynixie/log';
 import type { ToolRun } from '@heynixie/tools';
 import type { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 
-// What the skill tools reach: the log the pins live in, the definitions in force, a fresh seed, and
-// each caller's skill list.
+// What the skill tools reach: the log the pins and the proposals live in, the clock a proposal's
+// age and lapse run on, the definitions in force, a fresh seed, and each caller's skill list.
 export interface SkillToolsContext {
   readonly log: Log;
+  readonly clock: Pick<Clock, 'now'>;
   readonly readInForce: () => DefinitionsInForce | null;
 
   // takes a fresh snapshot, seeds it when its revision is new, and returns the definitions then in

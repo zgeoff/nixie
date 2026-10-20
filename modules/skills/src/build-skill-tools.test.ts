@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import { buildSkillTools } from './build-skill-tools';
 
@@ -27,11 +28,12 @@ async function setupTest() {
   return { log: { writer, deploymentKey, projections: [] } };
 }
 
-test('it builds skill_read, skill_reload, skill_reload_all and skill_write, which the registry accepts', async () => {
+test('it builds skill_read, skill_reload, skill_reload_all, skill_write and skill_pending, which the registry accepts', async () => {
   const ctx = await setupTest();
 
   const tools = buildSkillTools({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => null,
     refreshDefinitions: () => Promise.resolve(null),
     readSkillList: () => [],
@@ -44,6 +46,7 @@ test('it builds skill_read, skill_reload, skill_reload_all and skill_write, whic
     ['skill_reload', ['note']],
     ['skill_reload_all', ['note']],
     ['skill_write', ['note']],
+    ['skill_pending', ['read']],
   ]);
 
   expect(registry.findTool('skill_write')).not.toBeNull();

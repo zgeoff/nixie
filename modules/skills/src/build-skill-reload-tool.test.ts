@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { startWriter } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildSkillReloadTool } from './build-skill-reload-tool';
@@ -65,6 +66,7 @@ test('it reloads the skill its input names, with a result the output schema acce
   const registry = buildToolRegistry([
     buildSkillReloadTool({
       log: ctx.log,
+      clock: buildTestClock(0),
       readInForce: () => seeded.inForce,
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
       readSkillList: () => ['bird-log', 'tide-tables'],
