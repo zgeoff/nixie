@@ -22,6 +22,10 @@ export { runSeed } from './run-seed';
 export { runWrittenSkillSeed } from './run-written-skill-seed';
 export type { WrittenSkillEntry } from './read-written-skills';
 export { readWrittenSkills } from './read-written-skills';
+export type { SkillExportOptions, SkillExportResult } from './run-skill-exports';
+export { runSkillExports } from './run-skill-exports';
+export type { SkillExportSweep, SkillExportSweepOptions } from './start-skill-export-sweep';
+export { startSkillExportSweep } from './start-skill-export-sweep';
 export type { WrittenSkillInput } from './write-written-skill';
 export { writeWrittenSkill } from './write-written-skill';
 export { writeWrittenSkillBase } from './write-written-skill-base';
@@ -30,13 +34,16 @@ export { WrittenSkillStateError } from './written-skill-state-error';
 export { SnapshotError } from './snapshot-error';
 
 export type {
+  DefinitionsChange,
   DefinitionsInForce,
+  DefinitionsRepo,
   DefinitionsSkillOrigin,
   DefinitionsSnapshot,
   DefinitionsSource,
   ParsedDefinitions,
   ParsedSkill,
   PolicyRule,
+  PullRequestRef,
   SizeLimits,
   SkillFrontmatter,
   SkillOrigin,

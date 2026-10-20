@@ -11,9 +11,9 @@ export interface WrittenSkillResolution {
   readonly keep: 'nixie' | 'definitions';
 }
 
-// Records your choice for a skill that nixie wrote, in one write transaction with its change. A
-// choice of your definitions retires nixie's version, and a seed of the definitions in force then
-// puts your definitions' version back in force. A skill that left force refuses either choice.
+// Records your choice for a skill that nixie wrote, in one write transaction with its change, then
+// seeds the written skills as they stand. A choice of your definitions retires nixie's version, so
+// the seed puts your definitions' version back in force. A skill that left force refuses either.
 export async function writeWrittenSkillResolution(
   context: SkillAnswerContext,
   resolution: WrittenSkillResolution,
@@ -43,7 +43,5 @@ export async function writeWrittenSkillResolution(
     ]);
   });
 
-  if (resolution.keep === 'definitions') {
-    await context.seedWrittenSkills();
-  }
+  await context.seedWrittenSkills();
 }

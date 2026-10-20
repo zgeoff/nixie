@@ -1,0 +1,315 @@
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { startWriter, withWriteTransaction } from '@heynixie/log';
+import invariant from 'tiny-invariant';
+import { checkSkillFiles } from './check-skill-files';
+import { createPathSource } from './create-path-source';
+import { runSeed } from './run-seed';
+import { runSkillExports } from './run-skill-exports';
+import { runWrittenSkillSeed } from './run-written-skill-seed';
+import { buildStubDefinitionsRepo } from './test-utils/build-stub-definitions-repo';
+import { writeWrittenSkill } from './write-written-skill';
+import { writeWrittenSkillBase } from './write-written-skill-base';
+import { writeWrittenSkillState } from './write-written-skill-state';
+
+async function setupTest() {
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-skill-exports-'));
+
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
+
+  const root = join(directory, 'definitions');
+
+  const writer = await startWriter({
+    dataDir: directory,
+    clock: { now: () => Date.parse('2026-10-16T09:00:00Z'), sleep: () => Promise.resolve() },
+  });
+
+  stack.defer(() => writer.stop());
+
+  await mkdir(root);
+
+  const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
+    'wrapKey',
+    'unwrapKey',
+  ]);
+
+  return {
+    root,
+    writer,
+    log: { writer, deploymentKey, projections: [] },
+    source: createPathSource({ directory: root }),
+    repo: buildStubDefinitionsRepo(root),
+  };
+}
+
+test('it exports an approved skill as a pull request that carries its files', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await runWrittenSkillSeed({ log: ctx.log, policy });
+
+  const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  expect(result).toStrictEqual({
+    exported: ['5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31'],
+    closed: [],
+  });
+
+  expect(ctx.repo.readPullRequests()).toStrictEqual([
+    {
+      number: 1,
+      url: 'https://definitions.test/pull/1',
+      state: 'open',
+      change: {
+        branch: 'nixie/skill/tide-tables',
+        title: 'Add the tide-tables skill that nixie wrote',
+        body: expect.toInclude('approval `5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31`'),
+        files: new Map([
+          [
+            'skills/tide-tables/SKILL.md',
+            '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n',
+          ],
+        ]),
+      },
+    },
+  ]);
+});
+
+test('it marks an exported skill as yours at the seed after you merge its pull request', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  await ctx.repo.mergePullRequest(1);
+
+  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  expect(result).toMatchObject({
+    status: 'seeded',
+    inForce: {
+      skills: [{ name: 'tide-tables', skillHash: skill.skillHash, origin: 'definitions' }],
+    },
+    record: {
+      payload: {
+        writtenSkills: [],
+        adoptedSkills: [
+          { name: 'tide-tables', approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31' },
+        ],
+      },
+    },
+  });
+});
+
+test('it exports each approval once', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  expect(result).toStrictEqual({ exported: [], closed: [] });
+});
+
+test("it exports again on the new base when you keep nixie's version over a definitions change", async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), `${text}By tide.\n`);
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkillBase(tx, { approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', at: 2 }),
+  );
+
+  const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  expect(result).toStrictEqual({
+    exported: ['5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31'],
+    closed: [],
+  });
+
+  expect(ctx.repo.readPullRequests()).toHaveLength(1);
+});
+
+test("it closes the pull request when you keep your definitions' version", async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkillState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'retired',
+      at: 2,
+    }),
+  );
+
+  const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  expect(result).toStrictEqual({
+    exported: [],
+    closed: ['5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31'],
+  });
+
+  expect(ctx.repo.readPullRequests()[0]?.state).toBe('closed');
+});
+
+test('it passes a failed export to onError, and the next run exports it', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  const onError = mock<(error: unknown) => void>();
+
+  const failed = await runSkillExports({
+    log: ctx.log,
+    repo: { ...ctx.repo, writePullRequest: () => Promise.reject(new Error('the repo is down')) },
+    onError,
+  });
+
+  const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  expect(failed).toStrictEqual({ exported: [], closed: [] });
+  expect(onError).toHaveBeenCalledExactlyOnceWith(new Error('the repo is down'));
+
+  expect(result).toStrictEqual({
+    exported: ['5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31'],
+    closed: [],
+  });
+});

@@ -252,6 +252,14 @@ export interface NixieTables {
     readonly spec: string;
     readonly created_sequence: number;
   };
+  readonly skill_exports: {
+    readonly approval_id: string;
+    readonly state: string;
+    readonly base_hash: string | null;
+    readonly pull_request_number: number;
+    readonly pull_request_url: string;
+    readonly updated_at: number;
+  };
   readonly skill_versions: {
     readonly skill_hash: string;
     readonly name: string;
