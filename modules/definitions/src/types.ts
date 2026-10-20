@@ -210,18 +210,24 @@ export interface WrittenSkillRow {
 // retired when you keep your definitions' version instead.
 export type WrittenSkillState = 'in_force' | 'adopted' | 'superseded' | 'retired';
 
-// the pull request that carries a skill nixie wrote to your definitions repo, which an export in
-// flight may lack, and the base of the skill it was built for
+// the pull request that carries a skill nixie wrote to your definitions repo, and the base of the
+// skill it was built for
 interface SkillExportRow {
   readonly approval_id: string;
-  readonly state: SkillExportState;
+  readonly state: Exclude<SkillExportState, 'exporting'>;
   readonly base_hash: string | null;
-  readonly pull_request_number: number | null;
-  readonly pull_request_url: string | null;
+  readonly pull_request_number: number;
+  readonly pull_request_url: string;
   readonly updated_at: number;
 }
 
-// Where the export of a skill that nixie wrote stands: an export in flight, recorded before it
+// the mark of an export in flight, which it writes before it writes to your definitions repo
+interface SkillExportAttemptRow {
+  readonly approval_id: string;
+  readonly started_at: number;
+}
+
+// Where the export of a skill that nixie wrote stands: an export in flight, marked before it
 // writes to your definitions repo; its pull request open; or closed once you keep your
 // definitions' version instead.
 export type SkillExportState = 'exporting' | 'opened' | 'closed';
@@ -277,5 +283,6 @@ export type DefinitionsTables = CheckedTables<
     snapshot_skills: SnapshotSkillRow;
     written_skills: WrittenSkillRow;
     skill_exports: SkillExportRow;
+    skill_export_attempts: SkillExportAttemptRow;
   }>
 >;

@@ -73,6 +73,7 @@ test('it reads the open pull request of each approval, and leaves out a closed o
     await writeSkillExportState(tx, {
       approvalID: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
       to: 'closed',
+      pullRequest: null,
       at: 3,
     });
   });

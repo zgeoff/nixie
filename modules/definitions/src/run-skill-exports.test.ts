@@ -454,7 +454,6 @@ test('it closes the pull request of a retired export that stopped before it reco
     await writeSkillExportState(tx, {
       approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
       to: 'exporting',
-      baseHash: null,
       at: 2,
     });
   });
@@ -517,7 +516,6 @@ test("it never closes a pull request that another approval's export holds", asyn
     await writeSkillExportState(tx, {
       approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
       to: 'exporting',
-      baseHash: null,
       at: 2,
     });
 

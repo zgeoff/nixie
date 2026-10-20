@@ -6,7 +6,7 @@ import { loadSkillVersions } from './load-skill-versions';
 import { manifestPath } from './manifest-path';
 import { skillsLockPath } from './skills-lock-path';
 import { toSkillExportBranch } from './to-skill-export-branch';
-import type { DefinitionsRepo, DefinitionsTables } from './types';
+import type { DefinitionsRepo, DefinitionsTables, PullRequestRef } from './types';
 import { writeSkillExportState } from './write-skill-export-state';
 
 export interface SkillExportOptions {
@@ -32,6 +32,7 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
   const due = await db
     .selectFrom('written_skills as written')
     .leftJoin('skill_exports as export', 'export.approval_id', 'written.approval_id')
+    .leftJoin('skill_export_attempts as attempt', 'attempt.approval_id', 'written.approval_id')
     .select([
       'written.approval_id',
       'written.name',
@@ -45,7 +46,7 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
     .where((eb) =>
       eb.or([
         eb('export.approval_id', 'is', null),
-        eb('export.state', '=', 'exporting'),
+        eb('attempt.approval_id', 'is not', null),
         eb('export.base_hash', 'is not', eb.ref('written.base_hash')),
       ]),
     )
@@ -54,10 +55,13 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
 
   const retired = await db
     .selectFrom('written_skills as written')
-    .innerJoin('skill_exports as export', 'export.approval_id', 'written.approval_id')
+    .leftJoin('skill_exports as export', 'export.approval_id', 'written.approval_id')
+    .leftJoin('skill_export_attempts as attempt', 'attempt.approval_id', 'written.approval_id')
     .select(['written.approval_id', 'written.name', 'export.pull_request_number'])
     .where('written.state', '=', 'retired')
-    .where('export.state', 'in', ['exporting', 'opened'])
+    .where((eb) =>
+      eb.or([eb('export.state', '=', 'opened'), eb('attempt.approval_id', 'is not', null)]),
+    )
     .execute();
 
   const held = await db
@@ -109,25 +113,41 @@ interface RetiredExport {
 async function closeRetiredExport(
   options: SkillExportOptions,
   row: RetiredExport,
-  heldNumbers: ReadonlySet<number | null>,
+  heldNumbers: ReadonlySet<number>,
 ): Promise<void> {
-  if (row.pull_request_number === null) {
-    const found = await options.repo.readOpenPullRequest(toSkillExportBranch(row.name));
-
-    if (found !== null && !heldNumbers.has(found.number)) {
-      await options.repo.closePullRequest(found.number);
-    }
-  } else {
-    await options.repo.closePullRequest(row.pull_request_number);
-  }
+  const found = await closeRetiredPullRequest(options, row, heldNumbers);
 
   await withWriteTransaction(options.log.writer, (tx) =>
     writeSkillExportState(tx, {
       approvalID: row.approval_id,
       to: 'closed',
+      pullRequest: found,
       at: options.log.writer.clock.now(),
     }),
   );
+}
+
+// closes the recorded pull request, or the one found by branch, which it returns
+async function closeRetiredPullRequest(
+  options: SkillExportOptions,
+  row: RetiredExport,
+  heldNumbers: ReadonlySet<number>,
+): Promise<PullRequestRef | null> {
+  if (row.pull_request_number !== null) {
+    await options.repo.closePullRequest(row.pull_request_number);
+
+    return null;
+  }
+
+  const found = await options.repo.readOpenPullRequest(toSkillExportBranch(row.name));
+
+  if (found === null || heldNumbers.has(found.number)) {
+    return null;
+  }
+
+  await options.repo.closePullRequest(found.number);
+
+  return found;
 }
 
 interface DueExport {
@@ -156,13 +176,12 @@ async function writeSkillExport(options: SkillExportOptions, row: DueExport): Pr
 
   const isBeneathVendored = row.definitions_origin === 'vendored';
 
-  // the export records itself before it writes to the repo, so a retirement after a lost answer
+  // the export marks itself before it writes to the repo, so a retirement after a lost answer
   // still finds its pull request
   await withWriteTransaction(options.log.writer, (tx) =>
     writeSkillExportState(tx, {
       approvalID: row.approval_id,
       to: 'exporting',
-      baseHash: row.base_hash,
       at: options.log.writer.clock.now(),
     }),
   );

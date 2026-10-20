@@ -7,6 +7,7 @@ import { memoryMigrations } from './memory-migrations';
 import { memorySubjectsMigration } from './memory-subjects-migration';
 import { recordAttachmentsMigration } from './record-attachments-migration';
 import { sandboxesMigration } from './sandboxes-migration';
+import { skillExportAttemptsMigration } from './skill-export-attempts-migration';
 import { skillExportsMigration } from './skill-exports-migration';
 import { skillsMigration } from './skills-migration';
 import { tasksMigration } from './tasks-migration';
@@ -31,6 +32,7 @@ export const nixieSchema: BuildSchema = {
     memorySubjectsMigration,
     writtenSkillsMigration,
     skillExportsMigration,
+    skillExportAttemptsMigration,
   ],
   oldestReader: 0,
 };

@@ -67,7 +67,7 @@ test('it opens the export of an approval with its pull request and base', async 
   ]);
 });
 
-test('it records a first export in flight with no pull request', async () => {
+test('it marks a first export in flight with no export row', async () => {
   const ctx = await setupTest();
 
   const skill = checkSkillFiles('tide-tables', [
@@ -89,23 +89,107 @@ test('it records a first export in flight with no pull request', async () => {
     writeSkillExportState(tx, {
       approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
       to: 'exporting',
-      baseHash: null,
       at: 2,
     }),
   );
 
-  const rows = await sql`select * from skill_exports`.execute(ctx.writer.db);
+  const exports = await sql`select * from skill_exports`.execute(ctx.writer.db);
+  const attempts = await sql`select * from skill_export_attempts`.execute(ctx.writer.db);
 
-  expect(rows.rows).toStrictEqual([
+  expect(exports.rows).toStrictEqual([]);
+
+  expect(attempts.rows).toStrictEqual([
+    { approval_id: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', started_at: 2 },
+  ]);
+});
+
+test('it clears the mark of an export in flight when its pull request opens', async () => {
+  const ctx = await setupTest();
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    });
+
+    await writeSkillExportState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'exporting',
+      at: 2,
+    });
+  });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeSkillExportState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'opened',
+      baseHash: null,
+      pullRequest: { number: 7, url: 'https://definitions.test/pull/7' },
+      at: 3,
+    }),
+  );
+
+  const attempts = await sql`select * from skill_export_attempts`.execute(ctx.writer.db);
+
+  expect(attempts.rows).toStrictEqual([]);
+});
+
+test('it records the pull request that an export in flight found when it closes', async () => {
+  const ctx = await setupTest();
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    });
+
+    await writeSkillExportState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'exporting',
+      at: 2,
+    });
+  });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeSkillExportState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'closed',
+      pullRequest: { number: 7, url: 'https://definitions.test/pull/7' },
+      at: 3,
+    }),
+  );
+
+  const exports = await sql`select * from skill_exports`.execute(ctx.writer.db);
+  const attempts = await sql`select * from skill_export_attempts`.execute(ctx.writer.db);
+
+  expect(exports.rows).toStrictEqual([
     {
       approval_id: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
-      state: 'exporting',
+      state: 'closed',
       base_hash: null,
-      pull_request_number: null,
-      pull_request_url: null,
-      updated_at: 2,
+      pull_request_number: 7,
+      pull_request_url: 'https://definitions.test/pull/7',
+      updated_at: 3,
     },
   ]);
+
+  expect(attempts.rows).toStrictEqual([]);
 });
 
 test('it keeps the pull request of an opened export that exports again on a new base', async () => {
@@ -140,22 +224,26 @@ test('it keeps the pull request of an opened export that exports again on a new 
     writeSkillExportState(tx, {
       approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
       to: 'exporting',
-      baseHash: 'base-b',
       at: 3,
     }),
   );
 
-  const rows = await sql`select * from skill_exports`.execute(ctx.writer.db);
+  const exports = await sql`select * from skill_exports`.execute(ctx.writer.db);
+  const attempts = await sql`select * from skill_export_attempts`.execute(ctx.writer.db);
 
-  expect(rows.rows).toStrictEqual([
+  expect(exports.rows).toStrictEqual([
     {
       approval_id: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
-      state: 'exporting',
-      base_hash: 'base-b',
+      state: 'opened',
+      base_hash: null,
       pull_request_number: 7,
       pull_request_url: 'https://definitions.test/pull/7',
-      updated_at: 3,
+      updated_at: 2,
     },
+  ]);
+
+  expect(attempts.rows).toStrictEqual([
+    { approval_id: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', started_at: 3 },
   ]);
 });
 
@@ -189,6 +277,7 @@ test('it refuses to open again an export that closed', async () => {
     await writeSkillExportState(tx, {
       approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
       to: 'closed',
+      pullRequest: null,
       at: 3,
     });
   });
