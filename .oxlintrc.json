@@ -18,9 +18,7 @@
     "apps/web/src/styled-system/**"
   ],
   "rules": {
-    // a library or wire contract fixes each name: `executeQuery` is a Kysely connection method,
-    // `fetch` the request handler of Bun.serve and oRPC's RPCLink, and `process` a part of the
-    // health report that a deployment's probes read
+    // a library or wire contract fixes each name; the project-code-style skill gives the reasons
     "zgeoff/function-verb": ["error", { "exemptNames": ["executeQuery", "fetch", "process"] }],
     // the import boundaries: each outside system has one package that may import it, and every
     // import names its module where the zones can see it
