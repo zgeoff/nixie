@@ -147,7 +147,7 @@ A photo never counts as the user's words, and neither does text the model reads 
 therefore skips the quote check and the checker for a write from a photo, whatever quote the write
 gives, and the proposal keeps no quote. It runs the hidden-character check and the token check, as
 for a self-note, and the write becomes a proposal with the photo reason. The proposal's checks name
-the image.
+the image, and the [proposals page](./view.md#proposals) shows the photo beside the text.
 
 An allow rule covers a write from a photo only when the rule names the image source. A rule on
 `memory.remember` alone leaves the write a proposal. A rule that names the image source lets the

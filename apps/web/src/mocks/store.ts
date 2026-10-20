@@ -248,6 +248,13 @@ const proposalEvidenceSchema = z.object({
   start: z.int().nonnegative(),
 });
 
+// the photo of yours a proposal comes from, as conversation.readImage reads it
+const proposalImageSchema = z.object({
+  position: z.int().nonnegative(),
+  sequence: z.int().positive(),
+  thread: z.string(),
+});
+
 // A memory proposal as nixie's memory store holds it: the operation it binds to, the check that
 // sent it to review, and its status once an answer or its lapse closed it.
 const memoryProposals = new Collection({
@@ -259,6 +266,7 @@ const memoryProposals = new Collection({
       ),
     createdAt: z.date().default(() => faker.date.recent()),
     evidence: proposalEvidenceSchema.nullable().default(null),
+    image: proposalImageSchema.nullable().default(null),
     isPinned: z.boolean().default(false),
     itemID: z.uuid().default(() => faker.string.uuid()),
     subject: z.enum(['owner', 'self', 'shared']).default('owner'),

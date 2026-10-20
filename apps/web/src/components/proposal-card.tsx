@@ -6,6 +6,7 @@ import { formatReviewReason } from '../format-review-reason';
 import { css } from '../styled-system/css';
 import type { MemoryProposal, ProposalOutcome } from '../types';
 import type { ProposalAnswers } from '../use-proposal-answers';
+import { MessageImage } from './message-image';
 import { SelfNoteBadge } from './self-note-badge';
 
 export interface ProposalCardProps {
@@ -19,9 +20,9 @@ export interface ProposalCardProps {
   readonly onDraft: (draft: string | null) => void;
 }
 
-// One pending proposal: its text or your edit of it, a self-note's mark, why it waits for review,
-// its quote inside the message it came from and when it lapses, and your answers to it. An
-// approval an active item closely matches holds, and the card asks how to apply it.
+// One pending proposal: its text or your edit of it beside the photo it comes from, its marks and
+// quote, when it lapses, and your answers to it. An approval an active item closely matches holds,
+// and the card asks how to apply it.
 export function ProposalCard(props: ProposalCardProps): ReactNode {
   const proposal = props.proposal;
   const shown = props.answers.outcomes[proposal.proposalID]?.outcome;
@@ -38,21 +39,24 @@ export function ProposalCard(props: ProposalCardProps): ReactNode {
         />{' '}
         Select
       </label>
-      {props.draft === null ? (
-        <p className={css({ whiteSpace: 'pre-wrap' })}>
-          {proposal.operation === 'retire' ? `Retire: ${proposal.text}` : proposal.text}
-        </p>
-      ) : (
-        <label className={field}>
-          Edited text
-          <textarea
-            onChange={(event) => {
-              props.onDraft(event.target.value);
-            }}
-            value={props.draft}
-          />
-        </label>
-      )}
+      <div className={body}>
+        {proposal.image === null ? null : <MessageImage {...proposal.image} />}
+        {props.draft === null ? (
+          <p className={css({ whiteSpace: 'pre-wrap' })}>
+            {proposal.operation === 'retire' ? `Retire: ${proposal.text}` : proposal.text}
+          </p>
+        ) : (
+          <label className={field}>
+            Edited text
+            <textarea
+              onChange={(event) => {
+                props.onDraft(event.target.value);
+              }}
+              value={props.draft}
+            />
+          </label>
+        )}
+      </div>
       <ProposalDetails proposal={proposal} />
       {shown?.status === 'close_match' ? (
         <CloseMatchChoice {...props} match={shown.item} />
@@ -64,6 +68,9 @@ export function ProposalCard(props: ProposalCardProps): ReactNode {
 }
 
 const card = css({ borderBottomWidth: '1px', paddingBlock: '2' });
+
+// a proposal from a photo shows the photo beside its text
+const body = css({ alignItems: 'flex-start', display: 'flex', gap: '2' });
 const meta = css({ color: 'textMuted', fontSize: 'sm' });
 const field = css({ display: 'flex', flexDirection: 'column', fontSize: 'sm', gap: '1' });
 

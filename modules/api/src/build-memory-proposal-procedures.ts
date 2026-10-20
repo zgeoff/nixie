@@ -107,6 +107,16 @@ function toContractProposal(proposal: ViewProposal) {
             end: evidence.end,
             message: evidence.message,
           },
+
+    // conversation.readImage counts a message's images from 0, and the proposal from 1
+    image:
+      proposal.image === null
+        ? null
+        : {
+            thread: proposal.image.thread,
+            sequence: proposal.image.messageSequence,
+            position: proposal.image.image - 1,
+          },
   };
 }
 

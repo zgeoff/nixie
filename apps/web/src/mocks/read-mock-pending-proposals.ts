@@ -20,6 +20,7 @@ export function readMockPendingProposals() {
     actionHash: proposal.actionHash,
     createdAt: proposal.createdAt,
     evidence: proposal.evidence === null ? null : structuredClone(proposal.evidence),
+    image: proposal.image === null ? null : { ...proposal.image },
     isPinned: proposal.isPinned,
     itemID: proposal.itemID,
     kind: proposal.subject === 'self' ? ('self' as const) : ('fact' as const),

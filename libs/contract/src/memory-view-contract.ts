@@ -124,6 +124,15 @@ const memoryProposalSchema = z.object({
   actionHash: z.string(),
   createdAt: z.date(),
   evidence: evidenceSchema.nullable(),
+
+  // the photo of yours the proposal comes from, as conversation.readImage reads it, or null
+  image: z
+    .object({
+      position: z.int().nonnegative(),
+      sequence: z.int().positive(),
+      thread: z.string(),
+    })
+    .nullable(),
   isPinned: z.boolean(),
   itemID: z.string(),
   kind: kindSchema,
