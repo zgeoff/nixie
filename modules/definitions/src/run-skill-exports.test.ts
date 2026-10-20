@@ -434,6 +434,49 @@ test('it passes a failed export to onError, and the next run exports it', async 
   });
 });
 
+test('it closes a pull request whose answer was lost once you retire its skill', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  ctx.repo.loseNextAnswer();
+
+  await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkillState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'retired',
+      at: 2,
+    }),
+  );
+
+  const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  expect(result).toStrictEqual({
+    exported: [],
+    closed: ['5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31'],
+  });
+
+  expect(ctx.repo.readPullRequests()).toMatchObject([{ number: 1, state: 'closed' }]);
+});
+
 test('it closes the pull request of a retired export that stopped before it recorded it, found by its branch', async () => {
   const ctx = await setupTest();
 

@@ -203,6 +203,30 @@ test("it reads a branch's open pull request, and null once it closes", async () 
   expect(closed).toBeNull();
 });
 
+test('it opens the pull request and rejects the write when its answer is lost, and answers the next write', async () => {
+  const ctx = await setupTest();
+
+  const change = {
+    branch: 'nixie/skill/tide-tables',
+    title: 'Add the tide-tables skill that nixie wrote',
+    body: 'first\n',
+    files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
+  };
+
+  ctx.repo.loseNextAnswer();
+
+  const lost = await ctx.repo.writePullRequest(change, 'revision-a').then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  const next = await ctx.repo.writePullRequest(change, 'revision-b');
+
+  expect(lost).toStrictEqual(new Error('the answer to the pull request write was lost'));
+  expect(next).toStrictEqual({ number: 1, url: 'https://definitions.test/pull/1' });
+  expect(ctx.repo.readPullRequests().map((request) => request.number)).toStrictEqual([1]);
+});
+
 test('it refuses to close a pull request it never opened', () => {
   const directory = join(tmpdir(), 'nixie-stub-repo-unused');
 
