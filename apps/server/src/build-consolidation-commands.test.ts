@@ -16,24 +16,24 @@ import { startTestControlSocket } from './test-utils/start-test-control-socket';
 // the control socket over a test memory in a data directory, and a configuration that names it, as
 // a shell in nixie's container finds the running server
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-diff-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-diff-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
   const memory = await startTestMemory();
 
   await startTestControlSocket({
-    path: join(dir, 'run', 'control.sock'),
+    path: join(directory, 'run', 'control.sock'),
     readMemory: () => memory.store,
   });
 
   // boot data: a host command reads the data directory from the configuration, which must parse
-  const configPath = join(dir, 'config.yaml');
+  const configPath = join(directory, 'config.yaml');
 
   await writeFile(
     configPath,
     [
-      `server: { data_dir: ${dir} }`,
+      `server: { data_dir: ${directory} }`,
       'models:',
       '  profiles:',
       '    chat-direct: { base_url: https://api.anthropic.com, credential: deployment:anthropic,',

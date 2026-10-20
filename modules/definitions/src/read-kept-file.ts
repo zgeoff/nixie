@@ -13,9 +13,9 @@ export async function readKeptFile(
 ): Promise<readonly [string, Uint8Array]> {
   const full = join(base, path);
 
-  const dir = await realpath(dirname(full));
+  const directory = await realpath(dirname(full));
 
-  if (dir !== base && !dir.startsWith(`${base}${sep}`)) {
+  if (directory !== base && !directory.startsWith(`${base}${sep}`)) {
     throw new SnapshotError('a symlink leads outside the definitions root', [path]);
   }
 

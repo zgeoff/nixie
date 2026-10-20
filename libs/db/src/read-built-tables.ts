@@ -31,13 +31,13 @@ interface ColumnRow {
 // table with its columns, tables by name and columns in their declared order. The migration
 // runner owns schema_version, so it stays out.
 export async function readBuiltTables(schema: BuildSchema): Promise<BuiltTable[]> {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-built-tables-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-built-tables-'));
 
   try {
-    const db = startDatabase(join(dir, 'built-tables.db'));
+    const db = startDatabase(join(directory, 'built-tables.db'));
 
     try {
-      await runMigrations(db, { schema, copyDir: dir });
+      await runMigrations(db, { schema, copyDir: directory });
 
       const result = await sql<ColumnRow>`select m.name as "tableName", p.name, p.type,
           p."notnull" as "notNull", p.pk
@@ -50,7 +50,7 @@ export async function readBuiltTables(schema: BuildSchema): Promise<BuiltTable[]
       await db.destroy();
     }
   } finally {
-    await rm(dir, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true });
   }
 }
 

@@ -7,11 +7,11 @@ import { writeBootFiles } from './test-utils/write-boot-files';
 
 // the boot files a deployment command reads, and the IO it prints and logs to
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-deployment-commands-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-deployment-commands-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  const files = await writeBootFiles(dir, 'http://127.0.0.1:9', { config: [], secrets: [] });
+  const files = await writeBootFiles(directory, 'http://127.0.0.1:9', { config: [], secrets: [] });
 
   return {
     ...files,

@@ -11,10 +11,10 @@ async function setupTest() {
   onTestFinished(() => rm(created, { recursive: true, force: true }));
 
   // the snapshot reads from the resolved root, and the temp directory can sit behind a symlink
-  const dir = await realpath(created);
+  const directory = await realpath(created);
 
-  const root = join(dir, 'definitions');
-  const outside = join(dir, 'outside');
+  const root = join(directory, 'definitions');
+  const outside = join(directory, 'outside');
 
   await mkdir(root);
   await mkdir(outside);

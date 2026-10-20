@@ -92,6 +92,7 @@ export const partRefreshMachine = setup({
         return { round, running: new Set([...entered.context.running, ...round]) };
       }),
       invoke: {
+        // oxlint-disable-next-line zgeoff/no-abbreviated-names -- xstate names the invoked actor `src`
         src: 'check',
         input: (entered) => ({
           options: entered.context.options,
@@ -129,6 +130,7 @@ export const partRefreshMachine = setup({
     },
     waiting: {
       invoke: {
+        // oxlint-disable-next-line zgeoff/no-abbreviated-names -- xstate names the invoked actor `src`
         src: 'wait',
         input: (entered) => entered.context.options,
         onDone: { target: 'checking' },

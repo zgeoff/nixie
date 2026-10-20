@@ -31,21 +31,21 @@ export interface BootFileExtras {
 // for the sops stand-in, the sandbox manifest, and a configuration on a free loopback port with
 // the scripted model as the conversation's profile.
 export async function writeBootFiles(
-  dir: string,
+  directory: string,
   modelURL: string,
   extras: BootFileExtras,
 ): Promise<BootFiles> {
-  const dataDir = join(dir, 'data');
+  const dataDir = join(directory, 'data');
   const deploymentKey = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64');
 
   await mkdir(dataDir);
-  await writeDefinitions(join(dir, 'definitions'));
-  await writeSecrets(join(dir, 'secrets.yaml'), deploymentKey, extras.secrets);
-  await writeManifest(join(dir, 'sandbox-manifest.json'));
-  await writeStubSops(join(dir, 'sops'));
+  await writeDefinitions(join(directory, 'definitions'));
+  await writeSecrets(join(directory, 'secrets.yaml'), deploymentKey, extras.secrets);
+  await writeManifest(join(directory, 'sandbox-manifest.json'));
+  await writeStubSops(join(directory, 'sops'));
 
-  await writeConfig(dir, [
-    ...buildConfigLines(dir, modelURL, extras.logLevel),
+  await writeConfig(directory, [
+    ...buildConfigLines(directory, modelURL, extras.logLevel),
     'sandbox:',
     `  adapter: ${extras.sandboxAdapter ?? 'test'}`,
     ...extras.config,
@@ -53,9 +53,9 @@ export async function writeBootFiles(
 
   return {
     dataDir,
-    configPath: join(dir, 'config.yaml'),
-    manifestPath: join(dir, 'sandbox-manifest.json'),
-    sopsPath: join(dir, 'sops'),
+    configPath: join(directory, 'config.yaml'),
+    manifestPath: join(directory, 'sandbox-manifest.json'),
+    sopsPath: join(directory, 'sops'),
     deploymentKey,
   };
 }
@@ -102,16 +102,16 @@ async function writeStubSops(path: string): Promise<void> {
 }
 
 function buildConfigLines(
-  dir: string,
+  directory: string,
   modelURL: string,
   logLevel: LogLevel | undefined,
 ): readonly string[] {
   return [
     'server:',
-    `  data_dir: ${join(dir, 'data')}`,
+    `  data_dir: ${join(directory, 'data')}`,
     '  hostname: 127.0.0.1',
     '  port: 0',
-    `  secrets_file: ${join(dir, 'secrets.yaml')}`,
+    `  secrets_file: ${join(directory, 'secrets.yaml')}`,
     ...(logLevel === undefined ? [] : [`  log_level: ${logLevel}`]),
     'models:',
     '  profiles:',
@@ -126,10 +126,10 @@ function buildConfigLines(
     'imp:',
     '  url: http://127.0.0.1:7070',
     'definitions:',
-    `  source: { kind: path, path: ${join(dir, 'definitions')} }`,
+    `  source: { kind: path, path: ${join(directory, 'definitions')} }`,
   ];
 }
 
-async function writeConfig(dir: string, lines: readonly string[]): Promise<void> {
-  await writeFile(join(dir, 'config.yaml'), `${lines.join('\n')}\n`);
+async function writeConfig(directory: string, lines: readonly string[]): Promise<void> {
+  await writeFile(join(directory, 'config.yaml'), `${lines.join('\n')}\n`);
 }

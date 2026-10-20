@@ -5,11 +5,11 @@ import { join } from 'node:path';
 import { loadCheckerCorpus } from './load-checker-corpus';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-corpus-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-corpus-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { path: join(dir, 'corpus.json') };
+  return { path: join(directory, 'corpus.json') };
 }
 
 test('it loads each sample with its message and its labelled pairs', async () => {

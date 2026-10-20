@@ -14,11 +14,11 @@ async function setupTest() {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-subjects-dry-run-test-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-subjects-dry-run-test-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
-  const path = join(dir, 'nixie.db');
+  const path = join(directory, 'nixie.db');
   const db = startDatabase(path);
 
   stack.defer(() => db.destroy());
@@ -32,7 +32,7 @@ async function setupTest() {
       ),
       oldestReader: 0,
     },
-    copyDir: dir,
+    copyDir: directory,
   });
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)

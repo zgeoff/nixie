@@ -5,11 +5,11 @@ import { join } from 'node:path';
 import { loadDeploymentConfig } from './load-deployment-config';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-config-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-config-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { path: join(dir, 'config.yaml') };
+  return { path: join(directory, 'config.yaml') };
 }
 
 test('it reads every section, with the default of each setting the file leaves out', async () => {

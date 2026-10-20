@@ -25,12 +25,12 @@ interface PlannedCall {
   readonly input: string;
 }
 
-const dir = import.meta.dir;
+const directory = import.meta.dir;
 const name = process.argv[2] ?? 'corpus';
 const ownerName = process.argv[3] === undefined || process.argv[3] === '' ? null : process.argv[3];
 const prompt = renderMemoryCheckerPrompt(ownerName);
 
-const corpus = await loadCheckerCorpus(join(dir, `${name}.json`));
+const corpus = await loadCheckerCorpus(join(directory, `${name}.json`));
 const home = await mkdtemp(join(tmpdir(), 'nixie-checker-eval-'));
 
 const planned = corpus.samples.flatMap((sample) => planSampleCalls(sample));
@@ -46,7 +46,7 @@ const report: CheckerReport = {
   calls,
 };
 
-await Bun.write(join(dir, `${name}-report.json`), `${JSON.stringify(report, null, 2)}\n`);
+await Bun.write(join(directory, `${name}-report.json`), `${JSON.stringify(report, null, 2)}\n`);
 
 function planSampleCalls(sample: CheckerSample): readonly PlannedCall[] {
   return sample.pairs.flatMap((pair, index) =>

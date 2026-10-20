@@ -46,10 +46,10 @@ const releasedText =
 
 const released = releasedText === null ? null : releasedSchema.parse(JSON.parse(releasedText));
 
-const dir = await mkdtemp(join(tmpdir(), 'nixie-migration-check-'));
-const check = await checkMigrations(nixieSchema, released, dir);
+const directory = await mkdtemp(join(tmpdir(), 'nixie-migration-check-'));
+const check = await checkMigrations(nixieSchema, released, directory);
 
-await rm(dir, { recursive: true, force: true });
+await rm(directory, { recursive: true, force: true });
 
 const notes = renderMigrationNotes(check, args.values['last-tag'] ?? null, marker);
 

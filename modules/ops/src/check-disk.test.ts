@@ -6,11 +6,11 @@ import { checkDisk } from './check-disk';
 import { makeStubDiskStats } from './test-utils/make-stub-disk-stats';
 
 test('it reads the data volume through statfs', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-ops-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-ops-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  const report = await checkDisk(dir);
+  const report = await checkDisk(directory);
 
   expect(report).toStrictEqual({
     isReady: expect.toBeBoolean(),

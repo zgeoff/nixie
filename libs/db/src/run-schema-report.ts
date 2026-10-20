@@ -8,17 +8,17 @@ import { readSchemaObjects } from './read-schema-objects';
 import { runMigrations } from './run-migrations';
 import { startDatabase } from './start-database';
 
-const dir = await mkdtemp(join(tmpdir(), 'nixie-schema-report-'));
+const directory = await mkdtemp(join(tmpdir(), 'nixie-schema-report-'));
 
-const db = startDatabase(join(dir, 'schema-report.db'));
+const db = startDatabase(join(directory, 'schema-report.db'));
 
-await runMigrations(db, { schema: nixieSchema, copyDir: dir });
+await runMigrations(db, { schema: nixieSchema, copyDir: directory });
 
 const objects = await readSchemaObjects(db);
 
 await db.destroy();
 
-await rm(dir, { recursive: true, force: true });
+await rm(directory, { recursive: true, force: true });
 
 process.stdout.write(
   `${JSON.stringify({

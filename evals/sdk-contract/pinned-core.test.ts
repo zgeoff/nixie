@@ -14,18 +14,18 @@ const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 // a config directory of the run's own, and the options of a one-call turn with no tools and the
 // SDK's own memory off, as the conversation guest sets them
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-contract-pinned-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-pinned-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
   const options: Options = {
-    cwd: dir,
+    cwd: directory,
     model: 'claude-haiku-5-5',
     settingSources: [],
     tools: [],
     maxTurns: 1,
     settings: { autoMemoryEnabled: false, autoDreamEnabled: false },
-    env: buildContractEnv(process.env, dir),
+    env: buildContractEnv(process.env, directory),
   };
 
   return { options };

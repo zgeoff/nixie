@@ -5,13 +5,13 @@ import { join } from 'node:path';
 // fetch ends, so nothing one page leaves on disk reaches the next fetch.
 export async function withFetchDirectory<T>(
   root: string,
-  run: (dir: string) => Promise<T>,
+  run: (directory: string) => Promise<T>,
 ): Promise<T> {
-  const dir = await mkdtemp(join(root, 'fetch-'));
+  const directory = await mkdtemp(join(root, 'fetch-'));
 
   try {
-    return await run(dir);
+    return await run(directory);
   } finally {
-    await rm(dir, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true });
   }
 }

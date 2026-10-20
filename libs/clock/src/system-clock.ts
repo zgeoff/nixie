@@ -4,7 +4,7 @@ import type { Clock } from './types';
 // signal aborts, so a stopping loop never waits out a poll.
 export const systemClock: Clock = {
   now: () => Date.now(),
-  sleep: async (ms, signal) => {
+  sleep: async (durationMs, signal) => {
     if (signal?.aborted === true) {
       return;
     }
@@ -18,7 +18,7 @@ export const systemClock: Clock = {
       sleep.resolve();
     };
 
-    timer.id = setTimeout(stopSleep, ms);
+    timer.id = setTimeout(stopSleep, durationMs);
     signal?.addEventListener('abort', stopSleep, { once: true });
 
     await sleep.promise;
