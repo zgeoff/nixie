@@ -21,6 +21,7 @@
     "@heynixie/tools": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
+    "xstate": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

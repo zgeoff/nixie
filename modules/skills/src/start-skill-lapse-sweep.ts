@@ -1,3 +1,6 @@
+import { systemClock } from '@heynixie/clock';
+import { createActor, toPromise } from 'xstate';
+import { skillLapseSweepMachine } from './skill-lapse-sweep-machine';
 import type { SkillProposalContext } from './types';
 import { writeSkillProposalLapses } from './write-skill-proposal-lapses';
 
@@ -22,25 +25,26 @@ const lapseSweepMs = 60 * 60 * 1000;
 // conversation hears of it in its next turn. A sweep still running when the next one is due lets
 // that one pass.
 export function startSkillLapseSweep(options: SkillLapseSweepOptions): SkillLapseSweep {
-  let running: Promise<void> | null = null;
+  const sweep = createActor(skillLapseSweepMachine, {
+    input: {
+      sweep: () => writeSkillProposalLapses(options.context),
 
-  const sweep = setInterval(() => {
-    running ??= (async () => {
-      try {
-        await writeSkillProposalLapses(options.context).catch(options.onError);
-      } catch {
-        // an onError that throws loses only its own report, and the next sweep still runs
-      } finally {
-        running = null;
-      }
-    })();
-  }, options.intervalMs ?? lapseSweepMs);
+      // the interval passes on the wall clock; the context's clock only dates each lapse
+      clock: systemClock,
+      intervalMs: options.intervalMs ?? lapseSweepMs,
+      onError: options.onError,
+    },
+  });
+
+  sweep.start();
 
   return {
     stop: async () => {
-      clearInterval(sweep);
+      if (sweep.getSnapshot().status === 'active') {
+        sweep.send({ type: 'stop' });
+      }
 
-      await running;
+      await toPromise(sweep);
     },
   };
 }
