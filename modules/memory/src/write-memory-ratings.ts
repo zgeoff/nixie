@@ -1,9 +1,9 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { findItemIDs } from './find-item-ids';
 import { memoryRatedCodec } from './memory-rated-codec';
 import { MemoryRatingError } from './memory-rating-error';
 import type { MemoryRating, RateRequest } from './rating-types';
+import { readItemIDMap } from './read-item-id-map';
 import { readLatestRecall } from './read-latest-recall';
 import { readShortIDs } from './read-short-ids';
 import { requireSealedNote } from './require-sealed-note';
@@ -25,7 +25,7 @@ export async function writeMemoryRatings(parts: StoreParts, request: RateRequest
 
   const ratings = await Promise.all(
     request.ratings.map((rating) =>
-      buildRatingJSON(parts, { ...items, rating, ratingID, versions: recall.versions }),
+      sealRatingJSON(parts, { ...items, rating, ratingID, versions: recall.versions }),
     ),
   );
 
@@ -59,7 +59,7 @@ async function readRatedItems(
   parts: StoreParts,
   ratings: readonly MemoryRating[],
 ): Promise<RatedItems> {
-  const found = await findItemIDs(
+  const found = await readItemIDMap(
     parts,
     ratings.map((rating) => rating.item),
   );
@@ -71,22 +71,6 @@ async function readRatedItems(
   }
 
   return { found, shortIDs: await readShortIDs(parts, [...found.values()]) };
-}
-
-function getItemID(items: RatedItems, rating: MemoryRating): string {
-  const itemID = items.found.get(rating.item);
-
-  invariant(itemID !== undefined, 'readRatedItems checked the item');
-
-  return itemID;
-}
-
-function getShortID(items: RatedItems, itemID: string): string {
-  const shortID = items.shortIDs.get(itemID);
-
-  invariant(shortID !== undefined, 'readShortIDs reads every item that exists');
-
-  return shortID;
 }
 
 // An item rated twice in one call has no one verdict to keep, whether the model named it the same
@@ -103,6 +87,22 @@ function requireRatedOnce(ratings: readonly MemoryRating[], items: RatedItems): 
 
     seen.add(itemID);
   }
+}
+
+function getItemID(items: RatedItems, rating: MemoryRating): string {
+  const itemID = items.found.get(rating.item);
+
+  invariant(itemID !== undefined, 'readRatedItems checked the item');
+
+  return itemID;
+}
+
+function getShortID(items: RatedItems, itemID: string): string {
+  const shortID = items.shortIDs.get(itemID);
+
+  invariant(shortID !== undefined, 'readShortIDs reads every item that exists');
+
+  return shortID;
 }
 
 interface RecalledItems extends RatedItems {
@@ -136,7 +136,7 @@ interface RatingParts extends RecalledItems {
 // note only as the ciphertext under the item's key.
 type Rating = ReturnType<typeof memoryRatedCodec.decode>['ratings'][number];
 
-async function buildRatingJSON(parts: StoreParts, rating: RatingParts): Promise<Rating> {
+async function sealRatingJSON(parts: StoreParts, rating: RatingParts): Promise<Rating> {
   const itemID = getItemID(rating, rating.rating);
   const version = rating.versions.get(itemID);
 

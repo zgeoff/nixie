@@ -19,6 +19,10 @@ export interface ResetSeed {
   readonly skills: readonly ParsedSkill[];
 }
 
+type SeedRecordTables = Readonly<{
+  records: { readonly sequence: number; readonly payload: string };
+}>;
+
 // Reads the definitions in force with everything a reset needs to seed them again, or null before
 // the first seed.
 export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | null> {
@@ -57,7 +61,3 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     skills: await loadSnapshotSkills(db, inForce.snapshotHash),
   };
 }
-
-type SeedRecordTables = Readonly<{
-  records: { readonly sequence: number; readonly payload: string };
-}>;

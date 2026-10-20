@@ -5,6 +5,9 @@ import { skillProposalOutcomes } from './skill-proposal-outcomes';
 import { skillProposalSchema } from './skill-proposal-schema';
 import type { SkillProposalState } from './types';
 
+// the proposal ID every skill proposal's record holds in its plain payload
+const proposalIDColumn = sql<string>`json_extract(payload, '$.proposalID')`;
+
 // Reads skill proposals from their records, oldest first, each with the outcome of the record that
 // closed it, or null while it waits for your answer. Given IDs, it reads only those proposals. The
 // db may be a write transaction, so an answer reads the proposal it closes in the same one.
@@ -54,6 +57,3 @@ export async function readSkillProposals(
     outcome: closed.get(row.proposal_id) ?? null,
   }));
 }
-
-// the proposal ID every skill proposal's record holds in its plain payload
-const proposalIDColumn = sql<string>`json_extract(payload, '$.proposalID')`;

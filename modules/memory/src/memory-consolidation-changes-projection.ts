@@ -22,6 +22,12 @@ export const memoryConsolidationChangesProjection: Projection = {
   },
 };
 
+const statusAfter = {
+  'memory.consolidation_approved': 'consumed',
+  'memory.consolidation_rejected': 'rejected',
+  'memory.consolidation_lapsed': 'lapsed',
+} as const;
+
 async function writeChangeRows(
   db: Kysely<ConsolidationTables>,
   record: EnvelopeRecord,
@@ -90,9 +96,3 @@ async function updateChangeComment(
 
   return [parsed.changeID];
 }
-
-const statusAfter = {
-  'memory.consolidation_approved': 'consumed',
-  'memory.consolidation_rejected': 'rejected',
-  'memory.consolidation_lapsed': 'lapsed',
-} as const;

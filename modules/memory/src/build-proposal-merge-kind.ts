@@ -9,6 +9,12 @@ export interface ProposalMergeEvent {
   readonly origin: MemoryOrigin;
 }
 
+const proposerWords: Readonly<Record<Exclude<MemoryOrigin, 'owner'>, string>> = {
+  conversation: 'Another conversation turn',
+  task: 'A task',
+  memory_writer: 'Your note-taker',
+};
+
 // The event kind for a write from outside the conversation that merged into one of its proposals,
 // so the conversation knows its proposal still waits. A proposal that closed before the next turn
 // has nothing left to wait for, so its merges are left out.
@@ -36,12 +42,6 @@ export function buildProposalMergeKind(log: Pick<Log, 'writer'>): EventKind<Prop
     },
   };
 }
-
-const proposerWords: Readonly<Record<Exclude<MemoryOrigin, 'owner'>, string>> = {
-  conversation: 'Another conversation turn',
-  task: 'A task',
-  memory_writer: 'Your note-taker',
-};
 
 interface MergeRow {
   readonly proposal_id: string;

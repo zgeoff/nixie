@@ -1,10 +1,10 @@
 import type { Log } from '@heynixie/log';
 import { findCheckerModel } from './find-checker-model';
-import { findItemKey } from './find-item-key';
 import { loadWriterModel } from './load-writer-model';
 import { parseChecks } from './parse-checks';
 import { parseEvidence } from './parse-evidence';
 import { readEvidenceMessage } from './read-evidence-message';
+import { readItemKey } from './read-item-key';
 import { readViewItems } from './read-view-items';
 import { readViewText } from './read-view-text';
 import type { MemoryTables, MemoryVersionRow } from './types';
@@ -31,7 +31,7 @@ export async function readItemDetail(
     .orderBy('version')
     .execute();
 
-  const key = await findItemKey(log, itemID);
+  const key = await readItemKey(log, itemID);
 
   // versions that copy their text, such as a retirement, share their message, so each reads once
   const messages = new Map<number, Promise<EvidenceMessage>>();

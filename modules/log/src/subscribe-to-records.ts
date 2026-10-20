@@ -13,6 +13,8 @@ export interface SubscribeToRecordsOptions {
   readonly subscribeToChanges?: SubscribeToChanges;
 }
 
+const BATCH_SIZE = 100;
+
 // Yields every record after a sequence, with its changed projection rows, then waits for the next
 // commit and reads again. The stream ends once the signal aborts. A commit during a read makes the
 // next read run at once, so no commit goes unread.
@@ -43,8 +45,6 @@ export async function* subscribeToRecords(
     wake.stop();
   }
 }
-
-const BATCH_SIZE = 100;
 
 // the reset comes before the read, so a commit that lands during the read wakes the stream again
 function readNextBatch(

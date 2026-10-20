@@ -1,8 +1,8 @@
 import type { WriteGroup } from './build-write-group';
 import { buildWriteGroup } from './build-write-group';
-import { findNewestMessage } from './find-newest-message';
 import { ForgottenEvidenceError } from './forgotten-evidence-error';
 import type { ContentGateResult, GatedRememberRequest, WriteOutcome } from './gate-types';
+import { readNewestMessage } from './read-newest-message';
 import { requireLiveEvidence } from './require-live-evidence';
 import { runSubjectGate } from './run-subject-gate';
 import type { MemorySubject, StoreParts } from './types';
@@ -20,7 +20,7 @@ export async function writeGatedRemember(
 
   const gate = checked.gate;
 
-  const newest = await findNewestMessage(parts.context.log, request.caller.thread);
+  const newest = await readNewestMessage(parts.context.log, request.caller.thread);
 
   const group = buildWriteGroup(request.caller, newest);
 
@@ -31,37 +31,10 @@ export async function writeGatedRemember(
   return writeRememberProposal(parts, request, { review: gate, group, subject: checked.subject });
 }
 
-interface ReviewedRemember {
-  readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
+interface PassedRemember {
+  readonly gate: Extract<ContentGateResult, { readonly status: 'pass' }>;
   readonly group: WriteGroup;
   readonly subject: MemorySubject;
-}
-
-async function writeRememberProposal(
-  parts: StoreParts,
-  request: GatedRememberRequest,
-  reviewed: ReviewedRemember,
-): Promise<WriteOutcome> {
-  const review = reviewed.review;
-
-  const written = await writeMemoryProposal(parts, {
-    operation: 'remember',
-    target: request.target ?? null,
-    isPinned: request.isPinned === true,
-    text: request.text,
-
-    // no check ties a photo's write to a quote, so its proposal shows none as your words
-    quote: request.image === undefined ? (request.quote ?? null) : null,
-    reason: review.reason,
-    evidence: review.evidence,
-    checks: review.checks,
-    checkerReason: review.checkerReason,
-    caller: request.caller,
-    group: reviewed.group,
-    subject: reviewed.subject,
-  });
-
-  return { status: 'proposed', ...written, reason: review.reason };
 }
 
 // a forget that completed while the checker answered turns a passing write into a proposal
@@ -95,12 +68,6 @@ async function applyPassedRemember(
       subject: passed.subject,
     });
   }
-}
-
-interface PassedRemember {
-  readonly gate: Extract<ContentGateResult, { readonly status: 'pass' }>;
-  readonly group: WriteGroup;
-  readonly subject: MemorySubject;
 }
 
 // the version takes the source and checks the gate gave it, and the model of the call that wrote it
@@ -139,4 +106,37 @@ async function applyRemember(
   );
 
   return { status: 'applied', itemID: ref.itemID, version: ref.version };
+}
+
+interface ReviewedRemember {
+  readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
+  readonly group: WriteGroup;
+  readonly subject: MemorySubject;
+}
+
+async function writeRememberProposal(
+  parts: StoreParts,
+  request: GatedRememberRequest,
+  reviewed: ReviewedRemember,
+): Promise<WriteOutcome> {
+  const review = reviewed.review;
+
+  const written = await writeMemoryProposal(parts, {
+    operation: 'remember',
+    target: request.target ?? null,
+    isPinned: request.isPinned === true,
+    text: request.text,
+
+    // no check ties a photo's write to a quote, so its proposal shows none as your words
+    quote: request.image === undefined ? (request.quote ?? null) : null,
+    reason: review.reason,
+    evidence: review.evidence,
+    checks: review.checks,
+    checkerReason: review.checkerReason,
+    caller: request.caller,
+    group: reviewed.group,
+    subject: reviewed.subject,
+  });
+
+  return { status: 'proposed', ...written, reason: review.reason };
 }

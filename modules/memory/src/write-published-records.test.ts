@@ -3,8 +3,8 @@ import { buildTestClock } from '@heynixie/testing';
 import { readWriterRow } from './read-writer-row';
 import { runWriterBatch } from './run-writer-batch';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
-import { buildStubWriterSession } from './test-utils/build-stub-writer-session';
 import { claimWriterLease } from './test-utils/claim-writer-lease';
+import { createStubWriterSession } from './test-utils/create-stub-writer-session';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writePlannedBatch } from './test-utils/write-planned-batch';
 import { writerConfigSchema } from './writer-config-schema';
@@ -50,7 +50,7 @@ test('it merges a conversation write into the pending proposal the writer made o
   await runWriterBatch(
     {
       ...ctx.parts,
-      ...buildStubWriterSession({
+      ...createStubWriterSession({
         op: 'remember',
         subject: 'owner',
         text: 'The owner keeps bees.',
@@ -105,7 +105,7 @@ test('it merges a writer proposal into the pending proposal the conversation mad
   const result = await runWriterBatch(
     {
       ...ctx.parts,
-      ...buildStubWriterSession({
+      ...createStubWriterSession({
         op: 'remember',
         subject: 'owner',
         text: 'The owner keeps bees.',
@@ -135,7 +135,7 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I keep bees.', 'Yes, I keep bees.']);
 
-  const session = buildStubWriterSession({
+  const session = createStubWriterSession({
     op: 'remember',
     subject: 'owner',
     text: 'The owner keeps bees.',

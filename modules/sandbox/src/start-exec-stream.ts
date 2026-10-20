@@ -1,7 +1,7 @@
 import { waitForSettled } from '@heynixie/async';
 import { encodeFrame, makeFrameDecoder } from '@heynixie/wire';
-import { collectOutput } from './collect-output';
 import { execOutputLimitBytes } from './exec-output-limit-bytes';
+import { readStreamOutput } from './read-stream-output';
 import type { ExecExit, ExecStream, StreamExit } from './types';
 
 // A running process as an adapter sees it.
@@ -40,7 +40,7 @@ export function startExecStream(io: ProcessIO, maxMessageBytes: number): ExecStr
 async function waitForStreamExit(io: ProcessIO): Promise<StreamExit> {
   const [ended, stderr] = await Promise.all([
     io.exit,
-    collectOutput(io.stderr, execOutputLimitBytes),
+    readStreamOutput(io.stderr, execOutputLimitBytes),
   ]);
 
   return { ...ended, stderr };

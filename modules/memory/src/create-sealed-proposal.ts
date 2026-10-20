@@ -1,8 +1,8 @@
 import { createRecordKey } from '@heynixie/log';
 import { buildProposalHash } from './build-proposal-hash';
 import { encodeProposalText } from './encode-proposal-text';
-import { findItemKey } from './find-item-key';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
+import { readItemKey } from './read-item-key';
 import type { StoreParts } from './types';
 import type { ProposalPlan } from './write-memory-proposal';
 import type { SealedProposal } from './write-proposal-record';
@@ -17,7 +17,7 @@ export async function createSealedProposal(
 
   const key = await readProposalKey(parts, plan, itemID);
 
-  return buildSealedProposal(key, plan, itemID);
+  return sealProposal(key, plan, itemID);
 }
 
 async function readProposalKey(
@@ -31,7 +31,7 @@ async function readProposalKey(
     return created.key;
   }
 
-  const key = await findItemKey(parts.context.log, itemID);
+  const key = await readItemKey(parts.context.log, itemID);
 
   if (key === null || key === undefined) {
     throw new MemoryItemNotFoundError(itemID);
@@ -40,9 +40,11 @@ async function readProposalKey(
   return key;
 }
 
+const saltBytes = 16;
+
 // the salt sits sealed beside the text, so the action hash says nothing about the text once a
 // forget makes the text unreadable
-async function buildSealedProposal(
+async function sealProposal(
   key: CryptoKey,
   plan: ProposalPlan,
   itemID: string,
@@ -70,5 +72,3 @@ async function buildSealedProposal(
 
   return { proposalID, itemID, sealed, actionHash };
 }
-
-const saltBytes = 16;

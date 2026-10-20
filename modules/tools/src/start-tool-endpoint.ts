@@ -2,7 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createMcpHandler } from '@modelcontextprotocol/server';
-import { buildRunServer } from './build-run-server';
+import { createRunServer } from './create-run-server';
 import type { ToolCallOptions } from './run-tool-call';
 import type { RunEndpoint, ToolEndpoint, ToolRun } from './types';
 
@@ -66,6 +66,8 @@ interface RunEndpointSpec {
   readonly onStop: () => void;
 }
 
+type McpHandler = ReturnType<typeof createMcpHandler>;
+
 async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
   // a socket file left by a process that crashed would refuse the listen
   await rm(spec.socketPath, { force: true });
@@ -76,7 +78,7 @@ async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
   // each token's own MCP handler, the run's token and every step token, so a call's run carries
   // the identity of the step whose token it arrived with
   const handlers = new Map<string, McpHandler>([
-    [token, createMcpHandler(() => buildRunServer(spec.run, spec.options))],
+    [token, createMcpHandler(() => createRunServer(spec.run, spec.options))],
   ]);
 
   const server = Bun.serve({
@@ -117,47 +119,6 @@ async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
   };
 }
 
-type McpHandler = ReturnType<typeof createMcpHandler>;
-
-// Each step token gets a handler of its own over the run with the step's run ID, and stopping the
-// step revokes the token and closes the streams opened with it.
-function makeStepStarter(
-  spec: RunEndpointSpec,
-
-  handlers: Map<string, McpHandler>,
-): RunEndpoint['startStep'] {
-  return (stepRunID) => {
-    const token = randomBytes(32).toString('base64url');
-    const stepRun: ToolRun = { ...spec.run, stepRunID };
-    const handler = createMcpHandler(() => buildRunServer(stepRun, spec.options));
-
-    handlers.set(token, handler);
-
-    return {
-      token,
-      stop: async () => {
-        if (handlers.delete(token)) {
-          await handler.close();
-        }
-      },
-    };
-  };
-}
-
-// the handler of the token the request presents, or null when it presents none of the run's tokens
-function findTokenHandler(
-  handlers: ReadonlyMap<string, McpHandler>,
-  authorization: string | null,
-): McpHandler | null {
-  for (const [token, handler] of handlers) {
-    if (isRunToken(authorization, token)) {
-      return handler;
-    }
-  }
-
-  return null;
-}
-
 type FindHandler = (authorization: string | null) => McpHandler | null;
 
 // The MCP handler's response goes back unread, so each chunk of a stream reaches the guest as the
@@ -180,9 +141,48 @@ function makeRunFetch(findHandler: FindHandler): (request: Request) => Promise<R
   };
 }
 
+// the handler of the token the request presents, or null when it presents none of the run's tokens
+function findTokenHandler(
+  handlers: ReadonlyMap<string, McpHandler>,
+  authorization: string | null,
+): McpHandler | null {
+  for (const [token, handler] of handlers) {
+    if (isRunToken(authorization, token)) {
+      return handler;
+    }
+  }
+
+  return null;
+}
+
 function isRunToken(authorization: string | null, token: string): boolean {
   const presented = Buffer.from(authorization ?? '');
   const expected = Buffer.from(`Bearer ${token}`);
 
   return presented.length === expected.length && timingSafeEqual(presented, expected);
+}
+
+// Each step token gets a handler of its own over the run with the step's run ID, and stopping the
+// step revokes the token and closes the streams opened with it.
+function makeStepStarter(
+  spec: RunEndpointSpec,
+
+  handlers: Map<string, McpHandler>,
+): RunEndpoint['startStep'] {
+  return (stepRunID) => {
+    const token = randomBytes(32).toString('base64url');
+    const stepRun: ToolRun = { ...spec.run, stepRunID };
+    const handler = createMcpHandler(() => createRunServer(stepRun, spec.options));
+
+    handlers.set(token, handler);
+
+    return {
+      token,
+      stop: async () => {
+        if (handlers.delete(token)) {
+          await handler.close();
+        }
+      },
+    };
+  };
 }

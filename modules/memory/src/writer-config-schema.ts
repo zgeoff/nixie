@@ -1,5 +1,20 @@
 import { z } from 'zod';
 
+export interface WriterConfig {
+  readonly batchMessages: number;
+  readonly batchTokens: number;
+  readonly idleMs: number;
+  readonly maxAgeMs: number;
+
+  // the least time from one batch to the next, from the limit of batches an hour
+  readonly paceMs: number;
+  readonly itemListTokens: number;
+  readonly topItems: number;
+  readonly proposalCap: number;
+  readonly firstBackoffMs: number;
+  readonly maxBackoffMs: number;
+}
+
 // The memory writer section of the deployment configuration: the batch size and its token budget,
 // the idle and age triggers, the pace, the item list's budget, the proposal cap, and the backoff,
 // which doubles from its first wait up to the maximum.
@@ -31,18 +46,3 @@ export const writerConfigSchema = z
 
 // The writer section as the deployment configuration writes it, before the defaults apply.
 export type WriterConfigInput = z.input<typeof writerConfigSchema>;
-
-export interface WriterConfig {
-  readonly batchMessages: number;
-  readonly batchTokens: number;
-  readonly idleMs: number;
-  readonly maxAgeMs: number;
-
-  // the least time from one batch to the next, from the limit of batches an hour
-  readonly paceMs: number;
-  readonly itemListTokens: number;
-  readonly topItems: number;
-  readonly proposalCap: number;
-  readonly firstBackoffMs: number;
-  readonly maxBackoffMs: number;
-}

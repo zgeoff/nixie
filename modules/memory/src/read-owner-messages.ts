@@ -8,6 +8,10 @@ export interface OwnerMessageQuery {
   readonly limit: number;
 }
 
+const spanSource = z.enum(['typed', 'pasted', 'dropped', 'unknown']);
+const messageSpan = z.object({ start: z.int(), end: z.int(), source: spanSource });
+const messageFields = z.object({ text: z.string(), spans: z.array(messageSpan) });
+
 // Reads your latest messages in the thread, newest first, with their text and spans. A message
 // whose text is gone, such as one a forget erased, is left out, because nothing in it can back a
 // write any more.
@@ -43,7 +47,3 @@ export async function readOwnerMessages(
 
   return messages.filter((message) => message !== null);
 }
-
-const spanSource = z.enum(['typed', 'pasted', 'dropped', 'unknown']);
-const messageSpan = z.object({ start: z.int(), end: z.int(), source: spanSource });
-const messageFields = z.object({ text: z.string(), spans: z.array(messageSpan) });

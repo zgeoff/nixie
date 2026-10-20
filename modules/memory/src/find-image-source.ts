@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import type { ImageRef } from './gate-types';
 
+const imageChecks = z.object({
+  image: z.object({
+    messageSequence: z.int().positive(),
+    image: z.int().positive(),
+  }),
+});
+
 // Finds the photo of yours that a write's checks name as its source, or null for a write from
 // anything else.
 export function findImageSource(checks: unknown): ImageRef | null {
@@ -8,10 +15,3 @@ export function findImageSource(checks: unknown): ImageRef | null {
 
   return parsed.success ? parsed.data.image : null;
 }
-
-const imageChecks = z.object({
-  image: z.object({
-    messageSequence: z.int().positive(),
-    image: z.int().positive(),
-  }),
-});

@@ -27,6 +27,8 @@ async function resetProjections(
   }
 }
 
+const PAGE_SIZE = 500;
+
 async function applyEveryRecord(
   tx: Transaction<unknown>,
   projections: readonly Projection[],
@@ -51,5 +53,3 @@ async function applyEveryRecord(
     cursor.done = rows.length < PAGE_SIZE;
   }
 }
-
-const PAGE_SIZE = 500;

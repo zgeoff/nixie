@@ -1,6 +1,6 @@
 export { buildTimeTool } from './build-time-tool';
 export { buildWebFetchTool } from './build-web-fetch-tool';
-export { findMessageTimeZone } from './find-message-time-zone';
+export { readMessageTimeZone } from './read-message-time-zone';
 export type { FetchSandbox, FetchSandboxOptions } from './start-fetch-sandbox';
 export { fetchSandboxOwner, startFetchSandbox } from './start-fetch-sandbox';
 export { timeConfigSchema } from './time-config-schema';

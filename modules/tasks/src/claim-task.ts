@@ -24,7 +24,7 @@ export async function claimTask(
     kind: 'task',
     holder: options.holder,
     durationMs: options.leaseMs,
-    findCandidate: findClaimableTask,
+    readCandidate: readClaimableTask,
     onClaim: async (tx, held) => {
       started.stepKey = await writeStepStart(tx, context, held);
     },
@@ -33,7 +33,7 @@ export async function claimTask(
   return lease === null ? null : { lease, stepKey: started.stepKey };
 }
 
-async function findClaimableTask(tx: Transaction<unknown>, now: number): Promise<string | null> {
+async function readClaimableTask(tx: Transaction<unknown>, now: number): Promise<string | null> {
   const row = await tx
     .$extendTables<TasksTables>()
     .selectFrom('tasks')

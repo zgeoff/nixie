@@ -10,8 +10,6 @@ import { runGuestFrame } from './run-guest-frame';
 import type { StubGuestToolCaller } from './run-stub-guest-turn';
 import { setupTestRecorder } from './setup-test-recorder';
 
-const env = { HOME: '/home/nixie' };
-
 async function setupTest(options: { readonly callTool?: StubGuestToolCaller } = {}) {
   const recorder = await setupTestRecorder();
 
@@ -666,7 +664,7 @@ test('it refuses every command', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
 
-  expect(sandbox.exec({ argv: ['true'], env, cwd: '/' })).rejects.toThrow(
+  expect(sandbox.exec({ argv: ['true'], env: { HOME: '/home/nixie' }, cwd: '/' })).rejects.toThrow(
     'the stub sandbox runs no command',
   );
 });
@@ -685,7 +683,7 @@ test('it refuses a spawn, a list and a move on a sleeping sandbox until it wakes
   await sandbox.suspension.sleep();
 
   const refused = await Promise.allSettled([
-    sandbox.spawn({ argv: ['guest'], env, maxMessageBytes: 1024 }),
+    sandbox.spawn({ argv: ['guest'], env: { HOME: '/home/nixie' }, maxMessageBytes: 1024 }),
     sandbox.readFilePaths('/home/nixie'),
     sandbox.applyMove('/home/nixie/a.txt', '/home/nixie/b.txt'),
   ]);
@@ -823,7 +821,11 @@ test('it answers a live message that arrives during a tool call, in the same ses
     { text: 'Noted the milk.' },
   );
 
-  const stream = await sandbox.spawn({ argv: ['guest'], env, maxMessageBytes: 1 << 20 });
+  const stream = await sandbox.spawn({
+    argv: ['guest'],
+    env: { HOME: '/home/nixie' },
+    maxMessageBytes: 1 << 20,
+  });
 
   // the turn runs up to its tool call within the send, and waits there on the release
   await stream.send(encodeTurnFrame(buildMockTurnFrame()));
@@ -864,7 +866,11 @@ test('it writes no transcript from a turn the host stopped during a tool call, s
 
   ctx.stub.addReplies({ toolUse: { name: 'mcp__nixie__notes_read', input: {} } });
 
-  const stream = await sandbox.spawn({ argv: ['guest'], env, maxMessageBytes: 1 << 20 });
+  const stream = await sandbox.spawn({
+    argv: ['guest'],
+    env: { HOME: '/home/nixie' },
+    maxMessageBytes: 1 << 20,
+  });
 
   const turn = buildMockTurnFrame({
     input: [{ uuid: crypto.randomUUID(), text: 'the blue flowerpot' }],
@@ -896,7 +902,11 @@ test('it keeps the frames and transcript of an input that completed before a sto
     { toolUse: { name: 'mcp__nixie__notes_read', input: {} } },
   );
 
-  const stream = await sandbox.spawn({ argv: ['guest'], env, maxMessageBytes: 1 << 20 });
+  const stream = await sandbox.spawn({
+    argv: ['guest'],
+    env: { HOME: '/home/nixie' },
+    maxMessageBytes: 1 << 20,
+  });
 
   const input = [
     { uuid: '6e697869-0000-8000-8000-000000000001', text: 'Say a fruit.' },

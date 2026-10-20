@@ -28,14 +28,14 @@ export function renderConsolidatorPrompt(input: ConsolidatorPromptInput): string
   return `${heading}\n${items}`;
 }
 
+function formatDate(at: number): string {
+  return new Date(at).toISOString().slice(0, 10);
+}
+
 function formatLine(text: string): string {
   return text.replaceAll(/\s+/gu, ' ');
 }
 
 function formatQuote(quote: string | null): string {
   return quote === null ? '' : `\n  quote: ${formatLine(quote)}`;
-}
-
-function formatDate(at: number): string {
-  return new Date(at).toISOString().slice(0, 10);
 }

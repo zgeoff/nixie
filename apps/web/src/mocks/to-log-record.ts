@@ -35,16 +35,22 @@ function toLogCompaction(compaction: NonNullable<StoredRecord['compaction']>): L
   };
 }
 
-type LogRecall = NonNullable<LogRecord['recall']>;
+type LogMessage = NonNullable<LogRecord['message']>;
 
-// keeps a score only where one exists
-function toLogRecall(recall: NonNullable<StoredRecord['recall']>): LogRecall {
+function toLogMessage(message: NonNullable<StoredRecord['message']>): LogMessage {
+  const spans = message.spans?.map((span) => ({
+    end: span.end,
+    source: span.source,
+    start: span.start,
+  }));
+
+  const images = message.images?.map((image) => ({ mediaType: image.mediaType }));
+
   return {
-    items: recall.items.map((item) =>
-      item.score === undefined
-        ? { itemID: item.itemID, version: item.version }
-        : { itemID: item.itemID, score: item.score, version: item.version },
-    ),
+    ...(message.clientMessageId === undefined ? {} : { clientMessageId: message.clientMessageId }),
+    ...(images === undefined ? {} : { images }),
+    ...(spans === undefined ? {} : { spans }),
+    text: message.text,
   };
 }
 
@@ -64,21 +70,15 @@ function toLogRating(rating: NonNullable<StoredRecord['rating']>): LogRating {
   };
 }
 
-type LogMessage = NonNullable<LogRecord['message']>;
+type LogRecall = NonNullable<LogRecord['recall']>;
 
-function toLogMessage(message: NonNullable<StoredRecord['message']>): LogMessage {
-  const spans = message.spans?.map((span) => ({
-    end: span.end,
-    source: span.source,
-    start: span.start,
-  }));
-
-  const images = message.images?.map((image) => ({ mediaType: image.mediaType }));
-
+// keeps a score only where one exists
+function toLogRecall(recall: NonNullable<StoredRecord['recall']>): LogRecall {
   return {
-    ...(message.clientMessageId === undefined ? {} : { clientMessageId: message.clientMessageId }),
-    ...(images === undefined ? {} : { images }),
-    ...(spans === undefined ? {} : { spans }),
-    text: message.text,
+    items: recall.items.map((item) =>
+      item.score === undefined
+        ? { itemID: item.itemID, version: item.version }
+        : { itemID: item.itemID, score: item.score, version: item.version },
+    ),
   };
 }

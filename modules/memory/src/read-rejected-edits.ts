@@ -1,4 +1,4 @@
-import { findRecordKeys } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import { decodeProposalText } from './decode-proposal-text';
 import type { MemoryTables, StoreParts } from './types';
 
@@ -30,7 +30,7 @@ export function readRejectedEdits(
       .where('memory_items.state', 'in', ['active', 'retired'])
       .execute();
 
-    const keys = await findRecordKeys(
+    const keys = await readRecordKeys(
       parts.context.log,
       rows.map((row) => row.item_id),
     );

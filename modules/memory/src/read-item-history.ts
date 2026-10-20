@@ -1,6 +1,6 @@
 import { decodeVersionText } from './decode-version-text';
-import { findItemKey } from './find-item-key';
 import { getRowSubject } from './get-row-subject';
+import { readItemKey } from './read-item-key';
 import type { MemoryTables, MemoryVersionRow, StoreParts } from './types';
 import type { HistoryVersion, ItemHistory } from './view-types';
 
@@ -30,7 +30,7 @@ export async function readItemHistory(
     .orderBy('version')
     .execute();
 
-  const key = await findItemKey(parts.context.log, itemID);
+  const key = await readItemKey(parts.context.log, itemID);
   const versions = await Promise.all(rows.map((row) => readHistoryVersion(row, key)));
 
   return { itemID, state: item.state, subject: getRowSubject(item), versions };

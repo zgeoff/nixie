@@ -1,7 +1,7 @@
 import type { LogTables } from '@heynixie/log';
 import { removeRecordKey, writeKeyStoreCheckpoint } from '@heynixie/log';
 import { sql } from 'kysely';
-import { findHeldRecordKeys } from './find-held-record-keys';
+import { readHeldRecordKeys } from './read-held-record-keys';
 import type { MemoryTables, StoreParts } from './types';
 
 // Removes the key of each saved offer's record that a crash between the version's commit and the
@@ -28,7 +28,7 @@ export async function removeSavedOfferKeys(parts: StoreParts): Promise<void> {
 
   const keyIDs = [...new Set(rows.flatMap((row) => (row.key_id === null ? [] : [row.key_id])))];
 
-  const left = await findHeldRecordKeys(log, keyIDs);
+  const left = await readHeldRecordKeys(log, keyIDs);
 
   // one key removal at a time, because each checkpoints the key store
   await left.reduce(

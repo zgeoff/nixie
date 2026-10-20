@@ -5,6 +5,8 @@ import type { TaskSkill } from './load-or-pin-task-skills';
 import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 import type { SkillToolsContext } from './types';
 
+const readArguments = z.object({ name: z.string(), path: z.string().optional() });
+
 // Builds skill_read, which declares read and returns a skill at the version the task is pinned to:
 // the SKILL.md body without its frontmatter and the list of the skill's other files, or one file by
 // its path inside the folder. A skill off the caller's list, and a path outside the folder, fail.
@@ -83,8 +85,6 @@ export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
     },
   };
 }
-
-const readArguments = z.object({ name: z.string(), path: z.string().optional() });
 
 function buildBodyOutcome(skill: TaskSkill): ToolOutcome {
   const text = skill.files.get('SKILL.md') ?? '';

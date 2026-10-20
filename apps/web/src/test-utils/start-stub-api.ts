@@ -12,16 +12,18 @@ interface StubAPIRequest {
 export function startStubAPI() {
   const requests: StubAPIRequest[] = [];
 
-  const server = Bun.serve({
-    fetch(request) {
-      requests.push({
-        authorization: request.headers.get('authorization'),
-        cookie: request.headers.get('cookie'),
-        path: new URL(request.url).pathname,
-      });
+  const answerRequest = (request: Request) => {
+    requests.push({
+      authorization: request.headers.get('authorization'),
+      cookie: request.headers.get('cookie'),
+      path: new URL(request.url).pathname,
+    });
 
-      return runMockAPIRequest(request);
-    },
+    return runMockAPIRequest(request);
+  };
+
+  const server = Bun.serve({
+    fetch: answerRequest,
     hostname: '127.0.0.1',
     port: 0,
   });

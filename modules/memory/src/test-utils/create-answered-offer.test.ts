@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { findRecordKeys } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import { buildMockWriteCaller } from './build-mock-write-caller';
 import { createAnsweredOffer } from './create-answered-offer';
 import { startTestMemory } from './start-test-memory';
@@ -26,7 +26,7 @@ test('it writes an offer and a typed yes that saves the offered text', async () 
 test('it returns the key the offer record is sealed under', async () => {
   const ctx = await setupTest();
   const offer = await createAnsweredOffer(ctx.memory, { text: 'The owner keeps a tortoise' });
-  const keys = await findRecordKeys(ctx.memory.log, [offer.offerKeyID]);
+  const keys = await readRecordKeys(ctx.memory.log, [offer.offerKeyID]);
 
   expect(keys.get(offer.offerKeyID)).toBeInstanceOf(CryptoKey);
 });

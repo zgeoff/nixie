@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { decodeVersionText } from './decode-version-text';
-import { findItemKey } from './find-item-key';
+import { readItemKey } from './read-item-key';
 import type { MemoryTables, VersionRef } from './types';
 
 // The text of one named version as a view shows it. A version whose key is gone reads as
@@ -39,7 +39,7 @@ async function readVersionText(
     return { ...base, status: 'missing' };
   }
 
-  const key = await findItemKey(log, ref.itemID);
+  const key = await readItemKey(log, ref.itemID);
 
   if (key === undefined) {
     return { ...base, status: 'shredded' };

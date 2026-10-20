@@ -22,7 +22,7 @@ export async function runGuestPurge(spec: GuestPurgeSpec): Promise<void> {
     maxMessageBytes: turnFrameLimitBytes,
   });
 
-  const frames = await collectPurgeFrames(stream);
+  const frames = await readPurgeFrames(stream);
   const exit = await stream.exit;
 
   if (!frames.some((frame) => frame.type === 'purged')) {
@@ -36,7 +36,7 @@ export async function runGuestPurge(spec: GuestPurgeSpec): Promise<void> {
   }
 }
 
-async function collectPurgeFrames(stream: ExecStream): Promise<readonly GuestFrame[]> {
+async function readPurgeFrames(stream: ExecStream): Promise<readonly GuestFrame[]> {
   const frames: GuestFrame[] = [];
 
   try {

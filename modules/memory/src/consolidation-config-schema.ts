@@ -2,6 +2,15 @@ import { z } from 'zod';
 
 const dayMs = 24 * 60 * 60 * 1000;
 
+export interface ConsolidationConfig {
+  readonly periodMs: number;
+  readonly maxChanges: number;
+  readonly itemListTokens: number;
+  readonly topItems: number;
+  readonly lapseMs: number;
+  readonly retryMs: number;
+}
+
 // The memory consolidation section of the deployment configuration: how often the consolidator
 // runs, the most changes one diff holds, the item list's token budget, how many items a recall
 // returns, how long a change waits for your answer, and how long a failed run waits to try again.
@@ -25,12 +34,3 @@ export const consolidationConfigSchema = z
 
 // The consolidation section as the deployment configuration writes it, before the defaults apply.
 export type ConsolidationConfigInput = z.input<typeof consolidationConfigSchema>;
-
-export interface ConsolidationConfig {
-  readonly periodMs: number;
-  readonly maxChanges: number;
-  readonly itemListTokens: number;
-  readonly topItems: number;
-  readonly lapseMs: number;
-  readonly retryMs: number;
-}

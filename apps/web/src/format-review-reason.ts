@@ -1,10 +1,5 @@
 import type { MemoryProposal } from './types';
 
-// Why a write waits for your review, in words: the check that sent it to review.
-export function formatReviewReason(reason: MemoryProposal['reason']): string {
-  return reviewReasons[reason];
-}
-
 const reviewReasons: Readonly<Record<MemoryProposal['reason'], string>> = {
   no_quote: 'No quote from you backs it.',
   quote_not_typed: 'Its quote is not something you typed.',
@@ -21,3 +16,8 @@ const reviewReasons: Readonly<Record<MemoryProposal['reason'], string>> = {
   self_note: 'nixie wrote it about itself, and every self-note waits for your review.',
   from_photo: 'It comes from a photo you sent, and nixie never takes a photo as your words.',
 };
+
+// Why a write waits for your review, in words: the check that sent it to review.
+export function formatReviewReason(reason: MemoryProposal['reason']): string {
+  return reviewReasons[reason];
+}

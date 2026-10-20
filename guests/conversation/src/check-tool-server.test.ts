@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { McpServerConfig, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { checkToolServer } from './check-tool-server';
-import { buildStubToolServer } from './test-utils/build-stub-tool-server';
+import { createStubToolServer } from './test-utils/create-stub-tool-server';
 import { startStubHTTPToolServer } from './test-utils/start-stub-http-tool-server';
 
 async function setupTest() {
@@ -97,7 +97,7 @@ test('it lets the turn go on with no reconnect when the server connected at star
 test('it lets the turn go on when the CLI has not listed an in-process server yet', async () => {
   const ctx = await setupTest();
 
-  const session = ctx.startSession(buildStubToolServer().config);
+  const session = ctx.startSession(createStubToolServer().config);
 
   const result = await checkToolServer(session, () => Promise.resolve());
 
@@ -107,7 +107,7 @@ test('it lets the turn go on when the CLI has not listed an in-process server ye
 test('it lets the turn go on to read why when the CLI has ended', async () => {
   const ctx = await setupTest();
 
-  const session = ctx.startSession(buildStubToolServer().config);
+  const session = ctx.startSession(createStubToolServer().config);
 
   session.close();
 

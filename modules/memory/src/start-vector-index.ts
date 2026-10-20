@@ -33,7 +33,7 @@ export interface VectorIndex {
 
   // the items whose similarity clears the floor, best first, none for a blank query, or null while
   // a rebuild runs, when search falls back to keywords
-  readonly findMatches: (
+  readonly readMatches: (
     query: string,
     options: VectorMatchOptions,
   ) => Promise<readonly VectorMatch[] | null>;
@@ -44,6 +44,19 @@ export interface VectorIndex {
   // resolves once every queued encoding has ended
   readonly waitForIdle: () => Promise<void>;
   readonly stop: () => Promise<void>;
+}
+
+// The index's mutable state. Each item keeps a generation that every change raises, and the queue's
+// tail settles once the last queued encoding ends; it never rejects.
+interface VectorState {
+  readonly encoder: Encoder;
+  readonly onError: (error: unknown) => void;
+  readonly vectors: Map<string, Int8Array>;
+  readonly generations: Map<string, number>;
+  nextGeneration: number;
+  isReady: boolean;
+  isStopped: boolean;
+  tail: Promise<boolean>;
 }
 
 // Starts an empty vector index in process memory, so a forgotten item's vector never outlives the
@@ -71,7 +84,7 @@ export function startVectorIndex(encoder: Encoder, onError: (error: unknown) => 
     remove: (itemID) => {
       updateGeneration(state, itemID);
     },
-    findMatches: (query, options) => findVectorMatches(state, query, options),
+    readMatches: (query, options) => readVectorMatches(state, query, options),
     isReady: () => state.isReady,
     waitForIdle: async () => {
       await state.tail;
@@ -87,22 +100,9 @@ export function startVectorIndex(encoder: Encoder, onError: (error: unknown) => 
   };
 }
 
-// The index's mutable state. Each item keeps a generation that every change raises, and the queue's
-// tail settles once the last queued encoding ends; it never rejects.
-interface VectorState {
-  readonly encoder: Encoder;
-  readonly onError: (error: unknown) => void;
-  readonly vectors: Map<string, Int8Array>;
-  readonly generations: Map<string, number>;
-  nextGeneration: number;
-  isReady: boolean;
-  isStopped: boolean;
-  tail: Promise<boolean>;
-}
-
-interface StampedEntry extends IndexEntry {
-  readonly generation: number;
-}
+// the items a rebuild hands the encoder at once, so a write's encoding waits behind one group at
+// most and a stop ends the rebuild within one group
+const batchSize = 32;
 
 async function runRebuild(state: VectorState, entries: readonly IndexEntry[]): Promise<boolean> {
   state.isReady = false;
@@ -126,10 +126,6 @@ async function runRebuild(state: VectorState, entries: readonly IndexEntry[]): P
 
   return state.isReady;
 }
-
-// the items a rebuild hands the encoder at once, so a write's encoding waits behind one group at
-// most and a stop ends the rebuild within one group
-const batchSize = 32;
 
 // raises the item's generation and drops its vector, so an encoding already queued for it is
 // discarded when it ends
@@ -176,6 +172,10 @@ async function runAfter(
   }
 }
 
+interface StampedEntry extends IndexEntry {
+  readonly generation: number;
+}
+
 // encodes the entries whose generation still matches, and keeps each vector whose generation still
 // matches once the encoding ends
 async function updateVectors(state: VectorState, entries: readonly StampedEntry[]): Promise<void> {
@@ -202,7 +202,26 @@ function isCurrent(state: VectorState, entry: StampedEntry): boolean {
   return state.generations.get(entry.itemID) === entry.generation;
 }
 
-async function findVectorMatches(
+// the numbers each stored vector keeps; the encoder's model was trained so its first numbers carry
+// most of a vector's meaning
+const storedWidth = 256;
+
+// the range each number of a unit vector maps onto the int8 range, as the encoder spike stored it
+const storedRange = 0.3;
+const int8Max = 127;
+
+// cuts a vector to its first numbers, normalises it again, and maps each number from the stored
+// range onto the int8 range
+function toStoredVector(vector: Float32Array): Int8Array {
+  const cut = vector.slice(0, storedWidth);
+  const norm = Math.hypot(...cut) || 1;
+
+  return Int8Array.from(cut, (value) =>
+    Math.round(Math.max(-1, Math.min(1, value / norm / storedRange)) * int8Max),
+  );
+}
+
+async function readVectorMatches(
   state: VectorState,
   query: string,
   options: VectorMatchOptions,
@@ -231,25 +250,6 @@ async function findVectorMatches(
     .filter((match) => match.similarity >= options.minSimilarity)
     .toSorted((first, second) => second.similarity - first.similarity)
     .slice(0, options.limit);
-}
-
-// the numbers each stored vector keeps; the encoder's model was trained so its first numbers carry
-// most of a vector's meaning
-const storedWidth = 256;
-
-// the range each number of a unit vector maps onto the int8 range, as the encoder spike stored it
-const storedRange = 0.3;
-const int8Max = 127;
-
-// cuts a vector to its first numbers, normalises it again, and maps each number from the stored
-// range onto the int8 range
-function toStoredVector(vector: Float32Array): Int8Array {
-  const cut = vector.slice(0, storedWidth);
-  const norm = Math.hypot(...cut) || 1;
-
-  return Int8Array.from(cut, (value) =>
-    Math.round(Math.max(-1, Math.min(1, value / norm / storedRange)) * int8Max),
-  );
 }
 
 // the dot product of two stored vectors, scaled back to the unit range, which for unit vectors is

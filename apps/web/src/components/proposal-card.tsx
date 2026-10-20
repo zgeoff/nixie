@@ -20,6 +20,11 @@ export interface ProposalCardProps {
   readonly onDraft: (draft: string | null) => void;
 }
 
+const card = css({ borderBottomWidth: '1px', paddingBlock: '2' });
+const body = css({ alignItems: 'flex-start', display: 'flex', gap: '2' });
+const meta = css({ color: 'textMuted', fontSize: 'sm' });
+const field = css({ display: 'flex', flexDirection: 'column', fontSize: 'sm', gap: '1' });
+
 // One pending proposal: its text or your edit of it beside the photo it comes from, its marks and
 // quote, when it lapses, and your answers to it. An approval an active item closely matches holds,
 // and the card asks how to apply it.
@@ -67,11 +72,6 @@ export function ProposalCard(props: ProposalCardProps): ReactNode {
   );
 }
 
-const card = css({ borderBottomWidth: '1px', paddingBlock: '2' });
-const body = css({ alignItems: 'flex-start', display: 'flex', gap: '2' });
-const meta = css({ color: 'textMuted', fontSize: 'sm' });
-const field = css({ display: 'flex', flexDirection: 'column', fontSize: 'sm', gap: '1' });
-
 interface ProposalDetailsProps {
   readonly proposal: MemoryProposal;
 }
@@ -100,6 +100,58 @@ function ProposalDetails(props: ProposalDetailsProps): ReactNode {
       )}
     </>
   );
+}
+
+interface CloseMatchChoiceProps extends ProposalCardProps {
+  readonly match: Extract<ProposalOutcome, { status: 'close_match' }>['item'];
+}
+
+const controls = css({
+  display: 'flex',
+  flexWrap: 'wrap',
+  fontSize: 'sm',
+  gap: '2',
+  marginTop: '1',
+});
+
+// the item that already says this, and the 2 ways an approval may still apply
+function CloseMatchChoice(props: CloseMatchChoiceProps): ReactNode {
+  const edit = buildEdit(props.proposal, props.draft);
+
+  return (
+    <div aria-label="An active item already says this" className={controls} role="group">
+      <p className={meta}>An active item already says this: “{props.match.text}”</p>
+      <button
+        disabled={props.answers.isPending}
+        onClick={() => {
+          props.answers.approve([
+            {
+              proposal: props.proposal,
+              ...edit,
+              revisionOf: { itemID: props.match.itemID, version: props.match.version },
+            },
+          ]);
+        }}
+        type="button"
+      >
+        Revise that item
+      </button>
+      <button
+        disabled={props.answers.isPending}
+        onClick={() => {
+          props.answers.approve([{ proposal: props.proposal, ...edit, ignoreCloseMatch: true }]);
+        }}
+        type="button"
+      >
+        Add as a new item
+      </button>
+    </div>
+  );
+}
+
+// an edit that leaves the text as proposed approves the proposal as it is
+function buildEdit(proposal: MemoryProposal, draft: string | null) {
+  return draft === null || draft === proposal.text ? {} : { editedText: draft };
 }
 
 // approve, with your edited text while you edit, edit, or reject with an optional reason
@@ -144,39 +196,6 @@ function ProposalControls(props: ProposalCardProps): ReactNode {
   );
 }
 
-const controls = css({
-  display: 'flex',
-  flexWrap: 'wrap',
-  fontSize: 'sm',
-  gap: '2',
-  marginTop: '1',
-});
-
-// a retirement adds no text, so it takes no edit
-function EditToggle(props: ProposalCardProps): ReactNode {
-  if (props.proposal.operation === 'retire') {
-    return null;
-  }
-
-  return (
-    <button
-      onClick={() => {
-        const draft = props.draft === null ? props.proposal.text : null;
-
-        props.onDraft(draft);
-      }}
-      type="button"
-    >
-      {props.draft === null ? 'Edit' : 'Cancel edit'}
-    </button>
-  );
-}
-
-// an edit that leaves the text as proposed approves the proposal as it is
-function buildEdit(proposal: MemoryProposal, draft: string | null) {
-  return draft === null || draft === proposal.text ? {} : { editedText: draft };
-}
-
 interface RejectionFormProps extends ProposalCardProps {
   readonly reason: string;
   readonly onReason: (reason: string) => void;
@@ -216,41 +235,22 @@ function RejectionForm(props: RejectionFormProps): ReactNode {
   );
 }
 
-interface CloseMatchChoiceProps extends ProposalCardProps {
-  readonly match: Extract<ProposalOutcome, { status: 'close_match' }>['item'];
-}
-
-// the item that already says this, and the 2 ways an approval may still apply
-function CloseMatchChoice(props: CloseMatchChoiceProps): ReactNode {
-  const edit = buildEdit(props.proposal, props.draft);
+// a retirement adds no text, so it takes no edit
+function EditToggle(props: ProposalCardProps): ReactNode {
+  if (props.proposal.operation === 'retire') {
+    return null;
+  }
 
   return (
-    <div aria-label="An active item already says this" className={controls} role="group">
-      <p className={meta}>An active item already says this: “{props.match.text}”</p>
-      <button
-        disabled={props.answers.isPending}
-        onClick={() => {
-          props.answers.approve([
-            {
-              proposal: props.proposal,
-              ...edit,
-              revisionOf: { itemID: props.match.itemID, version: props.match.version },
-            },
-          ]);
-        }}
-        type="button"
-      >
-        Revise that item
-      </button>
-      <button
-        disabled={props.answers.isPending}
-        onClick={() => {
-          props.answers.approve([{ proposal: props.proposal, ...edit, ignoreCloseMatch: true }]);
-        }}
-        type="button"
-      >
-        Add as a new item
-      </button>
-    </div>
+    <button
+      onClick={() => {
+        const draft = props.draft === null ? props.proposal.text : null;
+
+        props.onDraft(draft);
+      }}
+      type="button"
+    >
+      {props.draft === null ? 'Edit' : 'Cancel edit'}
+    </button>
   );
 }

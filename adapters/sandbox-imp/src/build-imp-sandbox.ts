@@ -8,10 +8,15 @@ import type {
   SandboxRecorder,
   SandboxSpec,
 } from '@heynixie/sandbox';
-import { collectOutput, runCommand, startExecStream } from '@heynixie/sandbox';
+import { readStreamOutput, runCommand, startExecStream } from '@heynixie/sandbox';
 import type { RouteRegistry } from './build-route-registry';
 import { toProcessIO } from './to-process-io';
 import type { ImpPort } from './types';
+
+export interface SleepRegistry {
+  readonly isAsleep: (id: string) => boolean;
+  readonly setAsleep: (id: string, isAsleep: boolean) => void;
+}
 
 export interface ImpSandboxContext {
   readonly port: ImpPort;
@@ -27,11 +32,6 @@ export interface ImpSandboxContext {
 
   // whether the adapter last put this imp to sleep, so a later call records the wake it causes
   readonly sleeping: SleepRegistry;
-}
-
-export interface SleepRegistry {
-  readonly isAsleep: (id: string) => boolean;
-  readonly setAsleep: (id: string, isAsleep: boolean) => void;
 }
 
 // Builds the handle for one imp. Every exec opens the tool route first when it has closed, so the
@@ -95,22 +95,6 @@ async function startImpProcess(ctx: ImpSandboxContext, command: ExecSpec) {
   return toProcessIO(exec, ctx.killGraceMs);
 }
 
-// Each grant's placeholders, then the command's own variables. impd sets the broker's variables for
-// an imp with a grant, NO_PROXY with the loopback among them, and refuses an exec whose env
-// replaces one, so the adapter adds no NO_PROXY of its own. An imp with no grant has no proxy.
-function buildImpExecEnv(
-  spec: SandboxSpec,
-  env: Readonly<Record<string, string>> | undefined,
-): Readonly<Record<string, string>> {
-  const merged: Record<string, string> = {};
-
-  for (const grant of spec.grants) {
-    Object.assign(merged, grant.env);
-  }
-
-  return { ...merged, ...env };
-}
-
 // A call on an imp the adapter put to sleep wakes it first and records the wake. impd holds an imp
 // through an idle sleep and ends its forward only after the snapshot, so the wake waits that out and
 // the forward listens again on the woken imp before the guest connects.
@@ -132,24 +116,20 @@ async function updateImpAwake(ctx: ImpSandboxContext): Promise<void> {
   await ctx.recorder.write({ event: 'woken', sandboxID: ctx.id });
 }
 
-// A sleep ends the forward in the imp, so the adapter closes its side first, and opens it again
-// after the wake.
-function buildSuspension(ctx: ImpSandboxContext): Sandbox['suspension'] {
-  return {
-    kind: 'memory',
-    sleep: async () => {
-      ctx.sleeping.setAsleep(ctx.id, true);
+// Each grant's placeholders, then the command's own variables. impd sets the broker's variables for
+// an imp with a grant, NO_PROXY with the loopback among them, and refuses an exec whose env
+// replaces one, so the adapter adds no NO_PROXY of its own. An imp with no grant has no proxy.
+function buildImpExecEnv(
+  spec: SandboxSpec,
+  env: Readonly<Record<string, string>> | undefined,
+): Readonly<Record<string, string>> {
+  const merged: Record<string, string> = {};
 
-      await ctx.routes.close(ctx.id);
-      await ctx.port.sleepImp(ctx.id);
-      await ctx.recorder.write({ event: 'slept', sandboxID: ctx.id });
-    },
-    wake: async () => {
-      await updateImpAwake(ctx);
+  for (const grant of spec.grants) {
+    Object.assign(merged, grant.env);
+  }
 
-      await ctx.routes.open(ctx.id, ctx.spec);
-    },
-  };
+  return { ...merged, ...env };
 }
 
 async function writeGuestFiles(ctx: ImpSandboxContext, files: readonly FileSpec[]): Promise<void> {
@@ -166,6 +146,20 @@ async function writeGuestFiles(ctx: ImpSandboxContext, files: readonly FileSpec[
   }
 }
 
+function requireGuestPath(path: string): void {
+  if (!path.startsWith('/') || path.split('/').includes('..')) {
+    throw new Error(`a guest path must be absolute and must not climb: ${path}`);
+  }
+}
+
+function requireSuccess(result: ExecResult, action: string): void {
+  if (result.code !== 0) {
+    const stderr = new TextDecoder().decode(result.stderr.bytes);
+
+    throw new Error(`${action} failed with ${result.signal ?? String(result.code)}: ${stderr}`);
+  }
+}
+
 // the largest file copyOut brings onto the host, so a guest cannot fill the host's memory
 const copyOutLimitBytes = 64 * 1024 * 1024;
 
@@ -178,7 +172,7 @@ async function readGuestFile(ctx: ImpSandboxContext, path: string): Promise<File
   });
 
   const [content, result] = await Promise.all([
-    collectOutput(io.stdout, copyOutLimitBytes),
+    readStreamOutput(io.stdout, copyOutLimitBytes),
     runCommand({ ...io, stdout: new Blob().stream() }, undefined, undefined),
   ]);
 
@@ -252,16 +246,22 @@ async function applyGuestMove(ctx: ImpSandboxContext, from: string, to: string):
   requireSuccess(result, `move of ${from} to ${to}`);
 }
 
-function requireGuestPath(path: string): void {
-  if (!path.startsWith('/') || path.split('/').includes('..')) {
-    throw new Error(`a guest path must be absolute and must not climb: ${path}`);
-  }
-}
+// A sleep ends the forward in the imp, so the adapter closes its side first, and opens it again
+// after the wake.
+function buildSuspension(ctx: ImpSandboxContext): Sandbox['suspension'] {
+  return {
+    kind: 'memory',
+    sleep: async () => {
+      ctx.sleeping.setAsleep(ctx.id, true);
 
-function requireSuccess(result: ExecResult, action: string): void {
-  if (result.code !== 0) {
-    const stderr = new TextDecoder().decode(result.stderr.bytes);
+      await ctx.routes.close(ctx.id);
+      await ctx.port.sleepImp(ctx.id);
+      await ctx.recorder.write({ event: 'slept', sandboxID: ctx.id });
+    },
+    wake: async () => {
+      await updateImpAwake(ctx);
 
-    throw new Error(`${action} failed with ${result.signal ?? String(result.code)}: ${stderr}`);
-  }
+      await ctx.routes.open(ctx.id, ctx.spec);
+    },
+  };
 }

@@ -1,6 +1,13 @@
 import type { z } from 'zod';
 import type { JSONObject, RecordCodec, RecordKind } from './types';
 
+// a decoded payload, readonly all the way down, as a record's payload is
+type ReadonlyPayload<Value> = Value extends readonly (infer Item)[]
+  ? readonly ReadonlyPayload<Item>[]
+  : Value extends object
+    ? { readonly [Key in keyof Value]: ReadonlyPayload<Value[Key]> }
+    : Value;
+
 // Defines the one codec for a record kind's plain payload. The writer encodes through it and every
 // reader decodes through it, so a payload that changes shape fails type-checking at both ends, and
 // the schema checks the value at both ends at run time.
@@ -40,10 +47,3 @@ function toReadonlyPayload<Value>(value: Value): ReadonlyPayload<Value> {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a value fits its readonly form
   return parsed as ReadonlyPayload<Value>;
 }
-
-// a decoded payload, readonly all the way down, as a record's payload is
-type ReadonlyPayload<Value> = Value extends readonly (infer Item)[]
-  ? readonly ReadonlyPayload<Item>[]
-  : Value extends object
-    ? { readonly [Key in keyof Value]: ReadonlyPayload<Value[Key]> }
-    : Value;

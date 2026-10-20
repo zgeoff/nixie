@@ -77,7 +77,6 @@ export interface StubGuestSandboxes {
 }
 
 const adapterID = 'stub-guest';
-const defaultReply = 'Hello.';
 
 interface SandboxState {
   readonly owner: string;
@@ -117,8 +116,8 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
       id: adapterID,
       boundary: 'process',
       create: (spec) => createSandbox(state, spec),
-      get: async (id) => {
-        const row = await options.recorder.findRow(adapterID, id);
+      read: async (id) => {
+        const row = await options.recorder.readRow(adapterID, id);
 
         return row === null
           ? null
@@ -165,10 +164,6 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
   };
 }
 
-function collectOwned(state: StubState, owner: string): readonly SandboxState[] {
-  return [...state.sandboxes.values()].filter((own) => own.owner === owner);
-}
-
 // Writes the created record before it makes anything, as a real adapter does, then the grants.
 async function createSandbox(state: StubState, spec: SandboxSpec): Promise<Sandbox> {
   requireSandboxSpec(spec);
@@ -187,32 +182,6 @@ async function createSandbox(state: StubState, spec: SandboxSpec): Promise<Sandb
   }
 
   return buildSandbox(state, id, spec, registerSandboxState(state, { sandboxID: id, spec }));
-}
-
-interface SandboxRow {
-  readonly sandboxID: string;
-  readonly spec: SandboxSpec;
-}
-
-// the sandbox's state in the registry, with an empty disk registered for a sandbox it lacks, such
-// as one a restarted adapter finds in the recorder
-function registerSandboxState(state: StubState, row: SandboxRow): SandboxState {
-  const registered = state.sandboxes.get(row.sandboxID);
-
-  if (registered !== undefined) {
-    return registered;
-  }
-
-  const own = {
-    owner: row.spec.owner,
-    disk: buildStubGuestDisk(),
-    isAsleep: false,
-    copyOutFailure: null,
-  };
-
-  state.sandboxes.set(row.sandboxID, own);
-
-  return own;
 }
 
 function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: SandboxState): Sandbox {
@@ -290,11 +259,30 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
   };
 }
 
+// The HOME a command sets is the guest's home in both forms. A command with no HOME has its home at
+// the guest's root, whose own path is the sandbox's folder under the host root; with no host root it
+// has none.
+function findGuestHome(
+  hostRoot: string | undefined,
+  id: string,
+  env: Readonly<Record<string, string>>,
+): GuestHome | null {
+  const home = env['HOME'];
+
+  if (home !== undefined) {
+    return { copyPath: home, ownPath: home };
+  }
+
+  return hostRoot === undefined ? null : { copyPath: '/', ownPath: join(hostRoot, id) };
+}
+
 interface GuestSandbox {
   readonly id: string;
   readonly spec: SandboxSpec;
   readonly own: SandboxState;
 }
+
+const defaultReply = 'Hello.';
 
 // the guest of one spawn: it records each frame it receives and answers from the sandbox's disk
 function startGuest(state: StubState, sandbox: GuestSandbox, home: GuestHome | null) {
@@ -358,6 +346,14 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: GuestHome | n
   });
 }
 
+function readFile(disk: StubGuestDisk, path: string): Promise<FileSpec> {
+  const content = disk.files.get(path);
+
+  return content === undefined
+    ? Promise.reject(new Error(`ENOENT: no such file or directory, open '${path}'`))
+    : Promise.resolve({ path, content });
+}
+
 function resolveHome(
   hostRoot: string | undefined,
   id: string,
@@ -370,23 +366,6 @@ function resolveHome(
   }
 
   return home;
-}
-
-// The HOME a command sets is the guest's home in both forms. A command with no HOME has its home at
-// the guest's root, whose own path is the sandbox's folder under the host root; with no host root it
-// has none.
-function findGuestHome(
-  hostRoot: string | undefined,
-  id: string,
-  env: Readonly<Record<string, string>>,
-): GuestHome | null {
-  const home = env['HOME'];
-
-  if (home !== undefined) {
-    return { copyPath: home, ownPath: home };
-  }
-
-  return hostRoot === undefined ? null : { copyPath: '/', ownPath: join(hostRoot, id) };
 }
 
 // every file under the directory down to the depth, relative to it; the disk holds files only, so a
@@ -420,10 +399,32 @@ function applyMove(disk: StubGuestDisk, from: string, to: string): void {
   disk.files.set(to, content);
 }
 
-function readFile(disk: StubGuestDisk, path: string): Promise<FileSpec> {
-  const content = disk.files.get(path);
+interface SandboxRow {
+  readonly sandboxID: string;
+  readonly spec: SandboxSpec;
+}
 
-  return content === undefined
-    ? Promise.reject(new Error(`ENOENT: no such file or directory, open '${path}'`))
-    : Promise.resolve({ path, content });
+// the sandbox's state in the registry, with an empty disk registered for a sandbox it lacks, such
+// as one a restarted adapter finds in the recorder
+function registerSandboxState(state: StubState, row: SandboxRow): SandboxState {
+  const registered = state.sandboxes.get(row.sandboxID);
+
+  if (registered !== undefined) {
+    return registered;
+  }
+
+  const own = {
+    owner: row.spec.owner,
+    disk: buildStubGuestDisk(),
+    isAsleep: false,
+    copyOutFailure: null,
+  };
+
+  state.sandboxes.set(row.sandboxID, own);
+
+  return own;
+}
+
+function collectOwned(state: StubState, owner: string): readonly SandboxState[] {
+  return [...state.sandboxes.values()].filter((own) => own.owner === owner);
 }

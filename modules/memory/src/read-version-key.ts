@@ -1,7 +1,7 @@
 import { createShortID } from '@heynixie/db';
 import { createRecordKey } from '@heynixie/log';
-import { findItemKey } from './find-item-key';
 import { getItemShortID } from './get-item-short-id';
+import { readItemKey } from './read-item-key';
 import type { MemoryItemRow, StoreParts } from './types';
 
 // The item a version goes to: its ID, its key, and the short ID the model reads it by.
@@ -34,7 +34,7 @@ async function createItemKey(parts: StoreParts, itemID: string): Promise<CryptoK
 }
 
 async function requireKey(parts: StoreParts, itemID: string): Promise<CryptoKey> {
-  const key = await findItemKey(parts.context.log, itemID);
+  const key = await readItemKey(parts.context.log, itemID);
 
   if (key === null || key === undefined) {
     throw new Error(`memory item ${itemID} has no readable key`);

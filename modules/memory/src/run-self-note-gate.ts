@@ -3,6 +3,9 @@ import type { ContentGateRequest, ContentGateResult } from './gate-types';
 import { readTokenVerdict } from './read-token-verdict';
 import type { MemoryContext } from './types';
 
+// Unicode format characters, as the content gate refuses them
+const invisible = /\p{Cf}/u;
+
 // The gate for a self-note: no quote of yours backs it, so every one waits for your review with the
 // self-note reason. The token check still runs against what you typed in your latest messages, and
 // its verdict joins the proposal's checks, so the review shows a destination you never typed.
@@ -18,6 +21,3 @@ export async function runSelfNoteGate(
 
   return buildGateReview('self_note', { checks: { tokens } });
 }
-
-// Unicode format characters, as the content gate refuses them
-const invisible = /\p{Cf}/u;

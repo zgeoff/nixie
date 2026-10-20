@@ -1,8 +1,8 @@
 import type { Log } from '@heynixie/log';
-import { findOfferPresentation } from './find-offer-presentation';
 import type { OfferAnswerRequest } from './gate-types';
 import { ImageOfferError } from './image-offer-error';
 import { readImageOffer } from './read-image-offer';
+import { readOfferPresentation } from './read-offer-presentation';
 import type { OfferYes } from './read-typed-yes';
 import { readTypedYes } from './read-typed-yes';
 import { requireFirstAnswer } from './require-first-answer';
@@ -33,7 +33,7 @@ export async function readOfferAnswer(
   const replySequence =
     offer.text === null
       ? null
-      : await findOfferPresentation(log, {
+      : await readOfferPresentation(log, {
           thread,
           offerSequence: offer.sequence,
           answerSequence: request.answerSequence,

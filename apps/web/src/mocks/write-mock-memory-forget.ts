@@ -35,6 +35,22 @@ export async function writeMockMemoryForget(input: MemoryForgetInput): Promise<M
   return writeForgetStart(input.itemID);
 }
 
+// the cleanup of a forget that began, which removes the item's key and which a completed forget
+// needs no more
+async function writeForgetCompletion(itemID: string): Promise<MemoryForgetResult> {
+  await store.memoryItems.update((query) => query.where({ itemID }), {
+    data(draft) {
+      draft.forgottenAt ??= new Date();
+
+      draft.state = 'forgotten';
+      draft.isPinned = false;
+      draft.isShredded = true;
+    },
+  });
+
+  return { status: 'applied' };
+}
+
 // an item that is gone or being forgotten, or one that moved past the version the preview showed
 function findRefusal(input: MemoryForgetInput): 'not_found' | 'stale' | null {
   const item = store.memoryItems.findFirst((query) => query.where({ itemID: input.itemID }));
@@ -62,20 +78,4 @@ async function writeForgetStart(itemID: string): Promise<MemoryForgetResult> {
   }
 
   return writeForgetCompletion(itemID);
-}
-
-// the cleanup of a forget that began, which removes the item's key and which a completed forget
-// needs no more
-async function writeForgetCompletion(itemID: string): Promise<MemoryForgetResult> {
-  await store.memoryItems.update((query) => query.where({ itemID }), {
-    data(draft) {
-      draft.forgottenAt ??= new Date();
-
-      draft.state = 'forgotten';
-      draft.isPinned = false;
-      draft.isShredded = true;
-    },
-  });
-
-  return { status: 'applied' };
 }

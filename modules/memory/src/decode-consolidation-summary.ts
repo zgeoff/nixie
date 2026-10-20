@@ -5,6 +5,8 @@ import { sealedTextSchema } from './sealed-text-schema';
 import type { SealedSummary, SummaryShare } from './sealed-types';
 import { summaryKeyBytes } from './summary-key-bytes';
 
+const summaryText = defineSealedCodec('consolidation-summary/', sealedTextSchema);
+
 // Opens what encodeConsolidationSummary sealed, with the key of every item that holds a share. A
 // wrong key, another run's diff ID, a missing share or a changed byte rejects.
 export async function decodeConsolidationSummary(
@@ -19,7 +21,8 @@ export async function decodeConsolidationSummary(
   return value.text;
 }
 
-const summaryText = defineSealedCodec('consolidation-summary/', sealedTextSchema);
+// a share of the summary's key, as base64
+const summaryShare = defineSealedCodec('consolidation-summary/', z.base64());
 
 // the summary's key: the XOR of every share, each opened under its item's key
 async function decodeSummaryKey(
@@ -43,6 +46,3 @@ async function decodeSummaryKey(
 
   return summaryKey;
 }
-
-// a share of the summary's key, as base64
-const summaryShare = defineSealedCodec('consolidation-summary/', z.base64());

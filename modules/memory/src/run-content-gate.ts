@@ -1,10 +1,14 @@
 import { buildGateReview } from './build-gate-review';
-import { findEventEvidence } from './find-event-evidence';
-import { findQuoteEvidence } from './find-quote-evidence';
 import type { AllowRuleCall, ContentGateRequest, ContentGateResult } from './gate-types';
+import { readEventEvidence } from './read-event-evidence';
+import { readQuoteEvidence } from './read-quote-evidence';
 import { runQuotedGate } from './run-quoted-gate';
 import { runRuleGate } from './run-rule-gate';
 import type { MemoryContext } from './types';
+
+// Unicode format characters: zero-width spaces and joiners, bidirectional controls, the byte order
+// mark and the soft hyphen
+const invisible = /\p{Cf}/u;
 
 // Runs the content gate outside any transaction: quote, tokens, then checker, and the first that
 // fails becomes the review reason. A pinning write waits for review even when every check passes,
@@ -34,12 +38,12 @@ export async function runContentGate(
   // a quote that cites an event ID is checked against that record alone, however old
   const found =
     request.eventID === null
-      ? await findQuoteEvidence(context.log, {
+      ? await readQuoteEvidence(context.log, {
           thread: request.thread,
           quote: request.quote,
           window: context.gate.limits.evidenceWindow,
         })
-      : await findEventEvidence(context.log, {
+      : await readEventEvidence(context.log, {
           thread: request.thread,
           quote: request.quote,
           eventID: request.eventID,
@@ -47,7 +51,3 @@ export async function runContentGate(
 
   return runQuotedGate(context, request, { quote: request.quote, found });
 }
-
-// Unicode format characters: zero-width spaces and joiners, bidirectional controls, the byte order
-// mark and the soft hyphen
-const invisible = /\p{Cf}/u;

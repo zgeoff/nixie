@@ -11,6 +11,8 @@ export interface MemoryVersionListProps {
   readonly versions: readonly MemoryVersion[];
 }
 
+const list = css({ display: 'flex', flexDirection: 'column', gap: '3', marginBlock: '2' });
+
 // Every version of one item, oldest first, each with its provenance, its quote inside the message
 // it came from, and what it changed from the version before. A version of a forgotten item shows
 // as a dated gap.
@@ -26,8 +28,6 @@ export function MemoryVersionList(props: MemoryVersionListProps): ReactNode {
   );
 }
 
-const list = css({ display: 'flex', flexDirection: 'column', gap: '3', marginBlock: '2' });
-
 const changes = {
   created: 'Created',
   edited: 'Edited',
@@ -40,6 +40,9 @@ interface VersionEntryProps {
   readonly version: MemoryVersion;
   readonly previous: MemoryVersion | undefined;
 }
+
+const entry = css({ borderInlineStartWidth: '2px', paddingInlineStart: '3' });
+const meta = css({ color: 'textMuted', fontSize: 'sm' });
 
 function VersionEntry(props: VersionEntryProps): ReactNode {
   const version = props.version;
@@ -63,9 +66,6 @@ function VersionEntry(props: VersionEntryProps): ReactNode {
     </li>
   );
 }
-
-const entry = css({ borderInlineStartWidth: '2px', paddingInlineStart: '3' });
-const meta = css({ color: 'textMuted', fontSize: 'sm' });
 
 // The version's text, and the words it changed from the version before when they differ.
 function VersionText(props: VersionEntryProps): ReactNode {
@@ -117,6 +117,8 @@ interface VersionProps {
   readonly version: MemoryVersion;
 }
 
+const evidenceBox = css({ backgroundColor: 'surface', marginBlock: '1', padding: '2' });
+
 // The quote the version came from, marked inside its message while the message is readable.
 function VersionEvidence(props: VersionProps): ReactNode {
   const evidence = props.version.evidence;
@@ -151,8 +153,6 @@ function VersionEvidence(props: VersionProps): ReactNode {
   );
 }
 
-const evidenceBox = css({ backgroundColor: 'surface', marginBlock: '1', padding: '2' });
-
 function formatMissingMessage(status: string | undefined): string {
   if (status === 'shredded') {
     return 'The message it came from was forgotten';
@@ -162,6 +162,8 @@ function formatMissingMessage(status: string | undefined): string {
     ? 'The quote it came from'
     : 'The message it came from is unavailable';
 }
+
+const factList = css({ color: 'textMuted', fontSize: 'sm' });
 
 // Who and what stand behind the version: its task and proposal, its checks and both models.
 function VersionProvenance(props: VersionProps): ReactNode {
@@ -190,5 +192,3 @@ function VersionProvenance(props: VersionProps): ReactNode {
     </dl>
   );
 }
-
-const factList = css({ color: 'textMuted', fontSize: 'sm' });

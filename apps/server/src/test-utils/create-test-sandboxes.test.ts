@@ -46,7 +46,7 @@ test('it never retires a sandbox of another owner', async () => {
 
   await ctx.retireSandboxes('conversation');
 
-  const found = await ctx.sandboxes.get(other.id);
+  const found = await ctx.sandboxes.read(other.id);
 
   expect(found?.isRetired).toBeFalse();
 });
@@ -60,7 +60,7 @@ test('it gets a retired sandbox as retired', async () => {
 
   await ctx.retireSandboxes(spec.owner);
 
-  const found = await ctx.sandboxes.get(sandbox.id);
+  const found = await ctx.sandboxes.read(sandbox.id);
 
   expect(found?.isRetired).toBeTrue();
 });
@@ -68,5 +68,5 @@ test('it gets a retired sandbox as retired', async () => {
 test('it gets no sandbox for an ID the double never made', async () => {
   const ctx = await setupTest();
 
-  expect(ctx.sandboxes.get('not-a-sandbox')).resolves.toBeNull();
+  expect(ctx.sandboxes.read('not-a-sandbox')).resolves.toBeNull();
 });

@@ -14,6 +14,8 @@ import type { VectorMatch } from './start-vector-index';
 import type { SearchMode, StoreParts } from './types';
 import { updateMessageIndexes } from './update-message-indexes';
 
+const rankHeadroom = 5;
+
 // Returns your past messages that match the query, best first. Sequences rank outside the delivery
 // lock; under it each candidate is read again, and one whose key is gone or that backed a
 // forgotten item is left out, so a forget that began before the check never lets its text through.
@@ -30,13 +32,13 @@ export async function readMessageRecall(
   const limit = request.limit + rankHeadroom;
 
   const [keywordMatches, vectorMatches] = await Promise.all([
-    parts.messages.index.findMatches(request.query, {
+    parts.messages.index.readMatches(request.query, {
       limit,
       minScore: request.minScore,
       excludedIDs,
       excludedWords: request.excludedWords,
     }),
-    findVectorMatches(vectors, request, { limit, excludedIDs }),
+    readVectorMatches(vectors, request, { limit, excludedIDs }),
   ]);
 
   const ranked = mergeRankings(keywordMatches, vectorMatches ?? []).map((match) =>
@@ -51,8 +53,6 @@ export async function readMessageRecall(
   return { messages, searchMode: pickSearchMode(vectors === null, vectorMatches) };
 }
 
-const rankHeadroom = 5;
-
 interface VectorLimits {
   readonly limit: number;
   readonly excludedIDs: readonly string[];
@@ -60,7 +60,7 @@ interface VectorLimits {
 
 // the vector index's matches for the query less its excluded words, or null while the index
 // rebuilds or with no encoder
-function findVectorMatches(
+function readVectorMatches(
   vectors: StoreParts['messages']['vectors'],
   request: MessageRecallRequest,
   limits: VectorLimits,
@@ -69,7 +69,7 @@ function findVectorMatches(
     return Promise.resolve(null);
   }
 
-  return vectors.findMatches(buildVectorQuery(request.query, request.excludedWords), {
+  return vectors.readMatches(buildVectorQuery(request.query, request.excludedWords), {
     limit: limits.limit,
     minSimilarity: request.minSimilarity,
     excludedIDs: limits.excludedIDs,
@@ -133,6 +133,9 @@ interface CutRecord {
   readonly isCut: boolean;
 }
 
+const textLimit = 1000;
+const messageSpans = z.array(z.object({ start: z.int(), end: z.int(), source: z.string() }));
+
 // the record with its text cut to textLimit characters and each span cut to match
 function toCutRecord(record: LogRecord): CutRecord {
   const fields = record.erasable.status === 'readable' ? record.erasable.fields : null;
@@ -164,9 +167,6 @@ function toCutRecord(record: LogRecord): CutRecord {
     isCut: true,
   };
 }
-
-const messageSpans = z.array(z.object({ start: z.int(), end: z.int(), source: z.string() }));
-const textLimit = 1000;
 
 function pickSearchMode(
   hasNoEncoder: boolean,

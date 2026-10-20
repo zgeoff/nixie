@@ -24,11 +24,11 @@ export function findMockMemoryItems(query: string) {
   };
 }
 
+function splitWords(text: string): readonly string[] {
+  return text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+}
+
 // an item with its keyword score, as nixie's API lists a match
 function toMockMatch(item: StoredMemoryItem, score: number) {
   return { ...toMockMemoryItem(item), score };
-}
-
-function splitWords(text: string): readonly string[] {
-  return text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
 }

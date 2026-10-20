@@ -202,7 +202,7 @@ test('it gets a sandbox whose imp impd still backs up as retired', async () => {
 
   ctx.imp.created[0] = { ...created, backup: true };
 
-  const found = await ctx.adapter.get(sandbox.id);
+  const found = await ctx.adapter.read(sandbox.id);
 
   expect(found?.isRetired).toBeTrue();
 });
@@ -646,7 +646,7 @@ test('it lets a restarted adapter list and destroy what the last one made, for r
 
   await orphan?.destroy();
 
-  const found = await restarted.get(made.id);
+  const found = await restarted.read(made.id);
 
   expect(orphan?.spec).toStrictEqual(spec);
   expect(found).toBeNull();

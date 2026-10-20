@@ -8,14 +8,14 @@ import { createConversationTask, tasksProjections } from '@heynixie/tasks';
 import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
 import { apiProjections } from '../api-projections';
-import { buildAPIApp } from '../build-api-app';
+import { createAPIApp } from '../create-api-app';
 import { defaultAPISettings } from '../default-api-settings';
 
 // the context and the memory store the app takes, named from its signature to keep the file's
 // imports to ten
-type APIContext = Parameters<typeof buildAPIApp>[0];
+type APIContext = Parameters<typeof createAPIApp>[0];
 
-type ViewMemoryStore = NonNullable<ReturnType<Parameters<typeof buildAPIApp>[1]>>;
+type ViewMemoryStore = NonNullable<ReturnType<Parameters<typeof createAPIApp>[1]>>;
 
 interface TestAPI {
   readonly dataDir: string;
@@ -46,7 +46,7 @@ export async function startTestAPI(): Promise<TestAPI> {
 
   stack.defer(() => writer.stop());
 
-  const context = await buildTestContext(writer);
+  const context = await createTestContext(writer);
 
   const served = startTestApp(context);
 
@@ -62,7 +62,7 @@ export async function startTestAPI(): Promise<TestAPI> {
   };
 }
 
-async function buildTestContext(
+async function createTestContext(
   writer: Writer,
 ): Promise<APIContext & { readonly clock: TestClock }> {
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
@@ -99,7 +99,7 @@ function startTestApp(
   context: APIContext,
 ): Pick<TestAPI, 'url' | 'setMemory'> & { readonly stop: () => Promise<void> } {
   const memory: { store: ViewMemoryStore | null } = { store: null };
-  const app = buildAPIApp(context, () => memory.store).listen({ hostname: '127.0.0.1', port: 0 });
+  const app = createAPIApp(context, () => memory.store).listen({ hostname: '127.0.0.1', port: 0 });
 
   return {
     stop: async () => {

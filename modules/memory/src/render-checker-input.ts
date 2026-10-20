@@ -1,4 +1,4 @@
-import type { TextRange } from './find-quoted-blocks';
+import type { TextRange } from './collect-quoted-blocks';
 import type { OwnerMessage } from './gate-types';
 
 // What the checker reads beside your message: a candidate memory, or the item a retirement would

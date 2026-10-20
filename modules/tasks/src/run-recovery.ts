@@ -16,6 +16,11 @@ export interface RecoveryDependencies {
   readonly sandboxes: SandboxCleanup;
 }
 
+interface RecoveryStep {
+  readonly number: 1 | 2 | 3 | 4 | 5;
+  readonly run: () => Promise<unknown>;
+}
+
 // Resumes every task after a crash, before any runner starts, in a process that holds the writer
 // lock under a new epoch, so every lease still held belongs to a process that is gone. Each step is
 // safe to run again, so the next start finishes a recovery that crashed.
@@ -38,11 +43,6 @@ export async function runRecovery(
       await waitAtFaultPoint(`recovery.step.${step.number}`, { kind: 'recovery', id: null });
     }
   }
-}
-
-interface RecoveryStep {
-  readonly number: 1 | 2 | 3 | 4 | 5;
-  readonly run: () => Promise<unknown>;
 }
 
 // Step 1: frees every lease claimed under an older writer epoch, and returns each running task to

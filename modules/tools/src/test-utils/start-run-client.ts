@@ -16,9 +16,12 @@ export async function startRunClient(
     { versionNegotiation: { mode: { pin: '2026-07-28' } } },
   );
 
+  // Bun.fetch, because the test preload's request interceptor drops the unix option from fetch
+  const sendOverSocket = (url: string | URL, init?: RequestInit) =>
+    Bun.fetch(url, { ...init, unix: socketPath });
+
   const transport = new StreamableHTTPClientTransport(new URL('http://localhost/mcp'), {
-    // Bun.fetch, because the test preload's request interceptor drops the unix option from fetch
-    fetch: (url, init) => Bun.fetch(url, { ...init, unix: socketPath }),
+    fetch: sendOverSocket,
     requestInit: { headers: { authorization: `Bearer ${token}` } },
   });
 

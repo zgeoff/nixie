@@ -2,6 +2,11 @@ import invariant from 'tiny-invariant';
 import type { MemorySubject } from './types';
 import type { SourceMessage, StagedFlag, StagedWrite, WriterSubject } from './writer-types';
 
+interface ShownVersion {
+  readonly version: number;
+  readonly subject: MemorySubject;
+}
+
 // The batch a writer session stages into: your messages it may cite, by sequence, and the version
 // and subject of each item the session was shown, by item ID.
 interface StagingBatch {
@@ -9,27 +14,9 @@ interface StagingBatch {
   readonly shown: ReadonlyMap<string, ShownVersion>;
 }
 
-interface ShownVersion {
-  readonly version: number;
-  readonly subject: MemorySubject;
-}
-
 type StageResult =
   | { readonly status: 'staged' }
   | { readonly status: 'refused'; readonly reason: string };
-
-// The writer's staging area: the batch the open session stages into, and the writes it staged. One
-// batch is open at a time; opening one replaces any batch a lost step left open.
-export interface WriterStaging {
-  readonly open: (batch: StagingBatch) => StagingHandle;
-
-  // records an item a recall showed the session, at the version and with the text it showed
-  readonly show: (itemID: string, shown: ShownVersion, text: string) => void;
-  readonly stage: (write: StagedWriteRequest) => StageResult;
-
-  // flags a possible self-note for the assistant, which must cite one of your messages in the batch
-  readonly flag: (flag: StagedFlag) => StageResult;
-}
 
 export interface StagingHandle {
   // closes this batch, if it is still the open one, and returns its writes in the order the
@@ -59,6 +46,28 @@ type StagedWriteRequest =
       readonly sourceSequence: number;
       readonly itemID: string;
     };
+
+// The writer's staging area: the batch the open session stages into, and the writes it staged. One
+// batch is open at a time; opening one replaces any batch a lost step left open.
+export interface WriterStaging {
+  readonly open: (batch: StagingBatch) => StagingHandle;
+
+  // records an item a recall showed the session, at the version and with the text it showed
+  readonly show: (itemID: string, shown: ShownVersion, text: string) => void;
+  readonly stage: (write: StagedWriteRequest) => StageResult;
+
+  // flags a possible self-note for the assistant, which must cite one of your messages in the batch
+  readonly flag: (flag: StagedFlag) => StageResult;
+}
+
+interface OpenBatch {
+  readonly sources: ReadonlyMap<number, SourceMessage>;
+  readonly shown: Map<string, ShownVersion>;
+  readonly writes: StagedWrite[];
+  readonly flags: StagedFlag[];
+  readonly touched: Set<string>;
+  readonly recalledTexts: Set<string>;
+}
 
 // Creates the staging area. A write cites one of your messages in the batch, and a change names an
 // item the session was shown, once a batch and with its subject, so the publish checks each
@@ -118,15 +127,6 @@ export function createWriterStaging(): WriterStaging {
   };
 }
 
-interface OpenBatch {
-  readonly sources: ReadonlyMap<number, SourceMessage>;
-  readonly shown: Map<string, ShownVersion>;
-  readonly writes: StagedWrite[];
-  readonly flags: StagedFlag[];
-  readonly touched: Set<string>;
-  readonly recalledTexts: Set<string>;
-}
-
 function updateStagedBatch(batch: OpenBatch, request: StagedWriteRequest): StageResult {
   const planned = planStagedWrite(batch, request);
 
@@ -167,6 +167,10 @@ function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): Planned
   }
 
   return planTargetedWrite(batch, { ...request, itemID: request.itemID });
+}
+
+function buildSourceReason(sequence: number): string {
+  return `sourceID ${String(sequence)} is not one of the owner's messages in this batch`;
 }
 
 type TargetedRequest = StagedWriteRequest & { readonly itemID: string };
@@ -213,8 +217,4 @@ function buildWriteFields(
         quote: request.quote,
         sourceSequence: request.sourceSequence,
       };
-}
-
-function buildSourceReason(sequence: number): string {
-  return `sourceID ${String(sequence)} is not one of the owner's messages in this batch`;
 }

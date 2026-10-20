@@ -153,6 +153,21 @@ test('it runs an exec with the broker variables when the exec requires the broke
   expect(output).toBe('http://broker.invalid:3128 localhost,127.0.0.1,::1\n');
 });
 
+// 34 is a real-time signal, which has no name, so Bun gives it as a number
+test('it reports an exec that a signal with no name ended with the signal as its number', async () => {
+  const imp = await startFakeImp();
+
+  const exec = await imp.port.openExec('nixie-a', ['sh', '-c', 'kill -34 $$'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+
+  const exit = await exec.exit;
+
+  expect(exit).toStrictEqual({ code: null, signal: '34' });
+});
+
 test('it kills an exec that outlives SIGTERM at its kill grace', async () => {
   const imp = await startFakeImp();
 

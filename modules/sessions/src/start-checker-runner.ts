@@ -30,6 +30,9 @@ export interface CheckerRunnerOptions {
   readonly log: Logger;
 }
 
+// the owner of the checker's sandbox, which lives for the deployment, so recovery keeps it
+export const checkerOwner = 'checker';
+
 // Starts the checker on its role's profile, in its own long-lived sandbox on the conversation
 // image: one query with no tools per check. It keeps the sandbox when its spec still matches and
 // replaces it otherwise, so the checker never shares a sandbox with the conversation.
@@ -93,6 +96,3 @@ async function createCheckerSandbox(
 
   return sandboxes.create(spec);
 }
-
-// the owner of the checker's sandbox, which lives for the deployment, so recovery keeps it
-export const checkerOwner = 'checker';

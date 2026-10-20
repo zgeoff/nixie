@@ -1,4 +1,4 @@
-import { findTypedQuote, renderCheckerInput } from '@heynixie/memory';
+import { getTypedQuote, renderCheckerInput } from '@heynixie/memory';
 import type { CheckerPair, CheckerSample } from './load-checker-corpus';
 
 // Builds the checker input that the content gate renders for one corpus pair, with the memory's
@@ -10,7 +10,7 @@ export function buildCheckerEvalInput(
   ownerName: string | null,
 ): string {
   const message = { sequence: 0, text: sample.message.text, spans: sample.message.spans };
-  const match = findTypedQuote(message, pair.quote);
+  const match = getTypedQuote(message, pair.quote);
 
   if (match.status !== 'typed') {
     throw new Error(`the quote of a ${sample.id} pair fails the quote check: ${match.status}`);

@@ -5,8 +5,8 @@ import invariant from 'tiny-invariant';
 import { readWriterRow } from './read-writer-row';
 import { runWriterBatch } from './run-writer-batch';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
-import { buildStubWriterSession } from './test-utils/build-stub-writer-session';
 import { claimWriterLease } from './test-utils/claim-writer-lease';
+import { createStubWriterSession } from './test-utils/create-stub-writer-session';
 import { registerFaultPointAction } from './test-utils/register-fault-point-action';
 import type { TestMemoryOptions } from './test-utils/start-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -75,7 +75,7 @@ test('it publishes no proposal for an edit whose item moved on after the gate, a
   const result = await runWriterBatch(
     {
       ...ctx.parts,
-      ...buildStubWriterSession({
+      ...createStubWriterSession({
         op: 'remember',
         subject: 'owner',
         text: 'Lives on 9 Oak Lane',
@@ -109,7 +109,7 @@ test('it extracts the batch again after a moved-on edit, and proposes the edit a
 
   const parts = {
     ...ctx.parts,
-    ...buildStubWriterSession({
+    ...createStubWriterSession({
       op: 'remember',
       subject: 'owner',
       text: 'Lives on 9 Oak Lane',
@@ -183,7 +183,7 @@ test('it never runs the checker on an edit whose item moved on during extraction
   const result = await runWriterBatch(
     {
       ...ctx.parts,
-      ...buildStubWriterSession({
+      ...createStubWriterSession({
         op: 'remember',
         subject: 'owner',
         text: 'Lives on 9 Oak Lane',
@@ -238,7 +238,7 @@ test("it applies a write the checker confirms with both the writer's and the che
   await runWriterBatch(
     {
       ...ctx.parts,
-      ...buildStubWriterSession({
+      ...createStubWriterSession({
         op: 'remember',
         subject: 'owner',
         text: 'Keeps bees on the roof',
@@ -275,7 +275,7 @@ test('it publishes a flag as a record in the conversation, and creates no item o
   await runWriterBatch(
     {
       ...ctx.parts,
-      ...buildStubWriterSession({
+      ...createStubWriterSession({
         op: 'flag',
         text: 'The assistant favours the jazz station.',
         sourceSequence: planned.bounds.end,

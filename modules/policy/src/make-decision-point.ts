@@ -18,7 +18,6 @@ export interface DecisionPointOptions {
 // decision they make records stage 3 with the deciding rule's ID.
 const registryStage = 1;
 const scopeStage = 2;
-const fixedRuleStage = 3;
 
 // Builds the decision point every tool call passes before it acts. The stages run in order and the
 // first that decides returns: the registry, then the scope, then the fixed rules, the last of which
@@ -47,6 +46,8 @@ export function makeDecisionPoint(options: DecisionPointOptions): DecisionPoint 
 function buildStageDenial(stage: number, sentence: string): PolicyDecision {
   return { decision: { outcome: 'deny', stage, rule: null }, sentence };
 }
+
+const fixedRuleStage = 3;
 
 function pickRuleDecision(
   rules: readonly FixedRule[],

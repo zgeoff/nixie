@@ -11,14 +11,14 @@ export interface TaskStepsOptions {
   readonly advance: (durationMs: number) => void;
 
   // checked after each step: true ends the run before the tasks settle
-  readonly isDone?: () => Promise<boolean>;
+  readonly probeDone?: () => Promise<boolean>;
 
   // the most steps the run takes before it throws, so a task that never settles fails the test
   readonly maxSteps: number;
 }
 
 // Runs task steps the way a runner does, firing each due timer first and moving the clock to the
-// next timer when no task has work, until no timer is left or isDone holds. It returns how many
+// next timer when no task has work, until no timer is left or probeDone holds. It returns how many
 // steps ran, and throws on a claimed task it has no step for.
 export async function runTaskSteps(
   context: TasksContext,
@@ -31,7 +31,7 @@ export async function runTaskSteps(
       return steps;
     }
 
-    const isDone = await isRunDone(options);
+    const isDone = await probeRunDone(options);
 
     if (isDone) {
       return steps + 1;
@@ -63,21 +63,11 @@ async function runNextStep(context: TasksContext, options: TaskStepsOptions): Pr
   return true;
 }
 
-function getTaskStep(options: TaskStepsOptions, claim: TaskClaim): RunStep {
-  const step = options.steps[claim.lease.workID];
-
-  if (step === undefined) {
-    throw new Error(`the run has no step for the task ${claim.lease.workID}`);
-  }
-
-  return step;
-}
-
 async function runAfterNextTimer(
   context: TasksContext,
   options: TaskStepsOptions,
 ): Promise<boolean> {
-  const dueAt = await findNextTimer(context);
+  const dueAt = await readNextTimer(context);
 
   if (dueAt === null) {
     return false;
@@ -88,11 +78,7 @@ async function runAfterNextTimer(
   return runNextStep(context, options);
 }
 
-function isRunDone(options: TaskStepsOptions): Promise<boolean> {
-  return options.isDone === undefined ? Promise.resolve(false) : options.isDone();
-}
-
-async function findNextTimer(context: TasksContext): Promise<number | null> {
+async function readNextTimer(context: TasksContext): Promise<number | null> {
   const row = await context.log.writer.db
     .$extendTables<{ timers: { due_at: number; fired_at: number | null } }>()
     .selectFrom('timers')
@@ -102,4 +88,18 @@ async function findNextTimer(context: TasksContext): Promise<number | null> {
     .executeTakeFirst();
 
   return row?.due_at ?? null;
+}
+
+function getTaskStep(options: TaskStepsOptions, claim: TaskClaim): RunStep {
+  const step = options.steps[claim.lease.workID];
+
+  if (step === undefined) {
+    throw new Error(`the run has no step for the task ${claim.lease.workID}`);
+  }
+
+  return step;
+}
+
+function probeRunDone(options: TaskStepsOptions): Promise<boolean> {
+  return options.probeDone === undefined ? Promise.resolve(false) : options.probeDone();
 }

@@ -7,6 +7,8 @@ export type ReadDiskStats = (path: string) => Promise<{
   readonly bavail: number;
 }>;
 
+const fullPercent = 90;
+
 // The disk part: ready while the data volume is under 90% full, counting the blocks an
 // unprivileged process can no longer use as used.
 export async function checkDisk(
@@ -21,5 +23,3 @@ export async function checkDisk(
     ? { isReady: true, reason: null }
     : { isReady: false, reason: `the data volume is ${percent}% full` };
 }
-
-const fullPercent = 90;

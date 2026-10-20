@@ -1,7 +1,7 @@
 import { buildAPIGate } from './build-api-gate';
 import { buildSeedInputs } from './build-seed-inputs';
-import { buildServerContext } from './build-server-context';
 import { buildServerReset } from './build-server-reset';
+import { createServerContext } from './create-server-context';
 import { loadStartState } from './load-start-state';
 import type { ServerPartValues } from './server-part-values';
 import { startHostCommands } from './start-host-commands';
@@ -24,7 +24,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
     start: (parts) => {
       const options = parts.get('inputs').options;
 
-      return buildServerContext(options.writer, options.secrets.deploymentKey, () =>
+      return createServerContext(options.writer, options.secrets.deploymentKey, () =>
         parts.find('session_cleanup'),
       );
     },

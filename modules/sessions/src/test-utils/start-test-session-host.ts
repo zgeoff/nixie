@@ -133,7 +133,7 @@ async function removeSandboxes(
   adapter: SandboxAdapter,
   createdIDs: ReadonlySet<string>,
 ): Promise<void> {
-  const sandboxes = await Promise.all([...createdIDs].map((id) => adapter.get(id)));
+  const sandboxes = await Promise.all([...createdIDs].map((id) => adapter.read(id)));
 
   const live = sandboxes.filter((sandbox) => sandbox !== null);
 
