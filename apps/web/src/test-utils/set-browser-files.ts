@@ -21,11 +21,11 @@ export interface BrowserFilePick {
 // shows the input. Chrome reads each file from disk, so the files go in a directory that the test
 // removes when it finishes.
 export async function setBrowserFiles(view: Bun.WebView, input: BrowserFilePick): Promise<void> {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-browser-files-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-browser-files-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  await Promise.all(input.files.map((file) => writeFile(join(dir, file.name), file.bytes)));
+  await Promise.all(input.files.map((file) => writeFile(join(directory, file.name), file.bytes)));
 
   await waitFor(
     async () => {
@@ -52,7 +52,7 @@ export async function setBrowserFiles(view: Bun.WebView, input: BrowserFilePick)
   const node = nodeReply.parse(found);
 
   await view.cdp('DOM.setFileInputFiles', {
-    files: input.files.map((file) => join(dir, file.name)),
+    files: input.files.map((file) => join(directory, file.name)),
     nodeId: node.nodeId,
   });
 }

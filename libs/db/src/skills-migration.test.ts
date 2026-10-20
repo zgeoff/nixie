@@ -13,11 +13,13 @@ async function setupTest() {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-skills-migration-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-skills-migration-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
-  const db = new Kysely<unknown>({ dialect: buildSqliteWorkerDialect(join(dir, 'nixie.db')) });
+  const db = new Kysely<unknown>({
+    dialect: buildSqliteWorkerDialect(join(directory, 'nixie.db')),
+  });
 
   stack.defer(() => db.destroy());
 
@@ -27,7 +29,7 @@ async function setupTest() {
       migrations: nixieSchema.migrations.slice(0, nixieSchema.migrations.indexOf(skillsMigration)),
       oldestReader: 0,
     },
-    copyDir: dir,
+    copyDir: directory,
   });
 
   return { db };

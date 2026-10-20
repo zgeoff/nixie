@@ -14,21 +14,21 @@ async function setupTest() {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-count-subjects-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-count-subjects-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
-  const db = startDatabase(join(dir, 'nixie.db'));
+  const db = startDatabase(join(directory, 'nixie.db'));
 
   stack.defer(() => db.destroy());
 
-  return { db, dir };
+  return { db, directory };
 }
 
 test('it counts the items of each subject', async () => {
   const ctx = await setupTest();
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.dir });
+  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
@@ -52,7 +52,7 @@ test('it counts the items of each subject', async () => {
 test('it counts the proposals of each subject', async () => {
   const ctx = await setupTest();
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.dir });
+  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.proposal_created', 'snapshot-a', '{}')`.execute(ctx.db);
@@ -81,7 +81,7 @@ test('it counts the proposals of each subject', async () => {
 test('it counts a row the release before wrote with no subject by its kind', async () => {
   const ctx = await setupTest();
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.dir });
+  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
@@ -104,7 +104,7 @@ test('it counts a row the release before wrote with no subject by its kind', asy
 test('it reads both counts from one snapshot while another connection commits between them', async () => {
   const ctx = await setupTest();
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.dir });
+  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.proposal_created', 'snapshot-a', '{}')`.execute(ctx.db);
@@ -123,7 +123,7 @@ test('it reads both counts from one snapshot while another connection commits be
       1767225600000, 1767312000000, 'owner')`.execute(ctx.db);
 
   // the other connection waits for no lock, so its write either commits at once or is refused
-  const other = startDatabase(join(ctx.dir, 'nixie.db'), { busyTimeoutMs: 0 });
+  const other = startDatabase(join(ctx.directory, 'nixie.db'), { busyTimeoutMs: 0 });
 
   onTestFinished(() => other.destroy());
 

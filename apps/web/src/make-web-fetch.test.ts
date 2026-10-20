@@ -160,6 +160,7 @@ test('it serves each icon the manifest lists at its listed size', async () => {
 
   const manifestJSON: unknown = await Bun.file(join(publicDir, 'manifest.webmanifest')).json();
 
+  // oxlint-disable-next-line zgeoff/no-abbreviated-names -- the web app manifest names an icon's URL `src`
   const iconSchema = z.object({ sizes: z.string(), src: z.string() });
   const manifest = z.object({ icons: z.array(iconSchema) }).parse(manifestJSON);
 

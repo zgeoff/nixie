@@ -30,7 +30,7 @@ export interface CrashHarness {
 
   // moves the clock forward in the test and in every nixie process still running; it refuses while
   // a nixie it started is not yet ready, because that nixie's clock would fall behind
-  readonly advance: (ms: number, options?: AdvanceOptions) => Promise<void>;
+  readonly advance: (durationMs: number, options?: AdvanceOptions) => Promise<void>;
 
   // kills every nixie process still running
   readonly stop: () => Promise<void>;
@@ -62,17 +62,17 @@ export function startCrashHarness(options: CrashHarnessOptions): CrashHarness {
 
       return nixie;
     },
-    advance: async (ms, advanceOptions = {}) => {
+    advance: async (durationMs, advanceOptions = {}) => {
       if (processes.started.size > processes.running.size) {
         throw new Error('a nixie is not ready yet, so it would miss the advance');
       }
 
-      clock.now += ms;
+      clock.now += durationMs;
 
       const replies = await Promise.all(
         [...processes.running].map((nixie) =>
           nixie.request('advance', {
-            ms,
+            durationMs,
             settle: advanceOptions.settle ?? false,
             settleTimeoutMs: advanceOptions.settleTimeoutMs,
           }),

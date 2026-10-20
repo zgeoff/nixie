@@ -20,11 +20,11 @@ test('it hashes a snapshot of two files to its frozen value', () => {
 });
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-vendor-hash-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-vendor-hash-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { dir };
+  return { directory };
 }
 
 test('it matches the hash that the vendoring guide computes over a skill folder', async () => {
@@ -40,23 +40,23 @@ test('it matches the hash that the vendoring guide computes over a skill folder'
 
   invariant(snippet !== undefined, 'the vendoring guide holds no hash snippet');
 
-  await mkdir(join(ctx.dir, 'skills', 'pdf-forms', 'scripts'), { recursive: true });
-  await mkdir(join(ctx.dir, 'skills', 'pdf-forms', '.git'));
+  await mkdir(join(ctx.directory, 'skills', 'pdf-forms', 'scripts'), { recursive: true });
+  await mkdir(join(ctx.directory, 'skills', 'pdf-forms', '.git'));
 
   const skill = '---\nname: pdf-forms\ndescription: Fills PDF forms.\n---\n# Forms\n';
   const script = 'print("fill")\n';
 
-  await writeFile(join(ctx.dir, 'skills', 'pdf-forms', 'SKILL.md'), skill);
-  await writeFile(join(ctx.dir, 'skills', 'pdf-forms', 'scripts', 'fill.py'), script);
-  await writeFile(join(ctx.dir, 'skills', 'pdf-forms', '-example.txt'), 'example\n');
+  await writeFile(join(ctx.directory, 'skills', 'pdf-forms', 'SKILL.md'), skill);
+  await writeFile(join(ctx.directory, 'skills', 'pdf-forms', 'scripts', 'fill.py'), script);
+  await writeFile(join(ctx.directory, 'skills', 'pdf-forms', '-example.txt'), 'example\n');
 
   // U+FF21 sorts before U+1F600 by code point and after it by UTF-16 code unit
-  await writeFile(join(ctx.dir, 'skills', 'pdf-forms', '\u{FF21}.md'), 'wide\n');
-  await writeFile(join(ctx.dir, 'skills', 'pdf-forms', '\u{1F600}.md'), 'smile\n');
-  await writeFile(join(ctx.dir, 'skills', 'pdf-forms', '.git', 'HEAD'), 'ref: main\n');
+  await writeFile(join(ctx.directory, 'skills', 'pdf-forms', '\u{FF21}.md'), 'wide\n');
+  await writeFile(join(ctx.directory, 'skills', 'pdf-forms', '\u{1F600}.md'), 'smile\n');
+  await writeFile(join(ctx.directory, 'skills', 'pdf-forms', '.git', 'HEAD'), 'ref: main\n');
 
   const command = snippet.replaceAll(/^ {3}/gmu, '').replace('<name>', 'pdf-forms');
-  const run = Bun.spawnSync(['bash', '-c', command], { cwd: ctx.dir });
+  const run = Bun.spawnSync(['bash', '-c', command], { cwd: ctx.directory });
 
   const files = new Map([
     ['SKILL.md', new TextEncoder().encode(skill)],

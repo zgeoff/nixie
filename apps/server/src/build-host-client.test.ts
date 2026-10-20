@@ -9,13 +9,13 @@ import { startControlSocket } from './start-control-socket';
 
 // a control socket that serves the host procedures over the API's context, as the server opens it
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-control-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-control-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
   const api = await startTestAPI();
 
-  const path = join(dir, 'control.sock');
+  const path = join(directory, 'control.sock');
 
   const socket = await startControlSocket({
     path,

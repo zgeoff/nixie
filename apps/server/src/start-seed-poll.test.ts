@@ -26,9 +26,9 @@ async function setupTest() {
 test('it reports the definitions ready within seconds of a checkout that lands after a restart', async () => {
   const ctx = await setupTest();
 
-  const definitionsDir = join(ctx.dir, 'definitions');
+  const definitionsDir = join(ctx.directory, 'definitions');
 
-  await rename(definitionsDir, join(ctx.dir, 'checkout'));
+  await rename(definitionsDir, join(ctx.directory, 'checkout'));
 
   const again = ctx.startAgain();
 
@@ -36,7 +36,7 @@ test('it reports the definitions ready within seconds of a checkout that lands a
 
   await again.waitForLogEvent('ready');
 
-  await rename(join(ctx.dir, 'checkout'), definitionsDir);
+  await rename(join(ctx.directory, 'checkout'), definitionsDir);
 
   const landedAt = Date.now();
 
@@ -75,7 +75,7 @@ test('it reports the definitions ready again once the source returns to its last
 
   const parts: SeedPollParts = {
     context: { ...context.apiContext, clock },
-    source: createPathSource({ dir: root }),
+    source: createPathSource({ directory: root }),
     policy: { rules: [], tools: [] },
     inForce: context.inForce,
     state: buildStartState({ isReady: true, reason: null }),

@@ -16,16 +16,16 @@ const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 // may run Bash with no permission prompt. The CLI writes type files into each mod it loads, so it
 // loads the copy and never the committed mods.
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-contract-mods-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-mods-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  const mods = join(dir, 'mods');
+  const mods = join(directory, 'mods');
 
   await cp(join(import.meta.dir, 'mods'), mods, { recursive: true });
 
   const options: Options = {
-    cwd: dir,
+    cwd: directory,
     model: 'claude-haiku-5-5',
     settingSources: [],
     tools: ['Bash'],
@@ -33,7 +33,7 @@ async function setupTest() {
     permissionMode: 'default',
     permissionPrompts: 'none',
     maxTurns: 10,
-    env: buildContractEnv(process.env, dir),
+    env: buildContractEnv(process.env, directory),
   };
 
   return { mods, options };

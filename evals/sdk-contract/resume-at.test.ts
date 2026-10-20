@@ -15,21 +15,21 @@ const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 
 // a config directory of the run's own, and the options of a one-call turn with no tools
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-contract-resume-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-resume-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
   const options: Options = {
-    cwd: dir,
+    cwd: directory,
     model: 'claude-haiku-5-5',
     settingSources: [],
     tools: [],
     maxTurns: 1,
     systemPrompt: 'You are a terse assistant in a test. Follow the instructions exactly.',
-    env: buildContractEnv(process.env, dir),
+    env: buildContractEnv(process.env, directory),
   };
 
-  return { dir, options };
+  return { directory, options };
 }
 
 test.skipIf(!isContractRun)(
@@ -51,7 +51,7 @@ test.skipIf(!isContractRun)(
       options: { ...ctx.options, resume: boundary.session_id },
     });
 
-    const before = await loadSessionTranscript(ctx.dir, boundary.session_id);
+    const before = await loadSessionTranscript(ctx.directory, boundary.session_id);
 
     const fork = await runContractQuery({
       prompt: 'What is the code word? Answer with the word only.',
@@ -65,7 +65,7 @@ test.skipIf(!isContractRun)(
 
     const result = fork.messages.at(-1);
 
-    const after = await loadSessionTranscript(ctx.dir, boundary.session_id);
+    const after = await loadSessionTranscript(ctx.directory, boundary.session_id);
 
     invariant(result?.type === 'result' && result.subtype === 'success');
 
@@ -109,7 +109,7 @@ test.skipIf(!isContractRun)(
       },
     });
 
-    const transcript = await loadSessionTranscript(ctx.dir, boundary.session_id);
+    const transcript = await loadSessionTranscript(ctx.directory, boundary.session_id);
 
     const fork = await runContractQuery({
       prompt: 'What is the code word? Answer with the word only.',

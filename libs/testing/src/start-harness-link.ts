@@ -132,7 +132,7 @@ function isArmMatch(candidate: HeldArm, point: string, work: FaultPointWork): bo
 }
 
 interface AdvanceArgs {
-  readonly ms: number;
+  readonly durationMs: number;
   readonly settle?: boolean;
 
   // how long an advance waits for the sleepers it woke to sleep again
@@ -146,7 +146,7 @@ async function runAdvance(clock: TestClock, args: unknown): Promise<{ readonly s
   const advance = args as AdvanceArgs;
   const before = clock.countSleepers();
 
-  clock.advance(advance.ms);
+  clock.advance(advance.durationMs);
 
   if (advance.settle !== true) {
     return { settled: false };

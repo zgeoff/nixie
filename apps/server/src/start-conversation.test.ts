@@ -159,7 +159,9 @@ test('it resumes the session after a change to the policy alone, and decides the
 
   expect({
     opened: records.filter((record) => record.kind === 'model.session_opened'),
-    decisions: records.filter((record) => record.kind === 'tool_called').map((r) => r.decision),
+    decisions: records
+      .filter((record) => record.kind === 'tool_called')
+      .map((toolCall) => toolCall.decision),
   }).toMatchObject({
     opened: [{ payload: { kind: 'first', policyHash: 'policy:read' } }],
     decisions: [

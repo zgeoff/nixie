@@ -18,9 +18,9 @@ const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 // a config directory of the run's own, and the options of a turn as the conversation guest sets
 // them: every SDK compaction off, and an in-process page tool that grows the context by a known step
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-contract-overflow-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-overflow-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
   const pages = createSdkMcpServer({
     name: 'pages',
@@ -35,7 +35,7 @@ async function setupTest() {
   });
 
   const options: Options = {
-    cwd: dir,
+    cwd: directory,
     model: 'claude-haiku-5-5',
     settingSources: [],
     tools: [],
@@ -45,7 +45,7 @@ async function setupTest() {
     systemPrompt: 'You are a terse assistant in a test. Follow the instructions exactly.',
     settings: { autoCompactEnabled: false, autoCompactWindow: 100_000 },
     env: {
-      ...buildContractEnv(process.env, dir),
+      ...buildContractEnv(process.env, directory),
 
       // the CLI's own limit lowered to 24,000 tokens, so a few pages pass it and each call stays cheap
       CLAUDE_CODE_BLOCKING_LIMIT_OVERRIDE: '24000',
@@ -53,7 +53,7 @@ async function setupTest() {
     },
   };
 
-  return { dir, options };
+  return { directory, options };
 }
 
 test.skipIf(!isContractRun)(
@@ -113,7 +113,7 @@ test.skipIf(!isContractRun)(
 
     const failedResult = failed.messages.at(-1);
 
-    const original = await loadSessionTranscript(ctx.dir, boundary.session_id);
+    const original = await loadSessionTranscript(ctx.directory, boundary.session_id);
 
     const fork = await runContractQuery({
       prompt: 'Reply with OK only.',
@@ -129,7 +129,7 @@ test.skipIf(!isContractRun)(
 
     invariant(forkResult?.type === 'result');
 
-    const forked = await loadSessionTranscript(ctx.dir, forkResult.session_id);
+    const forked = await loadSessionTranscript(ctx.directory, forkResult.session_id);
 
     expect(failedResult).toMatchObject({ type: 'result', terminal_reason: 'blocking_limit' });
     expect(JSON.stringify(original)).toInclude('Prompt is too long');

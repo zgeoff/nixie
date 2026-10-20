@@ -9,21 +9,21 @@ import { startStubToolEndpoint } from './start-stub-tool-endpoint';
 // these tests reach the socket with curl, as a guest process does. curl runs in the socket's
 // directory, because a temp path can pass the length a unix socket address holds.
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-tool-endpoint-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-tool-endpoint-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { dir };
+  return { directory };
 }
 
 test('it answers with the path and the bearer token it saw', async () => {
   const ctx = await setupTest();
 
-  startStubToolEndpoint(join(ctx.dir, 'tools.sock'));
+  startStubToolEndpoint(join(ctx.directory, 'tools.sock'));
 
   const body: unknown =
     await $`curl -sS --unix-socket tools.sock -H ${'authorization: Bearer run-token'} http://localhost/mcp`
-      .cwd(ctx.dir)
+      .cwd(ctx.directory)
       .json();
 
   expect(body).toStrictEqual({ path: '/mcp', authorization: 'Bearer run-token' });
@@ -32,24 +32,24 @@ test('it answers with the path and the bearer token it saw', async () => {
 test('it answers a null token for a request without one', async () => {
   const ctx = await setupTest();
 
-  startStubToolEndpoint(join(ctx.dir, 'tools.sock'));
+  startStubToolEndpoint(join(ctx.directory, 'tools.sock'));
 
   const body: unknown = await $`curl -sS --unix-socket tools.sock http://localhost/`
-    .cwd(ctx.dir)
+    .cwd(ctx.directory)
     .json();
 
   expect(body).toStrictEqual({ path: '/', authorization: null });
 });
 
 test('it stops listening when the test finishes', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-tool-endpoint-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-tool-endpoint-'));
 
-  startStubToolEndpoint(join(dir, 'tools.sock'));
+  startStubToolEndpoint(join(directory, 'tools.sock'));
 
   // hooks run first in, first out: the stub stops, this check runs, then the directory goes
   onTestFinished(async () => {
     const result = await $`curl -sS --unix-socket tools.sock http://localhost/`
-      .cwd(dir)
+      .cwd(directory)
       .nothrow()
       .quiet();
 
@@ -57,5 +57,5 @@ test('it stops listening when the test finishes', async () => {
     expect(result.exitCode).toBe(7);
   });
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 });

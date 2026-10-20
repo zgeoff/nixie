@@ -3,7 +3,7 @@ import type { Clock } from '@heynixie/clock';
 // The clock a test sets and advances, so leases, timers and retry delays pass without a sleep.
 export interface TestClock extends Clock {
   // moves time forward and wakes every sleeper whose due time it passed, earliest first
-  readonly advance: (ms: number) => void;
+  readonly advance: (durationMs: number) => void;
 
   // how many sleeps are waiting, so a test advances only once the code it drives sleeps
   readonly countSleepers: () => number;
@@ -23,15 +23,15 @@ export function buildTestClock(startMs: number): TestClock {
 
   return {
     now: () => state.now,
-    sleep: async (ms, signal) => {
-      if (signal?.aborted === true || ms <= 0) {
+    sleep: async (durationMs, signal) => {
+      if (signal?.aborted === true || durationMs <= 0) {
         return;
       }
 
       const sleep = Promise.withResolvers<void>();
 
       const sleeper: Sleeper = {
-        dueAt: state.now + ms,
+        dueAt: state.now + durationMs,
         stop: () => {
           sleepers.delete(sleeper);
           signal?.removeEventListener('abort', sleeper.stop);
@@ -44,12 +44,12 @@ export function buildTestClock(startMs: number): TestClock {
 
       await sleep.promise;
     },
-    advance: (ms) => {
-      state.now += ms;
+    advance: (durationMs) => {
+      state.now += durationMs;
 
       const due = [...sleepers]
         .filter((sleeper) => sleeper.dueAt <= state.now)
-        .toSorted((a, b) => a.dueAt - b.dueAt);
+        .toSorted((first, second) => first.dueAt - second.dueAt);
 
       for (const sleeper of due) {
         sleeper.stop();

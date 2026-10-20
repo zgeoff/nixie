@@ -16,29 +16,29 @@ async function setupTest() {
 test('it runs each fetch in a new directory of its own and removes it after', async () => {
   const ctx = await setupTest();
 
-  const first = await withFetchDirectory(ctx.root, (dir) =>
-    Promise.resolve({ dir, existed: existsSync(dir) }),
+  const first = await withFetchDirectory(ctx.root, (directory) =>
+    Promise.resolve({ directory, existed: existsSync(directory) }),
   );
 
-  const second = await withFetchDirectory(ctx.root, (dir) =>
-    Promise.resolve({ dir, existed: existsSync(dir) }),
+  const second = await withFetchDirectory(ctx.root, (directory) =>
+    Promise.resolve({ directory, existed: existsSync(directory) }),
   );
 
   const left = await readdir(ctx.root);
 
   expect(first.existed).toBeTrue();
   expect(second.existed).toBeTrue();
-  expect(dirname(first.dir)).toBe(ctx.root);
-  expect(dirname(second.dir)).toBe(ctx.root);
-  expect(first.dir).not.toBe(second.dir);
+  expect(dirname(first.directory)).toBe(ctx.root);
+  expect(dirname(second.directory)).toBe(ctx.root);
+  expect(first.directory).not.toBe(second.directory);
   expect(left).toStrictEqual([]);
 });
 
 test('it removes the directory when the fetch throws', async () => {
   const ctx = await setupTest();
 
-  const run = withFetchDirectory(ctx.root, async (dir) => {
-    await Bun.write(join(dir, 'left.txt'), 'x');
+  const run = withFetchDirectory(ctx.root, async (directory) => {
+    await Bun.write(join(directory, 'left.txt'), 'x');
 
     throw new Error('the fetch failed');
   });

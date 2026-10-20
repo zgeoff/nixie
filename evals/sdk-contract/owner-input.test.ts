@@ -17,9 +17,9 @@ const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 // a config directory of the run's own, a streaming input, and the options of a task that runs shell
 // commands with no permission prompt
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-contract-owner-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-owner-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
   const input = startInputStream();
 
@@ -28,7 +28,7 @@ async function setupTest() {
   });
 
   const options: Options = {
-    cwd: dir,
+    cwd: directory,
     model: 'claude-haiku-5-5',
     settingSources: [],
     tools: ['Bash'],
@@ -36,10 +36,10 @@ async function setupTest() {
     permissionMode: 'default',
     permissionPrompts: 'none',
     maxTurns: 8,
-    env: buildContractEnv(process.env, dir),
+    env: buildContractEnv(process.env, directory),
   };
 
-  return { dir, input, options };
+  return { directory, input, options };
 }
 
 test.skipIf(!isContractRun)(
@@ -129,7 +129,7 @@ test.skipIf(!isContractRun)(
           host.interrupt = (async () => {
             await waitForCondition(
               async () => {
-                const transcript = await loadSessionTranscript(ctx.dir, message.session_id);
+                const transcript = await loadSessionTranscript(ctx.directory, message.session_id);
 
                 return (
                   transcript.filter(

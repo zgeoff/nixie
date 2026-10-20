@@ -5,11 +5,11 @@ import { join } from 'node:path';
 import { loadSandboxManifest } from './load-sandbox-manifest';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-manifest-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-manifest-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { path: join(dir, 'sandbox-manifest.json') };
+  return { path: join(directory, 'sandbox-manifest.json') };
 }
 
 test('it names each image by its kind and the head of its digest', async () => {

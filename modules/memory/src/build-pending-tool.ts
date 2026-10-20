@@ -136,8 +136,8 @@ const notedByWords: Readonly<Record<MemoryOrigin, string>> = {
 };
 
 // a whole number of the largest unit that fits, such as 3 days, or under a minute
-function formatAge(ms: number): string {
-  const minutes = Math.floor(ms / 60_000);
+function formatAge(ageMs: number): string {
+  const minutes = Math.floor(ageMs / 60_000);
 
   if (minutes < 1) {
     return 'under a minute';

@@ -12,15 +12,15 @@ async function setupTest() {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-copy-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-copy-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
-  const db = startDatabase(join(dir, 'nixie.db'));
+  const db = startDatabase(join(directory, 'nixie.db'));
 
   stack.defer(() => db.destroy());
 
-  return { dir, db };
+  return { directory, db };
 }
 
 test('it copies every committed row into a standalone database file', async () => {
@@ -29,9 +29,9 @@ test('it copies every committed row into a standalone database file', async () =
   await sql`create table notes (id text primary key)`.execute(ctx.db);
   await sql`insert into notes (id) values ('n1'), ('n2')`.execute(ctx.db);
 
-  await createDatabaseCopy(ctx.db, join(ctx.dir, 'copy.db'));
+  await createDatabaseCopy(ctx.db, join(ctx.directory, 'copy.db'));
 
-  const copy = new Database(join(ctx.dir, 'copy.db'), { readonly: true });
+  const copy = new Database(join(ctx.directory, 'copy.db'), { readonly: true });
 
   onTestFinished(() => {
     copy.close();
@@ -48,13 +48,13 @@ test('it replaces an older copy and a partial copy left by an interrupted run', 
 
   await sql`create table notes (id text primary key)`.execute(ctx.db);
 
-  await writeFile(join(ctx.dir, 'copy.db'), 'an older copy');
-  await writeFile(join(ctx.dir, 'copy.db.partial'), 'an interrupted copy');
-  await createDatabaseCopy(ctx.db, join(ctx.dir, 'copy.db'));
+  await writeFile(join(ctx.directory, 'copy.db'), 'an older copy');
+  await writeFile(join(ctx.directory, 'copy.db.partial'), 'an interrupted copy');
+  await createDatabaseCopy(ctx.db, join(ctx.directory, 'copy.db'));
 
-  const names = await readdir(ctx.dir);
+  const names = await readdir(ctx.directory);
 
-  const copy = new Database(join(ctx.dir, 'copy.db'), { readonly: true });
+  const copy = new Database(join(ctx.directory, 'copy.db'), { readonly: true });
 
   onTestFinished(() => {
     copy.close();

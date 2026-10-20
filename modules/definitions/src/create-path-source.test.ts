@@ -6,15 +6,15 @@ import { buildContentHash } from './build-content-hash';
 import { createPathSource } from './create-path-source';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-definitions-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-definitions-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  const root = join(dir, 'definitions');
+  const root = join(directory, 'definitions');
 
   await mkdir(root);
 
-  return { dir, root };
+  return { directory, root };
 }
 
 test('it reads each definitions file under the root with its path relative to the root', async () => {
@@ -24,7 +24,7 @@ test('it reads each definitions file under the root with its path relative to th
   await mkdir(join(ctx.root, 'jobs'));
   await writeFile(join(ctx.root, 'jobs', 'morning.yaml'), 'id: morning\n');
 
-  const snapshot = await createPathSource({ dir: ctx.root }).snapshot();
+  const snapshot = await createPathSource({ directory: ctx.root }).snapshot();
 
   const job = new TextEncoder().encode('id: morning\n');
   const persona = new TextEncoder().encode('# Persona\n');
@@ -45,14 +45,14 @@ test('it reads each definitions file under the root with its path relative to th
 test('it gives CRLF files the content hash of the same files with LF', async () => {
   const ctx = await setupTest();
 
-  const crlf = join(ctx.dir, 'crlf');
+  const crlf = join(ctx.directory, 'crlf');
 
   await mkdir(crlf);
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nWarm.\n');
   await writeFile(join(crlf, 'persona.md'), '# Persona\r\n\r\nWarm.\r\n');
 
-  const fromLF = await createPathSource({ dir: ctx.root }).snapshot();
-  const fromCRLF = await createPathSource({ dir: crlf }).snapshot();
+  const fromLF = await createPathSource({ directory: ctx.root }).snapshot();
+  const fromCRLF = await createPathSource({ directory: crlf }).snapshot();
 
   expect(fromCRLF.contentHash).toBe(fromLF.contentHash);
   expect(new TextDecoder().decode(fromCRLF.files.get('persona.md'))).toBe('# Persona\n\nWarm.\n');
@@ -68,7 +68,7 @@ test('it skips every path with a part that starts with a dot', async () => {
   await mkdir(join(ctx.root, 'jobs'));
   await writeFile(join(ctx.root, 'jobs', '.draft.yaml'), 'id: draft\n');
 
-  const snapshot = await createPathSource({ dir: ctx.root }).snapshot();
+  const snapshot = await createPathSource({ directory: ctx.root }).snapshot();
 
   expect([...snapshot.files.keys()]).toStrictEqual(['persona.md']);
   expect(snapshot.skipped).toStrictEqual(['.git', '.persona.md', 'jobs/.draft.yaml']);
@@ -83,7 +83,7 @@ test('it skips every root entry outside the known definitions paths by name', as
   await writeFile(join(ctx.root, 'scripts', 'seed.sh'), 'echo seed\n');
   await writeFile(join(ctx.root, 'rules.toml'), 'id = "rule"\n');
 
-  const snapshot = await createPathSource({ dir: ctx.root }).snapshot();
+  const snapshot = await createPathSource({ directory: ctx.root }).snapshot();
 
   expect([...snapshot.files.keys()]).toStrictEqual(['persona.md']);
   expect(snapshot.skipped).toStrictEqual(['README.txt', 'rules.toml', 'scripts']);
@@ -96,7 +96,7 @@ test('it skips a file without a definitions extension under rules', async () => 
   await writeFile(join(ctx.root, 'rules', 'mail.yaml'), 'id: mail\n');
   await writeFile(join(ctx.root, 'rules', 'notes.txt'), 'draft\n');
 
-  const snapshot = await createPathSource({ dir: ctx.root }).snapshot();
+  const snapshot = await createPathSource({ directory: ctx.root }).snapshot();
 
   expect([...snapshot.files.keys()]).toStrictEqual(['rules/mail.yaml']);
   expect(snapshot.skipped).toStrictEqual(['rules/notes.txt']);
@@ -105,7 +105,7 @@ test('it skips a file without a definitions extension under rules', async () => 
 test('it gives definitions with docs and a broken file beside them the same content hash', async () => {
   const ctx = await setupTest();
 
-  const plain = join(ctx.dir, 'plain');
+  const plain = join(ctx.directory, 'plain');
 
   await Promise.all([
     Bun.write(join(plain, 'persona.md'), '# Persona\n'),
@@ -117,8 +117,8 @@ test('it gives definitions with docs and a broken file beside them the same cont
 
   await symlink(plain, join(ctx.root, 'docs', 'outside'));
 
-  const snapshot = await createPathSource({ dir: ctx.root }).snapshot();
-  const without = await createPathSource({ dir: plain }).snapshot();
+  const snapshot = await createPathSource({ directory: ctx.root }).snapshot();
+  const without = await createPathSource({ directory: plain }).snapshot();
 
   expect(snapshot.contentHash).toBe(without.contentHash);
   expect(snapshot.skipped).toStrictEqual(['docs', 'notes', 'readme.md']);
@@ -131,7 +131,7 @@ test('it names a misnamed definitions folder in the skipped list', async () => {
   await mkdir(join(ctx.root, 'rule'));
   await writeFile(join(ctx.root, 'rule', 'mail.yaml'), 'id: mail\n');
 
-  const snapshot = await createPathSource({ dir: ctx.root }).snapshot();
+  const snapshot = await createPathSource({ directory: ctx.root }).snapshot();
 
   expect([...snapshot.files.keys()]).toStrictEqual(['persona.md']);
   expect(snapshot.skipped).toStrictEqual(['rule']);
@@ -145,7 +145,7 @@ test('it reads every file under skills, whatever its extension', async () => {
   await writeFile(join(ctx.root, 'skills', 'pdf-forms', 'scripts', 'fill.py'), 'print(1)\n');
   await writeFile(join(ctx.root, 'fill.py'), 'print(1)\n');
 
-  const snapshot = await createPathSource({ dir: ctx.root }).snapshot();
+  const snapshot = await createPathSource({ directory: ctx.root }).snapshot();
 
   expect([...snapshot.files.keys()]).toStrictEqual([
     'skills/pdf-forms/SKILL.md',
@@ -158,11 +158,11 @@ test('it reads every file under skills, whatever its extension', async () => {
 test('it fails the snapshot at a symlink that leads outside the root', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.dir, 'secret.md'), 'outside\n');
+  await writeFile(join(ctx.directory, 'secret.md'), 'outside\n');
   await mkdir(join(ctx.root, 'rules'));
-  await symlink(join(ctx.dir, 'secret.md'), join(ctx.root, 'rules', 'escape.md'));
+  await symlink(join(ctx.directory, 'secret.md'), join(ctx.root, 'rules', 'escape.md'));
 
-  expect(createPathSource({ dir: ctx.root }).snapshot()).rejects.toMatchObject({
+  expect(createPathSource({ directory: ctx.root }).snapshot()).rejects.toMatchObject({
     name: 'SnapshotError',
     message: 'a symlink leads outside the definitions root: rules/escape.md',
     paths: ['rules/escape.md'],
@@ -174,7 +174,7 @@ test('it fails the snapshot at a symlink whose target does not exist', async () 
 
   await symlink(join(ctx.root, 'missing.md'), join(ctx.root, 'persona.md'));
 
-  expect(createPathSource({ dir: ctx.root }).snapshot()).rejects.toMatchObject({
+  expect(createPathSource({ directory: ctx.root }).snapshot()).rejects.toMatchObject({
     name: 'SnapshotError',
     paths: ['persona.md'],
   });
@@ -187,7 +187,7 @@ test('it skips a symlink that stays inside the root', async () => {
   await writeFile(join(ctx.root, 'rules', 'mail.yaml'), 'id: mail\n');
   await symlink(join(ctx.root, 'rules', 'mail.yaml'), join(ctx.root, 'rules', 'alias.yaml'));
 
-  const snapshot = await createPathSource({ dir: ctx.root }).snapshot();
+  const snapshot = await createPathSource({ directory: ctx.root }).snapshot();
 
   expect([...snapshot.files.keys()]).toStrictEqual(['rules/mail.yaml']);
   expect(snapshot.skipped).toStrictEqual(['rules/alias.yaml']);
@@ -202,7 +202,7 @@ test('it fails the snapshot with every file past the per-file limit', async () =
   await writeFile(join(ctx.root, 'rules', 'c.md'), '123456789012');
 
   const source = createPathSource({
-    dir: ctx.root,
+    directory: ctx.root,
     limits: { maxFileBytes: 10, maxTotalBytes: 1000 },
   });
 
@@ -222,7 +222,7 @@ test('it fails the snapshot with the files past the total limit', async () => {
   await writeFile(join(ctx.root, 'rules', 'c.md'), '1234567890');
 
   const source = createPathSource({
-    dir: ctx.root,
+    directory: ctx.root,
     limits: { maxFileBytes: 10, maxTotalBytes: 15 },
   });
 
@@ -240,7 +240,7 @@ test('it counts only the files the filter keeps towards the total limit', async 
   await writeFile(join(ctx.root, 'big.bin'), '12345678901234567890');
 
   const source = createPathSource({
-    dir: ctx.root,
+    directory: ctx.root,
     limits: { maxFileBytes: 10, maxTotalBytes: 10 },
   });
 
@@ -254,7 +254,7 @@ test('it probes with the content hash, which changes after an edit', async () =>
 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  const source = createPathSource({ dir: ctx.root });
+  const source = createPathSource({ directory: ctx.root });
 
   const before = await source.probe();
 
@@ -271,7 +271,7 @@ test('it probes with the content hash, which changes after an edit', async () =>
 test('it names the source by its directory', async () => {
   const ctx = await setupTest();
 
-  const source = createPathSource({ dir: ctx.root });
+  const source = createPathSource({ directory: ctx.root });
 
   expect(source.id).toBe(`path:${ctx.root}`);
   expect(source.kind).toBe('path');
@@ -280,8 +280,8 @@ test('it names the source by its directory', async () => {
 test('it gives the same directory written with a trailing slash the same source ID', async () => {
   const ctx = await setupTest();
 
-  const plain = createPathSource({ dir: ctx.root });
-  const slashed = createPathSource({ dir: `${ctx.root}/` });
+  const plain = createPathSource({ directory: ctx.root });
+  const slashed = createPathSource({ directory: `${ctx.root}/` });
 
   expect(slashed.id).toBe(plain.id);
 });

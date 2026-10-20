@@ -13,20 +13,20 @@ async function setupTest() {
 
   onTestFinished(() => model.stop());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-contract-query-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-query-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
   const options: Options = {
-    cwd: dir,
+    cwd: directory,
     model: 'claude-haiku-5-5',
     tools: [],
     settingSources: [],
     maxTurns: 1,
     env: {
       PATH: process.env['PATH'] ?? '',
-      HOME: dir,
-      CLAUDE_CONFIG_DIR: dir,
+      HOME: directory,
+      CLAUDE_CONFIG_DIR: directory,
       ANTHROPIC_BASE_URL: model.url,
       ANTHROPIC_API_KEY: 'placeholder',
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',

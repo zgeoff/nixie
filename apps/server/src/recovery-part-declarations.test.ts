@@ -23,9 +23,9 @@ async function setupTest() {
 test('it seeds the first definitions within seconds of a checkout that lands after a fresh start', async () => {
   const ctx = await setupTest();
 
-  const definitionsDir = join(ctx.dir, 'definitions');
+  const definitionsDir = join(ctx.directory, 'definitions');
 
-  await rename(definitionsDir, join(ctx.dir, 'checkout'));
+  await rename(definitionsDir, join(ctx.directory, 'checkout'));
 
   const again = ctx.startAgain();
 
@@ -33,7 +33,7 @@ test('it seeds the first definitions within seconds of a checkout that lands aft
 
   await again.waitForLogEvent('start.retry');
 
-  await rename(join(ctx.dir, 'checkout'), definitionsDir);
+  await rename(join(ctx.directory, 'checkout'), definitionsDir);
 
   const landedAt = Date.now();
 
