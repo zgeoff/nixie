@@ -12,8 +12,7 @@ import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 import { writeSkillProposalAnswer } from './write-skill-proposal-answer';
 import { writeSkillProposalLapses } from './write-skill-proposal-lapses';
 
-// the writer's data directory holds the definitions root too, so one removal cleans up both; the
-// seed brings in tide-tables, so a proposal can replace its version
+// the writer's data directory holds the definitions root too, so one removal cleans up both
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
@@ -29,29 +28,18 @@ async function setupTest() {
 
   stack.defer(() => writer.stop());
 
-  await mkdir(join(root, 'skills', 'tide-tables'), { recursive: true });
-  await writeFile(join(root, 'nixie.yaml'), 'format: 2\n');
-  await writeFile(join(root, 'persona.md'), '# Persona\n');
-
-  await writeFile(
-    join(root, 'skills', 'tide-tables', 'SKILL.md'),
-    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
-  );
+  await mkdir(join(root, 'skills'), { recursive: true });
 
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',
     'unwrapKey',
   ]);
 
-  const log = { writer, deploymentKey, projections: [] };
-
-  const seeded = await runSeed({
-    log,
+  return {
+    root,
+    log: { writer, deploymentKey, projections: [] },
     source: createPathSource({ directory: root }),
-    policy: { rules: [], tools: [] },
-  });
-
-  return { log, inForce: seeded.inForce };
+  };
 }
 
 const run = {
@@ -66,6 +54,21 @@ test('it lists each proposal that skill_write made, oldest first, as a new skill
 
   const proposedAt = Date.UTC(2026, 2, 3, 9, 30);
 
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'));
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  const seeded = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
   setSystemTime(new Date(proposedAt));
   onTestFinished(() => setSystemTime());
 
@@ -73,8 +76,8 @@ test('it lists each proposal that skill_write made, oldest first, as a new skill
     buildSkillTools({
       log: ctx.log,
       clock: buildTestClock(proposedAt + 3 * 24 * 60 * 60 * 1000),
-      readInForce: () => ctx.inForce,
-      refreshDefinitions: () => Promise.resolve(ctx.inForce),
+      readInForce: () => seeded.inForce,
+      refreshDefinitions: () => Promise.resolve(seeded.inForce),
       readSkillList: () => [],
     }),
   );
@@ -121,7 +124,10 @@ test('it lists each proposal that skill_write made, oldest first, as a new skill
   );
 
   const [newID, versionID] = written;
-  const replacedHash = ctx.inForce?.skills[0]?.skillHash;
+
+  const replacedHash = seeded.inForce?.skills.find(
+    (skill) => skill.name === 'tide-tables',
+  )?.skillHash;
 
   invariant(outcome.status === 'ok');
   invariant(newID !== undefined && versionID !== undefined && replacedHash !== undefined);
@@ -151,8 +157,8 @@ test('it declares read, runs direct, and writes no record, so it never changes a
     buildSkillTools({
       log: ctx.log,
       clock,
-      readInForce: () => ctx.inForce,
-      refreshDefinitions: () => Promise.resolve(ctx.inForce),
+      readInForce: () => null,
+      refreshDefinitions: () => Promise.resolve(null),
       readSkillList: () => [],
     }),
   );
@@ -222,8 +228,8 @@ test('it leaves out a proposal that an approval, a rejection or a lapse closed',
     buildSkillTools({
       log: ctx.log,
       clock,
-      readInForce: () => ctx.inForce,
-      refreshDefinitions: () => Promise.resolve(ctx.inForce),
+      readInForce: () => null,
+      refreshDefinitions: () => Promise.resolve(null),
       readSkillList: () => [],
     }),
   );
