@@ -10,6 +10,7 @@ import { createPathSource } from './create-path-source';
 import { loadSkillVersions } from './load-skill-versions';
 import { readWrittenSkills } from './read-written-skills';
 import { runSeed } from './run-seed';
+import { runWrittenSkillSeed } from './run-written-skill-seed';
 import { writeWrittenSkill } from './write-written-skill';
 
 async function setupTest() {
@@ -162,5 +163,60 @@ test('it supersedes the written version in force and keeps its base', async () =
   expect(rows.rows).toStrictEqual([
     { approval_id: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', state: 'superseded', base_hash: null },
     { approval_id: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74', state: 'in_force', base_hash: null },
+  ]);
+});
+
+test("it keeps your definitions' version as the base when a second written version supersedes the first in force", async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+
+  const policy = { rules: [], tools: [] };
+
+  const seeded = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const first = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
+  const second = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By hour.\n` }]);
+
+  invariant('skillHash' in first);
+  invariant('skillHash' in second);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill: first,
+      approvedAt: 1,
+    }),
+  );
+
+  // the first written version is in the snapshot in force, so the definitions' version is not
+  await runWrittenSkillSeed({ log: ctx.log, policy });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
+      proposalID: 'w7tn4c9rhz',
+      skill: second,
+      approvedAt: 2,
+    }),
+  );
+
+  const base = seeded.inForce?.skills[0];
+
+  invariant(base);
+
+  const written = await readWrittenSkills(ctx.writer.db);
+
+  expect(written).toMatchObject([
+    {
+      approvalID: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
+      base: { name: 'tide-tables', skillHash: base.skillHash, origin: 'definitions' },
+    },
   ]);
 });
