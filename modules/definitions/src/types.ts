@@ -191,7 +191,7 @@ interface SnapshotSkillRow {
 // a skill that nixie wrote, applied by an approval; the base is the version in your definitions
 // when the approval applied it, and the definitions version is the one at the newest seed, each
 // null when your definitions lack the skill
-interface WrittenSkillRow {
+export interface WrittenSkillRow {
   readonly approval_id: string;
   readonly proposal_id: string;
   readonly name: string;
