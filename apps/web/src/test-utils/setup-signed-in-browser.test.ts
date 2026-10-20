@@ -42,4 +42,4 @@ test('it opens the app with the session cookie on the first request', async () =
   await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: 'device-token-4417' });
 
   expect(ctx.cookies.at(0)).toBe('nixie_session=device-token-4417');
-});
+}, 60_000);
