@@ -24,30 +24,34 @@ interface SkillLapseSweepContext {
 
 type SkillLapseSweepEvent = { readonly type: 'tick' } | { readonly type: 'stop' };
 
-export const skillLapseSweepMachine = setup({
-  types: {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- xstate reads these types only at compile time
-    input: {} as SkillLapseSweepMachineInput,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- xstate reads these types only at compile time
-    context: {} as SkillLapseSweepContext,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- xstate reads these types only at compile time
-    events: {} as SkillLapseSweepEvent,
-  },
-  actors: {
-    timer: fromCallback<SkillLapseSweepEvent, SkillLapseSweepMachineInput>((timer) => {
-      const controller = new AbortController();
+const skillLapseSweepActors = {
+  timer: fromCallback<SkillLapseSweepEvent, SkillLapseSweepMachineInput>((timer) => {
+    const controller = new AbortController();
 
-      void runTimer(timer.input, controller.signal, () => {
-        timer.sendBack({ type: 'tick' });
-      });
+    void runTimer(timer.input, controller.signal, () => {
+      timer.sendBack({ type: 'tick' });
+    });
 
-      return () => {
-        controller.abort();
-      };
-    }),
-    sweep: fromPromise<unknown, SkillLapseSweepMachineInput>((sweep) => sweep.input.sweep()),
-  },
-}).createMachine({
+    return () => {
+      controller.abort();
+    };
+  }),
+  sweep: fromPromise<unknown, SkillLapseSweepMachineInput>((sweep) => sweep.input.sweep()),
+};
+
+// xstate's type parameters, in order: context, events, actors, children, actions, guards, delays,
+// tags, then input
+export const skillLapseSweepMachine = setup<
+  SkillLapseSweepContext,
+  SkillLapseSweepEvent,
+  typeof skillLapseSweepActors,
+  Record<string, never>,
+  Record<string, never>,
+  Record<string, never>,
+  never,
+  string,
+  SkillLapseSweepMachineInput
+>({ actors: skillLapseSweepActors }).createMachine({
   id: 'skillLapseSweep',
   context: (start) => ({ input: start.input, isStopping: false }),
 
