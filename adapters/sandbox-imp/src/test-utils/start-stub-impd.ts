@@ -12,10 +12,13 @@ export interface StubImpdError {
 // envelope impd sends, so a test drives the real imp client against impd's refusal. It returns the
 // URL the port connects to, and stops when the test finishes.
 export function startStubImpd(error: StubImpdError): string {
+  const refuseRequest = () =>
+    Response.json({ json: { defined: true, ...error } }, { status: error.status });
+
   const impd = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
-    fetch: () => Response.json({ json: { defined: true, ...error } }, { status: error.status }),
+    fetch: refuseRequest,
   });
 
   onTestFinished(() => impd.stop(true));

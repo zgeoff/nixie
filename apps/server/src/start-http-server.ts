@@ -40,10 +40,13 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
 
   const app = new Elysia().use(health).use(createAPIApp(options.apiContext, options.readMemory));
 
+  const answerRequest = (request: Request) =>
+    options.gate.run(request, (passed) => app.handle(passed));
+
   const http = Bun.serve({
     hostname: options.config.server.hostname,
     port: options.config.server.port,
-    fetch: (request) => options.gate.run(request, (passed) => app.handle(passed)),
+    fetch: answerRequest,
   });
 
   await options.cleanup.defer(() => http.stop(true));

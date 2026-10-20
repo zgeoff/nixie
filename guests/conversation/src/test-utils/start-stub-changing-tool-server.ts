@@ -64,38 +64,40 @@ export function startStubChangingToolServer(form: StubToolForm): StubChangingToo
     }),
   );
 
+  const answerRequest = async (request: Request) => {
+    const received = await readMethods(request);
+
+    methods.push(...received);
+
+    const response = await handler.fetch(request);
+
+    const relisted = received.includes('tools/list') ? state.relisted : null;
+
+    if (relisted === null || response.body === null) {
+      return response;
+    }
+
+    state.relisted = null;
+
+    // the client has the new list once it has read the whole answer
+    const body = response.body.pipeThrough(
+      new TransformStream({
+        flush: () => {
+          relisted.resolve();
+        },
+      }),
+    );
+
+    return new Response(body, { status: response.status, headers: response.headers });
+  };
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
 
     // a listen stream stays open for the whole turn, past Bun's 10 s default
     idleTimeout: 0,
-    fetch: async (request) => {
-      const received = await readMethods(request);
-
-      methods.push(...received);
-
-      const response = await handler.fetch(request);
-
-      const relisted = received.includes('tools/list') ? state.relisted : null;
-
-      if (relisted === null || response.body === null) {
-        return response;
-      }
-
-      state.relisted = null;
-
-      // the client has the new list once it has read the whole answer
-      const body = response.body.pipeThrough(
-        new TransformStream({
-          flush: () => {
-            relisted.resolve();
-          },
-        }),
-      );
-
-      return new Response(body, { status: response.status, headers: response.headers });
-    },
+    fetch: answerRequest,
   });
 
   return {

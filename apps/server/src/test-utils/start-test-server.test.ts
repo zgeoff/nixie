@@ -118,9 +118,12 @@ test('it serves the tools it is given, and passes each call through the decision
     { versionNegotiation: { mode: { pin: '2026-07-28' } } },
   );
 
+  const sendOverSocket = (url: string | URL, init?: RequestInit) =>
+    Bun.fetch(url, { ...init, unix: run.socketPath });
+
   await client.connect(
     new StreamableHTTPClientTransport(new URL('http://localhost/mcp'), {
-      fetch: (url, init) => Bun.fetch(url, { ...init, unix: run.socketPath }),
+      fetch: sendOverSocket,
       requestInit: { headers: { authorization: `Bearer ${run.token}` } },
     }),
   );

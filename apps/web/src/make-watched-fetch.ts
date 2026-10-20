@@ -5,7 +5,8 @@ export interface WatchedFetchOptions {
   // How long an event stream may go without a byte before the client treats it as dead.
   readonly idleMs: number;
 
-  readonly fetch?: (request: Request, init?: RequestInit) => Promise<Response>;
+  // sends each request, the platform's fetch by default
+  readonly send?: (request: Request, init?: RequestInit) => Promise<Response>;
 
   // Calls onTimeout once ms pass, unless the returned stop runs first. The platform timer by default.
   readonly startTimer?: StartTimer;
@@ -15,7 +16,7 @@ export interface WatchedFetchOptions {
 // quiet stream, so a stream with no byte for several keepalive periods died on the way without
 // the browser seeing it close.
 export function makeWatchedFetch(options: WatchedFetchOptions) {
-  const send = options.fetch ?? ((request, init) => fetch(request, init));
+  const send = options.send ?? ((request, init) => fetch(request, init));
   const startTimer = options.startTimer ?? startPlatformTimer;
 
   return async (request: Request, init?: RequestInit): Promise<Response> => {

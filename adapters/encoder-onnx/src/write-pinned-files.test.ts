@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -72,13 +72,15 @@ test('it keeps a file already in place with the listed SHA-256 and downloads not
 
   const requested: string[] = [];
 
+  const answerRequest = (request: Request) => {
+    requested.push(new URL(request.url).pathname);
+
+    return new Response('a model graph');
+  };
+
   const server = Bun.serve({
     port: 0,
-    fetch: (request) => {
-      requested.push(new URL(request.url).pathname);
-
-      return new Response('a model graph');
-    },
+    fetch: answerRequest,
   });
 
   onTestFinished(() => server.stop(true));
@@ -113,7 +115,8 @@ test('it downloads again a file in place whose SHA-256 differs from the list', a
 test('it refuses a URL that answers an error status', async () => {
   const ctx = await setupTest();
 
-  const server = Bun.serve({ port: 0, fetch: () => new Response('gone', { status: 404 }) });
+  const refuseRequest = mock(() => new Response('gone', { status: 404 }));
+  const server = Bun.serve({ port: 0, fetch: refuseRequest });
 
   onTestFinished(() => server.stop(true));
 

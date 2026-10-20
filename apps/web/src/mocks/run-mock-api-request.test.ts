@@ -11,7 +11,7 @@ function setupTest() {
     buildClient: (headers: Readonly<Record<string, string>>): ContractClient =>
       createORPCClient<ContractClient>(
         new RPCLink({
-          fetch: (request) => runMockAPIRequest(request),
+          fetch: runMockAPIRequest,
           headers,
           url: 'http://api.test/rpc',
         }),

@@ -6,7 +6,6 @@ import { createHealthApp } from './create-health-app';
 test('it answers readiness with 200 and every part when all are ready', async () => {
   const app = createHealthApp({
     liveness: {
-      process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => Promise.resolve({ isReady: true, reason: null }),
     },
     readiness: {
@@ -49,7 +48,6 @@ test('it answers readiness with 200 and every part when all are ready', async ()
 test('it answers readiness with 200 while an advisory part fails, with that part in the body', async () => {
   const app = createHealthApp({
     liveness: {
-      process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => Promise.resolve({ isReady: true, reason: null }),
     },
     readiness: {
@@ -84,7 +82,6 @@ test('it answers readiness with 200 and the status degraded while a dependency c
 
   const app = createHealthApp({
     liveness: {
-      process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => Promise.resolve({ isReady: true, reason: null }),
     },
     readiness: {
@@ -135,7 +132,6 @@ test('it answers readiness with 200 and the status degraded while a dependency c
 test('it answers readiness with 503 while a readiness part is unready', async () => {
   const app = createHealthApp({
     liveness: {
-      process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => Promise.resolve({ isReady: true, reason: null }),
     },
     readiness: {
@@ -167,7 +163,6 @@ test('it answers readiness with 503 while a readiness part is unready', async ()
 test('it answers readiness with 503 and not degraded while a readiness part and a dependency part both fail', async () => {
   const app = createHealthApp({
     liveness: {
-      process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => Promise.resolve({ isReady: true, reason: null }),
     },
     readiness: {
@@ -195,7 +190,6 @@ test('it answers readiness with 503 and not degraded while a readiness part and 
 test('it answers liveness per part, apart from readiness', async () => {
   const app = createHealthApp({
     liveness: {
-      process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => Promise.reject(new Error('the database is closed')),
     },
     readiness: {
@@ -233,7 +227,6 @@ test('it logs the name and reason of a liveness part that turns unready', async 
 
   const app = createHealthApp({
     liveness: {
-      process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => Promise.reject(new Error('the database is closed')),
     },
     readiness: {
@@ -265,7 +258,6 @@ test('it logs the name and reason of a dependency part that turns unready', asyn
 
   const app = createHealthApp({
     liveness: {
-      process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => Promise.resolve({ isReady: true, reason: null }),
     },
     readiness: {

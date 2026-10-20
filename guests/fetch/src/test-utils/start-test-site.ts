@@ -5,7 +5,8 @@ export interface TestSiteOptions {
   // the names the site's certificate covers
   readonly names: readonly string[];
 
-  readonly fetch: (request: Request) => Response | Promise<Response>;
+  // answers each request the site receives
+  readonly respond: (request: Request) => Response | Promise<Response>;
 }
 
 // a request as it arrived, copied before the handler runs, since Bun reuses a Request after it
@@ -31,15 +32,17 @@ export async function startTestSite(options: TestSiteOptions): Promise<TestSite>
 
   const requests: RecordedRequest[] = [];
 
+  const answerRequest = (request: Request): Response | Promise<Response> => {
+    requests.push({ url: request.url, headers: Object.fromEntries(request.headers) });
+
+    return options.respond(request);
+  };
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
     tls: { cert: certificate.cert, key: certificate.key },
-    fetch: (request) => {
-      requests.push({ url: request.url, headers: Object.fromEntries(request.headers) });
-
-      return options.fetch(request);
-    },
+    fetch: answerRequest,
   });
 
   onTestFinished(() => server.stop(true));

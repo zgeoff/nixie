@@ -5,10 +5,11 @@ import { Elysia } from 'elysia';
 import { checkParts } from './check-parts';
 import type { AdvisoryPart, DependencyPart, HealthPart, LivenessPart } from './health-parts';
 import { makeHealthLog } from './make-health-log';
-import type { HealthReport, PartCheck } from './types';
+import type { HealthReport, PartCheck, PartReport } from './types';
 
 export interface HealthChecks {
-  readonly liveness: Readonly<Record<LivenessPart, PartCheck>>;
+  // the liveness parts beside the process, whose part the endpoint answers itself
+  readonly liveness: Readonly<Record<Exclude<LivenessPart, 'process'>, PartCheck>>;
   readonly readiness: Readonly<Record<HealthPart, PartCheck>>;
 
   // the parts whose failure makes the readiness status degraded instead of unready
@@ -37,7 +38,11 @@ export function createHealthApp(checks: HealthChecks) {
 
   return new Elysia()
     .get('/health/live', async () => {
-      const report = await checkParts(checks.liveness, timeoutMs, clock);
+      const report = await checkParts(
+        { process: checkProcess, ...checks.liveness },
+        timeoutMs,
+        clock,
+      );
 
       recordReport('live', report);
 
@@ -63,6 +68,11 @@ export function createHealthApp(checks: HealthChecks) {
 
       return renderReport(answer);
     });
+}
+
+// The process part of liveness: a process that runs this check answers.
+function checkProcess(): Promise<PartReport> {
+  return Promise.resolve({ isReady: true, reason: null });
 }
 
 function renderReport(report: HealthReport): Response {

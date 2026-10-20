@@ -67,16 +67,18 @@ export function startStubModel(): StubModel {
   const requests: StubModelRequest[] = [];
   const script: ScriptedReply[] = [];
 
+  const answerRequest = async (request: Request) => {
+    const recorded = await readRequest(request);
+
+    requests.push(recorded);
+
+    return renderResponse(recorded, script);
+  };
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: async (request) => {
-      const recorded = await readRequest(request);
-
-      requests.push(recorded);
-
-      return renderResponse(recorded, script);
-    },
+    fetch: answerRequest,
   });
 
   return {

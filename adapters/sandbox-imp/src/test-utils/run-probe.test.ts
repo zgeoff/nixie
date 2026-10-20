@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import {
   buildMockGrantSpec,
   buildMockSandboxSpec,
@@ -27,7 +27,8 @@ async function setupTest() {
 test('it reports the status and a zero exit for a server that answers', async () => {
   const ctx = await setupTest();
 
-  const server = Bun.serve({ port: 0, fetch: () => new Response('ok', { status: 204 }) });
+  const answerRequest = mock(() => new Response('ok', { status: 204 }));
+  const server = Bun.serve({ port: 0, fetch: answerRequest });
 
   onTestFinished(() => server.stop(true));
 
@@ -40,7 +41,8 @@ test('it reports the status and a zero exit for a server that answers', async ()
 test('it reports status 000 and the refused-connection exit for a port with no listener', async () => {
   const ctx = await setupTest();
 
-  const server = Bun.serve({ port: 0, fetch: () => new Response('ok') });
+  const answerRequest = mock(() => new Response('ok'));
+  const server = Bun.serve({ port: 0, fetch: answerRequest });
   const closedPort = server.port;
 
   await server.stop(true);

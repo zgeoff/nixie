@@ -62,20 +62,22 @@ export function startScriptedModel(): ScriptedModel {
   const requests: ScriptedModelRequest[] = [];
   const script: ScriptedReply[] = [];
 
+  const answerRequest = async (request: Request) => {
+    const recorded = await readRequest(request);
+
+    requests.push(recorded);
+
+    const response = renderResponse(recorded, script);
+
+    await response.gate;
+
+    return response.response;
+  };
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: async (request) => {
-      const recorded = await readRequest(request);
-
-      requests.push(recorded);
-
-      const response = renderResponse(recorded, script);
-
-      await response.gate;
-
-      return response.response;
-    },
+    fetch: answerRequest,
   });
 
   return {

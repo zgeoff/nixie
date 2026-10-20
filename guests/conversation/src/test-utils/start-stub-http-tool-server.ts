@@ -30,11 +30,12 @@ interface RouteState {
 // relays each connection to the server, or resets it at once while the test drops connections.
 export async function startStubHTTPToolServer(): Promise<StubHTTPToolServer> {
   const handler = createMcpHandler(buildNoteServer);
+  const answerRequest = (request: Request) => handler.fetch(request);
 
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: (request) => handler.fetch(request),
+    fetch: answerRequest,
   });
 
   const state: RouteState = { isDropping: false, resets: 0, sockets: new Set() };

@@ -80,7 +80,8 @@ test('it probes the API with no credential', async () => {
 test('it answers unready when the API does not answer', async () => {
   const ctx = await setupTest();
 
-  const closed = Bun.serve({ fetch: () => new Response(), hostname: '127.0.0.1', port: 0 });
+  const answerRequest = mock(() => new Response());
+  const closed = Bun.serve({ fetch: answerRequest, hostname: '127.0.0.1', port: 0 });
   const apiURL = `http://127.0.0.1:${closed.port}`;
 
   await closed.stop(true);

@@ -64,17 +64,20 @@ test('it exits 1 from sandbox-manifest on a manifest the server refuses', async 
 test('it prints the readiness report and exits 1 from health when the server answers degraded', async () => {
   const ctx = await setupTest();
 
+  const answerRequest = mock((request: Request) =>
+    new URL(request.url).pathname === '/health/live'
+      ? Response.json({ status: 'ready', parts: { process: { isReady: true, reason: null } } })
+      : Response.json({
+          status: 'degraded',
+          parts: { database: { isReady: true, reason: null } },
+          dependencies: { imp_host: { isReady: false, reason: 'impd refused' } },
+        }),
+  );
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: (request) =>
-      new URL(request.url).pathname === '/health/live'
-        ? Response.json({ status: 'ready', parts: { process: { isReady: true, reason: null } } })
-        : Response.json({
-            status: 'degraded',
-            parts: { database: { isReady: true, reason: null } },
-            dependencies: { imp_host: { isReady: false, reason: 'impd refused' } },
-          }),
+    fetch: answerRequest,
   });
 
   onTestFinished(() => server.stop(true));
@@ -97,17 +100,20 @@ test('it prints the readiness report and exits 1 from health when the server ans
 test('it prints the liveness report and exits 0 from health --live when the server is live', async () => {
   const ctx = await setupTest();
 
+  const answerRequest = mock((request: Request) =>
+    new URL(request.url).pathname === '/health/live'
+      ? Response.json({ status: 'ready', parts: { process: { isReady: true, reason: null } } })
+      : Response.json({
+          status: 'degraded',
+          parts: { database: { isReady: true, reason: null } },
+          dependencies: { imp_host: { isReady: false, reason: 'impd refused' } },
+        }),
+  );
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: (request) =>
-      new URL(request.url).pathname === '/health/live'
-        ? Response.json({ status: 'ready', parts: { process: { isReady: true, reason: null } } })
-        : Response.json({
-            status: 'degraded',
-            parts: { database: { isReady: true, reason: null } },
-            dependencies: { imp_host: { isReady: false, reason: 'impd refused' } },
-          }),
+    fetch: answerRequest,
   });
 
   onTestFinished(() => server.stop(true));
@@ -128,10 +134,14 @@ test('it prints the liveness report and exits 0 from health --live when the serv
 test('it exits 1 from health when the server answers ready with a part report that lacks its reason', async () => {
   const ctx = await setupTest();
 
+  const answerRequest = mock(() =>
+    Response.json({ status: 'ready', parts: { database: { isReady: true } } }),
+  );
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: () => Response.json({ status: 'ready', parts: { database: { isReady: true } } }),
+    fetch: answerRequest,
   });
 
   onTestFinished(() => server.stop(true));

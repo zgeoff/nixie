@@ -21,7 +21,6 @@ function setupTest() {
 
   const app = createHealthApp({
     liveness: {
-      process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => Promise.resolve({ isReady: true, reason: null }),
     },
     ...buildReadinessChecks(state, { read: () => ({ isReady: true, reason: null }) }),

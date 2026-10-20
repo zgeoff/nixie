@@ -97,14 +97,16 @@ test('it reaches the run tool endpoint over HTTP with the run bearer token', asy
 
   const seen: (string | null)[] = [];
 
+  const refuseRequest = (request: Request) => {
+    seen.push(request.headers.get('authorization'));
+
+    return new Response('unauthorized', { status: 401 });
+  };
+
   const endpoint = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: (request) => {
-      seen.push(request.headers.get('authorization'));
-
-      return new Response('unauthorized', { status: 401 });
-    },
+    fetch: refuseRequest,
   });
 
   onTestFinished(() => endpoint.stop(true));

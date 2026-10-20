@@ -28,7 +28,6 @@ export async function startServerHealth(options: ServerHealthOptions) {
 
   return createHealthApp({
     liveness: {
-      process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => checkDatabase(options.writer.db),
     },
     ...buildReadinessChecks(options.state, refresh),

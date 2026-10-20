@@ -1,17 +1,19 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { startFrontProxy } from './start-front-proxy';
 
 function setupTest() {
   const paths: string[] = [];
 
+  const answerAPIRequest = (request: Request) => {
+    const url = new URL(request.url);
+
+    paths.push(`api ${request.method} ${url.pathname}${url.search}`);
+
+    return new Response('api');
+  };
+
   const api = Bun.serve({
-    fetch(request) {
-      const url = new URL(request.url);
-
-      paths.push(`api ${request.method} ${url.pathname}${url.search}`);
-
-      return new Response('api');
-    },
+    fetch: answerAPIRequest,
     hostname: '127.0.0.1',
     port: 0,
   });
@@ -20,14 +22,16 @@ function setupTest() {
     await api.stop(true);
   });
 
+  const answerWebRequest = (request: Request) => {
+    const url = new URL(request.url);
+
+    paths.push(`web ${request.method} ${url.pathname}${url.search}`);
+
+    return new Response('web');
+  };
+
   const web = Bun.serve({
-    fetch(request) {
-      const url = new URL(request.url);
-
-      paths.push(`web ${request.method} ${url.pathname}${url.search}`);
-
-      return new Response('web');
-    },
+    fetch: answerWebRequest,
     hostname: '127.0.0.1',
     port: 0,
   });
@@ -56,9 +60,10 @@ test('it sends each /rpc request to the API', async () => {
 
 test('it answers 502 when the server behind it is down', async () => {
   const ctx = setupTest();
+  const answerProbe = mock(() => new Response(null));
 
   // a port that nothing listens on: the probe stops on the next line
-  const probe = Bun.serve({ fetch: () => new Response(null), hostname: '127.0.0.1', port: 0 });
+  const probe = Bun.serve({ fetch: answerProbe, hostname: '127.0.0.1', port: 0 });
 
   await probe.stop(true);
 
@@ -71,8 +76,8 @@ test('it answers 502 when the server behind it is down', async () => {
 
 test('it ends a stream whose server stops partway, after the part it sent', async () => {
   // a live stream that sends one event and stays open
-  const streaming = Bun.serve({
-    fetch: () =>
+  const answerRequest = mock(
+    () =>
       new Response(
         new ReadableStream({
           start: (controller) => {
@@ -80,6 +85,10 @@ test('it ends a stream whose server stops partway, after the part it sent', asyn
           },
         }),
       ),
+  );
+
+  const streaming = Bun.serve({
+    fetch: answerRequest,
     hostname: '127.0.0.1',
     port: 0,
   });

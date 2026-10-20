@@ -18,8 +18,8 @@
     "apps/web/src/styled-system/**"
   ],
   "rules": {
-    // a library or wire contract fixes each name; the project-code-style skill gives the reasons
-    "zgeoff/function-verb": ["error", { "exemptNames": ["executeQuery", "fetch", "process"] }],
+    // a library contract fixes each name; the project-code-style skill gives the reasons
+    "zgeoff/function-verb": ["error", { "exemptNames": ["executeQuery"] }],
     // the import boundaries: each outside system has one package that may import it, and every
     // import names its module where the zones can see it
     "zgeoff/import-zones": [

@@ -7,7 +7,7 @@ import { runWebBuildOnce } from './run-web-build-once';
 export async function startBuiltWeb(apiURL: string): Promise<{ url: string }> {
   const serverPath = await runWebBuildOnce();
 
-  const portProbe = Bun.serve({ fetch: () => new Response(), hostname: '127.0.0.1', port: 0 });
+  const portProbe = Bun.serve({ fetch: answerProbe, hostname: '127.0.0.1', port: 0 });
   const port = portProbe.port;
 
   await portProbe.stop(true);
@@ -36,4 +36,8 @@ export async function startBuiltWeb(apiURL: string): Promise<{ url: string }> {
   );
 
   return { url };
+}
+
+function answerProbe(): Response {
+  return new Response();
 }
