@@ -1,6 +1,6 @@
 import { waitForSettled } from '@heynixie/async';
 import type { SeedResult } from '@heynixie/definitions';
-import { runSeed } from '@heynixie/definitions';
+import { runSeed, runWrittenSkillSeed } from '@heynixie/definitions';
 import { buildSeedLogFields } from './build-seed-log-fields';
 import type { ServerParts } from './types';
 
@@ -10,46 +10,60 @@ export type SeedParts = Pick<
   'context' | 'source' | 'policy' | 'inForce' | 'state' | 'log'
 >;
 
-// the newest seed each set of parts started, which the next one waits for
-const pendingSeeds = new WeakMap<SeedParts, Promise<void>>();
-
 // Runs one seed. The definitions part turns unready while a refused snapshot is pending, and the
 // last good seed stays in force. Seeds over one set of parts run one at a time, as the seed needs,
 // so the poll and a skill reload never commit an older revision after a newer one.
 export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
-  const seed = waitThenSeed(pendingSeeds.get(parts), parts);
+  return runQueuedSeed(parts, async () => {
+    const result = await runSeed({
+      log: parts.context.log,
+      source: parts.source,
+      policy: parts.policy,
+    });
 
-  pendingSeeds.set(parts, waitForSettled(seed));
+    parts.state.update({
+      definitions:
+        result.status === 'refused'
+          ? { isReady: false, reason: `the last snapshot was refused: ${result.error.name}` }
+          : { isReady: true, reason: null },
+    });
 
-  return seed;
+    return result;
+  });
+}
+
+// Seeds the definitions in force again with the skills nixie wrote as they stand, after an
+// approval, in the same queue as every other seed. It reads no snapshot from the source, so it
+// leaves the definitions part's readiness as it was.
+export function runWrittenSkillsSeed(parts: SeedParts): Promise<SeedResult> {
+  return runQueuedSeed(parts, () =>
+    runWrittenSkillSeed({ log: parts.context.log, policy: parts.policy }),
+  );
+}
+
+// the newest seed each set of parts started, which the next one waits for
+const pendingSeeds = new WeakMap<SeedParts, Promise<void>>();
+
+function runQueuedSeed(parts: SeedParts, seed: () => Promise<SeedResult>): Promise<SeedResult> {
+  const queued = waitThenSeed(pendingSeeds.get(parts), parts, seed);
+
+  pendingSeeds.set(parts, waitForSettled(queued));
+
+  return queued;
 }
 
 async function waitThenSeed(
   previous: Promise<void> | undefined,
   parts: SeedParts,
+  seed: () => Promise<SeedResult>,
 ): Promise<SeedResult> {
   await previous;
 
-  return runOneSeed(parts);
-}
-
-async function runOneSeed(parts: SeedParts): Promise<SeedResult> {
-  const result = await runSeed({
-    log: parts.context.log,
-    source: parts.source,
-    policy: parts.policy,
-  });
+  const result = await seed();
 
   if (result.inForce !== null) {
     parts.inForce.set(result.inForce);
   }
-
-  parts.state.update({
-    definitions:
-      result.status === 'refused'
-        ? { isReady: false, reason: `the last snapshot was refused: ${result.error.name}` }
-        : { isReady: true, reason: null },
-  });
 
   parts.log('definitions.seeded', buildSeedLogFields(result));
 

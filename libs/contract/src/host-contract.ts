@@ -214,6 +214,9 @@ const pendingSkillProposalSchema = z.object({
   provenance: z.object({ runID: z.string(), callID: z.string(), profile: z.string() }),
   createdAt: z.date(),
   lapseAt: z.date(),
+
+  // the version in force moved past baseHash, so an answer is refused as stale
+  isStale: z.boolean(),
 });
 
 // An answer to a skill proposal binds to the skill hash skill-pending showed.
@@ -227,6 +230,8 @@ const skills = oc.errors({
   NOT_FOUND: { message: 'nothing has that ID', status: 404 },
   PROPOSAL_HASH: { message: 'the skill hash names other files', status: 409 },
   PROPOSAL_CLOSED: { message: 'the proposal is answered or lapsed', status: 409 },
+  STALE_BASE: { message: 'the skill in force moved past the proposal', status: 409 },
+  SKILL_CHECK: { message: 'the files fail the seed checks', status: 400 },
 });
 
 export const hostContract = {
@@ -312,11 +317,13 @@ export const hostContract = {
     proposals: {
       list: skills.output(z.array(pendingSkillProposalSchema)),
 
-      // An approval names the pull request on your definitions that carries the skill, which runs
-      // once that pull request merges.
+      // An approval puts the skill in force for the next task, with your edited files in place of
+      // the proposal's when it carries them.
       approve: skills
-        .input(skillAnswerSchema.extend({ pullRequestURL: z.url() }))
-        .output(z.object({ proposalID: z.string() })),
+        .input(skillAnswerSchema.extend({ files: z.array(skillFileSchema).min(1).optional() }))
+        .output(
+          z.object({ proposalID: z.string(), approvalID: z.string(), skillHash: z.string() }),
+        ),
 
       // A rejection's reason is what the conversation reads in its next turn.
       reject: skills

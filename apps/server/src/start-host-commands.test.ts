@@ -26,6 +26,7 @@ async function setupTest() {
       dataDir,
       apiContext: api.context,
       readMemory: () => null,
+      seedWrittenSkills: () => Promise.resolve(),
       runReset: () =>
         Promise.resolve({ resetAt: new Date(2_000_000), lastSequence: 12, keptSessions: 1 }),
       gate,

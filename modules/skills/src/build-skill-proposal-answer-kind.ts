@@ -15,7 +15,10 @@ export interface SkillProposalAnswerEvent {
   readonly name: string;
   readonly outcome: SkillProposalOutcome;
 
-  // the pull request an approval opened on your definitions, or null for any other outcome
+  // whether you edited the files of an approval before it applied them
+  readonly isEdited: boolean;
+
+  // the pull request an approval from before the store of written skills opened, or null
   readonly pullRequestURL: string | null;
 
   // the reason you gave a rejection, or null for any other outcome or when its key is gone
@@ -68,6 +71,11 @@ export function buildSkillProposalAnswerKind(
         const reason =
           record.erasable.status === 'readable' ? record.erasable.fields['reason'] : undefined;
 
+        const approval =
+          record.kind === 'skills.write_approved'
+            ? skillsWriteApprovedCodec.decode(record.payload)
+            : null;
+
         return [
           {
             sequence: record.sequence,
@@ -76,10 +84,8 @@ export function buildSkillProposalAnswerKind(
               proposalID,
               name,
               outcome,
-              pullRequestURL:
-                record.kind === 'skills.write_approved'
-                  ? skillsWriteApprovedCodec.decode(record.payload).pullRequestURL
-                  : null,
+              isEdited: approval?.isEdited ?? false,
+              pullRequestURL: approval?.pullRequestURL ?? null,
               reason: typeof reason === 'string' ? reason : null,
             },
           },
@@ -97,12 +103,19 @@ export function buildSkillProposalAnswerKind(
         );
       }
 
+      if (detail.outcome === 'approved' && detail.pullRequestURL !== null) {
+        return (
+          `${owner} approved ${proposal} and opened ${detail.pullRequestURL} with it. The skill ` +
+          'joins your definitions once that pull request merges.'
+        );
+      }
+
       if (detail.outcome === 'approved') {
-        const pullRequest = detail.pullRequestURL ?? 'a pull request';
+        const edits = detail.isEdited ? ' with edits' : '';
 
         return (
-          `${owner} approved ${proposal} and opened ${pullRequest} with it. The skill joins ` +
-          'your definitions once that pull request merges.'
+          `${owner} approved ${proposal}${edits}, and the skill is in force for new tasks. ` +
+          `Call skill_reload with ${detail.name} to use it in this conversation.`
         );
       }
 

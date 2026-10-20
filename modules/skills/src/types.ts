@@ -45,8 +45,14 @@ export interface SkillProposalContext {
   readonly definitions: () => Definitions;
 }
 
+// What an answer reaches besides: the seed that puts an approved skill in force.
+export interface SkillAnswerContext extends SkillProposalContext {
+  // seeds the definitions in force again with the written skills as they stand, one seed at a time
+  readonly seedWrittenSkills: () => Promise<void>;
+}
+
 // One file of a skill, by its path inside the skill's folder.
-interface SkillFile {
+export interface SkillFile {
   readonly path: string;
   readonly text: string;
 }
@@ -59,6 +65,9 @@ export interface PendingSkillProposal {
   readonly thread: string | null;
   readonly proposedAt: number;
   readonly lapseAt: number;
+
+  // the version in force moved past the one the proposal replaces, so an answer is refused
+  readonly isStale: boolean;
   readonly inForce: {
     readonly skillHash: string;
     readonly origin: SkillOrigin;
@@ -66,14 +75,15 @@ export interface PendingSkillProposal {
   } | null;
 }
 
-// Your answer to a skill proposal, bound to the skill hash the review showed: an approval names the
-// pull request that carries the skill, and a rejection gives the reason the conversation reads.
+// Your answer to a skill proposal, bound to the skill hash the review showed: an approval may carry
+// your edited files in place of the proposal's, and a rejection gives the reason the conversation
+// reads.
 export type SkillProposalAnswer =
   | {
       readonly answer: 'approve';
       readonly proposalID: string;
       readonly skillHash: string;
-      readonly pullRequestURL: string;
+      readonly files?: readonly SkillFile[];
     }
   | {
       readonly answer: 'reject';
@@ -81,3 +91,11 @@ export type SkillProposalAnswer =
       readonly skillHash: string;
       readonly reason: string;
     };
+
+// What an answer recorded: the approval's ID and the version it put in force, each null for a
+// rejection.
+export interface SkillProposalAnswerResult {
+  readonly proposalID: string;
+  readonly approvalID: string | null;
+  readonly skillHash: string | null;
+}

@@ -3,6 +3,7 @@ import { buildSeedInputs } from './build-seed-inputs';
 import { buildServerReset } from './build-server-reset';
 import { createServerContext } from './create-server-context';
 import { loadStartState } from './load-start-state';
+import { runApprovedSkillsSeed } from './run-approved-skills-seed';
 import type { ServerPartValues } from './server-part-values';
 import { startHostCommands } from './start-host-commands';
 import { startHTTPServer } from './start-http-server';
@@ -102,7 +103,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'host_commands',
     needs: ['inputs', 'context', 'reset', 'api_gate'],
-    uses: ['memory'],
+    uses: ['memory', 'server_parts'],
     start: (parts) => {
       const options = parts.get('inputs').options;
 
@@ -111,6 +112,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           dataDir: options.config.server.dataDir,
           apiContext: parts.get('context').apiContext,
           readMemory: () => parts.find('memory'),
+          seedWrittenSkills: () => runApprovedSkillsSeed(parts.find('server_parts')),
           runReset: parts.get('reset').run,
           gate: parts.get('api_gate'),
         },

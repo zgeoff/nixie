@@ -1,10 +1,11 @@
-import type { PendingSkillProposal, SkillProposalContext } from '@heynixie/skills';
+import type { PendingSkillProposal, SkillAnswerContext } from '@heynixie/skills';
 import { readPendingSkillProposals, writeSkillProposalAnswer } from '@heynixie/skills';
+import invariant from 'tiny-invariant';
 import { hostImplementer } from './host-implementer';
 
 // Builds the host procedures over the pending skill proposals: list them with the version of each
 // skill in force, and approve or reject one under the skill hash skill-pending showed.
-export function createHostSkillProposalProcedures(context: SkillProposalContext) {
+export function createHostSkillProposalProcedures(context: SkillAnswerContext) {
   const proposals = hostImplementer.skills.proposals;
 
   return {
@@ -15,9 +16,23 @@ export function createHostSkillProposalProcedures(context: SkillProposalContext)
     }),
 
     approve: proposals.approve.handler(async (options) => {
-      await writeSkillProposalAnswer(context, { answer: 'approve', ...options.input });
+      const input = options.input;
 
-      return { proposalID: options.input.proposalID };
+      const result = await writeSkillProposalAnswer(context, {
+        answer: 'approve',
+        proposalID: input.proposalID,
+        skillHash: input.skillHash,
+        ...(input.files === undefined ? {} : { files: input.files }),
+      });
+
+      // an approval always records its ID and the version it applied
+      invariant(result.approvalID !== null && result.skillHash !== null);
+
+      return {
+        proposalID: result.proposalID,
+        approvalID: result.approvalID,
+        skillHash: result.skillHash,
+      };
     }),
 
     reject: proposals.reject.handler(async (options) => {
@@ -50,5 +65,6 @@ function buildPendingEntry(entry: PendingSkillProposal) {
     provenance: proposal.provenance,
     createdAt: new Date(entry.proposedAt),
     lapseAt: new Date(entry.lapseAt),
+    isStale: entry.isStale,
   };
 }

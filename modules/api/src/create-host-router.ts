@@ -18,6 +18,11 @@ export function createHostRouter(options: HostRouterOptions) {
       consolidation: createHostConsolidationProcedures(options.readMemory),
       subjects: createHostSubjectsProcedure(options.readMemory),
     },
-    skills: { proposals: createHostSkillProposalProcedures(options.context) },
+    skills: {
+      proposals: createHostSkillProposalProcedures({
+        ...options.context,
+        seedWrittenSkills: options.seedWrittenSkills,
+      }),
+    },
   });
 }

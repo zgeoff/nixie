@@ -13,6 +13,9 @@ export interface HostCommandsOptions {
 
   // the memory store, or null before it starts
   readonly readMemory: () => StartedMemoryStore | null;
+
+  // puts the skills nixie wrote in force after an approval
+  readonly seedWrittenSkills: () => Promise<void>;
   readonly runReset: () => Promise<ServerReset>;
 
   // the gate a reset closes before it removes anything
@@ -29,6 +32,7 @@ export async function startHostCommands(
   const respond = makeHostResponder({
     context: options.apiContext,
     readMemory: options.readMemory,
+    seedWrittenSkills: options.seedWrittenSkills,
     runReset: options.runReset,
   });
 

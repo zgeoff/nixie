@@ -27,6 +27,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/definitions": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@orpc/client": "catalog:"
   }

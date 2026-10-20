@@ -54,6 +54,9 @@ export interface HostRouterOptions {
 
   // resets the log and keeps the live sessions, then the server stops
   readonly runReset: () => Promise<HostReset>;
+
+  // seeds the definitions in force again with the skills nixie wrote, after an approval
+  readonly seedWrittenSkills: () => Promise<void>;
 }
 
 export type ReadHostMemory = () => HostMemoryStore | null;
