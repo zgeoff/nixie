@@ -993,6 +993,33 @@ test('it names the photo and the token verdict in the checks of a proposal from 
   });
 });
 
+test('it keeps a write from a photo as a proposal of its own beside a pending proposal of the same text', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    caller: buildMockWriteCaller(),
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'from_photo', merged: false });
+  expect(pending).toMatchObject([{ reason: 'no_quote' }, { reason: 'from_photo' }]);
+});
+
 test('it leaves a write from a photo a proposal under your allow rule on memory.remember', async () => {
   const memory = await startTestMemory({
     gate: { findAllowRule: makeToolAllowRule('memory.remember') },

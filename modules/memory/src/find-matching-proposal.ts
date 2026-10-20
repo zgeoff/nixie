@@ -1,7 +1,9 @@
+import type { JSONObject } from '@heynixie/log';
 import { findRecordKeys } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { decodeProposalText } from './decode-proposal-text';
-import type { MemoryProposalRow } from './gate-types';
+import { findImageSource } from './find-image-source';
+import type { ImageRef, MemoryProposalRow } from './gate-types';
 import { normalizeFactText } from './normalize-fact-text';
 import { subjectColumn } from './subject-column';
 import type { MemorySubject, MemoryTables, StoreParts, VersionRef } from './types';
@@ -17,11 +19,14 @@ export interface ProposedChange {
 
   // the subject of the item, owner when unset
   readonly subject?: MemorySubject;
+
+  // the write's checks, which name the photo of yours it comes from, if any
+  readonly checks?: JSONObject | null;
 }
 
 // Finds the oldest pending remember proposal that makes the same change: the same target, or a new
-// item of the same kind for both, the same pin, and the same text once normalized. Each text is
-// sealed under its own item's key, so the search opens each one. A retirement never matches.
+// item of the same kind for both, the same pin, the same photo or none, and the same text once
+// normalized. Each text is sealed under its own item's key, so the search opens each one.
 export async function findMatchingProposal(
   db: Kysely<MemoryTables>,
   parts: Pick<StoreParts, 'context'>,
@@ -51,7 +56,21 @@ export async function findMatchingProposal(
 
   const rows = await sameTarget.orderBy('created_sequence').execute();
 
-  return findSameText(parts, rows, normalizeFactText(change.text));
+  // a merge keeps the pending proposal's checks, so a write from a photo merges only into a
+  // proposal from the same photo, and any other write never merges into one
+  const image = findImageSource(change.checks ?? null);
+
+  const samePhoto = rows.filter((row) => {
+    const checks = row.checks === null ? null : JSON.parse(row.checks);
+
+    return isSameImage(findImageSource(checks), image);
+  });
+
+  return findSameText(parts, samePhoto, normalizeFactText(change.text));
+}
+
+function isSameImage(left: ImageRef | null, right: ImageRef | null): boolean {
+  return left?.messageSequence === right?.messageSequence && left?.image === right?.image;
 }
 
 async function findSameText(
