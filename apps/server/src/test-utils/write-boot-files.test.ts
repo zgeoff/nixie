@@ -108,6 +108,24 @@ test('it selects the test sandbox when no adapter is named', async () => {
   expect(config.sandbox).toStrictEqual({ adapter: 'test' });
 });
 
+test('it writes the extra definitions lines under the definitions section', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    definitions: ['export: { repository: harbour/definitions }'],
+  });
+
+  const config = await loadDeploymentConfig(files.configPath);
+
+  expect(config.definitions.export).toStrictEqual({
+    repository: 'harbour/definitions',
+    base: 'main',
+    apiURL: 'https://api.github.com',
+  });
+});
+
 test('it selects the adapter it names', async () => {
   const ctx = await setupTest();
 

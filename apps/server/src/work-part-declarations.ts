@@ -105,7 +105,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         log: parts.context.log,
         repo: buildGitHubDefinitionsRepo(settings),
         onError: (error) => {
-          parts.log('skills.export_failed', toErrorFields(error));
+          parts.log('skills.export_failed', toErrorFields(error), 'error');
         },
       });
 
