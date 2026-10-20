@@ -1,4 +1,5 @@
 import type { Transaction } from 'kysely';
+import { match } from 'ts-pattern';
 import { canMoveSkillExport } from './can-move-skill-export';
 import type { DefinitionsTables, PullRequestRef } from './types';
 
@@ -34,16 +35,16 @@ export async function writeSkillExportState(
     );
   }
 
-  if (move.to === 'closed') {
-    await tables
-      .updateTable('skill_exports')
-      .set({ state: 'closed', updated_at: move.at })
-      .where('approval_id', '=', move.approvalID)
-      .execute();
+  await match(move)
+    .with({ to: 'opened' }, (opened) => writeOpened(tx, opened))
+    .with({ to: 'closed' }, (closed) => writeClosed(tx, closed))
+    .exhaustive();
+}
 
-    return;
-  }
-
+async function writeOpened(
+  tx: Transaction<unknown>,
+  move: Extract<SkillExportMove, { to: 'opened' }>,
+): Promise<void> {
   const values = {
     state: 'opened' as const,
     base_hash: move.baseHash,
@@ -52,9 +53,22 @@ export async function writeSkillExportState(
     updated_at: move.at,
   };
 
-  await tables
+  await tx
+    .$extendTables<DefinitionsTables>()
     .insertInto('skill_exports')
     .values({ approval_id: move.approvalID, ...values })
     .onConflict((conflict) => conflict.column('approval_id').doUpdateSet(values))
+    .execute();
+}
+
+async function writeClosed(
+  tx: Transaction<unknown>,
+  move: Extract<SkillExportMove, { to: 'closed' }>,
+): Promise<void> {
+  await tx
+    .$extendTables<DefinitionsTables>()
+    .updateTable('skill_exports')
+    .set({ state: 'closed', updated_at: move.at })
+    .where('approval_id', '=', move.approvalID)
     .execute();
 }
