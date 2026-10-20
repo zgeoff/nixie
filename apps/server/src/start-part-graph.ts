@@ -1,3 +1,4 @@
+import { waitForSettled } from '@heynixie/async';
 import { MissingPartError } from './missing-part-error';
 import { PartCycleError } from './part-cycle-error';
 import { PartNotStartedError } from './part-not-started-error';
@@ -184,12 +185,4 @@ function buildPartReader<Values, Name extends keyof Values>(
       return state.readWaiter(name).promise;
     },
   };
-}
-
-async function waitForSettled(pending: Promise<unknown>): Promise<void> {
-  try {
-    await pending;
-  } catch {
-    // the caller that waits on the start reads its failure
-  }
 }

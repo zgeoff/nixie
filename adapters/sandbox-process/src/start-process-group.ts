@@ -102,7 +102,10 @@ async function waitForProcessExit(leader: Leader, stop: GroupStop): Promise<Exec
 }
 
 function toExecExit(child: Bun.Subprocess): ExecExit {
-  return { code: child.signalCode === null ? child.exitCode : null, signal: child.signalCode };
+  // Bun gives a signal with no name, such as a real-time one, as its number
+  const signal = child.signalCode === null ? null : String(child.signalCode);
+
+  return { code: child.signalCode === null ? child.exitCode : null, signal };
 }
 
 // After the kill, a member gets this long to go, as imp's guest agent allows; a zombie no one reaps

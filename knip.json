@@ -38,8 +38,10 @@
     "guests/conversation": { "entry": ["src/main.ts", "src/check.ts"] },
     // an eval run is a script a contributor runs by its path
     "evals": { "entry": ["*/run-*-eval.ts"] },
-    // TanStack Router loads each route file by its path, and Vite loads the PostCSS config by its
-    // name, so no import reaches them
-    "apps/web": { "entry": ["src/routes/**/*.tsx", "postcss.config.js"] }
+    // TanStack Router loads each route file by its path, Vite loads the PostCSS config by its name,
+    // and the browser lane preloads the browser start by its path, so no import reaches them
+    "apps/web": {
+      "entry": ["src/routes/**/*.tsx", "postcss.config.js", "src/test-utils/start-browser.ts"]
+    }
   }
 }

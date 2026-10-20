@@ -4,8 +4,8 @@ import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { buildSkillChanges } from './build-skill-changes';
-import { findDefinitionsInForce } from './find-definitions-in-force';
 import { parseDefinitions } from './parse-definitions';
+import { readDefinitionsInForce } from './read-definitions-in-force';
 import type {
   DefinitionsInForce,
   DefinitionsSnapshot,
@@ -48,7 +48,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
   const read = await tryReadDefinitions(options.source);
 
   if (read instanceof Error) {
-    const inForce = await findDefinitionsInForce(options.log.writer.db);
+    const inForce = await readDefinitionsInForce(options.log.writer.db);
 
     return { status: 'refused', error: read, inForce };
   }
@@ -61,7 +61,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
   });
 
   return withWriteTransaction(options.log.writer, async (tx) => {
-    const inForce = await findDefinitionsInForce(tx);
+    const inForce = await readDefinitionsInForce(tx);
 
     if (inForce !== null && isSameSeed(inForce, { ...read, built, sourceID: options.source.id })) {
       return { status: 'unchanged', inForce };

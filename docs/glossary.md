@@ -63,6 +63,7 @@ one person a nixie deployment works for, and the architecture docs call that per
 | skill              | A procedure in your definitions: instructions, references and scripts, which grants nothing  |
 | skill catalog      | The name and description of each skill a caller may load, in its system prompt               |
 | vendored skill     | A third-party skill copied into your definitions at a pinned upstream commit                 |
+| pin                | A vendored skill's lock entry, a pinned memory item or a task's skill pin: always say which  |
 
 ## Connectors and sandboxes
 

@@ -1,3 +1,4 @@
+import { waitForSettled } from '@heynixie/async';
 import { encodeFrame, makeFrameDecoder } from '@heynixie/wire';
 import { collectOutput } from './collect-output';
 import { execOutputLimitBytes } from './exec-output-limit-bytes';
@@ -66,13 +67,5 @@ function decodeOrStop(
   } catch (error) {
     io.stop();
     throw error;
-  }
-}
-
-async function waitForSettled(promise: Promise<unknown>): Promise<void> {
-  try {
-    await promise;
-  } catch {
-    // the caller who awaits the exit sees the error
   }
 }
