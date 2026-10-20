@@ -150,6 +150,14 @@ test('#approve records the approval that names you, then seeds the written skill
 test('#approve refuses edited files that fail the seed checks with their code', async () => {
   const ctx = await setupTest();
 
+  const files = [
+    { path: 'SKILL.md', text: '---\nname: star-chart\ndescription: Reads a star chart.\n---\n' },
+  ];
+
+  const skill = checkSkillFiles('star-chart', files);
+
+  invariant('skillHash' in skill);
+
   await writeRecords(ctx.log, [
     {
       kind: 'skills.write_proposed',
@@ -158,9 +166,9 @@ test('#approve refuses edited files that fail the seed checks with their code', 
       payload: skillsWriteProposedCodec.encode({
         proposalID: 'p8w2n4c6ld',
         name: 'star-chart',
-        skillHash: 'hash-c',
+        skillHash: skill.skillHash,
         baseHash: null,
-        files: [{ path: 'SKILL.md', text: '# Stars\n' }],
+        files,
         untypedToken: null,
         provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
       }),
@@ -170,7 +178,7 @@ test('#approve refuses edited files that fail the seed checks with their code', 
   const refusal = await ctx.client
     .approve({
       proposalID: 'p8w2n4c6ld',
-      skillHash: 'hash-c',
+      skillHash: skill.skillHash,
       files: [{ path: 'SKILL.md', text: '# Stars, with no frontmatter\n' }],
     })
     .then(
