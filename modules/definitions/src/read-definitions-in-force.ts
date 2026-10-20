@@ -3,7 +3,7 @@ import type { DefinitionsInForce, DefinitionsTables } from './types';
 
 // The definitions the newest seed put in force, or null before the first seed. Every record takes
 // its snapshot hash from here.
-export async function findDefinitionsInForce(
+export async function readDefinitionsInForce(
   db: Kysely<unknown>,
 ): Promise<DefinitionsInForce | null> {
   const row = await db

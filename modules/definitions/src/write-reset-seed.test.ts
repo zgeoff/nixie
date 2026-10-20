@@ -5,9 +5,9 @@ import { join } from 'node:path';
 import { readRecords, runLogReset, startWriter } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { createPathSource } from './create-path-source';
-import { findDefinitionsInForce } from './find-definitions-in-force';
-import { findResetSeed } from './find-reset-seed';
 import { loadSnapshotSkills } from './load-snapshot-skills';
+import { readDefinitionsInForce } from './read-definitions-in-force';
+import { readResetSeed } from './read-reset-seed';
 import { runSeed } from './run-seed';
 import { writeResetSeed } from './write-reset-seed';
 
@@ -58,7 +58,7 @@ test('it seeds the definitions in force again as the first record of the new log
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => findResetSeed(tx),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -91,7 +91,7 @@ test('it puts the same definitions in force under the new record', async () => {
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => findResetSeed(tx),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -99,7 +99,7 @@ test('it puts the same definitions in force under the new record', async () => {
     },
   });
 
-  const after = await findResetSeed(ctx.writer.db);
+  const after = await readResetSeed(ctx.writer.db);
 
   invariant(seeded.inForce);
 
@@ -131,7 +131,7 @@ test('it seeds the skills in force again with their files', async () => {
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => findResetSeed(tx),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -168,7 +168,7 @@ test("it keeps a skill's frontmatter fields through a reset", async () => {
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => findResetSeed(tx),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -213,11 +213,11 @@ test("it keeps the conversation's skill list through storage and a reset", async
 
   await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
 
-  const before = await findDefinitionsInForce(ctx.writer.db);
+  const before = await readDefinitionsInForce(ctx.writer.db);
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => findResetSeed(tx),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -225,7 +225,7 @@ test("it keeps the conversation's skill list through storage and a reset", async
     },
   });
 
-  const after = await findDefinitionsInForce(ctx.writer.db);
+  const after = await readDefinitionsInForce(ctx.writer.db);
 
   expect(before?.conversationSkills).toStrictEqual(['tide-tables']);
   expect(after?.conversationSkills).toStrictEqual(['tide-tables']);
@@ -248,11 +248,11 @@ test('it keeps an empty conversation skill list through storage and a reset, bes
 
   await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
 
-  const before = await findDefinitionsInForce(ctx.writer.db);
+  const before = await readDefinitionsInForce(ctx.writer.db);
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => findResetSeed(tx),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -260,7 +260,7 @@ test('it keeps an empty conversation skill list through storage and a reset, bes
     },
   });
 
-  const after = await findDefinitionsInForce(ctx.writer.db);
+  const after = await readDefinitionsInForce(ctx.writer.db);
 
   expect(before?.conversationSkills).toStrictEqual([]);
   expect(after?.conversationSkills).toStrictEqual([]);
@@ -279,7 +279,7 @@ test('it leaves the next seed of the same definitions unchanged', async () => {
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => findResetSeed(tx),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 

@@ -1,3 +1,4 @@
+import { waitForSettled } from '@heynixie/async';
 import type { ImpExec } from '../types';
 
 // An exec handle that exists before its exec starts once wait resolves, as imp's client returns one
@@ -11,6 +12,7 @@ export function buildPendingExec(wait: Promise<void>, start: () => ImpExec): Imp
   const started = waitForStarted(starting);
   const exit = waitForExit(starting);
 
+  // marks each rejection handled, so an exec that never starts raises no unhandled rejection
   void waitForSettled(started);
   void waitForSettled(exit);
   void startOutput(starting, 'stdout', stdout.writable);
@@ -52,15 +54,6 @@ async function waitForExit(starting: Promise<ImpExec>): ImpExec['exit'] {
   const exec = await starting;
 
   return exec.exit;
-}
-
-// marks the rejection handled, so an exec that never starts raises no unhandled rejection
-async function waitForSettled(promise: Promise<unknown>): Promise<void> {
-  try {
-    await promise;
-  } catch {
-    // the exec's owner reads the rejection from started or exit
-  }
 }
 
 async function startOutput(
