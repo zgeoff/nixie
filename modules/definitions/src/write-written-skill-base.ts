@@ -11,10 +11,10 @@ export interface WrittenSkillBaseChange {
 // Makes your definitions' newest version the base of a written skill in force, so nixie's version
 // stays and the conflict closes. It refuses a skill that left force, and returns the skill's name.
 export async function writeWrittenSkillBase(
-  tx: Transaction<unknown>,
+  transaction: Transaction<unknown>,
   change: WrittenSkillBaseChange,
 ): Promise<string> {
-  const tables = tx.$extendTables<DefinitionsTables>();
+  const tables = transaction.$extendTables<DefinitionsTables>();
 
   const row = await tables
     .selectFrom('written_skills')
