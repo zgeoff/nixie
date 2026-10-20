@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { z } from 'zod';
 import { startStubGitHub } from './start-stub-github';
 
-test('it answers a request with another token with 401', async () => {
+test('it answers a request with its token', async () => {
   const github = startStubGitHub({
     repository: 'harbour/definitions',
     base: 'main',
@@ -10,7 +10,28 @@ test('it answers a request with another token with 401', async () => {
   });
 
   const response = await fetch(`${github.url}/repos/harbour/definitions/git/ref/heads/main`, {
-    headers: { authorization: 'Bearer token-b' },
+    headers: { authorization: 'Bearer token-a' },
+  });
+
+  expect(response.status).toBe(200);
+});
+
+test.each([
+  ['another token', { authorization: 'Bearer token-b' }],
+  ['its token without the scheme', { authorization: 'token-a' }],
+  ['its token under another scheme', { authorization: 'token token-a' }],
+  ['a token that only starts with its token', { authorization: 'Bearer token-ab' }],
+  ['an empty bearer token', { authorization: 'Bearer ' }],
+  ['no authorization header', {}],
+])('it answers a request with %s with 401', async (_, headers) => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  const response = await fetch(`${github.url}/repos/harbour/definitions/git/ref/heads/main`, {
+    headers,
   });
 
   expect(response.status).toBe(401);
