@@ -1,5 +1,6 @@
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { canMoveSkillProposal } from './can-move-skill-proposal';
 import { readSkillProposals } from './read-skill-proposals';
 import { SkillProposalClosedError } from './skill-proposal-closed-error';
 import { SkillProposalHashError } from './skill-proposal-hash-error';
@@ -25,12 +26,13 @@ export async function writeSkillProposalAnswer(
       throw new SkillProposalNotFoundError(answer.proposalID);
     }
 
-    if (state.outcome !== null) {
-      throw new SkillProposalClosedError(answer.proposalID, state.outcome);
-    }
+    // a proposal past its lapse time stands lapsed before the sweep records its lapse
+    const isPastLapse = state.proposedAt + skillProposalLapseMs <= context.clock.now();
+    const status = state.outcome ?? (isPastLapse ? 'lapsed' : 'pending');
+    const outcome = answer.answer === 'approve' ? 'approved' : 'rejected';
 
-    if (state.proposedAt + skillProposalLapseMs <= context.clock.now()) {
-      throw new SkillProposalClosedError(answer.proposalID, 'lapsed');
+    if (!canMoveSkillProposal(status, outcome)) {
+      throw new SkillProposalClosedError(answer.proposalID, status);
     }
 
     if (state.proposal.skillHash !== answer.skillHash) {

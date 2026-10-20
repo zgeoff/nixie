@@ -1,4 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { canMoveSkillProposal } from './can-move-skill-proposal';
 import { readSkillProposals } from './read-skill-proposals';
 import { skillProposalLapseMs } from './skill-proposal-lapse-ms';
 import { skillsWriteLapsedCodec } from './skills-write-lapsed-codec';
@@ -16,7 +17,9 @@ export function writeSkillProposalLapses(context: SkillProposalContext): Promise
     const proposals = await readSkillProposals(tx);
 
     const lapsed = proposals.filter(
-      (entry) => entry.outcome === null && entry.proposedAt + skillProposalLapseMs <= now,
+      (entry) =>
+        canMoveSkillProposal(entry.outcome ?? 'pending', 'lapsed') &&
+        entry.proposedAt + skillProposalLapseMs <= now,
     );
 
     if (lapsed.length > 0) {

@@ -24,6 +24,9 @@ type SkillProposal = ReturnType<typeof skillsWriteProposedCodec.decode>;
 // How a skill proposal closed: your approval or rejection, or its lapse with no answer.
 export type SkillProposalOutcome = 'approved' | 'rejected' | 'lapsed';
 
+// Where a skill proposal stands: pending until a record closes it with its outcome.
+export type SkillProposalStatus = 'pending' | SkillProposalOutcome;
+
 // A skill proposal with the thread and the time it was proposed, and how it closed, or null while
 // it waits for your answer.
 export interface SkillProposalState {
