@@ -1,15 +1,11 @@
 import type { ParseProblem, ParsedSkill } from '@heynixie/definitions';
-import {
-  checkSkillFiles,
-  readDefinitionsInForce,
-  readWrittenSkills,
-  writeWrittenSkill,
-} from '@heynixie/definitions';
+import { checkSkillFiles, writeWrittenSkill } from '@heynixie/definitions';
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { findAnswerRefusal } from './find-answer-refusal';
+import { readCurrentSkillHashes } from './read-current-skill-hashes';
 import { readSkillProposals } from './read-skill-proposals';
 import { SkillProposalCheckError } from './skill-proposal-check-error';
 import { skillsWriteApprovedCodec } from './skills-write-approved-codec';
@@ -66,8 +62,9 @@ async function readOpenProposal(
   answer: SkillProposalAnswer,
 ): Promise<SkillProposalState> {
   const [state] = await readSkillProposals(tx, [answer.proposalID]);
+  const current = await readCurrentSkillHashes(tx);
 
-  const currentHash = state === undefined ? null : await readCurrentHash(tx, state.proposal.name);
+  const currentHash = state === undefined ? null : (current.get(state.proposal.name) ?? null);
   const refusal = findAnswerRefusal({ answer, state, now: context.clock.now(), currentHash });
 
   if (refusal !== null) {
@@ -78,22 +75,6 @@ async function readOpenProposal(
   invariant(state);
 
   return state;
-}
-
-// The version of the skill in force, or null when none is. An approval that committed before its
-// seed ran stands in force already, so a second approval over the same base is stale.
-async function readCurrentHash(tx: Transaction<unknown>, name: string): Promise<string | null> {
-  const written = await readWrittenSkills(tx);
-
-  const approved = written.find((skill) => skill.name === name);
-
-  if (approved !== undefined) {
-    return approved.skillHash;
-  }
-
-  const inForce = await readDefinitionsInForce(tx);
-
-  return inForce?.skills.find((skill) => skill.name === name)?.skillHash ?? null;
 }
 
 // the open proposal an approval closes, and your edited files, or null to apply the proposal's

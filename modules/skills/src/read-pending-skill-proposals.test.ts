@@ -2,9 +2,15 @@ import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createPathSource, runSeed } from '@heynixie/definitions';
-import { startWriter, writeRecords } from '@heynixie/log';
+import {
+  checkSkillFiles,
+  createPathSource,
+  runSeed,
+  writeWrittenSkill,
+} from '@heynixie/definitions';
+import { startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { readPendingSkillProposals } from './read-pending-skill-proposals';
 import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 
@@ -233,6 +239,53 @@ test('it marks a proposal stale once the version in force moves past its base', 
   );
 
   await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  const pending = await readPendingSkillProposals({
+    log: ctx.log,
+    clock: buildTestClock(Date.now()),
+  });
+
+  expect(pending.map((entry) => entry.isStale)).toStrictEqual([true]);
+});
+
+test('it marks a proposal stale once an approval of its skill commits, before that approval seeds', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  const approved = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in approved);
+
+  await withWriteTransaction(ctx.log.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'p8w2n4c6ld',
+      skill: approved,
+      approvedAt: 1,
+    }),
+  );
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'skills.write_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: skillsWriteProposedCodec.encode({
+        proposalID: 'k3x9m2p7qa',
+        name: 'tide-tables',
+        skillHash: 'hash-b',
+        baseHash: null,
+        files: [{ path: 'SKILL.md', text: '# Tides\n' }],
+        untypedToken: null,
+        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+      }),
+    },
+  ]);
 
   const pending = await readPendingSkillProposals({
     log: ctx.log,
