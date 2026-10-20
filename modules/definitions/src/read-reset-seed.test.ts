@@ -6,7 +6,7 @@ import { startWriter } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { createPathSource } from './create-path-source';
-import { findResetSeed } from './find-reset-seed';
+import { readResetSeed } from './read-reset-seed';
 import { runSeed } from './run-seed';
 
 // the writer's data directory holds the definitions root too, so one removal cleans up both
@@ -42,7 +42,7 @@ async function setupTest() {
 
 test('it finds nothing before the first seed', async () => {
   const ctx = await setupTest();
-  const seed = await findResetSeed(ctx.writer.db);
+  const seed = await readResetSeed(ctx.writer.db);
 
   expect(seed).toBeNull();
 });
@@ -64,7 +64,7 @@ test('it reads the seed in force with its snapshot row and the payload of its re
     policy,
   });
 
-  const seed = await findResetSeed(ctx.writer.db);
+  const seed = await readResetSeed(ctx.writer.db);
 
   invariant(seeded.inForce);
 

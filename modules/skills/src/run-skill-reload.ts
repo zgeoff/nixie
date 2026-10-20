@@ -1,3 +1,4 @@
+import { waitForSettled } from '@heynixie/async';
 import type { ToolOutcome, ToolRun } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
@@ -15,6 +16,8 @@ export async function runSkillReload(
 ): Promise<ToolOutcome> {
   const chains = registerReloadChains(context.log.writer);
   const reload = waitThenReload(chains.get(run.thread), context, run, name);
+
+  // the caller of the reload gets its failure, so the chain only waits for it to end
   const tail = waitForSettled(reload);
 
   chains.set(run.thread, tail);
@@ -49,14 +52,6 @@ async function waitThenReload(
   await previous;
 
   return runOneReload(context, run, name);
-}
-
-async function waitForSettled(reload: Promise<ToolOutcome>): Promise<void> {
-  try {
-    await reload;
-  } catch {
-    // the caller of the reload gets its failure, so the chain only waits for it to end
-  }
 }
 
 // A name that is neither pinned nor on the caller's list fails.

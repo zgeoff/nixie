@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
 import { createPathSource } from './create-path-source';
-import { findDefinitionsInForce } from './find-definitions-in-force';
+import { readDefinitionsInForce } from './read-definitions-in-force';
 import { runSeed } from './run-seed';
 
 // the writer's data directory holds the definitions root too, so one removal cleans up both
@@ -40,7 +40,7 @@ async function setupTest() {
 
 test('it finds nothing before the first seed', async () => {
   const ctx = await setupTest();
-  const inForce = await findDefinitionsInForce(ctx.writer.db);
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
 
   expect(inForce).toBeNull();
 });
@@ -57,7 +57,7 @@ test('it finds the definitions the newest seed put in force', async () => {
   await writeFile(join(ctx.root, 'persona.md'), '# Persona, edited\n');
 
   const newest = await runSeed({ log: ctx.log, source: ctx.source, policy });
-  const inForce = await findDefinitionsInForce(ctx.writer.db);
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
 
   expect(inForce).toStrictEqual(newest.inForce);
 });
@@ -69,7 +69,7 @@ test('it finds the persona text the newest seed holds', async () => {
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nWarm,  \nbrief.\n\n');
   await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
 
-  const inForce = await findDefinitionsInForce(ctx.writer.db);
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
 
   expect(inForce?.persona).toBe('# Persona\n\nWarm,  \nbrief.\n');
 });

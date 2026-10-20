@@ -1,8 +1,8 @@
+import { waitForSettled } from '@heynixie/async';
 import type { SeedResult } from '@heynixie/definitions';
 import { runSeed } from '@heynixie/definitions';
 import { buildSeedLogFields } from './build-seed-log-fields';
 import type { ServerParts } from './types';
-import { waitForSettled } from './wait-for-settled';
 
 // the server parts a seed reads and updates
 export type SeedParts = Pick<

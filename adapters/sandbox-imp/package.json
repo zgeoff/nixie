@@ -17,6 +17,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/async": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "tiny-invariant": "catalog:"
   }
