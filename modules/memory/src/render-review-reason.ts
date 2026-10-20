@@ -48,6 +48,8 @@ const reasonSentences: Readonly<Record<ReviewReason, (words: ReviewWords) => str
     'A newer release of nixie sent it to review, for a reason this release does not name.',
   self_note: (words) =>
     `It's a self-note, which you write about yourself, and every self-note waits for ${words.their} review.`,
+  from_photo: (words) =>
+    `It comes from a photo, and a memory from a photo waits for ${words.their} review.`,
 };
 
 function formatWindow(window: number): string {

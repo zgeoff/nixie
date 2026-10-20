@@ -8,7 +8,12 @@ import { writeRecords } from '@heynixie/log';
 import { makeChecker } from '@heynixie/sessions';
 import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import { buildMockCheckerAnswer, buildMockWriteCaller, startTestMemory } from './test-utils';
+import {
+  buildMockCheckerAnswer,
+  buildMockWriteCaller,
+  startTestMemory,
+  writeModelReplyRecord,
+} from './test-utils';
 import { makeToolAllowRule } from './test-utils/make-tool-allow-rule';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
@@ -896,4 +901,216 @@ test('it lists a proposal once in a turn notice when the turn proposes it twice'
 
   expect(notices).toMatchObject([{ proposed: 1, entries: [{ change: 'proposed' }] }]);
   expect(notices[0]?.entries).toHaveLength(1);
+});
+
+test('it proposes a write from a photo that cites no quote with the photo reason, and saves nothing', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const versions = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .selectAll()
+    .execute();
+
+  expect(outcome).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    reason: 'from_photo',
+    merged: false,
+  });
+
+  expect(versions).toStrictEqual([]);
+});
+
+test('it proposes a write from a photo whose quote you typed, and keeps the quote out of the proposal', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I ride a green cargo bike',
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    quote: 'I ride a green cargo bike',
+    eventID: photo,
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'from_photo' });
+  expect(pending).toMatchObject([{ reason: 'from_photo', quote: null, evidence: null }]);
+  expect(check).not.toHaveBeenCalled();
+});
+
+test('it names the photo and the token verdict in the checks of a proposal from a photo', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/png', 'image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Owns a red kayak',
+    image: { messageSequence: photo, image: 2 },
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(outcome.status === 'proposed');
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_proposals')
+    .select(['checks', 'source'])
+    .where('proposal_id', '=', outcome.proposalID)
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({
+    checks: JSON.stringify({ tokens: 'pass', image: { messageSequence: photo, image: 2 } }),
+    source: 'untrusted',
+  });
+});
+
+test('it leaves a write from a photo a proposal under your allow rule on memory.remember', async () => {
+  const memory = await startTestMemory({
+    gate: { findAllowRule: makeToolAllowRule('memory.remember') },
+  });
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'from_photo' });
+});
+
+test('it applies a write from a photo under your allow rule that names the image source, with the photo as its source', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      findAllowRule: () => Promise.resolve({ ruleID: 'rule-photo', revision: 3, source: 'image' }),
+    },
+  });
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(outcome.status === 'applied');
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .select(['source', 'checks', 'evidence'])
+    .where('item_id', '=', outcome.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({
+    source: 'untrusted',
+    checks: JSON.stringify({
+      rule: { id: 'rule-photo', revision: 3 },
+      tokens: 'pass',
+      image: { messageSequence: photo, image: 1 },
+    }),
+    evidence: null,
+  });
+});
+
+test('it refuses a photo source that names an image the message lacks', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const write = memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: photo, image: 2 },
+    caller: buildMockWriteCaller(),
+  });
+
+  await write.catch(() => {});
+
+  expect(write).rejects.toMatchObject({ code: 'IMAGE_SOURCE_REFUSED' });
+});
+
+test('it refuses a photo source in a message of another thread', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'task:other',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const write = memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller({ thread: 'conversation' }),
+  });
+
+  await write.catch(() => {});
+
+  expect(write).rejects.toMatchObject({ code: 'IMAGE_SOURCE_REFUSED' });
+});
+
+test('it refuses a photo source that names a message that is not yours', async () => {
+  const memory = await startTestMemory();
+
+  const reply = await writeModelReplyRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Here is a picture',
+  });
+
+  const write = memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: reply, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  await write.catch(() => {});
+
+  expect(write).rejects.toMatchObject({ code: 'IMAGE_SOURCE_REFUSED' });
 });

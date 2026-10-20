@@ -19,4 +19,5 @@ const reviewReasons: Readonly<Record<MemoryProposal['reason'], string>> = {
   pinned: 'It changes a pinned item.',
   other: 'A newer release of nixie sent it to review.',
   self_note: 'nixie wrote it about itself, and every self-note waits for your review.',
+  from_photo: 'It comes from a photo you sent, and nixie never takes a photo as your words.',
 };

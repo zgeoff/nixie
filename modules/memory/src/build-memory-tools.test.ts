@@ -223,6 +223,75 @@ test('it returns a proposal with the sentence for its reason, not an error, for 
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
 });
 
+test('it returns a proposal with the photo sentence for a fact from an image of the owner', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'I ride this green cargo bike',
+    spans: [{ start: 0, end: 28, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const tool = ctx.registry.findTool('memory.remember');
+
+  invariant(tool);
+
+  const outcome = await tool.definition.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.remember',
+      input: {
+        text: 'Rides a green cargo bike',
+        quote: 'I ride this green cargo bike',
+        image: { eventID: `#${String(photo)}`, number: 1 },
+      },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      status: 'proposed',
+      proposalID: expect.toBeString(),
+      reason:
+        'from_photo: Saved as a proposal for the owner to review. It comes from a photo, and a memory from a photo waits for their review.',
+      merged: false,
+    },
+  });
+});
+
+test('it returns an image source that is no image of the owner to the model as an error', async () => {
+  const ctx = await setupTest();
+
+  const message = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'I ride a green cargo bike',
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+  });
+
+  const tool = ctx.registry.findTool('memory.remember');
+
+  invariant(tool);
+
+  const outcome = await tool.definition.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.remember',
+      input: { text: 'Rides a green cargo bike', image: { eventID: String(message), number: 1 } },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: `#${String(message)} holds no image 1 of the owner's in this thread, so nothing was saved.`,
+  });
+});
+
 test.each(['shared', 'self'] as const)(
   'it proposes a memory with the %s subject the call names',
   async (subject) => {

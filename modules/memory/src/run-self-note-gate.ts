@@ -1,8 +1,6 @@
 import { buildGateReview } from './build-gate-review';
-import { findMissingToken } from './find-missing-token';
-import { findTypedSegments } from './find-typed-segments';
 import type { ContentGateRequest, ContentGateResult } from './gate-types';
-import { readOwnerMessages } from './read-owner-messages';
+import { readTokenVerdict } from './read-token-verdict';
 import type { MemoryContext } from './types';
 
 // The gate for a self-note: no quote of yours backs it, so every one waits for your review with the
@@ -16,13 +14,7 @@ export async function runSelfNoteGate(
     return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
   }
 
-  const messages = await readOwnerMessages(context.log, {
-    thread: request.thread,
-    limit: context.gate.limits.evidenceWindow,
-  });
-
-  const typed = messages.flatMap((message) => findTypedSegments(message)).join('\n');
-  const tokens = findMissingToken(request.text, typed) === null ? 'pass' : 'fail';
+  const tokens = await readTokenVerdict(context, request);
 
   return buildGateReview('self_note', { checks: { tokens } });
 }

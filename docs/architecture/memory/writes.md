@@ -134,6 +134,27 @@ entry whose undo brings the note back. A retirement only narrows what the conver
 the note was nixie's own. A task's retire of a self-note runs the intent gate as any retirement
 does.
 
+## Writes from a photo
+
+Memory never holds an image or a description of one: the writer and the log reader see only a marker
+where the user attached an image. The conversation sees the image itself, and saves what it shows
+through `memory.remember` as it saves any other fact, with an image source: the event ID of the
+user's message that holds the image and the image's number in that message. The gate refuses an
+image source that does not name an image of one of the user's readable messages in the write's
+thread, and writes nothing.
+
+A photo never counts as the user's words, and neither does text the model reads inside one. The gate
+therefore skips the quote check and the checker for a write from a photo, whatever quote the write
+gives, and the proposal keeps no quote. It runs the hidden-character check and the token check, as
+for a self-note, and the write becomes a proposal with the photo reason. The proposal's checks name
+the image.
+
+An allow rule covers a write from a photo only when the rule names the image source. A rule on
+`memory.remember` alone leaves the write a proposal. A rule that names the image source lets the
+write apply at once under the rule's token check, with outside content as its source. A version from
+a photo keeps the image in its checks and takes outside content as its source, even when the user
+approves an edit of its text.
+
 ## Image offers
 
 Memory never holds an image or a description of one: the writer and the log reader see only a marker
@@ -196,6 +217,8 @@ self-note, which always waits for review. The user's approval keeps that source.
 confirms that the user wants the text kept, and never that the user typed it, so the conversation
 reads the item as unconfirmed and approved ([how an item reads](./context.md#how-an-item-reads)). An
 approval of the user's own edit takes the user as its source, because the words are then the user's.
+One exception: an edit of a proposal from a photo keeps outside content as its source, because the
+fact still comes from the photo.
 
 The user's allow rule on a content-gate tool lets a write through that tool skip the quote and the
 checker. The gate looks up the rule by the tool the write came through, `memory.edit` for a write
@@ -218,8 +241,9 @@ rollback leaves a later release's proposals in the log and the table.
 The user approves, edits or rejects each proposal against the hash of the operation they saw, and a
 hash that no longer matches refuses the answer. An approval applies the bound operation and records
 the approval with the version. An edit approves the user's own text instead, so that version takes
-the user as its origin and source and cites no evidence. A retirement takes no edit. An approval of
-a proposal whose item moved on fails as stale and applies nothing, and the proposal stays pending so
+the user as its origin and cites no evidence. It takes the user as its source too, except for a
+write from a photo ([provenance](#provenance)). A retirement takes no edit. An approval of a
+proposal whose item moved on fails as stale and applies nothing, and the proposal stays pending so
 the client can offer it against the current version. A rejection takes the user's reason when they
 give one. The reason is free text, so it sits in the rejection record's erasable fields under that
 record's own key, and a rejected new item keeps its reason after the rejection deletes the item's
