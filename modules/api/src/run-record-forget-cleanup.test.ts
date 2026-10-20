@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { findRecordKeys, readRecords } from '@heynixie/log';
+import { readRecordKeys, readRecords } from '@heynixie/log';
 import { writeImageOfferRecord } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
@@ -45,7 +45,7 @@ test("it leaves no readable copy of an earlier release's image offer once its im
     sequence: sent.sequence,
   });
 
-  const keys = await findRecordKeys(ctx.context.log, [offer.keyID]);
+  const keys = await readRecordKeys(ctx.context.log, [offer.keyID]);
   const entries = await readRecords(ctx.context.log, { afterSequence: 0, limit: 1000 });
 
   expect(keys.has(offer.keyID)).toBe(false);

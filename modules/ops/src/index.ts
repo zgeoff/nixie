@@ -1,5 +1,5 @@
-export type { HealthChecks } from './build-health-app';
-export { buildHealthApp } from './build-health-app';
+export type { HealthChecks } from './create-health-app';
+export { createHealthApp } from './create-health-app';
 export { checkDatabase } from './check-database';
 export { checkDatabaseIntegrity } from './check-database-integrity';
 export type { ReadDiskStats } from './check-disk';

@@ -32,7 +32,7 @@ export async function createAllowedAction(
   const queued = await withWriteTransaction(context.log.writer, async (tx) => {
     await requireLease(tx, call.step.lease, context.clock.now());
 
-    const earlier = await findRepeat(tx, call);
+    const earlier = await readRepeat(tx, call);
 
     if (earlier !== undefined) {
       return { actionID: earlier.action_id, status: earlier.status, isRepeat: true };
@@ -68,7 +68,7 @@ export async function createAllowedAction(
   return queued;
 }
 
-function findRepeat(
+function readRepeat(
   tx: Transaction<unknown>,
   call: AllowedCall,
 ): Promise<Pick<ActionRow, 'action_id' | 'status'> | undefined> {

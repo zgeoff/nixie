@@ -5,7 +5,14 @@ export interface TestSiteOptions {
   // the names the site's certificate covers
   readonly names: readonly string[];
 
-  readonly fetch: (request: Request) => Response | Promise<Response>;
+  // answers each request the site receives
+  readonly respond: (request: Request) => Response | Promise<Response>;
+}
+
+// a request as it arrived, copied before the handler runs, since Bun reuses a Request after it
+interface RecordedRequest {
+  readonly url: string;
+  readonly headers: Readonly<Record<string, string>>;
 }
 
 export interface TestSite {
@@ -18,12 +25,6 @@ export interface TestSite {
   readonly requests: readonly RecordedRequest[];
 }
 
-// a request as it arrived, copied before the handler runs, since Bun reuses a Request after it
-interface RecordedRequest {
-  readonly url: string;
-  readonly headers: Readonly<Record<string, string>>;
-}
-
 // Starts an HTTPS site on 127.0.0.1 with a self-signed certificate for the names, and stops it when
 // the test finishes. It records each request before the test's handler answers it.
 export async function startTestSite(options: TestSiteOptions): Promise<TestSite> {
@@ -31,15 +32,17 @@ export async function startTestSite(options: TestSiteOptions): Promise<TestSite>
 
   const requests: RecordedRequest[] = [];
 
+  const answerRequest = (request: Request): Response | Promise<Response> => {
+    requests.push({ url: request.url, headers: Object.fromEntries(request.headers) });
+
+    return options.respond(request);
+  };
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
     tls: { cert: certificate.cert, key: certificate.key },
-    fetch: (request) => {
-      requests.push({ url: request.url, headers: Object.fromEntries(request.headers) });
-
-      return options.fetch(request);
-    },
+    fetch: answerRequest,
   });
 
   onTestFinished(() => server.stop(true));

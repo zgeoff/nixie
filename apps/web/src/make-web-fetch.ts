@@ -29,7 +29,7 @@ export function makeWebFetch(options: WebFetchOptions) {
       return checkReadiness(probe);
     }
 
-    const asset = await findAsset(options.clientDir, pathname);
+    const asset = await readBrowserAsset(options.clientDir, pathname);
 
     if (asset !== undefined) {
       return asset;
@@ -41,21 +41,6 @@ export function makeWebFetch(options: WebFetchOptions) {
   };
 }
 
-// A rendered page holds the conversation of the session that asked for it, so no cache between the
-// browser and the web server may keep it or serve it to another browser.
-function toPrivateResponse(response: Response): Response {
-  const headers = new Headers(response.headers);
-
-  headers.set('cache-control', 'private, no-store');
-  headers.append('vary', 'cookie');
-
-  return new Response(response.body, {
-    headers,
-    status: response.status,
-    statusText: response.statusText,
-  });
-}
-
 // The probe calls the API with no session, so it holds no credential and grants nothing.
 function buildProbeClient(apiURL: string): ContractClient {
   return createORPCClient<ContractClient>(
@@ -65,7 +50,7 @@ function buildProbeClient(apiURL: string): ContractClient {
 
 // The web server is ready once it reaches nixie's API.
 async function checkReadiness(probe: ContractClient): Promise<Response> {
-  const reachable = await canReachAPI(probe);
+  const reachable = await probeAPI(probe);
 
   return reachable
     ? Response.json({ status: 'ready' })
@@ -74,7 +59,7 @@ async function checkReadiness(probe: ContractClient): Promise<Response> {
 
 // The API answers a call with no session with its typed refusal, which shows it is up and speaks
 // the contract. A dropped connection or any other answer leaves the web server unready.
-async function canReachAPI(probe: ContractClient): Promise<boolean> {
+async function probeAPI(probe: ContractClient): Promise<boolean> {
   try {
     await probe.sessions.list(undefined, { signal: AbortSignal.timeout(2000) });
 
@@ -94,10 +79,13 @@ const publicPaths = new Set([
   '/icons/icon-maskable-512.png',
 ]);
 
-// Finds a built browser asset. A hashed asset never changes under its name, so the browser keeps
+// Reads a built browser asset. A hashed asset never changes under its name, so the browser keeps
 // it for good. The URL parser removes dot segments, and the prefix check refuses any path that
 // still escapes the assets folder.
-function findAsset(clientDir: string, pathname: string): Promise<Response | undefined> | undefined {
+function readBrowserAsset(
+  clientDir: string,
+  pathname: string,
+): Promise<Response | undefined> | undefined {
   if (publicPaths.has(pathname)) {
     return readAsset(join(clientDir, pathname), 'public, max-age=3600');
   }
@@ -117,4 +105,19 @@ async function readAsset(path: string, cacheControl: string): Promise<Response |
   const exists = await file.exists();
 
   return exists ? new Response(file, { headers: { 'cache-control': cacheControl } }) : undefined;
+}
+
+// A rendered page holds the conversation of the session that asked for it, so no cache between the
+// browser and the web server may keep it or serve it to another browser.
+function toPrivateResponse(response: Response): Response {
+  const headers = new Headers(response.headers);
+
+  headers.set('cache-control', 'private, no-store');
+  headers.append('vary', 'cookie');
+
+  return new Response(response.body, {
+    headers,
+    status: response.status,
+    statusText: response.statusText,
+  });
 }

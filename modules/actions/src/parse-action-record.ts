@@ -26,26 +26,6 @@ export type ActionRecord =
       readonly reason: OutcomeReason | null;
     };
 
-// Reads an action record's payload into its typed shape, or null for a record of another kind. An
-// action record whose payload lacks a field throws, so a fold never writes a half-read row.
-export function parseActionRecord(record: EnvelopeRecord): ActionRecord | null {
-  const parse = actionRecordParsers.get(record.kind);
-
-  if (parse === undefined) {
-    return null;
-  }
-
-  return parse((key) => {
-    const value = record.payload[key];
-
-    if (value === undefined) {
-      throw new Error(`record ${record.sequence} of kind ${record.kind} lacks ${key}`);
-    }
-
-    return value;
-  });
-}
-
 type GetField = (key: string) => JSONValue;
 
 const actionRecordParsers: ReadonlyMap<string, (getField: GetField) => ActionRecord> = new Map<
@@ -92,6 +72,26 @@ const actionRecordParsers: ReadonlyMap<string, (getField: GetField) => ActionRec
   ],
 ]);
 
+// Reads an action record's payload into its typed shape, or null for a record of another kind. An
+// action record whose payload lacks a field throws, so a fold never writes a half-read row.
+export function parseActionRecord(record: EnvelopeRecord): ActionRecord | null {
+  const parse = actionRecordParsers.get(record.kind);
+
+  if (parse === undefined) {
+    return null;
+  }
+
+  return parse((key) => {
+    const value = record.payload[key];
+
+    if (value === undefined) {
+      throw new Error(`record ${record.sequence} of kind ${record.kind} lacks ${key}`);
+    }
+
+    return value;
+  });
+}
+
 function toString(value: JSONValue): string {
   if (typeof value !== 'string') {
     throw new TypeError(`expected a string, got ${JSON.stringify(value)}`);
@@ -108,6 +108,17 @@ function toNumber(value: JSONValue): number {
   return value;
 }
 
+function toReason(value: JSONValue): OutcomeReason {
+  const reason = toString(value);
+  const known = outcomeReasons.find((candidate) => candidate === reason);
+
+  if (known === undefined) {
+    throw new TypeError(`expected an outcome reason, got ${reason}`);
+  }
+
+  return known;
+}
+
 function toSettledStatus(value: JSONValue): Exclude<ActionStatus, 'pending'> {
   const status = toString(value);
   const settled = settledStatuses.find((candidate) => candidate === status);
@@ -120,17 +131,6 @@ function toSettledStatus(value: JSONValue): Exclude<ActionStatus, 'pending'> {
 }
 
 const settledStatuses: readonly Exclude<ActionStatus, 'pending'>[] = ['done', 'failed', 'unknown'];
-
-function toReason(value: JSONValue): OutcomeReason {
-  const reason = toString(value);
-  const known = outcomeReasons.find((candidate) => candidate === reason);
-
-  if (known === undefined) {
-    throw new TypeError(`expected an outcome reason, got ${reason}`);
-  }
-
-  return known;
-}
 
 const outcomeReasons: readonly OutcomeReason[] = [
   'refused',

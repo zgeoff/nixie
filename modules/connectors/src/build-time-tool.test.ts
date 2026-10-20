@@ -5,18 +5,18 @@ import type { ToolCall, ToolContext } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildTimeTool } from './build-time-tool';
 
-const call: ToolCall = { callID: 'call-1', tool: 'time.now', input: {}, toolUseID: null };
-
-const context: ToolContext = {
-  run: {
-    runID: 'run-1',
-    thread: 'conversation',
-    tools: ['time.now'],
-    model: { model: 'model-a', profile: 'chat-direct' },
-  },
-};
-
 test('it answers in the zone of the newest message', async () => {
+  const context: ToolContext = {
+    run: {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['time.now'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+  };
+
+  const call: ToolCall = { callID: 'call-1', tool: 'time.now', input: {}, toolUseID: null };
+
   const tool = buildTimeTool({
     clock: buildTestClock(Date.parse('2026-10-13T22:30:15.000Z')),
     findTimeZone: () => Promise.resolve('Europe/London'),
@@ -38,6 +38,17 @@ test('it answers in the zone of the newest message', async () => {
 });
 
 test('it answers in the configured default zone when no message carries a zone', async () => {
+  const context: ToolContext = {
+    run: {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['time.now'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+  };
+
+  const call: ToolCall = { callID: 'call-1', tool: 'time.now', input: {}, toolUseID: null };
+
   const tool = buildTimeTool({
     clock: buildTestClock(Date.parse('2026-10-13T22:30:15.000Z')),
     findTimeZone: () => Promise.resolve(null),
@@ -59,6 +70,17 @@ test('it answers in the configured default zone when no message carries a zone',
 });
 
 test('it gives a zone at UTC itself an offset of +00:00', async () => {
+  const context: ToolContext = {
+    run: {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['time.now'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+  };
+
+  const call: ToolCall = { callID: 'call-1', tool: 'time.now', input: {}, toolUseID: null };
+
   const tool = buildTimeTool({
     clock: buildTestClock(Date.parse('2026-01-05T08:00:00.000Z')),
     findTimeZone: () => Promise.resolve('Atlantic/Reykjavik'),
@@ -73,6 +95,17 @@ test('it gives a zone at UTC itself an offset of +00:00', async () => {
 });
 
 test('it passes the registry rules, with a result the output schema accepts', async () => {
+  const context: ToolContext = {
+    run: {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['time.now'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+  };
+
+  const call: ToolCall = { callID: 'call-1', tool: 'time.now', input: {}, toolUseID: null };
+
   const tool = buildTimeTool({
     clock: buildTestClock(Date.parse('2026-10-13T22:30:15.000Z')),
     findTimeZone: () => Promise.resolve(null),

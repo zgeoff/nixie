@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { findRecordKeys, readRecords } from '@heynixie/log';
+import { readRecordKeys, readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { createProposal } from './test-utils/create-proposal';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -36,7 +36,7 @@ test('it rejects a proposal and drops the key of the item it would have created'
     .where('proposal_id', '=', pending.proposalID)
     .executeTakeFirstOrThrow();
 
-  const keys = await findRecordKeys(memory.log, [pending.itemID]);
+  const keys = await readRecordKeys(memory.log, [pending.itemID]);
 
   expect(row.status).toBe('rejected');
   expect(keys.get(pending.itemID)).toBeUndefined();
@@ -94,7 +94,7 @@ test('it keeps your reason after the rejection removes the key of the item it wo
 
   const [records, keys] = await Promise.all([
     readRecords(memory.log, { afterSequence: 0, kinds: ['memory.proposal_rejected'] }),
-    findRecordKeys(memory.log, [proposal.itemID]),
+    readRecordKeys(memory.log, [proposal.itemID]),
   ]);
 
   expect(keys.get(proposal.itemID)).toBeUndefined();

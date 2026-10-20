@@ -53,6 +53,17 @@ export function buildRouteRegistry(options: RouteOptions): RouteRegistry {
   };
 }
 
+// a forward that never opened counts as ended
+async function waitForForwardEnd(opening: Promise<ImpForward>): Promise<void> {
+  try {
+    const forward = await opening;
+
+    await forward.ended;
+  } catch {
+    // the open failed, and its caller saw why
+  }
+}
+
 // The first listen wakes a sleeping imp.
 async function startReverseForward(
   options: RouteOptions,
@@ -71,17 +82,6 @@ async function startReverseForward(
   } catch (error) {
     forward.stop();
     throw error;
-  }
-}
-
-// a forward that never opened counts as ended
-async function waitForForwardEnd(opening: Promise<ImpForward>): Promise<void> {
-  try {
-    const forward = await opening;
-
-    await forward.ended;
-  } catch {
-    // the open failed, and its caller saw why
   }
 }
 

@@ -35,8 +35,14 @@ export interface FetchSandbox {
   readonly stop: () => Promise<void>;
 }
 
-// the owner of every fetch sandbox, which a new sandbox's start reads to remove any left behind
-export const fetchSandboxOwner = 'web_fetch';
+interface FetchSandboxState {
+  sandbox: Promise<Sandbox> | null;
+  fetches: number;
+  queue: Promise<void>;
+  isStopped: boolean;
+}
+
+const stoppedReply: FetchReply = { kind: 'failed', reason: 'the fetch sandbox is stopped' };
 
 // Starts the long-lived fetch sandbox, which nixie creates on the first fetch. Each fetch runs one
 // at a time in a new fetcher process, over its stdin and stdout and never the sandbox's network.
@@ -73,15 +79,6 @@ export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
   };
 }
 
-interface FetchSandboxState {
-  sandbox: Promise<Sandbox> | null;
-  fetches: number;
-  queue: Promise<void>;
-  isStopped: boolean;
-}
-
-const stoppedReply: FetchReply = { kind: 'failed', reason: 'the fetch sandbox is stopped' };
-
 async function runFetch(
   options: FetchSandboxOptions,
   state: FetchSandboxState,
@@ -117,6 +114,41 @@ async function tryRunFetcher(
   }
 }
 
+interface TimeLimit {
+  readonly clock: Clock;
+
+  // the clock time, in milliseconds since the epoch, that the call must settle by
+  readonly deadline: number;
+  readonly message: string;
+}
+
+async function waitOrTimeOut<T>(promise: Promise<T>, limit: TimeLimit): Promise<T> {
+  // a call already settled would win the race below, so a deadline that passed between calls fails
+  // here first
+  if (limit.deadline <= limit.clock.now()) {
+    throw new Error(limit.message);
+  }
+
+  const settled = new AbortController();
+
+  try {
+    return await Promise.race([promise, waitForDeadline(limit, settled.signal)]);
+  } finally {
+    // ends the clock's sleep, so a call that settled in time leaves no sleeper behind
+    settled.abort();
+  }
+}
+
+// rejects with the limit's message once the clock reaches its deadline
+async function waitForDeadline(limit: TimeLimit, settled: AbortSignal): Promise<never> {
+  await limit.clock.sleep(limit.deadline - limit.clock.now(), settled);
+
+  throw new Error(limit.message);
+}
+
+// the owner of every fetch sandbox, which a new sandbox's start reads to remove any left behind
+export const fetchSandboxOwner = 'web_fetch';
+
 // destroys every fetch sandbox a past process left, then creates a new one
 async function createFetchSandbox(options: FetchSandboxOptions): Promise<Sandbox> {
   const leftovers = await options.adapter.list(fetchSandboxOwner);
@@ -133,6 +165,8 @@ async function createFetchSandbox(options: FetchSandboxOptions): Promise<Sandbox
   );
 }
 
+const defaultSandboxCallTimeoutMs = 120_000;
+
 function buildSandboxCallLimit(options: FetchSandboxOptions): TimeLimit {
   const clock = options.clock ?? systemClock;
 
@@ -141,29 +175,6 @@ function buildSandboxCallLimit(options: FetchSandboxOptions): TimeLimit {
     deadline: clock.now() + (options.sandboxCallTimeoutMs ?? defaultSandboxCallTimeoutMs),
     message: 'the sandbox call passed its time limit',
   };
-}
-
-const defaultSandboxCallTimeoutMs = 120_000;
-
-// A destroy that fails or never ends leaves the sandbox to the next create, which removes every
-// sandbox of the owner, so a failed destroy never stops the next fetch.
-async function removeSandbox(
-  options: FetchSandboxOptions,
-  state: FetchSandboxState,
-): Promise<void> {
-  const sandbox = state.sandbox;
-  const limit = buildSandboxCallLimit(options);
-
-  state.sandbox = null;
-  state.fetches = 0;
-
-  try {
-    const created = await sandbox;
-
-    await waitOrTimeOut(created?.destroy() ?? Promise.resolve(), limit);
-  } catch {
-    // a create that failed made nothing to destroy
-  }
 }
 
 const defaultReplyGraceMs = 5000;
@@ -233,34 +244,23 @@ async function readFirstMessage(messages: AsyncIterable<Uint8Array>): Promise<Ui
   return first.done === true ? null : first.value;
 }
 
-interface TimeLimit {
-  readonly clock: Clock;
+// A destroy that fails or never ends leaves the sandbox to the next create, which removes every
+// sandbox of the owner, so a failed destroy never stops the next fetch.
+async function removeSandbox(
+  options: FetchSandboxOptions,
+  state: FetchSandboxState,
+): Promise<void> {
+  const sandbox = state.sandbox;
+  const limit = buildSandboxCallLimit(options);
 
-  // the clock time, in milliseconds since the epoch, that the call must settle by
-  readonly deadline: number;
-  readonly message: string;
-}
-
-async function waitOrTimeOut<T>(promise: Promise<T>, limit: TimeLimit): Promise<T> {
-  // a call already settled would win the race below, so a deadline that passed between calls fails
-  // here first
-  if (limit.deadline <= limit.clock.now()) {
-    throw new Error(limit.message);
-  }
-
-  const settled = new AbortController();
+  state.sandbox = null;
+  state.fetches = 0;
 
   try {
-    return await Promise.race([promise, waitForDeadline(limit, settled.signal)]);
-  } finally {
-    // ends the clock's sleep, so a call that settled in time leaves no sleeper behind
-    settled.abort();
+    const created = await sandbox;
+
+    await waitOrTimeOut(created?.destroy() ?? Promise.resolve(), limit);
+  } catch {
+    // a create that failed made nothing to destroy
   }
-}
-
-// rejects with the limit's message once the clock reaches its deadline
-async function waitForDeadline(limit: TimeLimit, settled: AbortSignal): Promise<never> {
-  await limit.clock.sleep(limit.deadline - limit.clock.now(), settled);
-
-  throw new Error(limit.message);
 }

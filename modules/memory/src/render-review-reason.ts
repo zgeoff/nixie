@@ -1,24 +1,5 @@
 import type { GateContext, ReviewReason } from './gate-types';
 
-// Renders a review reason as the fixed sentence the model reads after its code: the write is saved
-// as a proposal for you to review, and why. Each sentence names you as the config does, and the
-// quote's window is the gate's own, so the model never reads a bare code or guesses what it means.
-export function renderReviewReason(
-  reason: ReviewReason,
-  gate: Pick<GateContext, 'ownerName' | 'ownerPronouns' | 'limits'>,
-): string {
-  const words: ReviewWords = {
-    owner: gate.ownerName ?? 'the owner',
-    they: gate.ownerPronouns.they,
-    their: gate.ownerPronouns.their,
-    window: gate.limits.evidenceWindow,
-  };
-
-  const why = reasonSentences[reason](words);
-
-  return `${reason}: Saved as a proposal for ${words.owner} to review. ${toSentenceCase(why)}`;
-}
-
 interface ReviewWords {
   readonly owner: string;
   readonly they: string;
@@ -51,6 +32,25 @@ const reasonSentences: Readonly<Record<ReviewReason, (words: ReviewWords) => str
   from_photo: (words) =>
     `It comes from a photo, and a memory from a photo waits for ${words.their} review.`,
 };
+
+// Renders a review reason as the fixed sentence the model reads after its code: the write is saved
+// as a proposal for you to review, and why. Each sentence names you as the config does, and the
+// quote's window is the gate's own, so the model never reads a bare code or guesses what it means.
+export function renderReviewReason(
+  reason: ReviewReason,
+  gate: Pick<GateContext, 'ownerName' | 'ownerPronouns' | 'limits'>,
+): string {
+  const words: ReviewWords = {
+    owner: gate.ownerName ?? 'the owner',
+    they: gate.ownerPronouns.they,
+    their: gate.ownerPronouns.their,
+    window: gate.limits.evidenceWindow,
+  };
+
+  const why = reasonSentences[reason](words);
+
+  return `${reason}: Saved as a proposal for ${words.owner} to review. ${toSentenceCase(why)}`;
+}
 
 function formatWindow(window: number): string {
   return window === 1 ? 'last message' : `last ${window} messages`;

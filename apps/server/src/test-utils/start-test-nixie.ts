@@ -145,8 +145,8 @@ function buildTestNixie(parts: TestNixieParts): TestNixie {
   const output = buildOutput();
   const waitForLogEvent = makeLogEventWaiter(() => parts.child.exitCode, output);
 
-  void collectOutput(parts.child.stdout, output);
-  void collectOutput(parts.child.stderr, output);
+  void pipeOutput(parts.child.stdout, output);
+  void pipeOutput(parts.child.stderr, output);
 
   return {
     ...parts.files,
@@ -197,7 +197,7 @@ function makeLogEventWaiter(
   output: Output,
 ): TestNixie['waitForLogEvent'] {
   return async (event) => {
-    const findLine = () => readLogLines(output.read()).find((line) => line['event'] === event);
+    const findLine = () => parseLogLines(output.read()).find((line) => line['event'] === event);
 
     await waitForCondition(() => findLine() !== undefined || readExitCode() !== null, {
       timeoutMs: 30_000,
@@ -213,19 +213,19 @@ function makeLogEventWaiter(
   };
 }
 
-async function collectOutput(stream: ReadableStream<Uint8Array>, output: Output): Promise<void> {
+const logLineSchema = z.record(z.string(), z.unknown()).readonly();
+
+function parseLogLines(text: string): readonly Readonly<Record<string, unknown>>[] {
+  return text
+    .split('\n')
+    .filter((line) => line.startsWith('{'))
+    .map((line) => logLineSchema.parse(JSON.parse(line)));
+}
+
+async function pipeOutput(stream: ReadableStream<Uint8Array>, output: Output): Promise<void> {
   const decoder = new TextDecoder();
 
   for await (const chunk of stream) {
     output.append(decoder.decode(chunk, { stream: true }));
   }
-}
-
-const logLineSchema = z.record(z.string(), z.unknown()).readonly();
-
-function readLogLines(text: string): readonly Readonly<Record<string, unknown>>[] {
-  return text
-    .split('\n')
-    .filter((line) => line.startsWith('{'))
-    .map((line) => logLineSchema.parse(JSON.parse(line)));
 }

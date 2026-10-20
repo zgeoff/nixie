@@ -9,9 +9,6 @@ export interface ThemeChoiceState {
   readonly setChoice: (choice: ThemeChoice) => void;
 }
 
-// A storage event reaches only the other tabs, so this tab announces its own writes with this one.
-const changeEvent = 'nixie:theme-change';
-
 // The device's theme choice, kept in device storage. While it is the system's, the theme follows
 // the system setting as it changes. The server knows no device storage, so the first render is the
 // system's choice and hydration then reads the stored one.
@@ -40,6 +37,9 @@ export function useThemeChoice(): ThemeChoiceState {
 
   return { choice, setChoice: writeThemeChoice };
 }
+
+// A storage event reaches only the other tabs, so this tab announces its own writes with this one.
+const changeEvent = 'nixie:theme-change';
 
 function subscribeToThemeChoice(onChange: () => void): () => void {
   globalThis.addEventListener('storage', onChange);

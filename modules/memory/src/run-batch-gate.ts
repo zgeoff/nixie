@@ -1,8 +1,8 @@
 import { buildGateReview } from './build-gate-review';
-import { findSourceEvidence } from './find-source-evidence';
 import type { ContentGateResult } from './gate-types';
 import { getRowSubject } from './get-row-subject';
 import { memoryWriterTaskID } from './memory-writer-task-id';
+import { readSourceEvidence } from './read-source-evidence';
 import { requireItem } from './require-item';
 import { runBatchRetirementGate } from './run-batch-retirement-gate';
 import { runQuotedGate } from './run-quoted-gate';
@@ -44,7 +44,7 @@ export async function runBatchGate(
   // pinning write does, and never fails its batch on the core's budget
   const isPinned = item?.is_pinned === 1;
 
-  const found = await findSourceEvidence(parts.context.log, source, write.quote);
+  const found = await readSourceEvidence(parts.context.log, source, write.quote);
 
   const gate = await runQuotedGate(
     parts.context,
@@ -61,19 +61,6 @@ export async function runBatchGate(
   return { gate, text: write.text };
 }
 
-// the review a write meets before its quote is read: a hidden character
-function findEarlyReview(text: string): ContentGateResult | null {
-  if (invisible.test(text)) {
-    return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
-  }
-
-  return null;
-}
-
-// Unicode format characters: zero-width spaces and joiners, bidirectional controls, the byte order
-// mark and the soft hyphen
-const invisible = /\p{Cf}/u;
-
 // an edit of an item that moved on since the session read it could only become a proposal no one
 // can approve, so it fails as stale and the batch runs again
 function requireEditTarget(parts: StoreParts, target: VersionRef): Promise<MemoryItemRow> {
@@ -82,4 +69,17 @@ function requireEditTarget(parts: StoreParts, target: VersionRef): Promise<Memor
     operation: 'edit',
     states: ['active', 'retired'],
   });
+}
+
+// Unicode format characters: zero-width spaces and joiners, bidirectional controls, the byte order
+// mark and the soft hyphen
+const invisible = /\p{Cf}/u;
+
+// the review a write meets before its quote is read: a hidden character
+function findEarlyReview(text: string): ContentGateResult | null {
+  if (invisible.test(text)) {
+    return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
+  }
+
+  return null;
 }

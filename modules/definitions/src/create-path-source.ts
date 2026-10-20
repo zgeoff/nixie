@@ -34,7 +34,7 @@ export function createPathSource(options: PathSourceOptions): DefinitionsSource 
 
 async function readPathSnapshot(directory: string, limits: SizeLimits): Promise<Snapshot> {
   const base = await realpath(directory);
-  const entries = await collectEntries(base, base);
+  const entries = await readEntries(base, base);
 
   if (entries.escapes.length > 0) {
     throw new SnapshotError('a symlink leads outside the definitions root', entries.escapes);
@@ -62,11 +62,11 @@ interface WalkEntries {
 }
 
 // visits names in sorted order, and Promise.all keeps that order, so files come out in path order
-async function collectEntries(base: string, directory: string): Promise<WalkEntries> {
+async function readEntries(base: string, directory: string): Promise<WalkEntries> {
   const names = await readdir(directory);
 
   const entries = await Promise.all(
-    names.toSorted().map((name) => collectEntry(base, join(directory, name))),
+    names.toSorted().map((name) => readEntry(base, join(directory, name))),
   );
 
   return {
@@ -76,7 +76,7 @@ async function collectEntries(base: string, directory: string): Promise<WalkEntr
   };
 }
 
-async function collectEntry(base: string, full: string): Promise<WalkEntries> {
+async function readEntry(base: string, full: string): Promise<WalkEntries> {
   const path = toRootPath(base, full);
 
   if (basename(full).startsWith('.') || isOutsideLayout(path)) {
@@ -86,11 +86,11 @@ async function collectEntry(base: string, full: string): Promise<WalkEntries> {
   const stat = await lstat(full);
 
   if (stat.isSymbolicLink()) {
-    return collectSymlink(base, full);
+    return readSymlink(base, full);
   }
 
   if (stat.isDirectory()) {
-    return collectEntries(base, full);
+    return readEntries(base, full);
   }
 
   return stat.isFile() && isDefinitionsPath(path)
@@ -108,7 +108,7 @@ function isOutsideLayout(path: string): boolean {
 }
 
 // a link that resolves nowhere counts as outside, because nothing shows where it would lead
-async function collectSymlink(base: string, link: string): Promise<WalkEntries> {
+async function readSymlink(base: string, link: string): Promise<WalkEntries> {
   const path = toRootPath(base, link);
 
   const target = await realpath(link).catch(() => null);

@@ -18,13 +18,15 @@ test('it sends the run token over the run socket', async () => {
   const socketPath = join(ctx.directory, 'run.sock');
   const authorizations: (string | null)[] = [];
 
+  const refuseRequest = (request: Request) => {
+    authorizations.push(request.headers.get('authorization'));
+
+    return new Response('refused', { status: 401 });
+  };
+
   const server = Bun.serve({
     unix: socketPath,
-    fetch: (request) => {
-      authorizations.push(request.headers.get('authorization'));
-
-      return new Response('refused', { status: 401 });
-    },
+    fetch: refuseRequest,
   });
 
   onTestFinished(() => server.stop(true));
@@ -48,13 +50,15 @@ test('it sends the token given in place of the run token', async () => {
   const socketPath = join(ctx.directory, 'run.sock');
   const authorizations: (string | null)[] = [];
 
+  const refuseRequest = (request: Request) => {
+    authorizations.push(request.headers.get('authorization'));
+
+    return new Response('refused', { status: 401 });
+  };
+
   const server = Bun.serve({
     unix: socketPath,
-    fetch: (request) => {
-      authorizations.push(request.headers.get('authorization'));
-
-      return new Response('refused', { status: 401 });
-    },
+    fetch: refuseRequest,
   });
 
   onTestFinished(() => server.stop(true));

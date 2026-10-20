@@ -78,6 +78,12 @@ interface ScaledImages {
   readonly unscaled: number;
 }
 
+interface ScaledTally {
+  readonly files: File[];
+  unread: number;
+  over: number;
+}
+
 // scales one image at a time, so a large selection decodes no more photos than the free slots take
 async function readScaledImages(
   picked: readonly File[],
@@ -103,12 +109,6 @@ async function readScaledImages(
     over: scaled.over,
     unscaled: picked.length - scaled.tried,
   };
-}
-
-interface ScaledTally {
-  readonly files: File[];
-  unread: number;
-  over: number;
 }
 
 function updateScaledTally(scaled: ScaledTally, read: File | null) {

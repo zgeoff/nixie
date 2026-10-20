@@ -74,8 +74,8 @@ export function createProcessSandboxAdapter(input: ProcessSandboxOptions): Sandb
     id: 'process',
     boundary: 'process',
     create: (spec) => createProcessSandbox(options, spec, { getSandbox, removeSandbox }),
-    get: async (id) => {
-      const row = await options.recorder.findRow('process', id);
+    read: async (id) => {
+      const row = await options.recorder.readRow('process', id);
 
       return row ? getSandbox(row.sandboxID, row.spec) : null;
     },

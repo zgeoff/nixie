@@ -1,4 +1,4 @@
-import { findBatchBounds } from './find-batch-bounds';
+import { readBatchBounds } from './read-batch-bounds';
 import { readWriterBatch } from './read-writer-batch';
 import { runWriterExtraction } from './run-writer-extraction';
 import { tryRunWriterGate } from './try-run-writer-gate';
@@ -13,7 +13,7 @@ export async function runWriterBatch(
   parts: WriterParts,
   state: WriterStepState,
 ): Promise<WriterBatchStep> {
-  const bounds = await findBatchBounds(parts, state);
+  const bounds = await readBatchBounds(parts, state);
 
   if ('wakeAt' in bounds) {
     return { next: 'wait', timers: bounds.wakeAt === null ? [] : [{ dueAt: bounds.wakeAt }] };

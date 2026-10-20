@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { findRecordKeys, readRecords } from '@heynixie/log';
+import { readRecordKeys, readRecords } from '@heynixie/log';
 import { startTestMemory } from './start-test-memory';
 import { writeImageOfferRecord } from './write-image-offer-record';
 
@@ -24,7 +24,7 @@ test('it writes an image offer with the image in the payload and the text under 
     limit: 1,
   });
 
-  const keys = await findRecordKeys(ctx.memory.log, [offer.keyID]);
+  const keys = await readRecordKeys(ctx.memory.log, [offer.keyID]);
 
   expect(entry?.record).toMatchObject({
     sequence: offer.sequence,

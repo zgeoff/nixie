@@ -63,18 +63,6 @@ export async function runToolCall(
   return recorder.writeResult(callSequence, settled);
 }
 
-// A tool missing from the run's list skips the schema, so its errors never show the tool to the
-// model, and the decision point denies the call.
-function checkListedInput(
-  registered: RegisteredTool | null,
-  call: ToolCall,
-  run: ToolRun,
-): SchemaCheck {
-  return registered !== null && run.tools.includes(call.tool)
-    ? registered.parseInput(call.input)
-    : { isValid: true };
-}
-
 type SettledOutcome = 'result' | 'invalid' | 'denied' | 'error' | 'queued' | 'failed' | 'unknown';
 
 // A settled call: what the result's record holds, and what the model receives.
@@ -158,6 +146,29 @@ function toCallToolResult(settled: Settled): CallToolResult {
     : { content: [{ type: 'text', text: settled.reply.text }], isError: settled.reply.isError };
 }
 
+// A tool missing from the run's list skips the schema, so its errors never show the tool to the
+// model, and the decision point denies the call.
+function checkListedInput(
+  registered: RegisteredTool | null,
+  call: ToolCall,
+  run: ToolRun,
+): SchemaCheck {
+  return registered !== null && run.tools.includes(call.tool)
+    ? registered.parseInput(call.input)
+    : { isValid: true };
+}
+
+// An input that breaks the schema never reaches the decision point, so its call has no decision.
+async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
+  const callSequence = await recorder.writeCall(null);
+
+  // the errors repeat the input's own keys, which the model chose
+  return recorder.writeResult(
+    callSequence,
+    buildMessage('invalid', errors, { source: 'untrusted' }),
+  );
+}
+
 interface MessageOptions {
   readonly source?: ContentSource;
   readonly isError?: boolean;
@@ -177,17 +188,6 @@ function buildMessage(
     content: { message },
     reply: { kind: 'text', text: message, isError: messageOptions.isError ?? true },
   };
-}
-
-// An input that breaks the schema never reaches the decision point, so its call has no decision.
-async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
-  const callSequence = await recorder.writeCall(null);
-
-  // the errors repeat the input's own keys, which the model chose
-  return recorder.writeResult(
-    callSequence,
-    buildMessage('invalid', errors, { source: 'untrusted' }),
-  );
 }
 
 interface DecidedCall {

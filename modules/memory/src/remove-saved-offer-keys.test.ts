@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { findRecordKeys, readRecords } from '@heynixie/log';
+import { readRecordKeys, readRecords } from '@heynixie/log';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startNextTestMemory } from './test-utils/start-next-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -37,7 +37,7 @@ test("it removes at start the key of a saved offer's record that a crash left be
   });
 
   const restarted = await startNextTestMemory(ctx.memory);
-  const left = await findRecordKeys(restarted.log, [offer.keyID]);
+  const left = await readRecordKeys(restarted.log, [offer.keyID]);
 
   expect(left.has(offer.keyID)).toBe(false);
 });
@@ -95,7 +95,7 @@ test('it never removes at start the key of an offer that no version saved', asyn
   });
 
   const restarted = await startNextTestMemory(ctx.memory);
-  const keys = await findRecordKeys(restarted.log, [offer.keyID]);
+  const keys = await readRecordKeys(restarted.log, [offer.keyID]);
 
   expect(keys.has(offer.keyID)).toBe(true);
 });

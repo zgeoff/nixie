@@ -3,7 +3,6 @@ import { buildActionQueue } from '@heynixie/actions';
 import { modelsConfigSchema } from '@heynixie/models';
 import { startTestSessionHost } from '@heynixie/sessions/test-utils';
 import { runTaskSteps } from '@heynixie/tasks/test-utils';
-import type { ScriptedReply } from '@heynixie/testing';
 import { buildTestClock, startScriptedModel } from '@heynixie/testing';
 import { buildMemoryTools } from './build-memory-tools';
 import { consolidationConfigSchema } from './consolidation-config-schema';
@@ -27,7 +26,20 @@ async function setupTest() {
 
   const consolidator = await startMemoryConsolidatorRunner({
     context,
-    models: buildModelsConfig(model.url),
+
+    // one profile on the scripted model, which the conversation and the consolidator share
+    models: modelsConfigSchema.parse({
+      profiles: {
+        'tidy-direct': {
+          base_url: model.url,
+          credential: 'deployment:anthropic',
+          auth_header: 'x-api-key',
+          model: 'claude-test-1',
+          effort: 'low',
+        },
+      },
+      roles: { conversation: 'tidy-direct', 'memory-consolidator': 'tidy-direct' },
+    }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: host.sandboxes,
     queue: buildActionQueue(context).queue,
@@ -53,26 +65,10 @@ async function setupTest() {
         advance: (durationMs) => {
           clock.advance(durationMs);
         },
-        isDone: async () => (await store.consolidations.readPending()) !== null,
+        probeDone: async () => (await store.consolidations.readPending()) !== null,
         maxSteps: 5,
       }),
   };
-}
-
-// one profile on the scripted model, which the conversation and the consolidator share
-function buildModelsConfig(url: string) {
-  return modelsConfigSchema.parse({
-    profiles: {
-      'tidy-direct': {
-        base_url: url,
-        credential: 'deployment:anthropic',
-        auth_header: 'x-api-key',
-        model: 'claude-test-1',
-        effort: 'low',
-      },
-    },
-    roles: { conversation: 'tidy-direct', 'memory-consolidator': 'tidy-direct' },
-  });
 }
 
 test('it runs a session over the active items and leaves the diff its model proposed through the tool for your review', async () => {
@@ -190,8 +186,32 @@ test('it carries an idiom word for word, a pronoun through a merge, and a summar
     createMemoryItem(ctx.store, { text: 'Takes coffee black with no milk' }),
   ]);
 
+  // the scripted call proposes a rewrite that only names the owner, a merge that keeps "she", and a
+  // summary of the 2 coffee items it leaves alone
   ctx.model.addReplies(
-    buildInventedDiff({ rewrite: mondays.itemID, merge: [sister.itemID, galway.itemID] }),
+    {
+      toolUse: {
+        name: 'mcp__nixie__memory_consolidate',
+        input: {
+          changes: [
+            {
+              kind: 'rewrite',
+              itemIDs: [mondays.itemID],
+              text: 'Marisol calls Mondays the wet sock of the week',
+              reason: 'Names Marisol instead of "the owner".',
+            },
+            {
+              kind: 'merge',
+              itemIDs: [sister.itemID, galway.itemID],
+              text: 'Her sister Wren moved to Galway this spring, she loves it there',
+              reason: 'Both items say Wren lives in Galway.',
+            },
+          ],
+          summary:
+            'Two items conflict and stay unchanged: one says Marisol takes oat milk in her coffee, and the other says she only drinks it black.',
+        },
+      },
+    },
     { text: 'done' },
   );
 
@@ -269,37 +289,3 @@ test('it leaves the summary of a run that proposed no change for your review and
   expect(pending).toMatchObject({ changes: [], summary: { text: summary } });
   expect(conversation).toMatchObject({ status: 'ok', result: { changes: [], summary } });
 }, 60_000);
-
-// the item the invented diff rewrites, and the items it merges
-interface InventedDiffItems {
-  readonly rewrite: string;
-  readonly merge: readonly string[];
-}
-
-// the scripted call that proposes the invented diff: a rewrite that only names the owner, a merge
-// that keeps "she", and a summary of the 2 coffee items it leaves alone
-function buildInventedDiff(itemIDs: InventedDiffItems): ScriptedReply {
-  return {
-    toolUse: {
-      name: 'mcp__nixie__memory_consolidate',
-      input: {
-        changes: [
-          {
-            kind: 'rewrite',
-            itemIDs: [itemIDs.rewrite],
-            text: 'Marisol calls Mondays the wet sock of the week',
-            reason: 'Names Marisol instead of "the owner".',
-          },
-          {
-            kind: 'merge',
-            itemIDs: itemIDs.merge,
-            text: 'Her sister Wren moved to Galway this spring, she loves it there',
-            reason: 'Both items say Wren lives in Galway.',
-          },
-        ],
-        summary:
-          'Two items conflict and stay unchanged: one says Marisol takes oat milk in her coffee, and the other says she only drinks it black.',
-      },
-    },
-  };
-}

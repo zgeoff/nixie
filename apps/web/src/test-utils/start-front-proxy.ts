@@ -9,21 +9,23 @@ interface FrontProxyTargets {
 // nixie does, so a browser calls /rpc on the origin of the page it loaded. Like the reverse proxy, it
 // answers 502 for a server that is down, and ends a stream whose server stops partway.
 export function startFrontProxy(targets: FrontProxyTargets) {
+  const forwardRequest = (request: Request) => {
+    const url = new URL(request.url);
+
+    const target = url.pathname.startsWith('/rpc/') ? targets.apiURL : targets.webURL;
+
+    const forwarded = fetch(new Request(`${target}${url.pathname}${url.search}`, request), {
+      redirect: 'manual',
+    });
+
+    return forwarded.then(
+      (response) => buildEndingResponse(response),
+      () => new Response(null, { status: 502 }),
+    );
+  };
+
   const server = Bun.serve({
-    fetch(request) {
-      const url = new URL(request.url);
-
-      const target = url.pathname.startsWith('/rpc/') ? targets.apiURL : targets.webURL;
-
-      const forwarded = fetch(new Request(`${target}${url.pathname}${url.search}`, request), {
-        redirect: 'manual',
-      });
-
-      return forwarded.then(
-        (response) => buildEndingResponse(response),
-        () => new Response(null, { status: 502 }),
-      );
-    },
+    fetch: forwardRequest,
     hostname: '127.0.0.1',
     port: 0,
   });

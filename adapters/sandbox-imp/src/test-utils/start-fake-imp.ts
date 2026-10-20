@@ -3,7 +3,7 @@ import { createServer } from 'node:net';
 import type { ImpCreateInput, ImpExec, ImpExecOptions, ImpFeatures, ImpPort } from '../types';
 import type { FakeSleeps } from './build-fake-sleeps';
 import { buildFakeSleeps } from './build-fake-sleeps';
-import { buildPendingExec } from './build-pending-exec';
+import { createPendingExec } from './create-pending-exec';
 import { startFakeForward } from './start-fake-forward';
 
 interface FakeExec {
@@ -48,7 +48,7 @@ export async function startFakeImp(): Promise<FakeImp> {
   onTestFinished(() => stack.disposeAsync());
 
   const state: FakeState = {
-    guestToolPort: await findFreePort(),
+    guestToolPort: await readFreePort(),
     calls: [],
     created: [],
     execs: [],
@@ -69,6 +69,21 @@ export async function startFakeImp(): Promise<FakeImp> {
     startIdleSleep: sleeps.startIdleSleep,
     sleepsAfterWake: sleeps.sleepsAfterWake,
   });
+}
+
+async function readFreePort(): Promise<number> {
+  const server = createServer();
+  const listening = Promise.withResolvers<void>();
+
+  server.listen(0, '127.0.0.1', listening.resolve);
+
+  await listening.promise;
+
+  const address = server.address();
+
+  server.close();
+
+  return typeof address === 'object' && address !== null ? address.port : 0;
 }
 
 function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposableStack): ImpPort {
@@ -121,10 +136,46 @@ function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposa
       state.execs.push(exec);
 
       return Promise.resolve(
-        buildPendingExec(sleeps.waitForAwake(name, 'exec'), () => startFakeExec(exec, stack)),
+        createPendingExec(sleeps.waitForAwake(name, 'exec'), () => startFakeExec(exec, stack)),
       );
     },
     ...buildFakeForwardCall(state, sleeps),
+  };
+}
+
+type FakeImageCalls = Pick<ImpPort, 'listImages' | 'addImage'>;
+
+type UpdateCallLog = (call: string) => Promise<void>;
+
+function buildFakeImageCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeImageCalls {
+  return {
+    listImages: () =>
+      Promise.resolve(
+        [...state.images].map(([name, held]) => ({ name, digest: held.digest, ref: held.ref })),
+      ),
+    addImage: async (image) => {
+      await updateCallLog(`image ${image.name} ${image.ref}`);
+
+      if (state.refuseImageAdd) {
+        throw new Error('token nixie-test is limited to some imps; this call is host-wide');
+      }
+
+      state.images.set(image.name, { digest: image.digest, ref: image.ref });
+    },
+  };
+}
+
+type FakeSecretCalls = Pick<ImpPort, 'readSecretHosts' | 'addGrant' | 'addSecret'>;
+
+function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeSecretCalls {
+  return {
+    readSecretHosts: (secret) => Promise.resolve(state.secrets.get(secret) ?? null),
+    addGrant: (name, secret) => updateCallLog(`grant ${name} ${secret}`),
+    addSecret: async (secret) => {
+      await updateCallLog(`secret ${secret.name} ${secret.host} ${secret.header} ${secret.scheme}`);
+
+      state.secrets.set(secret.name, [secret.host]);
+    },
   };
 }
 
@@ -136,21 +187,6 @@ const brokerEnv: Readonly<Record<string, string>> = {
   NO_PROXY: 'localhost,127.0.0.1,::1',
   no_proxy: 'localhost,127.0.0.1,::1',
 };
-
-// An exec that requires the broker gets these, and impd refuses one whose env replaces any.
-function requireBrokerEnv(options: ImpExecOptions): void {
-  const env = options.env;
-
-  const replaced = Object.keys(brokerEnv).find(
-    (key) => env[key] !== undefined && env[key] !== brokerEnv[key],
-  );
-
-  if (options.requireBroker && replaced !== undefined) {
-    throw new Error(
-      `the broker is not ready for this exec: the exec's env sets ${replaced}, which the broker sets`,
-    );
-  }
-}
 
 function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
   requireBrokerEnv(exec.options);
@@ -206,6 +242,29 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
   };
 }
 
+// An exec that requires the broker gets these, and impd refuses one whose env replaces any.
+function requireBrokerEnv(options: ImpExecOptions): void {
+  const env = options.env;
+
+  const replaced = Object.keys(brokerEnv).find(
+    (key) => env[key] !== undefined && env[key] !== brokerEnv[key],
+  );
+
+  if (options.requireBroker && replaced !== undefined) {
+    throw new Error(
+      `the broker is not ready for this exec: the exec's env sets ${replaced}, which the broker sets`,
+    );
+  }
+}
+
+function sendGroupSignal(pid: number, signal: NodeJS.Signals): void {
+  try {
+    process.kill(-pid, signal);
+  } catch {
+    // the group is gone already
+  }
+}
+
 // Sends the group SIGTERM, then SIGKILL after the grace. The kill must not outlive the fake, or it
 // could signal a later test's process group that reuses the PID.
 function stopProcessGroup(pid: number, graceMs: number, stack: AsyncDisposableStack): void {
@@ -243,65 +302,6 @@ function buildFakeForwardCall(state: FakeState, sleeps: FakeSleeps): ForwardPort
       sleeps.registerForward(name, forward);
 
       return forward;
-    },
-  };
-}
-
-async function findFreePort(): Promise<number> {
-  const server = createServer();
-  const listening = Promise.withResolvers<void>();
-
-  server.listen(0, '127.0.0.1', listening.resolve);
-
-  await listening.promise;
-
-  const address = server.address();
-
-  server.close();
-
-  return typeof address === 'object' && address !== null ? address.port : 0;
-}
-
-function sendGroupSignal(pid: number, signal: NodeJS.Signals): void {
-  try {
-    process.kill(-pid, signal);
-  } catch {
-    // the group is gone already
-  }
-}
-
-type FakeImageCalls = Pick<ImpPort, 'listImages' | 'addImage'>;
-
-type UpdateCallLog = (call: string) => Promise<void>;
-
-function buildFakeImageCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeImageCalls {
-  return {
-    listImages: () =>
-      Promise.resolve(
-        [...state.images].map(([name, held]) => ({ name, digest: held.digest, ref: held.ref })),
-      ),
-    addImage: async (image) => {
-      await updateCallLog(`image ${image.name} ${image.ref}`);
-
-      if (state.refuseImageAdd) {
-        throw new Error('token nixie-test is limited to some imps; this call is host-wide');
-      }
-
-      state.images.set(image.name, { digest: image.digest, ref: image.ref });
-    },
-  };
-}
-
-type FakeSecretCalls = Pick<ImpPort, 'readSecretHosts' | 'addGrant' | 'addSecret'>;
-
-function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeSecretCalls {
-  return {
-    readSecretHosts: (secret) => Promise.resolve(state.secrets.get(secret) ?? null),
-    addGrant: (name, secret) => updateCallLog(`grant ${name} ${secret}`),
-    addSecret: async (secret) => {
-      await updateCallLog(`secret ${secret.name} ${secret.host} ${secret.header} ${secret.scheme}`);
-
-      state.secrets.set(secret.name, [secret.host]);
     },
   };
 }

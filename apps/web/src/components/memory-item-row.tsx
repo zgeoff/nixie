@@ -14,6 +14,9 @@ export interface MemoryItemRowProps {
   readonly children?: ReactNode;
 }
 
+const row = css({ borderBottomWidth: '1px', paddingBlock: '2' });
+const meta = css({ color: 'textMuted', fontSize: 'sm' });
+
 // One item as a list shows it: its text, who wrote its current version and from what, when it was
 // created, and its history, which loads when opened. A self-note carries its mark in every list. A
 // forgotten item shows as a dated gap, with the controls that can still finish its forget.
@@ -51,9 +54,6 @@ export function MemoryItemRow(props: MemoryItemRowProps): ReactNode {
     </li>
   );
 }
-
-const row = css({ borderBottomWidth: '1px', paddingBlock: '2' });
-const meta = css({ color: 'textMuted', fontSize: 'sm' });
 
 interface ItemHistoryProps {
   readonly itemID: string;

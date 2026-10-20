@@ -1,21 +1,5 @@
 import type { ProposalOutcome } from './types';
 
-// What an answer to a proposal did, in words, or null for an answer that applied as asked. A close
-// match names no item here, because the proposal shows the item it matched.
-export function formatProposalOutcome(outcome: ProposalOutcome): string | null {
-  if (outcome.status === 'stale') {
-    return staleNotices[outcome.cause];
-  }
-
-  if (outcome.status === 'refused') {
-    return refusalNotices[outcome.code];
-  }
-
-  return outcome.status === 'close_match'
-    ? 'Nothing changed yet: an active item already says this.'
-    : null;
-}
-
 const staleNotices: Readonly<
   Record<Extract<ProposalOutcome, { status: 'stale' }>['cause'], string>
 > = {
@@ -35,3 +19,19 @@ const refusalNotices: Readonly<
   REVISION_TARGET: 'Nothing changed: that item cannot take this text as a revision.',
   WRONG_STATE: 'Nothing changed: the item is in a state this answer cannot change.',
 };
+
+// What an answer to a proposal did, in words, or null for an answer that applied as asked. A close
+// match names no item here, because the proposal shows the item it matched.
+export function formatProposalOutcome(outcome: ProposalOutcome): string | null {
+  if (outcome.status === 'stale') {
+    return staleNotices[outcome.cause];
+  }
+
+  if (outcome.status === 'refused') {
+    return refusalNotices[outcome.code];
+  }
+
+  return outcome.status === 'close_match'
+    ? 'Nothing changed yet: an active item already says this.'
+    : null;
+}

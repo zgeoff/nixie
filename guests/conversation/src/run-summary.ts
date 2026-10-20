@@ -29,6 +29,13 @@ export async function runSummary(frame: SummarizeFrame, deps: SummaryDependencie
   }
 }
 
+interface SummaryState {
+  readonly texts: string[];
+
+  // the summary's last chain entry, which a request to cut it resumes at
+  boundary: SessionPoint | null;
+}
+
 async function readSummaryFrame(session: AsyncIterable<SDKMessage>): Promise<GuestFrame> {
   const state: SummaryState = { texts: [], boundary: null };
 
@@ -41,13 +48,6 @@ async function readSummaryFrame(session: AsyncIterable<SDKMessage>): Promise<Gue
   }
 
   return { type: 'failed', reason: 'error', detail: 'the summary call gave no result' };
-}
-
-interface SummaryState {
-  readonly texts: string[];
-
-  // the summary's last chain entry, which a request to cut it resumes at
-  boundary: SessionPoint | null;
 }
 
 // the summary's text and chain entry from each assistant message, and its frame from the result

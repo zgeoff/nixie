@@ -24,7 +24,7 @@ test('it ranks items by their similarity to the query once the rebuild ends', as
     { itemID: 'item-boiler', text: 'The boiler service is on the 14th' },
   ]);
 
-  const matches = await ctx.index.findMatches('does my sibling live in leeds', {
+  const matches = await ctx.index.readMatches('does my sibling live in leeds', {
     limit: 5,
     minSimilarity: 0.5,
   });
@@ -44,7 +44,7 @@ test('it answers null, so search falls back to keywords, while the first rebuild
 
   await gated.started;
 
-  const matches = await ctx.index.findMatches('my sibling', { limit: 5, minSimilarity: 0.5 });
+  const matches = await ctx.index.readMatches('my sibling', { limit: 5, minSimilarity: 0.5 });
 
   gated.release();
 
@@ -56,7 +56,7 @@ test('it answers null, so search falls back to keywords, while the first rebuild
 test('it answers null before any rebuild starts', () => {
   const ctx = setupTest(buildStubEncoder([['sister', 'sibling']]));
 
-  expect(ctx.index.findMatches('my sibling', { limit: 5, minSimilarity: 0.5 })).resolves.toBeNull();
+  expect(ctx.index.readMatches('my sibling', { limit: 5, minSimilarity: 0.5 })).resolves.toBeNull();
 });
 
 test('it leaves out a match below the floor and an excluded item', async () => {
@@ -68,7 +68,7 @@ test('it leaves out a match below the floor and an excluded item', async () => {
     { itemID: 'item-sibling', text: 'My sibling is called Ana' },
   ]);
 
-  const matches = await ctx.index.findMatches('my sister', {
+  const matches = await ctx.index.readMatches('my sister', {
     limit: 5,
     minSimilarity: 0.9,
     excludedIDs: ['item-sibling'],
@@ -87,7 +87,7 @@ test('it keeps the limit of best matches', async () => {
     { itemID: 'item-leeds', text: 'My sister lives in Leeds' },
   ]);
 
-  const matches = await ctx.index.findMatches('my sibling', { limit: 1, minSimilarity: 0 });
+  const matches = await ctx.index.readMatches('my sibling', { limit: 1, minSimilarity: 0 });
 
   expect(matches).toStrictEqual([
     { itemID: 'item-sister', similarity: expect.toBeWithin(0.99, 1.02) },
@@ -99,7 +99,7 @@ test('it finds no match for a blank query', async () => {
 
   await ctx.index.rebuild([{ itemID: 'item-sister', text: 'Ana is my sister' }]);
 
-  expect(ctx.index.findMatches('  ', { limit: 5, minSimilarity: -1 })).resolves.toStrictEqual([]);
+  expect(ctx.index.readMatches('  ', { limit: 5, minSimilarity: -1 })).resolves.toStrictEqual([]);
 });
 
 test('it encodes an updated item from its new text', async () => {
@@ -116,7 +116,7 @@ test('it encodes an updated item from its new text', async () => {
 
   await ctx.index.waitForIdle();
 
-  const matches = await ctx.index.findMatches('when is the heating looked at', {
+  const matches = await ctx.index.readMatches('when is the heating looked at', {
     limit: 5,
     minSimilarity: 0.5,
   });
@@ -132,7 +132,7 @@ test('it drops a removed item', async () => {
   ctx.index.remove('item-sister');
 
   expect(
-    ctx.index.findMatches('my sibling', { limit: 5, minSimilarity: 0.5 }),
+    ctx.index.readMatches('my sibling', { limit: 5, minSimilarity: 0.5 }),
   ).resolves.toStrictEqual([]);
 });
 
@@ -152,7 +152,7 @@ test('it discards an encoding that ends after its item was removed', async () =>
 
   await rebuilt;
 
-  const matches = await ctx.index.findMatches('my sister', { limit: 5, minSimilarity: 0.5 });
+  const matches = await ctx.index.readMatches('my sister', { limit: 5, minSimilarity: 0.5 });
 
   expect(matches).toStrictEqual([
     { itemID: 'item-sibling', similarity: expect.toBeWithin(0.99, 1.02) },
@@ -179,7 +179,7 @@ test('it keeps an update that lands while the rebuild encodes the older text', a
 
   await ctx.index.waitForIdle();
 
-  const matches = await ctx.index.findMatches('my sister', { limit: 5, minSimilarity: 0.5 });
+  const matches = await ctx.index.readMatches('my sister', { limit: 5, minSimilarity: 0.5 });
 
   expect(matches).toStrictEqual([]);
 });
@@ -195,7 +195,7 @@ test('it counts only the first 256 numbers of each vector', async () => {
 
   await ctx.index.rebuild([{ itemID: 'item-1', text: 'Ana is my sister' }]);
 
-  expect(ctx.index.findMatches('my sister', { limit: 5, minSimilarity: 0 })).resolves.toStrictEqual(
+  expect(ctx.index.readMatches('my sister', { limit: 5, minSimilarity: 0 })).resolves.toStrictEqual(
     [{ itemID: 'item-1', similarity: expect.toBeWithin(0.95, 1.01) }],
   );
 });
@@ -206,7 +206,7 @@ test('it reports a failed rebuild and stays on keywords', async () => {
   const ctx = setupTest({ encode: () => Promise.reject(failure) });
 
   const isReady = await ctx.index.rebuild([{ itemID: 'item-1', text: 'Ana is my sister' }]);
-  const matches = await ctx.index.findMatches('my sister', { limit: 5, minSimilarity: 0 });
+  const matches = await ctx.index.readMatches('my sister', { limit: 5, minSimilarity: 0 });
 
   expect(isReady).toBeFalse();
   expect(matches).toBeNull();
@@ -234,7 +234,7 @@ test('it reports a failed update and leaves the item out', async () => {
 
   await ctx.index.waitForIdle();
 
-  const matches = await ctx.index.findMatches('my sister', { limit: 5, minSimilarity: 0.5 });
+  const matches = await ctx.index.readMatches('my sister', { limit: 5, minSimilarity: 0.5 });
 
   expect(matches).toStrictEqual([{ itemID: 'item-2', similarity: expect.toBeWithin(0.99, 1.02) }]);
   expect(ctx.onError).toHaveBeenCalledExactlyOnceWith(failure);
@@ -246,5 +246,5 @@ test('it answers null after it stops', async () => {
   await ctx.index.rebuild([{ itemID: 'item-1', text: 'Ana is my sister' }]);
   await ctx.index.stop();
 
-  expect(ctx.index.findMatches('my sister', { limit: 5, minSimilarity: 0 })).resolves.toBeNull();
+  expect(ctx.index.readMatches('my sister', { limit: 5, minSimilarity: 0 })).resolves.toBeNull();
 });

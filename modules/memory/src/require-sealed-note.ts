@@ -1,7 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { encodeRatingNote } from './encode-rating-note';
-import { findItemKey } from './find-item-key';
 import { MemoryRatingError } from './memory-rating-error';
+import { readItemKey } from './read-item-key';
 
 interface RatingNote {
   readonly ratingID: string;
@@ -18,7 +18,7 @@ export async function requireSealedNote(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   note: RatingNote,
 ): Promise<string> {
-  const key = await findItemKey(log, note.itemID);
+  const key = await readItemKey(log, note.itemID);
 
   if (key === null || key === undefined) {
     throw new MemoryRatingError(`${note.shortID} was forgotten, so a note on it can't be kept.`);

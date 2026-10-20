@@ -1,6 +1,5 @@
 export type { CheckReply, CheckRequest } from './check-frame';
 export { checkReplySchema, checkRequestSchema } from './check-frame';
-export { createBlockID } from './create-block-id';
 export { decodeFetchReply } from './decode-fetch-reply';
 export { decodeFetchRequest } from './decode-fetch-request';
 export { decodeTurnFrame } from './decode-turn-frame';
@@ -18,6 +17,7 @@ export { hostFrameLimitBytes } from './host-frame-limit-bytes';
 export { hostFrameSchema } from './host-frame';
 export type { FrameDecoder } from './make-frame-decoder';
 export { makeFrameDecoder } from './make-frame-decoder';
+export { mintBlockID } from './mint-block-id';
 export type { SystemMessage, SystemMessageType } from './render-system-message';
 export { renderSystemMessage } from './render-system-message';
 export { turnFrameLimitBytes } from './turn-frame-limit-bytes';

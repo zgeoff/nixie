@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { collectEvidenceSequences } from './collect-evidence-sequences';
+import { readEvidenceSequences } from './read-evidence-sequences';
 import { readItemDetail } from './read-item-detail';
 import { requireItem } from './require-item';
 import type { MemoryTables, VersionRef } from './types';
@@ -19,7 +19,7 @@ export async function readForgetPreview(
 
   const [detail, evidenceSequences, proposals] = await Promise.all([
     readItemDetail(log, target.itemID),
-    collectEvidenceSequences(db, target.itemID),
+    readEvidenceSequences(db, target.itemID),
     db
       .selectFrom('memory_proposals')
       .select((eb) => eb.fn.countAll<number>().as('count'))

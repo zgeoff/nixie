@@ -9,7 +9,7 @@ export interface ClaimRequest {
   readonly durationMs: number;
 
   // the next claimable piece of work, read inside the claim's transaction, or null for none
-  readonly findCandidate: (tx: Transaction<unknown>, now: number) => Promise<string | null>;
+  readonly readCandidate: (tx: Transaction<unknown>, now: number) => Promise<string | null>;
 
   // the claim's own records, such as a task's step start, committed with the lease
   readonly onClaim?: (tx: Transaction<unknown>, lease: Lease) => Promise<void>;
@@ -25,7 +25,7 @@ export async function claimLease(
   const lease = await withWriteTransaction(context.log.writer, async (tx) => {
     const now = context.clock.now();
 
-    const workID = await request.findCandidate(tx, now);
+    const workID = await request.readCandidate(tx, now);
 
     if (workID === null) {
       return null;

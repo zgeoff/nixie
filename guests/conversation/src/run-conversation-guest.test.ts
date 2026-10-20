@@ -12,7 +12,7 @@ import {
 } from '@heynixie/wire';
 import { buildMockMessageFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import { runConversationGuest } from './run-conversation-guest';
-import { buildStubToolServer } from './test-utils/build-stub-tool-server';
+import { createStubToolServer } from './test-utils/create-stub-tool-server';
 import { startStubHTTPToolServer } from './test-utils/start-stub-http-tool-server';
 import { startStubModel } from './test-utils/start-stub-model';
 
@@ -54,7 +54,7 @@ test('it runs the turn the first frame starts and writes its frames framed', asy
     input: [encodeFrame(encodeTurnFrame(turn))],
     write: ctx.write,
     env: ctx.env,
-    buildToolServer: () => buildStubToolServer().config,
+    createToolServer: () => createStubToolServer().config,
   });
 
   expect(ctx.frames.map((frame) => frame.type)).toStrictEqual(['read', 'assistant', 'ended']);
@@ -76,7 +76,7 @@ test('it answers a turn whose tool server connection failed at start, after one 
     input: [encodeFrame(encodeTurnFrame(turn))],
     write: ctx.write,
     env: ctx.env,
-    buildToolServer: () => tools.config,
+    createToolServer: () => tools.config,
 
     // the guest pauses only once the CLI reports the server failed, and the route then takes the
     // reconnect
@@ -97,14 +97,16 @@ test('it reaches the run tool endpoint over HTTP with the run bearer token', asy
 
   const seen: (string | null)[] = [];
 
+  const refuseRequest = (request: Request) => {
+    seen.push(request.headers.get('authorization'));
+
+    return new Response('unauthorized', { status: 401 });
+  };
+
   const endpoint = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: (request) => {
-      seen.push(request.headers.get('authorization'));
-
-      return new Response('unauthorized', { status: 401 });
-    },
+    fetch: refuseRequest,
   });
 
   onTestFinished(() => endpoint.stop(true));
@@ -156,7 +158,7 @@ test('it answers a turn frame that arrives while a turn runs with a failed frame
     input: [encodeFrame(encodeTurnFrame(turn)), encodeFrame(encodeTurnFrame(turn))],
     write: ctx.write,
     env: ctx.env,
-    buildToolServer: () => buildStubToolServer().config,
+    createToolServer: () => createStubToolServer().config,
   });
 
   expect(ctx.frames).toStrictEqual([
@@ -175,7 +177,7 @@ test('it removes every session transcript and the working directory on a purge f
     input: [encodeFrame(encodeTurnFrame(turn))],
     write: ctx.write,
     env: ctx.env,
-    buildToolServer: () => buildStubToolServer().config,
+    createToolServer: () => createStubToolServer().config,
   });
 
   const before = await readdir(ctx.home);

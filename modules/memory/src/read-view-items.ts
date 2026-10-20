@@ -1,5 +1,5 @@
 import type { Log } from '@heynixie/log';
-import { findRecordKeys } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import type { Selectable } from 'kysely';
 import { getItemShortID } from './get-item-short-id';
 import { getRowSubject } from './get-row-subject';
@@ -51,7 +51,7 @@ export async function readViewItems(
     .where('item.item_id', 'in', itemIDs)
     .execute();
 
-  const keys = await findRecordKeys(
+  const keys = await readRecordKeys(
     log,
     rows.map((row) => row.item_id),
   );
@@ -61,7 +61,7 @@ export async function readViewItems(
   // the rows in the order of the IDs, without an ID that matched no item
   const found = itemIDs.flatMap((itemID) => byID.get(itemID) ?? []);
 
-  return Promise.all(found.map((row) => buildViewItem(row, keys.get(row.item_id))));
+  return Promise.all(found.map((row) => openViewItem(row, keys.get(row.item_id))));
 }
 
 interface ViewItemRow {
@@ -80,7 +80,7 @@ interface ViewItemRow {
   readonly forgotten_at: number | null;
 }
 
-async function buildViewItem(
+async function openViewItem(
   row: ViewItemRow,
   key: CryptoKey | null | undefined,
 ): Promise<ViewItem> {

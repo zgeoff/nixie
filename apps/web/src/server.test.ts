@@ -2,13 +2,13 @@ import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { store } from './mocks/store';
-import { buildWebOnce } from './test-utils/build-web-once';
+import { runWebBuildOnce } from './test-utils/run-web-build-once';
 import { startBuiltWeb } from './test-utils/start-built-web';
 import { startStubAPI } from './test-utils/start-stub-api';
 
 async function setupTest() {
   // the first test in the process waits here for the Vite build, so each test allows two minutes
-  const serverPath = await buildWebOnce();
+  const serverPath = await runWebBuildOnce();
 
   const api = startStubAPI();
 

@@ -1,4 +1,4 @@
-import { createBlockID } from './create-block-id';
+import { mintBlockID } from './mint-block-id';
 
 // The kinds of block nixie writes into a user message.
 export type SystemMessageType =
@@ -27,7 +27,7 @@ export interface SystemMessage {
 // on both tags keeps a closing tag in the body from ending it early; the system prompt's position
 // rule, not the ID, tells the model which elements come from nixie.
 export function renderSystemMessage(message: SystemMessage): string {
-  const blockID = createBlockID();
+  const blockID = mintBlockID();
 
   return [
     `<system-message type="${message.type}" id="${blockID}" at="${message.at}">`,

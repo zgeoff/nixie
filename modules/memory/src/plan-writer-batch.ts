@@ -58,14 +58,6 @@ export function planWriterBatch(input: BatchPlanInput): BatchPlan {
   };
 }
 
-// the batch waits for its trigger and for the pace limit after the batch before it
-function planEarliestBatch(input: BatchPlanInput, owners: readonly PlannedMessage[]): number {
-  const dueAt = planDueTime(input, owners);
-  const paceAt = input.lastBatchAt === null ? dueAt : input.lastBatchAt + input.config.paceMs;
-
-  return Math.max(dueAt, paceAt);
-}
-
 // once nothing from before memory started waits, the catch-up ends with no model call
 function planCatchUpEnd(
   input: BatchPlanInput,
@@ -84,6 +76,14 @@ function planCatchUpEnd(
   };
 }
 
+// the batch waits for its trigger and for the pace limit after the batch before it
+function planEarliestBatch(input: BatchPlanInput, owners: readonly PlannedMessage[]): number {
+  const dueAt = planDueTime(input, owners);
+  const paceAt = input.lastBatchAt === null ? dueAt : input.lastBatchAt + input.config.paceMs;
+
+  return Math.max(dueAt, paceAt);
+}
+
 // a full batch is due at once; a short one when the conversation went idle or the oldest message
 // reached the maximum age, whichever comes first
 function planDueTime(input: BatchPlanInput, owners: readonly PlannedMessage[]): number {
@@ -99,13 +99,6 @@ function planDueTime(input: BatchPlanInput, owners: readonly PlannedMessage[]): 
   }
 
   return Math.min(latest + input.config.idleMs, oldest + input.config.maxAgeMs);
-}
-
-// One of your messages with the replies after it, or the replies before your first message.
-interface TurnGroup {
-  readonly hasOwner: boolean;
-  readonly end: number;
-  readonly tokens: number;
 }
 
 // The batch's last record: whole turns, up to the batch size, and a turn that would take the batch
@@ -130,11 +123,11 @@ function planBatchEnd(input: BatchPlanInput): number {
   return taken.end;
 }
 
-// the records the batch may take: a catch-up batch takes none past the start sequence
-function collectBatchMessages(input: BatchPlanInput): readonly PlannedMessage[] {
-  const isCatchUp = input.cursor < input.startSequence;
-
-  return input.messages.filter((message) => !isCatchUp || message.sequence <= input.startSequence);
+// One of your messages with the replies after it, or the replies before your first message.
+interface TurnGroup {
+  readonly hasOwner: boolean;
+  readonly end: number;
+  readonly tokens: number;
 }
 
 function splitTurnGroups(messages: readonly PlannedMessage[]): readonly TurnGroup[] {
@@ -155,4 +148,11 @@ function splitTurnGroups(messages: readonly PlannedMessage[]): readonly TurnGrou
   }
 
   return groups;
+}
+
+// the records the batch may take: a catch-up batch takes none past the start sequence
+function collectBatchMessages(input: BatchPlanInput): readonly PlannedMessage[] {
+  const isCatchUp = input.cursor < input.startSequence;
+
+  return input.messages.filter((message) => !isCatchUp || message.sequence <= input.startSequence);
 }

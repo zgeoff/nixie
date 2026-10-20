@@ -1,9 +1,9 @@
 import { removeRecordKey } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { CloseMatchError } from './close-match-error';
-import { findCloseMatch } from './find-close-match';
 import type { ApprovalResult, ProposalAnswer } from './gate-types';
 import { getRowSubject } from './get-row-subject';
+import { readCloseMatch } from './read-close-match';
 import type { OpenedProposal } from './read-open-proposal';
 import { SelfNoteError } from './self-note-error';
 import { toAppliedResult } from './to-applied-result';
@@ -44,43 +44,11 @@ export async function writeApprovedNewItem(
   return writeUnmatchedNewItem(parts, opened, answer);
 }
 
-// The search runs before the delivery lock, so the write searches again under it: a concurrent
-// approval of a reworded proposal may have created the match since. That write applies nothing,
-// and the approval starts over to report the match.
-async function writeUnmatchedNewItem(
-  parts: StoreParts,
-  opened: OpenedProposal,
-  answer: ProposalAnswer,
-): Promise<ApprovalResult> {
-  const query = { text: answer.editedText ?? opened.text.text, subject: getRowSubject(opened.row) };
-
-  const match = await findCloseMatch(parts, query);
-
-  if (match !== null) {
-    return { status: 'close_match', item: match };
-  }
-
-  try {
-    const ref = await writeApprovedRemember(parts, {
-      opened,
-      answer,
-      target: null,
-      requireInTransaction: async (db) => {
-        if ((await findCloseMatch(parts, { ...query, db })) !== null) {
-          throw new CloseMatchError(opened.row.proposal_id);
-        }
-      },
-    });
-
-    return toAppliedResult(ref);
-  } catch (error) {
-    if (!(error instanceof CloseMatchError)) {
-      throw error;
-    }
-
-    return writeUnmatchedNewItem(parts, opened, answer);
-  }
-}
+const subjectNames: Readonly<Record<MemorySubject, string>> = {
+  owner: 'a fact about the owner',
+  self: 'a self-note',
+  shared: 'a shared item',
+};
 
 // a proposal revises only an item of its own subject, because an item keeps its subject
 async function requireSameSubject(
@@ -101,8 +69,40 @@ async function requireSameSubject(
   }
 }
 
-const subjectNames: Readonly<Record<MemorySubject, string>> = {
-  owner: 'a fact about the owner',
-  self: 'a self-note',
-  shared: 'a shared item',
-};
+// The search runs before the delivery lock, so the write searches again under it: a concurrent
+// approval of a reworded proposal may have created the match since. That write applies nothing,
+// and the approval starts over to report the match.
+async function writeUnmatchedNewItem(
+  parts: StoreParts,
+  opened: OpenedProposal,
+  answer: ProposalAnswer,
+): Promise<ApprovalResult> {
+  const query = { text: answer.editedText ?? opened.text.text, subject: getRowSubject(opened.row) };
+
+  const match = await readCloseMatch(parts, query);
+
+  if (match !== null) {
+    return { status: 'close_match', item: match };
+  }
+
+  try {
+    const ref = await writeApprovedRemember(parts, {
+      opened,
+      answer,
+      target: null,
+      requireInTransaction: async (db) => {
+        if ((await readCloseMatch(parts, { ...query, db })) !== null) {
+          throw new CloseMatchError(opened.row.proposal_id);
+        }
+      },
+    });
+
+    return toAppliedResult(ref);
+  } catch (error) {
+    if (!(error instanceof CloseMatchError)) {
+      throw error;
+    }
+
+    return writeUnmatchedNewItem(parts, opened, answer);
+  }
+}

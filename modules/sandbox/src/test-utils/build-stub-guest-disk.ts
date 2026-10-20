@@ -98,17 +98,17 @@ function getProjectDir(home: GuestHome): string {
   return join(home.copyPath, configProjectsDir, workDir.replaceAll(/[^a-zA-Z0-9]/gu, '-'));
 }
 
-// a path under the projects folder is <project>/<id>.jsonl or <project>/<id>/<side file>
-function isKeptSession(relative: string, keep: string | null): boolean {
-  const name = relative.split('/')[1] ?? '';
-
-  return keep !== null && (name === keep || name === `${keep}.jsonl`);
-}
-
 function parseTranscript(bytes: Uint8Array): readonly StubSessionEntry[] {
   return new TextDecoder()
     .decode(bytes)
     .split('\n')
     .filter((line) => line !== '')
     .map((line) => sessionEntrySchema.parse(JSON.parse(line)));
+}
+
+// a path under the projects folder is <project>/<id>.jsonl or <project>/<id>/<side file>
+function isKeptSession(relative: string, keep: string | null): boolean {
+  const name = relative.split('/')[1] ?? '';
+
+  return keep !== null && (name === keep || name === `${keep}.jsonl`);
 }

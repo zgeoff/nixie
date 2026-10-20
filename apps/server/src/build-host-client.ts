@@ -5,10 +5,13 @@ import { RPCLink } from '@orpc/client/fetch';
 // A client of the host procedures the running server serves on its control socket. Bun.fetch,
 // because only Bun's own fetch takes a Unix socket.
 export function buildHostClient(socketPath: string): HostContractClient {
+  const sendOverSocket = (request: Request, init: RequestInit) =>
+    Bun.fetch(request, { ...init, unix: socketPath });
+
   return createORPCClient<HostContractClient>(
     new RPCLink({
       url: 'http://localhost/rpc',
-      fetch: (request, init) => Bun.fetch(request, { ...init, unix: socketPath }),
+      fetch: sendOverSocket,
     }),
   );
 }

@@ -47,7 +47,7 @@ async function runConsolidation(
 ): Promise<ConsolidationStep> {
   const now = parts.context.clock.now();
 
-  const wait = await findWaitTime(parts, now);
+  const wait = await readWaitTime(parts, now);
 
   if (wait !== null) {
     return { next: 'wait', records: [], timers: [{ dueAt: wait }] };
@@ -66,7 +66,7 @@ async function runConsolidation(
 }
 
 // when the next run is due, or null when it is due now; a pending change holds it until it lapses
-async function findWaitTime(parts: ConsolidatorParts, now: number): Promise<number | null> {
+async function readWaitTime(parts: ConsolidatorParts, now: number): Promise<number | null> {
   await parts.store.consolidations.lapse();
 
   const schedule = await parts.store.consolidations.readSchedule();

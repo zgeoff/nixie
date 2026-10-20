@@ -23,8 +23,6 @@ export type MockProposalAnswer =
     })
   | (MockAnswerBase & { readonly answer: 'reject'; readonly reason?: string | undefined });
 
-type StoredProposal = ReadonlyDeep<NonNullable<ReturnType<typeof store.memoryProposals.findFirst>>>;
-
 // Answers a memory proposal in the mock store as nixie's API does: once per client action ID, bound
 // to the action hash the view showed, holding a new item for an active item with the same text.
 // Each answer writes its own approval or rejection record, and a stale one writes nothing.
@@ -98,6 +96,8 @@ async function writeOpenAnswer(input: MockProposalAnswer): Promise<MockProposalO
 
 type StaleCause = Extract<MockProposalOutcome, { status: 'stale' }>['cause'];
 
+type StoredProposal = ReadonlyDeep<NonNullable<ReturnType<typeof store.memoryProposals.findFirst>>>;
+
 // why an answer to the proposal is stale, or null while it still takes one
 function findStaleCause(
   proposal: StoredProposal | undefined,
@@ -126,6 +126,23 @@ function findStaleCause(
     : null;
 }
 
+type Answer = ReadonlyDeep<NonNullable<ReturnType<typeof store.records.all>[number]['answer']>>;
+
+// closes the proposal with the answer's own record in its thread
+async function writeClosedProposal(proposal: StoredProposal, answer: Answer): Promise<void> {
+  await store.memoryProposals.update((query) => query.where({ proposalID: proposal.proposalID }), {
+    data(draft) {
+      draft.status = answer.answer === 'rejected' ? 'rejected' : 'consumed';
+    },
+  });
+
+  await store.records.create({
+    answer,
+    kind: answer.answer === 'rejected' ? 'memory.proposal_rejected' : 'memory.approval_recorded',
+    thread: proposal.thread,
+  });
+}
+
 type ApprovalInput = Extract<MockProposalAnswer, { answer: 'approve' }>;
 
 async function writeApproval(
@@ -139,7 +156,7 @@ async function writeApproval(
   }
 
   const text = input.editedText ?? proposal.text;
-  const match = findCloseMatch(proposal, input, text);
+  const match = readCloseMatch(proposal, input, text);
 
   if (match !== null) {
     return { item: match, proposalID: proposal.proposalID, status: 'close_match' };
@@ -150,7 +167,7 @@ async function writeApproval(
   const state = pickVersionState(proposal, input, item);
   const isPinned = proposal.isPinned || item?.isPinned === true;
 
-  if (state === 'active' && isPinned && !hasCoreRoom(itemID, text)) {
+  if (state === 'active' && isPinned && !probeCoreRoom(itemID, text)) {
     return { code: 'PINNED_CORE_FULL', proposalID: proposal.proposalID, status: 'refused' };
   }
 
@@ -214,7 +231,7 @@ function findRevisionTargetRefusal(
 
 // the active item of the proposal's subject a new item's text matches, case aside, unless the answer
 // already chose
-function findCloseMatch(proposal: StoredProposal, input: ApprovalInput, text: string) {
+function readCloseMatch(proposal: StoredProposal, input: ApprovalInput, text: string) {
   if (
     proposal.targetVersion !== null ||
     input.revisionOf !== undefined ||
@@ -259,7 +276,7 @@ function pickVersionState(
 
 // whether the pinned core stays inside its budget once the item's text is the given text, where
 // the item's earlier version leaves the count, as nixie's store checks it
-function hasCoreRoom(itemID: string, text: string): boolean {
+function probeCoreRoom(itemID: string, text: string): boolean {
   const core = readMockPinnedCore();
   const earlier = core.items.find((item) => item.itemID === itemID)?.text ?? '';
 
@@ -320,22 +337,5 @@ async function applyApproval(
 
       draft.state = version.state;
     },
-  });
-}
-
-type Answer = ReadonlyDeep<NonNullable<ReturnType<typeof store.records.all>[number]['answer']>>;
-
-// closes the proposal with the answer's own record in its thread
-async function writeClosedProposal(proposal: StoredProposal, answer: Answer): Promise<void> {
-  await store.memoryProposals.update((query) => query.where({ proposalID: proposal.proposalID }), {
-    data(draft) {
-      draft.status = answer.answer === 'rejected' ? 'rejected' : 'consumed';
-    },
-  });
-
-  await store.records.create({
-    answer,
-    kind: answer.answer === 'rejected' ? 'memory.proposal_rejected' : 'memory.approval_recorded',
-    thread: proposal.thread,
   });
 }

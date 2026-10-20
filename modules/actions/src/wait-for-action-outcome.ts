@@ -9,6 +9,8 @@ export interface WaitForActionOutcomeOptions {
   readonly timeoutMs?: number;
 }
 
+const DEFAULT_TIMEOUT_MS = 10_000;
+
 // Waits inside the turn, 10 s by default, for an action to settle, then returns what the model
 // sees: the outcome, or "queued as <id>" while the action is still pending. It reads the action
 // again after each commit, and the outcome reaches the task's inbox for its next turn either way.
@@ -31,8 +33,6 @@ export async function waitForActionOutcome(
     wake.stop();
   }
 }
-
-const DEFAULT_TIMEOUT_MS = 10_000;
 
 type SettledRow = Pick<ActionRow, 'action_id' | 'outcome_sequence' | 'reason' | 'status'>;
 
@@ -66,17 +66,6 @@ async function waitForSettledRow(context: TasksContext, wait: SettledWait): Prom
   }
 }
 
-async function readModelView(context: TasksContext, row: SettledRow): Promise<ModelView> {
-  const sequence = row.outcome_sequence;
-
-  const [entry] =
-    sequence === null
-      ? []
-      : await readRecords(context.log, { afterSequence: sequence - 1, limit: 1 });
-
-  return buildModelView(row, entry?.record ?? null);
-}
-
 interface CommitWait {
   readonly clock: Clock;
   readonly timeoutMs: number;
@@ -91,4 +80,15 @@ async function waitForCommit(wake: RecordWake, wait: CommitWait): Promise<void> 
   } finally {
     timer.abort();
   }
+}
+
+async function readModelView(context: TasksContext, row: SettledRow): Promise<ModelView> {
+  const sequence = row.outcome_sequence;
+
+  const [entry] =
+    sequence === null
+      ? []
+      : await readRecords(context.log, { afterSequence: sequence - 1, limit: 1 });
+
+  return buildModelView(row, entry?.record ?? null);
 }

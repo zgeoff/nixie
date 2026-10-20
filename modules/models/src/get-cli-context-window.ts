@@ -33,16 +33,6 @@ export function getCLIContextWindow(model: string): number {
   return nativeMillionModels.has(resolveCLIModelName(model)) ? millionWindow : defaultWindow;
 }
 
-interface ParsedModelName {
-  readonly family: string;
-  readonly major: number;
-  readonly minor: number;
-  readonly isVersionFirst: boolean;
-
-  // whether the text after the version is anything but a date, a version tag or -fast or -latest
-  readonly hasTrailer: boolean;
-}
-
 // every model in the CLI's catalog, and the legacy models it knows beside them
 const catalogModels = [
   'claude-3-5-haiku',
@@ -112,8 +102,15 @@ function resolveCLIModelName(model: string): string {
   );
 }
 
-// the regions a Bedrock ID may lead with
-const bedrockRegions = new Set(['us', 'eu', 'apac', 'jp', 'au', 'us-gov', 'global']);
+interface ParsedModelName {
+  readonly family: string;
+  readonly major: number;
+  readonly minor: number;
+  readonly isVersionFirst: boolean;
+
+  // whether the text after the version is anything but a date, a version tag or -fast or -latest
+  readonly hasTrailer: boolean;
+}
 
 // Parses an ID the way the CLI does: the text after the last slash, with any region and anthropic
 // prefix and any [1m] or [2m] tag removed, read as a family and a version.
@@ -137,6 +134,9 @@ function parseModelName(name: string): ParsedModelName | null {
 
   return buildParsedName(id.slice(match[0].length), match.groups, familyFirst === null);
 }
+
+// the regions a Bedrock ID may lead with
+const bedrockRegions = new Set(['us', 'eu', 'apac', 'jp', 'au', 'us-gov', 'global']);
 
 function normalizeModelID(name: string): string | null {
   if (name === '' || /\s/u.test(name)) {

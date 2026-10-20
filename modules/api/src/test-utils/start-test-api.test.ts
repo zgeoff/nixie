@@ -45,7 +45,7 @@ test('it serves the memory store the test sets', async () => {
     },
     view: {
       readPage: () => Promise.resolve({ items: [], next: null }),
-      findItems: () => Promise.resolve({ items: [], searchMode: 'keyword' }),
+      readMatchingItems: () => Promise.resolve({ items: [], searchMode: 'keyword' }),
       readPinnedCore: () => Promise.resolve({ items: [], tokens: 0, budget: 750 }),
       readItem: () => Promise.resolve(null),
       readProposals: () => Promise.resolve([]),

@@ -3,13 +3,16 @@ import { writeRecordsInTransaction } from '@heynixie/log';
 import { recordForgetStartedCodec } from '@heynixie/memory';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
-import { findRecordForget } from './find-record-forget';
+import { readRecordForget } from './read-record-forget';
 import type { APIContext, APITables } from './types';
 
 interface ForgetTarget {
   readonly thread: string;
   readonly sequence: number;
 }
+
+// the records a forget can remove: your message, and a reply from the conversation's model
+const forgettableKinds: readonly RecordKind[] = ['owner_message', 'model.reply'];
 
 // Commits record.forget_started for a message or a reply on the thread and answers its time, or
 // the first start's time when a forget of the record already began, or null when the thread holds
@@ -32,7 +35,7 @@ export async function writeForgetStart(
     return null;
   }
 
-  const begun = await findRecordForget(tx, {
+  const begun = await readRecordForget(tx, {
     kind: recordForgetStartedCodec.kind,
     sequence: input.sequence,
   });
@@ -54,6 +57,3 @@ export async function writeForgetStart(
 
   return record.recordedAt.getTime();
 }
-
-// the records a forget can remove: your message, and a reply from the conversation's model
-const forgettableKinds: readonly RecordKind[] = ['owner_message', 'model.reply'];

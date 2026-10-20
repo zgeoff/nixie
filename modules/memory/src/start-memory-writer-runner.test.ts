@@ -37,7 +37,7 @@ test('it ends a catch-up over a changed address with one active item that holds 
   );
 
   await ctx.memory.run({
-    isDone: async () => {
+    probeDone: async () => {
       const items = await ctx.memory.listItems();
 
       return items.length > 0;
@@ -114,7 +114,7 @@ test('it backs off, doubling each wait, after more failed model calls than the t
   await ctx.memory.start();
 
   await ctx.memory.run({
-    isDone: async () => {
+    probeDone: async () => {
       const status = await ctx.memory.readStatus();
 
       return status.failures >= 4;
@@ -141,7 +141,7 @@ test('it resumes the batch once the model answers after a backoff', async () => 
   await ctx.memory.start();
 
   await ctx.memory.run({
-    isDone: async () => {
+    probeDone: async () => {
       const status = await ctx.memory.readStatus();
 
       return status.failures >= 4;

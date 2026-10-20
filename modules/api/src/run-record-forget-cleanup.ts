@@ -1,7 +1,7 @@
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { recordForgottenCodec, removeImageOfferKeys } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
-import { findRecordForget } from './find-record-forget';
+import { readRecordForget } from './read-record-forget';
 import type { APIContext, APITables } from './types';
 
 // Finishes a forget that record.forget_started began: it deletes the record's key and each image
@@ -12,7 +12,7 @@ export async function runRecordForgetCleanup(
   recordSequence: number,
 ): Promise<void> {
   if (
-    (await findRecordForget(context.log.writer.db, buildForgottenQuery(recordSequence))) !== null
+    (await readRecordForget(context.log.writer.db, buildForgottenQuery(recordSequence))) !== null
   ) {
     return;
   }
@@ -66,7 +66,7 @@ interface ForgottenTarget {
 // commits record.forgotten once, so a cleanup that runs twice leaves one
 function writeRecordForgotten(context: APIContext, target: ForgottenTarget): Promise<void> {
   return withWriteTransaction(context.log.writer, async (tx) => {
-    if ((await findRecordForget(tx, buildForgottenQuery(target.recordSequence))) !== null) {
+    if ((await readRecordForget(tx, buildForgottenQuery(target.recordSequence))) !== null) {
       return;
     }
 

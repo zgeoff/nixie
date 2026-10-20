@@ -20,7 +20,7 @@ export const memoryNoticesProjection: Projection = {
 
     const db = tx.$extendTables<MemoryTables>();
 
-    const isListed = await hasProposalEntry(db, entry);
+    const isListed = await probeProposalEntry(db, entry);
 
     if (isListed) {
       return [];
@@ -84,7 +84,7 @@ function buildNoticeEntry(record: EnvelopeRecord): NoticeEntryValues | null {
 }
 
 // a write that merged into a proposal its own notice already lists adds no second entry for it
-async function hasProposalEntry(
+async function probeProposalEntry(
   db: Kysely<MemoryTables>,
   entry: NoticeEntryValues,
 ): Promise<boolean> {

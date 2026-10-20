@@ -11,14 +11,17 @@ export interface StartGiven {
   readonly personaVersion: string | null;
 }
 
-// What changed in what the conversation is given since the start before: the tools added and
-// removed, by name, and whether the persona changed. A type alias, because a record's payload
-// needs the index signature an interface lacks.
-export type StartChanges = Readonly<{
-  addedTools: readonly string[];
-  removedTools: readonly string[];
-  isPersonaUpdated: boolean;
+// mapped types, because Kysely's table map needs the index signature an interface lacks
+type RecordTables = Readonly<{
+  records: { readonly sequence: number; readonly kind: RecordKind; readonly payload: string };
 }>;
+
+const givenPayload = z.object({
+  tools: z.array(z.string()),
+  personaVersion: z.string().nullable(),
+});
+
+const startPayload = z.object({ version: z.string(), given: givenPayload.optional() });
 
 // Records that nixie started, with its version, the version of the start before it, and what the
 // conversation is given, with what changed in that since the start before. The first start, and a
@@ -63,17 +66,14 @@ export function writeStartRecord(
   });
 }
 
-// mapped types, because Kysely's table map needs the index signature an interface lacks
-type RecordTables = Readonly<{
-  records: { readonly sequence: number; readonly kind: RecordKind; readonly payload: string };
+// What changed in what the conversation is given since the start before: the tools added and
+// removed, by name, and whether the persona changed. A type alias, because a record's payload
+// needs the index signature an interface lacks.
+export type StartChanges = Readonly<{
+  addedTools: readonly string[];
+  removedTools: readonly string[];
+  isPersonaUpdated: boolean;
 }>;
-
-const givenPayload = z.object({
-  tools: z.array(z.string()),
-  personaVersion: z.string().nullable(),
-});
-
-const startPayload = z.object({ version: z.string(), given: givenPayload.optional() });
 
 function buildStartChanges(previous: StartGiven, current: StartGiven): StartChanges {
   const before = new Set(previous.tools);

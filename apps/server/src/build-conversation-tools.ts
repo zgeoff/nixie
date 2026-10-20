@@ -50,7 +50,7 @@ export function buildConversationTools(
         recall: (request) => requireStore().recall(request),
         rate: (request) => requireStore().rate(request),
         proposals: { listPending: () => requireStore().proposals.listPending() },
-        findItemIDs: (ids) => requireStore().findItemIDs(ids),
+        readItemIDMap: (ids) => requireStore().readItemIDMap(ids),
         readShortIDs: (itemIDs) => requireStore().readShortIDs(itemIDs),
         consolidations: {
           readDelivered: () => requireStore().consolidations.readDelivered(),

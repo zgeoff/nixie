@@ -7,8 +7,8 @@ import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildConversationSkillTools } from './build-conversation-skill-tools';
-import { buildServerContext } from './build-server-context';
 import { buildStartState } from './build-start-state';
+import { createServerContext } from './create-server-context';
 import { refreshDefinitions } from './refresh-definitions';
 import type { SeedParts } from './run-definitions-seed';
 import { runDefinitionsSeed } from './run-definitions-seed';
@@ -33,7 +33,7 @@ async function setupTest() {
 
   await mkdir(join(root, 'skills', 'tide-tables'), { recursive: true });
 
-  const context = await buildServerContext(log.writer, log.deploymentKey, () => null);
+  const context = await createServerContext(log.writer, log.deploymentKey, () => null);
 
   const parts: SeedParts = {
     context: context.apiContext,

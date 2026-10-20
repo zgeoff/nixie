@@ -85,12 +85,12 @@ async function requireReadableSchema(
     return;
   }
 
-  const restore = await findRestore(copyDir, writes);
+  const restore = await readRestore(copyDir, writes);
 
   throw new SchemaTooNewError(stored, writes, restore);
 }
 
-async function findRestore(copyDir: string, writes: number): Promise<string> {
+async function readRestore(copyDir: string, writes: number): Promise<string> {
   const names = await readdir(copyDir);
 
   const [newest] = names

@@ -9,6 +9,9 @@ export interface MemorySearchResultsProps {
   readonly renderItem: (item: MemoryItem) => ReactNode;
 }
 
+const section = css({ marginBlock: '4' });
+const heading = css({ fontSize: 'lg', fontWeight: 'semibold' });
+
 // The active items that match a search, best first, ranked as a recall ranks them, with the
 // self-notes that match apart from the facts. A failed search says so once.
 export function MemorySearchResults(props: MemorySearchResultsProps): ReactNode {
@@ -45,9 +48,6 @@ export function MemorySearchResults(props: MemorySearchResultsProps): ReactNode 
     </>
   );
 }
-
-const section = css({ marginBlock: '4' });
-const heading = css({ fontSize: 'lg', fontWeight: 'semibold' });
 
 interface SearchMatchesProps {
   readonly items: readonly MemoryItem[] | undefined;

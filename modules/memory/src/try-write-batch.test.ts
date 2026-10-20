@@ -21,7 +21,7 @@ async function setupTest() {
     kind: 'task',
     holder: 'runner-1',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('memory-writer'),
+    readCandidate: () => Promise.resolve('memory-writer'),
   });
 
   invariant(lease);

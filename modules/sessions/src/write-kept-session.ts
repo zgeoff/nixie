@@ -11,6 +11,14 @@ export interface KeptSessionSpec {
   readonly sessionID: string;
 }
 
+const stagedSuffix = '.copy';
+
+// the CLI's projects folder under the guest's home, as the guest sets CLAUDE_CONFIG_DIR
+const configProjectsDir = '.claude/projects';
+
+// the guest's working directory under its home, which getWorkDir in the conversation guest sets
+const workDirName = 'conversation';
+
 // Writes the session's transcript and side folder from the sandbox the conversation leaves into
 // the one that replaces it, under the project folder that the new guest's own path names. It
 // overwrites a stopped copy, and wakes a sleeping old sandbox, whose guest may run the list.
@@ -49,14 +57,6 @@ export async function writeKeptSession(spec: KeptSessionSpec): Promise<void> {
     join(targetDir, transcript),
   );
 }
-
-const stagedSuffix = '.copy';
-
-// the CLI's projects folder under the guest's home, as the guest sets CLAUDE_CONFIG_DIR
-const configProjectsDir = '.claude/projects';
-
-// the guest's working directory under its home, which getWorkDir in the conversation guest sets
-const workDirName = 'conversation';
 
 interface SessionFiles {
   // the project folder that holds the session, as a path the sandbox's copyOut takes

@@ -3,9 +3,9 @@ import { SandboxSpecRefusedError } from '@heynixie/sandbox';
 import { encodeFrame } from '@heynixie/wire';
 import { buildStubSandboxAdapter } from './build-stub-sandbox-adapter';
 
-const encoder = new TextEncoder();
-
 test('it runs each spawn as a guest behind frames and records it', async () => {
+  const encoder = new TextEncoder();
+
   const adapter = buildStubSandboxAdapter(async (stdin, stdout) => {
     const reader = stdin.getReader();
 
@@ -39,6 +39,8 @@ test('it runs each spawn as a guest behind frames and records it', async () => {
 });
 
 test('it takes a write that the guest never reads, as a pipe buffers it', async () => {
+  const encoder = new TextEncoder();
+
   const adapter = buildStubSandboxAdapter(() => Promise.withResolvers<number>().promise);
 
   const sandbox = await adapter.create({
@@ -222,6 +224,8 @@ test('it creates a sandbox once the named failures are spent', async () => {
 });
 
 test('it ends the messages with none when the guest exits partway through a frame', async () => {
+  const encoder = new TextEncoder();
+
   const adapter = buildStubSandboxAdapter(async (_stdin, stdout) => {
     await stdout.write(encodeFrame(encoder.encode('framed')).slice(0, 5));
 

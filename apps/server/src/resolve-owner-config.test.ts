@@ -2,8 +2,6 @@ import { expect, test } from 'bun:test';
 import { defaultOwnerPronouns } from '@heynixie/memory';
 import { resolveOwnerConfig } from './resolve-owner-config';
 
-const pronouns = { they: 'they', their: 'their' };
-
 test("it reads the owner's name from the settings entry that the reference names, and keeps the pronouns", () => {
   expect(
     resolveOwnerConfig(
@@ -41,18 +39,24 @@ test('it keeps the default they and their', () => {
 });
 
 test('it keeps a plain name', () => {
+  const pronouns = { they: 'they', their: 'their' };
+
   expect(
     resolveOwnerConfig({ name: 'Avery', pronouns }, { owner_name: 'Wren Halloway' }),
   ).toStrictEqual({ name: 'Avery', pronouns });
 });
 
 test('it keeps no name when the configuration sets none', () => {
+  const pronouns = { they: 'they', their: 'their' };
+
   expect(
     resolveOwnerConfig({ name: null, pronouns }, { owner_name: 'Wren Halloway' }),
   ).toStrictEqual({ name: null, pronouns });
 });
 
 test('it refuses a reference that names an inherited property, not a settings entry', () => {
+  const pronouns = { they: 'they', their: 'their' };
+
   expect(() =>
     resolveOwnerConfig({ name: 'deployment:toString', pronouns }, {}),
   ).toThrowWithMessage(
@@ -62,6 +66,8 @@ test('it refuses a reference that names an inherited property, not a settings en
 });
 
 test('it refuses a reference whose settings entry is missing', () => {
+  const pronouns = { they: 'they', their: 'their' };
+
   expect(() =>
     resolveOwnerConfig(
       { name: 'deployment:owner_name', pronouns },

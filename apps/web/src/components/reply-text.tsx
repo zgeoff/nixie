@@ -8,6 +8,24 @@ export interface ReplyTextProps {
   readonly text: string;
 }
 
+// The reset strips lists, headings and code of their marks, so a reply gets back only what reading
+// needs. Code sits on the theme's surface colour, so it stands apart from the prose around it.
+const reply = css({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2',
+  overflowWrap: 'anywhere',
+  '& a': { color: 'link', textDecoration: 'underline' },
+  '& code': { fontFamily: 'mono', fontSize: 'sm' },
+  '& :not(pre) > code': { backgroundColor: 'surface', borderRadius: 'sm', paddingInline: '1' },
+  '& h1, & h2, & h3, & h4': { fontWeight: 'semibold' },
+  '& ol': { listStyleType: 'decimal', paddingInlineStart: '6' },
+  '& pre': { backgroundColor: 'surface', borderWidth: '1px', overflowX: 'auto', padding: '2' },
+  '& table': { borderCollapse: 'collapse' },
+  '& td, & th': { borderWidth: '1px', paddingInline: '2' },
+  '& ul': { listStyleType: 'disc', paddingInlineStart: '6' },
+});
+
 // A reply rendered as Markdown. A reply can quote fetched web text, so raw HTML never becomes
 // markup, a link with an unsafe protocol shows as plain text, and every other link opens in a new
 // tab with no opener and no referrer.
@@ -76,21 +94,3 @@ function ReplyImage(props: ComponentProps<'img'>): ReactNode {
     <ReplyLink href={typeof props.src === 'string' ? props.src : undefined}>{label}</ReplyLink>
   );
 }
-
-// The reset strips lists, headings and code of their marks, so a reply gets back only what reading
-// needs. Code sits on the theme's surface colour, so it stands apart from the prose around it.
-const reply = css({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '2',
-  overflowWrap: 'anywhere',
-  '& a': { color: 'link', textDecoration: 'underline' },
-  '& code': { fontFamily: 'mono', fontSize: 'sm' },
-  '& :not(pre) > code': { backgroundColor: 'surface', borderRadius: 'sm', paddingInline: '1' },
-  '& h1, & h2, & h3, & h4': { fontWeight: 'semibold' },
-  '& ol': { listStyleType: 'decimal', paddingInlineStart: '6' },
-  '& pre': { backgroundColor: 'surface', borderWidth: '1px', overflowX: 'auto', padding: '2' },
-  '& table': { borderCollapse: 'collapse' },
-  '& td, & th': { borderWidth: '1px', paddingInline: '2' },
-  '& ul': { listStyleType: 'disc', paddingInlineStart: '6' },
-});

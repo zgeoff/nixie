@@ -1,5 +1,5 @@
+import { collectTypedSegments } from './collect-typed-segments';
 import { findMissingToken } from './find-missing-token';
-import { findTypedSegments } from './find-typed-segments';
 import type { ContentGateRequest } from './gate-types';
 import { readOwnerMessages } from './read-owner-messages';
 import type { MemoryContext } from './types';
@@ -15,7 +15,7 @@ export async function readTokenVerdict(
     limit: context.gate.limits.evidenceWindow,
   });
 
-  const typed = messages.flatMap((message) => findTypedSegments(message)).join('\n');
+  const typed = messages.flatMap((message) => collectTypedSegments(message)).join('\n');
 
   return findMissingToken(request.text, typed) === null ? 'pass' : 'fail';
 }

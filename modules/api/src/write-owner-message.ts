@@ -5,9 +5,9 @@ import { readRecordAttachments, readRecords, withWriteTransaction } from '@heyni
 import { ownerMessageCodec, writeInboxRecordsInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
-import { findClientAction } from './find-client-action';
-import { isLiveIdentity } from './is-live-identity';
 import { normalizeSpans } from './normalize-spans';
+import { probeLiveIdentity } from './probe-live-identity';
+import { readClientAction } from './read-client-action';
 import type { APIContext, APITables, Identity, OwnerImage } from './types';
 import { writeClientAction } from './write-client-action';
 
@@ -38,13 +38,13 @@ export async function writeOwnerMessage(
   input: OwnerMessageInput,
 ): Promise<OwnerMessageResult> {
   const written = await withWriteTransaction(context.log.writer, async (tx) => {
-    const live = await isLiveIdentity(tx, context, caller.identityID);
+    const live = await probeLiveIdentity(tx, context, caller.identityID);
 
     if (!live) {
       return { status: 'unauthorized' } as const;
     }
 
-    const earlier = await findClientAction(tx, input.clientMessageId);
+    const earlier = await readClientAction(tx, input.clientMessageId);
 
     if (earlier !== null) {
       const isRetry =
@@ -194,14 +194,14 @@ async function checkRetry(
     return { status: 'reused' };
   }
 
-  const hasSame = await hasSameImages(context, record, input.images ?? []);
+  const hasSame = await probeSameImages(context, record, input.images ?? []);
 
   return hasSame ? { status: 'written', duplicate: true, sequence } : { status: 'reused' };
 }
 
 // The count always compares, from the payload. The bytes compare while the first record's images
 // are readable, and a forgotten record's images, unreadable with its text, compare as the same.
-async function hasSameImages(
+async function probeSameImages(
   context: APIContext,
   record: LogRecord,
   images: readonly OwnerImage[],

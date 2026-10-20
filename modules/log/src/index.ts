@@ -7,7 +7,7 @@ export { KeyStoreBusyError } from './key-store-busy-error';
 export type { WALSubscriptionOptions } from './make-wal-subscription';
 export { makeWALSubscription } from './make-wal-subscription';
 export { logProjections } from './log-projections';
-export { findRecordKeys } from './find-record-keys';
+export { readRecordKeys } from './read-record-keys';
 export { MissingDefinitionsError } from './missing-definitions-error';
 export type { ReadRecordsOptions } from './read-records';
 export { readRecords } from './read-records';

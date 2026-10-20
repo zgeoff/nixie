@@ -7,7 +7,6 @@ import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import { buildSkillTools } from '@heynixie/skills';
 import { buildTestClock } from '@heynixie/testing';
-import type { ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { buildConversationTools } from './build-conversation-tools';
 import { startTestLog } from './test-utils/start-test-log';
@@ -29,60 +28,35 @@ async function setupTest() {
   return { log, logRead: buildLogReadTool(log) };
 }
 
-// the web fetch tool's stand-in: a fetch tool the registry accepts
-function buildWebFetchStandIn(): ToolDefinition {
-  return {
-    name: 'web.fetch',
-    description: 'Reads one public page.',
-    input: { type: 'object', properties: { url: { type: 'string' } }, additionalProperties: false },
-    output: { type: 'object', properties: { text: { type: 'string' } } },
-    declaration: {
-      effects: ['fetch'],
-      destinations: ['url'],
-      amount: null,
-      content: [],
-      results: { text: 'untrusted' },
-    },
-    execution: 'direct',
-    run: () => Promise.resolve({ status: 'ok', result: { text: 'page' } }),
-  };
-}
-
-// the time tool on a fixed clock, with no message zone
-function buildTimeStandIn(): ToolDefinition {
-  return buildTimeTool({
-    clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
-    findTimeZone: () => Promise.resolve(null),
-    defaultZone: 'Australia/Sydney',
-  });
-}
-
-// a write tool that the read-only rule denies
-function buildWriteStandIn(): ToolDefinition {
-  return {
-    name: 'files.write',
-    description: 'Writes a file.',
-    input: { type: 'object', properties: {}, additionalProperties: false },
-    output: { type: 'object', properties: { text: { type: 'string' } } },
-    declaration: {
-      effects: ['write'],
-      destinations: [],
-      amount: null,
-      content: [],
-      results: { text: 'owner_data' },
-    },
-    execution: 'queued',
-    run: () => Promise.resolve({ status: 'ok', result: { text: 'done' } }),
-  };
-}
-
 test('it lists the web fetch tool, the time tool, the log reader, the skill tools and the 11 memory tools', async () => {
   const ctx = await setupTest();
 
   const definitions = buildConversationTools(
     {
-      webFetch: buildWebFetchStandIn(),
-      time: buildTimeStandIn(),
+      webFetch: {
+        name: 'web.fetch',
+        description: 'Reads one public page.',
+        input: {
+          type: 'object',
+          properties: { url: { type: 'string' } },
+          additionalProperties: false,
+        },
+        output: { type: 'object', properties: { text: { type: 'string' } } },
+        declaration: {
+          effects: ['fetch'],
+          destinations: ['url'],
+          amount: null,
+          content: [],
+          results: { text: 'untrusted' },
+        },
+        execution: 'direct',
+        run: () => Promise.resolve({ status: 'ok', result: { text: 'page' } }),
+      },
+      time: buildTimeTool({
+        clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+        findTimeZone: () => Promise.resolve(null),
+        defaultZone: 'Australia/Sydney',
+      }),
       logRead: ctx.logRead,
       skills: buildSkillTools({
         log: ctx.log,
@@ -127,8 +101,30 @@ test('it fails a memory call that runs before the memory store starts', async ()
 
   const definitions = buildConversationTools(
     {
-      webFetch: buildWebFetchStandIn(),
-      time: buildTimeStandIn(),
+      webFetch: {
+        name: 'web.fetch',
+        description: 'Reads one public page.',
+        input: {
+          type: 'object',
+          properties: { url: { type: 'string' } },
+          additionalProperties: false,
+        },
+        output: { type: 'object', properties: { text: { type: 'string' } } },
+        declaration: {
+          effects: ['fetch'],
+          destinations: ['url'],
+          amount: null,
+          content: [],
+          results: { text: 'untrusted' },
+        },
+        execution: 'direct',
+        run: () => Promise.resolve({ status: 'ok', result: { text: 'page' } }),
+      },
+      time: buildTimeTool({
+        clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+        findTimeZone: () => Promise.resolve(null),
+        defaultZone: 'Australia/Sydney',
+      }),
       logRead: ctx.logRead,
       skills: [],
     },
@@ -164,8 +160,30 @@ test('it allows the time tool, the log reader and each memory tool but export, a
   const registry = buildToolRegistry([
     ...buildConversationTools(
       {
-        webFetch: buildWebFetchStandIn(),
-        time: buildTimeStandIn(),
+        webFetch: {
+          name: 'web.fetch',
+          description: 'Reads one public page.',
+          input: {
+            type: 'object',
+            properties: { url: { type: 'string' } },
+            additionalProperties: false,
+          },
+          output: { type: 'object', properties: { text: { type: 'string' } } },
+          declaration: {
+            effects: ['fetch'],
+            destinations: ['url'],
+            amount: null,
+            content: [],
+            results: { text: 'untrusted' },
+          },
+          execution: 'direct',
+          run: () => Promise.resolve({ status: 'ok', result: { text: 'page' } }),
+        },
+        time: buildTimeTool({
+          clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+          findTimeZone: () => Promise.resolve(null),
+          defaultZone: 'Australia/Sydney',
+        }),
         logRead: ctx.logRead,
         skills: [],
       },
@@ -177,7 +195,21 @@ test('it allows the time tool, the log reader and each memory tool but export, a
         defaultZone: 'Australia/Sydney',
       },
     ),
-    buildWriteStandIn(),
+    {
+      name: 'files.write',
+      description: 'Writes a file.',
+      input: { type: 'object', properties: {}, additionalProperties: false },
+      output: { type: 'object', properties: { text: { type: 'string' } } },
+      declaration: {
+        effects: ['write'],
+        destinations: [],
+        amount: null,
+        content: [],
+        results: { text: 'owner_data' },
+      },
+      execution: 'queued',
+      run: () => Promise.resolve({ status: 'ok', result: { text: 'done' } }),
+    },
   ]);
 
   const decide = makeDecisionPoint({
@@ -222,8 +254,30 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
 
   const definitions = buildConversationTools(
     {
-      webFetch: buildWebFetchStandIn(),
-      time: buildTimeStandIn(),
+      webFetch: {
+        name: 'web.fetch',
+        description: 'Reads one public page.',
+        input: {
+          type: 'object',
+          properties: { url: { type: 'string' } },
+          additionalProperties: false,
+        },
+        output: { type: 'object', properties: { text: { type: 'string' } } },
+        declaration: {
+          effects: ['fetch'],
+          destinations: ['url'],
+          amount: null,
+          content: [],
+          results: { text: 'untrusted' },
+        },
+        execution: 'direct',
+        run: () => Promise.resolve({ status: 'ok', result: { text: 'page' } }),
+      },
+      time: buildTimeTool({
+        clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+        findTimeZone: () => Promise.resolve(null),
+        defaultZone: 'Australia/Sydney',
+      }),
       logRead: ctx.logRead,
       skills: [],
     },
@@ -256,8 +310,30 @@ test('it denies a model call to memory.export under the read-only rule, so nothi
   const registry = buildToolRegistry(
     buildConversationTools(
       {
-        webFetch: buildWebFetchStandIn(),
-        time: buildTimeStandIn(),
+        webFetch: {
+          name: 'web.fetch',
+          description: 'Reads one public page.',
+          input: {
+            type: 'object',
+            properties: { url: { type: 'string' } },
+            additionalProperties: false,
+          },
+          output: { type: 'object', properties: { text: { type: 'string' } } },
+          declaration: {
+            effects: ['fetch'],
+            destinations: ['url'],
+            amount: null,
+            content: [],
+            results: { text: 'untrusted' },
+          },
+          execution: 'direct',
+          run: () => Promise.resolve({ status: 'ok', result: { text: 'page' } }),
+        },
+        time: buildTimeTool({
+          clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+          findTimeZone: () => Promise.resolve(null),
+          defaultZone: 'Australia/Sydney',
+        }),
         logRead: ctx.logRead,
         skills: [],
       },

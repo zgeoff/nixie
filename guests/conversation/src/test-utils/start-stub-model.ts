@@ -1,15 +1,3 @@
-// One reply the stub model gives: a text block, a tool_use block by the name the model sees, such
-// as mcp__nixie__note_read, a 400 with the API's refusal message, or a 401 for a refused credential
-// that the CLI does not retry.
-type ScriptedReply =
-  | ScriptedMessage
-  | {
-      readonly refusal: string;
-    }
-  | {
-      readonly authFailure: string;
-    };
-
 // The usage defaults to 10 input tokens and no cache tokens, and a test sets more to fill the
 // context the CLI counts. A reply with thinking carries a summarized thinking block, with its
 // signature, before its text or tool_use block, and reports its thinking tokens in the usage.
@@ -32,12 +20,17 @@ type ScriptedMessage = (
   };
 };
 
-// One request the stub model received, with its body parsed.
-interface StubModelRequest {
-  readonly path: string;
-  readonly headers: Readonly<Record<string, string>>;
-  readonly body: StubModelBody | null;
-}
+// One reply the stub model gives: a text block, a tool_use block by the name the model sees, such
+// as mcp__nixie__note_read, a 400 with the API's refusal message, or a 401 for a refused credential
+// that the CLI does not retry.
+type ScriptedReply =
+  | ScriptedMessage
+  | {
+      readonly refusal: string;
+    }
+  | {
+      readonly authFailure: string;
+    };
 
 interface StubModelBody {
   readonly model?: string;
@@ -49,6 +42,13 @@ interface StubModelBody {
     readonly input_schema?: unknown;
   }[];
   readonly system?: unknown;
+}
+
+// One request the stub model received, with its body parsed.
+interface StubModelRequest {
+  readonly path: string;
+  readonly headers: Readonly<Record<string, string>>;
+  readonly body: StubModelBody | null;
 }
 
 export interface StubModel {
@@ -67,16 +67,18 @@ export function startStubModel(): StubModel {
   const requests: StubModelRequest[] = [];
   const script: ScriptedReply[] = [];
 
+  const answerRequest = async (request: Request) => {
+    const recorded = await readRequest(request);
+
+    requests.push(recorded);
+
+    return renderResponse(recorded, script);
+  };
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: async (request) => {
-      const recorded = await readRequest(request);
-
-      requests.push(recorded);
-
-      return renderResponse(recorded, script);
-    },
+    fetch: answerRequest,
   });
 
   return {
@@ -141,46 +143,6 @@ function renderAuthFailure(message: string): Response {
   );
 }
 
-function renderWhole(reply: ScriptedMessage, model: string): Response {
-  const block = buildBlock(reply);
-  const thinking = reply.thinking;
-
-  return Response.json({
-    id: `msg_${crypto.randomUUID()}`,
-    type: 'message',
-    role: 'assistant',
-    model,
-    content: thinking === undefined ? [block] : [buildThinkingBlock(thinking), block],
-    stop_reason: 'toolUse' in reply ? 'tool_use' : 'end_turn',
-    stop_sequence: null,
-    usage: {
-      ...buildUsage(reply, 5),
-      ...(thinking === undefined
-        ? {}
-        : { output_tokens_details: { thinking_tokens: thinking.thinkingTokens } }),
-    },
-  });
-}
-
-function buildUsage(reply: ScriptedMessage, outputTokens: number): Record<string, number> {
-  return {
-    input_tokens: reply.inputTokens ?? 10,
-    ...(reply.cacheReadTokens === undefined
-      ? {}
-      : { cache_read_input_tokens: reply.cacheReadTokens }),
-    ...(reply.cacheWriteTokens === undefined
-      ? {}
-      : { cache_creation_input_tokens: reply.cacheWriteTokens }),
-    output_tokens: outputTokens,
-  };
-}
-
-type ScriptedThinking = NonNullable<ScriptedMessage['thinking']>;
-
-function buildThinkingBlock(thinking: ScriptedThinking): Readonly<Record<string, unknown>> {
-  return { type: 'thinking', thinking: thinking.summary, signature: thinking.signature };
-}
-
 function renderStream(reply: ScriptedMessage, model: string): Response {
   const block = buildBlock(reply);
   const isTool = 'toolUse' in reply;
@@ -236,6 +198,19 @@ function renderStream(reply: ScriptedMessage, model: string): Response {
   );
 }
 
+function buildBlock(reply: ScriptedMessage): Readonly<Record<string, unknown>> {
+  if ('toolUse' in reply) {
+    return {
+      type: 'tool_use',
+      id: `toolu_${crypto.randomUUID().replaceAll('-', '')}`,
+      name: reply.toolUse.name,
+      input: reply.toolUse.input,
+    };
+  }
+
+  return { type: 'text', text: reply.text };
+}
+
 interface StreamEvent {
   readonly type: string;
   readonly [key: string]: unknown;
@@ -262,15 +237,42 @@ function buildThinkingStreamEvents(thinking: ScriptedMessage['thinking']): reado
   ];
 }
 
-function buildBlock(reply: ScriptedMessage): Readonly<Record<string, unknown>> {
-  if ('toolUse' in reply) {
-    return {
-      type: 'tool_use',
-      id: `toolu_${crypto.randomUUID().replaceAll('-', '')}`,
-      name: reply.toolUse.name,
-      input: reply.toolUse.input,
-    };
-  }
+function buildUsage(reply: ScriptedMessage, outputTokens: number): Record<string, number> {
+  return {
+    input_tokens: reply.inputTokens ?? 10,
+    ...(reply.cacheReadTokens === undefined
+      ? {}
+      : { cache_read_input_tokens: reply.cacheReadTokens }),
+    ...(reply.cacheWriteTokens === undefined
+      ? {}
+      : { cache_creation_input_tokens: reply.cacheWriteTokens }),
+    output_tokens: outputTokens,
+  };
+}
 
-  return { type: 'text', text: reply.text };
+function renderWhole(reply: ScriptedMessage, model: string): Response {
+  const block = buildBlock(reply);
+  const thinking = reply.thinking;
+
+  return Response.json({
+    id: `msg_${crypto.randomUUID()}`,
+    type: 'message',
+    role: 'assistant',
+    model,
+    content: thinking === undefined ? [block] : [buildThinkingBlock(thinking), block],
+    stop_reason: 'toolUse' in reply ? 'tool_use' : 'end_turn',
+    stop_sequence: null,
+    usage: {
+      ...buildUsage(reply, 5),
+      ...(thinking === undefined
+        ? {}
+        : { output_tokens_details: { thinking_tokens: thinking.thinkingTokens } }),
+    },
+  });
+}
+
+type ScriptedThinking = NonNullable<ScriptedMessage['thinking']>;
+
+function buildThinkingBlock(thinking: ScriptedThinking): Readonly<Record<string, unknown>> {
+  return { type: 'thinking', thinking: thinking.summary, signature: thinking.signature };
 }
