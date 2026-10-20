@@ -87,6 +87,14 @@
       "rules": {
         "nixie/test-shape": "error"
       }
+    },
+    {
+      // a browser suite tests `<name>.<ext>`, and the pinned oxlint-config's test-beside-module looks
+      // for `<name>.browser.<ext>`
+      "files": ["**/*.browser.test.ts"],
+      "rules": {
+        "zgeoff/test-beside-module": "off"
+      }
     }
   ]
 }
