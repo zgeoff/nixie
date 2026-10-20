@@ -256,8 +256,8 @@ export interface NixieTables {
     readonly approval_id: string;
     readonly state: string;
     readonly base_hash: string | null;
-    readonly pull_request_number: number;
-    readonly pull_request_url: string;
+    readonly pull_request_number: number | null;
+    readonly pull_request_url: string | null;
     readonly updated_at: number;
   };
   readonly skill_versions: {

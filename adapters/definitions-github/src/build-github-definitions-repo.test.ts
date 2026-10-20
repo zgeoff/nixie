@@ -267,6 +267,70 @@ test('it closes a pull request', async () => {
   expect(github.readPulls()[0]?.state).toBe('closed');
 });
 
+test("it reads a branch's open pull request", async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  const repo = buildGitHubDefinitionsRepo({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+    apiURL: github.url,
+  });
+
+  const revision = await repo.readBaseRevision();
+
+  const opened = await repo.writePullRequest(
+    {
+      branch: 'nixie/skill/tide-tables',
+      title: 'Add the tide-tables skill that nixie wrote',
+      body: 'First.\n',
+      files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
+    },
+    revision,
+  );
+
+  const found = await repo.readOpenPullRequest('nixie/skill/tide-tables');
+
+  expect(found).toStrictEqual(opened);
+});
+
+test('it reads no open pull request for a branch whose pull request closed', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  const repo = buildGitHubDefinitionsRepo({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+    apiURL: github.url,
+  });
+
+  const revision = await repo.readBaseRevision();
+
+  await repo.writePullRequest(
+    {
+      branch: 'nixie/skill/tide-tables',
+      title: 'Add the tide-tables skill that nixie wrote',
+      body: 'First.\n',
+      files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
+    },
+    revision,
+  );
+
+  await repo.closePullRequest(1);
+
+  const found = await repo.readOpenPullRequest('nixie/skill/tide-tables');
+
+  expect(found).toBeNull();
+});
+
 test.each([
   ['an answer of the wrong shape', '{}'],
   ['an answer that is not JSON', 'not json'],

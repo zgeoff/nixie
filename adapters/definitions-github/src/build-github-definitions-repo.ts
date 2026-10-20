@@ -79,6 +79,8 @@ export function buildGitHubDefinitionsRepo(options: GitHubDefinitionsOptions): D
       return writeOpenPullRequest(send, repo, options, change);
     },
 
+    readOpenPullRequest: (branch) => readBranchPullRequest(send, repo, options, branch),
+
     closePullRequest: async (pullRequestNumber) => {
       await send({
         method: 'PATCH',
@@ -229,17 +231,10 @@ async function writeOpenPullRequest(
   options: GitHubDefinitionsOptions,
   change: DefinitionsChange,
 ): Promise<PullRequestRef> {
-  const [owner] = options.repository.split('/');
-  const head = encodeURIComponent(`${owner}:${change.branch}`);
-
-  const [found] = await send({
-    method: 'GET',
-    path: `${repo}/pulls?state=open&head=${head}&base=${encodeURIComponent(options.base)}`,
-    schema: z.array(pullSchema),
-  });
+  const found = await readBranchPullRequest(send, repo, options, change.branch);
 
   const pull =
-    found === undefined
+    found === null
       ? await send({
           method: 'POST',
           path: `${repo}/pulls`,
@@ -254,4 +249,23 @@ async function writeOpenPullRequest(
         });
 
   return { number: pull.number, url: pull.html_url };
+}
+
+// the open pull request from the branch into the base branch, or null when none is open
+async function readBranchPullRequest(
+  send: GitHubSender,
+  repo: string,
+  options: GitHubDefinitionsOptions,
+  branch: string,
+): Promise<PullRequestRef | null> {
+  const [owner] = options.repository.split('/');
+  const head = encodeURIComponent(`${owner}:${branch}`);
+
+  const [found] = await send({
+    method: 'GET',
+    path: `${repo}/pulls?state=open&head=${head}&base=${encodeURIComponent(options.base)}`,
+    schema: z.array(pullSchema),
+  });
+
+  return found === undefined ? null : { number: found.number, url: found.html_url };
 }

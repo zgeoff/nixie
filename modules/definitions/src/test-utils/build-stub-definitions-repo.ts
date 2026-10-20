@@ -82,6 +82,16 @@ export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo
       return Promise.resolve({ number: pullRequestNumber, url });
     },
 
+    readOpenPullRequest: (branch) => {
+      const open = pullRequests.find(
+        (request) => request.change.branch === branch && request.state === 'open',
+      );
+
+      const found = open === undefined ? null : { number: open.number, url: open.url };
+
+      return Promise.resolve(found);
+    },
+
     closePullRequest: (pullRequestNumber) => {
       replace(pullRequestNumber, { state: 'closed' });
 

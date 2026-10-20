@@ -141,6 +141,7 @@ test('#list shows the pull request that carries a written skill to the definitio
       readFolder: () => Promise.resolve([]),
       writePullRequest: () =>
         Promise.resolve({ number: 3, url: 'https://github.test/harbour/definitions/pull/3' }),
+      readOpenPullRequest: () => Promise.resolve(null),
       closePullRequest: () => Promise.resolve(),
     },
     onError: () => {},

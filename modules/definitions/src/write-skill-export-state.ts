@@ -3,9 +3,15 @@ import { match } from 'ts-pattern';
 import { canMoveSkillExport } from './can-move-skill-export';
 import type { DefinitionsTables, PullRequestRef } from './types';
 
-// An opened export names its pull request and the base of the skill it was built for; a closed
+// An export in flight names the base it builds on, an opened one its pull request too, and a closed
 // one keeps the pull request it closed.
 export type SkillExportMove =
+  | {
+      readonly approvalID: string;
+      readonly to: 'exporting';
+      readonly baseHash: string | null;
+      readonly at: number;
+    }
   | {
       readonly approvalID: string;
       readonly to: 'opened';
@@ -16,7 +22,8 @@ export type SkillExportMove =
   | { readonly approvalID: string; readonly to: 'closed'; readonly at: number };
 
 // Writes the export state of a skill that nixie wrote inside the caller's write transaction, and
-// refuses a move the transition table lacks. The first export of an approval opens its row.
+// refuses a move the transition table lacks. The first export of an approval writes its row before
+// it writes to your definitions repo.
 export async function writeSkillExportState(
   tx: Transaction<unknown>,
   move: SkillExportMove,
@@ -36,9 +43,30 @@ export async function writeSkillExportState(
   }
 
   await match(move)
+    .with({ to: 'exporting' }, (exporting) => writeExporting(tx, exporting))
     .with({ to: 'opened' }, (opened) => writeOpened(tx, opened))
     .with({ to: 'closed' }, (closed) => writeClosed(tx, closed))
     .exhaustive();
+}
+
+// an export again on a new base keeps the pull request it will update
+async function writeExporting(
+  tx: Transaction<unknown>,
+  move: Extract<SkillExportMove, { to: 'exporting' }>,
+): Promise<void> {
+  const values = { state: 'exporting' as const, base_hash: move.baseHash, updated_at: move.at };
+
+  await tx
+    .$extendTables<DefinitionsTables>()
+    .insertInto('skill_exports')
+    .values({
+      approval_id: move.approvalID,
+      ...values,
+      pull_request_number: null,
+      pull_request_url: null,
+    })
+    .onConflict((conflict) => conflict.column('approval_id').doUpdateSet(values))
+    .execute();
 }
 
 async function writeOpened(

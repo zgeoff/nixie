@@ -180,6 +180,29 @@ test('it writes a merged change into the base branch, removing each file it remo
   expect(ctx.repo.readPullRequests()[0]?.state).toBe('merged');
 });
 
+test("it reads a branch's open pull request, and null once it closes", async () => {
+  const ctx = await setupTest();
+
+  await ctx.repo.writePullRequest(
+    {
+      branch: 'nixie/skill/tide-tables',
+      title: 'Add the tide-tables skill that nixie wrote',
+      body: 'first\n',
+      files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
+    },
+    'revision-a',
+  );
+
+  const open = await ctx.repo.readOpenPullRequest('nixie/skill/tide-tables');
+
+  await ctx.repo.closePullRequest(1);
+
+  const closed = await ctx.repo.readOpenPullRequest('nixie/skill/tide-tables');
+
+  expect(open).toStrictEqual({ number: 1, url: 'https://definitions.test/pull/1' });
+  expect(closed).toBeNull();
+});
+
 test('it refuses to close a pull request it never opened', () => {
   const directory = join(tmpdir(), 'nixie-stub-repo-unused');
 
