@@ -1,28 +1,24 @@
 import { onTestFinished } from 'bun:test';
 import { readdir } from 'node:fs/promises';
-import type {
-  GateContext,
-  RecalledItem,
-  StartedMemoryStore,
-  WriterConfigInput,
-  WriterStatus,
-} from '@heynixie/memory';
-import {
-  defaultGateLimits,
-  defaultOwnerPronouns,
-  findNoAllowRule,
-  startMemoryStore,
-  writerConfigSchema,
-} from '@heynixie/memory';
-import { buildStubGate } from '@heynixie/memory/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
+import type { TestSessionHost } from '@heynixie/sessions/test-utils';
 import type { RunStep, TasksContext } from '@heynixie/tasks';
+import { runTaskSteps } from '@heynixie/tasks/test-utils';
 import type { ScriptedModel, TestClock } from '@heynixie/testing';
 import { buildTestClock, startScriptedModel } from '@heynixie/testing';
+import { defaultGateLimits } from '../default-gate-limits';
+import { defaultOwnerPronouns } from '../default-owner-pronouns';
+import { findNoAllowRule } from '../find-no-allow-rule';
+import type { GateContext } from '../gate-types';
+import type { WriterStatus } from '../read-writer-status';
+import type { StartedMemoryStore } from '../start-memory-store';
+import { startMemoryStore } from '../start-memory-store';
 import type { MemoryWriterRunner } from '../start-memory-writer-runner';
 import { startMemoryWriterRunner } from '../start-memory-writer-runner';
-import { runTaskSteps } from './run-task-steps';
-import type { TestServer } from './start-test-server';
+import type { RecalledItem } from '../types';
+import type { WriterConfigInput } from '../writer-config-schema';
+import { writerConfigSchema } from '../writer-config-schema';
+import { buildStubGate } from './build-stub-gate';
 
 interface WriterStart {
   readonly context?: TasksContext;
@@ -34,7 +30,7 @@ interface WriterRun {
 }
 
 export interface TestMemoryWriter {
-  // the server's context on a test clock that starts at 1,000,000 ms
+  // the host's context on a test clock that starts at 1,000,000 ms
   readonly context: TasksContext;
   readonly clock: TestClock;
 
@@ -45,7 +41,7 @@ export interface TestMemoryWriter {
   // the names in the directory of the writer's tool endpoint sockets
   readonly listSocketNames: () => Promise<readonly string[]>;
 
-  // starts the writer, after the test records the messages its catch-up covers, on the server's
+  // starts the writer, after the test records the messages its catch-up covers, on the host's
   // context unless the test passes its own
   readonly start: (start?: WriterStart) => Promise<MemoryWriterRunner>;
 
@@ -67,35 +63,36 @@ export interface TestMemoryWriterOptions {
   readonly writerConfig?: WriterConfigInput;
 }
 
-// Starts memory on a test server: the store, a scripted model for the writer, and the writer on
-// that model once the test calls start. Everything it starts stops before the server does.
+// What the writer runs on: a session host, or a test server, whose log folds the memory projections.
+export type TestWriterHost = Pick<TestSessionHost, 'context' | 'sandboxes' | 'socketDir' | 'defer'>;
+
+// Starts memory on a test host: the store, a scripted model for the writer, and the writer on that
+// model once the test calls start. Everything it starts stops before the host does.
 export async function startTestMemoryWriter(
-  server: TestServer,
+  host: TestWriterHost,
   options: TestMemoryWriterOptions = {},
 ): Promise<TestMemoryWriter> {
   const clock = buildTestClock(1_000_000);
-  const context = { ...server.context, clock };
+  const context = { ...host.context, clock };
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
 
-  const store = await startTestStore(server, { context, clock, check: options.check });
+  const store = await startTestStore(host, { context, clock, check: options.check });
 
   const started: { writer: MemoryWriterRunner | null } = { writer: null };
-  const socketDir = `${server.dataDir}/tools`;
 
   return {
     context,
     clock,
     model,
     store,
-    listSocketNames: () => readdir(socketDir),
+    listSocketNames: () => readdir(host.socketDir),
     start: async (start = {}) => {
-      started.writer = await startTestWriterRunner(server, {
+      started.writer = await startTestWriterRunner(host, {
         context: start.context ?? context,
         model,
         store,
-        socketDir,
         options,
       });
 
@@ -125,7 +122,7 @@ interface StoreWiring {
 
 // the store, whose checker fails closed unless the test passes one
 async function startTestStore(
-  server: TestServer,
+  host: TestWriterHost,
   wiring: StoreWiring,
 ): Promise<StartedMemoryStore> {
   const store = await startMemoryStore({
@@ -138,7 +135,7 @@ async function startTestStore(
     },
   });
 
-  server.defer(() => store.stop());
+  host.defer(() => store.stop());
 
   return store;
 }
@@ -166,12 +163,11 @@ interface WriterWiring {
   readonly context: TasksContext;
   readonly model: ScriptedModel;
   readonly store: StartedMemoryStore;
-  readonly socketDir: string;
   readonly options: TestMemoryWriterOptions;
 }
 
 async function startTestWriterRunner(
-  server: TestServer,
+  host: TestWriterHost,
   wiring: WriterWiring,
 ): Promise<MemoryWriterRunner> {
   const writer = await startMemoryWriterRunner({
@@ -189,14 +185,14 @@ async function startTestWriterRunner(
       roles: { conversation: 'writer-direct', 'memory-writer': 'writer-direct' },
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
-    sandboxes: server.sandboxes,
+    sandboxes: host.sandboxes,
 
     // the writer's tools run direct, so nothing reaches the queue
     queue: {
       enqueue: () => Promise.reject(new Error('no memory writer tool runs queued')),
       waitForOutcome: () => Promise.resolve(null),
     },
-    socketDir: wiring.socketDir,
+    socketDir: host.socketDir,
     image: 'nixie-conversation-0123456789ab',
     store: wiring.store,
 
@@ -211,7 +207,7 @@ async function startTestWriterRunner(
     },
   });
 
-  server.defer(() => writer.stop());
+  host.defer(() => writer.stop());
 
   return writer;
 }

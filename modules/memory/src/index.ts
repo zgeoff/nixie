@@ -70,6 +70,10 @@ export type { StartedMemoryStore } from './start-memory-store';
 export { startMemoryStore } from './start-memory-store';
 export type { MemoryWriter, MemoryWriterOptions } from './start-memory-writer';
 export { startMemoryWriter } from './start-memory-writer';
+export type { MemoryWriterRunner, MemoryWriterRunnerOptions } from './start-memory-writer-runner';
+export { startMemoryWriterRunner } from './start-memory-writer-runner';
+export type { MemoryConsolidatorRunnerOptions } from './start-memory-consolidator-runner';
+export { startMemoryConsolidatorRunner } from './start-memory-consolidator-runner';
 
 export type {
   AllowRuleCall,

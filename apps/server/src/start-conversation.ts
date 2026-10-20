@@ -9,11 +9,10 @@ import type {
   ConversationRunner,
   ConversationRunnerOptions,
 } from '@heynixie/sessions';
-import { startConversationRunner } from '@heynixie/sessions';
+import { buildGuestCommand, startConversationRunner } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ToolEndpoint } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
-import { buildGuestCommand } from './build-guest-command';
 
 export interface ConversationOptions {
   readonly context: TasksContext;

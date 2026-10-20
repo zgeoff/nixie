@@ -49,12 +49,20 @@ export { startSessionRunner } from './start-session-runner';
 export { startConversationRunner } from './start-conversation-runner';
 export type { CheckerRunnerOptions } from './start-checker-runner';
 export { startCheckerRunner } from './start-checker-runner';
+export type { CheckerTask, CheckerTaskOptions } from './start-checker-task';
+export { startCheckerTask } from './start-checker-task';
+export { buildGuestCommand } from './build-guest-command';
+export type { SystemTaskOptions, SystemTaskRunner } from './make-system-task-runner';
+export { makeSystemTaskRunner } from './make-system-task-runner';
+export type { ToolSessionOptions } from './start-tool-session';
+export { startToolSession } from './start-tool-session';
 export type { CheckerAnswer, CheckerRequest, CheckerVerdict, RunCheck } from './checker-types';
 
 export type {
   EventKind,
   EventRegistry,
   EventSettings,
+  GuestEntry,
   ConversationMemory,
   ConversationMemorySettings,
   MemoryApproval,

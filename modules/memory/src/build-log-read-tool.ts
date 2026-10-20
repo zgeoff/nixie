@@ -58,6 +58,10 @@ const logReadOutput = {
 
 const defaultLimit = 20;
 
+// the most records one call decrypts, so a search over a long log returns a short page with the
+// cursor to go on from
+const scanLimit = 500;
+
 const logReadArguments = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
@@ -109,6 +113,7 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
         ...range,
         words: input.query === undefined ? [] : input.query.split(/\s+/u),
         limit: input.limit ?? defaultLimit,
+        scanLimit,
       });
 
       const next = page.next === null ? null : String(page.next);

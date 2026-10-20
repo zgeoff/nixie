@@ -1,17 +1,14 @@
 import { expect, mock, test } from 'bun:test';
-import type { RunStep } from '@heynixie/tasks';
-import { createTask } from '@heynixie/tasks';
-import { buildTestClock } from '@heynixie/testing';
+import { createTask } from '../create-task';
+import type { RunStep } from '../types';
 import { runTaskSteps } from './run-task-steps';
-import { startTestServer } from './start-test-server';
+import { startTestTasks } from './start-test-tasks';
 
-// a test server on a test clock
+// a writer with the tasks projections, on a test clock at 1,000,000 ms
 async function setupTest() {
-  const server = await startTestServer();
+  const tasks = await startTestTasks();
 
-  const clock = buildTestClock(1_000_000);
-
-  return { context: { ...server.context, clock }, clock };
+  return { context: tasks.context, clock: tasks.clock };
 }
 
 test('it runs the step of each task that has work until every task finishes', async () => {

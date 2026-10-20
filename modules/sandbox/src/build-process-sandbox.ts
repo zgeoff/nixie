@@ -1,20 +1,22 @@
 import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
+import type { ProcessState } from './build-process-state';
+import { mergeExecEnv } from './merge-exec-env';
+import { resolveGuestPath } from './resolve-guest-path';
+import { runCommand } from './run-command';
+import type { ProcessIO } from './start-exec-stream';
+import { startExecStream } from './start-exec-stream';
+import { startProcessGroup } from './start-process-group';
 import type {
   FileSpec,
   GuestHome,
-  ProcessIO,
   ReadFilePathsOptions,
   RunSpec,
   Sandbox,
   SandboxRecorder,
   SandboxSpec,
   ToolTargetResolver,
-} from '@heynixie/sandbox';
-import { mergeExecEnv, runCommand, startExecStream } from '@heynixie/sandbox';
-import type { ProcessState } from './build-process-state';
-import { resolveGuestPath } from './resolve-guest-path';
-import { startProcessGroup } from './start-process-group';
+} from './types';
 
 export interface ProcessSandboxContext {
   readonly recorder: SandboxRecorder;

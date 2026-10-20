@@ -15,7 +15,16 @@ export function runWebBuildOnce(): Promise<string> {
 const webDir = join(import.meta.dir, '..', '..');
 
 async function runBuild(): Promise<string> {
-  const child = Bun.spawn(['bun', 'run', 'build'], { cwd: webDir, stderr: 'pipe', stdout: 'pipe' });
+  // Node's wasm trap handler reserves more address space than a `ulimit -v` cap allows, and Vite
+  // loads wasm, so the build turns it off to run on a host with such a cap
+  const nodeOptions = [process.env['NODE_OPTIONS'], '--disable-wasm-trap-handler'];
+
+  const child = Bun.spawn(['bun', 'run', 'build'], {
+    cwd: webDir,
+    env: { ...process.env, NODE_OPTIONS: nodeOptions.filter(Boolean).join(' ') },
+    stderr: 'pipe',
+    stdout: 'pipe',
+  });
 
   // a build that outlives the test that started it stops with that test, which failed on it
   onTestFinished(() => {

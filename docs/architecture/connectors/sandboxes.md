@@ -5,12 +5,13 @@ worker, each code run, the fetch sandbox and each coding session. A sandbox gets
 and the credentials its kind of work needs. The spec builder sets the egress, the grants and the
 tool route from the kind, so a caller that builds its spec there names only the kind of work. nixie
 reaches sandboxes through its own sandbox interface, under
-[0016](../../decisions/0016-own-interfaces.md). `modules/sandbox` holds the interface, the kinds and
-the lifecycle records. `adapters/sandbox-imp` runs each sandbox as an imp microVM and is the one
-package that imports imp's client, and `adapters/sandbox-process` holds the test sandbox, a
-test-build double that runs each guest as a local process. [Tool calls](./tool-calls.md) covers the
-endpoint a sandbox's tool route reaches. [Web fetch](./web-fetch.md) covers the fetch sandbox's
-lifetime and the fetcher that runs in it.
+[0016](../../decisions/0016-own-interfaces.md). `modules/sandbox` holds the interface, the kinds,
+the lifecycle records and the test sandbox, a test-build double that runs each guest as a local
+process. The test sandbox reaches nothing outside nixie, so it stays in the module, and any module's
+tests can run a real guest in it. `adapters/sandbox-imp` runs each sandbox as an imp microVM and is
+the one package that imports imp's client. [Tool calls](./tool-calls.md) covers the endpoint a
+sandbox's tool route reaches. [Web fetch](./web-fetch.md) covers the fetch sandbox's lifetime and
+the fetcher that runs in it.
 
 ## Kinds of work
 

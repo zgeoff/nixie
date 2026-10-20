@@ -1,18 +1,20 @@
 import { mkdirSync, realpathSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { buildProcessSandbox } from './build-process-sandbox';
+import type { ProcessState } from './build-process-state';
+import { buildProcessState } from './build-process-state';
+import { createSandboxID } from './create-sandbox-id';
+import { pickBrokerEnv } from './pick-broker-env';
+import { requireSandboxSpec } from './require-sandbox-spec';
+import { stopGraceMs } from './stop-grace-ms';
 import type {
   Sandbox,
   SandboxAdapter,
   SandboxRecorder,
   SandboxSpec,
   ToolTargetResolver,
-} from '@heynixie/sandbox';
-import { createSandboxID, requireSandboxSpec, stopGraceMs } from '@heynixie/sandbox';
-import { buildProcessSandbox } from './build-process-sandbox';
-import type { ProcessState } from './build-process-state';
-import { buildProcessState } from './build-process-state';
-import { pickBrokerEnv } from './pick-broker-env';
+} from './types';
 
 export interface ProcessSandboxOptions {
   readonly recorder: SandboxRecorder;

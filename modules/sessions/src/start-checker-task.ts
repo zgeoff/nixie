@@ -1,23 +1,23 @@
 import type { Clock } from '@heynixie/clock';
 import type { Logger } from '@heynixie/logger';
-import type { RunCheck } from '@heynixie/sessions';
-import { startCheckerRunner } from '@heynixie/sessions';
+import type { RunCheck } from './checker-types';
 import type { SystemTaskOptions } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
+import { startCheckerRunner } from './start-checker-runner';
 
-export interface CheckerOptions extends SystemTaskOptions {
+export interface CheckerTaskOptions extends SystemTaskOptions {
   readonly timeoutMs: number;
   readonly clock: Clock;
   readonly log: Logger;
 }
 
-export interface Checker {
+export interface CheckerTask {
   readonly check: RunCheck;
 }
 
 // Starts the checker on the checker role's profile, as a system task with its own session: one
 // query with no tools per check, in its own sandbox on the conversation image.
-export const startChecker = makeSystemTaskRunner<CheckerOptions, Checker>({
+export const startCheckerTask = makeSystemTaskRunner<CheckerTaskOptions, CheckerTask>({
   role: 'checker',
   entry: 'check',
   start: async (options, session) => {

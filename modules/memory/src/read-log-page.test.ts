@@ -50,6 +50,7 @@ test('it reads only the entries recorded in the time range', async () => {
     to: Date.UTC(2026, 9, 13),
     words: [],
     limit: 20,
+    scanLimit: 500,
   });
 
   expect(page).toStrictEqual({
@@ -99,6 +100,7 @@ test('it reads only the entries that hold every word of a search, in any case', 
     to: null,
     words: ['plum', 'Winter'],
     limit: 20,
+    scanLimit: 500,
   });
 
   expect(page).toStrictEqual({
@@ -137,6 +139,7 @@ test('it returns at most one page, with the cursor that reads the next one', asy
     to: null,
     words: [],
     limit: 2,
+    scanLimit: 500,
   });
 
   expect(page.entries.map((entry) => entry.sequence)).toStrictEqual([
@@ -169,6 +172,7 @@ test('it reads the page after the cursor and ends with no cursor', async () => {
     to: null,
     words: [],
     limit: 2,
+    scanLimit: 500,
   });
 
   expect(page).toStrictEqual({
@@ -185,22 +189,20 @@ test('it reads the page after the cursor and ends with no cursor', async () => {
   });
 });
 
-test('it stops a search after 500 records with the cursor to go on from', async () => {
+test('it stops a search at the scan limit with the cursor to go on from', async () => {
   const ctx = await setupTest();
 
-  const written = await writeRecords(
+  const [, second] = await writeRecords(
     ctx.log,
-    Array.from({ length: 501 }, (_, index) => ({
+    ['Nothing here', 'Nothing here either', 'The kettle is descaled'].map((text) => ({
       kind: 'model.reply',
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
-      erasable: { text: index === 500 ? 'The kettle is descaled' : 'Nothing here' },
+      erasable: { text },
     })),
   );
 
-  const lastScanned = written.at(499);
-
-  invariant(lastScanned);
+  invariant(second);
 
   const page = await readLogPage(ctx.log, {
     thread: 'conversation',
@@ -209,9 +211,10 @@ test('it stops a search after 500 records with the cursor to go on from', async 
     to: null,
     words: ['kettle'],
     limit: 20,
+    scanLimit: 2,
   });
 
-  expect(page).toStrictEqual({ entries: [], next: lastScanned.sequence });
+  expect(page).toStrictEqual({ entries: [], next: second.sequence });
 });
 
 test('it leaves out the records of other threads and the kinds a reader never sees', async () => {
@@ -239,6 +242,7 @@ test('it leaves out the records of other threads and the kinds a reader never se
     to: null,
     words: [],
     limit: 20,
+    scanLimit: 500,
   });
 
   expect(page).toStrictEqual({ entries: [], next: null });
@@ -262,6 +266,7 @@ test('it shows a forgotten message with no text, and a search never returns it',
     to: null,
     words: [],
     limit: 20,
+    scanLimit: 500,
   });
 
   const searched = await readLogPage(ctx.log, {
@@ -271,6 +276,7 @@ test('it shows a forgotten message with no text, and a search never returns it',
     to: null,
     words: ['gate'],
     limit: 20,
+    scanLimit: 500,
   });
 
   expect(read.entries).toStrictEqual([
@@ -299,6 +305,7 @@ test('it matches a search against the words of your message, never the block aro
     to: null,
     words: ['pasted'],
     limit: 20,
+    scanLimit: 500,
   });
 
   expect(page).toStrictEqual({ entries: [], next: null });
@@ -331,6 +338,7 @@ test('it shows a marker line for each image of your message and none of its byte
     to: null,
     words: [],
     limit: 20,
+    scanLimit: 500,
   });
 
   expect(page.entries).toStrictEqual([
@@ -367,6 +375,7 @@ test('it puts each pasted span of your message in a block', async () => {
     to: null,
     words: [],
     limit: 20,
+    scanLimit: 500,
   });
 
   const [entry] = page.entries;
@@ -405,6 +414,7 @@ test('it shows a tool result as its fields', async () => {
     to: null,
     words: [],
     limit: 20,
+    scanLimit: 500,
   });
 
   expect(page.entries).toStrictEqual([
@@ -437,6 +447,7 @@ test('it cuts a text longer than 2000 characters', async () => {
     to: null,
     words: [],
     limit: 20,
+    scanLimit: 500,
   });
 
   expect(page.entries).toMatchObject([{ text: 'a'.repeat(2000), isCut: true }]);

@@ -36,9 +36,12 @@ Each line links the section that explains it.
 
 | Run                    | Command                                                         | Needs                                                                                           |
 | ---------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Unit and package tests | `bun test` at the root                                          | Bun; the gated suites below skip                                                                |
+| Unit and package tests | `bun test` at the root                                          | The Bun that `.bun-version` pins; the gated suites below skip                                   |
 | imp isolation          | `bun test src/build-imp-port.test.ts` in `adapters/sandbox-imp` | An impd on a host with `/dev/kvm`, and the `NIXIE_IMP_TEST_*` variables                         |
 | SDK contract           | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract`              | A model credential, or a broker's placeholder, in `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY` |
+
+Some tests pin an error that Bun raises, such as the code of a refused connection, and that error
+can change between Bun releases, so a run on another Bun can fail where CI passes.
 
 The [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md) gives that run's
 variables and steps. The [SDK contract suite](../../../evals/sdk-contract/README.md) runs the pinned
@@ -63,6 +66,14 @@ the suites share before the first test. A first Chrome start on a fresh CI runne
 default test timeout even on an idle CPU, and takes longer still beside the parallel workers. The
 parallel run's ignore patterns repeat the root config's, because a pattern given on the command line
 replaces that list.
+
+Outside CI, each browser suite skips and prints why when no browser starts, through
+[`checkBrowserSkip`](../../../apps/web/src/test-utils/check-browser-skip.ts), and the preload runs
+the same check, so the run goes on. In CI the check fails the run instead. Chrome and Chromium stop
+at startup when `TMPDIR` is too long for their socket path, so on such a host set `TMPDIR` to a
+short directory or point `BUN_CHROME_PATH` at Playwright's `chrome-headless-shell`, which opens no
+such socket. Chrome stops under a `ulimit -v` cap, because it reserves more address space than it
+uses, so the browser suites skip there.
 
 Plain `bun test` runs the crash suites in `e2e/crash/`, which spawn the test build of nixie from
 [`e2e/nixie/main.ts`](../../../e2e/nixie/main.ts) as a child process and drive it through

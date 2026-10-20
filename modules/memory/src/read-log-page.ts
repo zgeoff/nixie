@@ -25,6 +25,9 @@ export interface LogPageQuery {
   // only entries whose text holds every one of these words, in any case
   readonly words: readonly string[];
   readonly limit: number;
+
+  // the most records one read decrypts
+  readonly scanLimit: number;
 }
 
 // One entry of the thread: your message, a reply, or a tool's result, by the record's sequence.
@@ -44,8 +47,8 @@ export interface LogPage {
 }
 
 // Reads one page of a thread's messages, replies and tool results, oldest first, in a time range
-// and with every word of a search. A read decrypts at most scanLimit records, so a search over a
-// long log can return a short page, with the cursor to go on from.
+// and with every word of a search. A read decrypts at most the query's scanLimit records, so a
+// search over a long log can return a short page, with the cursor to go on from.
 export async function readLogPage(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   query: LogPageQuery,
@@ -102,7 +105,6 @@ interface PageScan {
 }
 
 const batchSize = 100;
-const scanLimit = 500;
 
 async function readPageEntries(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
@@ -114,7 +116,7 @@ async function readPageEntries(
 
   while (
     scan.entries.length < query.limit &&
-    scan.scanned < scanLimit &&
+    scan.scanned < query.scanLimit &&
     scan.after < bounds.through
   ) {
     const batch = await readRecords(log, {
@@ -122,7 +124,7 @@ async function readPageEntries(
       beforeSequence: bounds.through + 1,
       thread: query.thread,
       kinds: entryKinds,
-      limit: batchSize,
+      limit: Math.min(batchSize, query.scanLimit - scan.scanned),
     });
 
     scan =

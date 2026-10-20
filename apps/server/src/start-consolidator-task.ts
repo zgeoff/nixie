@@ -1,8 +1,8 @@
 import { join } from 'node:path';
 import { toErrorFields } from '@heynixie/logger';
 import type { StartedMemoryStore } from '@heynixie/memory';
+import { startMemoryConsolidatorRunner } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
-import { startMemoryConsolidatorRunner } from './start-memory-consolidator-runner';
 import type { ServerParts } from './types';
 
 // Starts the memory consolidator and returns its step. Its first start runs a consolidation at

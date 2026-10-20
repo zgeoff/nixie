@@ -1,5 +1,7 @@
-import type { RunStep, TaskClaim, TasksContext } from '@heynixie/tasks';
-import { claimTask, runDueTimers, runTaskStep } from '@heynixie/tasks';
+import { claimTask } from '../claim-task';
+import { runDueTimers } from '../run-due-timers';
+import { runTaskStep } from '../run-task-step';
+import type { RunStep, TaskClaim, TasksContext } from '../types';
 
 export interface TaskStepsOptions {
   // the step of each task the run drives, by task ID

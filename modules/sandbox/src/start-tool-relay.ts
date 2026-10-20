@@ -1,6 +1,6 @@
 import type { Socket } from 'node:net';
 import { createConnection, createServer } from 'node:net';
-import type { ToolTarget } from '@heynixie/sandbox';
+import type { ToolTarget } from './types';
 
 export interface ToolRelay {
   readonly port: number;

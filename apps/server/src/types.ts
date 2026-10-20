@@ -133,6 +133,3 @@ export interface PartGraph<Values> {
   // resolves once every part is ready, and rejects with the error that ended the start
   readonly done: Promise<void>;
 }
-
-// The conversation guest's entry a sandbox runs: a session, or one check for the checker.
-export type GuestEntry = 'check' | 'main';

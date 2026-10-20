@@ -1,12 +1,11 @@
 import { join } from 'node:path';
 import { buildActionQueue } from '@heynixie/actions';
-import type { StartedMemoryStore } from '@heynixie/memory';
-import { writerConfigSchema } from '@heynixie/memory';
+import type { MemoryWriterRunner, StartedMemoryStore } from '@heynixie/memory';
+import { startMemoryWriterRunner, writerConfigSchema } from '@heynixie/memory';
 import { buildStubGate } from '@heynixie/memory/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
-import type { MemoryWriterRunner } from '@heynixie/server';
-import { createSandboxAdapter, startMemoryWriterRunner } from '@heynixie/server';
+import { createSandboxAdapter } from '@heynixie/server';
 import type { TasksContext } from '@heynixie/tasks';
 import type { TestTools } from './start-test-tools';
 

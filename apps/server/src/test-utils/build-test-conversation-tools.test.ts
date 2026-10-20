@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
+import { startTestMemoryStore } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
 import { buildTestConversationTools } from './build-test-conversation-tools';
-import { startTestMemoryStore } from './start-test-memory-store';
 import { startTestServer } from './start-test-server';
 
 // a test server whose context the tools are built on

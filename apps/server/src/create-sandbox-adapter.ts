@@ -1,6 +1,6 @@
 import type { SandboxAdapter, SandboxRecorder, ToolTargetResolver } from '@heynixie/sandbox';
+import { createProcessSandboxAdapter } from '@heynixie/sandbox';
 import { buildImpPort, buildImpSandboxAdapter } from '@heynixie/sandbox-imp';
-import { createProcessSandboxAdapter } from '@heynixie/sandbox-process';
 import type { SandboxSettings } from './resolve-sandbox-settings';
 
 export interface SandboxAdapterOptions {
