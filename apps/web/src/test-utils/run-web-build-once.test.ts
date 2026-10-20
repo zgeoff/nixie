@@ -27,7 +27,7 @@ test('it builds the web server entry under an address-space cap', async () => {
       '-c',
       'ulimit -v 12000000 && exec "$0" test "$1" -t "$2"',
       process.execPath,
-      join(import.meta.dir, 'build-web-once.test.ts'),
+      join(import.meta.dir, 'run-web-build-once.test.ts'),
       'it builds the web server entry once and shares it',
     ],
     { cwd: import.meta.dir, stderr: 'pipe', stdout: 'ignore' },
