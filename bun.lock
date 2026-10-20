@@ -277,6 +277,7 @@
       "dependencies": {
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
+        "@heynixie/definitions": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
@@ -291,7 +292,6 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@heynixie/definitions": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@orpc/client": "catalog:",
       },

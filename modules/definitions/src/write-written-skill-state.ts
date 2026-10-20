@@ -11,23 +11,21 @@ export interface WrittenSkillMove {
 }
 
 // Moves a skill that nixie wrote to a new state, inside the caller's write transaction, and refuses
-// a move the transition table lacks with nothing written.
+// a move the transition table lacks with nothing written. It returns the skill's name.
 export async function writeWrittenSkillState(
   tx: Transaction<unknown>,
   move: WrittenSkillMove,
-): Promise<void> {
+): Promise<string> {
   const tables = tx.$extendTables<DefinitionsTables>();
 
   const row = await tables
     .selectFrom('written_skills')
-    .select('state')
+    .select(['name', 'state'])
     .where('approval_id', '=', move.approvalID)
     .executeTakeFirst();
 
-  const from = row?.state ?? null;
-
-  if (from === null || !canMoveWrittenSkill(from, move.to)) {
-    throw new WrittenSkillStateError(move.approvalID, from, move.to);
+  if (row === undefined || !canMoveWrittenSkill(row.state, move.to)) {
+    throw new WrittenSkillStateError(move.approvalID, row?.state ?? null, move.to);
   }
 
   await tables
@@ -35,4 +33,6 @@ export async function writeWrittenSkillState(
     .set({ state: move.to, updated_at: move.at })
     .where('approval_id', '=', move.approvalID)
     .execute();
+
+  return row.name;
 }

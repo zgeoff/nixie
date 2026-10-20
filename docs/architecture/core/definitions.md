@@ -133,7 +133,9 @@ The seed compares each written skill with the definitions' version of it:
 - **The definitions hold the base, or lack a new skill.** The written skill stays in force.
 - **The definitions hold another version.** The user changed the skill before the written version
   reached the definitions. The written skill stays in force, and its row keeps the definitions'
-  version beside the base, which shows the conflict.
+  version beside the base, which shows the conflict. The user resolves it through the skill host
+  commands: keeping nixie's version makes the definitions' version its base, and keeping the
+  definitions' version retires nixie's. Each choice is a record.
 
 An approval or a retirement takes effect at once through a seed of the definitions in force: it
 reads the user's skills back from the seed in force and lays the written skills over them again,

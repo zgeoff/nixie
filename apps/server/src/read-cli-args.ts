@@ -28,6 +28,7 @@ const CLI_OPTIONS = {
   text: { type: 'string' },
   reason: { type: 'string' },
   files: { type: 'string' },
+  keep: { type: 'string' },
   'keep-sessions': { type: 'boolean', default: false },
   yes: { type: 'boolean', default: false },
   'dry-run': { type: 'boolean', default: false },

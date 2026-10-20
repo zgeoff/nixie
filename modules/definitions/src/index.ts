@@ -23,6 +23,7 @@ export type { WrittenSkillEntry } from './read-written-skills';
 export { readWrittenSkills } from './read-written-skills';
 export type { WrittenSkillInput } from './write-written-skill';
 export { writeWrittenSkill } from './write-written-skill';
+export { writeWrittenSkillBase } from './write-written-skill-base';
 export { writeWrittenSkillState } from './write-written-skill-state';
 export { WrittenSkillStateError } from './written-skill-state-error';
 export { SnapshotError } from './snapshot-error';

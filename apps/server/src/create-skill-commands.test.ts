@@ -159,6 +159,7 @@ test('it lists a new version beside the version in force with the untyped token,
   ]);
 
   const after = await runHostCommand(ctx.configPath, ['skill-pending']);
+  const written = await runHostCommand(ctx.configPath, ['skill-written']);
 
   ctx.sendSignal('SIGTERM');
 
@@ -184,6 +185,10 @@ test('it lists a new version beside the version in force with the untyped token,
   });
 
   expect(JSON.parse(after.stdout)).toStrictEqual([]);
+
+  expect(JSON.parse(written.stdout)).toMatchObject([
+    { proposalID, name: 'tide-tables', skillHash, isConflict: false },
+  ]);
 
   expect(run.records.filter((record) => record.kind === 'skills.write_approved')).toMatchObject([
     { thread: 'conversation', payload: { proposalID, skillHash, approver: 'owner' } },
@@ -311,5 +316,19 @@ test('it refuses a rejection with no --reason, and reaches no server', async () 
   expect(refused).toStrictEqual({
     exitCode: 2,
     stdout: 'nixie skill-reject takes a proposal ID, --hash <skill hash> and --reason <why>\n',
+  });
+});
+
+test('it refuses a resolve that keeps neither side, and reaches no server', async () => {
+  const refused = await runHostCommand('/nonexistent/config.yaml', [
+    'skill-resolve',
+    '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+    '--keep',
+    'both',
+  ]);
+
+  expect(refused).toStrictEqual({
+    exitCode: 2,
+    stdout: 'nixie skill-resolve takes an approval ID and --keep nixie|definitions\n',
   });
 });
