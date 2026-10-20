@@ -116,10 +116,11 @@ async function runSkillResolve(
   io: CLIIO,
   args: readonly string[],
 ): Promise<number> {
-  const [approvalID] = args;
+  const [approvalID, ...extra] = args;
   const keep = flags.keep;
 
-  if (approvalID === undefined || (keep !== 'nixie' && keep !== 'definitions')) {
+  // the parser holds --keep to its choices, and the command takes one word, the approval ID
+  if (approvalID === undefined || extra.length > 0 || keep === undefined) {
     io.print('nixie skill-resolve takes an approval ID and --keep nixie|definitions');
 
     return 2;

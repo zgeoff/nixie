@@ -328,6 +328,21 @@ test('it refuses a resolve that keeps neither side, and reaches no server', asyn
   ]);
 
   expect(refused).toStrictEqual({
+    exitCode: 1,
+    stdout: `nixie: Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions"] values\n`,
+  });
+});
+
+test('it refuses a resolve given a second word, and reaches no server', async () => {
+  const refused = await runHostCommand('/nonexistent/config.yaml', [
+    'skill-resolve',
+    '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+    '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
+    '--keep',
+    'nixie',
+  ]);
+
+  expect(refused).toStrictEqual({
     exitCode: 2,
     stdout: 'nixie skill-resolve takes an approval ID and --keep nixie|definitions\n',
   });

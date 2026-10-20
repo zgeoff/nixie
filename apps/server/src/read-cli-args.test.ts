@@ -561,6 +561,15 @@ test('it refuses a flag nixie does not take', async () => {
   expect(parsed).toStrictEqual({ kind: 'invalid-flags', message: 'Unknown option: --frobnicate' });
 });
 
+test('it refuses a --keep outside its choices', async () => {
+  const parsed = await readCLIArgs(['skill-resolve', 'a1', '--keep', 'both'], ['skill-resolve']);
+
+  expect(parsed).toStrictEqual({
+    kind: 'invalid-flags',
+    message: `Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions"] values`,
+  });
+});
+
 test('it refuses a value flag given no value', async () => {
   const parsed = await readCLIArgs(['memory-approve', 'p1', '--hash'], ['memory-approve']);
 

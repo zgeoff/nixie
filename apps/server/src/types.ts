@@ -89,7 +89,7 @@ export interface CLIFlags {
   readonly files?: string;
 
   // which version of a skill nixie wrote to keep: nixie's or the definitions'
-  readonly keep?: string;
+  readonly keep?: 'nixie' | 'definitions';
 
   // a reset keeps the live device sessions, and runs only once the user confirms it
   readonly 'keep-sessions': boolean;
