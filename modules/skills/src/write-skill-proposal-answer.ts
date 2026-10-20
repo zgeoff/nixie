@@ -101,8 +101,6 @@ interface Approval {
   readonly files: readonly SkillFile[] | null;
 }
 
-// Checks the files the approval applies, the proposal's or your edit of them, stores the skill as
-// in force under a new approval ID, and records the approval.
 async function writeApproval(
   tx: Transaction<unknown>,
   context: SkillProposalContext,
