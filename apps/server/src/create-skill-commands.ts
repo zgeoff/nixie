@@ -61,7 +61,6 @@ async function runSkillApprove(
 
 const filesSchema = z.array(z.object({ path: z.string(), text: z.string() })).min(1);
 
-// the edited files, or null when the flag holds no JSON list of path and text
 function parseFiles(text: string): { path: string; text: string }[] | null {
   try {
     const parsed = filesSchema.safeParse(JSON.parse(text));
