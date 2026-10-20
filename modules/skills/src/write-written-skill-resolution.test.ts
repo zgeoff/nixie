@@ -114,6 +114,48 @@ test("it puts the definitions' version back in force when you keep it", async ()
   expect(written).toStrictEqual([]);
 });
 
+test("it puts the definitions' changed version in force, not the approval's base, when you keep it", async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+  await runSeed({ log: ctx.log, source: ctx.source, policy: ctx.policy });
+
+  const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
+  const changed = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By hour.\n` }]);
+
+  invariant('skillHash' in skill);
+  invariant('skillHash' in changed);
+
+  await withWriteTransaction(ctx.log.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await runWrittenSkillSeed({ log: ctx.log, policy: ctx.policy });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), `${text}By hour.\n`);
+  await runSeed({ log: ctx.log, source: ctx.source, policy: ctx.policy });
+
+  await writeWrittenSkillResolution(ctx.context, {
+    approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+    keep: 'definitions',
+  });
+
+  const records = await readRecords(ctx.log, { afterSequence: 0, kinds: ['definitions_seeded'] });
+
+  expect(records.at(-1)?.record.payload).toMatchObject({
+    skills: [{ name: 'tide-tables', skillHash: changed.skillHash, origin: 'definitions' }],
+  });
+});
+
 test("it keeps nixie's version in force over a definitions change and closes the conflict", async () => {
   const ctx = await setupTest();
 
