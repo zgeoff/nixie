@@ -103,6 +103,72 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
   );
 }, 60_000);
 
+test('it approves a skill proposal with its pull request, which leaves the pending list', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    {
+      toolUse: {
+        name: 'mcp__nixie__skill_write',
+        input: {
+          name: 'tide-tables',
+          files: [
+            {
+              path: 'SKILL.md',
+              text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+            },
+          ],
+        },
+      },
+    },
+    { text: 'Proposed.' },
+  );
+
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Write a skill for reading tide tables.',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Proposed.');
+  });
+
+  const listed = await runHostCommand(ctx.configPath, ['skill-pending']);
+
+  const [{ proposalID, skillHash }] = z
+    .tuple([z.object({ proposalID: z.string(), skillHash: z.string() })])
+    .parse(JSON.parse(listed.stdout));
+
+  const approved = await runHostCommand(ctx.configPath, [
+    'skill-approve',
+    proposalID,
+    '--hash',
+    skillHash,
+    '--pull-request',
+    'https://git.example.com/owner/definitions/pull/7',
+  ]);
+
+  const after = await runHostCommand(ctx.configPath, ['skill-pending']);
+
+  ctx.sendSignal('SIGTERM');
+
+  const run = await ctx.waitForExit();
+
+  expect(approved).toStrictEqual({ exitCode: 0, stdout: `{"proposalID":"${proposalID}"}\n` });
+  expect(JSON.parse(after.stdout)).toStrictEqual([]);
+
+  expect(run.records.filter((record) => record.kind === 'skills.write_approved')).toMatchObject([
+    {
+      thread: 'conversation',
+      payload: { proposalID, pullRequestURL: 'https://git.example.com/owner/definitions/pull/7' },
+    },
+  ]);
+}, 60_000);
+
 // the refusal comes before the command reads its configuration, so no server runs
 test('it refuses an approval with no --hash, and reaches no server', async () => {
   const refused = await runHostCommand('/nonexistent/config.yaml', [
