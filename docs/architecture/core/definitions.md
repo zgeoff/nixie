@@ -120,8 +120,9 @@ applied it, which is the base. Each seed lays every written skill in force over 
 parsed, so the written version replaces the definitions' version, or joins the skills when the
 definitions lack it. A new written skill joins the conversation's skill list, because the
 conversation wrote it, and a written version of an existing skill keeps that skill's place on the
-list. The snapshot hash covers the result with each written skill's origin as nixie, so every record
-names the skills that nixie wrote.
+list. The snapshot hash covers the result with each written skill's origin as nixie and the approval
+that applied it, so every record names the skills that nixie wrote, and a version that a later
+approval brings back gets a snapshot of its own.
 
 The seed compares each written skill with the definitions' version of it:
 

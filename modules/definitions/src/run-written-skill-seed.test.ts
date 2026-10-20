@@ -3,9 +3,11 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
+import { readDefinitionsInForce } from './read-definitions-in-force';
 import { runSeed } from './run-seed';
 import { runWrittenSkillSeed } from './run-written-skill-seed';
 import { writeWrittenSkill } from './write-written-skill';
@@ -139,6 +141,54 @@ test('it gives a retired written skill back to the version beneath it, in its li
       conversationSkills: ['tide-tables'],
     },
   });
+});
+
+test('it names the newest approval when a later approval brings back an earlier version', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const first = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  const second = checkSkillFiles('tide-tables', [
+    {
+      path: 'SKILL.md',
+      text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\nBy port.\n',
+    },
+  ]);
+
+  invariant('skillHash' in first);
+  invariant('skillHash' in second);
+
+  const approvals = [
+    ['5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', 'k3vq8m2xpa', first],
+    ['9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74', 'w7tn4c9rhz', second],
+    ['c2d8e5f1-4a7b-4c90-9e3d-6b1f0a8c2e57', 'p5jd2x8kmq', first],
+  ] as const;
+
+  for (const [approvalID, proposalID, skill] of approvals) {
+    await withWriteTransaction(ctx.writer, (tx) =>
+      writeWrittenSkill(tx, { approvalID, proposalID, skill, approvedAt: 1 }),
+    );
+
+    await runWrittenSkillSeed({ log: ctx.log, policy });
+  }
+
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  invariant(inForce);
+
+  const rows = await sql`select approval_id from snapshot_skills
+    where snapshot_hash = ${inForce.snapshotHash}`.execute(ctx.writer.db);
+
+  expect(rows.rows).toStrictEqual([{ approval_id: 'c2d8e5f1-4a7b-4c90-9e3d-6b1f0a8c2e57' }]);
 });
 
 test('it writes nothing when the written skills already stand in force', async () => {
