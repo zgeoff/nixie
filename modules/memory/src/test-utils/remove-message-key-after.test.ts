@@ -1,19 +1,19 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { startTestTasks } from '@heynixie/tasks/test-utils';
 import { startScriptedModel } from '@heynixie/testing';
 import { removeMessageKeyAfter } from './remove-message-key-after';
-import { startTestServer } from './start-test-server';
 import { writeOwnerMessages } from './write-owner-messages';
 
-// a test server and a scripted model whose requests the removal waits on
+// a writer with the tasks projections, and a scripted model whose requests the removal waits on
 async function setupTest() {
-  const server = await startTestServer();
+  const tasks = await startTestTasks();
 
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
 
-  return { log: server.context.log, model };
+  return { log: tasks.context.log, model };
 }
 
 test('it removes the message key once the model has the given number of requests', async () => {

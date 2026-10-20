@@ -29,7 +29,7 @@ test('it starts a log with the tasks, sandboxes and memory projections, an endpo
   expect(server.sandboxes).toMatchObject({ id: 'process', boundary: 'process' });
 
   expect(server.endpoint.getToolTarget({ id: 's-1', owner: 'conversation' })).toMatchObject({
-    path: expect.toStartWith(server.dataDir),
+    path: expect.toStartWith(server.socketDir),
   });
 });
 
@@ -62,7 +62,7 @@ test('it removes the data directory when the test finishes', async () => {
     expect(stat(server.dataDir)).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
-  expect(server.dataDir).toBeString();
+  expect(server.socketDir).toStartWith(server.dataDir);
 });
 
 test('it reads the ID of each sandbox the process double holds', async () => {

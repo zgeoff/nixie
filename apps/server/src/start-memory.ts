@@ -1,7 +1,7 @@
 import { toErrorFields } from '@heynixie/logger';
 import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
 import { findNoAllowRule, startLapseSweep, startMemoryStore } from '@heynixie/memory';
-import { startChecker } from './start-checker';
+import { startCheckerTask } from '@heynixie/sessions';
 import type { ServerParts } from './types';
 
 // Starts the checker, then the memory store after recovery and after the conversation imp, which
@@ -11,7 +11,7 @@ export async function startMemory(
   parts: ServerParts,
   cleanupSessions: CleanupSessions,
 ): Promise<StartedMemoryStore> {
-  const checker = await startChecker({
+  const checker = await startCheckerTask({
     models: parts.config.models,
     secrets: parts.modelSecrets,
     sandboxes: parts.tools.adapter,

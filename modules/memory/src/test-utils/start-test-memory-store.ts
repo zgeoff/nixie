@@ -1,15 +1,14 @@
 import { mock, onTestFinished } from 'bun:test';
-import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
-import {
-  defaultGateLimits,
-  defaultOwnerPronouns,
-  findNoAllowRule,
-  startMemoryStore,
-} from '@heynixie/memory';
-import { buildStubEncoder } from '@heynixie/memory/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
+import { defaultGateLimits } from '../default-gate-limits';
+import { defaultOwnerPronouns } from '../default-owner-pronouns';
+import { findNoAllowRule } from '../find-no-allow-rule';
+import type { StartedMemoryStore } from '../start-memory-store';
+import { startMemoryStore } from '../start-memory-store';
+import type { CleanupSessions } from '../types';
+import { buildStubEncoder } from './build-stub-encoder';
 
-// Starts a memory store on a test server's context, whose forget runs the session cleanup given,
+// Starts a memory store on a test context, whose forget runs the session cleanup given,
 // and stops it when the test finishes. No checker is wired, so a gated write holds as a proposal;
 // with encoder topics, the stub encoder searches by meaning too.
 export async function startTestMemoryStore(

@@ -1,5 +1,6 @@
-import type { ExecExit, ProcessIO } from '@heynixie/sandbox';
 import { sendGroupSignal } from './send-group-signal';
+import type { ProcessIO } from './start-exec-stream';
+import type { ExecExit } from './types';
 
 export interface ProcessGroupOptions {
   readonly argv: readonly string[];

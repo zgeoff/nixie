@@ -2,17 +2,15 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, realpath, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
-import { SandboxSpecRefusedError } from '@heynixie/sandbox';
-import {
-  buildMockGrantSpec,
-  buildMockSandboxSpec,
-  setupTestRecorder,
-  startStubToolEndpoint,
-} from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { createProcessSandboxAdapter } from './create-process-sandbox-adapter';
+import { SandboxSpecRefusedError } from './sandbox-spec-refused-error';
+import { buildMockGrantSpec } from './test-utils/build-mock-grant-spec';
+import { buildMockSandboxSpec } from './test-utils/build-mock-sandbox-spec';
+import { setupTestRecorder } from './test-utils/setup-test-recorder';
+import { startStubToolEndpoint } from './test-utils/start-stub-tool-endpoint';
+import type { Sandbox, SandboxAdapter, SandboxSpec } from './types';
 
 interface SetupConfig {
   // the stop's kill deadline, when a test needs one shorter than the default

@@ -31,7 +31,6 @@
     "@heynixie/retry": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/sandbox-imp": "workspace:*",
-    "@heynixie/sandbox-process": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/skills": "workspace:*",
     "@heynixie/tasks": "workspace:*",

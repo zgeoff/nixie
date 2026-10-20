@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { startTestMemoryStore } from '@heynixie/memory/test-utils';
 import { recordSkillPin, skillsReloadedCodec } from '@heynixie/skills';
 import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -7,7 +8,6 @@ import { makeTurnNoteReader } from './make-turn-note-reader';
 import { startConversation } from './start-conversation';
 import { buildConversationDriver } from './test-utils/build-conversation-driver';
 import { buildTestModelsConfig } from './test-utils/build-test-models-config';
-import { startTestMemoryStore } from './test-utils/start-test-memory-store';
 import { startTestServer } from './test-utils/start-test-server';
 
 // a test server on the fake guest, a memory store, and the conversation on its first image with the

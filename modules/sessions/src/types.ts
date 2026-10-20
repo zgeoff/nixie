@@ -377,3 +377,6 @@ export type EventRegistry = readonly {
   readonly isUncapped: boolean;
   readonly isSessionBound: boolean;
 }[];
+
+// The conversation guest's entry a sandbox runs: a session, or one check for the checker.
+export type GuestEntry = 'check' | 'main';

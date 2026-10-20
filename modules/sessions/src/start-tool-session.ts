@@ -1,11 +1,11 @@
 import { makeDecisionPoint } from '@heynixie/policy';
 import type { SandboxAdapter } from '@heynixie/sandbox';
-import type { SessionRunner } from '@heynixie/sessions';
-import { startSessionRunner } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import type { SystemTaskSession } from './make-system-task-runner';
+import type { SessionRunner } from './start-session-runner';
+import { startSessionRunner } from './start-session-runner';
 
 export interface ToolSessionOptions {
   readonly context: TasksContext;

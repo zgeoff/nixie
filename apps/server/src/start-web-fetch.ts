@@ -2,8 +2,8 @@ import { join } from 'node:path';
 import type { WebFetchConfig } from '@heynixie/connectors';
 import { buildWebFetchTool, startFetchSandbox, webFetchDefaults } from '@heynixie/connectors';
 import type { SandboxAdapter } from '@heynixie/sandbox';
+import { isTestSandbox } from '@heynixie/sandbox';
 import type { ToolDefinition } from '@heynixie/tools';
-import { isTestSandbox } from './is-test-sandbox';
 
 export interface WebFetchOptions {
   readonly adapter: SandboxAdapter;

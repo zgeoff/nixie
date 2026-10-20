@@ -1,22 +1,24 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { buildActionQueue } from '@heynixie/actions';
-import { buildMemoryTools, consolidationConfigSchema } from '@heynixie/memory';
-import { createMemoryItem } from '@heynixie/memory/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
+import { startTestSessionHost } from '@heynixie/sessions/test-utils';
+import { runTaskSteps } from '@heynixie/tasks/test-utils';
 import type { ScriptedReply } from '@heynixie/testing';
 import { buildTestClock, startScriptedModel } from '@heynixie/testing';
+import { buildMemoryTools } from './build-memory-tools';
+import { consolidationConfigSchema } from './consolidation-config-schema';
+import { memoryProjections } from './memory-projections';
 import { startMemoryConsolidatorRunner } from './start-memory-consolidator-runner';
-import { runTaskSteps } from './test-utils/run-task-steps';
+import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemoryStore } from './test-utils/start-test-memory-store';
-import { startTestServer } from './test-utils/start-test-server';
 
-// memory on a test server and a test clock, with the consolidator on its own scripted model and
+// memory on a session host and a test clock, with the consolidator on its own scripted model and
 // the process double, which runs the real guest against the consolidator's tool endpoint
 async function setupTest() {
-  const server = await startTestServer();
+  const host = await startTestSessionHost({ projections: memoryProjections });
 
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
-  const context = { ...server.context, clock };
+  const context = { ...host.context, clock };
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
@@ -27,9 +29,9 @@ async function setupTest() {
     context,
     models: buildModelsConfig(model.url),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
-    sandboxes: server.sandboxes,
+    sandboxes: host.sandboxes,
     queue: buildActionQueue(context).queue,
-    socketDir: `${server.dataDir}/tools`,
+    socketDir: host.socketDir,
     image: 'nixie-conversation-0123456789ab',
     store,
     config: consolidationConfigSchema.parse({}),
@@ -40,7 +42,7 @@ async function setupTest() {
     },
   });
 
-  server.defer(() => consolidator.stop());
+  host.defer(() => consolidator.stop());
 
   return {
     model,

@@ -1,7 +1,7 @@
-import type { ToolTarget } from '@heynixie/sandbox';
 import type { ProcessGroup } from './start-process-group';
 import type { ToolRelay } from './start-tool-relay';
 import { startToolRelay } from './start-tool-relay';
+import type { ToolTarget } from './types';
 
 // What the double holds for one live sandbox: its process groups, whether it sleeps, and its tool
 // relay. A sandbox that a restart left behind starts with none of them.

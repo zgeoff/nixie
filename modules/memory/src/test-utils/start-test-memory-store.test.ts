@@ -1,10 +1,18 @@
 import { expect, mock, test } from 'bun:test';
+import { startTestSessionHost } from '@heynixie/sessions/test-utils';
+import { memoryProjections } from '../memory-projections';
 import { startTestMemoryStore } from './start-test-memory-store';
-import { startTestServer } from './start-test-server';
+
+// a session host whose log folds the memory projections, which the store runs on
+async function setupTest() {
+  const host = await startTestSessionHost({ projections: memoryProjections });
+
+  return { context: host.context };
+}
 
 test('it starts a store that remembers and recalls an item', async () => {
-  const server = await startTestServer();
-  const store = await startTestMemoryStore(server.context, () => Promise.resolve());
+  const ctx = await setupTest();
+  const store = await startTestMemoryStore(ctx.context, () => Promise.resolve());
 
   const item = await store.remember({
     text: 'The spare key sits under the blue flowerpot',
@@ -19,11 +27,11 @@ test('it starts a store that remembers and recalls an item', async () => {
 });
 
 test('it runs the session cleanup it was given on a forget', async () => {
-  const server = await startTestServer();
+  const ctx = await setupTest();
 
   const cleanupSessions = mock(() => Promise.resolve());
 
-  const store = await startTestMemoryStore(server.context, cleanupSessions);
+  const store = await startTestMemoryStore(ctx.context, cleanupSessions);
 
   const item = await store.remember({
     text: 'The spare key sits under the blue flowerpot',
@@ -39,9 +47,9 @@ test('it runs the session cleanup it was given on a forget', async () => {
 });
 
 test('it gives the store a stub encoder over the topics the test passes', async () => {
-  const server = await startTestServer();
+  const ctx = await setupTest();
 
-  const store = await startTestMemoryStore(server.context, () => Promise.resolve(), [
+  const store = await startTestMemoryStore(ctx.context, () => Promise.resolve(), [
     ['sister', 'sibling'],
   ]);
 

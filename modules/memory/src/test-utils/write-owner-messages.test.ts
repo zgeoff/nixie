@@ -1,13 +1,13 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { startTestServer } from './start-test-server';
+import { startTestTasks } from '@heynixie/tasks/test-utils';
 import { writeOwnerMessages } from './write-owner-messages';
 
-// a test server, whose log the messages go to
+// a writer with the tasks projections, whose log the messages go to
 async function setupTest() {
-  const server = await startTestServer();
+  const tasks = await startTestTasks();
 
-  return { log: server.context.log };
+  return { log: tasks.context.log };
 }
 
 test('it records each message on the conversation thread, typed in full, and returns their sequences', async () => {

@@ -115,30 +115,28 @@ import escapes the zones. The Agent SDK runs only inside a sandbox
 
 Each module package covers one area of the architecture, and its doc covers the package.
 
-| Package       | Area                                                                                                  |
-| ------------- | ----------------------------------------------------------------------------------------------------- |
-| `log`         | [The event log](core/event-log.md), keys, projections and the [single writer](core/database.md)       |
-| `tasks`       | [Tasks](core/tasks.md), [leases](core/leases-and-recovery.md), the inbox, waits and timers            |
-| `actions`     | [The action queue](core/actions.md), attempts, outcomes and retries                                   |
-| `models`      | [Model profiles](core/model-profiles.md), roles and cost                                              |
-| `sessions`    | The [conversation's turns](core/conversation-turns.md) and [session opening](core/session-opening.md) |
-| `compaction`  | The [compactor](core/compaction.md) and its summary records                                           |
-| `definitions` | [The definitions](core/definitions.md) and the path source                                            |
-| `policy`      | [The decision point](policy/decision-point.md) and its fixed rules                                    |
-| `api`         | [The API](channels/api.md): the oRPC router, device sessions and the live stream                      |
-| `sandbox`     | The [sandbox adapter](connectors/sandboxes.md) interface and sandboxes by kind                        |
-| `tools`       | The [tool endpoint](connectors/tool-calls.md) per task run                                            |
-| `connectors`  | The [web fetch](connectors/web-fetch.md) and [time](connectors/time.md) tools                         |
-| `memory`      | The [memory store](memory/store.md), its writer, consolidation and context                            |
-| `ops`         | The health checks behind [the server's](deployment/server.md) health endpoint                         |
+| Package       | Area                                                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `log`         | [The event log](core/event-log.md), keys, projections and the [single writer](core/database.md)                                       |
+| `tasks`       | [Tasks](core/tasks.md), [leases](core/leases-and-recovery.md), the inbox, waits and timers                                            |
+| `actions`     | [The action queue](core/actions.md), attempts, outcomes and retries                                                                   |
+| `models`      | [Model profiles](core/model-profiles.md), roles and cost                                                                              |
+| `sessions`    | The [conversation's turns](core/conversation-turns.md), [session opening](core/session-opening.md) and each system task's own session |
+| `compaction`  | The [compactor](core/compaction.md) and its summary records                                                                           |
+| `definitions` | [The definitions](core/definitions.md) and the path source                                                                            |
+| `policy`      | [The decision point](policy/decision-point.md) and its fixed rules                                                                    |
+| `api`         | [The API](channels/api.md): the oRPC router, device sessions and the live stream                                                      |
+| `sandbox`     | The [sandbox adapter](connectors/sandboxes.md) interface, sandboxes by kind and the sandbox double                                    |
+| `tools`       | The [tool endpoint](connectors/tool-calls.md) per task run                                                                            |
+| `connectors`  | The [web fetch](connectors/web-fetch.md) and [time](connectors/time.md) tools                                                         |
+| `memory`      | The [memory store](memory/store.md), its writer, consolidation and context                                                            |
+| `ops`         | The health checks behind [the server's](deployment/server.md) health endpoint                                                         |
 
 The other packages each hold one piece the modules and apps share:
 
 - `guests/conversation` runs the conversation's turns through the Agent SDK.
 - `guests/fetch` runs the web fetch inside the fetch sandbox.
 - `adapters/sandbox-imp` is the sandbox adapter on imp.
-- `adapters/sandbox-process` is the sandbox double that runs each guest as a local process. The
-  server wires it only in a [test build](#test-builds).
 - `adapters/encoder-onnx` is the memory module's text encoder, which runs a pinned embedding model
   on ONNX Runtime.
 - `libs/contract` holds the oRPC contracts of the API and the host commands, with the client code
@@ -172,8 +170,11 @@ none of them needs an imp or a real model. One exception: the
 model, to check the SDK behaviours nixie relies on. Its probes run only with `NIXIE_SDK_CONTRACT=1`
 and a model credential, and skip otherwise, so a plain `bun test` never calls a model. Whole-program
 suites in `e2e/` run nixie with the sandbox double, which starts the conversation guest as a local
-process, so the SDK still loads only from its own package. An eval run that calls a real model is a
-script a contributor runs by hand, and its suite checks only the committed report.
+process, so the SDK still loads only from its own package. A module's tests of a system task that
+runs its own session, such as the memory writer, run the conversation guest in the sandbox double
+too, which the sessions module's test helpers start beside a log outside the server. An eval run
+that calls a real model is a script a contributor runs by hand, and its suite checks only the
+committed report.
 
 ### Test builds
 

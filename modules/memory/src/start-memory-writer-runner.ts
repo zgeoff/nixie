@@ -1,14 +1,13 @@
-import type { MemoryWriter, StartedMemoryStore, WriterConfig, WriterGate } from '@heynixie/memory';
-import {
-  buildWriterTools,
-  createWriterStaging,
-  memoryWriterTaskID,
-  startMemoryWriter,
-} from '@heynixie/memory';
-import type { SystemTaskOptions, SystemTaskRunner } from './make-system-task-runner';
-import { makeSystemTaskRunner } from './make-system-task-runner';
-import type { ToolSessionOptions } from './start-tool-session';
-import { startToolSession } from './start-tool-session';
+import type { SystemTaskOptions, SystemTaskRunner, ToolSessionOptions } from '@heynixie/sessions';
+import { makeSystemTaskRunner, startToolSession } from '@heynixie/sessions';
+import { buildWriterTools } from './build-writer-tools';
+import { createWriterStaging } from './create-writer-staging';
+import { memoryWriterTaskID } from './memory-writer-task-id';
+import type { StartedMemoryStore } from './start-memory-store';
+import type { MemoryWriter } from './start-memory-writer';
+import { startMemoryWriter } from './start-memory-writer';
+import type { WriterConfig } from './writer-config-schema';
+import type { WriterGate } from './writer-types';
 
 export interface MemoryWriterRunnerOptions extends SystemTaskOptions, ToolSessionOptions {
   readonly store: StartedMemoryStore;

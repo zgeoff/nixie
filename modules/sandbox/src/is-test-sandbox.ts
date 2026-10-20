@@ -1,4 +1,4 @@
-import type { SandboxAdapter } from '@heynixie/sandbox';
+import type { SandboxAdapter } from './types';
 
 // Whether the adapter is the test sandbox, the process double, which runs each guest from the
 // workspace instead of from its image. The release bundle defines NIXIE_TEST_BUILD as false, so it
