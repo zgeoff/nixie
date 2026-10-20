@@ -24,7 +24,7 @@ test('it carries a new skill in its folder, and notes a conversation list that l
   expect(change).toStrictEqual({
     branch: 'nixie/skill/tide-tables',
     title: 'Add the tide-tables skill that nixie wrote',
-    body: expect.any(String),
+    body: expect.toBeString(),
     files: new Map([
       [
         'skills/tide-tables/SKILL.md',
