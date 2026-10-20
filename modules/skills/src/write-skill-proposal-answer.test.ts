@@ -135,6 +135,61 @@ test('it records a rejection with your reason in its erasable fields', async () 
   ]);
 });
 
+test('it closes a proposal once when an approval and a rejection arrive together', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'skills.write_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: skillsWriteProposedCodec.encode({
+        proposalID: 'k3x9m2p7qa',
+        name: 'tide-tables',
+        skillHash: 'hash-b',
+        baseHash: null,
+        files: [{ path: 'SKILL.md', text: '# Tides\n' }],
+        untypedToken: null,
+        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  const context = {
+    log: ctx.log,
+    clock: buildTestClock(Date.now()),
+    definitions: () => ({ snapshotHash: 'snapshot-a' }),
+  };
+
+  const settled = await Promise.allSettled([
+    writeSkillProposalAnswer(context, {
+      answer: 'approve',
+      proposalID: 'k3x9m2p7qa',
+      skillHash: 'hash-b',
+      pullRequestURL: 'https://git.example.com/owner/definitions/pull/7',
+    }),
+    writeSkillProposalAnswer(context, {
+      answer: 'reject',
+      proposalID: 'k3x9m2p7qa',
+      skillHash: 'hash-b',
+      reason: 'not now',
+    }),
+  ]);
+
+  const closing = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['skills.write_approved', 'skills.write_rejected'],
+  });
+
+  expect(settled.map((result) => result.status)).toIncludeSameMembers(['fulfilled', 'rejected']);
+
+  expect(settled.filter((result) => result.status === 'rejected')).toMatchObject([
+    { reason: { code: 'PROPOSAL_CLOSED' } },
+  ]);
+
+  expect(closing).toHaveLength(1);
+});
+
 test('it refuses an answer to a proposal no record holds', async () => {
   const ctx = await setupTest();
 
