@@ -377,6 +377,34 @@ test('it refuses a second open pull request from one head with 422', async () =>
   expect(second.status).toBe(422);
 });
 
+test('it refuses a pull request update to a state GitHub lacks with 422', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  await fetch(`${github.url}/repos/harbour/definitions/pulls`, {
+    method: 'POST',
+    headers: { authorization: 'Bearer token-a' },
+    body: JSON.stringify({
+      title: 'Add the tide-tables skill that nixie wrote',
+      body: 'Merge it.\n',
+      head: 'nixie/skill/tide-tables',
+      base: 'main',
+    }),
+  });
+
+  const response = await fetch(`${github.url}/repos/harbour/definitions/pulls/1`, {
+    method: 'PATCH',
+    headers: { authorization: 'Bearer token-a' },
+    body: JSON.stringify({ state: 'merged' }),
+  });
+
+  expect(response.status).toBe(422);
+  expect(github.readPulls()[0]?.state).toBe('open');
+});
+
 test.each([['git/refs/heads/main', { force: true }]])(
   'it refuses PATCH %s with a body that lacks a field with 422',
   async (route, body) => {

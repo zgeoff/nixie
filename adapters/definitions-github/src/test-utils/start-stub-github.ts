@@ -269,6 +269,15 @@ function hasAncestor(state: StubState, commit: string, ancestor: string): boolea
   return false;
 }
 
+const pullUpdateSchema = z
+  .object({
+    title: z.string(),
+    body: z.string(),
+    state: z.enum(['open', 'closed']),
+  })
+  .partial()
+  .strict();
+
 function answerPullUpdate(state: StubState, pullNumber: number, body: unknown): Response {
   const index = state.pulls.findIndex((pull) => pull.number === pullNumber);
   const found = state.pulls[index];
@@ -277,9 +286,20 @@ function answerPullUpdate(state: StubState, pullNumber: number, body: unknown): 
     return notFound();
   }
 
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the adapter under test sends it
-  const update = body as Partial<Pick<StubGitHubPull, 'title' | 'body' | 'state'>>;
-  const pull = { ...found, ...update };
+  const parsed = pullUpdateSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return invalidRequest();
+  }
+
+  const update = parsed.data;
+
+  const pull: StubGitHubPull = {
+    ...found,
+    title: update.title ?? found.title,
+    body: update.body ?? found.body,
+    state: update.state ?? found.state,
+  };
 
   state.pulls[index] = pull;
 
