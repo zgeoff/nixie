@@ -15,6 +15,15 @@ export interface MemoryViewProps {
   readonly navigation?: ReactNode;
 }
 
+const layout = css({
+  marginInline: 'auto',
+  maxWidth: '3xl',
+  paddingBlock: '4',
+  paddingInline: '4',
+});
+
+const header = css({ alignItems: 'baseline', display: 'flex', justifyContent: 'space-between' });
+
 // Every memory item, to see, search, review and export: the writer's progress, the pinned core,
 // the export, the active facts and self-notes apart, or the matches of a search split the same
 // way, then the retired items and the forgotten ones apart from them.
@@ -83,12 +92,3 @@ function ActiveItems(props: ActiveItemsProps): ReactNode {
     </>
   );
 }
-
-const layout = css({
-  marginInline: 'auto',
-  maxWidth: '3xl',
-  paddingBlock: '4',
-  paddingInline: '4',
-});
-
-const header = css({ alignItems: 'baseline', display: 'flex', justifyContent: 'space-between' });

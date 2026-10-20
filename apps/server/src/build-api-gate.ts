@@ -10,6 +10,13 @@ export interface APIGate {
   readonly close: () => Promise<void>;
 }
 
+// the API calls in flight, and the closes that wait for none to be left
+interface APICalls {
+  isClosed: boolean;
+  inFlight: number;
+  readonly waiters: (() => void)[];
+}
+
 // Builds the gate in front of the HTTP server and the control socket that a reset closes before it
 // removes anything, so a device's call or a host command during the reset is refused instead of
 // committing a write the reset then deletes.
@@ -40,13 +47,6 @@ export function buildAPIGate(): APIGate {
       }
     },
   };
-}
-
-// the API calls in flight, and the closes that wait for none to be left
-interface APICalls {
-  isClosed: boolean;
-  inFlight: number;
-  readonly waiters: (() => void)[];
 }
 
 async function runCounted(calls: APICalls, call: () => Promise<Response>): Promise<Response> {

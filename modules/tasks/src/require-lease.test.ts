@@ -17,7 +17,7 @@ test('it passes while the lease stands as claimed', async () => {
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   invariant(lease);
@@ -36,7 +36,7 @@ test('it throws once the lease expired', async () => {
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   invariant(lease);
@@ -60,7 +60,7 @@ test('it throws once another runner claimed the work', async () => {
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   invariant(lease);
@@ -71,7 +71,7 @@ test('it throws once another runner claimed the work', async () => {
     kind: 'action',
     holder: 'runner-b',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   const check = withWriteTransaction(ctx.writer, (tx) => requireLease(tx, lease, ctx.clock.now()));

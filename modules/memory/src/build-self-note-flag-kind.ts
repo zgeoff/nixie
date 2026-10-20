@@ -9,6 +9,10 @@ export interface SelfNoteFlagEvent {
   readonly sourceSequence: number;
 }
 
+// the most flags one events block reads, which the block's own cap then trims
+const maxFlags = 50;
+const flagPayload = z.object({ sourceSequence: z.int() });
+
 // The event kind for a possible self-note the note-taker flagged. The line tells the assistant the
 // flag is a nudge and never a note, so the assistant writes the self-note in its own voice or lets
 // it go. A flag whose text a forget erased lists nothing.
@@ -51,7 +55,3 @@ export function buildSelfNoteFlagKind(
       `Your note-taker's nudge, not a note: possible self-note: "${detail.text}", event #${String(detail.sourceSequence)}. If it rings true, write the self-note yourself, in your own voice. If not, let it go.`,
   };
 }
-
-// the most flags one events block reads, which the block's own cap then trims
-const maxFlags = 50;
-const flagPayload = z.object({ sourceSequence: z.int() });

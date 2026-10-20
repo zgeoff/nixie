@@ -102,13 +102,6 @@ async function waitForProcessExit(leader: Leader, stop: GroupStop): Promise<Exec
   return leader.readExit();
 }
 
-function toExecExit(child: Bun.Subprocess): ExecExit {
-  // Bun gives a signal with no name, such as a real-time one, as its number
-  const signal = child.signalCode === null ? null : String(child.signalCode);
-
-  return { code: child.signalCode === null ? child.exitCode : null, signal };
-}
-
 // After the kill, a member gets this long to go, as imp's guest agent allows; a zombie no one reaps
 // would otherwise hold the exit forever.
 const reapGraceMs = 5000;
@@ -139,4 +132,11 @@ function hasGroup(pid: number): boolean {
   } catch {
     return false;
   }
+}
+
+function toExecExit(child: Bun.Subprocess): ExecExit {
+  // Bun gives a signal with no name, such as a real-time one, as its number
+  const signal = child.signalCode === null ? null : String(child.signalCode);
+
+  return { code: child.signalCode === null ? child.exitCode : null, signal };
 }

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { findRecordKeys, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { readRecordKeys, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { createProposal } from './test-utils/create-proposal';
 import { startKeyStoreReader } from './test-utils/start-key-store-reader';
@@ -33,7 +33,7 @@ test('it removes on the next lapse sweep a key that a closed proposal left behin
     .where('proposal_id', '=', proposed.proposalID)
     .executeTakeFirstOrThrow();
 
-  const keys = await findRecordKeys(memory.log, [row.item_id]);
+  const keys = await readRecordKeys(memory.log, [row.item_id]);
 
   expect(keys.get(row.item_id)).toBeUndefined();
 });
@@ -62,7 +62,7 @@ test('it removes at start a key that a rejected proposal left behind', async () 
     .where('proposal_id', '=', proposed.proposalID)
     .executeTakeFirstOrThrow();
 
-  const keys = await findRecordKeys(next.log, [row.item_id]);
+  const keys = await readRecordKeys(next.log, [row.item_id]);
 
   expect(keys.get(row.item_id)).toBeUndefined();
 });
@@ -80,7 +80,7 @@ test('it never removes the key of a pending proposal', async () => {
     .where('proposal_id', '=', proposed.proposalID)
     .executeTakeFirstOrThrow();
 
-  const keys = await findRecordKeys(memory.log, [row.item_id]);
+  const keys = await readRecordKeys(memory.log, [row.item_id]);
 
   expect(keys.get(row.item_id)).toBeInstanceOf(CryptoKey);
 });

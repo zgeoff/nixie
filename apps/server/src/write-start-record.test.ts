@@ -23,9 +23,9 @@ async function setupTest() {
   return { log, context: { log, definitions: () => ({ snapshotHash: 'sha256:test' }) } };
 }
 
-const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
-
 test('it records the first start with no previous version', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given, '0.12.0');
@@ -43,6 +43,8 @@ test('it records the first start with no previous version', async () => {
 });
 
 test('it records the version of the start before', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given, '0.11.0');
@@ -67,6 +69,8 @@ test('it records the version of the start before', async () => {
 });
 
 test("it records this build's version when the caller names none", async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given);

@@ -25,6 +25,16 @@ interface PendingChange {
   readonly version: number;
 }
 
+const labels = { pin: 'Pin', restore: 'Restore', retire: 'Retire', unpin: 'Unpin' };
+
+const controls = css({
+  display: 'flex',
+  flexWrap: 'wrap',
+  fontSize: 'sm',
+  gap: '2',
+  marginTop: '1',
+});
+
 // The checked changes to one item, its forget included, each bound to the version the row shows:
 // only the confirm changes it, and each confirmation keeps one client action ID, so a confirm that
 // fails and goes again changes the item once.
@@ -92,22 +102,12 @@ function pickChanges(item: MemoryItem): readonly MemoryChange[] {
   return ['retire', 'pin'];
 }
 
-const labels = { pin: 'Pin', restore: 'Restore', retire: 'Retire', unpin: 'Unpin' };
-
 const questions = {
   pin: 'Pin this item? Every session opens with it.',
   restore: 'Restore this item? Recalls find it again.',
   retire: 'Retire this item? Recalls stop finding it, and you can restore it.',
   unpin: 'Unpin this item? Sessions stop opening with it.',
 };
-
-const controls = css({
-  display: 'flex',
-  flexWrap: 'wrap',
-  fontSize: 'sm',
-  gap: '2',
-  marginTop: '1',
-});
 
 interface ChangeConfirmationProps {
   readonly itemID: string;
@@ -120,6 +120,15 @@ interface ChangeConfirmationProps {
   // closes the confirmation once the change applied or was refused, with the refusal's reason
   readonly onSettled: (notice: string | null) => void;
 }
+
+const confirmation = css({
+  alignItems: 'baseline',
+  display: 'flex',
+  flexWrap: 'wrap',
+  fontSize: 'sm',
+  gap: '2',
+  marginTop: '1',
+});
 
 function ChangeConfirmation(props: ChangeConfirmationProps): ReactNode {
   const nixie = useNixieClient();
@@ -161,15 +170,6 @@ function ChangeConfirmation(props: ChangeConfirmationProps): ReactNode {
     </div>
   );
 }
-
-const confirmation = css({
-  alignItems: 'baseline',
-  display: 'flex',
-  flexWrap: 'wrap',
-  fontSize: 'sm',
-  gap: '2',
-  marginTop: '1',
-});
 
 type NixieClient = ReturnType<typeof useNixieClient>['client'];
 

@@ -25,16 +25,16 @@ interface RunnerConfig {
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
 
-const testDefinitions = {
-  persona: 'You are nixie.',
-  personaHash: 'sha256:persona-test',
-  policyHash: 'sha256:policy-test',
-};
-
 // the stub sandboxes and tool endpoint over a fresh log; sendMessage writes your message, then runs
 // the step that takes it
 async function setupTest() {
   const tasks = await startTestTasks();
+
+  const testDefinitions = {
+    persona: 'You are nixie.',
+    personaHash: 'sha256:persona-test',
+    policyHash: 'sha256:policy-test',
+  };
 
   const sandboxes = buildStubSandboxes();
   const tools = buildStubToolEndpoint();

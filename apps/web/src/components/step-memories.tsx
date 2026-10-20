@@ -23,9 +23,6 @@ export function StepMemories(props: StepMemoriesProps): ReactNode {
   );
 }
 
-// the most versions one call to the API reads
-const batchSize = 100;
-
 // Reads the text of each distinct version in batches the API accepts. A step can recall one version
 // twice, so each row's key holds its place as well.
 function MemoryList(props: StepMemoriesProps): ReactNode {
@@ -80,6 +77,25 @@ function MemoryList(props: StepMemoriesProps): ReactNode {
   );
 }
 
+interface VersionRef {
+  readonly itemID: string;
+  readonly version: number;
+}
+
+function buildVersionKey(ref: VersionRef): string {
+  return `${ref.itemID}@${ref.version}`;
+}
+
+// the most versions one call to the API reads
+const batchSize = 100;
+
+// the refs in batches the API accepts
+function splitBatches<Ref>(refs: readonly Ref[]): Ref[][] {
+  return Array.from({ length: Math.ceil(refs.length / batchSize) }, (_, index) =>
+    refs.slice(index * batchSize, (index + 1) * batchSize),
+  );
+}
+
 // Reads the note of each rating that has one, by its note key, the same way the list reads texts.
 function useRatingNotes(
   memories: readonly RecalledMemory[],
@@ -116,22 +132,6 @@ function useRatingNotes(
   );
 }
 
-// the refs in batches the API accepts
-function splitBatches<Ref>(refs: readonly Ref[]): Ref[][] {
-  return Array.from({ length: Math.ceil(refs.length / batchSize) }, (_, index) =>
-    refs.slice(index * batchSize, (index + 1) * batchSize),
-  );
-}
-
-interface VersionRef {
-  readonly itemID: string;
-  readonly version: number;
-}
-
-function buildVersionKey(ref: VersionRef): string {
-  return `${ref.itemID}@${ref.version}`;
-}
-
 function buildNoteKey(sequence: number, itemID: string): string {
   return `${sequence}:${itemID}`;
 }
@@ -139,14 +139,6 @@ function buildNoteKey(sequence: number, itemID: string): string {
 interface VersionText {
   readonly status: 'readable' | 'shredded' | 'unreadable' | 'missing';
   readonly text?: string | undefined;
-}
-
-function formatMemoryText(version: VersionText): string {
-  if (version.status === 'readable') {
-    return version.text ?? '';
-  }
-
-  return version.status === 'shredded' ? '(forgotten)' : `(${version.status})`;
 }
 
 // A note shows its text in quotes while readable, and a forgotten item's note shows as forgotten.
@@ -157,6 +149,14 @@ function formatNoteText(note: VersionText): string | undefined {
   }
 
   return note.status === 'shredded' ? '(note forgotten)' : undefined;
+}
+
+function formatMemoryText(version: VersionText): string {
+  if (version.status === 'readable') {
+    return version.text ?? '';
+  }
+
+  return version.status === 'shredded' ? '(forgotten)' : `(${version.status})`;
 }
 
 interface MemoryRowProps {
@@ -187,13 +187,6 @@ function MemoryRow(props: MemoryRowProps): ReactNode {
   );
 }
 
-// the agent's verdict, with its note once read
-function formatRating(rating: MemoryRating, note: string | undefined): string {
-  const by = rating.ratedBy ?? 'agent';
-
-  return note === undefined ? `[${by}: ${rating.verdict}]` : `[${by}: ${rating.verdict} · ${note}]`;
-}
-
 // BM25 gives a common word a score near zero, such as 1.1e-6, so a score below 0.01 shows its
 // significant digits and two such matches still read apart.
 function formatScore(score: number): string {
@@ -208,4 +201,11 @@ function formatOneLine(text: string): string {
   const isClipped = firstLine.length > lineLimit || firstLine.length < text.trimEnd().length;
 
   return isClipped ? `${firstLine.slice(0, lineLimit)}…` : firstLine;
+}
+
+// the agent's verdict, with its note once read
+function formatRating(rating: MemoryRating, note: string | undefined): string {
+  const by = rating.ratedBy ?? 'agent';
+
+  return note === undefined ? `[${by}: ${rating.verdict}]` : `[${by}: ${rating.verdict} · ${note}]`;
 }

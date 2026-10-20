@@ -1,13 +1,12 @@
 import { expect, test } from 'bun:test';
-import type { ReactNode } from 'react';
 import { Activity } from 'react';
 import { buildBrowserClient } from './build-browser-client';
 import { Conversation } from './components/conversation';
 import { MemoryView } from './components/memory-view';
 import { store } from './mocks/store';
+import { ConversationPageSize } from './test-utils/conversation-page-size';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { render } from './test-utils/render';
-import { useConversationPage } from './use-conversation-page';
 
 // the live stream replays the forget soon after the return, so the check reads the first screen
 test('it shows no forgotten text when you come back to the conversation from the memory view', async () => {
@@ -69,7 +68,7 @@ test('it keeps the page it shows when its effects stop and start again in place'
 
   const rendered = render(
     <Activity mode="visible">
-      <PageSize label="first" />
+      <ConversationPageSize label="first" />
     </Activity>,
   );
 
@@ -77,7 +76,7 @@ test('it keeps the page it shows when its effects stop and start again in place'
 
   rendered.rerender(
     <Activity mode="hidden">
-      <PageSize label="first" />
+      <ConversationPageSize label="first" />
     </Activity>,
   );
 
@@ -85,7 +84,7 @@ test('it keeps the page it shows when its effects stop and start again in place'
 
   rendered.rerender(
     <Activity mode="visible">
-      <PageSize label="first" />
+      <ConversationPageSize label="first" />
     </Activity>,
   );
 
@@ -124,7 +123,7 @@ test('it keeps the newer page that another view read while this one was hidden',
 
   const rendered = render(
     <Activity mode="visible">
-      <PageSize label="first" />
+      <ConversationPageSize label="first" />
     </Activity>,
   );
 
@@ -134,9 +133,9 @@ test('it keeps the newer page that another view read while this one was hidden',
   rendered.rerender(
     <>
       <Activity mode="hidden">
-        <PageSize label="first" />
+        <ConversationPageSize label="first" />
       </Activity>
-      <PageSize label="second" />
+      <ConversationPageSize label="second" />
     </>,
   );
 
@@ -145,9 +144,9 @@ test('it keeps the newer page that another view read while this one was hidden',
   rendered.rerender(
     <>
       <Activity mode="visible">
-        <PageSize label="first" />
+        <ConversationPageSize label="first" />
       </Activity>
-      <PageSize label="second" />
+      <ConversationPageSize label="second" />
     </>,
   );
 
@@ -155,14 +154,3 @@ test('it keeps the newer page that another view read while this one was hidden',
 
   expect(first).toBeVisible();
 });
-
-interface PageSizeProps {
-  readonly label: string;
-}
-
-// shows how many records the conversation's page holds, with no live stream to add to them
-function PageSize(props: PageSizeProps): ReactNode {
-  const page = useConversationPage('conversation');
-
-  return <p>{`${props.label}: ${page.data?.records.length ?? 0} records`}</p>;
-}

@@ -43,6 +43,44 @@ export function buildBatchRecords(
   return [buildPublishedRecord(parts, batch), ...notices, ...flags];
 }
 
+interface NoticeFields {
+  readonly notice: 'batch' | 'catch_up';
+  readonly versions: readonly VersionRef[];
+  readonly count: number;
+}
+
+// a quiet notice in the conversation's thread, with no push and no entry in the approval digest
+function buildNotice(parts: Pick<WriterParts, 'context'>, fields: NoticeFields): RecordInput {
+  return {
+    kind: 'memory.notice',
+    definitions: parts.context.definitions(),
+    thread: conversationTaskID,
+    payload: {
+      notice: fields.notice,
+      versions: fields.versions.map((ref) => toRefJSON(ref)),
+      count: fields.count,
+      isQuiet: true,
+    },
+  };
+}
+
+function toRefJSON(ref: VersionRef): JSONObject {
+  return { itemID: ref.itemID, version: ref.version };
+}
+
+// The flag's text is the model's line about your message, so it goes in the erasable fields and
+// counts as outside content. It sits in the conversation's thread, beside the notices.
+function buildFlagRecord(parts: Pick<WriterParts, 'context'>, flag: StagedFlag): RecordInput {
+  return {
+    kind: 'memory.self_note_flagged',
+    definitions: parts.context.definitions(),
+    thread: conversationTaskID,
+    contentSource: 'untrusted',
+    payload: { sourceSequence: flag.sourceSequence },
+    erasable: { text: flag.text },
+  };
+}
+
 function buildPublishedRecord(
   parts: Pick<WriterParts, 'context' | 'model'>,
   batch: PublishedBatch,
@@ -66,44 +104,6 @@ function buildPublishedRecord(
       usage: usage === null ? null : toUsageJSON(usage),
     },
   };
-}
-
-interface NoticeFields {
-  readonly notice: 'batch' | 'catch_up';
-  readonly versions: readonly VersionRef[];
-  readonly count: number;
-}
-
-// a quiet notice in the conversation's thread, with no push and no entry in the approval digest
-function buildNotice(parts: Pick<WriterParts, 'context'>, fields: NoticeFields): RecordInput {
-  return {
-    kind: 'memory.notice',
-    definitions: parts.context.definitions(),
-    thread: conversationTaskID,
-    payload: {
-      notice: fields.notice,
-      versions: fields.versions.map((ref) => toRefJSON(ref)),
-      count: fields.count,
-      isQuiet: true,
-    },
-  };
-}
-
-// The flag's text is the model's line about your message, so it goes in the erasable fields and
-// counts as outside content. It sits in the conversation's thread, beside the notices.
-function buildFlagRecord(parts: Pick<WriterParts, 'context'>, flag: StagedFlag): RecordInput {
-  return {
-    kind: 'memory.self_note_flagged',
-    definitions: parts.context.definitions(),
-    thread: conversationTaskID,
-    contentSource: 'untrusted',
-    payload: { sourceSequence: flag.sourceSequence },
-    erasable: { text: flag.text },
-  };
-}
-
-function toRefJSON(ref: VersionRef): JSONObject {
-  return { itemID: ref.itemID, version: ref.version };
 }
 
 function toUsageJSON(usage: WriterUsage): JSONObject {

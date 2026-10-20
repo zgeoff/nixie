@@ -2,14 +2,14 @@ import { expect, test } from 'bun:test';
 import { render } from '../test-utils/render';
 import { OutboxItem } from './outbox-item';
 
-const message = {
-  clientMessageId: '4e6a8c0b-2d4f-4a6c-8e0b-3d5f7a9c1e24',
-  spans: [],
-  text: 'Return the library books.',
-  thread: 'conversation',
-};
-
 test('it shows a send that tries again after failing as retrying', () => {
+  const message = {
+    clientMessageId: '4e6a8c0b-2d4f-4a6c-8e0b-3d5f7a9c1e24',
+    spans: [],
+    text: 'Return the library books.',
+    thread: 'conversation',
+  };
+
   const rendered = render(
     <OutboxItem
       entry={{ failures: 2, message, status: 'sending' }}
@@ -22,6 +22,13 @@ test('it shows a send that tries again after failing as retrying', () => {
 });
 
 test('it shows when a failed send tries again on its own, beside the Retry button', () => {
+  const message = {
+    clientMessageId: '4e6a8c0b-2d4f-4a6c-8e0b-3d5f7a9c1e24',
+    spans: [],
+    text: 'Return the library books.',
+    thread: 'conversation',
+  };
+
   const rendered = render(
     <OutboxItem
       entry={{ failures: 1, message, retryAt: Date.now() + 7500, status: 'failed' }}
@@ -35,6 +42,13 @@ test('it shows when a failed send tries again on its own, beside the Retry butto
 });
 
 test('it shows a refused send as not sent with only the Retry button', () => {
+  const message = {
+    clientMessageId: '4e6a8c0b-2d4f-4a6c-8e0b-3d5f7a9c1e24',
+    spans: [],
+    text: 'Return the library books.',
+    thread: 'conversation',
+  };
+
   const rendered = render(
     <OutboxItem
       entry={{ message, status: 'failed' }}

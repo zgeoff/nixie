@@ -19,6 +19,8 @@ export interface LapseSweep {
   readonly stop: () => Promise<void>;
 }
 
+const lapseSweepMs = 60 * 60 * 1000;
+
 // Starts the sweep that lapses each proposal and each consolidation change past its lapse time, so
 // none waits on a restart. A sweep still running when the next one is due lets that one pass.
 export function startLapseSweep(options: LapseSweepOptions): LapseSweep {
@@ -44,8 +46,6 @@ export function startLapseSweep(options: LapseSweepOptions): LapseSweep {
     },
   };
 }
-
-const lapseSweepMs = 60 * 60 * 1000;
 
 // each lapse reports its own failure, so a failed proposal lapse never holds back the consolidations
 async function runLapseSweep(options: LapseSweepOptions): Promise<void> {

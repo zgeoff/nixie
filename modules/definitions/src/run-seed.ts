@@ -90,11 +90,6 @@ interface SeedPlan extends ReadDefinitions {
   readonly built: DefinitionsSnapshot;
 }
 
-interface AppliedPlan extends SeedPlan {
-  // the definitions the seed replaces, which its skill notice compares with
-  readonly previous: DefinitionsInForce | null;
-}
-
 function isSameSeed(
   inForce: DefinitionsInForce,
   plan: SeedPlan & { readonly sourceID: string },
@@ -105,6 +100,11 @@ function isSameSeed(
     inForce.contentHash === plan.snapshot.contentHash &&
     inForce.snapshotHash === plan.built.snapshotHash
   );
+}
+
+interface AppliedPlan extends SeedPlan {
+  // the definitions the seed replaces, which its skill notice compares with
+  readonly previous: DefinitionsInForce | null;
 }
 
 async function applySeed(
@@ -173,10 +173,6 @@ async function writeSnapshotRows(
     .execute();
 }
 
-function toSkillRef(skill: SkillRef): SkillRef {
-  return { name: skill.name, skillHash: skill.skillHash, origin: skill.origin };
-}
-
 async function writeSeedRecord(
   tx: Transaction<unknown>,
   options: SeedOptions,
@@ -215,6 +211,10 @@ async function writeSeedRecord(
   invariant(record);
 
   return record;
+}
+
+function toSkillRef(skill: SkillRef): SkillRef {
+  return { name: skill.name, skillHash: skill.skillHash, origin: skill.origin };
 }
 
 async function writeSeedRow(tx: Transaction<unknown>, inForce: DefinitionsInForce): Promise<void> {

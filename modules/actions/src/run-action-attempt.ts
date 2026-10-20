@@ -19,6 +19,13 @@ export interface ActionAttemptOptions {
   readonly leaseMs: number;
 }
 
+type SettledOutcome = Exclude<Outcome, { readonly status: 'pending' }>;
+
+const attemptWithoutResult: SettledOutcome = {
+  status: 'unknown',
+  reason: 'attempt_without_result',
+};
+
 // Runs one attempt of a claimed action: an attempt record, the provider call, then the result and
 // outcome together. A claim that finds an attempt record with no result marks the action unknown
 // first, never a plain second attempt, because the call may have reached the provider.
@@ -49,10 +56,12 @@ export async function runActionAttempt(
   }
 }
 
-const attemptWithoutResult: SettledOutcome = {
-  status: 'unknown',
-  reason: 'attempt_without_result',
-};
+interface Settlement {
+  readonly outcome: SettledOutcome;
+
+  // the connector's result or the provider's reason, free text kept in the erasable fields
+  readonly details?: JSONObject;
+}
 
 interface Attempt {
   readonly lease: Lease;
@@ -60,7 +69,59 @@ interface Attempt {
   readonly attempt: number;
 }
 
-type SettledOutcome = Exclude<Outcome, { readonly status: 'pending' }>;
+// settles the action: its outcome record lands in the task's inbox and wakes the task
+async function writeOutcome(
+  context: TasksContext,
+  attempt: Attempt,
+  settlement: Settlement,
+): Promise<void> {
+  const actionID = attempt.action.action_id;
+  const outcome = settlement.outcome;
+
+  await writeLeasedRecord(context, attempt.lease, {
+    record: {
+      kind: 'action.outcome',
+      definitions: context.definitions(),
+      thread: attempt.action.task_id,
+      payload: {
+        actionID,
+        status: outcome.status,
+        attempt: attempt.attempt,
+        reason: outcome.status === 'done' ? null : outcome.reason,
+      },
+      erasable: settlement.details ?? {},
+    },
+    reset: true,
+  });
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('attempt.result.after', { kind: 'action', id: actionID });
+    await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: attempt.action.task_id });
+  }
+}
+
+interface LeasedRecord {
+  readonly record: RecordInput;
+
+  // frees the lease in the same transaction, once the attempt has nothing left to commit
+  readonly reset: boolean;
+}
+
+// one write under the lease: a runner whose lease expired or was taken commits nothing
+async function writeLeasedRecord(
+  context: TasksContext,
+  lease: Lease,
+  leased: LeasedRecord,
+): Promise<void> {
+  await withWriteTransaction(context.log.writer, async (tx) => {
+    await requireLease(tx, lease, context.clock.now());
+    await writeRecordsInTransaction(tx, context.log, [leased.record]);
+
+    if (leased.reset) {
+      await resetLease(tx, lease);
+    }
+  });
+}
 
 // The waits between the 5 attempts of an action: 30 s, 2 min, 8 min and 30 min, each 4 times the
 // last up to 30 min. Why: the schedule rides out a rate limit or a short outage within about 40 min,
@@ -211,65 +272,4 @@ async function writeAttemptResult(
 
 function toDetails(response: ProviderResponse): JSONObject {
   return response.kind === 'success' ? { result: response.result } : { message: response.reason };
-}
-
-interface Settlement {
-  readonly outcome: SettledOutcome;
-
-  // the connector's result or the provider's reason, free text kept in the erasable fields
-  readonly details?: JSONObject;
-}
-
-// settles the action: its outcome record lands in the task's inbox and wakes the task
-async function writeOutcome(
-  context: TasksContext,
-  attempt: Attempt,
-  settlement: Settlement,
-): Promise<void> {
-  const actionID = attempt.action.action_id;
-  const outcome = settlement.outcome;
-
-  await writeLeasedRecord(context, attempt.lease, {
-    record: {
-      kind: 'action.outcome',
-      definitions: context.definitions(),
-      thread: attempt.action.task_id,
-      payload: {
-        actionID,
-        status: outcome.status,
-        attempt: attempt.attempt,
-        reason: outcome.status === 'done' ? null : outcome.reason,
-      },
-      erasable: settlement.details ?? {},
-    },
-    reset: true,
-  });
-
-  if (NIXIE_TEST_BUILD) {
-    await waitAtFaultPoint('attempt.result.after', { kind: 'action', id: actionID });
-    await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: attempt.action.task_id });
-  }
-}
-
-interface LeasedRecord {
-  readonly record: RecordInput;
-
-  // frees the lease in the same transaction, once the attempt has nothing left to commit
-  readonly reset: boolean;
-}
-
-// one write under the lease: a runner whose lease expired or was taken commits nothing
-async function writeLeasedRecord(
-  context: TasksContext,
-  lease: Lease,
-  leased: LeasedRecord,
-): Promise<void> {
-  await withWriteTransaction(context.log.writer, async (tx) => {
-    await requireLease(tx, lease, context.clock.now());
-    await writeRecordsInTransaction(tx, context.log, [leased.record]);
-
-    if (leased.reset) {
-      await resetLease(tx, lease);
-    }
-  });
 }

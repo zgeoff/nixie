@@ -32,35 +32,6 @@ export interface StubSandboxes {
   readonly setPurgeAnswer: (frames: readonly GuestFrame[]) => void;
 }
 
-// The stub guest's script until a test sets one: it reads every inbox message, answers Hello. and
-// ends the turn at a new chain entry.
-function buildHelloTurn(turn: TurnFrame): readonly GuestFrame[] {
-  return [
-    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
-    { type: 'assistant', messageID: crypto.randomUUID(), text: 'Hello.', toolUses: [] },
-    {
-      type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
-      subtype: 'success',
-      stopReason: 'end_turn',
-      turns: 1,
-      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    },
-  ];
-}
-
-// The stub guest's summary until a test sets one: a short summary at a new chain entry.
-function buildSummary(): readonly GuestFrame[] {
-  return [
-    {
-      type: 'summarized',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
-      text: 'Open threads: none.',
-      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    },
-  ];
-}
-
 // Builds a stand-in for the sandbox adapter whose sandboxes run a scripted conversation guest. It
 // speaks the real turn frames over a framed stream, as the guest does, so the host side runs as it
 // would against a sandbox, with no process and no model.
@@ -92,8 +63,8 @@ export function buildStubSandboxes(): StubSandboxes {
 
         return Promise.resolve(sandbox);
       },
-      get: (id) => Promise.resolve(findLive(state, (sandbox) => sandbox.id === id)[0] ?? null),
-      list: (owner) => Promise.resolve(findLive(state, (sandbox) => sandbox.spec.owner === owner)),
+      read: (id) => Promise.resolve(getLive(state, (sandbox) => sandbox.id === id)[0] ?? null),
+      list: (owner) => Promise.resolve(getLive(state, (sandbox) => sandbox.spec.owner === owner)),
       addSecret: (secret) => {
         state.secrets.push(secret);
 
@@ -120,9 +91,76 @@ export function buildStubSandboxes(): StubSandboxes {
   };
 }
 
-interface StubSandboxState {
-  readonly sandboxes: readonly Sandbox[];
-  readonly destroyed: readonly string[];
+// The stub guest's script until a test sets one: it reads every inbox message, answers Hello. and
+// ends the turn at a new chain entry.
+function buildHelloTurn(turn: TurnFrame): readonly GuestFrame[] {
+  return [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    { type: 'assistant', messageID: crypto.randomUUID(), text: 'Hello.', toolUses: [] },
+    {
+      type: 'ended',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ];
+}
+
+// The stub guest's summary until a test sets one: a short summary at a new chain entry.
+function buildSummary(): readonly GuestFrame[] {
+  return [
+    {
+      type: 'summarized',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      text: 'Open threads: none.',
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ];
+}
+
+interface StubSandboxHooks {
+  readonly onTurn: StubGuestScript;
+  readonly onSummary: StubSummaryScript;
+  readonly onDestroy: (id: string) => void;
+  readonly onPurge: (id: string) => readonly GuestFrame[];
+}
+
+function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
+  const id = crypto.randomUUID();
+
+  return {
+    id,
+    spec,
+    exec: requireSpawnOnly,
+    spawn: () =>
+      Promise.resolve(
+        startStubGuest({
+          onTurn: hooks.onTurn,
+          onSummary: hooks.onSummary,
+          onPurge: () => hooks.onPurge(id),
+        }),
+      ),
+    copyIn: requireSpawnOnly,
+    copyOut: requireSpawnOnly,
+    resolveHome: requireSpawnOnly,
+    readFilePaths: requireSpawnOnly,
+    applyMove: requireSpawnOnly,
+    toolRoute: () => Promise.resolve({ url: 'http://127.0.0.1:8901' }),
+    suspension: { kind: 'none' },
+    isRetired: false,
+    destroy: () => {
+      hooks.onDestroy(id);
+
+      return Promise.resolve();
+    },
+  };
+}
+
+// the stub runs the guest and nothing else
+function requireSpawnOnly(): Promise<never> {
+  return Promise.reject(new Error('the stub sandbox only spawns the guest'));
 }
 
 interface RecordingState {
@@ -159,54 +197,16 @@ function buildHooks(state: RecordingState): StubSandboxHooks {
   };
 }
 
-function findLive(
+interface StubSandboxState {
+  readonly sandboxes: readonly Sandbox[];
+  readonly destroyed: readonly string[];
+}
+
+function getLive(
   state: StubSandboxState,
   isMatch: (sandbox: Sandbox) => boolean,
 ): readonly Sandbox[] {
   return state.sandboxes.filter(
     (sandbox) => !state.destroyed.includes(sandbox.id) && isMatch(sandbox),
   );
-}
-
-interface StubSandboxHooks {
-  readonly onTurn: StubGuestScript;
-  readonly onSummary: StubSummaryScript;
-  readonly onDestroy: (id: string) => void;
-  readonly onPurge: (id: string) => readonly GuestFrame[];
-}
-
-// the stub runs the guest and nothing else
-function requireSpawnOnly(): Promise<never> {
-  return Promise.reject(new Error('the stub sandbox only spawns the guest'));
-}
-
-function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
-  const id = crypto.randomUUID();
-
-  return {
-    id,
-    spec,
-    exec: requireSpawnOnly,
-    spawn: () =>
-      Promise.resolve(
-        startStubGuest({
-          onTurn: hooks.onTurn,
-          onSummary: hooks.onSummary,
-          onPurge: () => hooks.onPurge(id),
-        }),
-      ),
-    copyIn: requireSpawnOnly,
-    copyOut: requireSpawnOnly,
-    resolveHome: requireSpawnOnly,
-    readFilePaths: requireSpawnOnly,
-    applyMove: requireSpawnOnly,
-    toolRoute: () => Promise.resolve({ url: 'http://127.0.0.1:8901' }),
-    suspension: { kind: 'none' },
-    isRetired: false,
-    destroy: () => {
-      hooks.onDestroy(id);
-
-      return Promise.resolve();
-    },
-  };
 }

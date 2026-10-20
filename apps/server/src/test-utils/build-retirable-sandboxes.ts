@@ -19,8 +19,8 @@ export function buildRetirableSandboxes(adapter: SandboxAdapter): TestSandboxes 
   return {
     sandboxes: {
       ...adapter,
-      get: async (id) => {
-        const sandbox = await adapter.get(id);
+      read: async (id) => {
+        const sandbox = await adapter.read(id);
 
         return sandbox === null ? null : toListed(sandbox);
       },

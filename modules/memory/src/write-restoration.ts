@@ -10,7 +10,7 @@ export function writeRestoration(parts: StoreParts, request: RestoreRequest): Pr
     ...(request.writeInTransaction === undefined
       ? {}
       : { writeInTransaction: request.writeInTransaction }),
-    buildVersion: async (readEarlier, current) => {
+    readNextVersion: async (readEarlier, current) => {
       const before = await readEarlier(current);
 
       return {

@@ -1,9 +1,14 @@
 import type { Definitions, JSONObject, Log, RecordInput } from '@heynixie/log';
-import { findRecordKeys } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import { buildConsolidationHash } from './build-consolidation-hash';
 import type { StagedChange } from './consolidation-types';
 import { encodeChangeText } from './encode-change-text';
 import { encodeConsolidationSummary } from './encode-consolidation-summary';
+
+export interface PlannedSummary {
+  readonly text: string;
+  readonly itemIDs: readonly string[];
+}
 
 export interface DiffPlan {
   readonly changes: readonly StagedChange[];
@@ -19,11 +24,6 @@ export interface DiffPlan {
   readonly definitions: Definitions;
 }
 
-export interface PlannedSummary {
-  readonly text: string;
-  readonly itemIDs: readonly string[];
-}
-
 // Plans the records that propose a run's diff: the diff, each change sealed under its first input's
 // key, then the summary, if any. A change whose first input lost its key since the session read it
 // drops out, and so does a summary when any shown item lost its key.
@@ -31,7 +31,7 @@ export async function planDiffRecord(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   plan: DiffPlan,
 ): Promise<readonly RecordInput[]> {
-  const keys = await findRecordKeys(
+  const keys = await readRecordKeys(
     log,
     plan.changes.flatMap((change) => change.inputs.slice(0, 1).map((input) => input.itemID)),
   );
@@ -70,37 +70,7 @@ export async function planDiffRecord(
   return summary === null ? [proposed] : [proposed, summary];
 }
 
-// the summary's record, or null when no item was shown or a shown item has no key left
-async function planSummaryRecord(
-  log: Pick<Log, 'deploymentKey' | 'writer'>,
-  diffID: string,
-  plan: DiffPlan & { readonly summary: PlannedSummary },
-): Promise<RecordInput | null> {
-  const planned = plan.summary;
-
-  const found = await findRecordKeys(log, planned.itemIDs);
-
-  const keys = new Map(
-    [...found].flatMap(([itemID, key]) => (key === null ? [] : [[itemID, key] as const])),
-  );
-
-  if (keys.size === 0 || keys.size < new Set(planned.itemIDs).size) {
-    return null;
-  }
-
-  const summary = await encodeConsolidationSummary(diffID, planned.text, keys);
-
-  return {
-    kind: 'memory.consolidation_summarized',
-    definitions: plan.definitions,
-    payload: {
-      diffID,
-      sealed: summary.sealed,
-      shares: summary.shares.map((share) => ({ itemID: share.itemID, sealed: share.sealed })),
-      lapseAt: plan.now + plan.lapseMs,
-    },
-  };
-}
+const saltBytes = 16;
 
 async function encodeChange(
   key: CryptoKey,
@@ -124,4 +94,34 @@ async function encodeChange(
   };
 }
 
-const saltBytes = 16;
+// the summary's record, or null when no item was shown or a shown item has no key left
+async function planSummaryRecord(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  diffID: string,
+  plan: DiffPlan & { readonly summary: PlannedSummary },
+): Promise<RecordInput | null> {
+  const planned = plan.summary;
+
+  const found = await readRecordKeys(log, planned.itemIDs);
+
+  const keys = new Map(
+    [...found].flatMap(([itemID, key]) => (key === null ? [] : [[itemID, key] as const])),
+  );
+
+  if (keys.size === 0 || keys.size < new Set(planned.itemIDs).size) {
+    return null;
+  }
+
+  const summary = await encodeConsolidationSummary(diffID, planned.text, keys);
+
+  return {
+    kind: 'memory.consolidation_summarized',
+    definitions: plan.definitions,
+    payload: {
+      diffID,
+      sealed: summary.sealed,
+      shares: summary.shares.map((share) => ({ itemID: share.itemID, sealed: share.sealed })),
+      lapseAt: plan.now + plan.lapseMs,
+    },
+  };
+}

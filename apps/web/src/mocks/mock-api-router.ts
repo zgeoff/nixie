@@ -17,7 +17,7 @@ const os = mockImplementer;
 const followProcedure = os.records.follow.handler((options) => {
   requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-  return toRecordEvents({ ...options.input, signal: options.signal });
+  return streamRecordEvents({ ...options.input, signal: options.signal });
 });
 
 // A stand-in for nixie's API that implements the contract over the mock store, so the client's
@@ -60,7 +60,9 @@ export const mockAPIRouter = os.router({
       );
 
       if (earlier === undefined) {
-        const images = await Promise.all((input.images ?? []).map((image) => toStoredImage(image)));
+        const images = await Promise.all(
+          (input.images ?? []).map((image) => readStoredImage(image)),
+        );
 
         const record = await store.records.create({
           kind: 'owner_message',
@@ -191,9 +193,14 @@ export const mockAPIRouter = os.router({
   },
 });
 
-type StoredSession = NonNullable<ReturnType<typeof store.sessions.findFirst>>;
+// the API takes an image's type from its bytes; the mock trusts the type the client gives
+async function readStoredImage(image: Blob) {
+  const mediaType = mediaTypes.find((known) => known === image.type) ?? 'image/png';
 
-type StoredRecord = ReadonlyDeep<ReturnType<typeof store.records.all>[number]>;
+  const bytes = await image.bytes();
+
+  return { data: bytes.toBase64(), mediaType };
+}
 
 interface RecordStream {
   readonly afterSequence: number;
@@ -203,11 +210,11 @@ interface RecordStream {
 
 // Each record of the thread after the sequence, then each one the store gains, as one event whose
 // ID is the record's sequence.
-async function* toRecordEvents(stream: RecordStream) {
+async function* streamRecordEvents(stream: RecordStream) {
   const cursor = { after: stream.afterSequence };
 
   while (stream.signal?.aborted !== true) {
-    for (const record of findRecordsAfter(cursor.after, stream.thread)) {
+    for (const record of collectRecordsAfter(cursor.after, stream.thread)) {
       cursor.after = record.sequence;
       yield withEventMeta({ record: toLogRecord(record) }, { id: String(record.sequence) });
     }
@@ -216,7 +223,9 @@ async function* toRecordEvents(stream: RecordStream) {
   }
 }
 
-function findRecordsAfter(after: number, thread: string | undefined): readonly StoredRecord[] {
+type StoredRecord = ReadonlyDeep<ReturnType<typeof store.records.all>[number]>;
+
+function collectRecordsAfter(after: number, thread: string | undefined): readonly StoredRecord[] {
   return store.records.findMany(
     (query) =>
       query.where(
@@ -224,6 +233,23 @@ function findRecordsAfter(after: number, thread: string | undefined): readonly S
       ),
     { orderBy: { sequence: 'asc' } },
   );
+}
+
+// Resolves when the store gains a record or the caller goes away. A collection runs its create
+// hooks before it adds the record, so the wait ends a macrotask later, once the record is in.
+async function waitForRecord(signal: AbortSignal | undefined): Promise<void> {
+  await new Promise<void>((resolve) => {
+    const waiting = new AbortController();
+
+    const stopWaiting = (): void => {
+      waiting.abort();
+
+      setTimeout(resolve, 0);
+    };
+
+    store.records.hooks.once('create', stopWaiting, { signal: waiting.signal });
+    signal?.addEventListener('abort', stopWaiting, { once: true, signal: waiting.signal });
+  });
 }
 
 // A code works for one enrolment, and a retry of that enrolment with its client action ID.
@@ -246,6 +272,8 @@ interface EnrolInput {
   // The session the code made on an earlier attempt of this enrolment.
   readonly sessionID: string | null;
 }
+
+type StoredSession = NonNullable<ReturnType<typeof store.sessions.findFirst>>;
 
 // Uses a code for one enrolment. A retry of that enrolment answers with the session the code
 // made the first time.
@@ -271,30 +299,4 @@ async function claimEnrolmentCode(input: EnrolInput): Promise<StoredSession> {
   return session;
 }
 
-// Resolves when the store gains a record or the caller goes away. A collection runs its create
-// hooks before it adds the record, so the wait ends a macrotask later, once the record is in.
-async function waitForRecord(signal: AbortSignal | undefined): Promise<void> {
-  await new Promise<void>((resolve) => {
-    const waiting = new AbortController();
-
-    const stopWaiting = (): void => {
-      waiting.abort();
-
-      setTimeout(resolve, 0);
-    };
-
-    store.records.hooks.once('create', stopWaiting, { signal: waiting.signal });
-    signal?.addEventListener('abort', stopWaiting, { once: true, signal: waiting.signal });
-  });
-}
-
 const mediaTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
-
-// the API takes an image's type from its bytes; the mock trusts the type the client gives
-async function toStoredImage(image: Blob) {
-  const mediaType = mediaTypes.find((known) => known === image.type) ?? 'image/png';
-
-  const bytes = await image.bytes();
-
-  return { data: bytes.toBase64(), mediaType };
-}

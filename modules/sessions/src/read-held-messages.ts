@@ -1,4 +1,4 @@
-import { findSessionSummary } from '@heynixie/compaction';
+import { readSessionSummary } from '@heynixie/compaction';
 import type { LogTables } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { modelSessionOpenedCodec } from '@heynixie/models';
@@ -48,7 +48,7 @@ async function readRecentStart(
   context: Pick<TasksContext, 'log'>,
   query: HeldMessagesQuery,
 ): Promise<number> {
-  const summary = await findSessionSummary(context, query.taskID);
+  const summary = await readSessionSummary(context, query.taskID);
 
   const recent = await readRecentTurns(context, {
     taskID: query.taskID,

@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { collectDescendants } from './collect-descendants';
+import { readDescendants } from './read-descendants';
 import { stopProcesses } from './stop-processes';
-import { isProcessGone } from './test-utils/is-process-gone';
+import { probeProcessGone } from './test-utils/probe-process-gone';
 import { waitForCondition } from './wait-for-condition';
 
 test('it kills a process and every member of the group it leads', async () => {
@@ -14,17 +14,17 @@ test('it kills a process and every member of the group it leads', async () => {
     stopProcesses([leader.pid]);
   });
 
-  await waitForCondition(() => collectDescendants(leader.pid).length > 0);
+  await waitForCondition(() => readDescendants(leader.pid).length > 0);
 
-  const [memberPID] = collectDescendants(leader.pid);
+  const [memberPID] = readDescendants(leader.pid);
 
   stopProcesses([leader.pid]);
 
   await leader.exited;
-  await waitForCondition(() => isProcessGone(Number(memberPID))).catch(() => null);
+  await waitForCondition(() => probeProcessGone(Number(memberPID))).catch(() => null);
 
   expect(leader.signalCode).toBe('SIGKILL');
-  expect(isProcessGone(Number(memberPID))).toBe(true);
+  expect(probeProcessGone(Number(memberPID))).toBe(true);
 });
 
 test('it skips a process that is already gone', async () => {

@@ -23,6 +23,18 @@ export interface RunnerPool {
   readonly stop: (graceMs?: number) => Promise<void>;
 }
 
+// the 30 s a graceful stop gives the steps in flight to commit
+const DEFAULT_GRACE_MS = 30_000;
+
+interface RunnerState {
+  readonly stopping: AbortSignal;
+  readonly getWakeSignal: () => AbortSignal;
+
+  // counts the runners inside a claim or a run, which a graceful stop waits for
+  readonly updateBusy: (change: number) => void;
+  readonly onError: (error: unknown) => void;
+}
+
 // Starts a fixed pool of runners over one claim path. Task steps and action attempts each run in a
 // pool of their own, so a send goes out while every task runner is busy with a long turn.
 export function startRunnerPool<W>(clock: Clock, options: RunnerPoolOptions<W>): RunnerPool {
@@ -65,18 +77,6 @@ export function startRunnerPool<W>(clock: Clock, options: RunnerPoolOptions<W>):
       grace.abort();
     },
   };
-}
-
-// the 30 s a graceful stop gives the steps in flight to commit
-const DEFAULT_GRACE_MS = 30_000;
-
-interface RunnerState {
-  readonly stopping: AbortSignal;
-  readonly getWakeSignal: () => AbortSignal;
-
-  // counts the runners inside a claim or a run, which a graceful stop waits for
-  readonly updateBusy: (change: number) => void;
-  readonly onError: (error: unknown) => void;
 }
 
 // one runner: claim and run until the pool stops, sleeping between claims that find no work

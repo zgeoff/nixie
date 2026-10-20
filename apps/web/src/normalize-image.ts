@@ -37,13 +37,6 @@ interface Encoding {
   readonly quality?: number;
 }
 
-// a screenshot or a drawing keeps its sharp edges and its transparency as PNG; a photo goes as JPEG
-function pickEncoding(type: string): Encoding {
-  return type === 'image/png' || type === 'image/gif' || type === 'image/webp'
-    ? { type: 'image/png' }
-    : { type: 'image/jpeg', quality: 0.85 };
-}
-
 // a PNG past the byte limit, such as a photo saved as PNG, goes again as JPEG
 async function encodeCanvas(canvas: OffscreenCanvas, encoding: Encoding): Promise<Blob> {
   const encoded = await canvas.convertToBlob(encoding);
@@ -53,4 +46,11 @@ async function encodeCanvas(canvas: OffscreenCanvas, encoding: Encoding): Promis
   }
 
   return canvas.convertToBlob({ type: 'image/jpeg', quality: 0.85 });
+}
+
+// a screenshot or a drawing keeps its sharp edges and its transparency as PNG; a photo goes as JPEG
+function pickEncoding(type: string): Encoding {
+  return type === 'image/png' || type === 'image/gif' || type === 'image/webp'
+    ? { type: 'image/png' }
+    : { type: 'image/jpeg', quality: 0.85 };
 }

@@ -10,6 +10,16 @@ export interface ShownItem {
   readonly text: string;
 }
 
+export interface SpeakerNames {
+  readonly owner: string | null;
+  readonly assistant: string | null;
+}
+
+type ShownProposal = Pick<
+  MemoryProposal,
+  'proposalID' | 'operation' | 'itemID' | 'targetVersion' | 'subject' | 'text'
+>;
+
 export interface WriterPromptInput {
   readonly items: readonly ShownItem[];
 
@@ -23,16 +33,6 @@ export interface WriterPromptInput {
   // the names that label each message's author, or null for the bare role
   readonly names: SpeakerNames;
 }
-
-export interface SpeakerNames {
-  readonly owner: string | null;
-  readonly assistant: string | null;
-}
-
-type ShownProposal = Pick<
-  MemoryProposal,
-  'proposalID' | 'operation' | 'itemID' | 'targetVersion' | 'subject' | 'text'
->;
 
 // Renders the batch the writer reads: the current items and the pending proposals, each with its
 // subject, then each message with its ID, its date and who wrote it, oldest first. A message names
@@ -62,6 +62,16 @@ export function renderWriterPrompt(input: WriterPromptInput): string {
   return `${heading}\n${items}\n\nPending proposals, waiting for the owner's review:\n${proposals}\n\nMessages in this batch:\n\n${messages}`;
 }
 
+function formatDate(at: number): string {
+  return new Date(at).toISOString().slice(0, 10);
+}
+
+function formatSpeaker(names: SpeakerNames, role: BatchMessage['role']): string {
+  const name = names[role];
+
+  return name === null ? role : `${name} (${role})`;
+}
+
 // A proposal names the item it changes, so the writer reads it as that item's pending change. Its
 // text keeps to its one line, because outside content can reach a proposal's text.
 function renderProposal(proposal: ShownProposal): string {
@@ -74,14 +84,4 @@ function renderProposal(proposal: ShownProposal): string {
   return proposal.targetVersion === null
     ? `- ${proposal.proposalID} (${proposal.subject}): ${text}`
     : `- ${proposal.proposalID} (${proposal.subject}, revises ${proposal.itemID}): ${text}`;
-}
-
-function formatSpeaker(names: SpeakerNames, role: BatchMessage['role']): string {
-  const name = names[role];
-
-  return name === null ? role : `${name} (${role})`;
-}
-
-function formatDate(at: number): string {
-  return new Date(at).toISOString().slice(0, 10);
 }

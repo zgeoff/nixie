@@ -53,27 +53,6 @@ async function* readInbox(
   }
 }
 
-async function* readMessages(
-  messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>,
-): AsyncGenerator<InboxMessage> {
-  yield* messages;
-}
-
-async function readNextMessage(
-  iterator: AsyncIterator<InboxMessage>,
-  state: TurnInputState,
-): Promise<IteratorResult<InboxMessage> | null> {
-  try {
-    return await Promise.race([iterator.next(), state.ended.promise.then(() => null)]);
-  } catch (error) {
-    const failure = error instanceof Error ? error : new Error(String(error));
-
-    state.inputFailed.resolve(failure);
-
-    return null;
-  }
-}
-
 function buildUserMessage(message: InboxMessage): SDKUserMessage {
   return {
     type: 'user',
@@ -108,4 +87,25 @@ function buildContent(message: InboxMessage): UserContent {
       },
     ]),
   ];
+}
+
+async function* readMessages(
+  messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>,
+): AsyncGenerator<InboxMessage> {
+  yield* messages;
+}
+
+async function readNextMessage(
+  iterator: AsyncIterator<InboxMessage>,
+  state: TurnInputState,
+): Promise<IteratorResult<InboxMessage> | null> {
+  try {
+    return await Promise.race([iterator.next(), state.ended.promise.then(() => null)]);
+  } catch (error) {
+    const failure = error instanceof Error ? error : new Error(String(error));
+
+    state.inputFailed.resolve(failure);
+
+    return null;
+  }
 }

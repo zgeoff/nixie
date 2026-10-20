@@ -11,7 +11,7 @@ export async function removeSessionState(home: string): Promise<void> {
   // a removal that fails leaves its path on disk, which the check below reports
   await Promise.allSettled(paths.map((path) => rm(path, { recursive: true, force: true })));
 
-  const left = await Promise.all(paths.map((path) => findPresentPath(path)));
+  const left = await Promise.all(paths.map((path) => readPresentPath(path)));
 
   if (left.flat().length > 0) {
     throw new Error(`the session state is still on disk at ${left.flat().join(', ')}`);
@@ -20,7 +20,7 @@ export async function removeSessionState(home: string): Promise<void> {
 
 // Only a missing path proves the removal; any other failure to check, such as a home the guest
 // cannot traverse, throws, so the forget never completes on an unproven removal.
-async function findPresentPath(path: string): Promise<readonly string[]> {
+async function readPresentPath(path: string): Promise<readonly string[]> {
   try {
     await access(path);
 

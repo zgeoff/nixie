@@ -55,6 +55,9 @@ export function updateSessionLabel(context: APIContext, input: LabelInput): Prom
   });
 }
 
+// the limit the contract sets on the device name a session enrols with
+const maxLabelLength = 100;
+
 // a label renders on one line beside the send time, so each run of white space becomes one space,
 // and it keeps to the device name's limit
 function normalizeLabel(label: string): string | null {
@@ -62,6 +65,3 @@ function normalizeLabel(label: string): string | null {
 
   return normalized.length === 0 || normalized.length > maxLabelLength ? null : normalized;
 }
-
-// the limit the contract sets on the device name a session enrols with
-const maxLabelLength = 100;

@@ -9,6 +9,9 @@ export interface RetriedTurn {
   readonly message: string | null;
 }
 
+// the most failures one note reads, past which the block's count of more stops growing
+const readLimit = 1000;
+
 // The event kind for a failed conversation turn that the task retried. A failure that ended the
 // task is not a retry, so it is left out.
 export function buildRetriedTurnKind(
@@ -37,9 +40,6 @@ export function buildRetriedTurnKind(
         : `One of your turns failed and was retried: "${detail.message}".`,
   };
 }
-
-// the most failures one note reads, past which the block's count of more stops growing
-const readLimit = 1000;
 
 function buildRetriedTurn(record: LogRecord): NotedEvent<RetriedTurn> {
   const message =

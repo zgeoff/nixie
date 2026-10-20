@@ -1,4 +1,4 @@
-import { findRecordKeys } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import { decodeProposalText } from './decode-proposal-text';
 import type {
   MemoryProposal,
@@ -32,7 +32,7 @@ export async function readPendingProposals(
     .orderBy('created_sequence')
     .execute();
 
-  const keys = await findRecordKeys(
+  const keys = await readRecordKeys(
     log,
     rows.map((row) => row.item_id),
   );

@@ -65,10 +65,14 @@ async function setupTest() {
 
 test('it refuses to read the features of an impd whose version the client does not speak', () => {
   // impd answers every oRPC call in the RPC protocol's envelope, and only system.info reaches it
+  const answerRequest = mock(() =>
+    Response.json({ json: { version: '0.39.0', features: {}, egress: {} } }),
+  );
+
   const impd = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
-    fetch: () => Response.json({ json: { version: '0.39.0', features: {}, egress: {} } }),
+    fetch: answerRequest,
   });
 
   onTestFinished(() => impd.stop(true));
@@ -79,10 +83,14 @@ test('it refuses to read the features of an impd whose version the client does n
 });
 
 test('it refuses to read the features of an impd past the major of the client', () => {
+  const answerRequest = mock(() =>
+    Response.json({ json: { version: '3.0.0', features: {}, egress: {} } }),
+  );
+
   const impd = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
-    fetch: () => Response.json({ json: { version: '3.0.0', features: {}, egress: {} } }),
+    fetch: answerRequest,
   });
 
   onTestFinished(() => impd.stop(true));
@@ -93,10 +101,14 @@ test('it refuses to read the features of an impd past the major of the client', 
 });
 
 test('it refuses to read the features of an impd before the major of the client', () => {
+  const answerRequest = mock(() =>
+    Response.json({ json: { version: '1.6.0', features: {}, egress: {} } }),
+  );
+
   const impd = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
-    fetch: () => Response.json({ json: { version: '1.6.0', features: {}, egress: {} } }),
+    fetch: answerRequest,
   });
 
   onTestFinished(() => impd.stop(true));
@@ -107,17 +119,20 @@ test('it refuses to read the features of an impd before the major of the client'
 });
 
 test('it reads the features of an impd of the major of the client', () => {
+  const answerRequest = mock(() =>
+    Response.json({
+      json: {
+        version: '2.0.3',
+        features: { publicEgress: true, backupOptOut: true },
+        egress: { isEnforced: true },
+      },
+    }),
+  );
+
   const impd = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
-    fetch: () =>
-      Response.json({
-        json: {
-          version: '2.0.3',
-          features: { publicEgress: true, backupOptOut: true },
-          egress: { isEnforced: true },
-        },
-      }),
+    fetch: answerRequest,
   });
 
   onTestFinished(() => impd.stop(true));
@@ -132,11 +147,14 @@ test('it reads the features of an impd of the major of the client', () => {
 });
 
 test('it reads the backup opt-out among the features of an impd that has it', () => {
+  const answerRequest = mock(() =>
+    Response.json({ json: { version: '2.0.0', features: { backupOptOut: true }, egress: {} } }),
+  );
+
   const impd = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
-    fetch: () =>
-      Response.json({ json: { version: '2.0.0', features: { backupOptOut: true }, egress: {} } }),
+    fetch: answerRequest,
   });
 
   onTestFinished(() => impd.stop(true));
@@ -169,33 +187,36 @@ test('it ends a feature read that impd never answers at the abort, after one cal
 
 test('it reads an imp that impd shows with no backup flag as backed up', () => {
   // impd shows the flag only for an imp created with backup off; dates travel in the RPC meta
+  const answerRequest = mock(() =>
+    Response.json({
+      json: {
+        id: '01a130ab-7d6b-7664-ae89-f93646cd7e2a',
+        name: 'nixie-a',
+        image: 'conversation',
+        state: 'running',
+        vcpus: 1,
+        memoryMib: 512,
+        diskMib: 1024,
+        ip: '10.0.0.2',
+        slot: 2,
+        port: 2222,
+        httpPort: 8080,
+        url: 'https://nixie-a.imps.example',
+        createdAt: '2026-10-12T05:10:00.428Z',
+        lastActiveAt: '2026-10-12T05:10:00.428Z',
+        cpu: { limit: null, weight: 100 },
+      },
+      meta: [
+        [1, 'createdAt'],
+        [1, 'lastActiveAt'],
+      ],
+    }),
+  );
+
   const impd = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
-    fetch: () =>
-      Response.json({
-        json: {
-          id: '01a130ab-7d6b-7664-ae89-f93646cd7e2a',
-          name: 'nixie-a',
-          image: 'conversation',
-          state: 'running',
-          vcpus: 1,
-          memoryMib: 512,
-          diskMib: 1024,
-          ip: '10.0.0.2',
-          slot: 2,
-          port: 2222,
-          httpPort: 8080,
-          url: 'https://nixie-a.imps.example',
-          createdAt: '2026-10-12T05:10:00.428Z',
-          lastActiveAt: '2026-10-12T05:10:00.428Z',
-          cpu: { limit: null, weight: 100 },
-        },
-        meta: [
-          [1, 'createdAt'],
-          [1, 'lastActiveAt'],
-        ],
-      }),
+    fetch: answerRequest,
   });
 
   onTestFinished(() => impd.stop(true));
@@ -206,34 +227,37 @@ test('it reads an imp that impd shows with no backup flag as backed up', () => {
 });
 
 test('it reads an imp created with backup off as left out of the backups', () => {
+  const answerRequest = mock(() =>
+    Response.json({
+      json: {
+        id: '01a130ab-7d6b-7664-ae89-f93646cd7e2a',
+        name: 'nixie-a',
+        image: 'conversation',
+        state: 'running',
+        vcpus: 1,
+        memoryMib: 512,
+        diskMib: 1024,
+        backup: false,
+        ip: '10.0.0.2',
+        slot: 2,
+        port: 2222,
+        httpPort: 8080,
+        url: 'https://nixie-a.imps.example',
+        createdAt: '2026-10-12T05:10:00.428Z',
+        lastActiveAt: '2026-10-12T05:10:00.428Z',
+        cpu: { limit: null, weight: 100 },
+      },
+      meta: [
+        [1, 'createdAt'],
+        [1, 'lastActiveAt'],
+      ],
+    }),
+  );
+
   const impd = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
-    fetch: () =>
-      Response.json({
-        json: {
-          id: '01a130ab-7d6b-7664-ae89-f93646cd7e2a',
-          name: 'nixie-a',
-          image: 'conversation',
-          state: 'running',
-          vcpus: 1,
-          memoryMib: 512,
-          diskMib: 1024,
-          backup: false,
-          ip: '10.0.0.2',
-          slot: 2,
-          port: 2222,
-          httpPort: 8080,
-          url: 'https://nixie-a.imps.example',
-          createdAt: '2026-10-12T05:10:00.428Z',
-          lastActiveAt: '2026-10-12T05:10:00.428Z',
-          cpu: { limit: null, weight: 100 },
-        },
-        meta: [
-          [1, 'createdAt'],
-          [1, 'lastActiveAt'],
-        ],
-      }),
+    fetch: answerRequest,
   });
 
   onTestFinished(() => impd.stop(true));
@@ -244,14 +268,17 @@ test('it reads an imp created with backup off as left out of the backups', () =>
 });
 
 test('it reads no backup flag for an imp that impd does not hold', () => {
+  const refuseRequest = mock(() =>
+    Response.json(
+      { json: { defined: false, code: 'NOT_FOUND', status: 404, message: 'no imp nixie-a' } },
+      { status: 404 },
+    ),
+  );
+
   const impd = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
-    fetch: () =>
-      Response.json(
-        { json: { defined: false, code: 'NOT_FOUND', status: 404, message: 'no imp nixie-a' } },
-        { status: 404 },
-      ),
+    fetch: refuseRequest,
   });
 
   onTestFinished(() => impd.stop(true));
@@ -309,7 +336,8 @@ test("it fails a create that impd refuses with impd's code and message", () => {
 });
 
 test('it passes on a failed wake that is no impd error, such as impd not answering', async () => {
-  const probe = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: () => new Response() });
+  const answerProbe = mock(() => new Response());
+  const probe = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: answerProbe });
   const url = probe.url.href;
 
   await probe.stop(true);

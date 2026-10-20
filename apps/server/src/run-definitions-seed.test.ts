@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
-import { buildServerContext } from './build-server-context';
 import { buildStartState } from './build-start-state';
+import { createServerContext } from './create-server-context';
 import type { SeedParts } from './run-definitions-seed';
 import { runDefinitionsSeed } from './run-definitions-seed';
 import { buildStubFailingLogger } from './test-utils/build-stub-failing-logger';
@@ -29,7 +29,7 @@ async function setupTest() {
 
   await mkdir(root);
 
-  const context = await buildServerContext(log.writer, log.deploymentKey, () => null);
+  const context = await createServerContext(log.writer, log.deploymentKey, () => null);
 
   return { root, context };
 }

@@ -5,8 +5,6 @@ import { guestFrameSchema } from './guest-frame';
 import type { HostFrame } from './host-frame';
 import { hostFrameSchema } from './host-frame';
 
-const encoder = new TextEncoder();
-
 test('it decodes a turn frame the host sent', () => {
   const frame: HostFrame = {
     type: 'turn',
@@ -27,7 +25,7 @@ test('it decodes a turn frame the host sent', () => {
     input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
   };
 
-  const message = encoder.encode(JSON.stringify(frame));
+  const message = new TextEncoder().encode(JSON.stringify(frame));
 
   expect(decodeTurnFrame(hostFrameSchema, message)).toStrictEqual(frame);
 });
@@ -108,13 +106,13 @@ test('it decodes a message frame whose message carries images', () => {
     },
   };
 
-  const message = encoder.encode(JSON.stringify(frame));
+  const message = new TextEncoder().encode(JSON.stringify(frame));
 
   expect(decodeTurnFrame(hostFrameSchema, message)).toStrictEqual(frame);
 });
 
 test('it refuses an image of a type the model does not take', () => {
-  const message = encoder.encode(
+  const message = new TextEncoder().encode(
     JSON.stringify({
       type: 'message',
       message: {
@@ -135,7 +133,7 @@ test('it refuses an image of a type the model does not take', () => {
 });
 
 test('it refuses an image whose data is not base64', () => {
-  const message = encoder.encode(
+  const message = new TextEncoder().encode(
     JSON.stringify({
       type: 'message',
       message: {
@@ -156,17 +154,22 @@ test('it refuses an image whose data is not base64', () => {
 });
 
 test('it decodes a purge frame the host sent', () => {
-  const message = encoder.encode(JSON.stringify({ type: 'purge' }));
+  const message = new TextEncoder().encode(JSON.stringify({ type: 'purge' }));
 
   expect(decodeTurnFrame(hostFrameSchema, message)).toStrictEqual({ type: 'purge' });
 });
 
 test('it refuses a guest frame of a type the host does not know', () => {
   expect(() =>
-    decodeTurnFrame(guestFrameSchema, encoder.encode(JSON.stringify({ type: 'model', id: 'x' }))),
+    decodeTurnFrame(
+      guestFrameSchema,
+      new TextEncoder().encode(JSON.stringify({ type: 'model', id: 'x' })),
+    ),
   ).toThrow(ZodError);
 });
 
 test('it refuses a frame that is not JSON', () => {
-  expect(() => decodeTurnFrame(guestFrameSchema, encoder.encode('{'))).toThrow(SyntaxError);
+  expect(() => decodeTurnFrame(guestFrameSchema, new TextEncoder().encode('{'))).toThrow(
+    SyntaxError,
+  );
 });

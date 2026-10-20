@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { collectStepEvents } from './test-utils/collect-step-events';
 import { createTestClient } from './test-utils/create-test-client';
+import { readStepEvents } from './test-utils/read-step-events';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
 // nixie in a test build at ready, with a device signed in through the code it printed at start, and
@@ -42,7 +42,7 @@ test('it streams a tool call and its result within a second of nixie recording t
     timeZone: 'Europe/Oslo',
   });
 
-  const received = await collectStepEvents(stream, () => Date.now());
+  const received = await readStepEvents(stream, () => Date.now());
 
   // nixie and the test share one clock, so each lag is the stream's own delay
   expect(received.filter((event) => event.kind.startsWith('tool_'))).toStrictEqual([

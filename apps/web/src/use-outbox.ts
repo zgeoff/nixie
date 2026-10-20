@@ -37,6 +37,9 @@ export interface OutboxOptions {
   readonly resetSequence?: number | undefined;
 }
 
+// The pause before the first retry, doubling with each failure in a row up to a minute.
+const retrySchedule = { firstMs: 2000, maxMs: 60_000 };
+
 // Keeps the messages this device sent until the conversation shows them, or a reset removes them.
 // An unconfirmed message stays in device storage and goes again with its first client message ID;
 // a confirmed one stays in memory until its record arrives.
@@ -343,9 +346,6 @@ export function useOutbox(
 
   return { add, discard, entries, retry };
 }
-
-// The pause before the first retry, doubling with each failure in a row up to a minute.
-const retrySchedule = { firstMs: 2000, maxMs: 60_000 };
 
 function findEntry(
   entries: readonly OutboxEntry[],

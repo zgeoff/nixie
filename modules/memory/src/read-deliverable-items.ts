@@ -1,4 +1,4 @@
-import { findRecordKeys } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import type { ApprovedProposal } from './build-version-approval';
 import { buildVersionApproval } from './build-version-approval';
@@ -45,7 +45,7 @@ export async function readDeliverableItems(
     .where('state', 'in', query.states)
     .execute();
 
-  const keys = await findRecordKeys(
+  const keys = await readRecordKeys(
     parts.context.log,
     rows.map((row) => row.item_id),
   );

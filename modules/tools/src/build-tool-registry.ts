@@ -36,6 +36,14 @@ export function buildToolRegistry(definitions: readonly ToolDefinition[]): ToolR
   return { findTool: (name) => tools.get(name) ?? null };
 }
 
+function toSchemaParser(validate: JsonSchemaValidator<unknown>): (value: unknown) => SchemaCheck {
+  return (value) => {
+    const result = validate(value);
+
+    return result.valid ? { isValid: true } : { isValid: false, errors: result.errorMessage };
+  };
+}
+
 function assertDefinition(definition: ToolDefinition): void {
   if (definition.input['type'] !== 'object') {
     throw new Error(`the tool ${definition.name} needs an object input schema`);
@@ -81,12 +89,4 @@ function assertResultSources(definition: ToolDefinition): void {
         `unsourced [${unsourced.join(', ')}], unknown [${unknown.join(', ')}]`,
     );
   }
-}
-
-function toSchemaParser(validate: JsonSchemaValidator<unknown>): (value: unknown) => SchemaCheck {
-  return (value) => {
-    const result = validate(value);
-
-    return result.valid ? { isValid: true } : { isValid: false, errors: result.errorMessage };
-  };
 }

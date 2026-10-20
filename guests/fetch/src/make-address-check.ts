@@ -89,6 +89,16 @@ function isPublic(address: IPAddress, denied: readonly IPRange[]): boolean {
   return embedded.every((value) => isPublic({ family: 4, value }, denied));
 }
 
+function isInRange(address: IPAddress, range: IPRange): boolean {
+  if (address.family !== range.family) {
+    return false;
+  }
+
+  const shift = BigInt((range.family === 4 ? 32 : 128) - range.prefix);
+
+  return address.value >> shift === range.base >> shift;
+}
+
 const low32 = (1n << 32n) - 1n;
 
 // The forms of an IPv6 address that carry an IPv4 address, and where each carries it.
@@ -122,14 +132,4 @@ function findEmbeddedIPv4(value: bigint): readonly bigint[] | null {
   const embedding = embeddings.find((form) => isInRange({ family: 6, value }, form.range));
 
   return embedding === undefined ? null : embedding.extract(value);
-}
-
-function isInRange(address: IPAddress, range: IPRange): boolean {
-  if (address.family !== range.family) {
-    return false;
-  }
-
-  const shift = BigInt((range.family === 4 ? 32 : 128) - range.prefix);
-
-  return address.value >> shift === range.base >> shift;
 }

@@ -1,6 +1,6 @@
 import { buildShortIDFromUUID } from '@heynixie/db';
 import type { LogTables } from '@heynixie/log';
-import { findRecordKeys } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import type {
   ChangeComment,
@@ -88,7 +88,7 @@ async function readChanges(
 ): Promise<readonly ConsolidationChange[]> {
   const log = parts.context.log;
 
-  const keys = await findRecordKeys(
+  const keys = await readRecordKeys(
     log,
     rows.map((row) => row.item_id),
   );

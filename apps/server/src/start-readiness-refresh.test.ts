@@ -44,7 +44,8 @@ test('it reports the imp runtime ready once impd answers again after a call that
 
   // a half-open connection: impd takes the first call and never answers it
   const answer = buildStubCheck(() => Promise.withResolvers<Response>().promise);
-  const impd = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: () => answer.check() });
+  const answerRequest = () => answer.check();
+  const impd = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: answerRequest });
 
   onTestFinished(() => impd.stop(true));
 

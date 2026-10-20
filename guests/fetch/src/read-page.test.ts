@@ -8,7 +8,7 @@ import { startTestSite } from './test-utils/start-test-site';
 test('it returns the readable text of an HTML page over a connection to the checked address', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response(
         '<html><head><title>t</title></head><body><h1>Hello</h1><p>world</p></body></html>',
         {
@@ -41,7 +41,7 @@ test('it returns the readable text of an HTML page over a connection to the chec
 });
 
 test('it connects to the checked address and never resolves the host a second time', async () => {
-  const site = await startTestSite({ names: ['site.test'], fetch: () => new Response('pinned') });
+  const site = await startTestSite({ names: ['site.test'], respond: () => new Response('pinned') });
 
   const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1'], ['10.0.0.1']] } });
 
@@ -57,7 +57,7 @@ test('it connects to the checked address and never resolves the host a second ti
 });
 
 test('it refuses a certificate that does not cover the host name it sent', async () => {
-  const site = await startTestSite({ names: ['other.test'], fetch: () => new Response('x') });
+  const site = await startTestSite({ names: ['other.test'], respond: () => new Response('x') });
 
   const reply = await readPage(`https://site.test:${site.port}/`, {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
@@ -71,7 +71,7 @@ test('it refuses a certificate that does not cover the host name it sent', async
 });
 
 test('it refuses a site whose certificate no trusted root signed', async () => {
-  const site = await startTestSite({ names: ['site.test'], fetch: () => new Response('x') });
+  const site = await startTestSite({ names: ['site.test'], respond: () => new Response('x') });
 
   const reply = await readPage(`https://site.test:${site.port}/`, {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
@@ -116,7 +116,7 @@ test('it refuses text that is not a URL', async () => {
 });
 
 test('it refuses a host when any of its A and AAAA addresses is not public', async () => {
-  const site = await startTestSite({ names: ['site.test'], fetch: () => new Response('x') });
+  const site = await startTestSite({ names: ['site.test'], respond: () => new Response('x') });
 
   const checked: string[] = [];
 
@@ -183,7 +183,7 @@ test('it refuses a host that resolves to no address', async () => {
 test('it resolves and checks the host of each redirect before it connects', async () => {
   const site = await startTestSite({
     names: ['site.test', 'inside.test'],
-    fetch: () => Response.redirect('https://inside.test/admin', 302),
+    respond: () => Response.redirect('https://inside.test/admin', 302),
   });
 
   const resolver = buildStubResolver({
@@ -209,7 +209,7 @@ test('it resolves and checks the host of each redirect before it connects', asyn
 test('it refuses a redirect to an http URL', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () => Response.redirect('http://site.test/plain', 301),
+    respond: () => Response.redirect('http://site.test/plain', 301),
   });
 
   const reply = await readPage(`https://site.test:${site.port}/`, {
@@ -228,7 +228,7 @@ test('it refuses a redirect to an http URL', async () => {
 test('it follows redirects up to the limit and returns the final URL', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: (request) => {
+    respond: (request) => {
       const step = Number(new URL(request.url).searchParams.get('step') ?? '0');
 
       return step < 2
@@ -258,7 +258,7 @@ test('it follows redirects up to the limit and returns the final URL', async () 
 test('it fails a page that redirects more times than the limit', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () => new Response(null, { status: 302, headers: { location: '/again' } }),
+    respond: () => new Response(null, { status: 302, headers: { location: '/again' } }),
   });
 
   const reply = await readPage(`https://site.test:${site.port}/`, {
@@ -275,7 +275,7 @@ test('it fails a page that redirects more times than the limit', async () => {
 test('it returns the blocked reason for a Cloudflare challenge in place of the page', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response(
         '<html><head><title>Just a moment...</title></head><body><noscript>Enable JavaScript and cookies to continue</noscript></body></html>',
         {
@@ -306,7 +306,7 @@ test('it returns the blocked reason for a Cloudflare challenge in place of the p
 test('it returns the blocked reason for a challenge page it knows by its markup', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response(
         '<html><body><script>window._cf_chl_opt = { cType: "managed" };</script><script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1"></script></body></html>',
         { status: 503, headers: { 'content-type': 'text/html' } },
@@ -330,7 +330,7 @@ test('it returns the blocked reason for a challenge page it knows by its markup'
 test('it returns no blocked reason for a forbidden page with no challenge', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response('<p>You do not have access.</p>', {
         status: 403,
         headers: { 'content-type': 'text/html' },
@@ -353,7 +353,7 @@ test('it returns no blocked reason for a forbidden page with no challenge', asyn
 });
 
 test('it sends a user agent that names nixie', async () => {
-  const site = await startTestSite({ names: ['site.test'], fetch: () => new Response('x') });
+  const site = await startTestSite({ names: ['site.test'], respond: () => new Response('x') });
 
   await readPage(`https://site.test:${site.port}/`, {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
@@ -370,7 +370,7 @@ test('it sends a user agent that names nixie', async () => {
 test('it sends no credential from the URL and no cookie a redirect set', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: (request) =>
+    respond: (request) =>
       new URL(request.url).pathname === '/'
         ? new Response(null, {
             status: 302,
@@ -397,7 +397,7 @@ test('it sends no credential from the URL and no cookie a redirect set', async (
 test('it stops at the body limit and marks the result truncated', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response('0123456789'.repeat(10_000), { headers: { 'content-type': 'text/plain' } }),
   });
 
@@ -418,7 +418,7 @@ test('it stops at the body limit and marks the result truncated', async () => {
 test('it returns a body exactly at the body limit whole', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () => new Response('0123456789', { headers: { 'content-type': 'text/plain' } }),
+    respond: () => new Response('0123456789', { headers: { 'content-type': 'text/plain' } }),
   });
 
   const reply = await readPage(`https://site.test:${site.port}/`, {
@@ -434,7 +434,7 @@ test('it returns a body exactly at the body limit whole', async () => {
 test('it counts the decoded bytes of a compressed body against the body limit', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response(gzipSync('a'.repeat(1_000_000)), {
         headers: { 'content-type': 'text/plain', 'content-encoding': 'gzip' },
       }),
@@ -453,7 +453,7 @@ test('it counts the decoded bytes of a compressed body against the body limit', 
 test('it fails a page sent in a content coding it cannot read', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response('not really zstd', {
         headers: { 'content-type': 'text/plain', 'content-encoding': 'zstd' },
       }),
@@ -475,7 +475,7 @@ test('it fails a page sent in a content coding it cannot read', async () => {
 test('it stops at the text limit without splitting a character and marks the result truncated', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response('ab€cd', { headers: { 'content-type': 'text/plain; charset=utf-8' } }),
   });
 
@@ -492,7 +492,7 @@ test('it stops at the text limit without splitting a character and marks the res
 test('it fails a fetch that passes the time limit', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: async () => {
+    respond: async () => {
       // the fault: the site answers well after the limit
       await Bun.sleep(800);
 
@@ -513,7 +513,7 @@ test('it fails a fetch that passes the time limit', async () => {
 test('it returns the page of a slow site that answers within the time limit', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: async () => {
+    respond: async () => {
       // the same slow site as the time limit's, under a limit it fits in
       await Bun.sleep(800);
 
@@ -536,7 +536,7 @@ test('it fails a fetch whose compressed body stalls past the time limit', async 
 
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response(
         new ReadableStream({
           start: async (controller) => {
@@ -568,7 +568,7 @@ test('it returns a compressed body that stalls and finishes within the time limi
 
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response(
         new ReadableStream({
           start: async (controller) => {
@@ -627,7 +627,7 @@ test('it checks a slow DNS answer that arrives within the time limit', async () 
 test('it returns a binary type with no body', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), {
         headers: { 'content-type': 'image/png' },
       }),
@@ -654,7 +654,7 @@ test('it returns a binary type with no body', async () => {
 test('it returns another text type as it arrived', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response('{"a": "<b>"}', {
         status: 404,
         headers: { 'content-type': 'application/json' },
@@ -680,7 +680,7 @@ test('it returns another text type as it arrived', async () => {
 test('it decodes the text in the charset the page names', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () =>
+    respond: () =>
       new Response(new Uint8Array([0x63, 0x61, 0x66, 0xe9]), {
         headers: { 'content-type': 'text/plain; charset=iso-8859-1' },
       }),

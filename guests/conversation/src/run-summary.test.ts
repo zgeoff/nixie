@@ -6,7 +6,7 @@ import { buildMockSummarizeFrame, buildMockTurnFrame } from '@heynixie/wire/test
 import invariant from 'tiny-invariant';
 import { runSummary } from './run-summary';
 import { runTurn } from './run-turn';
-import { buildStubToolServer } from './test-utils/build-stub-tool-server';
+import { createStubToolServer } from './test-utils/create-stub-tool-server';
 import { startStubModel } from './test-utils/start-stub-model';
 
 async function setupTest() {
@@ -38,7 +38,7 @@ async function setupTest() {
       profile: { baseURL: model.url },
       input: [{ uuid: crypto.randomUUID(), text: 'What does the tide gauge read?' }],
     }),
-    { ...io, toolServer: buildStubToolServer().config, messages: [] },
+    { ...io, toolServer: createStubToolServer().config, messages: [] },
   );
 
   const ended = io.frames.splice(0).find((frame) => frame.type === 'ended');

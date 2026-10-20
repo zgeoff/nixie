@@ -40,6 +40,12 @@ export const memoryProposalsProjection: Projection = {
   },
 };
 
+const statusAfter = {
+  'memory.approval_recorded': 'consumed',
+  'memory.proposal_rejected': 'rejected',
+  'memory.proposal_lapsed': 'lapsed',
+} as const;
+
 // A merge's source sits in the merges projection, and here it only pushes the lapse time back.
 async function writeProposalChange(
   db: Kysely<MemoryTables>,
@@ -125,9 +131,3 @@ async function readProposalSubject(
     ? { kind: 'fact', subject: 'owner' }
     : { kind: item.kind, subject: getRowSubject(item) };
 }
-
-const statusAfter = {
-  'memory.approval_recorded': 'consumed',
-  'memory.proposal_rejected': 'rejected',
-  'memory.proposal_lapsed': 'lapsed',
-} as const;

@@ -11,20 +11,11 @@ import { isClearIsolationLine } from './test-utils/is-clear-isolation-line';
 
 // The imp tests run against a real impd on a host with /dev/kvm, with the fetch image built into it.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn them on.
-const impEnv = {
-  IMP_URL: process.env['NIXIE_IMP_TEST_URL'],
-  IMP_TOKEN: process.env['NIXIE_IMP_TEST_TOKEN'],
-  IMP_HOST_ADDRESSES: process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'],
-  IMP_EGRESS_DENY: process.env['NIXIE_IMP_TEST_EGRESS_DENY'],
-};
-
-const fetchImage = process.env['NIXIE_IMP_TEST_FETCH_IMAGE'] ?? '';
-
 const hasImpHost =
-  impEnv.IMP_URL !== undefined &&
-  impEnv.IMP_TOKEN !== undefined &&
-  impEnv.IMP_HOST_ADDRESSES !== undefined &&
-  fetchImage !== '';
+  process.env['NIXIE_IMP_TEST_URL'] !== undefined &&
+  process.env['NIXIE_IMP_TEST_TOKEN'] !== undefined &&
+  process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'] !== undefined &&
+  (process.env['NIXIE_IMP_TEST_FETCH_IMAGE'] ?? '') !== '';
 
 // The stack's disposal registers before the recorder's, and onTestFinished runs first in, first
 // out, so a sandbox that a test registers on it is destroyed while the recorder's writer still runs.
@@ -88,7 +79,12 @@ test.skipIf(!hasImpHost)(
   async () => {
     const ctx = await setupTest();
 
-    const config = parseImpConfig(impEnv);
+    const config = parseImpConfig({
+      IMP_URL: process.env['NIXIE_IMP_TEST_URL'],
+      IMP_TOKEN: process.env['NIXIE_IMP_TEST_TOKEN'],
+      IMP_HOST_ADDRESSES: process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'],
+      IMP_EGRESS_DENY: process.env['NIXIE_IMP_TEST_EGRESS_DENY'],
+    });
 
     const adapter = buildImpSandboxAdapter({
       port: buildImpPort(config),
@@ -99,7 +95,7 @@ test.skipIf(!hasImpHost)(
 
     const webFetch = startWebFetch({
       adapter,
-      image: fetchImage,
+      image: process.env['NIXIE_IMP_TEST_FETCH_IMAGE'] ?? '',
       argv: fetchImageArgv,
       deniedRanges: [
         ...(config.publicEgress?.hostAddresses ?? []),
@@ -143,7 +139,12 @@ test.skipIf(!hasImpHost)(
   async () => {
     const ctx = await setupTest();
 
-    const config = parseImpConfig(impEnv);
+    const config = parseImpConfig({
+      IMP_URL: process.env['NIXIE_IMP_TEST_URL'],
+      IMP_TOKEN: process.env['NIXIE_IMP_TEST_TOKEN'],
+      IMP_HOST_ADDRESSES: process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'],
+      IMP_EGRESS_DENY: process.env['NIXIE_IMP_TEST_EGRESS_DENY'],
+    });
 
     const adapter = buildImpSandboxAdapter({
       port: buildImpPort(config),
@@ -155,7 +156,7 @@ test.skipIf(!hasImpHost)(
     const sandbox = await adapter.create(
       buildSandboxSpec({
         kind: 'fetch',
-        image: fetchImage,
+        image: process.env['NIXIE_IMP_TEST_FETCH_IMAGE'] ?? '',
         owner: 'web_fetch',
         limits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
       }),
@@ -177,7 +178,12 @@ test.skipIf(!hasImpHost)(
   async () => {
     const ctx = await setupTest();
 
-    const config = parseImpConfig(impEnv);
+    const config = parseImpConfig({
+      IMP_URL: process.env['NIXIE_IMP_TEST_URL'],
+      IMP_TOKEN: process.env['NIXIE_IMP_TEST_TOKEN'],
+      IMP_HOST_ADDRESSES: process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'],
+      IMP_EGRESS_DENY: process.env['NIXIE_IMP_TEST_EGRESS_DENY'],
+    });
 
     const sandbox = await buildImpSandboxAdapter({
       port: buildImpPort(config),
@@ -187,7 +193,7 @@ test.skipIf(!hasImpHost)(
     }).create(
       buildSandboxSpec({
         kind: 'fetch',
-        image: fetchImage,
+        image: process.env['NIXIE_IMP_TEST_FETCH_IMAGE'] ?? '',
         owner: 'web_fetch',
         limits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
       }),

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { runOutboxImagesRequest } from './run-outbox-images-request';
 
+const storedImages = z.array(z.instanceof(File));
+
 // Reads the images the device keeps for an unsent message, or none when it keeps no images for it
 // or what it keeps is not a list of files.
 export async function readOutboxImages(clientMessageId: string): Promise<readonly File[]> {
@@ -12,5 +14,3 @@ export async function readOutboxImages(clientMessageId: string): Promise<readonl
 
   return parsed.success ? parsed.data : [];
 }
-
-const storedImages = z.array(z.instanceof(File));

@@ -10,6 +10,16 @@ export interface ConversationFailureNoticeProps {
   readonly lastStepEnd?: LiveRecord | null | undefined;
 }
 
+const notice = css({
+  color: 'textMuted',
+  fontSize: 'sm',
+  marginInline: 'auto',
+  maxWidth: '3xl',
+  paddingBlock: '2',
+  paddingInline: '4',
+  width: 'full',
+});
+
 // Sits above the messages while the conversation's turns fail at or past the error limit, and goes
 // once a turn succeeds. The conversation keeps trying, and your next message makes it try at once.
 export function ConversationFailureNotice(props: ConversationFailureNoticeProps): ReactNode {
@@ -33,13 +43,3 @@ export function ConversationFailureNotice(props: ConversationFailureNoticeProps)
     </p>
   );
 }
-
-const notice = css({
-  color: 'textMuted',
-  fontSize: 'sm',
-  marginInline: 'auto',
-  maxWidth: '3xl',
-  paddingBlock: '2',
-  paddingInline: '4',
-  width: 'full',
-});

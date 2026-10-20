@@ -11,6 +11,8 @@ export interface MessageEntries {
   readonly through: number;
 }
 
+const pageSize = 200;
+
 // Reads the words you typed in each of your messages after the sequence, each keyed by its
 // sequence. A message with no typed words, one whose key is gone, or one that backed a forgotten
 // item stays out, so neither a paste nor a forget comes back as your past message.
@@ -30,7 +32,7 @@ export async function readMessageEntries(
 
     const records = read.map((entry) => entry.record);
 
-    entries.push(...(await collectReadableEntries(context, records)));
+    entries.push(...(await readReadableEntries(context, records)));
 
     page.size = records.length;
     page.after = records.at(-1)?.sequence ?? page.after;
@@ -39,9 +41,7 @@ export async function readMessageEntries(
   return { entries, through: page.after };
 }
 
-const pageSize = 200;
-
-async function collectReadableEntries(
+async function readReadableEntries(
   context: Pick<MemoryContext, 'log'>,
   records: readonly LogRecord[],
 ): Promise<readonly IndexEntry[]> {

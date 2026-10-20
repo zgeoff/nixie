@@ -7,7 +7,7 @@ import { startTestSite } from './start-test-site';
 test('it answers HTTPS for its names and records each request', async () => {
   const site = await startTestSite({
     names: ['site.test'],
-    fetch: () => new Response('hello'),
+    respond: () => new Response('hello'),
   });
 
   const response = Promise.withResolvers<IncomingMessage>();
@@ -35,7 +35,7 @@ test('it answers HTTPS for its names and records each request', async () => {
 });
 
 test('it stops the site when the test finishes', async () => {
-  const site = await startTestSite({ names: ['site.test'], fetch: () => new Response('hello') });
+  const site = await startTestSite({ names: ['site.test'], respond: () => new Response('hello') });
 
   onTestFinished(() => {
     const socket = connect({ host: '127.0.0.1', port: site.port, ca: site.ca });

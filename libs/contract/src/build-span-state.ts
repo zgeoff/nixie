@@ -65,19 +65,6 @@ function planEdit(before: string, after: string, selection?: PendingInput['selec
   });
 }
 
-// The count backs off one code unit when it would end inside a surrogate pair.
-function countPrefix(before: string, after: string, limit: number): number {
-  let length = 0;
-
-  while (length < limit && before[length] === after[length]) {
-    length += 1;
-  }
-
-  return length > 0 && (isLowSurrogateAt(before, length) || isLowSurrogateAt(after, length))
-    ? length - 1
-    : length;
-}
-
 // The count backs off one code unit when it would start inside a surrogate pair.
 function countSuffix(before: string, after: string, limit: number): number {
   let length = 0;
@@ -117,11 +104,17 @@ function buildEdit(before: string, after: string, shared: Shared): Edit {
   };
 }
 
-// what an edit put in the text box, where, and how many characters it replaced
-interface Insertion {
-  readonly at: number;
-  readonly removed: number;
-  readonly text: string;
+// The count backs off one code unit when it would end inside a surrogate pair.
+function countPrefix(before: string, after: string, limit: number): number {
+  let length = 0;
+
+  while (length < limit && before[length] === after[length]) {
+    length += 1;
+  }
+
+  return length > 0 && (isLowSurrogateAt(before, length) || isLowSurrogateAt(after, length))
+    ? length - 1
+    : length;
 }
 
 // A deletion inserts nothing to label, so only an insertion must replace exactly the selection.
@@ -129,6 +122,13 @@ function isEditAtSelection(edit: Edit, selection: PendingInput['selection']): bo
   return (
     edit.inserted === 0 || (edit.at === selection.start && edit.at + edit.removed === selection.end)
   );
+}
+
+// what an edit put in the text box, where, and how many characters it replaced
+interface Insertion {
+  readonly at: number;
+  readonly removed: number;
+  readonly text: string;
 }
 
 // An insert of several words counts as typed only when it puts back, where the edit before it
@@ -147,12 +147,12 @@ function pickEditSource(
     insertion.at === removed.at &&
     insertion.removed === 0 &&
     insertion.text === respacing &&
-    removeWhitespace(respacing) === removeWhitespace(removed.text);
+    stripWhitespace(respacing) === stripWhitespace(removed.text);
 
   return isRespaced ? 'typed' : pending.source;
 }
 
-function removeWhitespace(text: string): string {
+function stripWhitespace(text: string): string {
   return text.replaceAll(/\s/gu, '');
 }
 

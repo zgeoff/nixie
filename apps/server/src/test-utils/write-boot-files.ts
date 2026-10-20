@@ -101,6 +101,10 @@ async function writeStubSops(path: string): Promise<void> {
   await chmod(path, 0o755);
 }
 
+async function writeConfig(directory: string, lines: readonly string[]): Promise<void> {
+  await writeFile(join(directory, 'config.yaml'), `${lines.join('\n')}\n`);
+}
+
 function buildConfigLines(
   directory: string,
   modelURL: string,
@@ -128,8 +132,4 @@ function buildConfigLines(
     'definitions:',
     `  source: { kind: path, path: ${join(directory, 'definitions')} }`,
   ];
-}
-
-async function writeConfig(directory: string, lines: readonly string[]): Promise<void> {
-  await writeFile(join(directory, 'config.yaml'), `${lines.join('\n')}\n`);
 }

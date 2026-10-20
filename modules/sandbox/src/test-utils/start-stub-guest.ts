@@ -124,35 +124,6 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
   };
 }
 
-// a script that throws ends the guest as the real one does: a failed frame, then exit code 0
-async function tryRunFirstFrame(
-  hooks: StubGuestHooks,
-  first: Exclude<HostFrame, { type: 'message' }>,
-  guest: StubGuest,
-): Promise<readonly GuestFrame[]> {
-  try {
-    return await runFirstFrame(hooks, first, guest);
-  } catch (error) {
-    return [{ type: 'failed', reason: 'error', detail: String(error) }];
-  }
-}
-
-function runFirstFrame(
-  hooks: StubGuestHooks,
-  first: Exclude<HostFrame, { type: 'message' }>,
-  guest: StubGuest,
-): Promise<readonly GuestFrame[]> | readonly GuestFrame[] {
-  if (first.type === 'purge') {
-    return hooks.onPurge();
-  }
-
-  if (first.type === 'summarize') {
-    return hooks.onSummary(first);
-  }
-
-  return hooks.onTurn(first, guest);
-}
-
 // the guest's inbox; a wait rejects, with the signal's reason as the cause, once the signal aborts
 function buildMessageQueue(signal: AbortSignal): {
   readonly push: (message: InboxMessage) => void;
@@ -203,6 +174,12 @@ function buildMessageQueue(signal: AbortSignal): {
   };
 }
 
+function buildStoppedError(signal: AbortSignal): Error {
+  return new Error('the stub guest stopped while it waited for a message', {
+    cause: signal.reason,
+  });
+}
+
 // a write the host's closed stream refuses is dropped, as the host reads nothing more
 async function writeFrames(
   writer: WritableStreamDefaultWriter<Uint8Array<ArrayBuffer>>,
@@ -213,8 +190,31 @@ async function writeFrames(
   }
 }
 
-function buildStoppedError(signal: AbortSignal): Error {
-  return new Error('the stub guest stopped while it waited for a message', {
-    cause: signal.reason,
-  });
+// a script that throws ends the guest as the real one does: a failed frame, then exit code 0
+async function tryRunFirstFrame(
+  hooks: StubGuestHooks,
+  first: Exclude<HostFrame, { type: 'message' }>,
+  guest: StubGuest,
+): Promise<readonly GuestFrame[]> {
+  try {
+    return await runFirstFrame(hooks, first, guest);
+  } catch (error) {
+    return [{ type: 'failed', reason: 'error', detail: String(error) }];
+  }
+}
+
+function runFirstFrame(
+  hooks: StubGuestHooks,
+  first: Exclude<HostFrame, { type: 'message' }>,
+  guest: StubGuest,
+): Promise<readonly GuestFrame[]> | readonly GuestFrame[] {
+  if (first.type === 'purge') {
+    return hooks.onPurge();
+  }
+
+  if (first.type === 'summarize') {
+    return hooks.onSummary(first);
+  }
+
+  return hooks.onTurn(first, guest);
 }

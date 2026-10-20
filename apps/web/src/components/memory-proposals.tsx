@@ -15,6 +15,15 @@ export interface MemoryProposalsProps {
   readonly navigation?: ReactNode;
 }
 
+const layout = css({
+  marginInline: 'auto',
+  maxWidth: '3xl',
+  paddingBlock: '4',
+  paddingInline: '4',
+});
+
+const header = css({ alignItems: 'baseline', display: 'flex', justifyContent: 'space-between' });
+
 // Every pending memory proposal, to approve, edit and approve, or reject with a reason, one at a
 // time or every selected one at once. An answer that met a lapsed or changed proposal shows what
 // stopped it, and changed nothing.
@@ -62,15 +71,6 @@ export function MemoryProposals(props: MemoryProposalsProps): ReactNode {
     </main>
   );
 }
-
-const layout = css({
-  marginInline: 'auto',
-  maxWidth: '3xl',
-  paddingBlock: '4',
-  paddingInline: '4',
-});
-
-const header = css({ alignItems: 'baseline', display: 'flex', justifyContent: 'space-between' });
 
 interface AnswerNoticesProps {
   readonly answers: ProposalAnswers;

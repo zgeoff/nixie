@@ -19,7 +19,7 @@ export async function claimTestLease(
     kind: request.kind,
     holder: request.holder,
     durationMs: request.durationMs,
-    findCandidate: () => Promise.resolve(request.workID),
+    readCandidate: () => Promise.resolve(request.workID),
   });
 
   // no runner holds the work, so the claim takes it

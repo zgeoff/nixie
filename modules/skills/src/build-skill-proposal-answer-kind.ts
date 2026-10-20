@@ -22,6 +22,13 @@ export interface SkillProposalAnswerEvent {
   readonly reason: string | null;
 }
 
+// the most answers one note reads, past which the block's count of more stops growing
+const readLimit = 1000;
+const lapseDays = skillProposalLapseMs / (24 * 60 * 60 * 1000);
+
+// every record that closes a proposal names it in its payload
+const closingPayload = z.object({ proposalID: z.string() });
+
 // The event kind for the close of each skill proposal on the thread, read from the record that
 // closed it, so the turn after a rejection reads your reason.
 export function buildSkillProposalAnswerKind(
@@ -105,10 +112,3 @@ export function buildSkillProposalAnswerKind(
     },
   };
 }
-
-// the most answers one note reads, past which the block's count of more stops growing
-const readLimit = 1000;
-const lapseDays = skillProposalLapseMs / (24 * 60 * 60 * 1000);
-
-// every record that closes a proposal names it in its payload
-const closingPayload = z.object({ proposalID: z.string() });

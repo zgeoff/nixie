@@ -17,6 +17,29 @@ export interface SessionDeliveries {
   readonly messages: readonly number[];
 }
 
+interface PendingRecall {
+  readonly sequence: number;
+  readonly refs: readonly MemoryRef[];
+}
+
+interface SessionState {
+  readonly delivered: ReadonlyMap<string, MemoryRef>;
+
+  // the past messages a turn's retrieval placed, by sequence; only a turn's end lists them
+  readonly messages: readonly number[];
+
+  // the running step's recalls, which its turn's end keeps up to its last result
+  readonly pending: readonly PendingRecall[];
+  readonly isCompacted: boolean;
+}
+
+const emptyState: SessionState = {
+  delivered: new Map(),
+  messages: [],
+  pending: [],
+  isCompacted: false,
+};
+
 // Reads what the thread's session still holds of what was delivered in a step that ended its turn,
 // since the session's opening record, the last compaction or an invalidation. The memory context
 // doc gives the rules for each record.
@@ -36,28 +59,74 @@ export async function readSessionDeliveries(
   };
 }
 
-interface SessionState {
-  readonly delivered: ReadonlyMap<string, MemoryRef>;
+const pageSize = 200;
 
-  // the past messages a turn's retrieval placed, by sequence; only a turn's end lists them
-  readonly messages: readonly number[];
+// the records that end what a session holds; session_rebuilt is the opening record that logs from
+// before session_opened still hold
+const resetKinds: readonly RecordKind[] = [
+  'model.compacted',
+  'model.session_opened',
+  'model.session_rebuilt',
+  'model.session_invalidated',
+];
 
-  // the running step's recalls, which its turn's end keeps up to its last result
-  readonly pending: readonly PendingRecall[];
-  readonly isCompacted: boolean;
+const replayKinds: readonly RecordKind[] = [
+  'memory.recalled',
+  'model.turn_ended',
+  'task.step_started',
+  ...resetKinds,
+];
+
+// The thread's records from the start of the step that wrote its newest reset, oldest first, so the
+// replay sees every recall of the step a rebuild commits with.
+async function* readSessionRecords(
+  context: Pick<TasksContext, 'log'>,
+  taskID: string,
+): AsyncGenerator<LogRecord> {
+  const page = { after: await readReplayStart(context, taskID), size: pageSize };
+
+  while (page.size === pageSize) {
+    const entries = await readRecords(context.log, {
+      afterSequence: page.after,
+      thread: taskID,
+      kinds: replayKinds,
+      limit: pageSize,
+    });
+
+    yield* entries.map((entry) => entry.record);
+    page.size = entries.length;
+    page.after = entries.at(-1)?.record.sequence ?? page.after;
+  }
 }
 
-interface PendingRecall {
-  readonly sequence: number;
-  readonly refs: readonly MemoryRef[];
-}
+// the sequence just before the step that wrote the newest reset, or 0 for a thread with none
+async function readReplayStart(
+  context: Pick<TasksContext, 'log'>,
+  taskID: string,
+): Promise<number> {
+  const [reset] = await readRecords(context.log, {
+    afterSequence: 0,
+    thread: taskID,
+    kinds: resetKinds,
+    order: 'newest',
+    limit: 1,
+  });
 
-const emptyState: SessionState = {
-  delivered: new Map(),
-  messages: [],
-  pending: [],
-  isCompacted: false,
-};
+  if (reset === undefined) {
+    return 0;
+  }
+
+  const [started] = await readRecords(context.log, {
+    afterSequence: 0,
+    beforeSequence: reset.record.sequence,
+    thread: taskID,
+    kinds: ['task.step_started'],
+    order: 'newest',
+    limit: 1,
+  });
+
+  return started === undefined ? 0 : started.record.sequence - 1;
+}
 
 // A reset commits after its step's recalls and drops them: a compaction summarized those through
 // its mark, and a lost session's opening lists what its turn retrieved. A turn drops a recall after
@@ -79,6 +148,13 @@ function buildSessionState(state: SessionState, record: LogRecord): SessionState
   }
 
   return buildSessionReset(state, record);
+}
+
+// A record's item versions, or none for a record from before it kept them. A turn or compaction
+// recorded before it kept its recall mark took every recall of its step, and a turn recorded
+// before retrieval placed past messages placed none.
+function toRefs(refs: readonly MemoryRef[] | undefined): readonly MemoryRef[] {
+  return (refs ?? []).map((ref) => ({ itemID: ref.itemID, version: ref.version }));
 }
 
 // the turn keeps its step's recalls through its mark, and what it retrieved unless a compaction
@@ -145,12 +221,6 @@ function isLostSession(record: LogRecord): boolean {
   return reason === 'lost' || reason === 'missing';
 }
 
-// the recalls that served the lost session: through the opening's mark, or every one before a
-// rebuild recorded without it
-function parseLostRecallsThrough(record: LogRecord): number {
-  return decodeOpening(record)?.recalledThrough ?? Number.MAX_SAFE_INTEGER;
-}
-
 interface Opening {
   readonly reason?: string | null | undefined;
   readonly recalledThrough?: number | undefined;
@@ -162,78 +232,8 @@ function decodeOpening(record: LogRecord): Opening | null {
     : modelSessionRebuiltCodec.tryDecodePartial(record.payload);
 }
 
-// the records that end what a session holds; session_rebuilt is the opening record that logs from
-// before session_opened still hold
-const resetKinds: readonly RecordKind[] = [
-  'model.compacted',
-  'model.session_opened',
-  'model.session_rebuilt',
-  'model.session_invalidated',
-];
-
-const replayKinds: readonly RecordKind[] = [
-  'memory.recalled',
-  'model.turn_ended',
-  'task.step_started',
-  ...resetKinds,
-];
-
-const pageSize = 200;
-
-// The thread's records from the start of the step that wrote its newest reset, oldest first, so the
-// replay sees every recall of the step a rebuild commits with.
-async function* readSessionRecords(
-  context: Pick<TasksContext, 'log'>,
-  taskID: string,
-): AsyncGenerator<LogRecord> {
-  const page = { after: await readReplayStart(context, taskID), size: pageSize };
-
-  while (page.size === pageSize) {
-    const entries = await readRecords(context.log, {
-      afterSequence: page.after,
-      thread: taskID,
-      kinds: replayKinds,
-      limit: pageSize,
-    });
-
-    yield* entries.map((entry) => entry.record);
-    page.size = entries.length;
-    page.after = entries.at(-1)?.record.sequence ?? page.after;
-  }
-}
-
-// the sequence just before the step that wrote the newest reset, or 0 for a thread with none
-async function readReplayStart(
-  context: Pick<TasksContext, 'log'>,
-  taskID: string,
-): Promise<number> {
-  const [reset] = await readRecords(context.log, {
-    afterSequence: 0,
-    thread: taskID,
-    kinds: resetKinds,
-    order: 'newest',
-    limit: 1,
-  });
-
-  if (reset === undefined) {
-    return 0;
-  }
-
-  const [started] = await readRecords(context.log, {
-    afterSequence: 0,
-    beforeSequence: reset.record.sequence,
-    thread: taskID,
-    kinds: ['task.step_started'],
-    order: 'newest',
-    limit: 1,
-  });
-
-  return started === undefined ? 0 : started.record.sequence - 1;
-}
-
-// A record's item versions, or none for a record from before it kept them. A turn or compaction
-// recorded before it kept its recall mark took every recall of its step, and a turn recorded
-// before retrieval placed past messages placed none.
-function toRefs(refs: readonly MemoryRef[] | undefined): readonly MemoryRef[] {
-  return (refs ?? []).map((ref) => ({ itemID: ref.itemID, version: ref.version }));
+// the recalls that served the lost session: through the opening's mark, or every one before a
+// rebuild recorded without it
+function parseLostRecallsThrough(record: LogRecord): number {
+  return decodeOpening(record)?.recalledThrough ?? Number.MAX_SAFE_INTEGER;
 }

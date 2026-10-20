@@ -24,9 +24,9 @@ async function setupTest() {
   return { log, context: { log, definitions: () => ({ snapshotHash: 'sha256:test' }) } };
 }
 
-const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
-
 test('it renders a restart with its version and the one before, as the events block lists it', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given, '0.11.0');
@@ -51,6 +51,8 @@ test('it renders a restart with its version and the one before, as the events bl
 });
 
 test('it renders a start with no start before it by its version alone', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given, '0.12.0');
@@ -65,6 +67,8 @@ test('it renders a start with no start before it by its version alone', async ()
 });
 
 test('it reads only the starts inside the range', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given, '0.10.0');
@@ -83,6 +87,8 @@ test('it reads only the starts inside the range', async () => {
 });
 
 test('it names a tool a restart adds, on a line after the restart', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given, '0.11.0');
@@ -112,6 +118,8 @@ test('it names a tool a restart adds, on a line after the restart', async () => 
 });
 
 test('it says the persona was updated when a restart changes it', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given, '0.11.0');
@@ -134,6 +142,8 @@ test('it says the persona was updated when a restart changes it', async () => {
 });
 
 test('it names every change on the one line, tools removed included', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given, '0.11.0');
@@ -159,6 +169,8 @@ test('it names every change on the one line, tools removed included', async () =
 });
 
 test('it adds no line when a restart changes nothing the conversation is given', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given, '0.11.0');
@@ -174,6 +186,8 @@ test('it adds no line when a restart changes nothing the conversation is given',
 });
 
 test('it adds no line after a start from a release that recorded nothing given', async () => {
+  const given = { tools: ['memory_search'], personaVersion: 'sha256:persona' };
+
   const ctx = await setupTest();
 
   await writeRecords(ctx.log, [

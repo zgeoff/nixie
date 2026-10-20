@@ -24,7 +24,7 @@ test('it answers a host procedure call with its output, dates included', async (
   });
 
   const client = createORPCClient<HostContractClient>(
-    new RPCLink({ url: 'http://localhost/rpc', fetch: (request) => respond(request) }),
+    new RPCLink({ url: 'http://localhost/rpc', fetch: respond }),
   );
 
   const reset = await client.reset();
@@ -62,7 +62,7 @@ test('it answers 500 with the reason when a procedure fails', async () => {
   });
 
   const client = createORPCClient<HostContractClient>(
-    new RPCLink({ url: 'http://localhost/rpc', fetch: (request) => respond(request) }),
+    new RPCLink({ url: 'http://localhost/rpc', fetch: respond }),
   );
 
   const reset = client.reset();
@@ -86,7 +86,7 @@ test('it answers 503 to a memory procedure before the memory store starts', asyn
   });
 
   const client = createORPCClient<HostContractClient>(
-    new RPCLink({ url: 'http://localhost/rpc', fetch: (request) => respond(request) }),
+    new RPCLink({ url: 'http://localhost/rpc', fetch: respond }),
   );
 
   const listed = client.memory.proposals.list();

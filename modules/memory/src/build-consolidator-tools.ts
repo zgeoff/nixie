@@ -35,6 +35,8 @@ const recallOutput = {
   additionalProperties: false,
 };
 
+const recallArguments = z.object({ query: z.string() });
+
 // A recall shows the session each item it returns, so a later change to one binds to that version,
 // and returns each item's quote, so the session checks an item it found against the words it was
 // saved from, as it does for each item in its list.
@@ -98,7 +100,27 @@ function toRecalledItemJSON(item: RecalledItem): JSONObject {
     : { itemID: item.shortID, text: item.text, quote: item.evidenceQuote };
 }
 
-const recallArguments = z.object({ query: z.string() });
+const changeInput = {
+  type: 'object',
+  properties: {
+    kind: { type: 'string', enum: ['merge', 'rewrite', 'retire'] },
+    itemIDs: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' } },
+    text: { type: 'string', minLength: 1, maxLength: 2000 },
+    reason: { type: 'string', minLength: 1, maxLength: 500 },
+  },
+  required: ['kind', 'itemIDs', 'reason'],
+  additionalProperties: false,
+};
+
+const consolidateInput = {
+  type: 'object',
+  properties: {
+    changes: { type: 'array', maxItems: 30, items: changeInput },
+    summary: { type: 'string', minLength: 1, maxLength: 2000 },
+  },
+  required: ['changes'],
+  additionalProperties: false,
+};
 
 // The diff in one call: each change names its items by the IDs the session read, and the host binds
 // each to the version the session read. A refusal stages nothing, so the model fixes the diff and calls again.
@@ -132,37 +154,6 @@ function buildConsolidateTool(staging: ConsolidationStaging): ToolDefinition {
   };
 }
 
-const changeInput = {
-  type: 'object',
-  properties: {
-    kind: { type: 'string', enum: ['merge', 'rewrite', 'retire'] },
-    itemIDs: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string' } },
-    text: { type: 'string', minLength: 1, maxLength: 2000 },
-    reason: { type: 'string', minLength: 1, maxLength: 500 },
-  },
-  required: ['kind', 'itemIDs', 'reason'],
-  additionalProperties: false,
-};
-
-const consolidateInput = {
-  type: 'object',
-  properties: {
-    changes: { type: 'array', maxItems: 30, items: changeInput },
-    summary: { type: 'string', minLength: 1, maxLength: 2000 },
-  },
-  required: ['changes'],
-  additionalProperties: false,
-};
-
-function runConsolidate(staging: ConsolidationStaging, input: unknown): ToolOutcome {
-  const parsed = consolidateArguments.parse(input);
-  const result = staging.stage(parsed.changes, parsed.summary);
-
-  return result.status === 'staged'
-    ? { status: 'ok', result: { staged: result.changes } }
-    : { status: 'error', message: result.reason };
-}
-
 const changeArguments = z.object({
   kind: z.enum(['merge', 'rewrite', 'retire']),
   itemIDs: z.array(z.string()),
@@ -174,3 +165,12 @@ const consolidateArguments = z.object({
   changes: z.array(changeArguments),
   summary: z.string().optional(),
 });
+
+function runConsolidate(staging: ConsolidationStaging, input: unknown): ToolOutcome {
+  const parsed = consolidateArguments.parse(input);
+  const result = staging.stage(parsed.changes, parsed.summary);
+
+  return result.status === 'staged'
+    ? { status: 'ok', result: { staged: result.changes } }
+    : { status: 'error', message: result.reason };
+}

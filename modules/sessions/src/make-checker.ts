@@ -15,6 +15,11 @@ export interface CheckerOptions {
   readonly timeoutMs?: number;
 }
 
+const defaultTimeoutMs = 20_000;
+
+// what the race settles to when the timeout fires first, which no structured output can equal
+const timedOut: unique symbol = Symbol('timed out');
+
 // Makes the checker that the memory gates and the consent check share. A query that outlasts the
 // timeout is aborted and answers unsure, and so does one that fails, so the checker fails closed.
 export function makeChecker(options: CheckerOptions): RunCheck {
@@ -51,11 +56,6 @@ export function makeChecker(options: CheckerOptions): RunCheck {
     }
   };
 }
-
-const defaultTimeoutMs = 20_000;
-
-// what the race settles to when the timeout fires first, which no structured output can equal
-const timedOut: unique symbol = Symbol('timed out');
 
 interface Timeout {
   readonly clock: Clock;

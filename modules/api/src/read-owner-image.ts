@@ -15,7 +15,7 @@ export async function readOwnerImage(
   context: APIContext,
   input: OwnerImageInput,
 ): Promise<File | null> {
-  const mediaType = await findStoredMediaType(context, input);
+  const mediaType = await readStoredMediaType(context, input);
 
   if (mediaType === null) {
     return null;
@@ -32,7 +32,7 @@ export async function readOwnerImage(
 }
 
 // the type of the image at the position, when the record is your message on the thread
-async function findStoredMediaType(
+async function readStoredMediaType(
   context: APIContext,
   input: OwnerImageInput,
 ): Promise<string | null> {

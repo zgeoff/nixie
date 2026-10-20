@@ -66,10 +66,6 @@ export interface StubGuestRun {
   readonly emit?: (frames: readonly GuestFrame[]) => void;
 }
 
-// the window of a profile that sets no context cap, the smallest the CLI assumes for any model
-const defaultWindow = 200_000;
-const toolPrefix = 'mcp__nixie__';
-
 // Runs one turn as the conversation guest does: it removes every session but the resumed one, forks
 // that session at the resume point, adds the input and each reply, and ends at the fork's last entry.
 // An overflow ends the turn at the resume point without moving the chain.
@@ -86,6 +82,11 @@ export function runStubGuestTurn(
   }
 
   return runInputs(turn, run, read.history);
+}
+
+interface ProgressState {
+  // the last chain entry that is not the CLI's own message for an overflow, or null when none
+  committed: SessionPoint | null;
 }
 
 // the CLI answers each inbox message of the turn in its own model call, and reports a result for
@@ -178,11 +179,6 @@ interface ForkState {
   contextSize: number | null;
 }
 
-interface ProgressState {
-  // the last chain entry that is not the CLI's own message for an overflow, or null when none
-  committed: SessionPoint | null;
-}
-
 interface AnswerState {
   readonly entries: StubSessionEntry[];
   readonly fork: ForkState;
@@ -195,6 +191,8 @@ interface InputAnswer {
   // the reason the call was refused for a prompt past the window, or null
   readonly overflow: 'blocking_limit' | 'prompt_too_long' | null;
 }
+
+const overflowText = 'Prompt is too long';
 
 // answers one inbox message: each tool use the model asks for, then the reply that ends the call
 async function runInputCall(
@@ -267,8 +265,6 @@ async function runInputCall(
   }
 }
 
-const overflowText = 'Prompt is too long';
-
 interface AssistantEntrySpec {
   readonly uuid: string;
 
@@ -296,10 +292,16 @@ function buildAssistantEntry(
   return { uuid: spec.uuid, role: 'assistant', text, tokens: tokens + gap };
 }
 
+function countTokens(entries: readonly StubSessionEntry[]): number {
+  return entries.reduce((total, entry) => total + entry.tokens, 0);
+}
+
 interface StubToolUse {
   readonly name: string;
   readonly input: Readonly<Record<string, unknown>>;
 }
+
+const toolPrefix = 'mcp__nixie__';
 
 // calls the tool through the guest's route and returns its result as the session's next entry
 async function runStubToolCall(
@@ -354,36 +356,6 @@ async function waitForToolResult(call: Promise<string>, signal: AbortSignal): Pr
   }
 }
 
-interface EndedPoint {
-  // the index of the call's input among the entries
-  readonly start: number;
-  readonly point: SessionPoint;
-}
-
-// the result of one answered input, at its last chain entry, with the session's context size
-function buildEnded(
-  turn: TurnFrame,
-  entries: readonly StubSessionEntry[],
-  ended: EndedPoint,
-): GuestFrame {
-  const fresh = entries.slice(ended.start);
-
-  return {
-    type: 'ended',
-    boundary: ended.point,
-    subtype: 'success',
-    stopReason: 'end_turn',
-    turns: fresh.filter((entry) => entry.role === 'assistant').length,
-    usage: {
-      inputTokens: countTokens(fresh.filter((entry) => entry.role === 'user')),
-      outputTokens: countTokens(fresh.filter((entry) => entry.role === 'assistant')),
-      cacheReadTokens: 0,
-      cacheWriteTokens: 0,
-    },
-    context: { size: countTokens(entries), window: turn.profile.contextTokens ?? defaultWindow },
-  };
-}
-
 interface OverflowState {
   readonly fork: ForkState;
 
@@ -414,6 +386,35 @@ function buildOverflowEnded(
   };
 }
 
-function countTokens(entries: readonly StubSessionEntry[]): number {
-  return entries.reduce((total, entry) => total + entry.tokens, 0);
+interface EndedPoint {
+  // the index of the call's input among the entries
+  readonly start: number;
+  readonly point: SessionPoint;
+}
+
+// the window of a profile that sets no context cap, the smallest the CLI assumes for any model
+const defaultWindow = 200_000;
+
+// the result of one answered input, at its last chain entry, with the session's context size
+function buildEnded(
+  turn: TurnFrame,
+  entries: readonly StubSessionEntry[],
+  ended: EndedPoint,
+): GuestFrame {
+  const fresh = entries.slice(ended.start);
+
+  return {
+    type: 'ended',
+    boundary: ended.point,
+    subtype: 'success',
+    stopReason: 'end_turn',
+    turns: fresh.filter((entry) => entry.role === 'assistant').length,
+    usage: {
+      inputTokens: countTokens(fresh.filter((entry) => entry.role === 'user')),
+      outputTokens: countTokens(fresh.filter((entry) => entry.role === 'assistant')),
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+    },
+    context: { size: countTokens(entries), window: turn.profile.contextTokens ?? defaultWindow },
+  };
 }

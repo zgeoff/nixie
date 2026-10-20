@@ -18,6 +18,8 @@
     "apps/web/src/styled-system/**"
   ],
   "rules": {
+    // a library contract fixes each name; the project-code-style skill gives the reasons
+    "zgeoff/function-verb": ["error", { "exemptNames": ["executeQuery"] }],
     // the import boundaries: each outside system has one package that may import it, and every
     // import names its module where the zones can see it
     "zgeoff/import-zones": [
@@ -86,14 +88,6 @@
       "files": ["**/*.test.ts", "**/*.test.tsx"],
       "rules": {
         "nixie/test-shape": "error"
-      }
-    },
-    {
-      // a browser suite tests `<name>.<ext>`, and the pinned oxlint-config's test-beside-module looks
-      // for `<name>.browser.<ext>`
-      "files": ["**/*.browser.test.ts"],
-      "rules": {
-        "zgeoff/test-beside-module": "off"
       }
     }
   ]

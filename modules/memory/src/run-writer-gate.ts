@@ -25,7 +25,7 @@ export async function runWriterGate(
   const gated: GatedWrite[] = [];
 
   try {
-    await collectVerdicts(
+    await readVerdicts(
       {
         gate,
         lookups,
@@ -56,7 +56,7 @@ interface VerdictCollection {
   readonly onGated: (entry: GatedWrite) => void;
 }
 
-async function collectVerdicts(
+async function readVerdicts(
   collection: VerdictCollection,
   writes: readonly StagedWrite[],
 ): Promise<void> {
