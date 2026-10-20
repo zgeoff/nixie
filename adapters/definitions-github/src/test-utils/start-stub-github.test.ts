@@ -408,6 +408,7 @@ test('it refuses a pull request update to a state GitHub lacks with 422', async 
 test.each([
   ['git/trees', { tree: [] }],
   ['git/trees', { base_tree: 'tree-0', tree: [{ path: 'nixie.yaml' }] }],
+  ['git/commits', { tree: 'tree-0' }],
 ])('it refuses POST %s with a body that lacks a field with 422', async (route, body) => {
   const github = startStubGitHub({
     repository: 'harbour/definitions',

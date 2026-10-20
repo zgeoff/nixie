@@ -348,9 +348,16 @@ function answerTree(state: StubState, body: unknown): Response {
   return Response.json({ sha }, { status: 201 });
 }
 
+const commitSchema = z.object({ tree: z.string(), parents: z.array(z.string()) });
+
 function answerCommit(state: StubState, body: unknown): Response {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the adapter under test sends it
-  const request = body as { tree: string; parents: string[] };
+  const parsed = commitSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return invalidRequest();
+  }
+
+  const request = parsed.data;
   const sha = state.nextSHA();
 
   state.commits.set(sha, { tree: request.tree, parents: request.parents });
