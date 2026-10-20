@@ -45,6 +45,7 @@ export async function startConversationEndpoint(
 
   const skills = buildConversationSkillTools({
     log: options.context.log,
+    clock: options.context.clock,
     readInForce: tools.readInForce,
     refreshDefinitions: tools.refreshDefinitions,
   });

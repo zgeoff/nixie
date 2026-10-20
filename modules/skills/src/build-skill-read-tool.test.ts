@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { startWriter } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildSkillReadTool } from './build-skill-read-tool';
@@ -61,6 +62,7 @@ test('it returns the instructions without their frontmatter and the list of the 
 
   const tool = buildSkillReadTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
@@ -95,6 +97,7 @@ test("it labels a skill's text and file list as untrusted, and its name and vers
   const registry = buildToolRegistry([
     buildSkillReadTool({
       log: ctx.log,
+      clock: buildTestClock(0),
       readInForce: () => null,
       refreshDefinitions: () => Promise.resolve(null),
       readSkillList: () => [],
@@ -135,6 +138,7 @@ test('it returns the file at a path inside the skill folder', async () => {
 
   const tool = buildSkillReadTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
@@ -198,6 +202,7 @@ test.each([
 
   const tool = buildSkillReadTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
@@ -241,6 +246,7 @@ test('it refuses a path the skill has no file at', async () => {
 
   const tool = buildSkillReadTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
@@ -295,6 +301,7 @@ test("it refuses a skill that is off the caller's skill list", async () => {
 
   const tool = buildSkillReadTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
@@ -336,6 +343,7 @@ test('it reads the version the task first loaded after a seed changes the skill'
 
   const firstTool = buildSkillReadTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => first.inForce,
     refreshDefinitions: () => Promise.resolve(first.inForce),
     readSkillList: () => ['tide-tables'],
@@ -362,6 +370,7 @@ test('it reads the version the task first loaded after a seed changes the skill'
 
   const secondTool = buildSkillReadTool({
     log: ctx.log,
+    clock: buildTestClock(0),
     readInForce: () => second.inForce,
     refreshDefinitions: () => Promise.resolve(second.inForce),
     readSkillList: () => ['tide-tables'],
