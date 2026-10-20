@@ -159,10 +159,12 @@ approves an edit of its text.
 
 The log of a deployment that ran an earlier release can hold image offer records. Each one seals a
 sentence that the model offered to save from an image under the record's own key, and no tool writes
-one. A forget of the image's message removes the key of every offer record for its images, so a
-sentence that never saved leaves no readable copy. A saved sentence lives on under its item's key,
-and its version's checks name the offer record. Store start removes the key of each such offer
-record that the key store still holds, so a forget of the saved item leaves no readable copy either.
+one. A forget of the image's message removes the key of every offer record for its images, so no
+offer record keeps a sentence that never saved. A saved sentence lives on under its item's key, and
+its version's checks name the offer record. Store start removes the key of each such offer record
+that the key store still holds, so a forget of the saved item leaves no offer record readable
+either. The reply that presented an offer holds its sentence too, and that reply is part of the
+user's conversation, so only a forget of the reply itself removes that copy.
 
 ## Provenance
 
