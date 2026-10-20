@@ -1082,6 +1082,66 @@ test('it applies a write from a photo under your allow rule that names the image
   });
 });
 
+test('it proposes a write from a photo whose text holds a hidden character, under your allow rule that names the image source', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      findAllowRule: () => Promise.resolve({ ruleID: 'rule-photo', revision: 1, source: 'image' }),
+    },
+  });
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Rides a green​ cargo bike',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const versions = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .selectAll()
+    .execute();
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'invisible_character' });
+  expect(versions).toStrictEqual([]);
+});
+
+test('it proposes a write from a photo with a number you never typed, under your allow rule that names the image source', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      findAllowRule: () => Promise.resolve({ ruleID: 'rule-photo', revision: 1, source: 'image' }),
+    },
+  });
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'The bike shop phone number is 0412 555 019',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const versions = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .selectAll()
+    .execute();
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'token_missing' });
+  expect(versions).toStrictEqual([]);
+});
+
 test('it refuses a photo source that names an image the message lacks', async () => {
   const memory = await startTestMemory();
 
