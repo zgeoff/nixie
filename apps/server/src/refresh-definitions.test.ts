@@ -7,7 +7,7 @@ import invariant from 'tiny-invariant';
 import { buildStartState } from './build-start-state';
 import { createServerContext } from './create-server-context';
 import { refreshDefinitions } from './refresh-definitions';
-import type { SeedParts } from './run-definitions-seed';
+import type { SeedParts } from './run-queued-seed';
 import { startTestLog } from './test-utils/start-test-log';
 
 // a fresh log, the definitions in force over it, and a definitions folder beside it

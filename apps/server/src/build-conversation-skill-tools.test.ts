@@ -10,8 +10,8 @@ import { buildConversationSkillTools } from './build-conversation-skill-tools';
 import { buildStartState } from './build-start-state';
 import { createServerContext } from './create-server-context';
 import { refreshDefinitions } from './refresh-definitions';
-import type { SeedParts } from './run-definitions-seed';
 import { runDefinitionsSeed } from './run-definitions-seed';
+import type { SeedParts } from './run-queued-seed';
 import { startTestLog } from './test-utils/start-test-log';
 
 // the server's seed parts over a fresh log and a definitions folder beside it, and the
