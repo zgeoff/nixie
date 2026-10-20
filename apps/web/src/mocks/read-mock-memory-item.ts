@@ -17,7 +17,7 @@ export function readMockMemoryItem(itemID: string) {
 
   return {
     ...toMockMemoryItem(item),
-    versions: item.versions.map((version, index) => toMockVersion(version, index + 1, isGone)),
+    versions: item.versions.map((version, index) => readMockVersion(version, index + 1, isGone)),
   };
 }
 
@@ -25,7 +25,7 @@ type StoredVersion = StoredMemoryItem['versions'][number];
 
 // one version as nixie's API reads it, as a gap once the item's key is gone; a version whose text
 // fails to open shows neither its quote nor its message
-function toMockVersion(version: StoredVersion, number: number, isGone: boolean) {
+function readMockVersion(version: StoredVersion, number: number, isGone: boolean) {
   const isClosed = isGone || version.isUnreadable;
 
   return {
@@ -44,16 +44,6 @@ function toMockVersion(version: StoredVersion, number: number, isGone: boolean) 
     writerModel: version.writerModel,
     ...toVersionText(version, isGone),
   };
-}
-
-function toVersionText(version: StoredVersion, isGone: boolean) {
-  if (isGone) {
-    return { status: 'shredded' as const };
-  }
-
-  return version.isUnreadable
-    ? { status: 'unreadable' as const }
-    : { status: 'readable' as const, text: version.text };
 }
 
 type StoredEvidence = NonNullable<StoredVersion['evidence']>;
@@ -77,4 +67,14 @@ function readMessage(sequence: number) {
   return record.message === undefined
     ? { status: 'shredded' as const }
     : { status: 'readable' as const, text: record.message.text };
+}
+
+function toVersionText(version: StoredVersion, isGone: boolean) {
+  if (isGone) {
+    return { status: 'shredded' as const };
+  }
+
+  return version.isUnreadable
+    ? { status: 'unreadable' as const }
+    : { status: 'readable' as const, text: version.text };
 }

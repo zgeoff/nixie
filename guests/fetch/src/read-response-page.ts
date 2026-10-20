@@ -75,31 +75,6 @@ async function readBodyText(
   return { text, isTruncated: body.isTruncated };
 }
 
-const htmlTypes: ReadonlySet<string> = new Set(['text/html', 'application/xhtml+xml']);
-
-const textTypes: ReadonlySet<string> = new Set([
-  'application/json',
-  'application/xml',
-  'application/javascript',
-  'application/ecmascript',
-]);
-
-function pickBodyKind(contentType: string | null): 'html' | 'text' | 'binary' {
-  const mediaType = (contentType ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
-
-  if (htmlTypes.has(mediaType)) {
-    return 'html';
-  }
-
-  const isText =
-    mediaType.startsWith('text/') ||
-    textTypes.has(mediaType) ||
-    mediaType.endsWith('+json') ||
-    mediaType.endsWith('+xml');
-
-  return isText ? 'text' : 'binary';
-}
-
 // a decoder for the charset the Content-Type names when TextDecoder knows it, and UTF-8 otherwise
 function makeTextDecoder(contentType: string | null): TextDecoder {
   const charset =
@@ -125,4 +100,29 @@ function buildTextWithinLimit(
   return written.read === text.length
     ? { text, isCut: false }
     : { text: text.slice(0, written.read), isCut: true };
+}
+
+const htmlTypes: ReadonlySet<string> = new Set(['text/html', 'application/xhtml+xml']);
+
+const textTypes: ReadonlySet<string> = new Set([
+  'application/json',
+  'application/xml',
+  'application/javascript',
+  'application/ecmascript',
+]);
+
+function pickBodyKind(contentType: string | null): 'html' | 'text' | 'binary' {
+  const mediaType = (contentType ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+
+  if (htmlTypes.has(mediaType)) {
+    return 'html';
+  }
+
+  const isText =
+    mediaType.startsWith('text/') ||
+    textTypes.has(mediaType) ||
+    mediaType.endsWith('+json') ||
+    mediaType.endsWith('+xml');
+
+  return isText ? 'text' : 'binary';
 }

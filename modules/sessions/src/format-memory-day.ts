@@ -4,12 +4,10 @@ import type { MessageTimeOptions } from './types';
 // Formats the day a memory version was recorded, in the default zone, as in 13 Oct. The year shows
 // only when it is not the current year in that zone, as in 13 Oct 2025.
 export function formatMemoryDay(time: number, options: MessageTimeOptions): string {
-  const recorded = readDayParts(new Date(time), options.defaultZone);
+  const recorded = getDayParts(new Date(time), options.defaultZone);
 
   const year =
-    recorded.year === readDayParts(options.now, options.defaultZone).year
-      ? ''
-      : ` ${recorded.year}`;
+    recorded.year === getDayParts(options.now, options.defaultZone).year ? '' : ` ${recorded.year}`;
 
   return `${recorded.day} ${recorded.month}${year}`;
 }
@@ -20,7 +18,7 @@ interface DayParts {
   readonly year: string;
 }
 
-function readDayParts(at: Date, zone: string): DayParts {
+function getDayParts(at: Date, zone: string): DayParts {
   const parts = getDayFormat(zone).formatToParts(at);
 
   const getPart = (type: keyof DayParts): string => {

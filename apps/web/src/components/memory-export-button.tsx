@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../use-nixie-client';
 
+const section = css({ alignItems: 'baseline', display: 'flex', gap: '2', marginBlock: '3' });
+
 // The export of every memory item with its history to one JSON file, saved where you pick. An
 // export that fails keeps its client action ID, so the try after it is the same checked action.
 export function MemoryExportButton(): ReactNode {
@@ -38,19 +40,16 @@ export function MemoryExportButton(): ReactNode {
 
 type ExportOutcome = 'saved' | 'cancelled';
 
-type MutationStatus = 'idle' | 'pending' | 'success' | 'error';
+type NixieClient = ReturnType<typeof useNixieClient>['client'];
 
-function formatStatus(status: MutationStatus, outcome: ExportOutcome | undefined): string | null {
-  if (status === 'pending') {
-    return 'Exporting…';
-  }
-
-  return status === 'success' && outcome === 'saved' ? 'Saved the export.' : null;
+interface FileType {
+  readonly description: string;
+  readonly accept: Readonly<Record<string, readonly string[]>>;
 }
 
-const section = css({ alignItems: 'baseline', display: 'flex', gap: '2', marginBlock: '3' });
-
-type NixieClient = ReturnType<typeof useNixieClient>['client'];
+const jsonTypes: readonly FileType[] = [
+  { description: 'JSON file', accept: { 'application/json': ['.json'] } },
+];
 
 // A browser with a save picker writes the file as it streams; any other downloads it whole.
 async function writeExportFile(client: NixieClient, actionID: string): Promise<ExportOutcome> {
@@ -82,11 +81,6 @@ async function writeExportFile(client: NixieClient, actionID: string): Promise<E
   return 'saved';
 }
 
-interface FileType {
-  readonly description: string;
-  readonly accept: Readonly<Record<string, readonly string[]>>;
-}
-
 interface SaveFilePickerOptions {
   readonly suggestedName: string;
   readonly types: readonly FileType[];
@@ -95,42 +89,12 @@ interface SaveFilePickerOptions {
 // the save picker of the File System Access API, which only some browsers have
 type ShowSaveFilePicker = (options: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
 
-const jsonTypes: readonly FileType[] = [
-  { description: 'JSON file', accept: { 'application/json': ['.json'] } },
-];
-
 function findSaveFilePicker(): ShowSaveFilePicker | null {
   const picker: unknown = Reflect.get(globalThis, 'showSaveFilePicker');
 
   // the picker is a method of the window, which refuses a call with no window as its receiver
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the DOM types lack the picker
   return typeof picker === 'function' ? (picker.bind(globalThis) as ShowSaveFilePicker) : null;
-}
-
-// The file's chunks in order. A stream can end cleanly before the file does, so the export counts
-// only once its completion event arrives, and a stream that ends without it throws.
-async function* readExportChunks(client: NixieClient, actionID: string): AsyncGenerator<string> {
-  const events = await client.memory.export({ clientActionID: actionID });
-
-  let isComplete = false;
-
-  for await (const event of events) {
-    if ('chunk' in event) {
-      yield event.chunk;
-    } else {
-      isComplete = true;
-    }
-  }
-
-  if (!isComplete) {
-    throw new Error('the export stream ended before the export completed');
-  }
-}
-
-async function readExportBlob(client: NixieClient, actionID: string): Promise<Blob> {
-  const chunks = await Array.fromAsync(readExportChunks(client, actionID));
-
-  return new Blob(chunks, { type: 'application/json' });
 }
 
 // the browser saves a link's download where its settings say, and asks where when set to ask
@@ -158,6 +122,32 @@ async function writeDownload(
   }, 1000);
 }
 
+async function readExportBlob(client: NixieClient, actionID: string): Promise<Blob> {
+  const chunks = await Array.fromAsync(readExportChunks(client, actionID));
+
+  return new Blob(chunks, { type: 'application/json' });
+}
+
+// The file's chunks in order. A stream can end cleanly before the file does, so the export counts
+// only once its completion event arrives, and a stream that ends without it throws.
+async function* readExportChunks(client: NixieClient, actionID: string): AsyncGenerator<string> {
+  const events = await client.memory.export({ clientActionID: actionID });
+
+  let isComplete = false;
+
+  for await (const event of events) {
+    if ('chunk' in event) {
+      yield event.chunk;
+    } else {
+      isComplete = true;
+    }
+  }
+
+  if (!isComplete) {
+    throw new Error('the export stream ended before the export completed');
+  }
+}
+
 // each chunk goes to the file as it arrives, and a failed or incomplete export leaves the file
 // unwritten
 async function writePickedFile(
@@ -178,4 +168,14 @@ async function writePickedFile(
   }
 
   await file.close();
+}
+
+type MutationStatus = 'idle' | 'pending' | 'success' | 'error';
+
+function formatStatus(status: MutationStatus, outcome: ExportOutcome | undefined): string | null {
+  if (status === 'pending') {
+    return 'Exporting…';
+  }
+
+  return status === 'success' && outcome === 'saved' ? 'Saved the export.' : null;
 }

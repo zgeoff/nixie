@@ -1,87 +1,28 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import type { ActionAttemptOptions, ActionsTables } from '@heynixie/actions';
-import {
-  actionsProjection,
-  claimAction,
-  runActionAttempt,
-  writeUnknownOutcomes,
-} from '@heynixie/actions';
-import type { LogRecord, Writer } from '@heynixie/log';
+import type { ActionsTables } from '@heynixie/actions';
+import { actionsProjection, writeUnknownOutcomes } from '@heynixie/actions';
 import { logProjections, readRecords, startWriter } from '@heynixie/log';
 import type { StepInput, TasksContext } from '@heynixie/tasks';
 import {
-  claimTask,
-  readInbox,
-  setFaultPointHandler,
   tasksProjections,
   writeInboxRecords,
   writeStepCommit,
   writeStepError,
 } from '@heynixie/tasks';
-import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
 import { buildActions } from './build-actions';
 import { makeQueueCheckStep } from './make-queue-check-step';
+import { claimTestStep } from './test-utils/claim-test-step';
 import { createTestStep } from './test-utils/create-test-step';
+import { runCrashedTestAttempt } from './test-utils/run-crashed-test-attempt';
+import { runTestAttempt } from './test-utils/run-test-attempt';
 
 // a writer with the tasks and actions projections on a test clock, a claimed step, the queue
 // check's step behind the action queue's step tracking, a recorder of the connector's log lines,
 // and the wakes, steps and attempts the tests drive
 async function setupTest() {
-  const writer = await startTestWriter();
-
-  const clock = buildTestClock(1_000_000);
-
-  const context = await buildActionsContext(writer, clock);
-  const step = await createTestStep(context);
-
-  const log = mock(() => {});
-  const actions = buildActions(context, log);
-
-  const runStep = actions.trackSteps(
-    makeQueueCheckStep({ context, queue: actions.queue, tool: actions.logConnector.tool }),
-  );
-
-  return {
-    context,
-    log,
-    db: writer.db.$extendTables<ActionsTables>(),
-    step,
-    runStep,
-    wake: () => writeWake(context, step.taskID),
-
-    // a start after a crash: recovery marks each attempt without a result unknown, then the start
-    // writes its own wake
-    startAgain: async () => {
-      await writeUnknownOutcomes(context);
-      await writeWake(context, step.taskID);
-    },
-    runNextStep: async () => {
-      const next = await claimNextStep(context);
-
-      await runStep(next);
-
-      return next;
-    },
-
-    // the step fails, and the clock moves to its retry
-    failStep: async (failed: StepInput) => {
-      await writeStepError(context, failed, { error: new Error('the step failed'), ...stepRetry });
-
-      clock.advance(stepRetry.retryDelayMs);
-    },
-    runNextAttempt: () => runNextAttempt(context, actions.connectors),
-    runCrashedAttempt: () => runCrashedAttempt(context, actions.connectors),
-  };
-}
-
-const stepRetry = { maxStepErrors: 3, retryDelayMs: 30_000, maxRetryDelayMs: 300_000 };
-
-// starts a writer on a fresh data directory, and stops it and removes the directory when the test
-// finishes
-async function startTestWriter(): Promise<Writer> {
   const dataDir = await mkdtemp(`${tmpdir()}/nixie-queue-check-`);
   const writer = await startWriter({ dataDir });
 
@@ -91,11 +32,9 @@ async function startTestWriter(): Promise<Writer> {
     await rm(dataDir, { recursive: true, force: true });
   });
 
-  return writer;
-}
+  const clock = buildTestClock(1_000_000);
 
-async function buildActionsContext(writer: Writer, clock: TestClock): Promise<TasksContext> {
-  return {
+  const context: TasksContext = {
     log: {
       writer,
       deploymentKey: await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
@@ -107,70 +46,62 @@ async function buildActionsContext(writer: Writer, clock: TestClock): Promise<Ta
     clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
-}
 
-function writeWake(context: TasksContext, taskID: string): Promise<readonly LogRecord[]> {
-  return writeInboxRecords(context, [
-    {
-      kind: 'task.wake',
-      definitions: context.definitions(),
-      thread: taskID,
-      payload: { at: context.clock.now() },
-    },
-  ]);
-}
+  const step = await createTestStep(context);
 
-// claims the next step the way a task runner does, with its task's unread inbox
-async function claimNextStep(context: TasksContext): Promise<StepInput> {
-  const claim = await claimTask(context, { holder: 'runner-a', leaseMs: 60_000 });
+  const log = mock(() => {});
+  const actions = buildActions(context, log);
 
-  if (claim === null) {
-    throw new Error('no task was claimable');
-  }
+  const runStep = actions.trackSteps(
+    makeQueueCheckStep({ context, queue: actions.queue, tool: actions.logConnector.tool }),
+  );
+
+  const wake = () =>
+    writeInboxRecords(context, [
+      {
+        kind: 'task.wake',
+        definitions: context.definitions(),
+        thread: step.taskID,
+        payload: { at: context.clock.now() },
+      },
+    ]);
 
   return {
-    taskID: claim.lease.workID,
-    stepKey: claim.stepKey,
-    lease: claim.lease,
-    inbox: await readInbox(context, claim.lease.workID),
-    sessionBoundary: null,
-    signal: new AbortController().signal,
+    context,
+    log,
+    db: writer.db.$extendTables<ActionsTables>(),
+    step,
+    runStep,
+    wake,
+
+    // a start after a crash: recovery marks each attempt without a result unknown, then the start
+    // writes its own wake
+    startAgain: async () => {
+      await writeUnknownOutcomes(context);
+      await wake();
+    },
+    runNextStep: async () => {
+      const next = await claimTestStep(context);
+
+      await runStep(next);
+
+      return next;
+    },
+
+    // the step fails, and the clock moves to its retry
+    failStep: async (failed: StepInput) => {
+      await writeStepError(context, failed, {
+        error: new Error('the step failed'),
+        maxStepErrors: 3,
+        retryDelayMs: 30_000,
+        maxRetryDelayMs: 300_000,
+      });
+
+      clock.advance(30_000);
+    },
+    runNextAttempt: () => runTestAttempt(context, actions.connectors),
+    runCrashedAttempt: () => runCrashedTestAttempt(context, actions.connectors),
   };
-}
-
-async function runNextAttempt(context: TasksContext, connectors: Connectors): Promise<void> {
-  const lease = await claimAction(context, { holder: 'action-runner', leaseMs: 60_000 });
-
-  if (lease === null) {
-    throw new Error('no queued action was claimable');
-  }
-
-  await runActionAttempt(context, lease, { connectors, leaseMs: 60_000 });
-}
-
-type Connectors = ActionAttemptOptions['connectors'];
-
-// runs the next attempt as nixie dies once its attempt record commits, before the connector runs
-async function runCrashedAttempt(context: TasksContext, connectors: Connectors): Promise<void> {
-  setFaultPointHandler((id) => {
-    if (id === 'attempt.record.after') {
-      throw new Error('nixie died');
-    }
-  });
-
-  try {
-    await runNextAttempt(context, connectors);
-  } catch (error) {
-    if (error instanceof Error && error.message === 'nixie died') {
-      return;
-    }
-
-    throw error;
-  } finally {
-    setFaultPointHandler(null);
-  }
-
-  throw new Error('the attempt outlived its attempt record');
 }
 
 test('it queues one actions.log action under the step that a wake starts, allowed by slice1.queue-check', async () => {

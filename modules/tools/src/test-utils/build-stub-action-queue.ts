@@ -68,15 +68,6 @@ export function buildStubActionQueue(): StubActionQueue {
   };
 }
 
-// the real queue keys an action by its task and a hash of its tool and its arguments
-function isSameAction(left: QueuedAction, right: QueuedAction): boolean {
-  return (
-    left.run.thread === right.run.thread &&
-    left.call.tool === right.call.tool &&
-    JSON.stringify(left.call.input) === JSON.stringify(right.call.input)
-  );
-}
-
 function buildOutcomeWaits() {
   const waits: OutcomeWait[] = [];
 
@@ -155,4 +146,13 @@ function buildPendingWaits() {
 
 function buildStoppedError(): Error {
   return new Error('the action queue stopped');
+}
+
+// the real queue keys an action by its task and a hash of its tool and its arguments
+function isSameAction(left: QueuedAction, right: QueuedAction): boolean {
+  return (
+    left.run.thread === right.run.thread &&
+    left.call.tool === right.call.tool &&
+    JSON.stringify(left.call.input) === JSON.stringify(right.call.input)
+  );
 }

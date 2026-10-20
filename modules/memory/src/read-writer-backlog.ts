@@ -49,43 +49,6 @@ export async function readWriterBacklog(
   });
 }
 
-async function readConversationRecords(
-  log: Pick<Log, 'deploymentKey' | 'writer'>,
-  range: BacklogRange,
-): Promise<readonly LogRecord[]> {
-  const collected: LogRecord[] = [];
-  const page = { after: range.after, isDone: false };
-
-  while (!page.isDone) {
-    const entries = await readRecords(log, {
-      afterSequence: page.after,
-      thread: conversationTaskID,
-      limit: pageSize,
-    });
-
-    const inRange = entries
-      .map((entry) => entry.record)
-      .filter((record) => range.through === null || record.sequence <= range.through);
-
-    collected.push(...inRange);
-
-    page.isDone =
-      entries.length < pageSize ||
-      inRange.length < entries.length ||
-      countOwnerMessages(collected) > range.ownerLimit;
-
-    page.after = entries.at(-1)?.record.sequence ?? page.after;
-  }
-
-  return collected;
-}
-
-const pageSize = 100;
-
-function countOwnerMessages(records: readonly LogRecord[]): number {
-  return records.filter((record) => record.kind === 'owner_message').length;
-}
-
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 type WakeTables = Readonly<{
   records: { sequence: number; thread: string | null; kind: RecordKind; payload: string };
@@ -117,6 +80,43 @@ async function readArrivals(
 
   // the rows run newest first, so each message keeps the time of its first wake
   return new Map(wakes);
+}
+
+const pageSize = 100;
+
+async function readConversationRecords(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  range: BacklogRange,
+): Promise<readonly LogRecord[]> {
+  const collected: LogRecord[] = [];
+  const page = { after: range.after, isDone: false };
+
+  while (!page.isDone) {
+    const entries = await readRecords(log, {
+      afterSequence: page.after,
+      thread: conversationTaskID,
+      limit: pageSize,
+    });
+
+    const inRange = entries
+      .map((entry) => entry.record)
+      .filter((record) => range.through === null || record.sequence <= range.through);
+
+    collected.push(...inRange);
+
+    page.isDone =
+      entries.length < pageSize ||
+      inRange.length < entries.length ||
+      countOwnerMessages(collected) > range.ownerLimit;
+
+    page.after = entries.at(-1)?.record.sequence ?? page.after;
+  }
+
+  return collected;
+}
+
+function countOwnerMessages(records: readonly LogRecord[]): number {
+  return records.filter((record) => record.kind === 'owner_message').length;
 }
 
 const spanFields = z.object({ start: z.int(), end: z.int(), source: z.string() });

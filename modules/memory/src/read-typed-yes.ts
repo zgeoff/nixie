@@ -1,8 +1,8 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { z } from 'zod';
-import { findSourceEvidence } from './find-source-evidence';
 import type { OfferAnswerRequest } from './gate-types';
 import { isTypedYes } from './is-typed-yes';
+import { readSourceEvidence } from './read-source-evidence';
 import { readThreadRecord } from './read-thread-record';
 import type { QuoteEvidence } from './types';
 
@@ -38,10 +38,13 @@ export async function readTypedYes(
     return null;
   }
 
-  const found = await findSourceEvidence(log, message, typed);
+  const found = await readSourceEvidence(log, message, typed);
 
   return found.status === 'found' ? { ...offer, typed, evidence: found.evidence } : null;
 }
+
+const messageSpan = z.object({ start: z.int(), end: z.int(), source: z.string() });
+const messageFields = z.object({ text: z.string(), spans: z.array(messageSpan).optional() });
 
 function toSourceMessage(record: LogRecord | null) {
   if (record?.erasable.status !== 'readable') {
@@ -54,6 +57,3 @@ function toSourceMessage(record: LogRecord | null) {
     ? { sequence: record.sequence, text: fields.data.text, spans: fields.data.spans ?? [] }
     : null;
 }
-
-const messageSpan = z.object({ start: z.int(), end: z.int(), source: z.string() });
-const messageFields = z.object({ text: z.string(), spans: z.array(messageSpan).optional() });

@@ -23,6 +23,24 @@ export interface ComposerProps {
 }
 
 const emptyMessage: SpanState = { spans: [], text: '' };
+const composer = css({ display: 'flex', flexDirection: 'column', gap: '2' });
+const inputRow = css({ alignItems: 'flex-end', display: 'flex', gap: '2' });
+
+const messageBox = css({
+  backgroundColor: 'surface',
+  borderColor: 'borderStrong',
+  borderWidth: '1px',
+  flex: '1',
+  padding: '2',
+  resize: 'vertical',
+});
+
+const sendButton = css({
+  borderColor: 'borderStrong',
+  borderWidth: '1px',
+  paddingBlock: '2',
+  paddingInline: '4',
+});
 
 // The message box. It labels every span of the text with how it arrived: beforeinput says how the
 // next edit arrives and pins where it lands, and the input event that follows applies it. Images
@@ -83,38 +101,6 @@ export function Composer(props: ComposerProps): ReactNode {
   );
 }
 
-const composer = css({ display: 'flex', flexDirection: 'column', gap: '2' });
-const inputRow = css({ alignItems: 'flex-end', display: 'flex', gap: '2' });
-
-const messageBox = css({
-  backgroundColor: 'surface',
-  borderColor: 'borderStrong',
-  borderWidth: '1px',
-  flex: '1',
-  padding: '2',
-  resize: 'vertical',
-});
-
-const sendButton = css({
-  borderColor: 'borderStrong',
-  borderWidth: '1px',
-  paddingBlock: '2',
-  paddingInline: '4',
-});
-
-// a message with no images sends no images field, as a client of an earlier release does
-function pickImages(images: readonly File[]): Pick<ComposedMessage, 'images'> {
-  return images.length === 0 ? {} : { images };
-}
-
-// Enter sends the message, and Shift+Enter starts a new line.
-function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
-  if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-    event.preventDefault();
-    event.currentTarget.form?.requestSubmit();
-  }
-}
-
 // a drag that carries files may drop on the composer, which takes its images
 function handleDragOver(event: DragEvent<HTMLFormElement>): void {
   if (event.dataTransfer.types.includes('Files')) {
@@ -132,6 +118,19 @@ function readDroppedFiles(event: DragEvent<HTMLFormElement>): readonly File[] {
   }
 
   return files;
+}
+
+// a message with no images sends no images field, as a client of an earlier release does
+function pickImages(images: readonly File[]): Pick<ComposedMessage, 'images'> {
+  return images.length === 0 ? {} : { images };
+}
+
+// Enter sends the message, and Shift+Enter starts a new line.
+function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
+  if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  }
 }
 
 // A paste of an image with no text, such as a screenshot, attaches the image and leaves the box as

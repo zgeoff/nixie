@@ -5,14 +5,6 @@ type CheckedCase = Pick<WriterCase, 'rule' | 'target' | 'patterns'>;
 
 type CheckedCall = Pick<WriterCall, 'writes' | 'flags'>;
 
-type WriterWrite = WriterCall['writes'][number];
-
-// Checks one recorded run against its case's rule, target and text patterns, and returns why the
-// run breaks them, or null when it meets them.
-export function checkWriterRule(writerCase: CheckedCase, call: CheckedCall): string | null {
-  return ruleChecks[writerCase.rule](writerCase, call);
-}
-
 // one check for each rule, which the type keeps complete
 const ruleChecks: Readonly<
   Record<WriterCase['rule'], (writerCase: CheckedCase, call: CheckedCall) => string | null>
@@ -28,6 +20,12 @@ const ruleChecks: Readonly<
     call.writes.length === 0 && call.flags.length === 0 ? null : 'it wrote or flagged something',
 };
 
+// Checks one recorded run against its case's rule, target and text patterns, and returns why the
+// run breaks them, or null when it meets them.
+export function checkWriterRule(writerCase: CheckedCase, call: CheckedCall): string | null {
+  return ruleChecks[writerCase.rule](writerCase, call);
+}
+
 function checkNewItem(
   writerCase: Pick<WriterCase, 'patterns'>,
   call: Pick<WriterCall, 'writes'>,
@@ -40,6 +38,20 @@ function checkNewItem(
   return created.length === 0
     ? `it filed no new ${subject} item`
     : findPatternMiss(writerCase.patterns, created);
+}
+
+type WriterWrite = WriterCall['writes'][number];
+
+// the first pattern some write's text misses
+function findPatternMiss(
+  patterns: readonly string[],
+  writes: readonly WriterWrite[],
+): string | null {
+  const missed = patterns.find((pattern) =>
+    writes.some((write) => !new RegExp(pattern, 'iu').test(write.text ?? '')),
+  );
+
+  return missed === undefined ? null : `a write's text misses /${missed}/`;
 }
 
 // an edit of the target item, with no new item beside it
@@ -60,16 +72,4 @@ function checkEdit(
   }
 
   return findPatternMiss(writerCase.patterns, edits);
-}
-
-// the first pattern some write's text misses
-function findPatternMiss(
-  patterns: readonly string[],
-  writes: readonly WriterWrite[],
-): string | null {
-  const missed = patterns.find((pattern) =>
-    writes.some((write) => !new RegExp(pattern, 'iu').test(write.text ?? '')),
-  );
-
-  return missed === undefined ? null : `a write's text misses /${missed}/`;
 }

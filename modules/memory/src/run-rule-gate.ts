@@ -1,7 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
 import { buildGateReview } from './build-gate-review';
+import { collectTypedSegments } from './collect-typed-segments';
 import { findMissingToken } from './find-missing-token';
-import { findTypedSegments } from './find-typed-segments';
 import type { ContentGateRequest, ContentGateResult } from './gate-types';
 import { readOwnerMessages } from './read-owner-messages';
 import type { MemoryContext } from './types';
@@ -19,7 +19,7 @@ export async function runRuleGate(
     limit: context.gate.limits.evidenceWindow,
   });
 
-  const typed = messages.flatMap((message) => findTypedSegments(message)).join('\n');
+  const typed = messages.flatMap((message) => collectTypedSegments(message)).join('\n');
 
   if (findMissingToken(request.text, typed) !== null) {
     return buildGateReview('token_missing', { checks: { rule, tokens: 'fail' } });

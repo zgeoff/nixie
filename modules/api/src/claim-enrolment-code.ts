@@ -4,8 +4,8 @@ import invariant from 'tiny-invariant';
 import { buildInputHash } from './build-input-hash';
 import { createSecret } from './create-secret';
 import { deriveSecretHash } from './derive-secret-hash';
-import { findClientAction } from './find-client-action';
 import { normalizeEnrolmentCode } from './normalize-enrolment-code';
+import { readClientAction } from './read-client-action';
 import type { APIContext, APITables } from './types';
 import { writeClientAction } from './write-client-action';
 
@@ -35,7 +35,7 @@ export function claimEnrolmentCode(context: APIContext, input: EnrolInput): Prom
       tokenDelivery: input.tokenDelivery,
     });
 
-    const earlier = await findClientAction(tx, input.clientActionID);
+    const earlier = await readClientAction(tx, input.clientActionID);
 
     if (earlier === null) {
       return writeEnrolment(tx, context, { input, codeHash, inputHash });

@@ -1,5 +1,5 @@
 import { buildShortIDFromUUID } from '@heynixie/db';
-import { findRecordKeys, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { readRecordKeys, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { ConsolidationChangeClosedError } from './consolidation-change-closed-error';
 import { ConsolidationChangeNotFoundError } from './consolidation-change-not-found-error';
@@ -25,7 +25,7 @@ export async function writeChangeComment(
     parts.context.gate.clock.now(),
   );
 
-  const keys = await findRecordKeys(parts.context.log, [row.item_id]);
+  const keys = await readRecordKeys(parts.context.log, [row.item_id]);
 
   const key = keys.get(row.item_id);
 
@@ -62,7 +62,7 @@ async function requireOpenChange(
   changeID: string,
   now: number,
 ): Promise<ConsolidationChangeRow> {
-  const row = await findChange(db, changeID);
+  const row = await readChange(db, changeID);
 
   if (row === undefined) {
     throw new ConsolidationChangeNotFoundError(changeID);
@@ -81,7 +81,7 @@ async function requireOpenChange(
 
 // the change by its stored alias or its UUID, or else the one whose derived short ID matches: an
 // older build leaves short_id null, and the read path shows the derived ID for such a change
-async function findChange(
+async function readChange(
   db: Kysely<ConsolidationTables>,
   changeID: string,
 ): Promise<ConsolidationChangeRow | undefined> {

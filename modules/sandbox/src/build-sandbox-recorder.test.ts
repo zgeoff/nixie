@@ -86,7 +86,7 @@ test('it finds a sandbox through its own adapter', async () => {
 
   await ctx.writeEvents([{ event: 'created', sandboxID: 'nixie-e', adapter: 'process', spec }]);
 
-  const row = await ctx.recorder.findRow('process', 'nixie-e');
+  const row = await ctx.recorder.readRow('process', 'nixie-e');
 
   expect(row).toStrictEqual({
     sandboxID: 'nixie-e',
@@ -104,7 +104,7 @@ test('it finds no sandbox through another adapter', async () => {
     { event: 'created', sandboxID: 'nixie-a', adapter: 'imp', spec: buildMockSandboxSpec() },
   ]);
 
-  const row = await ctx.recorder.findRow('process', 'nixie-a');
+  const row = await ctx.recorder.readRow('process', 'nixie-a');
 
   expect(row).toBeNull();
 });
@@ -117,7 +117,7 @@ test('it finds no sandbox once it is destroyed', async () => {
     { event: 'destroyed', sandboxID: 'nixie-c', reason: 'create_failed' },
   ]);
 
-  const row = await ctx.recorder.findRow('imp', 'nixie-c');
+  const row = await ctx.recorder.readRow('imp', 'nixie-c');
 
   expect(row).toBeNull();
 });

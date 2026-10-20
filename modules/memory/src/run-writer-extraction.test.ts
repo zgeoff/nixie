@@ -4,7 +4,7 @@ import invariant from 'tiny-invariant';
 import { readWriterBatch } from './read-writer-batch';
 import { runWriterExtraction } from './run-writer-extraction';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
-import { buildStubWriterSession } from './test-utils/build-stub-writer-session';
+import { createStubWriterSession } from './test-utils/create-stub-writer-session';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writePlannedBatch } from './test-utils/write-planned-batch';
 import { writerConfigSchema } from './writer-config-schema';
@@ -53,7 +53,7 @@ test('it shows the writer the pending proposals beside the current items, with t
 
   const planned = await writePlannedBatch(ctx.memory.log, ['Hazelnuts make me ill, careful.']);
 
-  const session = buildStubWriterSession({
+  const session = createStubWriterSession({
     op: 'remember',
     subject: 'owner',
     text: 'The owner reacts badly to hazelnuts.',
@@ -90,7 +90,7 @@ test('it shows the writer the image markers of your message on the lines after i
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I painted the fence green.']);
 
-  const session = buildStubWriterSession({
+  const session = createStubWriterSession({
     op: 'remember',
     subject: 'owner',
     text: 'The owner painted the fence green.',
@@ -138,7 +138,7 @@ test('it tells the writer to name the owner and the assistant by their configure
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I play the cello on Sundays.']);
 
-  const session = buildStubWriterSession({
+  const session = createStubWriterSession({
     op: 'remember',
     subject: 'owner',
     text: 'Avery plays the cello on Sundays.',
@@ -181,7 +181,7 @@ test('it shows the writer only the pending proposals it may write, and never a s
 
   const planned = await writePlannedBatch(ctx.memory.log, ['Hazelnuts make me ill, careful.']);
 
-  const session = buildStubWriterSession({
+  const session = createStubWriterSession({
     op: 'remember',
     subject: 'owner',
     text: 'The owner reacts badly to hazelnuts.',
@@ -212,7 +212,7 @@ test('it returns the flags the session staged beside its writes', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['You always pick the jazz station.']);
 
-  const session = buildStubWriterSession({
+  const session = createStubWriterSession({
     op: 'flag',
     text: 'The assistant favours the jazz station.',
     sourceSequence: planned.bounds.end,

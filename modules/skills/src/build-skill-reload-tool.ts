@@ -4,6 +4,8 @@ import { runSkillReload } from './run-skill-reload';
 import { skillReloadOutput } from './skill-reload-output';
 import type { SkillToolsContext } from './types';
 
+const reloadArguments = z.object({ name: z.string() });
+
 // Builds skill_reload, which declares note and moves one skill of the running task to its version
 // in the definitions in force, after a fresh seed. The record holds the old and new hash.
 export function buildSkillReloadTool(context: SkillToolsContext): ToolDefinition {
@@ -31,5 +33,3 @@ export function buildSkillReloadTool(context: SkillToolsContext): ToolDefinition
     run: (call, tool) => runSkillReload(context, tool.run, reloadArguments.parse(call.input).name),
   };
 }
-
-const reloadArguments = z.object({ name: z.string() });

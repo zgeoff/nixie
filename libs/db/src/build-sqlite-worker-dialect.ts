@@ -16,6 +16,13 @@ export function buildSqliteWorkerDialect(path: string, options: DatabaseOptions 
   };
 }
 
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+
+interface SqliteWorker {
+  readonly send: (request: DistributiveOmit<WorkerRequest, 'id'>) => Promise<WorkerQueryResult>;
+  readonly stop: () => Promise<void>;
+}
+
 interface DriverState {
   worker: SqliteWorker | null;
   connection: DatabaseConnection | null;
@@ -53,13 +60,6 @@ function buildDriver(path: string, options: DatabaseOptions): Driver {
     },
   };
 }
-
-interface SqliteWorker {
-  readonly send: (request: DistributiveOmit<WorkerRequest, 'id'>) => Promise<WorkerQueryResult>;
-  readonly stop: () => Promise<void>;
-}
-
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 interface PendingRequest {
   readonly resolve: (result: WorkerQueryResult) => void;

@@ -13,6 +13,9 @@ export interface SkillReloadEvent {
   readonly changes: readonly SkillReloadChange[];
 }
 
+// the most reloads one note reads, past which the block's count of more stops growing
+const readLimit = 1000;
+
 // The event kind for a reload on the thread, read from each reload's record. It lists only a
 // reload that changed a skill, so the turn after it names the skills whose catalog line changed.
 export function buildSkillReloadKind(
@@ -51,9 +54,6 @@ export function buildSkillReloadKind(
       'lists the versions you run with now; read a skill again to load its new instructions.',
   };
 }
-
-// the most reloads one note reads, past which the block's count of more stops growing
-const readLimit = 1000;
 
 function buildChange(
   name: string,

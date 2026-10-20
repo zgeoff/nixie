@@ -2,10 +2,10 @@ import { withWriteTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { createSecret } from './create-secret';
 import { deriveSecretHash } from './derive-secret-hash';
-import type { ClientAction } from './find-client-action';
-import { findClientAction } from './find-client-action';
-import { isLiveIdentity } from './is-live-identity';
 import { normalizeEnrolmentCode } from './normalize-enrolment-code';
+import { probeLiveIdentity } from './probe-live-identity';
+import type { ClientAction } from './read-client-action';
+import { readClientAction } from './read-client-action';
 import type { APIContext, APITables, Identity } from './types';
 import { writeClientAction } from './write-client-action';
 import type { IssuedCode } from './write-enrolment-code';
@@ -25,13 +25,13 @@ export function writeIssuedCode(
   clientActionID: string,
 ): Promise<IssueResult> {
   return withWriteTransaction(context.log.writer, async (tx) => {
-    const live = await isLiveIdentity(tx, context, caller.identityID);
+    const live = await probeLiveIdentity(tx, context, caller.identityID);
 
     if (!live) {
       return { status: 'unauthorized' };
     }
 
-    const earlier = await findClientAction(tx, clientActionID);
+    const earlier = await readClientAction(tx, clientActionID);
 
     const issued =
       earlier === null

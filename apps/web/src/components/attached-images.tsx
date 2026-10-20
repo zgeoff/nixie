@@ -8,6 +8,20 @@ export interface AttachedImagesProps {
   readonly onRemove: (id: string) => void;
 }
 
+const list = css({ display: 'flex', flexWrap: 'wrap', gap: '2' });
+const item = css({ position: 'relative' });
+
+const removeButton = css({
+  backgroundColor: 'surface',
+  borderColor: 'borderStrong',
+  borderWidth: '1px',
+  insetInlineEnd: '0',
+  lineHeight: '1',
+  paddingInline: '1',
+  position: 'absolute',
+  top: '0',
+});
+
 // The images attached to the message you are writing, each with the control that takes it off.
 export function AttachedImages(props: AttachedImagesProps): ReactNode {
   if (props.images.length === 0) {
@@ -34,17 +48,3 @@ export function AttachedImages(props: AttachedImagesProps): ReactNode {
     </ul>
   );
 }
-
-const list = css({ display: 'flex', flexWrap: 'wrap', gap: '2' });
-const item = css({ position: 'relative' });
-
-const removeButton = css({
-  backgroundColor: 'surface',
-  borderColor: 'borderStrong',
-  borderWidth: '1px',
-  insetInlineEnd: '0',
-  lineHeight: '1',
-  paddingInline: '1',
-  position: 'absolute',
-  top: '0',
-});

@@ -59,6 +59,17 @@ export interface HostMemory {
   readonly readSubjectCounts: () => Promise<MemorySubjectCounts>;
 }
 
+const hostIdentityID = 'host';
+
+const ownerProvenance: Provenance = {
+  origin: 'owner',
+  source: 'owner',
+  taskID: null,
+  proposalID: null,
+  checks: null,
+  model: null,
+};
+
 // The memory store as the host commands reach it. An answer comes from a shell in nixie's
 // container, which no device session reaches, so its record names the host as the identity that
 // answered. A change to an item is your own action, as in the memory view, with your provenance.
@@ -85,14 +96,3 @@ export function buildHostMemory(store: HostMemoryStore): HostMemory {
     readSubjectCounts: () => store.readSubjectCounts(),
   };
 }
-
-const hostIdentityID = 'host';
-
-const ownerProvenance: Provenance = {
-  origin: 'owner',
-  source: 'owner',
-  taskID: null,
-  proposalID: null,
-  checks: null,
-  model: null,
-};

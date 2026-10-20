@@ -3,6 +3,16 @@ import { conversationTaskID } from '@heynixie/tasks';
 import { z } from 'zod';
 import type { TurnNoteRange } from './types';
 
+// mapped types, because Kysely's table map needs the index signature an interface lacks
+type RecordTables = Readonly<{
+  records: {
+    readonly sequence: number;
+    readonly thread: string | null;
+    readonly kind: RecordKind;
+    readonly payload: string;
+  };
+}>;
+
 // Reads the range the conversation's next turn note covers: after the sequence the last turn's note
 // covered, through the log's head now. Given a sequence, the last turn is the newest before it.
 export async function readTurnNoteRange(
@@ -26,23 +36,13 @@ export async function readTurnNoteRange(
     .select((eb) => eb.fn.max('sequence').as('head'))
     .executeTakeFirst();
 
-  return { after: findNotedThrough(last), through: head?.head ?? 0 };
+  return { after: getNotedThrough(last), through: head?.head ?? 0 };
 }
-
-// mapped types, because Kysely's table map needs the index signature an interface lacks
-type RecordTables = Readonly<{
-  records: {
-    readonly sequence: number;
-    readonly thread: string | null;
-    readonly kind: RecordKind;
-    readonly payload: string;
-  };
-}>;
 
 // the turn's end record keeps the sequence its note covered under the name the memory note gave it
 const turnEnded = z.object({ memoryNotedThrough: z.int().optional() });
 
-function findNotedThrough(
+function getNotedThrough(
   last: { readonly sequence: number; readonly payload: string } | undefined,
 ): number {
   if (last === undefined) {

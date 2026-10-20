@@ -7,6 +7,9 @@ export interface ONNXEncoder extends Encoder {
   readonly stop: () => Promise<void>;
 }
 
+// the prefix the model's card gives a query; a stored text takes none
+const queryPrefix = 'Represent this sentence for searching relevant passages: ';
+
 // Loads mdbr-leaf-ir's int8 weights and tokenizer from modelDir alone, fetching nothing, so the
 // model the image pinned is the model that runs. The graph pools inside the model, so each vector
 // is its sentence_embedding output, normalised to unit length.
@@ -70,8 +73,15 @@ export async function startONNXEncoder(modelDir: string): Promise<ONNXEncoder> {
   };
 }
 
-// the prefix the model's card gives a query; a stored text takes none
-const queryPrefix = 'Represent this sentence for searching relevant passages: ';
+async function readJSONObject(path: string): Promise<object> {
+  const value: unknown = await Bun.file(path).json();
+
+  if (typeof value !== 'object' || value === null) {
+    throw new Error(`${path} holds no JSON object`);
+  }
+
+  return value;
+}
 
 // the model reads at most 512 tokens, so a longer text keeps its first tokens and its closing
 // separator token
@@ -83,16 +93,6 @@ function buildModelIDs(ids: readonly number[]): readonly number[] {
   return ids.length <= maxTokens || last === undefined
     ? ids
     : [...ids.slice(0, maxTokens - 1), last];
-}
-
-async function readJSONObject(path: string): Promise<object> {
-  const value: unknown = await Bun.file(path).json();
-
-  if (typeof value !== 'object' || value === null) {
-    throw new Error(`${path} holds no JSON object`);
-  }
-
-  return value;
 }
 
 function normalizeVector(vector: Float32Array): Float32Array {

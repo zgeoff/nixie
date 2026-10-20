@@ -51,14 +51,6 @@ async function waitThenReload(
   return runOneReload(context, run, name);
 }
 
-async function waitForSettled(reload: Promise<ToolOutcome>): Promise<void> {
-  try {
-    await reload;
-  } catch {
-    // the caller of the reload gets its failure, so the chain only waits for it to end
-  }
-}
-
 // A name that is neither pinned nor on the caller's list fails.
 async function runOneReload(
   context: SkillToolsContext,
@@ -105,4 +97,12 @@ async function runOneReload(
       })),
     },
   };
+}
+
+async function waitForSettled(reload: Promise<ToolOutcome>): Promise<void> {
+  try {
+    await reload;
+  } catch {
+    // the caller of the reload gets its failure, so the chain only waits for it to end
+  }
 }

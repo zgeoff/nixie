@@ -19,16 +19,23 @@ export interface StubHTTPToolServer {
   readonly stop: () => Promise<void>;
 }
 
+interface RouteState {
+  isDropping: boolean;
+  resets: number;
+  readonly sockets: Set<Socket>;
+}
+
 // Starts nixie's tool server as the guest reaches it in production: a Streamable HTTP MCP server
 // named nixie, with one tool, note_read, behind a loopback route the guest connects to. The route
 // relays each connection to the server, or resets it at once while the test drops connections.
 export async function startStubHTTPToolServer(): Promise<StubHTTPToolServer> {
   const handler = createMcpHandler(buildNoteServer);
+  const answerRequest = (request: Request) => handler.fetch(request);
 
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: (request) => handler.fetch(request),
+    fetch: answerRequest,
   });
 
   const state: RouteState = { isDropping: false, resets: 0, sockets: new Set() };
@@ -87,12 +94,6 @@ function buildNoteServer(): Server {
   }));
 
   return server;
-}
-
-interface RouteState {
-  isDropping: boolean;
-  resets: number;
-  readonly sockets: Set<Socket>;
 }
 
 function startRelay(client: Socket, port: number, state: RouteState): void {

@@ -75,6 +75,31 @@ export async function startSessionRunner(options: SessionRunnerOptions): Promise
   };
 }
 
+// the sandbox's owner is the system task, which never finishes, so the sandbox outlives each
+// session
+async function setupSessionSandbox(
+  options: SessionRunnerOptions,
+  grant: ReturnType<typeof buildModelGrant>,
+): ReturnType<SandboxAdapter['create']> {
+  const spec = buildSandboxSpec({
+    kind: 'worker',
+    image: options.image,
+    owner: options.taskID,
+    limits: options.limits,
+    modelGrant: grant,
+  });
+
+  const existing = await options.sandboxes.list(options.taskID);
+
+  const kept = findKeptSandbox(existing, spec);
+
+  await Promise.all(
+    existing.filter((sandbox) => sandbox !== kept).map((sandbox) => sandbox.destroy()),
+  );
+
+  return kept ?? options.sandboxes.create(spec);
+}
+
 interface SessionRun extends SessionRunnerOptions {
   readonly sandbox: Sandbox;
 
@@ -138,31 +163,6 @@ function requireTrustedEnd(taskID: string, ended: readonly EndedFrame[]): void {
   if (ended.some((frame) => frame.isError === true)) {
     throw new Error(`the ${taskID} session ended at a model API error`);
   }
-}
-
-// the sandbox's owner is the system task, which never finishes, so the sandbox outlives each
-// session
-async function setupSessionSandbox(
-  options: SessionRunnerOptions,
-  grant: ReturnType<typeof buildModelGrant>,
-): ReturnType<SandboxAdapter['create']> {
-  const spec = buildSandboxSpec({
-    kind: 'worker',
-    image: options.image,
-    owner: options.taskID,
-    limits: options.limits,
-    modelGrant: grant,
-  });
-
-  const existing = await options.sandboxes.list(options.taskID);
-
-  const kept = findKeptSandbox(existing, spec);
-
-  await Promise.all(
-    existing.filter((sandbox) => sandbox !== kept).map((sandbox) => sandbox.destroy()),
-  );
-
-  return kept ?? options.sandboxes.create(spec);
 }
 
 // the token counts over every model call the session made

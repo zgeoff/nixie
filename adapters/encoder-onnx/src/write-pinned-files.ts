@@ -4,12 +4,6 @@ import { ChecksumMismatchError } from './checksum-mismatch-error';
 import { DownloadFailedError } from './download-failed-error';
 import { PinnedFileListError } from './pinned-file-list-error';
 
-interface PinnedFile {
-  readonly path: string;
-  readonly url: string;
-  readonly sha256: string;
-}
-
 // Downloads each file a pinned file list names into outDir, checking its SHA-256 before it writes
 // it, so a file that differs never reaches outDir. A file already there with that SHA-256 stays,
 // with no download. It returns each file's path in outDir, in list order.
@@ -27,6 +21,12 @@ export async function writePinnedFiles(
   }
 
   return written;
+}
+
+interface PinnedFile {
+  readonly path: string;
+  readonly url: string;
+  readonly sha256: string;
 }
 
 // Each line that is not blank or a # comment is a relative path, a URL and a SHA-256, split by
@@ -58,7 +58,7 @@ function parsePinnedFileList(text: string): readonly PinnedFile[] {
 async function writePinnedFile(file: PinnedFile, outDir: string): Promise<string> {
   const target = join(outDir, file.path);
 
-  const isInPlace = await hasPinnedFile(target, file.sha256);
+  const isInPlace = await probePinnedFile(target, file.sha256);
 
   if (!isInPlace) {
     const bytes = await readCheckedFile(file);
@@ -69,7 +69,7 @@ async function writePinnedFile(file: PinnedFile, outDir: string): Promise<string
   return target;
 }
 
-async function hasPinnedFile(target: string, sha256: string): Promise<boolean> {
+async function probePinnedFile(target: string, sha256: string): Promise<boolean> {
   const existing = Bun.file(target);
 
   const exists = await existing.exists();
@@ -81,6 +81,10 @@ async function hasPinnedFile(target: string, sha256: string): Promise<boolean> {
   const bytes = await existing.bytes();
 
   return buildSHA256(bytes) === sha256;
+}
+
+function buildSHA256(bytes: Uint8Array): string {
+  return new Bun.CryptoHasher('sha256').update(bytes).digest('hex');
 }
 
 async function readCheckedFile(file: PinnedFile): Promise<Uint8Array> {
@@ -109,8 +113,4 @@ async function writeWholeFile(target: string, bytes: Uint8Array): Promise<void> 
   await Bun.write(`${target}.part`, bytes);
 
   await rename(`${target}.part`, target);
-}
-
-function buildSHA256(bytes: Uint8Array): string {
-  return new Bun.CryptoHasher('sha256').update(bytes).digest('hex');
 }

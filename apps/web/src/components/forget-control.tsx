@@ -13,6 +13,9 @@ export interface ForgetControlProps {
   readonly onForgotten: () => void;
 }
 
+// The control stays small and quiet below the text, so it never competes with the message.
+const control = css({ color: 'textMuted', display: 'block', fontSize: 'sm', marginTop: '1' });
+
 // The checked forget of one message or reply: the first press asks, and only the confirm forgets.
 // Each confirmation keeps one client action ID, so a confirm that fails and goes again forgets once.
 // A forget in flight or failed keeps its control after the text goes, so a failed cleanup can retry.
@@ -83,6 +86,15 @@ interface ForgetConfirmationProps {
   readonly onKeep: () => void;
 }
 
+const confirmation = css({
+  alignItems: 'baseline',
+  display: 'flex',
+  flexWrap: 'wrap',
+  fontSize: 'sm',
+  gap: '2',
+  marginTop: '1',
+});
+
 function ForgetConfirmation(props: ForgetConfirmationProps): ReactNode {
   return (
     <div aria-label={`Forget this ${props.noun}`} className={confirmation} role="group">
@@ -99,15 +111,3 @@ function ForgetConfirmation(props: ForgetConfirmationProps): ReactNode {
     </div>
   );
 }
-
-// The control stays small and quiet below the text, so it never competes with the message.
-const control = css({ color: 'textMuted', display: 'block', fontSize: 'sm', marginTop: '1' });
-
-const confirmation = css({
-  alignItems: 'baseline',
-  display: 'flex',
-  flexWrap: 'wrap',
-  fontSize: 'sm',
-  gap: '2',
-  marginTop: '1',
-});

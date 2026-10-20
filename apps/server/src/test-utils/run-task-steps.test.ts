@@ -53,7 +53,7 @@ test('it moves the clock to the next timer when no task has work', async () => {
     advance: (durationMs) => {
       ctx.clock.advance(durationMs);
     },
-    isDone: () => Promise.resolve(runStep.mock.calls.length >= 2),
+    probeDone: () => Promise.resolve(runStep.mock.calls.length >= 2),
     maxSteps: 10,
   });
 
@@ -64,7 +64,7 @@ test('it moves the clock to the next timer when no task has work', async () => {
   ).toStrictEqual([[], ['timer.fired']]);
 });
 
-test('it stops after the step at which isDone holds', async () => {
+test('it stops after the step at which probeDone holds', async () => {
   const ctx = await setupTest();
   const taskID = await createTask(ctx.context, 'send the weekly summary');
 
@@ -77,7 +77,7 @@ test('it stops after the step at which isDone holds', async () => {
     advance: (durationMs) => {
       ctx.clock.advance(durationMs);
     },
-    isDone: () => Promise.resolve(runStep.mock.calls.length >= 3),
+    probeDone: () => Promise.resolve(runStep.mock.calls.length >= 3),
     maxSteps: 10,
   });
 

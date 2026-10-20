@@ -8,6 +8,9 @@ declare module '@heynixie/log' {
   }
 }
 
+// how long after its first step a test task's timer falls due
+const timerDelayMs = 3_600_000;
+
 // The step of every task but the conversation: the first sets a timer an hour on, and each reads
 // its inbox, records what it read, and waits, or finishes on a message that asks it to. The session
 // boundary marks the timer as set, so a rerun sets no second one.
@@ -29,6 +32,3 @@ export function runTestTaskStep(clock: Clock, input: StepInput): StepResult {
     ...(isFirst ? { timers: [{ dueAt: clock.now() + timerDelayMs }] } : {}),
   };
 }
-
-// how long after its first step a test task's timer falls due
-const timerDelayMs = 3_600_000;

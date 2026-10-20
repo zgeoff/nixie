@@ -19,7 +19,7 @@ test('it finds the items that match any word of a query, best match first', asyn
     { itemID: 'item-c', text: 'Allergic to hazelnuts' },
   ]);
 
-  const found = await ctx.index.findItemIDs('Sundays library', { limit: 10 });
+  const found = await ctx.index.readItemIDs('Sundays library', { limit: 10 });
 
   expect(found).toStrictEqual(['item-b', 'item-a']);
 });
@@ -35,7 +35,7 @@ test('it drops a match whose score falls below the floor', async () => {
   ]);
 
   // "Tuesday" sits in 3 of the 4 items, so it scores near 0, and "flowerpot" sits in one
-  const found = await ctx.index.findItemIDs('Tuesday flowerpot', { limit: 10, minScore: 0.25 });
+  const found = await ctx.index.readItemIDs('Tuesday flowerpot', { limit: 10, minScore: 0.25 });
 
   expect(found).toStrictEqual(['item-a']);
 });
@@ -49,7 +49,7 @@ test('it leaves the function words of a query out of the match', async () => {
     { itemID: 'item-c', text: 'Prefers window seats on trains' },
   ]);
 
-  const found = await ctx.index.findItemIDs('I need to book a train to Manchester', { limit: 10 });
+  const found = await ctx.index.readItemIDs('I need to book a train to Manchester', { limit: 10 });
 
   expect(found).toStrictEqual(['item-c']);
 });
@@ -62,7 +62,7 @@ test('it matches no item for a query of only function words', async () => {
     { itemID: 'item-b', text: 'Has a sister called Priya who lives in Lisbon' },
   ]);
 
-  const found = await ctx.index.findItemIDs("Who is it that's in there?", { limit: 10 });
+  const found = await ctx.index.readItemIDs("Who is it that's in there?", { limit: 10 });
 
   expect(found).toStrictEqual([]);
 });
@@ -76,7 +76,7 @@ test('it leaves the excluded words of a query out of the match', async () => {
     { itemID: 'item-c', text: 'Prefers window seats on trains' },
   ]);
 
-  const found = await ctx.index.findItemIDs('nix, what do you think about bun', {
+  const found = await ctx.index.readItemIDs('nix, what do you think about bun', {
     limit: 10,
     excludedWords: ['Nix', 'Nixie'],
   });
@@ -92,7 +92,7 @@ test('it matches no item for a query of only excluded words', async () => {
     { itemID: 'item-b', text: 'Nixie keeps the spare key list' },
   ]);
 
-  const found = await ctx.index.findItemIDs('nix?', {
+  const found = await ctx.index.readItemIDs('nix?', {
     limit: 10,
     excludedWords: ['Nix', 'Nixie'],
   });
@@ -108,7 +108,7 @@ test('it leaves out a query word that stems the same as an excluded word in anot
     { itemID: 'item-b', text: 'The spare key sits under the blue flowerpot' },
   ]);
 
-  const found = await ctx.index.findItemIDs("NIXIE's flowerpot", {
+  const found = await ctx.index.readItemIDs("NIXIE's flowerpot", {
     limit: 10,
     excludedWords: ['nixies'],
   });
@@ -124,7 +124,7 @@ test('it leaves out each word of an excluded name of several words', async () =>
     { itemID: 'item-b', text: 'Quinn renews the car insurance in March' },
   ]);
 
-  const found = await ctx.index.findItemIDs('quinn swims', {
+  const found = await ctx.index.readItemIDs('quinn swims', {
     limit: 10,
     excludedWords: ['Avery Quinn'],
   });
@@ -142,7 +142,7 @@ test('it never matches a function word in an item to a query word that stems to 
   ]);
 
   // porter stems "one" to "on", which item-a and item-c hold only as a function word
-  const found = await ctx.index.findItemIDs('one sec', { limit: 10 });
+  const found = await ctx.index.readItemIDs('one sec', { limit: 10 });
 
   expect(found).toStrictEqual(['item-b']);
 });
@@ -157,7 +157,7 @@ test('it matches an item with a decomposed accent to a query with the composed a
   ]);
 
   // item-a spells "München" with "u" and a combining diaeresis, and the query with the composed "ü"
-  const found = await ctx.index.findItemIDs('München', { limit: 10, minScore: 0.25 });
+  const found = await ctx.index.readItemIDs('München', { limit: 10, minScore: 0.25 });
 
   expect(found).toStrictEqual(['item-a']);
 });
@@ -170,7 +170,7 @@ test('it drops every match in an index of 2 items, which BM25 scores near 0', as
     { itemID: 'item-b', text: 'The dentist appointment is on Tuesday at nine' },
   ]);
 
-  const found = await ctx.index.findItemIDs('flowerpot', { limit: 10, minScore: 0.25 });
+  const found = await ctx.index.readItemIDs('flowerpot', { limit: 10, minScore: 0.25 });
 
   expect(found).toStrictEqual([]);
 });
@@ -184,7 +184,7 @@ test('it leaves the excluded items out before it applies the limit', async () =>
     { itemID: 'item-c', text: 'Allergic to hazelnuts' },
   ]);
 
-  const found = await ctx.index.findItemIDs('spare key', { limit: 1, excludedIDs: ['item-a'] });
+  const found = await ctx.index.readItemIDs('spare key', { limit: 1, excludedIDs: ['item-a'] });
 
   expect(found).toStrictEqual(['item-b']);
 });
@@ -197,7 +197,7 @@ test('it keeps every match with no floor', async () => {
     { itemID: 'item-b', text: 'The dentist appointment is on Tuesday at nine' },
   ]);
 
-  const found = await ctx.index.findItemIDs('Tuesday', { limit: 10 });
+  const found = await ctx.index.readItemIDs('Tuesday', { limit: 10 });
 
   expect(found).toIncludeSameMembers(['item-a', 'item-b']);
 });
@@ -207,7 +207,7 @@ test('it reads every character of a query as a word, never as search syntax', as
 
   await ctx.index.updateAll([{ itemID: 'item-a', text: 'Prefers window seats' }]);
 
-  const found = await ctx.index.findItemIDs('"window" AND (NEAR* seats:', { limit: 10 });
+  const found = await ctx.index.readItemIDs('"window" AND (NEAR* seats:', { limit: 10 });
 
   expect(found).toStrictEqual(['item-a']);
 });
@@ -217,7 +217,7 @@ test('it finds nothing for a query with no word in it', async () => {
 
   await ctx.index.updateAll([{ itemID: 'item-a', text: 'Prefers window seats' }]);
 
-  const result = await ctx.index.findItemIDs('?! --', { limit: 10 });
+  const result = await ctx.index.readItemIDs('?! --', { limit: 10 });
 
   expect(result).toStrictEqual([]);
 });
@@ -229,8 +229,8 @@ test('it replaces the entry of an item that changed', async () => {
   await ctx.index.update({ itemID: 'item-a', text: 'Lives on Oak Avenue' });
 
   const [old, current] = await Promise.all([
-    ctx.index.findItemIDs('Elm', { limit: 10 }),
-    ctx.index.findItemIDs('Oak', { limit: 10 }),
+    ctx.index.readItemIDs('Elm', { limit: 10 }),
+    ctx.index.readItemIDs('Oak', { limit: 10 }),
   ]);
 
   expect(old).toStrictEqual([]);
@@ -243,7 +243,7 @@ test('it removes an item', async () => {
   await ctx.index.updateAll([{ itemID: 'item-a', text: 'Lives on Elm Street' }]);
   await ctx.index.remove('item-a');
 
-  const result = await ctx.index.findItemIDs('Elm', { limit: 10 });
+  const result = await ctx.index.readItemIDs('Elm', { limit: 10 });
 
   expect(result).toStrictEqual([]);
 });
@@ -254,7 +254,7 @@ test('it empties the index before it fills it again', async () => {
   await ctx.index.updateAll([{ itemID: 'item-a', text: 'Lives on Elm Street' }]);
   await ctx.index.updateAll([{ itemID: 'item-b', text: 'Works on Elm Street' }]);
 
-  const result = await ctx.index.findItemIDs('Elm', { limit: 10 });
+  const result = await ctx.index.readItemIDs('Elm', { limit: 10 });
 
   expect(result).toStrictEqual(['item-b']);
 });
@@ -268,7 +268,7 @@ test('it gives each match its score, the better match scoring higher', async () 
     { itemID: 'item-c', text: 'Allergic to hazelnuts' },
   ]);
 
-  const found = await ctx.index.findMatches('Sundays library', { limit: 10 });
+  const found = await ctx.index.readMatches('Sundays library', { limit: 10 });
 
   const [best, next] = found;
 

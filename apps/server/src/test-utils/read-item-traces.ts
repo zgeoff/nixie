@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import type { ContractClient } from '@heynixie/contract';
-import { collectFilesWithText } from './collect-files-with-text';
 import type { ApprovedItem } from './create-approved-items';
+import { readFilesWithText } from './read-files-with-text';
 import type { TestNixie } from './start-test-nixie';
 
 // Where a memory item leaves a trace that a forget destroys.
@@ -26,7 +26,7 @@ export async function readItemTraces(
   const [files, found, sessionFiles] = await Promise.all([
     nixie.readDataFiles(),
     client.memory.findItems({ query: item.text }),
-    collectFilesWithText(join(nixie.dataDir, 'sandboxes'), item.text),
+    readFilesWithText(join(nixie.dataDir, 'sandboxes'), item.text),
   ]);
 
   return {

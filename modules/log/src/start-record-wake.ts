@@ -14,6 +14,12 @@ export interface RecordWake {
   readonly stop: () => void;
 }
 
+interface WakeState {
+  pending: boolean;
+  stopped: boolean;
+  waiter: PromiseWithResolvers<void> | null;
+}
+
 // Starts the wakes that tell a reader new records may exist: each change its subscription reports,
 // and the signal's abort. It starts pending, so the first wait never blocks a first read.
 export function startRecordWake(options: RecordWakeOptions): RecordWake {
@@ -57,10 +63,4 @@ export function startRecordWake(options: RecordWakeOptions): RecordWake {
     },
     stop,
   };
-}
-
-interface WakeState {
-  pending: boolean;
-  stopped: boolean;
-  waiter: PromiseWithResolvers<void> | null;
 }

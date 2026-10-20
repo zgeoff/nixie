@@ -15,14 +15,14 @@ export async function writeRefusal(context: APIContext, event: RefusedEvent): Pr
   const refusalKey = `${event.channel}:${event.externalID}`;
 
   // a read first, so a stranger who keeps calling costs no write transaction
-  const refusedBefore = await isRecentlyRefused(context, context.log.writer.db, refusalKey);
+  const refusedBefore = await probeRecentlyRefused(context, context.log.writer.db, refusalKey);
 
   if (refusedBefore) {
     return false;
   }
 
   return withWriteTransaction(context.log.writer, async (tx) => {
-    const refused = await isRecentlyRefused(context, tx, refusalKey);
+    const refused = await probeRecentlyRefused(context, tx, refusalKey);
 
     if (refused) {
       return false;
@@ -44,7 +44,7 @@ export async function writeRefusal(context: APIContext, event: RefusedEvent): Pr
   });
 }
 
-async function isRecentlyRefused(
+async function probeRecentlyRefused(
   context: APIContext,
   db: Kysely<unknown>,
   refusalKey: string,

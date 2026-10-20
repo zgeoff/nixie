@@ -26,29 +26,6 @@ export type TaskRecord =
   | DecodedRecord<typeof taskRevivedCodec>
   | DecodedRecord<typeof timerFiredCodec>;
 
-// Reads a task record's payload into its typed shape through its kind's codec, or null for a record
-// of another kind. A task record whose payload does not fit its codec throws with the record's
-// sequence, so a fold never writes a half-read row.
-export function parseTaskRecord(record: EnvelopeRecord): TaskRecord | null {
-  const kind = record.kind;
-
-  if (!isTaskRecordKind(kind)) {
-    return null;
-  }
-
-  try {
-    return taskRecordDecoders[kind](record.payload);
-  } catch (error) {
-    throw new Error(`record ${record.sequence} of kind ${kind} does not fit its payload`, {
-      cause: error,
-    });
-  }
-}
-
-function isTaskRecordKind(kind: RecordKind): kind is TaskRecord['kind'] {
-  return Object.hasOwn(taskRecordDecoders, kind);
-}
-
 const taskRecordDecoders: {
   readonly [Kind in TaskRecord['kind']]: (
     payload: JSONObject,
@@ -78,3 +55,26 @@ const taskRecordDecoders: {
   'task.revived': (payload) => ({ kind: 'task.revived', ...taskRevivedCodec.decode(payload) }),
   'timer.fired': (payload) => ({ kind: 'timer.fired', ...timerFiredCodec.decode(payload) }),
 };
+
+// Reads a task record's payload into its typed shape through its kind's codec, or null for a record
+// of another kind. A task record whose payload does not fit its codec throws with the record's
+// sequence, so a fold never writes a half-read row.
+export function parseTaskRecord(record: EnvelopeRecord): TaskRecord | null {
+  const kind = record.kind;
+
+  if (!isTaskRecordKind(kind)) {
+    return null;
+  }
+
+  try {
+    return taskRecordDecoders[kind](record.payload);
+  } catch (error) {
+    throw new Error(`record ${record.sequence} of kind ${kind} does not fit its payload`, {
+      cause: error,
+    });
+  }
+}
+
+function isTaskRecordKind(kind: RecordKind): kind is TaskRecord['kind'] {
+  return Object.hasOwn(taskRecordDecoders, kind);
+}

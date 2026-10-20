@@ -1,14 +1,18 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { setBrowserFiles } from './set-browser-files';
 
 // The helper drives a headless Chrome or Chromium, which Bun finds on PATH, in a standard install
 // location, or at BUN_CHROME_PATH.
 async function setupTest() {
-  const page = Bun.serve({
-    fetch: () =>
+  const answerRequest = mock(
+    () =>
       new Response('<!doctype html><input id="picker" type="file" multiple>', {
         headers: { 'content-type': 'text/html' },
       }),
+  );
+
+  const page = Bun.serve({
+    fetch: answerRequest,
     hostname: '127.0.0.1',
     port: 0,
   });

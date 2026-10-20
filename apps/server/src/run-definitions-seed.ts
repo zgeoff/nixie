@@ -10,6 +10,9 @@ export type SeedParts = Pick<
   'context' | 'source' | 'policy' | 'inForce' | 'state' | 'log'
 >;
 
+// the newest seed each set of parts started, which the next one waits for
+const pendingSeeds = new WeakMap<SeedParts, Promise<void>>();
+
 // Runs one seed. The definitions part turns unready while a refused snapshot is pending, and the
 // last good seed stays in force. Seeds over one set of parts run one at a time, as the seed needs,
 // so the poll and a skill reload never commit an older revision after a newer one.
@@ -20,9 +23,6 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
 
   return seed;
 }
-
-// the newest seed each set of parts started, which the next one waits for
-const pendingSeeds = new WeakMap<SeedParts, Promise<void>>();
 
 async function waitThenSeed(
   previous: Promise<void> | undefined,

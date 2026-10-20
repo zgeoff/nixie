@@ -1,6 +1,3 @@
-// A node of the JSON Schema that buildConfigJSONSchema emits
-type SchemaNode = Readonly<Record<string, unknown>>;
-
 // Collects each change from the released config schema to the current one that can refuse a
 // config.yaml the released schema accepts, as `<path>: <change>`. A change it cannot prove
 // harmless counts as breaking, so the list can hold a false alarm but never misses a break.
@@ -10,6 +7,9 @@ export function collectBreakingConfigChanges(
 ): readonly string[] {
   return collectNodeChanges(toNode(released), toNode(current), []);
 }
+
+// A node of the JSON Schema that buildConfigJSONSchema emits
+type SchemaNode = Readonly<Record<string, unknown>>;
 
 function collectNodeChanges(
   released: SchemaNode,
@@ -97,22 +97,6 @@ const droppable = new Set([
   'dependentRequired',
 ]);
 
-function collectNarrowingChanges(change: KeywordChange): readonly string[] {
-  if (change.after === undefined) {
-    return droppable.has(change.keyword)
-      ? []
-      : [`${formatPath(change.path)}: drops ${change.keyword}`];
-  }
-
-  if (change.before === undefined) {
-    return [`${formatPath(change.path)}: adds ${change.keyword}`];
-  }
-
-  const collect = narrowingCollectors[change.keyword] ?? collectAnyChange;
-
-  return collect(change);
-}
-
 // A key the current schema drops passes only where additionalProperties accepts any value, and a key
 // it names for the first time had to pass the released additionalProperties
 function collectPropertyChanges(change: KeywordChange): readonly string[] {
@@ -127,6 +111,16 @@ function collectPropertyChanges(change: KeywordChange): readonly string[] {
   ];
 }
 
+function toNode(value: unknown): SchemaNode {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {};
+  }
+
+  const entries: readonly (readonly [string, unknown])[] = Object.entries(value);
+
+  return Object.fromEntries(entries);
+}
+
 function collectKeptPropertyChanges(change: KeywordChange, key: string): readonly string[] {
   const path = [...change.path, key];
   const kept = toNode(change.after)[key];
@@ -139,6 +133,10 @@ function collectKeptPropertyChanges(change: KeywordChange, key: string): readonl
   return extra === undefined || extra === true
     ? []
     : [`${formatPath(path)}: is no longer accepted`];
+}
+
+function formatPath(path: readonly string[]): string {
+  return path.length === 0 ? '(root)' : path.join('.');
 }
 
 function collectNamedPropertyChanges(change: KeywordChange, key: string): readonly string[] {
@@ -167,8 +165,24 @@ function collectRequiredChanges(change: KeywordChange): readonly string[] {
     .map((key) => `${formatPath([...change.path, String(key)])}: becomes required`);
 }
 
-function collectAnyChange(change: KeywordChange): readonly string[] {
-  return [`${formatPath(change.path)}: changes ${change.keyword}`];
+function toArray(value: unknown): readonly unknown[] {
+  return Array.isArray(value) ? value : [value];
+}
+
+function collectNarrowingChanges(change: KeywordChange): readonly string[] {
+  if (change.after === undefined) {
+    return droppable.has(change.keyword)
+      ? []
+      : [`${formatPath(change.path)}: drops ${change.keyword}`];
+  }
+
+  if (change.before === undefined) {
+    return [`${formatPath(change.path)}: adds ${change.keyword}`];
+  }
+
+  const collect = narrowingCollectors[change.keyword] ?? collectAnyChange;
+
+  return collect(change);
 }
 
 function collectLowerBoundChange(change: KeywordChange): readonly string[] {
@@ -235,20 +249,6 @@ function collectChoiceChanges(change: KeywordChange): readonly string[] {
   );
 }
 
-function formatPath(path: readonly string[]): string {
-  return path.length === 0 ? '(root)' : path.join('.');
-}
-
-function toNode(value: unknown): SchemaNode {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return {};
-  }
-
-  const entries: readonly (readonly [string, unknown])[] = Object.entries(value);
-
-  return Object.fromEntries(entries);
-}
-
-function toArray(value: unknown): readonly unknown[] {
-  return Array.isArray(value) ? value : [value];
+function collectAnyChange(change: KeywordChange): readonly string[] {
+  return [`${formatPath(change.path)}: changes ${change.keyword}`];
 }

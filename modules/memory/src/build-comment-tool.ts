@@ -56,6 +56,8 @@ export function buildCommentTool(memory: CommentToolStore): ToolDefinition {
   };
 }
 
+const commentArguments = z.object({ changeID: z.string(), comment: z.string() });
+
 // An unknown change or one that no longer waits is the model's to read; any other failure
 // propagates. The result names the change by its short ID, whichever ID the model passed.
 async function runCommentCall(
@@ -84,5 +86,3 @@ async function runCommentCall(
     throw error;
   }
 }
-
-const commentArguments = z.object({ changeID: z.string(), comment: z.string() });

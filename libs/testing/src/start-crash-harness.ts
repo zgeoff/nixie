@@ -36,6 +36,13 @@ export interface CrashHarness {
   readonly stop: () => Promise<void>;
 }
 
+interface TrackedProcesses {
+  readonly started: Set<NixieProcess>;
+
+  // a process gets the clock's advances once it is ready, and until it exits
+  readonly running: Set<NixieProcess>;
+}
+
 // Starts the crash harness: it runs nixie as child processes on one clock that the test sets and
 // advances, and kills every process still running when the test finishes.
 export function startCrashHarness(options: CrashHarnessOptions): CrashHarness {
@@ -85,13 +92,6 @@ export function startCrashHarness(options: CrashHarnessOptions): CrashHarness {
     },
     stop,
   };
-}
-
-interface TrackedProcesses {
-  readonly started: Set<NixieProcess>;
-
-  // a process gets the clock's advances once it is ready, and until it exits
-  readonly running: Set<NixieProcess>;
 }
 
 async function updateTracked(processes: TrackedProcesses, nixie: NixieProcess): Promise<void> {

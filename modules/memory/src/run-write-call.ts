@@ -39,7 +39,7 @@ export async function runWriteCall(
       error instanceof ProposalCapError ||
       error instanceof SelfNoteError
     ) {
-      return { status: 'error', message: await renderMessage(memory, error.message, itemID) };
+      return { status: 'error', message: await readShortIDMessage(memory, error.message, itemID) };
     }
 
     throw error;
@@ -47,7 +47,7 @@ export async function runWriteCall(
 }
 
 // the error's message with the item ID it names swapped for the item's short ID
-async function renderMessage(
+async function readShortIDMessage(
   memory: Pick<ItemIDStore, 'readShortIDs'>,
   message: string,
   itemID: string | null,

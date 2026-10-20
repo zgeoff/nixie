@@ -120,13 +120,6 @@ function pickChange(proposal: MemoryProposal): 'new' | 'edit' | 'retire' {
   return proposal.targetVersion === null ? 'new' : 'edit';
 }
 
-// each origin that proposed it once, in the order it first proposed it
-function buildNotedBy(proposal: MemoryProposal): readonly string[] {
-  const origins = new Set(proposal.sources.map((source) => source.origin));
-
-  return [...origins].map((origin) => notedByWords[origin]);
-}
-
 // the words the model reads for who noted a memory: the conversation is the model itself
 const notedByWords: Readonly<Record<MemoryOrigin, string>> = {
   conversation: 'you noted it',
@@ -134,6 +127,13 @@ const notedByWords: Readonly<Record<MemoryOrigin, string>> = {
   task: 'a task noted it',
   owner: 'the owner noted it',
 };
+
+// each origin that proposed it once, in the order it first proposed it
+function buildNotedBy(proposal: MemoryProposal): readonly string[] {
+  const origins = new Set(proposal.sources.map((source) => source.origin));
+
+  return [...origins].map((origin) => notedByWords[origin]);
+}
 
 // a whole number of the largest unit that fits, such as 3 days, or under a minute
 function formatAge(ageMs: number): string {

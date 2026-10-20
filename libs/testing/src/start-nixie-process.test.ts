@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { startNixieProcess } from './start-nixie-process';
 import { stopProcesses } from './stop-processes';
-import { isProcessGone } from './test-utils/is-process-gone';
+import { probeProcessGone } from './test-utils/probe-process-gone';
 import { waitForCondition } from './wait-for-condition';
 
 function setupTest() {
@@ -118,7 +118,7 @@ test('it kills nixie and every process nixie started', async () => {
 
   expect(exit).toStrictEqual({ code: null, signal: 'SIGKILL' });
 
-  await expect(waitForCondition(() => isProcessGone(childPID))).toResolve();
+  await expect(waitForCondition(() => probeProcessGone(childPID))).toResolve();
 });
 
 test('it rejects a request that a kill cut short', async () => {

@@ -1,6 +1,6 @@
-import { findItemKey } from './find-item-key';
 import { getRowSubject } from './get-row-subject';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
+import { readItemKey } from './read-item-key';
 import { readVersion } from './read-version';
 import { requireItem } from './require-item';
 import type { MemorySubject, MemoryTables, StoreParts, VersionRef } from './types';
@@ -17,7 +17,7 @@ export async function readItemText(parts: StoreParts, target: VersionRef): Promi
   const db = parts.context.log.writer.db.$extendTables<MemoryTables>();
 
   const item = await requireItem(db, { target, operation: 'retire', states: ['active'] });
-  const key = await findItemKey(parts.context.log, target.itemID);
+  const key = await readItemKey(parts.context.log, target.itemID);
 
   if (key === null || key === undefined) {
     throw new MemoryItemNotFoundError(target.itemID);

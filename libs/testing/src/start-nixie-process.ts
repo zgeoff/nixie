@@ -1,7 +1,7 @@
 import { join } from 'node:path';
-import { buildNixieChannel } from './build-nixie-channel';
-import { collectDescendants } from './collect-descendants';
+import { createNixieChannel } from './create-nixie-channel';
 import { harnessEnv } from './harness-env';
+import { readDescendants } from './read-descendants';
 import { stopProcesses } from './stop-processes';
 import type { FaultPointArm, FaultPointWork, NixieMessage } from './types';
 
@@ -56,9 +56,9 @@ export interface NixieProcess {
 // Starts a test build of nixie as a child process with an IPC channel to the harness. Its stdout
 // is dropped and its stderr is kept, so a test can name why nixie exited.
 export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
-  const channel = buildNixieChannel();
+  const channel = createNixieChannel();
   const child = startChild(options, channel.receive);
-  const stderr = collectText(child.stderr);
+  const stderr = startTextReader(child.stderr);
 
   const exited = waitForExit(child, stderr.done, (exit) => {
     channel.close(new Error(`nixie exited with ${formatExit(exit)}: ${stderr.read()}`));
@@ -82,7 +82,7 @@ export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
         args,
       ),
     kill: () => {
-      const descendants = collectDescendants(child.pid);
+      const descendants = readDescendants(child.pid);
 
       child.kill('SIGKILL');
 
@@ -115,6 +115,27 @@ function startChild(options: NixieProcessOptions, receive: (message: NixieMessag
   });
 }
 
+interface CollectedText {
+  readonly read: () => string;
+
+  // resolves once the stream has ended and every chunk is read
+  readonly done: Promise<void>;
+}
+
+function startTextReader(stream: ReadableStream<Uint8Array>): CollectedText {
+  const text = { value: '' };
+
+  const decoder = new TextDecoder();
+
+  const done = (async () => {
+    for await (const chunk of stream) {
+      text.value += decoder.decode(chunk, { stream: true });
+    }
+  })();
+
+  return { read: () => text.value, done };
+}
+
 type NixieChild = ReturnType<typeof startChild>;
 
 type OnExit = (exit: NixieExit) => void;
@@ -133,27 +154,6 @@ async function waitForExit(
   onExit(exit);
 
   return exit;
-}
-
-interface CollectedText {
-  readonly read: () => string;
-
-  // resolves once the stream has ended and every chunk is read
-  readonly done: Promise<void>;
-}
-
-function collectText(stream: ReadableStream<Uint8Array>): CollectedText {
-  const text = { value: '' };
-
-  const decoder = new TextDecoder();
-
-  const done = (async () => {
-    for await (const chunk of stream) {
-      text.value += decoder.decode(chunk, { stream: true });
-    }
-  })();
-
-  return { read: () => text.value, done };
 }
 
 function formatExit(exit: NixieExit): string {

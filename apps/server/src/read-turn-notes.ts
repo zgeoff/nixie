@@ -1,5 +1,5 @@
 import type { Clock } from '@heynixie/clock';
-import { findMessageTimeZone } from '@heynixie/connectors';
+import { readMessageTimeZone } from '@heynixie/connectors';
 import type { Log } from '@heynixie/log';
 import type { EventRegistry, TurnNote, TurnNoteRange, TurnNoteRequest } from '@heynixie/sessions';
 import { formatMessageTime, readEventsBlock, readTurnNoteRange } from '@heynixie/sessions';
@@ -32,7 +32,7 @@ export async function readTurnNotes(
 
   const isReplay = span !== undefined;
 
-  const messageZone = await findMessageTimeZone(options.log);
+  const messageZone = await readMessageTimeZone(options.log);
 
   const timeZone = messageZone ?? options.defaultZone;
 

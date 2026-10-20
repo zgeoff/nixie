@@ -266,7 +266,7 @@ export interface MemoryStore {
 export interface ItemIDStore {
   // the item ID each ID names, by the ID given, whether a short ID or an item ID; an ID that names
   // no item is left out
-  readonly findItemIDs: (ids: readonly string[]) => Promise<ReadonlyMap<string, string>>;
+  readonly readItemIDMap: (ids: readonly string[]) => Promise<ReadonlyMap<string, string>>;
 
   // the short ID of each item that exists, by item ID
   readonly readShortIDs: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, string>>;

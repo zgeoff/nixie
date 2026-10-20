@@ -4,6 +4,15 @@ import { readViewItems } from './read-view-items';
 import type { MemoryState, MemoryTables } from './types';
 import type { ViewListState, ViewPage, ViewPageRequest } from './view-types';
 
+const defaultLimit = 50;
+const maxLimit = 100;
+
+const statesByList: Readonly<Record<ViewListState, readonly MemoryState[]>> = {
+  active: ['active'],
+  retired: ['retired'],
+  forgotten: ['forgetting', 'forgotten'],
+};
+
 // Reads one page of the items in a state, in the order they were created. The forgotten page holds
 // each item a forget began, so an item whose forget a crash cut short still shows as a gap.
 export async function readViewPage(
@@ -33,12 +42,3 @@ export async function readViewPage(
     next: rows.length > limit && last !== undefined ? String(last.created_sequence) : null,
   };
 }
-
-const defaultLimit = 50;
-const maxLimit = 100;
-
-const statesByList: Readonly<Record<ViewListState, readonly MemoryState[]>> = {
-  active: ['active'],
-  retired: ['retired'],
-  forgotten: ['forgetting', 'forgotten'],
-};

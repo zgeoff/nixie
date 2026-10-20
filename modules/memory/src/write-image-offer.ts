@@ -1,12 +1,16 @@
 import type { LogRecord } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { ownerMessageCodec } from '@heynixie/tasks';
-import { findImageOfferSequence } from './find-image-offer-sequence';
 import type { ImageOfferRequest, ImageRef } from './gate-types';
 import { ImageOfferError } from './image-offer-error';
+import { readImageOfferSequence } from './read-image-offer-sequence';
 import { readThreadRecord } from './read-thread-record';
 import { renderOfferLine } from './render-offer-line';
 import type { StoreParts } from './types';
+
+// Unicode format characters: zero-width spaces and joiners, bidirectional controls, the byte order
+// mark and the soft hyphen
+const invisible = /\p{Cf}/u;
 
 // Records the model's one offer for an image of yours, with its text sealed under the record's own
 // key, and returns the line it says to you. The check and the record share a transaction, so 2
@@ -32,7 +36,7 @@ export async function writeImageOffer(
   requireOwnerImage(message, request.image);
 
   await withWriteTransaction(log.writer, async (tx) => {
-    const offered = await findImageOfferSequence(tx, { thread, image: request.image });
+    const offered = await readImageOfferSequence(tx, { thread, image: request.image });
 
     if (offered !== null) {
       throw new ImageOfferError(
@@ -57,10 +61,6 @@ export async function writeImageOffer(
 
   return renderOfferLine(request.text);
 }
-
-// Unicode format characters: zero-width spaces and joiners, bidirectional controls, the byte order
-// mark and the soft hyphen
-const invisible = /\p{Cf}/u;
 
 // Refuses an image that is not one of your readable messages' images in the thread.
 function requireOwnerImage(message: LogRecord | null, image: ImageRef): void {

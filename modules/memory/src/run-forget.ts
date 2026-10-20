@@ -1,5 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { collectEvidenceSequences } from './collect-evidence-sequences';
+import { readEvidenceSequences } from './read-evidence-sequences';
 import { removeMessageEntries } from './remove-message-entries';
 import { requireItem } from './require-item';
 import { runForgetCleanup } from './run-forget-cleanup';
@@ -25,7 +25,7 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
         states: ['active', 'retired'],
       });
 
-      const sequences = await collectEvidenceSequences(db, itemID);
+      const sequences = await readEvidenceSequences(db, itemID);
 
       await writeRecordsInTransaction(tx, log, [
         {

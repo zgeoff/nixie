@@ -1,6 +1,6 @@
 import { buildGateReview } from './build-gate-review';
-import { findSourceEvidence } from './find-source-evidence';
 import { readItemText } from './read-item-text';
+import { readSourceEvidence } from './read-source-evidence';
 import type { BatchGateResult } from './run-batch-gate';
 import { runRetirementChecker } from './run-retirement-checker';
 import type { StoreParts } from './types';
@@ -15,7 +15,7 @@ export async function runBatchRetirementGate(
   source: SourceMessage,
 ): Promise<BatchGateResult> {
   const retired = await readItemText(parts, write.target);
-  const found = await findSourceEvidence(parts.context.log, source, write.quote);
+  const found = await readSourceEvidence(parts.context.log, source, write.quote);
 
   if (found.status === 'review') {
     return {

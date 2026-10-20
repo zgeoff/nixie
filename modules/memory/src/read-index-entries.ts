@@ -1,4 +1,4 @@
-import { findRecordKeys } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import { decodeVersionText } from './decode-version-text';
 import type { IndexEntry } from './start-memory-index';
 import type { MemoryContext, MemoryTables } from './types';
@@ -18,7 +18,7 @@ export async function readIndexEntries(context: MemoryContext): Promise<readonly
     .where('memory_items.state', '=', 'active')
     .execute();
 
-  const keys = await findRecordKeys(
+  const keys = await readRecordKeys(
     context.log,
     rows.map((row) => row.item_id),
   );

@@ -5,8 +5,8 @@ import { readWriterRow } from '../read-writer-row';
 import { runWriterBatch } from '../run-writer-batch';
 import { writerConfigSchema } from '../writer-config-schema';
 import type { WriterSubject } from '../writer-types';
-import { buildStubWriterSession } from './build-stub-writer-session';
 import { claimWriterLease } from './claim-writer-lease';
+import { createStubWriterSession } from './create-stub-writer-session';
 import type { TestMemory } from './start-test-memory';
 import { writePlannedBatch } from './write-planned-batch';
 
@@ -46,7 +46,7 @@ export async function createWriterProposal(
       getPersona: () => '',
       ownerName: null,
       assistantName: null,
-      ...buildStubWriterSession({
+      ...createStubWriterSession({
         op: 'remember',
         subject: request.subject ?? 'owner',
         text: request.text,

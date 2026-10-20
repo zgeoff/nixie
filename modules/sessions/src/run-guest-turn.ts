@@ -62,7 +62,7 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
 
     void sendMessages(stream, spec.messages);
 
-    return await collectTurn(stream, spec.readRecallMark);
+    return await readTurn(stream, spec.readRecallMark);
   } catch (error) {
     await stream.stop();
 
@@ -94,11 +94,11 @@ async function sendMessages(stream: ExecStream, messages: LiveMessages): Promise
       await stream.send(encodeTurnFrame({ type: 'message', message }));
     }
   } catch {
-    // the guest has exited, and collectTurn reports how
+    // the guest has exited, and readTurn reports how
   }
 }
 
-// the turn as collectTurn fills it in, frame by frame, with the count of assistant frames and read
+// the turn as readTurn fills it in, frame by frame, with the count of assistant frames and read
 // uuids that came before its last ended frame
 interface MutableTurn {
   readonly assistants: AssistantFrame[];
@@ -114,7 +114,7 @@ type MarkReader = GuestTurnSpec['readRecallMark'];
 // Only the frames up to the last ended frame count, because the next turn resumes at that frame's
 // boundary: a reply or a read after it, from a guest that died before its next result, belongs to a
 // session no turn resumes, so its inbox records stay unread and the next step sends them again.
-async function collectTurn(stream: ExecStream, readRecallMark: MarkReader): Promise<GuestTurn> {
+async function readTurn(stream: ExecStream, readRecallMark: MarkReader): Promise<GuestTurn> {
   const turn: MutableTurn = {
     assistants: [],
     read: [],

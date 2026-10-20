@@ -3,8 +3,8 @@ import { withWriteTransaction } from '@heynixie/log';
 import type { Lease } from '@heynixie/tasks';
 import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
-import type { ReadableWrites } from './find-readable-writes';
-import { findReadableWrites } from './find-readable-writes';
+import type { ReadableWrites } from './filter-readable-writes';
+import { filterReadableWrites } from './filter-readable-writes';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { StoreParts, VersionRef } from './types';
 import { updateVersionIndex } from './update-version-index';
@@ -104,11 +104,11 @@ async function writeBatchInTransaction(
 ): Promise<WrittenBatch> {
   await requireLease(tx, publication.lease, publication.clock.now());
 
-  if (!(await isPendingBatch(tx, publication.bounds))) {
+  if (!(await probePendingBatch(tx, publication.bounds))) {
     return { status: 'superseded' };
   }
 
-  const readable = await findReadableWrites(parts, tx, publication);
+  const readable = await filterReadableWrites(parts, tx, publication);
 
   const kept = readable.writes;
 
@@ -125,24 +125,9 @@ async function writeBatchInTransaction(
   return { status: 'published', written, outcome };
 }
 
-function buildBatchOutcome(
-  publication: BatchPublication,
-  readable: ReadableWrites,
-  written: WrittenVersions,
-): BatchOutcome {
-  const kept = readable.writes;
-
-  return {
-    applied: written.map((version) => version.ref),
-    proposed: kept.filter((gated) => gated.verdict.outcome === 'propose').length,
-    forgotten: publication.writes.length - kept.length,
-    flags: readable.flags,
-  };
-}
-
 // the batch is still the one the cursor waits on, so a rerun after a commit that a crash hid
 // publishes nothing twice
-async function isPendingBatch(tx: Transaction<unknown>, bounds: BatchBounds): Promise<boolean> {
+async function probePendingBatch(tx: Transaction<unknown>, bounds: BatchBounds): Promise<boolean> {
   const row = await tx
     .$extendTables<WriterTables>()
     .selectFrom('memory_writer')
@@ -156,4 +141,19 @@ async function isPendingBatch(tx: Transaction<unknown>, bounds: BatchBounds): Pr
     row.pending_start === bounds.start &&
     row.pending_end === bounds.end
   );
+}
+
+function buildBatchOutcome(
+  publication: BatchPublication,
+  readable: ReadableWrites,
+  written: WrittenVersions,
+): BatchOutcome {
+  const kept = readable.writes;
+
+  return {
+    applied: written.map((version) => version.ref),
+    proposed: kept.filter((gated) => gated.verdict.outcome === 'propose').length,
+    forgotten: publication.writes.length - kept.length,
+    flags: readable.flags,
+  };
 }

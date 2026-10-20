@@ -2,7 +2,7 @@ export type { SandboxRecorderOptions } from './build-sandbox-recorder';
 export { buildSandboxRecorder } from './build-sandbox-recorder';
 export type { SandboxSpecInput } from './build-sandbox-spec';
 export { buildSandboxSpec } from './build-sandbox-spec';
-export { collectOutput } from './collect-output';
+export { readStreamOutput } from './read-stream-output';
 export { createSandboxID } from './create-sandbox-id';
 export { execOutputLimitBytes } from './exec-output-limit-bytes';
 export { findKeptSandbox } from './find-kept-sandbox';

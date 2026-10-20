@@ -17,6 +17,32 @@ export interface ConversationListProps {
   readonly records: readonly LiveRecord[];
 }
 
+const column = {
+  marginInline: 'auto',
+  maxWidth: '3xl',
+  paddingInline: '4',
+  width: 'full',
+} as const;
+
+const messages = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '3',
+  paddingBlock: '4',
+} as const;
+
+const spinner = css({
+  animation: 'spin',
+  borderColor: 'border',
+  borderRadius: 'full',
+  borderTopColor: 'textMuted',
+  borderWidth: '2px',
+  display: 'block',
+  height: '4',
+  width: '4',
+  _motionReduce: { animation: 'none' },
+});
+
 // The conversation's records in order, then the messages this device sent that the records do
 // not show yet, then a quiet spinner while nixie works.
 export function ConversationList(props: ConversationListProps): ReactNode {
@@ -60,29 +86,3 @@ export function ConversationList(props: ConversationListProps): ReactNode {
     </>
   );
 }
-
-const column = {
-  marginInline: 'auto',
-  maxWidth: '3xl',
-  paddingInline: '4',
-  width: 'full',
-} as const;
-
-const messages = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '3',
-  paddingBlock: '4',
-} as const;
-
-const spinner = css({
-  animation: 'spin',
-  borderColor: 'border',
-  borderRadius: 'full',
-  borderTopColor: 'textMuted',
-  borderWidth: '2px',
-  display: 'block',
-  height: '4',
-  width: '4',
-  _motionReduce: { animation: 'none' },
-});

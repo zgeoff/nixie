@@ -1,7 +1,7 @@
 import { decodeProposalText } from './decode-proposal-text';
-import { findItemKey } from './find-item-key';
 import type { MemoryProposalRow, ProposalAnswer } from './gate-types';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
+import { readItemKey } from './read-item-key';
 import { requirePendingProposal } from './require-pending-proposal';
 import type { ProposalText } from './sealed-types';
 import type { MemoryTables, StoreParts } from './types';
@@ -27,7 +27,7 @@ export async function readOpenProposal(
     },
   );
 
-  const key = await findItemKey(parts.context.log, row.item_id);
+  const key = await readItemKey(parts.context.log, row.item_id);
 
   if (key === null || key === undefined) {
     throw new MemoryItemNotFoundError(row.item_id);

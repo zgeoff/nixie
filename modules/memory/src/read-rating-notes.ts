@@ -1,8 +1,8 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { decodeRatingNote } from './decode-rating-note';
-import { findItemKey } from './find-item-key';
 import { memoryRatedCodec } from './memory-rated-codec';
+import { readItemKey } from './read-item-key';
 
 // One rated item's note, named by the sequence of its memory.rated record and the item's ID.
 export interface RatingNoteRef {
@@ -28,52 +28,25 @@ export function readRatingNotes(
   return Promise.all(refs.map((ref) => readRatingNote(log, ref)));
 }
 
+async function readRatingNote(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  ref: RatingNoteRef,
+): Promise<RatingNoteResult> {
+  const sealed = await readSealedNote(log, ref);
+
+  return sealed === null
+    ? { sequence: ref.sequence, itemID: ref.itemID, status: 'missing' }
+    : openSealedNote(log, ref, sealed);
+}
+
 interface SealedNote {
   readonly ratingID: string;
   readonly itemID: string;
   readonly sealedNote: string;
 }
 
-async function readRatingNote(
-  log: Pick<Log, 'deploymentKey' | 'writer'>,
-  ref: RatingNoteRef,
-): Promise<RatingNoteResult> {
-  const sealed = await findSealedNote(log, ref);
-
-  return sealed === null
-    ? { sequence: ref.sequence, itemID: ref.itemID, status: 'missing' }
-    : readSealedNote(log, ref, sealed);
-}
-
-// opens a note under its item's key, while the key exists
-async function readSealedNote(
-  log: Pick<Log, 'deploymentKey' | 'writer'>,
-  ref: RatingNoteRef,
-  sealed: SealedNote,
-): Promise<RatingNoteResult> {
-  const base = { sequence: ref.sequence, itemID: ref.itemID };
-
-  const key = await findItemKey(log, ref.itemID);
-
-  if (key === undefined) {
-    return { ...base, status: 'shredded' };
-  }
-
-  if (key === null) {
-    return { ...base, status: 'unreadable' };
-  }
-
-  try {
-    const text = await decodeRatingNote(key, sealed, sealed.sealedNote);
-
-    return { ...base, status: 'readable', text };
-  } catch {
-    return { ...base, status: 'unreadable' };
-  }
-}
-
 // the note the rating record at the sequence holds for the item, or null when there is none
-async function findSealedNote(
+async function readSealedNote(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   ref: RatingNoteRef,
 ): Promise<SealedNote | null> {
@@ -92,4 +65,31 @@ async function findSealedNote(
   return payload?.ratingID === undefined || rating?.sealedNote === undefined
     ? null
     : { ratingID: payload.ratingID, itemID: ref.itemID, sealedNote: rating.sealedNote };
+}
+
+// opens a note under its item's key, while the key exists
+async function openSealedNote(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  ref: RatingNoteRef,
+  sealed: SealedNote,
+): Promise<RatingNoteResult> {
+  const base = { sequence: ref.sequence, itemID: ref.itemID };
+
+  const key = await readItemKey(log, ref.itemID);
+
+  if (key === undefined) {
+    return { ...base, status: 'shredded' };
+  }
+
+  if (key === null) {
+    return { ...base, status: 'unreadable' };
+  }
+
+  try {
+    const text = await decodeRatingNote(key, sealed, sealed.sealedNote);
+
+    return { ...base, status: 'readable', text };
+  } catch {
+    return { ...base, status: 'unreadable' };
+  }
 }

@@ -14,7 +14,7 @@ test('it fails an event stream that sends nothing for the idle period', async ()
   const ctx = setupTest();
 
   const watchedFetch = makeWatchedFetch({
-    fetch: () =>
+    send: () =>
       Promise.resolve(
         new Response(ctx.events.readable, { headers: { 'content-type': 'text/event-stream' } }),
       ),
@@ -36,7 +36,7 @@ test('it keeps an event stream open while its keepalives arrive within the idle 
   const ctx = setupTest();
 
   const watchedFetch = makeWatchedFetch({
-    fetch: () =>
+    send: () =>
       Promise.resolve(
         new Response(ctx.events.readable, { headers: { 'content-type': 'text/event-stream' } }),
       ),
@@ -70,7 +70,7 @@ test('it passes a response that is not an event stream through unwatched', async
   const ctx = setupTest();
 
   const watchedFetch = makeWatchedFetch({
-    fetch: () =>
+    send: () =>
       Promise.resolve(
         new Response('{"ok":true}', { headers: { 'content-type': 'application/json' } }),
       ),

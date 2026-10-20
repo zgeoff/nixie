@@ -40,9 +40,14 @@ export async function readConsolidationItems(
   return { items: listed, isComplete: true };
 }
 
+const pageSize = 100;
+
 function buildPageRequest(thread: string, after: string | null): RecallRequest {
   return { limit: pageSize, thread, ...(after === null ? {} : { after }) };
 }
+
+// the list line's ID, date, flags and punctuation around each item's text and quote
+const itemOverheadTokens = 24;
 
 // the leading items of a page whose text and quote fit the tokens left, and the tokens they take
 function collectFittingItems(
@@ -67,8 +72,3 @@ function collectFittingItems(
 
   return { items: fitting, tokens };
 }
-
-const pageSize = 100;
-
-// the list line's ID, date, flags and punctuation around each item's text and quote
-const itemOverheadTokens = 24;

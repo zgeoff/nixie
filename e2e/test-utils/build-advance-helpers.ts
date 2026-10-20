@@ -29,7 +29,7 @@ export function buildAdvanceHelpers(
           harness,
           stepMs,
           waits,
-          waitFor: (timeoutMs) => findMatchWithin(readRecords, matches, timeoutMs),
+          waitFor: (timeoutMs) => waitForMatchWithin(readRecords, matches, timeoutMs),
         },
         maxSteps,
       ),
@@ -77,7 +77,7 @@ async function runAdvances<T>(advances: Advances<T>, remaining: number): Promise
   return runAdvances(advances, remaining - 1);
 }
 
-async function findMatchWithin(
+async function waitForMatchWithin(
   readRecords: TestNixie['readRecords'],
   matches: MatchRecord,
   timeoutMs: number,

@@ -40,10 +40,10 @@ export interface MemoryIndex {
 
   // the IDs of the items that match any word of query other than a function word or an excluded
   // word, best match first
-  readonly findItemIDs: (query: string, options: MatchOptions) => Promise<readonly string[]>;
+  readonly readItemIDs: (query: string, options: MatchOptions) => Promise<readonly string[]>;
 
   // the same matches with their scores, best match first
-  readonly findMatches: (query: string, options: MatchOptions) => Promise<readonly IndexMatch[]>;
+  readonly readMatches: (query: string, options: MatchOptions) => Promise<readonly IndexMatch[]>;
   readonly stop: () => Promise<void>;
 }
 
@@ -92,12 +92,12 @@ export async function startMemoryIndex(): Promise<MemoryIndex> {
     remove: async (itemID) => {
       await sql`delete from memory_index where item_id = ${itemID}`.execute(db);
     },
-    findItemIDs: async (query, options) => {
-      const matches = await findMatches(db, query, options);
+    readItemIDs: async (query, options) => {
+      const matches = await readMatches(db, query, options);
 
       return matches.map((match) => match.itemID);
     },
-    findMatches: (query, options) => findMatches(db, query, options),
+    readMatches: (query, options) => readMatches(db, query, options),
     stop: () => db.destroy(),
   };
 }
@@ -110,7 +110,7 @@ async function writeEntry(db: Kysely<unknown>, entry: IndexEntry): Promise<void>
   await sql`insert into memory_index (item_id, text) values (${entry.itemID}, ${text})`.execute(db);
 }
 
-async function findMatches(
+async function readMatches(
   db: Kysely<unknown>,
   query: string,
   options: MatchOptions,

@@ -52,6 +52,12 @@ export function buildRetireTool(memory: ModelWriteStore & ItemIDStore): ToolDefi
   };
 }
 
+const retireArguments = z.object({
+  itemID: z.string(),
+  version: z.int(),
+  intentQuote: z.string().optional(),
+});
+
 async function runRetireCall(
   memory: ModelWriteStore & ItemIDStore,
   call: ToolCall,
@@ -72,9 +78,3 @@ async function runRetireCall(
     itemID,
   );
 }
-
-const retireArguments = z.object({
-  itemID: z.string(),
-  version: z.int(),
-  intentQuote: z.string().optional(),
-});

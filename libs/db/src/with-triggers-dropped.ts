@@ -1,6 +1,11 @@
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 
+interface TriggerRow {
+  readonly name: string;
+  readonly sql: string;
+}
+
 // Runs fn in the caller's write transaction with every trigger dropped and the foreign key checks
 // deferred to the commit, then creates each trigger again from its own statement. A rollback undoes
 // the drops too, so a trigger never stays dropped.
@@ -25,9 +30,4 @@ export async function withTriggersDropped<T>(
   }
 
   return value;
-}
-
-interface TriggerRow {
-  readonly name: string;
-  readonly sql: string;
 }

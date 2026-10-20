@@ -3,6 +3,9 @@ export interface WaitForConditionOptions {
   readonly intervalMs?: number;
 }
 
+const DEFAULT_TIMEOUT_MS = 5000;
+const DEFAULT_INTERVAL_MS = 5;
+
 // Polls check on the real clock until it returns true, and throws when the timeout passes first.
 // Work behind a test clock still runs real database I/O, so a test waits on the state it expects.
 export async function waitForCondition(
@@ -19,6 +22,3 @@ export async function waitForCondition(
     await Bun.sleep(options.intervalMs ?? DEFAULT_INTERVAL_MS);
   }
 }
-
-const DEFAULT_TIMEOUT_MS = 5000;
-const DEFAULT_INTERVAL_MS = 5;

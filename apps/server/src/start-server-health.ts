@@ -1,7 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import type { Writer } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
-import { buildHealthApp, checkDatabase } from '@heynixie/ops';
+import { checkDatabase, createHealthApp } from '@heynixie/ops';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { buildReadinessChecks } from './build-readiness-checks';
 import type { StartState } from './build-start-state';
@@ -26,9 +26,8 @@ export async function startServerHealth(options: ServerHealthOptions) {
 
   await options.cleanup.defer(refresh.stop);
 
-  return buildHealthApp({
+  return createHealthApp({
     liveness: {
-      process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => checkDatabase(options.writer.db),
     },
     ...buildReadinessChecks(options.state, refresh),

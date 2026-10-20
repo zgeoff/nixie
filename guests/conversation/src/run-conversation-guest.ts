@@ -19,8 +19,8 @@ export interface GuestIO {
   readonly write: (bytes: Uint8Array) => Promise<void>;
   readonly env: Readonly<Record<string, string | undefined>>;
 
-  // builds nixie's tool server for the turn; production reaches the run's HTTP endpoint
-  readonly buildToolServer?: (turn: TurnFrame) => McpServerConfig;
+  // creates nixie's tool server for the turn; production reaches the run's HTTP endpoint
+  readonly createToolServer?: (turn: TurnFrame) => McpServerConfig;
 
   // the pause before the turn's one reconnect to nixie's tool server
   readonly waitBeforeReconnect?: () => Promise<void>;
@@ -43,6 +43,18 @@ export async function runConversationGuest(io: GuestIO): Promise<void> {
     await runFirstFrame(first.value, { io, frames, emit });
   } catch (error) {
     await emit({ type: 'failed', reason: 'error', detail: String(error) });
+  }
+}
+
+async function* readHostFrames(
+  input: AsyncIterable<Uint8Array> | Iterable<Uint8Array>,
+): AsyncGenerator<HostFrame> {
+  const decode = makeFrameDecoder(hostFrameLimitBytes);
+
+  for await (const chunk of input) {
+    for (const message of decode(chunk)) {
+      yield decodeTurnFrame(hostFrameSchema, message);
+    }
   }
 }
 
@@ -72,7 +84,7 @@ async function runFirstFrame(
 
   await runTurn(frame, {
     env: run.io.env,
-    toolServer: (run.io.buildToolServer ?? buildHTTPToolServer)(frame),
+    toolServer: (run.io.createToolServer ?? buildHTTPToolServer)(frame),
     messages: readMessages(run.frames),
     emit: run.emit,
     ...(run.io.waitBeforeReconnect === undefined
@@ -81,16 +93,15 @@ async function runFirstFrame(
   });
 }
 
-async function* readHostFrames(
-  input: AsyncIterable<Uint8Array> | Iterable<Uint8Array>,
-): AsyncGenerator<HostFrame> {
-  const decode = makeFrameDecoder(hostFrameLimitBytes);
-
-  for await (const chunk of input) {
-    for (const message of decode(chunk)) {
-      yield decodeTurnFrame(hostFrameSchema, message);
-    }
-  }
+// The run's Streamable HTTP endpoint behind its bearer token. alwaysLoad holds the CLI's start
+// until the server connects, so init shows its real status and the first prompt lists its tools.
+function buildHTTPToolServer(turn: TurnFrame): McpServerConfig {
+  return {
+    type: 'http',
+    url: new URL('/mcp', turn.tools.url).href,
+    headers: { authorization: `Bearer ${turn.tools.token}` },
+    alwaysLoad: true,
+  };
 }
 
 async function* readMessages(frames: AsyncIterator<HostFrame>): AsyncGenerator<InboxMessage> {
@@ -107,15 +118,4 @@ async function* readMessages(frames: AsyncIterator<HostFrame>): AsyncGenerator<I
 
     yield next.value.message;
   }
-}
-
-// The run's Streamable HTTP endpoint behind its bearer token. alwaysLoad holds the CLI's start
-// until the server connects, so init shows its real status and the first prompt lists its tools.
-function buildHTTPToolServer(turn: TurnFrame): McpServerConfig {
-  return {
-    type: 'http',
-    url: new URL('/mcp', turn.tools.url).href,
-    headers: { authorization: `Bearer ${turn.tools.token}` },
-    alwaysLoad: true,
-  };
 }

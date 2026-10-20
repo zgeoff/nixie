@@ -11,7 +11,7 @@ export function planRetiredVersion(request: RetireRequest): VersionPlan {
     ...(request.writeInTransaction === undefined
       ? {}
       : { writeInTransaction: request.writeInTransaction }),
-    buildVersion: async (readEarlier, current) => {
+    readNextVersion: async (readEarlier, current) => {
       const before = await readEarlier(current);
 
       return {

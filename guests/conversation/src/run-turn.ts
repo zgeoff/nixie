@@ -12,6 +12,19 @@ import { setupTurnDisk } from './setup-turn-disk';
 import { toolServerName } from './tool-server-name';
 import type { TurnDependencies } from './types';
 
+interface TurnState extends TurnInputState {
+  // the session's last chain entry so far
+  boundary: SessionPoint | null;
+
+  // the last chain entry that is not the CLI's own message for an API error, or the turn's resume
+  // point before the turn writes one
+  committed: SessionPoint | null;
+
+  // the tokens the last main-chain model call read, or null before one reports its usage
+  contextSize: number | null;
+  readonly compactWindow: number;
+}
+
 // Runs one model turn over the turn's inbox and the host's later messages, each with its record's
 // uuid. The turn ends at a result once the SDK has read every message it took, and stops at once
 // when nixie's tool server is not connected, because the model would invent the tools' output.
@@ -88,19 +101,6 @@ async function drainSession(
   }
 }
 
-interface TurnState extends TurnInputState {
-  // the session's last chain entry so far
-  boundary: SessionPoint | null;
-
-  // the last chain entry that is not the CLI's own message for an API error, or the turn's resume
-  // point before the turn writes one
-  committed: SessionPoint | null;
-
-  // the tokens the last main-chain model call read, or null before one reports its usage
-  contextSize: number | null;
-  readonly compactWindow: number;
-}
-
 type MessageOutcome = 'continue' | 'result' | 'stop';
 
 // the frames one SDK message gives the host, and whether the turn goes on
@@ -160,6 +160,42 @@ async function emitInit(message: InitMessage, deps: TurnDependencies): Promise<M
   });
 
   return 'stop';
+}
+
+// Claude Code reports a message folded in at a tool boundary through a command lifecycle that the
+// SDK types leave out, and stamps no assistant message with it.
+async function emitCommandRead(
+  message: SDKMessage,
+  deps: TurnDependencies,
+  state: TurnState,
+): Promise<MessageOutcome> {
+  const lifecycle = message as { type: string; state?: unknown; command_uuid?: unknown };
+
+  if (lifecycle.type === 'command_lifecycle' && lifecycle.state === 'completed') {
+    await emitReads(deps, state, [
+      typeof lifecycle.command_uuid === 'string' ? lifecycle.command_uuid : undefined,
+    ]);
+  }
+
+  return 'continue';
+}
+
+async function emitReads(
+  deps: TurnDependencies,
+  state: TurnState,
+  candidates: readonly (string | undefined)[],
+): Promise<void> {
+  const uuids = [...new Set(candidates)].filter(
+    (uuid): uuid is string => uuid !== undefined && state.pending.has(uuid),
+  );
+
+  if (uuids.length > 0) {
+    for (const uuid of uuids) {
+      state.pending.delete(uuid);
+    }
+
+    await deps.emit({ type: 'read', uuids });
+  }
 }
 
 type AssistantMessage = Extract<SDKMessage, { type: 'assistant' }>;
@@ -242,42 +278,6 @@ function updateUserBoundary(
   if (message.parent_tool_use_id === null && messageID !== undefined && sessionID !== undefined) {
     state.boundary = { sessionID, messageID };
     state.committed = state.boundary;
-  }
-}
-
-// Claude Code reports a message folded in at a tool boundary through a command lifecycle that the
-// SDK types leave out, and stamps no assistant message with it.
-async function emitCommandRead(
-  message: SDKMessage,
-  deps: TurnDependencies,
-  state: TurnState,
-): Promise<MessageOutcome> {
-  const lifecycle = message as { type: string; state?: unknown; command_uuid?: unknown };
-
-  if (lifecycle.type === 'command_lifecycle' && lifecycle.state === 'completed') {
-    await emitReads(deps, state, [
-      typeof lifecycle.command_uuid === 'string' ? lifecycle.command_uuid : undefined,
-    ]);
-  }
-
-  return 'continue';
-}
-
-async function emitReads(
-  deps: TurnDependencies,
-  state: TurnState,
-  candidates: readonly (string | undefined)[],
-): Promise<void> {
-  const uuids = [...new Set(candidates)].filter(
-    (uuid): uuid is string => uuid !== undefined && state.pending.has(uuid),
-  );
-
-  if (uuids.length > 0) {
-    for (const uuid of uuids) {
-      state.pending.delete(uuid);
-    }
-
-    await deps.emit({ type: 'read', uuids });
   }
 }
 

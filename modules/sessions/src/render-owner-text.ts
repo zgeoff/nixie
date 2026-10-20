@@ -1,6 +1,8 @@
 import type { LogRecord } from '@heynixie/log';
-import { createBlockID } from '@heynixie/wire';
+import { mintBlockID } from '@heynixie/wire';
 import { z } from 'zod';
+
+const messageSpans = z.array(z.object({ start: z.number(), end: z.number(), source: z.string() }));
 
 // Renders your message as you wrote it, with each span you pasted or dropped in wrapped in a block
 // whose fresh random ID is on both tags, so a pasted closing tag cannot end it. A forgotten message
@@ -25,8 +27,6 @@ export function renderOwnerText(record: LogRecord): string {
     .join('');
 }
 
-const messageSpans = z.array(z.object({ start: z.number(), end: z.number(), source: z.string() }));
-
 // the spans the model reads as someone else's words; typed and unknown spans render bare
 function isForeignSource(source: string): source is 'pasted' | 'dropped' {
   return source === 'pasted' || source === 'dropped';
@@ -37,7 +37,7 @@ function renderSpan(part: string, source: string): string {
     return part;
   }
 
-  const blockID = createBlockID();
+  const blockID = mintBlockID();
 
   return `<${source} id="${blockID}">${part}</${source} id="${blockID}">`;
 }

@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import { findItemKey } from './find-item-key';
+import { readItemKey } from './read-item-key';
 import { SelfNoteError } from './self-note-error';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
 import { createProposal } from './test-utils/create-proposal';
@@ -746,7 +746,7 @@ test('it applies a held proposal as a revision of the close match, and drops the
   const [history, remaining, key] = await Promise.all([
     memory.store.readHistory(item.itemID),
     memory.store.proposals.listPending(),
-    findItemKey(memory.log, pending.itemID),
+    readItemKey(memory.log, pending.itemID),
   ]);
 
   expect(result).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });

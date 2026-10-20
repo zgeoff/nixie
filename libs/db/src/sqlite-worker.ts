@@ -22,10 +22,10 @@ const state: { database: Database | null; transactionOpen: boolean } = {
 
 self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
   // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a worker takes no origin
-  self.postMessage(buildResponse(event.data));
+  self.postMessage(answerRequest(event.data));
 });
 
-function buildResponse(request: WorkerRequest): WorkerResponse {
+function answerRequest(request: WorkerRequest): WorkerResponse {
   try {
     return { id: request.id, ok: true, result: runRequest(request) };
   } catch (error) {

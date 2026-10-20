@@ -18,7 +18,7 @@ export function claimAction(
     kind: 'action',
     holder: options.holder,
     durationMs: options.leaseMs,
-    findCandidate: async (tx, now) => {
+    readCandidate: async (tx, now) => {
       const row = await tx
         .$extendTables<ActionsTables>()
         .selectFrom('actions')

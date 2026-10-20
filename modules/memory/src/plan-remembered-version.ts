@@ -17,7 +17,7 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
     return {
       requirement: null,
       provenance: request.provenance,
-      buildVersion: () =>
+      readNextVersion: () =>
         Promise.resolve({
           change: 'created',
           state: 'active',
@@ -33,7 +33,7 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
   return {
     requirement: { target: request.target, operation: 'edit', states: ['active', 'retired'] },
     provenance: request.provenance,
-    buildVersion: async (readEarlier, current) => {
+    readNextVersion: async (readEarlier, current) => {
       const before = await readEarlier(current);
 
       return {

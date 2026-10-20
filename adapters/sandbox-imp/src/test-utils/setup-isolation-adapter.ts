@@ -37,7 +37,7 @@ export function setupIsolationAdapter(options: IsolationAdapterOptions): Promise
     await stack.disposeAsync();
   });
 
-  const setup = buildIsolationAdapter(options, (cleanup) => {
+  const setup = createIsolationAdapter(options, (cleanup) => {
     stack.defer(cleanup);
   });
 
@@ -46,7 +46,7 @@ export function setupIsolationAdapter(options: IsolationAdapterOptions): Promise
   return setup;
 }
 
-async function buildIsolationAdapter(
+async function createIsolationAdapter(
   options: IsolationAdapterOptions,
   defer: (cleanup: () => Promise<void>) => void,
 ): Promise<IsolationAdapter> {
@@ -71,34 +71,6 @@ async function buildIsolationAdapter(
   defer(() => sandboxes.removeAll());
 
   return { createSandbox: sandboxes.create };
-}
-
-interface SandboxTracker {
-  readonly create: (spec: SandboxSpec) => Promise<Sandbox>;
-
-  // waits for every create still running, then destroys every imp of an owner the test used
-  readonly removeAll: () => Promise<void>;
-}
-
-function buildSandboxTracker(adapter: SandboxAdapter): SandboxTracker {
-  const creating = new Set<Promise<unknown>>();
-  const owners = new Set<string>();
-
-  return {
-    create: (spec) => {
-      const created = adapter.create(spec);
-
-      owners.add(spec.owner);
-      creating.add(created);
-
-      return created;
-    },
-    removeAll: async () => {
-      await Promise.allSettled(creating);
-
-      await removeOwnedSandboxes(adapter, [...owners]);
-    },
-  };
 }
 
 // A name impd holds already is not this run's, so the add refuses it. Once the run has seen the
@@ -133,4 +105,32 @@ async function createTestSecret(options: IsolationAdapterOptions): Promise<void>
   });
 
   await added;
+}
+
+interface SandboxTracker {
+  readonly create: (spec: SandboxSpec) => Promise<Sandbox>;
+
+  // waits for every create still running, then destroys every imp of an owner the test used
+  readonly removeAll: () => Promise<void>;
+}
+
+function buildSandboxTracker(adapter: SandboxAdapter): SandboxTracker {
+  const creating = new Set<Promise<unknown>>();
+  const owners = new Set<string>();
+
+  return {
+    create: (spec) => {
+      const created = adapter.create(spec);
+
+      owners.add(spec.owner);
+      creating.add(created);
+
+      return created;
+    },
+    removeAll: async () => {
+      await Promise.allSettled(creating);
+
+      await removeOwnedSandboxes(adapter, [...owners]);
+    },
+  };
 }

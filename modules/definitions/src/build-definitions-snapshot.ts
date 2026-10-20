@@ -40,14 +40,6 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
   return { snapshotHash: buildSHA256(form), personaVersion, policyHash, persona, form };
 }
 
-function buildToolForm(tool: ToolDeclaration): ToolDeclaration {
-  return { ...tool, effects: [...new Set(tool.effects)].toSorted() };
-}
-
-function buildSkillForm(skill: SkillRef): JSONObject & { readonly name: string } {
-  return { name: skill.name, skillHash: skill.skillHash, origin: skill.origin };
-}
-
 // IDs and names are unique, so a duplicate is a bug in the caller and never a tie to break
 function sortUniqueBy<T>(
   items: readonly T[],
@@ -69,4 +61,12 @@ function sortUniqueBy<T>(
   return [...byKey.entries()]
     .toSorted(([left], [right]) => (left < right ? -1 : 1))
     .map(([, item]) => item);
+}
+
+function buildToolForm(tool: ToolDeclaration): ToolDeclaration {
+  return { ...tool, effects: [...new Set(tool.effects)].toSorted() };
+}
+
+function buildSkillForm(skill: SkillRef): JSONObject & { readonly name: string } {
+  return { name: skill.name, skillHash: skill.skillHash, origin: skill.origin };
 }

@@ -1,4 +1,4 @@
-import { findSessionSummary } from '@heynixie/compaction';
+import { readSessionSummary } from '@heynixie/compaction';
 import type { TasksContext } from '@heynixie/tasks';
 import type { SystemMessageType } from '@heynixie/wire';
 import { renderSystemMessage } from '@heynixie/wire';
@@ -34,13 +34,6 @@ export interface SessionOpeningQuery {
   readonly readTurnNote?: ConversationRun['readTurnNote'];
 }
 
-// What a new session opens with: the blocks of its first message, and what its opening record
-// keeps.
-export interface SessionOpening {
-  readonly blocks: readonly string[];
-  readonly record: OpeningRecord;
-}
-
 // The opening record's payload: the start, the summary it used, the count of turns and events in
 // the recent turns, and each status value by its entry's name.
 export interface OpeningRecord {
@@ -60,6 +53,13 @@ export interface OpeningRecord {
   readonly status: Readonly<Record<string, string | number>>;
 }
 
+// What a new session opens with: the blocks of its first message, and what its opening record
+// keeps.
+export interface SessionOpening {
+  readonly blocks: readonly string[];
+  readonly record: OpeningRecord;
+}
+
 // Reads the blocks a new session opens with, in slot order, from one path whatever started it: the
 // pinned memory, the status, the newest readable summary, and the turns after it up to the budget,
 // with the memory changes and the events over the span those turns cover.
@@ -73,7 +73,7 @@ export async function readSessionOpening(
 
   const at = formatMessageTime(openedAt, query.zone, query.times);
 
-  const summary = await findSessionSummary(context, query.taskID);
+  const summary = await readSessionSummary(context, query.taskID);
 
   const recent = await readRecentTurns(context, {
     taskID: query.taskID,
@@ -115,14 +115,6 @@ export async function readSessionOpening(
   };
 }
 
-function renderOpeningMessage(
-  type: SystemMessageType,
-  at: string,
-  body: string | null,
-): string | null {
-  return body === null ? null : renderSystemMessage({ type, at, body });
-}
-
 // The note over the span the recent turns cover: from where the oldest kept turn's note started
 // through where the last turn's note ended, where the current turn's own note starts.
 async function readReplayedNote(
@@ -142,4 +134,12 @@ async function readReplayedNote(
   const span = { after: first.after, through: last.after };
 
   return span.through > span.after ? query.readTurnNote({ span, isNewSession: true }) : null;
+}
+
+function renderOpeningMessage(
+  type: SystemMessageType,
+  at: string,
+  body: string | null,
+): string | null {
+  return body === null ? null : renderSystemMessage({ type, at, body });
 }

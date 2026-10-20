@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { findRecordKeys } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { createProposal } from './test-utils/create-proposal';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -28,7 +28,7 @@ test("it lapses a proposal past its lapse time and drops its new item's key", as
     .where('proposal_id', '=', proposed.proposalID)
     .executeTakeFirstOrThrow();
 
-  const keys = await findRecordKeys(memory.log, [row.item_id]);
+  const keys = await readRecordKeys(memory.log, [row.item_id]);
 
   expect(lapsed).toBe(1);
   expect(row.status).toBe('lapsed');

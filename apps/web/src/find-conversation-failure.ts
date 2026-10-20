@@ -6,6 +6,12 @@ export interface ConversationFailure {
   readonly retryAt: Date;
 }
 
+const stepEnds: ReadonlySet<string> = new Set([
+  'task.step_committed',
+  'task.step_errored',
+  'task.revived',
+]);
+
 // Finds the conversation failing: its last step ended in an error at or past the error limit. A
 // step that commits, or a revival, ends the failure, and an error under the limit is a retry the
 // view leaves quiet.
@@ -29,9 +35,3 @@ export function findConversationFailure(
 
   return { errors: task.errors, retryAt: task.retryAt };
 }
-
-const stepEnds: ReadonlySet<string> = new Set([
-  'task.step_committed',
-  'task.step_errored',
-  'task.revived',
-]);

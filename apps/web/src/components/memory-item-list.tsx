@@ -18,6 +18,9 @@ export interface MemoryItemListProps {
   readonly renderItem: (item: MemoryItem) => ReactNode;
 }
 
+const section = css({ marginBlock: '4' });
+const heading = css({ fontSize: 'lg', fontWeight: 'semibold' });
+
 // The items of one state a page at a time, in the order they were created, with a control that
 // reads the next page. A list of one kind picks its items from the same pages, so the facts and the
 // self-notes of a state read each page once and show more together.
@@ -54,9 +57,6 @@ export function MemoryItemList(props: MemoryItemListProps): ReactNode {
     </section>
   );
 }
-
-const section = css({ marginBlock: '4' });
-const heading = css({ fontSize: 'lg', fontWeight: 'semibold' });
 
 interface ItemPagesProps {
   readonly items: readonly MemoryItem[] | undefined;

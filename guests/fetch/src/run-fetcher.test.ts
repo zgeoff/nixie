@@ -12,7 +12,7 @@ import { buildStubResolver } from './test-utils/build-stub-resolver';
 import { startTestSite } from './test-utils/start-test-site';
 
 test('it reads one request frame, however it arrives, and writes one reply frame', async () => {
-  const site = await startTestSite({ names: ['site.test'], fetch: () => new Response('hello') });
+  const site = await startTestSite({ names: ['site.test'], respond: () => new Response('hello') });
 
   const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1']] } });
 

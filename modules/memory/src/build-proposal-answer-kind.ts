@@ -27,6 +27,12 @@ export type AnswerQuoteSource = Pick<MemoryStore, 'recall'> & {
   readonly proposals: Pick<MemoryProposals, 'readRejectedEdits'>;
 };
 
+const proposerWords: Readonly<Record<Exclude<MemoryOrigin, 'conversation'>, string>> = {
+  owner: 'the owner',
+  task: 'a task',
+  memory_writer: 'your note-taker',
+};
+
 // The event kind for the owner's answer to a memory proposal from any source, the conversation's
 // own included. An approval quotes the current version it wrote, recalled so the record names only
 // what the block shows; a rejection quotes only the conversation's own edit, then any reason.
@@ -66,12 +72,6 @@ export function buildProposalAnswerKind(
     },
   };
 }
-
-const proposerWords: Readonly<Record<Exclude<MemoryOrigin, 'conversation'>, string>> = {
-  owner: 'the owner',
-  task: 'a task',
-  memory_writer: 'your note-taker',
-};
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 type RecordTables = Readonly<{
@@ -158,6 +158,37 @@ async function readRejectionReasons(
   );
 }
 
+const approvalPayload = z.object({ answer: z.enum(['approved', 'edited']) });
+
+function buildAnswerEvent(
+  row: AnsweredRow,
+  reason: string | null,
+): NotedEvent<ProposalAnswerEvent> {
+  const approval = approvalPayload.safeParse(JSON.parse(row.payload));
+  const answer = row.status === 'rejected' ? 'rejected' : (approval.data?.answer ?? 'approved');
+
+  return {
+    sequence: row.sequence,
+    at: row.recorded_at,
+    detail: {
+      proposalID: row.proposal_id,
+      answer,
+      origin: row.origin,
+      written: buildWrittenVersion(row),
+      text: null,
+      reason,
+    },
+  };
+}
+
+// the version an approval wrote, on the item it wrote it to, which differs from the proposal's
+// item when the approval revised another
+function buildWrittenVersion(row: AnsweredRow): VersionRef | null {
+  return row.status === 'consumed' && row.version !== null
+    ? { itemID: row.version_item_id ?? row.item_id, version: row.version }
+    : null;
+}
+
 // Each listed approval's text, through a recall of the exact version it wrote, which records only
 // that version as a turn note's and leaves out an item that a forget has begun or that changed
 // since.
@@ -213,35 +244,4 @@ async function readRejectedTexts(
 
     return text === undefined ? event : { ...event, detail: { ...event.detail, text } };
   });
-}
-
-const approvalPayload = z.object({ answer: z.enum(['approved', 'edited']) });
-
-function buildAnswerEvent(
-  row: AnsweredRow,
-  reason: string | null,
-): NotedEvent<ProposalAnswerEvent> {
-  const approval = approvalPayload.safeParse(JSON.parse(row.payload));
-  const answer = row.status === 'rejected' ? 'rejected' : (approval.data?.answer ?? 'approved');
-
-  return {
-    sequence: row.sequence,
-    at: row.recorded_at,
-    detail: {
-      proposalID: row.proposal_id,
-      answer,
-      origin: row.origin,
-      written: buildWrittenVersion(row),
-      text: null,
-      reason,
-    },
-  };
-}
-
-// the version an approval wrote, on the item it wrote it to, which differs from the proposal's
-// item when the approval revised another
-function buildWrittenVersion(row: AnsweredRow): VersionRef | null {
-  return row.status === 'consumed' && row.version !== null
-    ? { itemID: row.version_item_id ?? row.item_id, version: row.version }
-    : null;
 }
