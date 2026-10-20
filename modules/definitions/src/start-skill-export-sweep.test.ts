@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
-import { waitForCondition } from '@heynixie/testing';
+import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { checkSkillFiles } from './check-skill-files';
 import { startSkillExportSweep } from './start-skill-export-sweep';
@@ -77,19 +77,25 @@ test('it passes a failed run to onError, and runs again each interval', async ()
   const ctx = await setupTest();
 
   const onError = mock<(error: unknown) => void>();
+  const clock = buildTestClock(0);
 
   await ctx.writer.stop();
 
   const sweep = startSkillExportSweep({
     log: ctx.log,
     repo: ctx.repo,
-    intervalMs: 10,
+    intervalMs: 3_600_000,
+    clock,
     onError,
   });
 
   onTestFinished(() => sweep.stop());
 
-  await waitForCondition(() => onError.mock.calls.length >= 2);
+  await waitForCondition(() => onError.mock.calls.length === 1 && clock.countSleepers() === 1);
 
-  expect(onError.mock.calls.slice(0, 2)).toStrictEqual([[expect.any(Error)], [expect.any(Error)]]);
+  clock.advance(3_600_000);
+
+  await waitForCondition(() => onError.mock.calls.length === 2);
+
+  expect(onError.mock.calls).toStrictEqual([[expect.any(Error)], [expect.any(Error)]]);
 });

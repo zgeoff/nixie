@@ -1,3 +1,4 @@
+import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
 import { createActor, toPromise } from 'xstate';
 import type { SkillExportOptions } from './run-skill-exports';
@@ -7,6 +8,9 @@ import { skillExportSweepMachine } from './skill-export-sweep-machine';
 export interface SkillExportSweepOptions extends SkillExportOptions {
   // how often the sweep retries what failed, hourly by default
   readonly intervalMs?: number;
+
+  // the clock the interval passes on, the system's by default
+  readonly clock?: Clock;
 }
 
 export interface SkillExportSweep {
@@ -26,7 +30,7 @@ export function startSkillExportSweep(options: SkillExportSweepOptions): SkillEx
   const sweep = createActor(skillExportSweepMachine, {
     input: {
       sweep: () => runSkillExports(options),
-      clock: systemClock,
+      clock: options.clock ?? systemClock,
       intervalMs: options.intervalMs ?? exportSweepMs,
       onError: options.onError,
     },
