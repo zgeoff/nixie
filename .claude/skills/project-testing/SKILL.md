@@ -59,8 +59,8 @@ through `Bun.WebView`, so `bun test` needs one that Bun finds on `PATH`, in a st
 location, or at `BUN_CHROME_PATH`. GitHub's Ubuntu runners ship Chrome. `bun run test` leaves the
 browser suites out of the parallel run and runs them in one process after it, so Chrome starts on an
 idle CPU. A cold Chrome start in a worker beside the other parallel workers can outlast the default
-test timeout on a CI runner. The parallel run's ignore patterns repeat the ones in `bunfig.toml`,
-because a pattern given on the command line replaces the `bunfig.toml` list.
+test timeout on a CI runner. The parallel run's ignore patterns repeat the root config's, because a
+pattern given on the command line replaces that list.
 
 Plain `bun test` runs the crash suites in `e2e/crash/`, which spawn the test build of nixie from
 [`e2e/nixie/main.ts`](../../../e2e/nixie/main.ts) as a child process and drive it through
