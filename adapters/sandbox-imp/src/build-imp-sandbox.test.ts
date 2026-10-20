@@ -17,16 +17,16 @@ import { startFakeImp } from './test-utils/start-fake-imp';
 async function setupTest() {
   const recorder = await setupTestRecorder();
   const imp = await startFakeImp();
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-sandbox-imp-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-sandbox-imp-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
-  startStubToolEndpoint(join(dir, 'tools.sock'));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
+  startStubToolEndpoint(join(directory, 'tools.sock'));
 
   const adapter = buildImpSandboxAdapter({
     port: imp.port,
     recorder: recorder.recorder,
     config: { publicEgress: null },
-    toolTarget: () => ({ path: join(dir, 'tools.sock') }),
+    toolTarget: () => ({ path: join(directory, 'tools.sock') }),
     guestToolPort: imp.guestToolPort,
   });
 

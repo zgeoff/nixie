@@ -253,10 +253,10 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
     resolveHome: (env) => Promise.try(() => resolveHome(state.options.hostRoot, id, env)),
 
     // a list and a move run in the guest, as imp runs them, so a sleeping sandbox refuses them
-    readFilePaths: async (dir, options) => {
+    readFilePaths: async (directory, options) => {
       await requireAwake();
 
-      return collectDiskPaths(own.disk, dir, options?.maxDepth ?? Number.POSITIVE_INFINITY);
+      return collectDiskPaths(own.disk, directory, options?.maxDepth ?? Number.POSITIVE_INFINITY);
     },
     applyMove: async (from, to) => {
       await requireAwake();
@@ -391,8 +391,12 @@ function findGuestHome(
 
 // every file under the directory down to the depth, relative to it; the disk holds files only, so a
 // directory is the prefix its files share
-function collectDiskPaths(disk: StubGuestDisk, dir: string, maxDepth: number): readonly string[] {
-  const prefix = join(dir, '/');
+function collectDiskPaths(
+  disk: StubGuestDisk,
+  directory: string,
+  maxDepth: number,
+): readonly string[] {
+  const prefix = join(directory, '/');
 
   return [...disk.files.keys()]
     .filter((path) => path.startsWith(prefix))

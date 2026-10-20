@@ -37,9 +37,9 @@ const emptyStore = { recall: () => Promise.resolve({ items: [], next: null }) };
 
 // a tool call's arguments, as the tools take them
 const jsonObject = z.record(z.string(), z.json()).transform((value): JSONObject => value);
-const dir = import.meta.dir;
+const directory = import.meta.dir;
 
-const cases = await loadWriterCases(join(dir, 'cases.json'));
+const cases = await loadWriterCases(join(directory, 'cases.json'));
 const home = await mkdtemp(join(tmpdir(), 'nixie-writer-eval-'));
 
 const planned = cases.cases.flatMap((writerCase) =>
@@ -50,7 +50,7 @@ const calls = await runPlannedRuns(planned);
 
 const report: WriterReport = { model, effort, repeats, calls };
 
-await Bun.write(join(dir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
+await Bun.write(join(directory, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
 
 async function runPlannedRuns(all: readonly PlannedRun[]): Promise<readonly WriterCall[]> {
   const queue = [...all];

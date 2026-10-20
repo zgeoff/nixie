@@ -13,11 +13,11 @@ test('it answers the block counts it is given for any path', async () => {
 });
 
 test('it answers in the fields that statfs reports the block counts in', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-ops-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-ops-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  const stats = await statfs(dir);
+  const stats = await statfs(directory);
 
   expect(stats).toMatchObject({ blocks: expect.toBeNumber(), bavail: expect.toBeNumber() });
 });

@@ -7,11 +7,11 @@ import { testBuildIDs } from './test-build-ids';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-release-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-release-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { outdir: join(dir, 'out') };
+  return { outdir: join(directory, 'out') };
 }
 
 test('it builds a release bundle with no fault point, no test rule and no test sandbox', async () => {

@@ -113,7 +113,12 @@ test('it advances the clock and wakes its sleepers for an advance', async () => 
   const link = startHarnessLink({ NIXIE_TEST_CLOCK_MS: '0' }, stub.channel);
   const sleep = link.clock.sleep(5000);
 
-  stub.sendToLink({ type: 'request', requestID: 1, operation: 'advance', args: { ms: 5000 } });
+  stub.sendToLink({
+    type: 'request',
+    requestID: 1,
+    operation: 'advance',
+    args: { durationMs: 5000 },
+  });
 
   await expect(sleep).toResolve();
 
@@ -135,7 +140,7 @@ test('it reports an advance settled once every sleeper it woke sleeps again', as
     type: 'request',
     requestID: 1,
     operation: 'advance',
-    args: { ms: 1000, settle: true },
+    args: { durationMs: 1000, settle: true },
   });
 
   await waitForCondition(() => stub.sent.length === 1);
@@ -153,7 +158,7 @@ test('it reports an advance unsettled when a sleeper it woke does not sleep agai
     type: 'request',
     requestID: 1,
     operation: 'advance',
-    args: { ms: 1000, settle: true, settleTimeoutMs: 50 },
+    args: { durationMs: 1000, settle: true, settleTimeoutMs: 50 },
   });
 
   await waitForCondition(() => stub.sent.length === 1);

@@ -6,11 +6,11 @@ import { sql } from 'kysely';
 import { checkMigrations } from './check-migrations';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-check-migrations-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-check-migrations-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { dir };
+  return { directory };
 }
 
 test('it allows a new table, an optional column and an index after the last release', async () => {
@@ -46,7 +46,7 @@ test('it allows a new table, an optional column and an index after the last rele
         { type: 'table', name: 'notes', tableName: 'notes', sql: 'CREATE TABLE notes (id text)' },
       ],
     },
-    ctx.dir,
+    ctx.directory,
   );
 
   expect(check).toStrictEqual({
@@ -92,7 +92,7 @@ test('it refuses a drop and a rename that keep the schema readable by the releas
         },
       ],
     },
-    ctx.dir,
+    ctx.directory,
   );
 
   expect(check.added).toStrictEqual([
@@ -134,7 +134,7 @@ test('it refuses a column or a unique index on a released table that an old inse
         { type: 'table', name: 'notes', tableName: 'notes', sql: 'CREATE TABLE notes (id text)' },
       ],
     },
-    ctx.dir,
+    ctx.directory,
   );
 
   expect(check.added).toStrictEqual([
@@ -184,7 +184,7 @@ test('it allows a trigger on a table the release creates and refuses one on a re
         { type: 'table', name: 'notes', tableName: 'notes', sql: 'CREATE TABLE notes (id text)' },
       ],
     },
-    ctx.dir,
+    ctx.directory,
   );
 
   expect(check.added).toStrictEqual([
@@ -237,7 +237,7 @@ test('it allows a read, a backfill and a unique index of a column the release ad
         },
       ],
     },
-    ctx.dir,
+    ctx.directory,
   );
 
   expect(check.added).toStrictEqual([{ version: 2, name: 'add a slug', refused: [] }]);
@@ -275,7 +275,7 @@ test('it refuses an update and a unique index that reach a column the release be
         { type: 'table', name: 'tags', tableName: 'tags', sql: 'CREATE TABLE tags (title text)' },
       ],
     },
-    ctx.dir,
+    ctx.directory,
   );
 
   expect(check.added).toStrictEqual([
@@ -325,7 +325,7 @@ test('it allows any statement when the build raises oldestReader past the last r
         },
       ],
     },
-    ctx.dir,
+    ctx.directory,
   );
 
   expect(check).toStrictEqual({
@@ -355,7 +355,7 @@ test('it lists every migration and refuses none before the first release', async
       oldestReader: 0,
     },
     null,
-    ctx.dir,
+    ctx.directory,
   );
 
   expect(check).toStrictEqual({
@@ -394,7 +394,7 @@ test('it reports a released migration that the build renamed or removed', async 
         },
       ],
     },
-    ctx.dir,
+    ctx.directory,
   );
 
   expect(check.changed).toStrictEqual(['create notes', 'add titles']);
@@ -429,7 +429,7 @@ test('it reports each schema object that an edited released migration builds dif
         },
       ],
     },
-    ctx.dir,
+    ctx.directory,
   );
 
   expect(check.changedObjects).toStrictEqual(['notes', 'notes_by_body']);

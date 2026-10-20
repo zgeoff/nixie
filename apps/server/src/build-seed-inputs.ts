@@ -30,7 +30,7 @@ export function buildSeedInputs(
   ]);
 
   return {
-    source: createPathSource({ dir: config.definitions.source.path }),
+    source: createPathSource({ directory: config.definitions.source.path }),
     policy: {
       ...policy,
       rules: [

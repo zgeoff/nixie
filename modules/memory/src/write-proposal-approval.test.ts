@@ -899,7 +899,7 @@ test('it applies one of 2 reworded proposals approved at once, and holds the oth
 
   expect(active.items).toHaveLength(1);
 
-  expect(results.toSorted((a, b) => a.status.localeCompare(b.status))).toStrictEqual([
+  expect(results.toSorted((left, right) => left.status.localeCompare(right.status))).toStrictEqual([
     { status: 'applied', itemID: item.itemID, version: 1 },
     { status: 'close_match', item: { itemID: item.itemID, version: 1, text: item.text } },
   ]);

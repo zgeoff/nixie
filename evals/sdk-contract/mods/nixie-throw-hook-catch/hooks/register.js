@@ -2,7 +2,7 @@ function handleToolCall() {
   throw new Error('nixie-throw-hook-catch: hook failed');
 }
 
-function handleFailure($, e, next) {
+function handleFailure($, event, next) {
   return {
     deny: `nixie policy failed (${next.error.kind}: ${next.error.message}), so the command did not run.`,
   };

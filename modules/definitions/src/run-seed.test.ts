@@ -19,14 +19,14 @@ async function setupTest(config: { readonly projections?: readonly Projection[] 
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-seed-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-seed-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
-  const root = join(dir, 'definitions');
+  const root = join(directory, 'definitions');
 
   const writer = await startWriter({
-    dataDir: dir,
+    dataDir: directory,
 
     // a clock stopped at one instant, so a seed's time shows that it read the writer's clock
     clock: { now: () => Date.parse('2026-10-16T09:00:00Z'), sleep: () => Promise.resolve() },
@@ -42,11 +42,11 @@ async function setupTest(config: { readonly projections?: readonly Projection[] 
   ]);
 
   return {
-    dir,
+    directory,
     root,
     writer,
     log: { writer, deploymentKey, projections: config.projections ?? [] },
-    source: createPathSource({ dir: root }),
+    source: createPathSource({ directory: root }),
   };
 }
 
@@ -241,9 +241,9 @@ test('it keeps the last seed when the source refuses the snapshot', async () => 
 
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  await writeFile(join(ctx.dir, 'secret.md'), 'outside\n');
+  await writeFile(join(ctx.directory, 'secret.md'), 'outside\n');
   await mkdir(join(ctx.root, 'rules'));
-  await symlink(join(ctx.dir, 'secret.md'), join(ctx.root, 'rules', 'escape.md'));
+  await symlink(join(ctx.directory, 'secret.md'), join(ctx.root, 'rules', 'escape.md'));
 
   const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
 

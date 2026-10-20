@@ -5,11 +5,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-pinned-run-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-pinned-run-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { listPath: join(dir, 'model-files.txt'), outDir: join(dir, 'out') };
+  return { listPath: join(directory, 'model-files.txt'), outDir: join(directory, 'out') };
 }
 
 test('it exits 1 and names the file when a download differs from its SHA-256, as the image build runs it', async () => {

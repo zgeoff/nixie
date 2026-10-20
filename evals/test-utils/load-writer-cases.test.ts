@@ -5,11 +5,11 @@ import { join } from 'node:path';
 import { loadWriterCases } from './load-writer-cases';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-writer-cases-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-writer-cases-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { path: join(dir, 'cases.json') };
+  return { path: join(directory, 'cases.json') };
 }
 
 test('it loads each case with its items, its messages and its rule', async () => {

@@ -5,11 +5,11 @@ import { join } from 'node:path';
 import { loadWriterReport } from './load-writer-report';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-writer-report-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-writer-report-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { path: join(dir, 'report.json') };
+  return { path: join(directory, 'report.json') };
 }
 
 test('it loads each run with what it staged and flagged', async () => {

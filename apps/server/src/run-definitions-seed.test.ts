@@ -40,7 +40,7 @@ test('it starts a second seed over the same parts only after the first returns',
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  const stub = buildStubHeldSource(createPathSource({ dir: ctx.root }));
+  const stub = buildStubHeldSource(createPathSource({ directory: ctx.root }));
 
   const parts: SeedParts = {
     context: ctx.context.apiContext,
@@ -71,7 +71,7 @@ test('it runs the next seed over the same parts after one fails, and gives the f
 
   const parts: SeedParts = {
     context: ctx.context.apiContext,
-    source: createPathSource({ dir: ctx.root }),
+    source: createPathSource({ directory: ctx.root }),
     policy: { rules: [], tools: [] },
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),

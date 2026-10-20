@@ -140,9 +140,9 @@ test.skipIf(isModelMissing)(
 );
 
 test('it refuses a folder that holds no model', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-encoder-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-encoder-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  expect(startONNXEncoder(dir)).rejects.toThrow();
+  expect(startONNXEncoder(directory)).rejects.toThrow();
 });

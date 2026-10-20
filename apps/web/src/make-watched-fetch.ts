@@ -7,7 +7,7 @@ export interface WatchedFetchOptions {
 
   readonly fetch?: (request: Request, init?: RequestInit) => Promise<Response>;
 
-  // Calls onTimeout once ms pass, unless the returned stop runs first. The platform timer by default.
+  // Calls onTimeout once delayMs pass, unless the returned stop runs first. The platform timer by default.
   readonly startTimer?: StartTimer;
 }
 

@@ -4,11 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-release-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-release-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { outdir: join(dir, 'out') };
+  return { outdir: join(directory, 'out') };
 }
 
 test('it exits 0 and writes the server and its SQLite worker', async () => {

@@ -6,7 +6,7 @@ export interface TaskStepsOptions {
   readonly steps: Readonly<Record<string, RunStep>>;
 
   // moves the context's test clock forward, so the next timer falls due without a sleep
-  readonly advance: (ms: number) => void;
+  readonly advance: (durationMs: number) => void;
 
   // checked after each step: true ends the run before the tasks settle
   readonly isDone?: () => Promise<boolean>;

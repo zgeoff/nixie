@@ -102,8 +102,8 @@ test('it turns every write a poisoned page causes into a proposal from outside c
 
   await runTaskSteps(memory.context, {
     steps: { conversation: conversation.runner.runStep },
-    advance: (ms) => {
-      memory.clock.advance(ms);
+    advance: (durationMs) => {
+      memory.clock.advance(durationMs);
     },
     maxSteps: 5,
   });

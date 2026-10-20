@@ -1,13 +1,13 @@
 // The module throws as it loads, so neither its command nor its policy ever registers.
 throw new Error('nixie-throw-load: module failed at load');
 
-async function handleSessionStart($, e, next) {
+async function handleSessionStart($, event, next) {
   await $.command.register({
     description: 'Report that the nixie policy mod is loaded',
     immediate: true,
     name: 'nixie-alive',
   });
-  return next(e);
+  return next(event);
 }
 
 function handleToolCall() {

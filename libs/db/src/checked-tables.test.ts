@@ -6,12 +6,12 @@ import { join } from 'node:path';
 // Each test typechecks one table map against the real nixie-tables.ts with the repo's own tsc, so
 // it proves the error that a module's typecheck reports.
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-checked-tables-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-checked-tables-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
   await writeFile(
-    join(dir, 'tsconfig.json'),
+    join(directory, 'tsconfig.json'),
     JSON.stringify({
       compilerOptions: {
         strict: true,
@@ -30,7 +30,7 @@ async function setupTest() {
   );
 
   return {
-    dir,
+    directory,
     tsc: join(import.meta.dir, '..', '..', '..', 'node_modules', '.bin', 'tsc'),
     imports: [
       `import type { CheckedTables } from '${join(import.meta.dir, 'checked-tables')}';`,
@@ -43,7 +43,7 @@ test('it accepts a table map that matches the migrations column for column', asy
   const ctx = await setupTest();
 
   await writeFile(
-    join(ctx.dir, 'tables.ts'),
+    join(ctx.directory, 'tables.ts'),
     `${ctx.imports}
 import type { Generated } from 'kysely';
 export type Tables = CheckedTables<{
@@ -55,7 +55,7 @@ export type Tables = CheckedTables<{
 `,
   );
 
-  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.dir]);
+  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.directory]);
 
   expect(result.stdout.toString()).toBe('');
   expect(result.exitCode).toBe(0);
@@ -65,13 +65,13 @@ test('it rejects a table map that leaves out a column the migrations build', asy
   const ctx = await setupTest();
 
   await writeFile(
-    join(ctx.dir, 'tables.ts'),
+    join(ctx.directory, 'tables.ts'),
     `${ctx.imports}
 export type Tables = CheckedTables<{ records: Omit<NixieTables['records'], 'kind'> }>;
 `,
   );
 
-  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.dir]);
+  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.directory]);
 
   expect(result.stdout.toString()).toInclude("Property 'kind' is missing");
   expect(result.exitCode).toBe(1);
@@ -81,13 +81,13 @@ test('it accepts a view that leaves out columns of a table it names in Views', a
   const ctx = await setupTest();
 
   await writeFile(
-    join(ctx.dir, 'tables.ts'),
+    join(ctx.directory, 'tables.ts'),
     `${ctx.imports}
 export type Tables = CheckedTables<{ records: Pick<NixieTables['records'], 'sequence'> }, 'records'>;
 `,
   );
 
-  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.dir]);
+  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.directory]);
 
   expect(result.stdout.toString()).toBe('');
   expect(result.exitCode).toBe(0);
@@ -97,7 +97,7 @@ test('it rejects a column that no migration creates', async () => {
   const ctx = await setupTest();
 
   await writeFile(
-    join(ctx.dir, 'tables.ts'),
+    join(ctx.directory, 'tables.ts'),
     `${ctx.imports}
 export type Tables = CheckedTables<
   { records: Pick<NixieTables['records'], 'sequence'> & { readonly mood: string } },
@@ -106,7 +106,7 @@ export type Tables = CheckedTables<
 `,
   );
 
-  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.dir]);
+  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.directory]);
 
   expect(result.stdout.toString()).toInclude(
     `Type 'string' is not assignable to type '"no migration creates this column"'`,
@@ -119,13 +119,13 @@ test('it rejects a table that no migration creates', async () => {
   const ctx = await setupTest();
 
   await writeFile(
-    join(ctx.dir, 'tables.ts'),
+    join(ctx.directory, 'tables.ts'),
     `${ctx.imports}
 export type Tables = CheckedTables<{ garden_beds: { readonly bed_id: string } }>;
 `,
   );
 
-  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.dir]);
+  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.directory]);
 
   expect(result.stdout.toString()).toInclude(`'"no migration creates this table"'`);
   expect(result.exitCode).toBe(1);
@@ -135,7 +135,7 @@ test('it rejects a column declared not null that the migration lets hold null', 
   const ctx = await setupTest();
 
   await writeFile(
-    join(ctx.dir, 'tables.ts'),
+    join(ctx.directory, 'tables.ts'),
     `${ctx.imports}
 export type Tables = CheckedTables<
   { records: Pick<NixieTables['records'], 'sequence'> & { readonly thread: string } },
@@ -144,7 +144,7 @@ export type Tables = CheckedTables<
 `,
   );
 
-  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.dir]);
+  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.directory]);
 
   expect(result.stdout.toString()).toInclude(
     `Type 'string' is not assignable to type '"the migration lets this column hold null"'`,
@@ -157,7 +157,7 @@ test('it rejects a column type that the driver never reads for the column', asyn
   const ctx = await setupTest();
 
   await writeFile(
-    join(ctx.dir, 'tables.ts'),
+    join(ctx.directory, 'tables.ts'),
     `${ctx.imports}
 export type Tables = CheckedTables<
   { records: Pick<NixieTables['records'], 'sequence'> & { readonly kind: number } },
@@ -166,7 +166,7 @@ export type Tables = CheckedTables<
 `,
   );
 
-  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.dir]);
+  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.directory]);
 
   expect(result.stdout.toString()).toInclude(
     `Type 'number' is not assignable to type '"the migration gives this column another type"'`,
@@ -179,7 +179,7 @@ test('it rejects null in a column that the migration declares not null', async (
   const ctx = await setupTest();
 
   await writeFile(
-    join(ctx.dir, 'tables.ts'),
+    join(ctx.directory, 'tables.ts'),
     `${ctx.imports}
 export type Tables = CheckedTables<
   { records: Pick<NixieTables['records'], 'sequence'> & { readonly kind: string | null } },
@@ -188,7 +188,7 @@ export type Tables = CheckedTables<
 `,
   );
 
-  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.dir]);
+  const result = Bun.spawnSync([ctx.tsc, '-p', ctx.directory]);
 
   expect(result.stdout.toString()).toInclude(`'"the migration gives this column another type"'`);
   expect(result.exitCode).toBe(1);

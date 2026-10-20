@@ -14,6 +14,7 @@ export interface ReplyTextProps {
 export function ReplyText(props: ReplyTextProps): ReactNode {
   return (
     <div className={reply}>
+      {/* oxlint-disable-next-line id-length -- react-markdown keys each component by its HTML tag, here `a` */}
       <Markdown components={{ a: ReplyLink, img: ReplyImage }} remarkPlugins={[remarkGfm]}>
         {props.text}
       </Markdown>

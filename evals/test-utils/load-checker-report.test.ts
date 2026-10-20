@@ -5,11 +5,11 @@ import { join } from 'node:path';
 import { loadCheckerReport } from './load-checker-report';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-report-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-report-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { path: join(dir, 'report.json') };
+  return { path: join(directory, 'report.json') };
 }
 
 test('it loads the run settings and each call with its verdict', async () => {
