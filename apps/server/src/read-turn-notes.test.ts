@@ -1,11 +1,11 @@
 import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { buildMemoryChangeKind } from '@heynixie/memory';
+import { startTestMemoryStore } from '@heynixie/memory/test-utils';
 import { buildEventRegistry } from '@heynixie/sessions';
 import invariant from 'tiny-invariant';
 import { buildRestartKind } from './build-restart-kind';
 import { readTurnNotes } from './read-turn-notes';
-import { startTestMemoryStore } from './test-utils/start-test-memory-store';
 import { startTestServer } from './test-utils/start-test-server';
 import { writeStartRecord } from './write-start-record';
 

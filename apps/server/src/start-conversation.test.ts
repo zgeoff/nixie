@@ -1,11 +1,11 @@
 import { expect, mock, test } from 'bun:test';
+import { startTestMemoryStore } from '@heynixie/memory/test-utils';
 import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { startConversation } from './start-conversation';
 import { buildConversationDriver } from './test-utils/build-conversation-driver';
 import { buildTestModelsConfig } from './test-utils/build-test-models-config';
 import { buildTestNotesTools } from './test-utils/build-test-notes-tools';
-import { startTestMemoryStore } from './test-utils/start-test-memory-store';
 import { startTestServer } from './test-utils/start-test-server';
 
 interface RunnerConfig {

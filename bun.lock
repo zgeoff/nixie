@@ -49,17 +49,6 @@
         "tiny-invariant": "catalog:",
       },
     },
-    "adapters/sandbox-process": {
-      "name": "@heynixie/sandbox-process",
-      "version": "0.0.0",
-      "dependencies": {
-        "@heynixie/sandbox": "workspace:*",
-      },
-      "devDependencies": {
-        "@heynixie/testing": "workspace:*",
-        "tiny-invariant": "catalog:",
-      },
-    },
     "apps/server": {
       "name": "@heynixie/server",
       "version": "0.0.0",
@@ -83,7 +72,6 @@
         "@heynixie/retry": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/sandbox-imp": "workspace:*",
-        "@heynixie/sandbox-process": "workspace:*",
         "@heynixie/sessions": "workspace:*",
         "@heynixie/skills": "workspace:*",
         "@heynixie/tasks": "workspace:*",
@@ -386,7 +374,9 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
+        "@heynixie/actions": "workspace:*",
         "@heynixie/contract": "workspace:*",
+        "@heynixie/models": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@paralleldrive/cuid2": "catalog:",
       },
@@ -444,6 +434,7 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
+        "@heynixie/testing": "workspace:*",
         "tiny-invariant": "catalog:",
       },
     },
@@ -457,6 +448,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/policy": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
@@ -889,8 +881,6 @@
     "@heynixie/sandbox": ["@heynixie/sandbox@workspace:modules/sandbox"],
 
     "@heynixie/sandbox-imp": ["@heynixie/sandbox-imp@workspace:adapters/sandbox-imp"],
-
-    "@heynixie/sandbox-process": ["@heynixie/sandbox-process@workspace:adapters/sandbox-process"],
 
     "@heynixie/server": ["@heynixie/server@workspace:apps/server"],
 

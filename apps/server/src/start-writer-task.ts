@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import type { StartedMemoryStore } from '@heynixie/memory';
+import { startMemoryWriterRunner } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
-import { startMemoryWriterRunner } from './start-memory-writer-runner';
 import type { ServerParts } from './types';
 
 // Starts the memory writer with the store's batch gate, and returns its step. Its first start

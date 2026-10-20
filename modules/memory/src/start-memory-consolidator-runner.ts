@@ -1,14 +1,12 @@
-import type { ConsolidationConfig, MemoryConsolidator, StartedMemoryStore } from '@heynixie/memory';
-import {
-  buildConsolidatorTools,
-  createConsolidationStaging,
-  memoryConsolidatorTaskID,
-  startMemoryConsolidator,
-} from '@heynixie/memory';
-import type { SystemTaskOptions } from './make-system-task-runner';
-import { makeSystemTaskRunner } from './make-system-task-runner';
-import type { ToolSessionOptions } from './start-tool-session';
-import { startToolSession } from './start-tool-session';
+import type { SystemTaskOptions, ToolSessionOptions } from '@heynixie/sessions';
+import { makeSystemTaskRunner, startToolSession } from '@heynixie/sessions';
+import { buildConsolidatorTools } from './build-consolidator-tools';
+import type { ConsolidationConfig } from './consolidation-config-schema';
+import { createConsolidationStaging } from './create-consolidation-staging';
+import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
+import type { MemoryConsolidator } from './start-memory-consolidator';
+import { startMemoryConsolidator } from './start-memory-consolidator';
+import type { StartedMemoryStore } from './start-memory-store';
 
 export interface MemoryConsolidatorRunnerOptions extends SystemTaskOptions, ToolSessionOptions {
   readonly store: StartedMemoryStore;

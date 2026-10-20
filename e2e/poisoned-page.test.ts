@@ -1,14 +1,16 @@
 import { expect, mock, test } from 'bun:test';
-import type { TestMemoryWriterOptions } from '@heynixie/server/test-utils';
+import type { TestMemoryWriterOptions } from '@heynixie/memory/test-utils';
 import {
   buildRememberReply,
-  buildTestConversationTools,
-  runTaskSteps,
-  startTestConversation,
   startTestMemoryWriter,
-  startTestServer,
   writeOwnerMessages,
+} from '@heynixie/memory/test-utils';
+import {
+  buildTestConversationTools,
+  startTestConversation,
+  startTestServer,
 } from '@heynixie/server/test-utils';
+import { runTaskSteps } from '@heynixie/tasks/test-utils';
 
 // The journey replays a fetcher reply for a poisoned page through a turn, then a writer batch over
 // the turn's records, each model obeying the page. Both run the real tools and gates; the checker's

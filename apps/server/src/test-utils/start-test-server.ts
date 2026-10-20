@@ -19,6 +19,9 @@ export interface TestServer {
   readonly endpoint: ToolEndpoint;
   readonly sandboxes: SandboxAdapter;
 
+  // the directory of the endpoint's run sockets, where a system task's own endpoint opens its run
+  readonly socketDir: string;
+
   // retires every sandbox the owner holds, so the owner replaces it, and returns their IDs
   readonly retireSandboxes: (owner: string) => Promise<readonly string[]>;
 
@@ -98,7 +101,9 @@ export async function startTestServer(
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
 
-  const endpoint = await startTestToolEndpoint(context, join(dataDir, 'tools'), tools);
+  const socketDir = join(dataDir, 'tools');
+
+  const endpoint = await startTestToolEndpoint(context, socketDir, tools);
 
   stack.defer(() => endpoint.stop());
 
@@ -124,6 +129,7 @@ export async function startTestServer(
     dataDir,
     context,
     endpoint,
+    socketDir,
     ...sandboxes,
     defer: (stop) => {
       stack.defer(stop);

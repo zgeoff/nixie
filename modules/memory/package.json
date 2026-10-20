@@ -25,7 +25,9 @@
   },
   "devDependencies": {
     "@faker-js/faker": "catalog:",
+    "@heynixie/actions": "workspace:*",
     "@heynixie/contract": "workspace:*",
+    "@heynixie/models": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@paralleldrive/cuid2": "catalog:"
   }

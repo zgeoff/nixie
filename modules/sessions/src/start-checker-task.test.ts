@@ -1,24 +1,24 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { modelsConfigSchema } from '@heynixie/models';
 import { buildTestClock, startScriptedModel } from '@heynixie/testing';
-import { startChecker } from './start-checker';
-import { startTestServer } from './test-utils/start-test-server';
+import { startCheckerTask } from './start-checker-task';
+import { startTestSessionHost } from './test-utils/start-test-session-host';
 
-// a test server for its process sandboxes, and the scripted model
+// a session host for its process sandboxes, and the scripted model
 async function setupTest() {
-  const server = await startTestServer();
+  const host = await startTestSessionHost();
 
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
 
-  return { ...server, model };
+  return { ...host, model };
 }
 
 test('it runs each check in the check guest on the checker role profile', async () => {
   const ctx = await setupTest();
 
-  const checker = await startChecker({
+  const checker = await startCheckerTask({
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
@@ -70,9 +70,9 @@ test('it runs each check in the check guest on the checker role profile', async 
 test('it logs where each check spent its time', async () => {
   const ctx = await setupTest();
 
-  const log = mock<Parameters<typeof startChecker>[0]['log']>();
+  const log = mock<Parameters<typeof startCheckerTask>[0]['log']>();
 
-  const checker = await startChecker({
+  const checker = await startCheckerTask({
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
