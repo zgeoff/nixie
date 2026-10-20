@@ -10,7 +10,7 @@ import type { DefinitionsSource, SizeLimits, Snapshot } from './types';
 
 export interface PathSourceOptions {
   // the definitions root, such as a directory on the host or a volume mounted into the container
-  readonly dir: string;
+  readonly directory: string;
   readonly limits?: SizeLimits;
 }
 
@@ -21,19 +21,19 @@ export function createPathSource(options: PathSourceOptions): DefinitionsSource 
   const limits = options.limits ?? defaultSizeLimits;
 
   return {
-    id: `path:${resolve(options.dir)}`,
+    id: `path:${resolve(options.directory)}`,
     kind: 'path',
     probe: async () => {
-      const snapshot = await readPathSnapshot(options.dir, limits);
+      const snapshot = await readPathSnapshot(options.directory, limits);
 
       return snapshot.contentHash;
     },
-    snapshot: () => readPathSnapshot(options.dir, limits),
+    snapshot: () => readPathSnapshot(options.directory, limits),
   };
 }
 
-async function readPathSnapshot(dir: string, limits: SizeLimits): Promise<Snapshot> {
-  const base = await realpath(dir);
+async function readPathSnapshot(directory: string, limits: SizeLimits): Promise<Snapshot> {
+  const base = await realpath(directory);
   const entries = await collectEntries(base, base);
 
   if (entries.escapes.length > 0) {
@@ -62,11 +62,11 @@ interface WalkEntries {
 }
 
 // visits names in sorted order, and Promise.all keeps that order, so files come out in path order
-async function collectEntries(base: string, dir: string): Promise<WalkEntries> {
-  const names = await readdir(dir);
+async function collectEntries(base: string, directory: string): Promise<WalkEntries> {
+  const names = await readdir(directory);
 
   const entries = await Promise.all(
-    names.toSorted().map((name) => collectEntry(base, join(dir, name))),
+    names.toSorted().map((name) => collectEntry(base, join(directory, name))),
   );
 
   return {

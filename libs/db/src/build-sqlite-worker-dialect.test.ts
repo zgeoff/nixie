@@ -10,11 +10,11 @@ async function setupTest() {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-dialect-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-dialect-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
-  const path = join(dir, 'nixie.db');
+  const path = join(directory, 'nixie.db');
 
   const db = new Kysely<unknown>({ dialect: buildSqliteWorkerDialect(path) });
 

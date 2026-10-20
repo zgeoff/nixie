@@ -210,7 +210,7 @@ export interface Sandbox {
   // every file under the directory down to the options' depth, or at any depth with none, relative
   // to it; none for a missing directory
   readonly readFilePaths: (
-    dir: string,
+    directory: string,
     options?: ReadFilePathsOptions,
   ) => Promise<readonly string[]>;
 

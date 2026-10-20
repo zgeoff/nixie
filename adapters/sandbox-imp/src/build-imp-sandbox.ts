@@ -53,7 +53,7 @@ export function buildImpSandbox(ctx: ImpSandboxContext): Sandbox {
     copyIn: (files) => writeGuestFiles(ctx, files),
     copyOut: (paths) => Promise.all(paths.map((path) => readGuestFile(ctx, path))),
     resolveHome: (env) => Promise.try(() => resolveGuestHome(env)),
-    readFilePaths: (dir, options) => readGuestFilePaths(ctx, dir, options),
+    readFilePaths: (directory, options) => readGuestFilePaths(ctx, directory, options),
     applyMove: (from, to) => applyGuestMove(ctx, from, to),
     toolRoute: async () => {
       await startRoute(ctx);
@@ -213,20 +213,25 @@ const listScript = '[ -d "$1" ] || exit 0; cd -- "$1" && shift && find . "$@" -t
 // so a caller that needs only the top of a tree bounds the depth, and deeper files never fill it.
 async function readGuestFilePaths(
   ctx: ImpSandboxContext,
-  dir: string,
+  directory: string,
   options: ReadFilePathsOptions = {},
 ): Promise<readonly string[]> {
-  requireGuestPath(dir);
+  requireGuestPath(directory);
 
   const depth = options.maxDepth === undefined ? [] : ['-maxdepth', String(options.maxDepth)];
 
-  const io = await startImpProcess(ctx, { argv: ['sh', '-c', listScript, 'sh', dir, ...depth] });
+  const io = await startImpProcess(ctx, {
+    argv: ['sh', '-c', listScript, 'sh', directory, ...depth],
+  });
+
   const result = await runCommand(io, undefined, undefined);
 
-  requireSuccess(result, `listing ${dir}`);
+  requireSuccess(result, `listing ${directory}`);
 
   if (result.stdout.isCut) {
-    throw new Error(`listing ${dir} failed: the list passes ${result.stdout.bytes.length} bytes`);
+    throw new Error(
+      `listing ${directory} failed: the list passes ${result.stdout.bytes.length} bytes`,
+    );
   }
 
   return new TextDecoder()

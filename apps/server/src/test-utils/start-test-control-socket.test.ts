@@ -7,11 +7,11 @@ import { buildHostClient } from '../build-host-client';
 import { startTestControlSocket } from './start-test-control-socket';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-control-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-control-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { path: join(dir, 'control.sock') };
+  return { path: join(directory, 'control.sock') };
 }
 
 test('it serves the host procedures over the memory given', async () => {
@@ -42,9 +42,9 @@ test('it refuses a reset, since no server runs behind the socket', async () => {
 
 // the directory's removal registers after the check, so the check sees what the stop left
 test('it stops the socket when the test finishes', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-control-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-control-'));
 
-  const path = join(dir, 'control.sock');
+  const path = join(directory, 'control.sock');
 
   await startTestControlSocket({ path });
 
@@ -54,5 +54,5 @@ test('it stops the socket when the test finishes', async () => {
     expect(exists).toBeFalse();
   });
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 });

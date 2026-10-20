@@ -42,12 +42,12 @@ export interface MigrationCheck {
 export async function checkMigrations(
   schema: BuildSchema,
   released: ReleasedSchema | null,
-  dir: string,
+  directory: string,
 ): Promise<MigrationCheck> {
   const releasedNames = released?.migrations ?? [];
   const readableByReleaseBefore = schema.oldestReader <= releasedNames.length;
 
-  const run = await runRecordedMigrations(schema.migrations, releasedNames.length, dir);
+  const run = await runRecordedMigrations(schema.migrations, releasedNames.length, directory);
 
   const added = collectAddedSchema(run.added.flatMap((migration) => migration.statements));
   const lint = released !== null && readableByReleaseBefore;
@@ -86,12 +86,12 @@ const transactionControl = /^(?:begin|commit|rollback|savepoint|release)\b/u;
 async function runRecordedMigrations(
   migrations: readonly Migration[],
   releasedCount: number,
-  dir: string,
+  directory: string,
 ): Promise<RecordedRun> {
   const statements: string[] = [];
 
   const db = new Kysely<unknown>({
-    dialect: buildSqliteWorkerDialect(join(dir, 'check-migrations.db')),
+    dialect: buildSqliteWorkerDialect(join(directory, 'check-migrations.db')),
     log: (event) => {
       if (!transactionControl.test(event.query.sql.trim().toLowerCase())) {
         statements.push(event.query.sql);
@@ -102,7 +102,7 @@ async function runRecordedMigrations(
   try {
     await runMigrations(db, {
       schema: { migrations: migrations.slice(0, releasedCount), oldestReader: 0 },
-      copyDir: dir,
+      copyDir: directory,
     });
 
     const objects = await readSchemaObjects(db);

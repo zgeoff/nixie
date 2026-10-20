@@ -48,8 +48,8 @@ async function setupTest() {
     run: () =>
       runTaskSteps(context, {
         steps: { 'memory-consolidator': consolidator.runStep },
-        advance: (ms) => {
-          clock.advance(ms);
+        advance: (durationMs) => {
+          clock.advance(durationMs);
         },
         isDone: async () => (await store.consolidations.readPending()) !== null,
         maxSteps: 5,

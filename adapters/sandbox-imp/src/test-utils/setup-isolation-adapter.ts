@@ -51,10 +51,10 @@ async function buildIsolationAdapter(
   defer: (cleanup: () => Promise<void>) => void,
 ): Promise<IsolationAdapter> {
   const recorder = await setupTestRecorder();
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-isolation-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-isolation-'));
 
-  defer(() => rm(dir, { recursive: true, force: true }));
-  startStubToolEndpoint(join(dir, 'tools.sock'));
+  defer(() => rm(directory, { recursive: true, force: true }));
+  startStubToolEndpoint(join(directory, 'tools.sock'));
 
   await createTestSecret(options);
 
@@ -63,7 +63,7 @@ async function buildIsolationAdapter(
       port: options.port,
       recorder: recorder.recorder,
       config: { publicEgress: options.publicEgress },
-      toolTarget: () => ({ path: join(dir, 'tools.sock') }),
+      toolTarget: () => ({ path: join(directory, 'tools.sock') }),
       ...(options.guestToolPort === undefined ? {} : { guestToolPort: options.guestToolPort }),
     }),
   );

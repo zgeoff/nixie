@@ -210,8 +210,8 @@ async function runWriterSteps(wiring: StepsWiring, run: WriterRun = {}): Promise
 
   await runTaskSteps(wiring.context, {
     steps: { ...run.steps, 'memory-writer': wiring.writer.runStep },
-    advance: (ms) => {
-      wiring.clock.advance(ms);
+    advance: (durationMs) => {
+      wiring.clock.advance(durationMs);
     },
     ...(run.isDone === undefined ? {} : { isDone: run.isDone }),
     maxSteps: 20,

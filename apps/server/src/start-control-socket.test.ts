@@ -5,11 +5,11 @@ import { join } from 'node:path';
 import { startControlSocket } from './start-control-socket';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-control-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-control-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { path: join(dir, 'run', 'control.sock') };
+  return { path: join(directory, 'run', 'control.sock') };
 }
 
 test('it answers each request on the socket with the responder', async () => {
@@ -42,9 +42,9 @@ test('it keeps the socket in a directory only nixie’s user may enter', async (
 
   onTestFinished(() => socket.stop());
 
-  const dir = await stat(join(ctx.path, '..'));
+  const directory = await stat(join(ctx.path, '..'));
 
-  expect(dir.mode & 0o777).toBe(0o700);
+  expect(directory.mode & 0o777).toBe(0o700);
 });
 
 test('it replaces a stale socket file that a server before it left behind', async () => {

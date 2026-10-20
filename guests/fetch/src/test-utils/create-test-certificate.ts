@@ -10,7 +10,7 @@ export interface TestCertificate {
 // Creates a self-signed certificate for the host names with openssl, which a client trusts by
 // passing the certificate as its only root. The key never leaves the test process.
 export async function createTestCertificate(names: readonly string[]): Promise<TestCertificate> {
-  const dir = await mkdtemp(join(tmpdir(), 'fetch-cert-'));
+  const directory = await mkdtemp(join(tmpdir(), 'fetch-cert-'));
 
   try {
     const result = Bun.spawnSync([
@@ -29,9 +29,9 @@ export async function createTestCertificate(names: readonly string[]): Promise<T
       '-addext',
       `subjectAltName=${names.map((name) => `DNS:${name}`).join(',')}`,
       '-keyout',
-      join(dir, 'key.pem'),
+      join(directory, 'key.pem'),
       '-out',
-      join(dir, 'cert.pem'),
+      join(directory, 'cert.pem'),
     ]);
 
     if (result.exitCode !== 0) {
@@ -39,10 +39,10 @@ export async function createTestCertificate(names: readonly string[]): Promise<T
     }
 
     return {
-      cert: await readFile(join(dir, 'cert.pem'), 'utf8'),
-      key: await readFile(join(dir, 'key.pem'), 'utf8'),
+      cert: await readFile(join(directory, 'cert.pem'), 'utf8'),
+      key: await readFile(join(directory, 'key.pem'), 'utf8'),
     };
   } finally {
-    await rm(dir, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true });
   }
 }

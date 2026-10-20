@@ -6,11 +6,11 @@ import { join } from 'node:path';
 import { writePinnedFiles } from './write-pinned-files';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-pinned-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-pinned-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { outDir: join(dir, 'out') };
+  return { outDir: join(directory, 'out') };
 }
 
 test('it writes each listed file once its SHA-256 matches the list', async () => {

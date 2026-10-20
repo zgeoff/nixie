@@ -13,13 +13,13 @@ async function setupTest() {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-skill-reload-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-skill-reload-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
-  const root = join(dir, 'definitions');
+  const root = join(directory, 'definitions');
 
-  const writer = await startWriter({ dataDir: dir });
+  const writer = await startWriter({ dataDir: directory });
 
   stack.defer(() => writer.stop());
 
@@ -33,7 +33,7 @@ async function setupTest() {
   return {
     root,
     log: { writer, deploymentKey, projections: [] },
-    source: createPathSource({ dir: root }),
+    source: createPathSource({ directory: root }),
   };
 }
 
