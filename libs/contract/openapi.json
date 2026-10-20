@@ -5863,7 +5863,8 @@
                               "ambiguous_target",
                               "pinned",
                               "other",
-                              "self_note"
+                              "self_note",
+                              "from_photo"
                             ],
                             "type": "string"
                           },

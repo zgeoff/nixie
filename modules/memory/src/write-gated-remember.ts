@@ -126,7 +126,9 @@ async function writeRememberProposal(
     target: request.target ?? null,
     isPinned: request.isPinned === true,
     text: request.text,
-    quote: request.quote ?? null,
+
+    // no check ties a photo's write to a quote, so its proposal shows none as your words
+    quote: request.image === undefined ? (request.quote ?? null) : null,
     reason: review.reason,
     evidence: review.evidence,
     checks: review.checks,

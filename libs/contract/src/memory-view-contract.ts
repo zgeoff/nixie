@@ -108,6 +108,7 @@ const reviewReasonSchema = z.enum([
   // a reason that a later release wrote and this one does not know
   'other',
   'self_note',
+  'from_photo',
 ]);
 
 // one write that proposed a change: the proposal's own, or one that merged into it

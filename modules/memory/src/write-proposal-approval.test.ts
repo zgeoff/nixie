@@ -406,6 +406,74 @@ test('it applies your edited text with the approval record', async () => {
   expect(row).toStrictEqual({ proposal_id: pending.proposalID, model: null });
 });
 
+test.each([
+  ['as proposed', {}, 'Rides a green cargo bike', 'conversation'],
+  [
+    'with your edited text',
+    { editedText: 'Rides a dark green cargo bike' },
+    'Rides a dark green cargo bike',
+    'owner',
+  ],
+] as const)(
+  'it applies an approved proposal from a photo %s with the photo as its source, not your words',
+  async (_label, edit, text, origin) => {
+    const memory = await startTestMemory();
+
+    const photo = await writeOwnerMessageRecord(memory.log, {
+      thread: 'conversation',
+      text: 'Look at this',
+      spans: [{ start: 0, end: 12, source: 'typed' }],
+      images: ['image/jpeg'],
+    });
+
+    const outcome = await memory.store.writes.remember({
+      text: 'Rides a green cargo bike',
+      image: { messageSequence: photo, image: 1 },
+      caller: buildMockWriteCaller(),
+    });
+
+    const [pending] = await memory.store.proposals.listPending();
+
+    invariant(outcome.status === 'proposed' && pending);
+
+    await memory.store.proposals.approve({
+      proposalID: pending.proposalID,
+      actionHash: pending.actionHash,
+      identityID: 'identity-1',
+      ...edit,
+    });
+
+    const row = await memory.writer.db
+      .$extendTables<MemoryTables>()
+      .selectFrom('memory_versions')
+      .select(['origin', 'source', 'checks', 'evidence'])
+      .where('item_id', '=', pending.itemID)
+      .executeTakeFirstOrThrow();
+
+    const history = await memory.store.readHistory(pending.itemID);
+
+    expect(row).toStrictEqual({
+      origin,
+      source: 'untrusted',
+      checks: JSON.stringify({ tokens: 'pass', image: { messageSequence: photo, image: 1 } }),
+      evidence: null,
+    });
+
+    expect(history?.versions).toStrictEqual([
+      {
+        version: 1,
+        change: 'created',
+        state: 'active',
+        status: 'readable',
+        text,
+        origin,
+        source: 'untrusted',
+        recordedAt: expect.toBeNumber(),
+      },
+    ]);
+  },
+);
+
 test('it refuses an answer that names another action hash', async () => {
   const memory = await startTestMemory();
 

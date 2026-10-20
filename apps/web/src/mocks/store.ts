@@ -281,6 +281,7 @@ const memoryProposals = new Collection({
         'ambiguous_target',
         'pinned',
         'self_note',
+        'from_photo',
       ])
       .default('no_quote'),
     source: z.enum(['owner', 'owner_data', 'untrusted']).default('untrusted'),

@@ -56,11 +56,14 @@ export interface GateLimits {
 export interface AllowRuleMatch {
   readonly ruleID: string;
   readonly revision: number;
+
+  // the write source the rule names, when it names one: image for a remember from a photo of yours
+  readonly source?: 'image';
 }
 
 // Finds your allow rule on the write's tool that matches a write from the thread, or null. A rule
-// on one tool never covers the other. No rule exists until policy ships, so the lookup the server
-// passes returns null.
+// on one tool never covers the other, and only a rule that names the image source covers a write
+// from a photo. No rule exists until policy ships, so the server's lookup returns null.
 export type FindAllowRule = (call: AllowRuleCall) => Promise<AllowRuleMatch | null>;
 
 // The call an allow rule must match: the tool, memory.remember for a new item or memory.edit for a
@@ -68,6 +71,9 @@ export type FindAllowRule = (call: AllowRuleCall) => Promise<AllowRuleMatch | nu
 export interface AllowRuleCall {
   readonly tool: 'memory.remember' | 'memory.edit';
   readonly thread: string;
+
+  // image for a remember from a photo of yours, which only a rule that names that source covers
+  readonly source?: 'image';
 }
 
 // A message you sent, as the gates read it: its record, its text and how each span arrived.
@@ -111,6 +117,9 @@ export interface GatedRememberRequest {
 
   // a new item's subject, owner when unset; an edit keeps the item's own subject
   readonly subject?: MemorySubject;
+
+  // the photo of yours a new item comes from, which never counts as your words
+  readonly image?: ImageRef;
   readonly caller: WriteCaller;
 }
 

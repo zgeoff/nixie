@@ -25,6 +25,7 @@ test("it renders each reason's full sentence with the owner's name and pronouns"
       "pinned: Saved as a proposal for Avery to review. Pinned items always wait for her review.",
       "other: Saved as a proposal for Avery to review. A newer release of nixie sent it to review, for a reason this release does not name.",
       "self_note: Saved as a proposal for Avery to review. It's a self-note, which you write about yourself, and every self-note waits for her review.",
+      "from_photo: Saved as a proposal for Avery to review. It comes from a photo, and a memory from a photo waits for her review.",
     ]
   `);
 });

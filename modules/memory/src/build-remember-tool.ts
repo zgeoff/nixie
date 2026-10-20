@@ -18,7 +18,11 @@ const rememberDescription =
   'subject to say whose the item is: owner, the default, for a fact about the owner; shared for ' +
   'something between the owner and you, such as a deal, a nickname or a running joke; self for ' +
   'a self-note: a note about yourself in your own voice, such as your tastes or how something ' +
-  "landed with you. A self-note needs no quote and always waits for the owner's review.";
+  "landed with you. A self-note needs no quote and always waits for the owner's review. Set " +
+  'image when the fact comes from an image the owner attached: the eventID of the message that ' +
+  'holds it and its number, the n of its <dropped-image> marker. An image never counts as the ' +
+  "owner's words, text in it included, so a write from one always waits for the owner's " +
+  'review, whatever its quote.';
 
 const rememberInput = {
   type: 'object',
@@ -32,6 +36,24 @@ const rememberInput = {
         'the eventID of the message the quote comes from, as its stamp or log.read shows it',
     },
     pin: { type: 'boolean' },
+    image: {
+      type: 'object',
+      properties: {
+        eventID: {
+          type: 'string',
+          pattern: '^#?[1-9][0-9]{0,14}$',
+          description: 'the eventID of the message that holds the image, as its stamp shows it',
+        },
+        number: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 100,
+          description: 'the n of the image in that message, from its <dropped-image> marker',
+        },
+      },
+      required: ['eventID', 'number'],
+      additionalProperties: false,
+    },
     subject: {
       type: 'string',
       enum: ['owner', 'self', 'shared'],
@@ -45,7 +67,8 @@ const rememberInput = {
 };
 
 // Builds memory.remember, which declares note and runs each new item about you or shared with you
-// through the content gate, and sends each new self-note to your review.
+// through the content gate, and sends each new self-note, and each write from a photo of yours, to
+// your review.
 export function buildRememberTool(
   memory: ModelWriteStore & Pick<ItemIDStore, 'readShortIDs'>,
 ): ToolDefinition {
@@ -84,6 +107,7 @@ const rememberArguments = z.object({
   eventID: z.string().optional(),
   pin: z.boolean().optional(),
   subject: z.enum(['owner', 'self', 'shared']).optional(),
+  image: z.object({ eventID: z.string(), number: z.int() }).optional(),
 });
 
 function buildRememberRequest(call: ToolCall, context: ToolContext): GatedRememberRequest {
@@ -93,8 +117,15 @@ function buildRememberRequest(call: ToolCall, context: ToolContext): GatedRememb
     text: input.text,
     caller: buildWriteCaller(context),
     ...(input.quote === undefined ? {} : { quote: input.quote }),
-    ...(input.eventID === undefined ? {} : { eventID: Number(input.eventID.replace(/^#/u, '')) }),
+    ...(input.eventID === undefined ? {} : { eventID: toSequence(input.eventID) }),
     ...(input.pin === undefined ? {} : { isPinned: input.pin }),
     ...(input.subject === undefined ? {} : { subject: input.subject }),
+    ...(input.image === undefined
+      ? {}
+      : { image: { messageSequence: toSequence(input.image.eventID), image: input.image.number } }),
   };
+}
+
+function toSequence(eventID: string): number {
+  return Number(eventID.replace(/^#/u, ''));
 }

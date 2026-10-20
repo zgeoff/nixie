@@ -15,4 +15,5 @@ export const reviewReasons = [
   // a reason that a later release writes and this one does not know, as every reader shows it
   'other',
   'self_note',
+  'from_photo',
 ] as const;
