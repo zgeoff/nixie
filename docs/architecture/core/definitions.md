@@ -151,9 +151,10 @@ nixie exports each written skill in force to the user's definitions repo as a pu
 user merges it. The export runs at start, after each approval and each choice on a conflict, and on
 a fixed interval that retries a failed export. Each skill has one branch, which the export builds
 again on the base branch's newest commit, so a later approval of the same skill updates the open
-pull request. The change writes the skill's folder and removes each file that the version it
-replaces held and the written version lacks. It also removes a vendored skill's lock entry, so the
-seed after the merge reads the folder as the user's own skill and marks the written skill adopted.
+pull request. Each export pins that commit once and reads the skill's folder at it, so the change
+writes the skill's folder and removes each file that the folder holds at that commit and the written
+version lacks. It also removes a vendored skill's lock entry, so the seed after the merge reads the
+folder as the user's own skill and marks the written skill adopted.
 
 A choice on a conflict changes the export. Keeping nixie's version gives the skill a new base, and
 the export builds the pull request again on it. Keeping the definitions' version retires the skill,

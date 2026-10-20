@@ -14,21 +14,24 @@ export interface SkillExport {
   readonly beneath: SkillVersion | null;
   readonly isBeneathVendored: boolean;
 
+  // the path of each file in the skill's folder on the base branch, from the folder
+  readonly existing: readonly string[];
+
   // the text of the lock file and of nixie.yaml on the base branch, each null when it is missing
   readonly lock: string | null;
   readonly manifest: string | null;
 }
 
 // Builds the change that carries a skill nixie wrote to your definitions repo: its files in its
-// folder, the removal of each file the version it replaces held and it lacks, and the removal of
-// a vendored skill's lock entry, so the seed after the merge reads the folder as your own skill.
+// folder, the removal of each file the folder holds and it lacks, and the removal of a vendored
+// skill's lock entry, so the seed after the merge reads the folder as your own skill.
 export function buildSkillExportChange(skillExport: SkillExport): DefinitionsChange {
   const name = skillExport.version.name;
   const folder = `skills/${name}`;
 
   const files = new Map<string, string | null>();
 
-  for (const path of skillExport.beneath?.files.keys() ?? []) {
+  for (const path of skillExport.existing) {
     files.set(`${folder}/${path}`, null);
   }
 

@@ -1,9 +1,12 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, sep } from 'node:path';
 import type { DefinitionsChange, DefinitionsRepo, PullRequestRef } from '../types';
 
 interface StubPullRequest extends PullRequestRef {
   readonly change: DefinitionsChange;
+
+  // the base revision the change was built on
+  readonly revision: string;
   readonly state: 'open' | 'closed' | 'merged';
 }
 
@@ -14,9 +17,9 @@ export interface StubDefinitionsRepo extends DefinitionsRepo {
   readonly mergePullRequest: (pullRequestNumber: number) => Promise<void>;
 }
 
-// A definitions repo whose base branch is a folder on disk, the folder a path source reads, and
-// whose pull requests live in memory. A change on a branch with an open pull request replaces that
-// pull request's change, as a forced push to its branch does.
+// A definitions repo whose base branch is a folder on disk, whose base revision is the hash of the
+// folder's files, and whose pull requests live in memory. It reads only at the newest revision, and
+// a change on a branch with an open pull request replaces that pull request's change.
 export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo {
   const pullRequests: StubPullRequest[] = [];
 
@@ -33,8 +36,20 @@ export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo
     return found;
   };
 
+  const requireRevision = async (revision: string) => {
+    const newest = await readRevision(directory);
+
+    if (revision !== newest) {
+      throw new Error(`the stub holds only the newest base revision, not ${revision}`);
+    }
+  };
+
   return {
-    readFile: async (path) => {
+    readBaseRevision: () => readRevision(directory),
+
+    readFile: async (path, revision) => {
+      await requireRevision(revision);
+
       const file = Bun.file(join(directory, path));
 
       const isFound = await file.exists();
@@ -42,13 +57,19 @@ export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo
       return isFound ? file.text() : null;
     },
 
-    writePullRequest: (change) => {
+    readFolder: async (path, revision) => {
+      await requireRevision(revision);
+
+      return readFilePaths(join(directory, path));
+    },
+
+    writePullRequest: (change, revision) => {
       const open = pullRequests.find(
         (request) => request.change.branch === change.branch && request.state === 'open',
       );
 
       if (open !== undefined) {
-        replace(open.number, { change });
+        replace(open.number, { change, revision });
 
         return Promise.resolve({ number: open.number, url: open.url });
       }
@@ -56,7 +77,7 @@ export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo
       const pullRequestNumber = pullRequests.length + 1;
       const url = `https://definitions.test/pull/${pullRequestNumber}`;
 
-      pullRequests.push({ number: pullRequestNumber, url, change, state: 'open' });
+      pullRequests.push({ number: pullRequestNumber, url, change, revision, state: 'open' });
 
       return Promise.resolve({ number: pullRequestNumber, url });
     },
@@ -84,4 +105,38 @@ export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo
       }
     },
   };
+}
+
+// the hash of every file's path and text under the folder
+async function readRevision(directory: string): Promise<string> {
+  const hasher = new Bun.CryptoHasher('sha256');
+
+  for (const path of await readFilePaths(directory)) {
+    const bytes = await Bun.file(join(directory, path)).bytes();
+
+    hasher.update(`${path}\0`);
+    hasher.update(bytes);
+    hasher.update('\0');
+  }
+
+  return hasher.digest('hex');
+}
+
+// the path of each file under the folder, from the folder with forward slashes, or none when the
+// folder is missing
+async function readFilePaths(folder: string): Promise<readonly string[]> {
+  const entries = await readdir(folder, { recursive: true, withFileTypes: true }).catch(
+    (error: unknown) => {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+        return [];
+      }
+
+      throw error;
+    },
+  );
+
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => relative(folder, join(entry.parentPath, entry.name)).split(sep).join('/'))
+    .toSorted();
 }

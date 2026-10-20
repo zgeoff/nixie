@@ -17,6 +17,7 @@ test('it carries a new skill in its folder, and notes a conversation list that l
     version,
     beneath: null,
     isBeneathVendored: false,
+    existing: [],
     lock: null,
     manifest: 'format: 2\nskills: [harbour-hours]\n',
   });
@@ -57,6 +58,7 @@ test('it leaves out the list note when nixie.yaml lists no skills', () => {
     version,
     beneath: null,
     isBeneathVendored: false,
+    existing: [],
     lock: null,
     manifest: 'format: 2\n',
   });
@@ -93,6 +95,7 @@ test('it replaces a vendored skill: it removes the files the new version lacks a
     version,
     beneath,
     isBeneathVendored: true,
+    existing: ['SKILL.md', 'old-ports.md'],
     lock: JSON.stringify({ 'tide-tables': entry, 'harbour-hours': entry }),
     manifest: 'format: 2\nskills: [harbour-hours]\n',
   });
@@ -112,6 +115,43 @@ test('it replaces a vendored skill: it removes the files the new version lacks a
   });
 });
 
+test('it removes each file the folder on the base branch holds and the version lacks', () => {
+  const beneath = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  const version = checkSkillFiles('tide-tables', [
+    {
+      path: 'SKILL.md',
+      text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\nBy port.\n',
+    },
+  ]);
+
+  invariant('skillHash' in beneath);
+  invariant('skillHash' in version);
+
+  const change = buildSkillExportChange({
+    approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+    proposalID: 'k3vq8m2xpa',
+    version,
+    beneath,
+    isBeneathVendored: false,
+    existing: ['SKILL.md', 'ports.md'],
+    lock: null,
+    manifest: null,
+  });
+
+  expect(change.files).toStrictEqual(
+    new Map([
+      [
+        'skills/tide-tables/SKILL.md',
+        '---\nname: tide-tables\ndescription: Reads a tide table.\n---\nBy port.\n',
+      ],
+      ['skills/tide-tables/ports.md', null],
+    ]),
+  );
+});
+
 test('it refuses a lock file on the base branch that is not valid', () => {
   const version = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -126,6 +166,7 @@ test('it refuses a lock file on the base branch that is not valid', () => {
       version,
       beneath: version,
       isBeneathVendored: true,
+      existing: ['SKILL.md'],
       lock: '{ not json',
       manifest: null,
     }),

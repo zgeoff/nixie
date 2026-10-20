@@ -123,17 +123,21 @@ async function writeSkillExport(options: SkillExportOptions, row: DueExport): Pr
 
   const isBeneathVendored = row.definitions_origin === 'vendored';
 
+  const revision = await options.repo.readBaseRevision();
+  const existing = await options.repo.readFolder(`skills/${version.name}`, revision);
+
   const change = buildSkillExportChange({
     approvalID: row.approval_id,
     proposalID: row.proposal_id,
     version,
     beneath,
     isBeneathVendored,
-    lock: isBeneathVendored ? await options.repo.readFile(skillsLockPath) : null,
-    manifest: beneath === null ? await options.repo.readFile(manifestPath) : null,
+    existing,
+    lock: isBeneathVendored ? await options.repo.readFile(skillsLockPath, revision) : null,
+    manifest: beneath === null ? await options.repo.readFile(manifestPath, revision) : null,
   });
 
-  const pullRequest = await options.repo.writePullRequest(change);
+  const pullRequest = await options.repo.writePullRequest(change, revision);
 
   await withWriteTransaction(options.log.writer, (tx) =>
     writeSkillExportState(tx, {

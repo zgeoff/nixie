@@ -228,13 +228,24 @@ export type SkillExportState = 'opened' | 'closed';
 // Your definitions repo, which nixie exports each skill it wrote to as a pull request for you to
 // merge. Its adapter reads the base branch and writes each change on a branch of its own.
 export interface DefinitionsRepo {
-  // the text of a file on the base branch, by its path from the definitions root, or null when
-  // the base branch lacks it
-  readonly readFile: (path: string) => Promise<string | null>;
+  // the base branch's newest commit, which one export reads at and builds its change on, so a
+  // commit the base gains meanwhile never mixes into the export
+  readonly readBaseRevision: () => Promise<string>;
 
-  // puts the change on its branch, built fresh on the base branch's newest commit, and returns
-  // the open pull request from that branch, which it opens when none is open
-  readonly writePullRequest: (change: DefinitionsChange) => Promise<PullRequestRef>;
+  // the text of a file at the revision, by its path from the definitions root, or null when the
+  // revision lacks it
+  readonly readFile: (path: string, revision: string) => Promise<string | null>;
+
+  // the path of each file under a folder at the revision, from the folder, or none when the
+  // revision lacks the folder
+  readonly readFolder: (path: string, revision: string) => Promise<readonly string[]>;
+
+  // puts the change on its branch, built on the revision, and returns the open pull request from
+  // that branch, which it opens when none is open
+  readonly writePullRequest: (
+    change: DefinitionsChange,
+    revision: string,
+  ) => Promise<PullRequestRef>;
   readonly closePullRequest: (pullRequestNumber: number) => Promise<void>;
 }
 

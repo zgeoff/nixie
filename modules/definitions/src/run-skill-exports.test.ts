@@ -87,6 +87,7 @@ test('it exports an approved skill as a pull request that carries its files', as
       number: 1,
       url: 'https://definitions.test/pull/1',
       state: 'open',
+      revision: expect.toBeString(),
       change: {
         branch: 'nixie/skill/tide-tables',
         title: 'Add the tide-tables skill that nixie wrote',
@@ -96,6 +97,52 @@ test('it exports an approved skill as a pull request that carries its files', as
             'skills/tide-tables/SKILL.md',
             '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n',
           ],
+        ]),
+      },
+    },
+  ]);
+});
+
+test('it removes a file the base branch gained after the seed, at the revision it builds on', async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n';
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'ports.md'), '# Ports\n');
+
+  const revision = await ctx.repo.readBaseRevision();
+
+  await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  expect(ctx.repo.readPullRequests()).toMatchObject([
+    {
+      revision,
+      change: {
+        files: new Map([
+          ['skills/tide-tables/SKILL.md', `${text}By port.\n`],
+          ['skills/tide-tables/ports.md', null],
         ]),
       },
     },
