@@ -1,4 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import { runDueTimers } from './run-due-timers';
 import { taskLeaseExpiredCodec } from './task-lease-expired-codec';
 import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
@@ -93,21 +94,18 @@ async function writeInterruptedSteps(context: TasksContext): Promise<void> {
     await writeRecordsInTransaction(
       tx,
       context.log,
-      started.flatMap((task) =>
-        task.started_step_key === null
-          ? []
-          : [
-              {
-                kind: 'task.step_interrupted',
-                definitions: context.definitions(),
-                thread: task.task_id,
-                payload: taskStepInterruptedCodec.encode({
-                  taskID: task.task_id,
-                  stepKey: task.started_step_key,
-                }),
-              },
-            ],
-      ),
+      started.map((task) => {
+        const stepKey = task.started_step_key;
+
+        invariant(stepKey !== null, 'the query reads only tasks with a started step');
+
+        return {
+          kind: 'task.step_interrupted',
+          definitions: context.definitions(),
+          thread: task.task_id,
+          payload: taskStepInterruptedCodec.encode({ taskID: task.task_id, stepKey }),
+        };
+      }),
     );
   });
 }
