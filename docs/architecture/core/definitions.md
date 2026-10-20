@@ -127,7 +127,9 @@ approval brings back gets a snapshot of its own.
 The seed compares each written skill with the definitions' version of it:
 
 - **The definitions hold the written version.** The user merged it, so the seed marks the written
-  skill adopted and the skill's origin becomes the definitions.
+  skill adopted and the skill's origin becomes the definitions. An approval of the version the
+  definitions already hold is adopted at its own seed, which records the adoption though the skills
+  in force stay the same.
 - **The definitions hold the base, or lack a new skill.** The written skill stays in force.
 - **The definitions hold another version.** The user changed the skill before the written version
   reached the definitions. The written skill stays in force, and its row keeps the definitions'
@@ -167,11 +169,11 @@ each skill version under its content hash, a seed record, and a seed row that ti
 its revision to both hashes. A persona, a snapshot or a skill version seen before keeps its first
 row. The definitions in force are the newest seed, and every record takes its snapshot hash from it.
 
-| Result    | When                                                                      | Writes   |
-| --------- | ------------------------------------------------------------------------- | -------- |
-| Seeded    | The source, revision, content hash or snapshot hash differs from the last | The rows |
-| Unchanged | The newest seed holds the same source, revision and both hashes           | Nothing  |
-| Refused   | The snapshot failed to read, parse or validate                            | Nothing  |
+| Result    | When                                                                                                          | Writes   |
+| --------- | ------------------------------------------------------------------------------------------------------------- | -------- |
+| Seeded    | The source, revision, content hash or snapshot hash differs from the last, or a written skill becomes adopted | The rows |
+| Unchanged | The newest seed holds the same source, revision and both hashes, and no written skill becomes adopted         | Nothing  |
+| Refused   | The snapshot failed to read, parse or validate                                                                | Nothing  |
 
 A refused seed comes back as a value with its error and the definitions still in force, never as a
 throw, so the caller reports the refusal while the last good seed keeps serving. A half-applied seed

@@ -42,7 +42,8 @@ export function runWrittenSkillSeed(options: WrittenSkillSeedOptions): Promise<S
       conversationSkills: overlay.conversationSkills,
     });
 
-    if (built.snapshotHash === inForce.snapshotHash) {
+    // an adoption leaves the skills in force as they stand, and the seed still records it
+    if (overlay.adopted.length === 0 && built.snapshotHash === inForce.snapshotHash) {
       return { status: 'unchanged', inForce };
     }
 
