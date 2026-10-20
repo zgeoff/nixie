@@ -36,7 +36,7 @@ export interface TestSessionHostOptions {
 
 // Starts what a system task's session runs on outside the server: a writer on a fresh data
 // directory, and the process double, whose tool route reaches each run socket in the socket
-// directory. It stops them, after every part the test deferred, then removes the directory.
+// directory. Cleanup stops the test's parts, its sandboxes, then its own parts and directory.
 export async function startTestSessionHost(
   options: TestSessionHostOptions = {},
 ): Promise<TestSessionHost> {
@@ -95,20 +95,45 @@ export async function startTestSessionHost(
 
   stack.defer(() => endpoint.stop());
 
-  const sandboxes = createProcessSandboxAdapter({
+  const adapter = createProcessSandboxAdapter({
     recorder: buildSandboxRecorder({ log, definitions: context.definitions }),
     rootDir: join(dataDir, 'sandboxes'),
     toolTarget: endpoint.getToolTarget,
     hostEnv: {},
   });
 
+  // every sandbox the host created, which cleanup destroys after the test's own parts stop and
+  // before the writer closes, so no guest process or tool relay outlives the test
+  const createdIDs = new Set<string>();
+
+  stack.defer(() => removeSandboxes(adapter, createdIDs));
+
   return {
     dataDir,
     context,
-    sandboxes,
+    sandboxes: {
+      ...adapter,
+      create: async (spec) => {
+        const sandbox = await adapter.create(spec);
+
+        createdIDs.add(sandbox.id);
+
+        return sandbox;
+      },
+    },
     socketDir,
     defer: (stop) => {
       stack.defer(stop);
     },
   };
+}
+
+// destroys each created sandbox that is still live; one a part already destroyed has no row
+async function removeSandboxes(
+  adapter: SandboxAdapter,
+  createdIDs: ReadonlySet<string>,
+): Promise<void> {
+  const sandboxes = await Promise.all([...createdIDs].map((id) => adapter.get(id)));
+
+  await Promise.all(sandboxes.map((sandbox) => sandbox?.destroy()));
 }
