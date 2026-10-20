@@ -410,6 +410,7 @@ test.each([
   ['git/trees', { base_tree: 'tree-0', tree: [{ path: 'nixie.yaml' }] }],
   ['git/commits', { tree: 'tree-0' }],
   ['git/refs', { ref: 'heads/side', sha: 'commit-0' }],
+  ['pulls', { title: 'Add the tide-tables skill that nixie wrote', head: 'side', base: 'main' }],
 ])('it refuses POST %s with a body that lacks a field with 422', async (route, body) => {
   const github = startStubGitHub({
     repository: 'harbour/definitions',

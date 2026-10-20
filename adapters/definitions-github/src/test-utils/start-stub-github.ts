@@ -399,9 +399,21 @@ function answerPullList(state: StubState, query: URLSearchParams): Response {
   return Response.json(open.map((pull) => toPullJSON(state, pull)));
 }
 
+const newPullSchema = z.object({
+  title: z.string(),
+  body: z.string(),
+  head: z.string(),
+  base: z.string(),
+});
+
 function answerNewPull(state: StubState, body: unknown): Response {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the adapter under test sends it
-  const request = body as { title: string; body: string; head: string; base: string };
+  const parsed = newPullSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return invalidRequest();
+  }
+
+  const request = parsed.data;
 
   if (state.pulls.some((pull) => pull.head === request.head && pull.state === 'open')) {
     return Response.json({ message: 'A pull request already exists' }, { status: 422 });
