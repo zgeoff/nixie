@@ -1,12 +1,10 @@
 import { expect, test } from 'bun:test';
 import { readRecordKeys, readRecords } from '@heynixie/log';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
-import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
-import { createAnsweredOffer } from './test-utils/create-answered-offer';
-import { startFaultPointFailure } from './test-utils/start-fault-point-failure';
 import { startNextTestMemory } from './test-utils/start-next-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
-import type { MemoryTables } from './types';
+import { writeImageOfferRecord } from './test-utils/write-image-offer-record';
+import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
 async function setupTest() {
   const memory = await startTestMemory();
@@ -14,81 +12,90 @@ async function setupTest() {
   return { memory };
 }
 
-test('it removes at start the key of an offer whose save committed before a crash', async () => {
+test("it removes at start the key of a saved offer's record that a crash left behind", async () => {
   const ctx = await setupTest();
 
-  const offer = await createAnsweredOffer(ctx.memory, {
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Here is a photo',
+    spans: [{ start: 0, end: 15, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const offer = await writeImageOfferRecord(ctx.memory.log, {
+    thread: 'conversation',
+    messageSequence: photo,
+    image: 1,
     text: 'The owner paddles an orange sea kayak',
   });
 
-  startFaultPointFailure('memory.offer.saved');
+  await ctx.memory.store.remember({
+    text: 'The owner paddles an orange sea kayak',
+    provenance: buildMockProvenance({
+      checks: { quote: 'pass', offer: { sequence: offer.sequence, answer: 'typed_yes' } },
+    }),
+  });
 
-  const crash = await ctx.memory.store.writes
-    .answerOffer({
-      image: offer.image,
-      answerSequence: offer.answerSequence,
-      caller: buildMockWriteCaller(),
-    })
-    .catch((error: unknown) => error);
-
-  const leftByCrash = await readRecordKeys(ctx.memory.log, [offer.offerKeyID]);
   const restarted = await startNextTestMemory(ctx.memory);
-  const leftAfterStart = await readRecordKeys(restarted.log, [offer.offerKeyID]);
+  const left = await readRecordKeys(restarted.log, [offer.keyID]);
 
-  expect(crash).toMatchObject({ message: 'crashed at memory.offer.saved' });
-  expect(leftByCrash.has(offer.offerKeyID)).toBe(true);
-  expect(leftAfterStart.has(offer.offerKeyID)).toBe(false);
+  expect(left.has(offer.keyID)).toBe(false);
 });
 
-test('it leaves no readable offered text once you forget an item whose save a crash cut short', async () => {
+test('it leaves no readable offered text once you forget an item whose offer key a crash left behind', async () => {
   const ctx = await setupTest();
 
-  const offer = await createAnsweredOffer(ctx.memory, {
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Here is a photo',
+    spans: [{ start: 0, end: 15, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const offer = await writeImageOfferRecord(ctx.memory.log, {
+    thread: 'conversation',
+    messageSequence: photo,
+    image: 1,
     text: 'The owner paddles an orange sea kayak',
   });
 
-  startFaultPointFailure('memory.offer.saved');
-
-  await ctx.memory.store.writes
-    .answerOffer({
-      image: offer.image,
-      answerSequence: offer.answerSequence,
-      caller: buildMockWriteCaller(),
-    })
-    .catch(() => {});
+  const item = await ctx.memory.store.remember({
+    text: 'The owner paddles an orange sea kayak',
+    provenance: buildMockProvenance({
+      checks: { quote: 'pass', offer: { sequence: offer.sequence, answer: 'typed_yes' } },
+    }),
+  });
 
   const restarted = await startNextTestMemory(ctx.memory);
 
-  const item = await restarted.writer.db
-    .$extendTables<MemoryTables>()
-    .selectFrom('memory_items')
-    .select(['item_id', 'version'])
-    .executeTakeFirstOrThrow();
-
-  await restarted.store.forget({
-    target: { itemID: item.item_id, version: item.version },
-    provenance: buildMockProvenance(),
-  });
+  await restarted.store.forget({ target: item, provenance: buildMockProvenance() });
 
   const records = await readRecords(restarted.log, { afterSequence: 0, limit: 1000 });
 
-  // the reply that presented the offer is your conversation, which a forget of that reply removes
   expect(
-    records
-      .filter((entry) => JSON.stringify(entry.record.erasable).includes('orange sea kayak'))
-      .map((entry) => entry.record.kind),
-  ).toStrictEqual(['model.reply']);
+    records.filter((entry) => JSON.stringify(entry.record.erasable).includes('orange sea kayak')),
+  ).toStrictEqual([]);
 });
 
-test('it never removes at start the key of an offer that no answer saved', async () => {
+test('it never removes at start the key of an offer that no version saved', async () => {
   const ctx = await setupTest();
 
-  const offer = await createAnsweredOffer(ctx.memory, {
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Here is a photo',
+    spans: [{ start: 0, end: 15, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const offer = await writeImageOfferRecord(ctx.memory.log, {
+    thread: 'conversation',
+    messageSequence: photo,
+    image: 1,
     text: 'The owner paddles an orange sea kayak',
   });
 
   const restarted = await startNextTestMemory(ctx.memory);
-  const keys = await readRecordKeys(restarted.log, [offer.offerKeyID]);
+  const keys = await readRecordKeys(restarted.log, [offer.keyID]);
 
-  expect(keys.has(offer.offerKeyID)).toBe(true);
+  expect(keys.has(offer.keyID)).toBe(true);
 });

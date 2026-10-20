@@ -2,8 +2,8 @@ import type { Log, LogTables } from '@heynixie/log';
 import { removeRecordKey } from '@heynixie/log';
 import { sql } from 'kysely';
 
-// Removes the key of every offer the model made for an image of the message at the sequence, so a
-// forget of that message leaves no readable copy of a declined or unanswered offer's text. A saved
+// Removes the key of every offer an earlier release's model made for an image of the message at the
+// sequence, so a forget of that message leaves no readable copy of an unsaved offer's text. A saved
 // offer's key is gone already, and a rerun removes nothing more.
 export async function removeImageOfferKeys(
   log: Pick<Log, 'writer'>,

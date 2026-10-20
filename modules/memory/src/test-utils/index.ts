@@ -26,6 +26,8 @@ export type {
 } from './start-test-memory-writer';
 
 export { startTestMemoryWriter } from './start-test-memory-writer';
+export type { ImageOfferRecord, WrittenImageOffer } from './write-image-offer-record';
+export { writeImageOfferRecord } from './write-image-offer-record';
 export { writeOwnerMessages } from './write-owner-messages';
 export type { ModelReplyRecord } from './write-model-reply-record';
 export { writeModelReplyRecord } from './write-model-reply-record';

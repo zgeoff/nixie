@@ -4,8 +4,9 @@ import { sql } from 'kysely';
 import { readHeldRecordKeys } from './read-held-record-keys';
 import type { MemoryTables, StoreParts } from './types';
 
-// Removes the key of each saved offer's record that a crash between the version's commit and the
-// key's removal left behind, so a forget of the saved item leaves the offered text unreadable.
+// Removes the key of each saved offer's record that an earlier release's crash, between the
+// version's commit and the key's removal, left behind, so a forget of the saved item leaves the
+// offered text unreadable.
 export async function removeSavedOfferKeys(parts: StoreParts): Promise<void> {
   const log = parts.context.log;
 

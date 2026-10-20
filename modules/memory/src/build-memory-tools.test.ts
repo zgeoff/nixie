@@ -7,12 +7,10 @@ import { defaultGateLimits } from './default-gate-limits';
 import type { TestMemoryOptions } from './test-utils';
 import {
   buildMockCheckerAnswer,
-  buildMockWriteCaller,
   createProposal,
   makeToolAllowRule,
   readItemShortID,
   startTestMemory,
-  writeModelReplyRecord,
 } from './test-utils';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
@@ -57,7 +55,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
   };
 }
 
-test('it declares read for recall, pending and diff, export for export, and note for remember, edit, retire, the image offer, comment and rate', async () => {
+test('it declares read for recall, pending and diff, export for export, and note for remember, edit, retire, comment and rate', async () => {
   const ctx = await setupTest();
 
   const effects = [
@@ -66,8 +64,6 @@ test('it declares read for recall, pending and diff, export for export, and note
     'memory.remember',
     'memory.edit',
     'memory.retire',
-    'memory.offer_image',
-    'memory.answer_offer',
     'memory.diff',
     'memory.comment',
     'memory.rate',
@@ -80,8 +76,6 @@ test('it declares read for recall, pending and diff, export for export, and note
     ['memory.remember', ['note']],
     ['memory.edit', ['note']],
     ['memory.retire', ['note']],
-    ['memory.offer_image', ['note']],
-    ['memory.answer_offer', ['note']],
     ['memory.diff', ['read']],
     ['memory.comment', ['note']],
     ['memory.rate', ['note']],
@@ -1095,64 +1089,6 @@ test('it gives the model a recalled item and leaves no readable copy once the it
   });
 
   expect(JSON.stringify(entries)).not.toInclude('Leeds');
-});
-
-test('it saves an image offer on a typed yes and leaves no readable copy of its text once the item is forgotten', async () => {
-  const ctx = await setupTest();
-
-  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
-    thread: 'conversation',
-    text: 'Our new puppy',
-    spans: [{ start: 0, end: 13, source: 'typed' }],
-    images: ['image/webp'],
-  });
-
-  await runToolCall(
-    {
-      tool: 'memory.offer_image',
-      input: { eventID: String(photo), image: 1, text: 'The owner has a beagle called Biscuit' },
-      toolUseID: null,
-    },
-    {
-      runID: 'run-1',
-      thread: 'conversation',
-      tools: ['memory.offer_image'],
-      model: { model: 'test-model', profile: 'standard' },
-    },
-    ctx.toolCallOptions,
-  );
-
-  await writeModelReplyRecord(ctx.memory.log, {
-    thread: 'conversation',
-    text: "Want me to remember this? Here's what I'd save: The owner has a beagle called Biscuit",
-  });
-
-  const answer = await writeOwnerMessageRecord(ctx.memory.log, {
-    thread: 'conversation',
-    text: 'yes',
-    spans: [{ start: 0, end: 3, source: 'typed' }],
-  });
-
-  // the answer's records hold no text, so the answer goes straight to the store
-  const outcome = await ctx.memory.store.writes.answerOffer({
-    image: { messageSequence: photo, image: 1 },
-    answerSequence: answer,
-    caller: buildMockWriteCaller(),
-  });
-
-  invariant(outcome.status === 'applied');
-
-  await ctx.memory.store.forget({
-    target: { itemID: outcome.itemID, version: outcome.version },
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  // the reply that presented the offer is the conversation's own record, which its own forget removes
-  const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
-
-  expect(
-    JSON.stringify(entries.filter((entry) => entry.record.kind !== 'model.reply')),
-  ).not.toInclude('Biscuit');
 });
 
 test('it applies a remembered fact and leaves no readable copy of its text once it is forgotten', async () => {

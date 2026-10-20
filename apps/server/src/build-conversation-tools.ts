@@ -59,8 +59,6 @@ export function buildConversationTools(
         writes: {
           remember: (request) => requireStore().writes.remember(request),
           retire: (request) => requireStore().writes.retire(request),
-          offerImage: (request) => requireStore().writes.offerImage(request),
-          answerOffer: (request) => requireStore().writes.answerOffer(request),
         },
         renderReviewReason: (reason) => requireStore().renderReviewReason(reason),
       },

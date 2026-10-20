@@ -155,51 +155,16 @@ write apply at once under the rule's token check, with outside content as its so
 a photo keeps the image in its checks and takes outside content as its source, even when the user
 approves an edit of its text.
 
-## Image offers
+### Image offer records
 
-Memory never holds an image or a description of one: the writer and the log reader see only a marker
-where the user attached an image. An image the user shows the assistant would therefore leave memory
-once the conversation moved on, so the assistant offers to keep it in words the user confirms. The
-assistant calls `memory.offer_image` with one image of one of the user's messages and the plain
-factual sentence it would save, and the tool returns one line for the assistant to say as the last
-line of its reply: "Want me to remember this? Here's what I'd save: …". nixie seals that sentence in
-the offer record under the record's own key, and nothing reaches memory or the proposal list until
-the user answers.
-
-An image takes one offer. The check for an earlier offer and the offer record commit in one
-transaction, so 2 offers for one image never both pass, and a second offer is refused even after a
-no or a silence, so the assistant never asks again.
-
-`memory.answer_offer` passes on the user's first message after the offer, and only that message
-answers it, so a later yes about something else never saves the offered sentence. That message
-answers the offer only when the newest reply before it ends with the offer line, and the line holds
-the sentence that the offer record seals. The model writes both the offer and the reply, so without
-that check it could seal one sentence and show the user another, or ask something else, and the
-user's yes would save the sealed sentence. The sentence saves only when that whole message is a
-plain yes that the user typed, such as "yes" or "yes please", under the quote rules. A yes with
-anything more, such as a correction, saves nothing, because the version would then hold something
-other than what the user agreed to. Every other answer, a no included, writes nothing at all: no
-version, no proposal and no notice. The same holds once a forget of the image's message, the
-presenting reply or the answer has started, because the version's transaction checks for it, so a
-forget that lands while the answer saves still wins.
-
-A saved offer skips the token check and the checker, because the user read the whole sentence before
-typing the yes. The model never passes the sentence at answer time: it comes from the offer record,
-so the version holds exactly what the offer line showed. The version's quote is the user's yes
-followed by the sentence it confirmed, and its checks name the offer record, so the sentence never
-reads as words the user typed. Its source is the user, and the check that runs inside the version's
-transaction saves one offer once.
-
-Once the version commits, nixie removes the offer record's key. The key lives in the key store, a
-separate database, so no transaction covers both, and a crash between the commit and the removal
-leaves the key behind. Store start therefore removes the key of every saved offer that the key store
-still holds. The offer tool's result record leaves the sentence out, so the sentence lives on only
-under its item's key and in the reply that presented it. A forget of the item therefore leaves no
-other readable copy in the log, and the reply is part of the user's conversation, which a forget of
-that reply removes. An offer that never saves keeps its sentence under the offer record's key until
-the user forgets the image's message: that forget's cleanup removes the key of every offer made for
-the message's images, so a declined or unanswered offer leaves no readable copy either. The cleanup
-covers both through the one forget, because an unanswered offer has no moment at which it closes.
+The log of a deployment that ran an earlier release can hold image offer records. Each one seals a
+sentence that the model offered to save from an image under the record's own key, and no tool writes
+one. A forget of the image's message removes the key of every offer record for its images, so no
+offer record keeps a sentence that never saved. A saved sentence lives on under its item's key, and
+its version's checks name the offer record. Store start removes the key of each such offer record
+that the key store still holds, so a forget of the saved item leaves no offer record readable
+either. The reply that presented an offer holds its sentence too, and that reply is part of the
+user's conversation, so only a forget of the reply itself removes that copy.
 
 ## Provenance
 
