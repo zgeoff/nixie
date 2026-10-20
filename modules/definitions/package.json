@@ -11,10 +11,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@heynixie/clock": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
+    "xstate": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
