@@ -97,8 +97,8 @@ The skill host commands list the pending skill proposals and approve or reject o
 force for the next task, with the user's edited files in place of the proposal's when the command
 carries them, and a rejection needs a reason, which the conversation reads in its next turn. The
 same commands list the skills nixie wrote that are in force, each marked as a conflict when the
-user's definitions changed it after the approval, and resolve one by keeping nixie's version or the
-definitions' version.
+user's definitions changed it after the approval and with the pull request that exports it, and
+resolve one by keeping nixie's version or the definitions' version.
 
 The subjects command counts the memory items and proposals of each subject, owner, shared or self,
 from the running server. Its dry run reads no server: it copies a database file the operator names,

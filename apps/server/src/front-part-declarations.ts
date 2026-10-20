@@ -103,7 +103,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'host_commands',
     needs: ['inputs', 'context', 'reset', 'api_gate'],
-    uses: ['memory', 'server_parts'],
+    uses: ['memory', 'server_parts', 'skill_exports'],
     start: (parts) => {
       const options = parts.get('inputs').options;
 
@@ -112,7 +112,8 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           dataDir: options.config.server.dataDir,
           apiContext: parts.get('context').apiContext,
           readMemory: () => parts.find('memory'),
-          seedWrittenSkills: () => runApprovedSkillsSeed(parts.find('server_parts')),
+          seedWrittenSkills: () =>
+            runApprovedSkillsSeed(parts.find('server_parts'), parts.find('skill_exports')),
           runReset: parts.get('reset').run,
           gate: parts.get('api_gate'),
         },

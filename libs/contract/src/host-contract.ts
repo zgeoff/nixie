@@ -251,6 +251,9 @@ const writtenSkillSchema = z.object({
   base: definitionsSkillSchema,
   definitions: definitionsSkillSchema,
   isConflict: z.boolean(),
+
+  // the pull request that exports it to your definitions repo, null until the export opens one
+  pullRequestURL: z.url().nullable(),
   approvedAt: z.date(),
 });
 

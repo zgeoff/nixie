@@ -1,0 +1,208 @@
+import { expect, test } from 'bun:test';
+import { z } from 'zod';
+import { startStubGitHub } from './start-stub-github';
+
+test('it answers a request with another token with 401', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  const response = await fetch(`${github.url}/repos/harbour/definitions/git/ref/heads/main`, {
+    headers: { authorization: 'Bearer token-b' },
+  });
+
+  expect(response.status).toBe(401);
+});
+
+test('it serves a file on the base branch as base64, and 404 for a missing one', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  github.writeBaseFile('nixie.yaml', 'format: 2\n');
+
+  const found = await fetch(
+    `${github.url}/repos/harbour/definitions/contents/nixie.yaml?ref=main`,
+    {
+      headers: { authorization: 'Bearer token-a' },
+    },
+  );
+
+  const missing = await fetch(
+    `${github.url}/repos/harbour/definitions/contents/persona.md?ref=main`,
+    { headers: { authorization: 'Bearer token-a' } },
+  );
+
+  const file: unknown = await found.json();
+
+  expect(file).toStrictEqual({
+    content: Buffer.from('format: 2\n').toString('base64'),
+    encoding: 'base64',
+  });
+
+  expect(missing.status).toBe(404);
+});
+
+test('it builds a tree on a base tree, writing and removing files, and a commit a new branch points at', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  github.writeBaseFile('skills/tide-tables/old.md', '# Old\n');
+  github.writeBaseFile('nixie.yaml', 'format: 2\n');
+
+  const headers = { authorization: 'Bearer token-a' };
+  const repo = `${github.url}/repos/harbour/definitions`;
+  const sha = z.object({ sha: z.string() });
+
+  const refBody: unknown = await fetch(`${repo}/git/ref/heads/main`, { headers }).then((response) =>
+    response.json(),
+  );
+
+  const ref = z.object({ object: sha }).parse(refBody);
+
+  const parentBody: unknown = await fetch(`${repo}/git/commits/${ref.object.sha}`, {
+    headers,
+  }).then((response) => response.json());
+
+  const parent = z.object({ tree: sha }).parse(parentBody);
+
+  const treeBody: unknown = await fetch(`${repo}/git/trees`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      base_tree: parent.tree.sha,
+      tree: [
+        { path: 'skills/tide-tables/SKILL.md', mode: '100644', type: 'blob', content: '# Tides\n' },
+        { path: 'skills/tide-tables/old.md', mode: '100644', type: 'blob', sha: null },
+      ],
+    }),
+  }).then((response) => response.json());
+
+  const tree = sha.parse(treeBody);
+
+  const commitBody: unknown = await fetch(`${repo}/git/commits`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ message: 'Add tides', tree: tree.sha, parents: [ref.object.sha] }),
+  }).then((response) => response.json());
+
+  const commit = sha.parse(commitBody);
+
+  await fetch(`${repo}/git/refs`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ ref: 'refs/heads/nixie/skill/tide-tables', sha: commit.sha }),
+  });
+
+  expect(github.readBranchFiles('nixie/skill/tide-tables')).toStrictEqual(
+    new Map([
+      ['nixie.yaml', 'format: 2\n'],
+      ['skills/tide-tables/SKILL.md', '# Tides\n'],
+    ]),
+  );
+});
+
+test('it refuses to update a branch that is missing with 422', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  const response = await fetch(
+    `${github.url}/repos/harbour/definitions/git/refs/heads/nixie/skill/tide-tables`,
+    {
+      method: 'PATCH',
+      headers: { authorization: 'Bearer token-a' },
+      body: JSON.stringify({ sha: 'commit-0', force: true }),
+    },
+  );
+
+  expect(response.status).toBe(422);
+});
+
+test('it lists the open pull request from a head, and closes it on an update', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  const headers = { authorization: 'Bearer token-a' };
+  const repo = `${github.url}/repos/harbour/definitions`;
+
+  await fetch(`${repo}/pulls`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      title: 'Add tides',
+      body: 'body\n',
+      head: 'nixie/skill/tide-tables',
+      base: 'main',
+    }),
+  });
+
+  const listed = await fetch(
+    `${repo}/pulls?state=open&head=harbour%3Anixie%2Fskill%2Ftide-tables&base=main`,
+    { headers },
+  ).then((response) => response.json());
+
+  await fetch(`${repo}/pulls/1`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ state: 'closed' }),
+  });
+
+  expect(listed).toStrictEqual([
+    { number: 1, html_url: 'https://github.test/harbour/definitions/pull/1', state: 'open' },
+  ]);
+
+  expect(github.readPulls()).toStrictEqual([
+    {
+      number: 1,
+      head: 'nixie/skill/tide-tables',
+      base: 'main',
+      title: 'Add tides',
+      body: 'body\n',
+      state: 'closed',
+    },
+  ]);
+});
+
+test('it refuses a second open pull request from one head with 422', async () => {
+  const github = startStubGitHub({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+  });
+
+  const headers = { authorization: 'Bearer token-a' };
+
+  const pull = JSON.stringify({
+    title: 'Add tides',
+    body: 'body\n',
+    head: 'nixie/skill/tide-tables',
+    base: 'main',
+  });
+
+  await fetch(`${github.url}/repos/harbour/definitions/pulls`, {
+    method: 'POST',
+    headers,
+    body: pull,
+  });
+
+  const second = await fetch(`${github.url}/repos/harbour/definitions/pulls`, {
+    method: 'POST',
+    headers,
+    body: pull,
+  });
+
+  expect(second.status).toBe(422);
+});

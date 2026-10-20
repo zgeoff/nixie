@@ -23,6 +23,14 @@
         "typescript": "7.0.2",
       },
     },
+    "adapters/definitions-github": {
+      "name": "@heynixie/definitions-github",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/definitions": "workspace:*",
+        "zod": "catalog:",
+      },
+    },
     "adapters/encoder-onnx": {
       "name": "@heynixie/encoder-onnx",
       "version": "0.0.0",
@@ -62,6 +70,7 @@
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/definitions": "workspace:*",
+        "@heynixie/definitions-github": "workspace:*",
         "@heynixie/encoder-onnx": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
@@ -880,6 +889,8 @@
     "@heynixie/db": ["@heynixie/db@workspace:libs/db"],
 
     "@heynixie/definitions": ["@heynixie/definitions@workspace:modules/definitions"],
+
+    "@heynixie/definitions-github": ["@heynixie/definitions-github@workspace:adapters/definitions-github"],
 
     "@heynixie/e2e": ["@heynixie/e2e@workspace:e2e"],
 

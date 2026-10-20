@@ -24,6 +24,32 @@ test('it takes the probe interval the file names', () => {
   });
 });
 
+test('it reads the export repo with the main branch and GitHub API by default', () => {
+  const result = definitionsConfigSchema.safeParse({
+    source: { kind: 'path', path: '/etc/nixie/definitions' },
+    export: { repository: 'harbour/definitions' },
+  });
+
+  expect(result.data).toStrictEqual({
+    source: { kind: 'path', path: '/etc/nixie/definitions' },
+    probeIntervalMs: 300_000,
+    export: {
+      repository: 'harbour/definitions',
+      base: 'main',
+      apiURL: 'https://api.github.com',
+    },
+  });
+});
+
+test('it refuses an export repo that is not owner/name', () => {
+  const result = definitionsConfigSchema.safeParse({
+    source: { kind: 'path', path: '/etc/nixie/definitions' },
+    export: { repository: 'definitions' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['export', 'repository'] });
+});
+
 test('it refuses a source kind that no slice has built', () => {
   const result = definitionsConfigSchema.safeParse({
     source: { kind: 'git', path: '/etc/nixie/definitions' },

@@ -1,3 +1,4 @@
+import type { GitHubDefinitionsOptions } from '@heynixie/definitions-github';
 import type { Writer } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
@@ -53,6 +54,9 @@ export interface ServerPartsOptions extends ServerOptions {
 
   // the sandbox adapter the configuration selects, with impd's section and token for imp
   readonly sandbox: SandboxSettings;
+
+  // the definitions repo that the skills nixie wrote export to, with its token, or null for none
+  readonly definitionsExport: GitHubDefinitionsOptions | null;
   readonly writer: Writer;
   readonly cleanup: Cleanup;
 

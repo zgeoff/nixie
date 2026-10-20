@@ -162,6 +162,12 @@ and the export closes its pull request. A new skill joins the conversation's lis
 overlay alone, so when nixie.yaml lists the conversation's skills, the pull request asks the user to
 add the skill to that list.
 
+The export runs only when the configuration names the definitions repo on GitHub. It writes through
+GitHub's REST API with a fine-grained token that holds contents and pull-requests write on that one
+repo, and the token lives in the secrets file under `definitions_export_token`. A configuration that
+names the repo without the token stops nixie at start. Without the repo, a written skill stays in
+force over the definitions until the user copies it into them.
+
 ## The snapshot hash
 
 The snapshot hash is the hash of one canonical form of the definitions in force. The persona enters

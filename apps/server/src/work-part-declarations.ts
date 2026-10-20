@@ -1,4 +1,6 @@
 import { createFirstEnrolmentCode } from '@heynixie/api';
+import { startSkillExportSweep } from '@heynixie/definitions';
+import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-github';
 import { toErrorFields } from '@heynixie/logger';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
 import { startSkillLapseSweep } from '@heynixie/skills';
@@ -85,6 +87,31 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       });
 
       await parts.cleanup.defer(() => sweep.stop());
+    },
+  },
+  {
+    // each skill nixie wrote goes to the definitions repo as a pull request, when one is configured
+    name: 'skill_exports',
+    needs: ['inputs', 'server_parts', 'start_record'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+      const settings = reader.get('inputs').options.definitionsExport;
+
+      if (settings === null) {
+        return null;
+      }
+
+      const sweep = startSkillExportSweep({
+        log: parts.context.log,
+        repo: buildGitHubDefinitionsRepo(settings),
+        onError: (error) => {
+          parts.log('skills.export_failed', toErrorFields(error));
+        },
+      });
+
+      await parts.cleanup.defer(() => sweep.stop());
+
+      return sweep;
     },
   },
   {

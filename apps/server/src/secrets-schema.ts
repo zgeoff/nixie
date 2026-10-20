@@ -8,6 +8,9 @@ export const secretsSchema = z.strictObject({
     message: 'the deployment key is base64 of 32 bytes',
   }),
   impd_token: z.string().min(1).optional(),
+
+  // the GitHub token that the export of skills nixie wrote to the definitions repo uses
+  definitions_export_token: z.string().min(1).optional(),
   model_credentials: z.record(z.string(), z.string().min(1)).default({}),
   settings: z.record(z.string(), z.string().min(1)).default({}),
 });

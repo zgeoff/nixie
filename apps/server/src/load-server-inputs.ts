@@ -4,13 +4,14 @@ import { makeThresholdLogger } from '@heynixie/logger';
 import { loadDeploymentConfig } from './load-deployment-config';
 import { loadSandboxManifest } from './load-sandbox-manifest';
 import { loadSecrets } from './load-secrets';
+import { resolveDefinitionsExport } from './resolve-definitions-export';
 import { resolveOwnerConfig } from './resolve-owner-config';
 import { resolveSandboxSettings } from './resolve-sandbox-settings';
 import type { ServerOptions, ServerPartsOptions } from './start-server';
 
 export type ServerInputs = Pick<
   ServerPartsOptions,
-  'config' | 'secrets' | 'images' | 'sandbox' | 'log'
+  'config' | 'secrets' | 'images' | 'sandbox' | 'definitionsExport' | 'log'
 > & {
   // the encoder, which the server stops with its other parts, or null for keyword search alone
   readonly encoder: ONNXEncoder | null;
@@ -29,6 +30,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
 
   const config = { ...loaded, owner: resolveOwnerConfig(loaded.owner, secrets.settings) };
   const sandbox = resolveSandboxSettings(loaded, secrets.impdToken);
+  const definitionsExport = resolveDefinitionsExport(loaded, secrets.definitionsExportToken);
 
   const images = await loadSandboxManifest(options.manifestPath);
 
@@ -42,6 +44,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
     secrets,
     images,
     sandbox,
+    definitionsExport,
     log: makeThresholdLogger(options.log, loaded.server.logLevel),
     encoder,
   };
