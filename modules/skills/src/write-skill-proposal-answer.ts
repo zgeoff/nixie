@@ -1,5 +1,10 @@
 import type { ParseProblem, ParsedSkill } from '@heynixie/definitions';
-import { checkSkillFiles, readDefinitionsInForce, writeWrittenSkill } from '@heynixie/definitions';
+import {
+  checkSkillFiles,
+  readDefinitionsInForce,
+  readWrittenSkills,
+  writeWrittenSkill,
+} from '@heynixie/definitions';
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
@@ -75,8 +80,17 @@ async function readOpenProposal(
   return state;
 }
 
-// the version of the skill in force, or null when none is
+// The version of the skill in force, or null when none is. An approval that committed before its
+// seed ran stands in force already, so a second approval over the same base is stale.
 async function readCurrentHash(tx: Transaction<unknown>, name: string): Promise<string | null> {
+  const written = await readWrittenSkills(tx);
+
+  const approved = written.find((skill) => skill.name === name);
+
+  if (approved !== undefined) {
+    return approved.skillHash;
+  }
+
   const inForce = await readDefinitionsInForce(tx);
 
   return inForce?.skills.find((skill) => skill.name === name)?.skillHash ?? null;

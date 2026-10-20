@@ -182,6 +182,85 @@ test('it puts an approved skill in force, so the next task loads it', async () =
   ]);
 });
 
+test('it refuses a second approval over the same base as stale before the first one seeds', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await runSeed({ log: ctx.log, source: ctx.source, policy: ctx.policy });
+
+  const byPort = [
+    {
+      path: 'SKILL.md',
+      text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\nBy port.\n',
+    },
+  ];
+
+  const byHour = [
+    {
+      path: 'SKILL.md',
+      text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\nBy hour.\n',
+    },
+  ];
+
+  const first = checkSkillFiles('tide-tables', byPort);
+  const second = checkSkillFiles('tide-tables', byHour);
+
+  invariant('skillHash' in first);
+  invariant('skillHash' in second);
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'skills.write_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: skillsWriteProposedCodec.encode({
+        proposalID: 'k3x9m2p7qa',
+        name: 'tide-tables',
+        skillHash: first.skillHash,
+        baseHash: null,
+        files: byPort,
+        untypedToken: null,
+        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+      }),
+    },
+    {
+      kind: 'skills.write_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: skillsWriteProposedCodec.encode({
+        proposalID: 'w7tn4c9rhz',
+        name: 'tide-tables',
+        skillHash: second.skillHash,
+        baseHash: null,
+        files: byHour,
+        untypedToken: null,
+        provenance: { runID: 'run-1', callID: 'call-2', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  // the first approval's seed has not run yet, so the snapshot in force still lacks the skill
+  const unseeded = { ...ctx.context, seedWrittenSkills: () => Promise.resolve() };
+
+  await writeSkillProposalAnswer(unseeded, {
+    answer: 'approve',
+    proposalID: 'k3x9m2p7qa',
+    skillHash: first.skillHash,
+  });
+
+  const refusal = await writeSkillProposalAnswer(unseeded, {
+    answer: 'approve',
+    proposalID: 'w7tn4c9rhz',
+    skillHash: second.skillHash,
+  }).then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  expect(refusal).toMatchObject({ code: 'STALE_BASE' });
+});
+
 test('it applies your edited files and marks the approval edited', async () => {
   const ctx = await setupTest();
 
