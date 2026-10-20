@@ -99,7 +99,9 @@ function makeGitHubSender(options: GitHubDefinitionsOptions): GitHubSender {
     operation: Operation,
     input: GitHubInput<Operation>,
   ): Promise<z.output<Operation['response']>> => {
-    const query = input.query === undefined ? '' : `?${new URLSearchParams(input.query)}`;
+    const query =
+      input.query === undefined ? '' : `?${new URLSearchParams(input.query).toString()}`;
+
     const path = `${toGitHubPath(operation.path, { ...input.params, owner, name })}${query}`;
 
     const response = await fetch(`${options.apiURL}${path}`, {
