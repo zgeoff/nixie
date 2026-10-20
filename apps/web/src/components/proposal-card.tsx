@@ -68,8 +68,6 @@ export function ProposalCard(props: ProposalCardProps): ReactNode {
 }
 
 const card = css({ borderBottomWidth: '1px', paddingBlock: '2' });
-
-// a proposal from a photo shows the photo beside its text
 const body = css({ alignItems: 'flex-start', display: 'flex', gap: '2' });
 const meta = css({ color: 'textMuted', fontSize: 'sm' });
 const field = css({ display: 'flex', flexDirection: 'column', fontSize: 'sm', gap: '1' });
