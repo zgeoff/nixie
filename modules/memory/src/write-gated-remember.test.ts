@@ -994,6 +994,100 @@ test('it names the photo and the token verdict in the checks of a proposal from 
   });
 });
 
+test('it merges a write from a photo into the pending proposal of the same text from the same photo', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const first = await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const second = await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(first.status === 'proposed');
+
+  expect(second).toStrictEqual({
+    status: 'proposed',
+    proposalID: first.proposalID,
+    reason: 'from_photo',
+    merged: true,
+  });
+});
+
+test('it keeps writes of the same text from photos of 2 messages as proposals of their own', async () => {
+  const memory = await startTestMemory();
+
+  const [firstPhoto, secondPhoto] = await Promise.all(
+    ['Look at this', 'And this one'].map((text) =>
+      writeOwnerMessageRecord(memory.log, {
+        thread: 'conversation',
+        text,
+        spans: [{ start: 0, end: text.length, source: 'typed' }],
+        images: ['image/jpeg'],
+      }),
+    ),
+  );
+
+  invariant(firstPhoto !== undefined && secondPhoto !== undefined);
+
+  await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: firstPhoto, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: secondPhoto, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(outcome).toMatchObject({ status: 'proposed', merged: false });
+  expect(pending).toHaveLength(2);
+});
+
+test('it keeps writes of the same text from 2 images of one message as proposals of their own', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at these',
+    spans: [{ start: 0, end: 13, source: 'typed' }],
+    images: ['image/jpeg', 'image/png'],
+  });
+
+  await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: photo, image: 2 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(outcome).toMatchObject({ status: 'proposed', merged: false });
+  expect(pending).toHaveLength(2);
+});
+
 test('it keeps a write from a photo as a proposal of its own beside a pending proposal of the same text', async () => {
   const memory = await startTestMemory();
 
