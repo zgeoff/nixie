@@ -24,9 +24,6 @@ interface SkillLapseSweepContext {
 
 type SkillLapseSweepEvent = { readonly type: 'tick' } | { readonly type: 'stop' };
 
-// The skill lapse sweep: a tick each interval starts a sweep, and a tick during a sweep passes, so
-// 2 sweeps never overlap. A failed sweep goes to onError and the next tick sweeps again. A stop
-// ends a wait at once, and ends a sweep only after it.
 export const skillLapseSweepMachine = setup({
   types: {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- xstate reads these types only at compile time
