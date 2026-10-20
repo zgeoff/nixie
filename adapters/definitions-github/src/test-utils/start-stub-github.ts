@@ -365,9 +365,16 @@ function answerCommit(state: StubState, body: unknown): Response {
   return Response.json({ sha }, { status: 201 });
 }
 
+const newRefSchema = z.object({ ref: z.string().startsWith('refs/'), sha: z.string() });
+
 function answerNewRef(state: StubState, body: unknown): Response {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the adapter under test sends it
-  const request = body as { ref: string; sha: string };
+  const parsed = newRefSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return invalidRequest();
+  }
+
+  const request = parsed.data;
   const branch = request.ref.replace(/^refs\/heads\//u, '');
 
   if (state.refs.has(branch)) {
