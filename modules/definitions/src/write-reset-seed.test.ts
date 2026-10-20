@@ -351,6 +351,53 @@ test('it keeps a skill nixie wrote in force through a reset and the seed after i
   ]);
 });
 
+test('it keeps a skill nixie wrote through a reset before its seed, and the seed after it puts it in force', async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+
+  await Promise.all([
+    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n'),
+    writeFile(join(ctx.root, 'persona.md'), '# Persona\n'),
+    writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text),
+  ]);
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await runLogReset(ctx.log, {
+    keptTables: [],
+    readKept: (tx) => readResetSeed(tx),
+    writeFirstRecords: async (tx, seed) => {
+      invariant(seed);
+
+      await writeResetSeed(tx, ctx.log, seed);
+    },
+  });
+
+  const seeded = await runWrittenSkillSeed({ log: ctx.log, policy });
+
+  expect(seeded.inForce?.skills).toStrictEqual([
+    { name: 'tide-tables', skillHash: skill.skillHash, origin: 'nixie' },
+  ]);
+});
+
 test("it puts your definitions' version back after a reset when you retire nixie's", async () => {
   const ctx = await setupTest();
 

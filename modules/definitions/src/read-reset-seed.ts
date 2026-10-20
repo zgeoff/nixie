@@ -20,8 +20,8 @@ export interface ResetSeed {
   // the skills the snapshot holds, with their files
   readonly skills: readonly SnapshotSkill[];
 
-  // the skills nixie wrote that are in force, and the version of your definitions beneath each,
-  // which a retirement puts back in force
+  // the skills nixie wrote that are in force, with each one's version and the version of your
+  // definitions beneath it, which a retirement puts back in force
   readonly written: readonly WrittenSkillRow[];
   readonly beneath: readonly SkillVersion[];
 }
@@ -64,9 +64,12 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     .orderBy('name')
     .execute();
 
+  // a written skill whose seed has not run yet holds a version that no snapshot holds
   const beneath = await loadSkillVersions(
     db,
-    written.flatMap((row) => (row.definitions_hash === null ? [] : [row.definitions_hash])),
+    written.flatMap((row) =>
+      row.definitions_hash === null ? [row.skill_hash] : [row.skill_hash, row.definitions_hash],
+    ),
   );
 
   return {
