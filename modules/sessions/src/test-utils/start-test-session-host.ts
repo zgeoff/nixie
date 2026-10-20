@@ -135,5 +135,7 @@ async function removeSandboxes(
 ): Promise<void> {
   const sandboxes = await Promise.all([...createdIDs].map((id) => adapter.get(id)));
 
-  await Promise.all(sandboxes.map((sandbox) => sandbox?.destroy()));
+  const live = sandboxes.filter((sandbox) => sandbox !== null);
+
+  await Promise.all(live.map((sandbox) => sandbox.destroy()));
 }
