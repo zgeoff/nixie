@@ -21,13 +21,17 @@ export async function checkToolServer(
   }
 }
 
+function waitForReconnectDelay(): Promise<void> {
+  return waitForDelay(1000);
+}
+
 // The CLI lists an in-process server only once the first message arrives, so the session's init
 // check alone covers one.
 async function waitForToolServer(
   session: Query,
   waitBeforeReconnect: () => Promise<void>,
 ): Promise<McpServerStatus | null> {
-  const first = await findToolServer(session);
+  const first = await readToolServer(session);
 
   if (first === null || first.status === 'connected') {
     return first;
@@ -41,17 +45,13 @@ async function waitForToolServer(
     // the status read next carries the reason
   }
 
-  return findToolServer(session);
+  return readToolServer(session);
 }
 
-async function findToolServer(session: Query): Promise<McpServerStatus | null> {
+async function readToolServer(session: Query): Promise<McpServerStatus | null> {
   const servers = await session.mcpServerStatus();
 
   return servers.find((candidate) => candidate.name === toolServerName) ?? null;
-}
-
-function waitForReconnectDelay(): Promise<void> {
-  return waitForDelay(1000);
 }
 
 function buildToolsFailed(server: McpServerStatus): GuestFrame {

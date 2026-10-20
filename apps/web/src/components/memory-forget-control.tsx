@@ -67,6 +67,33 @@ export function MemoryForgetControl(props: MemoryForgetControlProps): ReactNode 
   );
 }
 
+// The finish of a forget that began on this page and whose last call failed, such as on a cleanup
+// that failed after its start committed. It sends that call again with its client action ID, so the
+// server runs the cleanup again; a forget that began elsewhere finishes at the store's next start.
+function ForgetFinish(props: MemoryForgetControlProps): ReactNode {
+  const forget = useMemoryForget(props.item.itemID, props.onSettled);
+  const last = forget.last;
+
+  if (last === null || (last.status !== 'failed' && last.status !== 'pending')) {
+    return null;
+  }
+
+  return (
+    <div aria-label="Finish the forget" className={css({ fontSize: 'sm' })} role="group">
+      {last.status === 'failed' ? <p role="alert">The forget did not finish.</p> : null}
+      <button
+        disabled={last.status === 'pending'}
+        onClick={() => {
+          forget.send(last.input);
+        }}
+        type="button"
+      >
+        Finish the forget
+      </button>
+    </div>
+  );
+}
+
 interface ForgetConfirmationProps {
   readonly itemID: string;
   readonly version: number;
@@ -77,6 +104,18 @@ interface ForgetConfirmationProps {
   // closes the confirmation once the forget applied or was refused, with the refusal's reason
   readonly onSettled: (notice: string | null) => void;
 }
+
+// the confirmation takes the whole width of the row of controls it opens in
+const confirmation = css({
+  borderWidth: '1px',
+  flexBasis: 'full',
+  display: 'flex',
+  flexDirection: 'column',
+  fontSize: 'sm',
+  gap: '2',
+  marginTop: '1',
+  padding: '2',
+});
 
 function ForgetConfirmation(props: ForgetConfirmationProps): ReactNode {
   const nixie = useNixieClient();
@@ -94,31 +133,19 @@ function ForgetConfirmation(props: ForgetConfirmationProps): ReactNode {
   return (
     <div aria-label="Forget this item" className={confirmation} role="group">
       {preview.isPending ? <p>Reading what the forget destroys…</p> : null}
-      {preview.isError ? <p role="alert">{findPreviewNotice(preview.error)}</p> : null}
+      {preview.isError ? <p role="alert">{pickPreviewNotice(preview.error)}</p> : null}
       {preview.isSuccess ? <ForgetPreview preview={preview.data} /> : null}
       <ForgetButtons {...props} canForget={preview.isSuccess} />
     </div>
   );
 }
 
-// the confirmation takes the whole width of the row of controls it opens in
-const confirmation = css({
-  borderWidth: '1px',
-  flexBasis: 'full',
-  display: 'flex',
-  flexDirection: 'column',
-  fontSize: 'sm',
-  gap: '2',
-  marginTop: '1',
-  padding: '2',
-});
-
 const previewNotices: Readonly<Record<string, string>> = {
   MEMORY_ITEM_NOT_FOUND: 'This item is gone. It was forgotten after the list loaded.',
   STALE_VERSION: 'This item changed after the list loaded. Check it, then try again.',
 };
 
-function findPreviewNotice(error: unknown): string {
+function pickPreviewNotice(error: unknown): string {
   const code = error instanceof ORPCError && typeof error.code === 'string' ? error.code : '';
 
   return previewNotices[code] ?? 'The forget could not read the item. Try again.';
@@ -127,6 +154,8 @@ function findPreviewNotice(error: unknown): string {
 interface ForgetPreviewProps {
   readonly preview: ForgetPreviewData;
 }
+
+const lossList = css({ listStyleType: 'disc', paddingInlineStart: '5' });
 
 // The item with every version, what the forget destroys, and what it cannot reach: the disk
 // snapshots you took by hand, and your messages and nixie's replies that state the same fact.
@@ -155,8 +184,6 @@ function ForgetPreview(props: ForgetPreviewProps): ReactNode {
     </>
   );
 }
-
-const lossList = css({ listStyleType: 'disc', paddingInlineStart: '5' });
 
 // each thing the forget destroys, the counted ones only when there is one
 function buildLosses(lost: ForgetPreviewData['lost']): readonly string[] {
@@ -205,33 +232,6 @@ function ForgetButtons(props: ForgetButtonsProps): ReactNode {
       {forget.own?.status === 'failed' ? (
         <p role="alert">The forget did not finish. Try again.</p>
       ) : null}
-    </div>
-  );
-}
-
-// The finish of a forget that began on this page and whose last call failed, such as on a cleanup
-// that failed after its start committed. It sends that call again with its client action ID, so the
-// server runs the cleanup again; a forget that began elsewhere finishes at the store's next start.
-function ForgetFinish(props: MemoryForgetControlProps): ReactNode {
-  const forget = useMemoryForget(props.item.itemID, props.onSettled);
-  const last = forget.last;
-
-  if (last === null || (last.status !== 'failed' && last.status !== 'pending')) {
-    return null;
-  }
-
-  return (
-    <div aria-label="Finish the forget" className={css({ fontSize: 'sm' })} role="group">
-      {last.status === 'failed' ? <p role="alert">The forget did not finish.</p> : null}
-      <button
-        disabled={last.status === 'pending'}
-        onClick={() => {
-          forget.send(last.input);
-        }}
-        type="button"
-      >
-        Finish the forget
-      </button>
     </div>
   );
 }

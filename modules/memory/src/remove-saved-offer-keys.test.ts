@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { findRecordKeys, readRecords } from '@heynixie/log';
+import { readRecordKeys, readRecords } from '@heynixie/log';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
 import { createAnsweredOffer } from './test-utils/create-answered-offer';
@@ -31,9 +31,9 @@ test('it removes at start the key of an offer whose save committed before a cras
     })
     .catch((error: unknown) => error);
 
-  const leftByCrash = await findRecordKeys(ctx.memory.log, [offer.offerKeyID]);
+  const leftByCrash = await readRecordKeys(ctx.memory.log, [offer.offerKeyID]);
   const restarted = await startNextTestMemory(ctx.memory);
-  const leftAfterStart = await findRecordKeys(restarted.log, [offer.offerKeyID]);
+  const leftAfterStart = await readRecordKeys(restarted.log, [offer.offerKeyID]);
 
   expect(crash).toMatchObject({ message: 'crashed at memory.offer.saved' });
   expect(leftByCrash.has(offer.offerKeyID)).toBe(true);
@@ -88,7 +88,7 @@ test('it never removes at start the key of an offer that no answer saved', async
   });
 
   const restarted = await startNextTestMemory(ctx.memory);
-  const keys = await findRecordKeys(restarted.log, [offer.offerKeyID]);
+  const keys = await readRecordKeys(restarted.log, [offer.offerKeyID]);
 
   expect(keys.has(offer.offerKeyID)).toBe(true);
 });

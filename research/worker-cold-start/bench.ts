@@ -48,7 +48,7 @@ function parseLine(text: string): Record<string, unknown> {
 
 // Stamps each stdout line on arrival, relative to `origin`, and keeps the raw bytes for frames. It
 // also stamps the arrival of the first whole frame: a 4-byte length, then that many bytes.
-async function collectOutput(
+async function readStreamOutput(
   stream: ReadableStream<Uint8Array>,
   origin: number,
 ): Promise<{ frameMs: number | undefined; lines: Line[]; stdout: Uint8Array }> {
@@ -82,7 +82,7 @@ async function run(command: string[], origin: number, input?: Uint8Array): Promi
     stdin: input ? 'pipe' : 'ignore',
     stdout: 'pipe',
   });
-  const output = collectOutput(child.stdout, origin);
+  const output = readStreamOutput(child.stdout, origin);
   if (input && child.stdin) {
     child.stdin.write(input);
     await child.stdin.end();

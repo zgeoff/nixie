@@ -67,7 +67,7 @@ export function buildStubSandboxAdapter(
 
       return sandbox;
     },
-    get: (id) => Promise.resolve(live.get(id) ?? null),
+    read: (id) => Promise.resolve(live.get(id) ?? null),
     list: (owner) =>
       Promise.resolve([...live.values()].filter((sandbox) => sandbox.spec.owner === owner)),
     addSecret: () => Promise.resolve(),

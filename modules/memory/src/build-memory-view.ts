@@ -1,8 +1,8 @@
-import { findViewMatches } from './find-view-matches';
 import { readForgetPreview } from './read-forget-preview';
 import { readItemDetail } from './read-item-detail';
 import { readMemoryExport } from './read-memory-export';
 import { readPinnedCoreView } from './read-pinned-core-view';
+import { readViewMatches } from './read-view-matches';
 import { readViewPage } from './read-view-page';
 import { readViewProposals } from './read-view-proposals';
 import type { StoreParts } from './types';
@@ -16,7 +16,7 @@ export function buildMemoryView(parts: StoreParts): MemoryView {
 
   return {
     readPage: (request) => readViewPage(log, request),
-    findItems: (query) => findViewMatches(parts, query),
+    readMatchingItems: (query) => readViewMatches(parts, query),
     readPinnedCore: () => readPinnedCoreView(parts),
     readItem: (itemID) => readItemDetail(log, itemID),
     readProposals: () => readViewProposals(parts),

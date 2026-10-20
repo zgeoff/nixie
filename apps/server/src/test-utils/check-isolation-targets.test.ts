@@ -1,63 +1,32 @@
 import { expect, onTestFinished, spyOn, test } from 'bun:test';
 import { Socket } from 'node:net';
 import { checkIsolationTargets } from './check-isolation-targets';
-
-function startListener(hostname: string) {
-  const listener = Bun.listen({
-    hostname,
-    port: 0,
-    socket: {
-      data: (socket) => {
-        socket.end();
-      },
-    },
-  });
-
-  onTestFinished(() => {
-    listener.stop(true);
-  });
-
-  return listener;
-}
-
-const dualStack = {
-  eth0: [
-    {
-      address: '2001:db8:42::7',
-      netmask: 'ffff:ffff:ffff:ffff::',
-      family: 'IPv6',
-      mac: '52:54:00:12:34:56',
-      internal: false,
-      cidr: '2001:db8:42::7/64',
-      scopeid: 0,
-    },
-  ],
-} as const;
-
-const ipv4Only = {
-  eth0: [
-    {
-      address: '10.42.0.17',
-      netmask: '255.255.255.0',
-      family: 'IPv4',
-      mac: '0a:58:0a:2a:00:11',
-      internal: false,
-      cidr: '10.42.0.17/24',
-    },
-    {
-      address: 'fe80::858:aff:fe2a:11',
-      netmask: 'ffff:ffff:ffff:ffff::',
-      family: 'IPv6',
-      mac: '0a:58:0a:2a:00:11',
-      internal: false,
-      cidr: 'fe80::858:aff:fe2a:11/64',
-      scopeid: 2,
-    },
-  ],
-} as const;
+import { startStubListener } from './start-stub-listener';
 
 test('it reports a live IPv4 listener beside the sandbox outcome', async () => {
-  const listener = startListener('127.0.0.1');
+  const ipv4Only = {
+    eth0: [
+      {
+        address: '10.42.0.17',
+        netmask: '255.255.255.0',
+        family: 'IPv4',
+        mac: '0a:58:0a:2a:00:11',
+        internal: false,
+        cidr: '10.42.0.17/24',
+      },
+      {
+        address: 'fe80::858:aff:fe2a:11',
+        netmask: 'ffff:ffff:ffff:ffff::',
+        family: 'IPv6',
+        mac: '0a:58:0a:2a:00:11',
+        internal: false,
+        cidr: 'fe80::858:aff:fe2a:11/64',
+        scopeid: 2,
+      },
+    ],
+  } as const;
+
+  const listener = startStubListener('127.0.0.1');
 
   const lines = await checkIsolationTargets(
     [{ host: '127.0.0.1', port: listener.port, listener: 'required' }],
@@ -71,6 +40,20 @@ test('it reports a live IPv4 listener beside the sandbox outcome', async () => {
 });
 
 test('it reports a failed listener for a required target where nothing listens', async () => {
+  const dualStack = {
+    eth0: [
+      {
+        address: '2001:db8:42::7',
+        netmask: 'ffff:ffff:ffff:ffff::',
+        family: 'IPv6',
+        mac: '52:54:00:12:34:56',
+        internal: false,
+        cidr: '2001:db8:42::7/64',
+        scopeid: 0,
+      },
+    ],
+  } as const;
+
   const listener = Bun.listen({ hostname: '127.0.0.1', port: 0, socket: { data() {} } });
   const port = listener.port;
 
@@ -88,6 +71,20 @@ test('it reports a failed listener for a required target where nothing listens',
 });
 
 test('it prints an optional target as unprovable when nothing listens on its port', async () => {
+  const dualStack = {
+    eth0: [
+      {
+        address: '2001:db8:42::7',
+        netmask: 'ffff:ffff:ffff:ffff::',
+        family: 'IPv6',
+        mac: '52:54:00:12:34:56',
+        internal: false,
+        cidr: '2001:db8:42::7/64',
+        scopeid: 0,
+      },
+    ],
+  } as const;
+
   const warn = spyOn(console, 'warn').mockImplementation(() => {});
 
   onTestFinished(() => {
@@ -112,7 +109,21 @@ test('it prints an optional target as unprovable when nothing listens on its por
 });
 
 test('it reports a live listener on an optional target beside the sandbox outcome', async () => {
-  const listener = startListener('127.0.0.1');
+  const dualStack = {
+    eth0: [
+      {
+        address: '2001:db8:42::7',
+        netmask: 'ffff:ffff:ffff:ffff::',
+        family: 'IPv6',
+        mac: '52:54:00:12:34:56',
+        internal: false,
+        cidr: '2001:db8:42::7/64',
+        scopeid: 0,
+      },
+    ],
+  } as const;
+
+  const listener = startStubListener('127.0.0.1');
 
   const lines = await checkIsolationTargets(
     [{ host: '127.0.0.1', port: listener.port, listener: 'optional' }],
@@ -126,6 +137,20 @@ test('it reports a live listener on an optional target beside the sandbox outcom
 });
 
 test('it reports a listener timeout on an optional target as failed', async () => {
+  const dualStack = {
+    eth0: [
+      {
+        address: '2001:db8:42::7',
+        netmask: 'ffff:ffff:ffff:ffff::',
+        family: 'IPv6',
+        mac: '52:54:00:12:34:56',
+        internal: false,
+        cidr: '2001:db8:42::7/64',
+        scopeid: 0,
+      },
+    ],
+  } as const;
+
   const socket = new Socket();
 
   onTestFinished(() => {
@@ -144,7 +169,21 @@ test('it reports a listener timeout on an optional target as failed', async () =
 });
 
 test('it reports a live IPv6 listener from a machine with routable IPv6', async () => {
-  const listener = startListener('::1');
+  const dualStack = {
+    eth0: [
+      {
+        address: '2001:db8:42::7',
+        netmask: 'ffff:ffff:ffff:ffff::',
+        family: 'IPv6',
+        mac: '52:54:00:12:34:56',
+        internal: false,
+        cidr: '2001:db8:42::7/64',
+        scopeid: 0,
+      },
+    ],
+  } as const;
+
+  const listener = startStubListener('::1');
 
   const lines = await checkIsolationTargets(
     [{ host: '::1', port: listener.port, listener: 'required' }],
@@ -156,14 +195,36 @@ test('it reports a live IPv6 listener from a machine with routable IPv6', async 
 });
 
 test('it prints an IPv6 target as unprovable from a machine with only link-local IPv6', async () => {
+  const ipv4Only = {
+    eth0: [
+      {
+        address: '10.42.0.17',
+        netmask: '255.255.255.0',
+        family: 'IPv4',
+        mac: '0a:58:0a:2a:00:11',
+        internal: false,
+        cidr: '10.42.0.17/24',
+      },
+      {
+        address: 'fe80::858:aff:fe2a:11',
+        netmask: 'ffff:ffff:ffff:ffff::',
+        family: 'IPv6',
+        mac: '0a:58:0a:2a:00:11',
+        internal: false,
+        cidr: 'fe80::858:aff:fe2a:11/64',
+        scopeid: 2,
+      },
+    ],
+  } as const;
+
   const warn = spyOn(console, 'warn').mockImplementation(() => {});
 
   onTestFinished(() => {
     warn.mockRestore();
   });
 
-  const ipv4 = startListener('127.0.0.1');
-  const ipv6 = startListener('::1');
+  const ipv4 = startStubListener('127.0.0.1');
+  const ipv6 = startStubListener('::1');
 
   const lines = await checkIsolationTargets(
     [
@@ -185,6 +246,20 @@ test('it prints an IPv6 target as unprovable from a machine with only link-local
 });
 
 test('it reports a listener timeout and closes the socket once the deadline passes', async () => {
+  const dualStack = {
+    eth0: [
+      {
+        address: '2001:db8:42::7',
+        netmask: 'ffff:ffff:ffff:ffff::',
+        family: 'IPv6',
+        mac: '52:54:00:12:34:56',
+        internal: false,
+        cidr: '2001:db8:42::7/64',
+        scopeid: 0,
+      },
+    ],
+  } as const;
+
   const socket = new Socket();
 
   onTestFinished(() => {

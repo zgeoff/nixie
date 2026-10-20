@@ -20,13 +20,15 @@ async function setupTest() {
 
   invariant(script !== undefined, 'the build wrote no bundle');
 
+  const answerRequest = (request: Request) =>
+    new URL(request.url).pathname === '/normalize-image.js'
+      ? new Response(script, { headers: { 'content-type': 'text/javascript' } })
+      : new Response('<!doctype html><title>images</title>', {
+          headers: { 'content-type': 'text/html' },
+        });
+
   const page = Bun.serve({
-    fetch: (request) =>
-      new URL(request.url).pathname === '/normalize-image.js'
-        ? new Response(script, { headers: { 'content-type': 'text/javascript' } })
-        : new Response('<!doctype html><title>images</title>', {
-            headers: { 'content-type': 'text/html' },
-          }),
+    fetch: answerRequest,
     hostname: '127.0.0.1',
     port: 0,
   });

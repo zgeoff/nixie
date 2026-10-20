@@ -55,7 +55,7 @@ async function runTokenTurn(
   plan.signal.throwIfAborted();
 
   const [url, note] = await Promise.all([
-    getToolURL(run, plan.signal),
+    readToolURL(run, plan.signal),
     readTurnNote(run, plan.resume === null),
   ]);
 
@@ -104,14 +104,8 @@ async function runTokenTurn(
   }
 }
 
-function readTurnNote(run: ConversationRun, isNewSession: boolean): Promise<TurnNote | null> {
-  return run.readTurnNote === undefined
-    ? Promise.resolve(null)
-    : run.readTurnNote({ isNewSession });
-}
-
 // a forget that aborted the turn while the route was read stops the turn before a guest starts
-async function getToolURL(run: ConversationRun, signal: AbortSignal): Promise<string> {
+async function readToolURL(run: ConversationRun, signal: AbortSignal): Promise<string> {
   const route = await run.sandbox.toolRoute();
 
   signal.throwIfAborted();
@@ -120,6 +114,12 @@ async function getToolURL(run: ConversationRun, signal: AbortSignal): Promise<st
   invariant(route, 'the conversation sandbox has no tool route');
 
   return route.url;
+}
+
+function readTurnNote(run: ConversationRun, isNewSession: boolean): Promise<TurnNote | null> {
+  return run.readTurnNote === undefined
+    ? Promise.resolve(null)
+    : run.readTurnNote({ isNewSession });
 }
 
 // the preamble goes before your first message in the same message, so the model reads it first

@@ -2,6 +2,17 @@ import type { LogRecord, LogLevel as LogTapeLevel } from '@logtape/logtape';
 import invariant from 'tiny-invariant';
 import type { LogLevel } from './types';
 
+// nixie's names for LogTape's levels: makeLogger writes only debug, info, warning and error, and
+// the other two fold into their neighbours
+const levelNames: Readonly<Record<LogTapeLevel, LogLevel>> = {
+  trace: 'debug',
+  debug: 'debug',
+  info: 'info',
+  warning: 'warn',
+  error: 'error',
+  fatal: 'error',
+};
+
 // Formats a LogTape record as one JSON line of nixie's log, with the time and the event first. The
 // record's own time, event and level lead the line, so no property can replace them, and an info
 // line names no level, so it reads the same as a line from before nixie had levels.
@@ -18,17 +29,6 @@ export function formatLogLine(record: LogRecord): string {
 
   return `${JSON.stringify({ ...envelope, ...pickEnvelopeValues(rest) })}\n`;
 }
-
-// nixie's names for LogTape's levels: makeLogger writes only debug, info, warning and error, and
-// the other two fold into their neighbours
-const levelNames: Readonly<Record<LogTapeLevel, LogLevel>> = {
-  trace: 'debug',
-  debug: 'debug',
-  info: 'info',
-  warning: 'warn',
-  error: 'error',
-  fatal: 'error',
-};
 
 // Keeps the properties that LogFields allows: a string, a number, a boolean or null. An object or a
 // list, such as a message's content or a tool's result, never reaches the line, even when a caller

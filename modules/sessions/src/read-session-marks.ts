@@ -111,6 +111,16 @@ function toContext(ended: TurnEnd): ContextSize | null {
     : { size: ended.contextSize, window: ended.contextWindow };
 }
 
+// the newest failure counts the failures in a row before it, unless a summary or a session opened
+// after it
+function countFailures(failed: LogRecord | undefined, resetThrough: number): number {
+  if (failed === undefined || failed.sequence < resetThrough) {
+    return 0;
+  }
+
+  return modelCompactionFailedCodec.tryDecodePartial(failed.payload)?.failures ?? 1;
+}
+
 // a turn recorded before turns kept their session's images ran on a session with no images; one
 // recorded before they kept the count reads as holding the most images a session takes, so a
 // message with images rebuilds the session rather than risk the count
@@ -122,14 +132,4 @@ function toImages(ended: TurnEnd): ImageTally {
   }
 
   return { bytes, count: ended?.sessionImageCount ?? (bytes > 0 ? sessionImageBudget.count : 0) };
-}
-
-// the newest failure counts the failures in a row before it, unless a summary or a session opened
-// after it
-function countFailures(failed: LogRecord | undefined, resetThrough: number): number {
-  if (failed === undefined || failed.sequence < resetThrough) {
-    return 0;
-  }
-
-  return modelCompactionFailedCodec.tryDecodePartial(failed.payload)?.failures ?? 1;
 }

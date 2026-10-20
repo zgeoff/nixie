@@ -30,27 +30,29 @@ export function startProviderDouble(): ProviderDouble {
   const calls: ProviderCall[] = [];
   const script: ProviderReply[] = [];
 
+  const answerRequest = async (request: Request) => {
+    if (request.method !== 'POST' || new URL(request.url).pathname !== '/send') {
+      return new Response('not found', { status: 404 });
+    }
+
+    const body: unknown = await request.json();
+
+    calls.push({ idempotencyKey: request.headers.get('idempotency-key'), body });
+
+    const reply = script.shift() ?? {
+      kind: 'refused',
+      reason: 'the provider double has no reply left',
+    };
+
+    await reply.gate;
+
+    return renderReply(reply);
+  };
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: async (request) => {
-      if (request.method !== 'POST' || new URL(request.url).pathname !== '/send') {
-        return new Response('not found', { status: 404 });
-      }
-
-      const body: unknown = await request.json();
-
-      calls.push({ idempotencyKey: request.headers.get('idempotency-key'), body });
-
-      const reply = script.shift() ?? {
-        kind: 'refused',
-        reason: 'the provider double has no reply left',
-      };
-
-      await reply.gate;
-
-      return renderReply(reply);
-    },
+    fetch: answerRequest,
   });
 
   return {

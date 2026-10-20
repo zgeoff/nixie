@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const storageKey = 'nixie.outbox.discarded';
+const keptCount = 500;
 
 // Keeps the client message IDs of the messages any tab discarded, adds the one given, and returns
 // them. Every tab shares the list, so a tab that still holds a discarded message, even one asleep
@@ -19,8 +20,6 @@ export function updateDiscardedOutboxIDs(added?: string): readonly string[] {
 
   return discarded;
 }
-
-const keptCount = 500;
 
 function readDiscardedIDs(): string[] {
   const stored = globalThis.localStorage.getItem(storageKey);

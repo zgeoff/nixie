@@ -83,12 +83,6 @@ function mergeRecords(page: readonly LiveRecord[], live: readonly LiveRecord[]):
   };
 }
 
-function toForgottenRecord(record: LiveRecord): LiveRecord {
-  const { message: _forgotten, ...rest } = record;
-
-  return rest;
-}
-
 // Every forget invalidates the session and erases every summary, a summary that commits after the
 // invalidation included, so a summary keeps its text only while no invalidation is newer than the
 // opening of the session it summarized.
@@ -101,14 +95,14 @@ function toReadableSummaries(records: readonly LiveRecord[]): readonly LiveRecor
 
   return records.map((record) =>
     record.summary?.text !== undefined &&
-    invalidated.sequence > findOpenedBefore(records, record.sequence)
+    invalidated.sequence > getOpenedBefore(records, record.sequence)
       ? toErasedSummary(record)
       : record,
   );
 }
 
 // the sequence of the newest session opening before the sequence, or -1 when the records hold none
-function findOpenedBefore(records: readonly LiveRecord[], sequence: number): number {
+function getOpenedBefore(records: readonly LiveRecord[], sequence: number): number {
   return (
     records.findLast(
       (record) => record.kind === 'model.session_opened' && record.sequence < sequence,
@@ -124,6 +118,12 @@ function toErasedSummary(record: LiveRecord): LiveRecord {
   const { text: _erased, ...summary } = record.summary;
 
   return { ...record, summary };
+}
+
+function toForgottenRecord(record: LiveRecord): LiveRecord {
+  const { message: _forgotten, ...rest } = record;
+
+  return rest;
 }
 
 // A reset removed every step that ended before its log_reset record, so a step end that a page

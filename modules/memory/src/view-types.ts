@@ -149,7 +149,7 @@ export interface MemoryView {
   readonly readPage: (request: ViewPageRequest) => Promise<ViewPage>;
 
   // active items whose text matches the query, ranked as a recall ranks them
-  readonly findItems: (query: string) => Promise<ViewMatches>;
+  readonly readMatchingItems: (query: string) => Promise<ViewMatches>;
   readonly readPinnedCore: () => Promise<PinnedCoreView>;
 
   // null when no item has the ID

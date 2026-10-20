@@ -41,7 +41,7 @@ export function buildSandboxRecorder(options: SandboxRecorderOptions): SandboxRe
         { ...toRecordInput(event), definitions: options.definitions() },
       ]);
     },
-    findRow: async (adapter, sandboxID) => {
+    readRow: async (adapter, sandboxID) => {
       const row = await query
         .where('adapter', '=', adapter)
         .where('sandbox_id', '=', sandboxID)

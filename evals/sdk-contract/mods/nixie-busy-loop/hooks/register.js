@@ -1,3 +1,9 @@
+export function register(on) {
+  on('session.start', handleSessionStart);
+  on('command.run', { command: 'nixie-alive' }, handleAliveCommand);
+  on('tool.call', { tool: 'Bash' }, checkBash);
+}
+
 // The MARK_BLOCK hook never yields, so the hooks worker stops answering.
 // /nixie-alive answers only while the module is loaded, so a host can probe for it.
 async function handleSessionStart($, event, next) {
@@ -13,12 +19,6 @@ function handleAliveCommand() {
   return { text: 'nixie-policy alive' };
 }
 
-function runForever() {
-  while (true) {
-    // Spin without awaiting.
-  }
-}
-
 function checkBash($, event, next) {
   if (event.command.includes('MARK_BLOCK')) {
     runForever();
@@ -29,8 +29,8 @@ function checkBash($, event, next) {
   return next(event);
 }
 
-export function register(on) {
-  on('session.start', handleSessionStart);
-  on('command.run', { command: 'nixie-alive' }, handleAliveCommand);
-  on('tool.call', { tool: 'Bash' }, checkBash);
+function runForever() {
+  while (true) {
+    // Spin without awaiting.
+  }
 }

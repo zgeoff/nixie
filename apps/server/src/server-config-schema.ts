@@ -2,6 +2,14 @@ import type { LogLevel } from '@heynixie/logger';
 import { logLevels } from '@heynixie/logger';
 import { z } from 'zod';
 
+export interface ServerConfig {
+  readonly dataDir: string;
+  readonly hostname: string;
+  readonly port: number;
+  readonly secretsFile: string;
+  readonly logLevel: LogLevel;
+}
+
 // The server section of the deployment configuration: the data volume's mount root, where the API
 // and the health endpoint listen, nixie's encrypted secrets file, and the lowest level of event the
 // log writes. Each has the default the reference Compose recipe and manifests use.
@@ -20,11 +28,3 @@ export const serverConfigSchema = z
     secretsFile: config.secrets_file,
     logLevel: config.log_level,
   }));
-
-export interface ServerConfig {
-  readonly dataDir: string;
-  readonly hostname: string;
-  readonly port: number;
-  readonly secretsFile: string;
-  readonly logLevel: LogLevel;
-}

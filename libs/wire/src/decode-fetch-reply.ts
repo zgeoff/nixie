@@ -26,26 +26,6 @@ export function decodeFetchReply(bytes: Uint8Array): FetchReply {
   };
 }
 
-function requireStatus(reply: Readonly<Record<string, unknown>>): number {
-  const status = reply['status'];
-
-  if (typeof status !== 'number' || !Number.isInteger(status) || status < 100 || status > 999) {
-    throw new TypeError('a fetch reply needs a status, a whole number from 100 to 999');
-  }
-
-  return status;
-}
-
-function requireBoolean(reply: Readonly<Record<string, unknown>>, name: string): boolean {
-  const value = reply[name];
-
-  if (typeof value !== 'boolean') {
-    throw new TypeError(`a fetch reply needs ${name}, a boolean`);
-  }
-
-  return value;
-}
-
 function requireString(reply: Readonly<Record<string, unknown>>, name: string): string {
   const value = reply[name];
 
@@ -56,6 +36,16 @@ function requireString(reply: Readonly<Record<string, unknown>>, name: string): 
   return value;
 }
 
+function requireStatus(reply: Readonly<Record<string, unknown>>): number {
+  const status = reply['status'];
+
+  if (typeof status !== 'number' || !Number.isInteger(status) || status < 100 || status > 999) {
+    throw new TypeError('a fetch reply needs a status, a whole number from 100 to 999');
+  }
+
+  return status;
+}
+
 function requireStringOrNull(
   reply: Readonly<Record<string, unknown>>,
   name: string,
@@ -64,6 +54,17 @@ function requireStringOrNull(
 
   if (value !== null && typeof value !== 'string') {
     throw new TypeError(`a fetch reply needs ${name}, a string or null`);
+  }
+
+  return value;
+}
+
+// oxlint-disable-next-line zgeoff/verb-contract -- it returns a field's value, not a yes/no answer
+function requireBoolean(reply: Readonly<Record<string, unknown>>, name: string): boolean {
+  const value = reply[name];
+
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`a fetch reply needs ${name}, a boolean`);
   }
 
   return value;

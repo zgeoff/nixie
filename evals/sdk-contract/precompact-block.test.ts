@@ -47,12 +47,6 @@ async function setupTest() {
   return { directory, options, sessionID: firstResult.session_id };
 }
 
-// auto-compaction then fires at 15% of a 100,000-token window, under the seed's 24,000 tokens
-const lowWindowEnv = {
-  CLAUDE_AUTOCOMPACT_PCT_OVERRIDE: '15',
-  CLAUDE_CODE_AUTO_COMPACT_WINDOW: '100000',
-};
-
 test.skipIf(!isContractRun)(
   'it compacts a session past the auto-compact window when no hook blocks it',
   async () => {
@@ -66,7 +60,14 @@ test.skipIf(!isContractRun)(
         ...ctx.options,
         resume: ctx.sessionID,
         forkSession: true,
-        env: { ...ctx.options.env, ...lowWindowEnv },
+
+        // auto-compaction then fires at 15% of a 100,000-token window, under the seed's 24,000
+        // tokens
+        env: {
+          ...ctx.options.env,
+          CLAUDE_AUTOCOMPACT_PCT_OVERRIDE: '15',
+          CLAUDE_CODE_AUTO_COMPACT_WINDOW: '100000',
+        },
         hooks: { PostCompact: [{ hooks: [postCompact] }] },
       },
     });
@@ -99,7 +100,14 @@ test.skipIf(!isContractRun)(
         ...ctx.options,
         resume: ctx.sessionID,
         forkSession: true,
-        env: { ...ctx.options.env, ...lowWindowEnv },
+
+        // auto-compaction then fires at 15% of a 100,000-token window, under the seed's 24,000
+        // tokens
+        env: {
+          ...ctx.options.env,
+          CLAUDE_AUTOCOMPACT_PCT_OVERRIDE: '15',
+          CLAUDE_CODE_AUTO_COMPACT_WINDOW: '100000',
+        },
         hooks: {
           PreCompact: [{ hooks: [preCompact] }],
           PostCompact: [{ hooks: [postCompact] }],

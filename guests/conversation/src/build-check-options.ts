@@ -2,6 +2,17 @@ import { join } from 'node:path';
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
 import type { CheckRequest } from '@heynixie/wire';
 
+// the reason comes first, so the model writes its reasoning before it commits to a verdict
+const verdictSchema = {
+  type: 'object',
+  properties: {
+    reason: { type: 'string' },
+    verdict: { type: 'string', enum: ['asserted', 'not_asserted', 'unsure'] },
+  },
+  required: ['reason', 'verdict'],
+  additionalProperties: false,
+};
+
 // Builds the options of a checker query(). options.env replaces the CLI's environment, so each
 // variable goes in by name.
 export function buildCheckOptions(
@@ -36,17 +47,6 @@ export function buildCheckOptions(
     env: buildCheckEnv(request, env, home),
   };
 }
-
-// the reason comes first, so the model writes its reasoning before it commits to a verdict
-const verdictSchema = {
-  type: 'object',
-  properties: {
-    reason: { type: 'string' },
-    verdict: { type: 'string', enum: ['asserted', 'not_asserted', 'unsure'] },
-  },
-  required: ['reason', 'verdict'],
-  additionalProperties: false,
-};
 
 // the broker's proxy and certificate settings that the guest passes on when they are set
 const passedVariables = [

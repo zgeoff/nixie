@@ -42,13 +42,6 @@ async function setupTest() {
   };
 }
 
-const run = {
-  runID: 'run-1',
-  thread: 'conversation',
-  tools: [],
-  model: { model: 'test-model', profile: 'standard' },
-};
-
 test('it lists each proposal that skill_write made, oldest first, as a new skill or a new version with its age', async () => {
   const ctx = await setupTest();
 
@@ -87,6 +80,13 @@ test('it lists each proposal that skill_write made, oldest first, as a new skill
 
   invariant(write);
   invariant(pending);
+
+  const run = {
+    runID: 'run-1',
+    thread: 'conversation',
+    tools: [],
+    model: { model: 'test-model', profile: 'standard' },
+  };
 
   const written: string[] = [];
 
@@ -188,6 +188,13 @@ test('it declares read, runs direct, and writes no record, so it never changes a
 
   const call = { callID: 'call-2', tool: 'skill_pending', input: {}, toolUseID: null };
 
+  const run = {
+    runID: 'run-1',
+    thread: 'conversation',
+    tools: [],
+    model: { model: 'test-model', profile: 'standard' },
+  };
+
   const first = await pending.definition.run(call, { run });
   const second = await pending.definition.run(call, { run });
   const after = await readRecords(ctx.log, { afterSequence: 0 });
@@ -288,7 +295,14 @@ test('it leaves out a proposal that an approval, a rejection or a lapse closed',
 
   const outcome = await pending.definition.run(
     { callID: 'call-2', tool: 'skill_pending', input: {}, toolUseID: null },
-    { run },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
   );
 
   expect(outcome).toMatchObject({

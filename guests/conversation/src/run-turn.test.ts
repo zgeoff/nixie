@@ -6,7 +6,7 @@ import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import { runTurn } from './run-turn';
 import { buildQueryRecorder } from './test-utils/build-query-recorder';
-import { buildStubToolServer } from './test-utils/build-stub-tool-server';
+import { createStubToolServer } from './test-utils/create-stub-tool-server';
 import { startStubChangingToolServer } from './test-utils/start-stub-changing-tool-server';
 import { startStubModel } from './test-utils/start-stub-model';
 
@@ -20,7 +20,7 @@ async function setupTest() {
   onTestFinished(() => model.stop());
 
   const frames: GuestFrame[] = [];
-  const tools = buildStubToolServer();
+  const tools = createStubToolServer();
   const recorder = buildQueryRecorder();
 
   return {
@@ -421,7 +421,7 @@ test('it keeps a resumed session working under the summarized display', async ()
         resume,
         input: [{ uuid: crypto.randomUUID(), text }],
       }),
-      { ...ctx.deps, toolServer: buildStubToolServer().config },
+      { ...ctx.deps, toolServer: createStubToolServer().config },
     );
 
     const last = ctx.frames.at(-1);
@@ -606,7 +606,7 @@ test('it ends an overflowed turn at its resume point when the overflow is its fi
         resume,
         input: [{ uuid: crypto.randomUUID(), text }],
       }),
-      { ...ctx.deps, toolServer: buildStubToolServer().config },
+      { ...ctx.deps, toolServer: createStubToolServer().config },
     );
 
     const last = ctx.frames.at(-1);
@@ -726,7 +726,7 @@ test('it resumes at a boundary on a new session that holds nothing after the bou
         resume,
         input: [{ uuid: crypto.randomUUID(), text }],
       }),
-      { ...ctx.deps, toolServer: buildStubToolServer().config },
+      { ...ctx.deps, toolServer: createStubToolServer().config },
     );
 
     const last = ctx.frames.at(-1);
@@ -761,7 +761,7 @@ test('it sends the system prompt of each turn on a resumed session, not the one 
 
   await runTurn(
     buildMockTurnFrame({ profile: { baseURL: ctx.model.url }, systemPrompt: 'You are nixie.' }),
-    { ...ctx.deps, toolServer: buildStubToolServer().config },
+    { ...ctx.deps, toolServer: createStubToolServer().config },
   );
 
   const first = ctx.frames.at(-1);
@@ -776,7 +776,7 @@ test('it sends the system prompt of each turn on a resumed session, not the one 
       resume: first.boundary,
       systemPrompt: 'You are nixie. Pinned: the spare key sits under the blue flowerpot.',
     }),
-    { ...ctx.deps, toolServer: buildStubToolServer().config },
+    { ...ctx.deps, toolServer: createStubToolServer().config },
   );
 
   const system = JSON.stringify(ctx.model.requests.at(-1)?.body?.system);
@@ -932,7 +932,7 @@ test('it never compacts the session itself when a call reads past the profile wi
         resume,
         input: [{ uuid: crypto.randomUUID(), text }],
       }),
-      { ...ctx.deps, toolServer: buildStubToolServer().config },
+      { ...ctx.deps, toolServer: createStubToolServer().config },
     );
   };
 
@@ -983,7 +983,7 @@ test('it keeps only the session it resumes and the fork it writes on the guest d
         resume,
         input: [{ uuid: crypto.randomUUID(), text }],
       }),
-      { ...ctx.deps, toolServer: buildStubToolServer().config },
+      { ...ctx.deps, toolServer: createStubToolServer().config },
     );
 
     const last = ctx.frames.at(-1);

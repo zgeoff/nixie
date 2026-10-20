@@ -1,8 +1,8 @@
 export { compactionConfigSchema } from './compaction-config-schema';
 export { countTextTokens } from './count-text-tokens';
 export { findCompactionHeadsUp } from './find-compaction-heads-up';
-export type { SessionSummary } from './find-session-summary';
-export { findSessionSummary } from './find-session-summary';
+export type { SessionSummary } from './read-session-summary';
+export { readSessionSummary } from './read-session-summary';
 export { isCompactionDue } from './is-compaction-due';
 export { removeSummaryKeys } from './remove-summary-keys';
 export type { CompactionOutcome, CompactionRequest, CompactionRun } from './run-session-compaction';

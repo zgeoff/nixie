@@ -1,14 +1,22 @@
 import type { WriteGroup } from './build-write-group';
 import { buildWriteGroup } from './build-write-group';
-import { findNewestMessage } from './find-newest-message';
 import { ForgottenEvidenceError } from './forgotten-evidence-error';
 import type { ContentGateResult, GatedRetireRequest, WriteOutcome } from './gate-types';
 import { readItemText } from './read-item-text';
+import { readNewestMessage } from './read-newest-message';
 import { requireLiveEvidence } from './require-live-evidence';
 import { runIntentGate } from './run-intent-gate';
 import type { StoreParts } from './types';
 import { writeMemoryProposal } from './write-memory-proposal';
 import { writeRetirement } from './write-retirement';
+
+// no quote of yours backs it, and the version copies the stored text's own source
+const selfNoteRetirement: ContentGateResult = {
+  status: 'pass',
+  source: 'untrusted',
+  evidence: null,
+  checks: { selfNote: 'retired' },
+};
 
 // Runs a memory.retire through the intent gate, or applies the conversation's retire of a self-note
 // at once. An applied retirement keeps the source of the text it copies; any other is a proposal. A
@@ -33,7 +41,7 @@ export async function writeGatedRetirement(
           itemText,
         });
 
-  const newest = await findNewestMessage(parts.context.log, request.caller.thread);
+  const newest = await readNewestMessage(parts.context.log, request.caller.thread);
 
   const group = buildWriteGroup(request.caller, newest);
 
@@ -44,42 +52,10 @@ export async function writeGatedRetirement(
   return writeRetirementProposal(parts, request, { review: gate, group, itemText });
 }
 
-// no quote of yours backs it, and the version copies the stored text's own source
-const selfNoteRetirement: ContentGateResult = {
-  status: 'pass',
-  source: 'untrusted',
-  evidence: null,
-  checks: { selfNote: 'retired' },
-};
-
-interface ReviewedRetirement {
-  readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
+interface PassedRetirement {
+  readonly gate: Extract<ContentGateResult, { readonly status: 'pass' }>;
   readonly group: WriteGroup;
   readonly itemText: string;
-}
-
-async function writeRetirementProposal(
-  parts: StoreParts,
-  request: GatedRetireRequest,
-  reviewed: ReviewedRetirement,
-): Promise<WriteOutcome> {
-  const review = reviewed.review;
-
-  const written = await writeMemoryProposal(parts, {
-    operation: 'retire',
-    target: request.target,
-    isPinned: false,
-    text: reviewed.itemText,
-    quote: request.intentQuote ?? null,
-    reason: review.reason,
-    evidence: review.evidence,
-    checks: review.checks,
-    checkerReason: review.checkerReason,
-    caller: request.caller,
-    group: reviewed.group,
-  });
-
-  return { status: 'proposed', ...written, reason: review.reason };
 }
 
 // a forget that completed while the checker answered turns a passing retirement into a proposal
@@ -105,12 +81,6 @@ async function applyPassedRetirement(
 
     return writeRetirementProposal(parts, request, { ...passed, review });
   }
-}
-
-interface PassedRetirement {
-  readonly gate: Extract<ContentGateResult, { readonly status: 'pass' }>;
-  readonly group: WriteGroup;
-  readonly itemText: string;
 }
 
 async function applyRetirement(
@@ -149,4 +119,34 @@ async function applyRetirement(
   );
 
   return { status: 'applied', itemID: ref.itemID, version: ref.version };
+}
+
+interface ReviewedRetirement {
+  readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
+  readonly group: WriteGroup;
+  readonly itemText: string;
+}
+
+async function writeRetirementProposal(
+  parts: StoreParts,
+  request: GatedRetireRequest,
+  reviewed: ReviewedRetirement,
+): Promise<WriteOutcome> {
+  const review = reviewed.review;
+
+  const written = await writeMemoryProposal(parts, {
+    operation: 'retire',
+    target: request.target,
+    isPinned: false,
+    text: reviewed.itemText,
+    quote: request.intentQuote ?? null,
+    reason: review.reason,
+    evidence: review.evidence,
+    checks: review.checks,
+    checkerReason: review.checkerReason,
+    caller: request.caller,
+    group: reviewed.group,
+  });
+
+  return { status: 'proposed', ...written, reason: review.reason };
 }

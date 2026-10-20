@@ -1,8 +1,6 @@
 import { expect, test } from 'bun:test';
 import { encodeFetchMessage } from './encode-fetch-message';
 
-const decoder = new TextDecoder();
-
 test('it writes the message as one line of JSON', () => {
   const bytes = encodeFetchMessage({
     kind: 'page',
@@ -14,7 +12,7 @@ test('it writes the message as one line of JSON', () => {
     blocked: null,
   });
 
-  expect(decoder.decode(bytes)).toBe(
+  expect(new TextDecoder().decode(bytes)).toBe(
     String.raw`{"kind":"page","url":"https://example.com/","status":200,"contentType":"text/plain","text":"a\nb","isTruncated":false,"blocked":null}`,
   );
 });

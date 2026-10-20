@@ -1,11 +1,11 @@
+type FileEnding = 'open' | 'closed' | 'aborted';
+
 // One file the stub picker saved: the text written to it in order, and how its writing ended.
 interface StubSavedFile {
   readonly name: string;
   readonly text: string;
   readonly ending: FileEnding;
 }
-
-type FileEnding = 'open' | 'closed' | 'aborted';
 
 // what the page passes the picker that the stub reads
 interface SavePickerOptions {

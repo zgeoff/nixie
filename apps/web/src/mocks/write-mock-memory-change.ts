@@ -29,7 +29,7 @@ export async function writeMockMemoryChange(input: MemoryChangeInput): Promise<M
     return { status: earlier.input === bound ? 'applied' : 'reused' };
   }
 
-  const refusal = findRefusal(input);
+  const refusal = readRefusal(input);
 
   if (refusal !== null) {
     return { status: refusal };
@@ -46,7 +46,7 @@ type Refusal = Exclude<MemoryChangeResult['status'], 'applied' | 'reused'>;
 
 const statesByChange = { retire: ['active'], restore: ['retired'], pin: ['active', 'retired'] };
 
-function findRefusal(input: MemoryChangeInput): Refusal | null {
+function readRefusal(input: MemoryChangeInput): Refusal | null {
   const item = store.memoryItems.findFirst((query) => query.where({ itemID: input.itemID }));
 
   if (item === undefined || item.state === 'forgetting' || item.state === 'forgotten') {
@@ -64,13 +64,13 @@ function findRefusal(input: MemoryChangeInput): Refusal | null {
     return 'wrong_state';
   }
 
-  return isPin && !item.isPinned && !hasCoreRoom(item.versions.at(-1)?.text ?? '')
+  return isPin && !item.isPinned && !probeCoreRoom(item.versions.at(-1)?.text ?? '')
     ? 'core_full'
     : null;
 }
 
 // the core's size with the item's text in it, as the mock counts it
-function hasCoreRoom(text: string): boolean {
+function probeCoreRoom(text: string): boolean {
   const core = readMockPinnedCore();
 
   return core.tokens + Math.ceil(text.length / 4) <= core.budget;
@@ -108,7 +108,7 @@ async function applyChange(input: MemoryChangeInput): Promise<void> {
 }
 
 async function applyPin(input: MemoryChangeInput): Promise<void> {
-  const pinnedSequence = findNextPinnedSequence();
+  const pinnedSequence = getNextPinnedSequence();
 
   await store.memoryItems.update((query) => query.where({ itemID: input.itemID }), {
     data(draft) {
@@ -119,6 +119,6 @@ async function applyPin(input: MemoryChangeInput): Promise<void> {
 }
 
 // a pin takes the place after every pin before it
-function findNextPinnedSequence(): number {
+function getNextPinnedSequence(): number {
   return Math.max(0, ...store.memoryItems.all().map((item) => item.pinnedSequence)) + 1;
 }

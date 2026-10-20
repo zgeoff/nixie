@@ -16,6 +16,8 @@ export interface SkillLapseSweep {
   readonly stop: () => Promise<void>;
 }
 
+const lapseSweepMs = 60 * 60 * 1000;
+
 // Starts the sweep that records the lapse of each skill proposal past its lapse time, so the
 // conversation hears of it in its next turn. A sweep still running when the next one is due lets
 // that one pass.
@@ -42,5 +44,3 @@ export function startSkillLapseSweep(options: SkillLapseSweepOptions): SkillLaps
     },
   };
 }
-
-const lapseSweepMs = 60 * 60 * 1000;

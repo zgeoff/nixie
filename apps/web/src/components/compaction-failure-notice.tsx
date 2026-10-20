@@ -7,6 +7,16 @@ export interface CompactionFailureNoticeProps {
   readonly records: readonly LiveRecord[];
 }
 
+const notice = css({
+  color: 'textMuted',
+  fontSize: 'sm',
+  marginInline: 'auto',
+  maxWidth: '3xl',
+  paddingBlock: '2',
+  paddingInline: '4',
+  width: 'full',
+});
+
 // Sits above the messages from the first compaction that fails, and goes once a summary commits.
 // The conversation goes on in the same session, which stops answering once it fills its window.
 export function CompactionFailureNotice(props: CompactionFailureNoticeProps): ReactNode {
@@ -25,13 +35,3 @@ export function CompactionFailureNotice(props: CompactionFailureNoticeProps): Re
     </p>
   );
 }
-
-const notice = css({
-  color: 'textMuted',
-  fontSize: 'sm',
-  marginInline: 'auto',
-  maxWidth: '3xl',
-  paddingBlock: '2',
-  paddingInline: '4',
-  width: 'full',
-});

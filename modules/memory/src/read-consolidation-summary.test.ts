@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { findRecordKeys } from '@heynixie/log';
+import { readRecordKeys } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -9,11 +9,11 @@ import { createConsolidationDiff } from './test-utils/create-consolidation-diff'
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemory } from './test-utils/start-test-memory';
 
-// the shares a stored summary holds, as the test reads them back from the raw row
-const summaryShares = z.array(z.strictObject({ itemID: z.string(), sealed: z.string() }));
-
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
+
+  // the shares a stored summary holds, as the test reads them back from the raw row
+  const summaryShares = z.array(z.strictObject({ itemID: z.string(), sealed: z.string() }));
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -57,7 +57,7 @@ test('it leaves a stored summary that no key left opens once an item it names is
   });
 
   const sealed = await ctx.readSealedSummary();
-  const left = await findRecordKeys(ctx.memory.log, [oat.itemID, black.itemID]);
+  const left = await readRecordKeys(ctx.memory.log, [oat.itemID, black.itemID]);
 
   // the key left also stands in the forgotten item's place
   const kept = left.get(black.itemID) ?? null;

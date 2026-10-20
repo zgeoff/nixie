@@ -1,10 +1,8 @@
 import { expect, test } from 'bun:test';
 import { decodeFetchReply } from './decode-fetch-reply';
 
-const encoder = new TextEncoder();
-
 test('it returns a page with its text', () => {
-  const bytes = encoder.encode(
+  const bytes = new TextEncoder().encode(
     JSON.stringify({
       kind: 'page',
       url: 'https://example.com/',
@@ -28,7 +26,7 @@ test('it returns a page with its text', () => {
 });
 
 test('it returns a binary page with no text', () => {
-  const bytes = encoder.encode(
+  const bytes = new TextEncoder().encode(
     JSON.stringify({
       kind: 'page',
       url: 'https://example.com/a.png',
@@ -52,7 +50,7 @@ test('it returns a binary page with no text', () => {
 });
 
 test('it returns a refusal with its reason', () => {
-  const bytes = encoder.encode(
+  const bytes = new TextEncoder().encode(
     JSON.stringify({ kind: 'refused', reason: 'only https URLs are fetched' }),
   );
 
@@ -63,19 +61,21 @@ test('it returns a refusal with its reason', () => {
 });
 
 test('it drops a field that a well-formed reply does not hold', () => {
-  const bytes = encoder.encode(JSON.stringify({ kind: 'failed', reason: 'timeout', extra: 'x' }));
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({ kind: 'failed', reason: 'timeout', extra: 'x' }),
+  );
 
   expect(decodeFetchReply(bytes)).toStrictEqual({ kind: 'failed', reason: 'timeout' });
 });
 
 test('it refuses a reply of an unknown kind', () => {
-  const bytes = encoder.encode(JSON.stringify({ kind: 'other', reason: 'x' }));
+  const bytes = new TextEncoder().encode(JSON.stringify({ kind: 'other', reason: 'x' }));
 
   expect(() => decodeFetchReply(bytes)).toThrowWithMessage(TypeError, /kind of page/u);
 });
 
 test('it refuses a page whose status is out of range', () => {
-  const bytes = encoder.encode(
+  const bytes = new TextEncoder().encode(
     JSON.stringify({
       kind: 'page',
       url: 'https://example.com/',
@@ -91,7 +91,7 @@ test('it refuses a page whose status is out of range', () => {
 });
 
 test('it refuses a page whose truncated mark is not a boolean', () => {
-  const bytes = encoder.encode(
+  const bytes = new TextEncoder().encode(
     JSON.stringify({
       kind: 'page',
       url: 'https://example.com/',
@@ -107,7 +107,7 @@ test('it refuses a page whose truncated mark is not a boolean', () => {
 });
 
 test('it refuses a page whose text is not a string or null', () => {
-  const bytes = encoder.encode(
+  const bytes = new TextEncoder().encode(
     JSON.stringify({
       kind: 'page',
       url: 'https://example.com/',
@@ -123,7 +123,7 @@ test('it refuses a page whose text is not a string or null', () => {
 });
 
 test('it returns a page with the reason the bot protection blocked it', () => {
-  const bytes = encoder.encode(
+  const bytes = new TextEncoder().encode(
     JSON.stringify({
       kind: 'page',
       url: 'https://example.com/',
@@ -147,7 +147,7 @@ test('it returns a page with the reason the bot protection blocked it', () => {
 });
 
 test('it refuses a page with no blocked field', () => {
-  const bytes = encoder.encode(
+  const bytes = new TextEncoder().encode(
     JSON.stringify({
       kind: 'page',
       url: 'https://example.com/',
@@ -162,7 +162,7 @@ test('it refuses a page with no blocked field', () => {
 });
 
 test('it refuses a page with no url', () => {
-  const bytes = encoder.encode(
+  const bytes = new TextEncoder().encode(
     JSON.stringify({
       kind: 'page',
       status: 200,

@@ -18,7 +18,7 @@ test('it claims free work at generation 1 under the writer epoch, for one lease 
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   expect(lease).toStrictEqual({
@@ -38,7 +38,7 @@ test('it refuses work whose lease another runner holds and has not expired', asy
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   ctx.clock.advance(59_999);
@@ -47,7 +47,7 @@ test('it refuses work whose lease another runner holds and has not expired', asy
     kind: 'action',
     holder: 'runner-b',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   expect(lease).toBeNull();
@@ -60,7 +60,7 @@ test('it claims work whose lease expired at the next generation', async () => {
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   ctx.clock.advance(60_000);
@@ -69,7 +69,7 @@ test('it claims work whose lease expired at the next generation', async () => {
     kind: 'action',
     holder: 'runner-b',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   expect(lease).toMatchObject({ holder: 'runner-b', generation: 2, expiresAt: 1_120_000 });
@@ -82,7 +82,7 @@ test('it claims work whose lease was reset at the next generation', async () => 
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   invariant(first);
@@ -93,7 +93,7 @@ test('it claims work whose lease was reset at the next generation', async () => 
     kind: 'action',
     holder: 'runner-b',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   expect(lease).toMatchObject({ holder: 'runner-b', generation: 2 });
@@ -106,7 +106,7 @@ test('it stores the lease it returns', async () => {
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   const rows = await ctx.writer.db
@@ -134,7 +134,7 @@ test('it claims nothing when no work is claimable', async () => {
     kind: 'task',
     holder: 'runner-a',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve(null),
+    readCandidate: () => Promise.resolve(null),
   });
 
   expect(lease).toBeNull();
@@ -147,7 +147,7 @@ test('it rolls the lease back when the claim records fail', async () => {
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
     onClaim: () => Promise.reject(new Error('the claim records failed')),
   }).catch(() => null);
 
@@ -177,7 +177,7 @@ test('it reaches the claim.after fault point once the claim commits', async () =
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    findCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve('work-1'),
   });
 
   expect(reached).toStrictEqual([{ id: 'claim.after', context: { kind: 'action', id: 'work-1' } }]);

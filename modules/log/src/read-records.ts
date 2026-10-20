@@ -1,7 +1,7 @@
 import type { Selectable } from 'kysely';
 import { buildEnvelopeRecord } from './build-envelope-record';
 import { decodeErasable } from './decode-erasable';
-import { findRecordKeys } from './find-record-keys';
+import { readRecordKeys } from './read-record-keys';
 import type {
   ErasableFields,
   JSONObject,
@@ -27,6 +27,8 @@ export interface ReadRecordsOptions {
   // newest reads the latest records first, so a limit keeps the most recent ones
   readonly order?: 'oldest' | 'newest';
 }
+
+const DEFAULT_LIMIT = 100;
 
 // Reads the records after a sequence, oldest first unless asked for the newest, each with the
 // projection rows its transaction changed. One writer means the sequence grows in commit order, so a reader misses none. A record
@@ -68,7 +70,7 @@ export async function readRecords(
     .orderBy('row_key')
     .execute();
 
-  const keys = await findRecordKeys(
+  const keys = await readRecordKeys(
     log,
     rows.flatMap((row) => (row.key_id === null ? [] : [row.key_id])),
   );
@@ -82,23 +84,6 @@ export async function readRecords(
       changes: buildChanges(changeRows, row.sequence),
     })),
   );
-}
-
-const DEFAULT_LIMIT = 100;
-
-function buildChanges(
-  changeRows: readonly Selectable<LogTables['projection_changes']>[],
-  sequence: number,
-): readonly ProjectionChange[] {
-  return changeRows
-    .filter((change) => change.sequence === sequence)
-    .map((change) => ({
-      projection: change.projection,
-      key: change.row_key,
-
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- applyProjections wrote a row object
-      row: change.row === null ? null : (JSON.parse(change.row) as JSONObject),
-    }));
 }
 
 function decodeRecordErasable(
@@ -123,4 +108,19 @@ function decodeRecordErasable(
     (fields): ErasableFields => ({ status: 'readable', fields }),
     (): ErasableFields => ({ status: 'unreadable' }),
   );
+}
+
+function buildChanges(
+  changeRows: readonly Selectable<LogTables['projection_changes']>[],
+  sequence: number,
+): readonly ProjectionChange[] {
+  return changeRows
+    .filter((change) => change.sequence === sequence)
+    .map((change) => ({
+      projection: change.projection,
+      key: change.row_key,
+
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- applyProjections wrote a row object
+      row: change.row === null ? null : (JSON.parse(change.row) as JSONObject),
+    }));
 }

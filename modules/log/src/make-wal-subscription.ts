@@ -7,6 +7,8 @@ export interface WALSubscriptionOptions {
   readonly pollMs?: number;
 }
 
+const DEFAULT_POLL_MS = 1000;
+
 // Makes the change subscription for a reader in another process, which never sees the writer's
 // commit bus: a change to nixie.db's WAL file, and a poll on the clock for a filesystem that
 // cannot watch.
@@ -34,8 +36,6 @@ export function makeWALSubscription(
     };
   };
 }
-
-const DEFAULT_POLL_MS = 1000;
 
 interface Poll {
   readonly pollMs: number;

@@ -7,6 +7,13 @@ import type { KeyStoreTables, Log, LogTables } from './types';
 import { withWriteTransaction } from './with-write-transaction';
 import { writeKeyStoreCheckpoint } from './write-key-store-checkpoint';
 
+export interface LogReset {
+  readonly resetAt: Date;
+
+  // the highest sequence of the old log, or 0 when it held no record
+  readonly lastSequence: number;
+}
+
 export interface LogResetOptions<Kept> {
   // the tables whose rows the reset keeps beside the writer epoch and the schema version, such as
   // the identity record
@@ -22,13 +29,6 @@ export interface LogResetOptions<Kept> {
     kept: Kept,
     reset: LogReset,
   ) => Promise<void>;
-}
-
-export interface LogReset {
-  readonly resetAt: Date;
-
-  // the highest sequence of the old log, or 0 when it held no record
-  readonly lastSequence: number;
 }
 
 // Removes every record, projection row and record key: the one exception to the append-only log.
@@ -57,6 +57,9 @@ async function removeRecordKeys(log: Log): Promise<void> {
 
   await writeKeyStoreCheckpoint(log, null);
 }
+
+// the writer's own rows, and the records, which the reset removes around the first new ones
+const logKeptTables = ['writer_epoch', 'schema_version', 'records'];
 
 // SQLite gives a new row the highest sequence plus 1, so the old last record stays until the first
 // new records have taken the numbers after it. A device that resumes after the last sequence it saw
@@ -88,8 +91,7 @@ async function removeLogRows<Kept>(
   return reset;
 }
 
-// the writer's own rows, and the records, which the reset removes around the first new ones
-const logKeptTables = ['writer_epoch', 'schema_version', 'records'];
+const schemaCopyName = /^nixie-schema-\d+\.db(?:\.partial)?$/u;
 
 // the copies the migration runner takes before a migration, finished or cut short
 async function removeSchemaCopies(dataDir: string): Promise<void> {
@@ -99,8 +101,6 @@ async function removeSchemaCopies(dataDir: string): Promise<void> {
 
   await Promise.all(copies.map((name) => rm(join(dataDir, name), { force: true })));
 }
-
-const schemaCopyName = /^nixie-schema-\d+\.db(?:\.partial)?$/u;
 
 // a vacuum rebuilds the file from its live pages, and the checkpoint moves the rebuilt pages out
 // of the WAL and truncates it

@@ -22,8 +22,6 @@ export interface StoredOutboxOptions {
   readonly setEntries: Dispatch<SetStateAction<readonly OutboxEntry[]>>;
 }
 
-const storageKey = 'nixie.outbox';
-
 // Keeps the outbox's unconfirmed messages in device storage: the text in localStorage, and each
 // message's images in IndexedDB under its client message ID. The outbox loads after hydration, and
 // sends again a message an earlier page left unsent under 2 minutes ago, holding any older one.
@@ -80,6 +78,41 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
   }, [loaded, now, options.entries, options.forgottenClientMessageIDs]);
 }
 
+const storageKey = 'nixie.outbox';
+
+// Storage outlives a release, so a stored message that no longer fits the contract is dropped
+// rather than sent. Each message keeps the count of the images IndexedDB holds for it.
+const storedImageCount = z.object({ imageCount: z.int().positive().optional() });
+
+const storedMessagesSchema = z.array(
+  z.intersection(contract.conversation.send['~orpc'].inputSchema ?? z.never(), storedImageCount),
+);
+
+function readStoredMessages(): readonly OutboxMessage[] {
+  const stored = globalThis.localStorage.getItem(storageKey);
+  const json = stored === null ? [] : parseJSON(stored);
+  const parsed = storedMessagesSchema.safeParse(json);
+
+  return parsed.success ? parsed.data.map((message) => toOutboxMessage(message)) : [];
+}
+
+function parseJSON(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+// the images stay unread until the page reads them back from IndexedDB
+function toOutboxMessage(
+  stored: ReadonlyDeep<z.infer<typeof storedMessagesSchema>[number]>,
+): OutboxMessage {
+  const { imageCount, ...message } = stored;
+
+  return imageCount === undefined ? message : { ...message, unreadImages: imageCount };
+}
+
 interface StoredSend {
   readonly sendEntry: StoredOutboxOptions['sendEntry'];
   readonly setEntries: StoredOutboxOptions['setEntries'];
@@ -126,29 +159,6 @@ async function loadStoredImages(
   );
 }
 
-// IndexedDB keeps a copy of each unconfirmed message's images until the message leaves storage
-async function writeStoredImages(
-  messages: readonly OutboxMessage[],
-
-  written: Set<string>,
-): Promise<void> {
-  const unwritten = messages.filter(
-    (message) => (message.images?.length ?? 0) > 0 && !written.has(message.clientMessageId),
-  );
-
-  for (const message of unwritten) {
-    written.add(message.clientMessageId);
-  }
-
-  await Promise.all(
-    unwritten.map((message) =>
-      writeOutboxImages(message.clientMessageId, message.images ?? []).catch(() => {
-        written.delete(message.clientMessageId);
-      }),
-    ),
-  );
-}
-
 // Another tab shares the storage key, so a write keeps every stored message this outbox does not
 // hold, adds this outbox's unconfirmed messages, and drops only the ones it saw confirmed.
 function mergeStoredMessages(
@@ -164,39 +174,6 @@ function mergeStoredMessages(
     .map((entry) => entry.message);
 
   return [...others, ...unconfirmed];
-}
-
-// Storage outlives a release, so a stored message that no longer fits the contract is dropped
-// rather than sent. Each message keeps the count of the images IndexedDB holds for it.
-const storedImageCount = z.object({ imageCount: z.int().positive().optional() });
-
-const storedMessagesSchema = z.array(
-  z.intersection(contract.conversation.send['~orpc'].inputSchema ?? z.never(), storedImageCount),
-);
-
-function readStoredMessages(): readonly OutboxMessage[] {
-  const stored = globalThis.localStorage.getItem(storageKey);
-  const json = stored === null ? [] : parseJSON(stored);
-  const parsed = storedMessagesSchema.safeParse(json);
-
-  return parsed.success ? parsed.data.map((message) => toOutboxMessage(message)) : [];
-}
-
-// the images stay unread until the page reads them back from IndexedDB
-function toOutboxMessage(
-  stored: ReadonlyDeep<z.infer<typeof storedMessagesSchema>[number]>,
-): OutboxMessage {
-  const { imageCount, ...message } = stored;
-
-  return imageCount === undefined ? message : { ...message, unreadImages: imageCount };
-}
-
-function parseJSON(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
 }
 
 // the images stay out of localStorage, which keeps only text
@@ -226,4 +203,27 @@ function toStoredText(message: OutboxMessage): StoredText {
     ...(message.writtenAt === undefined ? {} : { writtenAt: message.writtenAt }),
     ...(imageCount === 0 ? {} : { imageCount }),
   };
+}
+
+// IndexedDB keeps a copy of each unconfirmed message's images until the message leaves storage
+async function writeStoredImages(
+  messages: readonly OutboxMessage[],
+
+  written: Set<string>,
+): Promise<void> {
+  const unwritten = messages.filter(
+    (message) => (message.images?.length ?? 0) > 0 && !written.has(message.clientMessageId),
+  );
+
+  for (const message of unwritten) {
+    written.add(message.clientMessageId);
+  }
+
+  await Promise.all(
+    unwritten.map((message) =>
+      writeOutboxImages(message.clientMessageId, message.images ?? []).catch(() => {
+        written.delete(message.clientMessageId);
+      }),
+    ),
+  );
 }

@@ -1,5 +1,7 @@
 import type { JSONObject } from './types';
 
+const IV_BYTES = 12;
+
 // Decrypts what encodeErasable wrote. A wrong key, a wrong key ID or a changed byte rejects.
 export async function decodeErasable(
   key: CryptoKey,
@@ -19,5 +21,3 @@ export async function decodeErasable(
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- encodeErasable wrote a JSONObject
   return JSON.parse(new TextDecoder().decode(plaintext)) as JSONObject;
 }
-
-const IV_BYTES = 12;

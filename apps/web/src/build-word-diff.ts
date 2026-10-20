@@ -39,18 +39,19 @@ function buildCommonLengths(left: readonly string[], right: readonly string[]): 
   return lengths;
 }
 
-interface DiffCursor {
-  readonly left: readonly string[];
-  readonly right: readonly string[];
-  readonly lengths: readonly (readonly number[])[];
-  readonly row: number;
-  readonly column: number;
-}
+// joins neighbouring parts of one kind, so a changed phrase reads as one run
+function mergeParts(parts: readonly DiffPart[]): readonly DiffPart[] {
+  return parts.reduce<DiffPart[]>((merged, part) => {
+    const last = merged.at(-1);
 
-interface NextPart {
-  readonly part: DiffPart;
-  readonly row: number;
-  readonly column: number;
+    if (last?.kind === part.kind) {
+      merged[merged.length - 1] = { kind: part.kind, text: last.text + part.text };
+    } else {
+      merged.push(part);
+    }
+
+    return merged;
+  }, []);
 }
 
 // walks both texts from their starts, one part per step, until both are spent
@@ -75,6 +76,20 @@ function collectParts(
   return parts;
 }
 
+interface DiffCursor {
+  readonly left: readonly string[];
+  readonly right: readonly string[];
+  readonly lengths: readonly (readonly number[])[];
+  readonly row: number;
+  readonly column: number;
+}
+
+interface NextPart {
+  readonly part: DiffPart;
+  readonly row: number;
+  readonly column: number;
+}
+
 function pickNextPart(cursor: DiffCursor): NextPart {
   const row = cursor.row;
   const column = cursor.column;
@@ -93,19 +108,4 @@ function pickNextPart(cursor: DiffCursor): NextPart {
   }
 
   return { part: { kind: 'added', text: rightToken ?? '' }, row, column: column + 1 };
-}
-
-// joins neighbouring parts of one kind, so a changed phrase reads as one run
-function mergeParts(parts: readonly DiffPart[]): readonly DiffPart[] {
-  return parts.reduce<DiffPart[]>((merged, part) => {
-    const last = merged.at(-1);
-
-    if (last?.kind === part.kind) {
-      merged[merged.length - 1] = { kind: part.kind, text: last.text + part.text };
-    } else {
-      merged.push(part);
-    }
-
-    return merged;
-  }, []);
 }

@@ -6,6 +6,13 @@ import type { OutsideVersion } from './read-outside-versions';
 import { readOutsideVersions } from './read-outside-versions';
 import type { MemoryStore } from './types';
 
+interface NotedItem {
+  // the item's short ID, which the model reads it by
+  readonly shortID: string;
+  readonly state: 'active' | 'retired';
+  readonly text: string;
+}
+
 // One item that changed outside the conversation, at its latest version in the range. The block
 // fills in its short ID and text only when it lists the event.
 export interface MemoryChangeEvent {
@@ -14,13 +21,6 @@ export interface MemoryChangeEvent {
   // whether the range holds the item's first version, so the line reads as a new memory
   readonly isCreated: boolean;
   readonly noted: NotedItem | null;
-}
-
-interface NotedItem {
-  // the item's short ID, which the model reads it by
-  readonly shortID: string;
-  readonly state: 'active' | 'retired';
-  readonly text: string;
 }
 
 // The event kind for an item changed outside the conversation, listed once at its latest version.

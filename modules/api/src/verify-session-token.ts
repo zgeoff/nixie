@@ -3,6 +3,9 @@ import { deriveSecretHash } from './derive-secret-hash';
 import type { APIContext, APITables, Identity } from './types';
 import { writeRefusal } from './write-refusal';
 
+// the external ID of every token nixie never issued, which no session ID can equal
+const unknownTokenID = 'unknown-token';
+
 // Resolves a device session token to its row of the identity record, or null. A revoked or lapsed
 // session is refused under its session's ID. Every token nixie never issued shares one external ID,
 // so a stranger with fresh random tokens still gets one refusal an interval.
@@ -16,7 +19,7 @@ export async function verifySessionToken(
 
   const tokenHash = deriveSecretHash(token);
 
-  const row = await findIdentityRow(context, tokenHash);
+  const row = await readIdentityRow(context, tokenHash);
 
   if (row === undefined || !isLive(context, row)) {
     await writeRefusal(context, {
@@ -38,12 +41,9 @@ export async function verifySessionToken(
   };
 }
 
-// the external ID of every token nixie never issued, which no session ID can equal
-const unknownTokenID = 'unknown-token';
-
 type IdentityRow = APITables['identities'];
 
-function findIdentityRow(context: APIContext, tokenHash: string): Promise<IdentityRow | undefined> {
+function readIdentityRow(context: APIContext, tokenHash: string): Promise<IdentityRow | undefined> {
   return context.log.writer.db
     .$extendTables<APITables>()
     .selectFrom('identities')

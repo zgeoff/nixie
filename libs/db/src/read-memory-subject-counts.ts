@@ -1,16 +1,16 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 
-// How many memory items and memory proposals each subject holds.
-export interface MemorySubjectCounts {
-  readonly items: SubjectCount;
-  readonly proposals: SubjectCount;
-}
-
 export interface SubjectCount {
   readonly owner: number;
   readonly shared: number;
   readonly self: number;
+}
+
+// How many memory items and memory proposals each subject holds.
+export interface MemorySubjectCounts {
+  readonly items: SubjectCount;
+  readonly proposals: SubjectCount;
 }
 
 // Reads how many memory items and proposals each subject holds, in one transaction so both counts

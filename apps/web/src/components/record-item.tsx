@@ -10,6 +10,18 @@ export interface RecordItemProps {
   readonly record: LiveRecord;
 }
 
+// the records a forget can remove: your message, and a reply from the conversation's model
+const forgettableKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
+
+// The speaker sits on its own line above the text.
+const speaker = css({ display: 'block', fontWeight: 'semibold' });
+
+// Your message keeps its line breaks and wraps a long word or link inside the column.
+const message = css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' });
+
+// A forgotten message reads as a quiet gap in its place.
+const gap = css({ color: 'textMuted', fontStyle: 'italic' });
+
 // One message of the conversation: yours as you typed it with its images, or a reply rendered as
 // Markdown, with the control that forgets it. A message the log forgot keeps its place as a gap
 // with no text and no images.
@@ -44,15 +56,3 @@ export function RecordItem(props: RecordItemProps): ReactNode {
     </li>
   );
 }
-
-// the records a forget can remove: your message, and a reply from the conversation's model
-const forgettableKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
-
-// The speaker sits on its own line above the text.
-const speaker = css({ display: 'block', fontWeight: 'semibold' });
-
-// Your message keeps its line breaks and wraps a long word or link inside the column.
-const message = css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' });
-
-// A forgotten message reads as a quiet gap in its place.
-const gap = css({ color: 'textMuted', fontStyle: 'italic' });

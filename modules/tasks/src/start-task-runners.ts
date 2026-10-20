@@ -23,6 +23,18 @@ export interface TaskRunnersOptions {
   readonly maxRetryDelayMs?: number;
 }
 
+const DEFAULT_SIZE = 3;
+
+// Why: a lease of 60 s renewed every 20 s survives 1 missed renewal, and a dead runner frees its
+// task within a minute.
+const DEFAULT_LEASE_MS = 60_000;
+const DEFAULT_POLL_MS = 1000;
+const DEFAULT_RETRY_DELAY_MS = 30_000;
+
+// Why: 5 min keeps a long outage to one try every 5 min, and a reply waits at most that long once
+// the cause clears; a new message cuts the wait (the tasks projection's inbox fold).
+const DEFAULT_MAX_RETRY_DELAY_MS = 300_000;
+
 // Starts the task runners: a pool that claims and runs one step per runner, beside a runner that
 // fires due timers on each poll.
 export function startTaskRunners(context: TasksContext, options: TaskRunnersOptions): RunnerPool {
@@ -73,15 +85,3 @@ export function startTaskRunners(context: TasksContext, options: TaskRunnersOpti
     },
   };
 }
-
-const DEFAULT_SIZE = 3;
-
-// Why: a lease of 60 s renewed every 20 s survives 1 missed renewal, and a dead runner frees its
-// task within a minute.
-const DEFAULT_LEASE_MS = 60_000;
-const DEFAULT_POLL_MS = 1000;
-const DEFAULT_RETRY_DELAY_MS = 30_000;
-
-// Why: 5 min keeps a long outage to one try every 5 min, and a reply waits at most that long once
-// the cause clears; a new message cuts the wait (the tasks projection's inbox fold).
-const DEFAULT_MAX_RETRY_DELAY_MS = 300_000;

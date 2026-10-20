@@ -4,8 +4,8 @@ import type { Transaction } from 'kysely';
 import { buildMergeRecord } from './build-merge-record';
 import type { WriteGroup } from './build-write-group';
 import { createSealedProposal } from './create-sealed-proposal';
-import { findMatchingProposal } from './find-matching-proposal';
 import type { ReviewReason, WriteCaller } from './gate-types';
+import { readMatchingProposal } from './read-matching-proposal';
 import type { MemorySubject, MemoryTables, QuoteEvidence, StoreParts } from './types';
 import type { PendingProposal } from './write-proposal-record';
 import { writeProposalRecord } from './write-proposal-record';
@@ -77,7 +77,7 @@ async function writePendingMerge(
   parts: StoreParts,
   plan: ProposalPlan,
 ): Promise<WrittenProposal | null> {
-  const match = await findMatchingProposal(tx.$extendTables<MemoryTables>(), parts, plan);
+  const match = await readMatchingProposal(tx.$extendTables<MemoryTables>(), parts, plan);
 
   if (match === null) {
     return null;

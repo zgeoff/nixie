@@ -10,6 +10,37 @@ export interface EnrolFormProps {
   readonly onEnrolled: () => void;
 }
 
+interface Attempt {
+  readonly clientActionID: string;
+  readonly code: string;
+  readonly deviceName: string;
+}
+
+// A narrow column with one field per line, so the form reads on a phone.
+const page = css({
+  marginInline: 'auto',
+  maxWidth: 'md',
+  padding: '4',
+  '& > label': { marginBottom: '4' },
+});
+
+const heading = css({ fontSize: 'xl', fontWeight: 'bold', marginBottom: '4' });
+
+const fields = css({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '3',
+  '& input': {
+    backgroundColor: 'surface',
+    borderColor: 'borderStrong',
+    borderWidth: '1px',
+    display: 'block',
+    padding: '2',
+    width: 'full',
+  },
+  '& button': { borderColor: 'borderStrong', borderWidth: '1px', paddingBlock: '2' },
+});
+
 // Turns an enrolment code into a device session. The API's response sets the session cookie, and
 // the form never touches it.
 export function EnrolForm(props: EnrolFormProps): ReactNode {
@@ -64,37 +95,6 @@ export function EnrolForm(props: EnrolFormProps): ReactNode {
       {enrol.isError ? <p role="alert">{formatEnrolError(enrol.error)}</p> : null}
     </main>
   );
-}
-
-// A narrow column with one field per line, so the form reads on a phone.
-const page = css({
-  marginInline: 'auto',
-  maxWidth: 'md',
-  padding: '4',
-  '& > label': { marginBottom: '4' },
-});
-
-const heading = css({ fontSize: 'xl', fontWeight: 'bold', marginBottom: '4' });
-
-const fields = css({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '3',
-  '& input': {
-    backgroundColor: 'surface',
-    borderColor: 'borderStrong',
-    borderWidth: '1px',
-    display: 'block',
-    padding: '2',
-    width: 'full',
-  },
-  '& button': { borderColor: 'borderStrong', borderWidth: '1px', paddingBlock: '2' },
-});
-
-interface Attempt {
-  readonly clientActionID: string;
-  readonly code: string;
-  readonly deviceName: string;
 }
 
 // A retry of the same code and name keeps its client action ID, so the API enrols the browser

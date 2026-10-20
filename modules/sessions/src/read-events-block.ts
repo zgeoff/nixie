@@ -13,6 +13,9 @@ export interface EventsBlockRead extends EventsBlockSettings {
   readonly isNewSession?: boolean;
 }
 
+// the block lists up to 10 events, then how many more
+const eventsCap = 10;
+
 // Reads the events in the range, with no session-bound kind for a new session or a replay, picks
 // uncapped kinds' events and the oldest others up to the cap, and has each kind complete only its
 // listed events, so nothing past the cap is read in full or recorded as delivered.
@@ -44,6 +47,3 @@ export async function readEventsBlock(
     count: events.length,
   };
 }
-
-// the block lists up to 10 events, then how many more
-const eventsCap = 10;

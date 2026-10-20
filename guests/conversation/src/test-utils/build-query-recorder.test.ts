@@ -6,7 +6,7 @@ import type { InboxMessage } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import { runTurn } from '../run-turn';
 import { buildQueryRecorder } from './build-query-recorder';
-import { buildStubToolServer } from './build-stub-tool-server';
+import { createStubToolServer } from './create-stub-tool-server';
 import { startStubModel } from './start-stub-model';
 
 // A turn held in a note_wait call, as the CLI must be for it to queue a message. The cleanup
@@ -22,7 +22,7 @@ async function setupTest() {
   stack.defer(() => rm(home, { recursive: true, force: true }));
 
   const model = stack.adopt(startStubModel(), (stub) => stub.stop());
-  const [tools, recorder] = [buildStubToolServer(), buildQueryRecorder()];
+  const [tools, recorder] = [createStubToolServer(), buildQueryRecorder()];
 
   const channel = new TransformStream<InboxMessage, InboxMessage>();
 

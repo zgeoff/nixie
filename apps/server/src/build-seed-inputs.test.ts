@@ -4,12 +4,12 @@ import type { ToolDefinition } from '@heynixie/tools';
 import { buildLogConnector } from './build-log-connector';
 import { buildSeedInputs } from './build-seed-inputs';
 
-const config = {
-  definitions: { source: { kind: 'path', path: '/srv/definitions' }, probeIntervalMs: 300_000 },
-  owner: { name: 'Marisol', pronouns: { they: 'she', their: 'her' } },
-} as const;
-
 test("it puts the queue check's tool declaration in the policy, beside the conversation's tools", () => {
+  const config = {
+    definitions: { source: { kind: 'path', path: '/srv/definitions' }, probeIntervalMs: 300_000 },
+    owner: { name: 'Marisol', pronouns: { they: 'she', their: 'her' } },
+  } as const;
+
   const tool = buildLogConnector(() => {}).tool;
   const inputs = buildSeedInputs(config, { definitions: [], actions: { logConnector: { tool } } });
 
@@ -26,6 +26,11 @@ test("it puts the queue check's tool declaration in the policy, beside the conve
 });
 
 test("it changes the snapshot hash when the queue check's tool declaration changes", () => {
+  const config = {
+    definitions: { source: { kind: 'path', path: '/srv/definitions' }, probeIntervalMs: 300_000 },
+    owner: { name: 'Marisol', pronouns: { they: 'she', their: 'her' } },
+  } as const;
+
   const tool = buildLogConnector(() => {}).tool;
 
   const changed: ToolDefinition = {

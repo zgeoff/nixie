@@ -21,17 +21,6 @@ export function buildWriterTools(
   ];
 }
 
-const stagedOutput = {
-  type: 'object',
-  properties: { staged: { type: 'boolean' } },
-  required: ['staged'],
-  additionalProperties: false,
-};
-
-// a remember or an edit names the subject of its memory, which is never the assistant's self-note
-const subjectInput = { type: 'string', enum: writerSubjects };
-const stagedResult: ToolOutcome = { status: 'ok', result: { staged: true } };
-
 const recallOutput = {
   type: 'object',
   properties: {
@@ -51,6 +40,8 @@ const recallOutput = {
   required: ['items'],
   additionalProperties: false,
 };
+
+const recallArguments = z.object({ query: z.string() });
 
 // A recall shows the session each item it returns, so a later change to one binds to that version.
 function buildRecallTool(
@@ -106,7 +97,22 @@ function buildRecallTool(
   };
 }
 
-const recallArguments = z.object({ query: z.string() });
+const stagedOutput = {
+  type: 'object',
+  properties: { staged: { type: 'boolean' } },
+  required: ['staged'],
+  additionalProperties: false,
+};
+
+// a remember or an edit names the subject of its memory, which is never the assistant's self-note
+const subjectInput = { type: 'string', enum: writerSubjects };
+
+const rememberArguments = z.object({
+  subject: z.enum(writerSubjects),
+  text: z.string(),
+  quote: z.string(),
+  sourceID: z.int(),
+});
 
 function buildRememberTool(staging: WriterStaging): ToolDefinition {
   return {
@@ -154,7 +160,14 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
   };
 }
 
-const rememberArguments = z.object({
+const stagedResult: ToolOutcome = { status: 'ok', result: { staged: true } };
+
+function toOutcome(result: ReturnType<WriterStaging['stage']>): ToolOutcome {
+  return result.status === 'staged' ? stagedResult : { status: 'error', message: result.reason };
+}
+
+const editArguments = z.object({
+  itemID: z.string(),
   subject: z.enum(writerSubjects),
   text: z.string(),
   quote: z.string(),
@@ -209,13 +222,7 @@ function buildEditTool(staging: WriterStaging): ToolDefinition {
   };
 }
 
-const editArguments = z.object({
-  itemID: z.string(),
-  subject: z.enum(writerSubjects),
-  text: z.string(),
-  quote: z.string(),
-  sourceID: z.int(),
-});
+const retireArguments = z.object({ itemID: z.string(), quote: z.string(), sourceID: z.int() });
 
 function buildRetireTool(staging: WriterStaging): ToolDefinition {
   return {
@@ -260,7 +267,7 @@ function buildRetireTool(staging: WriterStaging): ToolDefinition {
   };
 }
 
-const retireArguments = z.object({ itemID: z.string(), quote: z.string(), sourceID: z.int() });
+const flagArguments = z.object({ text: z.string(), sourceID: z.int() });
 
 // A flag of a possible self-note, which the assistant reads as an event and creates no item.
 function buildFlagSelfNoteTool(staging: WriterStaging): ToolDefinition {
@@ -296,10 +303,4 @@ function buildFlagSelfNoteTool(staging: WriterStaging): ToolDefinition {
       );
     },
   };
-}
-
-const flagArguments = z.object({ text: z.string(), sourceID: z.int() });
-
-function toOutcome(result: ReturnType<WriterStaging['stage']>): ToolOutcome {
-  return result.status === 'staged' ? stagedResult : { status: 'error', message: result.reason };
 }

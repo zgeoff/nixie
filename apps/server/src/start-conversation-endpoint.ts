@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { buildTimeTool, findMessageTimeZone } from '@heynixie/connectors';
+import { buildTimeTool, readMessageTimeZone } from '@heynixie/connectors';
 import type { DefinitionsInForce } from '@heynixie/definitions';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadTool } from '@heynixie/memory';
@@ -37,7 +37,7 @@ export async function startConversationEndpoint(
 ): Promise<ConversationEndpoint> {
   const time = buildTimeTool({
     clock: options.context.clock,
-    findTimeZone: () => findMessageTimeZone(options.context.log),
+    findTimeZone: () => readMessageTimeZone(options.context.log),
     defaultZone: options.config.time.default_zone,
   });
 

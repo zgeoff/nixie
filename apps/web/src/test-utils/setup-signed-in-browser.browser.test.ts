@@ -11,14 +11,16 @@ const browserSkip = await checkBrowserSkip();
 async function setupTest() {
   const cookies: (string | null)[] = [];
 
-  const app = Bun.serve({
-    fetch: (request) => {
-      cookies.push(request.headers.get('cookie'));
+  const answerRequest = (request: Request) => {
+    cookies.push(request.headers.get('cookie'));
 
-      return new Response('<!doctype html><title>app</title>', {
-        headers: { 'content-type': 'text/html' },
-      });
-    },
+    return new Response('<!doctype html><title>app</title>', {
+      headers: { 'content-type': 'text/html' },
+    });
+  };
+
+  const app = Bun.serve({
+    fetch: answerRequest,
     hostname: '127.0.0.1',
     port: 0,
   });

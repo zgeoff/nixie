@@ -56,6 +56,20 @@ const logReadOutput = {
   additionalProperties: false,
 };
 
+const defaultLimit = 20;
+
+// the most records one call decrypts, so a search over a long log returns a short page with the
+// cursor to go on from
+const scanLimit = 500;
+
+const logReadArguments = z.object({
+  from: z.string().optional(),
+  to: z.string().optional(),
+  query: z.string().optional(),
+  after: z.string().optional(),
+  limit: z.int().optional(),
+});
+
 // Builds log.read, which declares read: one page of the thread's messages, replies and tool results,
 // by time range or words. Every entry counts as outside content, and the call's record holds only
 // the event IDs, so a forget leaves no readable copy of what the model read.
@@ -112,20 +126,6 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
     },
   };
 }
-
-const defaultLimit = 20;
-
-// the most records one call decrypts, so a search over a long log returns a short page with the
-// cursor to go on from
-const scanLimit = 500;
-
-const logReadArguments = z.object({
-  from: z.string().optional(),
-  to: z.string().optional(),
-  query: z.string().optional(),
-  after: z.string().optional(),
-  limit: z.int().optional(),
-});
 
 // A UTC date or time in epoch milliseconds, NaN for a date that does not exist, or null for none.
 // Date.parse rolls 2026-02-30 over into March, so the date alone must read back as written.

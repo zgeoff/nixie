@@ -17,6 +17,10 @@ export interface BrowserFilePick {
   readonly timeoutMs?: number;
 }
 
+// the parts of the DevTools replies the helper reads, which Bun's types leave unknown
+const nodeReply = z.object({ nodeId: z.int() });
+const documentReply = z.object({ root: nodeReply });
+
 // Sets files on the page's file input as a pick in the browser's file dialog does, once the page
 // shows the input. Chrome reads each file from disk, so the files go in a directory that the test
 // removes when it finishes.
@@ -56,7 +60,3 @@ export async function setBrowserFiles(view: Bun.WebView, input: BrowserFilePick)
     nodeId: node.nodeId,
   });
 }
-
-// the parts of the DevTools replies the helper reads, which Bun's types leave unknown
-const nodeReply = z.object({ nodeId: z.int() });
-const documentReply = z.object({ root: nodeReply });

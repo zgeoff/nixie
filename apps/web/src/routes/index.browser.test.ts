@@ -21,13 +21,15 @@ async function setupTest() {
 
   const app = startFrontProxy({ apiURL: api.url, webURL: web.url });
 
+  const answerRequest = () =>
+    new Response(`<a id="open" href="${app.url}/">Open nixie</a>`, {
+      headers: { 'content-type': 'text/html' },
+    });
+
   // localhost is another site than 127.0.0.1, so following this page's link into the app is a
   // navigation from outside the site, as a launch from the home-screen icon is
   const elsewhere = Bun.serve({
-    fetch: () =>
-      new Response(`<a id="open" href="${app.url}/">Open nixie</a>`, {
-        headers: { 'content-type': 'text/html' },
-      }),
+    fetch: answerRequest,
     hostname: '127.0.0.1',
     port: 0,
   });

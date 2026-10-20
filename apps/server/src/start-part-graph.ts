@@ -24,7 +24,7 @@ export function startPartGraph<Values>(
   void waitForSettled(done);
 
   return {
-    waitFor: (name) => state.readWaiter(name).promise,
+    waitFor: (name) => state.getWaiter(name).promise,
     done,
   };
 }
@@ -73,22 +73,18 @@ function pickNextPart<Values>(
 
 // the started parts and the waiter for each part, read and changed only through these functions
 interface GraphState<Values> {
-  readonly readStarted: <Name extends keyof Values>(
+  readonly findStarted: <Name extends keyof Values>(
     name: Name,
   ) => { readonly value: Values[Name] } | undefined;
   readonly setStarted: <Name extends keyof Values>(name: Name, value: Values[Name]) => void;
-  readonly readWaiter: <Name extends keyof Values>(
-    name: Name,
-  ) => PromiseWithResolvers<Values[Name]>;
+  readonly getWaiter: <Name extends keyof Values>(name: Name) => PromiseWithResolvers<Values[Name]>;
 }
 
 function buildGraphState<Values>(order: readonly AnyPartDeclaration<Values>[]): GraphState<Values> {
   const started: { [Name in keyof Values]?: { readonly value: Values[Name] } } = {};
   const waiters: { [Name in keyof Values]?: PromiseWithResolvers<Values[Name]> } = {};
 
-  const createWaiter = <Name extends keyof Values>(
-    name: Name,
-  ): PromiseWithResolvers<Values[Name]> => {
+  const addWaiter = <Name extends keyof Values>(name: Name): PromiseWithResolvers<Values[Name]> => {
     const waiter = Promise.withResolvers<Values[Name]>();
 
     // a caller that never waits on a part leaves its rejection unread
@@ -99,15 +95,15 @@ function buildGraphState<Values>(order: readonly AnyPartDeclaration<Values>[]): 
   };
 
   for (const declaration of order) {
-    createWaiter(declaration.name);
+    addWaiter(declaration.name);
   }
 
   return {
-    readStarted: (name) => started[name],
+    findStarted: (name) => started[name],
     setStarted: (name, value) => {
       started[name] = { value };
     },
-    readWaiter: (name) => {
+    getWaiter: (name) => {
       const waiter = waiters[name];
 
       if (waiter === undefined) {
@@ -132,7 +128,7 @@ async function runParts<Values>(
     }
   } catch (error) {
     for (const declaration of order) {
-      state.readWaiter(declaration.name).reject(error);
+      state.getWaiter(declaration.name).reject(error);
     }
 
     throw error;
@@ -146,7 +142,7 @@ async function startPart<Values, Name extends keyof Values>(
   const value = await declaration.start(buildPartReader(declaration, state));
 
   state.setStarted(declaration.name, value);
-  state.readWaiter(declaration.name).resolve(value);
+  state.getWaiter(declaration.name).resolve(value);
 }
 
 // the reader a part's start gets, which reads only the parts its declaration names
@@ -166,12 +162,12 @@ function buildPartReader<Values, Name extends keyof Values>(
     find: (name) => {
       requireDeclared(name);
 
-      return state.readStarted(name)?.value ?? null;
+      return state.findStarted(name)?.value ?? null;
     },
     get: (name) => {
       requireDeclared(name);
 
-      const started = state.readStarted(name);
+      const started = state.findStarted(name);
 
       if (started === undefined) {
         throw new PartNotStartedError(String(name));
@@ -182,7 +178,7 @@ function buildPartReader<Values, Name extends keyof Values>(
     waitFor: (name) => {
       requireDeclared(name);
 
-      return state.readWaiter(name).promise;
+      return state.getWaiter(name).promise;
     },
   };
 }

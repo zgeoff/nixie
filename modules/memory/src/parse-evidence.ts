@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { QuoteEvidence } from './types';
 
-// Reads the evidence column of a version row back into its shape.
-export function parseEvidence(column: string | null): QuoteEvidence | null {
-  return column === null ? null : quoteEvidence.parse(JSON.parse(column));
-}
-
 const quoteEvidence = z.strictObject({
   recordSequence: z.int(),
   start: z.int(),
   end: z.int(),
 });
+
+// Reads the evidence column of a version row back into its shape.
+export function parseEvidence(column: string | null): QuoteEvidence | null {
+  return column === null ? null : quoteEvidence.parse(JSON.parse(column));
+}

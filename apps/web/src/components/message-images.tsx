@@ -10,6 +10,8 @@ export interface MessageImagesProps {
   readonly count: number;
 }
 
+const list = css({ display: 'flex', flexWrap: 'wrap', gap: '2', marginBlock: '1' });
+
 // The images of one of your messages in the thread, each read from the API once and kept while the
 // page shows it. An image the API no longer holds, such as one of a message forgotten on another
 // device, shows as a gap.
@@ -25,13 +27,13 @@ export function MessageImages(props: MessageImagesProps): ReactNode {
   );
 }
 
-const list = css({ display: 'flex', flexWrap: 'wrap', gap: '2', marginBlock: '1' });
-
 interface MessageImageProps {
   readonly thread: string;
   readonly sequence: number;
   readonly position: number;
 }
+
+const gap = css({ color: 'textMuted', fontSize: 'sm' });
 
 function MessageImage(props: MessageImageProps): ReactNode {
   const nixie = useNixieClient();
@@ -47,5 +49,3 @@ function MessageImage(props: MessageImageProps): ReactNode {
 
   return <ImageThumbnail alt={`Image ${props.position + 1}`} image={image.data} />;
 }
-
-const gap = css({ color: 'textMuted', fontSize: 'sm' });

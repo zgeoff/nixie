@@ -44,7 +44,10 @@ export interface VersionPlan {
   // for a new item
   readonly requirement: ItemRequirement | null;
   readonly provenance: Provenance;
-  readonly buildVersion: (readEarlier: ReadEarlierVersion, current: number) => Promise<NewVersion>;
+  readonly readNextVersion: (
+    readEarlier: ReadEarlierVersion,
+    current: number,
+  ) => Promise<NewVersion>;
 
   // pins a new item in the same transaction
   readonly isPinned?: boolean;
@@ -94,7 +97,7 @@ export async function writeVersionInTransaction(
 
   const versionKey = await readVersionKey(parts, plan.newItemID, item);
 
-  const next = await plan.buildVersion(
+  const next = await plan.readNextVersion(
     (version) => readVersion(db, versionKey.key, { itemID: versionKey.itemID, version }),
     current,
   );
@@ -179,6 +182,11 @@ interface SealedVersion {
   readonly sealed: string;
 }
 
+const itemMarkKinds = {
+  self: 'memory.self_noted',
+  shared: 'memory.shared_noted',
+} as const;
+
 function buildRecords(parts: StoreParts, written: SealedVersion): readonly RecordInput[] {
   const provenance = written.plan.provenance;
 
@@ -237,11 +245,6 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
 
   return [...(approval === undefined ? [] : [approval.record]), version, ...marked, ...pinned];
 }
-
-const itemMarkKinds = {
-  self: 'memory.self_noted',
-  shared: 'memory.shared_noted',
-} as const;
 
 function toJSONEvidence(evidence: QuoteEvidence | null): JSONObject | null {
   return evidence === null

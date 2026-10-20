@@ -65,6 +65,10 @@ export function buildConfigJSONSchema(): Record<string, unknown> {
   };
 }
 
+function toStrings(value: unknown): readonly string[] {
+  return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
+}
+
 function getSchemaNode(schema: unknown, path: readonly string[]): Record<string, unknown> {
   let node = schema;
 
@@ -81,8 +85,4 @@ function getSchemaNode(schema: unknown, path: readonly string[]): Record<string,
 
 function isSchemaNode(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function toStrings(value: unknown): readonly string[] {
-  return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
 }
