@@ -123,6 +123,11 @@ quote inside the message it came from, and when it lapses. The quote and its mes
 item's key, as the proposal's text does, so a forgotten item's proposal drops out of the list whole
 ([memory proposals](./writes.md#memory-proposals)).
 
+A proposal [from a photo](./writes.md#writes-from-a-photo) shows the photo beside its text. The page
+reads the photo as the conversation page reads a message's images, so a forget of the photo's
+message leaves a gap marked as unavailable where the photo was, and the proposal stays for the user
+to answer.
+
 The user approves a proposal, edits it and approves the edit, or rejects it with an optional reason,
 one at a time or for every selected proposal in one call. Each answer in a call is its own checked
 action with its own client action ID, and the store writes its own approval or rejection record, so

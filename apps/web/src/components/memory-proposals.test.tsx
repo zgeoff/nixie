@@ -2,10 +2,13 @@ import { expect, test } from 'bun:test';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { store } from '../mocks/store';
+import { toLogRecord } from '../mocks/to-log-record';
+import { writeMockForget } from '../mocks/write-mock-forget';
 import { writeMockMemoryChange } from '../mocks/write-mock-memory-change';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { MemoryProposals } from './memory-proposals';
+import { RecordItem } from './record-item';
 
 async function setupTest() {
   const user = userEvent.setup();
@@ -66,6 +69,100 @@ test('it marks a self-note proposal with a self-note badge and why it waits for 
   expect(card).toHaveTextContent(
     'self-notenixie wrote it about itself, and every self-note waits for your review.',
   );
+});
+
+test('it shows the photo a proposal comes from beside its text', async () => {
+  await setupTest();
+
+  const photo = await store.records.create({
+    kind: 'owner_message',
+    message: { images: [{ data: '/9j/4A==', mediaType: 'image/jpeg' }], text: 'Our new tiles.' },
+    thread: 'conversation',
+  });
+
+  await store.memoryProposals.create({
+    image: { position: 0, sequence: photo.sequence, thread: 'conversation' },
+    origin: 'conversation',
+    reason: 'from_photo',
+    text: 'Has blue hexagonal kitchen tiles',
+  });
+
+  const rendered = render(<MemoryProposals />);
+
+  const card = await rendered.findByRole('listitem', { name: 'Has blue hexagonal kitchen tiles' });
+  const image = await within(card).findByRole('img', { name: 'Image 1' });
+
+  expect(image.getAttribute('src')).toStartWith('blob:');
+
+  expect(card).toHaveTextContent(
+    'It comes from a photo you sent, and nixie never takes a photo as your words.',
+  );
+});
+
+test("it shows a proposal's photo as unavailable once you forget the photo's message", async () => {
+  await setupTest();
+
+  const photo = await store.records.create({
+    kind: 'owner_message',
+    message: { images: [{ data: '/9j/4A==', mediaType: 'image/jpeg' }], text: 'Our new tiles.' },
+    thread: 'conversation',
+  });
+
+  await store.memoryProposals.create({
+    image: { position: 0, sequence: photo.sequence, thread: 'conversation' },
+    origin: 'conversation',
+    reason: 'from_photo',
+    text: 'Has blue hexagonal kitchen tiles',
+  });
+
+  await writeMockForget({
+    clientActionID: '7e3a1c52-9b4d-4f80-a6e2-1d5c8b9f0a34',
+    sequence: photo.sequence,
+    thread: 'conversation',
+  });
+
+  const rendered = render(<MemoryProposals />);
+
+  const card = await rendered.findByRole('listitem', { name: 'Has blue hexagonal kitchen tiles' });
+  const gap = await within(card).findByText('Image unavailable');
+
+  expect(gap).toBeInTheDocument();
+  expect(within(card).queryByRole('img')).toBeNull();
+});
+
+test("it shows a proposal's photo as unavailable once you forget its message after the page showed the photo", async () => {
+  const ctx = await setupTest();
+
+  const photo = await store.records.create({
+    kind: 'owner_message',
+    message: { images: [{ data: '/9j/4A==', mediaType: 'image/jpeg' }], text: 'Our new tiles.' },
+    thread: 'conversation',
+  });
+
+  await store.memoryProposals.create({
+    image: { position: 0, sequence: photo.sequence, thread: 'conversation' },
+    origin: 'conversation',
+    reason: 'from_photo',
+    text: 'Has blue hexagonal kitchen tiles',
+  });
+
+  const rendered = render(<RecordItem record={toLogRecord(photo)} />);
+
+  await rendered.findByRole('img', { name: 'Image 1' });
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget' }));
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget for good' }));
+
+  await waitFor(() => {
+    expect(rendered.queryByRole('button', { name: 'Forget for good' })).toBeNull();
+  });
+
+  rendered.rerender(<MemoryProposals />);
+
+  const card = await rendered.findByRole('listitem', { name: 'Has blue hexagonal kitchen tiles' });
+  const gap = await within(card).findByText('Image unavailable');
+
+  expect(gap).toBeInTheDocument();
+  expect(within(card).queryByRole('img')).toBeNull();
 });
 
 test('it approves 3 selected proposals in one action, each with its own approval record', async () => {

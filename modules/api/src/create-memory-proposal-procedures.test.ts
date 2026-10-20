@@ -122,9 +122,43 @@ test('#memory.listProposals lists each pending proposal with its review reason, 
           end: 32,
           message: { status: 'readable', text: 'I signed up for the harbour swim.' },
         },
+        image: null,
       },
     ],
   });
+});
+
+test('#memory.listProposals names the photo a proposal comes from as conversation.readImage reads it', async () => {
+  const ctx = await setupTest();
+
+  const sent = await ctx.client.conversation.send({
+    clientMessageId: '5c2e9a41-3b7d-4f60-9e18-2d4a6b8c0f13',
+    thread: 'conversation',
+    text: 'Our new tiles.',
+    spans: [{ start: 0, end: 14, source: 'typed' }],
+    images: [
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1])], 'floor.png', {
+        type: 'image/png',
+      }),
+      new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'tiles.jpg', { type: 'image/jpeg' }),
+    ],
+  });
+
+  await ctx.memory.writes.remember({
+    text: 'Has blue hexagonal kitchen tiles',
+    image: { messageSequence: sent.sequence, image: 2 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const listed = await ctx.client.memory.listProposals();
+
+  expect(listed.proposals).toMatchObject([
+    {
+      reason: 'from_photo',
+      quote: null,
+      image: { thread: 'conversation', sequence: sent.sequence, position: 1 },
+    },
+  ]);
 });
 
 test('#memory.listProposals refuses a caller with no session as unauthorized', async () => {

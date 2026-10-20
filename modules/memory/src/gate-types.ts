@@ -211,6 +211,14 @@ export interface MemoryProposal {
   readonly text: string;
   readonly quote: string | null;
   readonly evidence: QuoteEvidence | null;
+
+  // the photo of yours the proposal comes from, or null for a proposal from anything else
+  readonly image: ProposalImage | null;
+}
+
+// One image of a message of yours, in the thread that holds the message.
+export interface ProposalImage extends ImageRef {
+  readonly thread: string;
 }
 
 // One write that proposed a change: the proposal's own, or one that merged into it.

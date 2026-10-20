@@ -1,9 +1,11 @@
 import { readRecordKeys } from '@heynixie/log';
 import { decodeProposalText } from './decode-proposal-text';
+import { findImageSource } from './find-image-source';
 import type {
   MemoryProposal,
   MemoryProposalRow,
   PendingFilter,
+  ProposalImage,
   ProposalSource,
 } from './gate-types';
 import { getRowSubject } from './get-row-subject';
@@ -66,6 +68,7 @@ export async function readPendingProposals(
         text: text.text,
         quote: text.quote,
         evidence: parseEvidence(row.evidence),
+        image: findProposalImage(row),
       } satisfies MemoryProposal;
     }),
   );
@@ -121,4 +124,11 @@ function buildFirstSource(row: MemoryProposalRow): ProposalSource {
     model: row.model,
     proposedAt: row.created_at,
   };
+}
+
+// the photo of yours the proposal comes from, in the thread whose message holds it
+function findProposalImage(row: MemoryProposalRow): ProposalImage | null {
+  const image = row.checks === null ? null : findImageSource(JSON.parse(row.checks));
+
+  return image === null || row.thread === null ? null : { thread: row.thread, ...image };
 }

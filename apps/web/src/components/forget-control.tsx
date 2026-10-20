@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
@@ -21,12 +21,20 @@ const control = css({ color: 'textMuted', display: 'block', fontSize: 'sm', marg
 // A forget in flight or failed keeps its control after the text goes, so a failed cleanup can retry.
 export function ForgetControl(props: ForgetControlProps): ReactNode {
   const nixie = useNixieClient();
+  const queryClient = useQueryClient();
   const [actionID, setActionID] = useState<string | null>(null);
 
   const forget = useMutation(
     nixie.queryUtils.conversation.forget.mutationOptions({
-      onSuccess: () => {
+      onSuccess: (_result, input) => {
         setActionID(null);
+
+        // a forgotten message's images are gone, so no page shows a copy this client kept
+        queryClient.removeQueries({
+          queryKey: nixie.queryUtils.conversation.readImage.key({
+            input: { thread: input.thread, sequence: input.sequence },
+          }),
+        });
 
         props.onForgotten();
       },
