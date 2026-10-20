@@ -4,7 +4,7 @@ import { buildContractEnv } from './build-contract-env';
 test('it passes the credential, the proxy settings and the path, and homes the CLI in the config directory', () => {
   const env = buildContractEnv(
     {
-      ANTHROPIC_AUTH_TOKEN: 'imp-broker-placeholder',
+      ANTHROPIC_AUTH_TOKEN: 'nixie-broker-placeholder',
       PATH: '/usr/bin',
       HTTPS_PROXY: 'http://127.0.0.1:3128',
       NODE_EXTRA_CA_CERTS: '/etc/proxy-ca.pem',
@@ -20,7 +20,7 @@ test('it passes the credential, the proxy settings and the path, and homes the C
     PATH: '/usr/bin',
     HOME: '/tmp/contract-config',
     CLAUDE_CONFIG_DIR: '/tmp/contract-config',
-    ANTHROPIC_AUTH_TOKEN: 'imp-broker-placeholder',
+    ANTHROPIC_AUTH_TOKEN: 'nixie-broker-placeholder',
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     DISABLE_AUTOUPDATER: '1',
   });

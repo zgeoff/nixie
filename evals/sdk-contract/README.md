@@ -45,6 +45,11 @@ model's prose wherever the SDK exposes the answer.
   when the mod throws as it loads, and leaves it when a hook wedges the hooks worker. No nixie code
   loads a mod, and the probe keeps that option checked.
 
+- `model-grant`: a turn whose only credential is the placeholder that `buildModelGrant` sets, in
+  either auth header's variable, gets its answer through the broker, because the broker replaces the
+  header on each request it carries.
+  [Model profiles](../../docs/architecture/core/model-profiles.md) give each model loop that grant.
+
 The [mods](mods/) folder holds the probe's mods. The suite copies them into its config directory
 before the CLI loads them, because the CLI writes type files into each mod it loads.
 

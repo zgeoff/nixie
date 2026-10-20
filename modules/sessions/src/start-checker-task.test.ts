@@ -63,7 +63,10 @@ test('it runs each check in the check guest on the checker role profile', async 
   });
 
   expect(ctx.model.requests.filter((request) => request.path === '/v1/messages')).toMatchObject([
-    { headers: { 'x-api-key': 'imp-broker-placeholder' }, body: { model: 'claude-test-checker' } },
+    {
+      headers: { 'x-api-key': 'nixie-broker-placeholder' },
+      body: { model: 'claude-test-checker' },
+    },
   ]);
 });
 
