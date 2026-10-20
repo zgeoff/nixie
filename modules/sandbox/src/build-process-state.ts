@@ -17,38 +17,39 @@ export interface ProcessState {
 export function buildProcessState(): ProcessState {
   const groups = new Set<ProcessGroup>();
 
-  const state = { isAsleep: false, relay: null as Promise<ToolRelay> | null };
+  let isAsleep = false;
+  let openedRelay: Promise<ToolRelay> | null = null;
 
   return {
     track: (group) => {
       groups.add(group);
       void removeOnExit(groups, group);
     },
-    isAsleep: () => state.isAsleep,
+    isAsleep: () => isAsleep,
     sleep: () => {
-      state.isAsleep = true;
+      isAsleep = true;
 
       for (const group of groups) {
         group.pause();
       }
     },
     wake: () => {
-      state.isAsleep = false;
+      isAsleep = false;
 
       for (const group of groups) {
         group.resume();
       }
     },
     openRelay: async (target) => {
-      state.relay ??= startToolRelay(target);
+      openedRelay ??= startToolRelay(target);
 
-      const relay = await state.relay;
+      const relay = await openedRelay;
 
       return relay.port;
     },
     stop: () =>
       stopProcesses([...groups], async () => {
-        const relay = await state.relay;
+        const relay = await openedRelay;
 
         await relay?.stop();
       }),

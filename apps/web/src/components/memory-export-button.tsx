@@ -81,20 +81,11 @@ async function writeExportFile(client: NixieClient, actionID: string): Promise<E
   return 'saved';
 }
 
-interface SaveFilePickerOptions {
-  readonly suggestedName: string;
-  readonly types: readonly FileType[];
-}
-
-// the save picker of the File System Access API, which only some browsers have
-type ShowSaveFilePicker = (options: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
-
 function findSaveFilePicker(): ShowSaveFilePicker | null {
-  const picker: unknown = Reflect.get(globalThis, 'showSaveFilePicker');
+  const picker = globalThis.showSaveFilePicker;
 
   // the picker is a method of the window, which refuses a call with no window as its receiver
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the DOM types lack the picker
-  return typeof picker === 'function' ? (picker.bind(globalThis) as ShowSaveFilePicker) : null;
+  return picker === undefined ? null : picker.bind(globalThis);
 }
 
 // the browser saves a link's download where its settings say, and asks where when set to ask

@@ -37,6 +37,7 @@
     "@heynixie/tools": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "@orpc/client": "catalog:",
+    "@zgeoff/std": "catalog:",
     "elysia": "catalog:",
     "gunshi": "catalog:",
     "tiny-invariant": "catalog:",

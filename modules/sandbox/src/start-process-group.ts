@@ -61,19 +61,19 @@ interface GroupStop {
 }
 
 function makeGroupStop(pid: number, killGraceMs: number): GroupStop {
-  const state = { deadline: null as Promise<void> | null };
+  let deadline: Promise<void> | null = null;
 
   return {
     send: () => {
-      if (state.deadline !== null) {
+      if (deadline !== null) {
         return;
       }
 
       sendGroupSignal(pid, 'SIGTERM');
 
-      state.deadline = stopGroupAfter(pid, killGraceMs);
+      deadline = stopGroupAfter(pid, killGraceMs);
     },
-    deadline: () => state.deadline,
+    deadline: () => deadline,
   };
 }
 

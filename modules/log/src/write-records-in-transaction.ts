@@ -35,7 +35,8 @@ export async function writeRecordsInTransaction(
 // the type demands the field, and this check covers a caller that reached past the type, such as
 // one that parsed its input or passed an empty hash
 function requireDefinitions(input: RecordInput): void {
-  const hash: unknown = (input as Partial<RecordInput>).definitions?.snapshotHash;
+  const partial: Partial<RecordInput> = input;
+  const hash: unknown = partial.definitions?.snapshotHash;
 
   if (typeof hash !== 'string' || hash.length === 0) {
     throw new MissingDefinitionsError(input.kind);

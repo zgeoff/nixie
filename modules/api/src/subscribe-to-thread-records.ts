@@ -1,6 +1,5 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import { subscribeToRecords } from '@heynixie/log';
-import { sql } from 'kysely';
 import { sessionRevokedCodec } from './session-revoked-codec';
 import { toContractRecord } from './to-contract-record';
 import type { APIContext, APITables, Identity } from './types';
@@ -25,7 +24,7 @@ export async function* subscribeToThreadRecords(
   const head = await context.log.writer.db
     .$extendTables<APITables>()
     .selectFrom('records')
-    .select(sql<number>`coalesce(max(sequence), 0)`.as('sequence'))
+    .select((eb) => eb.fn.coalesce(eb.fn.max('sequence'), eb.lit(0)).as('sequence'))
     .executeTakeFirstOrThrow();
 
   // a start past the head would skip the record that revokes the caller, so the stream reads from

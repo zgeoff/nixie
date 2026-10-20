@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { readQueryRows } from '@heynixie/db';
 import type { Projection } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import { sql } from 'kysely';
@@ -389,15 +390,17 @@ test('it seeds each skill under format 2 and names the added skills in its recor
 
   const skillHash = buildContentHash(new Map([['SKILL.md', new TextEncoder().encode(skill)]]));
 
-  const records = await sql<{ payload: string }>`select payload from records`.execute(
+  const records = await readQueryRows(
+    sql`select payload from records`,
     ctx.writer.db,
+    z.object({ payload: z.string() }),
   );
 
   expect(result.inForce?.skills).toStrictEqual([
     { name: 'tide-tables', skillHash, origin: 'definitions' },
   ]);
 
-  expect(records.rows.map((row): unknown => JSON.parse(row.payload))).toMatchObject([
+  expect(records.map((row): unknown => JSON.parse(row.payload))).toMatchObject([
     {
       skills: [{ name: 'tide-tables', skillHash, origin: 'definitions' }],
       skillChanges: { added: ['tide-tables'], changed: [], removed: [] },
@@ -436,10 +439,13 @@ test('it names the skills a later seed changes and removes in its record', async
   await rm(join(ctx.root, 'skills', 'bird-log'), { recursive: true });
   await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  const records = await sql<{ payload: string }>`select payload from records
-    order by sequence`.execute(ctx.writer.db);
+  const records = await readQueryRows(
+    sql`select payload from records order by sequence`,
+    ctx.writer.db,
+    z.object({ payload: z.string() }),
+  );
 
-  const payloads = records.rows.map((row) =>
+  const payloads = records.map((row) =>
     z.looseObject({ skillChanges: z.unknown() }).parse(JSON.parse(row.payload)),
   );
 

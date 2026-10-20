@@ -5,6 +5,7 @@ export { DatabaseError } from './database-error';
 export { nixieSchema } from './nixie-schema';
 export type { MigrationSummary } from './build-migration-summary';
 export type { MigrationReport, RunMigrationsOptions } from './run-migrations';
+export { readQueryRows } from './read-query-rows';
 export { removeTableRows } from './remove-table-rows';
 export { runMigrations } from './run-migrations';
 export { startDatabase } from './start-database';

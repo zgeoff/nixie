@@ -1,4 +1,5 @@
 import type { ContractOutputs } from '@heynixie/contract';
+import { proposalOutcomeSchema } from '@heynixie/contract';
 import type { ReadonlyDeep } from '../types';
 import { readMockPinnedCore } from './read-mock-pinned-core';
 import { store } from './store';
@@ -37,8 +38,7 @@ export async function writeMockProposalAnswer(
 
   if (earlier !== undefined) {
     return earlier.input === bound && earlier.result !== undefined
-      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- this function wrote the outcome
-        (JSON.parse(earlier.result) as MockProposalOutcome)
+      ? proposalOutcomeSchema.parse(JSON.parse(earlier.result))
       : { code: 'CLIENT_ACTION_ID_REUSED', proposalID: input.proposalID, status: 'refused' };
   }
 

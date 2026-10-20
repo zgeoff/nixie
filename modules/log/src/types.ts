@@ -105,6 +105,7 @@ export type RecordKind = keyof RecordKinds;
 export interface RecordCodec<Kind extends RecordKind, Payload, PartialPayload = Partial<Payload>> {
   readonly kind: Kind;
   readonly encode: (payload: Payload) => Payload;
+  readonly parse: (input: unknown) => Payload;
   readonly decode: (payload: JSONObject) => Payload;
   readonly tryDecodePartial: (payload: JSONObject) => PartialPayload | null;
 }

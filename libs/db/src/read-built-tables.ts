@@ -2,6 +2,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sql } from 'kysely';
+import { z } from 'zod';
+import { readQueryRows } from './read-query-rows';
 import { runMigrations } from './run-migrations';
 import { startDatabase } from './start-database';
 import type { BuildSchema } from './types';
@@ -19,13 +21,13 @@ export interface BuiltTable {
   readonly columns: readonly BuiltColumn[];
 }
 
-interface ColumnRow {
-  readonly tableName: string;
-  readonly name: string;
-  readonly type: string;
-  readonly notNull: number;
-  readonly pk: number;
-}
+const columnRowSchema = z.object({
+  tableName: z.string(),
+  name: z.string(),
+  type: z.string(),
+  notNull: z.number(),
+  pk: z.number(),
+});
 
 // Runs the schema's migrations on an empty database in a temporary directory and reads back each
 // table with its columns, tables by name and columns in their declared order. The migration
@@ -39,13 +41,16 @@ export async function readBuiltTables(schema: BuildSchema): Promise<BuiltTable[]
     try {
       await runMigrations(db, { schema, copyDir: directory });
 
-      const result = await sql<ColumnRow>`select m.name as "tableName", p.name, p.type,
-          p."notnull" as "notNull", p.pk
-        from sqlite_master m join pragma_table_info(m.name) p
-        where m.type = 'table' and m.name not like 'sqlite_%' and m.name != 'schema_version'
-        order by m.name, p.cid`.execute(db);
+      const rows = await readQueryRows(
+        sql`select m.name as "tableName", p.name, p.type, p."notnull" as "notNull", p.pk
+          from sqlite_master m join pragma_table_info(m.name) p
+          where m.type = 'table' and m.name not like 'sqlite_%' and m.name != 'schema_version'
+          order by m.name, p.cid`,
+        db,
+        columnRowSchema,
+      );
 
-      return buildTables(result.rows);
+      return buildTables(rows);
     } finally {
       await db.destroy();
     }
@@ -54,7 +59,7 @@ export async function readBuiltTables(schema: BuildSchema): Promise<BuiltTable[]
   }
 }
 
-function buildTables(rows: readonly ColumnRow[]): BuiltTable[] {
+function buildTables(rows: readonly z.output<typeof columnRowSchema>[]): BuiltTable[] {
   const tables = new Map<string, BuiltColumn[]>();
 
   for (const row of rows) {

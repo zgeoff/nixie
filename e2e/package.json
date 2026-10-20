@@ -21,6 +21,7 @@
     "@heynixie/tasks": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@heynixie/tools": "workspace:*",
-    "tiny-invariant": "catalog:"
+    "tiny-invariant": "catalog:",
+    "zod": "catalog:"
   }
 }

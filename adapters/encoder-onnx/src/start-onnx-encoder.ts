@@ -51,8 +51,13 @@ export async function startONNXEncoder(modelDir: string): Promise<ONNXEncoder> {
       throw new Error('the encoder model has no sentence_embedding output');
     }
 
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a float32 output tensor holds a Float32Array
-    return normalizeVector(pooled.data as Float32Array);
+    if (!(pooled.data instanceof Float32Array)) {
+      throw new Error(
+        `the encoder model's sentence_embedding output is ${pooled.type}, not float32`,
+      );
+    }
+
+    return normalizeVector(pooled.data);
   };
 
   return {

@@ -1,7 +1,6 @@
 import { afterAll, afterEach } from 'bun:test';
 import { faker } from '@faker-js/faker';
 import { IDBFactory } from 'fake-indexeddb';
-import type { Window } from 'happy-dom';
 import { browserCookies } from './browser-cookies';
 import { server } from './node';
 import { store } from './store';
@@ -14,11 +13,8 @@ faker.seed(321);
 
 globalThis.indexedDB = new IDBFactory();
 
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the preload registered happy-dom's window
-const window = globalThis as unknown as Window;
-
 // happy-dom opens on about:blank, where the browser client cannot resolve /rpc.
-window.happyDOM.setURL(`${webOrigin}/`);
+globalThis.happyDOM.setURL(`${webOrigin}/`);
 
 server.listen({
   // the web server suites call a stub API and the built Start server on loopback ports, and the
@@ -42,7 +38,7 @@ afterEach(() => {
 
   globalThis.indexedDB = new IDBFactory();
 
-  window.happyDOM.settings.device.prefersColorScheme = 'light';
+  globalThis.happyDOM.settings.device.prefersColorScheme = 'light';
   delete globalThis.document.documentElement.dataset['theme'];
 });
 

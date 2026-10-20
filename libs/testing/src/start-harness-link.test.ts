@@ -1,5 +1,6 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
+import { z } from 'zod';
 import { startHarnessLink } from './start-harness-link';
 import { buildStubHarnessChannel } from './test-utils/build-stub-harness-channel';
 import { waitForCondition } from './wait-for-condition';
@@ -170,7 +171,7 @@ test('it runs a registered operation and replies with its result', async () => {
   const stub = buildStubHarnessChannel();
   const link = startHarnessLink({}, stub.channel);
 
-  link.registerOperation('double', (args) => Number(args) * 2);
+  link.registerOperation('double', z.number(), (args) => args * 2);
   stub.sendToLink({ type: 'request', requestID: 7, operation: 'double', args: 21 });
 
   await waitForCondition(() => stub.sent.length === 1);
@@ -182,7 +183,7 @@ test('it replies with the error of an operation that throws', async () => {
   const stub = buildStubHarnessChannel();
   const link = startHarnessLink({}, stub.channel);
 
-  link.registerOperation('fail', () => {
+  link.registerOperation('fail', z.null(), () => {
     throw new Error('the operation failed');
   });
 
@@ -191,6 +192,27 @@ test('it replies with the error of an operation that throws', async () => {
   await waitForCondition(() => stub.sent.length === 1);
 
   expect(stub.sent).toStrictEqual([{ type: 'reply', requestID: 2, error: 'the operation failed' }]);
+});
+
+test('it replies with an error to arguments the operation schema refuses', async () => {
+  const stub = buildStubHarnessChannel();
+  const link = startHarnessLink({}, stub.channel);
+  const operation = mock((args: number) => args);
+
+  link.registerOperation('double', z.number(), operation);
+  stub.sendToLink({ type: 'request', requestID: 4, operation: 'double', args: 'twenty' });
+
+  await waitForCondition(() => stub.sent.length === 1);
+
+  expect(stub.sent).toStrictEqual([
+    {
+      type: 'reply',
+      requestID: 4,
+      error: expect.toInclude('Invalid input: expected number, received string'),
+    },
+  ]);
+
+  expect(operation).not.toHaveBeenCalled();
 });
 
 test('it replies with an error to an operation it does not have', async () => {

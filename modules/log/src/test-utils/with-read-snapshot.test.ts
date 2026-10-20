@@ -24,12 +24,10 @@ test('it hides a commit from another connection until the callback settles', asy
       { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
     ]);
 
-    return sql<{ total: number }>`select count(*) as total from records`.execute(ctx.readerDB);
+    return sql`select count(*) as total from records`.execute(ctx.readerDB);
   });
 
-  const countAfter = await sql<{ total: number }>`select count(*) as total from records`.execute(
-    ctx.readerDB,
-  );
+  const countAfter = await sql`select count(*) as total from records`.execute(ctx.readerDB);
 
   expect(countInside.rows).toStrictEqual([{ total: 0 }]);
   expect(countAfter.rows).toStrictEqual([{ total: 1 }]);
@@ -46,9 +44,7 @@ test('it ends the snapshot when the callback throws', async () => {
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
   ]);
 
-  const countAfter = await sql<{ total: number }>`select count(*) as total from records`.execute(
-    ctx.readerDB,
-  );
+  const countAfter = await sql`select count(*) as total from records`.execute(ctx.readerDB);
 
   expect(countAfter.rows).toStrictEqual([{ total: 1 }]);
 });

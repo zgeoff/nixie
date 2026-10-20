@@ -1,6 +1,5 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction, UpdateObject } from 'kysely';
-import { sql } from 'kysely';
 import { isInboxRecord } from './is-inbox-record';
 import type { TaskRecord } from './parse-task-record';
 import { parseTaskRecord } from './parse-task-record';
@@ -109,7 +108,7 @@ function buildTaskUpdate(
     return {
       state: parsed.nextState,
       read_cursor: parsed.readCursor,
-      committed_steps: sql<number>`committed_steps + 1`,
+      committed_steps: (eb) => eb('committed_steps', '+', 1),
       started_step_key: null,
       step_errors: 0,
       session_boundary: parsed.sessionBoundary,
