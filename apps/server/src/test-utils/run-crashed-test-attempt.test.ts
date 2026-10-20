@@ -87,8 +87,9 @@ test('it stops the attempt once its attempt record commits, before the connector
 test('it throws the failure of an attempt that finds no queued action', async () => {
   const ctx = await setupTest();
 
-  expect(runCrashedTestAttempt(ctx.context, ctx.connectors)).rejects.toThrowWithMessage(
-    Error,
-    'no queued action was claimable',
-  );
+  const attempt = runCrashedTestAttempt(ctx.context, ctx.connectors);
+
+  await attempt.catch(() => {});
+
+  expect(attempt).rejects.toThrowWithMessage(Error, 'no queued action was claimable');
 });

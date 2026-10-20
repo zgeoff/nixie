@@ -88,8 +88,9 @@ test('it runs the queued action through its connector', async () => {
 test('it throws when no queued action is claimable', async () => {
   const ctx = await setupTest();
 
-  expect(runTestAttempt(ctx.context, ctx.connectors)).rejects.toThrowWithMessage(
-    Error,
-    'no queued action was claimable',
-  );
+  const attempt = runTestAttempt(ctx.context, ctx.connectors);
+
+  await attempt.catch(() => {});
+
+  expect(attempt).rejects.toThrowWithMessage(Error, 'no queued action was claimable');
 });

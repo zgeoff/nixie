@@ -67,5 +67,9 @@ test('it claims the next step for runner-a with the unread inbox of its task', a
 test('it throws when no task is claimable', async () => {
   const ctx = await setupTest();
 
-  expect(claimTestStep(ctx.context)).rejects.toThrowWithMessage(Error, 'no task was claimable');
+  const claim = claimTestStep(ctx.context);
+
+  await claim.catch(() => {});
+
+  expect(claim).rejects.toThrowWithMessage(Error, 'no task was claimable');
 });
