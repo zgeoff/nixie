@@ -70,7 +70,6 @@ export function buildSkillPendingTool(context: SkillToolsContext): ToolDefinitio
   };
 }
 
-// the proposal as the model reads it, with the version it replaces when it replaces one
 function toPendingJSON(entry: PendingSkillProposal, now: number): JSONObject {
   const proposal = entry.proposal;
 
