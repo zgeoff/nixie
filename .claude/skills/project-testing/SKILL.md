@@ -57,15 +57,23 @@ suites when the files are missing, and CI, where the `CI` variable is set, fails
 run there never passes without the model. The spikes under `research/` and `docs/design/` run by
 hand, so the root [`bunfig.toml`](../../../bunfig.toml) skips them.
 
-The web server's browser suite drives a headless Chrome or Chromium through `Bun.WebView`, so
-`bun test` needs one that Bun finds on `PATH`, in a standard install location, or at
-`BUN_CHROME_PATH`. GitHub's Ubuntu runners ship Chrome. Outside CI, each browser suite skips and
-prints why when no browser starts, through
-[`checkBrowserSkip`](../../../apps/web/src/test-utils/check-browser-skip.ts). CI never skips them.
-Chrome and Chromium stop at startup when `TMPDIR` is too long for their socket path, so on such a
-host set `TMPDIR` to a short directory or point `BUN_CHROME_PATH` at Playwright's
-`chrome-headless-shell`, which opens no such socket. Chrome stops under a `ulimit -v` cap, because
-it reserves more address space than it uses, so the browser suites skip there.
+The web app's browser suites, the `*.browser.test.ts` files, drive a headless Chrome or Chromium
+through `Bun.WebView`, so `bun test` needs one that Bun finds on `PATH`, in a standard install
+location, or at `BUN_CHROME_PATH`. GitHub's Ubuntu runners ship Chrome. `bun run test` leaves the
+browser suites out of the parallel run and runs them in one process after it. That process preloads
+[`start-browser.ts`](../../../apps/web/src/test-utils/start-browser.ts), which starts the one Chrome
+the suites share before the first test. A first Chrome start on a fresh CI runner can outlast the
+default test timeout even on an idle CPU, and takes longer still beside the parallel workers. The
+parallel run's ignore patterns repeat the root config's, because a pattern given on the command line
+replaces that list.
+
+Outside CI, each browser suite skips and prints why when no browser starts, through
+[`checkBrowserSkip`](../../../apps/web/src/test-utils/check-browser-skip.ts), and the preload runs
+the same check, so the run goes on. In CI the check fails the run instead. Chrome and Chromium stop
+at startup when `TMPDIR` is too long for their socket path, so on such a host set `TMPDIR` to a
+short directory or point `BUN_CHROME_PATH` at Playwright's `chrome-headless-shell`, which opens no
+such socket. Chrome stops under a `ulimit -v` cap, because it reserves more address space than it
+uses, so the browser suites skip there.
 
 Plain `bun test` runs the crash suites in `e2e/crash/`, which spawn the test build of nixie from
 [`e2e/nixie/main.ts`](../../../e2e/nixie/main.ts) as a child process and drive it through

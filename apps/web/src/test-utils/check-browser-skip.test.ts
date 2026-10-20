@@ -1,13 +1,25 @@
 import { expect, mock, test } from 'bun:test';
 import { checkBrowserSkip } from './check-browser-skip';
 
-test('it never skips in CI, and never starts the browser there', async () => {
-  const openView = mock(() => Promise.reject(new Error('Chrome process closed the pipe')));
+test('it fails in CI when the browser does not start, and never skips there', () => {
+  const print = mock<(line: string) => void>(() => {});
+
+  expect(
+    checkBrowserSkip({
+      env: { CI: 'true' },
+      openView: () => Promise.reject(new Error('Chrome process closed the pipe')),
+      print,
+    }),
+  ).rejects.toThrowWithMessage(Error, 'Chrome process closed the pipe');
+});
+
+test('it runs the browser tests in CI when the browser starts', async () => {
+  const openView = mock(() => Promise.resolve());
 
   const result = await checkBrowserSkip({ env: { CI: 'true' }, openView, print: () => {} });
 
   expect(result).toStrictEqual({ isSkipped: false, reason: null });
-  expect(openView).not.toHaveBeenCalled();
+  expect(openView).toHaveBeenCalledOnce();
 });
 
 test('it skips outside CI when the browser does not start, and prints why', async () => {

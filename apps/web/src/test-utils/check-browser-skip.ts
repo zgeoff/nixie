@@ -15,15 +15,9 @@ export interface BrowserProbe {
 }
 
 // Outside CI the browser suites skip when no browser starts, such as under an address-space limit
-// or with a TMPDIR too long for Chrome's socket path. In CI, where `CI` is set, they never skip and
-// the probe never runs, so a broken browser fails the run.
+// or with a TMPDIR too long for Chrome's socket path. In CI, where `CI` is set, the check rethrows
+// the start failure, so a broken browser fails the run and the suites never skip there.
 export async function checkBrowserSkip(probe: BrowserProbe = {}): Promise<BrowserSkip> {
-  const env = probe.env ?? process.env;
-
-  if (env['CI'] !== undefined) {
-    return { isSkipped: false, reason: null };
-  }
-
   const openView = probe.openView ?? openChromeView;
 
   const failure = await openView().then(
@@ -33,6 +27,12 @@ export async function checkBrowserSkip(probe: BrowserProbe = {}): Promise<Browse
 
   if (failure === null) {
     return { isSkipped: false, reason: null };
+  }
+
+  const env = probe.env ?? process.env;
+
+  if (env['CI'] !== undefined) {
+    throw failure;
   }
 
   const reason = failure instanceof Error ? failure.message : Bun.inspect(failure);
