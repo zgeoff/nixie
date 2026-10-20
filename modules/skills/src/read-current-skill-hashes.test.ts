@@ -6,7 +6,9 @@ import {
   checkSkillFiles,
   createPathSource,
   runSeed,
+  runWrittenSkillSeed,
   writeWrittenSkill,
+  writeWrittenSkillState,
 } from '@heynixie/definitions';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
@@ -90,4 +92,48 @@ test("it reads each skill nixie wrote over the snapshot's version, and the rest 
       ['tide-tables', approved.skillHash],
     ]),
   );
+});
+
+test("it reads your definitions' version of a retired skill nixie wrote before the retirement's seed runs", async () => {
+  const ctx = await setupTest();
+
+  const tides = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n';
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'));
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), tides);
+  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  const definitions = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: tides }]);
+
+  const approved = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: `${tides}By port.\n` },
+  ]);
+
+  invariant('skillHash' in definitions);
+  invariant('skillHash' in approved);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'p8w2n4c6ld',
+      skill: approved,
+      approvedAt: 1,
+    }),
+  );
+
+  await runWrittenSkillSeed({ log: ctx.log, policy: { rules: [], tools: [] } });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkillState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'retired',
+      at: 2,
+    }),
+  );
+
+  const current = await readCurrentSkillHashes(ctx.writer.db);
+
+  expect(current).toStrictEqual(new Map([['tide-tables', definitions.skillHash]]));
 });

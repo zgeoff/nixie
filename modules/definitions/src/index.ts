@@ -10,6 +10,7 @@ export { definitionsConfigSchema } from './definitions-config-schema';
 export type { ParseProblem } from './definitions-parse-error';
 export { DefinitionsParseError } from './definitions-parse-error';
 export { readDefinitionsInForce } from './read-definitions-in-force';
+export { readDefinitionsSkills } from './read-definitions-skills';
 export type { ResetSeed } from './read-reset-seed';
 export { readResetSeed } from './read-reset-seed';
 export { isDefinitionsPath } from './is-definitions-path';

@@ -3,12 +3,12 @@ import { withWriteTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { z } from 'zod';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
-import type { DefinitionsSkillRef } from './build-skill-overlay';
 import { buildSkillOverlay } from './build-skill-overlay';
 import { readDefinitionsInForce } from './read-definitions-in-force';
+import { readDefinitionsSkills } from './read-definitions-skills';
 import { readWrittenSkills } from './read-written-skills';
 import type { SeedResult } from './run-seed';
-import type { DefinitionsTables, SnapshotPolicy } from './types';
+import type { SnapshotPolicy } from './types';
 import { writeSeed } from './write-seed';
 
 export interface WrittenSkillSeedOptions {
@@ -67,62 +67,6 @@ export function runWrittenSkillSeed(options: WrittenSkillSeedOptions): Promise<S
 
     return { status: 'seeded', ...written };
   });
-}
-
-// Your definitions' skills under the seed in force: a skill no approval applied stands as it is,
-// and a written one gives way to the version of your definitions its store row holds, which takes
-// its place on the conversation's list. A new written skill has none beneath it.
-async function readDefinitionsSkills(
-  tx: Transaction<unknown>,
-  snapshotHash: string,
-): Promise<{
-  readonly skills: readonly DefinitionsSkillRef[];
-  readonly conversationSkills: readonly string[];
-}> {
-  const rows = await tx
-    .$extendTables<DefinitionsTables>()
-    .selectFrom('snapshot_skills')
-    .leftJoin('written_skills', 'written_skills.approval_id', 'snapshot_skills.approval_id')
-    .select([
-      'snapshot_skills.name',
-      'snapshot_skills.skill_hash',
-      'snapshot_skills.origin',
-      'snapshot_skills.in_conversation',
-      'snapshot_skills.approval_id',
-      'written_skills.definitions_hash',
-      'written_skills.definitions_origin',
-    ])
-    .where('snapshot_skills.snapshot_hash', '=', snapshotHash)
-    .orderBy('snapshot_skills.name')
-    .execute();
-
-  const skills = rows.flatMap((row): readonly (DefinitionsSkillRef & { isListed: boolean })[] => {
-    const isListed = row.in_conversation === 1;
-
-    if (row.approval_id === null) {
-      return [{ name: row.name, skillHash: row.skill_hash, origin: row.origin, isListed }];
-    }
-
-    return row.definitions_hash === null || row.definitions_origin === null
-      ? []
-      : [
-          {
-            name: row.name,
-            skillHash: row.definitions_hash,
-            origin: row.definitions_origin,
-            isListed,
-          },
-        ];
-  });
-
-  return {
-    skills: skills.map((skill) => ({
-      name: skill.name,
-      skillHash: skill.skillHash,
-      origin: skill.origin,
-    })),
-    conversationSkills: skills.filter((skill) => skill.isListed).map((skill) => skill.name),
-  };
 }
 
 const seedLists = z.object({
