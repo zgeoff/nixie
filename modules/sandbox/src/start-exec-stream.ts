@@ -1,3 +1,4 @@
+import { waitForSettled } from '@heynixie/async';
 import { encodeFrame, makeFrameDecoder } from '@heynixie/wire';
 import { execOutputLimitBytes } from './exec-output-limit-bytes';
 import { readStreamOutput } from './read-stream-output';
@@ -43,14 +44,6 @@ async function waitForStreamExit(io: ProcessIO): Promise<StreamExit> {
   ]);
 
   return { ...ended, stderr };
-}
-
-async function waitForSettled(promise: Promise<unknown>): Promise<void> {
-  try {
-    await promise;
-  } catch {
-    // the caller who awaits the exit sees the error
-  }
 }
 
 async function* readMessages(

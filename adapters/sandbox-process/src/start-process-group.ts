@@ -134,5 +134,8 @@ function hasGroup(pid: number): boolean {
 }
 
 function toExecExit(child: Bun.Subprocess): ExecExit {
-  return { code: child.signalCode === null ? child.exitCode : null, signal: child.signalCode };
+  // Bun gives a signal with no name, such as a real-time one, as its number
+  const signal = child.signalCode === null ? null : String(child.signalCode);
+
+  return { code: child.signalCode === null ? child.exitCode : null, signal };
 }

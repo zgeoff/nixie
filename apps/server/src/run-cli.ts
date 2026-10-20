@@ -7,6 +7,7 @@ import { createConsolidationCommands } from './create-consolidation-commands';
 import { createDeploymentCommands } from './create-deployment-commands';
 import { createMemoryCommands } from './create-memory-commands';
 import { createSessionCommands } from './create-session-commands';
+import { createSkillCommands } from './create-skill-commands';
 import { readCLIArgs } from './read-cli-args';
 import type { ParsedCLIArgs } from './read-cli-args';
 import { startServer } from './start-server';
@@ -23,6 +24,7 @@ const commands = new Map<string, Command>([
   ...createMemoryCommands(),
   ...createConsolidationCommands(),
   ...buildSubjectCommands(),
+  ...createSkillCommands(),
 ]);
 
 // Runs one of nixie's commands, serve by default, and returns its exit code. --config names the

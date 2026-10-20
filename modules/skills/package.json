@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@heynixie/async": "workspace:*",
+    "@heynixie/clock": "workspace:*",
     "@heynixie/compaction": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/definitions": "workspace:*",
@@ -20,5 +22,8 @@
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/testing": "workspace:*"
   }
 }

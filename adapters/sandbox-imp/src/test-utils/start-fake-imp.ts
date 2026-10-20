@@ -235,7 +235,7 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
     exit: Promise.race([
       waitForExit(child.exited, () => ({
         code: child.signalCode === null ? child.exitCode : null,
-        signal: child.signalCode,
+        signal: child.signalCode === null ? null : String(child.signalCode),
       })),
       lost.promise,
     ]),

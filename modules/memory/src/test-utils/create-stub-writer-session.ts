@@ -1,4 +1,5 @@
 import { mock } from 'bun:test';
+import { match } from 'ts-pattern';
 import type { WriterStaging } from '../create-writer-staging';
 import { createWriterStaging } from '../create-writer-staging';
 import type { StagedFlag, WriterModel } from '../writer-types';
@@ -38,29 +39,14 @@ export function createStubWriterSession(write: StubStagedWrite): StubWriterSessi
   };
 }
 
-type StubOp = StubStagedWrite['op'];
-
-type StubWriteOf<Op extends StubOp> = Extract<StubStagedWrite, { readonly op: Op }>;
-
-// the tool each op stages through, one entry per op, so a new op fails the type check until it has
-// its own entry
-const stubWriteAppliers: {
-  readonly [Op in StubOp]: (staging: WriterStaging, write: StubWriteOf<Op>) => void;
-} = {
-  flag: (staging, write) => {
-    staging.flag({ text: write.text, sourceSequence: write.sourceSequence });
-  },
-  remember: (staging, write) => {
-    staging.stage(write);
-  },
-  retire: (staging, write) => {
-    staging.stage(write);
-  },
-};
-
-function applyStubWrite<Op extends StubOp>(staging: WriterStaging, write: StubWriteOf<Op>): void {
-  const applier: (staging: WriterStaging, write: StubWriteOf<Op>) => void =
-    stubWriteAppliers[write.op];
-
-  applier(staging, write);
+// the tool each op stages through; exhaustive() fails the type check when a new op has no branch
+function applyStubWrite(staging: WriterStaging, write: StubStagedWrite): void {
+  match(write)
+    .with({ op: 'flag' }, (flag) => {
+      staging.flag({ text: flag.text, sourceSequence: flag.sourceSequence });
+    })
+    .with({ op: 'remember' }, { op: 'retire' }, (staged) => {
+      staging.stage(staged);
+    })
+    .exhaustive();
 }

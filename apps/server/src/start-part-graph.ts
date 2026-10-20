@@ -1,3 +1,4 @@
+import { waitForSettled } from '@heynixie/async';
 import { MissingPartError } from './missing-part-error';
 import { PartCycleError } from './part-cycle-error';
 import { PartNotStartedError } from './part-not-started-error';
@@ -112,14 +113,6 @@ function buildGraphState<Values>(order: readonly AnyPartDeclaration<Values>[]): 
       return waiter;
     },
   };
-}
-
-async function waitForSettled(pending: Promise<unknown>): Promise<void> {
-  try {
-    await pending;
-  } catch {
-    // the caller that waits on the start reads its failure
-  }
 }
 
 async function runParts<Values>(
