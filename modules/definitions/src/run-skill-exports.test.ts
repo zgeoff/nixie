@@ -274,6 +274,78 @@ test("it closes the pull request when you keep your definitions' version", async
   expect(ctx.repo.readPullRequests()[0]?.state).toBe('closed');
 });
 
+test("it closes a retired approval's pull request before a later approval of the skill takes its branch", async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const first = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  const second = checkSkillFiles('tide-tables', [
+    {
+      path: 'SKILL.md',
+      text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\nBy port.\n',
+    },
+  ]);
+
+  invariant('skillHash' in first);
+  invariant('skillHash' in second);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill: first,
+      approvedAt: 1,
+    }),
+  );
+
+  await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await writeWrittenSkillState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'retired',
+      at: 2,
+    });
+
+    await writeWrittenSkill(tx, {
+      approvalID: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
+      proposalID: 'w7tn4c9rhz',
+      skill: second,
+      approvedAt: 3,
+    });
+  });
+
+  await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  expect(
+    ctx.repo.readPullRequests().map((request) => ({
+      number: request.number,
+      state: request.state,
+      skillText: request.change.files.get('skills/tide-tables/SKILL.md'),
+    })),
+  ).toStrictEqual([
+    {
+      number: 1,
+      state: 'closed',
+      skillText: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n',
+    },
+    {
+      number: 2,
+      state: 'open',
+      skillText: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\nBy port.\n',
+    },
+  ]);
+});
+
 test('it passes a failed export to onError, and the next run exports it', async () => {
   const ctx = await setupTest();
 
@@ -312,4 +384,67 @@ test('it passes a failed export to onError, and the next run exports it', async 
     exported: ['5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31'],
     closed: [],
   });
+});
+
+test("it holds a later approval's export while the retired approval's pull request stays open", async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const first = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  const second = checkSkillFiles('tide-tables', [
+    {
+      path: 'SKILL.md',
+      text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\nBy port.\n',
+    },
+  ]);
+
+  invariant('skillHash' in first);
+  invariant('skillHash' in second);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill: first,
+      approvedAt: 1,
+    }),
+  );
+
+  await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await writeWrittenSkillState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'retired',
+      at: 2,
+    });
+
+    await writeWrittenSkill(tx, {
+      approvalID: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
+      proposalID: 'w7tn4c9rhz',
+      skill: second,
+      approvedAt: 3,
+    });
+  });
+
+  const onError = mock<(error: unknown) => void>();
+
+  const result = await runSkillExports({
+    log: ctx.log,
+    repo: { ...ctx.repo, closePullRequest: () => Promise.reject(new Error('the repo is down')) },
+    onError,
+  });
+
+  expect(result).toStrictEqual({ exported: [], closed: [] });
+  expect(onError).toHaveBeenCalledExactlyOnceWith(new Error('the repo is down'));
+  expect(ctx.repo.readPullRequests()).toMatchObject([{ number: 1, state: 'open' }]);
 });

@@ -33,6 +33,7 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
     .leftJoin('skill_exports as export', 'export.approval_id', 'written.approval_id')
     .select([
       'written.approval_id',
+      'written.name',
       'written.proposal_id',
       'written.skill_hash',
       'written.base_hash',
@@ -52,7 +53,7 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
   const retired = await db
     .selectFrom('written_skills as written')
     .innerJoin('skill_exports as export', 'export.approval_id', 'written.approval_id')
-    .select(['written.approval_id', 'export.pull_request_number'])
+    .select(['written.approval_id', 'written.name', 'export.pull_request_number'])
     .where('written.state', '=', 'retired')
     .where('export.state', '=', 'opened')
     .execute();
@@ -60,15 +61,9 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
   const exported: string[] = [];
   const closed: string[] = [];
 
-  for (const row of due) {
-    try {
-      await writeSkillExport(options, row);
-
-      exported.push(row.approval_id);
-    } catch (error) {
-      options.onError(error);
-    }
-  }
+  // A later approval of a retired skill exports on the same branch, so the close comes first, and
+  // a skill whose close failed waits for the next run.
+  const unclosed = new Set<string>();
 
   for (const row of retired) {
     try {
@@ -84,6 +79,17 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
 
       closed.push(row.approval_id);
     } catch (error) {
+      unclosed.add(row.name);
+      options.onError(error);
+    }
+  }
+
+  for (const row of due.filter((candidate) => !unclosed.has(candidate.name))) {
+    try {
+      await writeSkillExport(options, row);
+
+      exported.push(row.approval_id);
+    } catch (error) {
       options.onError(error);
     }
   }
@@ -93,6 +99,7 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
 
 interface DueExport {
   readonly approval_id: string;
+  readonly name: string;
   readonly proposal_id: string;
   readonly skill_hash: string;
   readonly base_hash: string | null;
