@@ -1591,7 +1591,7 @@ test('it stores the profile credential and grants it to the conversation sandbox
         {
           secret: ctx.sandboxes.secrets[0]?.name,
           host: 'api.anthropic.com',
-          env: { ANTHROPIC_API_KEY: 'imp-broker-placeholder' },
+          env: { ANTHROPIC_API_KEY: 'nixie-broker-placeholder' },
         },
       ],
     },

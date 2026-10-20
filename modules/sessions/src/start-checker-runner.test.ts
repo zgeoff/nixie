@@ -23,7 +23,7 @@ test('it starts the checker in a checker sandbox with a model grant, no egress a
       image: 'nixie-conversation-0123456789ab',
       owner: 'checker',
       egress: { kind: 'none' },
-      grants: [{ env: { ANTHROPIC_API_KEY: 'imp-broker-placeholder' } }],
+      grants: [{ env: { ANTHROPIC_API_KEY: 'nixie-broker-placeholder' } }],
       toolRoute: false,
     },
   ]);

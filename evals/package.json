@@ -11,6 +11,7 @@
     "@heynixie/conversation": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/memory": "workspace:*",
+    "@heynixie/models": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "zod": "catalog:"
