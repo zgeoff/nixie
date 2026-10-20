@@ -121,6 +121,22 @@ test('it kills nixie and every process nixie started', async () => {
   await expect(waitForCondition(() => probeProcessGone(childPID))).toResolve();
 });
 
+// 34 is a real-time signal, which has no name, so Bun gives it as a number
+test('it reports a nixie that a signal with no name ended with the signal as its number', async () => {
+  const ctx = setupTest();
+  const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 0 });
+
+  onTestFinished(() => nixie.kill());
+
+  await nixie.ready;
+
+  Bun.spawnSync(['kill', '-34', String(nixie.pid)]);
+
+  const exit = await nixie.exited;
+
+  expect(exit).toStrictEqual({ code: null, signal: '34' });
+});
+
 test('it rejects a request that a kill cut short', async () => {
   const ctx = setupTest();
 
