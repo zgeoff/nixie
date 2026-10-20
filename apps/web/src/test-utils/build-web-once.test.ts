@@ -18,13 +18,14 @@ test('it builds the web server entry once and shares it', async () => {
 }, 120_000);
 
 // the child runs the shared-build test above under the cap, and its title filter keeps it from
-// running this test again
+// running this test again; the cap still refuses the wasm trap handler's reservation, and a lower
+// one leaves some Node releases no room for their own heap
 test('it builds the web server entry under an address-space cap', async () => {
   const child = Bun.spawn(
     [
       'sh',
       '-c',
-      'ulimit -v 8000000 && exec "$0" test "$1" -t "$2"',
+      'ulimit -v 12000000 && exec "$0" test "$1" -t "$2"',
       process.execPath,
       join(import.meta.dir, 'build-web-once.test.ts'),
       'it builds the web server entry once and shares it',
