@@ -15,6 +15,7 @@ import {
   writeModelReplyRecord,
 } from './test-utils';
 import { makeToolAllowRule } from './test-utils/make-tool-allow-rule';
+import { removeMessageKey } from './test-utils/remove-message-key';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
 
@@ -1100,6 +1101,36 @@ test('it refuses a photo source that names an image the message lacks', async ()
   await write.catch(() => {});
 
   expect(write).rejects.toMatchObject({ code: 'IMAGE_SOURCE_REFUSED' });
+});
+
+test('it refuses a photo source in a message you forgot, and writes no proposal or version', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  await removeMessageKey(memory.log, photo);
+
+  const write = memory.store.writes.remember({
+    text: 'Rides a green cargo bike',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  await write.catch(() => {});
+
+  const db = memory.writer.db.$extendTables<MemoryTables>();
+
+  const proposals = await db.selectFrom('memory_proposals').selectAll().execute();
+  const versions = await db.selectFrom('memory_versions').selectAll().execute();
+
+  expect(write).rejects.toMatchObject({ code: 'IMAGE_SOURCE_REFUSED' });
+  expect(proposals).toStrictEqual([]);
+  expect(versions).toStrictEqual([]);
 });
 
 test('it refuses a photo source in a message of another thread', async () => {
