@@ -162,7 +162,8 @@ and the export closes its pull request. The export records itself before it writ
 when a run stops before it records the pull request it opened, the close finds that pull request by
 the skill's branch. A new skill joins the conversation's list through the overlay alone, so when
 nixie.yaml lists the conversation's skills, the pull request asks the user to add the skill to that
-list.
+list. A seed under format 1 leaves every skill unapplied, so it never adopts a merged skill. When
+nixie.yaml holds format 1, the pull request tells the user to move it to format 2 with the merge.
 
 The export runs only when the configuration names the definitions repo on GitHub. It writes through
 GitHub's REST API with a fine-grained token that holds contents and pull-requests write on that one

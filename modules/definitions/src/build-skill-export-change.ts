@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { definitionsFormats } from './definitions-formats';
 import { manifestSkillsSchema } from './manifest-skills-schema';
 import { skillsLockPath } from './skills-lock-path';
 import { skillsLockSchema } from './skills-lock-schema';
@@ -46,9 +48,14 @@ export function buildSkillExportChange(skillExport: SkillExport): DefinitionsCha
     files.set(skillsLockPath, lock);
   }
 
+  const format = findFormatBeforeSkills(skillExport.manifest);
+  const skillsFormat = String(definitionsFormats.skills);
+
   const notes = [
     `nixie wrote this version of the \`${name}\` skill, and an approval put it in force: approval \`${skillExport.approvalID}\`, proposal \`${skillExport.proposalID}\`.`,
-    'Merge this pull request to make the skill yours: the next seed after the merge marks it as yours. A change to the skill on the base branch before the merge shows as a conflict, and `nixie skill resolve` keeps one side.',
+    format === null
+      ? 'Merge this pull request to make the skill yours: the next seed after the merge marks it as yours. A change to the skill on the base branch before the merge shows as a conflict, and `nixie skill resolve` keeps one side.'
+      : `nixie.yaml holds format ${String(format)}, and the seed applies skills only from format ${skillsFormat}, so a merge alone leaves the skill unapplied and nixie's version stays in force. Set \`format: ${skillsFormat}\` in nixie.yaml with the merge to make the skill yours: the next seed then marks it as yours. Format ${skillsFormat} applies and checks every skill under skills/.`,
   ];
 
   if (lock !== null) {
@@ -101,6 +108,29 @@ function parseJSON(text: string): unknown {
   }
 }
 
+const manifestFormatSchema = z.looseObject({ format: z.number() });
+
+// the format that nixie.yaml holds when the seed under it applies no skill, or null
+function findFormatBeforeSkills(manifest: string | null): number | null {
+  if (manifest === null) {
+    return null;
+  }
+
+  const parsed = manifestFormatSchema.safeParse(parseYAML(manifest));
+
+  return parsed.success && parsed.data.format < definitionsFormats.skills
+    ? parsed.data.format
+    : null;
+}
+
+function parseYAML(text: string): unknown {
+  try {
+    return Bun.YAML.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 // whether nixie.yaml lists the conversation's skills without the skill, which a merge alone then
 // leaves off the conversation's list
 function isUnlisted(manifest: string | null, name: string): boolean {
@@ -111,12 +141,4 @@ function isUnlisted(manifest: string | null, name: string): boolean {
   const parsed = manifestSkillsSchema.safeParse(parseYAML(manifest));
 
   return parsed.success && parsed.data.skills !== undefined && !parsed.data.skills.includes(name);
-}
-
-function parseYAML(text: string): unknown {
-  try {
-    return Bun.YAML.parse(text);
-  } catch {
-    return null;
-  }
 }
