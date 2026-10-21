@@ -10,7 +10,6 @@ function setupTest() {
   return { validate: ajv.compile(buildManifestJSONSchema()) };
 }
 
-// Run `bun run --cwd modules/definitions manifest-schema` to rewrite the committed file.
 test('it matches the committed definitions-manifest.schema.json', async () => {
   const committed = await readFile(
     join(import.meta.dir, '..', 'definitions-manifest.schema.json'),
