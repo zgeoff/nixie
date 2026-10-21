@@ -3,7 +3,8 @@
 - Decisions: [0016](../../../decisions/0016-own-interfaces.md),
   [0007](../../../decisions/0007-grants-and-taint.md),
   [0003](../../../decisions/0003-sdk-placement.md),
-  [0030](../../../decisions/0030-connectors-and-sandbox-environments.md)
+  [0030](../../../decisions/0030-connectors-and-sandbox-environments.md),
+  [0047](../../../decisions/0047-connections-that-stop-working.md)
 
 The credential store holds every credential nixie uses: OAuth clients and their tokens, static
 secrets such as API keys and app passwords, and the model credential of each
@@ -125,14 +126,37 @@ client warns 14 days before its expiry, by default.
 
 ## Statuses
 
-| Status          | Meaning                                                     | Tools that need it |
-| --------------- | ----------------------------------------------------------- | ------------------ |
-| `active`        | The last use or refresh succeeded                           | Available          |
-| `failing`       | Refreshes or uses fail, and the store retries               | Return an error    |
-| `needs_consent` | The provider refused the refresh for good                   | Removed            |
-| `expiring`      | A credential that cannot refresh expires within the warning | Available          |
-| `disconnected`  | You disabled a read-only source binding                     | Removed            |
-| `forgotten`     | You removed it, and its key is deleted                      | Removed            |
+| Status          | Meaning                                                     | Tools that need it | The model sees            |
+| --------------- | ----------------------------------------------------------- | ------------------ | ------------------------- |
+| `active`        | The last use or refresh succeeded                           | Available          | Nothing                   |
+| `failing`       | Refreshes or uses fail, and the store retries               | Listed, calls fail | The status and its reason |
+| `needs_consent` | The provider refused the refresh for good                   | Removed            | The status                |
+| `expiring`      | A credential that cannot refresh expires within the warning | Available          | The status                |
+| `disconnected`  | You disabled a read-only source binding                     | Removed            | The status                |
+| `forgotten`     | You removed it, and its key is deleted                      | Removed            | Nothing                   |
+
+The model learns of a connection that is `needs_consent`, `disconnected`, `failing` or `expiring`
+from a line in its context, under [0047](../../../decisions/0047-connections-that-stop-working.md):
+when a session opens, when the status changes, and from the error on a call the status stops.
+[One endpoint per task run](tools.md#one-endpoint-per-task-run) covers the line and the error.
+**Why:** a tool that vanishes without a reason leaves the model unable to tell "Gmail needs consent"
+from "nixie has no Gmail", so it can neither explain the gap nor tell you what to do.
+
+The store keeps 3 values beside each credential's status, which the line reads:
+
+- **The reason for `failing`,** from a fixed set. `unauthorised` follows a second rejection after a
+  refresh, and you fix it by reconnecting. `service_error` and `no_answer` follow 3 failures in a
+  row, and clear without you. **Why:** the reason tells the model whether you must act or the fault
+  clears alone.
+- **The time the status began.**
+- **The time of the last success,** the last use or refresh that the service accepted. **Why:** the
+  time tells a flicker from a dead connection, so the model stops repeating a call that cannot work.
+
+A `forgotten` credential never shows to the model, and a call to one of its tools in a running
+session returns an error that names neither the connection nor its status. **Why:** Forget is an
+erasure. A line would carry the label, which defaults to the account address, into every later
+session: the trace that Forget destroys keys to prevent. The model can do nothing with it, and the
+client shows whether a connection was forgotten.
 
 The client shows every credential with its status, label, scopes, fingerprint and last use. It
 offers Disconnect for a credential from a read-only source and Forget for a credential in the

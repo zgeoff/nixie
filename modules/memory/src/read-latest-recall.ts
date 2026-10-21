@@ -1,4 +1,5 @@
-import type { JSONObject, LogTables } from '@heynixie/log';
+import type { LogTables } from '@heynixie/log';
+import { parseJSONObject } from '@heynixie/log';
 import { memoryRecalledCodec } from '@heynixie/sessions';
 import { sql } from 'kysely';
 import { MemoryRatingError } from './memory-rating-error';
@@ -21,7 +22,7 @@ export async function readLatestRecall(parts: StoreParts, thread: string): Promi
     .select(['sequence', 'payload'])
     .where('kind', '=', 'memory.recalled')
     .where('thread', '=', thread)
-    .where(sql<boolean>`json_extract(records.payload, '$.isTurnNote') is null`)
+    .where(sql`json_extract(records.payload, '$.isTurnNote')`, 'is', null)
     .orderBy('sequence', 'desc')
     .limit(1)
     .executeTakeFirst();
@@ -34,10 +35,7 @@ export async function readLatestRecall(parts: StoreParts, thread: string): Promi
 
   const versions = new Map<string, number>();
 
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the log wrote a JSONObject, which the codec then checks
-  const payload = JSON.parse(newest.payload) as JSONObject;
-
-  for (const item of memoryRecalledCodec.decode(payload).items) {
+  for (const item of memoryRecalledCodec.decode(parseJSONObject(newest.payload)).items) {
     versions.set(item.itemID, Math.max(item.version, versions.get(item.itemID) ?? 0));
   }
 

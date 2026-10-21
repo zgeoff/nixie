@@ -1,7 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { readQueryRows } from '@heynixie/db';
 import { sql } from 'kysely';
+import { z } from 'zod';
 import { readRecords } from './read-records';
 import { runLogReset } from './run-log-reset';
 import { startWriter } from './start-writer';
@@ -69,10 +71,9 @@ test('it hands the first records what the reset read before it deleted anything'
   await runLogReset(ctx.log, {
     keptTables: [],
     readKept: async (tx) => {
-      const threads = await sql<{ thread: string }>`select thread from threads
-        order by thread`.execute(tx);
+      const threads = await sql`select thread from threads order by thread`.execute(tx);
 
-      return threads.rows.map((row) => row.thread);
+      return threads.rows;
     },
     writeFirstRecords: (_tx, kept) => {
       handed.kept = kept;
@@ -81,7 +82,7 @@ test('it hands the first records what the reset read before it deleted anything'
     },
   });
 
-  expect(handed.kept).toStrictEqual(['conversation', 'errands']);
+  expect(handed.kept).toStrictEqual([{ thread: 'conversation' }, { thread: 'errands' }]);
 });
 
 test('it empties every projection, so the thread of a first record starts at that record', async () => {
@@ -236,8 +237,10 @@ test('it leaves no old payload in the database files and no old key ID in the ke
     },
   ]);
 
-  const keys = await sql<{ key_id: string }>`select key_id from record_keys`.execute(
+  const keys = await readQueryRows(
+    sql`select key_id from record_keys`,
     ctx.writer.keys,
+    z.object({ key_id: z.string() }),
   );
 
   await runLogReset(ctx.log, {
@@ -251,12 +254,9 @@ test('it leaves no old payload in the database files and no old key ID in the ke
 
   const texts = files.map((file) => file.toString('latin1'));
 
-  expect(keys.rows).toBeArrayOfSize(1);
+  expect(keys).toBeArrayOfSize(1);
   expect(texts.filter((text) => text.includes('Marigold-errand-5KD'))).toStrictEqual([]);
-
-  expect(texts.filter((text) => keys.rows.some((row) => text.includes(row.key_id)))).toStrictEqual(
-    [],
-  );
+  expect(texts.filter((text) => keys.some((row) => text.includes(row.key_id)))).toStrictEqual([]);
 });
 
 test('it leaves every record in place, shredded, when the wipe fails after the keys are gone', async () => {

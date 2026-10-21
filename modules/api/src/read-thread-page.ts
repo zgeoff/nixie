@@ -1,7 +1,6 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import type { RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import { sql } from 'kysely';
 import { toContractRecord } from './to-contract-record';
 import type { APIContext, APITables } from './types';
 
@@ -41,7 +40,11 @@ export async function readThreadPage(
 
   const last = await db
     .selectFrom('records')
-    .select(sql<number>`coalesce(max(sequence), 0)`.as('sequence'))
+    .select((expressionBuilder) =>
+      expressionBuilder.fn
+        .coalesce(expressionBuilder.fn.max('sequence'), expressionBuilder.lit(0))
+        .as('sequence'),
+    )
     .executeTakeFirstOrThrow();
 
   const window = await readPageWindow(context, {

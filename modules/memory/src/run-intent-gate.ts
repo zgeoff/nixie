@@ -56,9 +56,11 @@ async function probeReadVersion(
     .where('kind', '=', 'memory.recalled')
     .where('thread', '=', request.thread)
     .where(
-      sql<boolean>`exists (select 1 from json_each(records.payload, '$.items') as item
+      sql`exists (select 1 from json_each(records.payload, '$.items') as item
         where json_extract(item.value, '$.itemID') = ${request.target.itemID}
         and json_extract(item.value, '$.version') = ${request.target.version})`,
+      '=',
+      1,
     )
     .limit(1)
     .executeTakeFirst();

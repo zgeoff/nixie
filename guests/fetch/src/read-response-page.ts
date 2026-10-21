@@ -22,7 +22,7 @@ export async function readResponsePage(
       url: url.href,
       status,
       contentType,
-      ...(await readContent(response, pickBodyKind(contentType), limits)),
+      ...(await readContent(url, response, pickBodyKind(contentType), limits)),
     };
   } finally {
     response.destroy();
@@ -30,6 +30,7 @@ export async function readResponsePage(
 }
 
 async function readContent(
+  url: URL,
   response: IncomingMessage,
   kind: 'html' | 'text' | 'binary',
   limits: FetchLimits,
@@ -50,7 +51,7 @@ async function readContent(
 
   const body = await readBodyText(response, limits);
 
-  const readable = kind === 'html' ? buildReadableText(body.text) : body.text;
+  const readable = kind === 'html' ? buildReadableText(body.text, url) : body.text;
   const text = buildTextWithinLimit(readable, limits.textBytes);
 
   return {

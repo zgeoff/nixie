@@ -1,5 +1,6 @@
 import type { Options, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
+import { commandLifecycleSchema } from '../command-lifecycle-schema';
 
 export interface QueryRecorder {
   // passes each call through to the SDK's query()
@@ -58,11 +59,9 @@ export function buildQueryRecorder(): QueryRecorder {
 }
 
 function findQueuedUUID(message: SDKMessage): string | null {
-  const lifecycle = message as { type: string; state?: unknown; command_uuid?: unknown };
+  const lifecycle = commandLifecycleSchema.safeParse(message);
 
-  return lifecycle.type === 'command_lifecycle' &&
-    lifecycle.state === 'queued' &&
-    typeof lifecycle.command_uuid === 'string'
-    ? lifecycle.command_uuid
+  return lifecycle.success && lifecycle.data.state === 'queued'
+    ? (lifecycle.data.command_uuid ?? null)
     : null;
 }

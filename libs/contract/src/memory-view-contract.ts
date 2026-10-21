@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { memoryExportContract } from './memory-export-contract';
+import { proposalOutcomeSchema } from './proposal-outcome-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
 
@@ -170,41 +171,6 @@ const rejectionReasonSchema = z.string().max(500).regex(/\S/u);
 const rejectionAnswerSchema = proposalAnswerSchema.extend({
   reason: rejectionReasonSchema.optional(),
 });
-
-const closeMatchSchema = z.object({
-  itemID: z.string(),
-  text: z.string(),
-  version: z.int().positive(),
-});
-
-// The outcome of one answer. A stale answer met a proposal that lapsed, was answered, changed or is
-// gone, or an item that moved on, and wrote nothing, as does a refusal. A close match holds an
-// approval for an active item that states the same fact.
-const proposalOutcomeSchema = z.discriminatedUnion('status', [
-  z.object({ proposalID: z.string(), status: z.literal('applied') }),
-  z.object({ proposalID: z.string(), status: z.literal('rejected') }),
-  z.object({
-    item: closeMatchSchema,
-    proposalID: z.string(),
-    status: z.literal('close_match'),
-  }),
-  z.object({
-    cause: z.enum(['lapsed', 'answered', 'moved', 'changed', 'gone']),
-    proposalID: z.string(),
-    status: z.literal('stale'),
-  }),
-  z.object({
-    code: z.enum([
-      'CLIENT_ACTION_ID_REUSED',
-      'PINNED_CORE_FULL',
-      'RETIREMENT_EDIT',
-      'REVISION_TARGET',
-      'WRONG_STATE',
-    ]),
-    proposalID: z.string(),
-    status: z.literal('refused'),
-  }),
-]);
 
 const proposalOutcomesSchema = z.object({ outcomes: z.array(proposalOutcomeSchema) });
 const memoryItemDetailSchema = memoryItemSchema.extend({ versions: z.array(memoryVersionSchema) });

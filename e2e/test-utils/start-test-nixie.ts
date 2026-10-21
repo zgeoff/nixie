@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
+import { parseJSONObject } from '@heynixie/log';
 import type {
   CrashHarness,
   FaultPointArrival,
@@ -178,9 +179,7 @@ function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader
         kind: row.kind,
         thread: row.thread,
         stepKey: row.step_key,
-
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the log stores JSON
-        payload: JSON.parse(row.payload) as Readonly<Record<string, unknown>>,
+        payload: parseJSONObject(row.payload),
       }));
     },
     readRows: (table) =>

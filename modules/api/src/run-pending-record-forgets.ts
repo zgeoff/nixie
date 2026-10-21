@@ -1,4 +1,5 @@
 import { sql } from 'kysely';
+import { z } from 'zod';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
 import type { APIContext, APITables } from './types';
 
@@ -9,7 +10,7 @@ export async function runPendingRecordForgets(context: APIContext): Promise<void
   const rows = await context.log.writer.db
     .$extendTables<APITables>()
     .selectFrom('records')
-    .select(['kind', sql<number>`json_extract(payload, '$.recordSequence')`.as('record_sequence')])
+    .select(['kind', sql`json_extract(payload, '$.recordSequence')`.as('record_sequence')])
     .where('kind', 'in', ['record.forget_started', 'record.forgotten'])
     .orderBy('sequence')
     .execute();
@@ -21,7 +22,7 @@ export async function runPendingRecordForgets(context: APIContext): Promise<void
   const pending = new Set(
     rows
       .filter((row) => row.kind === 'record.forget_started')
-      .map((row) => row.record_sequence)
+      .map((row) => z.number().parse(row.record_sequence))
       .filter((sequence) => !forgotten.has(sequence)),
   );
 

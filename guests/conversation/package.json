@@ -13,10 +13,10 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "catalog:",
     "@heynixie/wire": "workspace:*",
+    "tiny-invariant": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@modelcontextprotocol/server": "catalog:",
-    "tiny-invariant": "catalog:"
+    "@modelcontextprotocol/server": "catalog:"
   }
 }

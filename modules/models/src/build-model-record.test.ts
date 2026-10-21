@@ -3,6 +3,7 @@ import { readRecords, removeRecordKey, writeRecords } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { buildModelRecord } from './build-model-record';
 import { modelReplyCodec } from './model-reply-codec';
 
@@ -76,10 +77,9 @@ test('it forgets the reply summary with the reply, and keeps the thinking-token 
     fields: { text: 'The 09:25 ferry.', summary: 'I compared the ferries by arrival time.' },
   });
 
-  const keys = await sql<{ key_id: string }>`select key_id from records
-    where sequence = 1`.execute(ctx.writer.db);
+  const keys = await sql`select key_id from records where sequence = 1`.execute(ctx.writer.db);
 
-  const [key] = keys.rows;
+  const [key] = z.array(z.object({ key_id: z.string() })).parse(keys.rows);
 
   invariant(key);
 
@@ -111,9 +111,6 @@ test('it builds a record with no erasable fields when the model wrote no text', 
 });
 
 test('it refuses a payload that does not fit its codec', () => {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a caller that slips past the type
-  const payload = { messageID: 7 } as unknown as { readonly messageID: string };
-
   expect(() =>
     buildModelRecord(
       {
@@ -121,7 +118,7 @@ test('it refuses a payload that does not fit its codec', () => {
         model: { model: 'claude-test-1', profile: 'chat-direct' },
       },
       modelReplyCodec,
-      { payload },
+      { payload: { messageID: 'message-1', thinkingTokens: -1 } },
     ),
-  ).toThrow(/"path": \[\s+"messageID"\s+\]/u);
+  ).toThrow(/"path": \[\s+"thinkingTokens"\s+\]/u);
 });

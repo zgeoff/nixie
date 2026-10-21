@@ -335,6 +335,9 @@ nixie's interfaces, external MCP servers, credentials, search and code.
 - [0030: Connectors and sandbox environments](decisions/0030-connectors-and-sandbox-environments.md)
   — the reverse-forward route, Google first, web OAuth return, MCP v2, imp only, the code
   environment, and Disconnect
+- [0047: What the model learns about a connection that stops working](decisions/0047-connections-that-stop-working.md)
+  — a line in the model's context for each connection that is not healthy, and the
+  `connection_unavailable` error on a call
 
 ### Deployment
 

@@ -1,4 +1,5 @@
 import type { Clock } from '@heynixie/clock';
+import { machineTypes } from '@zgeoff/std';
 import { assign, fromPromise, setup } from 'xstate';
 import { checkParts } from './check-parts';
 import type { HealthReport, PartCheck, PartReport } from './types';
@@ -49,14 +50,11 @@ interface RoundInput {
 // its signal abort and runs again next round, unless it ignores the signal and still runs. A stop
 // ends a wait at once, and ends a round only after it.
 export const partRefreshMachine = setup({
-  types: {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- xstate reads these types only at compile time
-    input: {} as PartRefreshOptions<string>,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- xstate reads these types only at compile time
-    context: {} as PartRefreshContext,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- xstate reads these types only at compile time
-    events: {} as PartRefreshEvent,
-  },
+  types: machineTypes<{
+    input: PartRefreshOptions<string>;
+    context: PartRefreshContext;
+    events: PartRefreshEvent;
+  }>(),
   actors: {
     wait: fromPromise<void, PartRefreshOptions<string>>((wait) =>
       wait.input.clock.sleep(wait.input.intervalMs, wait.signal),

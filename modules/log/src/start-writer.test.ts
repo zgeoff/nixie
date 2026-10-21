@@ -94,7 +94,7 @@ test('it takes the lock and the next epoch once the process that held them dies'
 test('it raises the writer epoch before the first migration runs', async () => {
   const ctx = await setupTest();
 
-  const seen: number[] = [];
+  const seen: unknown[] = [];
 
   const writer = await startWriter({
     dataDir: ctx.dataDir,
@@ -103,9 +103,9 @@ test('it raises the writer epoch before the first migration runs', async () => {
         {
           name: 'read the writer epoch',
           up: async (tx) => {
-            const result = await sql<{ epoch: number }>`select epoch from writer_epoch`.execute(tx);
+            const result = await sql`select epoch from writer_epoch`.execute(tx);
 
-            seen.push(...result.rows.map((row) => row.epoch));
+            seen.push(...result.rows);
           },
         },
       ],
@@ -115,7 +115,7 @@ test('it raises the writer epoch before the first migration runs', async () => {
 
   onTestFinished(() => writer.stop());
 
-  expect(seen).toStrictEqual([writer.epoch]);
+  expect(seen).toStrictEqual([{ epoch: writer.epoch }]);
 });
 
 test('it reports the copy it takes before the first migration of a release', async () => {
@@ -213,11 +213,9 @@ test('it opens the key store as keys.db beside nixie.db, with secure delete on',
 
   onTestFinished(() => writer.stop());
 
-  const secureDelete = await sql<{ secure_delete: number }>`pragma secure_delete`.execute(
-    writer.keys,
-  );
+  const secureDelete = await sql`pragma secure_delete`.execute(writer.keys);
 
-  const tables = await sql<{ name: string }>`select name from sqlite_schema
+  const tables = await sql`select name from sqlite_schema
     where type = 'table' and name = 'record_keys'`.execute(writer.keys);
 
   const names = await readdir(ctx.dataDir);

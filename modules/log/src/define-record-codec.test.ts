@@ -43,6 +43,19 @@ test('it rejects a payload with a field of the wrong type before a writer append
   expect(() => codec.encode({ words: 1.5 })).toThrow(z.ZodError);
 });
 
+test('it parses a value of unknown type that fits the payload', () => {
+  const codec = defineRecordCodec('note_written', z.object({ noteID: z.string() }));
+  const input: unknown = { noteID: 'note-a' };
+
+  expect(codec.parse(input)).toStrictEqual({ noteID: 'note-a' });
+});
+
+test('it rejects a field the schema does not name when it parses a value', () => {
+  const codec = defineRecordCodec('note_written', z.object({ noteID: z.string() }));
+
+  expect(() => codec.parse({ noteID: 'note-a', stale: true })).toThrow(z.ZodError);
+});
+
 test('it reads the fields an older payload holds when a reader tries it in part', () => {
   const codec = defineRecordCodec(
     'note_written',
