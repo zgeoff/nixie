@@ -122,7 +122,7 @@ test.skipIf(!isContractRun)(
     const transcript = await loadSessionTranscript(ctx.directory, result.session_id);
 
     expect(preCompact).toHaveBeenCalledOnce();
-    expect(preCompact.mock.calls[0]?.[0]).toMatchObject({ trigger: 'auto' });
+    expect(preCompact.mock.calls[0]?.[0]).toMatchObject({ trigger: 'manual' });
     expect(postCompact).not.toHaveBeenCalled();
     expect(run.messages).not.toPartiallyContain({ type: 'system', subtype: 'compact_boundary' });
     expect(transcript).not.toPartiallyContain({ subtype: 'compact_boundary' });
