@@ -8,9 +8,10 @@ description:
 
 # Project code style
 
-Load the shared `code-style` skill first. This skill holds only what nixie adds to it.
-`check-project-verbs.sh` in the code-style skill fails when the lists here differ from the
-`zgeoff/function-verb` options in [`.oxlintrc.json`](../../../.oxlintrc.json), so a change to one
+Load the shared `code-style` skill first. This skill holds only what nixie adds to it. The
+`zgeoff/function-verb` and `zgeoff/verb-contract` lint rules check names against the role table. The
+exempt names here match the `zgeoff/function-verb` options in
+[`.oxlintrc.json`](../../../.oxlintrc.json), and neither rule reads this skill, so a change to one
 changes both.
 
 ## Project verbs
