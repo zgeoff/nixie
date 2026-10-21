@@ -9,8 +9,10 @@ import {
   readWrittenSkills,
   runSeed,
   runWrittenSkillSeed,
+  writeWrittenSkill,
+  writeWrittenSkillState,
 } from '@heynixie/definitions';
-import { readRecords, startWriter, writeRecords } from '@heynixie/log';
+import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
@@ -253,6 +255,73 @@ test('it refuses a second approval over the same base as stale before the first 
     answer: 'approve',
     proposalID: 'w7tn4c9rhz',
     skillHash: second.skillHash,
+  }).then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  expect(refusal).toMatchObject({ code: 'STALE_BASE' });
+});
+
+test("it refuses an approval over a retired version as stale before the retirement's seed runs", async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n';
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+  await runSeed({ log: ctx.log, source: ctx.source, policy: ctx.policy });
+
+  const byPort = [{ path: 'SKILL.md', text: `${text}By port.\n` }];
+  const byHour = [{ path: 'SKILL.md', text: `${text}By hour.\n` }];
+  const retired = checkSkillFiles('tide-tables', byPort);
+  const proposed = checkSkillFiles('tide-tables', byHour);
+
+  invariant('skillHash' in retired);
+  invariant('skillHash' in proposed);
+
+  await withWriteTransaction(ctx.log.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3x9m2p7qa',
+      skill: retired,
+      approvedAt: 1,
+    }),
+  );
+
+  await runWrittenSkillSeed({ log: ctx.log, policy: ctx.policy });
+
+  await withWriteTransaction(ctx.log.writer, (tx) =>
+    writeWrittenSkillState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'retired',
+      at: 2,
+    }),
+  );
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'skills.write_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: skillsWriteProposedCodec.encode({
+        proposalID: 'w7tn4c9rhz',
+        name: 'tide-tables',
+        skillHash: proposed.skillHash,
+        baseHash: retired.skillHash,
+        files: byHour,
+        untypedToken: null,
+        provenance: { runID: 'run-1', callID: 'call-2', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  const refusal = await writeSkillProposalAnswer(ctx.context, {
+    answer: 'approve',
+    proposalID: 'w7tn4c9rhz',
+    skillHash: proposed.skillHash,
   }).then(
     () => null,
     (error: unknown) => error,

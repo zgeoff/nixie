@@ -4,11 +4,14 @@ import { createHostProposalProcedures } from './create-host-proposal-procedures'
 import { createHostSessionProcedures } from './create-host-session-procedures';
 import { createHostSkillProposalProcedures } from './create-host-skill-proposal-procedures';
 import { createHostSubjectsProcedure } from './create-host-subjects-procedure';
+import { createHostWrittenSkillProcedures } from './create-host-written-skill-procedures';
 import { hostImplementer } from './host-implementer';
 import type { HostRouterOptions } from './types';
 
 // Builds the router of the host contract, which the control socket serves to the host commands.
 export function createHostRouter(options: HostRouterOptions) {
+  const skillContext = { ...options.context, seedWrittenSkills: options.seedWrittenSkills };
+
   return hostImplementer.router({
     reset: hostImplementer.reset.handler(() => options.runReset()),
     sessions: createHostSessionProcedures(options.context),
@@ -19,10 +22,8 @@ export function createHostRouter(options: HostRouterOptions) {
       subjects: createHostSubjectsProcedure(options.readMemory),
     },
     skills: {
-      proposals: createHostSkillProposalProcedures({
-        ...options.context,
-        seedWrittenSkills: options.seedWrittenSkills,
-      }),
+      proposals: createHostSkillProposalProcedures(skillContext),
+      written: createHostWrittenSkillProcedures(skillContext),
     },
   });
 }

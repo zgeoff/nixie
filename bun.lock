@@ -282,6 +282,7 @@
       "dependencies": {
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
+        "@heynixie/definitions": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
@@ -296,7 +297,6 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@heynixie/definitions": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@orpc/client": "catalog:",
       },
@@ -487,6 +487,7 @@
         "@heynixie/tools": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
         "xstate": "catalog:",
         "zod": "catalog:",
       },

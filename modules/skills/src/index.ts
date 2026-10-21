@@ -27,3 +27,5 @@ export type {
 } from './types';
 
 export { writeSkillProposalAnswer } from './write-skill-proposal-answer';
+export type { WrittenSkillResolution } from './write-written-skill-resolution';
+export { writeWrittenSkillResolution } from './write-written-skill-resolution';

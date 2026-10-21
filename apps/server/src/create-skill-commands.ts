@@ -3,14 +3,16 @@ import { resolveSocketPath } from './resolve-socket-path';
 import { sendHostRequest } from './send-host-request';
 import type { CLIFlags, CLIIO, Command } from './types';
 
-// The skill host commands: they list the pending skill proposals as JSON, and answer one under the
-// --hash skill-pending printed for it, an approval with your edited files when you give them and a
-// rejection with the reason the conversation reads.
+// The skill host commands, each printing JSON: list and answer the pending skill proposals under
+// the --hash skill-pending printed, and list the skills nixie wrote that are in force and keep
+// nixie's or your definitions' version of one.
 export function createSkillCommands(): readonly (readonly [string, Command])[] {
   return [
     ['skill-pending', (flags, io) => runSkillPending(flags.config, io)],
     ['skill-approve', runSkillApprove],
     ['skill-reject', runSkillReject],
+    ['skill-written', (flags, io) => runSkillWritten(flags.config, io)],
+    ['skill-resolve', runSkillResolve],
   ];
 }
 
@@ -93,6 +95,44 @@ async function runSkillReject(
   );
 
   io.print(JSON.stringify(answer));
+
+  return 0;
+}
+
+async function runSkillWritten(configPath: string, io: CLIIO): Promise<number> {
+  const socketPath = await resolveSocketPath(configPath);
+
+  const written = await sendHostRequest(socketPath, 'skill written', (client) =>
+    client.skills.written.list(),
+  );
+
+  io.print(JSON.stringify(written));
+
+  return 0;
+}
+
+async function runSkillResolve(
+  flags: CLIFlags,
+  io: CLIIO,
+  args: readonly string[],
+): Promise<number> {
+  const [approvalID, ...extra] = args;
+  const keep = flags.keep;
+
+  // the parser holds --keep to its choices, and the command takes one word, the approval ID
+  if (approvalID === undefined || extra.length > 0 || keep === undefined) {
+    io.print('nixie skill-resolve takes an approval ID and --keep nixie|definitions');
+
+    return 2;
+  }
+
+  const socketPath = await resolveSocketPath(flags.config);
+
+  const resolved = await sendHostRequest(socketPath, 'skill resolve', (client) =>
+    client.skills.written.resolve({ approvalID, keep }),
+  );
+
+  io.print(JSON.stringify(resolved));
 
   return 0;
 }

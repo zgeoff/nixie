@@ -232,6 +232,26 @@ const skills = oc.errors({
   PROPOSAL_CLOSED: { message: 'the proposal is answered or lapsed', status: 409 },
   STALE_BASE: { message: 'the skill in force moved past the proposal', status: 409 },
   SKILL_CHECK: { message: 'the files fail the seed checks', status: 400 },
+  WRONG_STATE: { message: 'the skill nixie wrote is no longer in force', status: 409 },
+});
+
+// a version of a skill in your definitions, or null when they lack the skill
+const definitionsSkillSchema = z
+  .object({ skillHash: z.string(), origin: z.enum(['definitions', 'vendored']) })
+  .nullable();
+
+// What a host command shows of a skill that nixie wrote and that is in force over your
+// definitions: the approval that applied it, the version of your definitions it replaced, and
+// the version at the newest seed. They differ when you changed the skill after the approval.
+const writtenSkillSchema = z.object({
+  approvalID: z.string(),
+  proposalID: z.string(),
+  name: z.string(),
+  skillHash: z.string(),
+  base: definitionsSkillSchema,
+  definitions: definitionsSkillSchema,
+  isConflict: z.boolean(),
+  approvedAt: z.date(),
 });
 
 export const hostContract = {
@@ -329,6 +349,20 @@ export const hostContract = {
       reject: skills
         .input(skillAnswerSchema.extend({ reason: z.string().max(500).regex(/\S/u) }))
         .output(z.object({ proposalID: z.string() })),
+    },
+    written: {
+      list: skills.output(z.array(writtenSkillSchema)),
+
+      // Keeping nixie's version makes your definitions' version its base, which closes a conflict;
+      // keeping your definitions' version retires nixie's and puts yours back in force.
+      resolve: skills
+        .input(
+          z.strictObject({
+            approvalID: z.string().min(1),
+            keep: z.enum(['nixie', 'definitions']),
+          }),
+        )
+        .output(z.object({ approvalID: z.string(), keep: z.enum(['nixie', 'definitions']) })),
     },
   },
 };

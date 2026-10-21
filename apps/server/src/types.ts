@@ -88,6 +88,9 @@ export interface CLIFlags {
   // an approved skill's edited files in place of the proposal's, as a JSON list of path and text
   readonly files?: string;
 
+  // which version of a skill nixie wrote to keep: nixie's or the definitions'
+  readonly keep?: 'nixie' | 'definitions';
+
   // a reset keeps the live device sessions, and runs only once the user confirms it
   readonly 'keep-sessions': boolean;
   readonly yes: boolean;
