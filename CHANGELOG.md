@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.39.2](https://github.com/zgeoff/nixie/compare/v0.39.1...v0.39.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* **definitions:** record an adopted skill and close its exports ([#504](https://github.com/zgeoff/nixie/issues/504)) ([3823934](https://github.com/zgeoff/nixie/commit/382393455ff9df02b7a9ce1531142f7e4d8f2459))
+* scope the pre-push checks to the pushed commits ([#516](https://github.com/zgeoff/nixie/issues/516)) ([3948cb6](https://github.com/zgeoff/nixie/commit/3948cb6ce2133e0b287f7e7b8574eb5caaa679d0))
+
 ## [0.39.1](https://github.com/zgeoff/nixie/compare/v0.39.0...v0.39.1) (2026-10-21)
 
 
