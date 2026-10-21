@@ -1,4 +1,4 @@
-import { buildTimeTool, buildWebFetchTool } from '@heynixie/connectors';
+import { buildTimeTool, buildWebFetchTool, webFetchDefaults } from '@heynixie/connectors';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
@@ -24,7 +24,10 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
     buildTools: (context) => {
       const definitions = buildConversationTools(
         {
-          webFetch: buildWebFetchTool(() => Promise.resolve(reply)),
+          webFetch: buildWebFetchTool(() => Promise.resolve(reply), {
+            log: context.log,
+            textBytes: webFetchDefaults.limits.textBytes,
+          }),
           time: buildTimeTool({
             clock: context.clock,
             findTimeZone: () => Promise.resolve(null),

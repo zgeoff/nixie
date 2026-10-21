@@ -65,6 +65,17 @@ export interface ToolRun {
   readonly model: ToolRunModel;
 
   readonly stepRunID?: string;
+
+  // the conversation session the step's turn runs on; absent for a call under the run's own token
+  readonly session?: ToolSession;
+}
+
+// A conversation session as a tool call sees it: its random key, which a store that lasts a session
+// keys its rows by, and the newest session invalidation the step saw, so a write can refuse once a
+// forget ended the session.
+export interface ToolSession {
+  readonly key: string;
+  readonly invalidatedThrough: number;
 }
 
 export interface ToolRunModel {
@@ -95,7 +106,7 @@ export interface RunEndpoint {
   readonly runID: string;
   readonly token: string;
 
-  readonly startStep: (stepRunID: string) => StepToken;
+  readonly startStep: (stepRunID: string, session?: ToolSession) => StepToken;
 
   readonly socketPath: string;
   readonly target: ToolTarget;

@@ -1,4 +1,5 @@
 import { removeSummaryKeys } from '@heynixie/compaction';
+import { removeThreadLinks } from '@heynixie/connectors';
 import { writeRecords } from '@heynixie/log';
 import { modelSessionCleanupCompletedCodec, modelSessionInvalidatedCodec } from '@heynixie/models';
 import { conversationTaskID } from '@heynixie/tasks';
@@ -19,6 +20,7 @@ export function runSessionCleanup(run: CleanupRun, cause: SessionCleanupCause): 
     ]);
 
     await removeSummaryKeys(run.context.log, conversationTaskID);
+    await removeThreadLinks(run.context.log, conversationTaskID);
     await runGuestPurge(run);
 
     await writeRecords(run.context.log, [
