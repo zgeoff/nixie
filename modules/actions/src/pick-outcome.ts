@@ -1,9 +1,6 @@
 import type { ProviderResponse } from '@heynixie/connectors';
 import type { Outcome } from './types';
 
-// Maps a provider's response to the action's outcome. A refusal that can clear waits for the next
-// attempt, by the schedule or longer when the provider names a finite retry time, and fails once
-// the schedule runs out; an ambiguity is unknown, because the call may have reached the provider.
 export function pickOutcome(
   response: ProviderResponse,
   attempt: number,

@@ -8,7 +8,6 @@ const webFetchInput = {
   additionalProperties: false,
 };
 
-// x-endorsed marks the fields whose type policy endorses as clean
 const webFetchOutput = {
   type: 'object',
   properties: {
@@ -23,9 +22,6 @@ const webFetchOutput = {
   additionalProperties: false,
 };
 
-// Builds the web fetch tool, which fetches one public HTTPS page through the fetch sandbox. It
-// declares only the fetch effect and no destination, so it runs direct. Every result field is
-// outside content, and only the status code and the truncated mark are endorsed types.
 export function buildWebFetchTool(readPage: (url: string) => Promise<FetchReply>): ToolDefinition {
   return {
     name: 'web_fetch',

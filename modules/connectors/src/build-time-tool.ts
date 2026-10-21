@@ -4,10 +4,8 @@ import type { ToolDefinition } from '@heynixie/tools';
 export interface TimeToolOptions {
   readonly clock: Pick<Clock, 'now'>;
 
-  // the zone of the owner's newest message that carries one, or null when none does
   readonly findTimeZone: () => Promise<string | null>;
 
-  // the zone the tool answers in when no message carries one
   readonly defaultZone: string;
 }
 
@@ -26,9 +24,6 @@ const timeNowOutput = {
   additionalProperties: false,
 };
 
-// Builds the time tool, which reads nixie's clock and answers in the owner's time zone: the zone of
-// the owner's newest message that carries one, or the configured default. It reads only nixie's
-// own log, so it runs direct, and every result field is the owner's data.
 export function buildTimeTool(options: TimeToolOptions): ToolDefinition {
   return {
     name: 'time.now',
@@ -76,7 +71,6 @@ export function buildTimeTool(options: TimeToolOptions): ToolDefinition {
   };
 }
 
-// The ISO 8601 local time with its UTC offset, to the second, such as 2026-10-13T12:02:03+11:00.
 function formatLocalTime(at: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -93,7 +87,7 @@ function formatLocalTime(at: Date, timeZone: string): string {
   const getPart = (type: Intl.DateTimeFormatPartTypes): string =>
     parts.find((candidate) => candidate.type === type)?.value ?? '';
 
-  // longOffset names UTC itself GMT, and every other offset GMT+hh:mm or GMT-hh:mm
+  // Intl's longOffset names UTC itself GMT, and every other offset GMT+hh:mm or GMT-hh:mm.
   const offset = getPart('timeZoneName').replace(/^GMT$/u, 'GMT+00:00').replace(/^GMT/u, '');
 
   return (

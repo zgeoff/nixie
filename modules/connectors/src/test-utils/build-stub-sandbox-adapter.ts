@@ -8,8 +8,6 @@ import type {
 } from '@heynixie/sandbox';
 import { requireSandboxSpec, startExecStream } from '@heynixie/sandbox';
 
-// A program the stub runs for each spawn: it reads the process's stdin, writes its stdout, and
-// returns its exit code. A guest that never returns runs until the caller stops it.
 export type StubGuest = (
   stdin: ReadableStream<Uint8Array>,
   stdout: WritableStreamDefaultWriter<Uint8Array>,
@@ -21,20 +19,14 @@ export interface StubSandboxAdapter extends SandboxAdapter {
   readonly spawned: readonly { readonly sandboxID: string; readonly argv: readonly string[] }[];
 }
 
-// How one create fails: the adapter refuses it with message, as an unreachable runtime does, or it
-// never answers.
 type StubCreateFailure =
   | { readonly kind: 'reject'; readonly message: string }
   | { readonly kind: 'hang' };
 
 export interface StubSandboxAdapterOptions {
-  // the failures of the first creates, in order; every create after them succeeds
   readonly createFailures?: readonly StubCreateFailure[];
 }
 
-// A sandbox adapter that runs each spawn as an in-process guest behind the real frame streams, and
-// records each create, destroy and spawn. It refuses a spec and a spawn in a destroyed sandbox as a
-// real adapter does.
 export function buildStubSandboxAdapter(
   guest: StubGuest,
   options: StubSandboxAdapterOptions = {},
@@ -124,9 +116,7 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
   };
 }
 
-// runs the guest behind a ProcessIO, whose stop ends the process with SIGTERM
 function startGuest(guest: StubGuest): ProcessIO {
-  // a pipe buffers what the process has not read yet, so a write never waits for the guest
   const stdin = new TransformStream<Uint8Array, Uint8Array>(
     {},
     { highWaterMark: Number.POSITIVE_INFINITY },
@@ -172,13 +162,10 @@ async function runGuest(
   }
 }
 
-// the first exit wins, as a process exits once
 async function stopProcess(process: GuestProcess, exit: ExecExit): Promise<void> {
   process.exit.resolve(exit);
 
   try {
     await process.stdout.close();
-  } catch {
-    // a stopped guest's output is closed already
-  }
+  } catch {}
 }

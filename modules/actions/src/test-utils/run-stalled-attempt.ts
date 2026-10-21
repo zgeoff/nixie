@@ -9,9 +9,6 @@ interface StalledAttemptOptions {
   readonly clock: TestClock;
 }
 
-// Claims the next due action and runs one attempt whose provider call outlives the lease, as a
-// runner that stalled or died mid-call does: the attempt record commits, and its result never does.
-// Returns how many calls reached the provider.
 export async function runStalledAttempt(options: StalledAttemptOptions): Promise<number> {
   const lease = await claimAction(options.context, { holder: 'stalled', leaseMs: 60_000 });
 

@@ -8,8 +8,6 @@ import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionsTables } from './types';
 
-// a writer with the tasks and actions projections on a test clock, and a task whose first step a
-// runner claimed, as the step input a task runner passes
 async function setupTest() {
   const actions = await startTestActions();
   const claim = await createTestStep(actions.context);

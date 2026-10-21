@@ -8,7 +8,6 @@ import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionsTables } from './types';
 
-// the step that makes the tool call, claimed by its task runner
 async function setupTest() {
   const actions = await startTestActions();
   const step = await createTestStep(actions.context);

@@ -9,9 +9,6 @@ import type { TestTasks } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { actionsProjection } from '../actions-projection';
 
-// Starts a writer on a fresh data directory with the log's, the tasks and the actions projections,
-// and a test clock at 1,000,000 ms. When the test finishes it stops the writer, then removes the
-// directory.
 export async function startTestActions(): Promise<TestTasks> {
   const stack = new AsyncDisposableStack();
 

@@ -1,7 +1,7 @@
 import type { Log, RecordKind } from '@heynixie/log';
 import { removeRecordKey } from '@heynixie/log';
 
-// mapped types, because Kysely's table map needs the index signature an interface lacks
+// Mapped types, because Kysely's table map needs the index signature that an interface lacks.
 type RecordTables = Readonly<{
   records: {
     readonly sequence: number;
@@ -11,9 +11,6 @@ type RecordTables = Readonly<{
   };
 }>;
 
-// Deletes the key of every summary on the thread, one at a time, each with its key store
-// checkpoint, so every summary reads as shredded. A key a forget already deleted deletes again as a
-// no-op, so a rerun is safe.
 export async function removeSummaryKeys(log: Pick<Log, 'writer'>, taskID: string): Promise<void> {
   const rows = await log.writer.db
     .$extendTables<RecordTables>()

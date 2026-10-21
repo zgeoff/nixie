@@ -2,16 +2,12 @@ import { renderSystemMessage } from '@heynixie/wire';
 import { countSummaryWords } from './count-summary-words';
 
 export interface SummaryCut {
-  // when nixie wrote the request, as a message stamp shows a time
   readonly at: string;
 
-  // the size nixie counted for the summary, and the cap it passed
   readonly tokens: number;
   readonly summaryTokens: number;
 }
 
-// Renders the one request that asks the model to cut a summary past the cap, in the same fork, as a
-// system message of type compaction.
 export function renderSummaryCut(cut: SummaryCut): string {
   const words = countSummaryWords(cut.summaryTokens);
 

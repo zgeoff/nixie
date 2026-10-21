@@ -2,19 +2,13 @@ import { renderSystemMessage } from '@heynixie/wire';
 import { countSummaryWords } from './count-summary-words';
 
 export interface CompactionInstruction {
-  // when nixie wrote the instruction, as a message stamp shows a time
   readonly at: string;
 
-  // the summary's token cap, which its word target derives from
   readonly summaryTokens: number;
 
-  // the owner's name, or null for "the owner"
   readonly ownerName: string | null;
 }
 
-// Renders the one fixed instruction that closes a session: what the next session opens with, what
-// the summary carries forward and its rules, as a system message of type compaction. Its wording is
-// tuned against the model, so it lives here beside its renderer.
 export function renderCompactionInstruction(instruction: CompactionInstruction): string {
   const owner = instruction.ownerName ?? 'the owner';
   const words = countSummaryWords(instruction.summaryTokens);

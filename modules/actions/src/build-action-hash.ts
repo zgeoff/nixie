@@ -1,8 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { JSONObject, JSONValue } from '@heynixie/log';
 
-// Builds the action hash of a tool call from its tool and its arguments, with every object's keys
-// sorted, so a rerun's call with the same arguments in another key order matches the same action.
 export function buildActionHash(tool: string, input: JSONObject): string {
   const canonical = renderCanonicalJSON({ tool, arguments: input });
 
@@ -25,7 +23,7 @@ function renderCanonicalJSON(value: JSONValue): string {
   return JSON.stringify(value);
 }
 
-// Array.isArray narrows to any[], which loses the item type
+// Array.isArray narrows to any[], which loses the item type.
 function isJSONArray(value: JSONValue): value is readonly JSONValue[] {
   return Array.isArray(value);
 }

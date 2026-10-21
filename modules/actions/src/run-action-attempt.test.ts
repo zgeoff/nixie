@@ -285,7 +285,6 @@ test('it commits no result once its lease is lost during the provider call', asy
   const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
   const stub = buildStubConnector(() => {
-    // the runner stalled past its lease, and a second runner claimed the action
     ctx.clock.advance(60_000);
 
     return { kind: 'success', result: {} };
