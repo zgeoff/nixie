@@ -79,8 +79,8 @@ has no flag for it. A backup runs apart from a boot.
 
 ## Answer
 
-Every create, wake and exec exited 0, and the host had 7 imps awake before every route. Times are
-in milliseconds.
+Every create, wake and exec exited 0. The host had 8 imps awake before each `warm` route, which
+counts `geo1337-keep` after its wake, and 7 before each of the other routes. Times are in milliseconds.
 
 | Route      | Create median | Wake median | First exec median | Total median | Total range |
 | ---------- | ------------: | ----------: | ----------------: | -----------: | ----------: |
@@ -178,5 +178,5 @@ The script's output, with the warm-up runs `w1` and `w2`.
 - The start of the fetcher process and a real fetch inside a new sandbox.
 - impd 2.5.3 under the same load, which would split the drop from 10.9 s between the impd version and
   the host's load.
-- More than 7 imps awake, or creates that run at the same time.
+- More than 8 imps awake, or creates that run at the same time.
 - The imp CLI 2.x, and the backup opt-out that nixie sets.
