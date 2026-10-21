@@ -8,8 +8,6 @@ export interface PinnedCorePanelProps {
   readonly renderItem: (item: MemoryItem) => ReactNode;
 }
 
-// The pinned core, which every session opens with, in the order its items were pinned, and its
-// size against its budget in tokens.
 export function PinnedCorePanel(props: PinnedCorePanelProps): ReactNode {
   const nixie = useNixieClient();
   const core = useQuery(nixie.queryUtils.memory.readPinnedCore.queryOptions());

@@ -9,7 +9,6 @@ import { render } from '../test-utils/render';
 import { ForgetControl } from './forget-control';
 
 async function setupTest() {
-  // the API forgets a record only for a signed-in browser
   await createDeviceSession();
 
   return { user: userEvent.setup() };
@@ -103,7 +102,6 @@ test('it says so when the forget fails', async () => {
 
   const onForgotten = mock<() => void>();
 
-  // the API holds no record at this sequence, so it refuses the forget
   const rendered = render(
     <ForgetControl
       hasText

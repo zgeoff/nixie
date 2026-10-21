@@ -15,8 +15,6 @@ const sources: Readonly<Record<MemorySource, string>> = {
   untrusted: 'outside content',
 };
 
-// Says who wrote a memory version and where its text came from, such as "by the memory writer,
-// from your own words".
 export function formatMemoryProvenance(origin: MemoryOrigin, source: MemorySource): string {
   return `by ${origins[origin]}, from ${sources[source]}`;
 }

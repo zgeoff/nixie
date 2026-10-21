@@ -6,10 +6,7 @@ import { writeMockProposalAnswer } from './write-mock-proposal-answer';
 
 const memory = mockImplementer.memory;
 
-// The memory view's proposal procedures over the mock store: the pending proposals, and your
-// approvals and rejections of one or several, each answer its own checked action.
 export const mockProposalProcedures = {
-  // the pending proposals, oldest first, with no proposal past its lapse time or forgotten
   listProposals: memory.listProposals.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
@@ -45,7 +42,6 @@ export const mockProposalProcedures = {
   }),
 };
 
-// each answer in the order given, each after the one before it
 async function writeMockAnswers(
   answers: readonly MockProposalAnswer[],
 ): Promise<MockProposalOutcome[]> {

@@ -11,9 +11,6 @@ type ForgetResult =
   | { readonly status: 'not_found' }
   | { readonly status: 'reused' };
 
-// Forgets your message or a reply in the mock store as nixie's API does. A retry answers with the
-// first result, and an ID that forgot another record is reused. A second forget of the record keeps
-// the first record.forgotten record and its time.
 export async function writeMockForget(input: ForgetInput): Promise<ForgetResult> {
   const earlier = store.forgetActions.findFirst((query) =>
     query.where({ clientActionID: input.clientActionID }),
@@ -47,7 +44,6 @@ export async function writeMockForget(input: ForgetInput): Promise<ForgetResult>
 
 type ForgetTarget = NonNullable<ReturnType<typeof store.records.findFirst>>;
 
-// drops the target's text and adds the record.forgotten record that names it, once per record
 async function writeForgottenRecord(target: ForgetTarget, input: ForgetInput): Promise<Date> {
   const earlier = store.records.findFirst((query) =>
     query.where(

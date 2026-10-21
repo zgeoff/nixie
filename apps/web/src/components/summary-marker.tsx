@@ -8,9 +8,6 @@ export interface SummaryMarkerProps {
   readonly summary: SummaryActivity;
 }
 
-// A rule across the feed where nixie closed the session with a summary, with its sizes. It starts
-// closed, as a compaction marker's rule with a tiny arrow, and opening it shows the summary the
-// next session opened with, while a forget has not erased it.
 export function SummaryMarker(props: SummaryMarkerProps): ReactNode {
   const line = formatSummary(props.summary);
 

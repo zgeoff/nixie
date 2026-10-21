@@ -9,9 +9,6 @@ export interface ThemeChoiceState {
   readonly setChoice: (choice: ThemeChoice) => void;
 }
 
-// The device's theme choice, kept in device storage. While it is the system's, the theme follows
-// the system setting as it changes. The server knows no device storage, so the first render is the
-// system's choice and hydration then reads the stored one.
 export function useThemeChoice(): ThemeChoiceState {
   const choice = useSyncExternalStore<ThemeChoice>(
     subscribeToThemeChoice,
@@ -57,7 +54,6 @@ function readThemeChoice(): ThemeChoice {
   return stored === 'dark' || stored === 'light' ? stored : 'system';
 }
 
-// The system's choice stores nothing, so the device holds a value only for an override.
 function writeThemeChoice(choice: ThemeChoice): void {
   if (choice === 'system') {
     globalThis.localStorage.removeItem(themeStorageKey);

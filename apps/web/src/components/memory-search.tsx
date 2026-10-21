@@ -12,8 +12,6 @@ export interface MemorySearchResultsProps {
 const section = css({ marginBlock: '4' });
 const heading = css({ fontSize: 'lg', fontWeight: 'semibold' });
 
-// The active items that match a search, best first, ranked as a recall ranks them, with the
-// self-notes that match apart from the facts. A failed search says so once.
 export function MemorySearchResults(props: MemorySearchResultsProps): ReactNode {
   const nixie = useNixieClient();
 
@@ -53,7 +51,6 @@ interface SearchMatchesProps {
   readonly items: readonly MemoryItem[] | undefined;
   readonly isError: boolean;
 
-  // what the section says when no item of its kind matches
   readonly empty: string;
   readonly renderItem: (item: MemoryItem) => ReactNode;
 }

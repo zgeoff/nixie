@@ -27,7 +27,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootDocument(): ReactNode {
   const context = Route.useRouteContext();
 
-  // the head script sets the theme attribute before React hydrates the page
+  // The head script sets the theme attribute before React hydrates the page.
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

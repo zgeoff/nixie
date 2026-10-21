@@ -1,7 +1,5 @@
 import { store } from './store';
 
-// Reads the memory writer's progress as nixie's API reports it. Without a stored status, the
-// writer reads as caught up at the last record, with nothing waiting.
 export function readMockWriterStatus() {
   const [writer] = store.memoryWriter.all();
 

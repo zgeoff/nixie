@@ -7,14 +7,10 @@ import { RPCLink } from '@orpc/client/fetch';
 export interface WebFetchOptions {
   readonly apiURL: string;
 
-  // The browser assets of the Vite build.
   readonly clientDir: string;
   readonly startFetch: (request: Request) => Promise<Response> | Response;
 }
 
-// Builds the web server's request handler: the server's own health endpoints, the browser assets
-// of the build, and every other request through Start. /rpc never reaches the web server, because
-// the reverse proxy sends it to nixie's API.
 export function makeWebFetch(options: WebFetchOptions) {
   const probe = buildProbeClient(options.apiURL);
 
@@ -41,14 +37,12 @@ export function makeWebFetch(options: WebFetchOptions) {
   };
 }
 
-// The probe calls the API with no session, so it holds no credential and grants nothing.
 function buildProbeClient(apiURL: string): ContractClient {
   return createORPCClient<ContractClient>(
     new RPCLink({ headers: { [clientHeaderName]: 'web' }, url: `${apiURL}/rpc` }),
   );
 }
 
-// The web server is ready once it reaches nixie's API.
 async function checkReadiness(probe: ContractClient): Promise<Response> {
   const reachable = await probeAPI(probe);
 
@@ -57,8 +51,8 @@ async function checkReadiness(probe: ContractClient): Promise<Response> {
     : Response.json({ status: 'unready', unready: ['api'] }, { status: 503 });
 }
 
-// The API answers a call with no session with its typed refusal, which shows it is up and speaks
-// the contract. A dropped connection or any other answer leaves the web server unready.
+// The API answers a call with no session with its typed refusal, which shows that it is up and
+// speaks the contract.
 async function probeAPI(probe: ContractClient): Promise<boolean> {
   try {
     await probe.sessions.list(undefined, { signal: AbortSignal.timeout(2000) });
@@ -69,9 +63,8 @@ async function probeAPI(probe: ContractClient): Promise<boolean> {
   }
 }
 
-// The files the build copies from public/ to the root of the browser assets: the web app manifest
-// and its icons. Their names carry no hash, so the browser keeps each for an hour only, and an
-// installed app picks up a changed manifest or icon.
+// These names carry no hash, so the browser keeps each file for an hour only, and an installed
+// app picks up a changed manifest or icon.
 const publicPaths = new Set([
   '/manifest.webmanifest',
   '/icons/icon-192.png',
@@ -79,9 +72,8 @@ const publicPaths = new Set([
   '/icons/icon-maskable-512.png',
 ]);
 
-// Reads a built browser asset. A hashed asset never changes under its name, so the browser keeps
-// it for good. The URL parser removes dot segments, and the prefix check refuses any path that
-// still escapes the assets folder.
+// The URL parser removes dot segments, and the prefix check refuses any path that still escapes
+// the assets folder.
 function readBrowserAsset(
   clientDir: string,
   pathname: string,

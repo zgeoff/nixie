@@ -1,9 +1,6 @@
 import { readOutboxImages } from './read-outbox-images';
 import type { OutboxMessage } from './types';
 
-// Reads back the images the device keeps for a message, and gives the message with them once every
-// one reads. A read that fails or finds fewer leaves the message as it was, its images still unread,
-// so its send fails rather than go without them.
 export async function loadOutboxImages(message: OutboxMessage): Promise<OutboxMessage> {
   if (message.unreadImages === undefined) {
     return message;

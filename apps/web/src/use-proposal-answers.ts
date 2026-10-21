@@ -4,8 +4,6 @@ import { useState } from 'react';
 import type { MemoryProposal, NixieClient, ProposalOutcome, ReadonlyDeep } from './types';
 import { useNixieClient } from './use-nixie-client';
 
-// An approval of one proposal: as proposed, with your edited text, or after a close match as a
-// revision of the item that matched or as a new item anyway.
 interface ApprovalRequest {
   readonly proposal: MemoryProposal;
   readonly editedText?: string;
@@ -18,8 +16,6 @@ interface RejectionRequest {
   readonly reason?: string;
 }
 
-// The last outcome of an answer that did not apply as asked, with the text of the proposal it
-// answered, which a refreshed list may no longer hold.
 interface ShownOutcome {
   readonly text: string;
   readonly outcome: ProposalOutcome;
@@ -29,16 +25,13 @@ export interface ProposalAnswers {
   readonly approve: (requests: readonly ApprovalRequest[]) => void;
   readonly reject: (requests: readonly RejectionRequest[]) => void;
 
-  // sends the last answers again with the same client action IDs, so each applies once
   readonly retry: () => void;
   readonly isPending: boolean;
   readonly isError: boolean;
 
-  // by proposal ID
   readonly outcomes: Readonly<Record<string, ShownOutcome>>;
 }
 
-// one call's answers, with the text of each proposal they answer by its ID
 type AnswerCall = ReadonlyDeep<
   { texts: Record<string, string> } & (
     | { kind: 'approve'; answers: ContractInputs['memory']['approveProposals']['answers'] }
@@ -46,8 +39,6 @@ type AnswerCall = ReadonlyDeep<
   )
 >;
 
-// Your answers to pending proposals, one or several in one call, each its own checked action with
-// a client action ID of its own. Every answer refreshes the memory view's lists.
 export function useProposalAnswers(): ProposalAnswers {
   const nixie = useNixieClient();
   const queryClient = useQueryClient();
@@ -79,12 +70,8 @@ export function useProposalAnswers(): ProposalAnswers {
   };
 }
 
-// the most answers one call to the API takes, which the contract sets
 const answersPerCall = 50;
 
-// Sends the answers in calls of at most the contract's limit, one after another. A call that fails
-// stops the rest, and a retry sends every answer again under its own client action ID, so each
-// answer an earlier call committed returns its first outcome.
 async function sendAnswers(
   client: NixieClient['client'],
   call: AnswerCall,
@@ -106,7 +93,6 @@ async function sendAnswers(
   return outcomes;
 }
 
-// each answer keeps its own outcome; one that applied as asked clears what showed before
 function mergeOutcomes(
   shown: Readonly<Record<string, ShownOutcome>>,
   texts: Readonly<Record<string, string>>,

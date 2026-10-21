@@ -150,7 +150,7 @@ test('it attaches a pasted image and leaves the box as it was', async () => {
     />,
   );
 
-  // happy-dom's DataTransfer takes only its own File, so the paste carries a plain clipboard
+  // happy-dom's DataTransfer takes only its own File, so the paste carries a plain clipboard.
   fireEvent.paste(rendered.getByRole('textbox', { name: 'Message' }), {
     clipboardData: {
       files: [new File([new Uint8Array([1])], 'screenshot.png', { type: 'image/png' })],

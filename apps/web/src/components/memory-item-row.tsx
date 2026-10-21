@@ -10,16 +10,12 @@ import { SelfNoteBadge } from './self-note-badge';
 export interface MemoryItemRowProps {
   readonly item: MemoryItem;
 
-  // the controls that change the item, which sit below its text
   readonly children?: ReactNode;
 }
 
 const row = css({ borderBottomWidth: '1px', paddingBlock: '2' });
 const meta = css({ color: 'textMuted', fontSize: 'sm' });
 
-// One item as a list shows it: its text, who wrote its current version and from what, when it was
-// created, and its history, which loads when opened. A self-note carries its mark in every list. A
-// forgotten item shows as a dated gap, with the controls that can still finish its forget.
 export function MemoryItemRow(props: MemoryItemRowProps): ReactNode {
   const item = props.item;
 
@@ -59,7 +55,6 @@ interface ItemHistoryProps {
   readonly itemID: string;
 }
 
-// closed until you open it, so a long list reads no history it never shows
 function ItemHistory(props: ItemHistoryProps): ReactNode {
   const [isOpen, setIsOpen] = useState(false);
 

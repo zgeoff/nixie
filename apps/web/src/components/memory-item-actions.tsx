@@ -10,15 +10,11 @@ import { MemoryForgetControl } from './memory-forget-control';
 export interface MemoryItemActionsProps {
   readonly item: MemoryItem;
 
-  // tells the view how a confirmed change ended: what to tell the user when it was refused, or
-  // null when it applied
   readonly onSettled: (notice: string | null) => void;
 }
 
 type MemoryChange = 'retire' | 'restore' | 'pin' | 'unpin';
 
-// a confirmation keeps the version it asked about, so a list that refreshes under it never moves
-// the change onto a version the user did not see
 interface PendingChange {
   readonly change: MemoryChange;
   readonly actionID: string;
@@ -35,14 +31,10 @@ const controls = css({
   marginTop: '1',
 });
 
-// The checked changes to one item, its forget included, each bound to the version the row shows:
-// only the confirm changes it, and each confirmation keeps one client action ID, so a confirm that
-// fails and goes again changes the item once.
 export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
   const [pending, setPending] = useState<PendingChange | null>(null);
   const changes = pickChanges(props.item);
 
-  // an item a forget began takes no change, and only the forget can still finish
   if (pending === null && changes.length === 0) {
     return <MemoryForgetControl item={props.item} onSettled={props.onSettled} />;
   }
@@ -84,8 +76,6 @@ export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
   );
 }
 
-// the changes an item's state allows: none once a forget began, even while its text still opens,
-// and a retire takes an item out of the pinned core; an item of any subject joins it
 function pickChanges(item: MemoryItem): readonly MemoryChange[] {
   if (item.state === 'forgetting' || item.state === 'forgotten') {
     return [];
@@ -117,7 +107,6 @@ interface ChangeConfirmationProps {
 
   readonly onCancel: () => void;
 
-  // closes the confirmation once the change applied or was refused, with the refusal's reason
   readonly onSettled: (notice: string | null) => void;
 }
 
@@ -144,7 +133,6 @@ function ChangeConfirmation(props: ChangeConfirmationProps): ReactNode {
       }
     },
 
-    // a change or a refusal leaves the item in a state the lists may not show yet
     onSettled: () => queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() }),
     onSuccess: () => {
       props.onSettled(null);
@@ -197,7 +185,6 @@ const refusalNotices: Readonly<Record<string, string>> = {
   WRONG_STATE: 'This item moved to another state after you opened it, so nothing changed.',
 };
 
-// a refusal closes the confirmation with its reason; any other failure keeps it open to retry
 function findRefusalNotice(error: unknown): string | null {
   if (error instanceof ORPCError && typeof error.code === 'string') {
     return refusalNotices[error.code] ?? null;

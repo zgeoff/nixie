@@ -11,21 +11,14 @@ import { MemoryVersionList } from './memory-version-list';
 export interface MemoryForgetControlProps {
   readonly item: MemoryItem;
 
-  // tells the view how a confirmed forget ended: what to tell the user when it was refused, or
-  // null when it applied
   readonly onSettled: (notice: string | null) => void;
 }
 
-// a confirmation keeps the version it asked about, so a list that refreshes under it never moves
-// the forget onto a version the user did not see
 interface PendingForget {
   readonly actionID: string;
   readonly version: number;
 }
 
-// The forget of one active or retired item for good, through a confirmation bound to the version
-// the row shows that keeps one client action ID, so a confirm that goes again forgets once. An item
-// whose forget began on this page offers to finish it.
 export function MemoryForgetControl(props: MemoryForgetControlProps): ReactNode {
   const [pending, setPending] = useState<PendingForget | null>(null);
 
@@ -67,9 +60,6 @@ export function MemoryForgetControl(props: MemoryForgetControlProps): ReactNode 
   );
 }
 
-// The finish of a forget that began on this page and whose last call failed, such as on a cleanup
-// that failed after its start committed. It sends that call again with its client action ID, so the
-// server runs the cleanup again; a forget that began elsewhere finishes at the store's next start.
 function ForgetFinish(props: MemoryForgetControlProps): ReactNode {
   const forget = useMemoryForget(props.item.itemID, props.onSettled);
   const last = forget.last;
@@ -101,11 +91,9 @@ interface ForgetConfirmationProps {
 
   readonly onCancel: () => void;
 
-  // closes the confirmation once the forget applied or was refused, with the refusal's reason
   readonly onSettled: (notice: string | null) => void;
 }
 
-// the confirmation takes the whole width of the row of controls it opens in
 const confirmation = css({
   borderWidth: '1px',
   flexBasis: 'full',
@@ -121,9 +109,8 @@ function ForgetConfirmation(props: ForgetConfirmationProps): ReactNode {
   const nixie = useNixieClient();
   const target = { itemID: props.itemID, version: props.version };
 
-  // A refusal is the answer, so a preview of an item that moved on never retries. The preview reads
-  // once per confirmation, because a read after a forget began refuses, and the retry of a failed
-  // forget needs the confirm the preview enables.
+  // The API refuses a preview once a forget began, and the retry of a failed forget needs the
+  // confirm that the preview enables, so the preview reads once per confirmation.
   const preview = useQuery({
     ...nixie.queryUtils.memory.previewForget.queryOptions({ input: target }),
     retry: false,
@@ -157,8 +144,6 @@ interface ForgetPreviewProps {
 
 const lossList = css({ listStyleType: 'disc', paddingInlineStart: '5' });
 
-// The item with every version, what the forget destroys, and what it cannot reach: the disk
-// snapshots you took by hand, and your messages and nixie's replies that state the same fact.
 function ForgetPreview(props: ForgetPreviewProps): ReactNode {
   return (
     <>
@@ -185,7 +170,6 @@ function ForgetPreview(props: ForgetPreviewProps): ReactNode {
   );
 }
 
-// each thing the forget destroys, the counted ones only when there is one
 function buildLosses(lost: ForgetPreviewData['lost']): readonly string[] {
   const messages = lost.evidenceMessages === 1 ? 'message' : 'messages';
   const proposals = lost.proposals === 1 ? 'proposal' : 'proposals';
@@ -203,7 +187,6 @@ function buildLosses(lost: ForgetPreviewData['lost']): readonly string[] {
 }
 
 interface ForgetButtonsProps extends ForgetConfirmationProps {
-  // whether the preview read the item, which the confirm needs
   readonly canForget: boolean;
 }
 

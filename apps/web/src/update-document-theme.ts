@@ -1,6 +1,5 @@
-// Sets the document's theme to the device's stored choice, or to the system setting when the
-// device stores none. The document's head runs this function's own source as an inline script
-// before the first paint, so it reads nothing from outside its body: no import and no outer name.
+// The document's head runs this function's source as an inline script, so the body reads nothing
+// from outside itself: no import and no outer name.
 export function updateDocumentTheme(storageKey: string): void {
   const choice = globalThis.localStorage.getItem(storageKey);
 

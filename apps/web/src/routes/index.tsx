@@ -5,7 +5,6 @@ import { SignedInPage } from '../components/signed-in-page';
 import { readSessionState } from '../read-session-state';
 import { css } from '../styled-system/css';
 
-// The conversation's thread. A task's thread joins in a later slice.
 const thread = 'conversation';
 
 export const Route = createFileRoute('/')({

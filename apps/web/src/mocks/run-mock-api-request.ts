@@ -5,8 +5,6 @@ import { mockAPIRouter } from './mock-api-router';
 
 const handler = new RPCHandler(mockAPIRouter, { plugins: [new ResponseHeadersPlugin()] });
 
-// Answers one request as nixie's API would: it refuses a call without the custom client header,
-// and it takes the device session from a bearer token or else from the session cookie.
 export async function runMockAPIRequest(request: Request): Promise<Response> {
   if (request.headers.get(clientHeaderName) === null) {
     return new Response('the client header is missing', { status: 403 });

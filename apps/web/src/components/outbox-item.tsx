@@ -12,8 +12,6 @@ export interface OutboxItemProps {
   readonly onRetry: (message: OutboxMessage) => Promise<void>;
 }
 
-// A message this device sent that the conversation does not show yet, with its images and how its
-// send stands.
 export function OutboxItem(props: OutboxItemProps): ReactNode {
   return (
     <li>
@@ -77,8 +75,6 @@ function renderStatus(props: OutboxItemProps): ReactNode {
   );
 }
 
-// A message that waited too long to go on its own, with how long ago you wrote it, until you send
-// or discard it.
 function HeldStatus(props: OutboxItemProps): ReactNode {
   const message = props.entry.message;
 
@@ -109,7 +105,6 @@ interface RetryCountdownProps {
   readonly retryAt: number;
 }
 
-// Counts down each second to the next try a failed send makes on its own.
 function RetryCountdown(props: RetryCountdownProps): ReactNode {
   const [now, setNow] = useState(() => Date.now());
 

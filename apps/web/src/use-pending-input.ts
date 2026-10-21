@@ -3,9 +3,8 @@ import { buildPendingInput } from '@heynixie/contract';
 import type { RefObject } from 'react';
 import { useEffect, useRef } from 'react';
 
-// Holds how the next edit to a text box arrives, from its beforeinput event, until the input
-// event applies it. React's onBeforeInput is a synthetic event without inputType, so the hook
-// listens on the element itself.
+// React's onBeforeInput is a synthetic event without inputType, so the hook listens on the element
+// itself.
 export function usePendingInput(
   textBox: RefObject<HTMLTextAreaElement | null>,
 ): RefObject<PendingInput | undefined> {

@@ -8,9 +8,6 @@ import { makeWatchedFetch } from './make-watched-fetch';
 // row is dead.
 const streamIdleMs = 15_000;
 
-// The browser calls /rpc on its own origin, where the reverse proxy reaches nixie's API, so no
-// call crosses origins. The browser attaches the HttpOnly session cookie itself; this client never
-// reads or sets it.
 export function buildBrowserClient(): ContractClient {
   return createORPCClient<ContractClient>(
     new RPCLink({

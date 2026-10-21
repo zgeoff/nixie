@@ -7,7 +7,7 @@ import { startBuiltWeb } from './test-utils/start-built-web';
 import { startStubAPI } from './test-utils/start-stub-api';
 
 async function setupTest() {
-  // the first test in the process waits here for the Vite build, so each test allows two minutes
+  // The first test in the process waits here for the Vite build, so each test allows two minutes.
   const serverPath = await runWebBuildOnce();
 
   const api = startStubAPI();

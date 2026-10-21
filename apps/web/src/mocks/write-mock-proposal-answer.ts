@@ -11,7 +11,6 @@ interface MockAnswerBase {
   readonly proposalID: string;
   readonly actionHash: string;
 
-  // the device session that answers, which the approval or rejection record names
   readonly identityID: string;
 }
 
@@ -24,9 +23,6 @@ export type MockProposalAnswer =
     })
   | (MockAnswerBase & { readonly answer: 'reject'; readonly reason?: string | undefined });
 
-// Answers a memory proposal in the mock store as nixie's API does: once per client action ID, bound
-// to the action hash the view showed, holding a new item for an active item with the same text.
-// Each answer writes its own approval or rejection record, and a stale one writes nothing.
 export async function writeMockProposalAnswer(
   input: MockProposalAnswer,
 ): Promise<MockProposalOutcome> {
@@ -55,7 +51,6 @@ export async function writeMockProposalAnswer(
   return outcome;
 }
 
-// the input an answer binds to, with no free text, as nixie's API hashes it
 function buildBinding(input: MockProposalAnswer) {
   return input.answer === 'reject'
     ? [input.answer, input.proposalID, input.actionHash, input.reason !== undefined]
@@ -98,7 +93,6 @@ type StaleCause = Extract<MockProposalOutcome, { status: 'stale' }>['cause'];
 
 type StoredProposal = ReadonlyDeep<NonNullable<ReturnType<typeof store.memoryProposals.findFirst>>>;
 
-// why an answer to the proposal is stale, or null while it still takes one
 function findStaleCause(
   proposal: StoredProposal | undefined,
   actionHash: string,
@@ -128,7 +122,6 @@ function findStaleCause(
 
 type Answer = ReadonlyDeep<NonNullable<ReturnType<typeof store.records.all>[number]['answer']>>;
 
-// closes the proposal with the answer's own record in its thread
 async function writeClosedProposal(proposal: StoredProposal, answer: Answer): Promise<void> {
   await store.memoryProposals.update((query) => query.where({ proposalID: proposal.proposalID }), {
     data(draft) {
@@ -182,8 +175,6 @@ async function writeApproval(
   return { proposalID: proposal.proposalID, status: 'applied' };
 }
 
-// what stops an approval before it writes, as nixie's store checks it: a retirement takes no edit,
-// and only a new item's proposal takes a revision target, of an item of its own subject
 function findApprovalRefusal(
   proposal: StoredProposal,
   input: ApprovalInput,
@@ -201,9 +192,6 @@ function findApprovalRefusal(
     : { code: 'REVISION_TARGET', proposalID: proposal.proposalID, status: 'refused' };
 }
 
-// a revision binds to the version of the close match the view showed, which must still be active
-// or retired, and of the proposal's subject, which nixie's API answers as a revision target it
-// refuses; a pinned proposal's revision must also leave the item active
 function findRevisionTargetRefusal(
   proposal: StoredProposal,
   target: NonNullable<ApprovalInput['revisionOf']>,
@@ -223,14 +211,11 @@ function findRevisionTargetRefusal(
     return { code: 'REVISION_TARGET', proposalID, status: 'refused' };
   }
 
-  // a revision keeps a retired item retired, and only an active item joins the pinned core
   return item.state === 'retired' && proposal.isPinned
     ? { code: 'WRONG_STATE', proposalID, status: 'refused' }
     : null;
 }
 
-// the active item of the proposal's subject a new item's text matches, case aside, unless the answer
-// already chose
 function readCloseMatch(proposal: StoredProposal, input: ApprovalInput, text: string) {
   if (
     proposal.targetVersion !== null ||
@@ -260,8 +245,6 @@ type StoredItem = ReadonlyDeep<NonNullable<ReturnType<typeof store.memoryItems.f
 
 type VersionState = 'active' | 'retired';
 
-// the state the approved version takes: a retirement retires the item, and a revision keeps the
-// state of the item it revises, as nixie's store plans it
 function pickVersionState(
   proposal: StoredProposal,
   input: ApprovalInput,
@@ -274,8 +257,6 @@ function pickVersionState(
   return input.revisionOf !== undefined && item?.state === 'retired' ? 'retired' : 'active';
 }
 
-// whether the pinned core stays inside its budget once the item's text is the given text, where
-// the item's earlier version leaves the count, as nixie's store checks it
 function probeCoreRoom(itemID: string, text: string): boolean {
   const core = readMockPinnedCore();
   const earlier = core.items.find((item) => item.itemID === itemID)?.text ?? '';
@@ -289,8 +270,6 @@ interface ApprovedVersion {
   readonly text: string;
 }
 
-// adds the version the approval applies: a new item, a revision of a close match, or the change
-// the proposal binds to
 async function applyApproval(
   proposal: StoredProposal,
   input: ApprovalInput,

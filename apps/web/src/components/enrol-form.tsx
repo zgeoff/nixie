@@ -16,7 +16,6 @@ interface Attempt {
   readonly deviceName: string;
 }
 
-// A narrow column with one field per line, so the form reads on a phone.
 const page = css({
   marginInline: 'auto',
   maxWidth: 'md',
@@ -41,8 +40,6 @@ const fields = css({
   '& button': { borderColor: 'borderStrong', borderWidth: '1px', paddingBlock: '2' },
 });
 
-// Turns an enrolment code into a device session. The API's response sets the session cookie, and
-// the form never touches it.
 export function EnrolForm(props: EnrolFormProps): ReactNode {
   const nixie = useNixieClient();
   const [code, setCode] = useState('');
@@ -97,8 +94,6 @@ export function EnrolForm(props: EnrolFormProps): ReactNode {
   );
 }
 
-// A retry of the same code and name keeps its client action ID, so the API enrols the browser
-// once. A changed input is a new action with a new ID.
 function buildAttempt(last: Attempt | undefined, code: string, deviceName: string): Attempt {
   if (last?.code === code && last.deviceName === deviceName) {
     return last;

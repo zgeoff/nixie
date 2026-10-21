@@ -17,9 +17,8 @@ test('it builds the web server entry once and shares it', async () => {
   expect(built).toBeTrue();
 }, 120_000);
 
-// the child runs the shared-build test above under the cap, and its title filter keeps it from
-// running this test again; the cap still refuses the wasm trap handler's reservation, and a lower
-// one leaves some Node releases no room for their own heap
+// This cap still refuses Node's wasm trap handler reservation, and a lower one leaves some Node
+// releases no room for their own heap.
 test('it builds the web server entry under an address-space cap', async () => {
   const child = Bun.spawn(
     [

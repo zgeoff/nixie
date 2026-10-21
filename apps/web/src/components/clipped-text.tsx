@@ -8,10 +8,6 @@ export interface ClippedTextProps {
 
 const clipLength = 600;
 
-// A page's text can run to many kilobytes, so a long value shows its start and opens in full on
-// demand. Its toggle sticks to the top of the view until its own text ends, so an open value
-// closes again without a scroll back to find the control.
-
 export function ClippedText(props: ClippedTextProps): ReactNode {
   const [isOpen, setIsOpen] = useState(false);
   const isLong = props.text.length > clipLength;

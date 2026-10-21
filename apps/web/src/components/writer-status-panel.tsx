@@ -3,8 +3,6 @@ import type { ReactNode } from 'react';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../use-nixie-client';
 
-// The memory writer's progress: whether its catch-up over the conversation from before memory
-// still runs, where its cursor stands, how many of your messages wait, and its last error.
 export function WriterStatusPanel(): ReactNode {
   const nixie = useNixieClient();
   const status = useQuery(nixie.queryUtils.memory.writerStatus.queryOptions());

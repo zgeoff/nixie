@@ -5,7 +5,6 @@ import { SignedInPage } from '../components/signed-in-page';
 import { readSessionState } from '../read-session-state';
 import { css } from '../styled-system/css';
 
-// The memory view. Its first read is the writer's status, which any signed-in device reads.
 export const Route = createFileRoute('/memory')({
   component: Memory,
   loader: async (options) => ({

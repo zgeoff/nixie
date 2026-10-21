@@ -7,23 +7,17 @@ import { useNixieClient } from '../use-nixie-client';
 export interface MemoryItemListProps {
   readonly state: 'active' | 'retired' | 'forgotten';
 
-  // the one kind of item the list shows, or every kind when unset
   readonly kind?: MemoryItem['kind'];
   readonly title: string;
 
-  // what the list says when it holds no item
   readonly empty: string;
 
-  // renders one item, so a later control joins every list in one place
   readonly renderItem: (item: MemoryItem) => ReactNode;
 }
 
 const section = css({ marginBlock: '4' });
 const heading = css({ fontSize: 'lg', fontWeight: 'semibold' });
 
-// The items of one state a page at a time, in the order they were created, with a control that
-// reads the next page. A list of one kind picks its items from the same pages, so the facts and the
-// self-notes of a state read each page once and show more together.
 export function MemoryItemList(props: MemoryItemListProps): ReactNode {
   const nixie = useNixieClient();
 
@@ -77,8 +71,6 @@ function ItemPages(props: ItemPagesProps): ReactNode {
     return <p>Loading…</p>;
   }
 
-  // a list of one kind can find none of its items on the pages read so far, so it says it is empty
-  // only once no page is left to read
   if (props.items.length === 0 && !props.hasNextPage) {
     return <p className={css({ color: 'textMuted' })}>{props.empty}</p>;
   }

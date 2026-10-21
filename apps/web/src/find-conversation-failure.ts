@@ -1,6 +1,5 @@
 import type { LiveRecord } from './use-live-records';
 
-// The conversation's failed turns in a row, and when it tries again.
 export interface ConversationFailure {
   readonly errors: number;
   readonly retryAt: Date;
@@ -12,9 +11,6 @@ const stepEnds: ReadonlySet<string> = new Set([
   'task.revived',
 ]);
 
-// Finds the conversation failing: its last step ended in an error at or past the error limit. A
-// step that commits, or a revival, ends the failure, and an error under the limit is a retry the
-// view leaves quiet.
 export function findConversationFailure(
   records: readonly LiveRecord[],
 ): ConversationFailure | null {

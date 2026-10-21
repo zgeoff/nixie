@@ -8,7 +8,6 @@ import { renderHook } from './test-utils/render-hook';
 import { useConversationRecords } from './use-conversation-records';
 
 async function setupTest() {
-  // the API reads and streams the conversation only for a signed-in browser
   await createDeviceSession();
 }
 
@@ -184,7 +183,6 @@ test('it drops the records from before a reset once the reset arrives', async ()
     expect(hook.result.current.records).toHaveLength(1);
   });
 
-  // the reset removes the log, and the restarting server answers no read, so the page stays cached
   server.use(http.post('*/rpc/conversation/read', () => new HttpResponse(null, { status: 503 })));
   store.records.clear();
 
@@ -234,7 +232,6 @@ test('it reads the conversation again once the live stream reconnects after a re
     expect(hook.result.current.status).toBe('ready');
   });
 
-  // the first read after the reset reaches the server while it restarts
   server.use(
     http.post(
       '*/rpc/conversation/read',
@@ -256,7 +253,6 @@ test('it reads the conversation again once the live stream reconnects after a re
     expect(failed).toHaveBeenCalledOnce();
   });
 
-  // the browser comes back online, which ends the open connection, and the stream connects again
   globalThis.dispatchEvent(new Event('online'));
 
   await waitFor(() => {
@@ -311,7 +307,6 @@ test('it drops the step end a page read before a reset once the reset arrives', 
     expect(hook.result.current.lastStepEnd?.kind).toBe('task.step_errored');
   });
 
-  // the reset removes the log, and the restarting server answers no read, so the page stays cached
   server.use(http.post('*/rpc/conversation/read', () => new HttpResponse(null, { status: 503 })));
   store.records.clear();
 

@@ -1,19 +1,14 @@
 import type { LiveRecord } from './use-live-records';
 
-// One call a step made, joined from the call's record and its result's record.
 export interface ToolActivity {
   readonly callID: string;
   readonly content?: Readonly<Record<string, unknown>>;
   readonly input?: Readonly<Record<string, unknown>>;
 
-  // absent until the result arrives
   readonly outcome?: string;
   readonly tool: string;
 }
 
-// The conversation's model's rating of a memory a recall delivered: its verdict, the agent's name
-// when the config gives one, whether a note came with it, and the sequence of the rating's record,
-// which names the note.
 export interface MemoryRating {
   readonly hasNote: boolean;
   readonly ratedBy?: string | undefined;
@@ -21,8 +16,6 @@ export interface MemoryRating {
   readonly verdict: 'helpful' | 'noise' | 'misleading';
 }
 
-// A memory version a recall in the step delivered, with its match score when a query ranked it,
-// and the model's latest rating of it, which can arrive in a later step.
 export interface RecalledMemory {
   readonly itemID: string;
   readonly rating?: MemoryRating | undefined;
@@ -30,18 +23,12 @@ export interface RecalledMemory {
   readonly version: number;
 }
 
-// The context the step's last model call read, in tokens, and the window its session compacts
-// within.
 export type ContextActivity = NonNullable<LiveRecord['context']>;
 
-// A compaction of the session during the step, with its tokens before and after, and the sequence
-// of its record, which keys it in a list.
 export type CompactionActivity = NonNullable<LiveRecord['compaction']> & {
   readonly sequence: number;
 };
 
-// A summary nixie committed to close the session, with its sizes, its text while readable, and the
-// sequence of its record, which keys it in a list.
 export type SummaryActivity = NonNullable<LiveRecord['summary']> & {
   readonly sequence: number;
 };
@@ -52,25 +39,18 @@ export interface StepActivity {
   readonly kind: 'step';
   readonly calls: readonly ToolActivity[];
 
-  // each compaction in the step, in order; absent when the session did not compact
   readonly compactions?: readonly CompactionActivity[];
 
-  // the context of the step's last turn end that recorded one
   readonly context?: ContextActivity;
 
-  // each summary the step committed; absent when the step closed no session
   readonly summaries?: readonly SummaryActivity[];
 
-  // how long the step ran, from its start to its end, once it has ended
   readonly durationMs?: number;
 
-  // the error a failed step threw, while its record is readable
   readonly error?: string;
 
-  // the sequence of the group's first record, which keys it in the list
   readonly key: number;
 
-  // what the step's recalls delivered, in order; absent when the step recalled nothing
   readonly memories?: readonly RecalledMemory[];
   readonly records: readonly LiveRecord[];
   readonly status: StepStatus;
@@ -83,23 +63,17 @@ export type ActivityItem =
   | { readonly kind: 'reset'; readonly record: LiveRecord }
   | StepActivity;
 
-// a rating by the recall record it rates and the version it rates
 type Ratings = Readonly<Record<string, MemoryRating>>;
 
 interface ActivityState {
   readonly items: ActivityItem[];
   readonly ratings: Ratings;
 
-  // the step whose end has not arrived yet
   open: StepActivity | null;
 
-  // records before the next step starts
   pending: LiveRecord[];
 }
 
-// Groups a thread's records for the view: each message stands alone, a reset stands alone at the
-// start of the log it begins, and every other record folds into the step it belongs to. A record before a step, such as the task's creation, folds
-// into the step that follows it; one after the last step forms a group of its own.
 export function buildActivity(records: readonly LiveRecord[]): readonly ActivityItem[] {
   const state: ActivityState = {
     items: [],
@@ -117,8 +91,6 @@ export function buildActivity(records: readonly LiveRecord[]): readonly Activity
     : [...state.items, buildStep(state.pending, 'done', state.ratings)];
 }
 
-// Gathers every rating in the records by what it rates, so a rating in a later step reaches the
-// step whose recall it rates. A later rating of the same version replaces an earlier one.
 function collectRatings(records: readonly LiveRecord[]): Ratings {
   return Object.fromEntries(
     records.flatMap((record) => {
@@ -151,11 +123,8 @@ function buildRatingKey(
   return `${recallSequence}:${item.itemID}@${item.version}`;
 }
 
-// your message and the conversation's reply, which stand alone with or without their text
 const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
 
-// Adds one record to the groups: a message stands alone, a forgotten one too, a reset too, and any
-// other record joins the open step.
 function foldRecord(state: ActivityState, record: LiveRecord): void {
   if (record.message !== undefined || messageKinds.has(record.kind)) {
     state.items.push({ kind: 'message', record });
@@ -227,7 +196,6 @@ const stepEnds: Readonly<Record<string, StepStatus>> = {
   'task.step_interrupted': 'interrupted',
 };
 
-// the time from the step's start record to its end record
 function findDuration(records: readonly LiveRecord[]): number | undefined {
   const started = records.find((record) => record.kind === 'task.step_started');
   const ended = records.findLast((record) => stepEnds[record.kind] !== undefined);
@@ -237,7 +205,6 @@ function findDuration(records: readonly LiveRecord[]): number | undefined {
     : ended.recordedAt.getTime() - started.recordedAt.getTime();
 }
 
-// Joins each call to its result by the call ID, in the order the calls started.
 function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
   const calls = new Map<string, ToolActivity>();
 
@@ -261,7 +228,6 @@ function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
   return [...calls.values()];
 }
 
-// a recall's versions, each with the rating that names it
 function collectMemories(record: LiveRecord, ratings: Ratings): readonly RecalledMemory[] {
   return (record.recall?.items ?? []).map((item) => {
     const rating = ratings[buildRatingKey(record.sequence, item)];
@@ -272,8 +238,6 @@ function collectMemories(record: LiveRecord, ratings: Ratings): readonly Recalle
   });
 }
 
-// With no step open, a record waits for the next step. A page can start partway through a step, so
-// a step's end closes the waiting records as that step, with the status the end records.
 function foldRecordOutsideStep(state: ActivityState, record: LiveRecord): void {
   const endStatus = stepEnds[record.kind];
 

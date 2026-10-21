@@ -9,8 +9,7 @@ import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { MemoryView } from './memory-view';
 
-// a signed-in browser with a save picker that saves each file to the name the page suggests, and
-// a record of each download link the page clicks, which happy-dom would follow as a page load
+// happy-dom follows a clicked download link as a page load, so the test records each click instead.
 async function setupTest() {
   const user = userEvent.setup();
   const picker = buildStubSaveFilePicker();
@@ -36,7 +35,6 @@ async function setupTest() {
     document.removeEventListener('click', onDocumentClick, { capture: true });
   });
 
-  // every memory read needs a signed-in browser
   await createDeviceSession();
 
   return { user, picker, downloads };
@@ -150,7 +148,6 @@ test('it tells the user an export that did not finish, and tries again as the sa
 test('it aborts the file and tells the user when the stream ends before the export completes', async () => {
   const ctx = await setupTest();
 
-  // the header's chunk, then a clean end of the stream with no completion event
   const header =
     '{"header":{"schemaVersion":2,"exportedAt":"2026-10-14T08:00:00.000Z","snapshotHash":"sha256:mock"},"items":[';
 

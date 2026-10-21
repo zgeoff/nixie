@@ -2,12 +2,10 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { checkBrowserSkip } from './check-browser-skip';
 import { setupSignedInBrowser } from './setup-signed-in-browser';
 
-// Bun 1.4.2's skipIf takes a boolean and has no in-body skip. Outside CI these tests skip when no
-// browser starts, and the run prints why; CI always runs them.
+// Bun 1.4.2's skipIf takes a boolean and has no in-body skip, so the suite checks the browser
+// before its tests start.
 const browserSkip = await checkBrowserSkip();
 
-// The helper drives a headless Chrome or Chromium, which Bun finds on PATH, in a standard install
-// location, or at BUN_CHROME_PATH.
 async function setupTest() {
   const cookies: (string | null)[] = [];
 
@@ -29,14 +27,14 @@ async function setupTest() {
     await app.stop(true);
   });
 
-  // Chrome's sandbox needs user namespaces that a container or a root user lacks
+  // Chrome's sandbox needs user namespaces that a container or a root user lacks.
   const view = new Bun.WebView({ backend: { argv: ['--no-sandbox'], type: 'chrome', url: false } });
 
   onTestFinished(() => {
     view.close();
   });
 
-  // Bun runs one Chrome for the whole test process, and its views share one cookie jar
+  // Bun runs one Chrome for the whole test process, and its views share one cookie jar.
   await view.navigate('about:blank');
   await view.cdp('Network.clearBrowserCookies');
 

@@ -3,27 +3,18 @@ import type { LiveRecord } from './use-live-records';
 import { useLiveRecords } from './use-live-records';
 
 export interface ConversationRecords {
-  // pending until the first page arrives, and failed when it never does; a read again that fails,
-  // such as one that reaches a server restarting after a reset, keeps the page it had
   readonly status: 'pending' | 'failed' | 'ready';
   readonly records: readonly LiveRecord[];
 
-  // the end of the newest step at the time of the page, which the page's records may not reach, and
-  // null once a later reset removed that step
   readonly lastStepEnd: LiveRecord | null | undefined;
 
-  // whether the live stream failed several attempts in a row, until it connects again
   readonly unavailable: boolean;
 
-  // the client message IDs of the messages a forget dropped the text of, so the outbox can drop
-  // its own copy of their text
   readonly forgottenClientMessageIDs: readonly string[];
 
-  // the sequence of the latest reset the live stream delivered, which a page read never sets
   readonly liveResetSequence: number | undefined;
 }
 
-// The records of a thread: the page the API returned and the records the live stream adds after it.
 export function useConversationRecords(thread: string): ConversationRecords {
   const page = useConversationPage(thread);
   const live = useLiveRecords(thread, page.data?.readAtSequence);
@@ -55,9 +46,6 @@ interface MergedRecords {
   readonly forgottenClientMessageIDs: readonly string[];
 }
 
-// The page and the live stream can both hold a record, so each sequence shows once, in order. A
-// reset removed every record before its log_reset record, so a page read before the reset shows
-// none of them. A forget that arrives after its message drops the message's text.
 function mergeRecords(page: readonly LiveRecord[], live: readonly LiveRecord[]): MergedRecords {
   const bySequence = new Map(
     [...page, ...live].map((record) => [record.sequence, record] as const),
@@ -83,9 +71,6 @@ function mergeRecords(page: readonly LiveRecord[], live: readonly LiveRecord[]):
   };
 }
 
-// Every forget invalidates the session and erases every summary, a summary that commits after the
-// invalidation included, so a summary keeps its text only while no invalidation is newer than the
-// opening of the session it summarized.
 function toReadableSummaries(records: readonly LiveRecord[]): readonly LiveRecord[] {
   const invalidated = records.findLast((record) => record.kind === 'model.session_invalidated');
 
@@ -101,7 +86,6 @@ function toReadableSummaries(records: readonly LiveRecord[]): readonly LiveRecor
   );
 }
 
-// the sequence of the newest session opening before the sequence, or -1 when the records hold none
 function getOpenedBefore(records: readonly LiveRecord[], sequence: number): number {
   return (
     records.findLast(
@@ -126,8 +110,6 @@ function toForgottenRecord(record: LiveRecord): LiveRecord {
   return rest;
 }
 
-// A reset removed every step that ended before its log_reset record, so a step end that a page
-// read before the reset names is gone, even when the read again after the reset fails.
 function findStepEndAfterReset(
   stepEnd: LiveRecord | null | undefined,
   records: readonly LiveRecord[],
