@@ -7,14 +7,10 @@ import { Server, createMcpHandler } from '@modelcontextprotocol/server';
 export interface StubHTTPToolServer {
   readonly config: McpHttpServerConfig;
 
-  // how many connections the route has reset so far
   readonly resets: () => number;
 
-  // resets each connection that arrives from now on, as a route with no listener behind it does
   readonly dropConnections: () => void;
 
-  // relays each connection that arrives from now on to the tool server, and resolves at once, so a
-  // test passes it as the guest's pause before its reconnect
   readonly acceptConnections: () => Promise<void>;
   readonly stop: () => Promise<void>;
 }
@@ -25,9 +21,6 @@ interface RouteState {
   readonly sockets: Set<Socket>;
 }
 
-// Starts nixie's tool server as the guest reaches it in production: a Streamable HTTP MCP server
-// named nixie, with one tool, note_read, behind a loopback route the guest connects to. The route
-// relays each connection to the server, or resets it at once while the test drops connections.
 export async function startStubHTTPToolServer(): Promise<StubHTTPToolServer> {
   const handler = createMcpHandler(buildNoteServer);
   const answerRequest = (request: Request) => handler.fetch(request);

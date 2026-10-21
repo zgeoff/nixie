@@ -3,9 +3,8 @@ import type { McpServerStatus, Query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame } from '@heynixie/wire';
 import { toolServerName } from './tool-server-name';
 
-// Checks nixie's tool server before the turn's first message, because the CLI builds its first
-// model request from the servers connected then. A connection the route refused or reset gets one
-// reconnect after a pause. Returns the failed frame, or null when nothing stops the turn.
+// The CLI builds its first model request from the servers connected at that point, so the check
+// runs before the turn's first message.
 export async function checkToolServer(
   session: Query,
   waitBeforeReconnect: () => Promise<void> = waitForReconnectDelay,
@@ -15,8 +14,6 @@ export async function checkToolServer(
 
     return server === null || server.status === 'connected' ? null : buildToolsFailed(server);
   } catch {
-    // a CLI that ends before it answers, as when the session to resume is missing, says why in
-    // its messages, which the turn reads next
     return null;
   }
 }
@@ -25,8 +22,6 @@ function waitForReconnectDelay(): Promise<void> {
   return waitForDelay(1000);
 }
 
-// The CLI lists an in-process server only once the first message arrives, so the session's init
-// check alone covers one.
 async function waitForToolServer(
   session: Query,
   waitBeforeReconnect: () => Promise<void>,
@@ -41,9 +36,7 @@ async function waitForToolServer(
 
   try {
     await session.reconnectMcpServer(toolServerName);
-  } catch {
-    // the status read next carries the reason
-  }
+  } catch {}
 
   return readToolServer(session);
 }

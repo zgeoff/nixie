@@ -11,17 +11,11 @@ export type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 export type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 
 export interface QueryContext {
-  // the guest process's own environment, which holds the sandbox's placeholders and proxy settings
   readonly env: Readonly<Record<string, string | undefined>>;
 
-  // nixie's tool server: the run's HTTP endpoint in production, an in-process server in a test, or
-  // null for a summary, which runs with no tools
   readonly toolServer: McpServerConfig | null;
 }
 
-// Builds the options of every query(): nixie's tools alone, or none and one model call for a
-// summary, a system prompt rendered fresh on every request, and every CLI compaction off. options.env
-// replaces the CLI's environment, so each variable goes in by name.
 export function buildQueryOptions(
   turn: TurnFrame | SummarizeFrame,
   context: QueryContext,
@@ -33,8 +27,6 @@ export function buildQueryOptions(
     allowedTools: context.toolServer === null ? [] : [`mcp__${toolServerName}`],
     ...(context.toolServer === null ? { maxTurns: 1 } : {}),
 
-    // the effort drives how much the model thinks; summarized turns the empty thinking block into a
-    // readable summary the log keeps beside the reply
     thinking: { type: 'adaptive', display: 'summarized' },
     permissionMode: 'dontAsk',
     settingSources: [],
@@ -49,7 +41,7 @@ export function buildQueryOptions(
       precomputeCompactionEnabled: false,
       idleCompaction: false,
 
-      // the CLI writes 5-minute entries on an API-key or bearer profile unless this sets the lifetime
+      // Without a lifetime, the CLI writes 5-minute cache entries on an API-key or bearer profile.
       promptCacheTtl: turn.profile.cacheTTL,
     },
     mcpServers: context.toolServer === null ? {} : { [toolServerName]: context.toolServer },
@@ -66,8 +58,6 @@ export function buildQueryOptions(
   };
 }
 
-// the variables the guest passes on from its own environment when they are set: the broker's
-// proxy and certificate settings, and the sandbox's loopback bypass
 const passedVariables = [
   'PATH',
   'HTTPS_PROXY',
@@ -81,8 +71,8 @@ const passedVariables = [
   'NODE_EXTRA_CA_CERTS',
 ] as const;
 
-// the variable the CLI reads the credential from for each auth header; the guest holds a
-// placeholder there, and the grant replaces the header on the way out
+// The guest holds only a placeholder credential, and the sandbox's grant replaces the auth header
+// on the way out.
 const credentialVariables = {
   bearer: 'ANTHROPIC_AUTH_TOKEN',
   'x-api-key': 'ANTHROPIC_API_KEY',
@@ -118,16 +108,15 @@ function buildQueryEnv(
     ANTHROPIC_BASE_URL: turn.profile.baseURL,
     ANTHROPIC_MODEL: turn.profile.model,
 
-    // the CLI's background calls name a small model, which an endpoint for one model may lack
+    // The CLI's background calls name a small model, which an endpoint that serves one model lacks.
     ANTHROPIC_SMALL_FAST_MODEL: turn.profile.model,
     ANTHROPIC_DEFAULT_HAIKU_MODEL: turn.profile.model,
     CLAUDE_CODE_EFFORT_LEVEL: turn.profile.effort,
 
-    // keeps the CLI to the model API's host, the one host its grant covers
+    // The sandbox's grant covers only the model API's host, so the CLI sends no other traffic.
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
 
-    // turns off the automatic compaction and the manual /compact alike
     DISABLE_COMPACT: '1',
     DISABLE_AUTOUPDATER: '1',
 

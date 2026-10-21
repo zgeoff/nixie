@@ -1,8 +1,5 @@
 import { decodeHTML, decodeHTMLAttribute } from 'entities';
 
-// Builds an HTML page's readable text: its title, the text of its main content with each link's
-// target after the link, then a short list of the links outside the main content. The web fetch
-// architecture doc gives the order in which the fetcher picks the main content.
 export function buildReadableText(html: string, pageURL: URL): string {
   const reading = buildReadingState(pageURL);
 
@@ -19,7 +16,6 @@ export function buildReadableText(html: string, pageURL: URL): string {
 interface ElementRule {
   readonly isBlock: boolean;
 
-  // the depth the element adds to while it is open, or null
   readonly counts: 'hidden' | 'furniture' | 'article' | 'main' | 'banner' | null;
 }
 
@@ -29,7 +25,6 @@ interface PageLink {
   readonly target: string;
   readonly text: string[];
 
-  // the regions whose text holds the link: none for a link in the page's furniture
   readonly regions: readonly Region[];
 }
 
@@ -53,14 +48,12 @@ function buildReadingState(pageURL: URL): ReadingState {
   };
 }
 
-// the elements that start and end a block of text, besides the regions and the furniture
 const blockSelector = [
   'address, blockquote, dd, details, dialog, div, dl, dt, fieldset, figcaption, figure, form',
   'h1, h2, h3, h4, h5, h6, hr, li, ol, p, pre, section, summary, table, tbody, thead, tfoot, tr',
   'td, th, ul',
 ].join(', ');
 
-// script, style and the like hide their text, and so do nav and aside, as page furniture
 const elementRules: readonly (readonly [string, ElementRule])[] = [
   [
     'title, script, style, noscript, template, svg, math, iframe',
@@ -156,7 +149,6 @@ function collectLink(reading: ReadingState, element: HTMLRewriterTypes.Element):
   element.onEndTag(() => {
     reading.openLinks.splice(reading.openLinks.indexOf(link), 1);
 
-    // the text is decoded once at the end, so an ampersand in the target is written as a reference
     if (isInText) {
       collectPart(reading, ` [→ ${target.replaceAll('&', '&amp;')}]`);
     }
@@ -185,18 +177,17 @@ function isInContent(reading: ReadingState): boolean {
   return reading.depth.hidden === 0 && reading.depth.furniture === 0 && reading.depth.banner === 0;
 }
 
-// an element takes one end tag handler, so one handler both counts the depth and ends the block
+// HTMLRewriter takes one end tag handler per element, so one handler both counts the depth and
+// ends the block.
 function collectElement(
   reading: ReadingState,
   element: HTMLRewriterTypes.Element,
   rule: ElementRule,
 ): void {
-  // an article or a main element keeps its own header and footer
   const isInRegion = reading.depth.article > 0 || reading.depth.main > 0;
   const counts = rule.counts === 'banner' && isInRegion ? null : rule.counts;
   const isCounted = counts !== null && element.canHaveContent;
 
-  // a region's own separators fall inside the region, so adjacent articles stay apart
   if (isCounted) {
     reading.depth[counts] += 1;
   }
@@ -222,7 +213,6 @@ function collectElement(
 
 const regionOrder: readonly Region[] = ['article', 'main', 'page'];
 
-// the articles, else the main element, else the whole page: the first that holds text
 function pickContentRegion(regions: ReadingState['regions']): Region | null {
   const region = regionOrder.find(
     (candidate) => normalizeWhitespace(decodeHTML(regions[candidate].join(''))) !== '',
@@ -240,10 +230,8 @@ function normalizeWhitespace(text: string): string {
     .trim();
 }
 
-// the most links the trailing list holds, so a page of menus cannot fill the text limit with them
 const otherLinkLimit = 20;
 
-// the links outside the main content, once per target, leaving out a target the content shows
 function formatOtherLinks(links: readonly PageLink[], region: Region | null): string {
   const shownTargets = new Set(
     links

@@ -3,18 +3,13 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import { commandLifecycleSchema } from '../command-lifecycle-schema';
 
 export interface QueryRecorder {
-  // passes each call through to the SDK's query()
   readonly runQuery: typeof query;
 
-  // the options of every query() call, in order
   readonly options: readonly Options[];
 
-  // resolves once the CLI reports that it queued the inbox message with this uuid
   readonly waitForQueued: (uuid: string) => Promise<void>;
 }
 
-// Builds a recorder around the SDK's query(). The CLI queues a message that arrives during a tool
-// call, and reports it only through a command lifecycle that the SDK types leave out.
 export function buildQueryRecorder(): QueryRecorder {
   const options: Options[] = [];
 

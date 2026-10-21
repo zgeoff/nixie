@@ -13,7 +13,6 @@ async function setupTest() {
 
   onTestFinished(() => rm(home, { recursive: true, force: true }));
 
-  // a CLI session that never gets a message, so it never calls the model
   const startSession = (toolServer: McpServerConfig) => {
     const session = query({
       prompt: new TransformStream<SDKUserMessage, SDKUserMessage>().readable,
@@ -63,7 +62,6 @@ test('it reconnects once to a server whose first connection the route reset, and
 test('it fails the turn with the CLI connection error when the reconnect fails too', async () => {
   const ctx = await setupTest();
 
-  // nothing listens on the discard port
   const session = ctx.startSession({
     type: 'http',
     url: 'http://127.0.0.1:9/mcp',

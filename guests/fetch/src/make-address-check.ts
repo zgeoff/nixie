@@ -1,13 +1,8 @@
 import type { IPAddress } from './parse-ip-address';
 import { parseIPAddress } from './parse-ip-address';
 
-// Tells whether a resolved address is public: true only for an address on the global internet that
-// no deployment range covers.
 export type AddressCheck = (address: string) => boolean;
 
-// Makes the fetcher's address check, a second layer behind the sandbox's network policy. It also
-// refuses an IPv6 address whose embedded IPv4 address is not public, and every range the deployment
-// lists as internal, whatever its class.
 export function makeAddressCheck(deniedRanges: readonly string[]): AddressCheck {
   const denied = deniedRanges.map((range) => parseIPRange(range));
 
@@ -24,7 +19,6 @@ interface IPRange {
   readonly prefix: number;
 }
 
-// an address, or an address with its prefix length, such as 10.96.0.0/12
 function parseIPRange(text: string): IPRange {
   const [address = '', prefixText] = text.split('/');
   const parsed = parseIPAddress(address);
@@ -38,8 +32,8 @@ function parseIPRange(text: string): IPRange {
   return { family: parsed.family, base: parsed.value, prefix };
 }
 
-// RFC 6890's special-purpose IPv4 ranges that never reach the global internet, and multicast,
-// reserved and broadcast
+// RFC 6890's special-purpose ranges that never reach the global internet, with multicast, reserved
+// and broadcast.
 const ipv4NonPublic = [
   '0.0.0.0/8',
   '10.0.0.0/8',
@@ -58,11 +52,8 @@ const ipv4NonPublic = [
   '240.0.0.0/4',
 ].map((range) => parseIPRange(range));
 
-// global unicast; every IPv6 address outside it is loopback, unspecified, unique local,
-// link-local, multicast, discard or reserved
 const ipv6GlobalUnicast = parseIPRange('2000::/3');
 
-// the ranges inside global unicast kept for documentation, benchmarks and ORCHIDs
 const ipv6NonPublic = [
   '2001:2::/48',
   '2001:10::/28',
@@ -101,27 +92,21 @@ function isInRange(address: IPAddress, range: IPRange): boolean {
 
 const low32 = (1n << 32n) - 1n;
 
-// The forms of an IPv6 address that carry an IPv4 address, and where each carries it.
 const embeddings: readonly {
   readonly range: IPRange;
   readonly extract: (value: bigint) => readonly bigint[];
 }[] = [
-  // IPv4-mapped, ::ffff:a.b.c.d
   { range: parseIPRange('::ffff:0:0/96'), extract: (value) => [value & low32] },
 
-  // IPv4-compatible, ::a.b.c.d, which also holds :: and ::1 and so refuses them
   { range: parseIPRange('::/96'), extract: (value) => [value & low32] },
 
-  // IPv4-translated, ::ffff:0:a.b.c.d
   { range: parseIPRange('::ffff:0:0:0/96'), extract: (value) => [value & low32] },
 
-  // NAT64's well-known prefix
   { range: parseIPRange('64:ff9b::/96'), extract: (value) => [value & low32] },
 
-  // 6to4, 2002:aabb:ccdd::/48
   { range: parseIPRange('2002::/16'), extract: (value) => [(value >> 80n) & low32] },
 
-  // Teredo: the server's address, and the client's address with every bit inverted
+  // Teredo (RFC 4380) carries the server's address, and the client's address with every bit inverted.
   {
     range: parseIPRange('2001::/32'),
     extract: (value) => [(value >> 64n) & low32, ~value & low32],

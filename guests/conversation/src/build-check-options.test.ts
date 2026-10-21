@@ -16,7 +16,6 @@ test('it gives a checker query no tools, no MCP server, no settings, no prompt d
     { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder', UNRELATED: 'kept out' },
   );
 
-  // the next test pins the environment
   expect({ ...options, env: null }).toStrictEqual({
     tools: [],
     allowedTools: [],

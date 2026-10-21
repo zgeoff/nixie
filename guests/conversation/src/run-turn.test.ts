@@ -30,10 +30,8 @@ async function setupTest() {
     frames,
     recorder,
 
-    // the host's side of the running turn's message stream
     channel: new TransformStream<InboxMessage, InboxMessage>(),
     deps: {
-      // the guest's own environment: its home, its path, and the placeholder the grant replaces
       env: { HOME: home, PATH: process.env['PATH'] ?? '', ANTHROPIC_API_KEY: 'imp-placeholder' },
       toolServer: tools.config,
       messages: [],
@@ -44,7 +42,6 @@ async function setupTest() {
       },
       runQuery: recorder.runQuery,
 
-      // no pause before the one reconnect, so a turn on an unreachable server stops at once
       waitBeforeReconnect: () => Promise.resolve(),
     },
   };
@@ -175,7 +172,6 @@ test('it stops the turn with no model output when nixie tool server stays unreac
   await runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
     ...ctx.deps,
 
-    // nothing listens on the discard port, so the server fails to connect, and so does the retry
     toolServer: { type: 'http', url: 'http://127.0.0.1:9/mcp', alwaysLoad: true },
   });
 
@@ -212,7 +208,6 @@ test('it returns from a turn that stops early once the CLI process has exited', 
   await runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
     ...ctx.deps,
 
-    // nothing listens on the discard port, so the server fails to connect and the turn stops
     toolServer: { type: 'http', url: 'http://127.0.0.1:9/mcp', alwaysLoad: true },
   });
 
@@ -408,8 +403,6 @@ test('it keeps a tool-call turn working under the summarized display, with a sum
   }
 
   expect(ended.subtype).toBe('success');
-
-  // the result reports the turn's thinking tokens once, as the total across both model calls
   expect(ended.thinkingTokens).toBe(46);
 });
 
@@ -588,7 +581,6 @@ test('it ends an overflowed turn at its last chain entry before the overflow mes
 
   expect(ended.terminalReason).toBe('prompt_too_long');
 
-  // the CLI's transcript holds the overflow message after the tool result, and the boundary skips it
   expect(
     JSON.parse(
       transcript
@@ -750,7 +742,6 @@ test('it resumes at a boundary on a new session that holds nothing after the bou
 
   const messages = JSON.stringify(ctx.model.requests.at(-1)?.body?.messages);
 
-  // toInclude fails on a missing request, so the negative check below reads a real one
   expect(messages).toInclude('APPLE');
   expect(messages).not.toInclude('BANANA');
   expect(rerun.sessionID).not.toBe(first.sessionID);

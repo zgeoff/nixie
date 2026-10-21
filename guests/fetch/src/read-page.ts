@@ -8,16 +8,11 @@ export interface PageReaderOptions {
   readonly limits: FetchLimits;
   readonly checkAddress: AddressCheck;
 
-  // every A and AAAA address of a host name
   readonly resolveHost: (host: string) => Promise<readonly string[]>;
 
-  // the roots the reader trusts in place of the system's, which only a test passes
   readonly ca?: string;
 }
 
-// Reads one public HTTPS page within the limits. Each hop, the first and every redirect, passes
-// the scheme and address checks before it connects; a failure past them returns failed, and a
-// fetch that outlives the time limit fails as a whole.
 export async function readPage(url: string, options: PageReaderOptions): Promise<FetchReply> {
   const signal = AbortSignal.timeout(options.limits.timeoutMs);
 
@@ -57,7 +52,6 @@ async function readRedirectChain(
 
 const redirectStatuses: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
 
-// one hop: the checks, then the request to the checked address, then the page or the redirect
 async function readHop(
   url: string,
   options: PageReaderOptions & { readonly signal: AbortSignal },

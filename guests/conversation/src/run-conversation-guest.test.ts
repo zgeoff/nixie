@@ -33,7 +33,6 @@ async function setupTest() {
     model,
     frames,
 
-    // the guest's own environment: its home, its path, and the placeholder the grant replaces
     env: { HOME: home, PATH: process.env['PATH'] ?? '', ANTHROPIC_API_KEY: 'imp-placeholder' },
     write: (bytes: Uint8Array) => {
       frames.push(...decode(bytes).map((message) => decodeTurnFrame(guestFrameSchema, message)));
@@ -78,8 +77,6 @@ test('it answers a turn whose tool server connection failed at start, after one 
     env: ctx.env,
     createToolServer: () => tools.config,
 
-    // the guest pauses only once the CLI reports the server failed, and the route then takes the
-    // reconnect
     waitBeforeReconnect: tools.acceptConnections,
   });
 

@@ -2,8 +2,6 @@ import { mkdir } from 'node:fs/promises';
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
 import { removeStaleSessions } from './remove-stale-sessions';
 
-// Prepares the guest's disk for a turn: the CLI's working directory exists, and the only session
-// left is the one the turn resumes.
 export async function setupTurnDisk(
   options: Readonly<Options>,
   keep: string | null,

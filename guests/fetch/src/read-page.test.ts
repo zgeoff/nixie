@@ -555,7 +555,6 @@ test('it fails a fetch that passes the time limit', async () => {
   const site = await startTestSite({
     names: ['site.test'],
     respond: async () => {
-      // the fault: the site answers well after the limit
       await Bun.sleep(800);
 
       return new Response('late');
@@ -576,7 +575,6 @@ test('it returns the page of a slow site that answers within the time limit', as
   const site = await startTestSite({
     names: ['site.test'],
     respond: async () => {
-      // the same slow site as the time limit's, under a limit it fits in
       await Bun.sleep(800);
 
       return new Response('late');
@@ -604,7 +602,6 @@ test('it fails a fetch whose compressed body stalls past the time limit', async 
           start: async (controller) => {
             controller.enqueue(body.subarray(0, 10));
 
-            // the fault: the body stalls well after the limit
             await Bun.sleep(800);
 
             controller.enqueue(body.subarray(10));
@@ -636,7 +633,6 @@ test('it returns a compressed body that stalls and finishes within the time limi
           start: async (controller) => {
             controller.enqueue(body.subarray(0, 10));
 
-            // the same stall as the time limit's, under a limit it fits in
             await Bun.sleep(800);
 
             controller.enqueue(body.subarray(10));
@@ -658,7 +654,6 @@ test('it returns a compressed body that stalls and finishes within the time limi
 });
 
 test('it fails a fetch whose DNS answer passes the time limit', async () => {
-  // the fault: the DNS answer comes well after the limit
   const resolver = buildStubResolver({ answers: { 'site.test': [['10.0.0.1']] }, delayMs: 300 });
 
   const reply = await readPage('https://site.test/', {
@@ -671,7 +666,6 @@ test('it fails a fetch whose DNS answer passes the time limit', async () => {
 });
 
 test('it checks a slow DNS answer that arrives within the time limit', async () => {
-  // the same slow answer as the time limit's, under a limit it fits in
   const resolver = buildStubResolver({ answers: { 'site.test': [['10.0.0.1']] }, delayMs: 300 });
 
   const reply = await readPage('https://site.test/', {

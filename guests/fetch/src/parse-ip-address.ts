@@ -1,18 +1,16 @@
 import { isIPv4, isIPv6 } from 'node:net';
 
-// An IP address as a number: 32 bits for IPv4 and 128 bits for IPv6.
 export interface IPAddress {
   readonly family: 4 | 6;
   readonly value: bigint;
 }
 
-// Parses an IPv4 or IPv6 address in its text form, or returns null for any other text. An IPv6
-// address may end in a dotted IPv4 address; a zone ID is refused, because no DNS answer holds one.
 export function parseIPAddress(text: string): IPAddress | null {
   if (isIPv4(text)) {
     return { family: 4, value: parseIPv4(text) };
   }
 
+  // A DNS answer never holds a zone ID, so an address with one is refused.
   if (isIPv6(text) && !text.includes('%')) {
     return { family: 6, value: parseIPv6(text) };
   }
@@ -34,7 +32,6 @@ function parseIPv6(text: string): bigint {
   return groups.reduce((value, group) => (value << 16n) | group, 0n);
 }
 
-// the groups of one side of '::', with a dotted IPv4 tail as its 2 groups
 function splitGroups(text: string): readonly bigint[] {
   if (text.length === 0) {
     return [];

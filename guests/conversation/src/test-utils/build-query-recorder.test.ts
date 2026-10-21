@@ -9,9 +9,6 @@ import { buildQueryRecorder } from './build-query-recorder';
 import { createStubToolServer } from './create-stub-tool-server';
 import { startStubModel } from './start-stub-model';
 
-// A turn held in a note_wait call, as the CLI must be for it to queue a message. The cleanup
-// releases the call and lets the turn end before the stub model stops, because the CLI asks the
-// model for its next reply once the call returns.
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
@@ -26,12 +23,10 @@ async function setupTest() {
 
   const channel = new TransformStream<InboxMessage, InboxMessage>();
 
-  // the turn holds in note_wait, then ends at a text reply once the call returns
   model.addReplies({ toolUse: { name: 'mcp__nixie__note_wait', input: {} } }, { text: 'Noted.' });
 
   void stack.adopt(
     runTurn(buildMockTurnFrame({ profile: { baseURL: model.url } }), {
-      // the guest's own environment: its home, its path, and the placeholder the grant replaces
       env: { HOME: home, PATH: process.env['PATH'] ?? '', ANTHROPIC_API_KEY: 'imp-placeholder' },
       toolServer: tools.config,
       messages: channel.readable,
