@@ -1,7 +1,5 @@
 import type { ToolEndpoint, ToolRun, ToolSession } from '@heynixie/tools';
 
-// A step token the stub endpoint issued, the session it names or null, and whether its holder
-// stopped it.
 interface StubStepToken {
   readonly stepRunID: string;
   readonly session: ToolSession | null;
@@ -12,16 +10,11 @@ interface StubStepToken {
 export interface StubToolEndpoint {
   readonly endpoint: Pick<ToolEndpoint, 'startRun'>;
 
-  // every run the endpoint started, in order
   readonly runs: readonly ToolRun[];
 
-  // every step token a run issued, in order
   readonly steps: readonly StubStepToken[];
 }
 
-// Builds a stand-in for the tool endpoint that records each run it starts and hands back a fixed
-// token, and numbers each step token a run issues from 1. The runner's tests reach no tool through
-// it, because the stub guest calls none.
 export function buildStubToolEndpoint(): StubToolEndpoint {
   const runs: ToolRun[] = [];
   const steps: StubStepToken[] = [];

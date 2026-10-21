@@ -1,7 +1,6 @@
 import type { InboxMessage } from '@heynixie/wire';
 import type { ImageTally } from './types';
 
-// The images, their bytes in base64 and how many, that one inbox message carries to the model.
 export function countImages(message: InboxMessage): ImageTally {
   const images = message.images ?? [];
 

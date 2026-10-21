@@ -69,7 +69,6 @@ test('it stops before the record whose images would pass the budget', async () =
     },
   ]);
 
-  // 6 bytes read as 8 in base64, so the second image would bring the total to 16
   const messages = await readInboxMessages(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     imageBudget: { bytes: 12, count: 100 },

@@ -8,8 +8,6 @@ import { runCompactionStep } from './run-compaction-step';
 import { runInboxStep } from './run-inbox-step';
 import type { ConversationRun } from './types';
 
-// Runs one step of the conversation. A session whose last turn ended past the compaction threshold
-// compacts before the step takes the inbox; any other step with an unread record runs a turn.
 export function runConversationStep(run: ConversationRun, input: StepInput): Promise<StepResult> {
   return run.session.withTurn(async (invalidated) => {
     const signal = AbortSignal.any([input.signal, invalidated]);

@@ -35,7 +35,6 @@ test('it yields a message that lands during the turn and adds its images to the 
     images,
   });
 
-  // 6 bytes read as 8 in base64, which brings the session to its budget of 16
   await writeInboxRecords(ctx.context, [
     {
       kind: 'owner_message',
@@ -77,7 +76,6 @@ test('it ends the feed at a message whose images would pass the session budget',
     images,
   });
 
-  // 6 bytes read as 8 in base64, which would bring the session to 20
   await writeInboxRecords(ctx.context, [
     {
       kind: 'owner_message',

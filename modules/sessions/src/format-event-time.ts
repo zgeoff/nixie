@@ -1,5 +1,3 @@
-// Formats when an event happened as the owner reads a time, such as "Tue 14 Oct, 09:12, Sydney":
-// the weekday, the day, the month, the 24-hour time, and the time zone's city.
 export function formatEventTime(at: number, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone,
@@ -17,8 +15,6 @@ export function formatEventTime(at: number, timeZone: string): string {
   return `${getPart('weekday')} ${getPart('day')} ${getPart('month')}, ${getPart('hour')}:${getPart('minute')}, ${formatZoneCity(timeZone)}`;
 }
 
-// the last part of the zone's name, such as "New York" for America/New_York, or the name itself
-// for a zone with no city, such as UTC
 function formatZoneCity(timeZone: string): string {
   return (timeZone.split('/').at(-1) ?? timeZone).replaceAll('_', ' ');
 }

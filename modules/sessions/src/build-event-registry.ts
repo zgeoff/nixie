@@ -1,7 +1,5 @@
 import type { BoundEvent, EventKind, EventRegistry, NotedEvent, ReadEvent } from './types';
 
-// Builds the registry the events block reads from a list of event kinds, so a new kind is one more
-// entry and no change to the block. It refuses two kinds with one name.
 export function buildEventRegistry<Details extends readonly unknown[]>(kinds: {
   readonly [Index in keyof Details]: EventKind<Details[Index]>;
 }): EventRegistry {
@@ -16,8 +14,6 @@ export function buildEventRegistry<Details extends readonly unknown[]>(kinds: {
   return entries.map((kind) => buildRegistryEntry(kind));
 }
 
-// Each event the entry read keeps its detail out of sight of the block, so complete finds it again
-// by the event the block hands back.
 function buildRegistryEntry(kind: EventKind<unknown>): EventRegistry[number] {
   const details = new WeakMap<ReadEvent, NotedEvent<unknown>>();
 

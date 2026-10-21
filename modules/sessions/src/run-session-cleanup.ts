@@ -8,9 +8,6 @@ import type { ConversationRun, SessionCleanupCause } from './types';
 
 type CleanupRun = Pick<ConversationRun, 'context' | 'sandbox' | 'command' | 'session'>;
 
-// Cleans up the conversation's session after a forget, in the order the memory context doc gives:
-// session_invalidated, then the summary keys, the web fetch links and the guest's session state,
-// then session_cleanup_completed, both records naming the cause. A rerun is safe.
 export function runSessionCleanup(run: CleanupRun, cause: SessionCleanupCause): Promise<void> {
   return run.session.withInvalidation(async () => {
     await writeRecords(run.context.log, [

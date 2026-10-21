@@ -1,24 +1,14 @@
-// Keeps the conversation's turns and the cleanups a forget makes apart. Turns may overlap, and each
-// cleanup runs alone.
 export interface SessionGuard {
-  // runs one turn once every cleanup asked for before it is done, with a signal that aborts when a
-  // forget invalidates the session the turn runs on
   readonly withTurn: <T>(run: (signal: AbortSignal) => Promise<T>) => Promise<T>;
 
-  // aborts every running turn, then runs the cleanup once those turns and the cleanups before it
-  // have ended; no turn starts until the cleanup is done
   readonly withInvalidation: (cleanup: () => Promise<void>) => Promise<void>;
 }
 
-// the latest cleanup, which every turn that starts waits for, and how many cleanups are not done
 interface CleanupGate {
   current: Promise<void>;
   pending: number;
 }
 
-// Makes the guard between the conversation's turns and a forget's session cleanup. A cleanup never
-// removes a transcript a live CLI writes, and turns never wait for each other, so a runner that
-// took over an expired lease never waits on the turn a stale runner still holds.
 export function makeSessionGuard(): SessionGuard {
   const gate: CleanupGate = { current: Promise.resolve(), pending: 0 };
 
@@ -26,8 +16,6 @@ export function makeSessionGuard(): SessionGuard {
 
   return {
     withTurn: async (run) => {
-      // nothing awaits between the last check and the turn's registration, so every cleanup
-      // asked for later sees and aborts this turn
       while (gate.pending > 0) {
         await gate.current;
       }
@@ -69,14 +57,8 @@ async function runAfter(
   await cleanup();
 }
 
-// Waits for a cleanup, then counts it done. A failed cleanup leaves the forget pending for the store
-// to run again, and lets turns on.
 async function waitForCleanup(gate: CleanupGate, cleanup: Promise<void>): Promise<void> {
-  try {
-    await cleanup;
-  } catch {
-    // the cleanup's caller handles the failure
-  } finally {
-    gate.pending -= 1;
-  }
+  await cleanup.catch(() => {});
+
+  gate.pending -= 1;
 }

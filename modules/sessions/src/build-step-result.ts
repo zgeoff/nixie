@@ -11,39 +11,28 @@ import type { ImageTally, MemoryRef } from './types';
 export interface CompletedTurn {
   readonly turn: GuestTurn;
 
-  // the sequence of every inbox record the turn took
   readonly sent: ReadonlySet<number>;
 
-  // whether the turn left unread inbox records past its batch for the next step
   readonly hasMore: boolean;
 
-  // the last sequence the turn's memory note covered, or null when the turn had no note
   readonly notedThrough: number | null;
 
-  // the images the session holds after the turn, which every later request repeats
   readonly images: ImageTally;
 }
 
-// The memory a turn placed, which its record lists as references and never as text.
 interface TurnMemoryRefs {
   readonly pinnedCore: readonly MemoryRef[];
   readonly retrieved: readonly MemoryRef[];
 
-  // the sequences of the past messages the turn's retrieval placed
   readonly retrievedMessages: readonly number[];
 
-  // the newest session invalidation the turn saw before it ran
   readonly invalidatedThrough: number;
 }
 
-// A turn the guest ended, with the memory the step placed in it.
 export interface StepTurn extends CompletedTurn {
   readonly memory: TurnMemoryRefs;
 }
 
-// Builds the step's result from a turn the guest ended: its records, the inbox records the model
-// read, and the session's last chain entry as the boundary. A turn that failed, or one whose context
-// passed the window, throws, so the step retries from the boundary it started at.
 export function buildStepResult(
   source: ModelRecordSource,
 
@@ -53,7 +42,6 @@ export function buildStepResult(
   const last = completed.turn.ended.at(-1);
   const failure = completed.turn.failure;
 
-  // a refused credential throws its own error, so the server can tell it apart
   if (failure?.reason === 'model_auth') {
     throw new ModelAuthError(failure.detail);
   }
@@ -80,15 +68,14 @@ export function buildStepResult(
   };
 }
 
-// a record per reply with text, and one for the turn's end with the memory it placed
 function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
   const replies = completed.turn.assistants.filter((assistant) => assistant.text !== '');
   const reasoning = buildTurnReasoning(completed.turn);
 
   return [
     ...replies.map((assistant, index) => {
-      // the summarized display gives the reasoning as its own message and reports the thinking
-      // tokens once per turn, so the turn's joined summary and total count sit on its last reply
+      // The SDK's summarized display sends the reasoning as its own message and reports thinking
+      // tokens once per turn, so the joined summary and the total sit on the last reply.
       const isLast = index === replies.length - 1;
 
       return buildModelRecord(source, modelReplyCodec, {
@@ -153,9 +140,6 @@ type TurnSummary = Pick<
   | 'contextWindow'
 >;
 
-// The turn's model turns and token counts over every result, the SDK's reason for the last end, and
-// the context the last reported model call read with the window nixie compacts within. The counts
-// are totals; the context size is the one figure that shows how full the context stands.
 function buildTurnSummary(turn: GuestTurn): TurnSummary {
   const buildTotal = (pick: (frame: EndedFrame) => number) =>
     turn.ended.reduce((total, frame) => total + pick(frame), 0);

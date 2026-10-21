@@ -1,9 +1,6 @@
 import type { StatusEntry } from './build-status-registry';
 import type { SessionStart } from './types';
 
-// The status entry for the kind of start and its reason. Its line says that earlier history is in
-// the event log, after a compaction that the summary covers the earlier session, and after a rebuild
-// why the session opened again, so the model reads the gap as deliberate.
 export function buildStartStatus(): StatusEntry {
   return {
     name: 'start',

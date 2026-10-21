@@ -3,17 +3,12 @@ import { readRecords } from '@heynixie/log';
 import { conversationTaskID, taskStepErroredCodec } from '@heynixie/tasks';
 import type { EventKind, NotedEvent } from './types';
 
-// A conversation turn that threw, which the task runs again, with the error's text when the log
-// still holds it.
 export interface RetriedTurn {
   readonly message: string | null;
 }
 
-// the most failures one note reads, past which the block's count of more stops growing
 const readLimit = 1000;
 
-// The event kind for a failed conversation turn that the task retried. A failure that ended the
-// task is not a retry, so it is left out.
 export function buildRetriedTurnKind(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
 ): EventKind<RetriedTurn> {

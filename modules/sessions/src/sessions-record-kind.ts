@@ -1,5 +1,3 @@
-// The record kinds the sessions module registers with the log. Memory writes a recall record through
-// the memory port this module declares, and the session replay reads it back.
 export type SessionsRecordKind = 'memory.recalled';
 
 declare module '@heynixie/log' {

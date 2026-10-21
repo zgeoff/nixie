@@ -2,23 +2,17 @@ import type { EventsBlockSettings } from './render-events-block';
 import { renderEventsBlock } from './render-events-block';
 import type { EventRegistry, TurnNoteRange } from './types';
 
-// The events block over one range and how many events the range held, those past the cap included.
 export interface EventsBlock {
   readonly text: string | null;
   readonly count: number;
 }
 
-// How the block reads: its render settings, and whether the turn it goes before opens a new session.
 export interface EventsBlockRead extends EventsBlockSettings {
   readonly isNewSession?: boolean;
 }
 
-// the block lists up to 10 events, then how many more
 const eventsCap = 10;
 
-// Reads the events in the range, with no session-bound kind for a new session or a replay, picks
-// uncapped kinds' events and the oldest others up to the cap, and has each kind complete only its
-// listed events, so nothing past the cap is read in full or recorded as delivered.
 export async function readEventsBlock(
   everyKind: EventRegistry,
   range: TurnNoteRange,

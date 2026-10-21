@@ -11,18 +11,15 @@ import type { ImageTally, MessageTimeOptions } from './types';
 export interface OpeningBatch {
   readonly batch: TurnBatch;
 
-  // the session's images after the batch, which the live messages add to
   readonly images: LiveImages;
 }
 
 interface OpeningRead {
   readonly times: MessageTimeOptions;
 
-  // the images the session holds before the turn
   readonly images: ImageTally;
 }
 
-// Reads the batch a turn opens with, as much of the session's image budget as the session leaves.
 export async function readOpeningBatch(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   inbox: StepInput['inbox'],
