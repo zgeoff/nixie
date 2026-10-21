@@ -7,7 +7,8 @@
   [0018](../../../decisions/0018-the-conversation-and-tasks.md),
   [0025](../../../decisions/0025-database-and-topology.md),
   [0003](../../../decisions/0003-sdk-placement.md),
-  [0027](../../../decisions/0027-tasks-and-actions.md)
+  [0027](../../../decisions/0027-tasks-and-actions.md),
+  [0047](../../../decisions/0047-connections-that-stop-working.md)
 
 A task is durable work with its own context, such as "keep the backlog moving today", and nixie runs
 each one as an explicit state machine over the [event log](event-log.md). A runner holds a lease on
@@ -142,6 +143,18 @@ the connections its creator may use, and a connection added later never joins th
 Every job run gets its trigger details in its context: when it was scheduled, when it started,
 whether it is a catch-up, and which scheduled times were skipped. **Why:** a morning report that
 starts at 10:40 can say so, and the model never guesses when it was meant to run.
+
+Beside the trigger details, a job run gets the
+[status line](../connectors/tools.md#what-the-model-learns-about-a-connection) for the connections
+pinned on the job's list that are `needs_consent`, `disconnected`, `failing` or `expiring`, under
+[0047](../../../decisions/0047-connections-that-stop-working.md). The line leaves out the model
+credential, because a job run can do nothing about it. **Why:** a job run is untrusted and nobody
+watches it, so the line is its only way to report what it could not do. Without the line, a job run
+that finds a tool missing makes something up or fails without a reason.
+
+A job run starts whatever the status of its pinned connections. It does what it can, and its result
+says what it skipped and why. **Why:** a part of a report has value, so a morning report without
+Gmail still has the calendar, and the repeated skip in each result reminds you to reconnect.
 
 A job run missed while nixie was down gets one catch-up when the latest missed time is within half
 the job's interval. Otherwise nixie skips it and reports the skip. Each job can set its own rule.

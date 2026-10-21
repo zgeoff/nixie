@@ -3,7 +3,8 @@
 - Decisions: [0016](../../../decisions/0016-own-interfaces.md),
   [0019](../../../decisions/0019-connector-authorization.md),
   [0030](../../../decisions/0030-connectors-and-sandbox-environments.md),
-  [0014](../../../decisions/0014-search.md)
+  [0014](../../../decisions/0014-search.md),
+  [0047](../../../decisions/0047-connections-that-stop-working.md)
 
 A connector is nixie's code for one outside service, such as Gmail or a search API. It gives nixie
 typed tools with declared effects, the polls a trigger source runs, the authorization the service
@@ -101,6 +102,12 @@ so a rule check on `connection` reads the same whether the model passed it or no
 checks each call against the caller's connections at the time of the call. A call without the
 argument after you connect a second account fails the input check, and its error lists the choices,
 so the model asks you or picks again.
+
+While a connection is `failing`, `needs_consent` or `disconnected`, the argument leaves out its
+value, and the [status line](tools.md#what-the-model-learns-about-a-connection) names it, under
+[0047](../../../decisions/0047-connections-that-stop-working.md). The value returns when the
+connection is `active` again. **Why:** the model never picks an account that cannot work while
+another connection serves the request.
 
 An action on an item that a connection returned, such as replying to a message, takes its connection
 from the item and has no connection argument. **Why:** the reply then leaves from the account that
