@@ -70,17 +70,21 @@ only over that process's stdin and stdout, one frame each way, each frame holdin
 in the format `libs/wire` defines. The request carries the URL, the fetch limits and the ranges the
 deployment lists as internal; nothing else nixie holds reaches the sandbox.
 
-Fetches run one at a time, and the next fetch starts only once the last fetch's sandbox is
-destroyed, so no fetcher ever runs beside another. nixie returns the reply as soon as the fetcher
-sends it and destroys the sandbox after, which keeps the destroy off the reply's path.
+Fetches run one at a time, and the next fetch starts only once the last fetch's destroy ends, so no
+fetcher ever runs beside another. nixie returns the reply as soon as the fetcher sends it and
+destroys the sandbox after, which keeps the destroy off the reply's path.
 
 A fetch that does not end in a page destroys its sandbox the same way: a refusal, a failure the
 fetcher reports, a fetcher that exits non-zero or sends no reply, a reply nixie cannot decode, or a
 fetcher that outlives the fetch's time limit, which nixie stops. Every call nixie makes to the
 sandbox adapter has a time limit as well, so a create or a destroy that never ends fails one fetch
-and never blocks the fetches after it. Every fetch sandbox has the same owner, and each create first
-removes any fetch sandbox of that owner, so a sandbox that a crash or a failed destroy leaves lasts
-only until the next fetch.
+and never blocks the fetches after it.
+
+Every fetch sandbox has the same owner. The first fetch after nixie starts removes every fetch
+sandbox of that owner, which clears what an earlier process left, and the next fetch after a destroy
+that fails or passes its time limit does the same. A create that passes its time limit makes no
+further adapter call, and nixie destroys a sandbox that the create still returns as soon as it
+arrives.
 
 ## The fetcher
 

@@ -19,20 +19,22 @@ export interface StubSandboxAdapter extends SandboxAdapter {
   readonly created: readonly { readonly id: string; readonly spec: SandboxSpec }[];
   readonly destroyed: readonly string[];
   readonly spawned: readonly { readonly sandboxID: string; readonly argv: readonly string[] }[];
-
-  // the most sandboxes that were live at one time
   readonly countMostLive: () => number;
 }
 
-// How one create fails: the adapter refuses it with message, as an unreachable runtime does, or it
-// never answers.
-type StubCreateFailure =
+// How one adapter call goes wrong: the adapter refuses it with message, as an unreachable runtime
+// does, it never answers, or it answers only once until settles.
+type StubCallFailure =
   | { readonly kind: 'reject'; readonly message: string }
-  | { readonly kind: 'hang' };
+  | { readonly kind: 'hang' }
+  | { readonly kind: 'wait'; readonly until: Promise<void> };
 
 export interface StubSandboxAdapterOptions {
-  // the failures of the first creates, in order; every create after them succeeds
-  readonly createFailures?: readonly StubCreateFailure[];
+  // the failures of the first creates, lists and destroys, each in order; every call after them
+  // succeeds at once
+  readonly createFailures?: readonly StubCallFailure[];
+  readonly listFailures?: readonly StubCallFailure[];
+  readonly destroyFailures?: readonly StubCallFailure[];
 }
 
 // A sandbox adapter that runs each spawn as an in-process guest behind the real frame streams, and
@@ -43,6 +45,8 @@ export function buildStubSandboxAdapter(
   options: StubSandboxAdapterOptions = {},
 ): StubSandboxAdapter {
   const createFailures = [...(options.createFailures ?? [])];
+  const listFailures = [...(options.listFailures ?? [])];
+  const destroyFailures = [...(options.destroyFailures ?? [])];
   const created: { id: string; spec: SandboxSpec }[] = [];
   const destroyed: string[] = [];
   const spawned: { sandboxID: string; argv: readonly string[] }[] = [];
@@ -62,10 +66,17 @@ export function buildStubSandboxAdapter(
 
       requireSandboxSpec(spec);
 
-      await applyCreateFailure(createFailures.shift());
+      await applyCallFailure(createFailures.shift());
 
       const id = crypto.randomUUID();
-      const sandbox = buildStubSandbox(id, spec, { guest, live, spawned, destroyed });
+
+      const sandbox = buildStubSandbox(id, spec, {
+        guest,
+        live,
+        spawned,
+        destroyed,
+        destroyFailures,
+      });
 
       live.set(id, sandbox);
       created.push({ id, spec });
@@ -75,8 +86,11 @@ export function buildStubSandboxAdapter(
       return sandbox;
     },
     read: (id) => Promise.resolve(live.get(id) ?? null),
-    list: (owner) =>
-      Promise.resolve([...live.values()].filter((sandbox) => sandbox.spec.owner === owner)),
+    list: async (owner) => {
+      await applyCallFailure(listFailures.shift());
+
+      return [...live.values()].filter((sandbox) => sandbox.spec.owner === owner);
+    },
     addSecret: () => Promise.resolve(),
     addImage: () => Promise.resolve(),
     checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
@@ -84,13 +98,17 @@ export function buildStubSandboxAdapter(
   };
 }
 
-async function applyCreateFailure(failure: StubCreateFailure | undefined): Promise<void> {
+async function applyCallFailure(failure: StubCallFailure | undefined): Promise<void> {
   if (failure?.kind === 'reject') {
     throw new Error(failure.message);
   }
 
   if (failure?.kind === 'hang') {
     await Promise.withResolvers<never>().promise;
+  }
+
+  if (failure?.kind === 'wait') {
+    await failure.until;
   }
 }
 
@@ -99,6 +117,7 @@ interface StubState {
   readonly live: Map<string, Sandbox>;
   readonly spawned: { sandboxID: string; argv: readonly string[] }[];
   readonly destroyed: string[];
+  readonly destroyFailures: StubCallFailure[];
 }
 
 function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sandbox {
@@ -123,11 +142,11 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
     toolRoute: () => Promise.resolve(null),
     suspension: { kind: 'none' },
     isRetired: false,
-    destroy: () => {
+    destroy: async () => {
+      await applyCallFailure(state.destroyFailures.shift());
+
       state.live.delete(id);
       state.destroyed.push(id);
-
-      return Promise.resolve();
     },
   };
 }

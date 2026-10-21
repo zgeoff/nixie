@@ -35,9 +35,11 @@ export interface FetchSandbox {
 }
 
 interface FetchSandboxState {
-  // settles once the last fetch's sandbox is destroyed
   queue: Promise<void>;
   isStopped: boolean;
+
+  // true until a sweep removes the fetch sandboxes a past process or a failed destroy left
+  needsSweep: boolean;
 }
 
 const stoppedReply: FetchReply = { kind: 'failed', reason: 'the fetch sandbox is stopped' };
@@ -46,7 +48,7 @@ const stoppedReply: FetchReply = { kind: 'failed', reason: 'the fetch sandbox is
 // process in it over its stdin and stdout, and destroys it. Fetches run one at a time, and the
 // next fetch starts only once the last one's sandbox is destroyed, so no two fetches share a sandbox.
 export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
-  const state: FetchSandboxState = { queue: Promise.resolve(), isStopped: false };
+  const state: FetchSandboxState = { queue: Promise.resolve(), isStopped: false, needsSweep: true };
 
   return {
     readPage: async (url) => {
@@ -63,7 +65,7 @@ export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
         return stoppedReply;
       }
 
-      return runFetch(options, url, ended.resolve);
+      return runFetch(options, state, url, ended.resolve);
     },
     stop: async () => {
       state.isStopped = true;
@@ -77,16 +79,68 @@ export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
 // path
 async function runFetch(
   options: FetchSandboxOptions,
+  state: FetchSandboxState,
   url: string,
   onEnded: () => void,
 ): Promise<FetchReply> {
-  const creating = waitOrTimeOut(createFetchSandbox(options), buildSandboxCallLimit(options));
+  const creating = createWithinLimit(options, state);
 
   const reply = await tryRunFetcher(creating, options, url);
 
-  void removeSandbox(options, creating, onEnded);
+  void removeSandbox(options, state, creating, onEnded);
 
   return reply;
+}
+
+// A create that passes its time limit stops before its next adapter call, and a sandbox it still
+// makes is destroyed as soon as it arrives, so a slow create never leaves one beside a later fetch.
+async function createWithinLimit(
+  options: FetchSandboxOptions,
+  state: FetchSandboxState,
+): Promise<Sandbox> {
+  const late = new AbortController();
+
+  const created = createFetchSandbox(options, state, late.signal);
+
+  try {
+    return await waitOrTimeOut(created, buildSandboxCallLimit(options));
+  } catch (error) {
+    late.abort();
+    void removeLateSandbox(options, state, created);
+    throw error;
+  }
+}
+
+// the owner of every fetch sandbox, which a new sandbox's start reads to remove any left behind
+export const fetchSandboxOwner = 'web_fetch';
+
+// destroys every fetch sandbox a past process or a failed destroy left, when a sweep is due, then
+// creates a new one
+async function createFetchSandbox(
+  options: FetchSandboxOptions,
+  state: FetchSandboxState,
+  late: AbortSignal,
+): Promise<Sandbox> {
+  if (state.needsSweep) {
+    const leftovers = await options.adapter.list(fetchSandboxOwner);
+
+    late.throwIfAborted();
+
+    await Promise.all(leftovers.map((sandbox) => sandbox.destroy()));
+
+    late.throwIfAborted();
+
+    state.needsSweep = false;
+  }
+
+  return options.adapter.create(
+    buildSandboxSpec({
+      kind: 'fetch',
+      image: options.image,
+      owner: fetchSandboxOwner,
+      limits: options.sandboxLimits,
+    }),
+  );
 }
 
 interface TimeLimit {
@@ -121,25 +175,6 @@ async function waitForDeadline(limit: TimeLimit, settled: AbortSignal): Promise<
   throw new Error(limit.message);
 }
 
-// the owner of every fetch sandbox, which a new sandbox's start reads to remove any left behind
-export const fetchSandboxOwner = 'web_fetch';
-
-// destroys every fetch sandbox a past process or an earlier fetch left, then creates a new one
-async function createFetchSandbox(options: FetchSandboxOptions): Promise<Sandbox> {
-  const leftovers = await options.adapter.list(fetchSandboxOwner);
-
-  await Promise.all(leftovers.map((sandbox) => sandbox.destroy()));
-
-  return options.adapter.create(
-    buildSandboxSpec({
-      kind: 'fetch',
-      image: options.image,
-      owner: fetchSandboxOwner,
-      limits: options.sandboxLimits,
-    }),
-  );
-}
-
 const defaultSandboxCallTimeoutMs = 120_000;
 
 function buildSandboxCallLimit(options: FetchSandboxOptions): TimeLimit {
@@ -150,6 +185,34 @@ function buildSandboxCallLimit(options: FetchSandboxOptions): TimeLimit {
     deadline: clock.now() + (options.sandboxCallTimeoutMs ?? defaultSandboxCallTimeoutMs),
     message: 'the sandbox call passed its time limit',
   };
+}
+
+// destroys the sandbox a create made after its time limit, once it arrives
+async function removeLateSandbox(
+  options: FetchSandboxOptions,
+  state: FetchSandboxState,
+  created: Promise<Sandbox>,
+): Promise<void> {
+  try {
+    const sandbox = await created;
+
+    await destroyOrSweepLater(options, state, sandbox);
+  } catch {
+    // a create that failed or stopped at its time limit made nothing to destroy
+  }
+}
+
+// a destroy that fails or never ends leaves the sandbox to a sweep before the next create
+async function destroyOrSweepLater(
+  options: FetchSandboxOptions,
+  state: FetchSandboxState,
+  sandbox: Sandbox,
+): Promise<void> {
+  try {
+    await waitOrTimeOut(sandbox.destroy(), buildSandboxCallLimit(options));
+  } catch {
+    state.needsSweep = true;
+  }
 }
 
 // the reply, or a failure when the sandbox or the fetcher went wrong
@@ -242,21 +305,18 @@ async function readFirstMessage(messages: AsyncIterable<Uint8Array>): Promise<Ui
   return first.done === true ? null : first.value;
 }
 
-// A destroy that fails or never ends, or a create that finishes after its time limit, leaves the
-// sandbox to the next create, which removes every sandbox of the owner first.
 async function removeSandbox(
   options: FetchSandboxOptions,
+  state: FetchSandboxState,
   creating: Promise<Sandbox>,
   onRemoved: () => void,
 ): Promise<void> {
-  const limit = buildSandboxCallLimit(options);
-
   try {
     const created = await creating;
 
-    await waitOrTimeOut(created.destroy(), limit);
+    await destroyOrSweepLater(options, state, created);
   } catch {
-    // a create that failed made nothing to destroy
+    // a create that failed made nothing to destroy, and one that passed its limit removes its own
   } finally {
     onRemoved();
   }

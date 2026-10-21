@@ -223,6 +223,118 @@ test('it never answers a create whose failure hangs', async () => {
   expect(adapter.created).toStrictEqual([]);
 });
 
+test('it answers a create whose failure waits only once the wait settles', async () => {
+  const gate = Promise.withResolvers<void>();
+
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
+    createFailures: [{ kind: 'wait', until: gate.promise }],
+  });
+
+  const create = adapter.create({
+    kind: 'fetch',
+    image: 'fetch',
+    owner: 'web_fetch',
+    egress: { kind: 'public' },
+    grants: [],
+    toolRoute: false,
+    limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  const first = await Promise.race([create, adapter.list('web_fetch').then(() => 'pending')]);
+
+  gate.resolve();
+
+  const sandbox = await create;
+
+  expect(first).toBe('pending');
+  expect(adapter.created.map((created) => created.id)).toStrictEqual([sandbox.id]);
+});
+
+test('it answers a list whose failure waits only once the wait settles', async () => {
+  const gate = Promise.withResolvers<void>();
+
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
+    listFailures: [{ kind: 'wait', until: gate.promise }],
+  });
+
+  const sandbox = await adapter.create({
+    kind: 'fetch',
+    image: 'fetch',
+    owner: 'web_fetch',
+    egress: { kind: 'public' },
+    grants: [],
+    toolRoute: false,
+    limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  const list = adapter.list('web_fetch');
+
+  const first = await Promise.race([list, adapter.read(sandbox.id).then(() => 'pending')]);
+
+  gate.resolve();
+
+  const listed = await list;
+
+  expect(first).toBe('pending');
+  expect(listed.map((found) => found.id)).toStrictEqual([sandbox.id]);
+});
+
+test('it keeps a sandbox whose destroy is refused, and records no destroy', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
+    destroyFailures: [{ kind: 'reject', message: 'impd is down' }],
+  });
+
+  const sandbox = await adapter.create({
+    kind: 'fetch',
+    image: 'fetch',
+    owner: 'web_fetch',
+    egress: { kind: 'public' },
+    grants: [],
+    toolRoute: false,
+    limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  const refused = await sandbox.destroy().then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  const listed = await adapter.list('web_fetch');
+
+  expect(refused).toBeInstanceOf(Error);
+  expect(listed.map((found) => found.id)).toStrictEqual([sandbox.id]);
+  expect(adapter.destroyed).toStrictEqual([]);
+});
+
+test('it destroys a sandbox once its waiting destroy settles', async () => {
+  const gate = Promise.withResolvers<void>();
+
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
+    destroyFailures: [{ kind: 'wait', until: gate.promise }],
+  });
+
+  const sandbox = await adapter.create({
+    kind: 'fetch',
+    image: 'fetch',
+    owner: 'web_fetch',
+    egress: { kind: 'public' },
+    grants: [],
+    toolRoute: false,
+    limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  const destroy = sandbox.destroy();
+
+  const held = await adapter.list('web_fetch');
+
+  gate.resolve();
+
+  await destroy;
+
+  expect(held.map((found) => found.id)).toStrictEqual([sandbox.id]);
+  expect(adapter.destroyed).toStrictEqual([sandbox.id]);
+});
+
 test('it creates a sandbox once the named failures are spent', async () => {
   const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
     createFailures: [{ kind: 'reject', message: 'impd is down' }],
