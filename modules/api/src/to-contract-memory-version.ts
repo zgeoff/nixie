@@ -1,7 +1,5 @@
 import type { ViewEvidence, ViewVersion } from '@heynixie/memory';
 
-// A version as the contract carries it, with its time as a date, its text only while readable, and
-// its evidence named by the message's sequence.
 export function toContractMemoryVersion(version: ViewVersion) {
   return {
     version: version.version,

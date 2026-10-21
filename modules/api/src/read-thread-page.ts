@@ -19,9 +19,6 @@ interface ThreadPage {
 
 const DEFAULT_LIMIT = 50;
 
-// Reads one page of a thread, newest last, its newest step end, and the log sequence the page was
-// read at. Nothing read is past that sequence, so a client that follows the log from it misses no
-// record and repeats none. Answers null when no thread has the ID.
 export async function readThreadPage(
   context: APIContext,
   input: ThreadPageInput,
@@ -82,8 +79,6 @@ interface PageWindow {
   readonly hasEarlier: boolean;
 }
 
-// the newest records below the bound, found by sequence alone, so the page reads forward from its
-// oldest record and decrypts only what it returns
 async function readPageWindow(context: APIContext, bounds: PageBounds): Promise<PageWindow> {
   const newest = await context.log.writer.db
     .$extendTables<APITables>()
@@ -110,7 +105,6 @@ const stepEndKinds: readonly RecordKind[] = [
   'task.revived',
 ];
 
-// the newest record on the thread that ended a step, at or before the sequence the page was read at
 async function readLastStepEnd(
   context: APIContext,
   thread: string,

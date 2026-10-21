@@ -18,7 +18,6 @@ type RefusalCode =
   | 'REVISION_TARGET'
   | 'WRONG_STATE';
 
-// The outcome of one answer to a proposal, as the contract declares it.
 export type ProposalOutcome =
   | { readonly proposalID: string; readonly status: 'applied' | 'rejected' }
   | {
@@ -34,20 +33,13 @@ export interface ProposalAnswerAction {
   readonly procedure: string;
   readonly proposalID: string;
 
-  // the input the action binds to, with no free text: its hash would confirm a guess at the text
   readonly input: JSONObject;
 
-  // the outcome that answers the action and its retries once the answer commits
   readonly committed: ProposalOutcome & JSONObject;
 
-  // answers the proposal with the action's own write in its transaction, and returns the outcome
-  // of an answer that commits nothing, such as a close match
   readonly apply: (writeInTransaction: WriteInTransaction) => Promise<ProposalOutcome | null>;
 }
 
-// Runs one answer to a proposal as a checked action, whose result commits in the answer's own
-// transaction. An answer the store refuses writes nothing and reads as stale or refused, and a
-// caller whose session ended before the answer committed gets null.
 export async function writeProposalAnswer(
   context: APIContext,
   caller: Identity,
@@ -55,7 +47,6 @@ export async function writeProposalAnswer(
 ): Promise<ProposalOutcome | null> {
   const query = { context, caller, action, inputHash: buildInputHash(action.input) };
 
-  // a committed answer closes its proposal, so a retry finds its first outcome before it runs
   const earlier = await readEarlierOutcome(context.log.writer.db, query);
 
   if (earlier !== null) {
@@ -81,8 +72,6 @@ interface AnswerQuery {
   readonly inputHash: string;
 }
 
-// the first outcome of an action whose ID came before: its own for the same caller, procedure and
-// input, or a refusal of the reused ID
 async function readEarlierOutcome(
   db: Kysely<unknown>,
   query: AnswerQuery,
@@ -103,8 +92,6 @@ async function readEarlierOutcome(
     : { proposalID: query.action.proposalID, status: 'refused', code: 'CLIENT_ACTION_ID_REUSED' };
 }
 
-// Keeps the action's result in the answer's transaction once the caller is still live and no
-// earlier action holds the ID, and otherwise ends the transaction without the answer.
 async function writeCheckedResult(tx: Transaction<unknown>, query: AnswerQuery): Promise<void> {
   const caller = query.caller;
 
@@ -128,8 +115,6 @@ async function writeCheckedResult(tx: Transaction<unknown>, query: AnswerQuery):
   });
 }
 
-// the outcome an answer that ended without committing gets, or the error again when the store gave
-// no code an outcome names
 function requireErrorOutcome(proposalID: string, error: unknown): ProposalOutcome | null {
   if (error instanceof SettledAnswerError) {
     return error.outcome;
@@ -155,13 +140,10 @@ const refusalCodes: Readonly<Record<string, RefusalCode | undefined>> = {
   RETIREMENT_EDIT: 'RETIREMENT_EDIT',
   REVISION_TARGET: 'REVISION_TARGET',
 
-  // an approval meets a self-note's refusal only as a revision of an item of the other kind
   SELF_NOTE_REFUSED: 'REVISION_TARGET',
   WRONG_STATE: 'WRONG_STATE',
 };
 
-// the outcome of an answer the memory store refused with a typed error, or null for any other
-// error; a lapsed proposal and one already answered both read as stale
 function findRefusedOutcome(proposalID: string, error: unknown): ProposalOutcome | null {
   if (error instanceof ProposalClosedError) {
     return {
@@ -188,8 +170,6 @@ function findRefusedOutcome(proposalID: string, error: unknown): ProposalOutcome
   return refusal === undefined ? null : { proposalID, status: 'refused', code: refusal };
 }
 
-// Ends the answer's transaction without the answer, because the action needs none: null when the
-// caller's session ended, or the earlier outcome of the same action.
 class SettledAnswerError extends Error {
   override readonly name = 'SettledAnswerError';
 

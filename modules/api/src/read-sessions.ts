@@ -3,8 +3,6 @@ import type { APIContext, APITables, Identity } from './types';
 
 type Session = ContractOutputs['sessions']['list']['sessions'][number];
 
-// Reads every device session that is neither revoked nor lapsed, oldest first, and marks the
-// caller's own. A host command reads them with no caller, so none is marked.
 export async function readSessions(
   context: APIContext,
   caller: Identity | null,

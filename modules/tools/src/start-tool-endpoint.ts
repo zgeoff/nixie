@@ -7,16 +7,11 @@ import type { ToolCallOptions } from './run-tool-call';
 import type { RunEndpoint, ToolEndpoint, ToolRun } from './types';
 
 export interface ToolEndpointOptions extends Omit<ToolCallOptions, 'queuedWaitMs'> {
-  // the directory that holds one Unix socket per run, which only nixie's user may enter
   readonly socketDir: string;
 
-  // how long an allowed queued call waits for its outcome inside the turn, 10 s by default
   readonly queuedWaitMs?: number;
 }
 
-// Starts nixie's tool endpoint: one stateless Streamable HTTP MCP server per run, on a Unix socket
-// of its own. The socket a connection arrives on names its run whatever the guest claims, and the
-// run's bearer token is a second check.
 export async function startToolEndpoint(options: ToolEndpointOptions): Promise<ToolEndpoint> {
   await mkdir(options.socketDir, { recursive: true, mode: 0o700 });
 
@@ -46,7 +41,6 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
       return endpoint;
     },
 
-    // the run's ID is its sandbox's owner
     getToolTarget: (sandbox) => ({ path: getSocketPath(sandbox.owner) }),
     stop: async () => {
       await Promise.all([...runs.values()].map((endpoint) => endpoint.stop()));
@@ -54,7 +48,7 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
   };
 }
 
-// A socket name of fixed length from any run ID, inside the Unix socket path limit.
+// A Unix socket path has a length limit, so the name is a fixed-length hash of the run ID.
 function buildSocketName(runID: string): string {
   return `${createHash('sha256').update(runID).digest('hex').slice(0, 32)}.sock`;
 }
@@ -75,8 +69,6 @@ async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
   const token = randomBytes(32).toString('base64url');
   const state = { isRevoked: false };
 
-  // each token's own MCP handler, the run's token and every step token, so a call's run carries
-  // the identity of the step whose token it arrived with
   const handlers = new Map<string, McpHandler>([
     [token, createMcpHandler(() => createRunServer(spec.run, spec.options))],
   ]);
@@ -87,7 +79,7 @@ async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
       state.isRevoked ? null : findTokenHandler(handlers, authorization),
     ),
 
-    // a listen stream stays open for the run, and a call can outlast any idle limit
+    // A listen stream stays open for the whole run, and a call can outlast any idle limit.
     idleTimeout: 0,
   });
 
@@ -121,7 +113,7 @@ async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
 type FindHandler = (authorization: string | null) => McpHandler | null;
 
 // The MCP handler's response goes back unread, so each chunk of a stream reaches the guest as the
-// server writes it: the CLI waits for the listen stream's acknowledgement before it lists tools.
+// server writes it: Claude Code waits for the listen stream's acknowledgement before it lists tools.
 function makeRunFetch(findHandler: FindHandler): (request: Request) => Promise<Response> {
   return (request) => {
     const handler = findHandler(request.headers.get('authorization'));
@@ -140,7 +132,6 @@ function makeRunFetch(findHandler: FindHandler): (request: Request) => Promise<R
   };
 }
 
-// the handler of the token the request presents, or null when it presents none of the run's tokens
 function findTokenHandler(
   handlers: ReadonlyMap<string, McpHandler>,
   authorization: string | null,
@@ -161,8 +152,6 @@ function isRunToken(authorization: string | null, token: string): boolean {
   return presented.length === expected.length && timingSafeEqual(presented, expected);
 }
 
-// Each step token gets a handler of its own over the run with the step's run ID, and stopping the
-// step revokes the token and closes the streams opened with it.
 function makeStepStarter(
   spec: RunEndpointSpec,
 

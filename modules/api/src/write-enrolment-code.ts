@@ -11,8 +11,6 @@ export interface IssuedCode {
   readonly expiresAt: number;
 }
 
-// Issues an enrolment code inside the caller's write transaction. nixie keeps only the code's hash,
-// and the record names who issued it, null for the host, and when it lapses, never the code.
 export async function writeEnrolmentCode(
   tx: Transaction<unknown>,
   context: APIContext,

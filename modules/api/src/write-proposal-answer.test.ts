@@ -13,8 +13,6 @@ import type { APITables } from './types';
 import { writeProposalAnswer } from './write-proposal-answer';
 import { writeSessionRevocation } from './write-session-revocation';
 
-// a test API, a memory store over its log whose gate has no checker, so every write it gates
-// becomes a proposal, and a signed-in laptop
 async function setupTest() {
   const api = await startTestAPI();
 
@@ -40,7 +38,6 @@ async function setupTest() {
 
   onTestFinished(() => memory.stop());
 
-  // boot data: an answer is a checked action of a signed-in device
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   return { ...api, memory, laptop };

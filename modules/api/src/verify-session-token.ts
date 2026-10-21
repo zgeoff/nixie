@@ -3,12 +3,10 @@ import { deriveSecretHash } from './derive-secret-hash';
 import type { APIContext, APITables, Identity } from './types';
 import { writeRefusal } from './write-refusal';
 
-// the external ID of every token nixie never issued, which no session ID can equal
+// Every token nixie never issued shares this external ID, which no session ID equals, so a stranger
+// with fresh random tokens still gets one refusal per interval.
 const unknownTokenID = 'unknown-token';
 
-// Resolves a device session token to its row of the identity record, or null. A revoked or lapsed
-// session is refused under its session's ID. Every token nixie never issued shares one external ID,
-// so a stranger with fresh random tokens still gets one refusal an interval.
 export async function verifySessionToken(
   context: APIContext,
   token: string | undefined,
@@ -59,7 +57,6 @@ function isLive(context: APIContext, row: IdentityRow): boolean {
   );
 }
 
-// the last seen time moves at most once per interval, so a busy client does not write on every call
 async function updateLastSeen(context: APIContext, row: IdentityRow): Promise<number> {
   const now = context.clock.now();
 

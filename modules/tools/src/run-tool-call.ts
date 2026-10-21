@@ -20,27 +20,20 @@ export interface ToolCallOptions {
   readonly registry: ToolRegistry;
   readonly decide: DecisionPoint;
 
-  // a log the call's records append to
   readonly log: Log;
 
-  // the definitions in force, whose snapshot hash the call's records carry
   readonly definitions: () => Definitions;
   readonly queue: ActionQueue;
 
-  // how long an allowed queued call waits for its outcome inside the turn
   readonly queuedWaitMs: number;
 }
 
-// A tools/call request as the endpoint received it.
 export interface ToolCallRequest {
   readonly tool: string;
   readonly input: JSONObject;
   readonly toolUseID: string | null;
 }
 
-// Runs one tool call through the steps every call takes: the input schema, the decision point, the
-// tool or the action queue, then the records of the call, its decision and its result. The model
-// reads a typed result as structuredContent, and every other outcome as one text block.
 export async function runToolCall(
   request: ToolCallRequest,
   run: ToolRun,
@@ -65,7 +58,6 @@ export async function runToolCall(
 
 type SettledOutcome = 'result' | 'invalid' | 'denied' | 'error' | 'queued' | 'failed' | 'unknown';
 
-// A settled call: what the result's record holds, and what the model receives.
 interface Settled {
   readonly outcome: SettledOutcome;
   readonly actionID: string | null;
@@ -82,7 +74,6 @@ interface CallRecorder {
 }
 
 function makeCallRecorder(call: ToolCall, run: ToolRun, options: ToolCallOptions): CallRecorder {
-  // one snapshot for both records, so a replay of the decision reads the definitions it ran under
   const definitions = options.definitions();
   const ids = { callID: call.callID, runID: run.runID, toolUseID: call.toolUseID };
   const recordInput = options.registry.findTool(call.tool)?.definition.recordInput;
@@ -158,7 +149,6 @@ function checkListedInput(
     : { isValid: true };
 }
 
-// An input that breaks the schema never reaches the decision point, so its call has no decision.
 async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
   const callSequence = await recorder.writeCall(null);
 
@@ -175,7 +165,6 @@ interface MessageOptions {
   readonly actionID?: string;
 }
 
-// A message nixie writes itself, such as a deny or a schema error, comes from nixie's own state.
 function buildMessage(
   outcome: SettledOutcome,
   message: string,
@@ -202,7 +191,6 @@ interface DecidedCall {
 function runDecidedCall(decided: DecidedCall): Promise<Settled> {
   const { policy, registered, ...rest } = decided;
 
-  // the registry stage denies a tool the registry does not hold, so an allowed call has its tool
   if (policy.decision.outcome === 'deny' || registered === null) {
     const message = `denied: ${policy.sentence ?? 'no rule allowed this call'}`;
 
@@ -221,12 +209,10 @@ interface AllowedCall {
   readonly call: ToolCall;
   readonly run: ToolRun;
 
-  // the sequence of the call's record, which holds the decision that allowed it
   readonly callSequence: number;
   readonly options: ToolCallOptions;
 }
 
-// A tool or a queue that throws still settles, so the call keeps its result record.
 async function tryRunAllowedCall(allowed: AllowedCall): Promise<Settled> {
   try {
     return await runAllowedCall(allowed);
@@ -252,7 +238,6 @@ async function runDirect(allowed: AllowedCall): Promise<Settled> {
     : buildTypedResult(allowed.registered, outcome, null);
 }
 
-// The model reads the whole result, and the record holds the tool's record form of it, if any.
 function buildTypedResult(
   registered: RegisteredTool,
   typed: TypedResult,
@@ -287,7 +272,6 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
     callSequence: allowed.callSequence,
   });
 
-  // the action is queued, so a wait that fails leaves its outcome to reach the task's inbox
   const outcome = await allowed.options.queue
     .waitForOutcome(actionID, allowed.options.queuedWaitMs)
     .catch(() => null);
@@ -300,7 +284,6 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
     return buildTypedResult(allowed.registered, outcome, actionID);
   }
 
-  // the call was allowed and the action ran, so its outcome is no tool error
   return buildMessage(outcome.outcome, `action ${actionID} ${outcome.outcome}: ${outcome.reason}`, {
     source: 'untrusted',
     isError: false,

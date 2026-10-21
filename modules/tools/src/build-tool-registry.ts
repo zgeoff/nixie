@@ -9,9 +9,6 @@ import type {
   ToolRegistry,
 } from './types';
 
-// Builds nixie's tool registry and refuses a definition that breaks a registry rule: a repeated
-// name, an input that is not an object, an execution that does not follow from the effects, or a
-// result field with no source.
 export function buildToolRegistry(definitions: readonly ToolDefinition[]): ToolRegistry {
   const validator = new AjvJsonSchemaValidator();
 
@@ -53,8 +50,6 @@ function assertDefinition(definition: ToolDefinition): void {
   assertResultSources(definition);
 }
 
-// A tool with any of these effects acts outside nixie, so it runs as an action. A read retried
-// after a crash repeats nothing, so every other tool runs direct.
 const queuedEffects: ReadonlySet<Effect> = new Set(['write', 'delete', 'send', 'spend', 'device']);
 
 function assertExecution(definition: ToolDefinition): void {
@@ -69,8 +64,6 @@ function assertExecution(definition: ToolDefinition): void {
   }
 }
 
-// Every top-level field of the typed result declares its source of content, and every declared
-// source names a field, so each result field's record carries its source.
 function assertResultSources(definition: ToolDefinition): void {
   const properties = definition.output['properties'];
 

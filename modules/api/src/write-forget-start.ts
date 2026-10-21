@@ -11,12 +11,8 @@ interface ForgetTarget {
   readonly sequence: number;
 }
 
-// the records a forget can remove: your message, and a reply from the conversation's model
 const forgettableKinds: readonly RecordKind[] = ['owner_message', 'model.reply'];
 
-// Commits record.forget_started for a message or a reply on the thread and answers its time, or
-// the first start's time when a forget of the record already began, or null when the thread holds
-// no such record at the sequence.
 export async function writeForgetStart(
   tx: Transaction<unknown>,
   context: APIContext,

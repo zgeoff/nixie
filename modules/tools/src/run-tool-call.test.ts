@@ -195,6 +195,36 @@ test("it records the call's input in the record form the tool gives", async () =
   });
 });
 
+test('it gives the record form the input the model sent when the input fails the schema', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_write',
+        declaration: { effects: ['note'] },
+        recordInput: (input) => ({ sent: input }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'notes_write', input: { query: 7 }, toolUseID: 'toolu_4' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_write'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(entries[0]?.record).toMatchObject({
+    kind: 'tool_called',
+    erasable: { status: 'readable', fields: { input: { sent: { query: 7 } } } },
+  });
+});
+
 test('it returns an allowed queued call the action outcome once the action is done', async () => {
   const ctx = await setupTest({
     tools: [

@@ -2,9 +2,6 @@ import { onTestFinished } from 'bun:test';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { RunEndpoint } from '../types';
 
-// Connects an MCP client to a run's endpoint over its Unix socket with the run's bearer token, or
-// with the token given, such as a step's, on MCP revision 2026-07-28 as Claude Code speaks it. The
-// test's end closes the client.
 export async function startRunClient(
   endpoint: RunEndpoint,
   token: string = endpoint.token,

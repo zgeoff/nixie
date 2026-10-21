@@ -1,8 +1,8 @@
 import type { Transaction } from 'kysely';
 import type { APIContext, APITables } from './types';
 
-// Checks inside an action's write transaction that the caller's session is still neither revoked
-// nor lapsed, so a revoke that commits after the call resolved its session still stops the action.
+// The caller runs this inside the action's write transaction, so a revoke that commits after the
+// call resolved its session still stops the action.
 export async function probeLiveIdentity(
   tx: Transaction<unknown>,
   context: APIContext,

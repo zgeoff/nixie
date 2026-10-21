@@ -1,4 +1,3 @@
-// The record kinds the api module registers with the log: device sessions and refused callers.
 export type APIRecordKind =
   | 'session.enrolled'
   | 'session.labelled'

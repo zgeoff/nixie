@@ -4,9 +4,6 @@ import invariant from 'tiny-invariant';
 import { readRecordForget } from './read-record-forget';
 import type { APIContext, APITables } from './types';
 
-// Finishes a forget that record.forget_started began: it deletes the record's key and each image
-// offer key for it, runs the session cleanup and commits record.forgotten, each safe to rerun.
-// Before the conversation starts the forget stays begun, and the start sequence finishes it.
 export async function runRecordForgetCleanup(
   context: APIContext,
   recordSequence: number,
@@ -35,8 +32,6 @@ function buildForgottenQuery(sequence: number) {
   return { kind: 'record.forgotten', sequence } as const;
 }
 
-// Deletes and checkpoints the record's key, and answers the record's thread, which its forget's
-// records go on.
 async function removeForgottenKey(context: APIContext, recordSequence: number): Promise<string> {
   const target = await context.log.writer.db
     .$extendTables<APITables>()
@@ -45,7 +40,6 @@ async function removeForgottenKey(context: APIContext, recordSequence: number): 
     .where('sequence', '=', recordSequence)
     .executeTakeFirst();
 
-  // record.forget_started names a message or a reply that its transaction found on a thread
   invariant(
     target !== undefined && target.thread !== null,
     `the forgotten record ${String(recordSequence)} has no thread`,
@@ -63,7 +57,6 @@ interface ForgottenTarget {
   readonly thread: string;
 }
 
-// commits record.forgotten once, so a cleanup that runs twice leaves one
 function writeRecordForgotten(context: APIContext, target: ForgottenTarget): Promise<void> {
   return withWriteTransaction(context.log.writer, async (tx) => {
     if ((await readRecordForget(tx, buildForgottenQuery(target.recordSequence))) !== null) {

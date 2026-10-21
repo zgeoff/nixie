@@ -9,8 +9,6 @@ export interface ClientAction {
   readonly result: Readonly<Record<string, unknown>>;
 }
 
-// Finds the first result of a checked action by its client action ID, or null when the ID is new,
-// in a write transaction or on the database handle.
 export async function readClientAction(
   tx: Kysely<unknown>,
   clientActionID: string,

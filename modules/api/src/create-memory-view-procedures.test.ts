@@ -9,8 +9,6 @@ import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 
-// a test API that serves a memory store over its log, whose gate has no checker, since no test
-// writes through the gate
 async function setupTest() {
   const api = await startTestAPI();
 

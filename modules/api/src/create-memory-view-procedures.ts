@@ -8,8 +8,6 @@ import { toContractMemoryItem } from './to-contract-memory-item';
 import { toContractMemoryVersion } from './to-contract-memory-version';
 import type { APIContext, ReadViewMemory } from './types';
 
-// Builds the memory view's reads for a signed-in device: a page of items in one state, a search of
-// the active items, the pinned core against its budget, and one item with every version.
 export function createMemoryViewProcedures(context: APIContext, readMemory: ReadViewMemory) {
   const memory = apiImplementer.memory;
 
@@ -84,7 +82,6 @@ interface PageInput {
   readonly limit?: number | undefined;
 }
 
-// the contract's page input with each field it leaves out absent
 function toPageRequest(input: PageInput): ViewPageRequest {
   return {
     state: input.state,

@@ -4,8 +4,6 @@ import { requireCaller } from './require-caller';
 import type { APIContext } from './types';
 import { writeSessionRevocation } from './write-session-revocation';
 
-// Builds the revoke of a device session, a checked action of any signed-in device, its own session
-// included.
 export function createRevokeProcedure(context: APIContext) {
   return apiImplementer.sessions.revoke.handler(async (options) => {
     const caller = await requireCaller(
@@ -24,7 +22,6 @@ export function createRevokeProcedure(context: APIContext) {
       }[result.status]();
     }
 
-    // a browser that revokes its own session drops the cookie with it
     if (options.input.sessionID === caller.identityID && options.context.tokenSource === 'cookie') {
       options.context.resHeaders?.append('set-cookie', renderSessionCookie(null));
     }

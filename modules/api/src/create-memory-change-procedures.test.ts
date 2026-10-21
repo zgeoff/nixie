@@ -10,8 +10,6 @@ import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 
-// a test API that serves a memory store over its log, whose gate has no checker, since no test
-// writes through the gate
 async function setupTest() {
   const api = await startTestAPI();
 
@@ -359,7 +357,7 @@ test('#memory.pin answers a retry with its first result after the pinned core fi
 
   const client = buildTestClient(ctx.url, laptop.token);
 
-  // about 1,100 tokens each, so the core holds one of them and not both
+  // Each text is about 1,100 tokens, so the pinned core's budget holds one of them and not both.
   const item = await ctx.memory.remember({
     text: 'Keeps a long packing list for trips. '.repeat(119),
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

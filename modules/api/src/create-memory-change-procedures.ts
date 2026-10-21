@@ -4,8 +4,6 @@ import { ownerProvenance } from './owner-provenance';
 import { runMemoryChange } from './run-memory-change';
 import type { APIContext, ReadViewMemory } from './types';
 
-// Builds the memory view's changes for a signed-in device: retire, restore, pin, unpin and forget,
-// each a checked action bound to the version the view showed, with you as its origin and its source.
 export function createMemoryChangeProcedures(context: APIContext, readMemory: ReadViewMemory) {
   const memory = apiImplementer.memory;
   const parts = { context, readMemory };

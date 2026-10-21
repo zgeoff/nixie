@@ -19,7 +19,6 @@ interface OwnerMessageInput {
   readonly timeZone?: string | undefined;
   readonly writtenAt?: string | undefined;
 
-  // the images readOwnerImages checked, in the order sent
   readonly images?: readonly OwnerImage[] | undefined;
 }
 
@@ -29,9 +28,6 @@ type OwnerMessageResult =
   | { readonly status: 'reused' }
   | { readonly status: 'unauthorized' };
 
-// Writes your message once per client message ID into its thread's task inbox, with the text, spans
-// and session label encrypted together and each image sealed under the same key. checkRetry says
-// which retry answers with the first sequence and which is refused.
 export async function writeOwnerMessage(
   context: APIContext,
   caller: Identity,
@@ -86,7 +82,6 @@ async function writeMessage(
     .where('task_id', '=', input.thread)
     .executeTakeFirst();
 
-  // a task that ended takes no input, so its thread takes no message
   if (task === undefined || task.state === 'done' || task.state === 'failed') {
     return { status: 'thread_not_found' };
   }
@@ -128,9 +123,6 @@ async function writeMessage(
   return { status: 'written', duplicate: false, sequence: record.sequence };
 }
 
-// The message keeps the label its session had when it was sent, so a later rename reaches the next
-// message and leaves the ones before it as they were. The label sits beside the text, as every free
-// text field does, and a forget of the message forgets it too.
 async function readSessionLabel(tx: Transaction<unknown>, identityID: string): Promise<string> {
   const row = await tx
     .$extendTables<APITables>()
@@ -139,29 +131,21 @@ async function readSessionLabel(tx: Transaction<unknown>, identityID: string): P
     .where('identity_id', '=', identityID)
     .executeTakeFirst();
 
-  // the caller's session was live in this transaction, so its row is there
   invariant(row, 'the live session has no identity row');
 
   return row.label;
 }
 
-// The payload holds the zone, outside the erasable fields, so a reader finds where you were without
-// a key. A zone the server does not know is left out.
 function pickTimeZone(zone: string | undefined): { readonly timeZone?: string } {
   return zone !== undefined && isTimeZone(zone) ? { timeZone: zone } : {};
 }
 
-// The payload holds when the device says you wrote the message, beside the time the record keeps of
-// when it arrived, so a reader sees a message that waited on the device. A time that does not parse
-// is left out.
 function pickWrittenAt(writtenAt: string | undefined): { readonly writtenAt?: string } {
   const at = writtenAt === undefined ? Number.NaN : Date.parse(writtenAt);
 
   return Number.isNaN(at) ? {} : { writtenAt: new Date(at).toISOString() };
 }
 
-// The payload names each image's type, which a reader needs without a key; the bytes are sealed.
-// A message with no images names none.
 type OwnerMessagePayload = Parameters<typeof ownerMessageCodec.encode>[0];
 
 function pickImageTypes(images: readonly OwnerImage[]): Pick<OwnerMessagePayload, 'images'> {
@@ -174,9 +158,8 @@ function toSpanJSON(span: Span): JSONObject {
   return { start: span.start, end: span.end, source: span.source };
 }
 
-// nixie keeps no hash of a message's text, which would outlive a forget of the text, so a retry is
-// compared with the first record itself: its thread, its image count, and its text and image bytes
-// until forgotten
+// A hash of the text would outlive a forget of the text, so a retry is compared with the first
+// record itself.
 async function checkRetry(
   context: APIContext,
   input: OwnerMessageInput,
@@ -199,8 +182,6 @@ async function checkRetry(
   return hasSame ? { status: 'written', duplicate: true, sequence } : { status: 'reused' };
 }
 
-// The count always compares, from the payload. The bytes compare while the first record's images
-// are readable, and a forgotten record's images, unreadable with its text, compare as the same.
 async function probeSameImages(
   context: APIContext,
   record: LogRecord,

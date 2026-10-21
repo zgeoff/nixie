@@ -5,8 +5,6 @@ import { readSessions } from './read-sessions';
 import type { APIContext } from './types';
 import { updateSessionLabel } from './update-session-label';
 
-// Builds the host procedures over the device sessions: issue a code that signs one device in, list
-// the live sessions, and set the label of one.
 export function createHostSessionProcedures(context: APIContext) {
   const sessions = hostImplementer.sessions;
 
@@ -17,7 +15,6 @@ export function createHostSessionProcedures(context: APIContext) {
       return { code: issued.code, expiresAt: issued.expiresAt };
     }),
 
-    // a host command reads the sessions with no caller, so none is the current one
     list: sessions.list.handler(async () => {
       const live = await readSessions(context, null);
 

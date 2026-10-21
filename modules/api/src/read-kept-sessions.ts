@@ -1,7 +1,6 @@
 import type { Kysely } from 'kysely';
 import type { APIContext, APITables } from './types';
 
-// A session that a reset keeps, with what its session_kept record carries.
 export interface KeptSession {
   readonly identityID: string;
   readonly channel: string;
@@ -9,8 +8,6 @@ export interface KeptSession {
   readonly pairedAt: number;
 }
 
-// Reads the identities that are neither revoked nor lapsed, oldest first, which a reset keeps
-// signed in. A revoked or lapsed identity has no use after the reset, so the reset removes it.
 export async function readKeptSessions(
   db: Kysely<unknown>,
   context: Pick<APIContext, 'clock' | 'settings'>,

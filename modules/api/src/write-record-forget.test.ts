@@ -17,8 +17,6 @@ import { writeSessionRevocation } from './write-session-revocation';
 
 async function setupTest() {
   const api = await startTestAPI();
-
-  // boot data: a forget is a checked action of a signed-in device
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   return {
@@ -93,7 +91,6 @@ test('it forgets the images of your message, whose sealed bytes then decrypt in 
 
   const after = await readRecordAttachments(ctx.context.log, [sent.sequence]);
 
-  // the rows a backup of nixie.db keeps, which hold only ciphertext under the deleted key
   const sealed = await ctx.writer.db
     .$extendTables<LogTables>()
     .selectFrom('record_attachments')
@@ -112,7 +109,6 @@ test('it forgets the images of your message, whose sealed bytes then decrypt in 
 
   expect(after.get(sent.sequence)).toStrictEqual({ status: 'shredded' });
 
-  // each of the 2 sealed rows stays in the table, and neither holds an image's bytes in the clear
   expect(
     sealed.map((row) => new TextDecoder().decode(row.sealed).includes('Porch-image-')),
   ).toStrictEqual([false, false]);

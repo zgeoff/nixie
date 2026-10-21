@@ -20,9 +20,6 @@ type RecordForgetResult =
   | { readonly status: 'reused' }
   | { readonly status: 'unauthorized' };
 
-// Forgets your message or a reply, a checked action bound to the record's thread and sequence. It
-// commits record.forget_started with the action's result, then runs the cleanup. A record already
-// forgetting gets no second start, and a retry runs the cleanup again, so a failed one finishes.
 export async function writeRecordForget(
   context: APIContext,
   caller: Identity,
@@ -73,8 +70,6 @@ interface ForgetState {
   readonly callerID: string;
 }
 
-// the answer a call gets without a write: refused for a caller no longer live, and for an ID that
-// came before, its first result for the same caller and input, or a refusal as reused
 function pickSettledForget(state: ForgetState): RecordForgetResult | null {
   if (!state.live) {
     return { status: 'unauthorized' };

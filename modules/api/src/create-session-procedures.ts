@@ -5,8 +5,6 @@ import { requireCaller } from './require-caller';
 import type { APIContext } from './types';
 import { writeIssuedCode } from './write-issued-code';
 
-// Builds the procedures of a signed-in device over the sessions: issue a code for one more device,
-// and list every live session.
 export function createSessionProcedures(context: APIContext) {
   return {
     issueCode: apiImplementer.sessions.issueCode.handler(async (options) => {
