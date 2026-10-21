@@ -938,6 +938,51 @@ test('it marks a skill that nixie wrote as yours once the definitions hold its v
   expect(states.rows).toStrictEqual([{ state: 'adopted' }]);
 });
 
+test('it keeps a skill that nixie wrote in force under format 1, though the definitions hold its version', async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+
+  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const states = await sql`select state from written_skills`.execute(ctx.writer.db);
+
+  expect(result).toMatchObject({
+    status: 'seeded',
+    inForce: { skills: [{ name: 'tide-tables', skillHash: skill.skillHash, origin: 'nixie' }] },
+    record: {
+      payload: {
+        unapplied: ['skills/tide-tables/SKILL.md'],
+        adoptedSkills: [],
+      },
+    },
+  });
+
+  expect(states.rows).toStrictEqual([{ state: 'in_force' }]);
+});
+
 test('it keeps a skill that nixie wrote in force over a definitions change, beside the version beneath it', async () => {
   const ctx = await setupTest();
 
