@@ -16,12 +16,9 @@ export interface GuestSummarySpec {
   readonly command: GuestCommand;
   readonly frame: SummarizeFrame;
 
-  // aborts when the step's lease is lost or a forget invalidates the session, which stops the guest
   readonly signal: AbortSignal;
 }
 
-// Runs the conversation guest once for one summary call and returns the summary. A guest that
-// reports a failure, or exits without a summary, throws with what it reported.
 export async function runGuestSummary(spec: GuestSummarySpec): Promise<GuestSummary> {
   const stream = await spec.sandbox.spawn({
     argv: spec.command.argv,
@@ -32,7 +29,7 @@ export async function runGuestSummary(spec: GuestSummarySpec): Promise<GuestSumm
   const unsubscribe = subscribeToAbort(spec.signal, stream);
 
   try {
-    // a signal that aborted while the guest started never fires its listener
+    // An AbortSignal that aborted before the listener attached never fires it.
     spec.signal.throwIfAborted();
 
     const frames = await readSummaryFrames(stream, spec.frame);
@@ -49,7 +46,6 @@ export async function runGuestSummary(spec: GuestSummarySpec): Promise<GuestSumm
   }
 }
 
-// stops the guest when the signal aborts, until the returned function detaches it
 function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
   const stopStream = () => {
     void stream.stop();

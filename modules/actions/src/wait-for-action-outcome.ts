@@ -11,9 +11,6 @@ export interface WaitForActionOutcomeOptions {
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
-// Waits inside the turn, 10 s by default, for an action to settle, then returns what the model
-// sees: the outcome, or "queued as <id>" while the action is still pending. It reads the action
-// again after each commit, and the outcome reaches the task's inbox for its next turn either way.
 export async function waitForActionOutcome(
   context: TasksContext,
   actionID: string,
@@ -42,12 +39,10 @@ interface SettledWait {
   readonly wake: RecordWake;
 }
 
-// reads the action again after each commit until it settles or the deadline passes
 async function waitForSettledRow(context: TasksContext, wait: SettledWait): Promise<SettledRow> {
   const db = context.log.writer.db.$extendTables<ActionsTables>();
 
   for (;;) {
-    // the reset comes before the read, so a commit during the read wakes the wait at once
     wait.wake.reset();
 
     const row = await db
@@ -71,7 +66,6 @@ interface CommitWait {
   readonly timeoutMs: number;
 }
 
-// resolves at the next commit, or once the timeout passes on the clock
 async function waitForCommit(wake: RecordWake, wait: CommitWait): Promise<void> {
   const timer = new AbortController();
 

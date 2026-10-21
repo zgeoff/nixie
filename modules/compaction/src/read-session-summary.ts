@@ -2,19 +2,14 @@ import { readThreadNewestFirst } from '@heynixie/log';
 import { z } from 'zod';
 import type { LogContext } from './types';
 
-// The record kind of a summary that the model wrote at the end of a session.
 const sessionSummarizedKind = 'model.session_summarized';
 
-// A summary as a new session's opening reads it: the record's sequence, the last sequence the
-// summarized session held, and the text.
 export interface SessionSummary {
   readonly sequence: number;
   readonly throughSequence: number;
   readonly text: string;
 }
 
-// The summary record's shape: the text in its erasable fields, and the last sequence the session
-// held in its payload.
 const readableText = z.object({
   status: z.literal('readable'),
   fields: z.object({ text: z.string() }),
@@ -25,8 +20,6 @@ const summarySchema = z.object({
   erasable: readableText,
 });
 
-// Finds the thread's newest summary that is still readable, or null when every summary is erased,
-// as a forget leaves them, or none exists.
 export async function readSessionSummary(
   context: LogContext,
   taskID: string,

@@ -5,8 +5,6 @@ import { join } from 'node:path';
 import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 
-// Starts a writer on a fresh data directory, with a new deployment key and the log's own
-// projections. When the test finishes it stops the writer, then removes the directory.
 export async function startTestLog(): Promise<Log> {
   const stack = new AsyncDisposableStack();
 

@@ -400,7 +400,6 @@ test('it fails a fetch whose time limit passed before its fetcher exited', async
 
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => {
-      // the time passes while the fetcher answers, with no sleep woken, as a stalled event loop does
       time.now = 2500;
 
       return {

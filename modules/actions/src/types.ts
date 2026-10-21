@@ -2,10 +2,8 @@ import type { CheckedTables } from '@heynixie/db';
 import type { Decision, JSONObject } from '@heynixie/log';
 import type { TaskClaim, TasksTables } from '@heynixie/tasks';
 
-// The 4 outcomes of an action. pending covers both a queued action and one waiting for a retry.
 export type ActionStatus = 'pending' | 'done' | 'failed' | 'unknown';
 
-// Why an action failed, went unknown or waits for a retry, as a code with no free text.
 export type OutcomeReason =
   | 'refused'
   | 'refusal_can_clear'
@@ -21,7 +19,6 @@ export type Outcome =
   | { readonly status: 'pending'; readonly reason: OutcomeReason; readonly delayMs: number }
   | { readonly status: 'unknown'; readonly reason: OutcomeReason };
 
-// An allowed tool call, which the tool queues as an action, under the claim of the step that made it.
 export interface AllowedCall {
   readonly step: TaskClaim;
   readonly tool: string;
@@ -30,7 +27,6 @@ export interface AllowedCall {
   readonly decision: Decision;
 }
 
-// What the model sees of an action: structured input, never an instruction to act.
 export type ModelView =
   | { readonly status: 'done'; readonly actionID: string; readonly result: JSONObject | null }
   | { readonly status: 'failed'; readonly actionID: string; readonly reason: string }
@@ -55,5 +51,5 @@ interface ActionTable {
 
 export type ActionRow = ActionTable;
 
-// mapped types, because Kysely's table map needs the index signature an interface lacks
+// Mapped types, because Kysely's table map needs the index signature that an interface lacks.
 export type ActionsTables = TasksTables & CheckedTables<Readonly<{ actions: ActionTable }>>;

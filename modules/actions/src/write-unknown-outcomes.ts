@@ -3,9 +3,6 @@ import type { TasksContext } from '@heynixie/tasks';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { ActionsTables } from './types';
 
-// Recovery step 3: marks each action that started an attempt without a recorded result as unknown,
-// with a record that reaches its task's inbox. The call may have reached the provider, so the
-// action never runs a plain second attempt; in slice 1 it stays unknown.
 export async function writeUnknownOutcomes(context: TasksContext): Promise<void> {
   const settled = await withWriteTransaction(context.log.writer, async (tx) => {
     const open = await tx

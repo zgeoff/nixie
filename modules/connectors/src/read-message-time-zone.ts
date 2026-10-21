@@ -2,12 +2,8 @@ import type { Log, LogTables } from '@heynixie/log';
 import type { TasksRecordKind } from '@heynixie/tasks';
 import { sql } from 'kysely';
 
-// the tasks module registers the owner message's kind with the log, as an inbox kind
 const ownerMessageKind: TasksRecordKind = 'owner_message';
 
-// Finds the time zone of the newest owner message that carries one, in any thread, or null when no
-// message does. The API keeps the zone in the message's payload, outside its erasable fields, so
-// the zone stays readable after the message's text is forgotten.
 export async function readMessageTimeZone(log: Pick<Log, 'writer'>): Promise<string | null> {
   const timeZone = sql`json_extract(payload, '$.timeZone')`;
 

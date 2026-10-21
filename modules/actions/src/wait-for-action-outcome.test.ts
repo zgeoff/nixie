@@ -8,7 +8,6 @@ import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
 import { waitForActionOutcome } from './wait-for-action-outcome';
 
-// the step that makes the tool call, claimed by its task runner
 async function setupTest() {
   const actions = await startTestActions();
   const step = await createTestStep(actions.context);
@@ -41,7 +40,6 @@ test('it returns the outcome on the commit that settles the action, without poll
     leaseMs: 60_000,
   });
 
-  // the test clock never advances, so only the commit can end the wait
   const view = await waiting;
 
   expect(view).toStrictEqual({

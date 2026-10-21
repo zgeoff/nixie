@@ -8,13 +8,9 @@ export interface QueuedAction {
   readonly actionID: string;
   readonly status: ActionStatus;
 
-  // true when the call matched an earlier action, whose status this is, and queued nothing
   readonly isRepeat: boolean;
 }
 
-// Queues an allowed call as an action under a new ID, its queue key and idempotency key, only while
-// the step's lease stands. A repeat call with the same action hash, under the same step key or while
-// an earlier action of the task is pending or unknown, returns that action's status instead.
 export async function createAllowedAction(
   context: TasksContext,
   call: AllowedCall,

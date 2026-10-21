@@ -8,8 +8,6 @@ export interface ActionRunnersOptions {
   readonly connectors: ReadonlyMap<string, ActionConnector>;
   readonly onError: (error: unknown) => void;
 
-  // 4 actions at once by default, apart from the task runners, so a send goes out while every
-  // task runner is busy with a long turn
   readonly size?: number;
   readonly holder?: string;
   readonly leaseMs?: number;
@@ -20,8 +18,6 @@ const DEFAULT_SIZE = 4;
 const DEFAULT_LEASE_MS = 60_000;
 const DEFAULT_POLL_MS = 1000;
 
-// Starts the action runners: a pool that claims each due action through the same claim path as a
-// task step, and runs one attempt of it per claim.
 export function startActionRunners(
   context: TasksContext,
   options: ActionRunnersOptions,

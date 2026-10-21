@@ -8,8 +8,6 @@ export interface ClaimActionOptions {
   readonly leaseMs: number;
 }
 
-// Claims the next pending action whose attempt is due, through the same lease and generation as a
-// task step.
 export function claimAction(
   context: TasksContext,
   options: ClaimActionOptions,

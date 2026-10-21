@@ -4,9 +4,6 @@ import { ChecksumMismatchError } from './checksum-mismatch-error';
 import { DownloadFailedError } from './download-failed-error';
 import { PinnedFileListError } from './pinned-file-list-error';
 
-// Downloads each file a pinned file list names into outDir, checking its SHA-256 before it writes
-// it, so a file that differs never reaches outDir. A file already there with that SHA-256 stays,
-// with no download. It returns each file's path in outDir, in list order.
 export async function writePinnedFiles(
   listText: string,
   outDir: string,
@@ -29,8 +26,6 @@ interface PinnedFile {
   readonly sha256: string;
 }
 
-// Each line that is not blank or a # comment is a relative path, a URL and a SHA-256, split by
-// spaces. A path that leaves the folder it names, by an absolute path or a .. part, is refused.
 function parsePinnedFileList(text: string): readonly PinnedFile[] {
   return text
     .split('\n')
@@ -105,8 +100,8 @@ async function readCheckedFile(file: PinnedFile): Promise<Uint8Array> {
   return bytes;
 }
 
-// a rename puts the whole file in place at once, so a stopped download leaves no partial file under
-// the pinned name
+// A rename puts the whole file in place at once, so a stopped download leaves no partial file
+// under the pinned name.
 async function writeWholeFile(target: string, bytes: Uint8Array): Promise<void> {
   await mkdir(dirname(target), { recursive: true });
 

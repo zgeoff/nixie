@@ -4,7 +4,6 @@ import { startTestLog } from '@heynixie/log/test-utils';
 import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { runSessionCompaction } from './run-session-compaction';
 
-// A worker task's model loop on the stub sandbox, with no compaction settings, which each test sets.
 async function setupTest() {
   const log = await startTestLog();
 

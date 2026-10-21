@@ -72,8 +72,6 @@ test('it takes the lowest free number when numbered labels are held', () => {
 });
 
 test('it treats a held label as taken after trimming, in NFC and ignoring case', () => {
-  // the account name holds é as one code point, and the held label holds É as E with a combining
-  // acute accent
   const composed = `jos${String.fromCodePoint(0xe9)}@example.org`;
   const decomposed = ` JOSE${String.fromCodePoint(0x03_01)}@EXAMPLE.ORG `;
 
