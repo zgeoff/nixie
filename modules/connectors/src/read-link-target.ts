@@ -6,8 +6,6 @@ export interface LinkRef {
   readonly number: number;
 }
 
-// Reads the target of the link the session numbered, or null when the session gave no link that
-// number, as with a number an earlier session gave.
 export async function readLinkTarget(
   log: Pick<Log, 'writer'>,
   link: LinkRef,

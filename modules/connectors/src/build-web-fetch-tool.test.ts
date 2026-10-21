@@ -1,14 +1,17 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { waitForCondition } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { buildWebFetchTool } from './build-web-fetch-tool';
+import { removeThreadLinks } from './remove-thread-links';
 import { startFetchSandbox } from './start-fetch-sandbox';
 import { buildStubSandboxAdapter } from './test-utils/build-stub-sandbox-adapter';
 import { makeStubFetcher } from './test-utils/make-stub-fetcher';
 import { startTestLog } from './test-utils/start-test-log';
+import { webFetchDefaults } from './web-fetch-defaults';
 
 async function setupTest() {
   return { log: await startTestLog() };
@@ -40,7 +43,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
 
   onTestFinished(() => fetchSandbox.stop());
 
-  const tool = buildWebFetchTool(fetchSandbox.readPage, ctx.log);
+  const tool = buildWebFetchTool(fetchSandbox.readPage, { log: ctx.log, textBytes: 20_000 });
 
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://site.test/' }, toolUseID: null },
@@ -82,7 +85,7 @@ test("it writes each link in the page's text as an ID the session numbers from 1
     blocked: null,
   };
 
-  const tool = buildWebFetchTool(() => Promise.resolve(reply), ctx.log);
+  const tool = buildWebFetchTool(() => Promise.resolve(reply), { log: ctx.log, textBytes: 20_000 });
 
   const outcome = await tool.run(
     {
@@ -136,7 +139,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
 
   const tool = buildWebFetchTool(
     (url) => Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page' }),
-    ctx.log,
+    { log: ctx.log, textBytes: 20_000 },
   );
 
   const run = {
@@ -191,7 +194,7 @@ test('it shows the host only for a link that leaves the page site', async () => 
     blocked: null,
   };
 
-  const tool = buildWebFetchTool(() => Promise.resolve(reply), ctx.log);
+  const tool = buildWebFetchTool(() => Promise.resolve(reply), { log: ctx.log, textBytes: 20_000 });
 
   const outcome = await tool.run(
     {
@@ -247,7 +250,7 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
     Promise.resolve(pages[url] ?? { kind: 'failed' as const, reason: 'no such page' }),
   );
 
-  const tool = buildWebFetchTool(readPage, ctx.log);
+  const tool = buildWebFetchTool(readPage, { log: ctx.log, textBytes: 20_000 });
 
   const run = {
     runID: 'conversation',
@@ -298,7 +301,7 @@ test.each([['L1'], ['l1'], ['[L1]'], [' L1 '], ['[L1 · bakery.test]']])(
       }),
     );
 
-    const tool = buildWebFetchTool(readPage, ctx.log);
+    const tool = buildWebFetchTool(readPage, { log: ctx.log, textBytes: 20_000 });
 
     const run = {
       runID: 'conversation',
@@ -343,7 +346,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
     }),
   );
 
-  const tool = buildWebFetchTool(readPage, ctx.log);
+  const tool = buildWebFetchTool(readPage, { log: ctx.log, textBytes: 20_000 });
 
   await tool.run(
     {
@@ -400,18 +403,11 @@ test('it refuses a page whose session a forget ended while it was fetched, and n
     blocked: null,
   };
 
-  await writeRecords(ctx.log, [
-    {
-      kind: 'model.session_invalidated',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      payload: { itemID: '00000000-0000-4000-8000-000000000001' },
-    },
-  ]);
+  const fetched = Promise.withResolvers<FetchReply>();
+  const readPage = mock(() => fetched.promise);
+  const tool = buildWebFetchTool(readPage, { log: ctx.log, textBytes: 20_000 });
 
-  const tool = buildWebFetchTool(() => Promise.resolve(reply), ctx.log);
-
-  const outcome = await tool.run(
+  const running = tool.run(
     {
       callID: 'call-1',
       tool: 'web_fetch',
@@ -429,6 +425,22 @@ test('it refuses a page whose session a forget ended while it was fetched, and n
     },
   );
 
+  await waitForCondition(() => readPage.mock.calls.length === 1);
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'model.session_invalidated',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { itemID: '00000000-0000-4000-8000-000000000001' },
+    },
+  ]);
+
+  await removeThreadLinks(ctx.log, 'conversation');
+
+  fetched.resolve(reply);
+
+  const outcome = await running;
   const links = await sql`select url from web_fetch_links`.execute(ctx.log.writer.db);
 
   expect(outcome).toStrictEqual({
@@ -453,7 +465,7 @@ test("it numbers a new session's links from 1 again", async () => {
     blocked: null,
   };
 
-  const tool = buildWebFetchTool(() => Promise.resolve(reply), ctx.log);
+  const tool = buildWebFetchTool(() => Promise.resolve(reply), { log: ctx.log, textBytes: 20_000 });
 
   const otherReply: FetchReply = {
     kind: 'page',
@@ -466,7 +478,10 @@ test("it numbers a new session's links from 1 again", async () => {
     blocked: null,
   };
 
-  await buildWebFetchTool(() => Promise.resolve(otherReply), ctx.log).run(
+  await buildWebFetchTool(() => Promise.resolve(otherReply), {
+    log: ctx.log,
+    textBytes: 20_000,
+  }).run(
     {
       callID: 'call-1',
       tool: 'web_fetch',
@@ -521,7 +536,7 @@ test('it keys the links of a call under the run token by the run', async () => {
     }),
   );
 
-  const tool = buildWebFetchTool(readPage, ctx.log);
+  const tool = buildWebFetchTool(readPage, { log: ctx.log, textBytes: 20_000 });
 
   const run = {
     runID: 'conversation',
@@ -555,7 +570,7 @@ test.each([
   const ctx = await setupTest();
 
   const readPage = mock();
-  const tool = buildWebFetchTool(readPage, ctx.log);
+  const tool = buildWebFetchTool(readPage, { log: ctx.log, textBytes: 20_000 });
 
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'web_fetch', input, toolUseID: null },
@@ -581,7 +596,7 @@ test.each([
 test('it refuses a link that does not read as a link ID', async () => {
   const ctx = await setupTest();
 
-  const tool = buildWebFetchTool(mock(), ctx.log);
+  const tool = buildWebFetchTool(mock(), { log: ctx.log, textBytes: 20_000 });
 
   const outcome = await tool.run(
     {
@@ -632,7 +647,7 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
     blocked: null,
   };
 
-  const tool = buildWebFetchTool(() => Promise.resolve(reply), ctx.log);
+  const tool = buildWebFetchTool(() => Promise.resolve(reply), { log: ctx.log, textBytes: 20_000 });
 
   const outcome = await tool.run(
     {
@@ -667,6 +682,54 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
   expect(outcome.result['text']).toInclude('Station 9 readings [L10 · coastal-weather.test]');
 });
 
+test('it cuts a page whose links to one long off-site host pass the text limit once written out, and marks it truncated', async () => {
+  const ctx = await setupTest();
+
+  const host = `${'a'.repeat(63)}.${'b'.repeat(63)}.${'c'.repeat(63)}.test`;
+
+  const reply: FetchReply = {
+    kind: 'page',
+    url: 'https://almanac.test/',
+    status: 200,
+    contentType: 'text/html',
+    text: ' \u{E000}0\u{E001}'.repeat(2000),
+    links: [`https://${host}/`],
+    isTruncated: false,
+    blocked: null,
+  };
+
+  const tool = buildWebFetchTool(() => Promise.resolve(reply), {
+    log: ctx.log,
+    textBytes: webFetchDefaults.limits.textBytes,
+  });
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://almanac.test/' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'conversation',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0 },
+      },
+    },
+  );
+
+  invariant(outcome.status === 'ok' && typeof outcome.result['text'] === 'string');
+
+  expect(Buffer.byteLength(outcome.result['text'])).toBeLessThanOrEqual(
+    webFetchDefaults.limits.textBytes,
+  );
+
+  expect(outcome.result['isTruncated']).toBeTrue();
+});
+
 test('it returns the reason the bot protection blocked a page in a result the schema accepts', async () => {
   const ctx = await setupTest();
 
@@ -694,7 +757,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
   onTestFinished(() => fetchSandbox.stop());
 
   const registered = buildToolRegistry([
-    buildWebFetchTool(fetchSandbox.readPage, ctx.log),
+    buildWebFetchTool(fetchSandbox.readPage, { log: ctx.log, textBytes: 20_000 }),
   ]).findTool('web_fetch');
 
   invariant(registered);
@@ -740,7 +803,7 @@ test('it returns a page result that the registry checks against the output schem
   };
 
   const registered = buildToolRegistry([
-    buildWebFetchTool(() => Promise.resolve(reply), ctx.log),
+    buildWebFetchTool(() => Promise.resolve(reply), { log: ctx.log, textBytes: 20_000 }),
   ]).findTool('web_fetch');
 
   invariant(registered);
@@ -769,7 +832,9 @@ test.each([
 ])('it checks an input that names %s against the input schema', async (_, input, isValid) => {
   const ctx = await setupTest();
 
-  const registered = buildToolRegistry([buildWebFetchTool(mock(), ctx.log)]).findTool('web_fetch');
+  const registered = buildToolRegistry([
+    buildWebFetchTool(mock(), { log: ctx.log, textBytes: 20_000 }),
+  ]).findTool('web_fetch');
 
   invariant(registered);
 
@@ -790,7 +855,7 @@ test('it returns a binary page with no text', async () => {
     blocked: null,
   };
 
-  const tool = buildWebFetchTool(() => Promise.resolve(reply), ctx.log);
+  const tool = buildWebFetchTool(() => Promise.resolve(reply), { log: ctx.log, textBytes: 20_000 });
 
   const outcome = await tool.run(
     {
@@ -830,7 +895,7 @@ test.each([
 
   onTestFinished(() => fetchSandbox.stop());
 
-  const tool = buildWebFetchTool(fetchSandbox.readPage, ctx.log);
+  const tool = buildWebFetchTool(fetchSandbox.readPage, { log: ctx.log, textBytes: 20_000 });
 
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'web_fetch', input: { url: 'http://example.com/' }, toolUseID: null },
@@ -850,7 +915,7 @@ test.each([
 test('it declares only the fetch effect and no destination, so it runs direct', async () => {
   const ctx = await setupTest();
 
-  const tool = buildWebFetchTool(mock(), ctx.log);
+  const tool = buildWebFetchTool(mock(), { log: ctx.log, textBytes: 20_000 });
 
   expect(tool.execution).toBe('direct');
 
@@ -865,7 +930,7 @@ test('it declares only the fetch effect and no destination, so it runs direct', 
 test('it marks every result field as outside content', async () => {
   const ctx = await setupTest();
 
-  const tool = buildWebFetchTool(mock(), ctx.log);
+  const tool = buildWebFetchTool(mock(), { log: ctx.log, textBytes: 20_000 });
 
   expect(tool.declaration.results).toStrictEqual({
     url: 'untrusted',
@@ -880,7 +945,7 @@ test('it marks every result field as outside content', async () => {
 test('it endorses only the status code and the truncated mark', async () => {
   const ctx = await setupTest();
 
-  const tool = buildWebFetchTool(mock(), ctx.log);
+  const tool = buildWebFetchTool(mock(), { log: ctx.log, textBytes: 20_000 });
 
   expect(tool.output['properties']).toStrictEqual({
     url: { type: 'string' },
@@ -895,7 +960,7 @@ test('it endorses only the status code and the truncated mark', async () => {
 test('it is a tool the registry accepts', async () => {
   const ctx = await setupTest();
 
-  const tool = buildWebFetchTool(mock(), ctx.log);
+  const tool = buildWebFetchTool(mock(), { log: ctx.log, textBytes: 20_000 });
 
   expect(() => buildToolRegistry([tool])).not.toThrow();
 });

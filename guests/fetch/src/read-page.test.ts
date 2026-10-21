@@ -499,6 +499,23 @@ test('it returns a body exactly at the body limit whole', async () => {
   expect(reply).toMatchObject({ kind: 'page', text: '0123456789', isTruncated: false });
 });
 
+test('it strips the link mark characters from a plain text page and lists no link', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: () =>
+      new Response('Tide \u{E000}0\u{E001} table', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: { bodyBytes: 1000, timeoutMs: 5000, redirects: 5, textBytes: 1000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  expect(reply).toMatchObject({ kind: 'page', text: 'Tide 0 table', links: [] });
+});
+
 test('it counts the decoded bytes of a compressed body against the body limit', async () => {
   const site = await startTestSite({
     names: ['site.test'],

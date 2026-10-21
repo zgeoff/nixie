@@ -1,9 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the web fetch tool's link store: each link target a session's fetched pages showed, under
-// the number the session gave it, with the thread a forget clears it by. It only adds a table and
-// its index, and running it again changes nothing.
 export const webFetchLinksMigration: Migration = {
   name: 'create the link store of the web fetch tool',
   up: async (tx) => {

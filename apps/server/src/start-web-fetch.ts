@@ -49,7 +49,10 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
   });
 
   return {
-    tool: buildWebFetchTool(fetchSandbox.readPage, options.log),
+    tool: buildWebFetchTool(fetchSandbox.readPage, {
+      log: options.log,
+      textBytes: config.limits.textBytes,
+    }),
     stop: fetchSandbox.stop,
   };
 }

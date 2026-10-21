@@ -11,15 +11,38 @@ export interface PageLinks {
   readonly numbers: ReadonlyMap<string, number>;
 }
 
-// Renders a fetched page's text with each link mark as its link's ID, such as [L12], and the
-// link's host after the ID when the link leaves the page's site, such as [L40 · example.org]. A
-// mark with no target or no number is dropped.
-export function renderLinkedText(parts: readonly MarkedTextPart[], page: PageLinks): string {
-  const pageHost = URL.parse(page.pageURL)?.hostname ?? null;
+export interface LinkedText {
+  readonly text: string;
+  readonly isCut: boolean;
+}
 
-  return parts
-    .map((part) => (typeof part === 'string' ? part : formatLinkTag(part.link, page, pageHost)))
-    .join('');
+export function renderLinkedText(
+  parts: readonly MarkedTextPart[],
+  page: PageLinks,
+  limitBytes: number,
+): LinkedText {
+  const pageHost = URL.parse(page.pageURL)?.hostname ?? null;
+  const rendered: string[] = [];
+  let spentBytes = 0;
+
+  for (const part of parts) {
+    const piece = typeof part === 'string' ? part : formatLinkTag(part.link, page, pageHost);
+    const pieceBytes = Buffer.byteLength(piece);
+
+    if (spentBytes + pieceBytes > limitBytes) {
+      const tail = typeof part === 'string' ? cutText(piece, limitBytes - spentBytes) : '';
+
+      rendered.push(tail);
+
+      return { text: rendered.join(''), isCut: true };
+    }
+
+    rendered.push(piece);
+
+    spentBytes += pieceBytes;
+  }
+
+  return { text: rendered.join(''), isCut: false };
 }
 
 function formatLinkTag(index: number, page: PageLinks, pageHost: string | null): string {
@@ -33,4 +56,10 @@ function formatLinkTag(index: number, page: PageLinks, pageHost: string | null):
   const host = URL.parse(target)?.hostname ?? null;
 
   return host === null || host === pageHost ? `[L${number}]` : `[L${number} · ${host}]`;
+}
+
+function cutText(text: string, limitBytes: number): string {
+  const written = new TextEncoder().encodeInto(text, new Uint8Array(limitBytes));
+
+  return text.slice(0, written.read);
 }

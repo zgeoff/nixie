@@ -3,6 +3,7 @@ import type { ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { parseLinkMarks } from '@heynixie/wire';
 import { readLinkTarget } from './read-link-target';
+import type { LinkedText } from './render-linked-text';
 import { renderLinkedText } from './render-linked-text';
 import type { LinkNumbering } from './write-link-numbers';
 import { writeLinkNumbers } from './write-link-numbers';
@@ -39,13 +40,23 @@ const webFetchOutput = {
 
 const sessionEnded = Symbol('session ended');
 
+export interface WebFetchToolOptions {
+  // the log whose writer holds the link store
+  readonly log: Pick<Log, 'writer'>;
+
+  // the most bytes of text a result holds once its links read as IDs and hosts
+  readonly textBytes: number;
+}
+
 // Builds the web fetch tool, which fetches one public HTTPS page through the fetch sandbox, direct,
 // with every result field outside content and only the status and the truncated mark endorsed. A
 // page's links read as IDs the session numbered, whose targets the link store keeps.
 export function buildWebFetchTool(
   readPage: (url: string) => Promise<FetchReply>,
-  log: Pick<Log, 'writer'>,
+  options: WebFetchToolOptions,
 ): ToolDefinition {
+  const log = options.log;
+
   return {
     name: 'web_fetch',
     description:
@@ -88,16 +99,16 @@ export function buildWebFetchTool(
         return { status: 'error', message: reply.reason };
       }
 
-      const text =
+      const linked =
         reply.text === null
-          ? null
+          ? { text: null, isCut: false }
           : await writeLinkedText(
               log,
               { url: reply.url, text: reply.text, links: reply.links },
-              session,
+              { ...session, textBytes: options.textBytes },
             );
 
-      if (text === sessionEnded) {
+      if (linked === sessionEnded) {
         return {
           status: 'error',
           message: 'the session ended while the page was fetched, so fetch it again by its url',
@@ -110,8 +121,8 @@ export function buildWebFetchTool(
           url: reply.url,
           status: reply.status,
           contentType: reply.contentType,
-          text,
-          isTruncated: reply.isTruncated,
+          text: linked.text,
+          isTruncated: reply.isTruncated || linked.isCut,
           blocked: reply.blocked,
         },
       };
@@ -140,33 +151,48 @@ async function readTargetURL(
   input: JSONObject,
   sessionKey: string,
 ): Promise<TargetURL> {
-  const url = input['url'];
-  const link = input['link'];
+  const target = pickTarget(input);
 
-  if (typeof url === 'string' && link === undefined) {
-    return { status: 'ok', url };
+  if (target.kind !== 'link') {
+    return target.kind === 'url'
+      ? { status: 'ok', url: target.url }
+      : { status: 'error', message: target.message };
   }
 
-  if (typeof link !== 'string' || url !== undefined) {
-    return { status: 'error', message: 'give either the url of a page or the ID of a link' };
-  }
-
-  const number = parseLinkID(link);
-
-  if (number === null) {
-    return { status: 'error', message: `${link} is not a link ID; an ID reads like L12` };
-  }
-
-  const linkURL = await readLinkTarget(log, { sessionKey, number });
+  const linkURL = await readLinkTarget(log, { sessionKey, number: target.number });
 
   return linkURL === null
     ? {
         status: 'error',
         message:
-          `L${number} is not a link from this session. An ID works only in the session whose ` +
-          'page showed it, so fetch that page again by its url.',
+          `L${target.number} is not a link from this session. An ID works only in the session ` +
+          'whose page showed it, so fetch that page again by its url.',
       }
     : { status: 'ok', url: linkURL };
+}
+
+type Target =
+  | { readonly kind: 'url'; readonly url: string }
+  | { readonly kind: 'link'; readonly number: number }
+  | { readonly kind: 'refused'; readonly message: string };
+
+function pickTarget(input: JSONObject): Target {
+  const url = input['url'];
+  const link = input['link'];
+
+  if (typeof url === 'string' && link === undefined) {
+    return { kind: 'url', url };
+  }
+
+  if (typeof link !== 'string' || url !== undefined) {
+    return { kind: 'refused', message: 'give either the url of a page or the ID of a link' };
+  }
+
+  const number = parseLinkID(link);
+
+  return number === null
+    ? { kind: 'refused', message: `${link} is not a link ID; an ID reads like L12` }
+    : { kind: 'link', number };
 }
 
 function parseLinkID(link: string): number | null {
@@ -184,13 +210,11 @@ interface MarkedPage {
   readonly links: readonly string[];
 }
 
-// numbers each link the page's text marks, in the order the text shows them, then writes each mark
-// as its link's ID, or gives the session's end when a forget ended it during the fetch
 async function writeLinkedText(
   log: Pick<Log, 'writer'>,
   page: MarkedPage,
-  session: LinkSession,
-): Promise<string | typeof sessionEnded> {
+  session: LinkSession & { readonly textBytes: number },
+): Promise<LinkedText | typeof sessionEnded> {
   const parts = parseLinkMarks(page.text);
 
   const urls = parts.flatMap((part) => {
@@ -199,9 +223,18 @@ async function writeLinkedText(
     return target === undefined ? [] : [target];
   });
 
-  const numbers = await writeLinkNumbers(log, { ...session, urls });
+  const numbers = await writeLinkNumbers(log, {
+    sessionKey: session.sessionKey,
+    thread: session.thread,
+    invalidatedThrough: session.invalidatedThrough,
+    urls,
+  });
 
   return numbers === null
     ? sessionEnded
-    : renderLinkedText(parts, { pageURL: page.url, targets: page.links, numbers });
+    : renderLinkedText(
+        parts,
+        { pageURL: page.url, targets: page.links, numbers },
+        session.textBytes,
+      );
 }
