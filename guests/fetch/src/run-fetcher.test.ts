@@ -51,6 +51,7 @@ test('it reads one request frame, however it arrives, and writes one reply frame
       status: 200,
       contentType: 'text/plain;charset=utf-8',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     },

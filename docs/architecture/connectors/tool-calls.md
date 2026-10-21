@@ -22,12 +22,13 @@ run started again under the same ID gets a fresh token.
 The conversation's guest reaches its endpoint with a step token in place of the run's token. The
 endpoint issues a step token for each turn and revokes it once the turn ends, and every call that
 arrives with it carries the run identity of the turn's step: the step key and the generation of the
-step's lease. A runner that takes over an expired lease runs the same step at the next generation,
-so the guest of the step it replaced keeps an identity that no longer matches the task's claim. The
-action queue checks that identity against the current claim, as
-[actions](../core/actions.md#queuing-a-call) covers. A call under the run's own token carries no
-step identity, so a guest that holds only the run's token can run direct tools but never queue an
-action.
+step's lease. Each call carries the key of the conversation session the turn runs on too, which a
+tool that keeps something for one session, such as the web fetch tool's links, keys its rows by. A
+runner that takes over an expired lease runs the same step at the next generation, so the guest of
+the step it replaced keeps an identity that no longer matches the task's claim. The action queue
+checks that identity against the current claim, as [actions](../core/actions.md#queuing-a-call)
+covers. A call under the run's own token carries no step identity, so a guest that holds only the
+run's token can run direct tools but never queue an action.
 
 The endpoint builds a low-level MCP server for each request, never the high-level one. The
 high-level server answers a call to a tool it does not list by itself, and such a call must still

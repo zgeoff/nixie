@@ -30,6 +30,9 @@ export interface SessionMarks {
   // the persona hash the newest session opened under, or null for one opened before openings kept it
   readonly openedPersonaHash: string | null;
 
+  // the newest session's key, or null before the first opening
+  readonly sessionKey: string | null;
+
   // whether a summary committed after the last session opened, so the next one opens from it
   readonly isSummarized: boolean;
 
@@ -72,6 +75,7 @@ export async function readSessionMarks(
 
     hasOpening: openedThrough > (cliCompacted.at(0)?.sequence ?? 0),
     openedPersonaHash: findPersonaHash(opened.at(0)),
+    sessionKey: findSessionKey(opened.at(0)),
     lastContext: toContext(ended),
     isSummarized: summarizedThrough > openedThrough,
     compactionFailures: countFailures(failed.at(0), Math.max(openedThrough, summarizedThrough)),
@@ -101,6 +105,18 @@ function findPersonaHash(opened: LogRecord | undefined): string | null {
     opened === undefined ? null : modelSessionOpenedCodec.tryDecodePartial(opened.payload);
 
   return payload?.personaHash ?? null;
+}
+
+// an opening recorded before openings kept their key is keyed by its own sequence, which no later
+// opening shares
+function findSessionKey(opened: LogRecord | undefined): string | null {
+  if (opened === undefined) {
+    return null;
+  }
+
+  const payload = modelSessionOpenedCodec.tryDecodePartial(opened.payload);
+
+  return payload?.sessionKey ?? `opening-${opened.sequence}`;
 }
 
 // a turn whose model calls reported no usage, or one recorded before turns kept their context,
