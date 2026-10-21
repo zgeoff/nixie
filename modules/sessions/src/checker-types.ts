@@ -12,5 +12,4 @@ export interface CheckerAnswer {
   readonly failure: 'timeout' | 'error' | 'unreadable' | null;
 }
 
-// Never rejects: a timeout, an error or an unreadable answer resolves as unsure.
 export type RunCheck = (request: CheckerRequest) => Promise<CheckerAnswer>;
