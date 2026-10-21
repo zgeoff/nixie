@@ -1,19 +1,29 @@
+import { formatLinkMark, stripLinkMarks } from '@heynixie/wire';
 import { decodeHTML, decodeHTMLAttribute } from 'entities';
 
-// Builds an HTML page's readable text: its title, the text of its main content with each link's
-// target after the link, then a short list of the links outside the main content. The web fetch
-// architecture doc gives the order in which the fetcher picks the main content.
-export function buildReadableText(html: string, pageURL: URL): string {
+// An HTML page's readable text, with a mark where each link ends, and the target of each link by the
+// index its mark names.
+export interface ReadableText {
+  readonly text: string;
+  readonly links: readonly string[];
+}
+
+// Builds an HTML page's readable text: its title, the text of its main content with a mark after
+// each link, then a short list of the links outside the main content. The web fetch architecture
+// doc gives the order in which the fetcher picks the main content.
+export function buildReadableText(html: string, pageURL: URL): ReadableText {
   const reading = buildReadingState(pageURL);
 
   buildPageRewriter(reading).transform(html);
 
+  const links: string[] = [];
   const region = pickContentRegion(reading.regions);
-  const content = region === null ? '' : reading.regions[region].join('');
-  const text = normalizeWhitespace(decodeHTML(`${reading.title.join(' ')}\n\n${content}`));
-  const otherLinks = formatOtherLinks(reading.links, region);
+  const content = region === null ? '' : renderParts(reading.regions[region], links);
+  const title = decodeRawText([reading.title.join(' ')]);
+  const text = normalizeWhitespace(`${title}\n\n${content}`);
+  const otherLinks = formatOtherLinks(reading.links, region, links);
 
-  return otherLinks === '' ? text : `${text}\n\n${otherLinks}`;
+  return { text: otherLinks === '' ? text : `${text}\n\n${otherLinks}`, links };
 }
 
 interface ElementRule {
@@ -24,6 +34,9 @@ interface ElementRule {
 }
 
 type Region = 'article' | 'main' | 'page';
+
+// a run of the page's raw text, or the end of a link to the target
+type TextPart = string | { readonly target: string };
 
 interface PageLink {
   readonly target: string;
@@ -36,7 +49,7 @@ interface PageLink {
 interface ReadingState {
   readonly pageURL: URL;
   readonly title: string[];
-  readonly regions: Record<Region, string[]>;
+  readonly regions: Record<Region, TextPart[]>;
   readonly depth: Record<NonNullable<ElementRule['counts']>, number>;
   readonly links: PageLink[];
   readonly openLinks: PageLink[];
@@ -115,7 +128,7 @@ function buildPageRewriter(reading: ReadingState): HTMLRewriter {
   return rewriter;
 }
 
-function collectPart(reading: ReadingState, part: string): void {
+function collectPart(reading: ReadingState, part: TextPart): void {
   for (const region of getOpenRegions(reading)) {
     reading.regions[region].push(part);
   }
@@ -156,9 +169,9 @@ function collectLink(reading: ReadingState, element: HTMLRewriterTypes.Element):
   element.onEndTag(() => {
     reading.openLinks.splice(reading.openLinks.indexOf(link), 1);
 
-    // the text is decoded once at the end, so an ampersand in the target is written as a reference
     if (isInText) {
-      collectPart(reading, ` [→ ${target.replaceAll('&', '&amp;')}]`);
+      collectPart(reading, ' ');
+      collectPart(reading, { target });
     }
   });
 }
@@ -225,10 +238,48 @@ const regionOrder: readonly Region[] = ['article', 'main', 'page'];
 // the articles, else the main element, else the whole page: the first that holds text
 function pickContentRegion(regions: ReadingState['regions']): Region | null {
   const region = regionOrder.find(
-    (candidate) => normalizeWhitespace(decodeHTML(regions[candidate].join(''))) !== '',
+    (candidate) => renderParts(regions[candidate], []).replaceAll(/\s/gu, '') !== '',
   );
 
   return region ?? null;
+}
+
+// Each run of raw text is decoded whole, since a reference can span the chunks the rewriter hands
+// over, and each link's mark names its target's index in links, which it adds a new target to.
+function renderParts(parts: readonly TextPart[], links: string[]): string {
+  const rendered: string[] = [];
+  let run: string[] = [];
+
+  for (const part of parts) {
+    if (typeof part === 'string') {
+      run.push(part);
+    } else {
+      rendered.push(decodeRawText(run), formatLinkMark(pickLinkIndex(links, part.target)));
+
+      run = [];
+    }
+  }
+
+  rendered.push(decodeRawText(run));
+
+  return rendered.join('');
+}
+
+// a page's own text never keeps a mark character, so every mark in the result is the fetcher's
+function decodeRawText(chunks: readonly string[]): string {
+  return stripLinkMarks(decodeHTML(chunks.join('')));
+}
+
+function pickLinkIndex(links: string[], target: string): number {
+  const index = links.indexOf(target);
+
+  if (index !== -1) {
+    return index;
+  }
+
+  links.push(target);
+
+  return links.length - 1;
 }
 
 function normalizeWhitespace(text: string): string {
@@ -244,7 +295,11 @@ function normalizeWhitespace(text: string): string {
 const otherLinkLimit = 20;
 
 // the links outside the main content, once per target, leaving out a target the content shows
-function formatOtherLinks(links: readonly PageLink[], region: Region | null): string {
+function formatOtherLinks(
+  links: readonly PageLink[],
+  region: Region | null,
+  targets: string[],
+): string {
   const shownTargets = new Set(
     links
       .filter((link) => region !== null && link.regions.includes(region))
@@ -261,8 +316,9 @@ function formatOtherLinks(links: readonly PageLink[], region: Region | null): st
     if (!shownTargets.has(link.target)) {
       shownTargets.add(link.target);
 
-      const text = normalizeWhitespace(decodeHTML(link.text.join(''))).replaceAll(/\n+/gu, ' ');
-      const line = text === '' ? `- [→ ${link.target}]` : `- ${text} [→ ${link.target}]`;
+      const text = normalizeWhitespace(decodeRawText(link.text)).replaceAll(/\n+/gu, ' ');
+      const mark = formatLinkMark(pickLinkIndex(targets, link.target));
+      const line = text === '' ? `- ${mark}` : `- ${text} ${mark}`;
 
       lines.push(line);
     }

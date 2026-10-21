@@ -17,6 +17,7 @@ test('it reads no earlier core and no invalidation before the first turn', async
     invalidatedThrough: 0,
     hasOpening: false,
     openedPersonaHash: null,
+    sessionKey: null,
     lastContext: null,
     isSummarized: false,
     compactionFailures: 0,
@@ -420,6 +421,46 @@ test('it reads the persona hash the newest session opened under', async () => {
   const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
 
   expect(marks.openedPersonaHash).toBe('sha256:persona-cheerful');
+});
+
+test('it reads the key the newest session opened with', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { kind: 'first', sessionKey: '00000000-0000-4000-8000-000000000001' },
+    },
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { kind: 'compaction', sessionKey: '00000000-0000-4000-8000-000000000002' },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.sessionKey).toBe('00000000-0000-4000-8000-000000000002');
+});
+
+test('it keys an opening recorded before openings kept a key by its sequence', async () => {
+  const ctx = await setupTest();
+
+  const [opened] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { kind: 'first' },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.sessionKey).toBe(`opening-${opened?.sequence}`);
 });
 
 test('it reads no persona hash from an opening recorded before openings kept it', async () => {

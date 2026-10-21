@@ -24,6 +24,10 @@ export interface SessionTurn {
 
   readonly images: ImageTally;
 
+  // the key of the session the turn runs on, which each of its tool calls carries: a new one for a
+  // new session, which its opening record keeps
+  readonly sessionKey: string;
+
   readonly signal: AbortSignal;
 }
 
@@ -51,6 +55,7 @@ export async function runPlannedTurn(
     signal: turn.signal,
     times,
     images: turn.images,
+    session: { key: turn.sessionKey, invalidatedThrough: turn.invalidatedThrough },
   });
 
   turn.signal.throwIfAborted();
