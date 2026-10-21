@@ -1,4 +1,5 @@
 import type { Kysely } from 'kysely';
+import { z } from 'zod';
 import type { APITables } from './types';
 
 export interface ClientAction {
@@ -25,13 +26,10 @@ export async function readClientAction(
     return null;
   }
 
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- writeClientAction wrote an object
-  const result = JSON.parse(row.result) as Readonly<Record<string, unknown>>;
-
   return {
     procedure: row.procedure,
     identityID: row.identity_id,
     inputHash: row.input_hash,
-    result,
+    result: z.record(z.string(), z.unknown()).parse(JSON.parse(row.result)),
   };
 }

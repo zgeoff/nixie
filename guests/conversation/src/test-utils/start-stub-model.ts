@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 // The usage defaults to 10 input tokens and no cache tokens, and a test sets more to fill the
 // context the CLI counts. A reply with thinking carries a summarized thinking block, with its
 // signature, before its text or tool_use block, and reports its thinking tokens in the usage.
@@ -32,17 +34,23 @@ type ScriptedReply =
       readonly authFailure: string;
     };
 
-interface StubModelBody {
-  readonly model?: string;
-  readonly stream?: boolean;
-  readonly messages?: readonly { readonly role: string; readonly content: unknown }[];
-  readonly tools?: readonly {
-    readonly name: string;
-    readonly description?: string;
-    readonly input_schema?: unknown;
-  }[];
-  readonly system?: unknown;
-}
+const stubMessageSchema = z.looseObject({ role: z.string(), content: z.unknown() });
+
+const stubToolSchema = z.looseObject({
+  name: z.string(),
+  description: z.string().exactOptional(),
+  input_schema: z.unknown().exactOptional(),
+});
+
+const stubModelBodySchema = z.looseObject({
+  model: z.string().exactOptional(),
+  stream: z.boolean().exactOptional(),
+  messages: stubMessageSchema.array().exactOptional(),
+  tools: stubToolSchema.array().exactOptional(),
+  system: z.unknown().exactOptional(),
+});
+
+type StubModelBody = z.infer<typeof stubModelBodySchema>;
 
 // One request the stub model received, with its body parsed.
 interface StubModelRequest {
@@ -99,9 +107,7 @@ async function readRequest(request: Request): Promise<StubModelRequest> {
   return {
     path: new URL(request.url).pathname,
     headers: Object.fromEntries(request.headers),
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the CLI's own request body
-    body: text === '' ? null : (JSON.parse(text) as StubModelBody),
+    body: text === '' ? null : stubModelBodySchema.parse(JSON.parse(text)),
   };
 }
 

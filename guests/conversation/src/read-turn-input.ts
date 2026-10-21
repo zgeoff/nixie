@@ -1,6 +1,8 @@
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { InboxMessage } from '@heynixie/wire';
+import invariant from 'tiny-invariant';
 import type { TurnFrame } from './build-query-options';
+import { isUUID } from './is-uuid';
 
 export interface TurnInputState {
   // the uuids of messages the SDK took and has not yet read
@@ -54,13 +56,15 @@ async function* readInbox(
 }
 
 function buildUserMessage(message: InboxMessage): SDKUserMessage {
+  const uuid = message.uuid;
+
+  invariant(isUUID(uuid), 'the wire schema refuses an inbox message whose uuid is not a UUID');
+
   return {
     type: 'user',
     message: { role: 'user', content: buildContent(message) },
     parent_tool_use_id: null,
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the wire schema checked it
-    uuid: message.uuid as SDKUserMessage['uuid'] & string,
+    uuid,
     session_id: '',
     priority: 'next',
   };

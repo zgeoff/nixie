@@ -1,3 +1,4 @@
+import { parseJSONObject } from './parse-json-object';
 import type { JSONObject } from './types';
 
 const IV_BYTES = 12;
@@ -18,6 +19,5 @@ export async function decodeErasable(
     sealed.subarray(IV_BYTES),
   );
 
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- encodeErasable wrote a JSONObject
-  return JSON.parse(new TextDecoder().decode(plaintext)) as JSONObject;
+  return parseJSONObject(new TextDecoder().decode(plaintext));
 }

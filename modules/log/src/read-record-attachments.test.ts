@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test';
+import { readQueryRows } from '@heynixie/db';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { readRecordAttachments } from './read-record-attachments';
 import { removeRecordKey } from './remove-record-key';
 import { startTestLog } from './test-utils/start-test-log';
@@ -63,15 +66,15 @@ test('it reads the attachments of a record whose key is gone as shredded', async
     },
   ]);
 
-  const row = await sql<{ key_id: string }>`select key_id from records`.execute(ctx.writer.db);
+  const [row] = await readQueryRows(
+    sql`select key_id from records`,
+    ctx.writer.db,
+    z.object({ key_id: z.string() }),
+  );
 
-  const keyID = row.rows.at(0)?.key_id;
+  invariant(row);
 
-  if (keyID === undefined) {
-    throw new Error('the record has no key');
-  }
-
-  await removeRecordKey(ctx.log, keyID);
+  await removeRecordKey(ctx.log, row.key_id);
 
   const read = await readRecordAttachments(ctx.log, [1]);
 
@@ -133,13 +136,15 @@ test('it stores no plaintext of an attachment in the database', async () => {
     },
   ]);
 
-  const rows = await sql<{ sealed: Uint8Array }>`select sealed from record_attachments`.execute(
+  const rows = await readQueryRows(
+    sql`select sealed from record_attachments`,
     ctx.writer.db,
+    z.object({ sealed: z.instanceof(Uint8Array) }),
   );
 
-  expect(rows.rows.map((row) => new TextDecoder().decode(row.sealed))).toSatisfyAll(
+  expect(rows.map((row) => new TextDecoder().decode(row.sealed))).toSatisfyAll(
     (sealed: string) => !sealed.includes('imagemarker4417'),
   );
 
-  expect(rows.rows).toHaveLength(1);
+  expect(rows).toHaveLength(1);
 });

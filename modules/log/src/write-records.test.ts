@@ -3,9 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { logProjections } from './log-projections';
 import { startTestLog } from './test-utils/start-test-log';
-import type { RecordInput } from './types';
 import { writeRecords } from './write-records';
 
 function setupTest() {
@@ -62,15 +62,12 @@ test('it writes every envelope field and returns each record with its sequence',
   });
 });
 
-test('it refuses a record without the definitions field and writes none of the batch', async () => {
+test('it refuses a record without a snapshot hash and writes none of the batch', async () => {
   const ctx = await setupTest();
-
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a caller that reached past the type
-  const unpinned = { kind: 'owner_message', thread: 'conversation' } as unknown as RecordInput;
 
   const write = writeRecords(ctx.log, [
     { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:aa11' } },
-    unpinned,
+    { kind: 'owner_message', thread: 'conversation', definitions: { snapshotHash: '' } },
   ]);
 
   await write.catch(() => {});
@@ -160,14 +157,10 @@ test('it gives each record with erasable fields its own random key in keys.db', 
     { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:aa11' } },
   ]);
 
-  const records = await sql<{ key_id: string | null }>`select key_id from records
-    order by sequence`.execute(ctx.writer.db);
+  const records = await sql`select key_id from records order by sequence`.execute(ctx.writer.db);
+  const keys = await sql`select key_id from record_keys`.execute(ctx.writer.keys);
 
-  const keys = await sql<{ key_id: string }>`select key_id from record_keys`.execute(
-    ctx.writer.keys,
-  );
-
-  const [first, second] = records.rows;
+  const [first, second] = z.array(z.object({ key_id: z.string().nullable() })).parse(records.rows);
 
   invariant(first);
   invariant(second);

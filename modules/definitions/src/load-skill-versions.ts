@@ -1,5 +1,7 @@
 import type { Kysely } from 'kysely';
-import type { DefinitionsTables, SkillFrontmatter, SkillVersion } from './types';
+import { storedSkillFilesSchema } from './stored-skill-files-schema';
+import { storedSkillFrontmatterSchema } from './stored-skill-frontmatter-schema';
+import type { DefinitionsTables, SkillVersion } from './types';
 
 // Loads the skill versions under the given content hashes from the database, by hash. A hash with
 // no version is missing from the map, which only a hash from outside the seed can give.
@@ -24,12 +26,8 @@ export async function loadSkillVersions(
       {
         name: row.name,
         skillHash: row.skill_hash,
-
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the seed wrote the frontmatter
-        frontmatter: JSON.parse(row.frontmatter) as SkillFrontmatter,
-
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the seed wrote the files
-        files: new Map(Object.entries(JSON.parse(row.files) as Record<string, string>)),
+        frontmatter: storedSkillFrontmatterSchema.parse(JSON.parse(row.frontmatter)),
+        files: storedSkillFilesSchema.parse(JSON.parse(row.files)),
       },
     ]),
   );

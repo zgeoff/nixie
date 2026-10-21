@@ -35,7 +35,7 @@ async function setupTest(options: TestOptions = {}) {
   const context = server.context;
 
   // before a runner starts, no session holds anything to clean up
-  const runners = { last: null as Awaited<ReturnType<typeof startConversation>> | null };
+  const runners: { last: Awaited<ReturnType<typeof startConversation>> | null } = { last: null };
 
   const memory = await startTestMemoryStore(
     context,

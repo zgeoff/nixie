@@ -12,10 +12,21 @@ interface SavePickerOptions {
   readonly suggestedName: string;
 }
 
+// the parts of a file handle and its writable that the page reads
+interface StubFileHandle {
+  readonly kind: 'file';
+  readonly name: string;
+  readonly createWritable: () => Promise<{
+    readonly write: (chunk: string) => Promise<void>;
+    readonly close: () => Promise<void>;
+    readonly abort: () => Promise<void>;
+  }>;
+}
+
 export interface StubSaveFilePicker {
   // the browser's showSaveFilePicker, which saves to the name the page suggests, as a user who
   // accepts that name does
-  readonly showSaveFilePicker: (options: SavePickerOptions) => Promise<FileSystemFileHandle>;
+  readonly showSaveFilePicker: (options: SavePickerOptions) => Promise<StubFileHandle>;
 
   // each file the picker opened, in the order it opened them
   readonly readFiles: () => readonly StubSavedFile[];
@@ -58,15 +69,11 @@ export function buildStubSaveFilePicker(): StubSaveFilePicker {
         abort: () => updateFileEnding(file, 'aborted'),
       };
 
-      const handle = {
+      return Promise.resolve({
         kind: 'file',
         name: file.name,
         createWritable: () => Promise.resolve(writable),
-      };
-
-      // the page reads only createWritable of the handle and write, close and abort of its writable
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a stand-in for a browser type
-      return Promise.resolve(handle as unknown as FileSystemFileHandle);
+      });
     },
     readFiles: () =>
       files.map((file) => ({ name: file.name, text: file.chunks.join(''), ending: file.ending })),

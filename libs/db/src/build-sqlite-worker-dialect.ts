@@ -1,3 +1,4 @@
+import { isSQLQueryBinding, toQueryRows } from '@zgeoff/kysely-bun-sqlite';
 import type { DatabaseConnection, Dialect, Driver, QueryResult, TransactionSettings } from 'kysely';
 import { CompiledQuery, SqliteAdapter, SqliteIntrospector, SqliteQueryCompiler } from 'kysely';
 import { DatabaseError } from './database-error';
@@ -145,17 +146,23 @@ function buildConnection(worker: SqliteWorker): DatabaseConnection {
 
 type WorkerParameters = Extract<WorkerRequest, { kind: 'query' }>['parameters'];
 
-// Kysely's SQLite compiler emits only values bun:sqlite binds: strings, numbers, bigints, booleans,
-// null and byte arrays
+// bun:sqlite binds a value it does not support, such as a Date or undefined, as NULL without an
+// error, so such a parameter throws before the worker sees it
 function toWorkerParameters(parameters: readonly unknown[]): WorkerParameters {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the compiler's output, above
-  return parameters as WorkerParameters;
+  return parameters.map((parameter) => {
+    if (!isSQLQueryBinding(parameter)) {
+      const kind = Object.prototype.toString.call(parameter).slice('[object '.length, -1);
+
+      throw new TypeError(`bun:sqlite cannot bind a parameter of type ${kind}`);
+    }
+
+    return parameter;
+  });
 }
 
 function buildQueryResult<R>(result: WorkerQueryResult): QueryResult<R> {
   return {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the caller's query names R
-    rows: result.rows as R[],
+    rows: toQueryRows<R>(result.rows),
     ...(result.changes === undefined ? {} : { numAffectedRows: BigInt(result.changes) }),
     ...(result.lastInsertRowid === undefined ? {} : { insertId: BigInt(result.lastInsertRowid) }),
   };

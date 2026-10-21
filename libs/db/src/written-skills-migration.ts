@@ -25,7 +25,7 @@ export const writtenSkillsMigration: Migration = {
     await sql`create unique index if not exists written_skills_in_force
       on written_skills (name) where state = 'in_force'`.execute(tx);
 
-    const columns = await sql<{ name: string }>`
+    const columns = await sql`
       select name from pragma_table_info('snapshot_skills') where name = 'approval_id'`.execute(tx);
 
     if (columns.rows.length === 0) {

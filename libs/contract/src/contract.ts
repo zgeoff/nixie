@@ -6,6 +6,7 @@ import { imageRefusedError } from './image-refused-error';
 import { memoryViewContract } from './memory-view-contract';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
+import { spanSchema } from './span-schema';
 import { taskSchema } from './task-schema';
 import { toolCallSchema } from './tool-call-schema';
 
@@ -18,15 +19,6 @@ import { toolCallSchema } from './tool-call-schema';
 const clientActionIDSchema = z.uuid();
 const sequenceSchema = z.int().nonnegative();
 const threadSchema = z.string().min(1).max(200);
-
-// Offsets count UTF-16 code units, as JavaScript string indices do. The server labels the whole
-// message unknown when its spans are out of order, overlap or leave a gap.
-const spanSchema = z.object({
-  end: z.int().nonnegative(),
-  source: z.enum(['typed', 'pasted', 'dropped', 'unknown']),
-  start: z.int().nonnegative(),
-});
-
 const imageSchema = z.object({ mediaType: z.enum(imageLimits.mediaTypes) });
 const imageFilesSchema = z.array(z.file());
 

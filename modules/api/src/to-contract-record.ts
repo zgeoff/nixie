@@ -1,4 +1,5 @@
-import type { LogRecord as ContractRecord, Span } from '@heynixie/contract';
+import type { LogRecord as ContractRecord } from '@heynixie/contract';
+import { spanSchema } from '@heynixie/contract';
 import type { JSONObject, JSONValue, LogRecord, RecordKind } from '@heynixie/log';
 import { memoryRatedCodec, recordForgetStartedCodec, recordForgottenCodec } from '@heynixie/memory';
 import {
@@ -19,6 +20,7 @@ import {
   taskStepStartedCodec,
 } from '@heynixie/tasks';
 import { toolCalledCodec, toolResultCodec } from '@heynixie/tools';
+import { z } from 'zod';
 
 // your message, and a reply from the conversation's model
 const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.reply']);
@@ -68,8 +70,7 @@ function toMessage(record: LogRecord): Message | undefined {
     return undefined;
   }
 
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- writeOwnerMessage wrote the spans
-  const spans = record.erasable.fields['spans'] as readonly Span[] | undefined;
+  const spans = z.array(spanSchema).optional().parse(record.erasable.fields['spans']);
 
   return {
     ...(owner?.clientMessageId === undefined ? {} : { clientMessageId: owner.clientMessageId }),

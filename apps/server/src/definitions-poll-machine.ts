@@ -1,5 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import { planBackoffDelay } from '@heynixie/retry';
+import { machineTypes } from '@zgeoff/std';
 import { assign, fromPromise, setup } from 'xstate';
 
 export interface DefinitionsProbe {
@@ -62,14 +63,11 @@ interface ProbeOutcome {
 // stop ends a wait at once, and ends a probe only after the probe and its seed finish, so 2 seeds
 // never overlap and an older revision never commits after a newer one.
 export const definitionsPollMachine = setup({
-  types: {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- xstate reads these types only at compile time
-    input: {} as DefinitionsPollOptions,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- xstate reads these types only at compile time
-    context: {} as DefinitionsPollContext,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- xstate reads these types only at compile time
-    events: {} as { type: 'stop' },
-  },
+  types: machineTypes<{
+    input: DefinitionsPollOptions;
+    context: DefinitionsPollContext;
+    events: { type: 'stop' };
+  }>(),
   actors: {
     wait: fromPromise<void, DefinitionsPollContext>((wait) =>
       wait.input.options.clock.sleep(

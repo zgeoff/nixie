@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.38.0](https://github.com/zgeoff/nixie/compare/v0.37.0...v0.38.0) (2026-10-21)
+
+
+### Features
+
+* **geo-1168:** remove the image offer tools ([#472](https://github.com/zgeoff/nixie/issues/472)) ([6547bb2](https://github.com/zgeoff/nixie/commit/6547bb2f493613446d9fc8c9e0c8d2d0af0f2287))
+* **geo-1168:** save a memory from a photo as a proposal ([#470](https://github.com/zgeoff/nixie/issues/470)) ([8b73603](https://github.com/zgeoff/nixie/commit/8b736037eb9b9901dc8608e670de37e5f781cdfd))
+* **geo-1168:** show the photo beside a photo proposal ([#471](https://github.com/zgeoff/nixie/issues/471)) ([112c58b](https://github.com/zgeoff/nixie/commit/112c58bbcffd8eee5ce44fe8dd223767af393dfd))
+* **geo-1446:** keep link targets in fetched page text ([#492](https://github.com/zgeoff/nixie/issues/492)) ([b09d79c](https://github.com/zgeoff/nixie/commit/b09d79cebad17559c70eb65f56e523975426115c))
+* **geo-1511:** review skill proposals through host commands ([#464](https://github.com/zgeoff/nixie/issues/464)) ([a8c79f3](https://github.com/zgeoff/nixie/commit/a8c79f3a85ec1880bfa05ad4d58795ed4e68d8d8))
+* **geo-1512:** list pending skill proposals with skill_pending ([#469](https://github.com/zgeoff/nixie/issues/469)) ([bc611ee](https://github.com/zgeoff/nixie/commit/bc611eecc8b2970213020d74aa527bd040ccfa86))
+
+
+### Bug Fixes
+
+* **deps:** update @tanstack/react-start to v1.169.1 ([#457](https://github.com/zgeoff/nixie/issues/457)) ([37041a9](https://github.com/zgeoff/nixie/commit/37041a9225e93c630eb81c181f47354d34d391bc))
+* **deps:** update patch updates ([#418](https://github.com/zgeoff/nixie/issues/418)) ([ac9ef60](https://github.com/zgeoff/nixie/commit/ac9ef6000e95ed7cfa5ec254b3fe047c6461bc58))
+* **deps:** update playwright-core to v1.64.0 ([#377](https://github.com/zgeoff/nixie/issues/377)) ([7d1ffbf](https://github.com/zgeoff/nixie/commit/7d1ffbf55991d5b2744589e2df50a1c62c713774))
+* **geo-1495:** give nixie its own broker placeholder ([#468](https://github.com/zgeoff/nixie/issues/468)) ([6493aaa](https://github.com/zgeoff/nixie/commit/6493aaa0f7ea42aebd4f7505271c28a33058e707))
+* **geo-1513:** run browser suites serially after the parallel run ([#458](https://github.com/zgeoff/nixie/issues/458)) ([75b4e01](https://github.com/zgeoff/nixie/commit/75b4e010b487a44b48f0a6cbd77fcc3b1c76b3fd))
+* **geo-1517:** take the log page scan limit from the query ([#467](https://github.com/zgeoff/nixie/issues/467)) ([a2eae33](https://github.com/zgeoff/nixie/commit/a2eae334654bd27060321e219b3e60c46b96ab96))
+
 ## [0.37.0](https://github.com/zgeoff/nixie/compare/v0.36.0...v0.37.0) (2026-10-19)
 
 
