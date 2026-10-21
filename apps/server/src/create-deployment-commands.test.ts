@@ -10,10 +10,8 @@ async function setupTest() {
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  const files = await writeBootFiles(directory, 'http://127.0.0.1:9', { config: [], secrets: [] });
-
   return {
-    ...files,
+    directory,
     io: {
       log: mock(),
       print: mock(),
@@ -24,7 +22,13 @@ async function setupTest() {
 
 test('it prints each sandbox image with the name nixie gives it in impd', async () => {
   const ctx = await setupTest();
-  const exitCode = await runCLI(['sandbox-manifest', '--manifest', ctx.manifestPath], ctx.io);
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const exitCode = await runCLI(['sandbox-manifest', '--manifest', files.manifestPath], ctx.io);
 
   expect(exitCode).toBe(0);
 
@@ -47,9 +51,14 @@ test('it prints each sandbox image with the name nixie gives it in impd', async 
 test('it exits 1 from sandbox-manifest on a manifest the server refuses', async () => {
   const ctx = await setupTest();
 
-  await writeFile(ctx.manifestPath, JSON.stringify({ fetch: 'ghcr.io/example/nixie-fetch:1' }));
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
 
-  const exitCode = await runCLI(['sandbox-manifest', '--manifest', ctx.manifestPath], ctx.io);
+  await writeFile(files.manifestPath, JSON.stringify({ fetch: 'ghcr.io/example/nixie-fetch:1' }));
+
+  const exitCode = await runCLI(['sandbox-manifest', '--manifest', files.manifestPath], ctx.io);
 
   expect(exitCode).toBe(1);
   expect(ctx.io.print).not.toHaveBeenCalled();
@@ -63,6 +72,11 @@ test('it exits 1 from sandbox-manifest on a manifest the server refuses', async 
 test('it prints the readiness report and exits 1 from health when the server answers degraded', async () => {
   const ctx = await setupTest();
 
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
   const answerRequest = mock((request: Request) =>
     new URL(request.url).pathname === '/health/live'
       ? Response.json({ status: 'ready', parts: { process: { isReady: true, reason: null } } })
@@ -81,11 +95,11 @@ test('it prints the readiness report and exits 1 from health when the server ans
 
   onTestFinished(() => server.stop(true));
 
-  const config = await readFile(ctx.configPath, 'utf8');
+  const config = await readFile(files.configPath, 'utf8');
 
-  await writeFile(ctx.configPath, config.replace('  port: 0\n', `  port: ${server.port}\n`));
+  await writeFile(files.configPath, config.replace('  port: 0\n', `  port: ${server.port}\n`));
 
-  const exitCode = await runCLI(['health', '--config', ctx.configPath], ctx.io);
+  const exitCode = await runCLI(['health', '--config', files.configPath], ctx.io);
 
   expect(exitCode).toBe(1);
 
@@ -99,6 +113,11 @@ test('it prints the readiness report and exits 1 from health when the server ans
 test('it prints the liveness report and exits 0 from health --live when the server is live', async () => {
   const ctx = await setupTest();
 
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
   const answerRequest = mock((request: Request) =>
     new URL(request.url).pathname === '/health/live'
       ? Response.json({ status: 'ready', parts: { process: { isReady: true, reason: null } } })
@@ -117,11 +136,11 @@ test('it prints the liveness report and exits 0 from health --live when the serv
 
   onTestFinished(() => server.stop(true));
 
-  const config = await readFile(ctx.configPath, 'utf8');
+  const config = await readFile(files.configPath, 'utf8');
 
-  await writeFile(ctx.configPath, config.replace('  port: 0\n', `  port: ${server.port}\n`));
+  await writeFile(files.configPath, config.replace('  port: 0\n', `  port: ${server.port}\n`));
 
-  const exitCode = await runCLI(['health', '--live', '--config', ctx.configPath], ctx.io);
+  const exitCode = await runCLI(['health', '--live', '--config', files.configPath], ctx.io);
 
   expect(exitCode).toBe(0);
 
@@ -132,6 +151,11 @@ test('it prints the liveness report and exits 0 from health --live when the serv
 
 test('it exits 1 from health when the server answers ready with a part report that lacks its reason', async () => {
   const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
 
   const answerRequest = mock(() =>
     Response.json({ status: 'ready', parts: { database: { isReady: true } } }),
@@ -145,11 +169,11 @@ test('it exits 1 from health when the server answers ready with a part report th
 
   onTestFinished(() => server.stop(true));
 
-  const config = await readFile(ctx.configPath, 'utf8');
+  const config = await readFile(files.configPath, 'utf8');
 
-  await writeFile(ctx.configPath, config.replace('  port: 0\n', `  port: ${server.port}\n`));
+  await writeFile(files.configPath, config.replace('  port: 0\n', `  port: ${server.port}\n`));
 
-  const exitCode = await runCLI(['health', '--config', ctx.configPath], ctx.io);
+  const exitCode = await runCLI(['health', '--config', files.configPath], ctx.io);
 
   expect(exitCode).toBe(1);
 

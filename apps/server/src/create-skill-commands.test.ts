@@ -11,13 +11,13 @@ import { startTestNixie } from './test-utils/start-test-nixie';
 
 async function setupTest() {
   const nixie = await startTestNixie();
-  const clients = await createTestClient(nixie);
 
-  return { ...nixie, ...clients };
+  return nixie;
 }
 
 test('it lists a skill proposal, rejects it with your reason, and the next turn reads the reason', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies(
     {
@@ -38,7 +38,7 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
     { text: 'Understood.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Write a skill for reading tide tables.',
@@ -46,7 +46,7 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
   });
@@ -68,7 +68,7 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
 
   const after = await runHostCommand(ctx.configPath, ['skill-pending']);
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Fine, never mind.',
@@ -76,7 +76,7 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Understood.');
   });
@@ -106,6 +106,7 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
 
 test('it lists a new version beside the version in force with the untyped token, and an approval puts it in force', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   const definitions = join(ctx.directory, 'definitions');
   const inForceText = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
@@ -129,7 +130,7 @@ test('it lists a new version beside the version in force with the untyped token,
     { text: 'Proposed.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Improve the tide tables skill.',
@@ -137,7 +138,7 @@ test('it lists a new version beside the version in force with the untyped token,
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
   });
@@ -201,6 +202,7 @@ test('it lists a new version beside the version in force with the untyped token,
 
 test('it approves your edited files in place of the proposal, and puts them in force', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   const definitions = join(ctx.directory, 'definitions');
   const proposedText = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
@@ -228,7 +230,7 @@ test('it approves your edited files in place of the proposal, and puts them in f
     { text: 'Proposed.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Write a tide tables skill.',
@@ -236,7 +238,7 @@ test('it approves your edited files in place of the proposal, and puts them in f
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
   });
@@ -279,6 +281,7 @@ test('it approves your edited files in place of the proposal, and puts them in f
 
 test("it resolves a conflict by keeping nixie's version, which stays in force with no conflict", async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   const definitions = join(ctx.directory, 'definitions');
   const inForceText = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
@@ -301,7 +304,7 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
     { text: 'Reloaded.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Improve the tide tables skill.',
@@ -309,7 +312,7 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
   });
@@ -336,7 +339,7 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
     `${inForceText}By hour.\n`,
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Reload the skills.',
@@ -344,7 +347,7 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Reloaded.');
   });
@@ -374,6 +377,7 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
 
 test("it resolves a skill nixie wrote by keeping the definitions' version, which goes back in force", async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   const definitions = join(ctx.directory, 'definitions');
   const inForceText = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
@@ -399,7 +403,7 @@ test("it resolves a skill nixie wrote by keeping the definitions' version, which
     { text: 'Proposed.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Improve the tide tables skill.',
@@ -407,7 +411,7 @@ test("it resolves a skill nixie wrote by keeping the definitions' version, which
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
   });

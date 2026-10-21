@@ -15,15 +15,15 @@ import { startTestNixie } from './test-utils/start-test-nixie';
 async function setupTest() {
   const nixie = await startTestNixie();
 
-  await nixie.waitForLogEvent('ready');
-  await nixie.sendStopSignal();
-  await nixie.waitForExit();
-
   return nixie;
 }
 
 test('it reports the definitions ready within seconds of a checkout that lands after a restart', async () => {
   const ctx = await setupTest();
+
+  await ctx.waitForLogEvent('ready');
+  await ctx.sendStopSignal();
+  await ctx.waitForExit();
 
   const definitionsDir = join(ctx.directory, 'definitions');
 

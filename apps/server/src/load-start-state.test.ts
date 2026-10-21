@@ -28,8 +28,6 @@ async function setupTest() {
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
 
-  await createConversationTask(context);
-
   return {
     dataDir,
     writer: log.writer,
@@ -48,6 +46,8 @@ async function setupTest() {
 
 test('it reports the conversation turns as failing after a restart with the stored errors at the limit', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const runStep = mock(() => Promise.reject(new Error('the model profile is unreachable')));
 
@@ -70,6 +70,8 @@ test('it reports the conversation turns as failing after a restart with the stor
 
 test('it reports the conversation turns as passing after a restart with the stored errors below the limit', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const runStep = mock(() => Promise.reject(new Error('the model profile is unreachable')));
 
