@@ -17,7 +17,7 @@ test('it starts a writer on a fresh data directory with the log projections', as
   const started = await startTestLog();
   const names = await readdir(started.dataDir);
 
-  const tables = await sql<{ name: string }>`select name from sqlite_schema
+  const tables = await sql`select name from sqlite_schema
     where type = 'table' and name = 'records'`.execute(started.writer.db);
 
   expect(names).toIncludeAllMembers(['keys.db', 'nixie.db']);

@@ -32,21 +32,34 @@ export interface StubSandboxes {
   readonly setPurgeAnswer: (frames: readonly GuestFrame[]) => void;
 }
 
+interface StubState {
+  readonly secrets: SecretSpec[];
+  readonly created: SandboxSpec[];
+  readonly destroyed: string[];
+  readonly turns: TurnFrame[];
+  readonly summaries: SummarizeFrame[];
+  readonly purged: string[];
+  readonly sandboxes: Sandbox[];
+  script: StubGuestScript;
+  summaryScript: StubSummaryScript;
+  purgeAnswer: readonly GuestFrame[];
+}
+
 // Builds a stand-in for the sandbox adapter whose sandboxes run a scripted conversation guest. It
 // speaks the real turn frames over a framed stream, as the guest does, so the host side runs as it
 // would against a sandbox, with no process and no model.
 export function buildStubSandboxes(): StubSandboxes {
-  const state = {
-    secrets: [] as SecretSpec[],
-    created: [] as SandboxSpec[],
-    destroyed: [] as string[],
-    turns: [] as TurnFrame[],
-    summaries: [] as SummarizeFrame[],
-    purged: [] as string[],
-    sandboxes: [] as Sandbox[],
-    script: buildHelloTurn as StubGuestScript,
-    summaryScript: buildSummary as StubSummaryScript,
-    purgeAnswer: [{ type: 'purged' }] as readonly GuestFrame[],
+  const state: StubState = {
+    secrets: [],
+    created: [],
+    destroyed: [],
+    turns: [],
+    summaries: [],
+    purged: [],
+    sandboxes: [],
+    script: buildHelloTurn,
+    summaryScript: buildSummary,
+    purgeAnswer: [{ type: 'purged' }],
   };
 
   const buildSandbox = (spec: SandboxSpec): Sandbox => buildStubSandbox(spec, buildHooks(state));

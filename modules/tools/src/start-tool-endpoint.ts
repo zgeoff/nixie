@@ -87,9 +87,8 @@ async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
       state.isRevoked ? null : findTokenHandler(handlers, authorization),
     ),
 
-    // A listen stream stays open for the run, and a call can outlast any idle limit. Bun applies
-    // its 10 s default to a Unix socket too, though bun-types leaves the option off.
-    ...({ idleTimeout: 0 } as object),
+    // a listen stream stays open for the run, and a call can outlast any idle limit
+    idleTimeout: 0,
   });
 
   return {

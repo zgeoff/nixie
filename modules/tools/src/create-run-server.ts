@@ -1,4 +1,4 @@
-import type { JSONObject } from '@heynixie/log';
+import { JSON_OBJECT_SCHEMA } from '@heynixie/log';
 import { Server } from '@modelcontextprotocol/server';
 import type { ToolCallOptions } from './run-tool-call';
 import { runToolCall } from './run-tool-call';
@@ -36,10 +36,7 @@ export function createRunServer(run: ToolRun, options: ToolCallOptions): Server 
     runToolCall(
       {
         tool: request.params.name,
-
-        // the arguments arrived as JSON, so every value in them is JSON
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- parsed from the request body
-        input: (request.params.arguments ?? {}) as JSONObject,
+        input: JSON_OBJECT_SCHEMA.parse(request.params.arguments ?? {}),
 
         // oxlint-disable-next-line no-underscore-dangle -- _meta is the MCP field's name
         toolUseID: findToolUseID(request.params._meta),

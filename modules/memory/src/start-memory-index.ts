@@ -1,6 +1,7 @@
-import { startDatabase } from '@heynixie/db';
+import { readQueryRows, startDatabase } from '@heynixie/db';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
+import { z } from 'zod';
 import { splitContentWords } from './split-content-words';
 
 export interface IndexEntry {
@@ -127,11 +128,15 @@ async function readMatches(
   const excluded =
     excludedIDs.length === 0 ? sql`` : sql`and item_id not in (${sql.join(excludedIDs)})`;
 
-  const result = await sql<{ item_id: string; rank: number }>`select item_id, rank from memory_index
-    where memory_index match ${buildMatchExpression(words)} and rank <= ${-minScore} ${excluded}
-    order by rank limit ${options.limit}`.execute(db);
+  const rows = await readQueryRows(
+    sql`select item_id, rank from memory_index
+      where memory_index match ${buildMatchExpression(words)} and rank <= ${-minScore} ${excluded}
+      order by rank limit ${options.limit}`,
+    db,
+    z.object({ item_id: z.string(), rank: z.number() }),
+  );
 
-  return result.rows.map((row) => ({ itemID: row.item_id, score: -row.rank }));
+  return rows.map((row) => ({ itemID: row.item_id, score: -row.rank }));
 }
 
 // The content words of a query, less each one whose stems all belong to an excluded word. A message
@@ -154,12 +159,15 @@ async function readQueryWords(
   const stems = await db.transaction().execute(async (tx) => {
     await sql`insert into query_words (rowid, word) values ${sql.join(rows)}`.execute(tx);
 
-    const result = await sql<{ term: string; doc: number }>`select term, doc
-      from query_word_stems`.execute(tx);
+    const termRows = await readQueryRows(
+      sql`select term, doc from query_word_stems`,
+      tx,
+      z.object({ term: z.string(), doc: z.number() }),
+    );
 
     await sql`delete from query_words`.execute(tx);
 
-    return result.rows;
+    return termRows;
   });
 
   const excludedStems = new Set(

@@ -1,10 +1,11 @@
 import type { ActionConnector, ProviderResponse } from '@heynixie/connectors';
-import type { JSONObject } from '@heynixie/log';
+import { JSON_OBJECT_SCHEMA } from '@heynixie/log';
+import { z } from 'zod';
 
-interface ProviderBody {
-  readonly result?: JSONObject;
-  readonly reason?: string;
-}
+const providerBodySchema = z.object({
+  result: JSON_OBJECT_SCHEMA.exactOptional(),
+  reason: z.string().exactOptional(),
+});
 
 // The test connector: it sends each attempt of test.send to the provider double at providerURL,
 // with the action ID as the Idempotency-Key header, and reads the double's answer as the provider's
@@ -18,12 +19,11 @@ export function buildTestConnector(providerURL: string): ActionConnector {
         body: JSON.stringify(call.arguments),
       });
 
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the double's own JSON
-      const body = (await response.json()) as ProviderBody;
+      const json: unknown = await response.json();
 
       return parseProviderResponse(
         { status: response.status, retryAfter: response.headers.get('retry-after-ms') },
-        body,
+        providerBodySchema.parse(json),
       );
     },
   };
@@ -34,6 +34,8 @@ interface ProviderAnswer {
   readonly status: number;
   readonly retryAfter: string | null;
 }
+
+type ProviderBody = z.infer<typeof providerBodySchema>;
 
 function parseProviderResponse(answer: ProviderAnswer, body: ProviderBody): ProviderResponse {
   if (answer.status === 200) {

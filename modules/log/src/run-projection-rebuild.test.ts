@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
+import { readQueryRows } from '@heynixie/db';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { removeRecordKey } from './remove-record-key';
 import { runProjectionRebuild } from './run-projection-rebuild';
 import { startTestLog } from './test-utils/start-test-log';
@@ -36,7 +38,7 @@ test('it folds a recorded log into the live tables once every projection is drop
   ]);
 
   // every projection row and every change row as one value, so the 2 reads compare whole
-  const readTables = sql<{ threads: string; changes: string }>`select
+  const readTables = sql`select
     (select json_group_array(json_array(thread, first_sequence, last_sequence, record_count,
       last_recorded_at)) from (select * from threads order by thread)) as threads,
     (select json_group_array(json_array(sequence, projection, row_key, row))
@@ -50,7 +52,10 @@ test('it folds a recorded log into the live tables once every projection is drop
 
   const folded = await readTables.execute(ctx.writer.db);
 
-  expect(live.rows.at(0)?.threads).toStartWith('[["conversation",1,5,3,');
+  expect(live.rows).toStrictEqual([
+    { threads: expect.toStartWith('[["conversation",1,5,3,'), changes: expect.any(String) },
+  ]);
+
   expect(folded.rows).toStrictEqual(live.rows);
 });
 
@@ -66,11 +71,11 @@ test('it folds the same rows after a record key is gone', async () => {
     },
   ]);
 
-  const keys = await sql<{ key_id: string }>`select key_id from record_keys`.execute(
+  const [key] = await readQueryRows(
+    sql`select key_id from record_keys`,
     ctx.writer.keys,
+    z.object({ key_id: z.string() }),
   );
-
-  const [key] = keys.rows;
 
   invariant(key);
 

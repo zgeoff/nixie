@@ -1,6 +1,8 @@
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
+import { z } from 'zod';
 import { buildShortIDFromUUID } from './build-short-id-from-uuid';
+import { readQueryRows } from './read-query-rows';
 import type { Migration } from './types';
 
 // Gives every memory item the short ID the model reads in place of its UUID: an existing item takes
@@ -20,7 +22,7 @@ export const memoryShortIDsMigration: Migration = {
 };
 
 async function createShortIDColumn(tx: Transaction<unknown>): Promise<void> {
-  const columns = await sql<{ name: string }>`
+  const columns = await sql`
     select name from pragma_table_info('memory_items') where name = 'short_id'`.execute(tx);
 
   if (columns.rows.length === 0) {
@@ -30,10 +32,13 @@ async function createShortIDColumn(tx: Transaction<unknown>): Promise<void> {
 
 // the backfill, which fills only the items still without a short ID
 async function writeShortIDs(tx: Transaction<unknown>): Promise<void> {
-  const items = await sql<{ item_id: string }>`
-    select item_id from memory_items where short_id is null`.execute(tx);
+  const items = await readQueryRows(
+    sql`select item_id from memory_items where short_id is null`,
+    tx,
+    z.object({ item_id: z.string() }),
+  );
 
-  for (const item of items.rows) {
+  for (const item of items) {
     await sql`update memory_items set short_id = ${buildShortIDFromUUID(item.item_id)}
       where item_id = ${item.item_id}`.execute(tx);
   }

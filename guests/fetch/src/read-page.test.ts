@@ -255,6 +255,66 @@ test('it follows redirects up to the limit and returns the final URL', async () 
   });
 });
 
+test('it resolves the links of a page against its final URL after a redirect', async () => {
+  const pages: Readonly<Record<string, Response>> = {
+    '/start': new Response(null, { status: 302, headers: { location: '/guides/setup/' } }),
+    '/guides/setup/': new Response('<main><p><a href="../install">Install</a> first.</p></main>', {
+      headers: { 'content-type': 'text/html' },
+    }),
+  };
+
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: (request) =>
+      pages[new URL(request.url).pathname] ?? new Response(null, { status: 404 }),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/start`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: `https://site.test:${site.port}/guides/setup/`,
+    status: 200,
+    contentType: 'text/html',
+    text: `Install [→ https://site.test:${site.port}/guides/install] first.`,
+    isTruncated: false,
+    blocked: null,
+  });
+});
+
+test('it cuts the list of other links before the text of the page at the text limit', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: () =>
+      new Response(
+        '<nav><a href="/a">First link</a> <a href="/b">Second link</a></nav><article><p>The article.</p></article>',
+        { headers: { 'content-type': 'text/html' } },
+      ),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 38 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: `https://site.test:${site.port}/`,
+    status: 200,
+    contentType: 'text/html',
+    text: 'The article.\n\nOther links on this page',
+    isTruncated: true,
+    blocked: null,
+  });
+});
+
 test('it fails a page that redirects more times than the limit', async () => {
   const site = await startTestSite({
     names: ['site.test'],

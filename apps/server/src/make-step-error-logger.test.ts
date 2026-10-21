@@ -101,7 +101,7 @@ test("it writes no line that quotes a failed turn's message or tool result", asy
   invariant(errored);
   makeStepErrorLogger(makeLogger())(errored);
 
-  expect(lines.map((line) => JSON.parse(line) as unknown)).toStrictEqual([
+  expect(lines.map((line): unknown => JSON.parse(line))).toStrictEqual([
     {
       time: expect.toBeString(),
       event: 'task.step_errored',

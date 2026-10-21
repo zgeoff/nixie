@@ -1,6 +1,5 @@
 import { sql } from 'kysely';
-import type { MemorySubject } from './types';
 
 // A row's subject as a query filters on it, with the subject its kind gives when the release
 // before wrote the row with none, as getRowSubject reads it.
-export const subjectColumn = sql<MemorySubject>`coalesce(subject, case kind when 'self' then 'self' else 'owner' end)`;
+export const subjectColumn = sql`coalesce(subject, case kind when 'self' then 'self' else 'owner' end)`;

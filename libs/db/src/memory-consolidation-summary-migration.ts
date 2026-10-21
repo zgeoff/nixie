@@ -19,7 +19,7 @@ async function createColumn(
   name: string,
   definition: 'text' | 'integer',
 ): Promise<void> {
-  const columns = await sql<{ name: string }>`
+  const columns = await sql`
     select name from pragma_table_info('memory_consolidations')
     where name = ${name}`.execute(tx);
 

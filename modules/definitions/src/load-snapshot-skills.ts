@@ -1,6 +1,8 @@
 import type { Kysely } from 'kysely';
 import type { OverlaidSkill } from './build-skill-overlay';
-import type { DefinitionsTables, SkillFrontmatter, SkillVersion } from './types';
+import { storedSkillFilesSchema } from './stored-skill-files-schema';
+import { storedSkillFrontmatterSchema } from './stored-skill-frontmatter-schema';
+import type { DefinitionsTables, SkillVersion } from './types';
 
 // A skill a snapshot holds, with its files, and the approval that applied it when nixie wrote it.
 export type SnapshotSkill = SkillVersion & OverlaidSkill;
@@ -32,11 +34,7 @@ export async function loadSnapshotSkills(
     skillHash: row.skill_hash,
     origin: row.approval_id === null ? row.origin : 'nixie',
     approvalID: row.approval_id,
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the seed wrote the frontmatter
-    frontmatter: JSON.parse(row.frontmatter) as SkillFrontmatter,
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the seed wrote the files
-    files: new Map(Object.entries(JSON.parse(row.files) as Record<string, string>)),
+    frontmatter: storedSkillFrontmatterSchema.parse(JSON.parse(row.frontmatter)),
+    files: storedSkillFilesSchema.parse(JSON.parse(row.files)),
   }));
 }

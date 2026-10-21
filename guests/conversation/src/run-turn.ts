@@ -4,6 +4,7 @@ import type { GuestFrame, SessionPoint } from '@heynixie/wire';
 import type { TurnFrame } from './build-query-options';
 import { buildQueryOptions } from './build-query-options';
 import { checkToolServer } from './check-tool-server';
+import { commandLifecycleSchema } from './command-lifecycle-schema';
 import { countContextTokens } from './count-context-tokens';
 import { getCompactWindow } from './get-compact-window';
 import type { TurnInputState } from './read-turn-input';
@@ -169,12 +170,10 @@ async function emitCommandRead(
   deps: TurnDependencies,
   state: TurnState,
 ): Promise<MessageOutcome> {
-  const lifecycle = message as { type: string; state?: unknown; command_uuid?: unknown };
+  const lifecycle = commandLifecycleSchema.safeParse(message);
 
-  if (lifecycle.type === 'command_lifecycle' && lifecycle.state === 'completed') {
-    await emitReads(deps, state, [
-      typeof lifecycle.command_uuid === 'string' ? lifecycle.command_uuid : undefined,
-    ]);
+  if (lifecycle.success && lifecycle.data.state === 'completed') {
+    await emitReads(deps, state, [lifecycle.data.command_uuid]);
   }
 
   return 'continue';

@@ -3,7 +3,9 @@ import { join } from 'node:path';
 import type { Kysely, Transaction } from 'kysely';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { createDatabaseCopy } from './create-database-copy';
+import { readQueryRows } from './read-query-rows';
 import { SchemaTooNewError } from './schema-too-new-error';
 import type { BuildSchema, Migration, StoredSchema } from './types';
 
@@ -64,10 +66,11 @@ function createSchemaVersion(
     await sql`insert into schema_version (id, version, oldest_reader) values (1, 0, 0)
       on conflict do nothing`.execute(tx);
 
-    const result = await sql<{ version: number; oldest_reader: number }>`
-      select version, oldest_reader from schema_version where id = 1`.execute(tx);
-
-    const [row] = result.rows;
+    const [row] = await readQueryRows(
+      sql`select version, oldest_reader from schema_version where id = 1`,
+      tx,
+      z.object({ version: z.number(), oldest_reader: z.number() }),
+    );
 
     // the insert above leaves the one row in place
     invariant(row);

@@ -235,10 +235,7 @@ test('it marks an approval whose files your definitions already hold as yours, t
   );
 
   const result = await runWrittenSkillSeed({ log: ctx.log, policy });
-
-  const states = await sql<{ state: string }>`select state from written_skills`.execute(
-    ctx.writer.db,
-  );
+  const states = await sql`select state from written_skills`.execute(ctx.writer.db);
 
   expect(result).toMatchObject({
     status: 'seeded',

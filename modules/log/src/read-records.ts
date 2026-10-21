@@ -1,10 +1,10 @@
 import type { Selectable } from 'kysely';
 import { buildEnvelopeRecord } from './build-envelope-record';
 import { decodeErasable } from './decode-erasable';
+import { parseJSONObject } from './parse-json-object';
 import { readRecordKeys } from './read-record-keys';
 import type {
   ErasableFields,
-  JSONObject,
   Log,
   LogTables,
   ProjectionChange,
@@ -119,8 +119,6 @@ function buildChanges(
     .map((change) => ({
       projection: change.projection,
       key: change.row_key,
-
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- applyProjections wrote a row object
-      row: change.row === null ? null : (JSON.parse(change.row) as JSONObject),
+      row: change.row === null ? null : parseJSONObject(change.row),
     }));
 }
