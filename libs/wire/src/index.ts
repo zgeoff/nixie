@@ -1,5 +1,6 @@
 export type { CheckReply, CheckRequest } from './check-frame';
 export { checkReplySchema, checkRequestSchema } from './check-frame';
+export { defaultFetchTextBytes } from './default-fetch-text-bytes';
 export { decodeFetchReply } from './decode-fetch-reply';
 export { decodeFetchRequest } from './decode-fetch-request';
 export { decodeTurnFrame } from './decode-turn-frame';

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { gzipSync } from 'node:zlib';
+import { defaultFetchTextBytes } from '@heynixie/wire';
 import { buildReadableText } from './build-readable-text';
 import { makeAddressCheck } from './make-address-check';
 import { readPage } from './read-page';
@@ -755,7 +756,12 @@ test('it cuts a long article full of links to the start that fits the default te
   });
 
   const reply = await readPage(`https://site.test:${site.port}/`, {
-    limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 20_000 },
+    limits: {
+      bodyBytes: 2_097_152,
+      timeoutMs: 15_000,
+      redirects: 5,
+      textBytes: defaultFetchTextBytes,
+    },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
     ca: site.ca,
@@ -767,7 +773,11 @@ test('it cuts a long article full of links to the start that fits the default te
 
   expect(buildReadableText(html, new URL(reply.url)).length).toBeWithin(68_000, 72_000);
   expect(reply.isTruncated).toBeTrue();
-  expect(Buffer.byteLength(reply.text)).toBeWithin(19_000, 20_001);
+
+  expect(Buffer.byteLength(reply.text)).toBeWithin(
+    defaultFetchTextBytes - 1000,
+    defaultFetchTextBytes + 1,
+  );
 
   expect(reply.text).toStartWith(
     "Gannet Rock Light\n\nKeeper's log 0: the lamp at Gannet Rock burned through the fog, as the volume 0 [→ https://lighthouses.example/archive/gannet-rock/logbook/volume-0/entry-0?view=full&lang=en]",

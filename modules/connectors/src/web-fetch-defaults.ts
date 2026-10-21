@@ -1,5 +1,6 @@
 import type { SandboxLimits } from '@heynixie/sandbox';
 import type { FetchLimits } from '@heynixie/wire';
+import { defaultFetchTextBytes } from '@heynixie/wire';
 
 export interface WebFetchConfig {
   readonly limits: FetchLimits;
@@ -13,7 +14,12 @@ export interface WebFetchConfig {
 // redirects, 5 redirects, 20,000 bytes of returned text, and a new fetch sandbox after 50 fetches. imp
 // starts no sandbox on a disk smaller than the 4096 MiB filesystem impd gives a built image.
 export const webFetchDefaults: WebFetchConfig = {
-  limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 20_000 },
+  limits: {
+    bodyBytes: 2_097_152,
+    timeoutMs: 15_000,
+    redirects: 5,
+    textBytes: defaultFetchTextBytes,
+  },
   fetchesPerSandbox: 50,
   sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
 };
