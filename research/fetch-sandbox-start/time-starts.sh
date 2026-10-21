@@ -137,7 +137,7 @@ print_row() {
 time_create() {
   local route=$1 run=$2 name=$3
   shift 3
-  local version awake create_exit create_ms create_err wake_ms=0 exec_ms total_ms note=""
+  local version awake create_exit create_ms create_err wait_ms=0 wake_ms=0 exec_ms total_ms note=""
 
   version=$(read_impd_version)
   awake=$(read_awake_count)
@@ -157,6 +157,7 @@ time_create() {
 
   if [[ $create_exit != 0 ]]; then
     wait_running "$name"
+    wait_ms=$WAIT_MS
     note="exit $create_exit: ${create_err}; then ${WAIT_STATE:-missing} after ${WAIT_MS} ms"
   fi
 
@@ -169,7 +170,8 @@ time_create() {
   run_call exec "$name" -- true
   exec_ms=$CALL_MS
   [[ $CALL_EXIT == 0 ]] || note="${note:+$note; }exec exit $CALL_EXIT: $CALL_ERR"
-  total_ms=$((create_ms + wake_ms + exec_ms))
+  # a failed create that the imp outlives counts its wait for running too
+  total_ms=$((create_ms + wait_ms + wake_ms + exec_ms))
 
   remove_imp "$name"
   print_row "$route" "$run" "$version" "$awake" "$create_exit" "$create_ms" "$wake_ms" "$exec_ms" \
