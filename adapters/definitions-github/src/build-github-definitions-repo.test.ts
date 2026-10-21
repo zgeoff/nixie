@@ -1,27 +1,40 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import './mocks/run-github-mock';
+import { expect, test } from 'bun:test';
+import { HttpResponse, http } from 'msw';
 import invariant from 'tiny-invariant';
 import { buildGitHubDefinitionsRepo } from './build-github-definitions-repo';
-import { startStubGitHub } from './test-utils/start-stub-github';
+import { createMockGitHubRepo } from './mocks/create-mock-github-repo';
+import { githubAPIURL } from './mocks/github-api-url';
+import { githubStore } from './mocks/github-store';
+import { server } from './mocks/node';
+import { readMockFiles } from './mocks/read-mock-files';
+import { writeMockBranchFile } from './mocks/write-mock-branch-file';
 
 test("it reads the base branch's newest commit as the base revision", async () => {
-  const github = startStubGitHub({
-    repository: 'harbour/definitions',
-    base: 'main',
-    token: 'token-a',
-  });
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
-  github.writeBaseFile('nixie.yaml', 'format: 2\n');
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'nixie.yaml',
+    text: 'format: 2\n',
+  });
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-a',
-    apiURL: github.url,
+    apiURL: githubAPIURL,
   });
 
   const first = await repo.readBaseRevision();
 
-  github.writeBaseFile('persona.md', '# Persona\n');
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'persona.md',
+    text: '# Persona\n',
+  });
 
   const second = await repo.readBaseRevision();
 
@@ -30,19 +43,20 @@ test("it reads the base branch's newest commit as the base revision", async () =
 });
 
 test('it reads a file at a revision, and null for a missing one', async () => {
-  const github = startStubGitHub({
-    repository: 'harbour/definitions',
-    base: 'main',
-    token: 'token-a',
-  });
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
-  github.writeBaseFile('skills/skills.lock.json', '{}\n');
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'skills/skills.lock.json',
+    text: '{}\n',
+  });
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-a',
-    apiURL: github.url,
+    apiURL: githubAPIURL,
   });
 
   const revision = await repo.readBaseRevision();
@@ -54,24 +68,30 @@ test('it reads a file at a revision, and null for a missing one', async () => {
 });
 
 test('it reads a file at the pinned revision after the base branch moves', async () => {
-  const github = startStubGitHub({
-    repository: 'harbour/definitions',
-    base: 'main',
-    token: 'token-a',
-  });
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
-  github.writeBaseFile('skills/skills.lock.json', '{}\n');
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'skills/skills.lock.json',
+    text: '{}\n',
+  });
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-a',
-    apiURL: github.url,
+    apiURL: githubAPIURL,
   });
 
   const revision = await repo.readBaseRevision();
 
-  github.writeBaseFile('skills/skills.lock.json', '{"star-chart":{}}\n');
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'skills/skills.lock.json',
+    text: '{"star-chart":{}}\n',
+  });
 
   const pinned = await repo.readFile('skills/skills.lock.json', revision);
 
@@ -79,21 +99,34 @@ test('it reads a file at the pinned revision after the base branch moves', async
 });
 
 test('it lists the files under a folder at a revision, nested ones included', async () => {
-  const github = startStubGitHub({
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
+
+  await writeMockBranchFile({
     repository: 'harbour/definitions',
-    base: 'main',
-    token: 'token-a',
+    branch: 'main',
+    path: 'skills/tide-tables/SKILL.md',
+    text: '# Tides\n',
   });
 
-  github.writeBaseFile('skills/tide-tables/SKILL.md', '# Tides\n');
-  github.writeBaseFile('skills/tide-tables/scripts/read.ts', '\n');
-  github.writeBaseFile('skills/star-chart/SKILL.md', '# Stars\n');
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'skills/tide-tables/scripts/read.ts',
+    text: '\n',
+  });
+
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'skills/star-chart/SKILL.md',
+    text: '# Stars\n',
+  });
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-a',
-    apiURL: github.url,
+    apiURL: githubAPIURL,
   });
 
   const revision = await repo.readBaseRevision();
@@ -103,20 +136,26 @@ test('it lists the files under a folder at a revision, nested ones included', as
 });
 
 test('it refuses a folder listing that GitHub cut short', async () => {
-  const github = startStubGitHub({
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
+
+  await writeMockBranchFile({
     repository: 'harbour/definitions',
-    base: 'main',
-    token: 'token-a',
+    branch: 'main',
+    path: 'skills/tide-tables/SKILL.md',
+    text: '# Tides\n',
   });
 
-  github.writeBaseFile('skills/tide-tables/SKILL.md', '# Tides\n');
-  github.truncateTrees();
+  await githubStore.repos.update((query) => query.where({ repository: 'harbour/definitions' }), {
+    data(draft) {
+      draft.isTruncated = true;
+    },
+  });
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-a',
-    apiURL: github.url,
+    apiURL: githubAPIURL,
   });
 
   const revision = await repo.readBaseRevision();
@@ -127,25 +166,37 @@ test('it refuses a folder listing that GitHub cut short', async () => {
 });
 
 test('it opens a pull request from a branch that holds the change on the pinned revision', async () => {
-  const github = startStubGitHub({
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
+
+  await writeMockBranchFile({
     repository: 'harbour/definitions',
-    base: 'main',
-    token: 'token-a',
+    branch: 'main',
+    path: 'nixie.yaml',
+    text: 'format: 2\n',
   });
 
-  github.writeBaseFile('nixie.yaml', 'format: 2\n');
-  github.writeBaseFile('skills/tide-tables/old.md', '# Old\n');
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'skills/tide-tables/old.md',
+    text: '# Old\n',
+  });
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-a',
-    apiURL: github.url,
+    apiURL: githubAPIURL,
   });
 
   const revision = await repo.readBaseRevision();
 
-  github.writeBaseFile('persona.md', '# Persona\n');
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'persona.md',
+    text: '# Persona\n',
+  });
 
   const pullRequest = await repo.writePullRequest(
     {
@@ -165,15 +216,14 @@ test('it opens a pull request from a branch that holds the change on the pinned 
     url: 'https://github.test/harbour/definitions/pull/1',
   });
 
-  expect(github.readBranchFiles('nixie/skill/tide-tables')).toStrictEqual(
-    new Map([
-      ['nixie.yaml', 'format: 2\n'],
-      ['skills/tide-tables/SKILL.md', '# Tides\n'],
-    ]),
-  );
+  expect(readMockFiles('harbour/definitions', 'nixie/skill/tide-tables')).toStrictEqual({
+    'nixie.yaml': 'format: 2\n',
+    'skills/tide-tables/SKILL.md': '# Tides\n',
+  });
 
-  expect(github.readPulls()).toStrictEqual([
+  expect(githubStore.pulls.all()).toMatchObject([
     {
+      repository: 'harbour/definitions',
       number: 1,
       head: 'nixie/skill/tide-tables',
       base: 'main',
@@ -185,17 +235,13 @@ test('it opens a pull request from a branch that holds the change on the pinned 
 });
 
 test('it rebuilds the branch on a later revision and updates the open pull request', async () => {
-  const github = startStubGitHub({
-    repository: 'harbour/definitions',
-    base: 'main',
-    token: 'token-a',
-  });
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-a',
-    apiURL: github.url,
+    apiURL: githubAPIURL,
   });
 
   const first = await repo.readBaseRevision();
@@ -210,7 +256,12 @@ test('it rebuilds the branch on a later revision and updates the open pull reque
     first,
   );
 
-  github.writeBaseFile('persona.md', '# Persona\n');
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'persona.md',
+    text: '# Persona\n',
+  });
 
   const second = await repo.readBaseRevision();
 
@@ -226,28 +277,22 @@ test('it rebuilds the branch on a later revision and updates the open pull reque
 
   expect(pullRequest.number).toBe(1);
 
-  expect(github.readBranchFiles('nixie/skill/tide-tables')).toStrictEqual(
-    new Map([
-      ['persona.md', '# Persona\n'],
-      ['skills/tide-tables/SKILL.md', '# Tides by port\n'],
-    ]),
-  );
+  expect(readMockFiles('harbour/definitions', 'nixie/skill/tide-tables')).toStrictEqual({
+    'persona.md': '# Persona\n',
+    'skills/tide-tables/SKILL.md': '# Tides by port\n',
+  });
 
-  expect(github.readPulls().map((pull) => pull.body)).toStrictEqual(['Second.\n']);
+  expect(githubStore.pulls.all().map((pull) => pull.body)).toStrictEqual(['Second.\n']);
 });
 
 test('it closes a pull request', async () => {
-  const github = startStubGitHub({
-    repository: 'harbour/definitions',
-    base: 'main',
-    token: 'token-a',
-  });
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-a',
-    apiURL: github.url,
+    apiURL: githubAPIURL,
   });
 
   const revision = await repo.readBaseRevision();
@@ -264,21 +309,17 @@ test('it closes a pull request', async () => {
 
   await repo.closePullRequest(1);
 
-  expect(github.readPulls()[0]?.state).toBe('closed');
+  expect(githubStore.pulls.all()[0]?.state).toBe('closed');
 });
 
 test("it reads a branch's open pull request", async () => {
-  const github = startStubGitHub({
-    repository: 'harbour/definitions',
-    base: 'main',
-    token: 'token-a',
-  });
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-a',
-    apiURL: github.url,
+    apiURL: githubAPIURL,
   });
 
   const revision = await repo.readBaseRevision();
@@ -299,17 +340,13 @@ test("it reads a branch's open pull request", async () => {
 });
 
 test('it reads no open pull request for a branch whose pull request closed', async () => {
-  const github = startStubGitHub({
-    repository: 'harbour/definitions',
-    base: 'main',
-    token: 'token-a',
-  });
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-a',
-    apiURL: github.url,
+    apiURL: githubAPIURL,
   });
 
   const revision = await repo.readBaseRevision();
@@ -335,16 +372,13 @@ test.each([
   ['an answer of the wrong shape', '{}'],
   ['an answer that is not JSON', 'not json'],
 ])('it refuses %s with no status', async (_, answer) => {
-  const answerAnyRequest = () => new Response(answer);
-  const server = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: answerAnyRequest });
-
-  onTestFinished(() => server.stop(true));
+  server.use(http.get(`${githubAPIURL}/*`, () => new HttpResponse(answer)));
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-a',
-    apiURL: `http://127.0.0.1:${server.port}`,
+    apiURL: githubAPIURL,
   });
 
   const refusal = await repo.readFile('nixie.yaml', 'main').then(
@@ -356,17 +390,13 @@ test.each([
 });
 
 test('it refuses a request GitHub refuses, with its status and never the token', async () => {
-  const github = startStubGitHub({
-    repository: 'harbour/definitions',
-    base: 'main',
-    token: 'token-a',
-  });
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
     token: 'token-b',
-    apiURL: github.url,
+    apiURL: githubAPIURL,
   });
 
   const refusal = await repo.readBaseRevision().then(

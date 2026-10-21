@@ -16,12 +16,12 @@ the shared testing skill, and nothing here relaxes them.
 
 Each line links the section that explains it.
 
-- [Runs](#runs): plain `bun test` at the root runs every suite but the gated ones, which need their
+- [Runs](#runs): `bun run test` at the root runs every suite but the gated ones, which need their
   own host or credential.
 - [Preloads](#preloads): the root preloads make every run a test build, swap in Bun's own
   `FormData`, and reset the web client's state after each test.
 - [The test build](#the-test-build): the fault points, test clock, and other test-only code sit
-  behind `NIXIE_TEST_BUILD`, which every `bun test` run sets.
+  behind `NIXIE_TEST_BUILD`, which every `bun run test` run sets.
 - [Shared harnesses](#shared-harnesses): a harness more than one server package uses lives in
   `libs/testing`; search it before writing one.
 
@@ -29,7 +29,7 @@ Each line links the section that explains it.
 
 | Run                    | Command                                                         | Needs                                                                                           |
 | ---------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Unit and package tests | `bun test` at the root                                          | The Bun that `.bun-version` pins; the gated suites below skip                                   |
+| Unit and package tests | `bun run test` at the root                                      | The Bun that `.bun-version` pins; the gated suites below skip                                   |
 | imp isolation          | `bun test src/build-imp-port.test.ts` in `adapters/sandbox-imp` | An impd on a host with `/dev/kvm`, and the `NIXIE_IMP_TEST_*` variables                         |
 | SDK contract           | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract`              | A model credential, or a broker's placeholder, in `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY` |
 
@@ -68,7 +68,7 @@ short directory or point `BUN_CHROME_PATH` at Playwright's `chrome-headless-shel
 such socket. Chrome stops under a `ulimit -v` cap, because it reserves more address space than it
 uses, so the browser suites skip there.
 
-Plain `bun test` runs the crash suites in `e2e/crash/`, which spawn the test build of nixie from
+`bun run test` runs the crash suites in `e2e/crash/`, which spawn the test build of nixie from
 [`e2e/nixie/main.ts`](../../../e2e/nixie/main.ts) as a child process and drive it through
 [`startCrashHarness`](../../../libs/testing/src/start-crash-harness.ts), which holds it at fault
 points, kills it, and restarts it. The poisoned page journey in `e2e/` runs in process on the

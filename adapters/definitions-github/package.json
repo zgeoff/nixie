@@ -15,6 +15,9 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@faker-js/faker": "catalog:",
+    "@msw/data": "catalog:",
+    "msw": "catalog:",
     "tiny-invariant": "catalog:"
   }
 }
