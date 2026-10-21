@@ -9,10 +9,8 @@ description:
 # Project code style
 
 Load the shared `code-style` skill first. This skill holds only what nixie adds to it. The
-`zgeoff/function-verb` and `zgeoff/verb-contract` lint rules check names against the role table. The
-exempt names here match the `zgeoff/function-verb` options in
-[`.oxlintrc.json`](../../../.oxlintrc.json), and neither rule reads this skill, so a change to one
-changes both.
+`zgeoff/function-verb` lint rule reads its exempt names from the `exemptNames` option in
+[`.oxlintrc.json`](../../../.oxlintrc.json), never from this skill, so change both in one commit.
 
 ## Project verbs
 
