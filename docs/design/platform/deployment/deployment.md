@@ -98,12 +98,12 @@ The backup image holds Bun on a slim base, the backup sidecar's program, and the
 against a recorded checksum before it adds the binary, as the
 [release pipeline](release-pipeline.md#pinned-binaries) describes.
 
-| Image        | Holds                                              | Runs                            |
-| ------------ | -------------------------------------------------- | ------------------------------- |
-| Conversation | Bun, nixie's turn runner, the SDK with Claude Code | The long-lived conversation imp |
-| Worker       | The conversation image plus the code runtimes      | One imp per worker run          |
-| Code         | The code tool's runtimes, with no SDK              | A code run in a disposable imp  |
-| Fetch        | A minimal base and the web fetch's fetcher         | The long-lived fetch sandbox    |
+| Image        | Holds                                              | Runs                                                   |
+| ------------ | -------------------------------------------------- | ------------------------------------------------------ |
+| Conversation | Bun, nixie's turn runner, the SDK with Claude Code | The long-lived conversation imp                        |
+| Worker       | The conversation image plus the code runtimes      | One imp per worker run                                 |
+| Code         | The code tool's runtimes, with no SDK              | A code run in a disposable imp                         |
+| Fetch        | A minimal base and the web fetch's fetcher         | A new sandbox per fetch, destroyed when the fetch ends |
 
 The worker image carries the code runtimes because a code run that a worker starts runs in that
 worker's own imp. The [coding design](../connectors/coding.md) sets the runtimes.
