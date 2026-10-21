@@ -3,8 +3,6 @@ import { withWriteTransaction } from './with-write-transaction';
 import { writeKeyStoreCheckpoint } from './write-key-store-checkpoint';
 
 export async function removeRecordKey(log: Pick<Log, 'writer'>, keyID: string): Promise<void> {
-  // The empty write transaction checks the writer epoch, so a process that lost the writer role
-  // deletes nothing.
   await withWriteTransaction(log.writer, () => Promise.resolve());
 
   await log.writer.keys
