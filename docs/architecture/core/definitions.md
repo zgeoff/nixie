@@ -128,11 +128,12 @@ The seed compares each written skill with the definitions' version of it:
 
 - **The definitions hold the written version.** The user merged it, so the seed marks the written
   skill adopted and the skill's origin becomes the definitions. The written skill's row records the
-  definitions' version and its origin, and the seed closes the export of each adopted or superseded
-  approval of the skill, because the merge settled its pull request. Every seed checks each adopted
-  skill for that record, so an adoption that lacks it gets it at the next seed. An approval of the
-  version the definitions already hold is adopted at its own seed, which records the adoption though
-  the skills in force stay the same.
+  definitions' version and its origin, and the seed closes the opened export of each adopted or
+  superseded approval of the skill, because the merge settled its pull request. The seed leaves an
+  export in flight to the export, which can still open a pull request. Every seed checks each
+  adopted skill for that record, so an adoption that lacks it gets it at the next seed. An approval
+  of the version the definitions already hold is adopted at its own seed, which records the adoption
+  though the skills in force stay the same.
 - **The definitions hold the base, or lack a new skill.** The written skill stays in force.
 - **The definitions hold another version.** The user changed the skill before the written version
   reached the definitions. The written skill stays in force, and its row keeps the definitions'
@@ -163,10 +164,13 @@ A choice on a conflict changes the export. Keeping nixie's version gives the ski
 the export builds the pull request again on it. Keeping the definitions' version retires the skill,
 and the export closes its pull request. The export records itself before it writes to the repo, so
 when a run stops before it records the pull request it opened, the close finds that pull request by
-the skill's branch. A new skill joins the conversation's list through the overlay alone, so when
-nixie.yaml lists the conversation's skills, the pull request asks the user to add the skill to that
-list. A seed under format 1 leaves every skill unapplied, so it never adopts a merged skill. When
-nixie.yaml holds format 1, the pull request tells the user to move it to format 2 with the merge.
+the skill's branch. When a seed adopts the skill while its export writes to the repo, the export
+closes the pull request it wrote, and the next export run closes the pull request of an adopted
+skill whose export stopped midway. A new skill joins the conversation's list through the overlay
+alone, so when nixie.yaml lists the conversation's skills, the pull request asks the user to add the
+skill to that list. A seed under format 1 leaves every skill unapplied, so it never adopts a merged
+skill. When nixie.yaml holds format 1, the pull request tells the user to move it to format 2 with
+the merge.
 
 The export runs only when the configuration names the definitions repo on GitHub. It writes through
 GitHub's REST API with a fine-grained token that holds contents and pull-requests write on that one

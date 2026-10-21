@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
@@ -669,4 +670,115 @@ test("it holds a later approval's export while the retired approval's pull reque
   expect(result).toStrictEqual({ exported: [], closed: [] });
   expect(onError).toHaveBeenCalledExactlyOnceWith(new Error('the repo is down'));
   expect(ctx.repo.readPullRequests()).toMatchObject([{ number: 1, state: 'open' }]);
+});
+
+test('it closes the pull request it wrote when a seed adopts the skill while the export runs', async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  ctx.repo.delayNextAnswer(async () => {
+    await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+    await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+    await runSeed({ log: ctx.log, source: ctx.source, policy });
+  });
+
+  const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  const exports = await sql`select state, pull_request_number from skill_exports`.execute(
+    ctx.writer.db,
+  );
+
+  const attempts = await sql`select approval_id from skill_export_attempts`.execute(ctx.writer.db);
+  const written = await sql`select state from written_skills`.execute(ctx.writer.db);
+
+  expect(result).toStrictEqual({
+    exported: [],
+    closed: ['5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31'],
+  });
+
+  expect(ctx.repo.readPullRequests()).toMatchObject([{ number: 1, state: 'closed' }]);
+  expect(exports.rows).toStrictEqual([{ state: 'closed', pull_request_number: 1 }]);
+  expect(attempts.rows).toStrictEqual([]);
+  expect(written.rows).toStrictEqual([{ state: 'adopted' }]);
+});
+
+test('it closes the pull request of an adopted skill whose export stopped midway, found by its branch', async () => {
+  const ctx = await setupTest();
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    });
+
+    await writeSkillExportState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'exporting',
+      at: 2,
+    });
+
+    await writeWrittenSkillState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'adopted',
+      at: 3,
+    });
+  });
+
+  const revision = await ctx.repo.readBaseRevision();
+
+  await ctx.repo.writePullRequest(
+    {
+      branch: 'nixie/skill/tide-tables',
+      title: 'Add the tide-tables skill that nixie wrote',
+      body: 'first\n',
+      files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
+    },
+    revision,
+  );
+
+  const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  const exports = await sql`select state, pull_request_number from skill_exports`.execute(
+    ctx.writer.db,
+  );
+
+  const attempts = await sql`select approval_id from skill_export_attempts`.execute(ctx.writer.db);
+
+  expect(result).toStrictEqual({
+    exported: [],
+    closed: ['5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31'],
+  });
+
+  expect(ctx.repo.readPullRequests()).toMatchObject([{ number: 1, state: 'closed' }]);
+  expect(exports.rows).toStrictEqual([{ state: 'closed', pull_request_number: 1 }]);
+  expect(attempts.rows).toStrictEqual([]);
 });

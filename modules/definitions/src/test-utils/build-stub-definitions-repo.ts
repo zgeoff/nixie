@@ -18,6 +18,10 @@ export interface StubDefinitionsRepo extends DefinitionsRepo {
 
   // the next pull request write lands and then rejects, as when its answer is lost on the way back
   readonly loseNextAnswer: () => void;
+
+  // the next pull request write lands and then answers once the work ends, as when other work
+  // runs while the answer is on its way back
+  readonly delayNextAnswer: (work: () => Promise<unknown>) => void;
 }
 
 // A definitions repo whose base branch is a folder on disk, whose base revision is the hash of the
@@ -40,6 +44,7 @@ export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo
   };
 
   let isNextAnswerLost = false;
+  let nextAnswerDelay: (() => Promise<unknown>) | null = null;
 
   const writeOpen = (change: DefinitionsChange, revision: string): PullRequestRef => {
     const open = pullRequests.find(
@@ -87,20 +92,30 @@ export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo
       return readFilePaths(join(directory, path));
     },
 
-    writePullRequest: (change, revision) => {
+    writePullRequest: async (change, revision) => {
       const written = writeOpen(change, revision);
+      const delay = nextAnswerDelay;
+
+      nextAnswerDelay = null;
+
+      if (delay !== null) {
+        await delay();
+      }
 
       if (isNextAnswerLost) {
         isNextAnswerLost = false;
-
-        return Promise.reject(new Error('the answer to the pull request write was lost'));
+        throw new Error('the answer to the pull request write was lost');
       }
 
-      return Promise.resolve(written);
+      return written;
     },
 
     loseNextAnswer: () => {
       isNextAnswerLost = true;
+    },
+
+    delayNextAnswer: (work) => {
+      nextAnswerDelay = work;
     },
 
     readOpenPullRequest: (branch) => {

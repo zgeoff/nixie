@@ -1238,3 +1238,50 @@ test('it never closes the export of a later approval in force over an adopted sk
 
   expect(exports.rows).toStrictEqual([{ state: 'opened' }]);
 });
+
+test('it adopts a skill whose export is in flight and leaves that export to finish', async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    });
+
+    await writeSkillExportState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'exporting',
+      at: 2,
+    });
+  });
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const written = await sql`select state, definitions_hash, definitions_origin
+    from written_skills`.execute(ctx.writer.db);
+
+  const attempts = await sql`select approval_id from skill_export_attempts`.execute(ctx.writer.db);
+
+  expect(written.rows).toStrictEqual([
+    { state: 'adopted', definitions_hash: skill.skillHash, definitions_origin: 'definitions' },
+  ]);
+
+  expect(attempts.rows).toStrictEqual([{ approval_id: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31' }]);
+});

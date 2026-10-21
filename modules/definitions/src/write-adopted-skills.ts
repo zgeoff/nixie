@@ -13,7 +13,7 @@ export interface AdoptedSkillsInput {
 
 // Marks each written skill your definitions now hold as yours, inside the caller's write
 // transaction. Every adopted skill records the version of your definitions it became, and the
-// exports of its approvals close, so an adoption that lacks either gets it at the next seed.
+// opened exports of its approvals close, so an adoption that lacks either gets it at the next seed.
 export async function writeAdoptedSkills(
   tx: Transaction<unknown>,
   input: AdoptedSkillsInput,
@@ -60,7 +60,8 @@ export async function writeAdoptedSkills(
 }
 
 // The pull request of an adopted skill merged, so the export of each approval of it that no longer
-// stands in force closes; the pull request needs no close on the repo.
+// stands in force closes; the pull request needs no close on the repo. An export in flight may
+// still open a pull request, so the export sweep closes it instead.
 async function writeAdoptedExportsClosed(
   tx: Transaction<unknown>,
   names: readonly string[],
@@ -78,9 +79,8 @@ async function writeAdoptedExportsClosed(
     .select('written.approval_id')
     .where('written.name', 'in', names)
     .where('written.state', 'in', ['adopted', 'superseded'])
-    .where((eb) =>
-      eb.or([eb('export.state', '=', 'opened'), eb('attempt.approval_id', 'is not', null)]),
-    )
+    .where('export.state', '=', 'opened')
+    .where('attempt.approval_id', 'is', null)
     .execute();
 
   for (const row of open) {
