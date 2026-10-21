@@ -114,8 +114,8 @@ async function createWithinLimit(
 // the owner of every fetch sandbox, which a new sandbox's start reads to remove any left behind
 export const fetchSandboxOwner = 'web_fetch';
 
-// destroys every fetch sandbox a past process or a failed destroy left, when a sweep is due, then
-// creates a new one
+// destroys every fetch sandbox a past process, a failed create or a failed destroy left, when a sweep
+// is due, then creates a new one
 async function createFetchSandbox(
   options: FetchSandboxOptions,
   state: FetchSandboxState,
@@ -133,14 +133,20 @@ async function createFetchSandbox(
     state.needsSweep = false;
   }
 
-  return options.adapter.create(
-    buildSandboxSpec({
-      kind: 'fetch',
-      image: options.image,
-      owner: fetchSandboxOwner,
-      limits: options.sandboxLimits,
-    }),
-  );
+  try {
+    return await options.adapter.create(
+      buildSandboxSpec({
+        kind: 'fetch',
+        image: options.image,
+        owner: fetchSandboxOwner,
+        limits: options.sandboxLimits,
+      }),
+    );
+  } catch (error) {
+    // an adapter that fails a create after its runtime made the sandbox can fail to remove it too
+    state.needsSweep = true;
+    throw error;
+  }
 }
 
 interface TimeLimit {

@@ -280,7 +280,7 @@ test('it destroys a sandbox that a create makes after its time limit, as soon as
   expect(left).toStrictEqual([]);
 });
 
-test('it creates no sandbox for a fetch whose sweep answered after its time limit', async () => {
+test('it destroys nothing and creates nothing for a fetch whose sweep listed after its time limit', async () => {
   const clock = buildTestClock(0);
   const gate = Promise.withResolvers<void>();
 
@@ -319,17 +319,185 @@ test('it creates no sandbox for a fetch whose sweep answered after its time limi
 
   await stuck;
 
+  await fetchSandbox.readPage('https://example.com/2');
+
+  const kept = await adapter.create(
+    buildMockSandboxSpec({
+      kind: 'fetch',
+      image: 'nixie-fetch',
+      owner: 'web_fetch',
+      egress: { kind: 'public' },
+      grants: [],
+      toolRoute: false,
+    }),
+  );
+
+  gate.resolve();
+
+  await fetchSandbox.readPage('https://example.com/3');
+
+  await waitForCondition(() => adapter.destroyed.length === 2);
+
+  const [second = 'none', , third = 'none', ...others] = adapter.created.map(
+    (created) => created.id,
+  );
+
+  const left = await adapter.list('web_fetch');
+
+  expect(others).toStrictEqual([]);
+  expect(adapter.destroyed).toStrictEqual([second, third]);
+  expect(left.map((sandbox) => sandbox.id)).toStrictEqual([kept.id]);
+});
+
+test('it creates nothing for a fetch whose sweep destroyed its leftovers after its time limit', async () => {
+  const clock = buildTestClock(0);
+  const gate = Promise.withResolvers<void>();
+
+  const adapter = buildStubSandboxAdapter(
+    makeStubFetcher((request) => ({
+      kind: 'page',
+      url: request.url,
+      status: 200,
+      contentType: 'text/plain',
+      text: 'hello',
+      links: [],
+      isTruncated: false,
+      blocked: null,
+    })),
+    { destroyFailures: [{ kind: 'wait', until: gate.promise }] },
+  );
+
+  const leftover = await adapter.create(
+    buildMockSandboxSpec({
+      kind: 'fetch',
+      image: 'nixie-fetch',
+      owner: 'web_fetch',
+      egress: { kind: 'public' },
+      grants: [],
+      toolRoute: false,
+    }),
+  );
+
+  const fetchSandbox = startFetchSandbox({
+    adapter,
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+    sandboxCallTimeoutMs: 30_000,
+    clock,
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  const stuck = fetchSandbox.readPage('https://example.com/1');
+
+  await waitForCondition(() => clock.countSleepers() === 1);
+
+  clock.advance(30_000);
+
+  await stuck;
+
   gate.resolve();
 
   await fetchSandbox.readPage('https://example.com/2');
 
-  await waitForCondition(() => adapter.destroyed.length === 1);
+  await waitForCondition(() => adapter.destroyed.length === 2);
 
-  expect(adapter.created).toHaveLength(1);
+  const [, next = 'none', ...others] = adapter.created.map((created) => created.id);
 
-  expect(adapter.spawned.map((spawn) => spawn.sandboxID)).toStrictEqual(
-    adapter.created.map((created) => created.id),
+  expect(others).toStrictEqual([]);
+  expect(adapter.destroyed).toStrictEqual([leftover.id, next]);
+});
+
+test('it sweeps before the next fetch after a create that failed, which can leave a sandbox', async () => {
+  const adapter = buildStubSandboxAdapter(
+    makeStubFetcher((request) => ({
+      kind: 'page',
+      url: request.url,
+      status: 200,
+      contentType: 'text/plain',
+      text: 'hello',
+      links: [],
+      isTruncated: false,
+      blocked: null,
+    })),
+    { createFailures: [{ kind: 'reject', message: 'impd lost the imp it made' }] },
   );
+
+  const fetchSandbox = startFetchSandbox({
+    adapter,
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  await fetchSandbox.readPage('https://example.com/1');
+
+  // the sandbox that the failed create's runtime made and its rollback failed to remove
+  const stranded = await adapter.create(
+    buildMockSandboxSpec({
+      kind: 'fetch',
+      image: 'nixie-fetch',
+      owner: 'web_fetch',
+      egress: { kind: 'public' },
+      grants: [],
+      toolRoute: false,
+    }),
+  );
+
+  const reply = await fetchSandbox.readPage('https://example.com/2');
+
+  await waitForCondition(() => adapter.destroyed.length === 2);
+
+  const [, next = 'none', ...others] = adapter.created.map((created) => created.id);
+
+  expect(reply).toMatchObject({ kind: 'page', url: 'https://example.com/2' });
+  expect(others).toStrictEqual([]);
+  expect(adapter.destroyed).toStrictEqual([stranded.id, next]);
+});
+
+test('it lists no sandboxes for a fetch after one whose sandbox it destroyed', async () => {
+  const adapter = buildStubSandboxAdapter(
+    makeStubFetcher((request) => ({
+      kind: 'page',
+      url: request.url,
+      status: 200,
+      contentType: 'text/plain',
+      text: 'hello',
+      links: [],
+      isTruncated: false,
+      blocked: null,
+    })),
+    {
+      listFailures: [
+        { kind: 'wait', until: Promise.resolve() },
+        { kind: 'reject', message: 'impd is down' },
+      ],
+    },
+  );
+
+  const fetchSandbox = startFetchSandbox({
+    adapter,
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  const first = await fetchSandbox.readPage('https://example.com/1');
+  const second = await fetchSandbox.readPage('https://example.com/2');
+
+  expect(first).toMatchObject({ kind: 'page', url: 'https://example.com/1' });
+  expect(second).toMatchObject({ kind: 'page', url: 'https://example.com/2' });
 });
 
 test('it reads a reply whose text and link targets fill their limits with characters JSON escapes', async () => {
