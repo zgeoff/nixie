@@ -29,6 +29,15 @@ test('it writes the absolute target after the text of a link with a relative hre
   );
 });
 
+test('it writes the target of a link to an http page', () => {
+  expect(
+    buildReadableText(
+      '<p><a href="http://other.test/">Other</a></p>',
+      new URL('https://example.test/'),
+    ),
+  ).toBe('Other [→ http://other.test/]');
+});
+
 test('it decodes the entities of an href once', () => {
   expect(
     buildReadableText(
