@@ -1,6 +1,3 @@
-// The record kinds the skills module registers with the log: the skill versions a task pins, a
-// reload that moves the pin on, a skill that nixie proposes to write, the approval, the rejection
-// or the lapse that closes the proposal, and your choice for a skill that nixie wrote.
 export type SkillsRecordKind =
   | 'skills.pinned'
   | 'skills.reloaded'

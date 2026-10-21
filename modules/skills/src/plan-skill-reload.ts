@@ -1,14 +1,11 @@
 import type { DefinitionsInForce, SkillRef } from '@heynixie/definitions';
 
 export interface SkillReloadInput {
-  // the versions the task runs with now
   readonly pinned: readonly SkillRef[];
   readonly inForce: Pick<DefinitionsInForce, 'skills'>;
 
-  // the names on the caller's skill list in the definitions in force
   readonly list: readonly string[];
 
-  // the one skill to move on, or null for every skill the task holds or its list names
   readonly name: string | null;
 }
 
@@ -18,15 +15,11 @@ interface SkillChange {
   readonly newHash: string | null;
 }
 
-// A reload's outcome: the task's pin after it, and each skill's old and new version.
 export interface SkillReloadPlan {
   readonly skills: readonly SkillRef[];
   readonly changes: readonly SkillChange[];
 }
 
-// Plans a reload: each skill it moves takes the version the definitions in force hold for a skill
-// on the caller's list, and leaves the pin when the list or the definitions no longer hold it.
-// Every other skill keeps its version.
 export function planSkillReload(input: SkillReloadInput): SkillReloadPlan {
   const listed = new Set(input.list);
 

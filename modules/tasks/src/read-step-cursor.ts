@@ -8,8 +8,6 @@ interface StepCursor {
   readonly hasUnread: boolean;
 }
 
-// Reads where a step's acknowledgements move its task's read cursor, and whether input stays unread
-// after it.
 export async function readStepCursor(
   tx: Transaction<unknown>,
   taskID: string,

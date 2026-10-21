@@ -3,8 +3,6 @@ import { timerFiredCodec } from './timer-fired-codec';
 import type { TasksContext, TasksTables } from './types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
-// Fires every due timer that has not fired, earliest first, and returns how many fired. Its record
-// holds the due time and the fire time, so a timer that fell due while nixie was down says so.
 export async function runDueTimers(context: TasksContext): Promise<number> {
   const due = await context.log.writer.db
     .$extendTables<TasksTables>()
@@ -32,8 +30,6 @@ interface DueTimer {
   readonly due_at: number;
 }
 
-// One timer's fire record, which lands in its task's inbox and wakes the task. The transaction
-// checks the timer again, so a timer that another pass fired stays fired once.
 async function writeTimerFired(context: TasksContext, timer: DueTimer): Promise<boolean> {
   const faultContext = { kind: 'task', id: timer.task_id } as const;
 

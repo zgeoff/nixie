@@ -8,9 +8,6 @@ import { z } from 'zod';
 import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 import type { SkillToolsContext } from './types';
 
-// Builds skill_write, which declares note and proposes a new skill, or a new version of one, for
-// your review. The seed checks run first, and a skill that fails one returns its problems. The
-// proposal holds the files, the replaced version, the token check and the run that wrote it.
 export function buildSkillWriteTool(context: SkillToolsContext): ToolDefinition {
   return {
     name: 'skill_write',
@@ -135,7 +132,6 @@ function isProblemList(
   return Array.isArray(checked);
 }
 
-// the text of your definitions in force: the persona and every skill's files
 async function readOwnText(
   context: SkillToolsContext,
   inForce: DefinitionsInForce,

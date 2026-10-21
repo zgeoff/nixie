@@ -6,8 +6,6 @@ import type { SkillToolsContext } from './types';
 
 const reloadArguments = z.object({ name: z.string() });
 
-// Builds skill_reload, which declares note and moves one skill of the running task to its version
-// in the definitions in force, after a fresh seed. The record holds the old and new hash.
 export function buildSkillReloadTool(context: SkillToolsContext): ToolDefinition {
   return {
     name: 'skill_reload',

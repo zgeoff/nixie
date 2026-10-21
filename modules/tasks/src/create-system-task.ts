@@ -2,9 +2,6 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { taskCreatedCodec } from './task-created-codec';
 import type { TasksContext, TasksTables } from './types';
 
-// Creates a system task under its fixed ID on first start and leaves it be on every start after.
-// A system task, such as the memory writer, belongs to nixie rather than to a brief of yours, so it
-// has no brief and starts ready for its first step.
 export async function createSystemTask(
   context: Pick<TasksContext, 'definitions' | 'log'>,
   taskID: string,

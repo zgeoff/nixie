@@ -4,16 +4,11 @@ import { match } from 'ts-pattern';
 import { skillsWrittenResolvedCodec } from './skills-written-resolved-codec';
 import type { SkillAnswerContext } from './types';
 
-// Your choice for a skill that nixie wrote, by the approval that applied it: keep nixie's version,
-// which makes your definitions' version its base, or keep your definitions' version.
 export interface WrittenSkillResolution {
   readonly approvalID: string;
   readonly keep: 'nixie' | 'definitions';
 }
 
-// Records your choice for a skill that nixie wrote, in one write transaction with its change, then
-// seeds the written skills as they stand. A choice of your definitions retires nixie's version, so
-// the seed puts your definitions' version back in force. A skill that left force refuses either.
 export async function writeWrittenSkillResolution(
   context: SkillAnswerContext,
   resolution: WrittenSkillResolution,

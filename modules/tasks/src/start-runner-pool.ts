@@ -2,41 +2,31 @@ import type { Clock } from '@heynixie/clock';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
 export interface RunnerPoolOptions<W> {
-  // how many pieces of work run at once
   readonly size: number;
 
-  // how long an idle runner sleeps before it tries to claim again, unless woken
   readonly pollMs: number;
   readonly claim: () => Promise<W | null>;
   readonly run: (work: W) => Promise<void>;
 
-  // a claim or a run threw, such as a StaleWriterError; the pool has stopped claiming
   readonly onError: (error: unknown) => void;
 }
 
 export interface RunnerPool {
-  // ends every idle runner's sleep, so new work is claimed at once
   readonly wake: () => void;
 
-  // stops claiming, then waits up to graceMs for the work in flight; work still running at the
-  // deadline is left to recover as after a crash
   readonly stop: (graceMs?: number) => Promise<void>;
 }
 
-// the 30 s a graceful stop gives the steps in flight to commit
 const DEFAULT_GRACE_MS = 30_000;
 
 interface RunnerState {
   readonly stopping: AbortSignal;
   readonly getWakeSignal: () => AbortSignal;
 
-  // counts the runners inside a claim or a run, which a graceful stop waits for
   readonly updateBusy: (change: number) => void;
   readonly onError: (error: unknown) => void;
 }
 
-// Starts a fixed pool of runners over one claim path. Task steps and action attempts each run in a
-// pool of their own, so a send goes out while every task runner is busy with a long turn.
 export function startRunnerPool<W>(clock: Clock, options: RunnerPoolOptions<W>): RunnerPool {
   const stopping = new AbortController();
 
@@ -79,7 +69,6 @@ export function startRunnerPool<W>(clock: Clock, options: RunnerPoolOptions<W>):
   };
 }
 
-// one runner: claim and run until the pool stops, sleeping between claims that find no work
 async function runRunner<W>(
   clock: Clock,
   options: RunnerPoolOptions<W>,
@@ -96,7 +85,6 @@ async function runRunner<W>(
   }
 }
 
-// claims one piece of work and runs it, and tells whether there was any
 async function runClaim<W>(options: RunnerPoolOptions<W>, state: RunnerState): Promise<boolean> {
   state.updateBusy(1);
 
@@ -107,8 +95,6 @@ async function runClaim<W>(options: RunnerPoolOptions<W>, state: RunnerState): P
       return false;
     }
 
-    // a claim that committed after a stop began never runs; its lease lapses, and recovery or the
-    // next claim takes the work back
     if (!state.stopping.aborted) {
       await options.run(work);
     }

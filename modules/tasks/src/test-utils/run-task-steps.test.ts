@@ -4,7 +4,6 @@ import type { RunStep } from '../types';
 import { runTaskSteps } from './run-task-steps';
 import { startTestTasks } from './start-test-tasks';
 
-// a writer with the tasks projections, on a test clock at 1,000,000 ms
 async function setupTest() {
   const tasks = await startTestTasks();
 

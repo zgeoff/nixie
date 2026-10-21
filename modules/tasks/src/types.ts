@@ -2,21 +2,16 @@ import type { Clock } from '@heynixie/clock';
 import type { CheckedTables } from '@heynixie/db';
 import type { Definitions, Log, LogRecord, RecordInput, RecordKind } from '@heynixie/log';
 
-// What every tasks and actions entry point needs: a log whose projections include the tasks
-// projections, the clock, and the definitions in force, which every record carries.
 export interface TasksContext {
   readonly log: Log;
   readonly clock: Clock;
   readonly definitions: () => Definitions;
 }
 
-// The task states that slice 1 reaches. Pause, stop and close arrive in slice 2.
 export type TaskState = 'ready' | 'running' | 'waiting' | 'failed' | 'done';
 
 export type LeaseKind = 'task' | 'action';
 
-// A runner's hold on one piece of work. Every write the work makes checks the generation, so a
-// runner whose lease expired, or that another runner claimed since, commits nothing.
 export interface Lease {
   readonly kind: LeaseKind;
   readonly workID: string;
@@ -26,15 +21,11 @@ export interface Lease {
   readonly expiresAt: number;
 }
 
-// A claimed task and the key of the step the claim started.
 export interface TaskClaim {
   readonly lease: Lease;
   readonly stepKey: string;
 }
 
-// A step that threw, as its error record states it: the errors in a row with this one, the limit
-// in force, and the state the task moves to, ready for a retry or failed at the limit. The
-// conversation never fails, so its errors can pass the limit.
 export interface StepErrored {
   readonly taskID: string;
   readonly stepKey: string;
@@ -42,21 +33,16 @@ export interface StepErrored {
   readonly errorLimit: number;
   readonly nextState: 'ready' | 'failed';
 
-  // when the task can next be claimed
   readonly retryAt: number;
   readonly error: unknown;
 }
 
-// What a step gives back: whether the task has more to do now, waits, or has finished; the inbox
-// sequences it read, over whose contiguous run the cursor moves; and timers that fire into the
-// task's inbox at dueAt.
 export interface StepResult {
   readonly next: 'continue' | 'wait' | 'done';
   readonly records: readonly RecordInput[];
   readonly acknowledged: readonly number[];
   readonly timers?: readonly { readonly dueAt: number }[];
 
-  // the SDK session's last chain entry, where a rerun after a crash forks
   readonly sessionBoundary?: string | null;
 }
 
@@ -64,23 +50,16 @@ export interface StepInput {
   readonly taskID: string;
   readonly stepKey: string;
 
-  // the step's lease, which every write the step makes, such as queuing an action, checks
   readonly lease: Lease;
   readonly inbox: readonly LogRecord[];
 
-  // the session boundary the last committed step recorded, where a turn resumes; null before the
-  // first commit
   readonly sessionBoundary: string | null;
 
-  // aborts when the lease is lost, so the step stops work that can no longer commit
   readonly signal: AbortSignal;
 }
 
-// Runs one step of a task, such as one model turn. The server supplies it.
 export type RunStep = (input: StepInput) => Promise<StepResult>;
 
-// Recovery step 5: destroys every sandbox that belongs to a step that no longer runs, through the
-// adapter that made it. The server builds it from the sandbox module, which tasks never imports.
 export interface SandboxCleanup {
   readonly removeStaleSandboxes: () => Promise<void>;
 }
@@ -114,15 +93,11 @@ export type FaultPointID =
   | 'writer.publish.before'
   | 'writer.publish.after';
 
-// Which work reached a fault point: a task or an action by ID, recovery, a runner pool, or a memory
-// item.
 export interface FaultPointContext {
   readonly kind: LeaseKind | 'recovery' | 'pool' | 'memory';
   readonly id: string | null;
 }
 
-// The crash harness's hook: it reports the arrival, then holds the runner until the test kills the
-// process or releases it.
 export type FaultPointHandler = (
   id: FaultPointID,
   context: FaultPointContext,
@@ -161,7 +136,6 @@ interface LeaseTable {
   readonly generation: number;
 }
 
-// the columns of the log's records table that the inbox reads
 interface InboxRecordTable {
   readonly sequence: number;
   readonly thread: string | null;
@@ -170,7 +144,7 @@ interface InboxRecordTable {
 
 export type TaskRow = TaskTable;
 
-// mapped types, because Kysely's table map needs the index signature an interface lacks
+// Kysely's table map needs an index signature, which an interface lacks.
 export type TasksTables = CheckedTables<
   Readonly<{
     tasks: TaskTable;

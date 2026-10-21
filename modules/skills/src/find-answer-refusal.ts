@@ -6,8 +6,6 @@ import { SkillProposalNotFoundError } from './skill-proposal-not-found-error';
 import { SkillProposalStaleError } from './skill-proposal-stale-error';
 import type { SkillProposalAnswer, SkillProposalState } from './types';
 
-// What an answer is judged on: the proposal it names, or undefined when no record holds one, the
-// time, and the version of the skill in force, or null when none is.
 export interface AnswerFacts {
   readonly answer: SkillProposalAnswer;
   readonly state: SkillProposalState | undefined;
@@ -21,8 +19,6 @@ export type AnswerRefusal =
   | SkillProposalHashError
   | SkillProposalStaleError;
 
-// The reason an answer may not close its proposal, or null when it may: the proposal is missing,
-// closed or past its lapse time, under another skill hash, or over a version no longer in force.
 export function findAnswerRefusal(facts: AnswerFacts): AnswerRefusal | null {
   const answer = facts.answer;
   const state = facts.state;
@@ -31,7 +27,6 @@ export function findAnswerRefusal(facts: AnswerFacts): AnswerRefusal | null {
     return new SkillProposalNotFoundError(answer.proposalID);
   }
 
-  // a proposal past its lapse time stands lapsed before the sweep records its lapse
   const isPastLapse = state.proposedAt + skillProposalLapseMs <= facts.now;
   const status = state.outcome ?? (isPastLapse ? 'lapsed' : 'pending');
   const outcome = answer.answer === 'approve' ? 'approved' : 'rejected';

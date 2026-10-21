@@ -14,7 +14,6 @@ import { startWriter, withWriteTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { readCurrentSkillHashes } from './read-current-skill-hashes';
 
-// the writer's data directory holds the definitions root too, so one removal cleans up both
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 

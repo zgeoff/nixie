@@ -2,9 +2,8 @@ import type { Transaction } from 'kysely';
 import { LeaseLostError } from './lease-lost-error';
 import type { Lease, TasksTables } from './types';
 
-// Throws LeaseLostError unless the lease still stands as claimed: same holder, same generation and
-// not yet expired. A write that work makes calls it first inside its own transaction, which BEGIN
-// IMMEDIATE serializes against every claim, so a runner whose lease lapsed commits nothing.
+// The caller must run this inside its own write transaction, before its writes. BEGIN IMMEDIATE
+// then serializes the check against every claim.
 export async function requireLease(
   tx: Transaction<unknown>,
   lease: Lease,

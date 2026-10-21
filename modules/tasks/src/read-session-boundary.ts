@@ -1,7 +1,5 @@
 import type { TasksContext, TasksTables } from './types';
 
-// Reads the session boundary that a task's last committed step recorded, or null before its first
-// commit.
 export async function readSessionBoundary(
   context: Pick<TasksContext, 'log'>,
   taskID: string,

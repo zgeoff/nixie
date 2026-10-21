@@ -4,32 +4,22 @@ import type { Definitions, Log } from '@heynixie/log';
 import type { ToolRun } from '@heynixie/tools';
 import type { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 
-// What the skill tools reach: the log the pins and the proposals live in, the clock a proposal's
-// age and lapse run on, the definitions in force, a fresh seed, and each caller's skill list.
 export interface SkillToolsContext {
   readonly log: Log;
   readonly clock: Pick<Clock, 'now'>;
   readonly readInForce: () => DefinitionsInForce | null;
 
-  // takes a fresh snapshot, seeds it when its revision is new, and returns the definitions then in
-  // force, or the last ones when the source refused the snapshot
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
 
-  // the names on the run's skill list in the given definitions
   readonly readSkillList: (run: ToolRun, inForce: DefinitionsInForce | null) => readonly string[];
 }
 
-// A skill proposal as its record holds it.
 type SkillProposal = ReturnType<typeof skillsWriteProposedCodec.decode>;
 
-// How a skill proposal closed: your approval or rejection, or its lapse with no answer.
 export type SkillProposalOutcome = 'approved' | 'rejected' | 'lapsed';
 
-// Where a skill proposal stands: pending until a record closes it with its outcome.
 export type SkillProposalStatus = 'pending' | SkillProposalOutcome;
 
-// A skill proposal with the thread and the time it was proposed, and how it closed, or null while
-// it waits for your answer.
 export interface SkillProposalState {
   readonly proposal: SkillProposal;
   readonly thread: string | null;
@@ -37,37 +27,27 @@ export interface SkillProposalState {
   readonly outcome: SkillProposalOutcome | null;
 }
 
-// What the review of skill proposals reaches: the log the records live in, the clock their lapse
-// time runs on, and the definitions in force, which each answer's record carries.
 export interface SkillProposalContext {
   readonly log: Log;
   readonly clock: Pick<Clock, 'now'>;
   readonly definitions: () => Definitions;
 }
 
-// What an answer reaches besides: the seed that puts an approved skill in force.
 export interface SkillAnswerContext extends SkillProposalContext {
-  // seeds the definitions in force again with the written skills as they stand, one seed at a
-  // time, after each change to them
   readonly seedWrittenSkills: () => Promise<void>;
 }
 
-// One file of a skill, by its path inside the skill's folder.
 export interface SkillFile {
   readonly path: string;
   readonly text: string;
 }
 
-// A skill proposal that waits for your answer, with its lapse time and the version of the skill in
-// force now, which the review diffs each file against, or null when none is in force. A vendored
-// version comes from skills.lock.json, so a new version of it replaces the vendored copy.
 export interface PendingSkillProposal {
   readonly proposal: SkillProposal;
   readonly thread: string | null;
   readonly proposedAt: number;
   readonly lapseAt: number;
 
-  // the version in force moved past the one the proposal replaces, so an answer is refused
   readonly isStale: boolean;
   readonly inForce: {
     readonly skillHash: string;
@@ -76,9 +56,6 @@ export interface PendingSkillProposal {
   } | null;
 }
 
-// Your answer to a skill proposal, bound to the skill hash the review showed: an approval may carry
-// your edited files in place of the proposal's, and a rejection gives the reason the conversation
-// reads.
 export type SkillProposalAnswer =
   | {
       readonly answer: 'approve';
@@ -93,8 +70,6 @@ export type SkillProposalAnswer =
       readonly reason: string;
     };
 
-// What an answer recorded: the approval's ID and the version it put in force, each null for a
-// rejection.
 export interface SkillProposalAnswerResult {
   readonly proposalID: string;
   readonly approvalID: string | null;

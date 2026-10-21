@@ -1,6 +1,5 @@
 import type { ParseProblem } from '@heynixie/definitions';
 
-// The files of an approval fail the seed checks, as edited files can, and nothing is recorded.
 export class SkillProposalCheckError extends Error {
   override readonly name = 'SkillProposalCheckError';
 
