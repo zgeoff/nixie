@@ -33,7 +33,9 @@ export async function readSessionTurn(
 
 // a session resumes only after its opening, which keeps or gives its key
 function getResumedKey(step: SessionStep): string {
-  invariant(step.marks.sessionKey, 'a resumed session has no opening');
+  const key = step.marks.sessionKey;
 
-  return step.marks.sessionKey;
+  invariant(key !== null, 'a resumed session has no opening');
+
+  return key;
 }
