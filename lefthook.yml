@@ -108,5 +108,5 @@ pre-push:
       run: |
         commits=$(.lefthook/pushed-commits.sh) || exit 1
         for commit in $commits; do
-          bun test --parallel=1 --changed="origin/main..$commit" || exit 1
+          bun test --parallel=1 --changed="origin/main...$commit" || exit 1
         done
