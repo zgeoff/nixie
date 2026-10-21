@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-// One route of GitHub's REST API that the definitions export calls. Its path names each parameter
-// as `:name`, or `*name` for one that spans segments, such as a branch with slashes.
 export interface GitHubOperation {
   readonly method: 'GET' | 'POST' | 'PATCH';
   readonly path: string;
@@ -26,15 +24,11 @@ const fileEntrySchema = z.object({
   type: z.literal('blob'),
 });
 
-// a tree entry writes its content, or removes its path with a null sha
 const treeEntrySchema = z.union([
   fileEntrySchema.extend({ content: z.string() }),
   fileEntrySchema.extend({ sha: z.null() }),
 ]);
 
-// The routes of GitHub's REST API that the definitions export calls, each with the schemas of its
-// query, its request body and its answer. The adapter builds each request from it, and the stub of
-// GitHub in its tests answers each route by it.
 export const githubContract = {
   readRef: {
     method: 'GET',
@@ -106,7 +100,6 @@ export const githubContract = {
   },
 } as const satisfies Record<string, GitHubOperation>;
 
-// the names of the parameters a path holds
 export type GitHubPathParams<Path extends string> =
   Path extends `${string}${':' | '*'}${infer Param}/${infer Rest}`
     ? Param | GitHubPathParams<`/${Rest}`>

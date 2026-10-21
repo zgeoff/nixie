@@ -195,7 +195,6 @@ test("it keeps your definitions' version as the base when a second written versi
     }),
   );
 
-  // the first written version is in the snapshot in force, so the definitions' version is not
   await runWrittenSkillSeed({ log: ctx.log, policy });
 
   await withWriteTransaction(ctx.writer, (tx) =>

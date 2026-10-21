@@ -1,7 +1,5 @@
 import { githubStore } from './github-store';
 
-// Reads the files at a revision of a repo in the mock GitHub, as GitHub reads a ref that names a
-// commit or a branch, or null when the repo holds neither.
 export function readMockFiles(
   repository: string,
   revision: string,

@@ -8,9 +8,6 @@ import { normalizeLineEndings } from './normalize-line-endings';
 import { skillNamePattern } from './skill-name-pattern';
 import type { ParsedSkill, SizeLimits } from './types';
 
-// Runs the seed checks on a skill that nixie writes, with LF line endings as the seed reads it: the
-// name, each path, the size limits, and the seed's skill checks on the files whose paths pass. It
-// returns the checked skill, or every problem.
 export function checkSkillFiles(
   name: string,
   files: readonly { readonly path: string; readonly text: string }[],
@@ -18,7 +15,7 @@ export function checkSkillFiles(
 ): ParsedSkill | readonly ParseProblem[] {
   const encoder = new TextEncoder();
 
-  // the seed restores a byte order mark that the decoder would drop, so the checks see it too
+  // The UTF-8 TextDecoder drops a leading byte order mark unless ignoreBOM is set.
   const decoder = new TextDecoder('utf-8', { ignoreBOM: true });
 
   const paths = files.map((file) => file.path);
@@ -62,7 +59,6 @@ export function checkSkillFiles(
       : []),
   ];
 
-  // a skill whose every path failed has no files left for the seed checks to read
   if (kept.length === 0 && files.length > 0) {
     return problems;
   }
@@ -85,8 +81,6 @@ export function checkSkillFiles(
   return checked.skill === null || all.length > 0 ? all : checked.skill;
 }
 
-// The reason the path at the index fails, or null. A path names a file inside the skill's folder in
-// the plain form the definitions source reads, so 2 paths name one file only when they are equal.
 function findPathProblem(paths: readonly string[], index: number): string | null {
   const path = paths[index] ?? '';
   const normalized = normalize(path);
@@ -119,8 +113,8 @@ function findPathProblem(paths: readonly string[], index: number): string | null
   return findCollision(paths, index);
 }
 
-// A folder on a disk that ignores case holds SKILL.md and skill.md as one file, and no path can be
-// both a file and the folder of another.
+// A disk that ignores case holds SKILL.md and skill.md as one file, and no filesystem lets a path
+// be both a file and a folder.
 function findCollision(paths: readonly string[], index: number): string | null {
   const path = paths[index] ?? '';
   const folded = path.toLowerCase();

@@ -4,7 +4,6 @@ import { normalizeInstructions } from './normalize-instructions';
 import { toCanonicalJSON } from './to-canonical-json';
 import type { DefinitionsSnapshot, SkillRef, SnapshotPolicy, ToolDeclaration } from './types';
 
-// a skill in force, with the approval that applied it when nixie wrote it
 type SnapshotSkillInput = SkillRef & { readonly approvalID?: string | null };
 
 export interface DefinitionsSnapshotInput {
@@ -12,13 +11,9 @@ export interface DefinitionsSnapshotInput {
   readonly policy: SnapshotPolicy;
   readonly skills: readonly SnapshotSkillInput[];
 
-  // the names on the conversation's skill list, which enter the form in name order
   readonly conversationSkills: readonly string[];
 }
 
-// The definitions in force in canonical form, with the snapshot hash that every record carries.
-// It covers what is in force and the approval behind each skill nixie wrote, never the source
-// revision, so it is not the content hash. The seed reads no jobs, so the job list stays empty.
 export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): DefinitionsSnapshot {
   const persona = normalizeInstructions(input.persona);
   const personaVersion = buildSHA256(persona);
@@ -43,7 +38,6 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
   return { snapshotHash: buildSHA256(form), personaVersion, policyHash, persona, form };
 }
 
-// IDs and names are unique, so a duplicate is a bug in the caller and never a tie to break
 function sortUniqueBy<T>(
   items: readonly T[],
   field: string,
@@ -70,8 +64,6 @@ function buildToolForm(tool: ToolDeclaration): ToolDeclaration {
   return { ...tool, effects: [...new Set(tool.effects)].toSorted() };
 }
 
-// A skill nixie wrote names its approval, so a version that a later approval brings back gets a
-// snapshot of its own and never the rows of the approval it superseded.
 function buildSkillForm(skill: SnapshotSkillInput): JSONObject & { readonly name: string } {
   const form = { name: skill.name, skillHash: skill.skillHash, origin: skill.origin };
 

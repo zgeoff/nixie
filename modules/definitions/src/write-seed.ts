@@ -14,8 +14,6 @@ import type {
 } from './types';
 import { writeSkillRows } from './write-skill-rows';
 
-// What one seed puts in force: where its files came from, your definitions' skill versions, the
-// skills that nixie wrote laid over them, and the snapshot they make.
 export interface SeedPlan {
   readonly source: {
     readonly id: string;
@@ -30,13 +28,9 @@ export interface SeedPlan {
   readonly overlay: SkillOverlay;
   readonly built: DefinitionsSnapshot;
 
-  // the definitions the seed replaces, which its skill notice compares with
   readonly previous: DefinitionsInForce | null;
 }
 
-// Writes a seed inside the caller's write transaction: the snapshot and its skills, the version of
-// your definitions beneath each skill that nixie wrote and that stays in force, the seed's record
-// and its row. The caller marks each written skill your definitions now hold as yours.
 export async function writeSeed(
   tx: Transaction<unknown>,
   log: Log,
@@ -78,7 +72,6 @@ export async function writeSeed(
   return { inForce, record };
 }
 
-// a persona or a snapshot seen before keeps its first row, and with it its first label
 async function writeSnapshotRows(
   tx: Transaction<unknown>,
   plan: SeedPlan,
@@ -154,7 +147,6 @@ async function writeSeedRecord(
         })),
         skillChanges: { ...skillChanges },
 
-        // the approval that applied each skill nixie wrote, and each one your definitions adopted
         writtenSkills: plan.overlay.skills.flatMap((skill) =>
           skill.approvalID === null ? [] : [{ name: skill.name, approvalID: skill.approvalID }],
         ),
@@ -168,7 +160,6 @@ async function writeSeedRecord(
     },
   ]);
 
-  // the log writes one record for each input
   invariant(record);
 
   return record;

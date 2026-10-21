@@ -1,2 +1,2 @@
-// The origin the mock GitHub answers on, under the reserved .test domain, which no DNS answers.
+// The .test domain is reserved, so no DNS server resolves it and a missed interception fails.
 export const githubAPIURL = 'https://api.github.test';

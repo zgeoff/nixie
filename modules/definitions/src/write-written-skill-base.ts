@@ -2,14 +2,11 @@ import type { Transaction } from 'kysely';
 import type { DefinitionsTables } from './types';
 import { WrittenSkillStateError } from './written-skill-state-error';
 
-// the skill the approval applied, and when its base moves
 export interface WrittenSkillBaseChange {
   readonly approvalID: string;
   readonly at: number;
 }
 
-// Makes your definitions' newest version the base of a written skill in force, so nixie's version
-// stays and the conflict closes. It refuses a skill that left force, and returns the skill's name.
 export async function writeWrittenSkillBase(
   transaction: Transaction<unknown>,
   change: WrittenSkillBaseChange,

@@ -3,8 +3,6 @@ import { storedSkillFilesSchema } from './stored-skill-files-schema';
 import { storedSkillFrontmatterSchema } from './stored-skill-frontmatter-schema';
 import type { DefinitionsTables, SkillVersion } from './types';
 
-// Loads the skill versions under the given content hashes from the database, by hash. A hash with
-// no version is missing from the map, which only a hash from outside the seed can give.
 export async function loadSkillVersions(
   db: Kysely<unknown>,
   skillHashes: readonly string[],

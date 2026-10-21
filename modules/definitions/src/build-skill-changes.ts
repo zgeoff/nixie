@@ -6,9 +6,6 @@ export interface SkillChanges {
   readonly removed: readonly string[];
 }
 
-// The skills a seed adds, changes and removes against the definitions it replaces, each list in
-// name order. The seed's record holds them as its notice: a skill grants nothing, so a new or
-// changed skill applies at once and only asks to be seen.
 export function buildSkillChanges(
   previous: readonly SkillRef[],
   next: readonly SkillRef[],

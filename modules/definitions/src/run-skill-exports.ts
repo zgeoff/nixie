@@ -20,19 +20,14 @@ export interface SkillExportOptions {
   readonly log: Log;
   readonly repo: DefinitionsRepo;
 
-  // a skill whose export or close fails comes here, and the next run tries it again
   readonly onError: (error: unknown) => void;
 }
 
-// the approvals whose skill this run exported, and those whose pull request it closed
 export interface SkillExportResult {
   readonly exported: readonly string[];
   readonly closed: readonly string[];
 }
 
-// Exports each skill that nixie wrote and that is in force to your definitions repo as a pull
-// request, once per approval and again when you keep it over a change to your definitions. A
-// sweep runs one at a time, so it alone closes the export of each approval that left force.
 export async function runSkillExports(options: SkillExportOptions): Promise<SkillExportResult> {
   const db = options.log.writer.db.$extendTables<DefinitionsTables>();
 
@@ -65,8 +60,6 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
   const exported: string[] = [];
   const closed: string[] = [];
 
-  // A later approval of a skill exports on the same branch, so the close comes first, and a skill
-  // whose close failed waits for the next run.
   const unclosed = new Set<string>();
 
   for (const row of closing) {
@@ -233,7 +226,6 @@ async function writeSkillExport(
 
   const version = versions.get(row.skill_hash);
 
-  // the store keeps each version an approval or a seed put in force
   invariant(version);
 
   const beneath =
@@ -241,8 +233,8 @@ async function writeSkillExport(
 
   const isBeneathVendored = row.definitions_origin === 'vendored';
 
-  // the export marks itself before it writes to the repo, so a close after a lost answer still
-  // finds its pull request
+  // GitHub can apply a write whose answer is lost, so the mark goes first and a later close still
+  // looks for the pull request.
   const isMarked = await withWriteTransaction(options.log.writer, async (tx) => {
     if (!(await probeInForce(tx, row.approval_id))) {
       return false;

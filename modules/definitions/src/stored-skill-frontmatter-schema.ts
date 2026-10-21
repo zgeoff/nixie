@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import type { SkillFrontmatter } from './types';
 
-// The frontmatter as the seed keeps it in a skill version's row.
 export const storedSkillFrontmatterSchema = z.object({
   name: z.string(),
   description: z.string(),

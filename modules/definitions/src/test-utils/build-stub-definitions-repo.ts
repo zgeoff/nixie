@@ -5,7 +5,6 @@ import type { DefinitionsChange, DefinitionsRepo, PullRequestRef } from '../type
 interface StubPullRequest extends PullRequestRef {
   readonly change: DefinitionsChange;
 
-  // the base revision the change was built on
   readonly revision: string;
   readonly state: 'open' | 'closed' | 'merged';
 }
@@ -13,18 +12,13 @@ interface StubPullRequest extends PullRequestRef {
 export interface StubDefinitionsRepo extends DefinitionsRepo {
   readonly readPullRequests: () => readonly StubPullRequest[];
 
-  // writes the pull request's change into the base branch's folder, as your merge does
   readonly mergePullRequest: (pullRequestNumber: number) => Promise<void>;
 
-  // the next pull request write lands and then rejects, as when its answer is lost on the way back
   readonly loseNextAnswer: () => void;
 
   readonly delayNextAnswer: (work: () => Promise<unknown>) => void;
 }
 
-// A definitions repo whose base branch is a folder on disk, whose base revision is the hash of the
-// folder's files, and whose pull requests live in memory. It reads only at the newest revision, and
-// a change on a branch with an open pull request replaces that pull request's change.
 export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo {
   const pullRequests: StubPullRequest[] = [];
 
@@ -151,7 +145,6 @@ export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo
   };
 }
 
-// the hash of every file's path and text under the folder
 async function readRevision(directory: string): Promise<string> {
   const hasher = new Bun.CryptoHasher('sha256');
 
@@ -166,8 +159,6 @@ async function readRevision(directory: string): Promise<string> {
   return hasher.digest('hex');
 }
 
-// the path of each file under the folder, from the folder with forward slashes, or none when the
-// folder is missing
 async function readFilePaths(folder: string): Promise<readonly string[]> {
   const entries = await readdir(folder, { recursive: true, withFileTypes: true }).catch(
     (error: unknown) => {

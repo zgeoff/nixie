@@ -1,4 +1,3 @@
-// The record kinds the definitions module registers with the log.
 export type DefinitionsRecordKind = 'definitions_seeded';
 
 declare module '@heynixie/log' {

@@ -20,12 +20,9 @@ export interface SeedOptions {
   readonly log: Log;
   readonly source: DefinitionsSource;
 
-  // the policy in force, which the composition root builds from the fixed rule and the registry
   readonly policy: SnapshotPolicy;
 }
 
-// seeded: a new seed is in force. unchanged: the newest seed already holds these definitions.
-// refused: the snapshot failed to read, parse or validate, and the last seed stays in force.
 export type SeedResult =
   | {
       readonly status: 'seeded';
@@ -39,9 +36,7 @@ export type SeedResult =
       readonly inForce: DefinitionsInForce | null;
     };
 
-// Seeds a snapshot, with each skill that nixie wrote laid over it, in one write transaction. A
-// snapshot that fails to read or parse comes back refused, never thrown. The caller runs one seed
-// at a time, so an older revision never commits after a newer one.
+// The caller must run one seed at a time, or an older revision can commit after a newer one.
 export async function runSeed(options: SeedOptions): Promise<SeedResult> {
   const read = await tryReadDefinitions(options.source);
 
@@ -73,7 +68,6 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       at: options.log.writer.clock.now(),
     });
 
-    // an adoption leaves the skills in force as they stand, and the seed still records it
     if (
       inForce !== null &&
       overlay.adopted.length === 0 &&

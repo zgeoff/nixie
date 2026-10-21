@@ -3,8 +3,6 @@ export interface HiddenCharacter {
   readonly codePoint: string;
 }
 
-// The first hidden or bidirectional control character in a text, with its line from 1 and its code
-// point, such as U+202E for a right-to-left override, or null when the text holds none.
 export function findHiddenCharacter(text: string): HiddenCharacter | null {
   let line = 1;
 
@@ -23,9 +21,8 @@ export function findHiddenCharacter(text: string): HiddenCharacter | null {
   return null;
 }
 
-// The code points no reader sees, or that reorder the text a reader sees: control and format
-// characters, tags and the variation selector supplement. The emoji variation selectors stay,
-// because a warning sign uses one.
+// The emoji variation selectors stay out of the ranges, because an emoji such as the warning sign
+// needs one to render.
 const hiddenRanges: readonly (readonly [number, number])[] = [
   [0x00, 0x08],
   [0x0b, 0x0c],

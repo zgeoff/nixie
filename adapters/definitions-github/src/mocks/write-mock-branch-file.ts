@@ -10,14 +10,11 @@ export interface MockBranchFile {
   readonly text: string;
 }
 
-// Puts a file on a branch of a repo in the mock GitHub as a new commit on the branch's head, as a
-// push to the branch does.
 export async function writeMockBranchFile(file: MockBranchFile): Promise<void> {
   const ref = githubStore.refs.findFirst((query) =>
     query.where({ repository: file.repository, branch: file.branch }),
   );
 
-  // a test writes only to a branch of a repo it created
   invariant(ref);
 
   const files = { ...readMockFiles(file.repository, file.branch), [file.path]: file.text };

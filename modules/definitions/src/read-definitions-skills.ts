@@ -2,15 +2,11 @@ import type { Kysely } from 'kysely';
 import type { DefinitionsSkillRef } from './build-skill-overlay';
 import type { DefinitionsTables } from './types';
 
-// your definitions' skills under one snapshot, and the ones on the conversation's list
 export interface DefinitionsSkills {
   readonly skills: readonly DefinitionsSkillRef[];
   readonly conversationSkills: readonly string[];
 }
 
-// Reads your definitions' skills under a snapshot: a skill no approval applied stands as it is,
-// and a written one gives way to the version of your definitions its store row holds, which takes
-// its place on the conversation's list. A new written skill has none beneath it.
 export async function readDefinitionsSkills(
   db: Kysely<unknown>,
   snapshotHash: string,

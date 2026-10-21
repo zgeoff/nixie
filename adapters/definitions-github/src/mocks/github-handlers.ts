@@ -8,7 +8,6 @@ import { githubAPIURL } from './github-api-url';
 import { githubStore } from './github-store';
 import { readMockFiles } from './read-mock-files';
 
-// the repo a request names, the parameters of its route's path, its query and its body
 interface MockCall {
   readonly repository: string;
   readonly params: Readonly<Record<string, string>>;
@@ -16,9 +15,6 @@ interface MockCall {
   readonly body: unknown;
 }
 
-// GitHub's REST API over the mock store's repos, routed and parsed by the adapter's GitHub
-// contract. As GitHub does, it answers a token no repo holds with 401, a refused body with 422,
-// and a missing repo, branch, file or pull request with 404.
 export const githubHandlers = [
   http.all(`${githubAPIURL}/*`, async (info) => {
     const request = info.request;
@@ -89,7 +85,6 @@ function answerRefRead(call: MockCall): Response {
     : answerJSON(githubContract.readRef, { object: { sha: ref.sha } });
 }
 
-// an answer in the shape the contract gives the operation's response
 function answerJSON<Operation extends GitHubOperation>(
   _operation: Operation,
   json: z.input<Operation['response']>,
@@ -128,12 +123,10 @@ async function answerRefUpdate(call: MockCall): Promise<Response> {
   return answerJSON(githubContract.updateRef, { object: { sha: update.sha } });
 }
 
-// GitHub refuses a body that lacks a field the route needs, or holds one of the wrong type
 function invalidRequest(): Response {
   return Response.json({ message: 'Invalid request' }, { status: 422 });
 }
 
-// whether the commit is the ancestor or descends from it, which a fast-forward update needs
 function hasAncestor(commit: string, ancestor: string): boolean {
   const pending = [commit];
 
@@ -193,7 +186,6 @@ function answerContent(call: MockCall): Response {
       });
 }
 
-// a recursive tree read lists each folder and each file under the commit or tree it names
 function answerTreeRead(call: MockCall): Response {
   const sha = call.params['sha'] ?? '';
   const tree = githubStore.trees.findFirst((query) => query.where({ sha }));
