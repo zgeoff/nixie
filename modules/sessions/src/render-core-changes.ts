@@ -1,17 +1,12 @@
 import { renderMemoryItem } from './render-memory-item';
 import type { MemoryItem, MemoryLineOptions, MemoryRef } from './types';
 
-// How the change note renders: each item's line options, and the short ID of each unpinned item.
 export interface CoreChangeOptions extends MemoryLineOptions {
   readonly unpinnedShortIDs: ReadonlyMap<string, string>;
 }
 
-// a pinned item as the note reads it, which names neither its subject nor its model
 type PinnedItem = Omit<MemoryItem, 'subject' | 'model'>;
 
-// Renders the body of the note on the turn after the pinned core changed, so the model stops
-// repeating an old value. A pinned or changed item shows whole, with the line that says where it came
-// from; an unpinned one shows by its short ID. It renders nothing with no last turn, or no change.
 export function renderCoreChanges(
   previous: readonly MemoryRef[] | null,
   current: readonly PinnedItem[],
@@ -49,7 +44,6 @@ export function renderCoreChanges(
   ].join('\n');
 }
 
-// the item as the pinned memory renders it, under a line that names its change
 function renderChangedItem(
   label: 'Pinned' | 'Changed',
   item: PinnedItem,

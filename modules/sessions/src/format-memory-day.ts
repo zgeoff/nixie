@@ -1,8 +1,6 @@
 import invariant from 'tiny-invariant';
 import type { MessageTimeOptions } from './types';
 
-// Formats the day a memory version was recorded, in the default zone, as in 13 Oct. The year shows
-// only when it is not the current year in that zone, as in 13 Oct 2025.
 export function formatMemoryDay(time: number, options: MessageTimeOptions): string {
   const recorded = getDayParts(new Date(time), options.defaultZone);
 
@@ -24,7 +22,6 @@ function getDayParts(at: Date, zone: string): DayParts {
   const getPart = (type: keyof DayParts): string => {
     const value = parts.find((part) => part.type === type)?.value;
 
-    // the format asks for every part, so Intl returns each one
     invariant(value !== undefined, `the date has no ${type}`);
 
     return value;
@@ -33,8 +30,8 @@ function getDayParts(at: Date, zone: string): DayParts {
   return { day: getPart('day'), month: getPart('month'), year: getPart('year') };
 }
 
-// One format per zone, because building an Intl format costs far more than using one, and the
-// pinned core's budget renders every pinned item on each write to it.
+// Building an Intl.DateTimeFormat costs far more than calling one, and the pinned core's budget
+// renders every pinned item on each write, so each zone keeps one format.
 const dayFormats = new Map<string, Intl.DateTimeFormat>();
 
 function getDayFormat(zone: string): Intl.DateTimeFormat {

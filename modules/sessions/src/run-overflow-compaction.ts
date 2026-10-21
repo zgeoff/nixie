@@ -5,17 +5,12 @@ import { buildCompactionRequest } from './build-compaction-request';
 import type { InboxPlan, SessionStep } from './types';
 import { writeCompactionFailures } from './write-compaction-failures';
 
-// a resumed turn that overflowed the window: the step's plan, the boundary it resumed from, and the
-// context it reported
 interface OverflowedTurn {
   readonly plan: InboxPlan;
   readonly resume: SessionPoint;
   readonly contextSize: number | null;
 }
 
-// The overflowed turn commits nothing, so its inbox stays unread for the turn on the new session.
-// A failed compaction fails the step, as the overflow would, and writes its failure record first, so
-// the log keeps the cause and the count of failures in a row.
 export async function runOverflowCompaction(
   step: SessionStep,
   overflow: OverflowedTurn,

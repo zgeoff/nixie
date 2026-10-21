@@ -14,25 +14,19 @@ import type {
   SessionStart,
 } from './types';
 
-// One step's turn: the run, the step and the definitions it read, what memory adds, and the signal
-// that stops it.
 export interface SessionTurn {
   readonly run: ConversationRun;
   readonly input: StepInput;
   readonly definitions: SessionDefinitions;
   readonly context: TurnContext;
 
-  // the newest session invalidation the step saw before the turn ran
   readonly invalidatedThrough: number;
 
-  // the images the session holds before the turn: none for a new session
   readonly images: ImageTally;
 
-  // aborts when the step's lease is lost or a forget invalidates the session
   readonly signal: AbortSignal;
 }
 
-// Where a turn runs: at a session point, or on a new session and how it starts.
 export type TurnSession =
   | { readonly resume: SessionPoint }
   | { readonly resume: null; readonly start: SessionStart };
@@ -40,12 +34,9 @@ export type TurnSession =
 export interface PlannedTurn {
   readonly completed: CompletedTurn;
 
-  // what a new session's opening record keeps, or null for a resumed session
   readonly opening: OpeningRecord | null;
 }
 
-// Runs the turn at the session point, or on a new session after the blocks it opens with. A turn that a forget invalidated while it ran throws, so the step retries on a rebuilt session
-// and never commits a boundary in a session the forget removed.
 export async function runPlannedTurn(
   turn: SessionTurn,
   session: TurnSession,
@@ -89,7 +80,6 @@ function readOpening(
   });
 }
 
-// the zone your newest message in the inbox carries, as its send time shows
 function findNewestZone(inbox: StepInput['inbox']): string | null {
   const message = inbox.findLast((record) => record.kind === 'owner_message');
 

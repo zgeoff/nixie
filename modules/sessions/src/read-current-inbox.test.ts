@@ -8,7 +8,6 @@ import { startTestTasks } from './test-utils/start-test-tasks';
 async function setupTest() {
   const tasks = await startTestTasks();
 
-  // boot data: an inbox record needs the task its thread names
   await createConversationTask(tasks.context);
 
   return tasks;

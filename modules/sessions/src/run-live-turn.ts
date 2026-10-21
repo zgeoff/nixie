@@ -9,28 +9,19 @@ import { readRecalledThrough } from './read-recalled-through';
 import { runGuestTurn } from './run-guest-turn';
 import type { ConversationRun, ImageTally, MessageTimeOptions, TurnNote } from './types';
 
-// The session a turn runs on and what it opens with.
 export interface LiveTurnPlan {
-  // the session point to resume at, or null for a new session
   readonly resume: SessionPoint | null;
   readonly systemPrompt: string;
 
-  // the blocks that go before the turn's first message, such as a new session's marker and history
   readonly preamble: readonly string[];
 
-  // aborts when the step's lease is lost or a forget invalidates the session
   readonly signal: AbortSignal;
 
-  // how each message renders its send time
   readonly times: MessageTimeOptions;
 
-  // the images the session holds before the turn: none for a new session
   readonly images: ImageTally;
 }
 
-// Runs one turn in the guest on the step's inbox, as much as readTurnBatch lets through, resuming at
-// the session point when there is one. Only a turn that took the whole inbox takes the records that
-// land while it runs, so the read cursor never meets a gap and no record reaches the model twice.
 export async function runLiveTurn(
   run: ConversationRun,
   input: StepInput,
@@ -45,8 +36,6 @@ export async function runLiveTurn(
   }
 }
 
-// the guest reaches its tools with the turn's own step token, so each call carries the step's run
-// identity
 async function runTokenTurn(
   run: ConversationRun,
   input: StepInput,
@@ -91,7 +80,6 @@ async function runTokenTurn(
       readRecallMark: () => readRecalledThrough(run.context, input.taskID),
     });
 
-    // a live message that waits on the image budget asks for the next step at once
     return {
       turn,
       sent,
@@ -104,13 +92,11 @@ async function runTokenTurn(
   }
 }
 
-// a forget that aborted the turn while the route was read stops the turn before a guest starts
 async function readToolURL(run: ConversationRun, signal: AbortSignal): Promise<string> {
   const route = await run.sandbox.toolRoute();
 
   signal.throwIfAborted();
 
-  // a conversation sandbox's spec always asks for a tool route, and every adapter gives one then
   invariant(route, 'the conversation sandbox has no tool route');
 
   return route.url;
@@ -122,8 +108,8 @@ function readTurnNote(run: ConversationRun, isNewSession: boolean): Promise<Turn
     : run.readTurnNote({ isNewSession });
 }
 
-// the preamble goes before your first message in the same message, so the model reads it first
-// and the message keeps the uuid that acknowledges its record
+// The SDK acknowledges an inbox record by its message's uuid, so the preamble joins the first
+// message rather than going in a message of its own.
 function buildTurnInput(
   messages: readonly InboxMessage[],
   blocks: readonly (string | null)[],

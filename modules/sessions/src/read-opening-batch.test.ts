@@ -31,7 +31,6 @@ test('it opens with the records whose images fit what the session leaves, and co
     },
   ]);
 
-  // the session leaves room for 12 bytes, and each 6-byte image reads as 8 in base64
   const opening = await readOpeningBatch(ctx.log, inbox, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { bytes: 24 * 1024 * 1024 - 12, count: 3 },
@@ -89,8 +88,6 @@ test('it opens with the records whose images fit the 100 a session holds, howeve
 
   const inbox = await writeRecords(ctx.log, [icon, icon]);
 
-  // the session holds 97 images, so the first record's 2 bring it to 99 and the second's would
-  // bring it to 101
   const opening = await readOpeningBatch(ctx.log, inbox, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { bytes: 776, count: 97 },

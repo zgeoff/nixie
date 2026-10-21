@@ -34,7 +34,6 @@ test('it takes the oldest 64 records of a longer inbox', async () => {
 test('it leaves a record for the next turn when its images would pass 24 MiB with the ones before', async () => {
   const ctx = await setupTest();
 
-  // each record's 2 images of 5 MiB read as about 13.3 MiB in base64, so 2 records pass 24 MiB
   const records = await writeRecords(
     ctx.log,
     Array.from({ length: 2 }, (_, index) => ({

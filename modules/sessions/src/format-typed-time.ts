@@ -2,9 +2,6 @@ import { pickMessageZone } from './pick-message-zone';
 import { splitDateParts } from './split-date-parts';
 import type { MessageTimeOptions } from './types';
 
-// Formats when you typed a message that was sent later, in the zone its send time shows in. A
-// message typed on the day it was sent shows only the time, as in 08:12; one typed on an earlier day
-// shows the day too, as in Tue 13 Oct, 22:40, with the year only when it is not the current year.
 export function formatTypedTime(
   typed: Date,
   sent: Date,

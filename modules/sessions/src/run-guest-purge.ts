@@ -12,9 +12,6 @@ export interface GuestPurgeSpec {
   readonly command: GuestCommand;
 }
 
-// Runs the conversation guest once to remove its session state, every transcript and fork, and
-// waits for it to report the state gone and exit. A guest that exits without that report throws,
-// so the forget stays pending and runs the cleanup again.
 export async function runGuestPurge(spec: GuestPurgeSpec): Promise<void> {
   const stream = await spec.sandbox.spawn({
     argv: spec.command.argv,

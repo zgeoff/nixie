@@ -101,8 +101,6 @@ test('it keeps a reply that committed after a message still pending, paired with
 test('it keeps only the newest turns that fit the token budget', async () => {
   const ctx = await setupTest();
 
-  // each line renders as 104 or 105 characters, by how many digits the day of the month has, so 26
-  // or 27 tokens
   await writeRecords(
     ctx.tasks.context.log,
     ['first', 'secnd', 'third'].map((word) => ({

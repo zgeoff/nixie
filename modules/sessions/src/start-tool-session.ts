@@ -12,23 +12,16 @@ export interface ToolSessionOptions {
   readonly sandboxes: SandboxAdapter;
   readonly image: string;
 
-  // the directory of the tool endpoint's run sockets, which the sandbox adapter's tool route
-  // resolves each sandbox's owner in
   readonly socketDir: string;
 
-  // the action queue the server's tool endpoints share, which no system task's tool reaches, since
-  // each runs direct
   readonly queue: ActionQueue;
 }
 
 export interface ToolSessionRequest {
-  // the system task the sessions run for, which owns the sandbox and names the tool run
   readonly taskID: string;
   readonly tools: readonly ToolDefinition[];
 }
 
-// Starts a system task's own tool endpoint, which serves only the task's tools on the run socket
-// the sandbox adapter resolves for its task, then the task's session runner, each deferred to stop.
 export async function startToolSession(
   options: ToolSessionOptions,
   session: SystemTaskSession,

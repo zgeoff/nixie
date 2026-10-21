@@ -15,27 +15,20 @@ export interface SessionOpeningQuery {
   readonly taskID: string;
   readonly start: SessionStart;
 
-  // the turn's first inbox record, which the recent turns never reach
   readonly beforeSequence: number;
 
-  // the budget, in tokens, of the recent turns
   readonly rebuildTokens: number;
   readonly times: MessageTimeOptions;
 
-  // the zone of your newest message, or none for the default zone
   readonly zone?: string | null;
 
-  // the body of the pinned-memory message, from the turn's context
   readonly pinnedMemory: string;
 
-  // the model from the conversation's profile, which status names
   readonly model: string;
   readonly status: StatusRegistry;
   readonly readTurnNote?: ConversationRun['readTurnNote'];
 }
 
-// The opening record's payload: the start, the summary it used, the count of turns and events in
-// the recent turns, and each status value by its entry's name.
 export interface OpeningRecord {
   readonly kind: SessionStart['kind'];
   readonly reason: Extract<SessionStart, { kind: 'rebuild' }>['reason'] | null;
@@ -44,25 +37,17 @@ export interface OpeningRecord {
   readonly recentRecords: number;
   readonly recentEvents: number;
 
-  // the first sequence of the thread the session holds word for word: the oldest of the recent
-  // turns, or the turn's first inbox record when none; retrieval leaves your messages from it on out
   readonly heldFrom: number;
 
-  // the newest recall before the opening's own, which served the session a lost-session start lost
   readonly recalledThrough: number;
   readonly status: Readonly<Record<string, string | number>>;
 }
 
-// What a new session opens with: the blocks of its first message, and what its opening record
-// keeps.
 export interface SessionOpening {
   readonly blocks: readonly string[];
   readonly record: OpeningRecord;
 }
 
-// Reads the blocks a new session opens with, in slot order, from one path whatever started it: the
-// pinned memory, the status, the newest readable summary, and the turns after it up to the budget,
-// with the memory changes and the events over the span those turns cover.
 export async function readSessionOpening(
   context: Pick<TasksContext, 'log' | 'clock'>,
   query: SessionOpeningQuery,
@@ -115,8 +100,6 @@ export async function readSessionOpening(
   };
 }
 
-// The note over the span the recent turns cover: from where the oldest kept turn's note started
-// through where the last turn's note ended, where the current turn's own note starts.
 async function readReplayedNote(
   context: Pick<TasksContext, 'log'>,
   query: SessionOpeningQuery,

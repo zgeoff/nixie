@@ -5,9 +5,6 @@ import { buildCompactionRequest } from './build-compaction-request';
 import { runInboxStep } from './run-inbox-step';
 import type { SessionStep } from './types';
 
-// Compacts the session before the step takes the inbox. A summary commits with the boundary
-// cleared, so the next turn opens a new session from it. A failure commits in its place, and the
-// turn, when the inbox holds one, runs on the old session.
 export async function runCompactionStep(
   step: SessionStep,
   boundary: SessionPoint,

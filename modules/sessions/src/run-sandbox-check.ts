@@ -8,16 +8,11 @@ export interface SandboxCheck {
   readonly command: GuestCommand;
   readonly request: CheckRequest;
 
-  // aborts when the checker's timeout fires, which stops the guest
   readonly signal: AbortSignal;
 
-  // takes one checker.timed line per check, a timed-out one included
   readonly log: Logger;
 }
 
-// Runs one check in the checker's sandbox, and logs whether the sandbox, the guest or the model API
-// took its time. It returns the query's structured output, and throws when the guest failed or
-// exited with no reply.
 export async function runSandboxCheck(check: SandboxCheck): Promise<unknown> {
   const startedAt = performance.now();
   const readElapsedMs = () => Math.round(performance.now() - startedAt);
@@ -45,7 +40,6 @@ export async function runSandboxCheck(check: SandboxCheck): Promise<unknown> {
   }
 }
 
-// marks each phase of a check as it ends
 interface CheckMarks {
   readonly spawned: () => void;
   readonly replied: (reply: CheckReply) => void;
@@ -65,8 +59,6 @@ async function runGuestCheck(check: SandboxCheck, marks: CheckMarks): Promise<un
   return toCheckOutput(reply);
 }
 
-// marks the reply as soon as it is read, so the guest's stop counts toward the total and never
-// toward the reply time
 async function readGuestReply(
   check: SandboxCheck,
 
@@ -80,7 +72,7 @@ async function readGuestReply(
   check.signal.addEventListener('abort', stopGuest, { once: true });
 
   try {
-    // a timeout that fired while the guest started finds no listener, so the guest stops here
+    // An AbortSignal fires no abort listener added after it aborted.
     check.signal.throwIfAborted();
 
     await stream.send(new TextEncoder().encode(JSON.stringify(check.request)));
@@ -113,8 +105,6 @@ function toCheckOutput(reply: CheckReply): unknown {
   return reply.output;
 }
 
-// the reply's outcome and the guest's own CLI and API times; a check with no reply has neither
-// time, and one that threw before a reply, as a failed spawn or an unreadable frame, is an error
 function buildReplyTimings(reply: CheckReply | null, isAborted: boolean) {
   if (reply === null) {
     return { outcome: isAborted ? 'aborted' : 'error', cliMs: null, apiMs: null };

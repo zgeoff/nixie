@@ -10,8 +10,6 @@ import { mergeImageTallies } from './merge-image-tallies';
 import { readInboxMessages } from './read-inbox-messages';
 import type { ImageTally, MessageTimeOptions } from './types';
 
-// The session's images, which each live message adds to, its budget, and whether a message waits on
-// that budget.
 export interface LiveImages {
   spent: ImageTally;
   readonly budget: ImageTally;
@@ -21,18 +19,13 @@ export interface LiveImages {
 export interface LiveInbox {
   readonly taskID: string;
 
-  // the sequence of each inbox record the turn already took, to which each live one is added
   readonly sent: Set<number>;
   readonly signal: AbortSignal;
 
-  // how each message renders its send time
   readonly times: MessageTimeOptions;
   readonly images: LiveImages;
 }
 
-// Yields every inbox record that lands on the task while its turn runs, until the signal aborts,
-// so the turn takes each at its next tool boundary. A message whose images would pass the session's
-// image budget ends the feed, so it and every record after it wait for the next step.
 export async function* readLiveInbox(
   context: Pick<TasksContext, 'log'>,
 
@@ -67,8 +60,6 @@ interface LiveRead {
   readonly images: Readonly<LiveImages>;
 }
 
-// the record's message, or null when its images would pass the session's image budget; a
-// one-record read returns its record whatever the budget, so the feed checks the budget itself
 async function readLiveMessage(
   context: Pick<TasksContext, 'log'>,
   live: LiveRead,

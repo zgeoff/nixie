@@ -6,16 +6,11 @@ import { modelTurnEndedCodec } from '@heynixie/models';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { EventKind, NotedEvent } from './types';
 
-// A conversation turn that ended past the heads-up and under the threshold: the tokens left before
-// the next turn's end compacts the session, and the threshold's share of the window.
 export interface CompactionHeadsUp {
   readonly tokensLeft: number;
   readonly threshold: number;
 }
 
-// The event kind that warns the model that compaction is near, from the first turn of a session to
-// end past the heads-up, so the warning comes again only after a new session opens, as one does
-// after each compaction.
 export function buildCompactionHeadsUpKind(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   settings: Pick<CompactionSettings, 'threshold' | 'headsUp'>,
@@ -23,13 +18,10 @@ export function buildCompactionHeadsUpKind(
   return {
     name: 'compaction_heads_up',
 
-    // a later note never repeats the heads-up, so the cap never hides it
     isUncapped: true,
 
-    // a new session's context no longer holds what the turn that warned had read
     isSessionBound: true,
     read: async (range) => {
-      // the most turn ends one note reads, past which the block's count of more stops growing
       const readLimit = 1000;
 
       const records = await readRecords(log, {
@@ -87,7 +79,6 @@ async function readHeadsUp(
   };
 }
 
-// a turn whose model calls reported no usage gives no context
 function toContext(record: LogRecord): ContextSize | null {
   const ended = modelTurnEndedCodec.tryDecodePartial(record.payload);
 
@@ -101,14 +92,11 @@ interface TurnSpan {
   readonly before: number;
 }
 
-// The newest earlier turn of the session that ended past the heads-up, read a page at a time back
-// to the session's opening, or null when none did.
 async function readEarlierHeadsUp(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   headsUp: number,
   span: TurnSpan,
 ): Promise<LogRecord | null> {
-  // the turn ends one read of a session's earlier turns takes
   const pageSize = 100;
 
   const page = await readRecords(log, {

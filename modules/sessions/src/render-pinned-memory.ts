@@ -1,9 +1,6 @@
 import { renderSubjectGroups } from './render-subject-groups';
 import type { MemoryItem, MemoryLineOptions } from './types';
 
-// Renders the body of a new session's pinned-memory message: the pinned core as it stands when the
-// session opens, under a heading for each subject and in pin order within it, or a line that says
-// nothing is pinned, so the slot always shows.
 export function renderPinnedMemory(
   core: readonly MemoryItem[],
   options: MemoryLineOptions,

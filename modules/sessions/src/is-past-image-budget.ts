@@ -1,7 +1,5 @@
 import type { ImageTally } from './types';
 
-// Whether a message's images would take the images already spent past the budget, in bytes or in
-// count. A message with no images never passes it, even a budget already spent.
 export function isPastImageBudget(
   spent: ImageTally,
   added: ImageTally,

@@ -3,8 +3,6 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { requireLease } from '@heynixie/tasks';
 import type { SessionStep } from './types';
 
-// Writes the compaction failures of a step that fails, while its lease stands, so the log keeps
-// their cause and count after the step error drops the rest of the step.
 export function writeCompactionFailures(
   step: SessionStep,
   records: readonly RecordInput[],

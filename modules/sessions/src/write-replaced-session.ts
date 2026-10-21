@@ -10,14 +10,10 @@ export interface ReplacedSessionSpec {
   readonly command: GuestCommand;
   readonly log: Logger;
 
-  // the conversation's sandboxes that the target replaces, any of which may hold the session
   readonly replaced: readonly Sandbox[];
   readonly target: Sandbox;
 }
 
-// Writes the session the conversation resumes into the sandbox that replaces the old ones, from the
-// first old sandbox that holds it. When every copy fails, it logs a warning and lets the start go
-// on: the next turn finds the session missing and starts a fresh one, so a deploy never fails here.
 export async function writeReplacedSession(spec: ReplacedSessionSpec): Promise<void> {
   if (spec.replaced.length === 0) {
     return;
@@ -41,13 +37,11 @@ export async function writeReplacedSession(spec: ReplacedSessionSpec): Promise<v
   });
 }
 
-// the copy from one old sandbox, with its failure as a message naming that sandbox
 async function tryWriteKeptSession(
   spec: ReplacedSessionSpec,
   from: Sandbox,
 ): Promise<string | null> {
   try {
-    // the first start makes the sandbox before the conversation's task, so the read sits in the try
     const boundary = await readSessionBoundary(spec.context, conversationTaskID);
 
     const resume = parseSessionBoundary(boundary);

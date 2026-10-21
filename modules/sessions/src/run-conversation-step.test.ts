@@ -12,8 +12,6 @@ import { startTestTasks } from './test-utils/start-test-tasks';
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
 
-// the stub sandboxes and tool endpoint over a fresh log with the conversation task; startRunner
-// takes the summary cap a test sets, and sendMessage writes your message, then runs its step
 async function setupTest() {
   const tasks = await startTestTasks();
 
@@ -182,7 +180,6 @@ test('it leaves one summary when the compaction step dies before its commit and 
 
   await ctx.sendMessage(runner, 'What does the tide gauge read?');
 
-  // the step runs its compaction to the end, then dies before its commit
   await runNextStep(ctx.context, async (input) => {
     await runner.runStep(input);
 
@@ -619,7 +616,6 @@ test('it erases a summary that committed after a forget cleanup before it opens 
   await ctx.sendMessage(runner, 'What does the tide gauge read?');
   await runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
 
-  // a compaction step that ran while the cleanup did commits its summary after the key removal
   await writeRecords(ctx.context.log, [
     {
       kind: 'model.session_summarized',

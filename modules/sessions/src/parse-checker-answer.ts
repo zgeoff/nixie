@@ -6,8 +6,6 @@ const checkerOutput = z.object({
   reason: z.string(),
 });
 
-// Reads the checker's structured output into an answer from the model. An answer that breaks the
-// shape reads as unsure, so a garbled reply never lets a write through.
 export function parseCheckerAnswer(output: unknown, model: string): CheckerAnswer {
   const parsed = checkerOutput.safeParse(output);
 

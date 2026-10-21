@@ -16,17 +16,13 @@ interface RunnerConfig {
   readonly toolNames: readonly string[];
   readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote' | 'loadOrPinSkillCatalog'>;
 
-  // a recorder for the server's log, for a test that reads its warnings
   readonly log?: ConversationRunnerOptions['log'];
 
-  // the definitions in force, for a test that changes them between turns
   readonly getDefinitions?: ConversationRunnerOptions['getDefinitions'];
 }
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
 
-// the stub sandboxes and tool endpoint over a fresh log; sendMessage writes your message, then runs
-// the step that takes it
 async function setupTest() {
   const tasks = await startTestTasks();
 
@@ -839,7 +835,6 @@ test('it rebuilds the session when your next images would pass the images the se
     },
   ]);
 
-  // 10 MiB reads as about 14 MiB in base64, so a session holds one such photo and not two
   const photo = {
     kind: 'owner_message' as const,
     definitions: { snapshotHash: 'sha256:test' },
@@ -895,7 +890,6 @@ test('it rebuilds the session when your next images would pass the 100 it can ho
     },
   ]);
 
-  // 26 messages of 4 small icons each come to 104 images and a few hundred bytes
   await writeInboxRecords(
     ctx.context,
     Array.from({ length: 26 }, () => ({
@@ -949,7 +943,6 @@ test('it resumes the session for a photo while the images it holds leave room', 
     },
   ]);
 
-  // 5 MiB reads as about 7 MiB in base64, so a session holds both photos
   const photo = {
     kind: 'owner_message' as const,
     definitions: { snapshotHash: 'sha256:test' },
@@ -1211,7 +1204,6 @@ test('it opens a session from before opening records again as a rebuild, because
 
   await ctx.writeMessage('Hi.');
 
-  // a step from before opening records committed its session with no opening record
   await runNextStep(ctx.context, () =>
     Promise.resolve({
       next: 'wait',
@@ -1367,7 +1359,6 @@ test('it aborts a running turn on a forget, and fails the step so it retries on 
 
   const started = Promise.withResolvers<void>();
 
-  // the guest holds its turn until the host stops it
   ctx.sandboxes.setGuestScript(async (_turn, guest) => {
     started.resolve();
 
@@ -1717,7 +1708,6 @@ test('it tries every replaced sandbox for the session and logs one warning that 
 
   const log = mock<ConversationRunnerOptions['log']>();
 
-  // a rotated credential changes the grant, which replaces the sandbox
   await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'another-not-real-key',

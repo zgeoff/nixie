@@ -20,31 +20,22 @@ export interface GuestTurnSpec {
   readonly command: GuestCommand;
   readonly turn: TurnFrame;
 
-  // inbox messages that arrive while the turn runs, which go into it as they come
   readonly messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>;
 
-  // aborts when the step's lease is lost, which stops the guest
   readonly signal: AbortSignal;
 
-  // read at each ended frame, so the turn reports the mark its last result saw
   readonly readRecallMark?: () => Promise<number>;
 }
 
-// What the guest reported for one turn: each assistant message, the uuids of the inbox messages
-// the model read, each model turn that ended at a result, and the failure that stopped it.
 export interface GuestTurn {
   readonly assistants: readonly AssistantFrame[];
   readonly read: readonly string[];
   readonly ended: readonly EndedFrame[];
   readonly failure: FailedFrame | null;
 
-  // the mark read at the last ended frame, when the spec reads one
   readonly endedMark?: number;
 }
 
-// Runs one turn in the conversation guest: it starts the guest, sends the turn frame and then each
-// live message, and collects the guest's frames until it exits. A guest that exits without ending
-// or failing its turn, or that sends a frame the schema refuses, throws.
 export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
   const stream = await spec.sandbox.spawn({
     argv: spec.command.argv,
@@ -55,7 +46,7 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
   const unsubscribe = subscribeToAbort(spec.signal, stream);
 
   try {
-    // a signal that aborted while the guest started never fires its listener
+    // An AbortSignal fires no abort listener added after it aborted.
     spec.signal.throwIfAborted();
 
     await stream.send(encodeTurnFrame(spec.turn));
@@ -72,7 +63,6 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
   }
 }
 
-// stops the guest when the signal aborts, until the returned function detaches it
 function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
   const stopStream = () => {
     void stream.stop();
@@ -87,19 +77,14 @@ function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
 
 type LiveMessages = GuestTurnSpec['messages'];
 
-// a message that comes after the guest stopped reading stays unread in the inbox for the next step
 async function sendMessages(stream: ExecStream, messages: LiveMessages): Promise<void> {
   try {
     for await (const message of messages) {
       await stream.send(encodeTurnFrame({ type: 'message', message }));
     }
-  } catch {
-    // the guest has exited, and readTurn reports how
-  }
+  } catch {}
 }
 
-// the turn as readTurn fills it in, frame by frame, with the count of assistant frames and read
-// uuids that came before its last ended frame
 interface MutableTurn {
   readonly assistants: AssistantFrame[];
   readonly read: string[];
@@ -111,9 +96,8 @@ interface MutableTurn {
 
 type MarkReader = GuestTurnSpec['readRecallMark'];
 
-// Only the frames up to the last ended frame count, because the next turn resumes at that frame's
-// boundary: a reply or a read after it, from a guest that died before its next result, belongs to a
-// session no turn resumes, so its inbox records stay unread and the next step sends them again.
+// The SDK resumes a session at its last result, so a reply or a read after that result belongs to a
+// session that no turn resumes. Its inbox records stay unread, and the next step sends them again.
 async function readTurn(stream: ExecStream, readRecallMark: MarkReader): Promise<GuestTurn> {
   const turn: MutableTurn = {
     assistants: [],
@@ -145,7 +129,6 @@ async function readTurn(stream: ExecStream, readRecallMark: MarkReader): Promise
   };
 }
 
-// the newest recall at an ended frame, read before the turn moves past it
 function readFrameMark(frame: GuestFrame, readRecallMark: MarkReader): Promise<number | undefined> {
   return frame.type === 'ended' && readRecallMark !== undefined
     ? readRecallMark()
