@@ -36,7 +36,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'web_fetch',
-    needs: ['inputs', 'sandbox_adapter'],
+    needs: ['inputs', 'context', 'sandbox_adapter'],
     start: async (parts) => {
       const options = parts.get('inputs').options;
       const sandbox = options.sandbox;
@@ -47,6 +47,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         image: options.images.fetch.name,
         deniedRanges: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
         config: options.config.web_fetch,
+        log: parts.get('context').apiContext.log,
       });
 
       await options.cleanup.defer(() => webFetch.stop());

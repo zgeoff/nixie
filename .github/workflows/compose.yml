@@ -1,12 +1,15 @@
-# Starts the Compose recipe on every pull request. It checks that each image the recipe pins by tag
-# and digest resolves to that digest under that tag, then starts the recipe with CI's overlay, which
-# swaps nixie's release image for the test build on the test sandbox, because the release image
-# leaves the test sandbox out. It checks that nixie's health URL answers ready through the recipe's
-# origin, and that the enrol service prints a sign-in code.
+# Starts the Compose recipe. It checks that each image the recipe pins by tag and digest resolves to
+# that digest under that tag, then starts the recipe with CI's overlay, which swaps nixie's release
+# image for the test build on the test sandbox, because the release image leaves the test sandbox
+# out. It checks that nixie's health URL answers ready through the recipe's origin, and that the
+# enrol service prints a sign-in code. A pull request runs it only when it changes a file the recipe
+# or the test build reads; every push to main runs it in full.
 name: Compose
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -22,7 +25,27 @@ defaults:
     working-directory: deploy/compose
 
 jobs:
+  changes:
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@sync-v22
+    with:
+      paths: |
+        .github/workflows/compose.yml
+        .dockerignore
+        bun.lock
+        bunfig.toml
+        package.json
+        tsconfig*.json
+        adapters/**
+        apps/**
+        deploy/compose/**
+        guests/**
+        libs/**
+        modules/**
+        preview/**
+
   recipe:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -62,8 +85,24 @@ jobs:
             echo "NIXIE_AGE_KEY_FILE=$RUNNER_TEMP/age.key"
           } >> "$GITHUB_ENV"
 
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # the test build shares its layers with the Preview workflow's, through the preview scope
+      - name: Build the test build
+        uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
+        with:
+          source: ./deploy/compose
+          files: |
+            compose.yaml
+            ci/compose.yaml
+          load: true
+          set: |
+            nixie.cache-from=type=gha,scope=preview
+            nixie.cache-to=type=gha,mode=max,scope=preview
+
       - name: Start the recipe
-        run: docker compose -f compose.yaml -f ci/compose.yaml up --build --wait --wait-timeout 300
+        run: docker compose -f compose.yaml -f ci/compose.yaml up --wait --wait-timeout 300
 
       - name: Check the health URL
         run: |
