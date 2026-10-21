@@ -1,12 +1,15 @@
-# Rehearses the release's image stages on every pull request, against a registry that lives only
-# for the job: it builds each image as the release does, writes the sandbox manifest from the
-# sandbox digests, checks that the nixie image carries it, then runs the release's pull check, tag
-# stage and assets stage. A broken Dockerfile or a changed checksum then fails the pull request,
-# never a release.
+# Rehearses the release's image stages against a registry that lives only for the job: it builds
+# each image as the release does, writes the sandbox manifest from the sandbox digests, checks that
+# the nixie image carries it, then runs the release's pull check, tag stage and assets stage. A
+# broken Dockerfile or a changed checksum then fails the pull request, never a release. A pull
+# request runs it only when it changes a file the images or the stages read; every push to main runs
+# it in full.
 name: Images
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -21,7 +24,28 @@ defaults:
     shell: bash
 
 jobs:
+  changes:
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@sync-v22
+    with:
+      paths: |
+        .github/workflows/images.yml
+        .github/actions/build-image/**
+        .github/scripts/**
+        .bun-version
+        .dockerignore
+        bun.lock
+        bunfig.toml
+        package.json
+        tsconfig*.json
+        adapters/**
+        apps/**
+        guests/**
+        libs/**
+        modules/**
+
   rehearse:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     services:
       registry:
