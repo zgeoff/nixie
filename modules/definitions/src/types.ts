@@ -211,19 +211,26 @@ export interface WrittenSkillRow {
 export type WrittenSkillState = 'in_force' | 'adopted' | 'superseded' | 'retired';
 
 // the pull request that carries a skill nixie wrote to your definitions repo, and the base of the
-// skill it was built for; closed once you keep your definitions' version instead
+// skill it was built for
 interface SkillExportRow {
   readonly approval_id: string;
-  readonly state: SkillExportState;
+  readonly state: Exclude<SkillExportState, 'exporting'>;
   readonly base_hash: string | null;
   readonly pull_request_number: number;
   readonly pull_request_url: string;
   readonly updated_at: number;
 }
 
-// Where the export of a skill that nixie wrote stands: its pull request is open, or closed once
-// you keep your definitions' version instead.
-export type SkillExportState = 'opened' | 'closed';
+// the mark of an export in flight, which it writes before it writes to your definitions repo
+interface SkillExportAttemptRow {
+  readonly approval_id: string;
+  readonly started_at: number;
+}
+
+// Where the export of a skill that nixie wrote stands: an export in flight, marked before it
+// writes to your definitions repo; its pull request open; or closed once you keep your
+// definitions' version instead.
+export type SkillExportState = 'exporting' | 'opened' | 'closed';
 
 // Your definitions repo, which nixie exports each skill it wrote to as a pull request for you to
 // merge. Its adapter reads the base branch and writes each change on a branch of its own.
@@ -246,6 +253,9 @@ export interface DefinitionsRepo {
     change: DefinitionsChange,
     revision: string,
   ) => Promise<PullRequestRef>;
+
+  // the open pull request from the branch, or null when none is open
+  readonly readOpenPullRequest: (branch: string) => Promise<PullRequestRef | null>;
   readonly closePullRequest: (pullRequestNumber: number) => Promise<void>;
 }
 
@@ -273,5 +283,6 @@ export type DefinitionsTables = CheckedTables<
     snapshot_skills: SnapshotSkillRow;
     written_skills: WrittenSkillRow;
     skill_exports: SkillExportRow;
+    skill_export_attempts: SkillExportAttemptRow;
   }>
 >;

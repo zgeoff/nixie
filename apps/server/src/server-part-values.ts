@@ -1,5 +1,5 @@
 import type { CleanupRecordSessions } from '@heynixie/api';
-import type { SeedResult } from '@heynixie/definitions';
+import type { SeedResult, SkillExportSweep } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { APIGate } from './build-api-gate';
 import type { ServerResetControl } from './build-server-reset';
@@ -40,5 +40,8 @@ export interface ServerPartValues {
   readonly runners: void;
   readonly seed_poll: void;
   readonly skill_lapse_sweep: void;
+
+  // the export of the skills nixie wrote, or null when the configuration names no definitions repo
+  readonly skill_exports: SkillExportSweep | null;
   readonly ready: void;
 }

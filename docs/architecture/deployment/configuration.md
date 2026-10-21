@@ -20,7 +20,8 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
   credential as a reference, and when [compaction](../core/compaction.md) runs
 - the sandbox adapter, and for imp, impd's address and the address ranges for
   [public egress](../connectors/sandboxes.md#the-imp-adapter)
-- the [definitions](../core/definitions.md) source and how often nixie probes it
+- the [definitions](../core/definitions.md) source, how often nixie probes it, and the GitHub repo
+  that [skills nixie wrote](../core/definitions.md#the-export-to-the-definitions-repo) export to
 - the [web fetch](../connectors/web-fetch.md) limits, the fetches one fetch sandbox serves, and the
   [time](../connectors/time.md) tool's default zone
 - the task and action [runner pool](../core/leases-and-recovery.md#runner-pools) sizes

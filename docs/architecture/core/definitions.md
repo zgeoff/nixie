@@ -158,9 +158,17 @@ folder as the user's own skill and marks the written skill adopted.
 
 A choice on a conflict changes the export. Keeping nixie's version gives the skill a new base, and
 the export builds the pull request again on it. Keeping the definitions' version retires the skill,
-and the export closes its pull request. A new skill joins the conversation's list through the
-overlay alone, so when nixie.yaml lists the conversation's skills, the pull request asks the user to
-add the skill to that list.
+and the export closes its pull request. The export records itself before it writes to the repo, so
+when a run stops before it records the pull request it opened, the close finds that pull request by
+the skill's branch. A new skill joins the conversation's list through the overlay alone, so when
+nixie.yaml lists the conversation's skills, the pull request asks the user to add the skill to that
+list.
+
+The export runs only when the configuration names the definitions repo on GitHub. It writes through
+GitHub's REST API with a fine-grained token that holds contents and pull-requests write on that one
+repo, and the token lives in the secrets file under `definitions_export_token`. A configuration that
+names the repo without the token stops nixie at start. Without the repo, a written skill stays in
+force over the definitions until the user copies it into them.
 
 ## The snapshot hash
 

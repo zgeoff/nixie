@@ -19,6 +19,9 @@ export interface BootFileExtras {
   // YAML lines appended to the secrets file
   readonly secrets: readonly string[];
 
+  // YAML lines under the definitions section, which the configuration writes last of its own
+  readonly definitions?: readonly string[];
+
   // the server section's log level, which the configuration leaves at its default when unset
   readonly logLevel?: LogLevel;
 
@@ -46,6 +49,7 @@ export async function writeBootFiles(
 
   await writeConfig(directory, [
     ...buildConfigLines(directory, modelURL, extras.logLevel),
+    ...(extras.definitions ?? []).map((line) => `  ${line}`),
     'sandbox:',
     `  adapter: ${extras.sandboxAdapter ?? 'test'}`,
     ...extras.config,

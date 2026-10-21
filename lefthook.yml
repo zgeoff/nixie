@@ -84,5 +84,7 @@ pre-push:
       run: bun run boundaries
     - name: prose
       run: bun run prose
+    # each test file runs in its own process, as in CI, so a file's own MSW server never meets
+    # the web client's; one worker at a time, because the host may have little memory
     - name: test
-      run: bun test --changed=origin/main
+      run: bun test --parallel=1 --changed=origin/main

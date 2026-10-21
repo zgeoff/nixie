@@ -18,6 +18,9 @@ export interface TestNixieOptions {
   // YAML lines appended to the secrets file, such as a private setting the configuration names
   readonly extraSecrets?: readonly string[];
 
+  // YAML lines under the configuration's definitions section, such as the export
+  readonly extraDefinitions?: readonly string[];
+
   // a release bundle's main.js to run in place of a test build of the source
   readonly entry?: string;
 
@@ -75,6 +78,7 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
   const files = await writeBootFiles(directory, model.url, {
     config: options.extraConfig ?? [],
     secrets: options.extraSecrets ?? [],
+    definitions: options.extraDefinitions ?? [],
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
 
     // a release bundle refuses the test sandbox, so it runs on imp, which it finds down

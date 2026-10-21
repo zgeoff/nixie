@@ -7,6 +7,7 @@ import {
   checkSkillFiles,
   createPathSource,
   runSeed,
+  runSkillExports,
   runWrittenSkillSeed,
   writeWrittenSkill,
 } from '@heynixie/definitions';
@@ -104,7 +105,54 @@ test('#list shows a written skill whose definitions changed after the approval a
       base: { skillHash: base.skillHash, origin: 'definitions' },
       definitions: { skillHash: buildContentHash(edited), origin: 'definitions' },
       isConflict: true,
+      pullRequestURL: null,
       approvedAt: new Date(Date.UTC(2026, 2, 3, 9, 0)),
+    },
+  ]);
+});
+
+test('#list shows the pull request that carries a written skill to the definitions repo', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await runSeed({ log: ctx.log, source: ctx.source, policy: ctx.policy });
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.log.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: Date.UTC(2026, 2, 3, 9, 0),
+    }),
+  );
+
+  await runSkillExports({
+    log: ctx.log,
+    repo: {
+      readBaseRevision: () => Promise.resolve('revision-a'),
+      readFile: () => Promise.resolve(null),
+      readFolder: () => Promise.resolve([]),
+      writePullRequest: () =>
+        Promise.resolve({ number: 3, url: 'https://github.test/harbour/definitions/pull/3' }),
+      readOpenPullRequest: () => Promise.resolve(null),
+      closePullRequest: () => Promise.resolve(),
+    },
+    onError: () => {},
+  });
+
+  const listed = await ctx.client.list();
+
+  expect(listed).toMatchObject([
+    {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      pullRequestURL: 'https://github.test/harbour/definitions/pull/3',
     },
   ]);
 });

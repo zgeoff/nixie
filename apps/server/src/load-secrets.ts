@@ -15,6 +15,9 @@ export interface Secrets {
 
   // impd's API token, or null when the secrets file holds none, as a test sandbox's need not
   readonly impdToken: string | null;
+
+  // the definitions repo's GitHub token, or null when the secrets file holds none
+  readonly definitionsExportToken: string | null;
   readonly models: ModelSecrets;
 
   // the private settings, which a deployment:<name> reference in the configuration names
@@ -58,6 +61,7 @@ export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
       ['wrapKey', 'unwrapKey'],
     ),
     impdToken: result.data.impd_token ?? null,
+    definitionsExportToken: result.data.definitions_export_token ?? null,
     models: { model_credentials: result.data.model_credentials },
     settings: result.data.settings,
   };

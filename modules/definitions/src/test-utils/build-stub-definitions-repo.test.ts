@@ -180,6 +180,53 @@ test('it writes a merged change into the base branch, removing each file it remo
   expect(ctx.repo.readPullRequests()[0]?.state).toBe('merged');
 });
 
+test("it reads a branch's open pull request, and null once it closes", async () => {
+  const ctx = await setupTest();
+
+  await ctx.repo.writePullRequest(
+    {
+      branch: 'nixie/skill/tide-tables',
+      title: 'Add the tide-tables skill that nixie wrote',
+      body: 'first\n',
+      files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
+    },
+    'revision-a',
+  );
+
+  const open = await ctx.repo.readOpenPullRequest('nixie/skill/tide-tables');
+
+  await ctx.repo.closePullRequest(1);
+
+  const closed = await ctx.repo.readOpenPullRequest('nixie/skill/tide-tables');
+
+  expect(open).toStrictEqual({ number: 1, url: 'https://definitions.test/pull/1' });
+  expect(closed).toBeNull();
+});
+
+test('it opens the pull request and rejects the write when its answer is lost, and answers the next write', async () => {
+  const ctx = await setupTest();
+
+  const change = {
+    branch: 'nixie/skill/tide-tables',
+    title: 'Add the tide-tables skill that nixie wrote',
+    body: 'first\n',
+    files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
+  };
+
+  ctx.repo.loseNextAnswer();
+
+  const lost = await ctx.repo.writePullRequest(change, 'revision-a').then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  const next = await ctx.repo.writePullRequest(change, 'revision-b');
+
+  expect(lost).toStrictEqual(new Error('the answer to the pull request write was lost'));
+  expect(next).toStrictEqual({ number: 1, url: 'https://definitions.test/pull/1' });
+  expect(ctx.repo.readPullRequests().map((request) => request.number)).toStrictEqual([1]);
+});
+
 test('it refuses to close a pull request it never opened', () => {
   const directory = join(tmpdir(), 'nixie-stub-repo-unused');
 

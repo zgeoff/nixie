@@ -1,6 +1,7 @@
 import { manifestSkillsSchema } from './manifest-skills-schema';
 import { skillsLockPath } from './skills-lock-path';
 import { skillsLockSchema } from './skills-lock-schema';
+import { toSkillExportBranch } from './to-skill-export-branch';
 import type { DefinitionsChange, SkillVersion } from './types';
 
 // A skill that nixie wrote and an approval put in force, with what the base branch of your
@@ -61,7 +62,7 @@ export function buildSkillExportChange(skillExport: SkillExport): DefinitionsCha
   }
 
   return {
-    branch: `nixie/skill/${name}`,
+    branch: toSkillExportBranch(name),
     title:
       skillExport.beneath === null
         ? `Add the ${name} skill that nixie wrote`

@@ -15,6 +15,9 @@ export interface StubDefinitionsRepo extends DefinitionsRepo {
 
   // writes the pull request's change into the base branch's folder, as your merge does
   readonly mergePullRequest: (pullRequestNumber: number) => Promise<void>;
+
+  // the next pull request write lands and then rejects, as when its answer is lost on the way back
+  readonly loseNextAnswer: () => void;
 }
 
 // A definitions repo whose base branch is a folder on disk, whose base revision is the hash of the
@@ -34,6 +37,27 @@ export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo
     pullRequests[index] = { ...found, ...update };
 
     return found;
+  };
+
+  let isNextAnswerLost = false;
+
+  const writeOpen = (change: DefinitionsChange, revision: string): PullRequestRef => {
+    const open = pullRequests.find(
+      (request) => request.change.branch === change.branch && request.state === 'open',
+    );
+
+    if (open !== undefined) {
+      replace(open.number, { change, revision });
+
+      return { number: open.number, url: open.url };
+    }
+
+    const pullRequestNumber = pullRequests.length + 1;
+    const url = `https://definitions.test/pull/${pullRequestNumber}`;
+
+    pullRequests.push({ number: pullRequestNumber, url, change, revision, state: 'open' });
+
+    return { number: pullRequestNumber, url };
   };
 
   const requireRevision = async (revision: string) => {
@@ -64,22 +88,29 @@ export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo
     },
 
     writePullRequest: (change, revision) => {
-      const open = pullRequests.find(
-        (request) => request.change.branch === change.branch && request.state === 'open',
-      );
+      const written = writeOpen(change, revision);
 
-      if (open !== undefined) {
-        replace(open.number, { change, revision });
+      if (isNextAnswerLost) {
+        isNextAnswerLost = false;
 
-        return Promise.resolve({ number: open.number, url: open.url });
+        return Promise.reject(new Error('the answer to the pull request write was lost'));
       }
 
-      const pullRequestNumber = pullRequests.length + 1;
-      const url = `https://definitions.test/pull/${pullRequestNumber}`;
+      return Promise.resolve(written);
+    },
 
-      pullRequests.push({ number: pullRequestNumber, url, change, revision, state: 'open' });
+    loseNextAnswer: () => {
+      isNextAnswerLost = true;
+    },
 
-      return Promise.resolve({ number: pullRequestNumber, url });
+    readOpenPullRequest: (branch) => {
+      const open = pullRequests.find(
+        (request) => request.change.branch === branch && request.state === 'open',
+      );
+
+      const found = open === undefined ? null : { number: open.number, url: open.url };
+
+      return Promise.resolve(found);
     },
 
     closePullRequest: (pullRequestNumber) => {

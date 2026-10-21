@@ -21,6 +21,7 @@
     "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/definitions": "workspace:*",
+    "@heynixie/definitions-github": "workspace:*",
     "@heynixie/encoder-onnx": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",

@@ -99,7 +99,9 @@ answer closes the proposal on the thread that wrote it:
   the server runs the seed checks on the files again and stores the skill in
   [the store of written skills](./definitions.md#skills-that-nixie-wrote) under that ID, and a seed
   of the definitions in force then puts it in force for the next task. The user may approve edited
-  files in place of the proposal's, and the approval records that they are edited.
+  files in place of the proposal's, and the approval records that they are edited. nixie then
+  [exports the skill](./definitions.md#the-export-to-the-definitions-repo) to the user's definitions
+  repo as a pull request.
 - A rejection holds the user's reason in its erasable fields.
 - A proposal that waits past its lapse time with no answer lapses. An hourly sweep records each
   lapse, and the listing leaves out a proposal past its lapse time before the sweep reaches it.
