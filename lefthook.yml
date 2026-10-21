@@ -1,5 +1,5 @@
 # Git hooks. pre-commit fixes staged files only (fast); pre-push checks what
-# the branch changes, plus the cheap whole-tree gates. CI runs every
+# the push sends, plus the cheap whole-tree gates. CI runs every
 # whole-tree check: type-aware lint, dead code, and the full test suite.
 
 pre-commit:
@@ -53,9 +53,14 @@ pre-push:
     # outgoing commit is scanned, because a later commit's removal still pushes
     # the earlier one, and the host name matches only as a whole word
     - name: local paths
+      use_stdin: true
       run: |
-        base=$(git merge-base origin/main HEAD) || exit 1
-        added=$(git log -p -U0 --format= "$base..HEAD" | grep '^+' | grep -v '^+++')
+        commits=$(.lefthook/pushed-commits.sh) || exit 1
+        for commit in $commits; do
+          git merge-base origin/main "$commit" > /dev/null || exit 1
+        done
+        [ -n "$commits" ] || exit 0
+        added=$(git log -p -U0 --format= $commits --not origin/main | grep '^+' | grep -v '^+++')
         host=$(uname -n)
         if printf '%s\n' "$added" | grep -F -e "$HOME/" ||
           { [ -n "$host" ] && [ "$host" != localhost ] && printf '%s\n' "$added" | grep -F -w -e "$host"; }; then
@@ -64,27 +69,44 @@ pre-push:
         fi
     - name: format:check
       run: bun run format:check
-    # the job lists the branch's files itself, so it runs on every push; a
-    # files: list marks the job skipped when the branch changes no script.
-    # The merge base is resolved first, so a branch without one fails the job
+    # the job lists the pushed commits' files itself, so it runs on every push;
+    # a files: list marks the job skipped when the push changes no script.
+    # Each merge base is resolved first, so a commit without one fails the job
     # rather than handing oxlint an empty list
     - name: lint
+      use_stdin: true
       run: |
-        base=$(git merge-base origin/main HEAD) || exit 1
-        git diff -z --name-only --diff-filter=ACMR "$base" HEAD -- '*.js' '*.mjs' '*.cjs' '*.jsx' '*.ts' '*.mts' '*.cts' '*.tsx' | xargs -0 -r node_modules/.bin/oxlint --no-error-on-unmatched-pattern
-    # the packages the branch affects, one package and one checker at a time:
-    # turbo's default 10 at once ran a 2 GiB host out of memory, and tsc's
-    # default checkers take apps/server to about 1.2 GiB, one checker to 0.6
+        commits=$(.lefthook/pushed-commits.sh) || exit 1
+        for commit in $commits; do
+          git merge-base origin/main "$commit" > /dev/null || exit 1
+        done
+        for commit in $commits; do
+          git diff -z --name-only --diff-filter=ACMR "origin/main...$commit" -- '*.js' '*.mjs' '*.cjs' '*.jsx' '*.ts' '*.mts' '*.cts' '*.tsx'
+        done | sort -zu | xargs -0 -r node_modules/.bin/oxlint --no-error-on-unmatched-pattern
+    # the packages each pushed commit affects, one package and one checker at
+    # a time: turbo's default 10 at once ran a 2 GiB host out of memory, and
+    # tsc's default checkers take apps/server to about 1.2 GiB, one checker to
+    # 0.6. A set TURBO_SCM_HEAD leaves the working tree's changes out
     - name: typecheck
-      run:
-        node_modules/.bin/tsc --noEmit --checkers 1 && TURBO_SCM_BASE=origin/main
-        node_modules/.bin/turbo run typecheck --affected --concurrency=1 --output-logs=errors-only
-        -- --checkers 1
+      use_stdin: true
+      run: |
+        commits=$(.lefthook/pushed-commits.sh) || exit 1
+        node_modules/.bin/tsc --noEmit --checkers 1 || exit 1
+        for commit in $commits; do
+          TURBO_SCM_BASE=origin/main TURBO_SCM_HEAD=$commit node_modules/.bin/turbo run typecheck --affected --concurrency=1 --output-logs=errors-only -- --checkers 1 || exit 1
+        done
     - name: boundaries
       run: bun run boundaries
     - name: prose
       run: bun run prose
-    # each test file runs in its own process, as in CI, so a file's own MSW server never meets
-    # the web client's; one worker at a time, because the host may have little memory
+    # the tests each pushed commit's changes select, so a push of one stack layer from
+    # the top layer's worktree runs that layer's tests only. Each test file runs in its own
+    # process, as in CI, so a file's own MSW server never meets the web client's; one worker
+    # at a time, because the host may have little memory
     - name: test
-      run: bun test --parallel=1 --changed=origin/main
+      use_stdin: true
+      run: |
+        commits=$(.lefthook/pushed-commits.sh) || exit 1
+        for commit in $commits; do
+          bun test --parallel=1 --changed="origin/main..$commit" || exit 1
+        done

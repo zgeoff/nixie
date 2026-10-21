@@ -188,7 +188,8 @@ contains a fault point ID, the test rule's ID or the test sandbox.
 
 The checks are oxfmt, oxlint with type-aware rules on `@zgeoff/oxlint-config`, typecheck, knip for
 dead code, `turbo boundaries`, the prose check and the tests. lefthook fixes formatting and plain
-lint on the staged files before a commit. Before a push it lints, typechecks and tests what the
-branch changes, and runs the whole-tree format, boundary and prose checks. CI runs the shared Bun
-pull-request workflow from the tools repo with nixie's script list, which adds the dependency audit,
-the type-aware lint, dead code and the whole test suite.
+lint on the staged files before a commit. Before a push it lints, typechecks and tests what each
+pushed commit changes from main, whatever the working tree holds, and it runs the whole-tree format,
+boundary and prose checks. CI runs the shared Bun pull-request workflow from the tools repo with
+nixie's script list, which adds the dependency audit, the type-aware lint, dead code and the whole
+test suite.
