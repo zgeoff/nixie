@@ -3,7 +3,7 @@
 # It needs bash, coreutils and the imp CLI logged in to the impd under test, nothing else.
 #
 #   FETCH_IMAGE=nixie-fetch-<hash> [CONVERSATION_IMAGE=nixie-conversation-<hash>] [RUNS=5] \
-#     bash scripts/research/fetch-sandbox-start/time-starts.sh | tee fetch-sandbox-start.md
+#     bash research/fetch-sandbox-start/time-starts.sh | tee fetch-sandbox-start.md
 #
 # Routes, each timed from the host clock around the CLI calls:
 #   new        imp new from the fetch image, then a first exec of `true`

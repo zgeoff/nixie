@@ -571,6 +571,10 @@
         "@types/bun": "1.4.3",
       },
     },
+    "research/fetch-sandbox-start": {
+      "name": "@heynixie/spike-fetch-sandbox-start",
+      "version": "0.0.0",
+    },
     "research/forget-backups": {
       "name": "@heynixie/spike-forget-backups",
       "version": "0.0.0",
@@ -934,6 +938,8 @@
     "@heynixie/spike-cache-lifetime": ["@heynixie/spike-cache-lifetime@workspace:research/cache-lifetime"],
 
     "@heynixie/spike-connector-account-pick": ["@heynixie/spike-connector-account-pick@workspace:research/connector-account-pick"],
+
+    "@heynixie/spike-fetch-sandbox-start": ["@heynixie/spike-fetch-sandbox-start@workspace:research/fetch-sandbox-start"],
 
     "@heynixie/spike-forget-backups": ["@heynixie/spike-forget-backups@workspace:research/forget-backups"],
 
