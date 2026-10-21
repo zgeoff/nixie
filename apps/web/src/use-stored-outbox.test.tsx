@@ -10,9 +10,7 @@ import { renderHook } from './test-utils/render-hook';
 import { useOutbox } from './use-outbox';
 import { writeOutboxImages } from './write-outbox-images';
 
-async function setupTest() {
-  await createDeviceSession();
-
+function setupTest() {
   const options = { now: () => Date.parse('2026-10-17T09:00:30.000Z') };
   const rendered = renderHook(() => useOutbox([], options));
 
@@ -20,7 +18,9 @@ async function setupTest() {
 }
 
 test('it keeps the images of an unsent message across a reload, and sends them with it', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error()));
 
@@ -81,7 +81,9 @@ test('it keeps a stored message unsent when its images do not read back after a 
     ]),
   );
 
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await waitFor(() => {
     expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
@@ -109,7 +111,9 @@ test('it sends a stored message with its images on a retry once they read back',
     ]),
   );
 
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await waitFor(() => {
     expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
@@ -151,7 +155,9 @@ test('it sends a stored message with images before one you send while its images
     ]),
   );
 
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   act(() => {
     ctx.rendered.result.current.add({
@@ -177,7 +183,9 @@ test('it sends a stored message with images before one you send while its images
 });
 
 test('it keeps the images out of localStorage, which holds only the text and their count', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error()));
 
@@ -211,7 +219,9 @@ test('it keeps the images out of localStorage, which holds only the text and the
 });
 
 test('it removes the kept images once the server confirms the message', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   act(() => {
     ctx.rendered.result.current.add({
@@ -235,7 +245,9 @@ test('it removes the kept images once the server confirms the message', async ()
 });
 
 test('it keeps when you wrote an unsent message across a reload', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error()));
 
@@ -275,7 +287,9 @@ test('it loads a stored message with no written time, and holds it as stale', as
     ]),
   );
 
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await waitFor(() => {
     expect(ctx.rendered.result.current.entries).toStrictEqual([

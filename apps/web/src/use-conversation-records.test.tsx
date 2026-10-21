@@ -7,12 +7,8 @@ import { createDeviceSession } from './test-utils/create-device-session';
 import { renderHook } from './test-utils/render-hook';
 import { useConversationRecords } from './use-conversation-records';
 
-async function setupTest() {
-  await createDeviceSession();
-}
-
 test('it shows each record of the page and the live stream once, in order', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const one = await store.records.create({ kind: 'owner_message' });
 
@@ -33,7 +29,7 @@ test('it shows each record of the page and the live stream once, in order', asyn
 });
 
 test('it drops the text of a message once a forget on the live stream names it', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const message = await store.records.create({
     kind: 'owner_message',
@@ -61,7 +57,7 @@ test('it drops the text of a message once a forget on the live stream names it',
 });
 
 test('it drops the text of a summary once a forget invalidates its session', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({ kind: 'model.session_opened' });
 
@@ -92,7 +88,7 @@ test('it drops the text of a summary once a forget invalidates its session', asy
 });
 
 test('it drops the text of a summary that commits after a forget invalidated its session', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({ kind: 'model.session_opened' });
   await store.records.create({ kind: 'model.session_invalidated' });
@@ -115,7 +111,7 @@ test('it drops the text of a summary that commits after a forget invalidated its
 });
 
 test('it keeps the text of a summary from a session that opened after the last forget', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({ kind: 'model.session_invalidated' });
   await store.records.create({ kind: 'model.session_opened' });
@@ -135,7 +131,7 @@ test('it keeps the text of a summary from a session that opened after the last f
 });
 
 test('it names the client message ID of a message a forget dropped the text of', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const message = await store.records.create({
     kind: 'owner_message',
@@ -161,7 +157,7 @@ test('it names the client message ID of a message a forget dropped the text of',
 });
 
 test('it reports the conversation failed when the first read fails', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/read', () => new HttpResponse(null, { status: 503 })));
 
@@ -173,7 +169,7 @@ test('it reports the conversation failed when the first read fails', async () =>
 });
 
 test('it drops the records from before a reset once the reset arrives', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({ kind: 'owner_message' });
 
@@ -198,7 +194,7 @@ test('it drops the records from before a reset once the reset arrives', async ()
 });
 
 test('it reads the conversation again when a reset arrives', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const reads = mock();
 
@@ -222,7 +218,7 @@ test('it reads the conversation again when a reset arrives', async () => {
 });
 
 test('it reads the conversation again once the live stream reconnects after a reset', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const failed = mock();
   const reads = mock();
@@ -261,7 +257,7 @@ test('it reads the conversation again once the live stream reconnects after a re
 });
 
 test('it keeps the conversation ready when the read after a reset fails', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const failed = mock();
   const hook = renderHook(() => useConversationRecords('conversation'));
@@ -294,7 +290,7 @@ test('it keeps the conversation ready when the read after a reset fails', async 
 });
 
 test('it drops the step end a page read before a reset once the reset arrives', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({
     kind: 'task.step_errored',
@@ -320,7 +316,7 @@ test('it drops the step end a page read before a reset once the reset arrives', 
 });
 
 test('it keeps a step end that follows the reset the page read', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({ kind: 'log_reset' });
 
@@ -339,7 +335,7 @@ test('it keeps a step end that follows the reset the page read', async () => {
 });
 
 test('it names a reset the live stream delivers, and not one the page read', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({ kind: 'log_reset' });
 
