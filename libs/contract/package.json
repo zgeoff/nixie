@@ -10,7 +10,7 @@
   },
   "scripts": {
     "openapi": "bun src/run-openapi-document.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
     "@orpc/client": "catalog:",

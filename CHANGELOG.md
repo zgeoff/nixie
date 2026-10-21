@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.0](https://github.com/zgeoff/nixie/compare/v0.39.2...v0.40.0) (2026-10-21)
+
+
+### Features
+
+* **connectors:** read web fetch links as short ids kept per session ([#524](https://github.com/zgeoff/nixie/issues/524)) ([52161df](https://github.com/zgeoff/nixie/commit/52161df0defb2a51c03b6e9377e543a6694fdd89))
+
 ## [0.39.2](https://github.com/zgeoff/nixie/compare/v0.39.1...v0.39.2) (2026-10-21)
 
 
