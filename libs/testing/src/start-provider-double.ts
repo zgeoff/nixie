@@ -1,6 +1,3 @@
-// One answer the provider double gives a call: success with a result, a refusal that can clear, a
-// refusal with no effect, or a connection dropped after the provider took the call. A gate holds
-// the answer until it resolves.
 export type ProviderReply = (
   | { readonly kind: 'success'; readonly result: Readonly<Record<string, unknown>> }
   | { readonly kind: 'refused_retryable'; readonly reason: string; readonly retryAfterMs?: number }
@@ -8,7 +5,6 @@ export type ProviderReply = (
   | { readonly kind: 'drop' }
 ) & { readonly gate?: Promise<void> };
 
-// One call the provider received, with the idempotency key it carried, or null for none.
 export interface ProviderCall {
   readonly idempotencyKey: string | null;
   readonly body: unknown;
@@ -18,14 +14,10 @@ export interface ProviderDouble {
   readonly url: string;
   readonly calls: readonly ProviderCall[];
 
-  // appends answers to the script, which the double gives in order, one per call
   readonly addReplies: (...replies: readonly ProviderReply[]) => void;
   readonly stop: () => Promise<void>;
 }
 
-// Starts the provider double for the test connector: a local HTTP service that records every call
-// to POST /send with its Idempotency-Key header, then answers 200, 429, 422 or a closed connection.
-// A call past the script's end gets a refusal, so a test that scripts too few fails, never hangs.
 export function startProviderDouble(): ProviderDouble {
   const calls: ProviderCall[] = [];
   const script: ProviderReply[] = [];

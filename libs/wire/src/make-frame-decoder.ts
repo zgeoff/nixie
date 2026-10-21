@@ -1,11 +1,8 @@
 import { frameHeaderBytes } from './frame-header-bytes';
 import { FrameTooLargeError } from './frame-too-large-error';
 
-// Takes chunks of a frame stream as they arrive and returns each message they complete.
 export type FrameDecoder = (chunk: Uint8Array) => readonly Uint8Array<ArrayBuffer>[];
 
-// Makes a decoder for the frames encodeFrame writes. It throws FrameTooLargeError at the header of a
-// frame whose payload passes maxMessageBytes, so a sender cannot make the reader hold more.
 export function makeFrameDecoder(maxMessageBytes: number): FrameDecoder {
   const buffer = { pending: new Uint8Array(0) };
 
@@ -39,7 +36,6 @@ interface FrameBuffer {
   pending: Uint8Array<ArrayBuffer>;
 }
 
-// takes the first whole frame off the buffer, or returns null while the frame is still partial
 function splitFrame(buffer: FrameBuffer, maxMessageBytes: number): Uint8Array<ArrayBuffer> | null {
   if (buffer.pending.byteLength < frameHeaderBytes) {
     return null;

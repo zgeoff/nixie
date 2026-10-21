@@ -1,8 +1,6 @@
 import type { FetchReply } from './fetch-reply';
 import { parseFetchObject } from './parse-fetch-object';
 
-// Decodes the fetcher's reply, and throws on a malformed one. The fetcher parses hostile pages, so
-// nixie reads its reply as untrusted bytes and keeps only the fields of a well-formed reply.
 export function decodeFetchReply(bytes: Uint8Array): FetchReply {
   const reply = parseFetchObject(bytes, 'reply');
   const kind = reply['kind'];

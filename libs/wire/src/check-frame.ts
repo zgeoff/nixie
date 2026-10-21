@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-// The model profile the checker runs on. The guest never sees the profile's credential: the
-// sandbox's grant injects it, and the guest holds a placeholder.
+// The guest never sees the profile's credential: the sandbox's grant injects it, and the guest holds
+// a placeholder.
 const checkProfileSchema = z
   .object({
     model: z.string().min(1),
@@ -11,8 +11,6 @@ const checkProfileSchema = z
   })
   .readonly();
 
-// The one frame the host sends the check guest: the profile, the checker's system prompt, and the
-// input the gate built, which the guest sends as the only user message.
 export const checkRequestSchema = z
   .object({
     profile: checkProfileSchema,
@@ -23,9 +21,6 @@ export const checkRequestSchema = z
 
 export type CheckRequest = z.infer<typeof checkRequestSchema>;
 
-// The one frame the check guest sends back: the query's structured output, which the host reads
-// as a verdict, or the reason the query failed. An answer carries the query's time in the CLI and
-// the share of it spent on model API calls, so the host can log where a check's time went.
 export const checkReplySchema = z.discriminatedUnion('kind', [
   z
     .object({

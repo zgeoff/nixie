@@ -62,6 +62,6 @@ test('it waits the delay after the release before it calls through', async () =>
 
   const calledAt = await gated.call();
 
-  // Date.now() drops the fraction of a millisecond, so the two readings can sit 1 ms closer
+  // Date.now() drops the fraction of a millisecond, so the two readings can sit 1 ms closer.
   expect(calledAt).toBeGreaterThanOrEqual(releasedAt + 49);
 });
