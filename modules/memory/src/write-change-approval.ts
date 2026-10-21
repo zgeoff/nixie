@@ -8,9 +8,6 @@ import { writeConsolidatorWakeInTransaction } from './write-consolidator-wake-in
 import type { WrittenVersion } from './write-version-in-transaction';
 import { writeVersionInTransaction } from './write-version-in-transaction';
 
-// Applies one consolidation change with your approval, while it is pending under the hash you saw.
-// Its versions commit in one transaction with the approval record, each bound to the version the
-// change read, so one input that moved on fails the whole change as stale and applies nothing.
 export async function writeChangeApproval(
   parts: StoreParts,
   answer: ChangeAnswer,
@@ -50,7 +47,6 @@ export async function writeChangeApproval(
 
     const refs = written.map((version) => version.ref);
 
-    // the change's own item first, though it writes last
     return [...refs.slice(-1), ...refs.slice(0, -1)];
   });
 }

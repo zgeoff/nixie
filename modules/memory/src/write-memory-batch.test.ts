@@ -9,7 +9,6 @@ import { startFaultPointHold } from './test-utils/start-fault-point-hold';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writePlannedBatch } from './test-utils/write-planned-batch';
 
-// memory, a test clock, and the writer step's lease, which every publish checks first
 async function setupTest() {
   const memory = await startTestMemory();
 

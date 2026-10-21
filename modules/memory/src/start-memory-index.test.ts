@@ -34,7 +34,6 @@ test('it drops a match whose score falls below the floor', async () => {
     { itemID: 'item-d', text: 'Waters the ferns every Tuesday' },
   ]);
 
-  // "Tuesday" sits in 3 of the 4 items, so it scores near 0, and "flowerpot" sits in one
   const found = await ctx.index.readItemIDs('Tuesday flowerpot', { limit: 10, minScore: 0.25 });
 
   expect(found).toStrictEqual(['item-a']);
@@ -141,7 +140,6 @@ test('it never matches a function word in an item to a query word that stems to 
     { itemID: 'item-c', text: 'Works from home on Mondays' },
   ]);
 
-  // porter stems "one" to "on", which item-a and item-c hold only as a function word
   const found = await ctx.index.readItemIDs('one sec', { limit: 10 });
 
   expect(found).toStrictEqual(['item-b']);
@@ -156,7 +154,6 @@ test('it matches an item with a decomposed accent to a query with the composed a
     { itemID: 'item-c', text: 'Prefers window seats on trains' },
   ]);
 
-  // item-a spells "München" with "u" and a combining diaeresis, and the query with the composed "ü"
   const found = await ctx.index.readItemIDs('München', { limit: 10, minScore: 0.25 });
 
   expect(found).toStrictEqual(['item-a']);

@@ -10,7 +10,6 @@ import type { WriterParts } from './writer-parts';
 import type { WriterTables } from './writer-types';
 
 export interface MemoryWriterOptions extends WriterParts {
-  // the wake watch failed, such as when another process took the writer
   readonly onError: (error: unknown) => void;
 }
 
@@ -20,9 +19,6 @@ export interface MemoryWriter {
   readonly stop: () => Promise<void>;
 }
 
-// Puts the memory writer into service as a system task, before any runner claims work. Its first
-// start records where memory started, so the catch-up covers every earlier record. Each start
-// wakes the writer, and so does each later message of yours, with the time it arrived.
 export async function startMemoryWriter(options: MemoryWriterOptions): Promise<MemoryWriter> {
   const context = options.context;
 
@@ -61,7 +57,6 @@ async function readHeadSequence(log: Pick<Log, 'writer'>): Promise<number> {
   return row?.head ?? 0;
 }
 
-// the writer's row, created once with the sequence at which memory started
 async function writeWriterStarted(context: TasksContext, head: number): Promise<void> {
   await withWriteTransaction(context.log.writer, async (tx) => {
     const existing = await tx
@@ -86,8 +81,6 @@ async function writeWriterStarted(context: TasksContext, head: number): Promise<
   });
 }
 
-// A wake for one of your messages records when it arrived. The wake at start names no message,
-// because a message from before the start has waited long enough already.
 interface WakeMessage {
   readonly messageSequence?: number;
 }
@@ -109,8 +102,6 @@ interface MessageWakes {
   readonly onError: (error: unknown) => void;
 }
 
-// Wakes the writer for each message of yours after the start. A wake lost to a crash costs
-// nothing: the next start wakes the writer, and a message with no wake has waited long enough.
 async function runMessageWakes(context: TasksContext, wakes: MessageWakes): Promise<void> {
   try {
     for await (const entry of subscribeToRecords(context.log, {

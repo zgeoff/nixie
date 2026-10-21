@@ -4,9 +4,6 @@ import type { WriterStaging } from './create-writer-staging';
 import type { MemoryStore } from './types';
 import { writerSubjects } from './writer-subjects';
 
-// Builds the memory writer's 5 tools, which stage a batch's changes, so a dying session leaves
-// nothing behind. Remember and edit take the subject owner or shared, so the schema refuses a
-// self-note, and a flag of a possible self-note creates no item.
 export function buildWriterTools(
   store: Pick<MemoryStore, 'recall'>,
   staging: WriterStaging,
@@ -43,7 +40,6 @@ const recallOutput = {
 
 const recallArguments = z.object({ query: z.string() });
 
-// A recall shows the session each item it returns, so a later change to one binds to that version.
 function buildRecallTool(
   store: Pick<MemoryStore, 'recall'>,
   staging: WriterStaging,
@@ -104,7 +100,6 @@ const stagedOutput = {
   additionalProperties: false,
 };
 
-// a remember or an edit names the subject of its memory, which is never the assistant's self-note
 const subjectInput = { type: 'string', enum: writerSubjects };
 
 const rememberArguments = z.object({
@@ -174,7 +169,6 @@ const editArguments = z.object({
   sourceID: z.int(),
 });
 
-// An edit names its item, and the staging area binds it to the version a recall showed the session.
 function buildEditTool(staging: WriterStaging): ToolDefinition {
   return {
     name: 'memory.edit',
@@ -269,7 +263,6 @@ function buildRetireTool(staging: WriterStaging): ToolDefinition {
 
 const flagArguments = z.object({ text: z.string(), sourceID: z.int() });
 
-// A flag of a possible self-note, which the assistant reads as an event and creates no item.
 function buildFlagSelfNoteTool(staging: WriterStaging): ToolDefinition {
   return {
     name: 'memory.flag-self-note',

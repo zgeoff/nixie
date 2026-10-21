@@ -10,9 +10,6 @@ import { readConsolidationItems } from './read-consolidation-items';
 import { renderConsolidatorPrompt } from './render-consolidator-prompt';
 import { renderConsolidatorSystemPrompt } from './render-consolidator-system-prompt';
 
-// Runs one step of the memory consolidator: once a period has passed and no change still waits,
-// it runs one session and commits the diff and its summary with the step. A failed run waits the
-// retry time and never throws, so the task never fails.
 export async function runConsolidatorStep(
   parts: ConsolidatorParts,
   input: StepInput,
@@ -39,8 +36,6 @@ export async function runConsolidatorStep(
 
 type ConsolidationStep = Omit<StepResult, 'acknowledged'>;
 
-// A diff that still waits holds the next run until its last change is answered or lapses, so you
-// never hold 2 diffs that change the same items.
 async function runConsolidation(
   parts: ConsolidatorParts,
   signal: AbortSignal,
@@ -65,7 +60,6 @@ async function runConsolidation(
   return { next: 'wait', records, timers: [{ dueAt: now + parts.config.periodMs }] };
 }
 
-// when the next run is due, or null when it is due now; a pending change holds it until it lapses
 async function readWaitTime(parts: ConsolidatorParts, now: number): Promise<number | null> {
   await parts.store.consolidations.lapse();
 
@@ -87,9 +81,6 @@ interface SessionDiff {
   readonly summary: PlannedSummary | null;
 }
 
-// Fewer than 2 active items leave nothing to merge and little to tidy, so that run needs no
-// session. A list cut at the budget still runs one, since the session recalls the items past the
-// cut. The run closes whether the session ends or fails, so a failed run leaves nothing staged.
 async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promise<SessionDiff> {
   const listed = await readConsolidationItems(parts.store, {
     listTokens: parts.config.itemListTokens,
@@ -135,8 +126,6 @@ async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promis
   }
 }
 
-// what the session staged: its diff, how many items it was shown, and its summary with every item
-// it was shown, whose keys seal it
 function readSessionDiff(
   staged: ReturnType<ConsolidatorParts['staging']['open']>,
   model: string,

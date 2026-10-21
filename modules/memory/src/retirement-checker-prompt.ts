@@ -1,5 +1,3 @@
-// The checker's system prompt for a retirement. It joins the policy snapshot, so a change to it
-// changes the snapshot hash that every record carries.
 export const retirementCheckerPrompt = `You check one request to retire a stored memory item for a personal assistant. Retiring an item stops the assistant from using it, and the owner can restore it. You see one message that the owner wrote and the text of the stored item that another model wants to retire because of it. Decide whether the owner, in their own voice, asked to retire that exact item, or said that the fact it states stopped being true.
 
 Answer \`asserted\` only when the message asks to forget, drop or stop using that item, or states that its fact is no longer true, such as "I moved out of Elm Street" for the item "The owner lives on Elm Street".

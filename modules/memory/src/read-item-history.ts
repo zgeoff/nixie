@@ -4,9 +4,6 @@ import { readItemKey } from './read-item-key';
 import type { MemoryTables, MemoryVersionRow, StoreParts } from './types';
 import type { HistoryVersion, ItemHistory } from './view-types';
 
-// Reads an item's state and every version, oldest first, for the memory view. A version whose key
-// is gone reads as shredded, so a forgotten item shows as a dated gap, and one whose key or
-// ciphertext fails reads as unreadable. It delivers nothing to a task, so it takes no lock.
 export async function readItemHistory(
   parts: StoreParts,
   itemID: string,

@@ -6,16 +6,12 @@ import { parseMemoryRecord } from './parse-memory-record';
 import { parseSubjectRecord } from './parse-subject-record';
 import type { MemoryTables } from './types';
 
-// One row per memory item: its current version, its state and its pin. The row is a projection of
-// the item's records, so a rebuild from the log gives the live rows.
 export const memoryItemsProjection: Projection = {
   table: 'memory_items',
   keyColumn: 'item_id',
   fold: async (tx, record) => {
     const marked = parseSubjectRecord(record);
 
-    // a subject's mark follows its created version, and changes only the item's subject, with the
-    // kind the release before reads
     if (marked?.target === 'item') {
       await tx
         .$extendTables<MemoryTables>()
@@ -57,7 +53,6 @@ async function applyMemoryRecord(
         updated_sequence: record.sequence,
         forgotten_sequence: null,
 
-        // an item from before short IDs takes the one its UUID gives, as the backfill gave it
         short_id: parsed.shortID ?? buildShortIDFromUUID(parsed.itemID),
         kind: 'fact',
         subject: 'owner',
@@ -75,7 +70,6 @@ async function applyMemoryRecord(
 }
 
 function buildItemUpdate(parsed: MemoryRecord, sequence: number) {
-  // a retired item leaves the pinned core, and a restore does not put it back
   if (parsed.kind === 'memory.version_added') {
     return parsed.state === 'retired'
       ? { version: parsed.version, state: parsed.state, is_pinned: 0, pinned_sequence: null }

@@ -4,9 +4,6 @@ import { conversationTaskID } from '@heynixie/tasks';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { WriterRow, WriterTables } from './writer-types';
 
-// The memory writer's status, as the memory view shows it: where its cursor stands, how many of
-// your messages wait, whether the catch-up is still running, and its last error with when it tries
-// again.
 export interface WriterStatus {
   readonly cursor: number;
   readonly backlog: number;
@@ -18,14 +15,11 @@ export interface WriterStatus {
   readonly lastError: {
     readonly code: string;
 
-    // null once the error's text is no longer readable
     readonly message: string | null;
     readonly at: number;
   } | null;
 }
 
-// Reads the writer's status. Before the writer's first start it reports an empty cursor and every
-// message of yours as backlog.
 export async function readWriterStatus(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
 ): Promise<WriterStatus> {

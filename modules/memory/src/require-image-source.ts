@@ -9,8 +9,6 @@ export interface ImageSourceQuery {
   readonly image: ImageRef;
 }
 
-// Refuses an image source that is not one image of one of your readable messages in the write's
-// thread.
 export async function requireImageSource(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   query: ImageSourceQuery,

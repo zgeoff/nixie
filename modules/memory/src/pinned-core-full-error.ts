@@ -1,4 +1,3 @@
-// A pin that would take the pinned core past its token budget. You unpin something first.
 export class PinnedCoreFullError extends Error {
   override readonly name = 'PinnedCoreFullError';
 

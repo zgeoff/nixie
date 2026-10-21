@@ -5,9 +5,6 @@ import { readViewItems } from './read-view-items';
 import type { MemoryTables, StoreParts } from './types';
 import type { PinnedCoreView } from './view-types';
 
-// Reads the pinned core as the memory view shows it: every pinned active item in the order you
-// pinned them, one whose text fails to open included, so you can still see and unpin it, and the
-// size of the readable items that a session's opening holds, counted as a pin counts it.
 export async function readPinnedCoreView(parts: StoreParts): Promise<PinnedCoreView> {
   const log = parts.context.log;
 

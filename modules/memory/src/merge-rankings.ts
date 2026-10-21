@@ -1,7 +1,5 @@
 import type { VectorMatch } from './start-vector-index';
 
-// What placed an item: its keyword score where the keyword index matched it, and its similarity
-// where the vector index did.
 export interface MatchScores {
   readonly score?: number;
   readonly similarity?: number;
@@ -16,13 +14,10 @@ export interface RankedMatch extends MatchScores {
   readonly itemID: string;
 }
 
-// the rank offset from the reciprocal rank fusion paper, which keeps the first few ranks from
-// outweighing an item that both lists place
+// The rank offset from the reciprocal rank fusion paper. Fusion goes by rank, because BM25 scores
+// and cosine similarities share no scale.
 const fusionK = 60;
 
-// Fuses the keyword and vector rankings by reciprocal rank, each list giving an item 1 / (k + rank),
-// because BM25 and cosine similarity share no scale. An item both lists rank high comes first, and
-// equal sums keep the keyword order.
 export function mergeRankings(
   keywordMatches: readonly KeywordMatch[],
   vectorMatches: readonly VectorMatch[],

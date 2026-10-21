@@ -1,19 +1,14 @@
-// Text in the form a quote and a message compare in: NFC, with each run of whitespace collapsed to
-// one space. Each UTF-16 unit of the normalised text maps back to the grapheme it came from, so a
-// match maps back onto the spans the client recorded.
 export interface MatchText {
   readonly text: string;
 
-  // the start and end offsets in the original text of the grapheme that holds each normalised unit
   readonly starts: readonly number[];
   readonly ends: readonly number[];
 
-  // each normalised index where a grapheme begins
   readonly boundaries: ReadonlySet<number>;
 }
 
-// NFC composes only within a grapheme, so each grapheme is normalised alone, and a match can start
-// and end only where a grapheme does.
+// NFC composes only within a grapheme, so each grapheme normalises alone, and a match starts and
+// ends only on a grapheme boundary.
 export function normalizeMatchText(text: string): MatchText {
   const pieces = collectPieces(text);
 
@@ -27,14 +22,12 @@ export function normalizeMatchText(text: string): MatchText {
 
 const graphemes = new Intl.Segmenter('en', { granularity: 'grapheme' });
 
-// one grapheme in its normalised form, with its offsets in the original text
 interface Piece {
   readonly text: string;
   readonly start: number;
   readonly end: number;
 }
 
-// a run of whitespace graphemes becomes one space at the first of them
 function collectPieces(text: string): readonly Piece[] {
   const parts = [...graphemes.segment(text)];
 

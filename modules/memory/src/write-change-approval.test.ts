@@ -61,7 +61,6 @@ test('it writes a merged item with the least trusted source among its inputs', a
 test('it merges 2 pinned items into one that fits the pinned core once the other input retires', async () => {
   const ctx = await setupTest();
 
-  // about 920 tokens each at 4 characters a token, so both fit the 2,000-token core
   const [kept, dropped] = await Promise.all(
     ['Keeps a long packing list for trips. ', 'Keeps a long reading list for winter. '].map(
       (line) =>
@@ -81,7 +80,6 @@ test('it merges 2 pinned items into one that fits the pinned core once the other
 
   invariant(kept && dropped);
 
-  // about 1,100 tokens: past the core beside the other input, within it alone
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {

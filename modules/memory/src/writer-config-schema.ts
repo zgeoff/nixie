@@ -6,7 +6,6 @@ export interface WriterConfig {
   readonly idleMs: number;
   readonly maxAgeMs: number;
 
-  // the least time from one batch to the next, from the limit of batches an hour
   readonly paceMs: number;
   readonly itemListTokens: number;
   readonly topItems: number;
@@ -15,9 +14,6 @@ export interface WriterConfig {
   readonly maxBackoffMs: number;
 }
 
-// The memory writer section of the deployment configuration: the batch size and its token budget,
-// the idle and age triggers, the pace, the item list's budget, the proposal cap, and the backoff,
-// which doubles from its first wait up to the maximum.
 export const writerConfigSchema = z
   .strictObject({
     batch_messages: z.int().positive().default(4),
@@ -44,5 +40,4 @@ export const writerConfigSchema = z
     maxBackoffMs: Math.max(1, Math.round(config.max_backoff_minutes * 60_000)),
   }));
 
-// The writer section as the deployment configuration writes it, before the defaults apply.
 export type WriterConfigInput = z.input<typeof writerConfigSchema>;

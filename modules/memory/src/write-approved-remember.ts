@@ -12,15 +12,11 @@ export interface ApprovedRemember {
   readonly opened: OpenedProposal;
   readonly answer: ProposalAnswer;
 
-  // the item and version the text revises, or null to create the proposal's new item
   readonly target: VersionRef | null;
 
-  // a check the version's transaction runs after the approval's own, under the delivery lock
   readonly requireInTransaction?: (db: Kysely<MemoryTables>) => Promise<void>;
 }
 
-// Applies an approved remember proposal at its target. It keeps the proposal's evidence, and your
-// edited text is its own source and cites none.
 export function writeApprovedRemember(
   parts: StoreParts,
   approved: ApprovedRemember,

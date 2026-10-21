@@ -9,12 +9,9 @@ export interface PendingRequirement {
   readonly proposalID: string;
   readonly actionHash: string;
 
-  // the clock's time, which a pending proposal's lapse time must not have reached
   readonly now: number;
 }
 
-// Reads the proposal an answer names and throws unless it still takes one: it exists, it is
-// pending and not past its lapse time, and the answer names its action hash.
 export async function requirePendingProposal(
   db: Kysely<MemoryTables>,
   requirement: PendingRequirement,

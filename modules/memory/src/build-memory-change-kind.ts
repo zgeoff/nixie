@@ -7,25 +7,18 @@ import { readOutsideVersions } from './read-outside-versions';
 import type { MemoryStore } from './types';
 
 interface NotedItem {
-  // the item's short ID, which the model reads it by
   readonly shortID: string;
   readonly state: 'active' | 'retired';
   readonly text: string;
 }
 
-// One item that changed outside the conversation, at its latest version in the range. The block
-// fills in its short ID and text only when it lists the event.
 export interface MemoryChangeEvent {
   readonly itemID: string;
 
-  // whether the range holds the item's first version, so the line reads as a new memory
   readonly isCreated: boolean;
   readonly noted: NotedItem | null;
 }
 
-// The event kind for an item changed outside the conversation, listed once at its latest version.
-// Its text comes through a recall marked as a turn note's, so a rating binds past it, and an item
-// a forget has begun drops out. The catch-up's versions belong to the catch-up kind.
 export function buildMemoryChangeKind(
   log: Pick<Log, 'writer'>,
   store: Pick<MemoryStore, 'recall'>,
@@ -55,7 +48,6 @@ export function buildMemoryChangeKind(
   };
 }
 
-// each changed item once, at its latest version, oldest first
 function collectLatestVersions(
   versions: readonly OutsideVersion[],
 ): readonly NotedEvent<MemoryChangeEvent>[] {
@@ -80,8 +72,6 @@ function collectLatestVersions(
   return [...latest.values()];
 }
 
-// The listed items' current text, through a recall that records what it delivered as a turn
-// note's and leaves out an item that a forget has begun.
 async function readNotedItems(
   store: Pick<MemoryStore, 'recall'>,
   events: readonly NotedEvent<MemoryChangeEvent>[],

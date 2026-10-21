@@ -8,8 +8,6 @@ import { startMemoryWriter } from './start-memory-writer';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writerConfigSchema } from './writer-config-schema';
 
-// A writer over a test memory whose model call waits at a gate and then fails, and a step runner
-// that starts the writer, claims its task and runs one step once the test has written its messages.
 async function setupTest() {
   const memory = await startTestMemory();
 

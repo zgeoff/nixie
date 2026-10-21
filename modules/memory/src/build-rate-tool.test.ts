@@ -9,8 +9,6 @@ import { createMemoryItem } from './test-utils/create-memory-item';
 import { readItemShortID } from './test-utils/read-item-short-id';
 import { startTestMemory } from './test-utils/start-test-memory';
 
-// A test memory, memory.rate under the names the config gives, in a registry, and the options a
-// call runs under, which record each call and its result in the memory's log.
 async function setupTest(config: RateToolOptions) {
   const memory = await startTestMemory();
 
@@ -23,7 +21,6 @@ async function setupTest(config: RateToolOptions) {
     toolCallOptions: {
       registry,
 
-      // every call is allowed, so each reaches its tool
       decide: () => ({
         decision: { outcome: 'allow' as const, stage: 3, rule: null },
         sentence: null,
@@ -31,7 +28,6 @@ async function setupTest(config: RateToolOptions) {
       log: memory.log,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-      // memory.rate runs direct, so nothing reaches the queue
       queue: {
         enqueue: () => Promise.reject(new Error('no memory tool runs queued')),
         waitForOutcome: () => Promise.resolve(null),

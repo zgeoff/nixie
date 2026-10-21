@@ -1,8 +1,6 @@
 import type { Kysely } from 'kysely';
 import type { MemoryTables } from './types';
 
-// Which of the records backed an item that was forgotten since. Such a record never backs a write
-// again, so a forget never returns through a fresh quote of the same words.
 export async function readForgottenSequences(
   db: Kysely<unknown>,
   sequences: readonly number[],

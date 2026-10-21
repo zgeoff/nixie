@@ -8,13 +8,9 @@ import type { StoreParts } from './types';
 export interface LatestRecall {
   readonly sequence: number;
 
-  // the newest version the recall delivered of each item, by item ID
   readonly versions: ReadonlyMap<string, number>;
 }
 
-// Reads the newest recall in the thread that a rating binds to: the turn's retrieval, or a recall
-// the model asked for since. A turn note's recall is passed over, because the note reads its items
-// after the turn's retrieval and would otherwise hide it.
 export async function readLatestRecall(parts: StoreParts, thread: string): Promise<LatestRecall> {
   const newest = await parts.context.log.writer.db
     .$extendTables<LogTables>()

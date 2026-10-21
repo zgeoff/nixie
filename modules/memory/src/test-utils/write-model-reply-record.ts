@@ -7,8 +7,6 @@ export interface ModelReplyRecord {
   readonly text: string;
 }
 
-// Writes a reply of the model's as a conversation step writes one: a model.reply record in the
-// thread, with its text in the erasable fields. It returns the record's sequence.
 export async function writeModelReplyRecord(log: Log, reply: ModelReplyRecord): Promise<number> {
   const [record] = await writeRecords(log, [
     {

@@ -3,17 +3,12 @@ import { decodeVersionText } from './decode-version-text';
 import { readItemKey } from './read-item-key';
 import type { MemoryTables, VersionRef } from './types';
 
-// The text of one named version as a view shows it. A version whose key is gone reads as
-// shredded, one whose key or ciphertext fails reads as unreadable, and one that never existed reads
-// as missing.
 export type VersionTextResult = VersionRef &
   (
     | { readonly status: 'readable'; readonly text: string }
     | { readonly status: 'shredded' | 'unreadable' | 'missing' }
   );
 
-// Reads the text of the named versions, in the order named, so a view can show what a recall
-// delivered. It delivers nothing to a task, so it takes no lock and writes no record.
 export function readVersionTexts(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   refs: readonly VersionRef[],

@@ -9,8 +9,6 @@ export interface BatchPlanRecord extends Pick<WriterStepState, 'input' | 'now'> 
   readonly mode: BatchMode;
 }
 
-// Records a batch's fixed bounds in its own transaction, behind the step's lease, so a message that
-// arrives while the batch runs waits for the next batch, even across a crash.
 export async function writeBatchPlan(
   parts: Pick<WriterParts, 'context'>,
   plan: BatchPlanRecord,

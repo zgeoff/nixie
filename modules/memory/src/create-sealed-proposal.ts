@@ -7,8 +7,6 @@ import type { StoreParts } from './types';
 import type { ProposalPlan } from './write-memory-proposal';
 import type { SealedProposal } from './write-proposal-record';
 
-// Seals a proposal's text under its item's key and binds its action hash. A proposal for a new
-// item creates that item's key, which the caller removes when the proposal never lands.
 export async function createSealedProposal(
   parts: StoreParts,
   plan: ProposalPlan,
@@ -42,8 +40,6 @@ async function readProposalKey(
 
 const saltBytes = 16;
 
-// the salt sits sealed beside the text, so the action hash says nothing about the text once a
-// forget makes the text unreadable
 async function sealProposal(
   key: CryptoKey,
   plan: ProposalPlan,

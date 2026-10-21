@@ -7,16 +7,11 @@ import type { MemoryTables, StoreParts } from './types';
 import type { GatedWrite } from './write-memory-batch';
 
 export interface PublishedRecords {
-  // the writes the batch kept once every source was read again
   readonly kept: readonly GatedWrite[];
 
-  // the batch's own records, such as the advanced cursor and the notice
   readonly records: readonly RecordInput[];
 }
 
-// Writes a batch's proposals, then its own records, inside the publish transaction. A proposal that
-// makes the same change as a pending one merges into it, one proposal at a time, so two proposals of
-// one change in a batch make one. Release removes the key of a merged new item's proposal.
 export async function writePublishedRecords(
   parts: StoreParts,
   tx: Transaction<unknown>,

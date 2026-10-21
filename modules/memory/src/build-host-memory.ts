@@ -4,14 +4,11 @@ import type { ApprovalResult, MemoryProposal, MemoryProposals } from './gate-typ
 import type { MemoryStore, Provenance, VersionRef } from './types';
 import type { ItemHistory } from './view-types';
 
-// What the host commands reach of the memory store: the pending proposals, the consolidator's
-// diff, and your own changes to an item, its forget included.
 export type HostMemoryStore = Pick<
   MemoryStore,
   'remember' | 'retire' | 'restore' | 'pin' | 'forget' | 'readHistory' | 'readSubjectCounts'
 > & { readonly proposals: MemoryProposals; readonly consolidations: MemoryConsolidations };
 
-// An answer to a proposal or a change, bound to the action hash the host command showed.
 interface HostAnswer {
   readonly actionHash: string;
 }
@@ -19,18 +16,15 @@ interface HostAnswer {
 interface HostApproval extends HostAnswer {
   readonly proposalID: string;
 
-  // an approval's answer to a close match: a revision of that item, or a new item anyway
   readonly revisionOf?: VersionRef;
   readonly ignoreCloseMatch?: boolean;
 
-  // edited text replaces the proposal's, and makes you the approved version's origin
   readonly editedText?: string;
 }
 
 interface HostRejection extends HostAnswer {
   readonly proposalID: string;
 
-  // the reason the conversation reads in its next turn
   readonly reason?: string;
 }
 
@@ -48,8 +42,6 @@ export interface HostMemory {
   readonly restore: (target: VersionRef) => Promise<VersionRef>;
   readonly pin: (itemID: string, isPinned: boolean) => Promise<void>;
 
-  // forgets the item for good, bound to the version memory-show printed; a forget whose cleanup
-  // failed stays pending, and the store's next start completes it
   readonly forget: (target: VersionRef) => Promise<void>;
   readonly readDiff: () => Promise<ConsolidationDiff | null>;
   readonly approveChanges: (
@@ -70,9 +62,6 @@ const ownerProvenance: Provenance = {
   model: null,
 };
 
-// The memory store as the host commands reach it. An answer comes from a shell in nixie's
-// container, which no device session reaches, so its record names the host as the identity that
-// answered. A change to an item is your own action, as in the memory view, with your provenance.
 export function buildHostMemory(store: HostMemoryStore): HostMemory {
   return {
     listProposals: () => store.proposals.listPending(),

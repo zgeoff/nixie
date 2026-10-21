@@ -66,9 +66,6 @@ const rememberInput = {
   additionalProperties: false,
 };
 
-// Builds memory.remember, which declares note and runs each new item about you or shared with you
-// through the content gate, and sends each new self-note, and each write from a photo of yours, to
-// your review.
 export function buildRememberTool(
   memory: ModelWriteStore & Pick<ItemIDStore, 'readShortIDs'>,
 ): ToolDefinition {
@@ -95,8 +92,6 @@ export function buildRememberTool(
     run: (call, context) =>
       runWriteCall(memory, () => memory.writes.remember(buildRememberRequest(call, context))),
 
-    // the text is the item's, which the version holds under the item's key, and the quote can
-    // repeat it before the gate checks the quote
     recordInput: makeInputRecorder(['text', 'quote']),
   };
 }

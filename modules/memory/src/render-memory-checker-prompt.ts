@@ -1,6 +1,3 @@
-// Renders the checker's system prompt for a memory write, which names you as the writer's memories
-// do: by your configured name, or "the owner" when none is set. It joins the policy snapshot, so a
-// change to it, or to your name, changes the snapshot hash that every record carries.
 export function renderMemoryCheckerPrompt(ownerName: string | null): string {
   const named = ownerName ?? 'The owner';
   const object = ownerName ?? 'the owner';

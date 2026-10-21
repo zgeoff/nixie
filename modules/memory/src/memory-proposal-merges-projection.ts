@@ -2,8 +2,6 @@ import type { Projection } from '@heynixie/log';
 import { parseProposalRecord } from './parse-proposal-record';
 import type { MemoryTables } from './types';
 
-// One row per write that merged into a pending proposal, with who proposed the change again, so a
-// proposal lists every source that proposed it.
 export const memoryProposalMergesProjection: Projection = {
   table: 'memory_proposal_merges',
   keyColumn: 'merge_id',

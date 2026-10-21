@@ -3,8 +3,8 @@ import { readRecordKeys } from '@heynixie/log';
 
 const chunkSize = 500;
 
-// Finds which of the key IDs the key store still holds. It looks them up one chunk after another to
-// stay inside the statement's parameter limit, because a start sweep passes a whole history of IDs.
+// The lookup runs one chunk at a time to stay inside SQLite's limit on statement parameters,
+// because a start sweep passes a whole history of IDs.
 export function readHeldRecordKeys(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   keyIDs: readonly string[],

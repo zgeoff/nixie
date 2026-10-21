@@ -3,9 +3,6 @@ import type { ProposalRejection } from './gate-types';
 import { requirePendingProposal } from './require-pending-proposal';
 import type { MemoryTables, StoreParts } from './types';
 
-// Rejects a proposal still pending under the hash you saw, with the caller's own write in the same
-// transaction. A new item's proposal held its only key, so the rejection removes it. Your reason
-// sits in the record's own erasable fields, whose key outlives the item's.
 export async function writeProposalRejection(
   parts: StoreParts,
   answer: ProposalRejection,

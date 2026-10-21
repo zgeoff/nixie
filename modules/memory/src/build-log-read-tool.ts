@@ -5,7 +5,6 @@ import { makeInputRecorder } from './make-input-recorder';
 import type { LogEntry } from './read-log-page';
 import { readLogPage } from './read-log-page';
 
-// a UTC date, or a UTC date and time to the minute, second or millisecond
 const timePattern = String.raw`^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}(:[0-9]{2}(\.[0-9]{1,3})?)?Z)?$`;
 
 const logReadInput = {
@@ -57,9 +56,6 @@ const logReadOutput = {
 };
 
 const defaultLimit = 20;
-
-// the most records one call decrypts, so a search over a long log returns a short page with the
-// cursor to go on from
 const scanLimit = 500;
 
 const logReadArguments = z.object({
@@ -70,9 +66,6 @@ const logReadArguments = z.object({
   limit: z.int().optional(),
 });
 
-// Builds log.read, which declares read: one page of the thread's messages, replies and tool results,
-// by time range or words. Every entry counts as outside content, and the call's record holds only
-// the event IDs, so a forget leaves no readable copy of what the model read.
 export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): ToolDefinition {
   return {
     name: 'log.read',
@@ -96,13 +89,11 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
     },
     execution: 'direct',
 
-    // the model can search with words it read in a message
     recordInput: makeInputRecorder(['query']),
     run: async (call, context) => {
       const input = logReadArguments.parse(call.input);
       const range = { from: parseTime(input.from), to: parseTime(input.to) };
 
-      // the pattern passes a day or an hour that does not exist, such as 2026-02-30
       if (Number.isNaN(range.from) || Number.isNaN(range.to)) {
         return { status: 'error', message: 'from and to must be real UTC dates or times' };
       }
@@ -127,8 +118,7 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
   };
 }
 
-// A UTC date or time in epoch milliseconds, NaN for a date that does not exist, or null for none.
-// Date.parse rolls 2026-02-30 over into March, so the date alone must read back as written.
+// Date.parse rolls 2026-02-30 over into March, so a parsed date must read back as written.
 function parseTime(value: string | undefined): number | null {
   if (value === undefined) {
     return null;
@@ -154,7 +144,6 @@ function toEntryJSON(entry: LogEntry): JSONObject {
   };
 }
 
-// a minute-precise UTC date, such as 2026-10-01 09:30 UTC
 function formatRecordedAt(time: number): string {
   const iso = new Date(time).toISOString();
 

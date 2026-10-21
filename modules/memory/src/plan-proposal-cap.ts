@@ -8,9 +8,6 @@ export type CappedBatch =
   | { readonly kind: 'split'; readonly bounds: BatchBounds }
   | { readonly kind: 'publish'; readonly writes: readonly GatedWrite[]; readonly dropped: number };
 
-// A batch over the proposal cap splits in half and runs again, so the cursor never skips a write. A
-// batch with one message of yours cannot split, so it keeps the first proposals up to the cap and
-// counts the rest as dropped.
 export function planProposalCap(
   config: Pick<WriterConfig, 'proposalCap'>,
   batch: WriterBatch,

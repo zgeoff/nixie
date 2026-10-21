@@ -6,9 +6,6 @@ import { writeGatedBatch } from './write-gated-batch';
 import type { WriterBatchStep } from './write-gated-batch';
 import type { WriterParts, WriterStepState } from './writer-parts';
 
-// Takes the batch the cursor waits on, runs a fresh model session over it, gates each staged write
-// and publishes the batch with its cursor in one transaction. A batch over the proposal cap splits,
-// and one that a newer change superseded, at the gate or the publish, runs again at once.
 export async function runWriterBatch(
   parts: WriterParts,
   state: WriterStepState,

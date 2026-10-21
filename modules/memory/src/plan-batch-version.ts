@@ -5,8 +5,6 @@ import type { Provenance } from './types';
 import type { VersionPlan } from './write-version-in-transaction';
 import type { GateVerdict, StagedWrite } from './writer-types';
 
-// The version an applied write adds. Its provenance names the writer and the session's model, and
-// takes its source, checks and evidence from the gate, never from the model.
 export function planBatchVersion(
   write: StagedWrite,
   verdict: Extract<GateVerdict, { readonly outcome: 'apply' }>,

@@ -81,7 +81,6 @@ test('it reads the version the approval applied, with placeholders for its item,
 test('it reads an approval that the log holds past its first page of records', async () => {
   const memory = await startTestMemory();
 
-  // more records than one page of a log read returns
   await writeRecords(
     memory.log,
     Array.from({ length: 150 }, () => ({

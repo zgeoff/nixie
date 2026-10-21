@@ -11,9 +11,6 @@ export interface ConsolidationConfig {
   readonly retryMs: number;
 }
 
-// The memory consolidation section of the deployment configuration: how often the consolidator
-// runs, the most changes one diff holds, the item list's token budget, how many items a recall
-// returns, how long a change waits for your answer, and how long a failed run waits to try again.
 export const consolidationConfigSchema = z
   .strictObject({
     period_days: z.number().positive().default(7),
@@ -32,5 +29,4 @@ export const consolidationConfigSchema = z
     retryMs: Math.max(1, Math.round(config.retry_minutes * 60_000)),
   }));
 
-// The consolidation section as the deployment configuration writes it, before the defaults apply.
 export type ConsolidationConfigInput = z.input<typeof consolidationConfigSchema>;

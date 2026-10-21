@@ -79,17 +79,12 @@ const recallOutput = {
   additionalProperties: false,
 };
 
-// What each item's line reads beside the item: the owner's name, or null for "the owner", the zone
-// its date shows in, and the clock that says whether its year shows.
 export interface RecallLineOptions {
   readonly ownerName: string | null;
   readonly defaultZone: string;
   readonly clock: Pick<Clock, 'now'>;
 }
 
-// Builds memory.recall, which declares read. The items hold every source that memory holds, so the
-// result takes the most cautious one. Each version comes with the line that says where it came
-// from. The model names items by short ID, or by an item ID it read before short IDs.
 export function buildRecallTool(
   memory: Pick<StartedMemoryStore, 'recall'> & Pick<ItemIDStore, 'readItemIDMap'>,
   options: RecallLineOptions,
@@ -114,7 +109,6 @@ export function buildRecallTool(
     },
     execution: 'direct',
 
-    // the model can search with an item's own words
     recordInput: makeInputRecorder(['query']),
     run: async (call, context) => {
       const request = await readRecallRequest(memory, call.input, context.run.thread);
@@ -126,8 +120,6 @@ export function buildRecallTool(
         now: new Date(options.clock.now()),
       };
 
-      // the record holds references, as the recall's own record does, so a forget leaves no
-      // readable copy of what the model read
       return {
         status: 'ok',
         result: { items: result.items.map((item) => toItemJSON(item, lines)), next: result.next },
@@ -149,7 +141,6 @@ const recallArguments = z.object({
   limit: z.int().optional(),
 });
 
-// the request a call makes, with each ID the model passed read as the item ID it names
 async function readRecallRequest(
   memory: Pick<ItemIDStore, 'readItemIDMap'>,
   callInput: unknown,
@@ -183,7 +174,6 @@ function toItemJSON(item: RecalledItem, lines: MemoryLineOptions): JSONObject {
   };
 }
 
-// a version with the line under it, which for a past version names the version after it
 function toVersionJSON(
   version: RecalledVersion & { readonly shortID: string },
   lines: MemoryLineOptions,
@@ -200,7 +190,6 @@ function toVersionJSON(
   };
 }
 
-// a version from an item's history, which names the version after it, if any
 function toPastVersionJSON(
   item: RecalledItem,
   version: RecalledVersion,

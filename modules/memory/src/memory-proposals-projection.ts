@@ -6,17 +6,12 @@ import { parseProposalRecord } from './parse-proposal-record';
 import { parseSubjectRecord } from './parse-subject-record';
 import type { MemoryTables } from './types';
 
-// One row per memory proposal, with its review reason and its status. A proposal waits as pending
-// until your approval consumes it, your rejection closes it, or it lapses. Its text stays sealed
-// under the item's key, so a forget of the item leaves the proposal unreadable too.
 export const memoryProposalsProjection: Projection = {
   table: 'memory_proposals',
   keyColumn: 'proposal_id',
   fold: async (tx, record) => {
     const marked = parseSubjectRecord(record);
 
-    // a new item's subject mark follows its proposal, and changes only the proposal's subject, with
-    // the kind the release before reads
     if (marked?.target === 'proposal') {
       await tx
         .$extendTables<MemoryTables>()
@@ -46,7 +41,6 @@ const statusAfter = {
   'memory.proposal_lapsed': 'lapsed',
 } as const;
 
-// A merge's source sits in the merges projection, and here it only pushes the lapse time back.
 async function writeProposalChange(
   db: Kysely<MemoryTables>,
   record: EnvelopeRecord,
@@ -111,8 +105,6 @@ async function writeProposalRow(
     .execute();
 }
 
-// a proposal for a change to an item takes that item's subject, whoever proposed it; a new item's
-// proposal starts as owner, and a subject's mark that follows it changes that
 async function readProposalSubject(
   db: Kysely<MemoryTables>,
   parsed: Extract<ProposalRecord, { readonly kind: 'memory.proposed' }>,

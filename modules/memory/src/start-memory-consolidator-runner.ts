@@ -12,16 +12,12 @@ export interface MemoryConsolidatorRunnerOptions extends SystemTaskOptions, Tool
   readonly store: StartedMemoryStore;
   readonly config: ConsolidationConfig;
 
-  // the persona in force, read at each run
   readonly getPersona: () => string;
 
-  // your name, which the consolidator's rules call you by, or null to call you "the owner"
   readonly ownerName: string | null;
   readonly onError: (error: unknown) => void;
 }
 
-// Starts the memory consolidator on the memory-consolidator role's profile, as a system task with
-// its own session. Its tool endpoint serves only recall and consolidate.
 export const startMemoryConsolidatorRunner = makeSystemTaskRunner<
   MemoryConsolidatorRunnerOptions,
   MemoryConsolidator

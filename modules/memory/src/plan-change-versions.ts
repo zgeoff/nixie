@@ -7,9 +7,6 @@ import { readChangeText } from './read-change-text';
 import type { Provenance, StoreParts, VersionRef } from './types';
 import type { VersionPlan } from './write-version-in-transaction';
 
-// Plans the versions a change writes, the last carrying your approval: a merge retires its other
-// inputs first, so the pinned core's room counts the core the merge leaves, then writes its text on
-// the first; a rewrite writes its text, and a retirement retires its one input.
 export async function planChangeVersions(
   parts: StoreParts,
   row: ConsolidationChangeRow,
@@ -35,8 +32,6 @@ export async function planChangeVersions(
   return [...retired, { ...lead, approval: buildApproval(parts, row, answer) }];
 }
 
-// A change's versions take the consolidator as a task for their origin, and the least trusted
-// source among the change's inputs, so approving a merge never relabels outside content as yours.
 function buildChangeProvenance(row: ConsolidationChangeRow): Provenance {
   return {
     origin: 'task',
@@ -49,14 +44,12 @@ function buildChangeProvenance(row: ConsolidationChangeRow): Provenance {
   };
 }
 
-// a merge or a rewrite edits an active item only, because consolidation reads active items
 function planActiveEdit(target: VersionRef, text: string, provenance: Provenance): VersionPlan {
   const plan = planRememberedVersion({ text, target, provenance });
 
   return { ...plan, requirement: { target, operation: 'consolidate', states: ['active'] } };
 }
 
-// your approval of the one change, which commits with its versions and consumes the change
 function buildApproval(
   parts: StoreParts,
   row: ConsolidationChangeRow,

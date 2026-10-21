@@ -5,9 +5,6 @@ import type { WriterRecord } from './parse-writer-record';
 import { parseWriterRecord } from './parse-writer-record';
 import type { WriterTables } from './writer-types';
 
-// The memory writer's one row: its cursor, the batch it planned and has not published, where
-// memory started, and its failures and backoff. The row is a projection of the writer's records,
-// so a rebuild from the log gives the live row.
 export const memoryWriterProjection: Projection = {
   table: 'memory_writer',
   keyColumn: 'writer_id',

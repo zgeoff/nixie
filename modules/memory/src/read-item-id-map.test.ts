@@ -52,7 +52,6 @@ test('it finds an item that holds no short ID by the one its UUID gives', async 
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  // an item that a release before short IDs made after the backfill holds none
   await ctx.db
     .updateTable('memory_items')
     .set({ short_id: null })

@@ -5,7 +5,6 @@ import { startScriptedModel } from '@heynixie/testing';
 import { removeMessageKeyAfter } from './remove-message-key-after';
 import { writeOwnerMessages } from './write-owner-messages';
 
-// a writer with the tasks projections, and a scripted model whose requests the removal waits on
 async function setupTest() {
   const tasks = await startTestTasks();
 

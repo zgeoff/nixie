@@ -13,7 +13,6 @@ import { writeProposalRecord } from './write-proposal-record';
 export interface ProposalPlan {
   readonly operation: 'remember' | 'retire';
 
-  // the item to edit or retire and the version the caller read, or null for a new item
   readonly target: { readonly itemID: string; readonly version: number } | null;
   readonly isPinned: boolean;
   readonly text: string;
@@ -25,19 +24,14 @@ export interface ProposalPlan {
   readonly caller: WriteCaller;
   readonly group: WriteGroup;
 
-  // the subject of the item the proposal creates or changes, owner when unset
   readonly subject?: MemorySubject;
 }
 
-// The proposal a write made, or the pending one it merged into.
 export interface WrittenProposal {
   readonly proposalID: string;
   readonly merged: boolean;
 }
 
-// Writes a memory proposal bound to its exact operation, sealed under its item's key; a new item's
-// proposal creates that item's key. A write of the same change as a pending proposal merges into
-// it, before any key exists and again inside the proposal's transaction for a race.
 export async function writeMemoryProposal(
   parts: StoreParts,
   plan: ProposalPlan,
@@ -55,7 +49,6 @@ export async function writeMemoryProposal(
   const written = await withWriteTransaction(log.writer, (tx) =>
     writeProposalOrMerge(tx, parts, { plan, sealed }),
   ).catch(async (error: unknown) => {
-    // a new item's key seals nothing but this proposal, so a proposal that never landed drops it
     if (plan.target === null) {
       await removeRecordKey(log, sealed.itemID);
     }
@@ -63,7 +56,6 @@ export async function writeMemoryProposal(
     throw error;
   });
 
-  // a merge that raced in leaves the new item's key sealing nothing
   if (written.merged && plan.target === null) {
     await removeRecordKey(log, sealed.itemID);
   }
@@ -71,7 +63,6 @@ export async function writeMemoryProposal(
   return written;
 }
 
-// merges the write into a pending proposal of the same change, or returns null when none waits
 async function writePendingMerge(
   tx: Transaction<unknown>,
   parts: StoreParts,

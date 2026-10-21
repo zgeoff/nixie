@@ -1,9 +1,6 @@
 import { getItemShortID } from './get-item-short-id';
 import type { MemoryTables, StoreParts } from './types';
 
-// The item ID that each of ids names, by the ID given, whether it is the item's short ID or the
-// item ID itself, so a model that read either form reaches the item. An ID that names no item is
-// left out.
 export async function readItemIDMap(
   parts: StoreParts,
   ids: readonly string[],

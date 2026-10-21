@@ -6,9 +6,6 @@ import type { BatchPublication, PublishResult } from './write-memory-batch';
 import type { WriterConfig } from './writer-config-schema';
 import type { WriterGate, WriterModel, WriterRow } from './writer-types';
 
-// What the writer's step reaches: the log and the clock, the store's recall, its pending proposals
-// and the batch publish, the staging area its tools write to, its model, the content gate and its
-// settings.
 export interface WriterParts {
   readonly context: TasksContext;
   readonly store: Pick<MemoryStore, 'recall'> & {
@@ -20,18 +17,13 @@ export interface WriterParts {
   readonly gate: WriterGate;
   readonly config: WriterConfig;
 
-  // the persona in force, read at each batch so a new seed reaches the next batch
   readonly getPersona: () => string;
 
-  // your configured name, which the memories the writer stages use, or null for "the owner"
   readonly ownerName: string | null;
 
-  // the assistant's configured name, which labels its messages, or null for "the assistant"
   readonly assistantName: string | null;
 }
 
-// One writer step as its parts see it: the step's input, the writer's row as the step began, and
-// the clock's time then.
 export interface WriterStepState {
   readonly input: StepInput;
   readonly row: WriterRow;

@@ -1,5 +1,3 @@
-// An answer asked to apply a proposal as a revision of another item, which only a proposal for a
-// new item can become.
 export class RevisionTargetError extends Error {
   override readonly name = 'RevisionTargetError';
 

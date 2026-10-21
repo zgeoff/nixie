@@ -5,9 +5,6 @@ import type { ConsolidationTables } from './consolidation-types';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
 import type { StoreParts } from './types';
 
-// Wakes the consolidator in the answer's own transaction once the answer leaves no change pending,
-// because a pending change held the next run until it lapsed: the woken step sets its timer from
-// the period instead. A store with no running consolidator task writes no wake.
 export async function writeConsolidatorWakeInTransaction(
   tx: Transaction<unknown>,
   parts: StoreParts,
@@ -42,7 +39,6 @@ export async function writeConsolidatorWakeInTransaction(
   ]);
 }
 
-// a finished task takes no input, though a system task never finishes
 function isFinished(state: string): boolean {
   return state === 'done' || state === 'failed';
 }

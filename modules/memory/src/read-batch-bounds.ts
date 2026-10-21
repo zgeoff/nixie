@@ -5,9 +5,6 @@ import { writeBatchPlan } from './write-batch-plan';
 import type { WriterParts, WriterStepState } from './writer-parts';
 import type { BatchBounds } from './writer-types';
 
-// The batch the cursor waits on: the one already planned, so a rerun after a crash takes the same
-// fixed bounds, or a new one the planner finds due, recorded before any model call. When nothing
-// is due it returns when to wake, or null to wait for the next message.
 export async function readBatchBounds(
   parts: WriterParts,
   state: WriterStepState,

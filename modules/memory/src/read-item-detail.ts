@@ -10,9 +10,6 @@ import { readViewText } from './read-view-text';
 import type { MemoryTables, MemoryVersionRow } from './types';
 import type { EvidenceMessage, ViewItemDetail, ViewVersion } from './view-types';
 
-// Reads one item with every version, oldest first, each with its provenance and its quote inside
-// the message it came from. A version whose text is not readable shows no message, so a forgotten
-// item never shows the words it came from.
 export async function readItemDetail(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   itemID: string,
@@ -33,7 +30,6 @@ export async function readItemDetail(
 
   const key = await readItemKey(log, itemID);
 
-  // versions that copy their text, such as a retirement, share their message, so each reads once
   const messages = new Map<number, Promise<EvidenceMessage>>();
 
   const readMessage = (sequence: number): Promise<EvidenceMessage> => {

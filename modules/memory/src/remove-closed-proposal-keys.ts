@@ -2,9 +2,6 @@ import { removeRecordKey, writeKeyStoreCheckpoint } from '@heynixie/log';
 import { readHeldRecordKeys } from './read-held-record-keys';
 import type { MemoryTables, StoreParts } from './types';
 
-// Removes each key that a closed new item's proposal left with no item under it, rejected, lapsed or
-// approved as a revision of another item, which a crash after the close leaves behind. Store start
-// and each lapse sweep run it. It returns how many keys it removed.
 export async function removeClosedProposalKeys(parts: StoreParts): Promise<number> {
   const log = parts.context.log;
 
@@ -28,13 +25,11 @@ export async function removeClosedProposalKeys(parts: StoreParts): Promise<numbe
 
   const left = await readHeldRecordKeys(log, [...new Set(rows.map((row) => row.item_id))]);
 
-  // one key removal at a time, because each checkpoints the key store
   await left.reduce(
     (removed, itemID) => removed.then(() => removeRecordKey(log, itemID)),
     Promise.resolve(),
   );
 
-  // a removal whose checkpoint a reader blocked left no row to find, so the checkpoint runs again
   if (rows.length > 0) {
     await writeKeyStoreCheckpoint(log, null);
   }

@@ -10,9 +10,6 @@ import { buildRecallTool } from './build-recall-tool';
 import { buildWriteTools } from './build-write-tools';
 import type { MemoryToolStore } from './memory-tool-store';
 
-// Builds the model's memory tools: recall, pending and diff declare read, export export, the rest
-// note. Each write's gate sets the provenance from the run and the checks, never the model's
-// arguments; a rating is no write and passes none. pending and recall read the clock.
 export function buildMemoryTools(
   memory: MemoryToolStore,
   options: RecallLineOptions & RateToolOptions,

@@ -7,7 +7,6 @@ const quoteEvidence = z.strictObject({
   end: z.int(),
 });
 
-// Reads the evidence column of a version row back into its shape.
 export function parseEvidence(column: string | null): QuoteEvidence | null {
   return column === null ? null : quoteEvidence.parse(JSON.parse(column));
 }

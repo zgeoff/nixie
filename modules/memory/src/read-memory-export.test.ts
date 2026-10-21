@@ -4,8 +4,6 @@ import { memoryExportSchema } from './memory-export-schema';
 import type { TestMemoryOptions } from './test-utils/start-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
 
-// a test memory whose records carry the wall clock, which a test sets, and the export file's
-// whole text as the memory view streams it
 async function setupTest(config: TestMemoryOptions = {}) {
   onTestFinished(() => {
     setSystemTime();
@@ -112,7 +110,6 @@ test("it exports the writer's model from the batch that applied a version whose 
     },
   ]);
 
-  // a version the writer applied before its versions kept the model
   const item = await ctx.memory.store.remember({
     text: 'Rents allotment plot 14',
     provenance: {

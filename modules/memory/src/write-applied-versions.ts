@@ -8,8 +8,6 @@ import type { GatedWrite } from './write-memory-batch';
 import type { WrittenVersion } from './write-version-in-transaction';
 import { writeVersionInTransaction } from './write-version-in-transaction';
 
-// Writes the version of each applied write a batch kept, inside the batch's transaction, once the
-// item each kept proposal names still stands at the version the session read.
 export async function writeAppliedVersions(
   parts: StoreParts,
   tx: Transaction<unknown>,

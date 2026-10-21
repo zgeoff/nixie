@@ -39,7 +39,6 @@ test('it lists a pending proposal whose review reason a later release wrote with
     caller: buildMockWriteCaller(),
   });
 
-  // a later release's reason, in the row it left behind before a rollback
   await memory.log.writer.db
     .$extendTables<MemoryTables>()
     .updateTable('memory_proposals')

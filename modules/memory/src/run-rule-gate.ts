@@ -6,9 +6,6 @@ import type { ContentGateRequest, ContentGateResult } from './gate-types';
 import { readOwnerMessages } from './read-owner-messages';
 import type { MemoryContext } from './types';
 
-// The gate under your allow rule: only the token check runs, against everything you typed in your
-// latest messages. No quote backs the write, so it takes the least trusted source in the calling
-// task's context, which is outside content for the conversation and every task.
 export async function runRuleGate(
   context: Pick<MemoryContext, 'log' | 'gate'>,
   request: ContentGateRequest,

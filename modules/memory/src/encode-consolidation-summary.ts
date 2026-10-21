@@ -6,13 +6,8 @@ import type { SealedSummary } from './sealed-types';
 import { summaryKeyBytes } from './summary-key-bytes';
 
 const summaryText = defineSealedCodec('consolidation-summary/', sealedTextSchema);
-
-// a share of the summary's key, as base64
 const summaryShare = defineSealedCodec('consolidation-summary/', z.base64());
 
-// Seals a run's summary so that it opens only while every item the session was shown keeps its
-// key, because it can hold any of their words. The diff ID binds the summary and each share to the
-// run, so neither opens as another run's.
 export async function encodeConsolidationSummary(
   diffID: string,
   text: string,
@@ -40,7 +35,6 @@ export async function encodeConsolidationSummary(
   };
 }
 
-// n random shares whose XOR is the key, so every share is needed and any n - 1 reveal nothing
 function splitSummaryKey(summaryKey: Uint8Array, count: number): readonly Uint8Array[] {
   const shares = Array.from({ length: count - 1 }, () =>
     crypto.getRandomValues(new Uint8Array(summaryKeyBytes)),

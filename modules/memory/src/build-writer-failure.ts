@@ -11,15 +11,12 @@ export interface WriterFailure {
 
 const maxErrorCharacters = 2000;
 
-// The step result of a failed batch: its error, and a timer at the end of the backoff, when the
-// writer tries the same batch again. The message is free text, so it goes in the erasable fields.
 export function buildWriterFailure(
   parts: Pick<WriterParts, 'config' | 'context'>,
   failure: WriterFailure,
 ): Omit<StepResult, 'acknowledged'> {
   const failures = failure.row.failures + 1;
 
-  // the writer never fails its task, so capture resumes once the cause clears
   const backoff = planBackoffDelay(failures, {
     firstMs: parts.config.firstBackoffMs,
     maxMs: parts.config.maxBackoffMs,

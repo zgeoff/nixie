@@ -6,9 +6,6 @@ import { readWriterRow } from './read-writer-row';
 import { runWriterBatch } from './run-writer-batch';
 import type { WriterParts } from './writer-parts';
 
-// Runs one step of the memory writer. A failed batch records its error and backs off, and the step
-// never throws it, so the writer never fails its task; a lost lease or a stale writer still ends
-// the step with nothing written.
 export async function runWriterStep(parts: WriterParts, input: StepInput): Promise<StepResult> {
   const acknowledged = input.inbox.map((record) => record.sequence);
   const now = parts.context.clock.now();
@@ -26,7 +23,6 @@ export async function runWriterStep(parts: WriterParts, input: StepInput): Promi
       throw error;
     }
 
-    // the backoff counts from the failure, so a slow batch still waits the whole delay
     return {
       ...buildWriterFailure(parts, { row, now: parts.context.clock.now(), error }),
       acknowledged,

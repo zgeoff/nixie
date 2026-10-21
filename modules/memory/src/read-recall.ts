@@ -23,9 +23,6 @@ import type {
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
-// Returns stored items word for word. Candidates are ranked outside the delivery lock; under it each
-// one's state, version and key are checked again, its text is decrypted, and a memory.recalled
-// record lists what was delivered, so no text gets through after a forget began.
 export async function readRecall(parts: StoreParts, request: RecallRequest): Promise<RecallResult> {
   const limit = Math.min(request.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -79,10 +76,8 @@ interface Candidates {
   readonly itemIDs: readonly string[];
   readonly next: string | null;
 
-  // each candidate's keyword score and similarity, for a query only
   readonly scores?: ReadonlyMap<string, MatchScores>;
 
-  // how a query searched, for a query only
   readonly searchMode?: SearchMode;
 }
 
@@ -127,9 +122,6 @@ interface QueryCandidates extends CandidateQuery {
   readonly request: RecallRequest & { readonly query: string };
 }
 
-// The ranking leaves pinned items and excluded versions out before the limit applies, so they never
-// crowd out the next matches; the delivery drops an item pinned or edited after the ranking. Each
-// index ranks above its own floor, and the keyword matches stand alone while the vectors rebuild.
 async function readQueryCandidates(parts: StoreParts, query: QueryCandidates): Promise<Candidates> {
   const request = query.request;
 
@@ -170,7 +162,6 @@ async function readPinnedItemIDs(parts: StoreParts): Promise<readonly string[]> 
   return rows.map((row) => row.item_id);
 }
 
-// the items whose current version is one of the refs
 async function readCurrentItemIDs(
   parts: StoreParts,
   refs: readonly VersionRef[],
@@ -234,13 +225,10 @@ function buildRankQuery(
 interface SubjectRanking {
   readonly request: QueryCandidates['request'];
 
-  // the limit of self-notes, and of the owner's and the shared items together
   readonly limits: { readonly others: number; readonly self: number };
   readonly excludedIDs: readonly string[];
 }
 
-// Ranks self-notes apart from the owner's and the shared items, each up to its own limit, so a run
-// of matches of one never pushes the other past the cut. Each ranking leaves out the other's items.
 async function readSubjectRankedMatches(
   parts: StoreParts,
   ranking: SubjectRanking,
@@ -276,9 +264,6 @@ async function readSubjectRankedMatches(
   };
 }
 
-// the active items of every subject but these, which leave the ranking before its limit applies
-// the named items of the subjects a recall keeps, in the order named, so an item of another subject
-// never takes a place under the limit
 async function readNamedSubjectIDs(
   parts: StoreParts,
   named: readonly string[],
@@ -305,8 +290,6 @@ async function readNamedSubjectIDs(
   return named.filter((itemID) => kept.has(itemID));
 }
 
-// an item a request named at a version is delivered only at that version, so its recall record
-// never lists a version the caller did not ask for
 function isAtNamedVersion(item: RecalledItem, request: RecallRequest): boolean {
   return (
     request.versions === undefined ||
@@ -320,9 +303,6 @@ interface RecallRecord {
   readonly candidates: Candidates;
 }
 
-// The record holds references and no text, so a later forget leaves no readable copy of what the
-// recall delivered. A query's scores and search mode let retrieval be tuned from what each turn was
-// given. A turn note's record says so, so a rating binds past it.
 async function writeRecallRecord(parts: StoreParts, recall: RecallRecord): Promise<void> {
   const log = parts.context.log;
   const request = recall.request;
@@ -353,8 +333,6 @@ async function writeRecallRecord(parts: StoreParts, recall: RecallRecord): Promi
 
 type RecalledRef = ReturnType<typeof memoryRecalledCodec.decode>['items'][number];
 
-// the delivered version with each score an index gave its item, leaving out an index that did not
-// place it
 function buildRecalledRef(ref: VersionRef, scores: MatchScores | undefined): RecalledRef {
   return {
     itemID: ref.itemID,

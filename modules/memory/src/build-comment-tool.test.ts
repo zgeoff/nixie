@@ -9,8 +9,6 @@ import { createConsolidationDiff } from './test-utils/create-consolidation-diff'
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemory } from './test-utils/start-test-memory';
 
-// A test memory on a test clock, memory.comment in a registry, and the options a call runs under,
-// which record each call and its result in the memory's log.
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
 
@@ -24,7 +22,6 @@ async function setupTest() {
     toolCallOptions: {
       registry,
 
-      // every call is allowed, so each reaches its tool
       decide: () => ({
         decision: { outcome: 'allow' as const, stage: 3, rule: null },
         sentence: null,
@@ -32,7 +29,6 @@ async function setupTest() {
       log: memory.log,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-      // memory.comment runs direct, so nothing reaches the queue
       queue: {
         enqueue: () => Promise.reject(new Error('no memory tool runs queued')),
         waitForOutcome: () => Promise.resolve(null),
@@ -187,7 +183,6 @@ test('it takes the short ID a change shows when an older build left its alias em
     now: ctx.clock.now(),
   });
 
-  // the row as an older build folds it after the migration: the short ID column stays empty
   await withWriteTransaction(ctx.memory.log.writer, (tx) =>
     tx
       .$extendTables<ConsolidationTables>()

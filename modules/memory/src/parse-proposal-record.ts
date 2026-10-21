@@ -10,8 +10,8 @@ const proposed = z.strictObject({
   targetVersion: z.int().min(1).nullable(),
   isPinned: z.boolean(),
 
-  // a later release can add a reason, so the record keeps any reason word for word, and a reader
-  // shows one this release does not know as other
+  // A later release can add a review reason, and a rollback leaves its records in the log, so the
+  // record keeps any reason word for word.
   reviewReason: z.string(),
   actionHash: z.string(),
   sealed: z.base64(),
@@ -56,7 +56,6 @@ interface ProposedRecord {
   readonly targetVersion: number | null;
   readonly isPinned: boolean;
 
-  // the reason as the record stores it, which a later release's reason can be
   readonly reviewReason: string;
   readonly actionHash: string;
   readonly sealed: string;
@@ -69,11 +68,9 @@ interface ProposedRecord {
   readonly model: string | null;
   readonly noticeKey: string | null;
 
-  // when the proposal lapses, in milliseconds since the epoch
   readonly lapseAt: number;
 }
 
-// A later write that proposed the same change as a pending proposal, and merged into it.
 interface MergedRecord {
   readonly kind: 'memory.proposal_merged';
   readonly mergeID: string;
@@ -84,12 +81,9 @@ interface MergedRecord {
   readonly model: string | null;
   readonly noticeKey: string | null;
 
-  // when the proposal lapses now, unless it already lapses later
   readonly lapseAt: number;
 }
 
-// The records that change a memory proposal: its creation, a later write that merged into it, your
-// approval, your rejection, and its lapse.
 export type ProposalRecord =
   | ProposedRecord
   | MergedRecord
@@ -104,8 +98,6 @@ export type ProposalRecord =
   | { readonly kind: 'memory.proposal_rejected'; readonly proposalID: string }
   | { readonly kind: 'memory.proposal_lapsed'; readonly proposalID: string };
 
-// Reads a proposal record's payload into its typed shape, or null for a record of another kind. A
-// proposal record whose payload breaks its shape throws, so a fold never writes a half-read row.
 export function parseProposalRecord(record: EnvelopeRecord): ProposalRecord | null {
   if (record.kind === 'memory.proposed') {
     return { kind: record.kind, ...proposed.parse(record.payload) };

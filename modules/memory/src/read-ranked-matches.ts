@@ -8,28 +8,20 @@ export interface RankQuery {
   readonly query: string;
   readonly limit: number;
 
-  // items the ranking leaves out before the limit applies
   readonly excludedIDs: readonly string[];
 
-  // query words the ranking leaves out, as RecallRequest.excludedWords sets out
   readonly excludedWords?: readonly string[];
 
-  // the lowest keyword score a match keeps; every match when unset
   readonly minScore?: number;
 
-  // the lowest similarity a semantic match keeps; 0.3 when unset
   readonly minSimilarity?: number;
 }
 
 export interface RankedMatches {
-  // best match first
   readonly matches: readonly RankedMatch[];
   readonly searchMode: SearchMode;
 }
 
-// Ranks the active items that match a query, and returns their IDs and scores, never their text.
-// Each index ranks above its own floor, reciprocal rank fusion merges the two rankings, and the
-// keyword matches stand alone while the vectors rebuild.
 export async function readRankedMatches(
   parts: StoreParts,
   query: RankQuery,
@@ -50,12 +42,8 @@ export async function readRankedMatches(
   };
 }
 
-// the floor for a recall that sets none, such as the model's own memory.recall; per-turn retrieval
-// sets its own from the configuration
 const defaultMinSimilarity = 0.3;
 
-// the vector index's matches for the query less its excluded words, or null while the index
-// rebuilds or with no encoder
 function readVectorMatches(
   parts: StoreParts,
   query: RankQuery,

@@ -1,8 +1,5 @@
 import type { SpeakerNames } from './render-writer-prompt';
 
-// Renders the writer's system prompt: the persona in force, as the assistant's for reference, then
-// the writer's rules, which name you and the assistant. The batch model spike's persona rerun kept
-// capture and traps where the plain prompt had them, so the writer reads the same persona.
 export function renderWriterSystemPrompt(persona: string, names: SpeakerNames): string {
   const trimmed = persona.trim();
   const rules = renderWriterRules(names);

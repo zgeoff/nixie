@@ -2,9 +2,6 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { removeClosedProposalKeys } from './remove-closed-proposal-keys';
 import type { MemoryTables, StoreParts } from './types';
 
-// Lapses every pending proposal past its lapse time in one transaction, and returns how many. A
-// lapsed proposal for a new item held that item's only key, so the key goes after the commit, with
-// any key an earlier close left behind.
 export async function runProposalLapses(parts: StoreParts): Promise<number> {
   const log = parts.context.log;
 

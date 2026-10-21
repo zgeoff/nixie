@@ -3,7 +3,6 @@ import { startTestSessionHost } from '@heynixie/sessions/test-utils';
 import { memoryProjections } from '../memory-projections';
 import { startTestMemoryStore } from './start-test-memory-store';
 
-// a session host whose log folds the memory projections, which the store runs on
 async function setupTest() {
   const host = await startTestSessionHost({ projections: memoryProjections });
 

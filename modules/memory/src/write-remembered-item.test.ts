@@ -133,7 +133,6 @@ test('it adds an edited version that keeps the state of the item', async () => {
 test('it rejects an edit that grows a pinned item past the 2,000-token pinned core, and keeps the old text', async () => {
   const ctx = await setupTest();
 
-  // about 1,100 tokens, at 4 characters a token
   await ctx.memory.store.remember({
     text: 'Keeps a long packing list for trips. '.repeat(119),
     isPinned: true,

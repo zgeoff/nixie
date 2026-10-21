@@ -8,9 +8,6 @@ import { startMemoryStore } from '../start-memory-store';
 import type { CleanupSessions } from '../types';
 import { buildStubEncoder } from './build-stub-encoder';
 
-// Starts a memory store on a test context, whose forget runs the session cleanup given,
-// and stops it when the test finishes. No checker is wired, so a gated write holds as a proposal;
-// with encoder topics, the stub encoder searches by meaning too.
 export async function startTestMemoryStore(
   context: TasksContext,
   cleanupSessions: CleanupSessions,

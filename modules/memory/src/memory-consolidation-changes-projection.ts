@@ -5,9 +5,6 @@ import type { ConsolidationTables } from './consolidation-types';
 import type { ConsolidationRecord } from './parse-consolidation-record';
 import { parseConsolidationRecord } from './parse-consolidation-record';
 
-// One row per change a consolidator diff proposes. A change waits as pending until your approval
-// consumes it, your rejection closes it, or it lapses. Its text and its comment stay sealed under
-// its first input's key, so a forget of that item leaves both unreadable.
 export const memoryConsolidationChangesProjection: Projection = {
   table: 'memory_consolidation_changes',
   keyColumn: 'change_id',
@@ -58,7 +55,7 @@ async function writeChangeRows(
           lapse_at: change.lapseAt,
           resolved_sequence: null,
 
-          // from the random UUID, so the record keeps the shape a release before reads and rebuilds
+          // The short ID derives from the UUID, so the record keeps the shape the release before reads.
           short_id: buildShortIDFromUUID(change.changeID),
           comment: null,
           comment_sequence: null,
@@ -82,7 +79,6 @@ async function writeChangeRows(
   return [parsed.changeID];
 }
 
-// the conversation's comment, which takes the place of any the change held
 async function updateChangeComment(
   db: Kysely<ConsolidationTables>,
   record: EnvelopeRecord,

@@ -2,9 +2,6 @@ import { readRecordKeys } from '@heynixie/log';
 import { decodeProposalText } from './decode-proposal-text';
 import type { MemoryTables, StoreParts } from './types';
 
-// Reads the proposed text of each rejected edit the conversation made, by proposal ID, under the
-// delivery lock, so no text gets through once a forget of its item began. It leaves out an item
-// that is not active or retired, whose key is gone, or whose text fails to decrypt.
 export function readRejectedEdits(
   parts: StoreParts,
   proposalIDs: readonly string[],

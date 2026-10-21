@@ -8,8 +8,6 @@ const imageChecks = z.object({
   }),
 });
 
-// Finds the photo of yours that a write's checks name as its source, or null for a write from
-// anything else.
 export function findImageSource(checks: unknown): ImageRef | null {
   const parsed = imageChecks.safeParse(checks);
 

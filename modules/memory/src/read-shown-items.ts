@@ -4,7 +4,6 @@ import type { MemoryStore, RecalledItem } from './types';
 import { writerSubjects } from './writer-subjects';
 
 export interface ShownItemsQuery {
-  // the text of your messages in the batch, which picks the items when the full list is too long
   readonly text: string;
   readonly listTokens: number;
   readonly topItems: number;
@@ -16,12 +15,8 @@ export interface ShownItems {
   readonly isComplete: boolean;
 }
 
-// a keyword query matches any of its words, so the first few thousand characters pick the items
 const maxQueryCharacters = 4000;
 
-// Reads the items the writer sees: every active item while they fit in the list budget, else the
-// top items by keyword over your messages, so the writer revises an earlier item instead of adding
-// a duplicate. Every read goes through recall, which records what it delivered and hides self-notes.
 export async function readShownItems(
   store: Pick<MemoryStore, 'recall'>,
   query: ShownItemsQuery,
@@ -43,11 +38,8 @@ export async function readShownItems(
 }
 
 const pageSize = 100;
-
-// the list line's ID and punctuation around each item's text
 const itemOverheadTokens = 12;
 
-// every active item a page at a time, or null once their text passes the budget
 async function readItemList(
   store: Pick<MemoryStore, 'recall'>,
   query: ShownItemsQuery,

@@ -11,8 +11,6 @@ import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
-
-  // the shares a stored summary holds, as the test reads them back from the raw row
   const summaryShares = z.array(z.strictObject({ itemID: z.string(), sealed: z.string() }));
 
   const memory = await startTestMemory({ gate: { clock } });
@@ -21,7 +19,6 @@ async function setupTest() {
     memory,
     clock,
 
-    // the one run's summary as the raw row keeps it, sealed
     readSealedSummary: async () => {
       const run = await memory.log.writer.db
         .$extendTables<ConsolidationTables>()
@@ -59,7 +56,6 @@ test('it leaves a stored summary that no key left opens once an item it names is
   const sealed = await ctx.readSealedSummary();
   const left = await readRecordKeys(ctx.memory.log, [oat.itemID, black.itemID]);
 
-  // the key left also stands in the forgotten item's place
   const kept = left.get(black.itemID) ?? null;
 
   invariant(kept);

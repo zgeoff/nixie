@@ -13,25 +13,18 @@ import { z } from 'zod';
 export interface LogPageQuery {
   readonly thread: string;
 
-  // the cursor: only entries after this sequence
   readonly after: number;
 
-  // only entries recorded at or after this time, in epoch milliseconds, or null for no bound
   readonly from: number | null;
 
-  // only entries recorded before this time, in epoch milliseconds, or null for no bound
   readonly to: number | null;
 
-  // only entries whose text holds every one of these words, in any case
   readonly words: readonly string[];
   readonly limit: number;
 
-  // the most records one read decrypts
   readonly scanLimit: number;
 }
 
-// One entry of the thread: your message, a reply, or a tool's result, by the record's sequence.
-// The text is null once a forget erased it, and a long text is cut.
 export interface LogEntry {
   readonly sequence: number;
   readonly role: 'owner' | 'assistant' | 'tool';
@@ -40,15 +33,11 @@ export interface LogEntry {
   readonly isCut: boolean;
 }
 
-// The entries of one page, oldest first, and the cursor of the next page, or null at the end.
 export interface LogPage {
   readonly entries: readonly LogEntry[];
   readonly next: number | null;
 }
 
-// Reads one page of a thread's messages, replies and tool results, oldest first, in a time range
-// and with every word of a search. A read decrypts at most the query's scanLimit records, so a
-// search over a long log can return a short page, with the cursor to go on from.
 export async function readLogPage(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   query: LogPageQuery,
@@ -64,7 +53,6 @@ export async function readLogPage(
   return { entries: scan.entries, next: scan.after >= bounds.through ? null : scan.after };
 }
 
-// the kinds a thread's reader sees: your messages, the replies, and each tool's result
 const entryKinds: readonly RecordKind[] = ['owner_message', 'model.reply', 'tool_result'];
 
 interface SequenceBounds {
@@ -72,8 +60,6 @@ interface SequenceBounds {
   readonly through: number;
 }
 
-// The first and last sequences in the time range after the cursor, so a read never decrypts a
-// record outside it. The sequence grows in commit order, as the record times do.
 async function readSequenceBounds(
   log: Pick<Log, 'writer'>,
   query: LogPageQuery,
@@ -99,7 +85,6 @@ async function readSequenceBounds(
 interface PageScan {
   readonly entries: readonly LogEntry[];
 
-  // the last sequence the scan read, and how many records it read
   readonly after: number;
   readonly scanned: number;
 }
@@ -145,7 +130,6 @@ interface EntryFilter {
   readonly words: readonly string[];
 }
 
-// the scan after one batch: each record that passes the filter joins the page until it is full
 function buildNextScan(
   scan: PageScan,
   batch: readonly RecordWithChanges[],
@@ -171,8 +155,6 @@ function buildNextScan(
   return next;
 }
 
-// An entry as the model reads it, with the plain text a search matches, so a search never matches
-// the markup around a paste.
 interface ScannedEntry {
   readonly entry: LogEntry;
   readonly plain: string | null;
@@ -181,8 +163,6 @@ interface ScannedEntry {
 const spanFields = z.object({ start: z.int(), end: z.int(), source: z.string() });
 const ownerFields = z.object({ text: z.string(), spans: z.array(spanFields).optional() });
 
-// your message renders as the conversation shows it, with each paste in its own block and a marker
-// line for each image; the page never holds an image's bytes, so memory learns only your words
 function buildScannedEntry(record: LogRecord): ScannedEntry {
   const base = { sequence: record.sequence, recordedAt: record.recordedAt.getTime(), isCut: false };
   const fields = record.erasable.status === 'readable' ? record.erasable.fields : null;
@@ -221,7 +201,7 @@ function formatToolText(fields: JSONObject | null): string | null {
   return fields === null ? null : JSON.stringify(fields);
 }
 
-// a record's time can step back past a clock change, so each entry is checked against the range
+// A record's time can step back past a clock change, so each entry is checked against the range.
 function isInRange(entry: LogEntry, query: LogPageQuery): boolean {
   return (
     (query.from === null || entry.recordedAt >= query.from) &&
@@ -229,7 +209,6 @@ function isInRange(entry: LogEntry, query: LogPageQuery): boolean {
   );
 }
 
-// a forgotten entry holds no words, so a search never returns it
 function hasEveryWord(plain: string | null, words: readonly string[]): boolean {
   if (words.length === 0) {
     return true;
@@ -246,7 +225,6 @@ function hasEveryWord(plain: string | null, words: readonly string[]): boolean {
 
 const textLimit = 2000;
 
-// a long text is cut to textLimit characters
 function toShownEntry(entry: LogEntry): LogEntry {
   if (entry.text === null || entry.text.length <= textLimit) {
     return entry;
