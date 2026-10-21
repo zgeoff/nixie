@@ -12,7 +12,6 @@ import { writeStepCommit } from './write-step-commit';
 async function setupTest() {
   const tasks = await startTestTasks();
 
-  // the step key column of the log's records, which the tasks tables leave out
   const db = tasks.writer.db.$extendTables<
     TasksTables & Readonly<{ records: { readonly step_key: string | null } }>
   >();
@@ -204,7 +203,6 @@ test('it commits a step key once, and a second commit changes nothing', async ()
 
   await writeStepCommit(ctx.context, claim, { next: 'continue', records: [], acknowledged: [] });
 
-  // the lease the rerun of the same step would hold
   const rerun = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
   invariant(rerun);

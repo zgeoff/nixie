@@ -35,9 +35,6 @@ const pendingOutput = {
   additionalProperties: false,
 };
 
-// Builds skill_pending, which declares read and lists every skill proposal that still waits for
-// your answer, oldest first. It never answers one. The model wrote each proposal's name, which can
-// quote anything it read, so the result takes the most cautious source.
 export function buildSkillPendingTool(context: SkillToolsContext): ToolDefinition {
   return {
     name: 'skill_pending',
@@ -53,6 +50,8 @@ export function buildSkillPendingTool(context: SkillToolsContext): ToolDefinitio
       destinations: [],
       amount: null,
       content: [],
+
+      // The model wrote each proposal's name, and a name can quote anything the model read.
       results: { proposals: 'untrusted' },
     },
     execution: 'direct',

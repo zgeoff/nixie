@@ -6,13 +6,9 @@ import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
 import type { SandboxCleanup, TasksContext, TasksTables } from './types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
-// Work that recovery needs from modules that depend on tasks, which the server passes in, because
-// modules form no cycles.
 export interface RecoveryDependencies {
-  // step 3: marks each action that started an attempt without a recorded result as unknown
   readonly writeUnknownOutcomes: () => Promise<void>;
 
-  // step 5
   readonly sandboxes: SandboxCleanup;
 }
 
@@ -21,9 +17,6 @@ interface RecoveryStep {
   readonly run: () => Promise<unknown>;
 }
 
-// Resumes every task after a crash, before any runner starts, in a process that holds the writer
-// lock under a new epoch, so every lease still held belongs to a process that is gone. Each step is
-// safe to run again, so the next start finishes a recovery that crashed.
 export async function runRecovery(
   context: TasksContext,
   dependencies: RecoveryDependencies,
@@ -45,8 +38,6 @@ export async function runRecovery(
   }
 }
 
-// Step 1: frees every lease claimed under an older writer epoch, and returns each running task to
-// ready with a record.
 async function resetStaleLeases(context: TasksContext): Promise<void> {
   const writer = context.log.writer;
 
@@ -80,7 +71,6 @@ async function resetStaleLeases(context: TasksContext): Promise<void> {
   });
 }
 
-// Step 2: marks each step that started without a commit as interrupted, with a record.
 async function writeInterruptedSteps(context: TasksContext): Promise<void> {
   await withWriteTransaction(context.log.writer, async (tx) => {
     const started = await tx

@@ -6,16 +6,12 @@ import { taskStepErroredCodec } from './task-step-errored-codec';
 import type { StepErrored, TaskClaim, TasksContext, TasksTables } from './types';
 
 export interface StepErrorOptions {
-  // how many failed steps in a row end a task as failed, or mark the conversation as failing
   readonly maxStepErrors: number;
   readonly retryDelayMs: number;
 
-  // the longest wait between the conversation's tries, where its backoff stops growing
   readonly maxRetryDelayMs: number;
 }
 
-// Records a step that threw and frees the lease, and returns what it recorded. The retry follows
-// planRetry, and the error's text is free text, so it sits in erasable.
 export function writeStepError(
   context: TasksContext,
   claim: TaskClaim,
@@ -70,9 +66,6 @@ export function writeStepError(
   });
 }
 
-// A task retries after the retry delay, and fails once its errors in a row reach the limit. The
-// conversation never fails, because every deployment needs it to answer: its delay doubles with
-// each error up to the maximum.
 function planRetry(
   isConversation: boolean,
   errors: number,

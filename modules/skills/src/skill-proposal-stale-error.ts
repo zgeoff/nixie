@@ -1,5 +1,3 @@
-// The version of the skill in force moved past the one the proposal replaces, so the proposal's
-// diff no longer shows what an answer would change, and nothing is recorded.
 export class SkillProposalStaleError extends Error {
   override readonly name = 'SkillProposalStaleError';
 

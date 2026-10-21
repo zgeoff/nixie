@@ -49,7 +49,6 @@ test('it renews the lease a third of its length after the claim', async () => {
 
   ctx.clock.advance(20_000);
 
-  // the renewal sleeps again once its renewal commits
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
   const row = await ctx.db.selectFrom('leases').select('expires_at').executeTakeFirstOrThrow();
@@ -77,7 +76,6 @@ test('it renews again every third of the lease', async () => {
 
   ctx.clock.advance(20_000);
 
-  // the renewal sleeps again once its renewal commits
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
   const row = await ctx.db.selectFrom('leases').select('expires_at').executeTakeFirstOrThrow();
@@ -99,7 +97,6 @@ test('it aborts its signal when a renewal finds the lease lost', async () => {
 
   onTestFinished(() => renewal.stop());
 
-  // the runner missed every renewal, so the lease expired before this one
   ctx.clock.advance(60_000);
 
   await waitForCondition(() => renewal.signal.aborted);

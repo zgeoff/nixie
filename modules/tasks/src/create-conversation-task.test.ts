@@ -42,7 +42,6 @@ test('it makes ready a conversation that an earlier release let fail, with its e
 
   await createConversationTask(ctx.context);
 
-  // an earlier release failed the conversation at its error limit
   await withWriteTransaction(ctx.writer, (tx) =>
     writeRecordsInTransaction(tx, ctx.context.log, [
       {

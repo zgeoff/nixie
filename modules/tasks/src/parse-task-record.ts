@@ -8,14 +8,12 @@ import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
 import { taskStepStartedCodec } from './task-step-started-codec';
 import { timerFiredCodec } from './timer-fired-codec';
 
-// a record of one kind with the payload its codec decodes
 type DecodedRecord<
   Codec extends { readonly kind: RecordKind; readonly decode: (payload: JSONObject) => JSONObject },
 > = {
   readonly kind: Codec['kind'];
 } & ReturnType<Codec['decode']>;
 
-// The task records the tasks and timers projections fold, each with its plain payload.
 export type TaskRecord =
   | DecodedRecord<typeof taskCreatedCodec>
   | DecodedRecord<typeof taskStepStartedCodec>
@@ -56,9 +54,6 @@ const taskRecordDecoders: {
   'timer.fired': (payload) => ({ kind: 'timer.fired', ...timerFiredCodec.decode(payload) }),
 };
 
-// Reads a task record's payload into its typed shape through its kind's codec, or null for a record
-// of another kind. A task record whose payload does not fit its codec throws with the record's
-// sequence, so a fold never writes a half-read row.
 export function parseTaskRecord(record: EnvelopeRecord): TaskRecord | null {
   const kind = record.kind;
 

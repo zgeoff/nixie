@@ -1,5 +1,3 @@
-// The answer names a skill hash that is not the proposal's, so the review it came from showed other
-// files, and nothing is recorded.
 export class SkillProposalHashError extends Error {
   override readonly name = 'SkillProposalHashError';
 

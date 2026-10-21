@@ -8,16 +8,11 @@ import { writePinRecord } from './write-pin-record';
 export interface SkillPinInput {
   readonly thread: string;
 
-  // the definitions in force, whose skills on the caller's list the pin holds
   readonly inForce: Pick<DefinitionsInForce, 'snapshotHash' | 'personaVersion' | 'skills'>;
 
-  // the names on the caller's skill list
   readonly list: readonly string[];
 }
 
-// Pins a task to the versions of the skills on its list that the definitions in force hold, and
-// returns them in name order. A name on the list that the definitions lack pins nothing. A task
-// pins once: when another load pinned it first, this returns that pin and writes nothing.
 export async function recordSkillPin(log: Log, input: SkillPinInput): Promise<readonly SkillRef[]> {
   const listed = new Set(input.list);
 
@@ -42,7 +37,6 @@ export async function recordSkillPin(log: Log, input: SkillPinInput): Promise<re
 
   const pin = await loadSkillPin(log, input.thread);
 
-  // the transaction refused the first pin because a pin on the thread had committed
   invariant(pin);
 
   return pin;

@@ -8,16 +8,11 @@ export interface ClaimRequest {
   readonly holder: string;
   readonly durationMs: number;
 
-  // the next claimable piece of work, read inside the claim's transaction, or null for none
   readonly readCandidate: (tx: Transaction<unknown>, now: number) => Promise<string | null>;
 
-  // the claim's own records, such as a task's step start, committed with the lease
   readonly onClaim?: (tx: Transaction<unknown>, lease: Lease) => Promise<void>;
 }
 
-// The one claim path for task steps and action attempts. One write transaction, under BEGIN
-// IMMEDIATE and the writer epoch check, finds a candidate and takes its lease only when the lease
-// is free or expired, with the writer epoch and a generation one higher than the last.
 export async function claimLease(
   context: Pick<TasksContext, 'clock' | 'log'>,
   request: ClaimRequest,
@@ -56,8 +51,8 @@ export async function claimLease(
 
 type LeaseClaim = Omit<Lease, 'generation'> & { readonly now: number };
 
-// a fresh lease row starts at generation 1; a conflicting row takes the claim only when free or
-// expired, and RETURNING gives no row otherwise
+// SQLite's upsert returns no row from RETURNING when the conflict's WHERE refuses the update, so a
+// held lease reads as a refused claim.
 async function upsertLease(tx: Transaction<unknown>, claim: LeaseClaim): Promise<Lease | null> {
   const row = await tx
     .$extendTables<TasksTables>()

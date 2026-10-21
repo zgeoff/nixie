@@ -1,5 +1,3 @@
-// The record kind the tasks tests write for a step's own output, which the modules above tasks
-// register. This file reaches only the tasks package's own program.
 export type TasksTestRecordKind = 'turn_finished';
 
 declare module '@heynixie/log' {

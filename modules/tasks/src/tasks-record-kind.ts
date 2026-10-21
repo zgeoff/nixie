@@ -1,5 +1,3 @@
-// The record kinds the tasks module registers with the log: a task's life, and the inbox kinds that
-// start its steps, which every module that writes task input names.
 export type TasksRecordKind =
   | 'task.created'
   | 'task.revived'

@@ -242,7 +242,6 @@ test('it refuses a second approval over the same base as stale before the first 
     },
   ]);
 
-  // the first approval's seed has not run yet, so the snapshot in force still lacks the skill
   const unseeded = { ...ctx.context, seedWrittenSkills: () => Promise.resolve() };
 
   await writeSkillProposalAnswer(unseeded, {
@@ -581,7 +580,6 @@ test('it refuses a second answer to a proposal an answer closed', async () => {
     },
   ]);
 
-  // the refusal settles before the writer stops, so its transaction never outlives the test
   const refusal = await writeSkillProposalAnswer(ctx.context, {
     answer: 'approve',
     proposalID: 'k3x9m2p7qa',

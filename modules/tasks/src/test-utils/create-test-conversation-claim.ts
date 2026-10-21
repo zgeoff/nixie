@@ -4,9 +4,6 @@ import { createConversationTask } from '../create-conversation-task';
 import type { TaskClaim, TasksContext } from '../types';
 import { writeInboxRecords } from '../write-inbox-records';
 
-// Creates the conversation, sends it your message with the text, and claims its next step for
-// runner-a under a 60 s lease on the context's clock. On a store with no other ready task, the
-// claim takes the conversation.
 export async function createTestConversationClaim(
   context: TasksContext,
   text: string,
@@ -24,7 +21,6 @@ export async function createTestConversationClaim(
 
   const claim = await claimTask(context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  // the message just made the conversation ready, so the claim finds it
   invariant(claim);
 
   return claim;

@@ -9,7 +9,6 @@ import { buildToolRegistry } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildSkillReadTool } from './build-skill-read-tool';
 
-// the writer's data directory holds the definitions root too, so one removal cleans up both
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 

@@ -5,9 +5,6 @@ import type { TaskRecord } from './parse-task-record';
 import { parseTaskRecord } from './parse-task-record';
 import type { TasksTables } from './types';
 
-// One row per task, whose every value comes from a record, never the clock, so a rebuild gives the
-// live rows. An inbox record raises the task's last inbox sequence, wakes a waiting task, and ends
-// the conversation's retry backoff.
 export const tasksProjection: Projection = {
   table: 'tasks',
   keyColumn: 'task_id',
@@ -128,8 +125,6 @@ function buildTaskUpdate(
     };
   }
 
-  // a lease_expired record comes only for a running task, whose runner is gone, and a revived
-  // record only for a conversation an earlier release let fail
   return parsed.kind === 'task.revived'
     ? { state: 'ready', step_errors: 0, claimable_at: 0 }
     : { state: 'ready' };

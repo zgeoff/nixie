@@ -9,8 +9,6 @@ export interface TestLeaseRequest {
   readonly durationMs: number;
 }
 
-// Claims the lease on a named piece of work that no runner holds, as a runner claims the work it
-// found.
 export async function claimTestLease(
   context: TasksContext,
   request: TestLeaseRequest,
@@ -22,7 +20,6 @@ export async function claimTestLease(
     readCandidate: () => Promise.resolve(request.workID),
   });
 
-  // no runner holds the work, so the claim takes it
   invariant(lease);
 
   return lease;

@@ -2,23 +2,18 @@ import type { Clock } from '@heynixie/clock';
 import { assign, fromCallback, fromPromise, setup } from 'xstate';
 
 export interface SkillLapseSweepMachineInput {
-  // records the lapse of each skill proposal past its lapse time
   readonly sweep: () => Promise<unknown>;
 
-  // the clock the timer sleeps on
   readonly clock: Clock;
 
-  // the time between two ticks, each of which starts a sweep unless one still runs
   readonly intervalMs: number;
 
-  // takes each failed sweep; an onError that throws loses only its own report
   readonly onError: (error: unknown) => void;
 }
 
 interface SkillLapseSweepContext {
   readonly input: SkillLapseSweepMachineInput;
 
-  // a stop came while a sweep ran, so the machine stops once that sweep ends
   readonly isStopping: boolean;
 }
 
@@ -39,8 +34,8 @@ const skillLapseSweepActors = {
   sweep: fromPromise<unknown, SkillLapseSweepMachineInput>((sweep) => sweep.input.sweep()),
 };
 
-// xstate's type parameters, in order: context, events, actors, children, actions, guards, delays,
-// tags, then input
+// xstate's `setup` takes its type parameters in this order: context, events, actors, children,
+// actions, guards, delays, tags, then input.
 export const skillLapseSweepMachine = setup<
   SkillLapseSweepContext,
   SkillLapseSweepEvent,
@@ -55,7 +50,6 @@ export const skillLapseSweepMachine = setup<
   id: 'skillLapseSweep',
   context: (start) => ({ input: start.input, isStopping: false }),
 
-  // the timer runs from start until the machine stops, and the final state stops it
   invoke: {
     // oxlint-disable-next-line zgeoff/no-abbreviated-names -- xstate names the invoked actor `src`
     src: 'timer',
@@ -95,7 +89,6 @@ export const skillLapseSweepMachine = setup<
         ],
       },
       on: {
-        // the sweep in flight covers this tick, so the tick starts no second one
         tick: {},
         stop: { actions: assign({ isStopping: true }) },
       },
@@ -104,7 +97,6 @@ export const skillLapseSweepMachine = setup<
   },
 });
 
-// ticks once each interval until the signal aborts, and the tick due at the abort never comes
 async function runTimer(
   input: SkillLapseSweepMachineInput,
   signal: AbortSignal,
@@ -122,7 +114,5 @@ async function runTimer(
 function reportFailure(input: SkillLapseSweepMachineInput, error: unknown): void {
   try {
     input.onError(error);
-  } catch {
-    // an onError that throws loses only its own report, and the next tick still sweeps
-  }
+  } catch {}
 }

@@ -8,32 +8,22 @@ import { skillProposalOutcomes } from './skill-proposal-outcomes';
 import { skillsWriteApprovedCodec } from './skills-write-approved-codec';
 import type { SkillProposalOutcome } from './types';
 
-// How a skill proposal on the thread closed: your approval with its pull request, your rejection
-// with its reason, or its lapse.
 export interface SkillProposalAnswerEvent {
   readonly proposalID: string;
   readonly name: string;
   readonly outcome: SkillProposalOutcome;
 
-  // whether you edited the files of an approval before it applied them
   readonly isEdited: boolean;
 
-  // the pull request an approval from before the store of written skills opened, or null
   readonly pullRequestURL: string | null;
 
-  // the reason you gave a rejection, or null for any other outcome or when its key is gone
   readonly reason: string | null;
 }
 
-// the most answers one note reads, past which the block's count of more stops growing
 const readLimit = 1000;
 const lapseDays = skillProposalLapseMs / (24 * 60 * 60 * 1000);
-
-// every record that closes a proposal names it in its payload
 const closingPayload = z.object({ proposalID: z.string() });
 
-// The event kind for the close of each skill proposal on the thread, read from the record that
-// closed it, so the turn after a rejection reads your reason.
 export function buildSkillProposalAnswerKind(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   thread: string,

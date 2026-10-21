@@ -13,9 +13,6 @@ export interface TaskStepOptions extends StepErrorOptions {
   readonly leaseMs: number;
 }
 
-// Runs one claimed step under a renewed lease and commits its result. Any failure but a lost lease
-// or a stale writer becomes a step error, which it returns, so one bad step never stops the runners.
-// A lost lease ends the step with nothing written.
 export async function runTaskStep(
   context: TasksContext,
   claim: TaskClaim,
@@ -40,7 +37,6 @@ export async function runTaskStep(
   }
 }
 
-// runs the step and commits its result, and returns a failure that a retry may clear as a value
 async function tryCommitStep(
   context: TasksContext,
   claim: TaskClaim,

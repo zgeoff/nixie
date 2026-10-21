@@ -3,8 +3,6 @@ import { runSkillReload } from './run-skill-reload';
 import { skillReloadOutput } from './skill-reload-output';
 import type { SkillToolsContext } from './types';
 
-// Builds skill_reload_all, which declares note and moves every skill of the running task to the
-// versions in the definitions in force, after a fresh seed. The record holds each old and new hash.
 export function buildSkillReloadAllTool(context: SkillToolsContext): ToolDefinition {
   return {
     name: 'skill_reload_all',

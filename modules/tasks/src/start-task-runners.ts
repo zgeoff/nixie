@@ -9,11 +9,9 @@ import type { RunStep, StepErrored, TasksContext } from './types';
 export interface TaskRunnersOptions {
   readonly runStep: RunStep;
 
-  // takes each step error once its record commits, so the server can log it
   readonly onStepErrored: (errored: StepErrored) => void;
   readonly onError: (error: unknown) => void;
 
-  // 3 steps at once by default, the limit on concurrent work in tier 2
   readonly size?: number;
   readonly holder?: string;
   readonly leaseMs?: number;
@@ -24,19 +22,11 @@ export interface TaskRunnersOptions {
 }
 
 const DEFAULT_SIZE = 3;
-
-// Why: a lease of 60 s renewed every 20 s survives 1 missed renewal, and a dead runner frees its
-// task within a minute.
 const DEFAULT_LEASE_MS = 60_000;
 const DEFAULT_POLL_MS = 1000;
 const DEFAULT_RETRY_DELAY_MS = 30_000;
-
-// Why: 5 min keeps a long outage to one try every 5 min, and a reply waits at most that long once
-// the cause clears; a new message cuts the wait (the tasks projection's inbox fold).
 const DEFAULT_MAX_RETRY_DELAY_MS = 300_000;
 
-// Starts the task runners: a pool that claims and runs one step per runner, beside a runner that
-// fires due timers on each poll.
 export function startTaskRunners(context: TasksContext, options: TaskRunnersOptions): RunnerPool {
   const holder = options.holder ?? crypto.randomUUID();
   const leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
@@ -62,7 +52,6 @@ export function startTaskRunners(context: TasksContext, options: TaskRunnersOpti
     onError: options.onError,
   });
 
-  // its claim fires the due timers and hands back no work, so it only ever polls
   const timers = startRunnerPool<never>(context.clock, {
     size: 1,
     pollMs,
