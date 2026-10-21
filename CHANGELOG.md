@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.39.0](https://github.com/zgeoff/nixie/compare/v0.38.0...v0.39.0) (2026-10-21)
+
+
+### Features
+
+* **geo-1510:** export skills nixie writes as definitions pull requests ([#484](https://github.com/zgeoff/nixie/issues/484)) ([cec4833](https://github.com/zgeoff/nixie/commit/cec48333561a054672267224a0542f277738ea6f))
+* **geo-1510:** lay skills nixie writes over the definitions ([#476](https://github.com/zgeoff/nixie/issues/476)) ([3cdbd6d](https://github.com/zgeoff/nixie/commit/3cdbd6d9aad0ebea2feb6a1406cf4a107966cfa1))
+* **geo-1510:** open skill export pull requests through the github api ([#485](https://github.com/zgeoff/nixie/issues/485)) ([0c33d97](https://github.com/zgeoff/nixie/commit/0c33d977525f8cced10b39eaa0638bdeee555c61))
+* **geo-1510:** put an approved skill in force at once ([#477](https://github.com/zgeoff/nixie/issues/477)) ([5020b18](https://github.com/zgeoff/nixie/commit/5020b18bcf0daadd67d0aa15096f919e1636c4ab))
+* **geo-1510:** show and resolve written-skill conflicts ([#478](https://github.com/zgeoff/nixie/issues/478)) ([b4390ad](https://github.com/zgeoff/nixie/commit/b4390ad9fef5c74932d32466fce3acd51bdacf18))
+
 ## [0.38.0](https://github.com/zgeoff/nixie/compare/v0.37.0...v0.38.0) (2026-10-21)
 
 
