@@ -10,16 +10,16 @@ import type { ActionsTables } from './types';
 
 async function setupTest() {
   const actions = await startTestActions();
-  const step = await createTestStep(actions.context);
 
-  return { ...actions, db: actions.writer.db.$extendTables<ActionsTables>(), step };
+  return { ...actions, db: actions.writer.db.$extendTables<ActionsTables>() };
 }
 
 test('it queues an allowed call as a pending action due at once', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const queued = await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -31,8 +31,8 @@ test('it queues an allowed call as a pending action due at once', async () => {
   expect(queued).toStrictEqual({ actionID: action.action_id, status: 'pending', isRepeat: false });
 
   expect(action).toMatchObject({
-    task_id: ctx.step.lease.workID,
-    step_key: `${ctx.step.lease.workID}:1`,
+    task_id: step.lease.workID,
+    step_key: `${step.lease.workID}:1`,
     action_hash: 'sha256:send-1',
     tool: 'test.send',
     status: 'pending',
@@ -44,9 +44,10 @@ test('it queues an allowed call as a pending action due at once', async () => {
 
 test('it records the decision and keeps the arguments in the erasable fields', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -58,7 +59,7 @@ test('it records the decision and keeps the arguments in the erasable fields', a
   expect(entries.map((entry) => entry.record)).toMatchObject([
     {
       kind: 'action.queued',
-      thread: ctx.step.lease.workID,
+      thread: step.lease.workID,
       decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
       erasable: {
         status: 'readable',
@@ -70,9 +71,10 @@ test('it records the decision and keeps the arguments in the erasable fields', a
 
 test('it refuses a call the decision point did not allow', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const create = createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -89,9 +91,10 @@ test('it refuses a call the decision point did not allow', async () => {
 
 test('it returns the earlier action for a repeat call under the same step key', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const first = await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -101,7 +104,7 @@ test('it returns the earlier action for a repeat call under the same step key', 
   await ctx.db.updateTable('actions').set({ status: 'done' }).execute();
 
   const repeat = await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -113,9 +116,10 @@ test('it returns the earlier action for a repeat call under the same step key', 
 
 test('it returns the earlier action for a repeat call while that action is pending', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const first = await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -123,7 +127,7 @@ test('it returns the earlier action for a repeat call while that action is pendi
   });
 
   const repeat = await createAllowedAction(ctx.context, {
-    step: { ...ctx.step, stepKey: `${ctx.step.lease.workID}:2` },
+    step: { ...step, stepKey: `${step.lease.workID}:2` },
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -135,9 +139,10 @@ test('it returns the earlier action for a repeat call while that action is pendi
 
 test('it returns the earlier action for a repeat call while that action is unknown', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const first = await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -147,7 +152,7 @@ test('it returns the earlier action for a repeat call while that action is unkno
   await ctx.db.updateTable('actions').set({ status: 'unknown' }).execute();
 
   const repeat = await createAllowedAction(ctx.context, {
-    step: { ...ctx.step, stepKey: `${ctx.step.lease.workID}:2` },
+    step: { ...step, stepKey: `${step.lease.workID}:2` },
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -159,9 +164,10 @@ test('it returns the earlier action for a repeat call while that action is unkno
 
 test('it queues a new action when the same call settled under an earlier step', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const first = await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -171,7 +177,7 @@ test('it queues a new action when the same call settled under an earlier step', 
   await ctx.db.updateTable('actions').set({ status: 'done' }).execute();
 
   const next = await createAllowedAction(ctx.context, {
-    step: { ...ctx.step, stepKey: `${ctx.step.lease.workID}:2` },
+    step: { ...step, stepKey: `${step.lease.workID}:2` },
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -184,11 +190,12 @@ test('it queues a new action when the same call settled under an earlier step', 
 
 test('it queues nothing once the step lost its lease', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
-  ctx.clock.advance(ctx.step.lease.expiresAt - ctx.clock.now());
+  ctx.clock.advance(step.lease.expiresAt - ctx.clock.now());
 
   const create = createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -205,6 +212,7 @@ test('it queues nothing once the step lost its lease', async () => {
 
 test('it reaches queue.commit.before and queue.commit.after around the queue', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const reached: FaultPointID[] = [];
 
@@ -217,7 +225,7 @@ test('it reaches queue.commit.before and queue.commit.after around the queue', a
   });
 
   await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },

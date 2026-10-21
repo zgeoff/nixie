@@ -10,16 +10,16 @@ import { waitForActionOutcome } from './wait-for-action-outcome';
 
 async function setupTest() {
   const actions = await startTestActions();
-  const step = await createTestStep(actions.context);
 
-  return { ...actions, step };
+  return { ...actions };
 }
 
 test('it returns the outcome on the commit that settles the action, without polling', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const queued = await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
@@ -53,9 +53,10 @@ test('it returns the outcome on the commit that settles the action, without poll
 
 test('it returns "queued as" with the action ID once 10 s pass with the action pending', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const queued = await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },

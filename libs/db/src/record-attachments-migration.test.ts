@@ -34,10 +34,6 @@ async function setupTest() {
     copyDir: directory,
   });
 
-  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload, key_id,
-    sealed) values (1, 1767225600000, 'owner_message', 'snapshot-a', '{}', 'key-a',
-    x'00')`.execute(db);
-
   return { db };
 }
 
@@ -47,6 +43,10 @@ test('it moves the schema to version 15', () => {
 
 test('it keeps an attachment as it is when it runs again', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload, key_id,
+    sealed) values (1, 1767225600000, 'owner_message', 'snapshot-a', '{}', 'key-a',
+    x'00')`.execute(ctx.db);
 
   await ctx.db.transaction().execute((tx) => recordAttachmentsMigration.up(tx));
 
@@ -64,6 +64,10 @@ test('it keeps an attachment as it is when it runs again', async () => {
 test('it refuses an update of an attachment', async () => {
   const ctx = await setupTest();
 
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload, key_id,
+    sealed) values (1, 1767225600000, 'owner_message', 'snapshot-a', '{}', 'key-a',
+    x'00')`.execute(ctx.db);
+
   await ctx.db.transaction().execute((tx) => recordAttachmentsMigration.up(tx));
 
   await sql`insert into record_attachments (sequence, position, sealed)
@@ -78,6 +82,10 @@ test('it refuses an update of an attachment', async () => {
 
 test('it refuses a delete of an attachment', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload, key_id,
+    sealed) values (1, 1767225600000, 'owner_message', 'snapshot-a', '{}', 'key-a',
+    x'00')`.execute(ctx.db);
 
   await ctx.db.transaction().execute((tx) => recordAttachmentsMigration.up(tx));
 
