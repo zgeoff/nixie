@@ -11,15 +11,11 @@ import { sandboxesProjection } from './sandboxes-projection';
 import type { SandboxEvent, SandboxRecorder, SandboxRow, SandboxTables } from './types';
 
 export interface SandboxRecorderOptions {
-  // a log whose projections include sandboxesProjection
   readonly log: Log;
 
-  // the definitions in force, which every record carries
   readonly definitions: () => Definitions;
 }
 
-// Builds the recorder that adapters write their lifecycle through: each event is one record of kind
-// sandbox.<event>, and the sandboxes projection answers find and list.
 export function buildSandboxRecorder(options: SandboxRecorderOptions): SandboxRecorder {
   if (!options.log.projections.includes(sandboxesProjection)) {
     throw new Error('the log passed to the sandbox recorder lacks the sandboxes projection');
@@ -61,8 +57,6 @@ interface EventRecord {
   readonly payload: JSONObject;
 }
 
-// The payload holds IDs, names and states, and never the event's own name, which the kind holds. A
-// grant's env holds placeholders, never a credential.
 function toRecordInput(event: SandboxEvent): EventRecord {
   if (event.event === 'created') {
     return {

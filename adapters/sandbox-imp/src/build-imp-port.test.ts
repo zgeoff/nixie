@@ -10,9 +10,8 @@ import { runProbe } from './test-utils/run-probe';
 import { setupIsolationAdapter } from './test-utils/setup-isolation-adapter';
 import { startStubImpd } from './test-utils/start-stub-impd';
 
-// The isolation checks drive the imp adapter through the real port against a real impd, on a host
-// with /dev/kvm; docs/runbooks/imp-isolation-tests.md names the variables that turn them on. Bun
-// 1.4.2's skipIf takes a boolean and has no in-body skip, so these gates read the env at load.
+// Bun's skipIf takes a boolean and has no skip from inside a test body, so these gates read the
+// environment when the file loads.
 const hasImpHost =
   process.env['NIXIE_IMP_TEST_URL'] !== undefined &&
   process.env['NIXIE_IMP_TEST_TOKEN'] !== undefined &&
@@ -20,10 +19,8 @@ const hasImpHost =
 
 const hasHostAddresses = hasImpHost && process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'] !== undefined;
 
-// The imp adapter on the real port, with a model-host secret that this test adds. impdURLs holds a
-// URL for each address of impd, which this machine resolves, because the guest cannot.
 async function setupTest() {
-  // the web preload's mock server and DOM take over fetch and WebSocket, so impd would see no call
+  // The web preload's mock server and DOM replace fetch and WebSocket, so no call would reach impd.
   invariant(
     !('happyDOM' in globalThis),
     'the web test preload is loaded; run the file from adapters/sandbox-imp, whose bunfig leaves it out',
@@ -64,7 +61,6 @@ async function setupTest() {
 }
 
 test('it refuses to read the features of an impd whose version the client does not speak', () => {
-  // impd answers every oRPC call in the RPC protocol's envelope, and only system.info reaches it
   const answerRequest = mock(() =>
     Response.json({ json: { version: '0.39.0', features: {}, egress: {} } }),
   );
@@ -165,7 +161,6 @@ test('it reads the backup opt-out among the features of an impd that has it', ()
 });
 
 test('it ends a feature read that impd never answers at the abort, after one call', async () => {
-  // a half-open connection: impd takes the call and never answers it
   const answer = mock(() => Promise.withResolvers<Response>().promise);
   const impd = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: answer });
 
@@ -186,7 +181,6 @@ test('it ends a feature read that impd never answers at the abort, after one cal
 });
 
 test('it reads an imp that impd shows with no backup flag as backed up', () => {
-  // impd shows the flag only for an imp created with backup off; dates travel in the RPC meta
   const answerRequest = mock(() =>
     Response.json({
       json: {
@@ -350,8 +344,6 @@ test('it passes on a failed wake that is no impd error, such as impd not answeri
   });
 });
 
-// A dropped connection waits out curl's whole limit, so each test allows for the imp's boot and
-// for each probe's limit.
 test.skipIf(!hasImpHost)(
   'it lets a conversation imp reach the tool endpoint through the reverse forward',
   async () => {
@@ -423,7 +415,6 @@ test.skipIf(!hasImpHost)(
 
     const outcome = await runProbe(sandbox, 'https://example.com/', { viaBroker: true });
 
-    // curl's exit when the proxy refuses the CONNECT
     expect(outcome).toBe('status=000 exit=56');
   },
   120_000,
@@ -447,7 +438,6 @@ test.skipIf(!hasImpHost)(
 
     invariant(route);
 
-    // the model host's name resolves on this machine, so the guest probes its addresses
     const modelHost = await resolveProbeURLs('api.anthropic.com', 443);
 
     const targets = [
@@ -562,7 +552,6 @@ test.skipIf(!hasHostAddresses)(
       }),
     );
 
-    // each host address is probed on port 80, and impd at each of its addresses
     const hostURLs = await Promise.all(
       ctx.hostAddresses.map((range) => resolveProbeURLs(range.replace(/\/\d+$/u, ''), 80)),
     );

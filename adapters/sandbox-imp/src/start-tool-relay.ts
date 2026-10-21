@@ -2,8 +2,8 @@ import { createConnection } from 'node:net';
 import type { ToolTarget } from '@heynixie/sandbox';
 import type { ImpRelay, ImpRelayHandlers } from './types';
 
-// Relays one guest connection to the tool endpoint, with backpressure both ways. impd binds the
-// forward to its imp, so the target belongs to the sandbox's run whatever the guest claims.
+// impd binds each reverse forward to its imp, so the target belongs to the sandbox's run whatever
+// the guest claims.
 export function startToolRelay(
   target: ToolTarget,
   accept: (handlers: ImpRelayHandlers) => ImpRelay,
@@ -38,7 +38,6 @@ export function startToolRelay(
   socket.once('end', relay.sendEof);
   socket.once('close', relay.close);
 
-  // a tool endpoint that is down or resets fails this one connection, never the host process
   socket.on('error', () => {
     relay.close();
   });

@@ -23,22 +23,17 @@ export interface ProcessSandboxContext {
   readonly toolTarget: ToolTargetResolver;
   readonly killGraceMs: number;
 
-  // the host's broker variables, which only a guest with a grant gets, as imp sets them only in an
-  // imp with a grant
   readonly brokerEnv: Readonly<Record<string, string>>;
   readonly id: string;
   readonly spec: SandboxSpec;
 
-  // the sandbox's own directory, which stands in for the guest's filesystem
   readonly fsRoot: string;
 
-  // the same directory under the root as configured, before its symlinks resolve
   readonly aliasFsRoot: string;
   readonly state: ProcessState;
   readonly remove: () => Promise<void>;
 }
 
-// Builds the handle for one sandbox of the double.
 export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
   return {
     id: ctx.id,
@@ -90,8 +85,6 @@ export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
   };
 }
 
-// imp wakes a sleeping imp for an exec; the double refuses one instead, so a test that forgets a
-// wake fails rather than hangs
 function tryStartGuestProcess(ctx: ProcessSandboxContext, command: RunSpec): ProcessIO | Error {
   if (ctx.state.isAsleep()) {
     return new Error(`sandbox ${ctx.id} is asleep`);
@@ -130,9 +123,6 @@ async function readGuestFile(fsRoot: string, path: string): Promise<FileSpec> {
   return { path, content: new Uint8Array(content) };
 }
 
-// The guest's processes start with HOME at the sandbox's own directory unless the command's env
-// sets it, and the guest's root is that directory, so the copy path is the home below it. A HOME
-// under the root as configured moves to the real root, since it may not exist yet to resolve.
 function resolveGuestHome(
   ctx: Pick<ProcessSandboxContext, 'fsRoot' | 'aliasFsRoot'>,
   env: Readonly<Record<string, string>>,
@@ -170,8 +160,6 @@ function readGuestFilePaths(
   return readFilePathsBelow(root, options.maxDepth ?? Number.POSITIVE_INFINITY);
 }
 
-// a walk that reads one folder level per step, so a bounded depth reads no folder below it; a folder
-// that is gone when its read comes lists nothing, and its siblings keep their files
 async function readFilePathsBelow(directory: string, depth: number): Promise<readonly string[]> {
   if (depth < 1) {
     return [];
@@ -200,7 +188,6 @@ async function readFilePathsBelow(directory: string, depth: number): Promise<rea
   return listed.flat();
 }
 
-// a rename, which replaces a file at the target in one step
 async function applyGuestMove(fsRoot: string, from: string, to: string): Promise<void> {
   await rename(resolveGuestPath(fsRoot, from), resolveGuestPath(fsRoot, to));
 }

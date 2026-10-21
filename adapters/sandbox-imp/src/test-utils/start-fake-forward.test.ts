@@ -4,7 +4,6 @@ import { setImmediate as waitForTurn } from 'node:timers/promises';
 import invariant from 'tiny-invariant';
 import { startFakeForward } from './start-fake-forward';
 
-// a port that was free a moment ago, for the forward to listen on
 async function setupTest() {
   const probe = createServer();
   const listening = Promise.withResolvers<void>();

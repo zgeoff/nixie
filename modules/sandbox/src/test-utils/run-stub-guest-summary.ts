@@ -4,9 +4,6 @@ import type { StubGuestRun } from './run-stub-guest-turn';
 
 type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 
-// Runs one summary as the conversation guest does: a fork at the resume point with the instruction
-// added, and a summary built from the session's own transcript, at the fork's last chain entry. It
-// removes no session.
 export function runStubGuestSummary(
   frame: SummarizeFrame,
   run: Pick<StubGuestRun, 'disk' | 'home' | 'countTokens'>,
@@ -53,7 +50,6 @@ export function runStubGuestSummary(
   ];
 }
 
-// the entry count and the last reply, so a test sees which transcript the summary came from
 function buildSummaryText(history: readonly { role: string; text: string }[]): string {
   const lastReply = history.findLast((entry) => entry.role === 'assistant' && entry.text !== '');
 

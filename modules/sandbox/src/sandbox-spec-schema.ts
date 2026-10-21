@@ -18,7 +18,6 @@ const limitsSchema = z.object({
   diskMiB: z.number(),
 });
 
-// A sandbox's spec as its created record holds it, which the projection keeps for crash recovery.
 export const sandboxSpecSchema = z.object({
   kind: z.enum(['conversation', 'checker', 'worker', 'code_run', 'fetch', 'coding']),
   image: z.string(),

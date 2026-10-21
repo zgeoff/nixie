@@ -2,9 +2,6 @@ import type { SandboxSpec } from './types';
 
 const loopback = ['127.0.0.1', 'localhost'];
 
-// Merges a command's environment with the sandbox's own: each grant's placeholders, and NO_PROXY
-// with the loopback on it, so the tool route skips the broker. The caller's values win, except that
-// NO_PROXY always keeps the loopback.
 export function mergeExecEnv(
   spec: SandboxSpec,
   env: Readonly<Record<string, string>> | undefined,

@@ -4,7 +4,6 @@ import { makeGatedCall } from '@heynixie/testing';
 import { setupIsolationAdapter } from './setup-isolation-adapter';
 import { startFakeImp } from './start-fake-imp';
 
-// the fake impd that each test's adapter talks to
 async function setupTest() {
   return { imp: await startFakeImp() };
 }
@@ -26,7 +25,6 @@ test('it adds the model-host secret under the name it is given', async () => {
 test('it destroys each imp it made, then removes the secret, when the test finishes', async () => {
   const ctx = await setupTest();
 
-  // the removal goes on the fake's call log, so the log shows the order of every removal
   const removeSecret = mock((name: string) => {
     ctx.imp.calls.push(`secret-remove ${name}`);
 
@@ -68,7 +66,6 @@ test('it destroys an imp whose create was still running when the test finished',
     secret: 'nixie-test-a',
   });
 
-  // the test ends before the create returns, as one does when the create outlives its timeout
   void isolation.createSandbox(
     buildMockSandboxSpec({
       kind: 'conversation',
@@ -84,7 +81,6 @@ test('it destroys an imp whose create was still running when the test finished',
 test('it destroys an imp whose failed create could not roll it back', async () => {
   const ctx = await setupTest();
 
-  // the rollback's removal fails, and the removal at teardown succeeds
   ctx.imp.failRemove = true;
 
   onTestFinished(() => {
@@ -127,9 +123,6 @@ test('it removes a secret whose add was still running when the test finished', a
   const ctx = await setupTest();
 
   const removeSecret = mock(() => Promise.resolve());
-
-  // the add stores the secret only 50 ms after the test has finished, as one that outlives a
-  // timeout does
   const addSecret = makeGatedCall(ctx.imp.port.addSecret, { delayMs: 50 });
 
   onTestFinished(() => {

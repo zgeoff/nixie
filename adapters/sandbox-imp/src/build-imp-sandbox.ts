@@ -27,15 +27,11 @@ export interface ImpSandboxContext {
   readonly id: string;
   readonly spec: SandboxSpec;
 
-  // impd still backs the imp up, so its owner replaces it
   readonly isRetired: boolean;
 
-  // whether the adapter last put this imp to sleep, so a later call records the wake it causes
   readonly sleeping: SleepRegistry;
 }
 
-// Builds the handle for one imp. Every exec opens the tool route first when it has closed, so the
-// route stands again after a sleep that impd took on its own.
 export function buildImpSandbox(ctx: ImpSandboxContext): Sandbox {
   return {
     id: ctx.id,
@@ -80,9 +76,8 @@ async function startImpProcess(ctx: ImpSandboxContext, command: ExecSpec) {
     requireBroker: ctx.spec.grants.length > 0,
   });
 
-  // an idle sleep that impd starts between the route's open and the exec's arrival holds the exec
-  // until it wakes the imp, and ends the forward meanwhile, so the forward listens again once the
-  // exec has started, which imp's client reports after it returns the handle
+  // impd can start an idle sleep between the route's open and the exec's arrival. The sleep holds the
+  // exec until the imp wakes and ends the forward, so the route opens again once the exec starts.
   try {
     await exec.started;
 
@@ -95,9 +90,6 @@ async function startImpProcess(ctx: ImpSandboxContext, command: ExecSpec) {
   return toProcessIO(exec, ctx.killGraceMs);
 }
 
-// A call on an imp the adapter put to sleep wakes it first and records the wake. impd holds an imp
-// through an idle sleep and ends its forward only after the snapshot, so the wake waits that out and
-// the forward listens again on the woken imp before the guest connects.
 async function startRoute(ctx: ImpSandboxContext): Promise<void> {
   if (ctx.sleeping.isAsleep(ctx.id)) {
     await updateImpAwake(ctx);
@@ -116,9 +108,8 @@ async function updateImpAwake(ctx: ImpSandboxContext): Promise<void> {
   await ctx.recorder.write({ event: 'woken', sandboxID: ctx.id });
 }
 
-// Each grant's placeholders, then the command's own variables. impd sets the broker's variables for
-// an imp with a grant, NO_PROXY with the loopback among them, and refuses an exec whose env
-// replaces one, so the adapter adds no NO_PROXY of its own. An imp with no grant has no proxy.
+// impd sets the broker's variables, NO_PROXY with the loopback among them, for an imp with a grant,
+// and refuses an exec whose env replaces one, so this env adds no NO_PROXY.
 function buildImpExecEnv(
   spec: SandboxSpec,
   env: Readonly<Record<string, string>> | undefined,
@@ -160,13 +151,11 @@ function requireSuccess(result: ExecResult, action: string): void {
   }
 }
 
-// the largest file copyOut brings onto the host, so a guest cannot fill the host's memory
 const copyOutLimitBytes = 64 * 1024 * 1024;
 
 async function readGuestFile(ctx: ImpSandboxContext, path: string): Promise<FileSpec> {
   requireGuestPath(path);
 
-  // the guest sends at most one byte past the limit, which shows the cut
   const io = await startImpProcess(ctx, {
     argv: ['head', '-c', String(copyOutLimitBytes + 1), '--', path],
   });
@@ -185,8 +174,6 @@ async function readGuestFile(ctx: ImpSandboxContext, path: string): Promise<File
   return { path, content: content.bytes };
 }
 
-// The imp's root is the guest's own, so both forms of the home are the HOME the command runs with,
-// which the guest command always sets, since the imp's default lies in the image.
 function resolveGuestHome(env: Readonly<Record<string, string>>): GuestHome {
   const home = env['HOME'];
 
@@ -199,12 +186,8 @@ function resolveGuestHome(env: Readonly<Record<string, string>>): GuestHome {
   return { copyPath: home, ownPath: home };
 }
 
-// a missing directory lists nothing; the arguments after the directory bound find's depth, and find
-// separates the paths with NUL, which no path holds
 const listScript = '[ -d "$1" ] || exit 0; cd -- "$1" && shift && find . "$@" -type f -print0';
 
-// The list comes back through the output cap, which guards against a guest that prints without end,
-// so a caller that needs only the top of a tree bounds the depth, and deeper files never fill it.
 async function readGuestFilePaths(
   ctx: ImpSandboxContext,
   directory: string,
@@ -235,7 +218,6 @@ async function readGuestFilePaths(
     .map((path) => path.slice('./'.length));
 }
 
-// mv renames within the imp's filesystem, which replaces a file at the target in one step
 async function applyGuestMove(ctx: ImpSandboxContext, from: string, to: string): Promise<void> {
   requireGuestPath(from);
   requireGuestPath(to);
@@ -246,8 +228,6 @@ async function applyGuestMove(ctx: ImpSandboxContext, from: string, to: string):
   requireSuccess(result, `move of ${from} to ${to}`);
 }
 
-// A sleep ends the forward in the imp, so the adapter closes its side first, and opens it again
-// after the wake.
 function buildSuspension(ctx: ImpSandboxContext): Sandbox['suspension'] {
   return {
     kind: 'memory',

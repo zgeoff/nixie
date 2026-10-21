@@ -5,8 +5,6 @@ export type MockSandboxSpecOverrides = Partial<Omit<SandboxSpec, 'limits'>> & {
   readonly limits?: Partial<SandboxLimits>;
 };
 
-// A worker sandbox with no egress and no grant, on a disk no smaller than a built image's 4096 MiB
-// filesystem, which every adapter accepts. A limits override merges into the default limits.
 export function buildMockSandboxSpec(overrides: MockSandboxSpecOverrides = {}): SandboxSpec {
   const { limits, ...rest } = overrides;
 

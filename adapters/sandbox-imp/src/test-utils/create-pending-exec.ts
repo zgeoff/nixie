@@ -1,8 +1,6 @@
 import { waitForSettled } from '@heynixie/async';
 import type { ImpExec } from '../types';
 
-// An exec handle that exists before its exec starts once wait resolves, as imp's client returns one
-// before impd sends its started message. A rejected start rejects started and exit, and errors both output streams.
 export function createPendingExec(wait: Promise<void>, start: () => ImpExec): ImpExec {
   const starting = startAfter(wait, start);
 
@@ -12,7 +10,6 @@ export function createPendingExec(wait: Promise<void>, start: () => ImpExec): Im
   const started = waitForStarted(starting);
   const exit = waitForExit(starting);
 
-  // marks each rejection handled, so an exec that never starts raises no unhandled rejection
   void waitForSettled(started);
   void waitForSettled(exit);
   void startOutput(starting, 'stdout', stdout.writable);
@@ -73,9 +70,7 @@ async function startOutput(
 async function stopOutput(writable: WritableStream<Uint8Array>, error: unknown): Promise<void> {
   try {
     await writable.abort(error);
-  } catch {
-    // a pipe that failed partway has aborted its output already
-  }
+  } catch {}
 }
 
 async function sendSignalOnStart(starting: Promise<ImpExec>, signal: string): Promise<void> {
@@ -83,9 +78,7 @@ async function sendSignalOnStart(starting: Promise<ImpExec>, signal: string): Pr
     const exec = await starting;
 
     exec.sendSignal(signal);
-  } catch {
-    // an exec that never started has nothing to signal
-  }
+  } catch {}
 }
 
 async function stopOnStart(starting: Promise<ImpExec>): Promise<void> {
@@ -93,7 +86,5 @@ async function stopOnStart(starting: Promise<ImpExec>): Promise<void> {
     const exec = await starting;
 
     exec.close();
-  } catch {
-    // an exec that never started has nothing to close
-  }
+  } catch {}
 }

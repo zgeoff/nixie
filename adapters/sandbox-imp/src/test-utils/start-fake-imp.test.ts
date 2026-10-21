@@ -153,7 +153,6 @@ test('it runs an exec with the broker variables when the exec requires the broke
   expect(output).toBe('http://broker.invalid:3128 localhost,127.0.0.1,::1\n');
 });
 
-// 34 is a real-time signal, which has no name, so Bun gives it as a number
 test('it reports an exec that a signal with no name ended with the signal as its number', async () => {
   const imp = await startFakeImp();
 
@@ -177,7 +176,6 @@ test('it kills an exec that outlives SIGTERM at its kill grace', async () => {
     { env: {}, killGraceMs: 100, requireBroker: false },
   );
 
-  // the shell prints once it ignores SIGTERM
   await exec.stdout.getReader().read();
 
   exec.sendSignal('SIGTERM');
@@ -296,7 +294,6 @@ test('it starts the idle sleep set for the next wake of the imp once that wake e
 test('it kills each exec process group and closes each forward when the test finishes', async () => {
   const imp = await startFakeImp();
 
-  // the shell prints its pid, which leads the exec's own process group, then becomes the sleep
   const exec = await imp.port.openExec('nixie-a', ['sh', '-c', 'echo $$; exec sleep 60'], {
     env: {},
     killGraceMs: 5000,

@@ -3,8 +3,6 @@ import { readStreamOutput } from './read-stream-output';
 import type { ProcessIO } from './start-exec-stream';
 import type { ExecResult } from './types';
 
-// Runs a started process to its exit: it writes stdin and closes it, collects both outputs cut at
-// the exec limit, and stops the process when the signal aborts.
 export async function runCommand(
   io: ProcessIO,
   stdin: Uint8Array | undefined,
@@ -36,8 +34,6 @@ export async function runCommand(
   }
 }
 
-// A command that exits or closes stdin before it reads all of it fails the write. Its exit and
-// output are the result, so the write error never replaces them.
 async function writeStdin(io: ProcessIO, stdin: Uint8Array | undefined): Promise<void> {
   try {
     if (stdin !== undefined && stdin.byteLength > 0) {
@@ -45,7 +41,5 @@ async function writeStdin(io: ProcessIO, stdin: Uint8Array | undefined): Promise
     }
 
     await io.closeStdin();
-  } catch {
-    // the exit reports what happened
-  }
+  } catch {}
 }

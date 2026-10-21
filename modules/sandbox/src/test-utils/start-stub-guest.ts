@@ -6,28 +6,21 @@ type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 
 type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 
-// The guest's side of one turn: the messages the host sent into it, one at a time.
 interface StubGuest {
-  // aborts when the host stops the guest; a script writes nothing to the disk once it has
   readonly signal?: AbortSignal;
 
-  // rejects with the signal's reason once the guest stops
   readonly waitForMessage: () => Promise<InboxMessage>;
 
-  // the next message that has arrived and nothing has taken, or undefined when none
   readonly takeMessage?: () => InboxMessage | undefined;
 
-  // sends frames before the script ends, as the guest sends each input's result once it completes
   readonly emit?: (frames: readonly GuestFrame[]) => void;
 }
 
-// Answers one turn frame with the guest frames the stub sends back before it exits.
 export type StubGuestScript = (
   turn: TurnFrame,
   guest: StubGuest,
 ) => Promise<readonly GuestFrame[]> | readonly GuestFrame[];
 
-// Answers one summarize frame with the guest frames the stub sends back before it exits.
 export type StubSummaryScript = (
   frame: SummarizeFrame,
 ) => Promise<readonly GuestFrame[]> | readonly GuestFrame[];
@@ -37,15 +30,11 @@ export interface StubGuestHooks {
   readonly onSummary: StubSummaryScript;
   readonly onPurge: () => Promise<readonly GuestFrame[]> | readonly GuestFrame[];
 
-  // sees every frame the host sends, in order, before the guest answers it
   readonly onFrame?: (frame: HostFrame) => void;
 }
 
 const noStderr = { bytes: new Uint8Array(0), totalBytes: 0, isCut: false };
 
-// Starts the stub guest on a framed stream: it answers a turn, summarize or purge frame with its
-// script. A stop ends the guest at once, as a kill does, whether or not the script settles, and the
-// frames the script sent before the stop stay sent.
 export function startStubGuest(hooks: StubGuestHooks): ExecStream {
   const output = new TransformStream<Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>>();
 
@@ -55,8 +44,6 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
   const stopping = new AbortController();
 
   const inbox = buildMessageQueue(stopping.signal);
-
-  // the writes so far, in order; a stopped guest queues none
   const sending = { done: Promise.resolve() };
 
   const emit = (frames: readonly GuestFrame[]) => {
@@ -80,7 +67,6 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
     exit.resolve(ended);
   };
 
-  // a script the host stopped sends nothing more, and the stop ends the guest
   const runScript = async (first: Exclude<HostFrame, { type: 'message' }>) => {
     const answer = await tryRunFirstFrame(hooks, first, {
       signal: stopping.signal,
@@ -124,7 +110,6 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
   };
 }
 
-// the guest's inbox; a wait rejects, with the signal's reason as the cause, once the signal aborts
 function buildMessageQueue(signal: AbortSignal): {
   readonly push: (message: InboxMessage) => void;
   readonly wait: () => Promise<InboxMessage>;
@@ -180,7 +165,6 @@ function buildStoppedError(signal: AbortSignal): Error {
   });
 }
 
-// a write the host's closed stream refuses is dropped, as the host reads nothing more
 async function writeFrames(
   writer: WritableStreamDefaultWriter<Uint8Array<ArrayBuffer>>,
   frames: readonly GuestFrame[],
@@ -190,7 +174,6 @@ async function writeFrames(
   }
 }
 
-// a script that throws ends the guest as the real one does: a failed frame, then exit code 0
 async function tryRunFirstFrame(
   hooks: StubGuestHooks,
   first: Exclude<HostFrame, { type: 'message' }>,

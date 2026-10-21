@@ -1,7 +1,7 @@
 import type { CollectedOutput } from './types';
 
-// Reads a stream to its end and keeps its first limitBytes. It reads past the limit and drops the
-// rest, so a runtime that ends a command whose output nobody reads never sees an unread stream.
+// The read drains the stream past limitBytes, because a runtime can stall a command whose output
+// nobody reads.
 export async function readStreamOutput(
   stream: ReadableStream<Uint8Array>,
   limitBytes: number,

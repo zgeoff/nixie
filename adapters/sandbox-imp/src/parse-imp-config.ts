@@ -1,8 +1,5 @@
 import { rangePattern } from './range-pattern';
 
-// The deployment's ranges for public egress, the same lists impd reads, which the adapter takes as
-// config. Without host addresses the adapter refuses public egress, because a host address the
-// list leaves out is reachable from a public imp.
 export interface PublicEgressConfig {
   readonly hostAddresses: readonly string[];
   readonly egressDeny: readonly string[];
@@ -14,9 +11,6 @@ export interface ImpConfig {
   readonly publicEgress: PublicEgressConfig | null;
 }
 
-// Parses the imp adapter's config from the environment: IMP_URL and IMP_TOKEN, and the public
-// egress ranges in IMP_HOST_ADDRESSES and IMP_EGRESS_DENY, each a list of addresses or networks
-// split by commas or spaces.
 export function parseImpConfig(env: Readonly<Record<string, string | undefined>>): ImpConfig {
   const url = env['IMP_URL'] ?? '';
   const token = env['IMP_TOKEN'] ?? '';

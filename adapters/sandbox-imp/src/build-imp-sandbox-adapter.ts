@@ -21,17 +21,12 @@ export interface ImpSandboxOptions {
   readonly recorder: SandboxRecorder;
   readonly config: { readonly publicEgress: PublicEgressConfig | null };
 
-  // the tool endpoint for a sandbox's run, where the reverse forward delivers each connection
   readonly toolTarget: ToolTargetResolver;
 
-  // the loopback port in the imp that the reverse forward listens on
   readonly guestToolPort?: number;
   readonly killGraceMs?: number;
 }
 
-// The sandbox adapter on imp: each sandbox is one imp named by its sandbox ID. The broker injects
-// each grant from the host, and the route to nixie's tools is a reverse forward from the imp's
-// loopback over impd, never an allow entry. Every imp it creates stays out of impd's backups.
 export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapter {
   const guestToolPort = options.guestToolPort ?? 8901;
 
@@ -85,7 +80,6 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
   };
 }
 
-// A recorded sandbox's handle, retired when impd still backs its imp up, so its owner replaces it
 function makeRowSandboxReader(
   port: ImpPort,
   sleeping: SleepRegistry,
@@ -100,9 +94,6 @@ function makeRowSandboxReader(
   };
 }
 
-// Refuses a spec before it writes anything, then writes the created record before impd makes the
-// imp, so recovery finds an imp that a crash cut short. A failure removes the imp and records the
-// sandbox as destroyed.
 interface ImpSandboxes {
   readonly getSandbox: (id: string, spec: SandboxSpec) => Sandbox;
   readonly removeSandbox: (id: string) => Promise<void>;
@@ -161,8 +152,6 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
   return sandbox;
 }
 
-// A secret stays under its name once stored, because a sandbox's grant may name it; a caller with a
-// new value stores it under a new name.
 function makeSecretAdder(port: ImpPort): SandboxAdapter['addSecret'] {
   return async (secret) => {
     if ((await port.readSecretHosts(secret.name)) !== null) {
@@ -180,9 +169,6 @@ function makeSecretAdder(port: ImpPort): SandboxAdapter['addSecret'] {
   };
 }
 
-// A release names each image by its kind and digest, so impd pulls a name once. A held name matches,
-// with no add impd could refuse, when its digest or the digest its ref pins is the release's. Any
-// other is refused, because a spec that names it would run an image the manifest never pinned.
 function makeImageAdder(port: ImpPort): SandboxAdapter['addImage'] {
   return async (image) => {
     const digest = findPinnedDigest(image.ref);
@@ -209,8 +195,8 @@ function findPinnedDigest(ref: string): string | undefined {
   return /@(?<digest>sha256:[\da-f]{64})$/u.exec(ref)?.groups?.['digest'];
 }
 
-// impd's refusal names neither the image nor the ref, so the start step's log could not say which
-// image the host owner has to add
+// impd's refusal names neither the image nor the ref, so the log could not say which image the host
+// owner must add.
 async function createImpImage(
   port: ImpPort,
   image: Parameters<ImpPort['addImage']>[0],
@@ -226,7 +212,6 @@ async function createImpImage(
   }
 }
 
-// the runtime is ready while impd answers
 function makeRuntimeChecker(port: ImpPort): SandboxAdapter['checkRuntime'] {
   return async (signal) => {
     try {
@@ -234,7 +219,6 @@ function makeRuntimeChecker(port: ImpPort): SandboxAdapter['checkRuntime'] {
 
       return { isReady: true, reason: null };
     } catch {
-      // the health endpoint answers without a session, so the reason never quotes impd's error
       return { isReady: false, reason: 'impd does not answer' };
     }
   };

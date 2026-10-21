@@ -11,13 +11,9 @@ export interface FakeForwardOptions {
   readonly onConnection: Parameters<ImpPort['openReverseForward']>[2];
   readonly onStop: () => void;
 
-  // resolves once the imp runs, as impd answers a listen only after a sleep that holds the imp ends
   readonly waitForAwake?: () => Promise<void>;
 }
 
-// Stands in for an impd reverse forward: it listens on a local port, which a local guest reaches as
-// the imp's loopback port, and relays each connection as impd does. Its listener and connections
-// close at a lost stop, as when the imp's VM stops, and when the test finishes.
 export function startFakeForward(options: FakeForwardOptions): SleepingForward {
   const ending = createEnding();
 
@@ -30,7 +26,6 @@ export function startFakeForward(options: FakeForwardOptions): SleepingForward {
   server.once('error', ending.listening.reject);
   void startListener(options, server, ending);
 
-  // a wake that resolves after the test finishes finds the forward ended, so it opens no listener
   onTestFinished(() => {
     ending.stop();
 
@@ -57,18 +52,15 @@ interface Ending {
   readonly ended: PromiseWithResolvers<{ readonly kind: string }>;
   readonly isEnded: () => boolean;
 
-  // ends the forward without settling its promises, as no one reads them once the test finishes
   readonly stop: () => void;
   readonly stopAs: (kind: string) => void;
 }
 
-// a forward that ends before it listens never listens, and its listening rejects, as impd's does
 function createEnding(): Ending {
   const listening = Promise.withResolvers<unknown>();
   const ended = Promise.withResolvers<{ readonly kind: string }>();
   let isEnded = false;
 
-  // marks the rejection handled, so a forward that never listens raises no unhandled rejection
   void waitForSettled(listening.promise);
 
   return {
@@ -89,8 +81,6 @@ function createEnding(): Ending {
 
 function startGuestRelay(options: FakeForwardOptions, sockets: Set<Socket>, socket: Socket): void {
   sockets.add(socket);
-
-  // a guest that resets its connection raises an error, which the close then reports as lost
   socket.on('error', () => {});
 
   socket.once('close', () => {
@@ -120,7 +110,6 @@ function startGuestRelay(options: FakeForwardOptions, sockets: Set<Socket>, sock
   });
 }
 
-// listens once the imp is awake, unless the forward ended while it waited
 async function startListener(
   options: FakeForwardOptions,
 
@@ -137,8 +126,6 @@ async function startListener(
   }
 }
 
-// Closes every open guest connection, then waits for the listener to close, so no connection
-// outlives the test. A forward the test stopped has closed its listener already.
 async function stopForward(server: Server, sockets: ReadonlySet<Socket>): Promise<void> {
   for (const socket of sockets) {
     socket.destroy();
