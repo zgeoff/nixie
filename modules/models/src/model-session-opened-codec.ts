@@ -2,12 +2,8 @@ import { defineRecordCodec } from '@heynixie/log';
 import { z } from 'zod';
 import { modelFieldsShape } from './model-fields-shape';
 
-// each status line the opening showed, by name
 const statusSchema = z.record(z.string(), z.union([z.string(), z.number()]));
 
-// A new session's opening: what started it, the session a rebuild replaced, what the opening read
-// and the sequence its recent turns start from, the newest recall before it, the status lines it
-// showed, and the persona and policy hashes it opened under.
 export const modelSessionOpenedCodec = defineRecordCodec(
   'model.session_opened',
   z.object({

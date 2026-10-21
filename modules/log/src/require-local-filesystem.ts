@@ -1,6 +1,6 @@
 import type { ReadFilesystemType } from './types';
 
-// statfs magic numbers from Linux's magic.h and the filesystems that define their own
+// The statfs magic numbers come from Linux's magic.h and from the filesystems that define their own.
 const NETWORK_FILESYSTEMS = new Map([
   [0x69_69, 'nfs'],
   [0x51_7b, 'smb'],
@@ -17,9 +17,8 @@ const NETWORK_FILESYSTEMS = new Map([
   [0x74_61_63_6f, 'ocfs2'],
 ]);
 
-// Throws unless the data directory sits on a local filesystem. The writer lock and SQLite's own
-// locks hold only between processes on one kernel, and a network filesystem can let a second node
-// write the same database.
+// flock and SQLite's locks hold only between processes on one kernel, so a network filesystem can
+// let a second node write the same database.
 export function requireLocalFilesystem(
   dataDir: string,
   readFilesystemType: ReadFilesystemType,

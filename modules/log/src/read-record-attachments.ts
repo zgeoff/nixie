@@ -3,9 +3,6 @@ import { decodeAttachment } from './decode-attachment';
 import { readRecordKeys } from './read-record-keys';
 import type { Log, LogTables, RecordAttachments } from './types';
 
-// Reads and decrypts the attachments of each record named, in the order written, keyed by the
-// record's sequence. A record with none reads as none, and one whose key a forget deleted reads as
-// shredded. A key that fails to unwrap, or a ciphertext that fails to decrypt, reads as unreadable.
 export async function readRecordAttachments(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   sequences: readonly number[],

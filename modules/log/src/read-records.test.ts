@@ -25,7 +25,6 @@ test('it returns every record after the sequence with the rows as of that record
 
   const read = await readRecords(ctx.log, { afterSequence: 1 });
 
-  // the rows as of each record, never the current rows under an older sequence
   expect(read).toMatchObject([
     {
       record: { sequence: 2, erasable: { status: 'readable', fields: { text: 'second' } } },
@@ -165,7 +164,6 @@ test('it reads a record whose ciphertext fails to decrypt as unreadable', async 
     },
   ]);
 
-  // the append-only trigger refuses the damage, so the test removes it first
   await sql`drop trigger records_refuse_update;
     update records set sealed = randomblob(64)`.execute(ctx.writer.db);
 

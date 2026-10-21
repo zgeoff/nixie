@@ -1,8 +1,6 @@
 import { faker } from '@faker-js/faker';
 import type { ModelProfile } from '../types';
 
-// A direct profile that sends its key in the x-api-key header, with no provider pin, no context cap, 5-minute cache entries
-// and no prices.
 export function buildMockModelProfile(overrides: Partial<ModelProfile> = {}): ModelProfile {
   return {
     id: faker.helpers.slugify(faker.lorem.words(2)),

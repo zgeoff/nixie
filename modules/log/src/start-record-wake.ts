@@ -6,10 +6,8 @@ export interface RecordWakeOptions {
 }
 
 export interface RecordWake {
-  // marks every earlier wake as seen, before a read
   readonly reset: () => void;
 
-  // resolves at once when a wake arrived since the last reset, and otherwise at the next one
   readonly wait: () => Promise<void>;
   readonly stop: () => void;
 }
@@ -20,8 +18,6 @@ interface WakeState {
   waiter: PromiseWithResolvers<void> | null;
 }
 
-// Starts the wakes that tell a reader new records may exist: each change its subscription reports,
-// and the signal's abort. It starts pending, so the first wait never blocks a first read.
 export function startRecordWake(options: RecordWakeOptions): RecordWake {
   const state: WakeState = { pending: true, stopped: false, waiter: null };
 
@@ -45,7 +41,6 @@ export function startRecordWake(options: RecordWakeOptions): RecordWake {
     emitWake();
   };
 
-  // an abort stops the subscription at once, even when no consumer pulls again
   options.signal?.addEventListener('abort', stop, { once: true });
 
   return {

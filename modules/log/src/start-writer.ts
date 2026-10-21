@@ -12,22 +12,15 @@ import { startKeyStore } from './start-key-store';
 import type { ReadFilesystemType, Writer } from './types';
 
 export interface StartWriterOptions {
-  // the volume's mount root, which holds nixie.db and the key store
   readonly dataDir: string;
   readonly schema?: BuildSchema;
   readonly readFilesystemType?: ReadFilesystemType;
 
-  // the system clock by default; a test build passes the clock its test steps
   readonly clock?: Clock;
 
-  // how long the key store waits for another connection's lock; the database's default when absent,
-  // and a test passes a short one to reach the busy path quickly
   readonly keyStoreBusyTimeoutMs?: number | undefined;
 }
 
-// Makes this process the database's one writer, in the order a release on the host needs: refuse a
-// network filesystem, take the writer lock, raise the writer epoch, then copy and migrate the
-// database, then open the key store beside it. Any failure releases what the start took.
 export async function startWriter(options: StartWriterOptions): Promise<Writer> {
   requireLocalFilesystem(options.dataDir, options.readFilesystemType ?? statfsSync);
 
@@ -62,7 +55,6 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
   }
 }
 
-// a second stop waits for the first, because a stopped handle never answers another close
 function makeStopOnce(
   handles: readonly Writer['db'][],
   lock: ReturnType<typeof claimWriterLock>,

@@ -2,35 +2,26 @@ import type { Clock } from '@heynixie/clock';
 import type { CheckedTables, MigrationReport } from '@heynixie/db';
 import type { Generated, Kysely, Selectable, Transaction } from 'kysely';
 
-// The one process that writes the database, from start until stop.
 export interface Writer {
-  // the volume's mount root, which holds nixie.db and keys.db
   readonly dataDir: string;
   readonly db: Kysely<unknown>;
 
-  // keys.db, the key store that holds every record key wrapped by the deployment key
   readonly keys: Kysely<unknown>;
   readonly epoch: number;
 
-  // the clock every record's time and every wait in the log reads
   readonly clock: Clock;
 
-  // the commit bus, which fires a commit event after each write transaction commits, so a reader
-  // in this process wakes without a poll
   readonly commits: EventTarget;
   readonly migration: MigrationReport;
   readonly stop: () => Promise<void>;
 }
 
-// Attaches onChange to a source of commit wakes and returns the call that detaches it.
 export type SubscribeToChanges = (onChange: () => void) => () => void;
 
-// The exclusive flock on the data directory, held until release or until the process dies.
 export interface WriterLock {
   readonly release: () => void;
 }
 
-// The part of statfs that tells a local filesystem from a network one.
 export type ReadFilesystemType = (path: string) => { readonly type: number };
 
 export type JSONValue =
@@ -43,10 +34,8 @@ export type JSONValue =
 
 export type JSONObject = Readonly<Record<string, JSONValue>>;
 
-// Your words, your own data, or untrusted content.
 export type ContentSource = 'owner' | 'owner_data' | 'untrusted';
 
-// The 6 prompt causes, one on every record that prompts you.
 export type PromptCause =
   | 'direct_request'
   | 'repeat'
@@ -55,20 +44,16 @@ export type PromptCause =
   | 'ask_rule'
   | 'no_rule';
 
-// The decision point's verdict on a tool call, which the record of that call carries. The snapshot
-// hash of the definitions in force sits in the record's definitions field.
 export interface Decision {
   readonly outcome: 'allow' | 'ask' | 'deny';
   readonly stage: number;
   readonly rule: { readonly id: string; readonly revision: number } | null;
 
-  // stage 5: each destination and the permission that covered it, or null for none
   readonly destinations?: readonly {
     readonly destination: string;
     readonly permission: string | null;
   }[];
 
-  // consent: the record of your message and the checker's verdict
   readonly consent?: { readonly messageSequence: number; readonly verdict: string };
   readonly autoMode?: {
     readonly verdict: string;
@@ -77,7 +62,6 @@ export interface Decision {
   };
 }
 
-// The snapshot hash of the definitions in force, and the persona and job versions the task pins.
 export interface Definitions {
   readonly snapshotHash: string;
   readonly personaVersion?: string;
@@ -90,18 +74,12 @@ export interface Approval {
   readonly actionHash: string;
 }
 
-// The record kinds the log holds: its own reset record, and the kinds each module merges in from the
-// <module>-record-kind.ts its index exports, so a kind no module registered fails type-checking
-// wherever a record is written, read or matched.
 export interface RecordKinds {
   log_reset: true;
 }
 
 export type RecordKind = keyof RecordKinds;
 
-// One record kind's payload, typed for its writer and its readers. tryDecodePartial serves a reader
-// of records from before a field existed: any field may be missing, a present field must fit, and a
-// payload with a field that does not fit gives null.
 export interface RecordCodec<Kind extends RecordKind, Payload, PartialPayload = Partial<Payload>> {
   readonly kind: Kind;
   readonly encode: (payload: Payload) => Payload;
@@ -110,8 +88,6 @@ export interface RecordCodec<Kind extends RecordKind, Payload, PartialPayload = 
   readonly tryDecodePartial: (payload: JSONObject) => PartialPayload | null;
 }
 
-// What a caller appends. The payload holds only structured data: IDs, counts, hashes and states.
-// Every free-text field goes in erasable, which nixie encrypts under a key of its own.
 export interface RecordInput {
   readonly kind: RecordKind;
   readonly definitions: Definitions;
@@ -125,13 +101,9 @@ export interface RecordInput {
   readonly payload?: JSONObject;
   readonly erasable?: JSONObject;
 
-  // bytes the record carries beside its erasable fields, such as the images of your message, each
-  // sealed under the record's key in its own row, so a forget leaves them unreadable with the text
   readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
 }
 
-// A record as the log holds it, without its erasable fields. A projection folds this shape, so a
-// rebuild after a forget gives the same rows as the live fold did.
 export interface EnvelopeRecord {
   readonly sequence: number;
   readonly recordedAt: Date;
@@ -147,8 +119,6 @@ export interface EnvelopeRecord {
   readonly payload: JSONObject;
 }
 
-// none: the record had no erasable fields. shredded: its key is gone, so a gap stands where they
-// were. unreadable: the key or the ciphertext failed to decrypt. readable: the key decrypted them.
 export type ErasableFields =
   | { readonly status: 'none' }
   | { readonly status: 'shredded' }
@@ -159,37 +129,29 @@ export interface LogRecord extends EnvelopeRecord {
   readonly erasable: ErasableFields;
 }
 
-// A row a record changed, as it stood after that record, or null when the record removed it.
 export interface ProjectionChange {
   readonly projection: string;
   readonly key: string;
   readonly row: JSONObject | null;
 }
 
-// A record and the projection rows its transaction changed, which a reader applies together.
 export interface RecordWithChanges {
   readonly record: LogRecord;
   readonly changes: readonly ProjectionChange[];
 }
 
-// A table that answers a question the log answers too slowly. fold applies one record to the
-// table and returns the key of every row it changed. It reads only the envelope and the plain
-// payload, so a drop and a fold from the first record rebuild the table.
 export interface Projection {
   readonly table: string;
   readonly keyColumn: string;
   readonly fold: (tx: Transaction<unknown>, record: EnvelopeRecord) => Promise<readonly string[]>;
 }
 
-// What appending and reading need: the writer, the deployment key that wraps every record key,
-// and the projections each append updates.
 export interface Log {
   readonly writer: Pick<Writer, 'clock' | 'commits' | 'dataDir' | 'db' | 'epoch' | 'keys'>;
   readonly deploymentKey: CryptoKey;
   readonly projections: readonly Projection[];
 }
 
-// The rows of the log's own tables, as SQLite returns them.
 interface RecordTable {
   readonly sequence: Generated<number>;
   readonly recorded_at: number;
@@ -234,15 +196,13 @@ interface RecordAttachmentRow {
   readonly sealed: Uint8Array<ArrayBuffer>;
 }
 
-// none: the record has no attachments. shredded: its key is gone. unreadable: the key or a
-// ciphertext failed to decrypt. readable: the key decrypted each one, in the order written.
 export type RecordAttachments =
   | { readonly status: 'none' }
   | { readonly status: 'shredded' }
   | { readonly status: 'unreadable' }
   | { readonly status: 'readable'; readonly attachments: readonly Uint8Array<ArrayBuffer>[] };
 
-// mapped types, because Kysely's table map needs the index signature an interface lacks
+// These are mapped types, because Kysely's table map needs the index signature an interface lacks.
 export type LogTables = CheckedTables<
   Readonly<{
     records: RecordTable;

@@ -16,14 +16,11 @@ const pricesSchema = z.strictObject({
   output: priceSchema,
 });
 
-// Slice 1 resolves only references into the secrets file; another backend arrives with the
-// credential store.
 const credentialSchema = z
   .string()
   .regex(/^deployment:[\w-]+$/u, 'a credential reference reads deployment:<name>');
 
-// The CLI's auto-compact window takes a plain integer in this range and clamps any other value, so
-// nixie refuses one at start instead.
+// The CLI's auto-compact window takes an integer in this range and clamps any other value.
 const contextTokensSchema = z.int().min(100_000).max(1_000_000);
 
 const profileSchema = z
@@ -39,8 +36,8 @@ const profileSchema = z
     prices: pricesSchema.optional(),
   })
 
-  // With auto-compaction off the CLI ignores the cap and refuses a call only against the window it
-  // assumes for the model, so nixie refuses at start a cap past that window.
+  // With auto-compaction off, the CLI ignores the cap and refuses a call only against the window it
+  // assumes for the model.
   .superRefine((profile, issues) => {
     const window = getCLIContextWindow(profile.model);
 
@@ -62,9 +59,6 @@ const rolesSchema = z.strictObject({
   'memory-consolidator': profileIDSchema.optional(),
 });
 
-// The models section of the deployment configuration: each profile by its ID, and the profile
-// each role uses. It refuses an unset conversation role, so a missing model stops nixie at start
-// and never shows up as a failed turn, and a role that names no profile.
 export const modelsConfigSchema = z
   .strictObject({ profiles: z.record(profileIDSchema, profileSchema), roles: rolesSchema })
   .superRefine((config, issues) => {
@@ -109,7 +103,7 @@ function toProfile(id: string, input: z.infer<typeof profileSchema>): ModelProfi
     providerPin: input.provider_pin ?? null,
     contextTokens: input.context_tokens ?? null,
 
-    // the CLI's own lifetime on an API-key or bearer profile, which the deployment raises to 1 hour
+    // The CLI writes 5-minute entries on an API-key or bearer profile unless told otherwise.
     cacheTTL: input.cache_ttl ?? '5m',
     prices:
       input.prices === undefined

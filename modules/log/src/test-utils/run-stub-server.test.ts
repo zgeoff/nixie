@@ -39,7 +39,6 @@ test('it keeps holding the writer lock after it prints the epoch', async () => {
     await server.exited;
   });
 
-  // the stub prints its epoch once it holds the lock
   await server.stdout.getReader().read();
 
   expect(() => claimWriterLock(ctx.dataDir)).toThrowWithMessage(
