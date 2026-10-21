@@ -15,7 +15,9 @@ globalThis.indexedDB = new IDBFactory();
 globalThis.happyDOM.setURL(`${webOrigin}/`);
 
 server.listen({
-  // No DNS answers the reserved .test domain, so a test site there never reaches the network.
+  // The web server suites call a stub API and the built Start server on loopback ports, which MSW
+  // must pass through. No DNS answers the reserved .test domain, so a test site there never
+  // reaches the network.
   onUnhandledRequest: (request, print) => {
     const hostname = new URL(request.url).hostname;
 
