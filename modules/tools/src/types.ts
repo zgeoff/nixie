@@ -38,7 +38,6 @@ export interface ToolDefinition {
 
   readonly run: (call: ToolCall, context: ToolContext) => Promise<ToolOutcome>;
 
-  // This receives the input as the model sent it, before any schema check.
   readonly recordInput?: (input: JSONObject) => JSONObject;
 }
 
