@@ -15,8 +15,6 @@ import { runContractQuery } from '../test-utils/run-contract-query';
 // skipIf takes a boolean and has no in-body skip.
 const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 
-// a config directory of the run's own, and the options of a turn with one page tool, which each
-// probe adds with the page it answers
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-tool-output-'));
 
