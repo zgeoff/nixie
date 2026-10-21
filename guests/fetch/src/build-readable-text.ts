@@ -1,3 +1,5 @@
+import { decodeHTML, decodeHTMLAttribute } from 'entities';
+
 // Builds an HTML page's readable text: its title, the text of its main content with each link's
 // target after the link, then a short list of the links outside the main content. The web fetch
 // architecture doc gives the order in which the fetcher picks the main content.
@@ -8,7 +10,7 @@ export function buildReadableText(html: string, pageURL: URL): string {
 
   const region = pickContentRegion(reading.regions);
   const content = region === null ? '' : reading.regions[region].join('');
-  const text = normalizeWhitespace(decodeEntities(`${reading.title.join(' ')}\n\n${content}`));
+  const text = normalizeWhitespace(decodeHTML(`${reading.title.join(' ')}\n\n${content}`));
   const otherLinks = formatOtherLinks(reading.links, region);
 
   return otherLinks === '' ? text : `${text}\n\n${otherLinks}`;
@@ -162,57 +164,13 @@ function collectLink(reading: ReadingState, element: HTMLRewriterTypes.Element):
 }
 
 function findLinkTarget(href: string, pageURL: URL): string | null {
-  const target = URL.parse(decodeEntities(href.trim()), pageURL.href);
+  const target = URL.parse(decodeHTMLAttribute(href.trim()), pageURL.href);
 
   if (target === null || (target.protocol !== 'https:' && target.protocol !== 'http:')) {
     return null;
   }
 
   return toURLWithoutFragment(target) === toURLWithoutFragment(pageURL) ? null : target.href;
-}
-
-const entityPattern = /&(?:#\d{1,7}|#[xX][\da-fA-F]{1,6}|[a-zA-Z]{2,8});/gu;
-
-// the numeric references and the common named ones; any other named reference stays as written
-function decodeEntities(text: string): string {
-  return text.replaceAll(entityPattern, (reference) => decodeEntity(reference));
-}
-
-const namedEntities: Readonly<Record<string, string>> = {
-  amp: '&',
-  lt: '<',
-  gt: '>',
-  quot: '"',
-  apos: "'",
-  nbsp: ' ',
-  copy: '©',
-  reg: '®',
-  trade: '™',
-  hellip: '…',
-  mdash: '—',
-  ndash: '–',
-  lsquo: '‘',
-  rsquo: '’',
-  ldquo: '“',
-  rdquo: '”',
-  middot: '·',
-  bull: '•',
-};
-
-function decodeEntity(reference: string): string {
-  const body = reference.slice(1, -1);
-
-  if (!body.startsWith('#')) {
-    return namedEntities[body] ?? reference;
-  }
-
-  const isHex = body[1] === 'x' || body[1] === 'X';
-  const codePoint = isHex ? Number.parseInt(body.slice(2), 16) : Number(body.slice(1));
-
-  const isScalar =
-    codePoint > 0 && codePoint <= 0x10_ff_ff && (codePoint < 0xd8_00 || codePoint > 0xdf_ff);
-
-  return isScalar ? String.fromCodePoint(codePoint) : '\uFFFD';
 }
 
 function toURLWithoutFragment(url: URL): string {
@@ -267,7 +225,7 @@ const regionOrder: readonly Region[] = ['article', 'main', 'page'];
 // the articles, else the main element, else the whole page: the first that holds text
 function pickContentRegion(regions: ReadingState['regions']): Region | null {
   const region = regionOrder.find(
-    (candidate) => normalizeWhitespace(decodeEntities(regions[candidate].join(''))) !== '',
+    (candidate) => normalizeWhitespace(decodeHTML(regions[candidate].join(''))) !== '',
   );
 
   return region ?? null;
@@ -303,7 +261,7 @@ function formatOtherLinks(links: readonly PageLink[], region: Region | null): st
     if (!shownTargets.has(link.target)) {
       shownTargets.add(link.target);
 
-      const text = normalizeWhitespace(decodeEntities(link.text.join(''))).replaceAll(/\n+/gu, ' ');
+      const text = normalizeWhitespace(decodeHTML(link.text.join(''))).replaceAll(/\n+/gu, ' ');
       const line = text === '' ? `- [→ ${link.target}]` : `- ${text} [→ ${link.target}]`;
 
       lines.push(line);

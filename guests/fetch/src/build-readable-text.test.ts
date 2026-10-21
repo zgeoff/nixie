@@ -47,6 +47,27 @@ test('it decodes the entities of an href once', () => {
   ).toBe('Next page [→ https://search.test/find?q=a&page=2&amp;]');
 });
 
+test('it decodes a named reference in an href before it resolves the target', () => {
+  expect(
+    buildReadableText('<p><a href="/caf&eacute;">Cafe</a></p>', new URL('https://menu.test/')),
+  ).toBe('Cafe [→ https://menu.test/caf%C3%A9]');
+});
+
+test('it decodes a numeric reference in an href before it resolves the target', () => {
+  expect(
+    buildReadableText('<p><a href="/na&#239;ve">Naive</a></p>', new URL('https://words.test/')),
+  ).toBe('Naive [→ https://words.test/na%C3%AFve]');
+});
+
+test('it decodes a named reference outside the common ones in the page text', () => {
+  expect(
+    buildReadableText(
+      '<p>Caf&eacute; cr&egrave;me &frac12; price</p>',
+      new URL('https://menu.test/'),
+    ),
+  ).toBe('Café crème ½ price');
+});
+
 test('it lists the links of the navigation and the side panels after the article text', () => {
   const html = `<title>Bakery news</title>
 <nav><a href="/">Home</a> <a href="/menu">Menu</a> <a href="https://social.test/bakery">Follow us</a></nav>
