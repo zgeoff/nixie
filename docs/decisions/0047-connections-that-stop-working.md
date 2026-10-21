@@ -102,9 +102,10 @@ connection's value, and the line names it.
   it expires, the assistant stops and cannot explain why afterwards, so it warns once ahead.
 - `disconnected` shows, so the model says you disconnected it, not that nixie lacks it. It is raised
   only on request, because you chose it.
-- `failing` shows only after the store marks it, after 3 failures in a row, so a short provider blip
-  never reaches the line. Its tools stay listed, because tools that vanish are the confusion this
-  decision removes, and a call can succeed once it recovers.
+- `failing` shows only after the store marks it, so a short provider blip never reaches the line.
+  The store marks `service_error` and `no_answer` after 3 failures in a row, and `unauthorised`
+  after a second rejection that follows a refresh. Its tools stay listed, because tools that vanish
+  are the confusion this decision removes, and a call can succeed once it recovers.
 - `expiring` shows because you talk to the assistant more than you open the client, and the
   assistant can then warn before something breaks.
 - `forgotten` never shows, because Forget is an erasure. The line would carry the label, which
