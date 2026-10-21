@@ -1,7 +1,6 @@
 import type { StoreParts } from './types';
 import type { NewVersion } from './write-version-in-transaction';
 
-// The caller must still hold the delivery lock.
 export async function updateVersionIndex(
   parts: StoreParts,
   itemID: string,
