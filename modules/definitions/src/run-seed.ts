@@ -13,6 +13,7 @@ import type {
   Snapshot,
   SnapshotPolicy,
 } from './types';
+import { writeAdoptedSkills } from './write-adopted-skills';
 import { writeSeed } from './write-seed';
 
 export interface SeedOptions {
@@ -64,6 +65,12 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       policy: options.policy,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
+    });
+
+    await writeAdoptedSkills(tx, {
+      adopted: overlay.adopted,
+      skills: read.parsed.skills,
+      at: options.log.writer.clock.now(),
     });
 
     // an adoption leaves the skills in force as they stand, and the seed still records it

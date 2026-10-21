@@ -227,6 +227,32 @@ test('it opens the pull request and rejects the write when its answer is lost, a
   expect(ctx.repo.readPullRequests().map((request) => request.number)).toStrictEqual([1]);
 });
 
+test('it opens the pull request before a delayed answer, which comes once its work ends', async () => {
+  const ctx = await setupTest();
+
+  const change = {
+    branch: 'nixie/skill/tide-tables',
+    title: 'Add the tide-tables skill that nixie wrote',
+    body: 'first\n',
+    files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
+  };
+
+  const seen: number[][] = [];
+
+  ctx.repo.delayNextAnswer(() => {
+    seen.push(ctx.repo.readPullRequests().map((request) => request.number));
+
+    return Promise.resolve();
+  });
+
+  const delayed = await ctx.repo.writePullRequest(change, 'revision-a');
+  const next = await ctx.repo.writePullRequest(change, 'revision-b');
+
+  expect(seen).toStrictEqual([[1]]);
+  expect(delayed).toStrictEqual({ number: 1, url: 'https://definitions.test/pull/1' });
+  expect(next).toStrictEqual({ number: 1, url: 'https://definitions.test/pull/1' });
+});
+
 test('it refuses to close a pull request it never opened', () => {
   const directory = join(tmpdir(), 'nixie-stub-repo-unused');
 

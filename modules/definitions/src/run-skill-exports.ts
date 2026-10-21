@@ -1,12 +1,19 @@
 import type { Log } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
+import type { Kysely } from 'kysely';
 import invariant from 'tiny-invariant';
+import { match } from 'ts-pattern';
 import { buildSkillExportChange } from './build-skill-export-change';
 import { loadSkillVersions } from './load-skill-versions';
 import { manifestPath } from './manifest-path';
 import { skillsLockPath } from './skills-lock-path';
 import { toSkillExportBranch } from './to-skill-export-branch';
-import type { DefinitionsRepo, DefinitionsTables, PullRequestRef } from './types';
+import type {
+  DefinitionsRepo,
+  DefinitionsTables,
+  PullRequestRef,
+  WrittenSkillState,
+} from './types';
 import { writeSkillExportState } from './write-skill-export-state';
 
 export interface SkillExportOptions {
@@ -24,8 +31,8 @@ export interface SkillExportResult {
 }
 
 // Exports each skill that nixie wrote and that is in force to your definitions repo as a pull
-// request, once per approval and again when you keep it over a change to your definitions. It
-// closes the pull request of each skill you retired by keeping your definitions' version.
+// request, once per approval and again when you keep it over a change to your definitions. A
+// sweep runs one at a time, so it alone closes the export of each approval that left force.
 export async function runSkillExports(options: SkillExportOptions): Promise<SkillExportResult> {
   const db = options.log.writer.db.$extendTables<DefinitionsTables>();
 
@@ -53,34 +60,18 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
     .orderBy('written.name')
     .execute();
 
-  const retired = await db
-    .selectFrom('written_skills as written')
-    .leftJoin('skill_exports as export', 'export.approval_id', 'written.approval_id')
-    .leftJoin('skill_export_attempts as attempt', 'attempt.approval_id', 'written.approval_id')
-    .select(['written.approval_id', 'written.name', 'export.pull_request_number'])
-    .where('written.state', '=', 'retired')
-    .where((eb) =>
-      eb.or([eb('export.state', '=', 'opened'), eb('attempt.approval_id', 'is not', null)]),
-    )
-    .execute();
-
-  const held = await db
-    .selectFrom('skill_exports')
-    .select('pull_request_number')
-    .where('state', '=', 'opened')
-    .execute();
+  const closing = await readClosingExports(options.log.writer.db, null);
 
   const exported: string[] = [];
   const closed: string[] = [];
 
-  // A later approval of a retired skill exports on the same branch, so the close comes first, and
-  // a skill whose close failed waits for the next run.
+  // A later approval of a skill exports on the same branch, so the close comes first, and a skill
+  // whose close failed waits for the next run.
   const unclosed = new Set<string>();
-  const heldNumbers = new Set(held.map((row) => row.pull_request_number));
 
-  for (const row of retired) {
+  for (const row of closing) {
     try {
-      await closeRetiredExport(options, row, heldNumbers);
+      await closeExport(options, row);
 
       closed.push(row.approval_id);
     } catch (error) {
@@ -91,9 +82,9 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
 
   for (const row of due.filter((candidate) => !unclosed.has(candidate.name))) {
     try {
-      await writeSkillExport(options, row);
+      const outcome = await writeSkillExport(options, row);
 
-      exported.push(row.approval_id);
+      (outcome === 'opened' ? exported : closed).push(row.approval_id);
     } catch (error) {
       options.onError(error);
     }
@@ -102,20 +93,42 @@ export async function runSkillExports(options: SkillExportOptions): Promise<Skil
   return { exported, closed };
 }
 
-interface RetiredExport {
+interface ClosingExport {
   readonly approval_id: string;
   readonly name: string;
+  readonly state: WrittenSkillState;
   readonly pull_request_number: number | null;
+  readonly attempt_id: string | null;
 }
 
-// Closes the pull request of a retired export. An export that stopped before it recorded its pull
-// request finds it by branch, unless another approval's export holds that pull request now.
-async function closeRetiredExport(
-  options: SkillExportOptions,
-  row: RetiredExport,
-  heldNumbers: ReadonlySet<number>,
-): Promise<void> {
-  const found = await closeRetiredPullRequest(options, row, heldNumbers);
+function readClosingExports(
+  db: Kysely<unknown>,
+  approvalID: string | null,
+): Promise<readonly ClosingExport[]> {
+  const query = db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('written_skills as written')
+    .leftJoin('skill_exports as export', 'export.approval_id', 'written.approval_id')
+    .leftJoin('skill_export_attempts as attempt', 'attempt.approval_id', 'written.approval_id')
+    .select([
+      'written.approval_id',
+      'written.name',
+      'written.state',
+      'export.pull_request_number',
+      'attempt.approval_id as attempt_id',
+    ])
+    .where('written.state', '!=', 'in_force')
+    .where((eb) =>
+      eb.or([eb('export.state', '=', 'opened'), eb('attempt.approval_id', 'is not', null)]),
+    );
+
+  return (
+    approvalID === null ? query : query.where('written.approval_id', '=', approvalID)
+  ).execute();
+}
+
+async function closeExport(options: SkillExportOptions, row: ClosingExport): Promise<void> {
+  const found = await closePullRequests(options, row);
 
   await withWriteTransaction(options.log.writer, (tx) =>
     writeSkillExportState(tx, {
@@ -127,27 +140,73 @@ async function closeRetiredExport(
   );
 }
 
-// closes the recorded pull request, or the one found by branch, which it returns
-async function closeRetiredPullRequest(
+async function closePullRequests(
   options: SkillExportOptions,
-  row: RetiredExport,
-  heldNumbers: ReadonlySet<number>,
+  row: ClosingExport,
 ): Promise<PullRequestRef | null> {
-  if (row.pull_request_number !== null) {
-    await options.repo.closePullRequest(row.pull_request_number);
+  const plan = pickPullRequestCloses(row);
 
+  if (plan.recorded !== null) {
+    await options.repo.closePullRequest(plan.recorded);
+  }
+
+  if (!plan.isBranchRead) {
     return null;
   }
 
   const found = await options.repo.readOpenPullRequest(toSkillExportBranch(row.name));
 
-  if (found === null || heldNumbers.has(found.number)) {
+  if (found === null || found.number === plan.recorded) {
+    return null;
+  }
+
+  const isHeld = await probePullRequestHeld(options.log.writer.db, found.number, row.approval_id);
+
+  if (isHeld) {
     return null;
   }
 
   await options.repo.closePullRequest(found.number);
 
   return found;
+}
+
+// The recorded pull request of an adopted skill may have merged, so only an open one on its branch
+// closes, and a superseded approval leaves its branch to the approval after it. An export in flight
+// may have written a pull request it never recorded, which the branch finds.
+function pickPullRequestCloses(row: ClosingExport): {
+  readonly recorded: number | null;
+  readonly isBranchRead: boolean;
+} {
+  const state = row.state;
+
+  invariant(state !== 'in_force');
+
+  return match(state)
+    .with('superseded', () => ({ recorded: null, isBranchRead: false }))
+    .with('adopted', () => ({ recorded: null, isBranchRead: true }))
+    .with('retired', () => ({
+      recorded: row.pull_request_number,
+      isBranchRead: row.pull_request_number === null || row.attempt_id !== null,
+    }))
+    .exhaustive();
+}
+
+async function probePullRequestHeld(
+  db: Kysely<unknown>,
+  pullRequestNumber: number,
+  approvalID: string,
+): Promise<boolean> {
+  const holder = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('skill_exports')
+    .select('approval_id')
+    .where('state', '=', 'opened')
+    .where('pull_request_number', '=', pullRequestNumber)
+    .where('approval_id', '!=', approvalID)
+    .executeTakeFirst();
+
+  return holder !== undefined;
 }
 
 interface DueExport {
@@ -160,7 +219,13 @@ interface DueExport {
   readonly definitions_origin: string | null;
 }
 
-async function writeSkillExport(options: SkillExportOptions, row: DueExport): Promise<void> {
+// A seed, an approval or a retirement can take the skill out of force while its export runs, so
+// the export marks itself and records its pull request only for a skill in force, and otherwise
+// closes the export at once.
+async function writeSkillExport(
+  options: SkillExportOptions,
+  row: DueExport,
+): Promise<'opened' | 'closed'> {
   const hashes =
     row.definitions_hash === null ? [row.skill_hash] : [row.skill_hash, row.definitions_hash];
 
@@ -176,15 +241,25 @@ async function writeSkillExport(options: SkillExportOptions, row: DueExport): Pr
 
   const isBeneathVendored = row.definitions_origin === 'vendored';
 
-  // the export marks itself before it writes to the repo, so a retirement after a lost answer
-  // still finds its pull request
-  await withWriteTransaction(options.log.writer, (tx) =>
-    writeSkillExportState(tx, {
+  // the export marks itself before it writes to the repo, so a close after a lost answer still
+  // finds its pull request
+  const isMarked = await withWriteTransaction(options.log.writer, async (tx) => {
+    if (!(await probeInForce(tx, row.approval_id))) {
+      return false;
+    }
+
+    await writeSkillExportState(tx, {
       approvalID: row.approval_id,
       to: 'exporting',
       at: options.log.writer.clock.now(),
-    }),
-  );
+    });
+
+    return true;
+  });
+
+  if (!isMarked) {
+    return closeOvertakenExport(options, row.approval_id);
+  }
 
   const revision = await options.repo.readBaseRevision();
   const existing = await options.repo.readFolder(`skills/${version.name}`, revision);
@@ -202,13 +277,45 @@ async function writeSkillExport(options: SkillExportOptions, row: DueExport): Pr
 
   const pullRequest = await options.repo.writePullRequest(change, revision);
 
-  await withWriteTransaction(options.log.writer, (tx) =>
-    writeSkillExportState(tx, {
+  const isOpened = await withWriteTransaction(options.log.writer, async (tx) => {
+    if (!(await probeInForce(tx, row.approval_id))) {
+      return false;
+    }
+
+    await writeSkillExportState(tx, {
       approvalID: row.approval_id,
       to: 'opened',
       baseHash: row.base_hash,
       pullRequest,
       at: options.log.writer.clock.now(),
-    }),
-  );
+    });
+
+    return true;
+  });
+
+  return isOpened ? 'opened' : closeOvertakenExport(options, row.approval_id);
+}
+
+async function probeInForce(db: Kysely<unknown>, approvalID: string): Promise<boolean> {
+  const written = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('written_skills')
+    .select('state')
+    .where('approval_id', '=', approvalID)
+    .executeTakeFirstOrThrow();
+
+  return written.state === 'in_force';
+}
+
+async function closeOvertakenExport(
+  options: SkillExportOptions,
+  approvalID: string,
+): Promise<'closed'> {
+  const [row] = await readClosingExports(options.log.writer.db, approvalID);
+
+  if (row !== undefined) {
+    await closeExport(options, row);
+  }
+
+  return 'closed';
 }

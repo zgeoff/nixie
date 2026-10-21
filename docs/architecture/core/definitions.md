@@ -127,9 +127,11 @@ approval brings back gets a snapshot of its own.
 The seed compares each written skill with the definitions' version of it:
 
 - **The definitions hold the written version.** The user merged it, so the seed marks the written
-  skill adopted and the skill's origin becomes the definitions. An approval of the version the
-  definitions already hold is adopted at its own seed, which records the adoption though the skills
-  in force stay the same.
+  skill adopted and the skill's origin becomes the definitions. The written skill's row records the
+  definitions' version and its origin, and the export closes on its next run. Every seed checks each
+  adopted skill for that record, so an adoption that lacks it gets it at the next seed. An approval
+  of the version the definitions already hold is adopted at its own seed, which records the adoption
+  though the skills in force stay the same.
 - **The definitions hold the base, or lack a new skill.** The written skill stays in force.
 - **The definitions hold another version.** The user changed the skill before the written version
   reached the definitions. The written skill stays in force, and its row keeps the definitions'
@@ -155,6 +157,16 @@ pull request. Each export pins that commit once and reads the skill's folder at 
 writes the skill's folder and removes each file that the folder holds at that commit and the written
 version lacks. It also removes a vendored skill's lock entry, so the seed after the merge reads the
 folder as the user's own skill and marks the written skill adopted.
+
+Every export run closes the export of each approval that left force, whether a seed adopted it, a
+later approval superseded it, or the user retired it. Export runs never overlap, so a seed and an
+approval change only the written skill's state and leave its export to the next run. An export
+checks that its approval is still in force in the transaction that marks it in flight and in the one
+that records its pull request, and closes at once when it is not. A retired skill's pull request
+closes. An adopted skill's pull request usually merged, so the run closes only an open one on the
+skill's branch. A superseded approval leaves its pull request open, because the approval after it
+exports on the same branch. The run never closes a pull request that another approval's opened
+export holds.
 
 A choice on a conflict changes the export. Keeping nixie's version gives the skill a new base, and
 the export builds the pull request again on it. Keeping the definitions' version retires the skill,
@@ -197,11 +209,11 @@ each skill version under its content hash, a seed record, and a seed row that ti
 its revision to both hashes. A persona, a snapshot or a skill version seen before keeps its first
 row. The definitions in force are the newest seed, and every record takes its snapshot hash from it.
 
-| Result    | When                                                                                                          | Writes   |
-| --------- | ------------------------------------------------------------------------------------------------------------- | -------- |
-| Seeded    | The source, revision, content hash or snapshot hash differs from the last, or a written skill becomes adopted | The rows |
-| Unchanged | The newest seed holds the same source, revision and both hashes, and no written skill becomes adopted         | Nothing  |
-| Refused   | The snapshot failed to read, parse or validate                                                                | Nothing  |
+| Result    | When                                                                                                          | Writes                                            |
+| --------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Seeded    | The source, revision, content hash or snapshot hash differs from the last, or a written skill becomes adopted | The rows                                          |
+| Unchanged | The newest seed holds the same source, revision and both hashes, and no written skill becomes adopted         | Only the record of an adopted skill that lacks it |
+| Refused   | The snapshot failed to read, parse or validate                                                                | Nothing                                           |
 
 A refused seed comes back as a value with its error and the definitions still in force, never as a
 throw, so the caller reports the refusal while the last good seed keeps serving. A half-applied seed
