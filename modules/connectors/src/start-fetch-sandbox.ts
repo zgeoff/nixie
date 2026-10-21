@@ -3,7 +3,7 @@ import { systemClock } from '@heynixie/clock';
 import type { ExecStream, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import { buildSandboxSpec } from '@heynixie/sandbox';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
-import { decodeFetchReply, encodeFetchMessage } from '@heynixie/wire';
+import { decodeFetchReply, encodeFetchMessage, getLinkTargetLimit } from '@heynixie/wire';
 
 export interface FetchSandboxOptions {
   readonly adapter: SandboxAdapter;
@@ -179,9 +179,6 @@ function buildSandboxCallLimit(options: FetchSandboxOptions): TimeLimit {
 
 const defaultReplyGraceMs = 5000;
 
-// JSON escapes a byte of text as at most 6 bytes, and the rest of a reply fits in 64 KiB
-const replyOverheadBytes = 65_536;
-
 async function runFetcher(
   sandbox: Sandbox,
   options: FetchSandboxOptions,
@@ -199,7 +196,7 @@ async function runFetcher(
   const stream = await waitOrTimeOut(
     sandbox.spawn({
       argv: options.argv,
-      maxMessageBytes: options.limits.textBytes * 6 + replyOverheadBytes,
+      maxMessageBytes: getReplyLimit(options.limits.textBytes),
     }),
     limit,
   );
@@ -213,6 +210,15 @@ async function runFetcher(
 
     throw error;
   }
+}
+
+// the rest of a reply fits in 64 KiB
+const replyOverheadBytes = 65_536;
+
+// JSON escapes a byte of text as at most 6 bytes and a byte of a serialized URL as at most 2, and
+// each target's quotes and comma take 3 bytes beside a mark of at least 7 bytes in the text
+function getReplyLimit(textBytes: number): number {
+  return textBytes * 6 + getLinkTargetLimit(textBytes) * 2 + textBytes + replyOverheadBytes;
 }
 
 // sends the request, then reads the reply and waits for the fetcher to exit by itself

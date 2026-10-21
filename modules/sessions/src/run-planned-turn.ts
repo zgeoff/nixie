@@ -28,6 +28,10 @@ export interface SessionTurn {
   // the images the session holds before the turn: none for a new session
   readonly images: ImageTally;
 
+  // the key of the session the turn runs on, which each of its tool calls carries: a new one for a
+  // new session, which its opening record keeps
+  readonly sessionKey: string;
+
   // aborts when the step's lease is lost or a forget invalidates the session
   readonly signal: AbortSignal;
 }
@@ -60,6 +64,7 @@ export async function runPlannedTurn(
     signal: turn.signal,
     times,
     images: turn.images,
+    session: { key: turn.sessionKey, invalidatedThrough: turn.invalidatedThrough },
   });
 
   turn.signal.throwIfAborted();

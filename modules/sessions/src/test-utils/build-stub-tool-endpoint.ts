@@ -1,8 +1,10 @@
-import type { ToolEndpoint, ToolRun } from '@heynixie/tools';
+import type { ToolEndpoint, ToolRun, ToolSession } from '@heynixie/tools';
 
-// A step token the stub endpoint issued, and whether its holder stopped it.
+// A step token the stub endpoint issued, the session it names or null, and whether its holder
+// stopped it.
 interface StubStepToken {
   readonly stepRunID: string;
+  readonly session: ToolSession | null;
   readonly token: string;
   isStopped: boolean;
 }
@@ -36,9 +38,10 @@ export function buildStubToolEndpoint(): StubToolEndpoint {
           token: 'run-token',
           socketPath: '/run/nixie/tools.sock',
           target: { path: '/run/nixie/tools.sock' },
-          startStep: (stepRunID) => {
+          startStep: (stepRunID, session) => {
             const step: StubStepToken = {
               stepRunID,
+              session: session ?? null,
               token: `step-token-${steps.length + 1}`,
               isStopped: false,
             };

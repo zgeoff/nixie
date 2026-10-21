@@ -13,6 +13,7 @@ test("it sends the fetcher the URL, the limits and the deployment's ranges, and 
     status: 200,
     contentType: 'text/plain',
     text: 'hello',
+    links: [],
     isTruncated: false,
     blocked: null,
   }));
@@ -39,6 +40,7 @@ test("it sends the fetcher the URL, the limits and the deployment's ranges, and 
     status: 200,
     contentType: 'text/plain',
     text: 'hello',
+    links: [],
     isTruncated: false,
     blocked: null,
   });
@@ -58,6 +60,7 @@ test('it creates one fetch sandbox with public egress, no grants and no tool rou
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     })),
@@ -101,6 +104,7 @@ test('it runs each fetch in a new fetcher process in the same sandbox', async ()
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     })),
@@ -133,6 +137,38 @@ test('it runs each fetch in a new fetcher process in the same sandbox', async ()
   ]);
 });
 
+test('it reads a reply whose text and link targets fill their limits with characters JSON escapes', async () => {
+  const text = '\u{1}'.repeat(20_000);
+  const links = Array.from({ length: 800 }, () => `https://quay.test/?${'\\'.repeat(81)}`);
+
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(
+      makeStubFetcher((request) => ({
+        kind: 'page',
+        url: request.url,
+        status: 200,
+        contentType: 'text/plain',
+        text,
+        links,
+        isTruncated: true,
+        blocked: null,
+      })),
+    ),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 2_000_000, timeoutMs: 1000, redirects: 2, textBytes: 20_000 },
+    deniedRanges: [],
+    fetchesPerSandbox: 10,
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  const reply = await fetchSandbox.readPage('https://quay.test/');
+
+  expect(reply).toMatchObject({ kind: 'page', text, links });
+});
+
 test('it replaces the sandbox after the configured number of fetches', async () => {
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
@@ -141,6 +177,7 @@ test('it replaces the sandbox after the configured number of fetches', async () 
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     })),
@@ -372,6 +409,7 @@ test('it fails a fetch whose time limit passed before its fetcher exited', async
         status: 200,
         contentType: 'text/plain',
         text: 'hello',
+        links: [],
         isTruncated: false,
         blocked: null,
       };
@@ -408,6 +446,7 @@ test('it removes the fetch sandboxes a past process left before it creates one',
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     })),
@@ -453,6 +492,7 @@ test('it runs one fetch at a time', async () => {
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     })),
@@ -496,6 +536,7 @@ test('it fails the fetch when the sandbox cannot be created, and tries again on 
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     })),
@@ -535,6 +576,7 @@ test('it fails a fetch whose sandbox never finishes creating', async () => {
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     })),
@@ -579,6 +621,7 @@ test('it waits on a sandbox that never finishes creating until the time limit pa
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     })),
@@ -623,6 +666,7 @@ test('it serves the next fetch after a sandbox that never finished creating', as
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     })),
@@ -664,6 +708,7 @@ test('it fails a fetch after it stops, and creates no sandbox', async () => {
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     })),
@@ -695,6 +740,7 @@ test('it destroys the sandbox when it stops', async () => {
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
+      links: [],
       isTruncated: false,
       blocked: null,
     })),

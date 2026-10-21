@@ -8,11 +8,12 @@
     "./test-utils": "./src/test-utils/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
     "@heynixie/clock": "workspace:*",
     "@heynixie/compaction": "workspace:*",
+    "@heynixie/connectors": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
