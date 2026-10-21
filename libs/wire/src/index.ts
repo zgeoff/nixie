@@ -1,5 +1,6 @@
 export type { CheckReply, CheckRequest } from './check-frame';
 export { checkReplySchema, checkRequestSchema } from './check-frame';
+export { defaultFetchTextBytes } from './default-fetch-text-bytes';
 export { decodeFetchReply } from './decode-fetch-reply';
 export { decodeFetchRequest } from './decode-fetch-request';
 export { decodeTurnFrame } from './decode-turn-frame';
@@ -20,4 +21,5 @@ export { makeFrameDecoder } from './make-frame-decoder';
 export { mintBlockID } from './mint-block-id';
 export type { SystemMessage, SystemMessageType } from './render-system-message';
 export { renderSystemMessage } from './render-system-message';
+export { toolOutputLimitTokens } from './tool-output-limit-tokens';
 export { turnFrameLimitBytes } from './turn-frame-limit-bytes';

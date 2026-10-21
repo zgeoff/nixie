@@ -83,6 +83,23 @@ test('it turns off every CLI compaction, the automatic one and the manual one', 
   expect(options.env).toContainEntry(['DISABLE_COMPACT', '1']);
 });
 
+test('it sets the CLI tool-output limit to 12,000 tokens and turns its large output files off', () => {
+  const options = buildQueryOptions(buildMockTurnFrame({ profile: { authHeader: 'x-api-key' } }), {
+    env: {
+      HOME: '/home/guest',
+      ANTHROPIC_API_KEY: 'imp-placeholder',
+      MAX_MCP_OUTPUT_TOKENS: '90000',
+      ENABLE_MCP_LARGE_OUTPUT_FILES: '1',
+    },
+    toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
+  });
+
+  expect(options.env).toContainEntries([
+    ['MAX_MCP_OUTPUT_TOKENS', '12000'],
+    ['ENABLE_MCP_LARGE_OUTPUT_FILES', '0'],
+  ]);
+});
+
 test.each([['5m'], ['1h']] as const)(
   'it passes a %s profile cache lifetime as the CLI promptCacheTtl setting',
   (cacheTTL) => {
