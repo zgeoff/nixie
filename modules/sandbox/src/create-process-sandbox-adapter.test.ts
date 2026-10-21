@@ -341,11 +341,20 @@ test('it stops the command of an aborted exec', async () => {
   expect(result).toMatchObject({ code: null, signal: 'SIGTERM' });
 });
 
-// 34 is a real-time signal, which has no name, so Bun gives it as a number
+// 34 is a real-time signal with no name. A guest inherits the signals its host blocks, and some hosts
+// block 34, which a shell's kill then leaves pending, so the guest unblocks it before it sends it.
 test('it reports a signal with no name as its number', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
-  const result = await sandbox.exec({ argv: ['sh', '-c', 'kill -34 $$'] });
+
+  const result = await sandbox.exec({
+    argv: [
+      'perl',
+      '-MPOSIX',
+      '-e',
+      'sigprocmask(SIG_UNBLOCK, POSIX::SigSet->new(34)); kill 34, $$',
+    ],
+  });
 
   expect(result).toMatchObject({ code: null, signal: '34' });
 });
