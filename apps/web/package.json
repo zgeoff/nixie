@@ -8,7 +8,7 @@
     "codegen": "panda codegen --silent",
     "dev": "vite dev",
     "start": "bun dist/server/server.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
     "@heynixie/contract": "workspace:*",
