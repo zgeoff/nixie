@@ -56,9 +56,12 @@ endorsed types, and the URL and the text never are.
 
 ## The sandbox's lifetime
 
-Each fetch runs in a fetch sandbox of its own, which nixie creates from the fetch image and destroys
-when the fetch ends. The sandbox holds no grants and no data that nixie gives it beyond the one URL,
-and the fetcher runs in it with a new temporary directory. A page that compromises the fetcher
-therefore sees only its own fetch, and never the URL of an earlier or a later one. The
-[fetch sandbox start spike](../../../../research/fetch-sandbox-start/) measures what a new sandbox
-per fetch costs.
+The first build keeps one long-lived fetch sandbox, and replaces it after a configurable number of
+fetches or on any error. It holds no grants and no data that nixie gives it beyond each URL. Each
+fetch runs in a new fetcher process with a new temporary directory. The fetches in one sandbox still
+share a boundary: a page that compromises the fetcher can see the URLs of later fetches in the same
+sandbox until the sandbox is replaced, and can send them out over its public egress. **Why it is
+acceptable for the first build:** the URLs carry no credential, every result is outside content, and
+an outbound check on URLs that carry private context is a
+[later stage](https://linear.app/zgeoff/issue/GEO-309). One sandbox per fetch removes the shared
+boundary, and becomes the default once the worker cold start spike measures its cost.
