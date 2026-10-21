@@ -18,8 +18,6 @@ async function setupTest() {
   const sandboxes = buildStubSandboxes();
   const tools = buildStubToolEndpoint();
 
-  await createConversationTask(tasks.context);
-
   return {
     ...tasks,
     sandboxes,
@@ -72,6 +70,9 @@ async function setupTest() {
 
 test('it compacts a session whose turn ended past 0.8 of its window, and opens the next session with the summary and no recent turns', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   ctx.sandboxes.setGuestScript(
@@ -105,6 +106,9 @@ test('it compacts a session whose turn ended past 0.8 of its window, and opens t
 
 test('it records the summary with its text in erasable fields and the sequence and boundary it covers', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   const boundary = {
@@ -148,6 +152,9 @@ test('it records the summary with its text in erasable fields and the sequence a
 
 test('it never compacts a session whose last turn ended under the threshold', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   const boundary = {
@@ -166,6 +173,9 @@ test('it never compacts a session whose last turn ended under the threshold', as
 
 test('it leaves one summary when the compaction step dies before its commit and runs again', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   ctx.sandboxes.setGuestScript(
@@ -202,6 +212,9 @@ test('it leaves one summary when the compaction step dies before its commit and 
 
 test('it records a failed summary call and goes back to waiting, with the session kept', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   ctx.sandboxes.setGuestScript(
@@ -253,6 +266,9 @@ test('it records a failed summary call and goes back to waiting, with the sessio
 
 test('it serves your next message on the old session after the summary call fails again', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   ctx.sandboxes.setGuestScript(
@@ -293,6 +309,9 @@ test('it serves your next message on the old session after the summary call fail
 
 test('it asks once to cut a summary past the token cap, on the summary fork, and commits the cut', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner(100);
 
   const fork = {
@@ -337,6 +356,8 @@ test('it asks once to cut a summary past the token cap, on the summary fork, and
 test('it gives the summary call the skill catalog after the persona', async () => {
   const ctx = await setupTest();
 
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner(2000, () =>
     Promise.resolve('<skills>\n- tide-tables: Reads a tide table.\n</skills>'),
   );
@@ -355,6 +376,9 @@ test('it gives the summary call the skill catalog after the persona', async () =
 
 test('it gives the summary call and its cut request the rules for pasted text and system messages', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner(100);
 
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ contextSize: 170_000 })));
@@ -389,6 +413,9 @@ test('it gives the summary call and its cut request the rules for pasted text an
 
 test('it commits a summary still past the cap after its one cut, with its size', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner(100);
 
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ contextSize: 170_000 })));
@@ -413,6 +440,9 @@ test('it commits a summary still past the cap after its one cut, with its size',
 
 test('it compacts the session from its boundary when a turn overflows, and runs the turn again on the new session', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   ctx.sandboxes.setGuestScript(
@@ -458,6 +488,9 @@ test('it compacts the session from its boundary when a turn overflows, and runs 
 
 test('it fails a turn that overflows a new session, and commits nothing of it', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ terminalReason: 'prompt_too_long' })));
@@ -481,6 +514,9 @@ test('it fails a turn that overflows a new session, and commits nothing of it', 
 
 test('it records a failed overflow summary, with its cause and count, before the step fails', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   ctx.sandboxes.setGuestScript(
@@ -534,6 +570,9 @@ test('it records a failed overflow summary, with its cause and count, before the
 
 test('it keeps a failed threshold summary when the turn after it overflows and the step fails', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   ctx.sandboxes.setGuestScript(
@@ -587,6 +626,9 @@ test('it keeps a failed threshold summary when the turn after it overflows and t
 
 test('it erases every summary on a forget, and opens the next session with no summary', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   ctx.sandboxes.setGuestScript(
@@ -611,6 +653,9 @@ test('it erases every summary on a forget, and opens the next session with no su
 
 test('it erases a summary that committed after a forget cleanup before it opens the next session', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner();
 
   await ctx.sendMessage(runner, 'What does the tide gauge read?');

@@ -15,15 +15,6 @@ async function setupTest() {
   const clock = buildTestClock(1_000_000);
   const context = { log: memory.log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
 
-  const lease = await claimLease(context, {
-    kind: 'task',
-    holder: 'runner-1',
-    durationMs: 60_000,
-    readCandidate: () => Promise.resolve('memory-writer'),
-  });
-
-  invariant(lease);
-
   const parts = {
     context,
     store: memory.store,
@@ -44,6 +35,21 @@ async function setupTest() {
     assistantName: null,
   };
 
+  return { memory, clock, parts };
+}
+
+test('it publishes the batch and advances the cursor with its record', async () => {
+  const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.parts.context, {
+    kind: 'task',
+    holder: 'runner-1',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve('memory-writer'),
+  });
+
+  invariant(lease);
+
   const input = {
     taskID: 'memory-writer',
     stepKey: 'step-1',
@@ -53,16 +59,11 @@ async function setupTest() {
     signal: new AbortController().signal,
   };
 
-  return { memory, clock, parts, input };
-}
-
-test('it publishes the batch and advances the cursor with its record', async () => {
-  const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
   const row = await readWriterRow(ctx.memory.log);
 
   const result = await tryWriteBatch(ctx.parts, {
-    input: ctx.input,
+    input,
     row,
     now: ctx.clock.now(),
     bounds: planned.bounds,
@@ -86,6 +87,25 @@ test('it publishes the batch and advances the cursor with its record', async () 
 
 test('it returns superseded when an item moved on since the session read it', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.parts.context, {
+    kind: 'task',
+    holder: 'runner-1',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve('memory-writer'),
+  });
+
+  invariant(lease);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
 
   const item = await ctx.memory.store.remember({
@@ -101,7 +121,7 @@ test('it returns superseded when an item moved on since the session read it', as
   const row = await readWriterRow(ctx.memory.log);
 
   const result = await tryWriteBatch(ctx.parts, {
-    input: ctx.input,
+    input,
     row,
     now: ctx.clock.now(),
     bounds: planned.bounds,
@@ -137,6 +157,25 @@ test('it returns superseded when an item moved on since the session read it', as
 
 test('it returns superseded when an item a proposal names was forgotten since the session read it', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.parts.context, {
+    kind: 'task',
+    holder: 'runner-1',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve('memory-writer'),
+  });
+
+  invariant(lease);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
 
   const item = await ctx.memory.store.remember({
@@ -150,7 +189,7 @@ test('it returns superseded when an item a proposal names was forgotten since th
   });
 
   const result = await tryWriteBatch(ctx.parts, {
-    input: ctx.input,
+    input,
     row: await readWriterRow(ctx.memory.log),
     now: ctx.clock.now(),
     bounds: planned.bounds,
@@ -185,11 +224,30 @@ test('it returns superseded when an item a proposal names was forgotten since th
 
 test('it rejects a publish whose lease another claim replaced', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.parts.context, {
+    kind: 'task',
+    holder: 'runner-1',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve('memory-writer'),
+  });
+
+  invariant(lease);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
   const row = await readWriterRow(ctx.memory.log);
 
   const publish = tryWriteBatch(ctx.parts, {
-    input: { ...ctx.input, lease: { ...ctx.input.lease, generation: 99 } },
+    input: { ...input, lease: { ...input.lease, generation: 99 } },
     row,
     now: ctx.clock.now(),
     bounds: planned.bounds,

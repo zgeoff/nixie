@@ -11,13 +11,13 @@ import { writeInboxRecords } from './write-inbox-records';
 async function setupTest() {
   const tasks = await startTestTasks();
 
-  await createConversationTask(tasks.context);
-
   return { ...tasks, db: tasks.writer.db.$extendTables<TasksTables>() };
 }
 
 test('it gives the step its unread inbox and commits what the step returns', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const runStep = mock<(input: StepInput) => Promise<StepResult>>(() =>
     Promise.resolve({ next: 'wait', records: [], acknowledged: [2] }),
@@ -62,6 +62,8 @@ test('it gives the step its unread inbox and commits what the step returns', asy
 
 test('it gives the next step the session boundary the last commit recorded', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const runStep = mock<(input: StepInput) => Promise<StepResult>>(() =>
     Promise.resolve({ next: 'wait', records: [], acknowledged: [] }),
@@ -114,6 +116,8 @@ test('it gives the next step the session boundary the last commit recorded', asy
 test('it records the error when the step throws', async () => {
   const ctx = await setupTest();
 
+  await createConversationTask(ctx.context);
+
   await writeInboxRecords(ctx.context, [
     {
       kind: 'owner_message',
@@ -142,6 +146,8 @@ test('it records the error when the step throws', async () => {
 
 test('it records the error when the commit refuses what the step returned', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   await writeInboxRecords(ctx.context, [
     {
@@ -177,6 +183,8 @@ test('it records the error when the commit refuses what the step returned', asyn
 
 test('it aborts the step and commits nothing once the lease is lost', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const seen = { aborted: false };
 

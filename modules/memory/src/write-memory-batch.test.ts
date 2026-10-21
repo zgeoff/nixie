@@ -14,8 +14,14 @@ async function setupTest() {
 
   const clock = buildTestClock(1_000_000);
 
+  return { memory, clock };
+}
+
+test('it publishes an applied write as a version the writer made', async () => {
+  const ctx = await setupTest();
+
   const lease = await claimLease(
-    { clock, log: memory.log },
+    { clock: ctx.clock, log: ctx.memory.log },
     {
       kind: 'task',
       holder: 'runner-1',
@@ -26,15 +32,10 @@ async function setupTest() {
 
   invariant(lease);
 
-  return { memory, clock, lease };
-}
-
-test('it publishes an applied write as a version the writer made', async () => {
-  const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
 
   const result = await ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [
@@ -83,12 +84,24 @@ test('it publishes an applied write as a version the writer made', async () => {
 test('it publishes every item the writer creates as a fact, never a self-note', async () => {
   const ctx = await setupTest();
 
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const planned = await writePlannedBatch(ctx.memory.log, [
     'I like it when you keep answers short.',
   ]);
 
   await ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [
@@ -121,10 +134,23 @@ test('it publishes every item the writer creates as a fact, never a self-note', 
 
 test('it publishes a proposal records and counts the proposal', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
 
   const result = await ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [
@@ -172,6 +198,18 @@ test('it publishes a proposal records and counts the proposal', async () => {
 test('it rejects a batch whose proposal names an item that moved on since the session read it', async () => {
   const ctx = await setupTest();
 
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -186,7 +224,7 @@ test('it rejects a batch whose proposal names an item that moved on since the se
   });
 
   const publish = ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [
@@ -223,10 +261,23 @@ test('it rejects a batch whose proposal names an item that moved on since the se
 
 test('it advances the cursor with the batch own records in the same publish', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
 
   await ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
@@ -259,12 +310,25 @@ test('it advances the cursor with the batch own records in the same publish', as
 
 test('it leaves out a write whose source was forgotten and counts it', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const planned = await writePlannedBatch(ctx.memory.log, ['My sister is called Robin.']);
 
   await removeMessageKey(ctx.memory.log, planned.bounds.end);
 
   const result = await ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [
@@ -306,6 +370,18 @@ test('it leaves out a write whose source was forgotten and counts it', async () 
 test('it keeps a flag whose source is readable, and leaves out one whose source was forgotten', async () => {
   const ctx = await setupTest();
 
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const planned = await writePlannedBatch(ctx.memory.log, [
     'You always pick the jazz station.',
     'You hum when you think, it is sweet.',
@@ -318,7 +394,7 @@ test('it keeps a flag whose source is readable, and leaves out one whose source 
   await removeMessageKey(ctx.memory.log, second);
 
   const result = await ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
@@ -340,10 +416,23 @@ test('it keeps a flag whose source is readable, and leaves out one whose source 
 
 test('it applies a shared write as a shared item', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const planned = await writePlannedBatch(ctx.memory.log, ['Our deal: a riddle every Monday.']);
 
   await ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [
@@ -381,10 +470,23 @@ test('it applies a shared write as a shared item', async () => {
 
 test('it returns superseded for a batch the cursor no longer waits on', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
 
   const result = await ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: { start: 0, end: planned.bounds.end + 1 },
     writes: [
@@ -418,10 +520,23 @@ test('it returns superseded for a batch the cursor no longer waits on', async ()
 
 test('it rejects a publish under a lease another claim replaced', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
 
   const publish = ctx.memory.store.writeBatch({
-    lease: { ...ctx.lease, generation: ctx.lease.generation + 1 },
+    lease: { ...lease, generation: lease.generation + 1 },
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
@@ -436,12 +551,25 @@ test('it rejects a publish under a lease another claim replaced', async () => {
 
 test('it rejects a publish after the lease expired', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
 
-  ctx.clock.advance(ctx.lease.expiresAt - ctx.clock.now());
+  ctx.clock.advance(lease.expiresAt - ctx.clock.now());
 
   const publish = ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
@@ -456,6 +584,19 @@ test('it rejects a publish after the lease expired', async () => {
 
 test('it rejects a publish whose lease expired while it waited for the delivery lock', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
 
   const hold = startFaultPointHold('memory.recall.checked');
@@ -464,7 +605,7 @@ test('it rejects a publish whose lease expired while it waited for the delivery 
   await hold.reached;
 
   const publish = ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
@@ -490,7 +631,7 @@ test('it rejects a publish whose lease expired while it waited for the delivery 
     ],
   });
 
-  ctx.clock.advance(ctx.lease.expiresAt - ctx.clock.now());
+  ctx.clock.advance(lease.expiresAt - ctx.clock.now());
   hold.release();
 
   const [, published] = await Promise.allSettled([recall, publish]);
@@ -503,6 +644,19 @@ test('it rejects a publish whose lease expired while it waited for the delivery 
 
 test('it leaves out a write whose message backed an item forgotten after the gate ran', async () => {
   const ctx = await setupTest();
+
+  const lease = await claimLease(
+    { clock: ctx.clock, log: ctx.memory.log },
+    {
+      kind: 'task',
+      holder: 'runner-1',
+      durationMs: 60_000,
+      readCandidate: () => Promise.resolve('memory-writer'),
+    },
+  );
+
+  invariant(lease);
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
 
   const item = await ctx.memory.store.remember({
@@ -518,7 +672,7 @@ test('it leaves out a write whose message backed an item forgotten after the gat
   });
 
   const result = await ctx.memory.store.writeBatch({
-    lease: ctx.lease,
+    lease,
     clock: ctx.clock,
     bounds: planned.bounds,
     writes: [

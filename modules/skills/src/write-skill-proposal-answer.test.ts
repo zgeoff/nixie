@@ -54,7 +54,7 @@ async function setupTest() {
     policy,
     context: {
       log,
-      clock: buildTestClock(Date.now()),
+      clock: buildTestClock(0),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       seedWrittenSkills: async () => {
         await runWrittenSkillSeed({ log, policy });
