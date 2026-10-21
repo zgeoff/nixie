@@ -214,7 +214,10 @@ test("it returns a fetch's reply before its sandbox's destroy ends", async () =>
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
 
-  onTestFinished(() => gate.resolve());
+  onTestFinished(() => {
+    gate.resolve();
+  });
+
   onTestFinished(() => fetchSandbox.stop());
 
   const reply = await fetchSandbox.readPage('https://example.com/');
