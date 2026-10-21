@@ -4,8 +4,6 @@ import { requireHostMemory } from './require-host-memory';
 import { toContractKind } from './to-contract-kind';
 import type { ReadHostMemory } from './types';
 
-// Builds the host procedures over one memory item: show it with its history, and write your own
-// change to it, an edit, a retirement, a restore, a pin or a forget.
 export function createHostItemProcedures(readMemory: ReadHostMemory) {
   const items = hostImplementer.memory.items;
 

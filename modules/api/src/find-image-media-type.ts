@@ -28,8 +28,6 @@ const imageSignatures: readonly {
   },
 ];
 
-// Finds the image type that bytes hold from their leading signature, never from the type a client
-// claims, or returns null for bytes that are none of the types a message takes.
 export function findImageMediaType(bytes: Uint8Array): ImageMediaType | null {
   const signature = imageSignatures.find((candidate) =>
     candidate.parts.every((part) => hasBytesAt(bytes, part.offset, part.bytes)),

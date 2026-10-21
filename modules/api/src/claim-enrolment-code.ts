@@ -21,9 +21,6 @@ type EnrolResult =
   | { readonly status: 'invalid' }
   | { readonly status: 'reused' };
 
-// Uses an enrolment code once, before it lapses, to start a device session keyed by a new token's
-// hash. nixie keeps only that hash, so a retry before the code lapses answers with the same session
-// and a fresh token that replaces the first.
 export function claimEnrolmentCode(context: APIContext, input: EnrolInput): Promise<EnrolResult> {
   return withWriteTransaction(context.log.writer, async (tx) => {
     const code = normalizeEnrolmentCode(input.code);
@@ -105,7 +102,6 @@ interface NewSession {
   readonly issuedBy: string | null;
 }
 
-// a device session is one row of the identity record, whose external ID is its own ID
 async function writeSession(
   tx: Transaction<unknown>,
   context: APIContext,
@@ -149,7 +145,6 @@ interface EnrolmentRetry {
   readonly sessionID: string;
 }
 
-// a retry works only while the code it used would still work, and never revives a revoked session
 async function updateEnrolmentToken(
   tx: Transaction<unknown>,
   context: APIContext,

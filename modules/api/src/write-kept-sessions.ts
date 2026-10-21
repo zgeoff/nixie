@@ -5,15 +5,11 @@ import invariant from 'tiny-invariant';
 import type { KeptSession } from './read-kept-sessions';
 import type { APITables } from './types';
 
-// the sessions a reset keeps, and the definitions in force that their records name
 interface KeptSessions {
   readonly sessions: readonly KeptSession[];
   readonly definitions: Definitions;
 }
 
-// Writes a session_kept record for each kept session inside a reset's transaction, with its label
-// encrypted, and points the session at it. Every other identity goes, so a revoked token afterwards
-// matches no row and is refused as a stranger.
 export async function writeKeptSessions(
   tx: Transaction<unknown>,
   log: Log,
@@ -45,7 +41,6 @@ export async function writeKeptSessions(
   for (const [index, session] of kept.sessions.entries()) {
     const record = records[index];
 
-    // the log writes one record for each input
     invariant(record);
 
     await db

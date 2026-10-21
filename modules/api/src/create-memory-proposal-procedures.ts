@@ -9,9 +9,6 @@ import type { APIContext, Identity, ReadViewMemory, ViewMemoryStore } from './ty
 import type { ProposalAnswerAction, ProposalOutcome } from './write-proposal-answer';
 import { writeProposalAnswer } from './write-proposal-answer';
 
-// Builds the memory view's proposal procedures for a signed-in device: the pending proposals, and
-// your approvals and rejections of one or several, each answer a checked action with you as the
-// identity its approval or rejection record names.
 export function createMemoryProposalProcedures(context: APIContext, readMemory: ReadViewMemory) {
   const memory = apiImplementer.memory;
 
@@ -72,8 +69,6 @@ export function createMemoryProposalProcedures(context: APIContext, readMemory: 
   };
 }
 
-// What the view shows of a pending proposal, with its times as dates and its quote's place in the
-// message it came from.
 function toContractProposal(proposal: ViewProposal) {
   const evidence = proposal.evidence;
 
@@ -108,7 +103,6 @@ function toContractProposal(proposal: ViewProposal) {
             message: evidence.message,
           },
 
-    // conversation.readImage counts a message's images from 0, and the proposal from 1
     image:
       proposal.image === null
         ? null
@@ -120,9 +114,6 @@ function toContractProposal(proposal: ViewProposal) {
   };
 }
 
-// Runs each answer in the order given, each its own checked action, so one stale or refused answer
-// leaves the rest to go on. A session that ends partway stops the answers left and gives null; a
-// retry with the same client action IDs gets each committed outcome back.
 async function runAnswers(
   context: APIContext,
   caller: Identity,
@@ -145,8 +136,6 @@ async function runAnswers(
 
 type ApprovalAnswer = ContractInputs['memory']['approveProposals']['answers'][number];
 
-// An approval binds to the proposal, its hash and the close match answer, and to whether you edited
-// the text, never to the text itself.
 function buildApprovalAction(
   store: ViewMemoryStore,
   caller: Identity,
@@ -182,7 +171,6 @@ function buildApprovalAction(
 
 type RejectionAnswer = ContractInputs['memory']['rejectProposals']['answers'][number];
 
-// A rejection binds to the proposal, its hash and whether you gave a reason, never to the reason.
 function buildRejectionAction(
   store: ViewMemoryStore,
   caller: Identity,

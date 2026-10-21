@@ -11,9 +11,6 @@ import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 
-// a test API that serves a memory store over its log to a signed-in device, whose gate has no
-// checker, since no test writes through the gate, and whose forget runs a session cleanup each test
-// reads
 async function setupTest() {
   const api = await startTestAPI();
 
@@ -43,7 +40,6 @@ async function setupTest() {
 
   api.setMemory(memory);
 
-  // boot data: every memory procedure needs a device session
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   return { ...api, memory, cleanupSessions, client: buildTestClient(api.url, laptop.token) };

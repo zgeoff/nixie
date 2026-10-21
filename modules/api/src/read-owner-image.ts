@@ -8,9 +8,6 @@ interface OwnerImageInput {
   readonly position: number;
 }
 
-// Reads one image of your message on the thread as a file of the type the server found in its
-// bytes. Answers null when the record is not your message on that thread, holds no image at that
-// position, or was forgotten, so a forgotten image reads as one that never existed.
 export async function readOwnerImage(
   context: APIContext,
   input: OwnerImageInput,
@@ -31,7 +28,6 @@ export async function readOwnerImage(
     : new File([bytes], `image-${input.position + 1}`, { type: mediaType });
 }
 
-// the type of the image at the position, when the record is your message on the thread
 async function readStoredMediaType(
   context: APIContext,
   input: OwnerImageInput,
@@ -49,7 +45,6 @@ async function readStoredMediaType(
     return null;
   }
 
-  // the payload names each image's type, which writeOwnerMessage took from the image's bytes
   const images = ownerMessageCodec.tryDecodePartial(record.payload)?.images;
 
   return images?.[input.position]?.mediaType ?? null;

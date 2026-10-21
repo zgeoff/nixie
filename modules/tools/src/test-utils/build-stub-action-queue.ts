@@ -13,25 +13,17 @@ interface OutcomeWait {
 export interface StubActionQueue {
   readonly queue: ActionQueue;
 
-  // every action the queue holds, in the order it first queued them
   readonly actions: readonly QueuedEntry[];
 
-  // every wait for an outcome the queue received, in order
   readonly waits: readonly OutcomeWait[];
 
-  // settles the action: each wait for it, pending or later, answers this outcome
   readonly writeOutcome: (actionID: string, outcome: ActionOutcome) => void;
 
-  // ends every pending wait with null, as its timeout would while the action stays pending
   readonly drainWaits: () => void;
 
-  // takes the queue out of service: every pending wait and every later call rejects
   readonly stop: () => void;
 }
 
-// Stands in for the server's action queue: a task's repeat of an action's tool and input gets its
-// ID, and a wait answers the outcome once the action settles, or null while it is pending. The test
-// decides when a wait times out, so no timer runs.
 export function buildStubActionQueue(): StubActionQueue {
   const actions: QueuedEntry[] = [];
   const outcomes = buildOutcomeWaits();
@@ -123,8 +115,6 @@ interface PendingWait {
   readonly reject: (error: Error) => void;
 }
 
-// the waits that hold no outcome yet; a drain removes and returns the waits for one action, or
-// every wait when it names no action
 function buildPendingWaits() {
   const pending = new Set<PendingWait>();
 
@@ -148,7 +138,6 @@ function buildStoppedError(): Error {
   return new Error('the action queue stopped');
 }
 
-// the real queue keys an action by its task and a hash of its tool and its arguments
 function isSameAction(left: QueuedAction, right: QueuedAction): boolean {
   return (
     left.run.thread === right.run.thread &&

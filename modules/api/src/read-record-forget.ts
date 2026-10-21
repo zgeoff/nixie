@@ -5,7 +5,6 @@ import type { APITables } from './types';
 interface RecordForgetQuery {
   readonly kind: 'record.forget_started' | 'record.forgotten';
 
-  // the sequence of the message or reply the forget removes
   readonly sequence: number;
 }
 
@@ -14,8 +13,6 @@ export interface RecordForget {
   readonly recordedAt: number;
 }
 
-// Finds the first record of a kind that a forget of the record at the sequence committed, or null
-// when the forget never reached it.
 export async function readRecordForget(
   db: Kysely<unknown>,
   query: RecordForgetQuery,

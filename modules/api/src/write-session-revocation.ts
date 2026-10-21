@@ -19,9 +19,6 @@ type RevocationResult =
   | { readonly status: 'reused' }
   | { readonly status: 'unauthorized' };
 
-// Revokes a device session, a checked action of a signed-in device. The revoked row keeps its
-// token hash, so a later call with the token resolves to the row and is refused. Revoking a revoked
-// session answers with the first revocation's time and changes nothing.
 export function writeSessionRevocation(
   context: APIContext,
   caller: Identity,
@@ -65,8 +62,6 @@ interface RevocationState {
   readonly inputHash: string;
 }
 
-// the answer a call gets without a write: refused for a caller no longer live, and for an ID that
-// came before, its first result or a refusal as reused
 function pickSettledRevocation(state: RevocationState): RevocationResult | null {
   if (!state.live) {
     return { status: 'unauthorized' };
@@ -87,8 +82,6 @@ interface Revocation {
   readonly sessionID: string;
 }
 
-// revokes the session if it is live and answers its revocation time, or null when no session has
-// the ID
 async function updateRevokedAt(
   tx: Transaction<unknown>,
   context: APIContext,

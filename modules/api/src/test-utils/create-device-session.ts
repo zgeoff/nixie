@@ -8,11 +8,9 @@ interface DeviceSession {
   readonly sessionID: string;
   readonly token: string;
 
-  // the identity the token resolves to, which a procedure receives as its caller
   readonly caller: Identity;
 }
 
-// A device session as enrolment makes it: a host code, used once by a device of the given name.
 export async function createDeviceSession(
   context: APIContext,
   deviceName: string,
@@ -26,7 +24,6 @@ export async function createDeviceSession(
     tokenDelivery: 'bearer',
   });
 
-  // a fresh host code always enrols, and the token it gives always resolves
   invariant(enrolled.status === 'enrolled', `a fresh code failed to enrol: ${enrolled.status}`);
 
   const caller = await verifySessionToken(context, enrolled.token);

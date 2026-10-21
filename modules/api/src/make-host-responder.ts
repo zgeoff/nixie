@@ -4,8 +4,6 @@ import type { HostRouterOptions } from './types';
 
 type HostResponder = (request: Request) => Promise<Response>;
 
-// Makes the function that answers each request on the control socket: a call of a host procedure
-// under /rpc, or 404 for any other request.
 export function makeHostResponder(options: HostRouterOptions): HostResponder {
   const handler = new RPCHandler(createHostRouter(options));
 

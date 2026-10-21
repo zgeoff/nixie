@@ -8,9 +8,6 @@ import { createRevokeProcedure } from './create-revoke-procedure';
 import { createSessionProcedures } from './create-session-procedures';
 import type { APIContext, ReadViewMemory } from './types';
 
-// Builds the router that implements the contract. Every procedure except enrolment resolves the
-// caller's session first, and a session that resolves to nobody gets UNAUTHORIZED. The memory
-// view's procedures reach the memory store once the start sequence fills it.
 export function createAPIRouter(context: APIContext, readMemory: ReadViewMemory) {
   return apiImplementer.router({
     conversation: createConversationProcedures(context),

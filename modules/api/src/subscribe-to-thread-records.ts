@@ -9,13 +9,9 @@ interface ThreadRecordsOptions {
   readonly thread?: string | undefined;
   readonly signal?: AbortSignal | undefined;
 
-  // the error that ends the stream once the caller's own session is revoked
   readonly buildUnauthorized: () => Error;
 }
 
-// Follows the log for a client: each record after a sequence that belongs to a thread, or to the
-// thread asked for, then each record as it commits. It ends when the signal aborts, and fails once
-// a record revokes the caller's session, so a revoked device stops receiving at once.
 export async function* subscribeToThreadRecords(
   context: APIContext,
   caller: Identity,

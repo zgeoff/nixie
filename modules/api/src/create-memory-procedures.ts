@@ -3,8 +3,6 @@ import { apiImplementer } from './api-implementer';
 import { requireCaller } from './require-caller';
 import type { APIContext } from './types';
 
-// Builds the memory procedures of a signed-in device: the text of named versions, the notes of
-// named ratings, and the memory writer's status.
 export function createMemoryProcedures(context: APIContext) {
   return {
     readVersions: apiImplementer.memory.readVersions.handler(async (options) => {

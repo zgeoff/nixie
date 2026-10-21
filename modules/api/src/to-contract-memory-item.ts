@@ -1,7 +1,6 @@
 import type { ViewItem } from '@heynixie/memory';
 import { toContractKind } from './to-contract-kind';
 
-// An item as the contract carries it, with its times as dates and its text only while readable.
 export function toContractMemoryItem(item: ViewItem) {
   return {
     itemID: item.itemID,

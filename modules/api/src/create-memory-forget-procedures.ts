@@ -8,9 +8,6 @@ import { toContractMemoryVersion } from './to-contract-memory-version';
 import { toMemoryChangeError } from './to-memory-change-error';
 import type { APIContext, ReadViewMemory } from './types';
 
-// Builds the memory view's forget for a signed-in device: the preview of what a forget of an item
-// at the version the view showed destroys, then the forget itself, a checked action bound to that
-// version with you as its origin.
 export function createMemoryForgetProcedures(context: APIContext, readMemory: ReadViewMemory) {
   const memory = apiImplementer.memory;
 
@@ -31,8 +28,6 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
       };
     }),
 
-    // A retry finds the forget's result and runs its cleanup again, so a forget whose cleanup failed
-    // after its start committed completes; after a completed forget that cleanup runs nothing.
     forget: memory.forget.handler(async (options) => {
       const target = { itemID: options.input.itemID, version: options.input.version };
       const result = { itemID: target.itemID };

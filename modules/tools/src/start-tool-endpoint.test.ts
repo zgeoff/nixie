@@ -27,7 +27,6 @@ async function setupTest(config: SetupConfig) {
     log: testLog.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-    // these tests call direct tools only, so nothing reaches the queue
     queue: { enqueue: mock(), waitForOutcome: mock() },
   });
 
@@ -431,7 +430,6 @@ test('it sends the listen acknowledgement while the listen stream stays open', a
     }),
   });
 
-  // the endpoint's stop at the test's end closes the stream
   const first = await response.body?.pipeThrough(new TextDecoderStream()).getReader().read();
 
   expect(first?.done).toBeFalse();

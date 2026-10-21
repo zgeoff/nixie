@@ -5,12 +5,9 @@ import { requireCaller } from './require-caller';
 import { subscribeToThreadRecords } from './subscribe-to-thread-records';
 import type { APIContext } from './types';
 
-// Builds the live stream. Each event's ID is its record's sequence, so a client that reconnects
-// with Last-Event-ID resumes after the last record it received, with no gap and no repeat. The
-// stream answers under its first name too, for the clients of earlier releases.
 export function createRecordProcedures(context: APIContext) {
-  // The handler checks the session before it returns the stream, so the API refuses a revoked
-  // device with a plain 401 and opens a stream only for a session it accepts.
+  // HTTP sends the status before the stream's first event, so the handler checks the session first
+  // to refuse a revoked device with a plain 401.
   const follow = apiImplementer.records.follow.handler(async (options) => {
     const caller = await requireCaller(
       context,
@@ -31,14 +28,12 @@ export function createRecordProcedures(context: APIContext) {
   return { log: { follow }, records: { follow } };
 }
 
-// Each record as one event whose ID is the record's sequence.
 async function* streamRecordEvents(records: AsyncIterable<LogRecord>) {
   for await (const record of records) {
     yield withEventMeta({ record }, { id: String(record.sequence) });
   }
 }
 
-// a last event ID that is not a sequence leaves the input's own start
 function pickAfterSequence(afterSequence: number, lastEventID: string | undefined): number {
   return lastEventID !== undefined && /^\d{1,15}$/u.test(lastEventID)
     ? Number(lastEventID)

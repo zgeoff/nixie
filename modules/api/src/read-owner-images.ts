@@ -11,8 +11,6 @@ export type OwnerImagesResult =
       readonly position: number | null;
     };
 
-// Reads the images of a send and checks each one against imageLimits: the count, then each image's
-// size and the type its bytes hold, in the order sent. The first image that fails refuses the send.
 export async function readOwnerImages(files: readonly Blob[]): Promise<OwnerImagesResult> {
   const refused = findSizeRefusal(files);
 
@@ -34,7 +32,6 @@ export async function readOwnerImages(files: readonly Blob[]): Promise<OwnerImag
   return { status: 'read', images };
 }
 
-// the count and each size come from the blobs themselves, so a refusal reads no bytes
 function findSizeRefusal(files: readonly Blob[]): OwnerImagesResult | null {
   if (files.length > imageLimits.count) {
     return { status: 'refused', reason: 'too_many', position: null };

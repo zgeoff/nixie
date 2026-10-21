@@ -3,9 +3,6 @@ import { z } from 'zod';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
 import type { APIContext, APITables } from './types';
 
-// Finishes every record forget that began and never committed record.forgotten, oldest first, such
-// as one a crash cut short or one that ran before the conversation started. The start sequence runs
-// it once the session cleanup is in place and before any runner claims work.
 export async function runPendingRecordForgets(context: APIContext): Promise<void> {
   const rows = await context.log.writer.db
     .$extendTables<APITables>()

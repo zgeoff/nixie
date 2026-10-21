@@ -8,7 +8,6 @@ import { createHostWrittenSkillProcedures } from './create-host-written-skill-pr
 import { hostImplementer } from './host-implementer';
 import type { HostRouterOptions } from './types';
 
-// Builds the router of the host contract, which the control socket serves to the host commands.
 export function createHostRouter(options: HostRouterOptions) {
   const skillContext = { ...options.context, seedWrittenSkills: options.seedWrittenSkills };
 

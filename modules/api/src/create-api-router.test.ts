@@ -149,8 +149,6 @@ test('#sessions.issueCode answers a retry with a code that replaces the first', 
   const codes = await ctx.db.selectFrom('enrolment_codes').select('used_at').execute();
 
   expect(enrolWithFirst.error).toMatchObject({ code: 'ENROLMENT_CODE_INVALID' });
-
-  // the host code that enrolled the laptop, and the one code of this action
   expect(codes).toHaveLength(2);
 });
 
@@ -412,7 +410,7 @@ test('#conversation.send refuses an image whose bytes are not a type it takes wi
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
-  // a HEIC file's leading box, sent under a type it is not
+  // The bytes open with a HEIC file's leading box, and the test sends them under a type they are not.
   const heic = new File(
     [new Uint8Array([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63])],
     'hike.jpg',

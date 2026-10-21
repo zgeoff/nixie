@@ -3,8 +3,6 @@ import { readPendingSkillProposals, writeSkillProposalAnswer } from '@heynixie/s
 import invariant from 'tiny-invariant';
 import { hostImplementer } from './host-implementer';
 
-// Builds the host procedures over the pending skill proposals: list them with the version of each
-// skill in force, and approve or reject one under the skill hash skill-pending showed.
 export function createHostSkillProposalProcedures(context: SkillAnswerContext) {
   const proposals = hostImplementer.skills.proposals;
 
@@ -25,7 +23,6 @@ export function createHostSkillProposalProcedures(context: SkillAnswerContext) {
         ...(input.files === undefined ? {} : { files: input.files }),
       });
 
-      // an approval always records its ID and the version it applied
       invariant(result.approvalID !== null && result.skillHash !== null);
 
       return {
