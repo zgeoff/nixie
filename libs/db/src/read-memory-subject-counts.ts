@@ -9,15 +9,11 @@ export interface SubjectCount {
   readonly self: number;
 }
 
-// How many memory items and memory proposals each subject holds.
 export interface MemorySubjectCounts {
   readonly items: SubjectCount;
   readonly proposals: SubjectCount;
 }
 
-// Reads how many memory items and proposals each subject holds, in one transaction so both counts
-// see the same batches. A row with no subject counts by its kind, as the subjects migration maps
-// it, and a database from before memory counts none.
 export function readMemorySubjectCounts(db: Kysely<unknown>): Promise<MemorySubjectCounts> {
   return db.transaction().execute(async (tx) => ({
     items: await readTableSubjectCounts(tx, 'memory_items'),
@@ -58,8 +54,6 @@ async function readTableSubjectCounts(
   };
 }
 
-// the subject column, or where a row holds none the subject its kind maps to, as the subjects
-// migration maps it
 function pickSubjectExpression(names: ReadonlySet<string>) {
   if (names.has('subject')) {
     return sql`coalesce(subject, case kind when 'self' then 'self' else 'owner' end)`;

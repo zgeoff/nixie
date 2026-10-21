@@ -1,8 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the sandboxes projection: one row per sandbox that nixie made and has not destroyed, with
-// the adapter that made it and the owner that crash recovery reads.
 export const sandboxesMigration: Migration = {
   name: 'create the sandboxes projection',
   up: async (tx) => {

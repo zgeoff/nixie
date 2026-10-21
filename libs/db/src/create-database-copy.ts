@@ -3,9 +3,8 @@ import { dirname } from 'node:path';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 
-// Copies the open database to path with VACUUM INTO, a consistent snapshot even while others write.
-// SQLite neither fsyncs the copy nor makes it atomic, so the copy goes to a temporary file, reaches
-// the disk, and then takes its name, and an interrupted copy never sits under the final name.
+// SQLite's VACUUM INTO neither fsyncs the copy nor makes it atomic, so the copy is synced under a
+// temporary name before it takes the final one.
 export async function createDatabaseCopy(db: Kysely<unknown>, path: string): Promise<void> {
   const temporaryPath = `${path}.partial`;
 

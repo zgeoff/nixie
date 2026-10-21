@@ -1,3 +1,2 @@
-// The custom header every call from a client carries. A cross-site form cannot send it, so the API
-// refuses a call without it.
+// A cross-site form cannot send a custom header, so the API refuses a call without this one.
 export const clientHeaderName = 'x-nixie-client';

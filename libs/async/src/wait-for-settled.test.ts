@@ -16,7 +16,7 @@ test('it stays pending until the work settles', async () => {
   const settled = waitForSettled(work.promise);
   const turn = Promise.withResolvers<'pending'>();
 
-  // a macrotask runs after every queued microtask, so a settled wait would win the race first
+  // A macrotask runs after every queued microtask, so a settled wait wins the race first.
   setImmediate(() => {
     turn.resolve('pending');
   });

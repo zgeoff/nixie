@@ -5,9 +5,6 @@ import { buildShortIDFromUUID } from './build-short-id-from-uuid';
 import { readQueryRows } from './read-query-rows';
 import type { Migration } from './types';
 
-// Gives every consolidation change the short ID the model reads, and a place for the sealed comment
-// the conversation leaves on it with the record that left it. An existing change takes the short ID
-// its UUID gives, as the changes fold does at a rebuild. Each step is safe to run again.
 export const memoryConsolidationCommentsMigration: Migration = {
   name: 'add a short ID and a comment to each consolidation change',
   up: async (tx) => {
@@ -37,7 +34,6 @@ async function createColumn(
   }
 }
 
-// the backfill, which fills only the changes still without a short ID
 async function writeShortIDs(tx: Transaction<unknown>): Promise<void> {
   const changes = await readQueryRows(
     sql`select change_id from memory_consolidation_changes where short_id is null`,

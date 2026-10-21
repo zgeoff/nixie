@@ -5,9 +5,6 @@ import { buildShortIDFromUUID } from './build-short-id-from-uuid';
 import { readQueryRows } from './read-query-rows';
 import type { Migration } from './types';
 
-// Gives every memory item the short ID the model reads in place of its UUID: an existing item takes
-// the one its UUID gives, as the items fold gives it at a rebuild. It reads only item IDs, never a
-// version's text, and each step is safe to run again.
 export const memoryShortIDsMigration: Migration = {
   name: 'add a short ID to each memory item',
   up: async (tx) => {
@@ -30,7 +27,6 @@ async function createShortIDColumn(tx: Transaction<unknown>): Promise<void> {
   }
 }
 
-// the backfill, which fills only the items still without a short ID
 async function writeShortIDs(tx: Transaction<unknown>): Promise<void> {
   const items = await readQueryRows(
     sql`select item_id from memory_items where short_id is null`,

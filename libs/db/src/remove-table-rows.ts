@@ -3,9 +3,8 @@ import { sql } from 'kysely';
 import { z } from 'zod';
 import { readQueryRows } from './read-query-rows';
 
-// Deletes every row of every table in the database but the kept tables and SQLite's own, inside the
-// caller's transaction. A trigger that refuses a delete still refuses, so a caller that empties such
-// a table runs this inside withTriggersDropped.
+// A trigger that refuses a delete still refuses it here, so the caller drops such triggers in the
+// same transaction first.
 export async function removeTableRows(
   tx: Transaction<unknown>,
   keptTables: readonly string[],

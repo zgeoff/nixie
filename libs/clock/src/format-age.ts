@@ -1,5 +1,3 @@
-// Formats how long something has waited as a whole number of the largest unit that fits, such as
-// 3 days, or under a minute.
 export function formatAge(ageMs: number): string {
   const minutes = Math.floor(ageMs / 60_000);
 

@@ -6,8 +6,6 @@ import { readSchemaObjects } from './read-schema-objects';
 import { runMigrations } from './run-migrations';
 import type { BuildSchema, Migration } from './types';
 
-// What the last release's build knew about its schema: each migration's name in order, its oldest
-// reader, and the schema objects its migrations build. The release tag's own tree reports it.
 export interface ReleasedSchema {
   readonly migrations: readonly string[];
   readonly oldestReader: number;
@@ -15,30 +13,21 @@ export interface ReleasedSchema {
 }
 
 interface AddedMigration {
-  // the schema version the migration leaves
   readonly version: number;
   readonly name: string;
 
-  // each statement that is not an expand statement, when the build keeps the schema readable
   readonly refused: readonly string[];
 }
 
 export interface MigrationCheck {
-  // each released migration whose name this build changed, removed or moved
   readonly changed: readonly string[];
 
-  // each schema object that the released migrations build differently in this build
   readonly changedObjects: readonly string[];
   readonly added: readonly AddedMigration[];
 
-  // false when the build raised oldestReader past the last release's schema version, which
-  // declares that the release before cannot read what this build leaves
   readonly readableByReleaseBefore: boolean;
 }
 
-// Checks the migrations against the last release on a scratch database in directory: the released ones
-// must build the schema they built at the release, and a build that keeps its schema readable adds
-// only expand statements. With no release before it (released null), every migration passes.
 export async function checkMigrations(
   schema: BuildSchema,
   released: ReleasedSchema | null,
@@ -73,16 +62,12 @@ interface RecordedMigration {
 }
 
 interface RecordedRun {
-  // the schema objects after the released migrations, before the added ones
   readonly objects: readonly SchemaObject[];
   readonly added: readonly RecordedMigration[];
 }
 
-// The dialect runs a transaction's begin and commit as queries too, and they belong to the check.
 const transactionControl = /^(?:begin|commit|rollback|savepoint|release)\b/u;
 
-// Applies the released migrations and reads the schema they built, then runs each added one in its
-// own transaction with every statement it sends recorded.
 async function runRecordedMigrations(
   migrations: readonly Migration[],
   releasedCount: number,
@@ -119,13 +104,11 @@ async function runRecordedMigrations(
   }
 }
 
-// the scratch database, and the statements its log recorded since the last drain
 interface StatementRecorder {
   readonly db: Kysely<unknown>;
   readonly drainStatements: () => readonly string[];
 }
 
-// Runs each added migration in turn and takes the statements the log recorded for it.
 async function runAddedMigrations(
   recorder: StatementRecorder,
   added: readonly Migration[],
@@ -151,8 +134,6 @@ async function runAddedMigrations(
 const createTable = /^create table (?:if not exists )?(?<table>[^\s(]+)/u;
 const addColumn = /^alter table (?<table>\S+) add (?:column )?(?<definition>.+)$/u;
 
-// What the added migrations build that the release before never reads or writes: the tables they
-// create, and each column they add that an old insert leaves null, as table.column.
 interface AddedSchema {
   readonly tables: readonly string[];
   readonly columns: readonly string[];
@@ -216,8 +197,6 @@ function collectChangedObjects(
 
 const select = /^select\b/u;
 
-// A new table, a read, an index or a column an old insert still satisfies, a trigger on a new table,
-// or a backfill of a column the release adds: the release before reads and writes around each.
 function isExpandStatement(statement: string, added: AddedSchema): boolean {
   const normalized = normalizeStatement(statement);
 
@@ -234,8 +213,8 @@ function isExpandStatement(statement: string, added: AddedSchema): boolean {
 const createIndex =
   /^create (?<unique>unique )?index (?:if not exists )?\S+ on (?<table>[^\s(]+) ?\((?<columns>[^)]*)\)/u;
 
-// a unique index passes only on a table the release creates, or on columns it adds that the release
-// before leaves null, because a unique index admits any number of nulls
+// SQLite's unique index admits any number of nulls, so the release before stays valid when it
+// leaves the added columns null.
 function isExpandIndex(statement: string, added: AddedSchema): boolean {
   const index = createIndex.exec(statement)?.groups;
 
@@ -246,7 +225,6 @@ function isExpandIndex(statement: string, added: AddedSchema): boolean {
   );
 }
 
-// whether the release adds the table, or adds every one of the named columns to it
 function isAddedSchema(added: AddedSchema, table: string, columns: readonly string[]): boolean {
   return (
     added.tables.includes(normalizeTable(table)) ||
@@ -255,12 +233,10 @@ function isAddedSchema(added: AddedSchema, table: string, columns: readonly stri
   );
 }
 
-// an index's columns, each without its sort order or collation
 function splitColumns(columns: string): readonly string[] {
   return columns.split(',').map((column) => column.trim().split(' ').at(0) ?? '');
 }
 
-// a constrained column passes only on a table the release creates
 function isExpandColumn(statement: string, added: AddedSchema): boolean {
   const column = addColumn.exec(statement)?.groups;
 
@@ -271,7 +247,6 @@ function isExpandColumn(statement: string, added: AddedSchema): boolean {
   );
 }
 
-// an insert that leaves the column out still succeeds: no check, and a default for not null
 function isOptionalColumn(definition: string): boolean {
   return (
     !/\bcheck\b/u.test(definition) &&
@@ -282,8 +257,6 @@ function isOptionalColumn(definition: string): boolean {
 const createTrigger =
   /^create trigger (?:if not exists )?\S+ (?:before |after |instead of )?(?:insert|update|delete)(?: of .*?)? on (?<table>\S+)/u;
 
-// a trigger passes only on a table the release creates, which the release before never writes; its
-// log reset drops and restores every trigger the schema holds
 function isExpandTrigger(statement: string, added: AddedSchema): boolean {
   const table = createTrigger.exec(statement)?.groups?.['table'];
 
@@ -292,7 +265,6 @@ function isExpandTrigger(statement: string, added: AddedSchema): boolean {
 
 const update = /^update (?<table>\S+) set (?<assignments>.+?)(?: where .*)?$/u;
 
-// an update that sets only columns the release adds, which the release before never reads
 function isBackfill(statement: string, added: AddedSchema): boolean {
   const backfill = update.exec(statement)?.groups;
 
@@ -306,8 +278,6 @@ function isBackfill(statement: string, added: AddedSchema): boolean {
   );
 }
 
-// the column each assignment of an update sets; an assignment it cannot read names no column, so
-// the update passes only when every assignment reads as column = value
 function splitAssignedColumns(assignments: string): readonly string[] {
   return assignments
     .split(',')

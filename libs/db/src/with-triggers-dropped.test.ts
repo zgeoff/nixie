@@ -6,7 +6,6 @@ import { sql } from 'kysely';
 import { startDatabase } from './start-database';
 import { withTriggersDropped } from './with-triggers-dropped';
 
-// a parent table whose rows a trigger refuses to delete, and a child that points at a parent
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 

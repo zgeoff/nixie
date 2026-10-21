@@ -1,7 +1,7 @@
 import type { RecordedInputEvent } from './build-span-state-from-events';
 
-// Clipboard text that Gboard 18.4.1 inserted into a textarea in Chrome 155 on Android 16: a
-// long-press paste and a tap on the keyboard's clipboard chip. The copied text is invented.
+// Gboard 18.4.1 recorded these into a textarea in Chrome 155 on Android 16. The copied text is
+// invented.
 export const gboardPastedEvents = {
   'long-press': [
     {

@@ -1,6 +1,3 @@
-// `bun libs/db/src/run-migration-check.ts [--released <schema.json> --last-tag <tag>] [--release-body
-// <body.md>] [--summary <out.json>]` checks the migrations since the last release, prints the notes
-// section, replaces it in the release body, and writes the summary that release.json carries.
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,7 +8,6 @@ import { checkMigrations } from './check-migrations';
 import { nixieSchema } from './nixie-schema';
 import { renderMigrationNotes } from './render-migration-notes';
 
-// the last release's schema, as run-schema-report.ts prints it in the release tag's own tree
 const schemaObject = z.strictObject({
   type: z.string(),
   name: z.string(),

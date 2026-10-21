@@ -2,9 +2,6 @@ import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Gives every memory item and memory proposal its subject: self for a self-note, owner for every
-// other row. The column stays nullable beside the kind column, so the release before still inserts
-// rows, and a reader takes a null subject from the kind. Each step is safe to run again.
 export const memorySubjectsMigration: Migration = {
   name: 'add a subject to each memory item and proposal',
   up: async (tx) => {

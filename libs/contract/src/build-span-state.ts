@@ -1,16 +1,11 @@
 import type { PendingInput, Span, SpanSource, SpanState } from './types';
 
-// Builds the span state once the text box holds `text`. Offsets count UTF-16 code units, and no
-// edit boundary splits a surrogate pair.
 export function buildSpanState(
   state: SpanState,
   pending: PendingInput | undefined,
   text: string,
 ): SpanState {
   const pinned = planEdit(state.text, text, pending?.selection);
-
-  // An insertion away from the selection, such as a spelling fix, or one with no pending input
-  // comes from a plain diff instead, and its text counts as unknown.
   const fallback = pending === undefined || !isEditAtSelection(pinned, pending.selection);
   const edit = fallback ? planEdit(state.text, text) : pinned;
 
@@ -41,8 +36,6 @@ interface Edit {
   readonly removed: number;
 }
 
-// The edit starts at or before the selection's start and ends at or after its end. A backward
-// edit ends at the caret, so its suffix is fixed first.
 function planEdit(before: string, after: string, selection?: PendingInput['selection']): Edit {
   const shorter = Math.min(before.length, after.length);
   const prefixBound = Math.min(shorter, selection?.start ?? shorter);
@@ -65,7 +58,6 @@ function planEdit(before: string, after: string, selection?: PendingInput['selec
   });
 }
 
-// The count backs off one code unit when it would start inside a surrogate pair.
 function countSuffix(before: string, after: string, limit: number): number {
   let length = 0;
 
@@ -95,7 +87,6 @@ interface Shared {
   readonly suffix: number;
 }
 
-// The edit is whatever lies between the prefix and the suffix that both texts share.
 function buildEdit(before: string, after: string, shared: Shared): Edit {
   return {
     at: shared.prefix,
@@ -104,7 +95,6 @@ function buildEdit(before: string, after: string, shared: Shared): Edit {
   };
 }
 
-// The count backs off one code unit when it would end inside a surrogate pair.
 function countPrefix(before: string, after: string, limit: number): number {
   let length = 0;
 
@@ -117,23 +107,18 @@ function countPrefix(before: string, after: string, limit: number): number {
     : length;
 }
 
-// A deletion inserts nothing to label, so only an insertion must replace exactly the selection.
 function isEditAtSelection(edit: Edit, selection: PendingInput['selection']): boolean {
   return (
     edit.inserted === 0 || (edit.at === selection.start && edit.at + edit.removed === selection.end)
   );
 }
 
-// what an edit put in the text box, where, and how many characters it replaced
 interface Insertion {
   readonly at: number;
   readonly removed: number;
   readonly text: string;
 }
 
-// An insert of several words counts as typed only when it puts back, where the edit before it
-// removed typed text, the same characters with only whitespace changed: Gboard splits a
-// run-together word that way, and no character enters as typed unless it was typed before.
 function pickEditSource(
   removed: SpanState['removed'],
   pending: PendingInput,
@@ -156,8 +141,6 @@ function stripWhitespace(text: string): string {
   return text.replaceAll(/\s/gu, '');
 }
 
-// Shifts a span past the edit, trims the part the edit removed, and splits a span the edit lands
-// inside.
 function splitSpan(span: Readonly<Span>, edit: Edit): Span[] {
   const removedEnd = edit.at + edit.removed;
   const shift = edit.inserted - edit.removed;
@@ -180,7 +163,6 @@ function splitSpan(span: Readonly<Span>, edit: Edit): Span[] {
   return [...head, ...tail];
 }
 
-// The text a pure delete removed, when every character of it was typed.
 function findTypedRemoval(state: SpanState, edit: Edit): SpanState['removed'] {
   const end = edit.at + edit.removed;
 
@@ -193,7 +175,6 @@ function findTypedRemoval(state: SpanState, edit: Edit): SpanState['removed'] {
     : undefined;
 }
 
-// Joins neighbouring spans from the same source and drops empty ones.
 function mergeSpans(spans: readonly Span[]): Span[] {
   const merged: { end: number; source: SpanSource; start: number }[] = [];
 

@@ -8,8 +8,8 @@ import { runMigrations } from './run-migrations';
 import { startDatabase } from './start-database';
 import type { BuildSchema } from './types';
 
-// One column as the migrations declare it. A primary key counts as not null, because every table
-// fills its key, even where SQLite would let a text key hold null.
+// SQLite lets a text primary key hold null, but every table fills its key, so a primary key counts
+// as not null.
 interface BuiltColumn {
   readonly name: string;
   readonly type: string;
@@ -29,9 +29,6 @@ const columnRowSchema = z.object({
   pk: z.number(),
 });
 
-// Runs the schema's migrations on an empty database in a temporary directory and reads back each
-// table with its columns, tables by name and columns in their declared order. The migration
-// runner owns schema_version, so it stays out.
 export async function readBuiltTables(schema: BuildSchema): Promise<BuiltTable[]> {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-built-tables-'));
 

@@ -23,7 +23,6 @@ async function setupTest() {
 
   stack.defer(() => db.destroy());
 
-  // the schema the release before leaves, which the migration starts from
   await runMigrations(db, {
     schema: {
       migrations: nixieSchema.migrations.slice(

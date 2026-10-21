@@ -52,8 +52,6 @@ test('it rejects a column type that has no TypeScript type', () => {
   );
 });
 
-// Every module's table types check against nixie-tables.ts, so a migration that leaves the file
-// stale leaves the check blind to it. Run `bun run --cwd libs/db tables` to rewrite it.
 test('it matches the committed nixie-tables.ts', async () => {
   const committed = await readFile(join(import.meta.dir, 'nixie-tables.ts'), 'utf8');
   const tables = await readBuiltTables(nixieSchema);

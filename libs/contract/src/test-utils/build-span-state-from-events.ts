@@ -2,8 +2,6 @@ import { buildPendingInput } from '../build-pending-input';
 import { buildSpanState } from '../build-span-state';
 import type { PendingInput, SpanState } from '../types';
 
-// One event a phone recorded from a text box: a beforeinput with its selection, or the input that
-// follows it with the text box's value once the edit landed.
 export type RecordedInputEvent =
   | {
       readonly event: 'beforeinput';
@@ -18,8 +16,6 @@ interface Replay {
   readonly state: SpanState;
 }
 
-// Replays recorded events through the span logic the composer runs: beforeinput builds the pending
-// input, and the input after it applies it and clears it.
 export function buildSpanStateFromEvents(events: readonly RecordedInputEvent[]): SpanState {
   return events.reduce<Replay>(
     (replay, entry) =>

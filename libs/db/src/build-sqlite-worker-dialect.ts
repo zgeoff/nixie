@@ -5,9 +5,6 @@ import { DatabaseError } from './database-error';
 import { getSqliteWorkerFile } from './get-sqlite-worker-file';
 import type { DatabaseOptions, WorkerQueryResult, WorkerRequest, WorkerResponse } from './types';
 
-// nixie's Kysely dialect for bun:sqlite. One worker holds the one connection, so no query blocks
-// the main thread, and Kysely queues every query behind the one in flight, because SqliteAdapter
-// declares a single connection.
 export function buildSqliteWorkerDialect(path: string, options: DatabaseOptions = {}): Dialect {
   return {
     createAdapter: () => new SqliteAdapter(),
@@ -137,7 +134,6 @@ function buildConnection(worker: SqliteWorker): DatabaseConnection {
       return buildQueryResult<R>(result);
     },
 
-    // the worker returns every row at once, so a stream yields them as one chunk
     async *streamQuery<R>(compiledQuery: CompiledQuery): AsyncIterableIterator<QueryResult<R>> {
       yield await this.executeQuery<R>(compiledQuery);
     },
@@ -147,7 +143,7 @@ function buildConnection(worker: SqliteWorker): DatabaseConnection {
 type WorkerParameters = Extract<WorkerRequest, { kind: 'query' }>['parameters'];
 
 // bun:sqlite binds a value it does not support, such as a Date or undefined, as NULL without an
-// error, so such a parameter throws before the worker sees it
+// error, so such a parameter throws before the worker sees it.
 function toWorkerParameters(parameters: readonly unknown[]): WorkerParameters {
   return parameters.map((parameter) => {
     if (!isSQLQueryBinding(parameter)) {
@@ -168,8 +164,8 @@ function buildQueryResult<R>(result: WorkerQueryResult): QueryResult<R> {
   };
 }
 
-// a plain BEGIN takes a read snapshot that a later write cannot upgrade once another process has
-// committed, so every transaction takes the write lock as it opens
+// SQLite cannot upgrade a plain BEGIN's read snapshot to a write once another process has
+// committed, so every transaction takes the write lock as it opens.
 async function runBegin(
   connection: DatabaseConnection,
   settings: TransactionSettings,

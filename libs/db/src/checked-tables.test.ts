@@ -3,8 +3,6 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// Each test typechecks one table map against the real nixie-tables.ts with the repo's own tsc, so
-// it proves the error that a module's typecheck reports.
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-checked-tables-'));
 
@@ -22,7 +20,6 @@ async function setupTest() {
         skipLibCheck: true,
         types: [],
 
-        // the table map outside the repo resolves kysely as libs/db does
         paths: { kysely: [Bun.resolveSync('kysely', import.meta.dir).replace(/\.js$/u, '.d.ts')] },
       },
       files: ['tables.ts'],
