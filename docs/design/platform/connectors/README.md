@@ -5,6 +5,7 @@ model loop and code run sits in a sandbox.
 [0030](../../../decisions/0030-connectors-and-sandbox-environments.md) records the choices.
 
 - [Connectors](connector.md) — the connector interface, setup and OAuth, Google, and search
+- [Web fetch](web-fetch.md) — the fetch sandbox, the address check, the limits and the result
 - [The credential store](credentials.md) — backends, the fetcher, grants into a sandbox, refresh,
   disconnect and forget
 - [Serving nixie's tools](tools.md) — tool definitions, what the model sees, one endpoint per task

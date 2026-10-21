@@ -132,15 +132,20 @@ marked when cut. The limit is configurable. `detail` is outside content and neve
 model needs the provider's message to tell you what went wrong, and the cap keeps an error body,
 which can quote outside text back, from filling the turn.
 
-A `connection_unavailable` error carries the values that the
-[status line](#what-the-model-learns-about-a-connection) holds for the connection: its status, the
-reason for `failing`, the time its status began and where in the client you reconnect it. **Why:**
-the model then knows from the error alone that its call was not wrong, and what you must do. A call
-to a tool of a connection that you forgot during the session returns `connection_unavailable` with
-no other field, so the error names neither the connection nor its status, as
-[the statuses](credentials.md#statuses) require of `forgotten`. `fetch_refused` keeps one meaning, a
-refused host or address. **Why:** `fetch_refused` reads as a web fetch, so a status under that kind
-would mix 2 causes.
+A `connection_unavailable` error carries 4 fields, with the values that the
+[status line](#what-the-model-learns-about-a-connection) holds for the connection:
+
+- `status`, the connection's status;
+- `reason`, the reason for `failing`, present only when `status` is `failing`;
+- `since`, the time its status began;
+- `reconnectUrl`, where in the client you reconnect it.
+
+**Why:** the model then knows from the error alone that its call was not wrong, and what you must
+do. A call to a tool of a connection that you forgot during the session returns
+`connection_unavailable` with none of these fields, so the error names neither the connection nor
+its status, as [the statuses](credentials.md#statuses) require of `forgotten`. `fetch_refused` keeps
+one meaning, a refused host or address. **Why:** `fetch_refused` reads as a web fetch, so a status
+under that kind would mix 2 causes.
 
 A failed direct call is an error, not a result, because it produced nothing that matches the tool's
 output schema. Web fetch keeps its own result, because a page with any status is a page.

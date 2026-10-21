@@ -151,5 +151,5 @@ sketch maps each part of the interface:
   that enforces its declared host list, never through unrestricted container networking.
 - **Suspension.** `none`. A stopped container restarts through nixie's committed-step recovery.
 - **Public egress.** The adapter must enforce [public egress](#public-egress) before a container can
-  host the [web fetch](connector.md#web-fetch), through its adapter-owned egress gateway or a
-  network policy with the same refusals.
+  host the [web fetch](web-fetch.md), through its adapter-owned egress gateway or a network policy
+  with the same refusals.
