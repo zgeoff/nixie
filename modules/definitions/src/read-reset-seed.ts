@@ -2,9 +2,11 @@ import type { JSONObject } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import invariant from 'tiny-invariant';
+import { loadSkillVersions } from './load-skill-versions';
+import type { SnapshotSkill } from './load-snapshot-skills';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
-import type { DefinitionsInForce, DefinitionsTables, ParsedSkill } from './types';
+import type { DefinitionsInForce, DefinitionsTables, SkillVersion, WrittenSkillRow } from './types';
 
 // What a reset carries into the new log of the definitions in force: the seed, the snapshot row
 // it points at, and the payload of the record that seeded it.
@@ -17,7 +19,12 @@ export interface ResetSeed {
   readonly payload: JSONObject;
 
   // the skills the snapshot holds, with their files
-  readonly skills: readonly ParsedSkill[];
+  readonly skills: readonly SnapshotSkill[];
+
+  // the skills nixie wrote that are in force, with each one's version and the version of your
+  // definitions beneath it, which a retirement puts back in force
+  readonly written: readonly WrittenSkillRow[];
+  readonly beneath: readonly SkillVersion[];
 }
 
 type SeedRecordTables = Readonly<{
@@ -50,6 +57,22 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
   // the seed row's foreign key holds its record in place
   invariant(record);
 
+  const written = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('written_skills')
+    .selectAll()
+    .where('state', '=', 'in_force')
+    .orderBy('name')
+    .execute();
+
+  // a written skill whose seed has not run yet holds a version that no snapshot holds
+  const beneath = await loadSkillVersions(
+    db,
+    written.flatMap((row) =>
+      row.definitions_hash === null ? [row.skill_hash] : [row.skill_hash, row.definitions_hash],
+    ),
+  );
+
   return {
     inForce,
     policyHash: snapshot.policy_hash,
@@ -58,5 +81,7 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     createdAt: snapshot.created_at,
     payload: parseJSONObject(record.payload),
     skills: await loadSnapshotSkills(db, inForce.snapshotHash),
+    written,
+    beneath: [...beneath.values()],
   };
 }

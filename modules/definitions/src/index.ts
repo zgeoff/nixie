@@ -17,10 +17,18 @@ export { loadSkillVersions } from './load-skill-versions';
 export { loadSnapshotSkills } from './load-snapshot-skills';
 export type { SeedOptions, SeedResult } from './run-seed';
 export { runSeed } from './run-seed';
+export { runWrittenSkillSeed } from './run-written-skill-seed';
+export type { WrittenSkillEntry } from './read-written-skills';
+export { readWrittenSkills } from './read-written-skills';
+export type { WrittenSkillInput } from './write-written-skill';
+export { writeWrittenSkill } from './write-written-skill';
+export { writeWrittenSkillState } from './write-written-skill-state';
+export { WrittenSkillStateError } from './written-skill-state-error';
 export { SnapshotError } from './snapshot-error';
 
 export type {
   DefinitionsInForce,
+  DefinitionsSkillOrigin,
   DefinitionsSnapshot,
   DefinitionsSource,
   ParsedDefinitions,
@@ -35,6 +43,7 @@ export type {
   SnapshotPolicy,
   SourceKind,
   ToolDeclaration,
+  WrittenSkillState,
 } from './types';
 
 export { writeResetSeed } from './write-reset-seed';

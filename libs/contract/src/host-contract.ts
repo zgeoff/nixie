@@ -197,11 +197,12 @@ const pendingSkillProposalSchema = z.object({
   baseHash: z.string().nullable(),
   files: z.array(skillFileSchema),
 
-  // the version in force now, or null when none is; a vendored one comes from skills.lock.json
+  // the version in force now, or null when none is; a vendored one comes from skills.lock.json, and a
+  // nixie one is a skill nixie wrote that your approval put in force
   inForce: z
     .object({
       skillHash: z.string(),
-      origin: z.enum(['definitions', 'vendored']),
+      origin: z.enum(['definitions', 'vendored', 'nixie']),
       files: z.array(skillFileSchema),
     })
     .nullable(),

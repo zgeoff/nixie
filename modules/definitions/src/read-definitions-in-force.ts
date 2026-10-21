@@ -39,7 +39,7 @@ export async function readDefinitionsInForce(
   const skills = await db
     .$extendTables<DefinitionsTables>()
     .selectFrom('snapshot_skills')
-    .select(['name', 'skill_hash', 'origin', 'in_conversation'])
+    .select(['name', 'skill_hash', 'origin', 'in_conversation', 'approval_id'])
     .where('snapshot_hash', '=', row.snapshot_hash)
     .orderBy('name')
     .execute();
@@ -59,7 +59,7 @@ export async function readDefinitionsInForce(
     skills: skills.map((skill) => ({
       name: skill.name,
       skillHash: skill.skill_hash,
-      origin: skill.origin,
+      origin: skill.approval_id === null ? skill.origin : 'nixie',
     })),
     conversationSkills: skills
       .filter((skill) => skill.in_conversation === 1)

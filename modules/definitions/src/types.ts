@@ -63,8 +63,13 @@ export interface DefinitionsSnapshot {
   readonly form: string;
 }
 
-// Where a skill came from: your own definitions, or a vendored copy that skills.lock.json records.
-export type SkillOrigin = 'definitions' | 'vendored';
+// Where a skill in your definitions came from: your own files, or a vendored copy that
+// skills.lock.json records.
+export type DefinitionsSkillOrigin = 'definitions' | 'vendored';
+
+// Where a skill in force came from: your definitions, or nixie, which wrote it and applied it on
+// your approval.
+export type SkillOrigin = DefinitionsSkillOrigin | 'nixie';
 
 // The SKILL.md fields nixie reads. allowedTools is shown and never granted.
 export interface SkillFrontmatter {
@@ -86,7 +91,7 @@ export interface SkillVersion {
 }
 
 export interface ParsedSkill extends SkillVersion {
-  readonly origin: SkillOrigin;
+  readonly origin: DefinitionsSkillOrigin;
 }
 
 // What the seed reads from a snapshot. unapplied lists each file the seed left out, in path order,
@@ -168,15 +173,42 @@ interface SkillVersionRow {
   readonly files: string;
 }
 
+// a skill that nixie wrote keeps the origin 'definitions' in its row, and the approval that
+// applied it marks it
 interface SnapshotSkillRow {
   readonly snapshot_hash: string;
   readonly name: string;
   readonly skill_hash: string;
-  readonly origin: SkillOrigin;
+  readonly origin: DefinitionsSkillOrigin;
 
   // 1 when the skill is on the conversation's skill list
   readonly in_conversation: number;
+
+  // the approval that applied a skill nixie wrote, or null for a skill from your definitions
+  readonly approval_id: string | null;
 }
+
+// a skill that nixie wrote, applied by an approval; the base is the version in your definitions
+// when the approval applied it, and the definitions version is the one at the newest seed, each
+// null when your definitions lack the skill
+export interface WrittenSkillRow {
+  readonly approval_id: string;
+  readonly proposal_id: string;
+  readonly name: string;
+  readonly skill_hash: string;
+  readonly state: WrittenSkillState;
+  readonly base_hash: string | null;
+  readonly base_origin: DefinitionsSkillOrigin | null;
+  readonly definitions_hash: string | null;
+  readonly definitions_origin: DefinitionsSkillOrigin | null;
+  readonly approved_at: number;
+  readonly updated_at: number;
+}
+
+// Where a skill that nixie wrote stands: in force over your definitions, adopted once a seed
+// brings the same version from your definitions, superseded by a later approved version, or
+// retired when you keep your definitions' version instead.
+export type WrittenSkillState = 'in_force' | 'adopted' | 'superseded' | 'retired';
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 export type DefinitionsTables = CheckedTables<
@@ -186,5 +218,6 @@ export type DefinitionsTables = CheckedTables<
     definition_seeds: SeedRow;
     skill_versions: SkillVersionRow;
     snapshot_skills: SnapshotSkillRow;
+    written_skills: WrittenSkillRow;
   }>
 >;

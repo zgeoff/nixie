@@ -1,22 +1,19 @@
 import type { Log, LogRecord } from '@heynixie/log';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { Transaction } from 'kysely';
-import invariant from 'tiny-invariant';
+import { withWriteTransaction } from '@heynixie/log';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
-import { buildSkillChanges } from './build-skill-changes';
+import { buildSkillOverlay } from './build-skill-overlay';
 import { parseDefinitions } from './parse-definitions';
 import { readDefinitionsInForce } from './read-definitions-in-force';
+import { readWrittenSkills } from './read-written-skills';
 import type {
   DefinitionsInForce,
   DefinitionsSnapshot,
   DefinitionsSource,
-  DefinitionsTables,
   ParsedDefinitions,
-  SkillRef,
   Snapshot,
   SnapshotPolicy,
 } from './types';
-import { writeSkillRows } from './write-skill-rows';
+import { writeSeed } from './write-seed';
 
 export interface SeedOptions {
   readonly log: Log;
@@ -41,9 +38,9 @@ export type SeedResult =
       readonly inForce: DefinitionsInForce | null;
     };
 
-// Seeds a snapshot in one write transaction. A snapshot that fails to read or parse comes back
-// refused, never thrown, and the last seed stays in force. The caller runs one seed at a time, so
-// an older revision never commits after a newer one.
+// Seeds a snapshot, with each skill that nixie wrote laid over it, in one write transaction. A
+// snapshot that fails to read or parse comes back refused, never thrown. The caller runs one seed
+// at a time, so an older revision never commits after a newer one.
 export async function runSeed(options: SeedOptions): Promise<SeedResult> {
   const read = await tryReadDefinitions(options.source);
 
@@ -53,21 +50,43 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
     return { status: 'refused', error: read, inForce };
   }
 
-  const built = buildDefinitionsSnapshot({
-    persona: read.parsed.persona,
-    policy: options.policy,
-    skills: read.parsed.skills,
-    conversationSkills: read.parsed.conversationSkills,
-  });
-
   return withWriteTransaction(options.log.writer, async (tx) => {
     const inForce = await readDefinitionsInForce(tx);
+
+    const overlay = buildSkillOverlay({
+      skills: read.parsed.skills,
+      conversationSkills: read.parsed.conversationSkills,
+      written: await readWrittenSkills(tx),
+    });
+
+    const built = buildDefinitionsSnapshot({
+      persona: read.parsed.persona,
+      policy: options.policy,
+      skills: overlay.skills,
+      conversationSkills: overlay.conversationSkills,
+    });
 
     if (inForce !== null && isSameSeed(inForce, { ...read, built, sourceID: options.source.id })) {
       return { status: 'unchanged', inForce };
     }
 
-    return applySeed(tx, options, { ...read, built, previous: inForce });
+    const written = await writeSeed(tx, options.log, {
+      source: {
+        id: options.source.id,
+        kind: options.source.kind,
+        revision: read.snapshot.revision,
+        contentHash: read.snapshot.contentHash,
+      },
+      formatVersion: read.parsed.formatVersion,
+      unapplied: read.parsed.unapplied,
+      skipped: read.snapshot.skipped,
+      versions: read.parsed.skills,
+      overlay,
+      built,
+      previous: inForce,
+    });
+
+    return { status: 'seeded', ...written };
   });
 }
 
@@ -86,13 +105,9 @@ async function tryReadDefinitions(source: DefinitionsSource): Promise<ReadDefini
   }
 }
 
-interface SeedPlan extends ReadDefinitions {
-  readonly built: DefinitionsSnapshot;
-}
-
 function isSameSeed(
   inForce: DefinitionsInForce,
-  plan: SeedPlan & { readonly sourceID: string },
+  plan: ReadDefinitions & { readonly built: DefinitionsSnapshot; readonly sourceID: string },
 ): boolean {
   return (
     inForce.sourceID === plan.sourceID &&
@@ -100,136 +115,4 @@ function isSameSeed(
     inForce.contentHash === plan.snapshot.contentHash &&
     inForce.snapshotHash === plan.built.snapshotHash
   );
-}
-
-interface AppliedPlan extends SeedPlan {
-  // the definitions the seed replaces, which its skill notice compares with
-  readonly previous: DefinitionsInForce | null;
-}
-
-async function applySeed(
-  tx: Transaction<unknown>,
-  options: SeedOptions,
-  plan: AppliedPlan,
-): Promise<SeedResult> {
-  const seededAt = options.log.writer.clock.now();
-
-  await writeSnapshotRows(tx, plan, seededAt);
-
-  await writeSkillRows(tx, {
-    snapshotHash: plan.built.snapshotHash,
-    skills: plan.parsed.skills,
-    conversationSkills: plan.parsed.conversationSkills,
-  });
-
-  const record = await writeSeedRecord(tx, options, plan);
-
-  const inForce: DefinitionsInForce = {
-    seededAt: new Date(seededAt),
-    sourceID: options.source.id,
-    sourceKind: options.source.kind,
-    revision: plan.snapshot.revision,
-    contentHash: plan.snapshot.contentHash,
-    formatVersion: plan.parsed.formatVersion,
-    snapshotHash: plan.built.snapshotHash,
-    personaVersion: plan.built.personaVersion,
-    persona: plan.built.persona,
-    policyHash: plan.built.policyHash,
-    recordSequence: record.sequence,
-    skills: plan.parsed.skills.map((skill) => toSkillRef(skill)),
-    conversationSkills: plan.parsed.conversationSkills,
-  };
-
-  await writeSeedRow(tx, inForce);
-
-  return { status: 'seeded', record, inForce };
-}
-
-// a persona or a snapshot seen before keeps its first row, and with it its first label
-async function writeSnapshotRows(
-  tx: Transaction<unknown>,
-  plan: SeedPlan,
-  seededAt: number,
-): Promise<void> {
-  const tables = tx.$extendTables<DefinitionsTables>();
-
-  await tables
-    .insertInto('personas')
-    .values({ persona_version: plan.built.personaVersion, instructions: plan.built.persona })
-    .onConflict((conflict) => conflict.doNothing())
-    .execute();
-
-  await tables
-    .insertInto('definition_snapshots')
-    .values({
-      snapshot_hash: plan.built.snapshotHash,
-      persona_version: plan.built.personaVersion,
-      policy_hash: plan.built.policyHash,
-      form: plan.built.form,
-      label: plan.snapshot.revision,
-      created_at: seededAt,
-    })
-    .onConflict((conflict) => conflict.doNothing())
-    .execute();
-}
-
-async function writeSeedRecord(
-  tx: Transaction<unknown>,
-  options: SeedOptions,
-  plan: AppliedPlan,
-): Promise<LogRecord> {
-  const skills = plan.parsed.skills.map((skill) => toSkillRef(skill));
-  const skillChanges = buildSkillChanges(plan.previous?.skills ?? [], skills);
-
-  const [record] = await writeRecordsInTransaction(tx, options.log, [
-    {
-      kind: 'definitions_seeded',
-      definitions: {
-        snapshotHash: plan.built.snapshotHash,
-        personaVersion: plan.built.personaVersion,
-      },
-      payload: {
-        sourceID: options.source.id,
-        sourceKind: options.source.kind,
-        revision: plan.snapshot.revision,
-        contentHash: plan.snapshot.contentHash,
-        formatVersion: plan.parsed.formatVersion,
-        policyHash: plan.built.policyHash,
-        skills: skills.map((skill) => ({
-          name: skill.name,
-          skillHash: skill.skillHash,
-          origin: skill.origin,
-        })),
-        skillChanges: { ...skillChanges },
-        unapplied: plan.parsed.unapplied,
-        skipped: plan.snapshot.skipped,
-      },
-    },
-  ]);
-
-  // the log writes one record for each input
-  invariant(record);
-
-  return record;
-}
-
-function toSkillRef(skill: SkillRef): SkillRef {
-  return { name: skill.name, skillHash: skill.skillHash, origin: skill.origin };
-}
-
-async function writeSeedRow(tx: Transaction<unknown>, inForce: DefinitionsInForce): Promise<void> {
-  await tx
-    .$extendTables<DefinitionsTables>()
-    .insertInto('definition_seeds')
-    .values({
-      seeded_at: inForce.seededAt.getTime(),
-      source_id: inForce.sourceID,
-      source_kind: inForce.sourceKind,
-      revision: inForce.revision,
-      content_hash: inForce.contentHash,
-      format_version: inForce.formatVersion,
-      snapshot_hash: inForce.snapshotHash,
-      record_sequence: inForce.recordSequence,
-    })
-    .execute();
 }

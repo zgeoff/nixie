@@ -8,6 +8,7 @@ import { writeSkillRows } from './write-skill-rows';
 
 // Seeds the definitions in force again as the first record of a reset log, inside the reset's
 // transaction, with the payload of the seed it repeats, so the next start finds them unchanged.
+// The skills nixie wrote stay in force over the definitions with the versions beneath them.
 export async function writeResetSeed(
   tx: Transaction<unknown>,
   log: Log,
@@ -17,9 +18,18 @@ export async function writeResetSeed(
 
   await writeSkillRows(tx, {
     snapshotHash: seed.inForce.snapshotHash,
+    versions: [...seed.skills, ...seed.beneath],
     skills: seed.skills,
     conversationSkills: seed.inForce.conversationSkills,
   });
+
+  if (seed.written.length > 0) {
+    await tx
+      .$extendTables<DefinitionsTables>()
+      .insertInto('written_skills')
+      .values(seed.written)
+      .execute();
+  }
 
   const [record] = await writeRecordsInTransaction(tx, log, [
     {

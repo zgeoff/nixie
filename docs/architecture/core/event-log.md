@@ -119,9 +119,10 @@ reset in 7 stages:
    commit, drops the triggers, and deletes every row of every table but the writer epoch, the schema
    version and the identity record. It deletes the revoked and lapsed identities.
 5. The same transaction writes the first records of the new log: a definitions seed record that
-   repeats the seed in force, a `log_reset` record on the conversation thread, and a `session_kept`
-   record for each kept session, which that session's identity row then points at. The transaction
-   then creates the triggers again.
+   repeats the seed in force, with the skills nixie wrote that stay in force over the definitions
+   and the versions beneath them, a `log_reset` record on the conversation thread, and a
+   `session_kept` record for each kept session, which that session's identity row then points at.
+   The transaction then creates the triggers again.
 6. It deletes the database copies taken before a migration and vacuums both databases, so no old
    page stays in either file.
 7. The control request answers, the server stops, and the process exits 0. The container runtime
