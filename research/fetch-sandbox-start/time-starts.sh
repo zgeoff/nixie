@@ -29,10 +29,11 @@ TEMPLATE=${PREFIX}tpl
 CALL_LIMIT=180
 POLL_LIMIT_MS=120000
 
-# the fetch sandbox's shape, as web-fetch-defaults.ts and the imp adapter set it
-FETCH_SHAPE=(--cpus 1 --memory 512m --disk 4g --policy public --no-backup)
+# the fetch sandbox's shape, as web-fetch-defaults.ts and the imp adapter set it. The adapter also
+# opts out of backups, which the imp CLI before 2.x has no flag for; a backup runs apart from a boot.
+FETCH_SHAPE=(--cpus 1 --memory 512m --disk 4g --policy public)
 # the conversation sandbox's shape, as start-conversation.ts sets it
-CONVERSATION_SHAPE=(--cpus 2 --memory 2g --disk 4g --policy box --allow api.anthropic.com --no-backup)
+CONVERSATION_SHAPE=(--cpus 2 --memory 2g --disk 4g --policy box --allow api.anthropic.com)
 
 declare -A LIVE=()
 HAS_TEMPLATE=0
@@ -46,9 +47,12 @@ log() {
 }
 
 cleanup() {
-  local name
+  local name names
+
+  names=$(list_names)
 
   for name in "${!LIVE[@]}"; do
+    grep -qxF "$name" <<<"$names" || continue
     timeout "$CALL_LIMIT" "$IMP" rm "$name" >/dev/null 2>&1 || log "cleanup: could not remove $name"
   done
 
@@ -78,27 +82,24 @@ run_call() {
   fi
 }
 
-read_info() {
-  "$IMP" info --json 2>/dev/null | sed -E 's/"guestKernel":\{[^}]*\}//'
-}
-
-# each reader prints nothing, rather than failing, when impd does not answer
-read_field() {
-  local json=$1 pattern=$2 cut_args=("${@:3}")
-
-  printf '%s\n' "$json" | grep -oE "$pattern" | head -n 1 | cut "${cut_args[@]}" || true
-}
-
+# Each reader parses the CLI's text output, which keeps one shape across the CLI's versions, and
+# prints nothing, rather than failing, when impd does not answer. `imp info` prints a `version`
+# line and an `imps  <n> (<m> awake)` line; `imp ls` and `imp template ls` print a table whose
+# first column is the name and, for imps, whose second is the state.
 read_impd_version() {
-  read_field "$(read_info || true)" '"version":"[^"]*"' -d '"' -f 4
+  { "$IMP" info 2>/dev/null || true; } | awk '$1 == "version" { print $2; exit }'
 }
 
 read_awake_count() {
-  read_field "$(read_info || true)" '"awakeCount":[0-9]+' -d : -f 2
+  { "$IMP" info 2>/dev/null || true; } | sed -nE 's/^imps[[:space:]].*\(([0-9]+) awake\).*/\1/p' | head -n 1
+}
+
+list_names() {
+  { "$IMP" ls 2>/dev/null || true; } | awk 'NR > 1 { print $1 }'
 }
 
 read_state() {
-  read_field "$("$IMP" info "$1" --json 2>/dev/null || true)" '"state":"[a-z]+"' -d '"' -f 4
+  { "$IMP" ls 2>/dev/null || true; } | awk -v name="$1" 'NR > 1 && $1 == name { print $2; exit }'
 }
 
 # waits for the imp to reach running; sets WAIT_MS and WAIT_STATE
@@ -146,6 +147,13 @@ time_create() {
   create_exit=$CALL_EXIT
   create_ms=$CALL_MS
   create_err=$CALL_ERR
+
+  # a usage error means the CLI made no call, so every later run would fail the same way
+  if [[ $create_exit == 2 ]]; then
+    unset 'LIVE[$name]'
+    log "$route $run: the CLI refused the create as a usage error; stopping"
+    exit 2
+  fi
 
   if [[ $create_exit != 0 ]]; then
     wait_running "$name"
@@ -205,15 +213,16 @@ require_ok() {
 refuse_existing() {
   local imps templates
 
-  imps=$("$IMP" ls --json)
-  templates=$("$IMP" template ls 2>/dev/null || true)
+  # a failed list stops the script here, before it creates anything
+  imps=$("$IMP" ls | awk 'NR > 1 { print $1 }')
+  templates=$("$IMP" template ls | awk 'NR > 1 { print $1 }')
 
-  if grep -qE "\"name\":\"${PREFIX}" <<<"$imps"; then
+  if grep -q "^${PREFIX}" <<<"$imps"; then
     log "an imp named ${PREFIX}* exists; remove it first"
     exit 1
   fi
 
-  if grep -qE "(^|[^a-z0-9-])${TEMPLATE}([^a-z0-9-]|$)" <<<"$templates"; then
+  if grep -qxF "$TEMPLATE" <<<"$templates"; then
     log "the template $TEMPLATE exists; remove it first"
     exit 1
   fi
@@ -253,7 +262,16 @@ prepare() {
 main() {
   local run
 
-  log "imp CLI: $("$IMP" --version 2>&1 | head -n 1); impd: $(read_impd_version)"
+  local version
+
+  version=$(read_impd_version)
+  log "imp CLI: $("$IMP" --version 2>&1 | head -n 1); impd: $version"
+
+  if [[ -z $version || -z $(read_awake_count) ]]; then
+    log "could not read impd's version and awake count from \`$IMP info\`; stopping"
+    exit 1
+  fi
+
   refuse_existing
 
   printf '| route | run | impd | awake before | create exit | create ms | wake ms | exec ms | total ms | rm ms | note |\n'
