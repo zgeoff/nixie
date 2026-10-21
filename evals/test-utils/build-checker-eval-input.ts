@@ -1,9 +1,6 @@
 import { getTypedQuote, renderCheckerInput } from '@heynixie/memory';
 import type { CheckerPair, CheckerSample } from './load-checker-corpus';
 
-// Builds the checker input that the content gate renders for one corpus pair, with the memory's
-// "the owner" swapped for the name when one is given. Every corpus pair passes the quote check, so
-// a quote the gate would refuse is a fault in the corpus.
 export function buildCheckerEvalInput(
   sample: CheckerSample,
   pair: CheckerPair,

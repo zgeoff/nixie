@@ -7,7 +7,6 @@ import { startScriptedModel } from '@heynixie/testing';
 import { runContractQuery } from './run-contract-query';
 import { startInputStream } from './start-input-stream';
 
-// the scripted model and the options of one query() against it
 async function setupTest() {
   const model = startScriptedModel();
 

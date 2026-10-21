@@ -3,9 +3,6 @@ import invariant from 'tiny-invariant';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 
-// A test of a crash mid-turn: the conversation has one committed turn, then the scripted model
-// calls test.send, which the test rule allows, and nixie dies at a fault point of that turn. The
-// restart reruns the step with the same script.
 async function setupTest() {
   const nixie = await startTestNixie();
 
@@ -18,7 +15,6 @@ test('it sends once when nixie dies after the action queued, before any attempt'
   const first = ctx.nixie.harness.start([
     { point: 'queue.commit.after' },
 
-    // holds the action runner's claim, so no attempt starts before the kill
     { point: 'claim.after', kind: 'action' },
   ]);
 
@@ -53,7 +49,6 @@ test('it sends once when nixie dies after the action queued, before any attempt'
 
   const outcome = await ctx.nixie.waitForRecord((record) => record.kind === 'action.outcome');
 
-  // ends the turn's wait for the outcome, which polls on the one clock
   await ctx.nixie.advanceUntilRecord(10_000, 3, (record) => record.stepKey === 'conversation:2');
   await second.kill();
 
@@ -278,8 +273,6 @@ test('it returns the done action to the rerun and sends once when nixie dies bef
   void first.request('sendMessage', { thread: 'conversation', text: 'Send the summary.' });
 
   await ctx.nixie.waitForRecord((record) => record.kind === 'action.outcome');
-
-  // ends the turn's wait for the outcome, which polls on the one clock
   await ctx.nixie.advanceUntilArrival(first, 'step.commit.before', { stepMs: 10_000, maxSteps: 3 });
   await first.kill();
 

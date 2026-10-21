@@ -14,12 +14,9 @@ export interface TestTools {
   readonly toolNames: readonly string[];
   readonly trackSteps: ActionQueueBridge['trackSteps'];
 
-  // the test connector for each queued tool, by name
   readonly connectors: ReadonlyMap<string, ActionConnector>;
 }
 
-// Starts the tool endpoint with test.send, which the decision point's test rule allows, the action
-// queue its allowed calls go to, and the test connector that sends them to the provider double.
 export async function startTestTools(
   context: TasksContext,
   providerURL: string,

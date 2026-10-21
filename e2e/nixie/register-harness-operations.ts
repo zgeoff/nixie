@@ -4,8 +4,6 @@ import { createTask, writeInboxRecords } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
 import { z } from 'zod';
 
-// Registers the operations a crash test asks the test build of nixie to run, by name. Each write
-// returns the sequence or the ID it made, and releaseWriterLock is the stale writer test's hook.
 export function registerHarnessOperations(link: HarnessLink, context: TasksContext): void {
   const messageSchema = z.object({ thread: z.string(), text: z.string() });
 
@@ -39,8 +37,6 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
     return record?.sequence ?? null;
   });
 
-  // closes the descriptor that holds the writer lock without stopping nixie, as a bug would, so
-  // another process takes the lock while this one still writes
   link.registerOperation('releaseWriterLock', z.null(), () => {
     removeLockDescriptor(context.log.writer.dataDir);
 
@@ -48,7 +44,7 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
   });
 }
 
-// the writer lock is a flock on the data directory itself, so its descriptor names the directory
+// The writer lock is a flock on the data directory itself, so its descriptor points at the directory.
 function removeLockDescriptor(dataDir: string): void {
   const target = realpathSync(dataDir);
 

@@ -7,7 +7,6 @@ import { readRecords, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { startTestLog } from './start-test-log';
 
-// a fresh data directory, which no nixie holds
 async function setupTest() {
   const dataDir = await mkdtemp(join(tmpdir(), 'nixie-test-log-'));
 

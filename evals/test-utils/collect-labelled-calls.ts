@@ -7,9 +7,6 @@ export interface LabelledCall {
   readonly pair: CheckerPair;
 }
 
-// Joins each report call to the corpus pair it checked, so a suite reads the label beside the
-// verdict. A call for a pair the corpus lacks, or one that sent an input other than the one the
-// pair renders now, is a stale report: the corpus changed after the run.
 export function collectLabelledCalls(
   corpus: CheckerCorpus,
   report: CheckerReport,

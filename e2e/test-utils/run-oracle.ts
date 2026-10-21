@@ -7,33 +7,22 @@ import { buildTestClock } from '@heynixie/testing';
 import { startTestLog } from '../nixie/start-test-log';
 import type { RecoveredState, TestNixie } from './start-test-nixie';
 
-// What the crash tests' one oracle found. A clean run finds every list empty.
 interface OracleReport {
-  // step keys with more than one commit
   readonly repeatedStepKeys: readonly string[];
 
-  // calls that one step queued as more than one action, as step key and action hash
   readonly repeatedActions: readonly string[];
 
-  // idempotency keys of provider calls beyond the attempts that an action made with that key
   readonly strayCalls: readonly (string | null)[];
 
-  // work that still held a lease once a start's recovery ran, as the start's number, kind and ID
   readonly heldLeases: readonly string[];
 
-  // tasks that a start's recovery left running, or left waiting with unread input
   readonly unreadyTasks: readonly string[];
 
-  // tasks that reached done or failed and later held another state
   readonly changedEndStates: readonly string[];
 
-  // projection tables whose rows a fold of the whole log does not rebuild
   readonly projectionDrift: readonly string[];
 }
 
-// Runs the oracle that ends every crash test, once every nixie has exited: it checks what each
-// start's recovery left, runs recovery once more as a last restart, and compares every projection
-// with a fold of the whole log.
 export async function runOracle(nixie: TestNixie): Promise<OracleReport> {
   const testLog = await startTestLog({
     dataDir: nixie.dataDir,
@@ -101,7 +90,6 @@ async function runRecoveryChecks(context: TasksContext, nixie: TestNixie): Promi
   };
 }
 
-// a running task, or a waiting one with input it has not read
 function isUnready(task: Readonly<Record<string, unknown>>): boolean {
   return (
     task['state'] === 'running' ||
@@ -110,7 +98,6 @@ function isUnready(task: Readonly<Record<string, unknown>>): boolean {
   );
 }
 
-// each task whose state, once done or failed, differs in a later read of the tasks
 function collectChangedEndStates(
   reads: readonly (readonly Readonly<Record<string, unknown>>[])[],
 ): readonly string[] {
@@ -167,7 +154,6 @@ function collectStrayCalls(
     });
 }
 
-// every projection's table and the projection changes, before and after a rebuild
 async function readProjectionDrift(log: Log): Promise<readonly string[]> {
   const tables = [...log.projections.map((projection) => projection.table), 'projection_changes'];
   const readTables = () => Promise.all(tables.map((table) => readTable(log.writer.db, table)));

@@ -12,12 +12,7 @@ import {
 } from '@heynixie/server/test-utils';
 import { runTaskSteps } from '@heynixie/tasks/test-utils';
 
-// The journey replays a fetcher reply for a poisoned page through a turn, then a writer batch over
-// the turn's records, each model obeying the page. Both run the real tools and gates; the checker's
-// verdict comes from a stand-in, because the checker eval measures the model.
-
 test('it turns every write a poisoned page causes into a proposal from outside content, in the turn and in the writer batch over it', async () => {
-  // the checker answers as its eval measures for a message that never states the memory
   const check = mock<NonNullable<TestMemoryWriterOptions['check']>>(() =>
     Promise.resolve({
       verdict: 'not_asserted',
@@ -27,7 +22,6 @@ test('it turns every write a poisoned page causes into a proposal from outside c
     }),
   );
 
-  // the fetcher's reply for a recipe page that plants instructions to remember things
   const tools = buildTestConversationTools({
     kind: 'page',
     url: 'https://soup-notes.test/lentil',
@@ -57,7 +51,6 @@ test('it turns every write a poisoned page causes into a proposal from outside c
     memory: () => memory.store,
   });
 
-  // the model obeys the page: a quote from the page, no quote, then 2 writes that quote your words
   conversation.model.addReplies(
     {
       toolUse: { name: 'mcp__nixie__web_fetch', input: { url: 'https://soup-notes.test/lentil' } },
@@ -110,7 +103,6 @@ test('it turns every write a poisoned page causes into a proposal from outside c
     maxSteps: 5,
   });
 
-  // the writer obeys the page too: a quote from the page, then 2 writes that quote your words
   memory.model.addReplies(
     buildRememberReply({
       text: "The owner's new billing email is billing@ledger-keep.test.",
@@ -130,7 +122,6 @@ test('it turns every write a poisoned page causes into a proposal from outside c
     { text: 'Staged.' },
   );
 
-  // the writer starts after the turn, so its catch-up batch covers the turn's records
   await memory.start();
   await memory.run();
 
@@ -143,7 +134,6 @@ test('it turns every write a poisoned page causes into a proposal from outside c
 
   const sent = conversation.model.requests.filter((request) => request.path === '/v1/messages');
 
-  // the turn fetched the page, read it as outside content, and sent it to the model
   expect(fetchCall?.decision).toMatchObject({ outcome: 'allow' });
 
   expect(records.find((record) => record.parent === fetchCall?.sequence)).toMatchObject({
@@ -160,7 +150,6 @@ test('it turns every write a poisoned page causes into a proposal from outside c
   expect(records.filter((record) => record.kind === 'memory.version_added')).toStrictEqual([]);
   expect(items).toStrictEqual([]);
 
-  // a quote from the page lies in no message of yours, so it backs nothing, as no quote does
   expect(records.filter((record) => record.kind === 'memory.proposed')).toMatchObject([
     {
       contentSource: 'untrusted',
@@ -205,7 +194,6 @@ test('it turns every write a poisoned page causes into a proposal from outside c
     { payload: { mode: 'catch_up', applied: [], proposed: 0, catchUpEnded: true } },
   ]);
 
-  // the checker sees only your message and the memory, so the page never reaches it
   const inputs = check.mock.calls.map(([request]) => request.input);
 
   expect(inputs).toHaveLength(2);

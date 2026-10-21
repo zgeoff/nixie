@@ -1,5 +1,3 @@
-// the variables a contract probe passes on from its own environment when they are set: a sandbox's
-// proxy and certificate settings, where a broker adds the model credential on the way out
 const passedVariables = [
   'HTTPS_PROXY',
   'https_proxy',
@@ -10,13 +8,10 @@ const passedVariables = [
   'NODE_EXTRA_CA_CERTS',
 ] as const;
 
-// the variables the CLI reads its credential from, one for each auth header, as in the guest; in a
-// sandbox with a model grant the variable holds the grant's placeholder
 const credentialVariables = ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'] as const;
 
-// Builds the CLI's whole environment for a contract probe: the credential variable, the probe's own
-// config directory as its home, and nothing else of the caller's session. A run with no credential
-// stops here, so the probe fails rather than the CLI falling back to a login the run never chose.
+// The CLI falls back to a local login when it finds no credential, so a run with no credential
+// throws here and never calls the model on a login it did not choose.
 export function buildContractEnv(
   source: Readonly<Record<string, string | undefined>>,
   configDir: string,
