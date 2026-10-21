@@ -1,9 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the memory projections: one row per memory item with its current version, state and pin,
-// and one row per version with its text sealed under the item's key and its provenance in plain
-// columns, so a review filters on provenance without decrypting anything.
 export const memoryMigration: Migration = {
   name: 'create the memory projections',
   up: async (tx) => {

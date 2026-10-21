@@ -2,8 +2,6 @@ import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the tables of memory consolidation: one row for each run of the consolidator, and one
-// row for each change a run's diff proposes, with the versions it read and its status.
 export const memoryConsolidationMigration: Migration = {
   name: 'create the memory consolidation tables',
   up: async (tx) => {

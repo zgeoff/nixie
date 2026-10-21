@@ -4,10 +4,6 @@ import { proposalOutcomeSchema } from './proposal-outcome-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
 
-// The memory view's procedures, which the contract serves under memory, each waiting for the
-// memory store to start. A change is a checked action bound to the version the view showed, and an
-// answer to a proposal one bound to the action hash it showed; a stale one changes nothing.
-
 const memoryView = signedIn.errors({
   MEMORY_NOT_STARTED: { message: 'The memory store has not started yet', status: 503 },
 });
@@ -19,23 +15,12 @@ const memoryChange = memoryView.errors(reusedIDErrors).errors({
 });
 
 const itemIDSchema = z.string().min(1).max(200);
-
-// the text of an item you write, within the bound the model's memory tools take
 const itemTextSchema = z.string().max(2000).regex(/\S/u);
 const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer']);
 const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
-
-// whose an item is: a fact about you, something shared between you and nixie, or a self-note, which
-// nixie writes about itself
 const subjectSchema = z.enum(['owner', 'self', 'shared']);
-
-// the field the release before reads in place of the subject: self for a self-note, and fact for
-// every other item
 const kindSchema = z.enum(['fact', 'self']);
 
-// An item as the view lists it: its subject, its current version's text while its key exists, and when
-// it was created, last changed and forgotten. A forgotten item carries no text and its forget's
-// time.
 const memoryItemSchema = z.object({
   changedAt: z.date(),
   createdAt: z.date(),
@@ -53,14 +38,11 @@ const memoryItemSchema = z.object({
   version: z.int().positive(),
 });
 
-// A match carries its keyword score and its similarity, each where that index placed it.
 const memoryMatchSchema = memoryItemSchema.extend({
   score: z.number().optional(),
   similarity: z.number().optional(),
 });
 
-// Where a version's quote sits in its message, and the message's text while the version's text and
-// the message are both readable; null message while the version's text is gone.
 const evidenceSchema = z.object({
   end: z.int().nonnegative(),
   message: z
@@ -73,8 +55,6 @@ const evidenceSchema = z.object({
   start: z.int().nonnegative(),
 });
 
-// One version with its provenance: the task and proposal behind it, each write check's verdict,
-// the models of the writer's call and of the checker, and its quote inside its message.
 const memoryVersionSchema = z.object({
   change: z.enum(['created', 'edited', 'retired', 'restored', 'undone']),
   checkerModel: z.string().nullable(),
@@ -106,27 +86,22 @@ const reviewReasonSchema = z.enum([
   'ambiguous_target',
   'pinned',
 
-  // a reason that a later release wrote and this one does not know
   'other',
   'self_note',
   'from_photo',
 ]);
 
-// one write that proposed a change: the proposal's own, or one that merged into it
 const proposalSourceSchema = z.object({
   origin: originSchema,
   proposedAt: z.date(),
   thread: z.string().nullable(),
 });
 
-// A pending proposal: the operation it binds to, the check that sent it to review, every source
-// that proposed it, its quote inside the message it came from, and when it lapses unanswered.
 const memoryProposalSchema = z.object({
   actionHash: z.string(),
   createdAt: z.date(),
   evidence: evidenceSchema.nullable(),
 
-  // the photo of yours the proposal comes from, as conversation.readImage reads it, or null
   image: z
     .object({
       position: z.int().nonnegative(),
@@ -150,7 +125,6 @@ const memoryProposalSchema = z.object({
   text: z.string(),
 });
 
-// Each answer to a proposal is its own checked action, bound to the action hash the view showed.
 const proposalAnswerSchema = z.object({
   actionHash: z.string().min(1).max(200),
   clientActionID: z.uuid(),
@@ -165,7 +139,6 @@ const approvalAnswerSchema = proposalAnswerSchema.extend({
   revisionOf: revisionTargetSchema.optional(),
 });
 
-// a rejection's reason, which the conversation reads in its next turn
 const rejectionReasonSchema = z.string().max(500).regex(/\S/u);
 
 const rejectionAnswerSchema = proposalAnswerSchema.extend({
@@ -175,7 +148,6 @@ const rejectionAnswerSchema = proposalAnswerSchema.extend({
 const proposalOutcomesSchema = z.object({ outcomes: z.array(proposalOutcomeSchema) });
 const memoryItemDetailSchema = memoryItemSchema.extend({ versions: z.array(memoryVersionSchema) });
 
-// what a forget destroys beyond the item's own text
 const forgetLossSchema = z.object({
   evidenceMessages: z.int().nonnegative(),
   proposals: z.int().nonnegative(),
@@ -190,8 +162,6 @@ const versionTargetSchema = z.object({
 });
 
 export const memoryViewContract = {
-  // One page of the items in a state, in the order they were created. The forgotten page holds
-  // each item a forget began, as a dated gap.
   listItems: memoryView
     .errors({ INVALID_CURSOR: { message: 'No page returned this cursor', status: 400 } })
     .input(
@@ -203,8 +173,6 @@ export const memoryViewContract = {
     )
     .output(z.object({ items: z.array(memoryItemSchema), next: z.string().nullable() })),
 
-  // The active items whose text matches the query, best first, ranked as a recall ranks them. A
-  // search writes no recall record, because it delivers nothing to a task.
   findItems: memoryView.input(z.object({ query: z.string().min(1).max(500) })).output(
     z.object({
       items: z.array(memoryMatchSchema),
@@ -212,8 +180,6 @@ export const memoryViewContract = {
     }),
   ),
 
-  // The pinned core in the order its items were pinned, and its size against its budget, in
-  // tokens.
   readPinnedCore: memoryView.output(
     z.object({
       budget: z.int().nonnegative(),
@@ -222,25 +188,19 @@ export const memoryViewContract = {
     }),
   ),
 
-  // One item with every version, oldest first.
   readItem: memoryView
     .errors({ MEMORY_ITEM_NOT_FOUND: { message: 'No memory item has this ID', status: 404 } })
     .input(z.object({ itemID: itemIDSchema }))
     .output(memoryItemDetailSchema),
 
-  // Retires an active item, which leaves recall and the pinned core and keeps its history.
   retire: memoryChange
     .input(versionTargetSchema)
     .output(z.object({ itemID: z.string(), version: z.int().positive() })),
 
-  // Makes a retired item active again with the text it had.
   restore: memoryChange
     .input(versionTargetSchema)
     .output(z.object({ itemID: z.string(), version: z.int().positive() })),
 
-  // What a forget of the item at the version the view showed destroys: the item with every version,
-  // and how many messages that backed it leave recall and how many proposals for it lose their
-  // text. It refuses as the forget does, so no confirmation opens for an item that moved on.
   previewForget: memoryView
     .errors({
       MEMORY_ITEM_NOT_FOUND: { message: 'No memory item has this ID', status: 404 },
@@ -249,12 +209,8 @@ export const memoryViewContract = {
     .input(z.object({ itemID: itemIDSchema, version: z.int().positive() }))
     .output(forgetPreviewSchema),
 
-  // Forgets an active or retired item for good, bound to the version its preview showed: the
-  // server deletes its key, drops it from every index and cleans up every session that could hold
-  // it. A retry runs the cleanup again, so a forget whose cleanup failed completes.
   forget: memoryChange.input(versionTargetSchema).output(z.object({ itemID: z.string() })),
 
-  // Puts an active item in the pinned core, or takes an item out of it. A pin adds no version.
   pin: memoryChange
     .errors({
       PINNED_CORE_FULL: { message: 'The pin takes the pinned core past its budget', status: 409 },
@@ -262,12 +218,8 @@ export const memoryViewContract = {
     .input(versionTargetSchema.extend({ isPinned: z.boolean() }))
     .output(z.object({ isPinned: z.boolean(), itemID: z.string() })),
 
-  // The proposals that wait for your answer, oldest first.
   listProposals: memoryView.output(z.object({ proposals: z.array(memoryProposalSchema) })),
 
-  // Approves each proposal the answers name, in order, each with its own approval record. Edited
-  // text replaces a proposal's, makes you its origin, and meets the close match check in its place.
-  // After a close match, an answer names a revision target or ignores the match.
   approveProposals: memoryView
     .input(
       z.object({
@@ -276,8 +228,6 @@ export const memoryViewContract = {
     )
     .output(proposalOutcomesSchema),
 
-  // Rejects each proposal the answers name, one or several, each with its own rejection record. A
-  // reason is what the conversation reads in its next turn.
   rejectProposals: memoryView
     .input(
       z.object({
@@ -286,6 +236,5 @@ export const memoryViewContract = {
     )
     .output(proposalOutcomesSchema),
 
-  // the export of every item, which its own contract states
   ...memoryExportContract,
 };

@@ -1,9 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the definitions tables: each persona under its version, each snapshot under its hash
-// with the revision that first brought it as its label, and one row per seed. The newest seed
-// holds the definitions in force.
 export const definitionsMigration: Migration = {
   name: 'create the definitions tables',
   up: async (tx) => {

@@ -2,7 +2,6 @@ import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { makeLogger } from './make-logger';
 import { startLineLog } from './start-line-log';
 
-// LogTape configured to write each line into lines
 async function setupTest() {
   const lines: string[] = [];
 

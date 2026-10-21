@@ -11,9 +11,8 @@ const typedInputTypes = new Set([
   'insertText',
 ]);
 
-// Maps a browser InputEvent.inputType and its data to the source of the text it inserts. Undo,
-// redo and every unlisted type count as unknown, because memory evidence needs an affirmative
-// typed, so a type that says nothing of where its text came from fails closed.
+// Undo, redo and every unlisted inputType count as unknown, because memory evidence needs an
+// affirmative typed, so an inputType that says nothing of the text's origin fails closed.
 export function pickSpanSource(inputType: string, data: string | null): SpanSource {
   if (pastedInputTypes.has(inputType)) {
     return 'pasted';

@@ -1,5 +1,3 @@
-// The worker that owns nixie's one bun:sqlite connection, so a slow query or a synchronous fsync
-// never blocks the main thread's event loop.
 import type { SQLQueryBindings } from 'bun:sqlite';
 import { Database } from 'bun:sqlite';
 import type {
@@ -10,11 +8,8 @@ import type {
   WorkerResponse,
 } from './types';
 
-// a worker's global scope sends and receives messages the way a Worker handle does
 declare const self: Worker;
 
-// transactionOpen records that the dialect opened a transaction, which SQLite can roll back on its
-// own after an error, such as a trigger's RAISE(ROLLBACK)
 const state: { database: Database | null; transactionOpen: boolean } = {
   database: null,
   transactionOpen: false,
@@ -56,9 +51,8 @@ function runRequest(request: WorkerRequest): WorkerQueryResult {
 
 const defaultBusyTimeoutMs = 5000;
 
-// busy_timeout comes first, so the statements after it wait for another connection's lock. WAL lets
-// readers run beside the writer, and FULL fsyncs every commit so a claimed outside action survives
-// a power loss.
+// busy_timeout comes first, so the statements after it wait for another connection's lock. FULL
+// fsyncs every commit, so a claimed outside action survives a power loss.
 function startConnection(path: string, options: DatabaseOptions): Database {
   const database = new Database(path, { create: true, strict: true });
 
@@ -78,9 +72,8 @@ function startConnection(path: string, options: DatabaseOptions): Database {
   return database;
 }
 
-// Switches the file to WAL. Two connections that switch a new file at once each hold a shared lock
-// while they wait for the exclusive one, so SQLite refuses one of them with SQLITE_BUSY at once
-// rather than call its busy handler and deadlock. The switch retries until the busy timeout passes.
+// SQLite refuses one of two connections that switch a new file to WAL at once with SQLITE_BUSY,
+// without its busy handler, to avoid a deadlock, so the switch retries until the deadline.
 function updateJournalMode(database: Database, deadline: number): void {
   try {
     database.run('pragma journal_mode = wal');
@@ -99,11 +92,10 @@ function isBusyError(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'SQLITE_BUSY';
 }
 
-// the pause between two tries of the WAL switch, short beside the busy timeout
 const walRetryMs = 5;
 
-// Keeps a transaction's statements inside it. Once SQLite has rolled the transaction back, a later
-// statement would commit on its own, outside the transaction and its writer epoch check.
+// SQLite can roll a transaction back on its own after an error, and a later statement then
+// commits on its own, outside the transaction.
 function runTransactionStep(
   database: Database,
   sql: string,
@@ -152,12 +144,11 @@ function runQuery(
   const statement = database.prepare(sql);
 
   try {
-    // a statement that names result columns returns rows, RETURNING included
     if (statement.columnNames.length > 0) {
       return { rows: statement.all(...parameters) };
     }
 
-    // Database.run runs every statement in the text, where a prepared statement runs only the first
+    // Database.run runs every statement in the text, and a prepared statement runs only the first.
     const changes = database.run(sql, [...parameters]);
 
     return { rows: [], changes: changes.changes, lastInsertRowid: changes.lastInsertRowid };

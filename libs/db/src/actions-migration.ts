@@ -1,8 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the actions projection: one row per queued action with its outcome, its attempt count
-// and the time of its next attempt, so a restart resumes the retry schedule where it stopped.
 export const actionsMigration: Migration = {
   name: 'create the actions projection',
   up: async (tx) => {

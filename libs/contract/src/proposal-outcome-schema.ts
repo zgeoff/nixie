@@ -6,9 +6,6 @@ const closeMatchSchema = z.object({
   version: z.int().positive(),
 });
 
-// The outcome of one answer. A stale answer met a proposal that lapsed, was answered, changed or is
-// gone, or an item that moved on, and wrote nothing, as does a refusal. A close match holds an
-// approval for an active item that states the same fact.
 export const proposalOutcomeSchema = z.discriminatedUnion('status', [
   z.object({ proposalID: z.string(), status: z.literal('applied') }),
   z.object({ proposalID: z.string(), status: z.literal('rejected') }),

@@ -1,9 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the event log, the threads projection and the log of the projection rows each record
-// changed. The records table holds the plaintext envelope, the plain part of the payload, and the
-// erasable fields as ciphertext under a record key that lives in keys.db, never in this file.
 export const eventLogMigration: Migration = {
   name: 'create the event log',
   up: async (tx) => {
@@ -33,7 +30,6 @@ export const eventLogMigration: Migration = {
 
     await sql`create index records_by_thread on records (thread, sequence)`.execute(tx);
 
-    // no code path updates or deletes a record, and these triggers refuse one that tries
     await sql`create trigger records_refuse_update before update on records
       begin select raise(abort, 'records are append-only'); end`.execute(tx);
 
@@ -48,8 +44,6 @@ export const eventLogMigration: Migration = {
       last_recorded_at integer not null
     ) strict`.execute(tx);
 
-    // the row a projection held after each record, or null once the record removed it, so a
-    // reader that catches up gets the rows as of each record and never the current ones
     await sql`create table projection_changes (
       sequence integer not null references records (sequence),
       projection text not null,

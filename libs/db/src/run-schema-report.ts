@@ -1,5 +1,3 @@
-// `bun libs/db/src/run-schema-report.ts` prints this tree's schema as the migration check reads it
-// with --released: each migration's name, the oldest reader, and the schema objects they build.
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

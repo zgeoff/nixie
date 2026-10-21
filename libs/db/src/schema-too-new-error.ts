@@ -1,7 +1,5 @@
 import type { StoredSchema } from './types';
 
-// The database holds a schema newer than this build can read. The message names the restore that
-// brings the database back to a schema this build reads.
 export class SchemaTooNewError extends Error {
   override readonly name = 'SchemaTooNewError';
 

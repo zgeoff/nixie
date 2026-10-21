@@ -2,9 +2,6 @@ import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Gives each consolidation run a place for the summary its session left for you: the text sealed
-// under a fresh key, the shares of that key sealed under the shown items' keys, and its lapse time.
-// A run that left none keeps all 3 empty. Each step is safe to run again.
 export const memoryConsolidationSummaryMigration: Migration = {
   name: 'add a sealed summary to each consolidation run',
   up: async (tx) => {

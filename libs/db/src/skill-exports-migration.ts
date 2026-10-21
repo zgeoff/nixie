@@ -1,9 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the export state of each skill that nixie wrote: the pull request on the definitions
-// repo that carries it, and the base it was built on, so a changed base exports it again. It only
-// adds a table, and running it again changes nothing.
 export const skillExportsMigration: Migration = {
   name: 'create the export state of skills that nixie writes',
   up: async (tx) => {

@@ -122,14 +122,12 @@ test('it reads both counts from one snapshot while another connection commits be
       0, 'no_quote', 'pending', 'sha256:a1', 'sealed-a', 'conversation', 'untrusted', 'group-a', 1,
       1767225600000, 1767312000000, 'owner')`.execute(ctx.db);
 
-  // the other connection waits for no lock, so its write either commits at once or is refused
   const other = startDatabase(join(ctx.directory, 'nixie.db'), { busyTimeoutMs: 0 });
 
   onTestFinished(() => other.destroy());
 
   await sql`select 1`.execute(other);
 
-  // after the item count, the other connection moves the item and its proposal to shared at once
   const counted = ctx.db.withPlugin(
     buildAfterQueryPlugin(2, async () => {
       await Promise.allSettled([

@@ -23,7 +23,6 @@ async function setupTest() {
 
   stack.defer(() => db.destroy());
 
-  // the schema the release before leaves, which the migration starts from
   await runMigrations(db, {
     schema: {
       migrations: nixieSchema.migrations.slice(
@@ -35,7 +34,6 @@ async function setupTest() {
     copyDir: directory,
   });
 
-  // a sealed record, which an attachment belongs to
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload, key_id,
     sealed) values (1, 1767225600000, 'owner_message', 'snapshot-a', '{}', 'key-a',
     x'00')`.execute(db);

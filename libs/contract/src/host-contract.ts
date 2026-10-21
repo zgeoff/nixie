@@ -1,18 +1,13 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
 
-// The host commands' contract, which the control socket serves to a shell in nixie's container.
-// It is never part of the device contract, so it stays out of the OpenAPI document.
-
 const versionRefSchema = z.object({ itemID: z.string(), version: z.int().positive() });
 
-// the item and the version a change binds to, as memory-show printed them
 const versionTargetSchema = z.strictObject({
   itemID: z.string().min(1),
   version: z.int().positive(),
 });
 
-// the text of an item you write, within the bound the model's memory tools take
 const itemTextSchema = z.string().max(2000).regex(/\S/u);
 const memoryOriginSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer']);
 const contentSourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
@@ -30,21 +25,17 @@ const reviewReasonSchema = z.enum([
   'ambiguous_target',
   'pinned',
 
-  // a reason that a later release wrote and this one does not know
   'other',
   'self_note',
   'from_photo',
 ]);
 
-// one write that proposed a change: the proposal's own, or one that merged into it
 const proposalSourceSchema = z.object({
   origin: memoryOriginSchema,
   thread: z.string().nullable(),
   proposedAt: z.date(),
 });
 
-// What a host command shows of a pending proposal: its text, every source that proposed it, and
-// the hash an answer binds to.
 const pendingProposalSchema = z.object({
   proposalID: z.string(),
   operation: z.enum(['remember', 'retire']),
@@ -53,7 +44,6 @@ const pendingProposalSchema = z.object({
   isPinned: z.boolean(),
   subject: z.enum(['owner', 'self', 'shared']),
 
-  // self for a self-note and fact for every other subject, as the release before reads it
   kind: z.enum(['fact', 'self']),
   reason: reviewReasonSchema,
   actionHash: z.string(),
@@ -66,7 +56,6 @@ const pendingProposalSchema = z.object({
   quote: z.string().nullable(),
 });
 
-// An approval applied, or held for the active item that closely matches the proposal.
 const closeMatchSchema = z.object({ itemID: z.string(), version: z.int(), text: z.string() });
 
 const approvalResultSchema = z.discriminatedUnion('status', [
@@ -74,7 +63,6 @@ const approvalResultSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('close_match'), item: closeMatchSchema }),
 ]);
 
-// one version of an item, with its text, or null with the status that says why the text is gone
 const historyVersionSchema = z.object({
   version: z.int(),
   change: z.enum(['created', 'edited', 'retired', 'restored', 'undone']),
@@ -86,20 +74,15 @@ const historyVersionSchema = z.object({
   text: z.string().nullable(),
 });
 
-// What a host command shows of an item: its subject, owner, shared or self, its state, and each
-// version oldest first.
 const itemHistorySchema = z.object({
   itemID: z.string(),
   subject: z.enum(['owner', 'self', 'shared']),
 
-  // self for a self-note and fact for every other subject, as the release before reads it
   kind: z.enum(['fact', 'self']),
   state: z.enum(['active', 'retired', 'forgetting', 'forgotten']),
   versions: z.array(historyVersionSchema),
 });
 
-// one input of a change: the version the change read, its text then, and whether the item still
-// stands at that version
 const changeInputSchema = z.object({
   itemID: z.string(),
   version: z.int(),
@@ -122,9 +105,6 @@ const consolidationChangeSchema = z.object({
   comment: changeCommentSchema.nullable(),
 });
 
-// What a host command shows of the consolidator's diff: each change with its inputs, new text,
-// reason, answer hash, comment and short ID, and the summary the consolidator left for you, which
-// a run with no change shows on its own.
 const consolidationDiffSchema = z.object({
   diffID: z.string(),
   model: z.string().nullable(),
@@ -147,13 +127,11 @@ const changeAnswerSchema = z.strictObject({
   actionHash: z.string().min(1),
 });
 
-// An answer to a proposal binds to the action hash memory-pending showed.
 const proposalAnswerSchema = z.strictObject({
   proposalID: z.string().min(1),
   actionHash: z.string().min(1),
 });
 
-// A live device session as a host command lists it.
 const hostSessionSchema = z.object({
   sessionID: z.string(),
   deviceName: z.string(),
@@ -167,8 +145,6 @@ const subjectCountSchema = z.object({
   self: z.int().nonnegative(),
 });
 
-// Every memory procedure waits for the memory store to start, and keeps the code of each error
-// the memory store refuses a request with.
 const memory = oc.errors({
   MEMORY_NOT_STARTED: { message: 'the memory store has not started yet', status: 503 },
   NOT_FOUND: { message: 'nothing has that ID', status: 404 },
@@ -182,23 +158,16 @@ const memory = oc.errors({
   SELF_NOTE_REFUSED: { message: 'a self-note never takes that change', status: 409 },
 });
 
-// one file of a skill, by its path inside the skill's folder
 const skillFileSchema = z.object({ path: z.string(), text: z.string() });
 
-// What a host command shows of a pending skill proposal: its files, the version of the skill in
-// force now, which the review diffs each file against, the token check's result, and the skill
-// hash an answer binds to.
 const pendingSkillProposalSchema = z.object({
   proposalID: z.string(),
   name: z.string(),
   skillHash: z.string(),
 
-  // the version in force when nixie proposed the skill, or null for a new skill
   baseHash: z.string().nullable(),
   files: z.array(skillFileSchema),
 
-  // the version in force now, or null when none is; a vendored one comes from skills.lock.json, and a
-  // nixie one is a skill nixie wrote that your approval put in force
   inForce: z
     .object({
       skillHash: z.string(),
@@ -207,25 +176,20 @@ const pendingSkillProposalSchema = z.object({
     })
     .nullable(),
 
-  // the first destination-like token in the files that you never typed and your definitions lack,
-  // or null when the token check passed
   untypedToken: z.object({ kind: z.string(), raw: z.string() }).nullable(),
   thread: z.string().nullable(),
   provenance: z.object({ runID: z.string(), callID: z.string(), profile: z.string() }),
   createdAt: z.date(),
   lapseAt: z.date(),
 
-  // the version in force moved past baseHash, so an answer is refused as stale
   isStale: z.boolean(),
 });
 
-// An answer to a skill proposal binds to the skill hash skill-pending showed.
 const skillAnswerSchema = z.strictObject({
   proposalID: z.string().min(1),
   skillHash: z.string().min(1),
 });
 
-// Every skill proposal procedure keeps the code of each error the answer is refused with.
 const skills = oc.errors({
   NOT_FOUND: { message: 'nothing has that ID', status: 404 },
   PROPOSAL_HASH: { message: 'the skill hash names other files', status: 409 },
@@ -235,14 +199,10 @@ const skills = oc.errors({
   WRONG_STATE: { message: 'the skill nixie wrote is no longer in force', status: 409 },
 });
 
-// a version of a skill in your definitions, or null when they lack the skill
 const definitionsSkillSchema = z
   .object({ skillHash: z.string(), origin: z.enum(['definitions', 'vendored']) })
   .nullable();
 
-// What a host command shows of a skill that nixie wrote and that is in force over your
-// definitions: the approval that applied it, the version of your definitions it replaced, and
-// the version at the newest seed. They differ when you changed the skill after the approval.
 const writtenSkillSchema = z.object({
   approvalID: z.string(),
   proposalID: z.string(),
@@ -252,14 +212,11 @@ const writtenSkillSchema = z.object({
   definitions: definitionsSkillSchema,
   isConflict: z.boolean(),
 
-  // the pull request that exports it to your definitions repo, null until the export opens one
   pullRequestURL: z.url().nullable(),
   approvedAt: z.date(),
 });
 
 export const hostContract = {
-  // Resets the log and keeps the live device sessions. The answer arrives once the reset
-  // finished, and the server then stops.
   reset: oc.output(
     z.object({
       resetAt: z.date(),
@@ -268,11 +225,9 @@ export const hostContract = {
     }),
   ),
   sessions: {
-    // Issues a code that signs one device in.
     issueCode: oc.output(z.object({ code: z.string(), expiresAt: z.date() })),
     list: oc.output(z.array(hostSessionSchema)),
 
-    // Sets the label of a device session that is still signed in.
     label: oc
       .errors({
         SESSION_NOT_FOUND: {
@@ -288,8 +243,6 @@ export const hostContract = {
     proposals: {
       list: memory.output(z.array(pendingProposalSchema)),
 
-      // An approval held for a close match is answered again, as a revision of that item or as a
-      // new item. Edited text replaces the proposal's, and makes you the approved version's origin.
       approve: memory
         .input(
           proposalAnswerSchema.extend({
@@ -300,26 +253,21 @@ export const hostContract = {
         )
         .output(approvalResultSchema),
 
-      // A rejection's reason is what the conversation reads in its next turn.
       reject: memory
         .input(proposalAnswerSchema.extend({ reason: z.string().max(500).regex(/\S/u).optional() }))
         .output(z.object({ proposalID: z.string() })),
     },
 
-    // How many items and proposals each subject holds.
     subjects: memory.output(z.object({ items: subjectCountSchema, proposals: subjectCountSchema })),
     items: {
       read: memory.input(z.strictObject({ itemID: z.string().min(1) })).output(itemHistorySchema),
 
-      // An edit replaces the item's whole text. Each change but a pin binds to the version the
-      // caller read, so an item that moved on since refuses it as stale.
       edit: memory
         .input(versionTargetSchema.extend({ text: itemTextSchema }))
         .output(versionRefSchema),
       retire: memory.input(versionTargetSchema).output(versionRefSchema),
       restore: memory.input(versionTargetSchema).output(versionRefSchema),
 
-      // A forget destroys the item for good: its key, its index entries and every session copy.
       forget: memory.input(versionTargetSchema).output(z.object({ itemID: z.string() })),
       pin: memory
         .input(z.strictObject({ itemID: z.string().min(1), isPinned: z.boolean() }))
@@ -328,8 +276,6 @@ export const hostContract = {
     consolidation: {
       read: memory.output(consolidationDiffSchema.nullable()),
 
-      // Approves the changes each answer names, one, several or the whole diff, each change its
-      // own approval record. A refused change applies nothing and leaves the rest to go on.
       approve: memory
         .input(z.strictObject({ answers: z.array(changeAnswerSchema).min(1).max(30) }))
         .output(z.object({ outcomes: z.array(changeOutcomeSchema) })),
@@ -340,15 +286,12 @@ export const hostContract = {
     proposals: {
       list: skills.output(z.array(pendingSkillProposalSchema)),
 
-      // An approval puts the skill in force for the next task, with your edited files in place of
-      // the proposal's when it carries them.
       approve: skills
         .input(skillAnswerSchema.extend({ files: z.array(skillFileSchema).min(1).optional() }))
         .output(
           z.object({ proposalID: z.string(), approvalID: z.string(), skillHash: z.string() }),
         ),
 
-      // A rejection's reason is what the conversation reads in its next turn.
       reject: skills
         .input(skillAnswerSchema.extend({ reason: z.string().max(500).regex(/\S/u) }))
         .output(z.object({ proposalID: z.string() })),
@@ -356,8 +299,6 @@ export const hostContract = {
     written: {
       list: skills.output(z.array(writtenSkillSchema)),
 
-      // Keeping nixie's version makes your definitions' version its base, which closes a conflict;
-      // keeping your definitions' version retires nixie's and puts yours back in force.
       resolve: skills
         .input(
           z.strictObject({

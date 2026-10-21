@@ -1,8 +1,7 @@
 import type { RecordedInputEvent } from './build-span-state-from-events';
 
-// Text typed with Gboard 18.4.1 into a textarea in Chrome 155 on Android 16, recorded with the
-// paste-span spike's device page; every text is invented. The respaced-autocorrect case was typed
-// as "The gardengate sticks", and Gboard split the run-together word.
+// Gboard 18.4.1 recorded these into a textarea in Chrome 155 on Android 16. The respaced-autocorrect
+// case was typed as "The gardengate sticks", and Gboard split the run-together word.
 export const gboardTypedEvents = {
   typing: [
     { event: 'beforeinput', inputType: 'insertText', data: 'T', selection: [0, 0] },

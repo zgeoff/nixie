@@ -8,8 +8,6 @@ import { readMemorySubjectCounts } from './read-memory-subject-counts';
 import { runMigrations } from './run-migrations';
 import { startDatabase } from './start-database';
 
-// What the subjects migration would do to a database: the schema version it starts at and ends
-// at, and the count of each subject before and after.
 export interface SubjectMigrationReport {
   readonly from: number;
   readonly to: number;
@@ -17,9 +15,6 @@ export interface SubjectMigrationReport {
   readonly after: MemorySubjectCounts;
 }
 
-// Runs every migration this build writes on a copy of the database at path, such as a backup, and
-// reports the subject counts before and after. It reads the original only through a read-only
-// connection, whose copy is one snapshot, so a server that writes meanwhile never splits the copy.
 export async function runSubjectMigrationDryRun(path: string): Promise<SubjectMigrationReport> {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-subjects-dry-run-'));
 
@@ -44,7 +39,6 @@ export async function runSubjectMigrationDryRun(path: string): Promise<SubjectMi
   }
 }
 
-// copies the database, with the writes its log holds, in one read transaction
 function createSnapshotCopy(path: string, copyPath: string): void {
   const source = new Database(path, { readonly: true });
 

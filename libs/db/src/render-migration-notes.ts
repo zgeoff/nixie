@@ -1,8 +1,5 @@
 import type { MigrationCheck } from './check-migrations';
 
-// The migrations section of a GitHub release body, opened by marker so that a re-run replaces it:
-// each migration added since lastTag, null for the first release, by the schema version it leaves,
-// and whether lastTag can read the schema.
 export function renderMigrationNotes(
   check: MigrationCheck,
   lastTag: string | null,

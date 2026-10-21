@@ -14,9 +14,6 @@ import { tasksMigration } from './tasks-migration';
 import type { BuildSchema } from './types';
 import { writtenSkillsMigration } from './written-skills-migration';
 
-// The schema this build writes. A migration appends to the list and never changes an entry already
-// released. Raise oldestReader only when a release leaves a schema the release before cannot read,
-// and say so in its pull request.
 export const nixieSchema: BuildSchema = {
   migrations: [
     eventLogMigration,

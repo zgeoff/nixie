@@ -1,9 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the skill tables: each skill version under its content hash, with its frontmatter and its
-// files as text, and the skills each snapshot holds, marked when the conversation's list holds
-// them. A version stays once written, so a task pinned to it reads it after a later seed.
 export const skillsMigration: Migration = {
   name: 'create the skill tables',
   up: async (tx) => {

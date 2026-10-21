@@ -1,9 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the mark that an export of a skill nixie wrote writes before it writes to the definitions
-// repo, so a run that stops before it records its pull request leaves a mark to find it by. It only
-// adds a table, and running it again changes nothing.
 export const skillExportAttemptsMigration: Migration = {
   name: 'create the marks of skill exports in flight',
   up: async (tx) => {
