@@ -57,6 +57,7 @@ place. Without them, nixie starts and reports ready, and each turn fails at its 
 ## Files
 
 - `compose.yaml` runs nixie, the `enrol` service, the web client and the Caddy origin, and routes
-  nixie's model calls through a host's broker. CI runs it on every pull request.
+  nixie's model calls through a host's broker. CI runs it on each push to main, and on each pull
+  request that changes a file the preview reads.
 - `config.yaml` selects the test sandbox and the preview's model profile.
 - `run-preview.sh` writes the throwaway secrets file on the first start, then runs nixie.

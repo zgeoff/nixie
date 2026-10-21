@@ -246,6 +246,36 @@ test('it hands each call the run identity of the step whose token the call carri
   });
 });
 
+test('it hands each call the session its step token names', async () => {
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
+
+  const endpoint = await ctx.endpoint.startRun({
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const step = endpoint.startStep('task-1:3@2', { key: 'session-a', invalidatedThrough: 12 });
+
+  const client = await startRunClient(endpoint, step.token);
+
+  await client.callTool({ name: 'notes_read', arguments: { query: 'milk' } });
+
+  expect(run).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+    run: {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+      stepRunID: 'task-1:3@2',
+      session: { key: 'session-a', invalidatedThrough: 12 },
+    },
+  });
+});
+
 test('it hands a call under the run token no step run identity', async () => {
   const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
 
