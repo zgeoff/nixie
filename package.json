@@ -91,7 +91,7 @@
     "prepare": "command -v git > /dev/null 2>&1 && lefthook install --force || true",
     "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md AGENTS.md ':(glob)docs/**/*.md' ':(glob)research/**/*.md' .claude/skills/project-code-style .claude/skills/project-docs-writing .claude/skills/project-testing && bash .claude/skills/skill-writing/scripts/check-skill.sh",
     "test": "bun run models && bun test --parallel --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.browser.test.ts' && bun test --preload ./apps/web/src/test-utils/start-browser.ts .browser.test.ts",
-    "typecheck": "tsc --noEmit && turbo run typecheck"
+    "typecheck": "tsrs --noEmit && turbo run typecheck"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",
@@ -108,6 +108,7 @@
     "oxfmt": "0.72.0",
     "oxlint": "1.87.0",
     "oxlint-tsgolint": "7.0.2004",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
     "turbo": "2.11.7",
     "typescript": "7.0.2"
   },
