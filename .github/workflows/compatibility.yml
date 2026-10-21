@@ -1,11 +1,15 @@
 # Checks a pull request against the last release, the newest v* tag reachable from its base, so the
 # release after it can roll back by one release: the oRPC contract only grows, and each migration
 # since that release keeps the schema readable by it unless nixie-schema.ts declares the break.
-# Before the first release, both checks pass with nothing to compare.
+# Before the first release, both checks pass with nothing to compare. A pull request runs it only
+# when it changes a file the checks read; every push to main runs it in full, against the newest v*
+# tag reachable from the pushed commit.
 name: Compatibility
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -20,7 +24,25 @@ defaults:
     shell: bash
 
 jobs:
+  changes:
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@sync-v22
+    with:
+      paths: |
+        .github/workflows/compatibility.yml
+        .github/scripts/check-accepted-breaks.sh
+        .github/scripts/check-contract-growth.sh
+        .github/scripts/read-released-schema.sh
+        .bun-version
+        bun.lock
+        bunfig.toml
+        package.json
+        tsconfig*.json
+        libs/contract/**
+        libs/db/**
+
   compatibility:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -40,7 +62,9 @@ jobs:
       - name: Find the last release
         id: last
         env:
-          BASE: origin/${{ github.base_ref }}
+          BASE:
+            ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) ||
+            github.sha }}
         run: |
           tag=$(git describe --tags --abbrev=0 --match 'v*' "$BASE" 2> /dev/null || true)
           echo "tag=$tag" >> "$GITHUB_OUTPUT"

@@ -19,5 +19,6 @@ export const modelSessionOpenedCodec = defineRecordCodec(
     status: statusSchema,
     personaHash: z.string(),
     policyHash: z.string(),
+    sessionKey: z.uuid().exactOptional(),
   }),
 );

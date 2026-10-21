@@ -8,7 +8,7 @@
   },
   "scripts": {
     "manifest-schema": "bun src/run-manifest-json-schema.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
     "@heynixie/clock": "workspace:*",

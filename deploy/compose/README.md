@@ -44,8 +44,9 @@ release's notes list. A rollback reverts that change.
 
 ## How CI checks it
 
-The Compose workflow checks that each pinned tag resolves to its pinned digest. It then starts the
-recipe with the overlay in `ci/`, which swaps nixie's release image for the test build, because the
-release image leaves the test sandbox out. The test sandbox runs each guest as a local process with
-no isolation, so the overlay is never a deployment. The workflow checks the health URL through the
-recipe's origin, and that the `enrol` service prints a sign-in code.
+The Compose workflow runs on each push to main, and on each pull request that changes a file the
+recipe or the test build reads. It checks that each pinned tag resolves to its pinned digest. It
+then starts the recipe with the overlay in `ci/`, which swaps nixie's release image for the test
+build, because the release image leaves the test sandbox out. The test sandbox runs each guest as a
+local process with no isolation, so the overlay is never a deployment. The workflow checks the
+health URL through the recipe's origin, and that the `enrol` service prints a sign-in code.
