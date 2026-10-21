@@ -7,16 +7,12 @@ export interface SandboxSpecInput {
   readonly owner: string;
   readonly limits: SandboxLimits;
 
-  // the profile's model credential, for a kind that runs a model loop
   readonly modelGrant?: GrantSpec;
 
-  // a coding session's allowed hosts, and the grants its rules add
   readonly allowHosts?: readonly string[];
   readonly extraGrants?: readonly GrantSpec[];
 }
 
-// Builds the spec for one kind of work from the kinds table, so a caller names the work and never
-// picks egress, grants or the tool route by hand.
 export function buildSandboxSpec(input: SandboxSpecInput): SandboxSpec {
   const rule = sandboxKinds[input.kind];
   const grants = rule.hasModelGrant && input.modelGrant ? [input.modelGrant] : [];

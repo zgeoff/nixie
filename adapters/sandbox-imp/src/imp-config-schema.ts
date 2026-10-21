@@ -9,9 +9,6 @@ export interface ImpSection {
   readonly publicEgress: PublicEgressConfig | null;
 }
 
-// The imp section of the deployment configuration: impd's URL and the public egress ranges that
-// impd reads too; impd's token is a secret. Without host addresses the adapter refuses public
-// egress, because a host address the list leaves out is reachable from a public imp.
 export const impConfigSchema = z
   .strictObject({
     url: z.url({ protocol: /^https?$/u }),

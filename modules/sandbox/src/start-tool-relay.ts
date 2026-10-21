@@ -7,8 +7,6 @@ export interface ToolRelay {
   readonly stop: () => Promise<void>;
 }
 
-// Listens on a free loopback port and relays each connection to the tool target, the local stand-in
-// for imp's reverse forward. It never listens on an address another machine reaches.
 export async function startToolRelay(target: ToolTarget): Promise<ToolRelay> {
   const sockets = new Set<Socket>();
 

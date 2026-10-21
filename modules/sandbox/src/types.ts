@@ -1,27 +1,18 @@
 import type { CheckedTables } from '@heynixie/db';
 
-// The kinds of work that run in a sandbox, each with its own egress, grants and tool route.
 export type SandboxKind = 'conversation' | 'checker' | 'worker' | 'code_run' | 'fetch' | 'coding';
 
-// What the sandbox reaches past its host, enforced at the network layer outside the guest. public
-// reaches the global internet only, never the host, the runtime's API, other sandboxes, or a
-// private, link-local, shared address space or deployment-listed range.
 export type Egress =
   | { readonly kind: 'none' }
   | { readonly kind: 'public' }
   | { readonly kind: 'allow'; readonly hosts: readonly string[] };
 
-// A credential the adapter's injecting backend adds to requests for one host. It dials from the
-// host, so a grant never becomes a network exception in the guest. env holds the placeholders the
-// guest sees in place of the credential, such as ANTHROPIC_API_KEY.
 export interface GrantSpec {
   readonly secret: string;
   readonly host: string;
   readonly env: Readonly<Record<string, string>>;
 }
 
-// A credential that the adapter's injecting backend holds under a name, for a grant to name. The
-// backend sends it to one host only, in the header its endpoint takes.
 export interface SecretSpec {
   readonly name: string;
   readonly value: string;
@@ -38,57 +29,42 @@ export interface SandboxLimits {
 export interface SandboxSpec {
   readonly kind: SandboxKind;
 
-  // a purpose-built image per kind of work
   readonly image: string;
 
-  // the task step or tool call the sandbox belongs to, which crash recovery reads
   readonly owner: string;
   readonly egress: Egress;
 
-  // empty for code runs, the profile's model credential for model loops
   readonly grants: readonly GrantSpec[];
 
-  // open the route back to nixie's tools
   readonly toolRoute: boolean;
   readonly limits: SandboxLimits;
 }
 
 export interface SandboxAdapter {
-  // such as 'imp', which each sandbox's records name so recovery returns to the same adapter
   readonly id: string;
   readonly boundary: 'microvm' | 'container' | 'process';
   readonly create: (spec: SandboxSpec) => Promise<Sandbox>;
   readonly read: (id: string) => Promise<Sandbox | null>;
 
-  // every sandbox this adapter made for the owner that is not yet destroyed, for crash recovery
   readonly list: (owner: string) => Promise<readonly Sandbox[]>;
 
-  // stores a credential with the injecting backend unless one already has the name, so a caller
-  // names each value once and a changed value gets a new name
   readonly addSecret: (secret: SecretSpec) => Promise<void>;
 
-  // adds an image that the runtime pulls by its reference, under the name a spec's image gives,
-  // unless the runtime already holds that name at the same digest
   readonly addImage: (image: SandboxImage) => Promise<void>;
 
-  // whether the runtime answers now, for the imp host's readiness; the signal ends a call that hangs
   readonly checkRuntime: (signal?: AbortSignal) => Promise<RuntimeReport>;
 }
 
-// An image for one kind of work, pinned by digest, such as
-// { name: 'nixie-fetch-0123456789ab', ref: 'ghcr.io/<owner>/nixie-fetch@sha256:<digest>' }.
 export interface SandboxImage {
   readonly name: string;
   readonly ref: string;
 }
 
-// reason says why the runtime is not ready, and is null when it is
 export interface RuntimeReport {
   readonly isReady: boolean;
   readonly reason: string | null;
 }
 
-// How a sandbox starts a guest program: its argv, and the variables it passes by name.
 export interface GuestCommand {
   readonly argv: readonly string[];
   readonly env: Readonly<Record<string, string>>;
@@ -97,7 +73,6 @@ export interface GuestCommand {
 export interface ExecSpec {
   readonly argv: readonly string[];
 
-  // passed by name, over the adapter's own variables: the broker's, NO_PROXY and each grant's
   readonly env?: Readonly<Record<string, string>>;
   readonly cwd?: string;
 }
@@ -107,12 +82,9 @@ export interface RunSpec extends ExecSpec {
 }
 
 export interface SpawnSpec extends ExecSpec {
-  // the largest message the caller takes; a longer frame ends the stream
   readonly maxMessageBytes: number;
 }
 
-// One output stream of a command, cut at the adapter's limit. totalBytes counts every byte the
-// command wrote, so a cut shows how much it dropped.
 export interface CollectedOutput {
   readonly bytes: Uint8Array<ArrayBuffer>;
   readonly totalBytes: number;
@@ -120,7 +92,6 @@ export interface CollectedOutput {
 }
 
 export interface ExecExit {
-  // null when a signal ended the command
   readonly code: number | null;
   readonly signal: string | null;
 }
@@ -135,30 +106,23 @@ export interface StreamExit extends ExecExit {
   readonly stderr: CollectedOutput;
 }
 
-// A long-lived process with stdin and stdout open, such as the SDK of a worker or the conversation.
-// Both directions carry framed messages.
 export interface ExecStream {
   readonly messages: AsyncIterable<Uint8Array<ArrayBuffer>>;
   readonly send: (message: Uint8Array) => Promise<void>;
   readonly exit: Promise<StreamExit>;
 
-  // sends SIGTERM, and the adapter kills the process's cgroup 5 s later if anything is left
   readonly stop: () => Promise<StreamExit>;
 }
 
 export interface FileSpec {
-  // an absolute path in the guest
   readonly path: string;
   readonly content: Uint8Array<ArrayBuffer>;
 }
 
-// Where the guest reaches nixie's tools: a base URL on the guest's loopback, with 127.0.0.1 on
-// NO_PROXY so requests skip the broker.
 export interface ToolRoute {
   readonly url: string;
 }
 
-// Where the route delivers each connection the guest opens: the tool endpoint for the sandbox's run.
 export type ToolTarget =
   | { readonly path: string }
   | { readonly host: string; readonly port: number };
@@ -168,7 +132,6 @@ export interface SandboxRef {
   readonly owner: string;
 }
 
-// Picks the tool target for a sandbox, from its ID and its owner's run.
 export type ToolTargetResolver = (sandbox: SandboxRef) => ToolTarget;
 
 export type Suspension =
@@ -179,19 +142,13 @@ export type Suspension =
     }
   | { readonly kind: 'none' };
 
-// The guest's home in its two forms, which differ in a sandbox that maps a host folder to the
-// guest's root, as the process sandbox does.
 export interface GuestHome {
-  // the path that copyIn, copyOut, readFilePaths and applyMove take
   readonly copyPath: string;
 
-  // the path the guest's own processes see
   readonly ownPath: string;
 }
 
 export interface ReadFilePathsOptions {
-  // the most path segments a listed file's relative path holds, as find's -maxdepth counts them: a
-  // file directly in the directory is 1 deep, and a file in a folder of it is 2 deep
   readonly maxDepth?: number;
 }
 
@@ -203,29 +160,21 @@ export interface Sandbox {
   readonly copyIn: (files: readonly FileSpec[]) => Promise<void>;
   readonly copyOut: (paths: readonly string[]) => Promise<readonly FileSpec[]>;
 
-  // the home of a guest that runs with this env, from what the adapter knows, with no probe; it
-  // rejects a HOME outside the sandbox
   readonly resolveHome: (env: Readonly<Record<string, string>>) => Promise<GuestHome>;
 
-  // every file under the directory down to the options' depth, or at any depth with none, relative
-  // to it; none for a missing directory
   readonly readFilePaths: (
     directory: string,
     options?: ReadFilePathsOptions,
   ) => Promise<readonly string[]>;
 
-  // moves one file to another path in one step, replacing a file there
   readonly applyMove: (from: string, to: string) => Promise<void>;
   readonly toolRoute: () => Promise<ToolRoute | null>;
   readonly suspension: Suspension;
   readonly destroy: () => Promise<void>;
 
-  // the adapter asks the owner to replace the sandbox, as a changed spec does, such as an imp that
-  // impd still backs up because it was made before the opt-out
   readonly isRetired: boolean;
 }
 
-// One lifecycle event of a sandbox, which the recorder writes as a record of kind sandbox.<event>.
 export type SandboxEvent =
   | {
       readonly event: 'created';
@@ -246,7 +195,6 @@ export type SandboxEvent =
       readonly reason: 'destroyed' | 'create_failed';
     };
 
-// A sandbox the records show as made and not yet destroyed.
 export interface SandboxRow {
   readonly sandboxID: string;
   readonly adapter: string;
@@ -255,14 +203,12 @@ export interface SandboxRow {
   readonly spec: SandboxSpec;
 }
 
-// How an adapter writes its sandboxes' records and reads them back.
 export interface SandboxRecorder {
   readonly write: (event: SandboxEvent) => Promise<void>;
   readonly readRow: (adapter: string, sandboxID: string) => Promise<SandboxRow | null>;
   readonly list: (adapter: string, owner: string) => Promise<readonly SandboxRow[]>;
 }
 
-// The projection's rows, as SQLite returns them.
 export type SandboxTables = CheckedTables<
   Readonly<{
     sandboxes: {

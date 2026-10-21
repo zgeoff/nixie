@@ -20,8 +20,6 @@ interface AdapterConfig {
   readonly toolTarget?: ToolTarget;
 }
 
-// The imp adapter on a fresh recorder and a fake impd, with the stub tool endpoint on a unix socket
-// in a scratch directory. buildAdapter makes another adapter on the same three, as a restart does.
 async function setupTest() {
   const recorder = await setupTestRecorder();
   const imp = await startFakeImp();
@@ -112,7 +110,6 @@ test('it lists every sandbox of the owner until it is destroyed', async () => {
   const ctx = await setupTest();
   const first = await ctx.adapter.create(buildMockSandboxSpec({ owner: 'conversation:step-7' }));
 
-  // the fake impd forwards every imp's tool route from one local port, so one imp holds a route
   const second = await ctx.adapter.create(
     buildMockSandboxSpec({ owner: 'conversation:step-7', kind: 'code_run', toolRoute: false }),
   );
@@ -176,7 +173,6 @@ test('it lists a sandbox whose imp impd still backs up as retired', async () => 
 
   invariant(created);
 
-  // an imp made before the opt-out, which impd backs up for its life
   ctx.imp.created[0] = { ...created, backup: true };
 
   const listed = await ctx.adapter.list(sandbox.spec.owner);
@@ -554,7 +550,6 @@ test('it refuses a listing that passes the output cap, rather than return part o
   const ctx = await setupTest();
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
 
-  // 6000 names of about 200 bytes each list past the 1 MiB cap
   await sandbox.exec({
     argv: [
       'sh',

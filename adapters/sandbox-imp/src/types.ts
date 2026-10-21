@@ -1,6 +1,4 @@
-// An exec in an imp, as the adapter drives it.
 export interface ImpExec {
-  // resolves once impd started the command, after any wake the exec waited for
   readonly started: Promise<unknown>;
   readonly stdout: ReadableStream<Uint8Array>;
   readonly stderr: ReadableStream<Uint8Array>;
@@ -15,10 +13,8 @@ export interface ImpExecOptions {
   readonly env: Readonly<Record<string, string>>;
   readonly cwd?: string;
 
-  // the guest kills the exec's cgroup this long after the first SIGTERM
   readonly killGraceMs: number;
 
-  // with a grant, the command starts only once impd set the broker's variables for this boot
   readonly requireBroker: boolean;
 }
 
@@ -35,11 +31,9 @@ export interface ImpCreateInput {
   readonly diskMib: number;
   readonly policy: ImpPolicy;
 
-  // false leaves the imp's disk out of every backup impd takes, for the imp's life
   readonly backup: boolean;
 }
 
-// One connection the guest opened on the forward's port, which the adapter relays.
 export interface ImpRelayHandlers {
   readonly onData: (data: Uint8Array) => Promise<void> | void;
   readonly onEof: () => void;
@@ -63,7 +57,6 @@ export interface ImpFeatures {
   readonly publicEgress: boolean;
   readonly isEgressEnforced: boolean;
 
-  // impd honours a create's backup opt-out; an impd without it ignores the field
   readonly hasBackupOptOut: boolean;
 }
 
@@ -71,11 +64,9 @@ interface ImpImage {
   readonly name: string;
   readonly digest: string;
 
-  // the reference impd pulled the image from, such as ghcr.io/example/nixie-fetch@sha256:<hex>
   readonly ref: string;
 }
 
-// A custom secret the broker sends to one host, in one header with its scheme.
 interface ImpSecretInput {
   readonly name: string;
   readonly value: string;
@@ -84,31 +75,22 @@ interface ImpSecretInput {
   readonly scheme: 'bearer' | 'raw';
 }
 
-// The impd calls the adapter makes. buildImpPort implements it on imp's client; a test stands in
-// for impd with its own.
 export interface ImpPort {
-  // the signal ends the calls to impd, such as one that hangs on a half-open connection
   readonly readFeatures: (signal?: AbortSignal) => Promise<ImpFeatures>;
   readonly createImp: (input: ImpCreateInput) => Promise<void>;
 
-  // whether impd backs the imp up, or null when no imp has the name
   readonly readImpBackup: (name: string) => Promise<boolean | null>;
 
-  // an imp that is gone already counts as removed
   readonly removeImp: (name: string) => Promise<void>;
   readonly sleepImp: (name: string) => Promise<void>;
   readonly wakeImp: (name: string) => Promise<void>;
 
-  // the hosts a secret's broker rules cover, or null when no secret has the name
   readonly readSecretHosts: (secret: string) => Promise<readonly string[] | null>;
   readonly addGrant: (name: string, secret: string) => Promise<void>;
   readonly addSecret: (secret: ImpSecretInput) => Promise<void>;
 
-  // the images impd holds, by name. The digest is sha256:<hex> for a pulled image, and
-  // imp-build-<hex> for one impd built from the reference.
   readonly listImages: () => Promise<readonly ImpImage[]>;
 
-  // impd pulls the image by its reference and keeps it under the name
   readonly addImage: (image: ImpImage) => Promise<void>;
   readonly openExec: (
     name: string,

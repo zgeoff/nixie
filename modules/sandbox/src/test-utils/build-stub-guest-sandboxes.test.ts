@@ -827,7 +827,6 @@ test('it answers a live message that arrives during a tool call, in the same ses
     maxMessageBytes: 1 << 20,
   });
 
-  // the turn runs up to its tool call within the send, and waits there on the release
   await stream.send(encodeTurnFrame(buildMockTurnFrame()));
   await stream.send(encodeTurnFrame({ type: 'message', message: live }));
 
@@ -876,7 +875,6 @@ test('it writes no transcript from a turn the host stopped during a tool call, s
     input: [{ uuid: crypto.randomUUID(), text: 'the blue flowerpot' }],
   });
 
-  // the turn runs up to its tool call within the send, and waits there on the release
   await stream.send(encodeTurnFrame(turn));
 
   const stopping = stream.stop();
@@ -915,7 +913,6 @@ test('it keeps the frames and transcript of an input that completed before a sto
 
   await stream.send(encodeTurnFrame(buildMockTurnFrame({ input })));
 
-  // the first input's three frames arrive while the second waits at its tool call
   const messages = stream.messages[Symbol.asyncIterator]();
   const sent = [await messages.next(), await messages.next(), await messages.next()];
 

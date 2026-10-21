@@ -1,8 +1,6 @@
 import { SandboxSpecRefusedError } from './sandbox-spec-refused-error';
 import type { SandboxSpec } from './types';
 
-// Throws SandboxSpecRefusedError unless the spec is one an adapter may make. Every adapter calls it
-// before it writes a record or reaches its runtime.
 export function requireSandboxSpec(spec: SandboxSpec): void {
   requireExitRule(spec);
 
@@ -21,8 +19,8 @@ export function requireSandboxSpec(spec: SandboxSpec): void {
   }
 }
 
-// A grant is an exit for whatever the sandbox holds, so public egress never holds one, and only a
-// coding session holds a grant beside egress.
+// A grant is an exit for whatever the sandbox holds, so a sandbox with public egress never holds
+// one.
 function requireExitRule(spec: SandboxSpec): void {
   if (spec.grants.length === 0 || spec.egress.kind === 'none') {
     return;

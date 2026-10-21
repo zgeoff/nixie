@@ -1,4 +1,3 @@
-// The record kinds the sandbox module registers with the log, one for each lifecycle event.
 export type SandboxRecordKind =
   | 'sandbox.created'
   | 'sandbox.granted'

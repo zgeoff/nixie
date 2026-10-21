@@ -7,9 +7,6 @@ import { readStubGuestHistory } from './read-stub-guest-history';
 
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 
-// One reply the stub guest gives: text that ends the turn, a tool use that asks for a tool by its
-// name as the model sees it, such as mcp__nixie__note_read, or an overflow, which the CLI reports
-// when a call passes the window.
 export type StubGuestReply =
   | { readonly text: string }
   | {
@@ -20,20 +17,16 @@ export type StubGuestReply =
     }
   | { readonly overflow: 'blocking_limit' | 'prompt_too_long' };
 
-// One tool call the stub guest makes through the route the host gave it.
 export interface StubGuestToolCall {
   readonly sandboxID: string;
   readonly owner: string;
 
-  // the bearer token the turn frame carries
   readonly token: string;
 
-  // the tool's name as the endpoint serves it, with no mcp__nixie__ prefix
   readonly name: string;
   readonly input: Readonly<Record<string, unknown>>;
 }
 
-// Calls the tool and returns its result as text.
 export type StubGuestToolCaller = (call: StubGuestToolCall) => Promise<string>;
 
 export interface StubGuestRun {
@@ -41,34 +34,22 @@ export interface StubGuestRun {
   readonly owner: string;
   readonly disk: StubGuestDisk;
 
-  // the guest's home, which its session state sits under
   readonly home: GuestHome;
 
-  // the next reply, or the default when none is queued
   readonly takeReply: () => StubGuestReply;
 
-  // the context size the turn must end at, once, or null to let the session's own size stand
   readonly takeContextSize: () => number | null;
   readonly callTool: StubGuestToolCaller | undefined;
 
-  // the tokens a text adds to the context
   readonly countTokens: (text: string) => number;
 
-  // the next live message that reached the guest and no input has taken, or undefined when none
   readonly takeMessage: () => InboxMessage | undefined;
 
-  // aborts when the host stops the guest: a tool call in flight ends, and the turn writes nothing
-  // more
   readonly signal: AbortSignal;
 
-  // sends the frames of each input that completes, before the next input starts; without it the
-  // turn returns every frame at its end
   readonly emit?: (frames: readonly GuestFrame[]) => void;
 }
 
-// Runs one turn as the conversation guest does: it removes every session but the resumed one, forks
-// that session at the resume point, adds the input and each reply, and ends at the fork's last entry.
-// An overflow ends the turn at the resume point without moving the chain.
 export function runStubGuestTurn(
   turn: TurnFrame,
   run: StubGuestRun,
@@ -85,12 +66,9 @@ export function runStubGuestTurn(
 }
 
 interface ProgressState {
-  // the last chain entry that is not the CLI's own message for an overflow, or null when none
   committed: SessionPoint | null;
 }
 
-// the CLI answers each inbox message of the turn in its own model call, and reports a result for
-// each, all in the one fork
 async function runInputs(
   turn: TurnFrame,
   run: StubGuestRun,
@@ -99,12 +77,7 @@ async function runInputs(
   const fork = { sessionID: crypto.randomUUID(), contextSize: run.takeContextSize() };
   const entries: StubSessionEntry[] = [...history];
   const frames: GuestFrame[] = [];
-
-  // the last chain entry that is not the CLI's own message for an overflow, advanced as each
-  // entry of the chain completes
   const progress: ProgressState = { committed: turn.resume };
-
-  // the turn's inbox, then each live message that arrived while the turn ran, as the guest reads
   const queue = [...turn.input];
 
   for (let message = queue.shift(); message !== undefined; message = queue.shift()) {
@@ -123,13 +96,11 @@ async function runInputs(
       (error: unknown) => new Error(String(error)),
     );
 
-    // a stopped guest writes nothing more, so a session the host removed after the stop stays gone
     if (run.signal.aborted) {
       return frames;
     }
 
     if (answer instanceof Error) {
-      // the inputs that completed keep their transcript and their frames, as the guest keeps them
       if (progress.committed !== turn.resume) {
         run.disk.writeSession(run.home, fork.sessionID, entries);
       }
@@ -155,9 +126,6 @@ async function runInputs(
     progress.committed = { sessionID: fork.sessionID, messageID: last.uuid };
 
     frames.push(buildEnded(turn, entries, { start, point: progress.committed }));
-
-    // the CLI keeps each completed input on disk and sends its result at once, so a later stop
-    // leaves both in place
     run.disk.writeSession(run.home, fork.sessionID, entries);
     run.emit?.(frames.splice(0));
     const live = run.takeMessage();
@@ -175,7 +143,6 @@ async function runInputs(
 interface ForkState {
   readonly sessionID: string;
 
-  // the context size a test set for the turn, until the first reply uses it
   contextSize: number | null;
 }
 
@@ -188,13 +155,11 @@ interface AnswerState {
 interface InputAnswer {
   readonly frames: readonly GuestFrame[];
 
-  // the reason the call was refused for a prompt past the window, or null
   readonly overflow: 'blocking_limit' | 'prompt_too_long' | null;
 }
 
 const overflowText = 'Prompt is too long';
 
-// answers one inbox message: each tool use the model asks for, then the reply that ends the call
 async function runInputCall(
   turn: TurnFrame,
   run: StubGuestRun,
@@ -223,7 +188,6 @@ async function runInputCall(
       return { frames, overflow: reply.overflow };
     }
 
-    // the context size a test set applies to the first reply of the turn, then lapses
     const contextSize = state.fork.contextSize;
 
     state.fork.contextSize = null;
@@ -237,7 +201,6 @@ async function runInputCall(
 
     state.entries.push(entry);
 
-    // the CLI reports the inbox message the model read with its first reply
     if (replyCount === 1) {
       frames.push({ type: 'read', uuids: [input.uuid] });
     }
@@ -268,15 +231,12 @@ async function runInputCall(
 interface AssistantEntrySpec {
   readonly uuid: string;
 
-  // the session's entries before the reply
   readonly entries: readonly StubSessionEntry[];
 
-  // the context size the reply must raise the session to, or null to let its own size stand
   readonly contextSize: number | null;
   readonly countTokens: (text: string) => number;
 }
 
-// a reply's entry, raised by the gap to the context size given
 function buildAssistantEntry(
   reply: Exclude<StubGuestReply, { overflow: unknown }>,
   spec: AssistantEntrySpec,
@@ -303,7 +263,6 @@ interface StubToolUse {
 
 const toolPrefix = 'mcp__nixie__';
 
-// calls the tool through the guest's route and returns its result as the session's next entry
 async function runStubToolCall(
   turn: TurnFrame,
   run: StubGuestRun,
@@ -333,12 +292,9 @@ async function runStubToolCall(
   };
 }
 
-// the tool's result, or the signal's reason once the host stops the guest, as a killed guest stops
-// waiting on its call
 async function waitForToolResult(call: Promise<string>, signal: AbortSignal): Promise<string> {
   signal.throwIfAborted();
 
-  // ends the wait on the abort once the call settles first
   const settled = new AbortController();
 
   const waitForStop = async (): Promise<never> => {
@@ -359,12 +315,11 @@ async function waitForToolResult(call: Promise<string>, signal: AbortSignal): Pr
 interface OverflowState {
   readonly fork: ForkState;
 
-  // the last chain entry before the overflow, or null when the session has none
   readonly committed: SessionPoint | null;
 }
 
-// the CLI answers a call past the window with its own message, and the result ends at the last
-// entry before it, so a retry forks the session before the overflow
+// The CLI answers a call past the window with its own message, and its result ends at the entry
+// before that message, so a retry forks the session before the overflow.
 function buildOverflowEnded(
   entries: readonly StubSessionEntry[],
   state: OverflowState,
@@ -387,15 +342,12 @@ function buildOverflowEnded(
 }
 
 interface EndedPoint {
-  // the index of the call's input among the entries
   readonly start: number;
   readonly point: SessionPoint;
 }
 
-// the window of a profile that sets no context cap, the smallest the CLI assumes for any model
 const defaultWindow = 200_000;
 
-// the result of one answered input, at its last chain entry, with the session's context size
 function buildEnded(
   turn: TurnFrame,
   entries: readonly StubSessionEntry[],

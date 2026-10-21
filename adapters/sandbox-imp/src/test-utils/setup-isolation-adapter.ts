@@ -15,18 +15,13 @@ interface IsolationAdapterOptions {
   readonly publicEgress: PublicEgressConfig | null;
   readonly guestToolPort?: number;
 
-  // the name of the model-host secret to add, which impd must not hold yet
   readonly secret: string;
 }
 
 interface IsolationAdapter {
-  // creates an imp that is destroyed when the test finishes
   readonly createSandbox: (spec: SandboxSpec) => Promise<Sandbox>;
 }
 
-// Sets up the imp adapter on a fresh recorder and the stub tool endpoint, and adds the model-host
-// secret with a dummy value. The stack's hook registers first and waits for a setup that outlives
-// the test; hooks run first in, first out, so each imp goes before the writer stops.
 export function setupIsolationAdapter(options: IsolationAdapterOptions): Promise<IsolationAdapter> {
   const stack = new AsyncDisposableStack();
 
@@ -73,9 +68,6 @@ async function createIsolationAdapter(
   return { createSandbox: sandboxes.create };
 }
 
-// A name impd holds already is not this run's, so the add refuses it. Once the run has seen the
-// name free, whatever impd holds under it at the end is the run's, which covers an add that failed
-// after impd stored the secret.
 async function createTestSecret(options: IsolationAdapterOptions): Promise<void> {
   const name = options.secret;
 
@@ -93,7 +85,6 @@ async function createTestSecret(options: IsolationAdapterOptions): Promise<void>
     scheme: 'raw',
   });
 
-  // an add that outlives the test stores the secret late, so the check waits for it to settle
   onTestFinished(async () => {
     await Promise.allSettled([added]);
 
@@ -110,7 +101,6 @@ async function createTestSecret(options: IsolationAdapterOptions): Promise<void>
 interface SandboxTracker {
   readonly create: (spec: SandboxSpec) => Promise<Sandbox>;
 
-  // waits for every create still running, then destroys every imp of an owner the test used
   readonly removeAll: () => Promise<void>;
 }
 
