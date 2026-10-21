@@ -145,6 +145,23 @@ unchanged source. A second approved version of a written skill supersedes the fi
 base. Each state change goes through one transition table, in which only a written skill in force
 moves, once: to adopted, superseded or retired.
 
+#### The export to the definitions repo
+
+nixie exports each written skill in force to the user's definitions repo as a pull request, and the
+user merges it. The export runs at start, after each approval and each choice on a conflict, and on
+a fixed interval that retries a failed export. Each skill has one branch, which the export builds
+again on the base branch's newest commit, so a later approval of the same skill updates the open
+pull request. Each export pins that commit once and reads the skill's folder at it, so the change
+writes the skill's folder and removes each file that the folder holds at that commit and the written
+version lacks. It also removes a vendored skill's lock entry, so the seed after the merge reads the
+folder as the user's own skill and marks the written skill adopted.
+
+A choice on a conflict changes the export. Keeping nixie's version gives the skill a new base, and
+the export builds the pull request again on it. Keeping the definitions' version retires the skill,
+and the export closes its pull request. A new skill joins the conversation's list through the
+overlay alone, so when nixie.yaml lists the conversation's skills, the pull request asks the user to
+add the skill to that list.
+
 ## The snapshot hash
 
 The snapshot hash is the hash of one canonical form of the definitions in force. The persona enters

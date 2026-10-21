@@ -47,7 +47,8 @@ export interface SkillProposalContext {
 
 // What an answer reaches besides: the seed that puts an approved skill in force.
 export interface SkillAnswerContext extends SkillProposalContext {
-  // seeds the definitions in force again with the written skills as they stand, one seed at a time
+  // seeds the definitions in force again with the written skills as they stand, one seed at a
+  // time, after each change to them
   readonly seedWrittenSkills: () => Promise<void>;
 }
 

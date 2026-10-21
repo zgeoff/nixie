@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -183,15 +183,18 @@ test("it keeps nixie's version in force over a definitions change and closes the
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), `${text}By hour.\n`);
   await runSeed({ log: ctx.log, source: ctx.source, policy: ctx.policy });
 
-  await writeWrittenSkillResolution(ctx.context, {
-    approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
-    keep: 'nixie',
-  });
+  const seedWrittenSkills = mock(() => Promise.resolve());
+
+  await writeWrittenSkillResolution(
+    { ...ctx.context, seedWrittenSkills },
+    { approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', keep: 'nixie' },
+  );
 
   const written = await readWrittenSkills(ctx.log.writer.db);
 
   expect(written).toMatchObject([{ skillHash: skill.skillHash }]);
   expect(written[0]?.base).toStrictEqual(written[0]?.definitions);
+  expect(seedWrittenSkills).toHaveBeenCalledOnce();
 });
 
 test('it refuses a choice for a skill nixie wrote that left force', async () => {

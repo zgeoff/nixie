@@ -339,13 +339,17 @@
       "name": "@heynixie/definitions",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/clock": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
+        "xstate": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/testing": "workspace:*",
         "ajv": "catalog:",
       },
     },

@@ -210,6 +210,59 @@ export interface WrittenSkillRow {
 // retired when you keep your definitions' version instead.
 export type WrittenSkillState = 'in_force' | 'adopted' | 'superseded' | 'retired';
 
+// the pull request that carries a skill nixie wrote to your definitions repo, and the base of the
+// skill it was built for; closed once you keep your definitions' version instead
+interface SkillExportRow {
+  readonly approval_id: string;
+  readonly state: SkillExportState;
+  readonly base_hash: string | null;
+  readonly pull_request_number: number;
+  readonly pull_request_url: string;
+  readonly updated_at: number;
+}
+
+// Where the export of a skill that nixie wrote stands: its pull request is open, or closed once
+// you keep your definitions' version instead.
+export type SkillExportState = 'opened' | 'closed';
+
+// Your definitions repo, which nixie exports each skill it wrote to as a pull request for you to
+// merge. Its adapter reads the base branch and writes each change on a branch of its own.
+export interface DefinitionsRepo {
+  // the base branch's newest commit, which one export reads at and builds its change on, so a
+  // commit the base gains meanwhile never mixes into the export
+  readonly readBaseRevision: () => Promise<string>;
+
+  // the text of a file at the revision, by its path from the definitions root, or null when the
+  // revision lacks it
+  readonly readFile: (path: string, revision: string) => Promise<string | null>;
+
+  // the path of each file under a folder at the revision, from the folder, or none when the
+  // revision lacks the folder
+  readonly readFolder: (path: string, revision: string) => Promise<readonly string[]>;
+
+  // puts the change on its branch, built on the revision, and returns the open pull request from
+  // that branch, which it opens when none is open
+  readonly writePullRequest: (
+    change: DefinitionsChange,
+    revision: string,
+  ) => Promise<PullRequestRef>;
+  readonly closePullRequest: (pullRequestNumber: number) => Promise<void>;
+}
+
+export interface DefinitionsChange {
+  readonly branch: string;
+  readonly title: string;
+  readonly body: string;
+
+  // each changed file's new text by its path from the definitions root, or null to remove it
+  readonly files: ReadonlyMap<string, string | null>;
+}
+
+export interface PullRequestRef {
+  readonly number: number;
+  readonly url: string;
+}
+
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 export type DefinitionsTables = CheckedTables<
   Readonly<{
@@ -219,5 +272,6 @@ export type DefinitionsTables = CheckedTables<
     skill_versions: SkillVersionRow;
     snapshot_skills: SnapshotSkillRow;
     written_skills: WrittenSkillRow;
+    skill_exports: SkillExportRow;
   }>
 >;
