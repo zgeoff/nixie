@@ -23,7 +23,7 @@ clearing its trusted mark narrows and applies at once.
 
 A server over stdio runs as a command in an imp with egress `none` and no grants, because its code
 sits outside nixie's rules. The proxy reaches a server over HTTP from the host, and on every hop
-resolves the host, refuses any [non-public address](connector.md#non-public-addresses), and connects
+resolves the host, refuses any [non-public address](web-fetch.md#non-public-addresses), and connects
 to the address it checked. A server on a private network passes only when its configuration pairs
 the server's host with an allowed address range, the hop goes to that host, and the resolved address
 falls in that range.
