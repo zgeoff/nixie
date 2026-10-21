@@ -19,8 +19,6 @@ export interface StubDefinitionsRepo extends DefinitionsRepo {
   // the next pull request write lands and then rejects, as when its answer is lost on the way back
   readonly loseNextAnswer: () => void;
 
-  // the next pull request write lands and then answers once the work ends, as when other work
-  // runs while the answer is on its way back
   readonly delayNextAnswer: (work: () => Promise<unknown>) => void;
 }
 
