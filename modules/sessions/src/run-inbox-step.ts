@@ -1,5 +1,4 @@
 import { isCompactionDue, removeSummaryKeys } from '@heynixie/compaction';
-import { removeThreadLinks } from '@heynixie/connectors';
 import { modelTurnEndedCodec } from '@heynixie/models';
 import type { StepResult } from '@heynixie/tasks';
 import { isSessionLive } from './is-session-live';
@@ -32,11 +31,9 @@ async function runSessionTurn(step: SessionStep, plan: InboxPlan): Promise<StepR
 
   const start = pickSessionStart(step.position);
 
-  // a summary that committed, or a fetch that numbered links, while a forget's cleanup ran outlived
-  // it, so the opening removes both
+  // a summary that committed while a forget's cleanup ran kept its key, so the opening erases it
   if (start.kind === 'rebuild' && start.reason === 'forget') {
     await removeSummaryKeys(step.run.context.log, step.input.taskID);
-    await removeThreadLinks(step.run.context.log, step.input.taskID);
   }
 
   const opened = await readSessionTurn(step, true);

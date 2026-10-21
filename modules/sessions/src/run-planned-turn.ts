@@ -64,7 +64,7 @@ export async function runPlannedTurn(
     signal: turn.signal,
     times,
     images: turn.images,
-    sessionKey: turn.sessionKey,
+    session: { key: turn.sessionKey, invalidatedThrough: turn.invalidatedThrough },
   });
 
   turn.signal.throwIfAborted();

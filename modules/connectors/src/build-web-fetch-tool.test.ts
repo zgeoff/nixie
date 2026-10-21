@@ -1,6 +1,8 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import { buildToolRegistry } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { buildWebFetchTool } from './build-web-fetch-tool';
 import { startFetchSandbox } from './start-fetch-sandbox';
@@ -48,7 +50,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
         thread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
-        sessionKey: 'session-a',
+        session: { key: 'session-a', invalidatedThrough: 0 },
       },
     },
   );
@@ -95,7 +97,7 @@ test("it writes each link in the page's text as an ID the session numbers from 1
         thread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
-        sessionKey: 'session-a',
+        session: { key: 'session-a', invalidatedThrough: 0 },
       },
     },
   );
@@ -142,7 +144,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
     thread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
-    sessionKey: 'session-a',
+    session: { key: 'session-a', invalidatedThrough: 0 },
   };
 
   await tool.run(
@@ -204,7 +206,7 @@ test('it shows the host only for a link that leaves the page site', async () => 
         thread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
-        sessionKey: 'session-a',
+        session: { key: 'session-a', invalidatedThrough: 0 },
       },
     },
   );
@@ -252,7 +254,7 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
     thread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
-    sessionKey: 'session-a',
+    session: { key: 'session-a', invalidatedThrough: 0 },
   };
 
   await tool.run(
@@ -303,7 +305,7 @@ test.each([['L1'], ['l1'], ['[L1]'], [' L1 '], ['[L1 · bakery.test]']])(
       thread: 'conversation',
       tools: ['web_fetch'],
       model: { model: 'model-a', profile: 'chat-direct' },
-      sessionKey: 'session-a',
+      session: { key: 'session-a', invalidatedThrough: 0 },
     };
 
     await tool.run(
@@ -356,7 +358,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
         thread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
-        sessionKey: 'session-a',
+        session: { key: 'session-a', invalidatedThrough: 0 },
       },
     },
   );
@@ -369,7 +371,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
         thread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
-        sessionKey: 'session-b',
+        session: { key: 'session-b', invalidatedThrough: 0 },
       },
     },
   );
@@ -382,6 +384,59 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
   });
 
   expect(readPage).toHaveBeenCalledOnce();
+});
+
+test('it refuses a page whose session a forget ended while it was fetched, and numbers no link', async () => {
+  const ctx = await setupTest();
+
+  const reply: FetchReply = {
+    kind: 'page',
+    url: 'https://bakery.test/news',
+    status: 200,
+    contentType: 'text/html',
+    text: 'The menu \u{E000}0\u{E001}.',
+    links: ['https://bakery.test/menu'],
+    isTruncated: false,
+    blocked: null,
+  };
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'model.session_invalidated',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { itemID: '00000000-0000-4000-8000-000000000001' },
+    },
+  ]);
+
+  const tool = buildWebFetchTool(() => Promise.resolve(reply), ctx.log);
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://bakery.test/news' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'conversation',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0 },
+      },
+    },
+  );
+
+  const links = await sql`select url from web_fetch_links`.execute(ctx.log.writer.db);
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'the session ended while the page was fetched, so fetch it again by its url',
+  });
+
+  expect(links.rows).toStrictEqual([]);
 });
 
 test("it numbers a new session's links from 1 again", async () => {
@@ -424,7 +479,7 @@ test("it numbers a new session's links from 1 again", async () => {
         thread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
-        sessionKey: 'session-a',
+        session: { key: 'session-a', invalidatedThrough: 0 },
       },
     },
   );
@@ -442,7 +497,7 @@ test("it numbers a new session's links from 1 again", async () => {
         thread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
-        sessionKey: 'session-b',
+        session: { key: 'session-b', invalidatedThrough: 0 },
       },
     },
   );
@@ -510,7 +565,7 @@ test.each([
         thread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
-        sessionKey: 'session-a',
+        session: { key: 'session-a', invalidatedThrough: 0 },
       },
     },
   );
@@ -541,7 +596,7 @@ test('it refuses a link that does not read as a link ID', async () => {
         thread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
-        sessionKey: 'session-a',
+        session: { key: 'session-a', invalidatedThrough: 0 },
       },
     },
   );
@@ -592,7 +647,7 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
         thread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
-        sessionKey: 'session-a',
+        session: { key: 'session-a', invalidatedThrough: 0 },
       },
     },
   );

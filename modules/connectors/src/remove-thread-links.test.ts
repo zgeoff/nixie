@@ -14,12 +14,14 @@ test("it removes the links of every one of the thread's sessions", async () => {
   await writeLinkNumbers(ctx.log, {
     sessionKey: 'session-a',
     thread: 'conversation',
+    invalidatedThrough: null,
     urls: ['https://pier.test/a'],
   });
 
   await writeLinkNumbers(ctx.log, {
     sessionKey: 'session-b',
     thread: 'conversation',
+    invalidatedThrough: null,
     urls: ['https://pier.test/b'],
   });
 
@@ -36,12 +38,14 @@ test("it never removes another thread's links", async () => {
   await writeLinkNumbers(ctx.log, {
     sessionKey: 'session-a',
     thread: 'conversation',
+    invalidatedThrough: null,
     urls: ['https://pier.test/a'],
   });
 
   await writeLinkNumbers(ctx.log, {
     sessionKey: 'session-c',
     thread: 'task-tides',
+    invalidatedThrough: null,
     urls: ['https://pier.test/c'],
   });
 

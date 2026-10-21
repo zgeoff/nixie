@@ -8,6 +8,7 @@ export { encodeFetchMessage } from './encode-fetch-message';
 export { encodeFrame } from './encode-frame';
 export { encodeTurnFrame } from './encode-turn-frame';
 export { formatLinkMark } from './format-link-mark';
+export { getLinkTargetLimit } from './get-link-target-limit';
 export type { FetchReply } from './fetch-reply';
 export type { FetchLimits, FetchRequest } from './fetch-request';
 export { frameHeaderBytes } from './frame-header-bytes';

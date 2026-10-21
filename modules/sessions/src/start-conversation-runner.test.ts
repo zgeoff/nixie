@@ -390,13 +390,13 @@ test("it gives each turn a step token of the step's run identity, and stops it o
   expect(ctx.steps).toStrictEqual([
     {
       stepRunID: 'conversation:1@1',
-      sessionKey: expect.toBeString(),
+      session: { key: expect.toBeString(), invalidatedThrough: 0 },
       token: 'step-token-1',
       isStopped: true,
     },
     {
       stepRunID: 'conversation:2@2',
-      sessionKey: expect.toBeString(),
+      session: { key: expect.toBeString(), invalidatedThrough: 0 },
       token: 'step-token-2',
       isStopped: true,
     },
@@ -422,7 +422,7 @@ test("it gives each turn of a session the key the session's opening keeps, and a
   const opened = await ctx.readKinds('model.session_opened');
 
   const keys: unknown[] = opened.map((record) => record.payload['sessionKey']);
-  const stepKeys: unknown[] = ctx.steps.map((step) => step.sessionKey);
+  const stepKeys: unknown[] = ctx.steps.map((step) => step.session?.key);
 
   expect(keys).toStrictEqual([expect.toBeString(), expect.toBeString()]);
   expect(keys[1]).not.toBe(keys[0]);
@@ -451,7 +451,7 @@ test("it removes the thread's web fetch links on a forget", async () => {
   expect(links.rows).toStrictEqual([{ thread: 'task-tides' }]);
 });
 
-test('it removes a web fetch link a fetch numbered during the cleanup when the session after the forget opens', async () => {
+test("it hands each turn's tool calls the newest invalidation the step saw", async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -464,17 +464,14 @@ test('it removes a web fetch link a fetch numbered during the cleanup when the s
 
   await ctx.sendMessage(runner, 'Hi.');
   await runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
-
-  await sql`insert into web_fetch_links (session_key, number, url, thread)
-    values ('session-a', 1, 'https://pier.test/a', 'conversation')`.execute(
-    ctx.context.log.writer.db,
-  );
-
   await ctx.sendMessage(runner, 'Hi again.');
 
-  const links = await sql`select url from web_fetch_links`.execute(ctx.context.log.writer.db);
+  const [invalidated] = await ctx.readKinds('model.session_invalidated');
 
-  expect(links.rows).toStrictEqual([]);
+  expect(ctx.steps.map((step) => step.session?.invalidatedThrough)).toStrictEqual([
+    0,
+    invalidated?.sequence,
+  ]);
 });
 
 test('it records the model and the profile on the turn end and on every tool call', async () => {

@@ -13,6 +13,7 @@ test('it reads the target of the link the session numbered', async () => {
   await writeLinkNumbers(ctx.log, {
     sessionKey: 'session-a',
     thread: 'conversation',
+    invalidatedThrough: null,
     urls: ['https://pier.test/a', 'https://pier.test/b'],
   });
 
@@ -27,6 +28,7 @@ test('it reads no target for a number another session gave', async () => {
   await writeLinkNumbers(ctx.log, {
     sessionKey: 'session-a',
     thread: 'conversation',
+    invalidatedThrough: null,
     urls: ['https://pier.test/a'],
   });
 
@@ -41,6 +43,7 @@ test('it reads no target for a number past the session count', async () => {
   await writeLinkNumbers(ctx.log, {
     sessionKey: 'session-a',
     thread: 'conversation',
+    invalidatedThrough: null,
     urls: ['https://pier.test/a'],
   });
 

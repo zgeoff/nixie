@@ -1,5 +1,6 @@
-import type { Log } from '@heynixie/log';
+import type { Log, LogTables } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
+import type { ModelsRecordKind } from '@heynixie/models';
 import type { Transaction } from 'kysely';
 import type { WebFetchTables } from './web-fetch-tables';
 
@@ -7,21 +8,28 @@ export interface LinkNumbering {
   readonly sessionKey: string;
   readonly thread: string;
   readonly urls: readonly string[];
+
+  // the newest session invalidation on the thread when the session's step began, or null for links
+  // of no conversation session
+  readonly invalidatedThrough: number | null;
 }
 
-// Writes a number for each URL the session has not numbered yet, the next of the session's own
-// count, and returns every URL's number. A URL the session already numbered keeps its number.
+// Writes the next of the session's own numbers for each URL it has not numbered, and returns every
+// URL's number. Once a newer invalidation ended the session it writes nothing and returns null, so
+// a fetch that outlives a forget's cleanup leaves no URL behind it.
 export function writeLinkNumbers(
   log: Pick<Log, 'writer'>,
   numbering: LinkNumbering,
-): Promise<ReadonlyMap<string, number>> {
+): Promise<ReadonlyMap<string, number> | null> {
   const urls = [...new Set(numbering.urls)];
 
-  if (urls.length === 0) {
-    return Promise.resolve(new Map());
-  }
-
   return withWriteTransaction(log.writer, async (tx) => {
+    const hasEnded = await probeSessionEnded(tx, numbering);
+
+    if (hasEnded) {
+      return null;
+    }
+
     const tables = tx.$extendTables<WebFetchTables>();
 
     const numbers = await readKnownNumbers(tables, numbering.sessionKey, urls);
@@ -55,6 +63,29 @@ export function writeLinkNumbers(
 
     return new Map([...numbers, ...rows.map((row) => [row.url, row.number] as const)]);
   });
+}
+
+// the models module registers the invalidation's kind with the log, and a forget's cleanup commits
+// it before it removes the thread's links
+const invalidatedKind: ModelsRecordKind = 'model.session_invalidated';
+
+async function probeSessionEnded(
+  tx: Transaction<unknown>,
+  numbering: LinkNumbering,
+): Promise<boolean> {
+  if (numbering.invalidatedThrough === null) {
+    return false;
+  }
+
+  const newest = await tx
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select((query) => query.fn.max('sequence').as('sequence'))
+    .where('thread', '=', numbering.thread)
+    .where('kind', '=', invalidatedKind)
+    .executeTakeFirst();
+
+  return (newest?.sequence ?? 0) > numbering.invalidatedThrough;
 }
 
 async function readKnownNumbers(

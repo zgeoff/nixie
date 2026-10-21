@@ -4,6 +4,7 @@ import type { FetchReply } from '@heynixie/wire';
 import { parseLinkMarks } from '@heynixie/wire';
 import { readLinkTarget } from './read-link-target';
 import { renderLinkedText } from './render-linked-text';
+import type { LinkNumbering } from './write-link-numbers';
 import { writeLinkNumbers } from './write-link-numbers';
 
 // no required key, since a call names a page by url or by link, and the run checks it names one
@@ -35,6 +36,8 @@ const webFetchOutput = {
   required: ['url', 'status', 'contentType', 'text', 'isTruncated', 'blocked'],
   additionalProperties: false,
 };
+
+const sessionEnded = Symbol('session ended');
 
 // Builds the web fetch tool, which fetches one public HTTPS page through the fetch sandbox, direct,
 // with every result field outside content and only the status and the truncated mark endorsed. A
@@ -71,7 +74,7 @@ export function buildWebFetchTool(
     },
     execution: 'direct',
     run: async (call, context) => {
-      const session = { sessionKey: getSessionKey(context.run), thread: context.run.thread };
+      const session = getLinkSession(context.run);
 
       const target = await readTargetURL(log, call.input, session.sessionKey);
 
@@ -85,20 +88,29 @@ export function buildWebFetchTool(
         return { status: 'error', message: reply.reason };
       }
 
+      const text =
+        reply.text === null
+          ? null
+          : await writeLinkedText(
+              log,
+              { url: reply.url, text: reply.text, links: reply.links },
+              session,
+            );
+
+      if (text === sessionEnded) {
+        return {
+          status: 'error',
+          message: 'the session ended while the page was fetched, so fetch it again by its url',
+        };
+      }
+
       return {
         status: 'ok',
         result: {
           url: reply.url,
           status: reply.status,
           contentType: reply.contentType,
-          text:
-            reply.text === null
-              ? null
-              : await writeLinkedText(
-                  log,
-                  { url: reply.url, text: reply.text, links: reply.links },
-                  session,
-                ),
+          text,
           isTruncated: reply.isTruncated,
           blocked: reply.blocked,
         },
@@ -107,9 +119,16 @@ export function buildWebFetchTool(
   };
 }
 
-// a call under the run's own token runs in no conversation session, so the run keys its links
-function getSessionKey(run: ToolRun): string {
-  return run.sessionKey ?? run.runID;
+type LinkSession = Omit<LinkNumbering, 'urls'>;
+
+// a call under the run's own token runs in no conversation session, so the run keys its links and
+// no forget fences them
+function getLinkSession(run: ToolRun): LinkSession {
+  return {
+    sessionKey: run.session?.key ?? run.runID,
+    thread: run.thread,
+    invalidatedThrough: run.session?.invalidatedThrough ?? null,
+  };
 }
 
 type TargetURL =
@@ -165,18 +184,13 @@ interface MarkedPage {
   readonly links: readonly string[];
 }
 
-interface LinkSession {
-  readonly sessionKey: string;
-  readonly thread: string;
-}
-
 // numbers each link the page's text marks, in the order the text shows them, then writes each mark
-// as its link's ID
+// as its link's ID, or gives the session's end when a forget ended it during the fetch
 async function writeLinkedText(
   log: Pick<Log, 'writer'>,
   page: MarkedPage,
   session: LinkSession,
-): Promise<string> {
+): Promise<string | typeof sessionEnded> {
   const parts = parseLinkMarks(page.text);
 
   const urls = parts.flatMap((part) => {
@@ -187,5 +201,7 @@ async function writeLinkedText(
 
   const numbers = await writeLinkNumbers(log, { ...session, urls });
 
-  return renderLinkedText(parts, { pageURL: page.url, targets: page.links, numbers });
+  return numbers === null
+    ? sessionEnded
+    : renderLinkedText(parts, { pageURL: page.url, targets: page.links, numbers });
 }

@@ -2,6 +2,7 @@ import type { IncomingMessage } from 'node:http';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
 import { stripLinkMarks } from '@heynixie/wire';
 import { buildReadableText } from './build-readable-text';
+import { buildTextWithinLimit } from './build-text-within-limit';
 import { decodeContent } from './decode-content';
 import { findBotChallenge } from './find-bot-challenge';
 import { readLimitedBody } from './read-limited-body';
@@ -59,11 +60,11 @@ async function readContent(
       ? buildReadableText(body.text, url)
       : { text: stripLinkMarks(body.text), links: [] };
 
-  const text = buildTextWithinLimit(readable.text, limits.textBytes);
+  const text = buildTextWithinLimit(readable, limits.textBytes);
 
   return {
     text: text.text,
-    links: readable.links,
+    links: text.links,
     isTruncated: body.isTruncated || text.isCut,
     blocked: findBotChallenge(status, response.headers, body.text),
   };
@@ -97,18 +98,6 @@ function makeTextDecoder(contentType: string | null): TextDecoder {
   } catch {
     return new TextDecoder();
   }
-}
-
-// the text cut to at most limit bytes of UTF-8, never inside a character
-function buildTextWithinLimit(
-  text: string,
-  limit: number,
-): { readonly text: string; readonly isCut: boolean } {
-  const written = new TextEncoder().encodeInto(text, new Uint8Array(limit));
-
-  return written.read === text.length
-    ? { text, isCut: false }
-    : { text: text.slice(0, written.read), isCut: true };
 }
 
 const htmlTypes: ReadonlySet<string> = new Set(['text/html', 'application/xhtml+xml']);

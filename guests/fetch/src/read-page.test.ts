@@ -315,7 +315,7 @@ test('it cuts the list of other links before the text of the page at the text li
     status: 200,
     contentType: 'text/html',
     text: 'The article.\n\nOther links on this page',
-    links: [`https://site.test:${site.port}/a`, `https://site.test:${site.port}/b`],
+    links: [],
     isTruncated: true,
     blocked: null,
   });

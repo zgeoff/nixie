@@ -56,8 +56,10 @@ it.
 The link store belongs to the web fetch tool alone. Each row holds a URL, and a URL can carry text
 the user forgets, so a forget removes every link on the conversation's thread
 ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session)). A fetch
-that numbers links while a forget's cleanup runs can outlive the cleanup, so the first session after
-the forget removes the thread's links again before it opens.
+can outlive the turn a forget aborted, so each turn hands its tool calls the newest session
+invalidation its step saw beside the session key. The tool numbers a page's links in the same
+transaction that checks for a newer invalidation on the thread, and it numbers none and returns an
+error when it finds one, so no row reaches the store after the cleanup removed the thread's links.
 
 ## The fetch sandbox
 
@@ -103,6 +105,11 @@ redirects, the number of redirects, and the bytes of text returned. The body lim
 after a compressed body is decoded, so a small compressed body cannot expand past it. Reaching the
 body limit or the text limit stops the read and marks the result truncated, and the text cut never
 splits a character. Passing the time limit or the redirect limit fails the fetch.
+
+The reply lists the target of each link mark the cut text keeps and no other. The targets have a
+byte budget of their own, a fixed multiple of the text limit, and the text stops before the first
+mark whose target would pass it, so a page of long links still fits the reply's size limit, which
+nixie sets from both budgets.
 
 The default text limit sits under the tool-output limit that the conversation guest sets for the
 Agent SDK's CLI, so a long page reaches the model as its start, marked truncated. The CLI saves a

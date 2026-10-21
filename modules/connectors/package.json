@@ -14,6 +14,7 @@
     "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
+    "@heynixie/models": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",

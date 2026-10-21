@@ -137,6 +137,38 @@ test('it runs each fetch in a new fetcher process in the same sandbox', async ()
   ]);
 });
 
+test('it reads a reply whose text and link targets fill their limits with characters JSON escapes', async () => {
+  const text = '\u{1}'.repeat(20_000);
+  const links = Array.from({ length: 800 }, () => `https://quay.test/?${'\\'.repeat(81)}`);
+
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(
+      makeStubFetcher((request) => ({
+        kind: 'page',
+        url: request.url,
+        status: 200,
+        contentType: 'text/plain',
+        text,
+        links,
+        isTruncated: true,
+        blocked: null,
+      })),
+    ),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 2_000_000, timeoutMs: 1000, redirects: 2, textBytes: 20_000 },
+    deniedRanges: [],
+    fetchesPerSandbox: 10,
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  const reply = await fetchSandbox.readPage('https://quay.test/');
+
+  expect(reply).toMatchObject({ kind: 'page', text, links });
+});
+
 test('it replaces the sandbox after the configured number of fetches', async () => {
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({

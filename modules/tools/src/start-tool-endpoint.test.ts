@@ -247,7 +247,7 @@ test('it hands each call the run identity of the step whose token the call carri
   });
 });
 
-test('it hands each call the key of the session its step token names', async () => {
+test('it hands each call the session its step token names', async () => {
   const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
 
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
@@ -259,7 +259,7 @@ test('it hands each call the key of the session its step token names', async () 
     model: { model: 'model-a', profile: 'chat-direct' },
   });
 
-  const step = endpoint.startStep('task-1:3@2', 'session-a');
+  const step = endpoint.startStep('task-1:3@2', { key: 'session-a', invalidatedThrough: 12 });
 
   const client = await startRunClient(endpoint, step.token);
 
@@ -272,7 +272,7 @@ test('it hands each call the key of the session its step token names', async () 
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
       stepRunID: 'task-1:3@2',
-      sessionKey: 'session-a',
+      session: { key: 'session-a', invalidatedThrough: 12 },
     },
   });
 });
