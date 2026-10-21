@@ -86,8 +86,6 @@ export type ActionOutcome =
   | { readonly outcome: 'failed' | 'unknown'; readonly reason: string };
 
 export interface ActionQueue {
-  // The action ID is also the proposal ID, the queue key and the idempotency key, and a call that
-  // repeats an earlier action gets that action's ID.
   readonly enqueue: (action: QueuedAction) => Promise<string>;
 
   readonly waitForOutcome: (actionID: string, timeoutMs: number) => Promise<ActionOutcome | null>;
