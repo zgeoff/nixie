@@ -4,13 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readKeptFile } from './read-kept-file';
 
-// a resolved definitions root, beside a directory outside it
 async function setupTest() {
   const created = await mkdtemp(join(tmpdir(), 'nixie-kept-file-'));
 
   onTestFinished(() => rm(created, { recursive: true, force: true }));
 
-  // the snapshot reads from the resolved root, and the temp directory can sit behind a symlink
+  // The system temp directory can sit behind a symlink, as /tmp does on macOS.
   const directory = await realpath(created);
 
   const root = join(directory, 'definitions');

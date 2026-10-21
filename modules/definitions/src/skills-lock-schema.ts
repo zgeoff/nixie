@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-// skills.lock.json: each vendored skill's lock entry by its name, which holds where the skill came
-// from, the full commit it was copied at, and the content hash of its folder
 export const skillsLockSchema = z.record(
   z.string(),
   z.strictObject({

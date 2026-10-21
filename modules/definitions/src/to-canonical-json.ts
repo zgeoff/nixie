@@ -1,7 +1,5 @@
 import type { JSONValue } from '@heynixie/log';
 
-// JSON with every object's keys sorted in code unit order and no whitespace, so the same value
-// always gives the same bytes.
 export function toCanonicalJSON(value: JSONValue): string {
   if (isJSONArray(value)) {
     return `[${value.map((item) => toCanonicalJSON(item)).join(',')}]`;
@@ -22,7 +20,7 @@ export function toCanonicalJSON(value: JSONValue): string {
   return JSON.stringify(value);
 }
 
-// Array.isArray narrows to a mutable array, which a readonly JSON array never matches
+// TypeScript narrows Array.isArray to a mutable array, which a readonly JSON array never matches.
 function isJSONArray(value: JSONValue): value is readonly JSONValue[] {
   return Array.isArray(value);
 }

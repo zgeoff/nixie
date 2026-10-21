@@ -3,9 +3,6 @@ import { manifestPath } from './manifest-path';
 import { manifestSkillsSchema } from './manifest-skills-schema';
 import type { ParsedSkill } from './types';
 
-// Reads the conversation's skill list from the skills field of nixie.yaml, in name order, or every
-// skill when the field is unset. A listed name with no skill folder fails the snapshot, because a
-// typo would otherwise hide a skill without a trace.
 export function parseConversationSkills(
   manifest: string,
   skills: readonly ParsedSkill[],

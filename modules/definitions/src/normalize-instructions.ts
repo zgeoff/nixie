@@ -1,7 +1,5 @@
-// The canonical text of a persona or a job's instructions: Unicode NFC, LF line endings, no byte
-// order mark, and exactly one final newline. Trailing spaces stay, because 2 of them end a markdown
-// line with a break.
 export function normalizeInstructions(text: string): string {
+  // Trailing spaces stay, because two of them end a Markdown line with a hard break.
   const body = text
     .replace(/^\uFEFF/u, '')
     .replaceAll(/\r\n?/gu, '\n')

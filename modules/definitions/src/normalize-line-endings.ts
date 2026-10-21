@@ -1,8 +1,7 @@
 const carriageReturn = 13;
 
-// Every definitions file is text, so a source turns its CRLF line endings into LF before the
-// content hash and before a parser sees it. A checkout with core.autocrlf then hashes like the
-// commit it came from.
+// A git checkout with core.autocrlf turns LF into CRLF, so the same commit hashes the same only
+// after CRLF goes back to LF.
 export function normalizeLineEndings(bytes: Uint8Array): Uint8Array {
   if (!bytes.includes(carriageReturn)) {
     return bytes;

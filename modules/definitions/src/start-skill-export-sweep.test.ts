@@ -65,7 +65,6 @@ test('it exports a skill approved after it started once woken', async () => {
 
   await waitForCondition(() => ctx.repo.readPullRequests().length > 0);
 
-  // the writer stops before the fallback stop runs, so no run may still be in flight then
   await sweep.stop();
 
   expect(ctx.repo.readPullRequests().map((request) => request.change.branch)).toStrictEqual([

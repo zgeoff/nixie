@@ -7,7 +7,6 @@ import { createPathSource } from './create-path-source';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import { runSeed } from './run-seed';
 
-// the writer's data directory holds the definitions root too, so one removal cleans up both
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 

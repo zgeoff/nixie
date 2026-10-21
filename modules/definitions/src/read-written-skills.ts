@@ -2,18 +2,13 @@ import type { Kysely } from 'kysely';
 import type { DefinitionsSkillRef, WrittenSkill } from './build-skill-overlay';
 import type { DefinitionsSkillOrigin, DefinitionsTables } from './types';
 
-// A skill that nixie wrote and that stays in force over your definitions.
 export interface WrittenSkillEntry extends WrittenSkill {
   readonly proposalID: string;
 
-  // the version in your definitions at the newest seed, or null when they lack the skill; it
-  // differs from the base when your definitions changed the skill after the approval
   readonly definitions: DefinitionsSkillRef | null;
   readonly approvedAt: number;
 }
 
-// Reads every skill that nixie wrote and that is in force, in name order. The db may be a write
-// transaction, so a seed reads the skills it lays over your definitions in its own.
 export async function readWrittenSkills(
   db: Kysely<unknown>,
 ): Promise<readonly WrittenSkillEntry[]> {

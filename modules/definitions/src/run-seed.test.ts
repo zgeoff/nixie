@@ -19,7 +19,6 @@ import { writeSkillExportState } from './write-skill-export-state';
 import { writeWrittenSkill } from './write-written-skill';
 import { writeWrittenSkillState } from './write-written-skill-state';
 
-// the writer's data directory holds the definitions root too, so one removal cleans up both
 async function setupTest(config: { readonly projections?: readonly Projection[] } = {}) {
   const stack = new AsyncDisposableStack();
 
@@ -34,7 +33,6 @@ async function setupTest(config: { readonly projections?: readonly Projection[] 
   const writer = await startWriter({
     dataDir: directory,
 
-    // a clock stopped at one instant, so a seed's time shows that it read the writer's clock
     clock: { now: () => Date.parse('2026-10-16T09:00:00Z'), sleep: () => Promise.resolve() },
   });
 

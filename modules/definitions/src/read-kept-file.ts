@@ -4,8 +4,6 @@ import { dirname, join, sep } from 'node:path';
 import { normalizeLineEndings } from './normalize-line-endings';
 import { SnapshotError } from './snapshot-error';
 
-// Reads one file the walk kept, with its line endings normalized. It checks again what the walk saw,
-// because a file can change between the walk and the read. base is the resolved definitions root.
 export async function readKeptFile(
   base: string,
   path: string,
@@ -28,8 +26,8 @@ export async function readKeptFile(
   return [path, normalizeLineEndings(bytes)];
 }
 
-// O_NOFOLLOW refuses a file swapped for a symlink, and the size comes from the open handle; null
-// when the file is no longer a regular file within the per-file limit
+// O_NOFOLLOW makes open refuse a file swapped for a symlink, and the size comes from the open
+// handle, because the path can point at another file once the stat returns.
 async function readNoFollow(full: string, maxFileBytes: number): Promise<Uint8Array | null> {
   const handle = await open(full, constants.O_RDONLY | constants.O_NOFOLLOW).catch(() => null);
 

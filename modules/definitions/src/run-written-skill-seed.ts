@@ -17,9 +17,6 @@ export interface WrittenSkillSeedOptions {
   readonly policy: SnapshotPolicy;
 }
 
-// Seeds the definitions in force again with the written skills as they stand now, without a fresh
-// snapshot, so an approval or a retirement takes effect at once. Before the first seed it comes
-// back refused.
 export function runWrittenSkillSeed(options: WrittenSkillSeedOptions): Promise<SeedResult> {
   return withWriteTransaction(options.log.writer, async (tx) => {
     const inForce = await readDefinitionsInForce(tx);
@@ -49,7 +46,6 @@ export function runWrittenSkillSeed(options: WrittenSkillSeedOptions): Promise<S
       at: options.log.writer.clock.now(),
     });
 
-    // an adoption leaves the skills in force as they stand, and the seed still records it
     if (overlay.adopted.length === 0 && built.snapshotHash === inForce.snapshotHash) {
       return { status: 'unchanged', inForce };
     }
@@ -85,7 +81,6 @@ type SeedRecordTables = Readonly<{
   records: { readonly sequence: number; readonly payload: string };
 }>;
 
-// the paths the seed in force left out and skipped, which the seed it repeats keeps
 async function readSeedLists(
   tx: Transaction<unknown>,
   sequence: number,

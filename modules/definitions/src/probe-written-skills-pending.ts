@@ -2,9 +2,6 @@ import type { Kysely } from 'kysely';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import type { DefinitionsTables } from './types';
 
-// Whether the snapshot in force and the store of written skills disagree, as they do after an
-// approval or a retirement whose seed failed. The store keeps the change, so a seed of the
-// definitions in force settles it, however long after the change it runs.
 export async function probeWrittenSkillsPending(db: Kysely<unknown>): Promise<boolean> {
   const inForce = await readDefinitionsInForce(db);
 

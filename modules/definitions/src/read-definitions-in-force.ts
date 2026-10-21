@@ -1,8 +1,6 @@
 import type { Kysely } from 'kysely';
 import type { DefinitionsInForce, DefinitionsTables } from './types';
 
-// The definitions the newest seed put in force, or null before the first seed. Every record takes
-// its snapshot hash from here.
 export async function readDefinitionsInForce(
   db: Kysely<unknown>,
 ): Promise<DefinitionsInForce | null> {

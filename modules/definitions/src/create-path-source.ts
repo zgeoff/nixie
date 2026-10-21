@@ -9,14 +9,10 @@ import { SnapshotError } from './snapshot-error';
 import type { DefinitionsSource, SizeLimits, Snapshot } from './types';
 
 export interface PathSourceOptions {
-  // the definitions root, such as a directory on the host or a volume mounted into the container
   readonly directory: string;
   readonly limits?: SizeLimits;
 }
 
-// A definitions source that walks the known definitions paths in a directory, with the content hash
-// as its revision. Within those paths it fails at a symlink that leads outside the root and skips
-// one that stays inside, so it never reads a linked file.
 export function createPathSource(options: PathSourceOptions): DefinitionsSource {
   const limits = options.limits ?? defaultSizeLimits;
 
@@ -61,7 +57,6 @@ interface WalkEntries {
   readonly escapes: readonly string[];
 }
 
-// visits names in sorted order, and Promise.all keeps that order, so files come out in path order
 async function readEntries(base: string, directory: string): Promise<WalkEntries> {
   const names = await readdir(directory);
 
@@ -102,12 +97,10 @@ function toRootPath(base: string, full: string): string {
   return relative(base, full).split(sep).join('/');
 }
 
-// a root entry that is not a known definitions path is skipped by name and never entered
 function isOutsideLayout(path: string): boolean {
   return !path.includes('/') && !isDefinitionsRootEntry(path);
 }
 
-// a link that resolves nowhere counts as outside, because nothing shows where it would lead
 async function readSymlink(base: string, link: string): Promise<WalkEntries> {
   const path = toRootPath(base, link);
 
@@ -128,7 +121,6 @@ function requireFileLimit(files: readonly WalkFile[], maxFileBytes: number): voi
   }
 }
 
-// names every file from the one that crossed the limit onwards, in path order
 function requireTotalLimit(files: readonly WalkFile[], maxTotalBytes: number): void {
   const totals = files.map((file, index) => ({
     path: file.path,

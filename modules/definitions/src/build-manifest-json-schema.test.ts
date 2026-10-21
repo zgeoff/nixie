@@ -4,16 +4,13 @@ import { join } from 'node:path';
 import Ajv2020 from 'ajv/dist/2020';
 import { buildManifestJSONSchema } from './build-manifest-json-schema';
 
-// A definitions repo validates its nixie.yaml with a stock JSON Schema validator, so each test reads
-// the manifest through one
 function setupTest() {
   const ajv = new Ajv2020({ allErrors: true, strict: true });
 
   return { validate: ajv.compile(buildManifestJSONSchema()) };
 }
 
-// Each release publishes the committed file, so the file must match the schema it was cut with. Run
-// `bun run --cwd modules/definitions manifest-schema` to rewrite it.
+// Run `bun run --cwd modules/definitions manifest-schema` to rewrite the committed file.
 test('it matches the committed definitions-manifest.schema.json', async () => {
   const committed = await readFile(
     join(import.meta.dir, '..', 'definitions-manifest.schema.json'),

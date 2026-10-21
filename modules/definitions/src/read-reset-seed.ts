@@ -8,8 +8,6 @@ import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import type { DefinitionsInForce, DefinitionsTables, SkillVersion, WrittenSkillRow } from './types';
 
-// What a reset carries into the new log of the definitions in force: the seed, the snapshot row
-// it points at, and the payload of the record that seeded it.
 export interface ResetSeed {
   readonly inForce: DefinitionsInForce;
   readonly policyHash: string;
@@ -18,11 +16,8 @@ export interface ResetSeed {
   readonly createdAt: number;
   readonly payload: JSONObject;
 
-  // the skills the snapshot holds, with their files
   readonly skills: readonly SnapshotSkill[];
 
-  // the skills nixie wrote that are in force, with each one's version and the version of your
-  // definitions beneath it, which a retirement puts back in force
   readonly written: readonly WrittenSkillRow[];
   readonly beneath: readonly SkillVersion[];
 }
@@ -31,8 +26,6 @@ type SeedRecordTables = Readonly<{
   records: { readonly sequence: number; readonly payload: string };
 }>;
 
-// Reads the definitions in force with everything a reset needs to seed them again, or null before
-// the first seed.
 export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | null> {
   const inForce = await readDefinitionsInForce(db);
 
@@ -54,7 +47,6 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     .where('sequence', '=', inForce.recordSequence)
     .executeTakeFirst();
 
-  // the seed row's foreign key holds its record in place
   invariant(record);
 
   const written = await db
@@ -65,7 +57,6 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     .orderBy('name')
     .execute();
 
-  // a written skill whose seed has not run yet holds a version that no snapshot holds
   const beneath = await loadSkillVersions(
     db,
     written.flatMap((row) =>

@@ -4,11 +4,8 @@ import { storedSkillFilesSchema } from './stored-skill-files-schema';
 import { storedSkillFrontmatterSchema } from './stored-skill-frontmatter-schema';
 import type { DefinitionsTables, SkillVersion } from './types';
 
-// A skill a snapshot holds, with its files, and the approval that applied it when nixie wrote it.
 export type SnapshotSkill = SkillVersion & OverlaidSkill;
 
-// Loads every skill a snapshot holds, with its files, in name order; none for a snapshot without
-// skills.
 export async function loadSnapshotSkills(
   db: Kysely<unknown>,
   snapshotHash: string,

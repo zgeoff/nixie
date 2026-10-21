@@ -6,20 +6,15 @@ import { GitHubRequestError } from './github-request-error';
 import { toGitHubPath } from './to-github-path';
 
 export interface GitHubDefinitionsOptions {
-  // the definitions repo as owner/name, and the branch each pull request targets
   readonly repository: string;
   readonly base: string;
 
-  // a fine-grained token with contents and pull-requests write on the definitions repo alone
+  // A fine-grained token needs contents and pull-requests write on the definitions repo alone.
   readonly token: string;
 
-  // GitHub's REST API, or a stand-in for it in tests
   readonly apiURL: string;
 }
 
-// Builds the definitions repo on GitHub, through its REST API. A change becomes one commit on the
-// base revision the export pinned, which replaces the change's branch with a forced update, so
-// each export of a skill carries only its newest version.
 export function buildGitHubDefinitionsRepo(options: GitHubDefinitionsOptions): DefinitionsRepo {
   const send = makeGitHubSender(options);
 
@@ -44,7 +39,7 @@ export function buildGitHubDefinitionsRepo(options: GitHubDefinitionsOptions): D
         query: { recursive: '1' },
       });
 
-      // GitHub cuts a recursive tree past its size limit, which would hide a file to remove
+      // GitHub truncates a recursive tree past its size limit, which would hide a file to remove.
       if (tree.truncated) {
         throw new Error(`the tree of ${revision} is too large to read whole`);
       }
@@ -75,7 +70,6 @@ export function buildGitHubDefinitionsRepo(options: GitHubDefinitionsOptions): D
   };
 }
 
-// the parameters, query and body a route takes, with the repo's owner and name left to the sender
 type GitHubInput<Operation extends GitHubOperation> = {
   readonly params: Readonly<
     Record<Exclude<GitHubPathParams<Operation['path']>, 'owner' | 'name'>, string>
@@ -140,7 +134,6 @@ function parseJSON(text: string): unknown {
   }
 }
 
-// a lookup that GitHub answers with 404 when it misses, as null
 async function allowMissing<Value>(lookup: Promise<Value>): Promise<Value | null> {
   try {
     return await lookup;
@@ -153,7 +146,6 @@ async function allowMissing<Value>(lookup: Promise<Value>): Promise<Value | null
   }
 }
 
-// one commit on the pinned base revision that writes and removes the change's files
 async function writeChangeCommit(
   send: GitHubSender,
   revision: string,
@@ -180,7 +172,6 @@ async function writeChangeCommit(
   return commit.sha;
 }
 
-// points the branch at the commit, and creates the branch when it is missing
 async function writeBranch(send: GitHubSender, branch: string, commit: string): Promise<void> {
   const existing = await allowMissing(send(githubContract.readRef, { params: { branch } }));
 
@@ -196,7 +187,6 @@ async function writeBranch(send: GitHubSender, branch: string, commit: string): 
   await send(githubContract.updateRef, { params: { branch }, body: { sha: commit, force: true } });
 }
 
-// the open pull request from the branch with the change's title and body, opened when none is open
 async function writeOpenPullRequest(
   send: GitHubSender,
   options: GitHubDefinitionsOptions,
@@ -218,7 +208,6 @@ async function writeOpenPullRequest(
   return { number: pull.number, url: pull.html_url };
 }
 
-// the open pull request from the branch into the base branch, or null when none is open
 async function readBranchPullRequest(
   send: GitHubSender,
   options: GitHubDefinitionsOptions,
