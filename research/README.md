@@ -19,6 +19,7 @@ lists the variable.
 | [connector-account-pick](connector-account-pick/)     | whether the model passes the ID of the connector account that a message names                      |
 | [encoder](encoder/)                                   | which small local embedding model to ship, by retrieval quality, CPU time, memory and image size   |
 | [fetch-headless](fetch-headless/)                     | how far headless Chromium, held to the fetch sandbox's limits, gets on challenge-protected pages   |
+| [fetch-sandbox-start](fetch-sandbox-start/)           | how a fetch sandbox starts on impd: a new imp, a template, a fork, a wake or a warm imp            |
 | [forget-backups](forget-backups/)                     | whether a forget reaches the key backups: snapshot removal, pruning, and a restore after forget    |
 | [google-oauth](google-oauth/)                         | an unverified client in production, Gmail's restricted scope, and token refresh past 7 days        |
 | [imp-worker-start](imp-worker-start/)                 | imp create and wake, and the SDK's first token inside an imp against the host                      |
