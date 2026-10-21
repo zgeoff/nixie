@@ -4,9 +4,11 @@ Every tool call passes the decision point before it acts, and the decision point
 deny from what the tool declares it does. It never reads the call's arguments to decide, so the same
 tool gets the same answer on every call under the same rules. The decision it returns names the
 stage and the rule that decided, and the record of the call keeps that decision beside the snapshot
-hash of the definitions in force, so a replay can show why a call ran or was refused.
-`modules/policy` owns the decision point and the effect declarations.
-[Tool calls](../connectors/tool-calls.md) covers how a call reaches it, and the
+hash of the definitions in force, so a replay can show why a call ran or was refused. A call to a
+listed tool whose input breaks the tool's input schema never reaches the decision point, because the
+[tool endpoint](../connectors/tool-calls.md#the-call-steps) checks the input first. `modules/policy`
+owns the decision point and the effect declarations. [Tool calls](../connectors/tool-calls.md)
+covers how a call reaches it, and the
 [decision point design](../../design/platform/policy/decision-point.md) covers the full pipeline, of
 which the first stages are built.
 
