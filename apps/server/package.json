@@ -8,7 +8,7 @@
     "./test-utils": "./src/test-utils/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsrs --noEmit",
     "config-schema": "bun --define NIXIE_TEST_BUILD=false src/run-config-json-schema.ts"
   },
   "dependencies": {

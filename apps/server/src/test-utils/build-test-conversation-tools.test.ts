@@ -17,6 +17,7 @@ test('it returns the reply given from every web fetch', async () => {
     status: 200,
     contentType: 'text/plain',
     text: 'Rye bread needs a long proof.',
+    links: [],
     isTruncated: false,
     blocked: null,
   });
