@@ -1,6 +1,7 @@
 # 0009: The first channel
 
 - Date: 2026-10-08
+- Updated: 2026-10-14
 - Status: decided
 - Design: [client](../design/platform/channels/client.md)
 - Research:
@@ -49,3 +50,7 @@ A desktop app may follow, and nothing plans for it.
   Program at $99 a year, and its TestFlight builds expire after 90 days.
 - A chat app as a full channel stays possible as an opt-in for a context where you accept the
   storage.
+
+## Changes
+
+- 2026-10-14: a voice call runs as a pipeline around nixie's own turn under 0040.

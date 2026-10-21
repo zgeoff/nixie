@@ -6,8 +6,10 @@ process proves it is still the writer inside every write transaction, so even a 
 slipped past the lock commits nothing. `libs/db` is the one package that opens a SQLite file: it
 holds the connection, the migration runner and the schema version. `modules/log` turns a process
 into the writer and hands every other module its database handle, so no module opens a connection of
-its own. [The event log](./event-log.md) covers what the database holds, and
-[erasable fields](./erasable-fields.md) covers the key store beside it.
+its own. One exception: memory's keyword index opens an in-memory SQLite database of its own through
+`libs/db`. Nothing writes that database to disk, and each start rebuilds it, as
+[the store's indexes](../memory/store.md#the-indexes) covers. [The event log](./event-log.md) covers
+what the database holds, and [erasable fields](./erasable-fields.md) covers the key store beside it.
 
 ## The connection
 
