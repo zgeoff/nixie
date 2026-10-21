@@ -7,6 +7,7 @@ import {
   startMemoryStore,
 } from '@heynixie/memory';
 import { buildMockWriteCaller, createProposal } from '@heynixie/memory/test-utils';
+import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
@@ -39,13 +40,14 @@ async function setupTest() {
 
   api.setMemory(memory);
 
-  const laptop = await createDeviceSession(api.context, 'laptop');
-
-  return { ...api, memory, laptop, client: buildTestClient(api.url, laptop.token) };
+  return { ...api, memory };
 }
 
 test('#memory.listProposals lists a proposal whose review reason a later release wrote with the reason other', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   await ctx.memory.writes.remember({
     text: 'Keeps a rowing boat at the lake',
@@ -58,7 +60,7 @@ test('#memory.listProposals lists a proposal whose review reason a later release
     .set({ review_reason: 'quote_too_old' })
     .execute();
 
-  const listed = await ctx.client.memory.listProposals();
+  const listed = await client.memory.listProposals();
 
   expect(listed.proposals).toMatchObject([
     { reason: 'other', text: 'Keeps a rowing boat at the lake' },
@@ -68,7 +70,13 @@ test('#memory.listProposals lists a proposal whose review reason a later release
 test('#memory.listProposals lists each pending proposal with its review reason, its quote inside its message and its lapse time', async () => {
   const ctx = await setupTest();
 
-  const sent = await ctx.client.conversation.send({
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const sent = await client.conversation.send({
     clientMessageId: '0d6b1c3a-7e2f-4a95-8c14-3f9e2a7b5d60',
     spans: [{ start: 0, end: 33, source: 'typed' }],
     text: 'I signed up for the harbour swim.',
@@ -85,7 +93,7 @@ test('#memory.listProposals lists each pending proposal with its review reason, 
 
   invariant(proposal);
 
-  const listed = await ctx.client.memory.listProposals();
+  const listed = await client.memory.listProposals();
 
   expect(listed).toStrictEqual({
     proposals: [
@@ -127,7 +135,13 @@ test('#memory.listProposals lists each pending proposal with its review reason, 
 test('#memory.listProposals names the photo a proposal comes from as conversation.readImage reads it', async () => {
   const ctx = await setupTest();
 
-  const sent = await ctx.client.conversation.send({
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const sent = await client.conversation.send({
     clientMessageId: '5c2e9a41-3b7d-4f60-9e18-2d4a6b8c0f13',
     thread: 'conversation',
     text: 'Our new tiles.',
@@ -146,7 +160,7 @@ test('#memory.listProposals names the photo a proposal comes from as conversatio
     caller: buildMockWriteCaller(),
   });
 
-  const listed = await ctx.client.memory.listProposals();
+  const listed = await client.memory.listProposals();
 
   expect(listed.proposals).toMatchObject([
     {
@@ -188,11 +202,15 @@ test('#memory.approveProposals refuses an answer before the memory store starts'
 
 test('#memory.approveProposals approves 3 proposals in one call, each with its own approval record that names the device', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
   const first = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
   const second = await createProposal(ctx.memory, { text: 'Cycles to work on Mondays' });
   const third = await createProposal(ctx.memory, { text: 'Reads crime novels' });
 
-  const approved = await ctx.client.memory.approveProposals({
+  const approved = await client.memory.approveProposals({
     answers: [first, second, third].map((proposal) => ({
       clientActionID: crypto.randomUUID(),
       proposalID: proposal.proposalID,
@@ -219,27 +237,30 @@ test('#memory.approveProposals approves 3 proposals in one call, each with its o
       approvalID: expect.toBeString(),
       actionHash: first.actionHash,
       answer: 'approved',
-      identityID: ctx.laptop.caller.identityID,
+      identityID: laptop.caller.identityID,
     },
     {
       proposalID: second.proposalID,
       approvalID: expect.toBeString(),
       actionHash: second.actionHash,
       answer: 'approved',
-      identityID: ctx.laptop.caller.identityID,
+      identityID: laptop.caller.identityID,
     },
     {
       proposalID: third.proposalID,
       approvalID: expect.toBeString(),
       actionHash: third.actionHash,
       answer: 'approved',
-      identityID: ctx.laptop.caller.identityID,
+      identityID: laptop.caller.identityID,
     },
   ]);
 });
 
 test('#memory.approveProposals runs the close match check again on edited text, and applies nothing when an active item states it', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   const item = await ctx.memory.remember({
     text: 'Swims at the harbour pool every Tuesday',
@@ -248,7 +269,7 @@ test('#memory.approveProposals runs the close match check again on edited text, 
 
   const proposal = await createProposal(ctx.memory, { text: 'Plays chess on Fridays' });
 
-  const approved = await ctx.client.memory.approveProposals({
+  const approved = await client.memory.approveProposals({
     answers: [
       {
         clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
@@ -280,9 +301,13 @@ test('#memory.approveProposals runs the close match check again on edited text, 
 
 test('#memory.approveProposals applies edited text as your own words', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
   const proposal = await createProposal(ctx.memory, { text: 'Plays chess on Fridya' });
 
-  await ctx.client.memory.approveProposals({
+  await client.memory.approveProposals({
     answers: [
       {
         clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
@@ -302,13 +327,17 @@ test('#memory.approveProposals applies edited text as your own words', async () 
 
 test('#memory.approveProposals answers a lapsed proposal as stale and writes no record', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
   const proposal = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
 
   ctx.clock.advance(proposal.lapseAt - ctx.clock.now());
 
   const before = await readRecords(ctx.context.log, { afterSequence: 0, limit: 1000 });
 
-  const approved = await ctx.client.memory.approveProposals({
+  const approved = await client.memory.approveProposals({
     answers: [
       {
         clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
@@ -329,6 +358,10 @@ test('#memory.approveProposals answers a lapsed proposal as stale and writes no 
 
 test('#memory.approveProposals goes on past a stale answer to the answers after it', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
   const answered = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
   const open = await createProposal(ctx.memory, { text: 'Cycles to work on Mondays' });
 
@@ -338,7 +371,7 @@ test('#memory.approveProposals goes on past a stale answer to the answers after 
     identityID: 'host',
   });
 
-  const approved = await ctx.client.memory.approveProposals({
+  const approved = await client.memory.approveProposals({
     answers: [answered, open].map((proposal) => ({
       clientActionID: crypto.randomUUID(),
       proposalID: proposal.proposalID,
@@ -356,10 +389,14 @@ test('#memory.approveProposals goes on past a stale answer to the answers after 
 
 test('#memory.rejectProposals rejects each proposal with its own rejection record and reason', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
   const first = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
   const second = await createProposal(ctx.memory, { text: 'Cycles to work on Mondays' });
 
-  const rejected = await ctx.client.memory.rejectProposals({
+  const rejected = await client.memory.rejectProposals({
     answers: [
       {
         clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',

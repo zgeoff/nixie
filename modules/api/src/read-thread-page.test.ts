@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { readThreadPage } from './read-thread-page';
 import { createDeviceSession } from './test-utils/create-device-session';
@@ -12,6 +13,9 @@ function setupTest() {
 
 test('it reads the page before a sequence, newest last', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const sendText = (text: string) =>
@@ -41,6 +45,9 @@ test('it reads the page before a sequence, newest last', async () => {
 
 test('it reads a whole short thread with no earlier page', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const page = await readThreadPage(ctx.context, { thread: 'conversation' });
 
   expect(page?.hasEarlier).toBeFalse();
@@ -87,6 +94,9 @@ test("it reads the thread's newest step end when newer records push it off the p
 
 test('it reads no step end for a thread whose task never ended a step', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const page = await readThreadPage(ctx.context, { thread: 'conversation' });
 
   expect(page?.lastStepEnd).toBeNull();

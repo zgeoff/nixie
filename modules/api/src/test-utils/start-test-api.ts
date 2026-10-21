@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import type { Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
-import { createConversationTask, tasksProjections } from '@heynixie/tasks';
+import { tasksProjections } from '@heynixie/tasks';
 import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
 import { apiProjections } from '../api-projections';
@@ -82,8 +82,6 @@ async function createTestContext(
 
     readSessionCleanup: () => null,
   };
-
-  await createConversationTask(context);
 
   return context;
 }
