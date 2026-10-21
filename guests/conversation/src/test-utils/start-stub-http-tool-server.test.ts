@@ -54,7 +54,6 @@ test('it relays connections again once the test accepts them', async () => {
 
   const response = await fetch(ctx.tools.config.url, { method: 'GET' });
 
-  // the stateless server answers a GET itself, so the request crossed the route
   expect(response.status).toBe(405);
   expect(ctx.tools.resets()).toBe(0);
 });

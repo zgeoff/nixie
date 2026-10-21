@@ -1,7 +1,6 @@
 import type { McpHttpServerConfig } from '@anthropic-ai/claude-agent-sdk';
 import { Server, createMcpHandler, isJSONRPCRequest } from '@modelcontextprotocol/server';
 
-// The form of a tool that the model sees: its description and its input schema.
 export interface StubToolForm {
   readonly description: string;
   readonly inputSchema: Readonly<Record<string, unknown>>;
@@ -15,20 +14,14 @@ export interface StubToolCall {
 export interface StubChangingToolServer {
   readonly config: McpHttpServerConfig;
 
-  // the JSON-RPC method of each request the server received, in order
   readonly methods: readonly string[];
 
-  // each tool call the server received, in order
   readonly calls: readonly StubToolCall[];
 
-  // lists note_read in this form on every tools/list from now on
   readonly changeTool: (form: StubToolForm) => void;
 
-  // sends notifications/tools/list_changed on each open listen stream that asked for it, and
-  // resolves once the client lists the tools again
   readonly notifyToolsChanged: () => Promise<void>;
 
-  // resolves once the model calls note_wait, which then holds until release
   readonly waitForHeldCall: () => Promise<void>;
   readonly release: () => void;
   readonly stop: () => Promise<void>;
@@ -37,13 +30,9 @@ export interface StubChangingToolServer {
 interface ServerState {
   form: StubToolForm;
 
-  // the wait of the last notice, until the client lists the tools after it
   relisted: PromiseWithResolvers<void> | null;
 }
 
-// Starts a Streamable HTTP MCP server named nixie, built per request as nixie's run endpoint is, and
-// declaring listChanged as that endpoint does. It lists note_read in the form the test last set,
-// and note_wait, which holds its call open so a test can change note_read in the middle of a turn.
 export function startStubChangingToolServer(form: StubToolForm): StubChangingToolServer {
   const state: ServerState = { form, relisted: null };
   const methods: string[] = [];
@@ -79,7 +68,6 @@ export function startStubChangingToolServer(form: StubToolForm): StubChangingToo
 
     state.relisted = null;
 
-    // the client has the new list once it has read the whole answer
     const body = response.body.pipeThrough(
       new TransformStream({
         flush: () => {
@@ -95,7 +83,7 @@ export function startStubChangingToolServer(form: StubToolForm): StubChangingToo
     hostname: '127.0.0.1',
     port: 0,
 
-    // a listen stream stays open for the whole turn, past Bun's 10 s default
+    // A listen stream stays open for the whole turn, past Bun's default idle timeout of 10 s.
     idleTimeout: 0,
     fetch: answerRequest,
   });
@@ -176,7 +164,6 @@ function createChangingServer(readForm: () => StubToolForm, hooks: CallHooks): S
   return server;
 }
 
-// the method of each JSON-RPC request in a POST body, which may hold one message or a batch
 async function readMethods(request: Request): Promise<string[]> {
   if (request.method !== 'POST') {
     return [];

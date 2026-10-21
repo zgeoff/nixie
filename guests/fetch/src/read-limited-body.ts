@@ -3,11 +3,9 @@ import type { Readable } from 'node:stream';
 export interface LimitedBody {
   readonly bytes: Uint8Array;
 
-  // the body went on past the limit, and the reader stopped there
   readonly isTruncated: boolean;
 }
 
-// Reads a body up to limit bytes, and stops reading at the limit.
 export async function readLimitedBody(body: Readable, limit: number): Promise<LimitedBody> {
   const chunks: Uint8Array[] = [];
   const read = { bytes: 0 };

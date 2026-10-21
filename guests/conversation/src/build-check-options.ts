@@ -2,7 +2,6 @@ import { join } from 'node:path';
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
 import type { CheckRequest } from '@heynixie/wire';
 
-// the reason comes first, so the model writes its reasoning before it commits to a verdict
 const verdictSchema = {
   type: 'object',
   properties: {
@@ -13,8 +12,6 @@ const verdictSchema = {
   additionalProperties: false,
 };
 
-// Builds the options of a checker query(). options.env replaces the CLI's environment, so each
-// variable goes in by name.
 export function buildCheckOptions(
   request: CheckRequest,
   env: Readonly<Record<string, string | undefined>>,
@@ -48,7 +45,6 @@ export function buildCheckOptions(
   };
 }
 
-// the broker's proxy and certificate settings that the guest passes on when they are set
 const passedVariables = [
   'PATH',
   'HTTPS_PROXY',
@@ -67,8 +63,6 @@ const credentialVariables = {
   'x-api-key': 'ANTHROPIC_API_KEY',
 } as const;
 
-// the guest holds a placeholder credential, and the sandbox's grant replaces the header on the way
-// out, so the CLI reaches only the model API's host
 function buildCheckEnv(
   request: CheckRequest,
   env: Readonly<Record<string, string | undefined>>,

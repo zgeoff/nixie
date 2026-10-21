@@ -8,13 +8,10 @@ export interface HopOptions {
   readonly signal: AbortSignal;
 }
 
-// A URL the fetcher may connect to, with the checked address it connects to, or the refusal.
 export type PlannedHop =
   | { readonly kind: 'connect'; readonly url: URL; readonly address: string }
   | { readonly kind: 'refused'; readonly reason: string };
 
-// Plans one hop: it accepts https only, drops any user name, password and fragment, resolves the
-// host, and refuses the URL when any A or AAAA address is not public.
 export async function planHop(text: string, options: HopOptions): Promise<PlannedHop> {
   const url = parseHTTPSURL(text);
 
@@ -46,7 +43,6 @@ function parseHTTPSURL(text: string): URL | Extract<PlannedHop, { kind: 'refused
   return url;
 }
 
-// the resolver's answer, or the time limit's abort when it comes first
 async function resolveOrAbort(host: string, options: HopOptions): Promise<readonly string[]> {
   options.signal.throwIfAborted();
 
@@ -65,7 +61,6 @@ async function resolveOrAbort(host: string, options: HopOptions): Promise<readon
   }
 }
 
-// the first address once every address passes the check; one failed address refuses the URL
 function pickCheckedAddress(
   url: URL,
   addresses: readonly string[],

@@ -2,13 +2,11 @@ import { access, rm } from 'node:fs/promises';
 import { getConfigDir } from './get-config-dir';
 import { getWorkDir } from './get-work-dir';
 
-// Removes the guest's whole session state, the CLI's config folder and the working directory, and
-// checks that both are gone. A forget runs it once no CLI is left to write, because the SDK keeps
-// forgotten text in every fork and before every compaction boundary, so no single file can go.
+// The SDK keeps forgotten text in every fork and before every compaction boundary, so a forget
+// removes the whole session state, never a single file.
 export async function removeSessionState(home: string): Promise<void> {
   const paths = [getConfigDir(home), getWorkDir(home)];
 
-  // a removal that fails leaves its path on disk, which the check below reports
   await Promise.allSettled(paths.map((path) => rm(path, { recursive: true, force: true })));
 
   const left = await Promise.all(paths.map((path) => readPresentPath(path)));
@@ -18,8 +16,6 @@ export async function removeSessionState(home: string): Promise<void> {
   }
 }
 
-// Only a missing path proves the removal; any other failure to check, such as a home the guest
-// cannot traverse, throws, so the forget never completes on an unproven removal.
 async function readPresentPath(path: string): Promise<readonly string[]> {
   try {
     await access(path);

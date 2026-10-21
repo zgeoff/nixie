@@ -7,8 +7,6 @@ export interface TestCertificate {
   readonly key: string;
 }
 
-// Creates a self-signed certificate for the host names with openssl, which a client trusts by
-// passing the certificate as its only root. The key never leaves the test process.
 export async function createTestCertificate(names: readonly string[]): Promise<TestCertificate> {
   const directory = await mkdtemp(join(tmpdir(), 'fetch-cert-'));
 
