@@ -89,13 +89,17 @@ user never named.
 The user reviews a proposal through the skill host commands, which list each pending proposal with
 its files, the version of the skill in force at the time of the listing, and the outcome of the
 token check, so a diff of each file against the version in force shows what the proposal changes. An
-answer names the proposal and its skill hash, and the server refuses an answer under another hash,
-or to a proposal that an answer or a lapse closed, and records nothing. A record of the answer
-closes the proposal on the thread that wrote it:
+answer names the proposal and its skill hash. The server refuses an answer under another hash, to a
+proposal that an answer or a lapse closed, or to a proposal whose base, the version it replaces, is
+no longer the version in force, because its diff no longer shows what the answer changes. A refused
+answer records nothing, and the listing marks a proposal whose base moved as stale. A record of the
+answer closes the proposal on the thread that wrote it:
 
-- An approval names the pull request on the definitions source that carries the skill. The skill
-  runs only once that pull request merges and a seed brings it in, so the approval itself changes no
-  definitions in force.
+- An approval names the user as its approver and holds a new approval ID. In the same transaction,
+  the server runs the seed checks on the files again and stores the skill in
+  [the store of written skills](./definitions.md#skills-that-nixie-wrote) under that ID, and a seed
+  of the definitions in force then puts it in force for the next task. The user may approve edited
+  files in place of the proposal's, and the approval records that they are edited.
 - A rejection holds the user's reason in its erasable fields.
 - A proposal that waits past its lapse time with no answer lapses. An hourly sweep records each
   lapse, and the listing leaves out a proposal past its lapse time before the sweep reaches it.
@@ -107,5 +111,6 @@ new version and the version it replaces, and its age. The tool lists and never a
 the user approves or rejects a proposal. The model wrote each name, so the result counts as
 untrusted, as `memory.pending` does in [the memory store](../memory/store.md#the-models-tools).
 
-The conversation's next turn names each of its proposals that closed, with the pull request of an
-approval and the reason for a rejection, so the model learns why the user turned a skill down.
+The conversation's next turn names each of its proposals that closed, with the reason for a
+rejection, so the model learns why the user turned a skill down. The note on an approval tells the
+model to reload the skill, because the conversation's pin holds the versions it started with.

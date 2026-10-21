@@ -93,10 +93,9 @@ the store refuses one whose item moved past that version. A pin adds no version,
 where the item shows and not what it says.
 
 The skill host commands list the pending skill proposals and approve or reject one, as
-[the skills](../core/skills.md#skills-that-nixie-writes) describes. An approval names the pull
-request that carries the skill, and a rejection needs a reason, which the conversation reads in its
-next turn. The commands record the answer and change no definitions: the skill joins the definitions
-only through the seed, once its pull request merges.
+[the skills](../core/skills.md#skills-that-nixie-writes) describes. An approval puts the skill in
+force for the next task, with the user's edited files in place of the proposal's when the command
+carries them, and a rejection needs a reason, which the conversation reads in its next turn.
 
 The subjects command counts the memory items and proposals of each subject, owner, shared or self,
 from the running server. Its dry run reads no server: it copies a database file the operator names,

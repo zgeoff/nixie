@@ -1,11 +1,13 @@
-import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
+import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readRecords, startWriter, writeRecords } from '@heynixie/log';
+import { checkSkillFiles, writeWrittenSkill } from '@heynixie/definitions';
+import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { skillsWriteProposedCodec } from '@heynixie/skills';
 import { buildTestClock } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
+import invariant from 'tiny-invariant';
 import { createHostSkillProposalProcedures } from './create-host-skill-proposal-procedures';
 
 async function setupTest() {
@@ -28,16 +30,18 @@ async function setupTest() {
 
   const log = { writer, deploymentKey, projections: [] };
   const clock = buildTestClock(Date.UTC(2026, 2, 3, 10, 0));
+  const seedWrittenSkills = mock(() => Promise.resolve());
 
   const client = createRouterClient(
     createHostSkillProposalProcedures({
       log,
       clock,
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
+      seedWrittenSkills,
     }),
   );
 
-  return { log, client };
+  return { log, client, seedWrittenSkills };
 }
 
 test('#list lists each pending proposal with its files, its token check and the hash an answer binds to', async () => {
@@ -80,12 +84,21 @@ test('#list lists each pending proposal with its files, its token check and the 
       provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
       createdAt: new Date(proposedAt),
       lapseAt: new Date(proposedAt + 14 * 24 * 60 * 60 * 1000),
+      isStale: false,
     },
   ]);
 });
 
-test('#approve records the approval with its pull request', async () => {
+test('#approve records the approval that names you, then seeds the written skills', async () => {
   const ctx = await setupTest();
+
+  const files = [
+    { path: 'SKILL.md', text: '---\nname: star-chart\ndescription: Reads a star chart.\n---\n' },
+  ];
+
+  const skill = checkSkillFiles('star-chart', files);
+
+  invariant('skillHash' in skill);
 
   await writeRecords(ctx.log, [
     {
@@ -95,9 +108,9 @@ test('#approve records the approval with its pull request', async () => {
       payload: skillsWriteProposedCodec.encode({
         proposalID: 'p8w2n4c6ld',
         name: 'star-chart',
-        skillHash: 'hash-c',
+        skillHash: skill.skillHash,
         baseHash: null,
-        files: [{ path: 'SKILL.md', text: '# Stars\n' }],
+        files,
         untypedToken: null,
         provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
       }),
@@ -106,8 +119,7 @@ test('#approve records the approval with its pull request', async () => {
 
   const approved = await ctx.client.approve({
     proposalID: 'p8w2n4c6ld',
-    skillHash: 'hash-c',
-    pullRequestURL: 'https://git.example.com/owner/definitions/pull/7',
+    skillHash: skill.skillHash,
   });
 
   const records = await readRecords(ctx.log, {
@@ -115,14 +127,123 @@ test('#approve records the approval with its pull request', async () => {
     kinds: ['skills.write_approved'],
   });
 
-  expect(approved).toStrictEqual({ proposalID: 'p8w2n4c6ld' });
+  expect(approved).toStrictEqual({
+    proposalID: 'p8w2n4c6ld',
+    approvalID: expect.toBeString(),
+    skillHash: skill.skillHash,
+  });
 
   expect(records.map((entry) => entry.record.payload)).toStrictEqual([
     {
       proposalID: 'p8w2n4c6ld',
-      pullRequestURL: 'https://git.example.com/owner/definitions/pull/7',
+      approvalID: approved.approvalID,
+      skillHash: skill.skillHash,
+      isEdited: false,
+      approver: 'owner',
+      channel: 'host',
     },
   ]);
+
+  expect(ctx.seedWrittenSkills).toHaveBeenCalledOnce();
+});
+
+test('#approve refuses edited files that fail the seed checks with their code', async () => {
+  const ctx = await setupTest();
+
+  const files = [
+    { path: 'SKILL.md', text: '---\nname: star-chart\ndescription: Reads a star chart.\n---\n' },
+  ];
+
+  const skill = checkSkillFiles('star-chart', files);
+
+  invariant('skillHash' in skill);
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'skills.write_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: skillsWriteProposedCodec.encode({
+        proposalID: 'p8w2n4c6ld',
+        name: 'star-chart',
+        skillHash: skill.skillHash,
+        baseHash: null,
+        files,
+        untypedToken: null,
+        provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  const refusal = await ctx.client
+    .approve({
+      proposalID: 'p8w2n4c6ld',
+      skillHash: skill.skillHash,
+      files: [{ path: 'SKILL.md', text: '# Stars, with no frontmatter\n' }],
+    })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  expect(refusal).toMatchObject({ code: 'SKILL_CHECK', status: 400 });
+  expect(ctx.seedWrittenSkills).not.toHaveBeenCalled();
+});
+
+test('#approve refuses a proposal whose base the skill in force moved past with its code', async () => {
+  const ctx = await setupTest();
+
+  const files = [
+    { path: 'SKILL.md', text: '---\nname: star-chart\ndescription: Reads a star chart.\n---\n' },
+  ];
+
+  const skill = checkSkillFiles('star-chart', files);
+
+  const approved = checkSkillFiles('star-chart', [
+    {
+      path: 'SKILL.md',
+      text: '---\nname: star-chart\ndescription: Reads a star chart.\n---\nBy season.\n',
+    },
+  ]);
+
+  invariant('skillHash' in skill);
+  invariant('skillHash' in approved);
+
+  await withWriteTransaction(ctx.log.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill: approved,
+      approvedAt: 1,
+    }),
+  );
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'skills.write_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: skillsWriteProposedCodec.encode({
+        proposalID: 'p8w2n4c6ld',
+        name: 'star-chart',
+        skillHash: skill.skillHash,
+        baseHash: null,
+        files,
+        untypedToken: null,
+        provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  const refusal = await ctx.client
+    .approve({ proposalID: 'p8w2n4c6ld', skillHash: skill.skillHash })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  expect(refusal).toMatchObject({ code: 'STALE_BASE', status: 409 });
+  expect(ctx.seedWrittenSkills).not.toHaveBeenCalled();
 });
 
 test('#reject records the rejection with your reason', async () => {

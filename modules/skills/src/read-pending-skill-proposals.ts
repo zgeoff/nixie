@@ -1,10 +1,12 @@
 import { loadSkillVersions, readDefinitionsInForce } from '@heynixie/definitions';
+import { readCurrentSkillHashes } from './read-current-skill-hashes';
 import { readSkillProposals } from './read-skill-proposals';
 import { skillProposalLapseMs } from './skill-proposal-lapse-ms';
 import type { PendingSkillProposal, SkillProposalContext } from './types';
 
 // Reads the skill proposals that wait for your answer, oldest first, each with the version of its
-// skill in force now. A proposal past its lapse time drops out before the sweep records its lapse.
+// skill in force now and whether the version an answer judges against moved past the proposal's
+// base. A proposal past its lapse time drops out before the sweep records its lapse.
 export async function readPendingSkillProposals(
   context: Pick<SkillProposalContext, 'log' | 'clock'>,
 ): Promise<readonly PendingSkillProposal[]> {
@@ -22,6 +24,7 @@ export async function readPendingSkillProposals(
   }
 
   const inForce = await readDefinitionsInForce(db);
+  const current = await readCurrentSkillHashes(db);
 
   const refs = inForce?.skills ?? [];
 
@@ -39,6 +42,7 @@ export async function readPendingSkillProposals(
       thread: entry.thread,
       proposedAt: entry.proposedAt,
       lapseAt: entry.proposedAt + skillProposalLapseMs,
+      isStale: (current.get(entry.proposal.name) ?? null) !== entry.proposal.baseHash,
       inForce:
         ref === undefined || version === undefined
           ? null

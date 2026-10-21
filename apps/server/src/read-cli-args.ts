@@ -27,7 +27,7 @@ const CLI_OPTIONS = {
   'as-new': { type: 'boolean', default: false },
   text: { type: 'string' },
   reason: { type: 'string' },
-  'pull-request': { type: 'string' },
+  files: { type: 'string' },
   'keep-sessions': { type: 'boolean', default: false },
   yes: { type: 'boolean', default: false },
   'dry-run': { type: 'boolean', default: false },

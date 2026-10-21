@@ -66,7 +66,12 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       conversationSkills: overlay.conversationSkills,
     });
 
-    if (inForce !== null && isSameSeed(inForce, { ...read, built, sourceID: options.source.id })) {
+    // an adoption leaves the skills in force as they stand, and the seed still records it
+    if (
+      inForce !== null &&
+      overlay.adopted.length === 0 &&
+      isSameSeed(inForce, { ...read, built, sourceID: options.source.id })
+    ) {
       return { status: 'unchanged', inForce };
     }
 

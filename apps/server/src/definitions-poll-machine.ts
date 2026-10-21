@@ -18,6 +18,10 @@ export interface DefinitionsPollOptions {
   // a refused snapshot is pending from a seed outside the poll, such as a skill reload's, so the
   // next probe seeds even on the token of the poll's last good seed; none when absent
   readonly isRefused?: () => boolean;
+
+  // a change the database holds is not in force yet, such as an approval whose seed failed, so
+  // the next probe seeds on an unchanged token; none when absent
+  readonly probeSeedDue?: () => Promise<boolean>;
   readonly clock: Clock;
   readonly intervalMs: number;
 
@@ -141,7 +145,12 @@ async function runProbe(
 
     options.onProbed({ isChanged });
 
-    const needsSeed = isChanged || (options.isRefused?.() ?? false);
+    const isDue = isChanged || (options.isRefused?.() ?? false);
+
+    const isPending =
+      isDue || options.probeSeedDue === undefined ? false : await options.probeSeedDue();
+
+    const needsSeed = isDue || isPending;
 
     if (needsSeed && !(await options.seed())) {
       return { token: null, isFailed: true };

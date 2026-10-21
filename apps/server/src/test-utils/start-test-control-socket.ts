@@ -22,6 +22,9 @@ export async function startTestControlSocket(options: TestControlSocketOptions):
     respond: makeHostResponder({
       context: api.context,
       readMemory: options.readMemory ?? (() => null),
+
+      // no seed runs behind the test socket, so an approval stays in the store of written skills
+      seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no server runs behind the test socket')),
     }),
   });

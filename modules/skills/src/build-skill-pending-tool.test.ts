@@ -8,6 +8,7 @@ import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildSkillTools } from './build-skill-tools';
+import { skillsWriteApprovedCodec } from './skills-write-approved-codec';
 import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 import { writeSkillProposalAnswer } from './write-skill-proposal-answer';
 import { writeSkillProposalLapses } from './write-skill-proposal-lapses';
@@ -275,16 +276,30 @@ test('it leaves out a proposal that an approval, a rejection or a lapse closed',
 
   setSystemTime(new Date(now));
 
-  const answers = { log: ctx.log, clock, definitions: () => ({ snapshotHash: 'snapshot-a' }) };
+  const answers = {
+    log: ctx.log,
+    clock,
+    definitions: () => ({ snapshotHash: 'snapshot-a' }),
+    seedWrittenSkills: () => Promise.resolve(),
+  };
 
   await writeSkillProposalLapses(answers);
 
-  await writeSkillProposalAnswer(answers, {
-    answer: 'approve',
-    proposalID: 'b2approved',
-    skillHash: 'hash-moon-phase',
-    pullRequestURL: 'https://git.example.com/owner/definitions/pull/7',
-  });
+  await writeRecords(ctx.log, [
+    {
+      kind: 'skills.write_approved',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: skillsWriteApprovedCodec.encode({
+        proposalID: 'b2approved',
+        approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+        skillHash: 'hash-moon-phase',
+        isEdited: false,
+        approver: 'owner',
+        channel: 'host',
+      }),
+    },
+  ]);
 
   await writeSkillProposalAnswer(answers, {
     answer: 'reject',

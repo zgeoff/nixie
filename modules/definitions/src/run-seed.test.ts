@@ -845,6 +845,50 @@ test('it lays a skill that nixie wrote over the definitions and names its approv
   });
 });
 
+test('it marks a skill that nixie wrote as yours over the same definitions, once they hold its version', async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const written = await readWrittenSkills(ctx.writer.db);
+
+  expect(result).toMatchObject({
+    status: 'seeded',
+    record: {
+      payload: {
+        adoptedSkills: [
+          { name: 'tide-tables', approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31' },
+        ],
+      },
+    },
+  });
+
+  expect(written).toStrictEqual([]);
+});
+
 test('it marks a skill that nixie wrote as yours once the definitions hold its version', async () => {
   const ctx = await setupTest();
 

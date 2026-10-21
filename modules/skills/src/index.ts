@@ -17,5 +17,13 @@ export type { SkillsRecordKind } from './skills-record-kind';
 export { skillsReloadedCodec } from './skills-reloaded-codec';
 export { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 export { startSkillLapseSweep } from './start-skill-lapse-sweep';
-export type { PendingSkillProposal, SkillProposalContext, SkillToolsContext } from './types';
+
+export type {
+  PendingSkillProposal,
+  SkillAnswerContext,
+  SkillProposalAnswerResult,
+  SkillProposalContext,
+  SkillToolsContext,
+} from './types';
+
 export { writeSkillProposalAnswer } from './write-skill-proposal-answer';

@@ -1,71 +1,131 @@
+import type { ParseProblem, ParsedSkill } from '@heynixie/definitions';
+import { checkSkillFiles, writeWrittenSkill } from '@heynixie/definitions';
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { canMoveSkillProposal } from './can-move-skill-proposal';
+import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
+import { findAnswerRefusal } from './find-answer-refusal';
+import { readCurrentSkillHashes } from './read-current-skill-hashes';
 import { readSkillProposals } from './read-skill-proposals';
-import { SkillProposalClosedError } from './skill-proposal-closed-error';
-import { SkillProposalHashError } from './skill-proposal-hash-error';
-import { skillProposalLapseMs } from './skill-proposal-lapse-ms';
-import { SkillProposalNotFoundError } from './skill-proposal-not-found-error';
+import { SkillProposalCheckError } from './skill-proposal-check-error';
 import { skillsWriteApprovedCodec } from './skills-write-approved-codec';
 import { skillsWriteRejectedCodec } from './skills-write-rejected-codec';
-import type { SkillProposalAnswer, SkillProposalContext } from './types';
+import type {
+  SkillAnswerContext,
+  SkillFile,
+  SkillProposalAnswer,
+  SkillProposalAnswerResult,
+  SkillProposalContext,
+  SkillProposalState,
+} from './types';
 
-// Records your answer to a skill proposal that still waits for one, on the proposal's thread. The
-// check and the record share one write transaction, so 2 answers never both close a proposal. A
-// rejection's reason sits in the record's erasable fields.
+// Records your answer to a skill proposal that still waits for one, on the proposal's thread, in
+// one write transaction with its checks, so 2 answers never both close a proposal. An approval
+// stores the skill as in force, and a seed then puts it in force for the next task.
 export async function writeSkillProposalAnswer(
-  context: SkillProposalContext,
+  context: SkillAnswerContext,
   answer: SkillProposalAnswer,
-): Promise<void> {
+): Promise<SkillProposalAnswerResult> {
   const log = context.log;
 
-  await withWriteTransaction(log.writer, async (tx) => {
-    const [state] = await readSkillProposals(tx, [answer.proposalID]);
+  const result = await withWriteTransaction(log.writer, async (tx) => {
+    const state = await readOpenProposal(tx, context, answer);
 
-    if (state === undefined) {
-      throw new SkillProposalNotFoundError(answer.proposalID);
+    if (answer.answer === 'reject') {
+      await writeRecordsInTransaction(tx, log, [
+        {
+          definitions: context.definitions(),
+          ...(state.thread === null ? {} : { thread: state.thread }),
+          kind: 'skills.write_rejected',
+          payload: skillsWriteRejectedCodec.encode({ proposalID: answer.proposalID }),
+          erasable: { reason: answer.reason },
+        },
+      ]);
+
+      return { proposalID: answer.proposalID, approvalID: null, skillHash: null };
     }
 
-    // a proposal past its lapse time stands lapsed before the sweep records its lapse
-    const isPastLapse = state.proposedAt + skillProposalLapseMs <= context.clock.now();
-    const status = state.outcome ?? (isPastLapse ? 'lapsed' : 'pending');
-    const outcome = answer.answer === 'approve' ? 'approved' : 'rejected';
-
-    if (!canMoveSkillProposal(status, outcome)) {
-      throw new SkillProposalClosedError(answer.proposalID, status);
-    }
-
-    if (state.proposal.skillHash !== answer.skillHash) {
-      throw new SkillProposalHashError(answer.proposalID);
-    }
-
-    await writeRecordsInTransaction(tx, log, [
-      {
-        definitions: context.definitions(),
-        ...(state.thread === null ? {} : { thread: state.thread }),
-        ...buildAnswerFields(answer),
-      },
-    ]);
+    return writeApproval(tx, context, { state, files: answer.files ?? null });
   });
-}
 
-// the kind, payload and erasable fields of the record that holds the answer
-function buildAnswerFields(
-  answer: SkillProposalAnswer,
-): Pick<RecordInput, 'kind' | 'payload' | 'erasable'> {
-  if (answer.answer === 'approve') {
-    return {
-      kind: 'skills.write_approved',
-      payload: skillsWriteApprovedCodec.encode({
-        proposalID: answer.proposalID,
-        pullRequestURL: answer.pullRequestURL,
-      }),
-    };
+  if (result.approvalID !== null) {
+    await context.seedWrittenSkills();
   }
 
-  return {
-    kind: 'skills.write_rejected',
-    payload: skillsWriteRejectedCodec.encode({ proposalID: answer.proposalID }),
-    erasable: { reason: answer.reason },
+  return result;
+}
+
+// The proposal the answer names, once findAnswerRefusal finds no reason to refuse the answer.
+async function readOpenProposal(
+  tx: Transaction<unknown>,
+  context: SkillProposalContext,
+  answer: SkillProposalAnswer,
+): Promise<SkillProposalState> {
+  const [state] = await readSkillProposals(tx, [answer.proposalID]);
+  const current = await readCurrentSkillHashes(tx);
+
+  const currentHash = state === undefined ? null : (current.get(state.proposal.name) ?? null);
+  const refusal = findAnswerRefusal({ answer, state, now: context.clock.now(), currentHash });
+
+  if (refusal !== null) {
+    throw refusal;
+  }
+
+  // findAnswerRefusal refuses an answer to a proposal no record holds
+  invariant(state);
+
+  return state;
+}
+
+// the open proposal an approval closes, and your edited files, or null to apply the proposal's
+interface Approval {
+  readonly state: SkillProposalState;
+  readonly files: readonly SkillFile[] | null;
+}
+
+async function writeApproval(
+  tx: Transaction<unknown>,
+  context: SkillProposalContext,
+  approval: Approval,
+): Promise<SkillProposalAnswerResult> {
+  const proposal = approval.state.proposal;
+  const checked = checkSkillFiles(proposal.name, approval.files ?? proposal.files);
+
+  if (isProblemList(checked)) {
+    throw new SkillProposalCheckError(proposal.proposalID, checked);
+  }
+
+  const approvalID = crypto.randomUUID();
+  const approvedAt = context.clock.now();
+
+  await writeWrittenSkill(tx, {
+    approvalID,
+    proposalID: proposal.proposalID,
+    skill: checked,
+    approvedAt,
+  });
+
+  const record: RecordInput = {
+    definitions: context.definitions(),
+    ...(approval.state.thread === null ? {} : { thread: approval.state.thread }),
+    kind: 'skills.write_approved',
+    payload: skillsWriteApprovedCodec.encode({
+      proposalID: proposal.proposalID,
+      approvalID,
+      skillHash: checked.skillHash,
+      isEdited: checked.skillHash !== proposal.skillHash,
+      approver: 'owner',
+      channel: 'host',
+    }),
   };
+
+  await writeRecordsInTransaction(tx, context.log, [record]);
+
+  return { proposalID: proposal.proposalID, approvalID, skillHash: checked.skillHash };
+}
+
+function isProblemList(
+  checked: ParsedSkill | readonly ParseProblem[],
+): checked is readonly ParseProblem[] {
+  return Array.isArray(checked);
 }

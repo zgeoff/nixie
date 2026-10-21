@@ -85,8 +85,8 @@ export interface CLIFlags {
   // a rejection's reason, which the conversation reads in its next turn
   readonly reason?: string;
 
-  // the pull request on the definitions that carries an approved skill
-  readonly 'pull-request'?: string;
+  // an approved skill's edited files in place of the proposal's, as a JSON list of path and text
+  readonly files?: string;
 
   // a reset keeps the live device sessions, and runs only once the user confirms it
   readonly 'keep-sessions': boolean;

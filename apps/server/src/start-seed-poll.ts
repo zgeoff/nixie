@@ -1,6 +1,7 @@
+import { probeWrittenSkillsPending } from '@heynixie/definitions';
 import { toErrorFields } from '@heynixie/logger';
-import type { SeedParts } from './run-definitions-seed';
 import { runDefinitionsSeed } from './run-definitions-seed';
+import type { SeedParts } from './run-queued-seed';
 import { startDefinitionsPoll } from './start-definitions-poll';
 import type { Cleanup, ServerParts } from './types';
 
@@ -30,6 +31,9 @@ export async function startSeedPoll(parts: SeedPollParts, options: SeedPollOptio
 
     // a skill reload seeds over the same parts, and its refusal leaves the definitions unready
     isRefused: () => !parts.state.read().definitions.isReady,
+
+    // an approval or a retirement whose own seed failed stays in the store until a seed lands
+    probeSeedDue: () => probeWrittenSkillsPending(parts.context.log.writer.db),
     clock: parts.context.clock,
     intervalMs: parts.config.definitions.probeIntervalMs,
     retryDelayMs: 1000,
