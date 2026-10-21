@@ -11,12 +11,10 @@ import { buildFiller } from '../test-utils/build-filler';
 import { loadSessionTranscript } from '../test-utils/load-session-transcript';
 import { runContractQuery } from '../test-utils/run-contract-query';
 
-// The probes call the model on the subscription, so only a contract run enables them. Bun 1.4.2's
+// Each probe calls the model on the subscription, so only a contract run enables it. Bun 1.4.2's
 // skipIf takes a boolean and has no in-body skip.
 const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 
-// a config directory of the run's own, and the options of a turn as the conversation guest sets
-// them: every SDK compaction off, and an in-process page tool that grows the context by a known step
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-overflow-'));
 
@@ -47,7 +45,6 @@ async function setupTest() {
     env: {
       ...buildContractEnv(process.env, directory),
 
-      // the CLI's own limit lowered to 24,000 tokens, so a few pages pass it and each call stays cheap
       CLAUDE_CODE_BLOCKING_LIMIT_OVERRIDE: '24000',
       MAX_MCP_OUTPUT_TOKENS: '100000',
     },
@@ -154,7 +151,7 @@ test.skipIf(!isContractRun)(
         env: {
           ...ctx.options.env,
 
-          // the CLI's limit raised past the model's 1,000,000-token window, so the API refuses
+          // The CLI's limit sits past the model's 1,000,000-token window, so the API refuses first.
           CLAUDE_CODE_BLOCKING_LIMIT_OVERRIDE: '10000000',
         },
       },

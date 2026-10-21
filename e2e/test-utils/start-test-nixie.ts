@@ -22,51 +22,40 @@ export type { RecoveredState } from './types';
 export interface TestNixie {
   readonly dataDir: string;
 
-  // the raw deployment key nixie starts with, which the oracle needs to read the log
   readonly deploymentKey: string;
   readonly harness: CrashHarness;
   readonly model: ScriptedModel;
 
-  // the memory writer's own scripted model
   readonly writerModel: ScriptedModel;
   readonly provider: ProviderDouble;
   readonly readRecords: () => Promise<readonly TestRecord[]>;
 
-  // the first record that matches, once one is in the log
   readonly waitForRecord: (matches: MatchRecord) => Promise<TestRecord>;
 
-  // advances the clock by stepMs until a record matches, at most maxSteps times, for a wait inside
-  // nixie, such as a turn's wait for an action, that may start its sleep after the first advance
   readonly advanceUntilRecord: (
     stepMs: number,
     maxSteps: number,
     matches: MatchRecord,
   ) => Promise<TestRecord>;
 
-  // advances the clock by stepMs until nixie arrives at the fault point, at most maxSteps times
   readonly advanceUntilArrival: (
     nixie: NixieProcess,
     point: string,
     options: AdvanceSteps,
   ) => Promise<FaultPointArrival>;
 
-  // every row of a table, read beside the nixie that writes it
   readonly readRows: (table: string) => Promise<readonly TestRow[]>;
 
-  // the leases and the tasks as each start's recovery left them, in the order the starts recovered
   readonly readRecoveredStates: () => readonly RecoveredState[];
 }
 
 export interface TestNixieOptions {
-  // starts memory's writer in each nixie, on the writer's own scripted model
   readonly memoryWriter?: boolean;
 }
 
-// a turn runs the real SDK in a guest process, which takes a few seconds on a slow host
+// A turn runs the real SDK in a guest process, which takes a few seconds on a slow host.
 const recordTimeoutMs = 30_000;
 
-// Sets up a crash test: a fresh data directory, the scripted model and the provider double in the
-// test process, where their records survive every kill, and the crash harness at 1,000,000 ms.
 export async function startTestNixie(options: TestNixieOptions = {}): Promise<TestNixie> {
   const stack = new AsyncDisposableStack();
 
@@ -130,7 +119,7 @@ function startNixieHarness(stack: AsyncDisposableStack, env: NixieEnv): CrashHar
     env,
   });
 
-  // the disposals run in reverse, so every nixie dies before its data directory goes
+  // AsyncDisposableStack disposes in reverse, so every nixie dies before its data directory goes.
   stack.defer(() => harness.stop());
 
   return harness;
@@ -148,12 +137,11 @@ interface RecordRow {
   readonly payload: string;
 }
 
-// mapped types, because Kysely's table map needs the index signature an interface lacks
+// Kysely's table map needs an index signature, which an interface lacks, so these are type aliases.
 type ReaderTables = Readonly<{ records: RecordRow }>;
 
 type AnyTables = Readonly<Record<string, Readonly<Record<string, unknown>>>>;
 
-// A read connection beside nixie, opened on the first read once nixie has made the database.
 function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader {
   const reader: { db: Database | null } = { db: null };
 
@@ -187,8 +175,6 @@ function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader
   };
 }
 
-// Wraps the harness so each start holds at the end of its recovery while the test reads the leases
-// and the tasks it left, then lets its runners start.
 function startRecoveryReads(
   crashHarness: CrashHarness,
   readRows: TestNixie['readRows'],
@@ -212,8 +198,6 @@ function startRecoveryReads(
   };
 }
 
-// A start that exits before its recovery ends, such as one that finds the writer lock held, leaves
-// no state.
 async function readRecoveredState(
   nixie: NixieProcess,
   readRows: TestNixie['readRows'],

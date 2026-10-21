@@ -4,12 +4,9 @@ export interface ToolCall {
   readonly name: string;
   readonly input: unknown;
 
-  // the result the model read, or null when the call never got one
   readonly result: { readonly isError: boolean; readonly text: string } | null;
 }
 
-// Collects each tool call the model made in a run, in order, with the result it read. A result's
-// text joins its text blocks, or is the result's own text when it is a plain string.
 export function collectToolCalls(messages: readonly SDKMessage[]): readonly ToolCall[] {
   const results = new Map(
     messages.flatMap((message) => {
@@ -41,7 +38,6 @@ export function collectToolCalls(messages: readonly SDKMessage[]): readonly Tool
   );
 }
 
-// a block of a tool result's content, of any type
 interface ResultBlock {
   readonly type?: unknown;
   readonly text?: unknown;

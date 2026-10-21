@@ -7,7 +7,6 @@ import { loadWriterCases } from '../test-utils/load-writer-cases';
 import type { WriterCall } from '../test-utils/load-writer-report';
 import { loadWriterReport } from '../test-utils/load-writer-report';
 
-// the committed cases, the committed report of their last run, and the production writer tools
 async function setupTest() {
   const cases = await loadWriterCases(join(import.meta.dir, 'cases.json'));
   const report = await loadWriterReport(join(import.meta.dir, 'report.json'));

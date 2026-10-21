@@ -2,7 +2,6 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-// the fields of a transcript entry that a probe reads; the CLI writes many more, which pass through
 const entrySchema = z
   .looseObject({
     type: z.string(),
@@ -14,8 +13,6 @@ const entrySchema = z
 
 export type TranscriptEntry = z.infer<typeof entrySchema>;
 
-// Loads a session's transcript as the CLI wrote it under the config directory: every entry,
-// compacted or not, which a resume never shows whole.
 export async function loadSessionTranscript(
   configDir: string,
   sessionID: string,
@@ -34,7 +31,7 @@ export async function loadSessionTranscript(
     .map((line) => entrySchema.parse(JSON.parse(line)));
 }
 
-// the CLI keeps each session under a folder named for its working directory
+// The CLI keeps each session under a folder named for its working directory.
 async function readTranscriptPath(configDir: string, sessionID: string): Promise<string | null> {
   const projects = join(configDir, 'projects');
 

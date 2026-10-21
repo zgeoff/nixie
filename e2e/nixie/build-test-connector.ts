@@ -7,9 +7,6 @@ const providerBodySchema = z.object({
   reason: z.string().exactOptional(),
 });
 
-// The test connector: it sends each attempt of test.send to the provider double at providerURL,
-// with the action ID as the Idempotency-Key header, and reads the double's answer as the provider's
-// response. A fetch or a body read that throws reaches the attempt as an ambiguity.
 export function buildTestConnector(providerURL: string): ActionConnector {
   return {
     run: async (call) => {
@@ -29,7 +26,6 @@ export function buildTestConnector(providerURL: string): ActionConnector {
   };
 }
 
-// the status of the double's answer, and its retry-after-ms header when it sent one
 interface ProviderAnswer {
   readonly status: number;
   readonly retryAfter: string | null;

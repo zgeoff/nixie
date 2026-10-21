@@ -2,8 +2,6 @@ import { expect, test } from 'bun:test';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 
-// A test of a second writer: process A runs, and process B starts on the same data directory. The
-// restore command, which a third variant runs in place of B, is not built yet.
 async function setupTest() {
   const nixie = await startTestNixie();
 
@@ -26,7 +24,6 @@ test('it refuses a second process while the first holds the writer lock, and let
   const epochAfterRefusal = await ctx.nixie.readRows('writer_epoch');
   const recordsAfterRefusal = await ctx.nixie.readRecords();
 
-  // A carries on
   ctx.nixie.model.addReplies({ text: 'Hi.' });
   void processA.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
 

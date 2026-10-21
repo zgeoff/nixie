@@ -1,6 +1,3 @@
-// Runs each case through the production writer prompts and tools on the writer's model, with the
-// query options the guest uses, and writes the report the eval suite checks. It calls the model
-// with the local Claude Code login, so CI never runs it (see the README).
 import { mkdtemp } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -18,7 +15,6 @@ import type { WriterCase } from '../test-utils/load-writer-cases';
 import { loadWriterCases } from '../test-utils/load-writer-cases';
 import type { WriterCall, WriterReport } from '../test-utils/load-writer-report';
 
-// the writer's model, which --model names, Haiku when unset; an unknown option stops the run
 const model = parseArgs({ options: { model: { type: 'string', default: 'claude-haiku-5-5' } } })
   .values.model;
 
@@ -32,10 +28,7 @@ interface PlannedRun {
   readonly repeat: number;
 }
 
-// the recall the eval's tools reach finds nothing, because the prompt shows every item
 const emptyStore = { recall: () => Promise.resolve({ items: [], next: null }) };
-
-// a tool call's arguments, as the tools take them
 const jsonObject = z.record(z.string(), z.json()).transform((value): JSONObject => value);
 const directory = import.meta.dir;
 
@@ -115,8 +108,6 @@ interface SessionResult {
   readonly outputTokens: number;
 }
 
-// One writer session with the guest's query options: nixie's tools alone, served in process, the
-// prompts verbatim, and no settings, skills, memory or compaction of the CLI's own.
 async function runSession(
   input: WriterEvalInput,
   tools: readonly ToolDefinition[],
@@ -187,8 +178,8 @@ async function runSession(
   return { failure: 'the session ended with no result', inputTokens: 0, outputTokens: 0 };
 }
 
-// why a session's result ends the run early: an error subtype, or a success that holds the API
-// error the turn ended on in place of the model's reply
+// The SDK reports an API error that ends a turn as a success result whose text holds the error in
+// place of the model's reply.
 function findResultFailure(message: SDKResultMessage): string | null {
   if (message.subtype !== 'success') {
     return message.subtype;
@@ -197,8 +188,7 @@ function findResultFailure(message: SDKResultMessage): string | null {
   return message.is_error ? `api error: ${message.result}` : null;
 }
 
-// A production writer tool as the SDK serves it. The SDK takes a zod shape, so the shape comes
-// from the tool's own JSON schema, and each call passes the tool's schema check before it runs.
+// The SDK takes a zod shape, so the shape comes from the tool's own JSON schema.
 function buildSDKTool(registry: ToolRegistry, tool: ToolDefinition): SdkMcpToolDefinition {
   const schema = z.fromJSONSchema(tool.input);
 
@@ -245,7 +235,7 @@ function toToolResult(text: string, isError: boolean) {
   return { content: [{ type: 'text' as const, text }], isError };
 }
 
-// a host that reaches the API through an HTTPS proxy needs the proxy and its CA in the query too
+// A host that reaches the API through an HTTPS proxy needs the proxy and its CA in the query too.
 function readProxyEnv(): Record<string, string> {
   const names = [
     'HTTPS_PROXY',

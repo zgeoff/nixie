@@ -2,8 +2,6 @@ import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import type { MatchRecord, TestRecord } from './types';
 
-// Waits for the first record that matches, reading the log each poll, and throws once timeoutMs
-// passes without one.
 export async function waitForMatch(
   readRecords: () => Promise<readonly TestRecord[]>,
   matches: MatchRecord,
@@ -22,7 +20,6 @@ export async function waitForMatch(
     { timeoutMs },
   );
 
-  // the wait returns only once a poll found a record
   invariant(found.record);
 
   return found.record;

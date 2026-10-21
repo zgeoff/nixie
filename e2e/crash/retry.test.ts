@@ -2,9 +2,6 @@ import { expect, test } from 'bun:test';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 
-// A test of a retry: the conversation's model calls test.send, and the provider double refuses it
-// with a refusal that can clear. The turn's own wait for the outcome runs out after 10 s on the
-// clock, and the turn ends with the action pending.
 async function setupTest() {
   const nixie = await startTestNixie();
 
@@ -44,7 +41,6 @@ test('it resumes the retry schedule across a restart and fails the action on the
 
   await second.ready;
 
-  // for each later attempt: the clock stops 1 ms short of its due time, then runs one poll on
   const callsBeforeDue: number[] = [];
   const attemptTimes: number[] = [1_000_000];
 
@@ -140,8 +136,6 @@ test('it marks a retry unknown when nixie dies after its attempt record, and nev
   await ctx.nixie.waitForRecord((record) => record.kind === 'action.retry_scheduled');
   await ctx.nixie.advanceUntilRecord(10_000, 2, (record) => record.stepKey === 'conversation:1');
   await first.request('arm', { point: 'attempt.record.after', kind: 'action' });
-
-  // past the first retry's due time at 1,030,000
   await ctx.nixie.harness.advance(30_000);
   await first.waitForArrival('attempt.record.after');
   await first.kill();

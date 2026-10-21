@@ -14,9 +14,6 @@ export interface TestWriterOptions {
   readonly modelURL: string;
 }
 
-// Starts the memory writer on a profile that points at its own scripted model, in the process
-// sandbox double, with the stub content gate and the default batch settings, so a live message
-// waits for the idle trigger on the harness's clock.
 export function startTestMemoryWriter(
   context: TasksContext,
   tools: TestTools,
@@ -41,7 +38,6 @@ export function startTestMemoryWriter(
       recorder: buildSandboxRecorder({ log: context.log, definitions: context.definitions }),
       toolTarget: tools.endpoint.getToolTarget,
 
-      // the test sandbox, the process double, which never reaches impd
       sandbox: { adapter: 'test' },
       testRootDir: join(context.log.writer.dataDir, 'sandboxes'),
       hostEnv: {},

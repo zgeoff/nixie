@@ -12,7 +12,6 @@ async function setupTest() {
 
   await first.ready;
 
-  // boot data: the oracle reads a log that nixie wrote, so one task commits a step before nixie dies
   const created = await first.request('createTask', { brief: 'Wait an hour.' });
 
   const taskID = String(created);
@@ -87,7 +86,6 @@ test('it reports a lease that is still held once recovery ran', async () => {
 
   onTestFinished(() => db.destroy());
 
-  // a lease under an epoch ahead of every writer, which no recovery frees
   await db
     .$extendTables<TasksTables>()
     .updateTable('leases')

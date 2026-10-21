@@ -8,7 +8,6 @@ import { loadCheckerCorpus } from '../test-utils/load-checker-corpus';
 import { loadCheckerReport } from '../test-utils/load-checker-report';
 
 interface SetupConfig {
-  // the corpus file's name, which names its report too
   readonly name:
     | 'corpus'
     | 'held-out-1'
@@ -19,7 +18,6 @@ interface SetupConfig {
     | 'subjects';
 }
 
-// a committed corpus and the committed report of its last run
 async function setupTest(config: SetupConfig) {
   const corpus = await loadCheckerCorpus(join(import.meta.dir, `${config.name}.json`));
   const report = await loadCheckerReport(join(import.meta.dir, `${config.name}-report.json`));

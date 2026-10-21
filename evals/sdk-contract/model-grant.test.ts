@@ -7,12 +7,10 @@ import invariant from 'tiny-invariant';
 import { buildContractEnv } from '../test-utils/build-contract-env';
 import { runContractQuery } from '../test-utils/run-contract-query';
 
-// The probes call the model on the subscription, so only a contract run enables them. Bun 1.4.2's
+// Each probe calls the model on the subscription, so only a contract run enables it. Bun 1.4.2's
 // skipIf takes a boolean and has no in-body skip.
 const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 
-// a config directory of the run's own, and a one-call turn whose only credential is the variable
-// the model grant sets, so the broker's own credential carries the call
 async function setupTest(header: 'bearer' | 'x-api-key') {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-grant-'));
 

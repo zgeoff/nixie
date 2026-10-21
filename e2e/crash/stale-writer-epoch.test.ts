@@ -3,8 +3,6 @@ import { waitForCondition } from '@heynixie/testing';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 
-// A test of a stale writer epoch: process A loses its writer lock through a test-only hook, as a
-// bug would, while it runs a step, and process B takes the lock and raises the epoch.
 async function setupTest() {
   const nixie = await startTestNixie();
 
@@ -19,8 +17,6 @@ test('it stops the stale writer at its first write, and the new writer expires i
 
   await processA.ready;
 
-  // A's turn waits on a reply that comes only once B holds the lock, so its step still runs when B
-  // starts and then tries to commit
   ctx.nixie.model.addReplies({ text: 'Late.', gate: lateReply.promise }, { text: 'Hi.' });
   void processA.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
 

@@ -3,9 +3,6 @@ import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 import { writeSeedMessages } from '../test-utils/write-seed-messages';
 
-// The crash tests of the memory writer: nixie dies at each of the batch's six boundaries, once in
-// the catch-up over messages from before memory started and once in a live batch. The restart
-// runs the batch again from a fresh session, and it publishes once.
 async function setupTest() {
   const nixie = await startTestNixie({ memoryWriter: true });
 
@@ -37,7 +34,6 @@ test.each([
       },
     };
 
-    // one script for the first session and one for the rerun's fresh session
     ctx.nixie.writerModel.addReplies(remember, { text: 'Staged.' }, remember, { text: 'Staged.' });
 
     const first = ctx.nixie.harness.start([{ point }]);
@@ -51,7 +47,6 @@ test.each([
 
     await second.ready;
 
-    // the batch that ends the catch-up waits out the pace limit on the one clock
     await ctx.nixie.advanceUntilRecord(
       12_000,
       5,
@@ -101,7 +96,6 @@ test.each([
   async (point) => {
     const ctx = await setupTest();
 
-    // the first start ends the empty catch-up, so the armed start holds only the live batch
     const first = ctx.nixie.harness.start();
 
     await first.ready;
@@ -135,13 +129,12 @@ test.each([
       },
     };
 
-    // one script for the first session and one for the rerun's fresh session
     ctx.nixie.writerModel.addReplies(remember, { text: 'Staged.' }, remember, { text: 'Staged.' });
 
     await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
 
-    // a short batch waits for the conversation to go idle: one advance of 5 minutes on the one
-    // clock, so the session's lease never runs out while the guest works on real time
+    // The guest works on real time, so one 5-minute advance reaches the idle trigger before the
+    // session's lease on the clock runs out.
     await ctx.nixie.advanceUntilArrival(second, point, { stepMs: 300_000, maxSteps: 1 });
     await second.kill();
 

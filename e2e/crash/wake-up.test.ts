@@ -2,9 +2,6 @@ import { expect, test } from 'bun:test';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 
-// A test of a wake-up: a task waits with no unread input, and one source writes to its inbox. The
-// sources are your message, a fired timer and an action outcome; a trigger event arrives with the
-// trigger sources in slice 6.
 async function setupTest() {
   const nixie = await startTestNixie();
 
@@ -31,7 +28,6 @@ test('it wakes the conversation for a message written just before nixie died, an
 
   ctx.nixie.model.addReplies({ text: 'Yes.' });
 
-  // holds the restart after its last recovery step, before any runner claims the task
   const second = ctx.nixie.harness.start([{ point: 'recovery.step.5' }]);
 
   const recovered = await second.waitForArrival('recovery.step.5');
@@ -81,8 +77,6 @@ test('it wakes a task for a timer that fired just before nixie died, and reads i
 
   await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
   await first.request('arm', { point: 'inbox.write.after', workID: taskID });
-
-  // to the timer's due time, an hour after the first step
   await ctx.nixie.harness.advance(3_600_000);
   await first.waitForArrival('inbox.write.after', taskID);
   await first.kill();
@@ -137,7 +131,6 @@ test('it wakes the conversation for an action outcome written just before nixie 
     { text: 'Queued.' },
   );
 
-  // the provider holds its answer, so the turn's wait runs out and the turn ends first
   ctx.nixie.provider.addReplies({
     kind: 'success',
     result: { delivered: true },

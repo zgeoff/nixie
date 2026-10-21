@@ -2,8 +2,6 @@ import { expect, test } from 'bun:test';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 
-// A test of a timer that falls due while nixie is down: a test task's first step sets a durable
-// timer an hour on, at 4,600,000 ms, and waits.
 async function setupTest() {
   const nixie = await startTestNixie();
 
@@ -25,7 +23,6 @@ test('it fires a timer that fell due while nixie was down once, into the task in
   await first.kill();
   await ctx.nixie.harness.advance(3_700_000);
 
-  // holds the restart after its last recovery step, before any runner claims the task
   const second = ctx.nixie.harness.start([{ point: 'recovery.step.5' }]);
 
   const recovered = await second.waitForArrival('recovery.step.5');

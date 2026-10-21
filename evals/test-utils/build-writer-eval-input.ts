@@ -2,14 +2,12 @@ import type { SourceMessage } from '@heynixie/memory';
 import { renderWriterPrompt, renderWriterSystemPrompt } from '@heynixie/memory';
 import type { WriterCase, WriterCases } from './load-writer-cases';
 
-// One tool as the model sees it, named as the guest's tool server names it.
 interface EvalTool {
   readonly name: string;
   readonly description: string;
   readonly input_schema: Readonly<Record<string, unknown>>;
 }
 
-// A writer tool's definition, as the eval reads it from the production tools.
 export interface WriterToolSpec {
   readonly name: string;
   readonly description: string;
@@ -21,21 +19,15 @@ export interface WriterEvalInput {
   readonly prompt: string;
   readonly tools: readonly EvalTool[];
 
-  // the case's owner messages by sequence, and each shown item's version and subject, which the
-  // staging area opens with
   readonly sources: ReadonlyMap<number, SourceMessage>;
   readonly shown: ReadonlyMap<
     string,
     { readonly version: number; readonly subject: 'owner' | 'shared' }
   >;
 
-  // the SHA-256 of the system prompt, the batch prompt and the tools together
   readonly hash: string;
 }
 
-// Builds what the production writer would send for one case: the production system prompt with
-// the cases' persona and names, the batch prompt over the case's complete item list and messages,
-// numbered from 1, and the writer's tools under the names the guest gives them.
 export function buildWriterEvalInput(
   cases: Pick<WriterCases, 'persona' | 'ownerName' | 'assistantName'>,
   writerCase: WriterCase,
