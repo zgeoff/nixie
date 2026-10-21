@@ -256,14 +256,17 @@ test('it follows redirects up to the limit and returns the final URL', async () 
 });
 
 test('it resolves the links of a page against its final URL after a redirect', async () => {
+  const pages: Readonly<Record<string, Response>> = {
+    '/start': new Response(null, { status: 302, headers: { location: '/guides/setup/' } }),
+    '/guides/setup/': new Response('<main><p><a href="../install">Install</a> first.</p></main>', {
+      headers: { 'content-type': 'text/html' },
+    }),
+  };
+
   const site = await startTestSite({
     names: ['site.test'],
     respond: (request) =>
-      new URL(request.url).pathname === '/start'
-        ? new Response(null, { status: 302, headers: { location: '/guides/setup/' } })
-        : new Response('<main><p><a href="../install">Install</a> first.</p></main>', {
-            headers: { 'content-type': 'text/html' },
-          }),
+      pages[new URL(request.url).pathname] ?? new Response(null, { status: 404 }),
   });
 
   const reply = await readPage(`https://site.test:${site.port}/start`, {
