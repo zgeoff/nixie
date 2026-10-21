@@ -13,7 +13,6 @@ import type {
   SourceKind,
 } from './types';
 import { writeSkillRows } from './write-skill-rows';
-import { writeWrittenSkillState } from './write-written-skill-state';
 
 // What one seed puts in force: where its files came from, your definitions' skill versions, the
 // skills that nixie wrote laid over them, and the snapshot they make.
@@ -35,9 +34,9 @@ export interface SeedPlan {
   readonly previous: DefinitionsInForce | null;
 }
 
-// Writes a seed inside the caller's write transaction: the snapshot and its skills, the state of
-// each skill that nixie wrote, the seed's record and its row. A written skill your definitions now
-// hold becomes yours, and each other one keeps the version of your definitions beneath it.
+// Writes a seed inside the caller's write transaction: the snapshot and its skills, the version of
+// your definitions beneath each skill that nixie wrote and that stays in force, the seed's record
+// and its row. The caller marks each written skill your definitions now hold as yours.
 export async function writeSeed(
   tx: Transaction<unknown>,
   log: Log,
@@ -54,7 +53,7 @@ export async function writeSeed(
     conversationSkills: plan.overlay.conversationSkills,
   });
 
-  await writeWrittenSkillRows(tx, plan.overlay, seededAt);
+  await writeBeneathRows(tx, plan.overlay, seededAt);
 
   const record = await writeSeedRecord(tx, log, plan);
 
@@ -107,19 +106,11 @@ async function writeSnapshotRows(
     .execute();
 }
 
-async function writeWrittenSkillRows(
+async function writeBeneathRows(
   tx: Transaction<unknown>,
   overlay: SkillOverlay,
   seededAt: number,
 ): Promise<void> {
-  for (const written of overlay.adopted) {
-    await writeWrittenSkillState(tx, {
-      approvalID: written.approvalID,
-      to: 'adopted',
-      at: seededAt,
-    });
-  }
-
   for (const [approvalID, definitions] of overlay.beneath) {
     await tx
       .$extendTables<DefinitionsTables>()

@@ -207,7 +207,7 @@ test('it writes nothing when the written skills already stand in force', async (
   expect(result).toStrictEqual({ status: 'unchanged', inForce: first.inForce });
 });
 
-test('it marks an approval whose files your definitions already hold as yours, though the skills in force stay the same', async () => {
+test('it marks an approval whose files your definitions already hold as yours, with their version, though the skills in force stay the same', async () => {
   const ctx = await setupTest();
 
   const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
@@ -235,7 +235,9 @@ test('it marks an approval whose files your definitions already hold as yours, t
   );
 
   const result = await runWrittenSkillSeed({ log: ctx.log, policy });
-  const states = await sql`select state from written_skills`.execute(ctx.writer.db);
+
+  const states = await sql`select state, definitions_hash, definitions_origin
+    from written_skills`.execute(ctx.writer.db);
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -248,7 +250,9 @@ test('it marks an approval whose files your definitions already hold as yours, t
     },
   });
 
-  expect(states.rows).toStrictEqual([{ state: 'adopted' }]);
+  expect(states.rows).toStrictEqual([
+    { state: 'adopted', definitions_hash: skill.skillHash, definitions_origin: 'definitions' },
+  ]);
 });
 
 test('it refuses before the first seed', async () => {

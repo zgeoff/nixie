@@ -15,7 +15,9 @@ import { createPathSource } from './create-path-source';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readWrittenSkills } from './read-written-skills';
 import { runSeed } from './run-seed';
+import { writeSkillExportState } from './write-skill-export-state';
 import { writeWrittenSkill } from './write-written-skill';
+import { writeWrittenSkillState } from './write-written-skill-state';
 
 // the writer's data directory holds the definitions root too, so one removal cleans up both
 async function setupTest(config: { readonly projections?: readonly Projection[] } = {}) {
@@ -1037,4 +1039,202 @@ test('it keeps a skill that nixie wrote in force over a definitions change, besi
       definitions: { skillHash: buildContentHash(editedFiles), origin: 'definitions' },
     },
   ]);
+});
+
+test('it records the version an adopted skill became and closes the exports of each of its approvals', async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const first = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}Draft.\n` }]);
+  const second = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
+
+  invariant('skillHash' in first);
+  invariant('skillHash' in second);
+
+  const pullRequest = { number: 7, url: 'https://github.test/tides/definitions/pull/7' };
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill: first,
+      approvedAt: 1,
+    });
+
+    await writeSkillExportState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'opened',
+      baseHash: null,
+      pullRequest,
+      at: 2,
+    });
+
+    await writeWrittenSkill(tx, {
+      approvalID: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
+      proposalID: 'w7tn4c9rhz',
+      skill: second,
+      approvedAt: 3,
+    });
+
+    await writeSkillExportState(tx, {
+      approvalID: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
+      to: 'opened',
+      baseHash: null,
+      pullRequest,
+      at: 4,
+    });
+  });
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const written = await sql`select approval_id, state, definitions_hash, definitions_origin
+    from written_skills order by approved_at`.execute(ctx.writer.db);
+
+  const exports = await sql`select approval_id, state from skill_exports
+    order by approval_id`.execute(ctx.writer.db);
+
+  expect(written.rows).toStrictEqual([
+    {
+      approval_id: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      state: 'superseded',
+      definitions_hash: null,
+      definitions_origin: null,
+    },
+    {
+      approval_id: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
+      state: 'adopted',
+      definitions_hash: second.skillHash,
+      definitions_origin: 'definitions',
+    },
+  ]);
+
+  expect(exports.rows).toStrictEqual([
+    { approval_id: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', state: 'closed' },
+    { approval_id: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74', state: 'closed' },
+  ]);
+});
+
+test('it fills in an adopted skill that lacks its version and still holds an opened export, though the seed is unchanged', async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
+
+  invariant('skillHash' in skill);
+
+  // the state an adoption left before it recorded the version and closed the export
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    });
+
+    await writeSkillExportState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'opened',
+      baseHash: null,
+      pullRequest: { number: 7, url: 'https://github.test/tides/definitions/pull/7' },
+      at: 2,
+    });
+
+    await writeWrittenSkillState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'adopted',
+      at: 3,
+    });
+  });
+
+  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const written = await sql`select state, definitions_hash, definitions_origin
+    from written_skills`.execute(ctx.writer.db);
+
+  const exports = await sql`select state from skill_exports`.execute(ctx.writer.db);
+
+  expect(result.status).toBe('unchanged');
+
+  expect(written.rows).toStrictEqual([
+    { state: 'adopted', definitions_hash: skill.skillHash, definitions_origin: 'definitions' },
+  ]);
+
+  expect(exports.rows).toStrictEqual([{ state: 'closed' }]);
+});
+
+test('it never closes the export of a later approval in force over an adopted skill', async () => {
+  const ctx = await setupTest();
+
+  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const adopted = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
+  const later = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
+
+  invariant('skillHash' in adopted);
+  invariant('skillHash' in later);
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill: adopted,
+      approvedAt: 1,
+    });
+
+    await writeWrittenSkillState(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      to: 'adopted',
+      at: 2,
+    });
+
+    await writeWrittenSkill(tx, {
+      approvalID: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
+      proposalID: 'w7tn4c9rhz',
+      skill: later,
+      approvedAt: 3,
+    });
+
+    await writeSkillExportState(tx, {
+      approvalID: '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
+      to: 'opened',
+      baseHash: adopted.skillHash,
+      pullRequest: { number: 8, url: 'https://github.test/tides/definitions/pull/8' },
+      at: 4,
+    });
+  });
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const exports = await sql`select state from skill_exports`.execute(ctx.writer.db);
+
+  expect(exports.rows).toStrictEqual([{ state: 'opened' }]);
 });

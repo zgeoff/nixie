@@ -9,6 +9,7 @@ import { readDefinitionsSkills } from './read-definitions-skills';
 import { readWrittenSkills } from './read-written-skills';
 import type { SeedResult } from './run-seed';
 import type { SnapshotPolicy } from './types';
+import { writeAdoptedSkills } from './write-adopted-skills';
 import { writeSeed } from './write-seed';
 
 export interface WrittenSkillSeedOptions {
@@ -40,6 +41,12 @@ export function runWrittenSkillSeed(options: WrittenSkillSeedOptions): Promise<S
       policy: options.policy,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
+    });
+
+    await writeAdoptedSkills(tx, {
+      adopted: overlay.adopted,
+      skills: definitions.skills,
+      at: options.log.writer.clock.now(),
     });
 
     // an adoption leaves the skills in force as they stand, and the seed still records it
