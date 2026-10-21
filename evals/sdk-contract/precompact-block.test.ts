@@ -30,21 +30,7 @@ async function setupTest() {
     env: buildContractEnv(process.env, directory),
   };
 
-  const first = await runContractQuery({
-    prompt: `Keep these tide notes for later.\n${buildFiller(12_000, 'part 1')}\nReply with OK only.`,
-    options,
-  });
-
-  const firstResult = first.messages.at(-1);
-
-  invariant(firstResult?.type === 'result');
-
-  await runContractQuery({
-    prompt: `More tide notes.\n${buildFiller(12_000, 'part 2')}\nReply with OK only.`,
-    options: { ...options, resume: firstResult.session_id },
-  });
-
-  return { directory, options, sessionID: firstResult.session_id };
+  return { directory, options };
 }
 
 test.skipIf(!isContractRun)(
@@ -52,13 +38,27 @@ test.skipIf(!isContractRun)(
   async () => {
     const ctx = await setupTest();
 
+    const first = await runContractQuery({
+      prompt: `Keep these tide notes for later.\n${buildFiller(12_000, 'part 1')}\nReply with OK only.`,
+      options: ctx.options,
+    });
+
+    const firstResult = first.messages.at(-1);
+
+    invariant(firstResult?.type === 'result');
+
+    await runContractQuery({
+      prompt: `More tide notes.\n${buildFiller(12_000, 'part 2')}\nReply with OK only.`,
+      options: { ...ctx.options, resume: firstResult.session_id },
+    });
+
     const postCompact = mock(() => Promise.resolve({}));
 
     const run = await runContractQuery({
       prompt: 'How many parts of tide notes do you hold? Answer with the number only.',
       options: {
         ...ctx.options,
-        resume: ctx.sessionID,
+        resume: firstResult.session_id,
         forkSession: true,
 
         // The CLI's auto-compaction fires at 15% of a 100,000-token window, under the seed's 24,000
@@ -88,6 +88,20 @@ test.skipIf(!isContractRun)(
   async () => {
     const ctx = await setupTest();
 
+    const first = await runContractQuery({
+      prompt: `Keep these tide notes for later.\n${buildFiller(12_000, 'part 1')}\nReply with OK only.`,
+      options: ctx.options,
+    });
+
+    const firstResult = first.messages.at(-1);
+
+    invariant(firstResult?.type === 'result');
+
+    await runContractQuery({
+      prompt: `More tide notes.\n${buildFiller(12_000, 'part 2')}\nReply with OK only.`,
+      options: { ...ctx.options, resume: firstResult.session_id },
+    });
+
     const preCompact = mock<HookCallback>(() =>
       Promise.resolve({ decision: 'block', reason: 'nixie compacts the session itself' }),
     );
@@ -98,7 +112,7 @@ test.skipIf(!isContractRun)(
       prompt: 'How many parts of tide notes do you hold? Answer with the number only.',
       options: {
         ...ctx.options,
-        resume: ctx.sessionID,
+        resume: firstResult.session_id,
         forkSession: true,
 
         // The CLI's auto-compaction fires at 15% of a 100,000-token window, under the seed's 24,000

@@ -21,30 +21,37 @@ async function setupTest() {
   const model = stack.adopt(startStubModel(), (stub) => stub.stop());
   const [tools, recorder] = [createStubToolServer(), buildQueryRecorder()];
 
-  const channel = new TransformStream<InboxMessage, InboxMessage>();
-
-  model.addReplies({ toolUse: { name: 'mcp__nixie__note_wait', input: {} } }, { text: 'Noted.' });
-
-  void stack.adopt(
-    runTurn(buildMockTurnFrame({ profile: { baseURL: model.url } }), {
-      env: { HOME: home, PATH: process.env['PATH'] ?? '', ANTHROPIC_API_KEY: 'imp-placeholder' },
-      toolServer: tools.config,
-      messages: channel.readable,
-      emit: () => Promise.resolve(),
-      runQuery: recorder.runQuery,
-    }),
-    async (turn) => {
-      tools.release();
-
-      await turn;
-    },
-  );
-
-  return { tools, recorder, writer: channel.writable.getWriter() };
+  return { stack, home, model, tools, recorder };
 }
 
 test('it records the options of each query', async () => {
   const ctx = await setupTest();
+
+  const channel = new TransformStream<InboxMessage, InboxMessage>();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_wait', input: {} } },
+    { text: 'Noted.' },
+  );
+
+  void ctx.stack.adopt(
+    runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
+      env: {
+        HOME: ctx.home,
+        PATH: process.env['PATH'] ?? '',
+        ANTHROPIC_API_KEY: 'imp-placeholder',
+      },
+      toolServer: ctx.tools.config,
+      messages: channel.readable,
+      emit: () => Promise.resolve(),
+      runQuery: ctx.recorder.runQuery,
+    }),
+    async (turn) => {
+      ctx.tools.release();
+
+      await turn;
+    },
+  );
 
   await ctx.tools.waitForHeldCall();
 
@@ -54,9 +61,37 @@ test('it records the options of each query', async () => {
 test('it resolves a wait once the CLI queues a message sent during a held tool call', async () => {
   const ctx = await setupTest();
 
+  const channel = new TransformStream<InboxMessage, InboxMessage>();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_wait', input: {} } },
+    { text: 'Noted.' },
+  );
+
+  void ctx.stack.adopt(
+    runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
+      env: {
+        HOME: ctx.home,
+        PATH: process.env['PATH'] ?? '',
+        ANTHROPIC_API_KEY: 'imp-placeholder',
+      },
+      toolServer: ctx.tools.config,
+      messages: channel.readable,
+      emit: () => Promise.resolve(),
+      runQuery: ctx.recorder.runQuery,
+    }),
+    async (turn) => {
+      ctx.tools.release();
+
+      await turn;
+    },
+  );
+
   await ctx.tools.waitForHeldCall();
 
-  void ctx.writer.write({ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' });
+  void channel.writable
+    .getWriter()
+    .write({ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' });
 
   await expect(ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002')).toResolve();
 });
@@ -64,9 +99,37 @@ test('it resolves a wait once the CLI queues a message sent during a held tool c
 test('it resolves a wait for a message the CLI queued before the wait began', async () => {
   const ctx = await setupTest();
 
+  const channel = new TransformStream<InboxMessage, InboxMessage>();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_wait', input: {} } },
+    { text: 'Noted.' },
+  );
+
+  void ctx.stack.adopt(
+    runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
+      env: {
+        HOME: ctx.home,
+        PATH: process.env['PATH'] ?? '',
+        ANTHROPIC_API_KEY: 'imp-placeholder',
+      },
+      toolServer: ctx.tools.config,
+      messages: channel.readable,
+      emit: () => Promise.resolve(),
+      runQuery: ctx.recorder.runQuery,
+    }),
+    async (turn) => {
+      ctx.tools.release();
+
+      await turn;
+    },
+  );
+
   await ctx.tools.waitForHeldCall();
 
-  void ctx.writer.write({ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' });
+  void channel.writable
+    .getWriter()
+    .write({ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' });
 
   await ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002');
 

@@ -8,7 +8,13 @@ import { startTestNixie } from './start-test-nixie';
 async function setupTest() {
   const nixie = await startTestNixie();
 
-  const first = nixie.harness.start();
+  return { nixie };
+}
+
+test('it finds nothing wrong in a log that nixie wrote', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.nixie.harness.start();
 
   await first.ready;
 
@@ -16,14 +22,9 @@ async function setupTest() {
 
   const taskID = String(created);
 
-  await nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
+  await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
   await first.kill();
 
-  return { nixie, taskID };
-}
-
-test('it finds nothing wrong in a log that nixie wrote', async () => {
-  const ctx = await setupTest();
   const oracle = await runOracle(ctx.nixie);
 
   expect(oracle).toStrictEqual({
@@ -40,6 +41,17 @@ test('it finds nothing wrong in a log that nixie wrote', async () => {
 test('it reports a projection table whose rows a fold of the log does not rebuild', async () => {
   const ctx = await setupTest();
 
+  const first = ctx.nixie.harness.start();
+
+  await first.ready;
+
+  const created = await first.request('createTask', { brief: 'Wait an hour.' });
+
+  const taskID = String(created);
+
+  await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
+  await first.kill();
+
   const db = startDatabase(join(ctx.nixie.dataDir, 'nixie.db'));
 
   onTestFinished(() => db.destroy());
@@ -53,6 +65,17 @@ test('it reports a projection table whose rows a fold of the log does not rebuil
 
 test('it reports a provider call that no attempt of an action made', async () => {
   const ctx = await setupTest();
+
+  const first = ctx.nixie.harness.start();
+
+  await first.ready;
+
+  const created = await first.request('createTask', { brief: 'Wait an hour.' });
+
+  const taskID = String(created);
+
+  await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
+  await first.kill();
 
   ctx.nixie.provider.addReplies({ kind: 'success', result: {} });
 
@@ -70,6 +93,17 @@ test('it reports a provider call that no attempt of an action made', async () =>
 test('it reports a provider call without an idempotency key', async () => {
   const ctx = await setupTest();
 
+  const first = ctx.nixie.harness.start();
+
+  await first.ready;
+
+  const created = await first.request('createTask', { brief: 'Wait an hour.' });
+
+  const taskID = String(created);
+
+  await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
+  await first.kill();
+
   ctx.nixie.provider.addReplies({ kind: 'success', result: {} });
 
   await fetch(`${ctx.nixie.provider.url}/send`, { method: 'POST', body: '{}' });
@@ -82,6 +116,17 @@ test('it reports a provider call without an idempotency key', async () => {
 test('it reports a lease that is still held once recovery ran', async () => {
   const ctx = await setupTest();
 
+  const first = ctx.nixie.harness.start();
+
+  await first.ready;
+
+  const created = await first.request('createTask', { brief: 'Wait an hour.' });
+
+  const taskID = String(created);
+
+  await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
+  await first.kill();
+
   const db = startDatabase(join(ctx.nixie.dataDir, 'nixie.db'));
 
   onTestFinished(() => db.destroy());
@@ -90,10 +135,10 @@ test('it reports a lease that is still held once recovery ran', async () => {
     .$extendTables<TasksTables>()
     .updateTable('leases')
     .set({ holder: 'nixie-gone', expires_at: 9_000_000, epoch: 999 })
-    .where('work_id', '=', ctx.taskID)
+    .where('work_id', '=', taskID)
     .execute();
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(oracle.heldLeases).toStrictEqual([`1:task:${ctx.taskID}`]);
+  expect(oracle.heldLeases).toStrictEqual([`1:task:${taskID}`]);
 }, 60_000);
