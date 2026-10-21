@@ -6,18 +6,14 @@ import { stopProcesses } from './stop-processes';
 import type { FaultPointArm, FaultPointWork, NixieMessage } from './types';
 
 export interface NixieProcessOptions {
-  // the program that composes a test build of nixie and starts a harness link
   readonly entry: string;
   readonly env: Readonly<Record<string, string>>;
 
-  // the clock's time at start, in ms since the epoch
   readonly clockMs: number;
 
-  // fault points held from the start, such as a recovery step
   readonly faultPoints?: readonly FaultPointArm[];
 }
 
-// A runner that nixie holds at an armed fault point.
 export interface FaultPointArrival {
   readonly arrivalID: number;
   readonly point: string;
@@ -32,29 +28,20 @@ export interface NixieExit {
 export interface NixieProcess {
   readonly pid: number;
 
-  // resolves once nixie has recovered and started its runners
   readonly ready: Promise<void>;
   readonly exited: Promise<NixieExit>;
 
-  // everything nixie wrote to stderr so far
   readonly readStderr: () => string;
 
-  // the first arrival at the point, of one piece of work when workID is given, that no earlier
-  // wait took
   readonly waitForArrival: (point: string, workID?: string) => Promise<FaultPointArrival>;
   readonly release: (arrival: FaultPointArrival) => void;
 
-  // runs one operation in nixie, such as advance or arm, and returns its result
   readonly request: (operation: string, args: unknown) => Promise<unknown>;
 
-  // SIGKILL to nixie and to every process it started, which nixie's own process groups would
-  // otherwise leave running; resolves once nixie has exited
   readonly kill: () => Promise<NixieExit>;
   readonly signal: (signal: 'SIGTERM' | 'SIGSTOP' | 'SIGCONT') => void;
 }
 
-// Starts a test build of nixie as a child process with an IPC channel to the harness. Its stdout
-// is dropped and its stderr is kept, so a test can name why nixie exited.
 export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
   const channel = createNixieChannel();
   const child = startChild(options, channel.receive);
@@ -96,7 +83,6 @@ export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
   };
 }
 
-// the preload defines NIXIE_TEST_BUILD in nixie as the test runner does in the tests
 const defineTestBuildPath = join(import.meta.dir, 'define-test-build.ts');
 
 function startChild(options: NixieProcessOptions, receive: (message: NixieMessage) => void) {
@@ -118,7 +104,6 @@ function startChild(options: NixieProcessOptions, receive: (message: NixieMessag
 interface CollectedText {
   readonly read: () => string;
 
-  // resolves once the stream has ended and every chunk is read
   readonly done: Promise<void>;
 }
 
@@ -140,8 +125,7 @@ type NixieChild = ReturnType<typeof startChild>;
 
 type OnExit = (exit: NixieExit) => void;
 
-// The exit can land before the last of stderr is read, so it waits for both: the message then holds
-// everything nixie wrote before it exited.
+// Bun can report the exit before the last of stderr is read, so the wait covers both.
 async function waitForExit(
   child: NixieChild,
   stderrDone: Promise<void>,
@@ -149,7 +133,7 @@ async function waitForExit(
 ): Promise<NixieExit> {
   await Promise.all([child.exited, stderrDone]);
 
-  // Bun gives a signal with no name, such as a real-time one, as its number
+  // Bun reports a signal with no name, such as a real-time one, as its number.
   const signal = child.signalCode === null ? null : String(child.signalCode);
   const exit = { code: child.exitCode, signal };
 

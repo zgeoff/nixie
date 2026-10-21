@@ -130,7 +130,6 @@ test('it reports an advance settled once every sleeper it woke sleeps again', as
   const stub = buildStubHarnessChannel();
   const link = startHarnessLink({ NIXIE_TEST_CLOCK_MS: '0' }, stub.channel);
 
-  // a poll loop that sleeps again each time it wakes
   void (async () => {
     for (;;) {
       await link.clock.sleep(1000);

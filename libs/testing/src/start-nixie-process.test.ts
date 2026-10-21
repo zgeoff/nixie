@@ -121,7 +121,7 @@ test('it kills nixie and every process nixie started', async () => {
   await expect(waitForCondition(() => probeProcessGone(childPID))).toResolve();
 });
 
-// 34 is a real-time signal, which has no name, so Bun gives it as a number
+// Signal 34 is a real-time signal, which has no name, so Bun reports it as a number.
 test('it reports a nixie that a signal with no name ended with the signal as its number', async () => {
   const ctx = setupTest();
   const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 0 });

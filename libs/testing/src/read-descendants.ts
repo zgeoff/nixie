@@ -1,7 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 
-// Reads every process below pid from /proc. The harness reads them before a kill, because a child
-// whose parent died is adopted by init and no longer names nixie.
+// Linux reparents a child to init when its parent dies, so the harness reads the tree before a kill.
 export function readDescendants(pid: number): readonly number[] {
   const parents = readParentPIDs();
   const found: number[] = [];
@@ -33,7 +32,8 @@ function readParentPIDs(): ReadonlyMap<number, number> {
   return parents;
 }
 
-// the fourth field of /proc/<pid>/stat, after the command name in parentheses
+// The command name in /proc/<pid>/stat can hold spaces and parentheses, so the fields count from
+// its last closing parenthesis.
 function readParentPID(pid: number): number | null {
   try {
     const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');

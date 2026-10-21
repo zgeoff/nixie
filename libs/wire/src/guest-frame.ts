@@ -10,9 +10,8 @@ const sessionPointSchema = z
 const tokenCountSchema = z.int().nonnegative();
 const toolUseSchema = z.object({ id: z.string(), name: z.string() }).readonly();
 
-// one assistant message: its text, the tools it asked for by the name the model sees, and the
-// reasoning summary the model gives under the summarized thinking display. The summary rides a
-// thinking-only message, so it is absent on a message that carries only the reply's text.
+// The SDK sends the reasoning summary on a thinking-only message, so a message that holds only the
+// reply's text has no summary.
 const assistantFrameSchema = z
   .object({
     type: z.literal('assistant'),
@@ -23,7 +22,6 @@ const assistantFrameSchema = z
   })
   .readonly();
 
-// inbox messages that the model read, by their uuid
 const readFrameSchema = z
   .object({
     type: z.literal('read'),
@@ -40,8 +38,6 @@ const usageSchema = z
   })
   .readonly();
 
-// the context the model read at the turn's last main-chain call, as input plus cache-read plus
-// cache-write tokens, and the window the CLI compacts within
 const contextSchema = z
   .object({
     size: tokenCountSchema,
@@ -49,9 +45,6 @@ const contextSchema = z
   })
   .readonly();
 
-// a model turn ended at a result; boundary is the session's last chain entry where the next turn
-// resumes, isError marks an end a model API error caused, terminalReason is the SDK's end reason,
-// context is absent when no main-chain call reported usage, and thinkingTokens is the turn's total
 const endedFrameSchema = z
   .object({
     type: z.literal('ended'),
@@ -67,8 +60,6 @@ const endedFrameSchema = z
   })
   .readonly();
 
-// the summary a summarize frame asked for: the model's text, the summary's own chain entry, where a
-// request to cut it resumes, and the call's token counts
 const summarizedFrameSchema = z
   .object({
     type: z.literal('summarized'),
@@ -78,11 +69,10 @@ const summarizedFrameSchema = z
   })
   .readonly();
 
-// the guest removed its session state and checked that it is gone
 const purgedFrameSchema = z.object({ type: z.literal('purged') }).readonly();
 
-// the turn stopped without a result the host can commit; model_auth means the model API refused
-// the credential, so every retry fails the same way until the credential changes
+// A model_auth failure means the model API refused the credential, so every retry fails the same
+// way until the credential changes.
 const failedFrameSchema = z
   .object({
     type: z.literal('failed'),
@@ -91,8 +81,6 @@ const failedFrameSchema = z
   })
   .readonly();
 
-// What the guest sends the host during a turn. The host never takes the model's identity from
-// these frames: it records the model of the profile it sent.
 export const guestFrameSchema = z.discriminatedUnion('type', [
   assistantFrameSchema,
   readFrameSchema,

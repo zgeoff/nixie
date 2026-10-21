@@ -11,12 +11,9 @@ interface NixieChannel {
     args: unknown,
   ) => Promise<unknown>;
 
-  // fails every wait still open, and every one after, once nixie has exited
   readonly close: (error: Error) => void;
 }
 
-// Creates the harness's side of the IPC channel to one nixie: its ready message, the arrivals at
-// fault points that tests wait for, and the replies to requests.
 export function createNixieChannel(): NixieChannel {
   const ready = Promise.withResolvers<void>();
   const arrivals = buildArrivalQueue();
@@ -25,8 +22,8 @@ export function createNixieChannel(): NixieChannel {
 
   const counter = { next: 1 };
 
-  // a test that never waits for ready, such as one whose nixie must refuse to start, leaves its
-  // rejection unread
+  // Bun fails a test on an unhandled rejection, and a test whose nixie must refuse to start never
+  // waits for ready.
   void waitQuietly(ready.promise);
 
   return {
@@ -48,9 +45,6 @@ export function createNixieChannel(): NixieChannel {
       counter.next += 1;
 
       requests.set(requestID, reply);
-
-      // a request that a kill cut short, such as a message held at inbox.write.after, rejects
-      // unread when the test never waits for it
       void waitQuietly(reply.promise);
       send({ type: 'request', requestID, operation, args });
 
@@ -82,7 +76,6 @@ interface ArrivalQueue {
   readonly close: (error: Error) => void;
 }
 
-// each arrival goes to the first wait that names it, or waits for one
 function buildArrivalQueue(): ArrivalQueue {
   const unclaimed: FaultPointArrival[] = [];
   const waiters: ArrivalWaiter[] = [];
@@ -134,9 +127,7 @@ function isMatch(arrival: FaultPointArrival, point: string, workID: string | und
 async function waitQuietly(promise: Promise<unknown>): Promise<void> {
   try {
     await promise;
-  } catch {
-    // the caller that waits reads the rejection
-  }
+  } catch {}
 }
 
 type PendingRequests = Map<number, PromiseWithResolvers<unknown>>;
