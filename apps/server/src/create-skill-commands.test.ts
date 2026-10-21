@@ -9,11 +9,8 @@ import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
-// nixie in a test build at ready, with a device signed in through the code it printed at start
 async function setupTest() {
   const nixie = await startTestNixie();
-
-  // boot data: every procedure but enrol needs a device session
   const clients = await createTestClient(nixie);
 
   return { ...nixie, ...clients };
@@ -202,7 +199,6 @@ test('it lists a new version beside the version in force with the untyped token,
   });
 }, 60_000);
 
-// the refusal comes before the command reads its configuration, so no server runs
 test('it approves your edited files in place of the proposal, and puts them in force', async () => {
   const ctx = await setupTest();
 

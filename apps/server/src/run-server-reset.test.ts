@@ -8,8 +8,6 @@ import { runServerReset } from './run-server-reset';
 import { runTestSeed } from './test-utils/run-test-seed';
 import { startTestServer } from './test-utils/start-test-server';
 
-// boot data: a reset needs definitions in force, and every start seeds and creates the
-// conversation task before its runners claim work
 async function setupTest() {
   const server = await startTestServer();
 
@@ -153,8 +151,6 @@ test('it refuses a reset before any definitions are in force, and stops no work'
   expect(stopWork).not.toHaveBeenCalled();
 });
 
-// the reset waits out a grace of 50 ms in place of the 30 s default, which the pool takes the
-// same way; the turn starts before the reset and its gate opens only after the reset returns
 test('it commits nothing of a turn still running at the end of the stop grace', async () => {
   const ctx = await setupTest();
 

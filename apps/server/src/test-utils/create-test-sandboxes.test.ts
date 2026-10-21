@@ -4,7 +4,6 @@ import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createTestSandboxes } from './create-test-sandboxes';
 import { startTestServer } from './start-test-server';
 
-// the sandboxes on the test server's writer and tool endpoint, in a folder of their own
 async function setupTest() {
   const server = await startTestServer();
 

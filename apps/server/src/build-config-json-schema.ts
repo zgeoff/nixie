@@ -2,7 +2,6 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { deploymentConfigSchema } from './deployment-config-schema';
 
-// The keywords that one node of the JSON Schema gains, from the node that z.toJSONSchema emits
 interface ReleaseRule {
   readonly path: readonly string[];
   readonly keywords: (node: Readonly<Record<string, unknown>>) => Record<string, unknown>;
@@ -11,8 +10,8 @@ interface ReleaseRule {
 // z.url checks the protocol of an http URL and that :// follows it, which format uri leaves out
 const httpURLPattern = '^[Hh][Tt][Tt][Pp][Ss]?://';
 
-// The rules on one key that the zod schemas check in code, which z.toJSONSchema drops. A release
-// build refuses the test sandbox, so the imp adapter is the only one and needs its section.
+// z.toJSONSchema drops every rule that zod checks in code, such as a refinement, so these rules
+// add each one back to the published schema.
 const releaseRules: readonly ReleaseRule[] = [
   { path: ['properties', 'sandbox', 'properties', 'adapter'], keywords: () => ({ enum: ['imp'] }) },
   { path: [], keywords: (node) => ({ required: [...toStrings(node['required']), 'imp'] }) },
@@ -37,17 +36,14 @@ const releaseRules: readonly ReleaseRule[] = [
     keywords: () => ({ pattern: httpURLPattern }),
   },
 
-  // nixie takes any zone that Intl resolves, which adds aliases, offsets and any letter case to
-  // these canonical names, so the schema can refuse a zone that nixie reads but never the reverse
+  // Intl also resolves aliases, offsets and any letter case beside these canonical names, so the
+  // schema can refuse a zone that nixie reads but never the reverse.
   {
     path: ['properties', 'time', 'properties', 'default_zone'],
     keywords: () => ({ enum: Intl.supportedValuesOf('timeZone') }),
   },
 ];
 
-// The deployment configuration as the JSON Schema that each release publishes. It holds the input
-// that a release build of nixie reads, defaults included, and leaves out the rules that span keys,
-// such as a role that points at a missing profile, which nixie refuses at start.
 export function buildConfigJSONSchema(): Record<string, unknown> {
   const schema = z.toJSONSchema(deploymentConfigSchema, { io: 'input', target: 'draft-2020-12' });
 

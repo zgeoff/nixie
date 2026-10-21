@@ -1,6 +1,3 @@
-// Stands in for sops: `run-stub-sops.ts decrypt --output-type json <file>` prints the file's
-// plaintext YAML as JSON, as sops prints a decrypted file, and exits 1 with a message on stderr
-// for a file it cannot read, as sops does.
 const [command, flag, format, path] = process.argv.slice(2);
 
 if (command !== 'decrypt' || flag !== '--output-type' || format !== 'json' || path === undefined) {

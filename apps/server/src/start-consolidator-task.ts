@@ -5,8 +5,6 @@ import { startMemoryConsolidatorRunner } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
 import type { ServerParts } from './types';
 
-// Starts the memory consolidator and returns its step. Its first start runs a consolidation at
-// once, and each run after it waits the configured period, a week by default.
 export async function startConsolidatorTask(
   parts: ServerParts,
   store: StartedMemoryStore,
@@ -24,7 +22,6 @@ export async function startConsolidatorTask(
     getPersona: () => parts.inForce.read()?.persona ?? '',
     ownerName: parts.config.owner.name,
 
-    // a failed run tries again after the retry wait, so it is logged and never stops nixie
     onError: (error) => {
       parts.log('memory_consolidator.run_failed', toErrorFields(error));
     },

@@ -4,7 +4,6 @@ import { waitForCondition } from '@heynixie/testing';
 interface ClientMessage {
   readonly text: string;
 
-  // how each part of the text arrived, none by default
   readonly spans?: readonly {
     readonly start: number;
     readonly end: number;
@@ -12,8 +11,6 @@ interface ClientMessage {
   }[];
 }
 
-// Sends the message on the conversation thread through a signed-in client, waits for a model reply
-// with the reply's text after the message, and returns the thread's records as they stood then.
 export async function sendClientMessage(
   client: Pick<ContractClient, 'conversation'>,
   message: ClientMessage,

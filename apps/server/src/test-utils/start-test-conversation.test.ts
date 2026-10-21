@@ -5,7 +5,6 @@ import { startTestConversation } from './start-test-conversation';
 import type { TestServerTools } from './start-test-server';
 import { startTestServer } from './start-test-server';
 
-// a test server on the fake guest for the conversation to run on, serving the tools given or none
 async function setupTest(options: { readonly tools?: TestServerTools } = {}) {
   return { server: await startTestServer(options.tools, { fakeGuest: true }) };
 }

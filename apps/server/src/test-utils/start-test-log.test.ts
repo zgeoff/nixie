@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startTestLog } from './start-test-log';
 
-// a fresh data directory
 async function setupTest() {
   const dataDir = await mkdtemp(join(tmpdir(), 'nixie-log-'));
 

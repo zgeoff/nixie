@@ -11,9 +11,6 @@ export interface ApprovedItem {
   readonly text: string;
 }
 
-// Has the conversation model propose each text as a new item in one turn, with no quote, so the gate
-// holds each for review, then approves each through memory-approve. It returns the items in the
-// order of the texts, each at version 1.
 export async function createApprovedItems(
   nixie: Pick<TestNixie, 'model' | 'configPath'>,
   client: Pick<ContractClient, 'conversation'>,
@@ -52,7 +49,6 @@ export async function createApprovedItems(
   const toItem = (text: string): ApprovedItem => {
     const proposal = proposals.find((pending) => pending.text === text);
 
-    // the turn proposed each text, and memory-pending lists every pending proposal
     invariant(proposal);
 
     return { itemID: proposal.itemID, text };

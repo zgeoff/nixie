@@ -6,16 +6,10 @@ const refSchema = z
   .string()
   .regex(/^[^\s@]+@sha256:[\da-f]{64}$/u, 'an image reference pinned by digest');
 
-// The sandbox manifest the release workflow writes into the nixie image: each slice 1 sandbox kind
-// mapped to its image by digest. No commit holds it, so the nixie image and its sandbox images come
-// from one commit.
 const manifestSchema = z.strictObject({ conversation: refSchema, fetch: refSchema });
 
 export type SandboxImages = Readonly<Record<keyof z.infer<typeof manifestSchema>, SandboxImage>>;
 
-// Loads the sandbox manifest and names each image by its kind and the head of its digest, so a
-// release's images sit beside the previous release's in impd, and a changed digest changes the
-// name a spec gives, which replaces the sandbox.
 export async function loadSandboxManifest(path: string): Promise<SandboxImages> {
   const text = await readFile(path, 'utf8');
 

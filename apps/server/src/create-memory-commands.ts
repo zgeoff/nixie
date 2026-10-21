@@ -3,8 +3,6 @@ import { resolveSocketPath } from './resolve-socket-path';
 import { sendHostRequest } from './send-host-request';
 import type { CLIFlags, CLIIO, Command } from './types';
 
-// The memory host commands: they list the pending memory proposals as JSON or answer one under
-// --hash, and show one item or change it as your own action, a forget for good included.
 export function createMemoryCommands(): readonly (readonly [string, Command])[] {
   return [
     ['memory-pending', (flags, io) => runMemoryPending(flags.config, io)],
@@ -32,7 +30,6 @@ async function runMemoryPending(configPath: string, io: CLIIO): Promise<number> 
   return 0;
 }
 
-// the answer takes the proposal's ID and the action hash that memory-pending printed for it
 function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
   return async (flags, io, args) => {
     const request = buildAnswerRequest(command, args[0], flags);
@@ -62,7 +59,6 @@ function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
   };
 }
 
-// An answer's request: an approval or a rejection, each with the input its procedure takes.
 type AnswerRequest =
   | {
       readonly command: 'approve';
@@ -73,8 +69,6 @@ type AnswerRequest =
       readonly answer: HostContractInputs['memory']['proposals']['reject'];
     };
 
-// the request an answer sends, or null when its arguments are malformed; only an approval takes
-// --revise, --as-new or --text, and only a rejection takes --reason
 function buildAnswerRequest(
   command: 'approve' | 'reject',
   proposalID: string | undefined,
@@ -113,8 +107,6 @@ function buildAnswerRequest(
     : null;
 }
 
-// <itemID>@<version>, as memory-show and an approval held for a close match print an item, or null
-// when malformed
 function parseVersionTarget(flag: string): { itemID: string; version: number } | null {
   const at = flag.lastIndexOf('@');
   const version = flag.slice(at + 1);
@@ -124,7 +116,6 @@ function parseVersionTarget(flag: string): { itemID: string; version: number } |
     : { itemID: flag.slice(0, at), version: Number(version) };
 }
 
-// prints an item with its state and every version, oldest first
 async function runMemoryShow(
   configPath: string,
   io: CLIIO,
@@ -149,7 +140,6 @@ async function runMemoryShow(
   return 0;
 }
 
-// an edit binds to the version memory-show printed, and replaces the item's whole text
 async function runMemoryEdit(flags: CLIFlags, io: CLIIO, args: readonly string[]): Promise<number> {
   const [flag] = args;
   const target = flag === undefined ? null : parseVersionTarget(flag);
@@ -173,8 +163,6 @@ async function runMemoryEdit(flags: CLIFlags, io: CLIIO, args: readonly string[]
   return 0;
 }
 
-// a retirement, a restore or a forget binds to the version memory-show printed, so an item that
-// changed since refuses it as stale
 function makeMemoryVersionChange(command: 'retire' | 'restore' | 'forget'): Command {
   return async (flags, io, args) => {
     const [flag] = args;
@@ -198,7 +186,6 @@ function makeMemoryVersionChange(command: 'retire' | 'restore' | 'forget'): Comm
   };
 }
 
-// a pin adds no version, so it names the item alone
 function makeMemoryPin(isPinned: boolean): Command {
   return async (flags, io, args) => {
     const [itemID] = args;

@@ -40,7 +40,6 @@ test('it refuses a reset, since no server runs behind the socket', async () => {
   });
 });
 
-// the directory's removal registers after the check, so the check sees what the stop left
 test('it stops the socket when the test finishes', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-control-'));
 

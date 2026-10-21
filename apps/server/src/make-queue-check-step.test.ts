@@ -19,9 +19,6 @@ import { createTestStep } from './test-utils/create-test-step';
 import { runCrashedTestAttempt } from './test-utils/run-crashed-test-attempt';
 import { runTestAttempt } from './test-utils/run-test-attempt';
 
-// a writer with the tasks and actions projections on a test clock, a claimed step, the queue
-// check's step behind the action queue's step tracking, a recorder of the connector's log lines,
-// and the wakes, steps and attempts the tests drive
 async function setupTest() {
   const dataDir = await mkdtemp(`${tmpdir()}/nixie-queue-check-`);
   const writer = await startWriter({ dataDir });
@@ -74,8 +71,6 @@ async function setupTest() {
     runStep,
     wake,
 
-    // a start after a crash: recovery marks each attempt without a result unknown, then the start
-    // writes its own wake
     startAgain: async () => {
       await writeUnknownOutcomes(context);
       await wake();
@@ -88,7 +83,6 @@ async function setupTest() {
       return next;
     },
 
-    // the step fails, and the clock moves to its retry
     failStep: async (failed: StepInput) => {
       await writeStepError(context, failed, {
         error: new Error('the step failed'),

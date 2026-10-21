@@ -5,9 +5,6 @@ import { conversationTaskID } from '@heynixie/tasks';
 import type { StartState } from './build-start-state';
 import { formatFailedTurns } from './format-failed-turns';
 
-// Makes the step error callback that marks the conversation's turns as failing, as an advisory
-// part, once its errors in a row reach the error limit or at once on a refused model credential,
-// which no retry passes. Its next turn that succeeds clears the mark.
 export function makeConversationFailureMarker(
   state: Pick<StartState, 'update'>,
 ): (errored: StepErrored) => void {
@@ -27,7 +24,6 @@ export function makeConversationFailureMarker(
   };
 }
 
-// the host's code is a name for the failure, never its text, so the reason may carry it
 function formatFailureReason(errored: StepErrored): string {
   const count = formatFailedTurns(errored.errors);
 

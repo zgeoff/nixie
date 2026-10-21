@@ -7,7 +7,6 @@ import { startTestAPI } from '@heynixie/api/test-utils';
 import { buildHostClient } from './build-host-client';
 import { startControlSocket } from './start-control-socket';
 
-// a control socket that serves the host procedures over the API's context, as the server opens it
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-control-'));
 

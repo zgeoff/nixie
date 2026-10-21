@@ -3,7 +3,6 @@ import { createTestClient } from './create-test-client';
 import { sendClientMessage } from './send-client-message';
 import { startTestNixie } from './start-test-nixie';
 
-// nixie in a test build at ready, and a client signed in through the code it printed at start
 async function setupTest() {
   const nixie = await startTestNixie();
   const clients = await createTestClient(nixie);

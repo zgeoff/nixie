@@ -1,6 +1,3 @@
-// The release build: `bun apps/server/src/run-release-build.ts <outdir>` bundles the server and its
-// SQLite worker, and exits 1 when the bundle holds a test-build ID, such as a fault point's or the
-// test sandbox's, so neither the image build nor CI can ship a test build.
 import { writeReleaseBundle } from './write-release-bundle';
 
 const outdir = process.argv.at(2);

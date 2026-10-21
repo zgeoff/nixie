@@ -1,5 +1,3 @@
-// `bun run --cwd apps/server config-schema` writes the deployment configuration's JSON Schema to
-// config.schema.json, and a configuration change commits the new file in the same pull request.
 import { join } from 'node:path';
 import { buildConfigJSONSchema } from './build-config-json-schema';
 

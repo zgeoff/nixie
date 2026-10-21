@@ -7,16 +7,11 @@ import { buildConversationTools } from '../build-conversation-tools';
 import type { BuildTestServerTools } from './start-test-server';
 
 export interface TestConversationTools {
-  // the endpoint's tools, built from the test server's context
   readonly buildTools: BuildTestServerTools;
 
-  // gives the memory tools the store once it starts, as the server's registry does
   readonly setStore: (store: MemoryToolStore) => void;
 }
 
-// Builds the conversation's own tools behind the fixed rules: web fetch, whose every fetch returns
-// the reply given, the time tool and log reader on the server's context, and the memory tools over
-// the store set later, which throw until it is set.
 export function buildTestConversationTools(reply: FetchReply): TestConversationTools {
   const stores: { current: MemoryToolStore | null } = { current: null };
 

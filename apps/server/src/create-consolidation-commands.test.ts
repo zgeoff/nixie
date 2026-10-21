@@ -13,8 +13,6 @@ import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
 import { startTestControlSocket } from './test-utils/start-test-control-socket';
 
-// the control socket over a test memory in a data directory, and a configuration that names it, as
-// a shell in nixie's container finds the running server
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-diff-'));
 
@@ -27,7 +25,6 @@ async function setupTest() {
     readMemory: () => memory.store,
   });
 
-  // boot data: a host command reads the data directory from the configuration, which must parse
   const configPath = join(directory, 'config.yaml');
 
   await writeFile(

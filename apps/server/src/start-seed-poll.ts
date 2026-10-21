@@ -13,13 +13,9 @@ export type SeedPollParts = SeedParts & {
 };
 
 interface SeedPollOptions {
-  // the seed at start was refused, so the poll retries it within seconds
   readonly isRefusedAtStart: boolean;
 }
 
-// Probes the definitions source on the configured interval, 5 min by default, and from 1 s after a
-// failure. Each probe logs definitions.probed, and only a seed logs definitions.seeded, so the log
-// shows the poll alive while the definitions stay the same.
 export async function startSeedPoll(parts: SeedPollParts, options: SeedPollOptions): Promise<void> {
   const poll = startDefinitionsPoll({
     probe: parts.source.probe,
@@ -29,10 +25,8 @@ export async function startSeedPoll(parts: SeedPollParts, options: SeedPollOptio
       return seeded.status !== 'refused';
     },
 
-    // a skill reload seeds over the same parts, and its refusal leaves the definitions unready
     isRefused: () => !parts.state.read().definitions.isReady,
 
-    // an approval or a retirement whose own seed failed stays in the store until a seed lands
     probeSeedDue: () => probeWrittenSkillsPending(parts.context.log.writer.db),
     clock: parts.context.clock,
     intervalMs: parts.config.definitions.probeIntervalMs,

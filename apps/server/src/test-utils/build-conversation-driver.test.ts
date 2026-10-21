@@ -59,7 +59,6 @@ test('it returns every turn and summary of a step, and a step that sends only a 
 test('it fails a send whose step errored after it sent a turn, with the step error as its cause', async () => {
   const ctx = await setupTest();
 
-  // a fresh session that overflows has nothing to compact, so the step throws
   ctx.server.guest.addReplies({ overflow: 'prompt_too_long' });
 
   const failure = await ctx.conversation.send('What does the tide gauge read?').then(

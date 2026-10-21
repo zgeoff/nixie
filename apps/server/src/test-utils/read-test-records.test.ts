@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { logProjections, startWriter, writeRecords } from '@heynixie/log';
 import { readTestRecords } from './read-test-records';
 
-// a stopped writer's data directory and the deployment key its records were written under
 async function setupTest() {
   const dataDir = await mkdtemp(join(tmpdir(), 'nixie-records-'));
 

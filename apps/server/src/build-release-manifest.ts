@@ -1,7 +1,5 @@
 import type { MigrationSummary } from '@heynixie/db';
 
-// The images of one release, each as <repository>@sha256:<digest>, as the release's image stages
-// record them
 interface ReleaseImages {
   readonly server: string;
   readonly web: string;
@@ -22,9 +20,6 @@ export interface ReleaseManifestInputs {
   readonly configSchema: ConfigSchemaSummary;
 }
 
-// The release.json that each release publishes, which a deployment reads in place of nixie's tree.
-// format rises only on a change that a reader of the format before would misread. Each image goes
-// by tag and digest, because the workflow publishes the file once every image carries the tag.
 export function buildReleaseManifest(inputs: ReleaseManifestInputs) {
   return {
     format: 1,
@@ -36,7 +31,6 @@ export function buildReleaseManifest(inputs: ReleaseManifestInputs) {
       web: toTaggedImage(inputs.images.web, inputs.version),
     },
 
-    // the sandbox manifest that the server image carries, which impd needs before a rollout
     sandboxImages: {
       conversation: toTaggedImage(inputs.images.conversation, inputs.version),
       fetch: toTaggedImage(inputs.images.fetch, inputs.version),

@@ -11,7 +11,6 @@ import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { buildConversationTools } from './build-conversation-tools';
 import { startTestLog } from './test-utils/start-test-log';
 
-// the log reader over a fresh log, which takes the records of each tool call a test runs
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
@@ -294,7 +293,6 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
     (definition) => [definition.name, Object.keys(definition.input['properties'] ?? {})] as const,
   );
 
-  // an answer to a change binds to its action hash, so a tool that takes none cannot answer one
   expect(inputs).toSatisfyAll(
     ([, keys]: readonly [string, readonly string[]]) => !keys.includes('actionHash'),
   );
@@ -363,7 +361,6 @@ test('it denies a model call to memory.export under the read-only rule, so nothi
       log: ctx.log,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-      // a denied call never reaches the queue
       queue: {
         enqueue: () => Promise.reject(new Error('a denied call reached the queue')),
         waitForOutcome: () => Promise.resolve(null),

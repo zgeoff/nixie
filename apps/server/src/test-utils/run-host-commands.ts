@@ -1,8 +1,6 @@
 import type { HostCommandRun } from './run-host-command';
 import { runHostCommand } from './run-host-command';
 
-// Runs host commands one after another, as a shell in nixie's container types them, so each starts
-// once the one before exits, and returns each run in order.
 export function runHostCommands(
   configPath: string,
   commands: readonly (readonly string[])[],

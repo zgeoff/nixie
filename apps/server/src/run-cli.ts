@@ -13,8 +13,6 @@ import type { ParsedCLIArgs } from './read-cli-args';
 import { startServer } from './start-server';
 import type { CLIFlags, CLIIO, Command } from './types';
 
-// serve runs the server until SIGTERM; check-encoder exits 0 once the encoder loads from --encoder
-// and encodes a text.
 const commands = new Map<string, Command>([
   ['serve', (flags, io) => runServe(flags, io)],
   ['check-encoder', (flags, io) => checkEncoder(flags.encoder, io)],
@@ -27,9 +25,6 @@ const commands = new Map<string, Command>([
   ...createSkillCommands(),
 ]);
 
-// Runs one of nixie's commands, serve by default, and returns its exit code. --config names the
-// deployment configuration; --manifest, --sops and --encoder name what the nixie image fixes. An
-// unknown command exits 2, and a flag the command line cannot give exits 1.
 export async function runCLI(argv: readonly string[], io: CLIIO): Promise<number> {
   const parsed = await readCLIArgs(argv, [...commands.keys()]);
 
@@ -49,8 +44,7 @@ export async function runCLI(argv: readonly string[], io: CLIIO): Promise<number
 }
 
 // Bun as PID 1 ignores SIGTERM unless the process handles it, so serve waits for the signal
-// itself. A runner failure, such as another process taking the writer, exits 1, and a finished
-// reset exits 0.
+// itself.
 async function runServe(flags: CLIFlags, io: CLIIO): Promise<number> {
   const server = await startServer({
     configPath: flags.config,
@@ -71,7 +65,6 @@ async function runServe(flags: CLIFlags, io: CLIIO): Promise<number> {
   return exitCode;
 }
 
-// the server's logger holds the configured level, which the command's own logger predates
 async function waitForStopSignal(io: CLIIO, log: Logger): Promise<number> {
   const signal = await io.waitForSignal();
 
@@ -86,7 +79,6 @@ async function waitForFailure(failed: Promise<unknown>): Promise<number> {
   return 1;
 }
 
-// a reset leaves the server with no work, so it stops, and the normal start rebuilds the rest
 async function waitForReset(reset: Promise<void>): Promise<number> {
   await reset;
 

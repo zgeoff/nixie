@@ -1,13 +1,8 @@
 import type { HealthChecks, PartRefresh, PartReport } from '@heynixie/ops';
 import type { StartState } from './build-start-state';
 
-// The readiness parts that call out of the process: impd's answer and the data volume's use. A
-// refresh checks them on an interval, so a readiness request never waits on impd.
 export type RefreshedPart = 'imp_runtime' | 'disk';
 
-// The readiness checks of the slice 1 parts, the dependency parts and the advisory part. The
-// conversation imp stays unready until the runners start, so a start step that fails and retries
-// after it keeps nixie degraded.
 export function buildReadinessChecks(
   state: StartState,
   refresh: Pick<PartRefresh<RefreshedPart>, 'read'>,

@@ -13,9 +13,6 @@ import { startSeedPoll } from './start-seed-poll';
 import type { AnyPartDeclaration } from './types';
 import { writeStartRecord } from './write-start-record';
 
-// The seed after the conversation imp, the record of this start, then the runners: from here
-// runners claim work. The record follows the seed, so it holds the persona this start gives the
-// conversation. A refused seed leaves the last good one in force, and the poll retries it soon.
 export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
   {
     name: 'definitions_seed',
@@ -38,7 +35,6 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     start: (reader) => createConversationTask(reader.get('server_parts').context),
   },
   {
-    // each system task's step runs its own session, and every other task is the conversation's
     name: 'runners',
     needs: [
       'server_parts',
@@ -73,7 +69,6 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       }),
   },
   {
-    // a skill proposal left unanswered lapses, and the conversation hears of it in its next turn
     name: 'skill_lapse_sweep',
     needs: ['server_parts', 'start_record'],
     start: async (reader) => {
@@ -90,7 +85,6 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     },
   },
   {
-    // each skill nixie wrote goes to the definitions repo as a pull request, when one is configured
     name: 'skill_exports',
     needs: ['inputs', 'server_parts', 'start_record'],
     start: async (reader) => {
@@ -115,7 +109,6 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     },
   },
   {
-    // the first device signs in with the code nixie prints at start while no device holds a session
     name: 'ready',
     needs: ['server_parts', 'seed_poll'],
     start: async (reader) => {

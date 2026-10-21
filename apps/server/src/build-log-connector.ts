@@ -2,7 +2,6 @@ import type { ActionConnector } from '@heynixie/connectors';
 import type { Logger } from '@heynixie/logger';
 import type { ToolDefinition } from '@heynixie/tools';
 
-// The log-only connector: one queued tool, and the connector the action runners run it with.
 export interface LogConnector {
   readonly tool: ToolDefinition;
   readonly connector: ActionConnector;
@@ -10,7 +9,6 @@ export interface LogConnector {
 
 const logConnectorTool = 'actions.log';
 
-// the sequence of the wake that started the check, which gives each start's action its own hash
 const actionsLogInput = {
   type: 'object',
   properties: { wake: { type: 'integer', minimum: 1 } },
@@ -25,9 +23,6 @@ const actionsLogOutput = {
   additionalProperties: false,
 };
 
-// Builds the log-only connector, which proves the action queue on every deploy. Its tool takes the
-// sequence of the check's wake, and each attempt logs the action ID and the attempt alone. It
-// declares write, the effect of its log line, because the registry queues only an outside effect.
 export function buildLogConnector(log: Logger): LogConnector {
   return {
     tool: {
@@ -47,7 +42,6 @@ export function buildLogConnector(log: Logger): LogConnector {
       },
       execution: 'queued',
 
-      // the endpoint hands a queued tool's call to the action queue and never runs it
       run: () =>
         Promise.resolve({ status: 'error', message: `${logConnectorTool} runs only queued` }),
     },

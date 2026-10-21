@@ -10,9 +10,6 @@ export interface ServerContext {
   readonly inForce: InForce;
 }
 
-// The context every module writes through: the server's log, the writer's clock, and the snapshot
-// hash of the definitions in force, which the API's context extends with its settings and the
-// conversation's session cleanup, which readSessionCleanup returns once it starts.
 export async function createServerContext(
   writer: Writer,
   deploymentKey: CryptoKey,
@@ -33,7 +30,6 @@ export async function createServerContext(
       log: buildServerLog(writer, deploymentKey),
       clock: writer.clock,
 
-      // an empty hash before the first seed, which the log refuses, so nothing writes until a seed
       definitions: () => ({ snapshotHash: inForce.read()?.snapshotHash ?? '' }),
       settings: defaultAPISettings,
       readSessionCleanup,
