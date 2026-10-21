@@ -58,11 +58,7 @@ async function runAfter(
 }
 
 async function waitForCleanup(gate: CleanupGate, cleanup: Promise<void>): Promise<void> {
-  try {
-    await cleanup;
-  } catch {
-    // The cleanup's own caller awaits the same promise and handles its failure.
-  } finally {
-    gate.pending -= 1;
-  }
+  await cleanup.catch(() => {});
+
+  gate.pending -= 1;
 }
