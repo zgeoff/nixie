@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 type ScriptedMessage = (
   | { readonly text: string }
   | {
@@ -31,13 +33,18 @@ interface ScriptedAuthFailure {
 // reply until it resolves, so a test can keep a turn running.
 export type ScriptedReply = ScriptedMessage | ScriptedRefusal | ScriptedAuthFailure;
 
-interface ScriptedModelBody {
-  readonly model?: string;
-  readonly stream?: boolean;
-  readonly system?: unknown;
-  readonly messages?: readonly { readonly role: string; readonly content: unknown }[];
-  readonly tools?: readonly { readonly name: string }[];
-}
+const scriptedMessageSchema = z.looseObject({ role: z.string(), content: z.unknown() });
+const scriptedToolSchema = z.looseObject({ name: z.string() });
+
+const scriptedModelBodySchema = z.looseObject({
+  model: z.string().exactOptional(),
+  stream: z.boolean().exactOptional(),
+  system: z.unknown().exactOptional(),
+  messages: scriptedMessageSchema.array().exactOptional(),
+  tools: scriptedToolSchema.array().exactOptional(),
+});
+
+type ScriptedModelBody = z.infer<typeof scriptedModelBodySchema>;
 
 // One request the stub model received, with its body parsed.
 export interface ScriptedModelRequest {
@@ -98,9 +105,7 @@ async function readRequest(request: Request): Promise<ScriptedModelRequest> {
   return {
     path: new URL(request.url).pathname,
     headers: Object.fromEntries(request.headers),
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the CLI's own request body
-    body: text === '' ? null : (JSON.parse(text) as ScriptedModelBody),
+    body: text === '' ? null : scriptedModelBodySchema.parse(JSON.parse(text)),
   };
 }
 

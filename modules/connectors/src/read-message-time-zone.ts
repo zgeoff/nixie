@@ -9,7 +9,7 @@ const ownerMessageKind: TasksRecordKind = 'owner_message';
 // message does. The API keeps the zone in the message's payload, outside its erasable fields, so
 // the zone stays readable after the message's text is forgotten.
 export async function readMessageTimeZone(log: Pick<Log, 'writer'>): Promise<string | null> {
-  const timeZone = sql<string | null>`json_extract(payload, '$.timeZone')`;
+  const timeZone = sql`json_extract(payload, '$.timeZone')`;
 
   const row = await log.writer.db
     .$extendTables<LogTables>()
@@ -21,5 +21,5 @@ export async function readMessageTimeZone(log: Pick<Log, 'writer'>): Promise<str
     .limit(1)
     .executeTakeFirst();
 
-  return row?.timeZone ?? null;
+  return typeof row?.timeZone === 'string' ? row.timeZone : null;
 }

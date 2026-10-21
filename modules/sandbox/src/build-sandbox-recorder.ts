@@ -5,15 +5,10 @@ import { sandboxDestroyedCodec } from './sandbox-destroyed-codec';
 import { sandboxGrantedCodec } from './sandbox-granted-codec';
 import type { SandboxRecordKind } from './sandbox-record-kind';
 import { sandboxSleptCodec } from './sandbox-slept-codec';
+import { sandboxSpecSchema } from './sandbox-spec-schema';
 import { sandboxWokenCodec } from './sandbox-woken-codec';
 import { sandboxesProjection } from './sandboxes-projection';
-import type {
-  SandboxEvent,
-  SandboxRecorder,
-  SandboxRow,
-  SandboxSpec,
-  SandboxTables,
-} from './types';
+import type { SandboxEvent, SandboxRecorder, SandboxRow, SandboxTables } from './types';
 
 export interface SandboxRecorderOptions {
   // a log whose projections include sandboxesProjection
@@ -117,8 +112,6 @@ function toSandboxRow(row: Row): SandboxRow {
     adapter: row.adapter,
     owner: row.owner,
     state: row.state,
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the projection wrote a SandboxSpec
-    spec: JSON.parse(row.spec) as SandboxSpec,
+    spec: sandboxSpecSchema.parse(JSON.parse(row.spec)),
   };
 }

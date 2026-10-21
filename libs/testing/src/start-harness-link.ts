@@ -1,4 +1,5 @@
 import { setImmediate } from 'node:timers/promises';
+import { z } from 'zod';
 import type { TestClock } from './build-test-clock';
 import { buildTestClock } from './build-test-clock';
 import { harnessEnv } from './harness-env';
@@ -10,7 +11,7 @@ export interface HarnessChannel {
   readonly subscribe: (onMessage: (message: HarnessMessage) => void) => void;
 }
 
-export type HarnessOperation = (args: unknown) => unknown;
+export type HarnessOperation<Args> = (args: Args) => unknown;
 
 // nixie's half of the crash harness: the one clock, which the harness sets at start and advances,
 // the fault point handler, which holds a runner at an armed point until the harness releases it,
@@ -18,7 +19,11 @@ export type HarnessOperation = (args: unknown) => unknown;
 export interface HarnessLink {
   readonly clock: TestClock;
   readonly waitAtFaultPoint: (point: string, work: FaultPointWork) => Promise<void>;
-  readonly registerOperation: (name: string, operation: HarnessOperation) => void;
+  readonly registerOperation: <Args>(
+    name: string,
+    schema: z.ZodType<Args>,
+    operation: HarnessOperation<Args>,
+  ) => void;
   readonly sendReady: () => void;
 }
 
@@ -37,6 +42,21 @@ const processChannel: HarnessChannel = {
   },
 };
 
+const faultPointArmSchema = z.object({
+  point: z.string(),
+  kind: z.string().exactOptional(),
+  workID: z.string().exactOptional(),
+  times: z.number().exactOptional(),
+}) satisfies z.ZodType<FaultPointArm>;
+
+const advanceArgsSchema = z.object({
+  durationMs: z.number(),
+  settle: z.boolean().exactOptional(),
+
+  // how long an advance waits for the sleepers it woke to sleep again
+  settleTimeoutMs: z.number().exactOptional(),
+});
+
 // Starts the link from the clock time and the armed fault points the harness passed in the
 // environment. Two operations are built in: advance, which moves the clock and, with settle, waits
 // for every sleeper it woke to sleep again, and arm, which holds one more fault point.
@@ -47,13 +67,13 @@ export function startHarnessLink(
   const clock = buildTestClock(Number(env[harnessEnv.clockMs] ?? '0'));
   const arms = parseArms(env[harnessEnv.faultPoints]);
 
-  const operations = new Map<string, HarnessOperation>();
+  const operations = new Map<string, HarnessOperation<unknown>>();
   const holds = new Map<number, () => void>();
 
   const arrivals = { next: 1 };
 
-  operations.set('advance', (args) => runAdvance(clock, args));
-  operations.set('arm', (args) => runArm(arms, args));
+  operations.set('advance', (args) => runAdvance(clock, advanceArgsSchema.parse(args)));
+  operations.set('arm', (args) => runArm(arms, faultPointArmSchema.parse(args)));
 
   channel.subscribe((message) => {
     if (message.type === 'release') {
@@ -87,8 +107,8 @@ export function startHarnessLink(
 
       await hold.promise;
     },
-    registerOperation: (name, operation) => {
-      operations.set(name, operation);
+    registerOperation: (name, schema, operation) => {
+      operations.set(name, (args) => operation(schema.parse(args)));
     },
     sendReady: () => {
       channel.send({ type: 'ready' });
@@ -103,8 +123,7 @@ interface HeldArm {
 }
 
 function parseArms(text: string | undefined): HeldArm[] {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness wrote the JSON
-  const parsed = text === undefined ? [] : (JSON.parse(text) as readonly FaultPointArm[]);
+  const parsed = text === undefined ? [] : z.array(faultPointArmSchema).parse(JSON.parse(text));
 
   return parsed.map((arm) => buildHeldArm(arm));
 }
@@ -113,19 +132,12 @@ function buildHeldArm(arm: FaultPointArm): HeldArm {
   return { arm, held: { remaining: arm.times ?? 1 } };
 }
 
-interface AdvanceArgs {
-  readonly durationMs: number;
-  readonly settle?: boolean;
-
-  // how long an advance waits for the sleepers it woke to sleep again
-  readonly settleTimeoutMs?: number;
-}
-
 const defaultSettleTimeoutMs = 5000;
 
-async function runAdvance(clock: TestClock, args: unknown): Promise<{ readonly settled: boolean }> {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
-  const advance = args as AdvanceArgs;
+async function runAdvance(
+  clock: TestClock,
+  advance: z.infer<typeof advanceArgsSchema>,
+): Promise<{ readonly settled: boolean }> {
   const before = clock.countSleepers();
 
   clock.advance(advance.durationMs);
@@ -143,16 +155,15 @@ async function runAdvance(clock: TestClock, args: unknown): Promise<{ readonly s
   return { settled: clock.countSleepers() >= before };
 }
 
-function runArm(arms: HeldArm[], args: unknown): null {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
-  arms.push(buildHeldArm(args as FaultPointArm));
+function runArm(arms: HeldArm[], arm: FaultPointArm): null {
+  arms.push(buildHeldArm(arm));
 
   return null;
 }
 
 async function runRequest(
   channel: HarnessChannel,
-  operations: ReadonlyMap<string, HarnessOperation>,
+  operations: ReadonlyMap<string, HarnessOperation<unknown>>,
   request: Extract<HarnessMessage, { type: 'request' }>,
 ): Promise<void> {
   const operation = operations.get(request.operation);

@@ -75,16 +75,29 @@ after a compressed body is decoded, so a small compressed body cannot expand pas
 body limit or the text limit stops the read and marks the result truncated, and the text cut never
 splits a character. Passing the time limit or the redirect limit fails the fetch.
 
+### The page text
+
 An HTML page returns its readable text: the title, then the text of the page's main content, outside
 scripts, styles and other hidden elements, with a line break around each block. The main content is
 the page's articles, else its main element, else the whole page without its own header and footer,
-and the fetcher takes the next of those when one holds no text. Navigation and asides never count,
-so site menus never use up the text limit before the content. An article comes before the main
-element because a site's main element often holds toolbars around the article. Another text type
-returns as it arrived, in the charset its content type names, and a binary type returns no text, so
-the fetcher never reads its body. A 403 or 503 that carries Cloudflare's challenge header, or the
-markup of its challenge page, sets the blocked reason. A challenge needs a browser that runs its
-script, so the fetcher reports it rather than trying to pass it.
+and the fetcher takes the next of those when one holds no text. The text of navigation and asides
+never counts as main content, so site menus never come before the content. An article comes before
+the main element because a site's main element often holds toolbars around the article.
+
+The readable text keeps each link's target, so the model can follow a link to the next page. A link
+in the main content reads as its text followed by `[→ <target>]`, with the target resolved against
+the page's final URL. After the main content comes a list headed "Other links on this page", which
+holds the links from the rest of the page, such as its navigation, asides, header and footer. The
+list holds each target once, leaves out a target the main content shows, and stops at a fixed count,
+so a page of menus cannot fill the text limit. The list comes last, so a page cut at the text limit
+loses its list before its article. A link to the page itself, to a fragment of it, or through a
+scheme other than `https` and `http`, such as `javascript:`, keeps only its text, because the model
+has nothing to fetch there.
+
+Another text type returns as it arrived, in the charset its content type names, and a binary type
+returns no text, so the fetcher never reads its body. A 403 or 503 that carries Cloudflare's
+challenge header, or the markup of its challenge page, sets the blocked reason. A challenge needs a
+browser that runs its script, so the fetcher reports it rather than trying to pass it.
 
 ## The fetch image
 

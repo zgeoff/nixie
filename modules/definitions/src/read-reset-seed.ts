@@ -1,4 +1,5 @@
 import type { JSONObject } from '@heynixie/log';
+import { parseJSONObject } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import invariant from 'tiny-invariant';
 import { loadSkillVersions } from './load-skill-versions';
@@ -78,9 +79,7 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     form: snapshot.form,
     label: snapshot.label,
     createdAt: snapshot.created_at,
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the log wrote a JSON object
-    payload: JSON.parse(record.payload) as JSONObject,
+    payload: parseJSONObject(record.payload),
     skills: await loadSnapshotSkills(db, inForce.snapshotHash),
     written,
     beneath: [...beneath.values()],

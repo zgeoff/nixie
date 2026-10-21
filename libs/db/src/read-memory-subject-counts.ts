@@ -1,5 +1,7 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
+import { z } from 'zod';
+import { readQueryRows } from './read-query-rows';
 
 export interface SubjectCount {
   readonly owner: number;
@@ -27,10 +29,13 @@ async function readTableSubjectCounts(
   db: Kysely<unknown>,
   table: 'memory_items' | 'memory_proposals',
 ): Promise<SubjectCount> {
-  const columns = await sql<{ name: string }>`
-    select name from pragma_table_info(${table})`.execute(db);
+  const columns = await readQueryRows(
+    sql`select name from pragma_table_info(${table})`,
+    db,
+    z.object({ name: z.string() }),
+  );
 
-  const names = new Set(columns.rows.map((column) => column.name));
+  const names = new Set(columns.map((column) => column.name));
 
   if (names.size === 0) {
     return { owner: 0, shared: 0, self: 0 };
@@ -38,11 +43,13 @@ async function readTableSubjectCounts(
 
   const subject = pickSubjectExpression(names);
 
-  const rows = await sql<{ subject: string; count: number }>`
-    select ${subject} as subject, count(*) as count from ${sql.table(table)}
-    group by 1`.execute(db);
+  const rows = await readQueryRows(
+    sql`select ${subject} as subject, count(*) as count from ${sql.table(table)} group by 1`,
+    db,
+    z.object({ subject: z.string(), count: z.number() }),
+  );
 
-  const counts = new Map(rows.rows.map((row) => [row.subject, row.count]));
+  const counts = new Map(rows.map((row) => [row.subject, row.count]));
 
   return {
     owner: counts.get('owner') ?? 0,

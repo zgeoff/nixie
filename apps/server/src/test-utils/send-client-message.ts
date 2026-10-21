@@ -19,7 +19,7 @@ export async function sendClientMessage(
   message: ClientMessage,
   replyText: string,
 ): Promise<readonly LogRecord[]> {
-  const page = { records: [] as readonly LogRecord[] };
+  const page: { records: readonly LogRecord[] } = { records: [] };
 
   const sent = await client.conversation.send({
     clientMessageId: crypto.randomUUID(),

@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@heynixie/clock": "workspace:*"
+    "@heynixie/clock": "workspace:*",
+    "zod": "catalog:"
   }
 }

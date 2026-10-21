@@ -1,5 +1,7 @@
+import { readQueryRows } from '@heynixie/db';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
+import { z } from 'zod';
 import type { EnvelopeRecord, LogTables, Projection } from './types';
 
 // Folds one record into every projection, inside the record's own transaction, and writes each
@@ -30,10 +32,14 @@ async function writeChanges(
   projection: Projection,
   folded: FoldedKeys,
 ): Promise<void> {
-  const result = await sql<Record<string, unknown>>`select * from ${sql.table(projection.table)}
-    where ${sql.ref(projection.keyColumn)} in (${sql.join(folded.keys)})`.execute(tx);
+  const projected = await readQueryRows(
+    sql`select * from ${sql.table(projection.table)}
+      where ${sql.ref(projection.keyColumn)} in (${sql.join(folded.keys)})`,
+    tx,
+    z.record(z.string(), z.unknown()),
+  );
 
-  const rows = new Map(result.rows.map((row) => [String(row[projection.keyColumn]), row]));
+  const rows = new Map(projected.map((row) => [String(row[projection.keyColumn]), row]));
 
   await tx
     .$extendTables<LogTables>()

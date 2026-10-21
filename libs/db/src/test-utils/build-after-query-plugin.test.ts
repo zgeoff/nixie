@@ -3,6 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sql } from 'kysely';
+import { z } from 'zod';
+import { readQueryRows } from '../read-query-rows';
 import { startDatabase } from '../start-database';
 import { buildAfterQueryPlugin } from './build-after-query-plugin';
 
@@ -36,9 +38,13 @@ test('it runs the action once, after the result of the query it names', async ()
   const db = ctx.db.withPlugin(buildAfterQueryPlugin(2, action));
 
   for (const value of [1, 2, 3]) {
-    const result = await sql<{ value: number }>`select ${value} as value`.execute(db);
+    const [row] = await readQueryRows(
+      sql`select ${value} as value`,
+      db,
+      z.object({ value: z.number() }),
+    );
 
-    seen.push(`query ${String(result.rows[0]?.value)}`);
+    seen.push(`query ${String(row?.value)}`);
   }
 
   expect(seen).toStrictEqual(['query 1', 'action', 'query 2', 'query 3']);

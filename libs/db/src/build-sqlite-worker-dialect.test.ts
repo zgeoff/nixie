@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Kysely, sql } from 'kysely';
+import { z } from 'zod';
 import { buildSqliteWorkerDialect } from './build-sqlite-worker-dialect';
 
 async function setupTest() {
@@ -25,8 +26,8 @@ async function setupTest() {
 
 test('it opens the database in WAL mode with a full sync on every commit', async () => {
   const ctx = await setupTest();
-  const journal = await sql<{ journal_mode: string }>`pragma journal_mode`.execute(ctx.db);
-  const synchronous = await sql<{ synchronous: number }>`pragma synchronous`.execute(ctx.db);
+  const journal = await sql`pragma journal_mode`.execute(ctx.db);
+  const synchronous = await sql`pragma synchronous`.execute(ctx.db);
 
   expect(journal.rows).toStrictEqual([{ journal_mode: 'wal' }]);
   expect(synchronous.rows).toStrictEqual([{ synchronous: 2 }]);
@@ -34,7 +35,7 @@ test('it opens the database in WAL mode with a full sync on every commit', async
 
 test('it waits 5 s for another connection by default', async () => {
   const ctx = await setupTest();
-  const result = await sql<{ timeout: number }>`pragma busy_timeout`.execute(ctx.db);
+  const result = await sql`pragma busy_timeout`.execute(ctx.db);
 
   expect(result.rows).toStrictEqual([{ timeout: 5000 }]);
 });
@@ -48,7 +49,7 @@ test('it waits for another connection as long as the caller asks', async () => {
 
   ctx.stack.defer(() => short.destroy());
 
-  const result = await sql<{ timeout: number }>`pragma busy_timeout`.execute(short);
+  const result = await sql`pragma busy_timeout`.execute(short);
 
   expect(result.rows).toStrictEqual([{ timeout: 50 }]);
 });
@@ -62,8 +63,8 @@ test('it leaves secure delete off unless the caller asks for it', async () => {
 
   ctx.stack.defer(() => keys.destroy());
 
-  const plain = await sql<{ secure_delete: number }>`pragma secure_delete`.execute(ctx.db);
-  const secure = await sql<{ secure_delete: number }>`pragma secure_delete`.execute(keys);
+  const plain = await sql`pragma secure_delete`.execute(ctx.db);
+  const secure = await sql`pragma secure_delete`.execute(keys);
 
   expect(plain.rows).toStrictEqual([{ secure_delete: 0 }]);
   expect(secure.rows).toStrictEqual([{ secure_delete: 1 }]);
@@ -86,10 +87,9 @@ test('it returns the rows of a statement with RETURNING', async () => {
 
   await sql`create table notes (id integer primary key, title text not null)`.execute(ctx.db);
 
-  const result = await sql<{
-    id: number;
-    title: string;
-  }>`insert into notes (title) values ('first') returning id, title`.execute(ctx.db);
+  const result = await sql`insert into notes (title) values ('first') returning id, title`.execute(
+    ctx.db,
+  );
 
   expect(result.rows).toStrictEqual([{ id: 1, title: 'first' }]);
 });
@@ -128,17 +128,17 @@ test('it loses no update when 2 connections race read-then-write transactions', 
     [ctx.db, other].flatMap((db) =>
       Array.from({ length: 25 }, () =>
         db.transaction().execute(async (tx) => {
-          const result = await sql<{ value: number }>`select value from counter`.execute(tx);
+          const result = await sql`select value from counter`.execute(tx);
 
-          const [row] = result.rows;
+          const [row] = z.tuple([z.object({ value: z.number() })]).parse(result.rows);
 
-          await sql`update counter set value = ${(row?.value ?? 0) + 1}`.execute(tx);
+          await sql`update counter set value = ${row.value + 1}`.execute(tx);
         }),
       ),
     ),
   );
 
-  const result = await sql<{ value: number }>`select value from counter`.execute(ctx.db);
+  const result = await sql`select value from counter`.execute(ctx.db);
 
   expect(result.rows).toStrictEqual([{ value: 50 }]);
 });
@@ -172,9 +172,7 @@ test('it opens 2 connections that write to a new file at once without a busy err
   );
 
   const counts = await Promise.all(
-    pairs.map((pair) =>
-      sql<{ count: number }>`select count(*) as count from hits`.execute(pair.first),
-    ),
+    pairs.map((pair) => sql`select count(*) as count from hits`.execute(pair.first)),
   );
 
   expect(counts.map((count) => count.rows)).toStrictEqual(
@@ -200,6 +198,25 @@ test('it keeps the event loop free while a long query runs', async () => {
   order.push('query');
 
   expect(order).toStrictEqual(['timer', 'query']);
+});
+
+test('it refuses a parameter that bun:sqlite cannot bind', async () => {
+  const ctx = await setupTest();
+
+  await sql`create table notes (id integer primary key, written text)`.execute(ctx.db);
+
+  const insert = sql`insert into notes (written) values (${new Date(0)})`.execute(ctx.db);
+
+  await insert.catch(() => {});
+
+  const notes = await sql`select id from notes`.execute(ctx.db);
+
+  expect(insert).rejects.toThrowWithMessage(
+    TypeError,
+    'bun:sqlite cannot bind a parameter of type Date',
+  );
+
+  expect(notes.rows).toStrictEqual([]);
 });
 
 test('it refuses a transaction with an isolation level', async () => {

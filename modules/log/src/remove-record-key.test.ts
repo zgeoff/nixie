@@ -1,8 +1,10 @@
 import { expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { readQueryRows } from '@heynixie/db';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { readRecords } from './read-records';
 import { removeRecordKey } from './remove-record-key';
 import { startTestLog } from './test-utils/start-test-log';
@@ -31,10 +33,11 @@ test('it leaves the envelope and a gap where the payload was once the key is gon
     },
   ]);
 
-  const keys = await sql<{ key_id: string }>`select key_id from records
-    where sequence = 1`.execute(ctx.writer.db);
-
-  const [key] = keys.rows;
+  const [key] = await readQueryRows(
+    sql`select key_id from records where sequence = 1`,
+    ctx.writer.db,
+    z.object({ key_id: z.string() }),
+  );
 
   invariant(key);
 
@@ -75,10 +78,11 @@ test('it leaves no copy of the wrapped key in keys.db or its WAL', async () => {
     },
   ]);
 
-  const stored = await sql<{ key_id: string; wrapped: Uint8Array }>`select key_id, wrapped
-    from record_keys`.execute(ctx.writer.keys);
-
-  const [key] = stored.rows;
+  const [key] = await readQueryRows(
+    sql`select key_id, wrapped from record_keys`,
+    ctx.writer.keys,
+    z.object({ key_id: z.string(), wrapped: z.instanceof(Uint8Array) }),
+  );
 
   invariant(key);
 
@@ -107,18 +111,20 @@ test('it refuses to remove a key under a stale writer epoch and keeps the key', 
 
   await sql`update writer_epoch set epoch = epoch + 1`.execute(ctx.writer.db);
 
-  const stored = await sql<{ key_id: string }>`select key_id from record_keys`.execute(
+  const stored = await readQueryRows(
+    sql`select key_id from record_keys`,
     ctx.writer.keys,
+    z.object({ key_id: z.string() }),
   );
 
-  invariant(stored.rows[0]);
+  invariant(stored[0]);
 
-  const remove = removeRecordKey(ctx.log, stored.rows[0].key_id);
+  const remove = removeRecordKey(ctx.log, stored[0].key_id);
 
   await remove.catch(() => {});
 
   const left = await sql`select key_id from record_keys`.execute(ctx.writer.keys);
 
   expect(remove).rejects.toMatchObject({ name: 'StaleWriterError' });
-  expect(left.rows).toStrictEqual(stored.rows);
+  expect(left.rows).toStrictEqual(stored);
 });

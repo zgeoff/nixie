@@ -17,7 +17,7 @@ async function createSubjectColumn(
   tx: Transaction<unknown>,
   table: 'memory_items' | 'memory_proposals',
 ): Promise<void> {
-  const columns = await sql<{ name: string }>`
+  const columns = await sql`
     select name from pragma_table_info(${table}) where name = 'subject'`.execute(tx);
 
   if (columns.rows.length === 0) {

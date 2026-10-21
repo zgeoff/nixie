@@ -1,3 +1,4 @@
+import { proposalOutcomeSchema } from '@heynixie/contract';
 import type { JSONObject } from '@heynixie/log';
 import type { WriteInTransaction } from '@heynixie/memory';
 import { ProposalClosedError } from '@heynixie/memory';
@@ -98,8 +99,7 @@ async function readEarlierOutcome(
     earlier.inputHash === query.inputHash;
 
   return isSame
-    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- writeProposalAnswer wrote a ProposalOutcome
-      (earlier.result as ProposalOutcome)
+    ? proposalOutcomeSchema.parse(earlier.result)
     : { proposalID: query.action.proposalID, status: 'refused', code: 'CLIENT_ACTION_ID_REUSED' };
 }
 
