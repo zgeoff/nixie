@@ -17,8 +17,6 @@ const notice = css({
   width: 'full',
 });
 
-// Sits above the messages from the first compaction that fails, and goes once a summary commits.
-// The conversation goes on in the same session, which stops answering once it fills its window.
 export function CompactionFailureNotice(props: CompactionFailureNoticeProps): ReactNode {
   const failures = findCompactionFailure(props.records);
 

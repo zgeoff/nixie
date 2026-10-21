@@ -9,26 +9,18 @@ interface MemoryForgetInput {
   readonly version: number;
 }
 
-// How a forget call stands: refused carries the reason the server gave, and failed is any other
-// error, such as a cleanup that failed after the forget began, which a retry finishes.
 type MemoryForgetCall =
   | { readonly status: 'pending' | 'applied' | 'failed'; readonly input: MemoryForgetInput }
   | { readonly status: 'refused'; readonly input: MemoryForgetInput; readonly notice: string };
 
 export interface MemoryForget {
-  // sends a forget, or the retry of one with the same input
   readonly send: (input: MemoryForgetInput) => void;
 
-  // how this caller's own last call stands, or null before it sends one
   readonly own: MemoryForgetCall | null;
 
-  // how the item's last call on this page stands, whichever row sent it, or null before any call
   readonly last: MemoryForgetCall | null;
 }
 
-// The forget of one memory item. The query client keeps each call and its input apart from the row
-// that sent it, because a refresh moves an item whose forget began to the forgotten list, and that
-// row finishes the forget with the same action ID. Only an applied or refused call reads the lists.
 export function useMemoryForget(
   itemID: string,
   onSettled: (notice: string | null) => void,
@@ -87,7 +79,6 @@ function findRefusalNotice(error: unknown): string | null {
 
 type CallState = Pick<MutationState, 'status' | 'variables' | 'error'>;
 
-// a call that has not sent, or whose input is not a forget's, stands nowhere
 function toCall(state: CallState): MemoryForgetCall | null {
   const input = state.variables;
 

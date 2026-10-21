@@ -8,12 +8,10 @@ import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
 import { startStubAPI } from '../test-utils/start-stub-api';
 
-// Bun 1.4.2's skipIf takes a boolean and has no in-body skip. Outside CI these tests skip when no
-// browser starts, and the run prints why; CI always runs them.
+// Bun 1.4.2's skipIf takes a boolean and has no in-body skip, so the suite checks the browser
+// before its tests start.
 const browserSkip = await checkBrowserSkip();
 
-// These tests open the built web client in a headless Chrome or Chromium, which Bun finds on PATH,
-// in a standard install location, or at BUN_CHROME_PATH.
 async function setupTest() {
   const api = startStubAPI();
 
@@ -26,8 +24,8 @@ async function setupTest() {
       headers: { 'content-type': 'text/html' },
     });
 
-  // localhost is another site than 127.0.0.1, so following this page's link into the app is a
-  // navigation from outside the site, as a launch from the home-screen icon is
+  // localhost is another site than 127.0.0.1, so a link from this page into the app is a
+  // navigation from outside the site, as a launch from the home-screen icon is.
   const elsewhere = Bun.serve({
     fetch: answerRequest,
     hostname: '127.0.0.1',
@@ -39,7 +37,7 @@ async function setupTest() {
   });
 
   // Chrome's sandbox needs user namespaces that a container or a root user lacks, and the browser
-  // loads only pages from the loopback servers this test starts
+  // loads only pages from the loopback servers this test starts.
   const view = new Bun.WebView({ backend: { argv: ['--no-sandbox'], type: 'chrome', url: false } });
 
   onTestFinished(() => {
@@ -47,7 +45,7 @@ async function setupTest() {
   });
 
   // Bun runs one Chrome for the whole test process, and its views share one cookie jar, so each
-  // test starts from an empty one; the first navigation opens the view's DevTools session
+  // test starts from an empty one.
   await view.navigate('about:blank');
   await view.cdp('Network.clearBrowserCookies');
 
@@ -64,7 +62,6 @@ test.skipIf(browserSkip.isSkipped)(
       store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } }),
     ]);
 
-    // the browser enrols on the app's origin and keeps the cookie that the enrolment response sets
     await ctx.view.navigate(`${ctx.appURL}/`);
 
     await ctx.view.evaluate(`fetch('/rpc/sessions/enrol', {
@@ -89,8 +86,6 @@ test.skipIf(browserSkip.isSkipped)(
       query.where({ deviceName: 'kitchen tablet' }),
     );
 
-    // only a server render sends a bearer token, and only the launch's render had a session to
-    // forward, so this holds whatever order the earlier page's calls arrive in
     expect(ctx.api.requests.filter((request) => request.authorization !== null)).toStrictEqual([
       { authorization: `Bearer ${session?.token}`, cookie: null, path: '/rpc/conversation/read' },
     ]);
@@ -106,8 +101,8 @@ test.skipIf(browserSkip.isSkipped)(
 
     await store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } });
 
-    // a browser leaves a Strict cookie off a navigation from another site, so the server renders
-    // the page without the session that the browser holds
+    // A browser leaves a Strict cookie off a navigation from another site, so the server renders
+    // the page without the session that the browser holds.
     await ctx.view.navigate(ctx.elsewhereURL);
 
     await ctx.view.cdp('Network.setCookie', {
@@ -151,7 +146,6 @@ test.skipIf(browserSkip.isSkipped)(
 
     await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
 
-    // a 1 by 1 PNG, which the browser decodes and encodes again before the send
     await setBrowserFiles(ctx.view, {
       selector: 'input[type=file][multiple]',
       files: [
@@ -179,8 +173,6 @@ test.skipIf(browserSkip.isSkipped)(
     await ctx.view.cdp('Input.insertText', { text: 'Is this the right shade?' });
     await ctx.view.click('button[type=submit]');
 
-    // the outbox shows its own copy, with how the send stands, until the record arrives; the thread's
-    // copy then comes from conversation.readImage, and a decoded image has a width
     await waitFor(
       async () => {
         const width: unknown = await ctx.view.evaluate(

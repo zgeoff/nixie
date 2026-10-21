@@ -22,7 +22,6 @@ const removeButton = css({
   top: '0',
 });
 
-// The images attached to the message you are writing, each with the control that takes it off.
 export function AttachedImages(props: AttachedImagesProps): ReactNode {
   if (props.images.length === 0) {
     return null;

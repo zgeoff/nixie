@@ -13,25 +13,18 @@ import { writeOutboxImages } from './write-outbox-images';
 export interface StoredOutboxOptions {
   readonly entries: readonly OutboxEntry[];
 
-  // a forgotten message never goes back to storage, whatever status a stale render gives it
   readonly forgottenClientMessageIDs: readonly string[];
 
-  // the time in milliseconds since the epoch, which decides whether a stored message is stale
   readonly now: () => number;
   readonly sendEntry: (message: OutboxMessage) => Promise<void>;
   readonly setEntries: Dispatch<SetStateAction<readonly OutboxEntry[]>>;
 }
 
-// Keeps the outbox's unconfirmed messages in device storage: the text in localStorage, and each
-// message's images in IndexedDB under its client message ID. The outbox loads after hydration, and
-// sends again a message an earlier page left unsent under 2 minutes ago, holding any older one.
 export function useStoredOutbox(options: StoredOutboxOptions): void {
   const [loaded, setLoaded] = useState(false);
   const now = options.now;
   const sendEntry = options.sendEntry;
   const setEntries = options.setEntries;
-
-  // the messages whose images IndexedDB holds already, so a later render does not write them again
   const writtenImages = useRef(new Set<string>());
 
   useEffect(() => {
@@ -57,7 +50,6 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
 
   useEffect(() => {
     if (loaded) {
-      // a message another tab discarded stays out of storage even before this tab hears of it
       const forgotten = new Set([
         ...options.forgottenClientMessageIDs,
         ...updateDiscardedOutboxIDs(),
@@ -70,7 +62,6 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
       writeStoredMessages(merged);
       void writeStoredImages(merged, writtenImages.current);
 
-      // storage as it stands when the removal runs, which a later render or another tab may change
       void removeStaleOutboxImages(
         () => new Set(readStoredMessages().map((message) => message.clientMessageId)),
       );
@@ -80,8 +71,8 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
 
 const storageKey = 'nixie.outbox';
 
-// Storage outlives a release, so a stored message that no longer fits the contract is dropped
-// rather than sent. Each message keeps the count of the images IndexedDB holds for it.
+// Device storage outlives a release, so a stored message that fails the current contract is
+// dropped rather than sent.
 const storedImageCount = z.object({ imageCount: z.int().positive().optional() });
 
 const storedMessagesSchema = z.array(
@@ -104,7 +95,6 @@ function parseJSON(text: string): unknown {
   }
 }
 
-// the images stay unread until the page reads them back from IndexedDB
 function toOutboxMessage(
   stored: ReadonlyDeep<z.infer<typeof storedMessagesSchema>[number]>,
 ): OutboxMessage {
@@ -124,9 +114,6 @@ interface StoredMessage {
   readonly isStale: boolean;
 }
 
-// Each fresh stored message takes its place in the send queue at once, in the order it was written,
-// so a message you send while the images load goes after it; the send reads the images back in its
-// turn. A message whose images do not read back fails, and keeps its place in storage for a retry.
 function sendStoredMessages(
   stored: readonly StoredMessage[],
 
@@ -143,7 +130,6 @@ function sendStoredMessages(
   }
 }
 
-// the entry takes the images once they read back, so the page shows them while the message waits
 async function loadStoredImages(
   message: OutboxMessage,
   setEntries: StoredOutboxOptions['setEntries'],
@@ -159,8 +145,6 @@ async function loadStoredImages(
   );
 }
 
-// Another tab shares the storage key, so a write keeps every stored message this outbox does not
-// hold, adds this outbox's unconfirmed messages, and drops only the ones it saw confirmed.
 function mergeStoredMessages(
   stored: readonly OutboxMessage[],
   entries: readonly OutboxEntry[],
@@ -176,7 +160,6 @@ function mergeStoredMessages(
   return [...others, ...unconfirmed];
 }
 
-// the images stay out of localStorage, which keeps only text
 function writeStoredMessages(messages: readonly OutboxMessage[]): void {
   if (messages.length === 0) {
     globalThis.localStorage.removeItem(storageKey);
@@ -190,7 +173,6 @@ function writeStoredMessages(messages: readonly OutboxMessage[]): void {
 
 type StoredText = Omit<OutboxMessage, 'images' | 'unreadImages'> & { readonly imageCount?: number };
 
-// an image the page has not read back yet still counts, because IndexedDB still holds it
 function toStoredText(message: OutboxMessage): StoredText {
   const imageCount = message.images?.length ?? message.unreadImages ?? 0;
 
@@ -205,7 +187,6 @@ function toStoredText(message: OutboxMessage): StoredText {
   };
 }
 
-// IndexedDB keeps a copy of each unconfirmed message's images until the message leaves storage
 async function writeStoredImages(
   messages: readonly OutboxMessage[],
 

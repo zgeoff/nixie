@@ -20,7 +20,6 @@ test('it never calls back once stopped', async () => {
   startPlatformTimer(onLater, 20);
   stop();
 
-  // the later timer firing shows the stopped one's time has passed
   await waitFor(() => {
     expect(onLater).toHaveBeenCalledOnce();
   });

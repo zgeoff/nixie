@@ -12,7 +12,6 @@ import { MemoryView } from './memory-view';
 async function setupTest() {
   const user = userEvent.setup();
 
-  // every memory read needs a signed-in browser
   await createDeviceSession();
 
   return { user };
@@ -264,7 +263,6 @@ test('it offers to finish a forget whose cleanup failed once a refresh moves the
   await runMemoryForget(ctx.user, item);
   await within(item).findByText('The forget did not finish. Try again.');
 
-  // a remount reads every list again and drops each row's own state, as a refresh after a pin does
   rendered.rerender(<MemoryView key="refreshed" />);
 
   const finish = await within(rendered.getByRole('region', { name: 'Forgotten' })).findByRole(
@@ -303,7 +301,6 @@ test('it completes a forget whose cleanup failed when the user finishes it from 
 
   await ctx.user.click(finish);
 
-  // the gap shows its forget's date, and no control once the forget completed
   await waitFor(() => {
     const forgotten = rendered.getByRole('region', { name: 'Forgotten' });
 
@@ -318,7 +315,6 @@ test('it forgets the item once a failed confirm goes again', async () => {
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Keeps bees' }] });
 
-  // the first confirm fails in transit, and the next one reaches the mock API
   server.use(http.post('*/rpc/memory/forget', () => HttpResponse.error(), { once: true }));
 
   const item = await within(

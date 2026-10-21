@@ -10,9 +10,6 @@ export interface StepMemoriesProps {
   readonly memories: readonly RecalledMemory[];
 }
 
-// The memories the step's recalls delivered, each with its match score and the model's rating. The
-// records hold no text and no open note, so the list reads both each time the section opens, and a
-// memory forgotten since then shows as forgotten.
 export function StepMemories(props: StepMemoriesProps): ReactNode {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -23,8 +20,6 @@ export function StepMemories(props: StepMemoriesProps): ReactNode {
   );
 }
 
-// Reads the text of each distinct version in batches the API accepts. A step can recall one version
-// twice, so each row's key holds its place as well.
 function MemoryList(props: StepMemoriesProps): ReactNode {
   const nixie = useNixieClient();
 
@@ -37,8 +32,8 @@ function MemoryList(props: StepMemoriesProps): ReactNode {
     ).values(),
   ];
 
-  // A query keeps its last data while it reads again and after that read fails, and that data can
-  // hold the text of a memory forgotten since, so only a finished, successful read gives text.
+  // TanStack Query keeps a query's last data while it reads again and after that read fails, and
+  // that data can hold the text of a memory forgotten since.
   const texts = useQueries({
     combine: (results) => ({
       isError: results.some((result) => result.isError),
@@ -86,17 +81,14 @@ function buildVersionKey(ref: VersionRef): string {
   return `${ref.itemID}@${ref.version}`;
 }
 
-// the most versions one call to the API reads
 const batchSize = 100;
 
-// the refs in batches the API accepts
 function splitBatches<Ref>(refs: readonly Ref[]): Ref[][] {
   return Array.from({ length: Math.ceil(refs.length / batchSize) }, (_, index) =>
     refs.slice(index * batchSize, (index + 1) * batchSize),
   );
 }
 
-// Reads the note of each rating that has one, by its note key, the same way the list reads texts.
 function useRatingNotes(
   memories: readonly RecalledMemory[],
 ): ReadonlyMap<string, string | undefined> {
@@ -141,8 +133,6 @@ interface VersionText {
   readonly text?: string | undefined;
 }
 
-// A note shows its text in quotes while readable, and a forgotten item's note shows as forgotten.
-// One that is still loading, failed or is missing shows nothing.
 function formatNoteText(note: VersionText): string | undefined {
   if (note.status === 'readable') {
     return `"${note.text ?? ''}"`;
@@ -162,13 +152,10 @@ function formatMemoryText(version: VersionText): string {
 interface MemoryRowProps {
   readonly memory: RecalledMemory;
 
-  // the rating's note, once read
   readonly note: string | undefined;
   readonly text: string;
 }
 
-// One memory as one line, its ID, score, the start of its text and the model's rating, such as
-// [Pip: noise · "matches anything"]; opened, its full text.
 function MemoryRow(props: MemoryRowProps): ReactNode {
   const score = props.memory.score === undefined ? '–' : formatScore(props.memory.score);
   const line = `${props.memory.itemID}  ${score}  ${formatOneLine(props.text)}`;
@@ -188,14 +175,13 @@ function MemoryRow(props: MemoryRowProps): ReactNode {
 }
 
 // BM25 gives a common word a score near zero, such as 1.1e-6, so a score below 0.01 shows its
-// significant digits and two such matches still read apart.
+// significant digits.
 function formatScore(score: number): string {
   return Math.abs(score) >= 0.01 || score === 0 ? score.toFixed(2) : score.toExponential(1);
 }
 
 const lineLimit = 80;
 
-// the text's first line, clipped
 function formatOneLine(text: string): string {
   const firstLine = text.split('\n', 1)[0] ?? '';
   const isClipped = firstLine.length > lineLimit || firstLine.length < text.trimEnd().length;
@@ -203,7 +189,6 @@ function formatOneLine(text: string): string {
   return isClipped ? `${firstLine.slice(0, lineLimit)}…` : firstLine;
 }
 
-// the agent's verdict, with its note once read
 function formatRating(rating: MemoryRating, note: string | undefined): string {
   const by = rating.ratedBy ?? 'agent';
 

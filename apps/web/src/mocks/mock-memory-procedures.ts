@@ -12,10 +12,7 @@ import { writeMockMemoryChange } from './write-mock-memory-change';
 
 const memory = mockImplementer.memory;
 
-// The memory procedures over the mock store: the texts and notes a step's memories read, the
-// writer's status, and the memory view's reads and checked changes.
 export const mockMemoryProcedures = {
-  // the stored text of each named version, and a version the store lacks as missing
   readVersions: memory.readVersions.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
@@ -28,7 +25,6 @@ export const mockMemoryProcedures = {
     return { notes: options.input.notes.map((ref) => readRatingNote(ref)) };
   }),
 
-  // a writer that has caught up with every record in the store
   writerStatus: memory.writerStatus.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
@@ -118,7 +114,6 @@ interface RefusalErrors {
 
 type RefusalStatus = 'reused' | 'not_found' | 'stale' | 'wrong_state' | 'core_full';
 
-// the typed error nixie's API answers each refusal with
 function buildRefusal(status: RefusalStatus, errors: RefusalErrors): Error {
   const buildError = {
     reused: errors.CLIENT_ACTION_ID_REUSED,

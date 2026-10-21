@@ -50,8 +50,6 @@ test('it keeps the chosen theme after a reload', async () => {
 
   before.unmount();
   delete globalThis.document.documentElement.dataset['theme'];
-
-  // a reload runs the head script before the page renders
   runHeadScript(buildThemeScript());
 
   const themeBeforeRender = globalThis.document.documentElement.dataset['theme'];

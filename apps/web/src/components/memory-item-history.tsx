@@ -7,9 +7,6 @@ export interface MemoryItemHistoryProps {
   readonly itemID: string;
 }
 
-// Every version of one item, oldest first, each with its provenance, its quote inside the message
-// it came from, and what it changed from the version before. A version of a forgotten item shows
-// as a dated gap.
 export function MemoryItemHistory(props: MemoryItemHistoryProps): ReactNode {
   const nixie = useNixieClient();
 

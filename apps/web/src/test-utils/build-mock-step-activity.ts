@@ -1,8 +1,6 @@
 import { faker } from '@faker-js/faker';
 import type { StepActivity } from '../build-activity';
 
-// A step group as the activity view builds it. It defaults to a finished step with no calls, no
-// records, and no task or step key; a test sets the fields its case needs.
 export function buildMockStepActivity(overrides: Partial<StepActivity> = {}): StepActivity {
   return {
     calls: [],

@@ -85,7 +85,6 @@ test('it offers no forget for a message of a kind the API cannot forget', () => 
 test('it shows the gap as soon as your forget succeeds', async () => {
   const user = userEvent.setup();
 
-  // the API forgets a record only for a signed-in browser
   await createDeviceSession();
 
   const stored = await store.records.create({

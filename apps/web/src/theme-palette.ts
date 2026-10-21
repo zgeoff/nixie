@@ -1,5 +1,3 @@
-// The colours of each theme, by token. Panda turns each into a colour token with a light and a
-// dark value, and every text colour meets WCAG AA contrast on both backgrounds of its theme.
 export const themePalette = {
   border: { dark: '#3f3f46', light: '#d4d4d8' },
   borderStrong: { dark: '#71717a', light: '#71717a' },

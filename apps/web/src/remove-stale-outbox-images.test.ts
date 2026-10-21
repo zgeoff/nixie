@@ -36,7 +36,6 @@ test('it keeps the images of a message stored after the removal starts and befor
     new File([new Uint8Array([2])], 'unsent.png', { type: 'image/png' }),
   ]);
 
-  // another tab stores the message once the removal has started
   const stored = { ids: new Set<string>() };
   const removal = removeStaleOutboxImages(() => stored.ids);
 

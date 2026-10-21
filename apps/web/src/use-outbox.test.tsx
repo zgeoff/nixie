@@ -12,12 +12,10 @@ import { setupBrowserTimeZone } from './test-utils/setup-browser-time-zone';
 import { useOutbox } from './use-outbox';
 
 async function setupTest() {
-  // every send needs a signed-in browser
   await createDeviceSession();
 
   const sent = mock<(body: unknown) => void>();
 
-  // the recorder answers nothing, so each request goes on to the mock API
   server.use(
     http.post('*/rpc/conversation/send', async (info) => {
       const body: unknown = await info.request.clone().json();
@@ -26,15 +24,8 @@ async function setupTest() {
     }),
   );
 
-  // the conversation names the messages a forget dropped, and a test names them through
-  // setForgotten, which the next render reads
   let forgotten: readonly string[] = [];
-
-  // the sequence of the latest reset the live stream delivered, which a test sets through
-  // setResetSequence
   let resetSequence: number | undefined;
-
-  // the page's clock stands still unless a test moves it, and each retry waits on a stub timer
   const clock = { now: Date.parse('2026-10-17T09:00:00.000Z') };
   const timer = buildStubTimer();
   const options = { now: () => clock.now, startTimer: timer.startTimer };
@@ -104,7 +95,6 @@ test('it keeps the time zone a message was written in when its retry sends', asy
     expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
   });
 
-  // the browser moves on before the retry; the setup above restores the run's zone at the end
   process.env.TZ = 'Europe/Lisbon';
 
   const [entry] = ctx.rendered.result.current.entries;
@@ -222,7 +212,6 @@ test('it keeps a message the API wrote after a reset that arrives late', async (
   ).toStrictEqual(['5e2a8c1f-7d4b-4f9a-b3e6-2c0d8f5a1b73']);
 });
 
-// The page's clock stands at 09:00, a minute behind the time the server gave the reset.
 test('it keeps a message written after a reset arrives while the clock runs behind the server', async () => {
   const ctx = await setupTest();
 
@@ -284,7 +273,6 @@ test('it keeps a forgotten message out of device storage when a failed retry lan
 
   invariant(entry, 'the outbox holds no message');
 
-  // the forget and the failed retry's status reach the outbox in one render
   ctx.setForgotten(['4b1f8e6a-2c7d-4d9e-8a3b-6f0e2c5d9a71']);
 
   await act(() => ctx.rendered.result.current.retry(entry.message));
@@ -507,7 +495,6 @@ test('it holds a message that passed 2 minutes old while its send waited, instea
     expect(ctx.timer.countPending()).toBe(1);
   });
 
-  // the phone slept with the page open, and its clock moved on while the retry waited
   ctx.clock.now = Date.parse('2026-10-17T09:05:00.000Z');
 
   await act(() => ctx.timer.advanceToNext());
@@ -619,7 +606,6 @@ test('it starts no retry for a send that fails after the page leaves the convers
 
   invariant(entry, 'the outbox holds no message');
 
-  // the next send waits until the test lets it fail, after the page has left
   const left = Promise.withResolvers<undefined>();
 
   server.use(

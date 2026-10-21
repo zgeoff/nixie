@@ -10,7 +10,6 @@ import { runMemoryForget } from './run-memory-forget';
 async function setupTest() {
   const user = userEvent.setup();
 
-  // every memory read needs a signed-in browser
   await createDeviceSession();
 
   return { user };

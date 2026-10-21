@@ -5,8 +5,8 @@ import { RPCLink } from '@orpc/client/fetch';
 import { getCookie } from '@tanstack/react-start/server';
 import { buildForwardHeaders } from './build-forward-headers';
 
-// The client the Start server renders with. Start scopes getCookie to the request it is serving,
-// so one client serves every request and each call forwards the cookie of its own request.
+// Start scopes getCookie to the request it serves, so one client serves every request and each
+// call forwards the cookie of its own request.
 export function buildServerClient(apiURL: string): ContractClient {
   return createORPCClient<ContractClient>(
     new RPCLink({

@@ -3,7 +3,6 @@ import invariant from 'tiny-invariant';
 import { makeWatchedFetch } from './make-watched-fetch';
 import { buildStubTimer } from './test-utils/build-stub-timer';
 
-// The stub timer that the watch's idle timer runs on, and a stream whose bytes the test writes.
 function setupTest() {
   const events = new TransformStream<Uint8Array, Uint8Array>();
 
@@ -50,8 +49,6 @@ test('it keeps an event stream open while its keepalives arrive within the idle 
 
   const reader = response.body.getReader();
 
-  // a read returns once the watch passed the chunk on, so its idle timer restarted first; the two
-  // waits add up past the idle period, and neither reaches it alone
   ctx.timer.advance(60);
 
   await Promise.all([ctx.writer.write(new TextEncoder().encode(': keepalive\n\n')), reader.read()]);

@@ -1,9 +1,6 @@
 import type { RecalledMemory, StepActivity } from './build-activity';
 import { formatContext } from './format-context';
 
-// Formats a collapsed step's one line: the task, its state unless done, its memories with the noise
-// among them, such as "5 memories (1 noise)", each tool with its targets, such as "web fetch:
-// theverge.com", its context, such as "41k / 400k", and its duration, each once its data exists.
 export function formatStepSummary(step: StepActivity): string {
   const parts = [
     step.taskID ?? 'task',
@@ -60,7 +57,6 @@ function formatTools(step: StepActivity): string {
 
 const targetLimit = 60;
 
-// The input's first text value, and a URL's host name alone.
 function formatTarget(input: Readonly<Record<string, unknown>> | undefined): string | undefined {
   const text = Object.values(input ?? {}).find((value) => typeof value === 'string');
 
@@ -74,12 +70,10 @@ function formatTarget(input: Readonly<Record<string, unknown>> | undefined): str
   return target.length > targetLimit ? `${target.slice(0, targetLimit)}…` : target;
 }
 
-// web_fetch reads as "web fetch"
 function formatToolName(tool: string): string {
   return tool.replaceAll(/[_.]+/gu, ' ');
 }
 
-// 12.3s under a minute, and 1m 5s from a minute on
 function formatDuration(durationMs: number): string {
   const seconds = Math.max(0, durationMs) / 1000;
 

@@ -5,8 +5,6 @@ import { SignedInPage } from '../components/signed-in-page';
 import { readSessionState } from '../read-session-state';
 import { css } from '../styled-system/css';
 
-// The memory proposals, apart from the memory view that links to them. Its first read is the
-// writer's status, which any signed-in device reads.
 export const Route = createFileRoute('/memory_/proposals')({
   component: Proposals,
   loader: async (options) => ({

@@ -1,8 +1,5 @@
 const storeName = 'images';
 
-// Runs one request on the device's outbox database, whose one store keeps the images of each unsent
-// message under its client message ID, and closes the database after it. A write resolves only once
-// its transaction commits, so a reload right after it finds the images.
 export async function runOutboxImagesRequest<T>(
   mode: IDBTransactionMode,
   makeRequest: (store: IDBObjectStore) => IDBRequest<T>,
@@ -36,7 +33,6 @@ function waitForRequest<T>(request: IDBRequest<T>): Promise<T> {
   return settled.promise;
 }
 
-// the images are Files, which IndexedDB keeps as they are and localStorage cannot
 function createOpenRequest(): IDBOpenDBRequest {
   const request = globalThis.indexedDB.open('nixie-outbox', 1);
 

@@ -3,7 +3,6 @@ import { css } from '../styled-system/css';
 import type { ThemeChoice } from '../use-theme-choice';
 import { useThemeChoice } from '../use-theme-choice';
 
-// The picker sits on its own line at the end of its row.
 const picker = css({ color: 'textMuted', display: 'block', fontSize: 'sm', textAlign: 'end' });
 
 const select = css({
@@ -15,7 +14,6 @@ const select = css({
   paddingInline: '1',
 });
 
-// Picks the theme for this device: the system's, or light or dark whatever the system says.
 export function ThemePicker(): ReactNode {
   const theme = useThemeChoice();
 

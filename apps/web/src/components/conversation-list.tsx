@@ -43,8 +43,6 @@ const spinner = css({
   _motionReduce: { animation: 'none' },
 });
 
-// The conversation's records in order, then the messages this device sent that the records do
-// not show yet, then a quiet spinner while nixie works.
 export function ConversationList(props: ConversationListProps): ReactNode {
   const shown = new Set(props.records.map((record) => record.message?.clientMessageId));
 
@@ -74,7 +72,6 @@ export function ConversationList(props: ConversationListProps): ReactNode {
           />
         ))}
       </ol>
-      {/* the spinner's slot keeps its height when the spinner goes, so the messages never jump */}
       <div className={css(column, { height: '6' })}>
         {isWorking(
           activity,

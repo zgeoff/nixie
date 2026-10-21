@@ -192,7 +192,6 @@ test('it hides the old text of a memory forgotten since the section last opened 
   await user.click(rendered.getByText('Memories 1'));
   await rendered.findByText('item-1 0.61 Stub memory one');
 
-  // the closed section reads nothing, so the forget lands while it is closed
   await Promise.all([
     user.click(rendered.getByText('Memories 1')),
     store.memoryVersions.update(version, {
@@ -225,7 +224,6 @@ test('it shows a memory forgotten since the section last opened as unavailable w
   await user.click(rendered.getByText('Memories 1'));
   await rendered.findByText('item-1 0.61 Stub memory one');
 
-  // the closed section reads nothing, so the forget lands while it is closed
   await Promise.all([
     user.click(rendered.getByText('Memories 1')),
     store.memoryVersions.update(version, {

@@ -8,8 +8,6 @@ export interface ReplyTextProps {
   readonly text: string;
 }
 
-// The reset strips lists, headings and code of their marks, so a reply gets back only what reading
-// needs. Code sits on the theme's surface colour, so it stands apart from the prose around it.
 const reply = css({
   display: 'flex',
   flexDirection: 'column',
@@ -26,9 +24,8 @@ const reply = css({
   '& ul': { listStyleType: 'disc', paddingInlineStart: '6' },
 });
 
-// A reply rendered as Markdown. A reply can quote fetched web text, so raw HTML never becomes
-// markup, a link with an unsafe protocol shows as plain text, and every other link opens in a new
-// tab with no opener and no referrer.
+// A reply can quote fetched web text, so raw HTML never becomes markup, and an outside link opens
+// in a new tab with no opener and no referrer.
 export function ReplyText(props: ReplyTextProps): ReactNode {
   return (
     <div className={reply}>
@@ -40,12 +37,9 @@ export function ReplyText(props: ReplyTextProps): ReactNode {
   );
 }
 
-// whether an element renders inside a link's anchor, where another anchor would break the outer one
 const InsideLink = createContext(false);
 
-// The renderer blanks a URL whose protocol it does not allow, such as javascript:. A link inside
-// the reply, such as a footnote and its way back, keeps the page and the anchor IDs it jumps
-// between.
+// react-markdown blanks a URL whose protocol it does not allow, such as javascript:.
 function ReplyLink(props: ComponentProps<'a'>): ReactNode {
   if (props.href === undefined || props.href === '') {
     return <span>{props.children}</span>;
@@ -81,8 +75,8 @@ function readDataProp(props: object, name: string): unknown {
   return value;
 }
 
-// An image would load from wherever the reply points, so it shows as a link to the image. Inside
-// a link it shows as the link's label alone, since an anchor in an anchor breaks the outer one.
+// An image would load from wherever the reply points, so it renders as a link. HTML breaks an
+// anchor nested in another anchor, so inside a link the image renders as its label alone.
 function ReplyImage(props: ComponentProps<'img'>): ReactNode {
   const label = `image: ${props.alt ?? 'untitled'}`;
 

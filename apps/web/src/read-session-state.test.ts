@@ -8,7 +8,7 @@ test('it reads a session as live when the first read succeeds', async () => {
   expect(state).toBe('live');
 });
 
-// bun test resolves the isomorphic server check to the server, as the Start server render does
+// bun test resolves the isomorphic server check to the server, as the Start server render does.
 test('it leaves a session the API refuses during the server render unchecked', async () => {
   const state = await readSessionState(() => Promise.reject(new ORPCError('UNAUTHORIZED')));
 

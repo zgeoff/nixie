@@ -3,12 +3,10 @@ import { join } from 'node:path';
 import invariant from 'tiny-invariant';
 import { checkBrowserSkip } from './test-utils/check-browser-skip';
 
-// Bun 1.4.2's skipIf takes a boolean and has no in-body skip. Outside CI these tests skip when no
-// browser starts, and the run prints why; CI always runs them.
+// Bun 1.4.2's skipIf takes a boolean and has no in-body skip, so the suite checks the browser
+// before its tests start.
 const browserSkip = await checkBrowserSkip();
 
-// normalizeImage needs a browser's decoder and canvas, so these tests run it in a headless Chrome or
-// Chromium, which Bun finds on PATH, in a standard install location, or at BUN_CHROME_PATH.
 async function setupTest() {
   const built = await Bun.build({
     entrypoints: [join(import.meta.dir, 'normalize-image.ts')],
@@ -38,7 +36,7 @@ async function setupTest() {
   });
 
   // Chrome's sandbox needs user namespaces that a container or a root user lacks, and the browser
-  // loads only the page this test serves
+  // loads only the page this test serves.
   const view = new Bun.WebView({ backend: { argv: ['--no-sandbox'], type: 'chrome', url: false } });
 
   onTestFinished(() => {
@@ -55,7 +53,6 @@ test.skipIf(browserSkip.isSkipped)(
   async () => {
     const ctx = await setupTest();
 
-    // a 3000 by 2000 JPEG with an EXIF segment that holds an invented location, after the start marker
     const result: unknown = await ctx.view.evaluate(`(async () => {
     const canvas = new OffscreenCanvas(3000, 2000);
     const context = canvas.getContext('2d');

@@ -11,7 +11,6 @@ import { MemoryView } from './memory-view';
 async function setupTest() {
   const user = userEvent.setup();
 
-  // every memory read needs a signed-in browser
   await createDeviceSession();
 
   return { user };

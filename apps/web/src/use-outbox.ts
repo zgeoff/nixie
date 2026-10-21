@@ -11,38 +11,27 @@ import { updateDiscardedOutboxIDs } from './update-discarded-outbox-ids';
 import { useNixieClient } from './use-nixie-client';
 import { useStoredOutbox } from './use-stored-outbox';
 
-// A held message waited too long to go on its own, and waits for you to send or discard it.
 export interface OutboxEntry {
   readonly message: OutboxMessage;
   readonly status: 'failed' | 'held' | 'sending' | 'sent';
 
-  // the failed sends in a row that the API did not answer, which the next try backs off by
   readonly failures?: number | undefined;
 
-  // when the next try goes on its own, for a failed send that retries by itself
   readonly retryAt?: number | undefined;
 
-  // the log sequence the API wrote the message at, once it confirmed the send
   readonly sequence?: number | undefined;
 }
 
 export interface OutboxOptions {
-  // Times the pause before each retry. The platform timer by default.
   readonly startTimer?: StartTimer;
 
-  // The time in milliseconds since the epoch. The platform clock by default.
   readonly now?: () => number;
 
-  // the sequence of the latest reset the live stream delivered
   readonly resetSequence?: number | undefined;
 }
 
-// The pause before the first retry, doubling with each failure in a row up to a minute.
 const retrySchedule = { firstMs: 2000, maxMs: 60_000 };
 
-// Keeps the messages this device sent until the conversation shows them, or a reset removes them.
-// An unconfirmed message stays in device storage and goes again with its first client message ID;
-// a confirmed one stays in memory until its record arrives.
 export function useOutbox(
   forgottenClientMessageIDs: readonly string[],
   options: OutboxOptions = {},
@@ -56,17 +45,9 @@ export function useOutbox(
   const [resetIDs, setResetIDs] = useState<readonly string[]>([]);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const retries = useRef(new Map<string, () => void>());
-
-  // whether the page still shows the outbox, so a send that ends after it goes starts no retry
   const isMounted = useRef(false);
-
-  // the messages you chose to send, which keep retrying on their own whatever their age
   const chosen = useRef(new Set<string>());
-
-  // the messages this tab forgot or discarded, which a send still waiting its turn never sends
   const removedIDs = useRef(new Set<string>());
-
-  // the entries as the last render saw them, which a retry reads when its pause ends
   const latest = useRef(entries);
 
   useLayoutEffect(() => {
@@ -78,11 +59,8 @@ export function useOutbox(
     retries.current.delete(clientMessageID);
   }, []);
 
-  // the send that the latest render made, which a retry calls when its pause ends
   const sendLatest = useRef<(message: OutboxMessage) => Promise<void>>(() => Promise.resolve());
 
-  // An automatic try sends a message under 2 minutes old, or one you chose to send, and holds any
-  // other for you to send or discard.
   const retryOnItsOwn = useCallback(
     (clientMessageID: string): void => {
       const entry = findEntry(latest.current, clientMessageID);
@@ -102,9 +80,6 @@ export function useOutbox(
     [now],
   );
 
-  // Sends wait their turn, so the API writes the messages in the order you sent them. Each send
-  // reads back first any images the page could not read when it loaded the message. A send the API
-  // did not answer tries again on its own after a pause that grows with each failure in a row.
   const sendEntry = useCallback(
     (message: OutboxMessage): Promise<void> => {
       const clientMessageID = message.clientMessageId;
@@ -122,8 +97,6 @@ export function useOutbox(
 
         const loaded = await loadOutboxImages(message);
 
-        // the turn can come late, so the send checks again that no tab discarded the message, and
-        // that it is still fresh or one you chose to send
         if (
           removedIDs.current.has(clientMessageID) ||
           updateDiscardedOutboxIDs().includes(clientMessageID)
@@ -164,7 +137,6 @@ export function useOutbox(
           }),
         );
 
-        // a message that left the outbox, or an outbox that left the page, tries no more
         if (isMounted.current && findEntry(latest.current, clientMessageID) !== undefined) {
           retries.current.set(
             clientMessageID,
@@ -186,8 +158,6 @@ export function useOutbox(
     sendLatest.current = sendEntry;
   }, [sendEntry]);
 
-  // A new message takes the browser's time zone and the time as you write it, and keeps both
-  // through every retry.
   const add = useCallback(
     (written: Omit<OutboxMessage, 'timeZone' | 'writtenAt'>) => {
       const message = {
@@ -202,7 +172,6 @@ export function useOutbox(
     [now, sendEntry],
   );
 
-  // a retry or a send you choose goes at once, and keeps retrying on its own whatever its age
   const retry = useCallback(
     (message: OutboxMessage): Promise<void> => {
       chosen.current.add(message.clientMessageId);
@@ -212,8 +181,6 @@ export function useOutbox(
     [sendEntry],
   );
 
-  // A discarded message leaves memory and device storage, with its images, as a forgotten one does.
-  // The shared discard list keeps every other tab from storing it again.
   const discard = useCallback(
     (clientMessageID: string) => {
       stopRetry(clientMessageID);
@@ -225,7 +192,6 @@ export function useOutbox(
     [stopRetry],
   );
 
-  // a message that another tab discarded leaves this tab too
   useEffect(() => {
     const readDiscards = (): void => {
       const listed = updateDiscardedOutboxIDs();
@@ -244,9 +210,6 @@ export function useOutbox(
     };
   }, []);
 
-  // A reset removed every message before it, so each message the outbox holds when the reset
-  // arrives leaves as a forgotten one does, unless the API wrote it after the reset. The log's own
-  // sequence orders the two, so the device's clock decides nothing.
   useLayoutEffect(() => {
     if (resetSequence === undefined) {
       return;
@@ -277,8 +240,6 @@ export function useOutbox(
     setEntries,
   });
 
-  // A forgotten message goes from memory before the page paints, so its text never shows again as
-  // a sent message; the stored outbox keeps it out of storage, so a reload never sends it.
   useLayoutEffect(() => {
     if (removed.length === 0) {
       return;
@@ -299,8 +260,8 @@ export function useOutbox(
     );
   }, [removed, stopRetry]);
 
-  // A browser that comes back online, or a page that becomes visible again, retries at once each
-  // send waiting out its pause: a phone that slept may have missed the moment the API came back.
+  // A phone that slept may have missed the moment the API came back, so a wake retries each paused
+  // send at once.
   useEffect(() => {
     const drainRetries = (): void => {
       for (const [clientMessageID, stop] of retries.current) {
@@ -327,7 +288,6 @@ export function useOutbox(
     };
   }, [retryOnItsOwn]);
 
-  // the page that goes away takes its pending retries with it
   useEffect(() => {
     const pending = retries.current;
 
@@ -364,18 +324,14 @@ function updateEntry(
   );
 }
 
-// the result of one send, with the log sequence of the message once the API wrote it
 type SendOutcome =
   | { readonly sequence: number; readonly status: 'sent' }
   | { readonly sequence?: undefined; readonly status: 'refused' | 'unanswered' };
 
-// A send the API refused, such as one for a thread that ended, fails until you retry it; a send the
-// API did not answer, because the network or the server is down, retries on its own.
 async function trySendMessage(
   client: ContractClient,
   message: OutboxMessage,
 ): Promise<SendOutcome> {
-  // a send without the images would write the message without them under its ID for good
   if (message.unreadImages !== undefined) {
     return { status: 'refused' };
   }

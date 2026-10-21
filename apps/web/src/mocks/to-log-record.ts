@@ -4,8 +4,6 @@ import type { store } from './store';
 
 type StoredRecord = ReadonlyDeep<ReturnType<typeof store.records.all>[number]>;
 
-// Copies a stored record into the shape the contract sends, so a caller never holds the store's
-// own objects.
 export function toLogRecord(record: StoredRecord): LogRecord {
   return {
     ...(record.compaction === undefined ? {} : { compaction: toLogCompaction(record.compaction) }),
@@ -26,7 +24,6 @@ export function toLogRecord(record: StoredRecord): LogRecord {
 
 type LogCompaction = NonNullable<LogRecord['compaction']>;
 
-// keeps an after count only where one exists
 function toLogCompaction(compaction: NonNullable<StoredRecord['compaction']>): LogCompaction {
   return {
     ...(compaction.postTokens === undefined ? {} : { postTokens: compaction.postTokens }),
@@ -56,7 +53,6 @@ function toLogMessage(message: NonNullable<StoredRecord['message']>): LogMessage
 
 type LogRating = NonNullable<LogRecord['rating']>;
 
-// keeps the agent's name only where one exists
 function toLogRating(rating: NonNullable<StoredRecord['rating']>): LogRating {
   return {
     items: rating.items.map((item) => ({
@@ -72,7 +68,6 @@ function toLogRating(rating: NonNullable<StoredRecord['rating']>): LogRating {
 
 type LogRecall = NonNullable<LogRecord['recall']>;
 
-// keeps a score only where one exists
 function toLogRecall(recall: NonNullable<StoredRecord['recall']>): LogRecall {
   return {
     items: recall.items.map((item) =>

@@ -5,11 +5,9 @@ export interface StepSectionProps {
   readonly children: ReactNode;
   readonly title: string;
 
-  // called each time the section opens or closes
   readonly onToggle?: (isOpen: boolean) => void;
 }
 
-// One collapsible section of an opened step, closed until you open it.
 export function StepSection(props: StepSectionProps): ReactNode {
   return (
     <details

@@ -11,7 +11,6 @@ const badge = css({
   paddingInline: '1',
 });
 
-// The mark on an item or a proposal that nixie wrote about itself, where it sits among facts.
 export function SelfNoteBadge(): ReactNode {
   return <span className={badge}>self-note</span>;
 }

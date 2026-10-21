@@ -61,8 +61,6 @@ test('it sends each /rpc request to the API', async () => {
 test('it answers 502 when the server behind it is down', async () => {
   const ctx = setupTest();
   const answerProbe = mock(() => new Response(null));
-
-  // a port that nothing listens on: the probe stops on the next line
   const probe = Bun.serve({ fetch: answerProbe, hostname: '127.0.0.1', port: 0 });
 
   await probe.stop(true);
@@ -75,7 +73,6 @@ test('it answers 502 when the server behind it is down', async () => {
 });
 
 test('it ends a stream whose server stops partway, after the part it sent', async () => {
-  // a live stream that sends one event and stays open
   const answerRequest = mock(
     () =>
       new Response(
@@ -97,7 +94,6 @@ test('it ends a stream whose server stops partway, after the part it sent', asyn
     await streaming.stop(true);
   });
 
-  // the request goes to the API, so the web server is a port it never calls
   const proxy = startFrontProxy({
     apiURL: `http://127.0.0.1:${streaming.port}`,
     webURL: 'http://127.0.0.1:9',
