@@ -4,11 +4,10 @@ import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 
-// Raises the writer epoch by one in a single transaction and returns the new value. The table
-// predates every migration, because the epoch rises before the first one runs. BEGIN IMMEDIATE
-// orders the raise against every write transaction: one that began before it commits first.
 export function claimWriterEpoch(db: Kysely<unknown>): Promise<number> {
+  // BEGIN IMMEDIATE queues this transaction behind every write transaction that began before it.
   return db.transaction().execute(async (tx) => {
+    // The table sits outside the migrations, because the epoch rises before the first one runs.
     await sql`create table if not exists writer_epoch (
       id integer primary key check (id = 1),
       epoch integer not null
@@ -22,7 +21,6 @@ export function claimWriterEpoch(db: Kysely<unknown>): Promise<number> {
       z.object({ epoch: z.number() }),
     );
 
-    // the upsert writes the one row and returns it
     invariant(row);
 
     return row.epoch;

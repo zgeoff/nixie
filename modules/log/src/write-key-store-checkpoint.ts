@@ -6,9 +6,6 @@ import type { Log } from './types';
 
 const checkpointSchema = z.object({ busy: z.number(), log: z.number(), checkpointed: z.number() });
 
-// Moves every frame out of the key store's WAL and truncates it, so a deleted key leaves no copy on
-// disk. It throws when another connection's read held frames in place; a later call finishes the
-// checkpoint. The key names the removal it follows, or is null for a checkpoint on its own.
 export async function writeKeyStoreCheckpoint(
   log: Pick<Log, 'writer'>,
   keyID: string | null,

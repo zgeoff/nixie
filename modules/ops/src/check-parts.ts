@@ -2,8 +2,6 @@ import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
 import type { HealthReport, PartCheck, PartReport } from './types';
 
-// Runs every part's check at once and reports each part, with a check that throws or outlasts
-// timeoutMs on the clock reported unready, so one stuck part never stalls the endpoint.
 export async function checkParts(
   checks: Readonly<Record<string, PartCheck>>,
   timeoutMs: number,
@@ -34,7 +32,6 @@ async function runCheck(check: PartCheck, timeoutMs: number, clock: Clock): Prom
   } catch (error) {
     return { isReady: false, reason: `the check failed: ${toErrorName(error)}` };
   } finally {
-    // ends the sleep of a check that settled in time, and the calls of one that outlasted it
     stopped.abort();
   }
 }

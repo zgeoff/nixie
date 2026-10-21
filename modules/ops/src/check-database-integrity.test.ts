@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
 import { checkDatabaseIntegrity } from './check-database-integrity';
 
-// a writer on a fresh data directory, migrated to the build's schema
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 

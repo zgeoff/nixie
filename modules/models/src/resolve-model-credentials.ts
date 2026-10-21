@@ -1,8 +1,5 @@
 import type { ModelSecrets, ModelsConfig, ResolvedProfile } from './types';
 
-// Resolves every profile's credential from nixie's decrypted secrets: deployment:<name> names the
-// entry <name> under model_credentials. It refuses a reference whose entry is missing, so nixie
-// stops at start rather than at its first turn.
 export function resolveModelCredentials(
   config: ModelsConfig,
   secrets: ModelSecrets,

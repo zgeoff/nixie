@@ -1,4 +1,3 @@
-// The model roles, each of which names the profile it uses.
 export type ModelRole =
   | 'conversation'
   | 'task'
@@ -9,62 +8,44 @@ export type ModelRole =
 
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
-// The two prompt cache lifetimes the Claude CLI's promptCacheTtl setting takes.
 type CacheTTL = '5m' | '1h';
 
-// Prices per million tokens, in the deployment's currency.
 export interface ModelPrices {
   readonly input: number;
 
-  // a write to a 5-minute cache entry, and to a 1-hour one; a profile that never asks for 1-hour
-  // entries sets both to the same price
   readonly cacheWrite: number;
   readonly cacheWrite1h: number;
   readonly cachedInput: number;
   readonly output: number;
 }
 
-// A named route to one model on one Anthropic-compatible endpoint.
 export interface ModelProfile {
-  // a stable slug, such as chat-direct, which every record of the profile's output names
   readonly id: string;
   readonly baseURL: string;
 
-  // a reference such as deployment:anthropic, never the credential itself
   readonly credential: string;
   readonly authHeader: 'bearer' | 'x-api-key';
   readonly model: string;
   readonly effort: ReasoningEffort;
 
-  // the upstream provider an aggregator endpoint must keep to, so its prompt cache holds
   readonly providerPin: string | null;
 
-  // the context window, in tokens, that the conversation's CLI compacts within instead of the
-  // model's own window
   readonly contextTokens: number | null;
 
-  // the lifetime of the prompt cache entries the conversation's CLI writes on the profile; a
-  // session that starts fresh for each run, such as the memory writer's, keeps 5-minute entries
   readonly cacheTTL: CacheTTL;
 
-  // the counting proxy prices each response with them through buildCallCost, and nothing else
-  // reads them
   readonly prices: ModelPrices | null;
 }
 
-// The profiles and the role map, from the deployment configuration. The conversation role is
-// always set; any other role left unset uses the conversation's profile.
 export interface ModelsConfig {
   readonly profiles: Readonly<Record<string, ModelProfile>>;
   readonly roles: Readonly<Partial<Record<ModelRole, string>>> & { readonly conversation: string };
 }
 
-// The part of nixie's decrypted secrets file that holds the model credentials, by name.
 export interface ModelSecrets {
   readonly model_credentials?: Readonly<Record<string, string>>;
 }
 
-// A profile with its credential resolved, as a model loop starts on it.
 export interface ResolvedProfile {
   readonly profile: ModelProfile;
   readonly credential: string;

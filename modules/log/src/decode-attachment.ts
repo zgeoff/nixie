@@ -5,7 +5,6 @@ export interface SealedAttachment {
 
 const IV_BYTES = 12;
 
-// Decrypts what encodeAttachment wrote. A wrong key, key ID or position, or a changed byte, rejects.
 export async function decodeAttachment(
   key: CryptoKey,
   keyID: string,

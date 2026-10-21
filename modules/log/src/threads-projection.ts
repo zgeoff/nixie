@@ -1,7 +1,5 @@
 import type { LogTables, Projection } from './types';
 
-// One row per thread: the first and the last record, how many records it holds and when the last
-// one arrived. A read of a thread that has no row answers that no thread has the ID.
 export const threadsProjection: Projection = {
   table: 'threads',
   keyColumn: 'thread',

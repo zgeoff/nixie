@@ -2,8 +2,6 @@ import type { Effect, FixedRule } from './types';
 
 const readOnlyEffects: ReadonlySet<Effect> = new Set(['read', 'fetch', 'note']);
 
-// Slice 1's one rule, in place of the deny, ask and allow stages: a call whose effects are only
-// read, fetch or note runs, and every other call is denied.
 export const slice1ReadOnlyRule: FixedRule = {
   id: 'slice1.read-only',
   revision: 1,

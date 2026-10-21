@@ -10,18 +10,12 @@ import type {
 } from './types';
 
 export interface DecisionPointOptions {
-  // the declaration of a registered tool, or null for a tool the registry does not hold
   readonly findDeclaration: (tool: string) => EffectDeclaration | null;
 }
 
-// The stage numbers of the full pipeline. Slice 1's fixed rules stand in for stages 3 to 9, and a
-// decision they make records stage 3 with the deciding rule's ID.
 const registryStage = 1;
 const scopeStage = 2;
 
-// Builds the decision point every tool call passes before it acts. The stages run in order and the
-// first that decides returns: the registry, then the scope, then the fixed rules, the last of which
-// decides every call.
 export function makeDecisionPoint(options: DecisionPointOptions): DecisionPoint {
   const rules = getFixedRules();
 
@@ -68,7 +62,6 @@ function pickRuleDecision(
   };
 }
 
-// the first rule that covers the call, with its outcome; a later rule never runs
 function findRuleOutcome(
   rules: readonly FixedRule[],
   call: PolicyCall,

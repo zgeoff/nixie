@@ -8,9 +8,8 @@ import { WriterLockHeldError } from './writer-lock-held-error';
 const LOCK_EX = 2;
 const LOCK_NB = 4;
 
-// Takes an exclusive flock on the data directory, the volume's mount root, and never on nixie.db:
-// closing any descriptor on nixie.db drops every POSIX lock the process holds on it, SQLite's
-// included. The kernel frees the lock when the process dies or calls release.
+// The lock sits on the data directory, never on nixie.db: closing any descriptor on nixie.db drops
+// every POSIX lock the process holds on that file, SQLite's included.
 export function claimWriterLock(dataDir: string): WriterLock {
   const fd = openSync(dataDir, 'r');
   const libc = readLibc();
@@ -29,7 +28,7 @@ export function claimWriterLock(dataDir: string): WriterLock {
 
   const held = { open: true };
 
-  // a second release must never close a descriptor that reused the number, such as a later lock
+  // The kernel reuses a closed descriptor's number, so a second close could close a later lock.
   return {
     release: () => {
       if (held.open) {
@@ -49,7 +48,7 @@ interface Libc {
 
 const libcCache: { libc: Libc | null } = { libc: null };
 
-// Bun has no flock, so the lock calls libc's through FFI: glibc or musl on Linux, and macOS
+// Bun has no flock binding, so the lock calls libc's flock through FFI.
 function readLibc(): Libc {
   libcCache.libc ??= loadLibc();
 
@@ -86,7 +85,6 @@ function loadLibc(): Libc {
   };
 }
 
-// libc always returns the thread's errno location, and a user-space address fits in a number
 function readPointedInt(pointer: Pointer | bigint | null): number {
   invariant(typeof pointer === 'number', 'libc returned no errno location');
 

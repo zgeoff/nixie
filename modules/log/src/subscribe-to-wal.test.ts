@@ -50,8 +50,6 @@ test('it ignores a write to any other file in the data directory', async () => {
 
   await writeFile(join(ctx.dataDir, 'keys.db-wal'), 'frame 1');
   await writeFile(join(ctx.dataDir, 'nixie.db-shm'), 'index');
-
-  // the kernel delivers events in order, so the WAL write's call comes after any for the others
   await writeFile(join(ctx.dataDir, 'nixie.db-wal'), 'frame 1');
 
   const callsAtFirst = await first.promise;

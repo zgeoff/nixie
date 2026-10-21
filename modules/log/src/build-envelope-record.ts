@@ -2,7 +2,6 @@ import { decisionSchema } from './decision-schema';
 import { parseJSONObject } from './parse-json-object';
 import type { EnvelopeRecord, RecordRow } from './types';
 
-// Turns a records row into the envelope a projection folds and a reader receives.
 export function buildEnvelopeRecord(row: RecordRow): EnvelopeRecord {
   return {
     sequence: row.sequence,

@@ -4,8 +4,6 @@ import { sql } from 'kysely';
 import { z } from 'zod';
 import type { EnvelopeRecord, LogTables, Projection } from './types';
 
-// Folds one record into every projection, inside the record's own transaction, and writes each
-// changed row as it stands after the record, so a reader gets the rows as of that record.
 export async function applyProjections(
   tx: Transaction<unknown>,
   projections: readonly Projection[],

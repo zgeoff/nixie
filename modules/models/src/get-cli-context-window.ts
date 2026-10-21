@@ -1,8 +1,6 @@
-// Mirrors how Claude Code 2.1.290, the CLI the pinned Agent SDK ships, picks a model's context window
-// when nothing overrides it: its model-ID canonicalizer, then its bundled catalog.
+// This file copies how Claude Code 2.1.290, the CLI that the pinned Agent SDK ships, picks a model's
+// context window: its model-ID canonicalizer, then its bundled catalog.
 
-// the models the CLI's catalog marks with a native window of a million tokens, plus the preview
-// model the CLI names on its own
 const nativeMillionModels = new Set([
   'claude-sonnet-5',
   'claude-sonnet-5-5',
@@ -18,13 +16,8 @@ const nativeMillionModels = new Set([
 ]);
 
 const millionWindow = 1_000_000;
-
-// the window the CLI assumes for every other model, whatever the model API allows
 const defaultWindow = 200_000;
 
-// The context window, in tokens, the Claude CLI assumes for a model, which with auto-compaction off
-// is the only limit it refuses a call against. A model the copy misses gets the smaller window, so
-// a check against it errs toward a refusal.
 export function getCLIContextWindow(model: string): number {
   if (/\[1m\]/iu.test(model)) {
     return millionWindow;
@@ -33,7 +26,6 @@ export function getCLIContextWindow(model: string): number {
   return nativeMillionModels.has(resolveCLIModelName(model)) ? millionWindow : defaultWindow;
 }
 
-// every model in the CLI's catalog, and the legacy models it knows beside them
 const catalogModels = [
   'claude-3-5-haiku',
   'claude-haiku-4-5',
@@ -61,8 +53,8 @@ const catalogModels = [
   'claude-3-haiku',
 ];
 
-// the CLI's fallback for an ID it cannot parse, in its order: the first family the text contains.
-// The families it tries after these are all smaller-window models, so the copy stops here.
+// The CLI tries these families in this order for an ID it cannot parse. The families it tries
+// after them all have the smaller window, so the copy stops here.
 const familyFallbacks = [
   ...[
     'claude-fable-5-1',
@@ -84,8 +76,6 @@ const familyFallbacks = [
   { model: 'claude-sonnet-4-0', pattern: /claude-sonnet-4(?!-\d(?!\d))/u },
 ];
 
-// The CLI's canonical name for a model ID: a parsed ID that matches a catalog model takes that
-// model's name, and any other ID falls back to the first catalog family its text contains.
 function resolveCLIModelName(model: string): string {
   const name = model.toLowerCase();
   const parsed = parseModelName(name);
@@ -108,12 +98,9 @@ interface ParsedModelName {
   readonly minor: number;
   readonly isVersionFirst: boolean;
 
-  // whether the text after the version is anything but a date, a version tag or -fast or -latest
   readonly hasTrailer: boolean;
 }
 
-// Parses an ID the way the CLI does: the text after the last slash, with any region and anthropic
-// prefix and any [1m] or [2m] tag removed, read as a family and a version.
 function parseModelName(name: string): ParsedModelName | null {
   const id = normalizeModelID(name.trim());
 
@@ -135,7 +122,6 @@ function parseModelName(name: string): ParsedModelName | null {
   return buildParsedName(id.slice(match[0].length), match.groups, familyFirst === null);
 }
 
-// the regions a Bedrock ID may lead with
 const bedrockRegions = new Set(['us', 'eu', 'apac', 'jp', 'au', 'us-gov', 'global']);
 
 function normalizeModelID(name: string): string | null {

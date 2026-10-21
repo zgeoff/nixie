@@ -20,7 +20,6 @@ async function setupTest() {
 
   stack.defer(() => db.destroy());
 
-  // a second connection on the same file stands in for a second process
   const other = startDatabase(join(dataDir, 'nixie.db'));
 
   stack.defer(() => other.destroy());

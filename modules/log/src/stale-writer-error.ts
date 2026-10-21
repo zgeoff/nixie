@@ -1,4 +1,3 @@
-// A newer process raised the writer epoch, so this process lost the right to write and must exit.
 export class StaleWriterError extends Error {
   override readonly name = 'StaleWriterError';
 

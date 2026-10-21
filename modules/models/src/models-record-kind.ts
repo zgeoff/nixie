@@ -1,5 +1,3 @@
-// The record kinds of model output, which the models module registers with the log for the session
-// runner and the compactor that write them.
 export type ModelsRecordKind =
   | 'model.reply'
   | 'model.turn_ended'

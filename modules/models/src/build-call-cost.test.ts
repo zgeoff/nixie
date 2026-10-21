@@ -13,7 +13,6 @@ test('it prices the 1-hour cache writes of a mixed response at the 1-hour price 
     { input: 5, cacheWrite: 6.25, cacheWrite1h: 10, cachedInput: 0.5, output: 25 },
   );
 
-  // 10 × 5 + 1,000 × 6.25 + 2,000 × 10 + 50,000 × 0.5 + 200 × 25 = 56,300 per million
   expect(cost).toBeCloseTo(0.0563, 10);
 });
 
@@ -29,7 +28,6 @@ test('it prices every cache write at the 5-minute price when the response writes
     { input: 5, cacheWrite: 6.25, cacheWrite1h: 10, cachedInput: 0.5, output: 25 },
   );
 
-  // 10 × 5 + 3,000 × 6.25 + 50,000 × 0.5 + 200 × 25 = 48,800 per million
   expect(cost).toBeCloseTo(0.0488, 10);
 });
 
@@ -44,7 +42,6 @@ test('it prices every cache write at the 1-hour price when the response leaves o
     { input: 5, cacheWrite: 6.25, cacheWrite1h: 10, cachedInput: 0.5, output: 25 },
   );
 
-  // 10 × 5 + 3,000 × 10 + 50,000 × 0.5 + 200 × 25 = 60,050 per million
   expect(cost).toBeCloseTo(0.06005, 10);
 });
 
@@ -59,7 +56,6 @@ test('it prices the cache writes the split leaves unreported at the 1-hour price
     { input: 5, cacheWrite: 6.25, cacheWrite1h: 10, cachedInput: 0.5, output: 25 },
   );
 
-  // 1,000 × 6.25 + 2,000 × 10 = 26,250 per million
   expect(cost).toBeCloseTo(0.02625, 10);
 });
 
@@ -74,7 +70,6 @@ test('it counts the split in full when it reports more cache writes than the tot
     { input: 5, cacheWrite: 6.25, cacheWrite1h: 10, cachedInput: 0.5, output: 25 },
   );
 
-  // 1,000 × 6.25 + 2,000 × 10 = 26,250 per million
   expect(cost).toBeCloseTo(0.02625, 10);
 });
 
@@ -84,6 +79,5 @@ test('it prices a response with no cache counts from its input and output alone'
     { input: 5, cacheWrite: 6.25, cacheWrite1h: 10, cachedInput: 0.5, output: 25 },
   );
 
-  // 4,000 × 5 + 600 × 25 = 35,000 per million
   expect(cost).toBeCloseTo(0.035, 10);
 });

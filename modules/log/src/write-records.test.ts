@@ -112,7 +112,6 @@ test('it keeps no plaintext of an erasable field in nixie.db', async () => {
     },
   ]);
 
-  // stopping checkpoints the WAL into nixie.db, so the one file holds every committed byte
   await ctx.writer.stop();
 
   const database = await readFile(join(ctx.dataDir, 'nixie.db'));
