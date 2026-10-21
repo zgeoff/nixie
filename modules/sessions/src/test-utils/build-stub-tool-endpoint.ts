@@ -1,7 +1,8 @@
-import type { ToolEndpoint, ToolRun } from '@heynixie/tools';
+import type { ToolEndpoint, ToolRun, ToolSession } from '@heynixie/tools';
 
 interface StubStepToken {
   readonly stepRunID: string;
+  readonly session: ToolSession | null;
   readonly token: string;
   isStopped: boolean;
 }
@@ -30,9 +31,10 @@ export function buildStubToolEndpoint(): StubToolEndpoint {
           token: 'run-token',
           socketPath: '/run/nixie/tools.sock',
           target: { path: '/run/nixie/tools.sock' },
-          startStep: (stepRunID) => {
+          startStep: (stepRunID, session) => {
             const step: StubStepToken = {
               stepRunID,
+              session: session ?? null,
               token: `step-token-${steps.length + 1}`,
               isStopped: false,
             };

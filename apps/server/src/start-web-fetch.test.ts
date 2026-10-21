@@ -26,7 +26,12 @@ async function setupTest() {
 
   const testRecorder = await setupTestRecorder();
 
-  return { dataDir: testRecorder.log.writer.dataDir, recorder: testRecorder.recorder, stack };
+  return {
+    dataDir: testRecorder.log.writer.dataDir,
+    log: testRecorder.log,
+    recorder: testRecorder.recorder,
+    stack,
+  };
 }
 
 test("it fetches through a new fetcher process in a test build's fetch sandbox", async () => {
@@ -45,6 +50,7 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox",
     image: 'fetch',
     argv: [process.execPath, join(import.meta.dir, '../../../guests/fetch/src/main.ts')],
     deniedRanges: [],
+    log: ctx.log,
   });
 
   ctx.stack.defer(() => webFetch.stop());
@@ -101,6 +107,7 @@ test.skipIf(!hasImpHost)(
         ...(config.publicEgress?.hostAddresses ?? []),
         ...(config.publicEgress?.egressDeny ?? []),
       ],
+      log: ctx.log,
     });
 
     ctx.stack.defer(() => webFetch.stop());

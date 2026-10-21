@@ -1,5 +1,6 @@
 import type { StepInput } from '@heynixie/tasks';
 import { buildStepRunID } from '@heynixie/tasks';
+import type { ToolSession } from '@heynixie/tools';
 import type { InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { CompletedTurn } from './build-step-result';
@@ -20,6 +21,9 @@ export interface LiveTurnPlan {
   readonly times: MessageTimeOptions;
 
   readonly images: ImageTally;
+
+  // the session the turn runs on, which the turn's step token hands each tool call
+  readonly session: ToolSession;
 }
 
 export async function runLiveTurn(
@@ -27,7 +31,7 @@ export async function runLiveTurn(
   input: StepInput,
   plan: LiveTurnPlan,
 ): Promise<CompletedTurn> {
-  const stepToken = run.endpoint.startStep(buildStepRunID(input));
+  const stepToken = run.endpoint.startStep(buildStepRunID(input), plan.session);
 
   try {
     return await runTokenTurn(run, input, { ...plan, token: stepToken.token });

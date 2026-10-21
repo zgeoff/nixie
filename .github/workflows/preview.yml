@@ -1,10 +1,13 @@
-# Starts the preview recipe on every pull request, as a preview environment starts it: it builds the
-# images, waits for every service to report healthy, checks that nixie's health URL answers ready
-# through the preview's one origin, and that the enrol service printed a sign-in code.
+# Starts the preview recipe as a preview environment starts it: it builds the images, waits for
+# every service to report healthy, checks that nixie's health URL answers ready through the
+# preview's one origin, and that the enrol service printed a sign-in code. A pull request runs it
+# only when it changes a file the preview reads; every push to main runs it in full.
 name: Preview
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -20,7 +23,26 @@ defaults:
     working-directory: preview
 
 jobs:
+  changes:
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@sync-v22
+    with:
+      paths: |
+        .github/workflows/preview.yml
+        .dockerignore
+        bun.lock
+        bunfig.toml
+        package.json
+        tsconfig*.json
+        adapters/**
+        apps/**
+        guests/**
+        libs/**
+        modules/**
+        preview/**
+
   compose:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,8 +50,25 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # the web image shares its layers with the Images workflow's web build through the web scope,
+      # and the test build with the Compose workflow's through the preview scope
+      - name: Build the images
+        uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
+        with:
+          source: ./preview
+          files: compose.yaml
+          load: true
+          set: |
+            nixie.cache-from=type=gha,scope=preview
+            nixie.cache-to=type=gha,mode=max,scope=preview
+            web.cache-from=type=gha,scope=web
+            web.cache-to=type=gha,mode=max,scope=web
+
       - name: Start the preview
-        run: docker compose up --build --wait --wait-timeout 300
+        run: docker compose up --wait --wait-timeout 300
 
       - name: Check the health URL
         run: |

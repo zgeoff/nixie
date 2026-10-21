@@ -7,6 +7,9 @@ export type FetchReply =
       readonly contentType: string | null;
 
       readonly text: string | null;
+
+      // the target of each link the text marks, by the index its mark names
+      readonly links: readonly string[];
       readonly isTruncated: boolean;
 
       readonly blocked: string | null;
