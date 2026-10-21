@@ -10,12 +10,10 @@ import { loadSessionTranscript } from '../test-utils/load-session-transcript';
 import { runContractQuery } from '../test-utils/run-contract-query';
 import { startInputStream } from '../test-utils/start-input-stream';
 
-// The probes call the model on the subscription, so only a contract run enables them. Bun 1.4.2's
+// Each probe calls the model on the subscription, so only a contract run enables it. Bun 1.4.2's
 // skipIf takes a boolean and has no in-body skip.
 const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 
-// a config directory of the run's own, a streaming input, and the options of a task that runs shell
-// commands with no permission prompt
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-owner-'));
 
@@ -59,7 +57,6 @@ test.skipIf(!isContractRun)(
       prompt: ctx.input.messages,
       options: ctx.options,
 
-      // the owner speaks once, while the first command runs, and the run ends at the first result
       onMessage: (message) => {
         if (
           message.type === 'assistant' &&
@@ -113,8 +110,8 @@ test.skipIf(!isContractRun)(
       prompt: ctx.input.messages,
       options: ctx.options,
 
-      // The owner speaks while the command runs, and the host interrupts the turn once the CLI has
-      // queued the message: the transcript's second enqueue, after the task's own.
+      // The CLI records the task's own prompt as the transcript's first enqueue, so the owner's queued
+      // message is the second.
       onMessage: (message, session) => {
         if (
           message.type === 'assistant' &&

@@ -20,52 +20,38 @@ import type {
 export interface ConversationRunnerOptions {
   readonly context: TasksContext;
 
-  // the conversation role's profile, read once at start: a role change reaches the conversation
-  // at its next start
   readonly profile: ResolvedProfile;
   readonly sandboxes: ConversationSandboxSpec['sandboxes'];
   readonly tools: Pick<ToolEndpoint, 'startRun'>;
 
-  // the conversation's tool list, which its endpoint serves
   readonly toolNames: readonly string[];
   readonly image: string;
   readonly limits: ConversationSandboxSpec['limits'];
   readonly command: ConversationRun['command'];
 
-  // the definitions in force, read as each step begins so a new seed reaches the next step
   readonly getDefinitions: ConversationRun['getDefinitions'];
   readonly readTurnNote?: NonNullable<ConversationRun['readTurnNote']>;
   readonly loadOrPinSkillCatalog?: NonNullable<ConversationRun['loadOrPinSkillCatalog']>;
 
-  // the lines of a new session's status, in order; the kind of start, the start time and the model
-  // when the server passes none
   readonly status?: ConversationRun['status'];
 
-  // the memory store, which starts after the runner, so each turn reads it again
   readonly memory: () => ConversationMemory;
   readonly memorySettings?: Partial<ConversationMemorySettings>;
 
-  // when the session compacts, 0.8 of the window with a 2,000-token summary cap by default
   readonly compaction?: Partial<CompactionSettings>;
 
-  // the IANA zone your message renders its send time in when it carries no zone of its own
   readonly defaultZone?: string;
 
-  // the server's log, which takes a warning when a replaced sandbox's session does not carry over
   readonly log: ConversationSandboxSpec['log'];
 }
 
 export interface ConversationRunner {
   readonly runStep: RunStep;
 
-  // the session cleanup a forget runs, which invalidates and removes the conversation's session
   readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
   readonly stop: () => Promise<void>;
 }
 
-// How memory reaches the conversation when the deployment sets nothing: 5 retrieved items, 2
-// self-notes and 3 past messages above a keyword score of 0.25 or a similarity of 0.38, a rebuilt session that
-// starts with up to 30,000 tokens of recent turns, and no owner's or agent's name.
 const defaultMemorySettings: ConversationMemorySettings = {
   retrievalItems: 5,
   retrievalSelfNotes: 2,
@@ -79,9 +65,6 @@ const defaultMemorySettings: ConversationMemorySettings = {
 
 const defaultCompaction: CompactionSettings = { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 };
 
-// Starts the conversation's runner on its role's profile: it stores the profile's credential with
-// the sandbox backend, keeps the conversation's long-lived sandbox when its spec still matches and
-// replaces it otherwise, and opens the conversation's tool endpoint.
 export async function startConversationRunner(
   options: ConversationRunnerOptions,
 ): Promise<ConversationRunner> {
@@ -113,7 +96,6 @@ export async function startConversationRunner(
     compaction: { ...defaultCompaction, ...options.compaction },
     status: options.status ?? buildDefaultStatus(),
 
-    // a runner given no zone renders a message that carries none in UTC
     defaultZone: options.defaultZone ?? 'UTC',
     session: makeSessionGuard(),
   };

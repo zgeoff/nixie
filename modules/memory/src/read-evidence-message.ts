@@ -2,8 +2,6 @@ import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import type { EvidenceMessage } from './view-types';
 
-// Reads the text of the message at a sequence, which a version's quote points into. A forgotten
-// message reads as shredded, and a sequence that holds no message with text reads as missing.
 export async function readEvidenceMessage(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   sequence: number,

@@ -1,4 +1,3 @@
-// No skill proposal has the ID the answer names.
 export class SkillProposalNotFoundError extends Error {
   override readonly name = 'SkillProposalNotFoundError';
 

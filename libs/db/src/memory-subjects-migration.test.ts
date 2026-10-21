@@ -23,7 +23,6 @@ async function setupTest() {
 
   stack.defer(() => db.destroy());
 
-  // the schema the release before leaves, which the migration starts from
   await runMigrations(db, {
     schema: {
       migrations: nixieSchema.migrations.slice(
@@ -143,7 +142,6 @@ test('it leaves a row that the release before inserts afterwards with no subject
 
   await ctx.db.transaction().execute((tx) => memorySubjectsMigration.up(tx));
 
-  // the insert the release before runs, which names no subject
   await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
     updated_sequence, short_id, kind) values
     ('8d2e4b71-0c5f-4e9a-b3d6-1f7a9c2e5b80', 1, 'active', 0, 1, 1, 'q4wz8n3vtc', 'self')`.execute(

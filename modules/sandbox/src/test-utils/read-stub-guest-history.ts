@@ -6,8 +6,6 @@ type HistoryRead =
   | { readonly history: readonly StubSessionEntry[] }
   | { readonly failure: GuestFrame };
 
-// Reads the session entries up to the resume point, none for a fresh session, or the failure the
-// CLI gives for a session the disk does not hold or a point the session does not hold.
 interface GuestDiskRef {
   readonly disk: StubGuestDisk;
   readonly home: GuestHome;

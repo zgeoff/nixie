@@ -9,16 +9,11 @@ export interface RemovalWiring {
 }
 
 export interface KeyRemoval {
-  // the record whose key goes, such as your message a batch cites
   readonly sequence: number | undefined;
 
-  // how many requests the model has before the key goes
   readonly requests: number;
 }
 
-// Removes a record's key once the model has the given number of requests, the way a forget of the
-// message lands while the model still works on it. Its promise resolves once the key is gone, so a
-// scripted reply gated on it answers only after the forget.
 export async function removeMessageKeyAfter(
   wiring: RemovalWiring,
   removal: KeyRemoval,

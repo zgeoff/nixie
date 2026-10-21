@@ -8,12 +8,9 @@ export interface PendingChangeRequirement {
   readonly changeID: string;
   readonly actionHash: string;
 
-  // the clock's time, which a pending change's lapse time must not have reached
   readonly now: number;
 }
 
-// Reads the consolidation change an answer names and throws unless it still takes one: it exists,
-// it is pending and not past its lapse time, and the answer names its action hash.
 export async function requirePendingChange(
   db: Kysely<ConsolidationTables>,
   requirement: PendingChangeRequirement,

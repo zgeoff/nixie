@@ -4,9 +4,8 @@ import { checkDisk, startPartRefresh } from '@heynixie/ops';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { RefreshedPart } from './build-readiness-checks';
 
-// Checks impd and the data volume every 5 s, well inside a probe's period, so readiness reads their
-// last reports. impd measures the memory of each awake imp to answer, which can take longer than a
-// probe waits, so a probe that called impd itself timed out while nixie was ready.
+// impd measures the memory of each awake imp to answer, which can take longer than a probe waits,
+// so readiness reads the last report of this refresh instead of calling impd.
 export function startReadinessRefresh(
   adapter: Pick<SandboxAdapter, 'checkRuntime'>,
   dataDir: string,

@@ -9,7 +9,6 @@ import { startTestMemory } from './test-utils/start-test-memory';
 import { writePlannedBatch } from './test-utils/write-planned-batch';
 import { writerConfigSchema } from './writer-config-schema';
 
-// a memory with the writer's parts over it, which a test completes with its stub session
 async function setupTest() {
   const memory = await startTestMemory();
 

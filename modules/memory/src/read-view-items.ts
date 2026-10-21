@@ -7,8 +7,6 @@ import { readViewText } from './read-view-text';
 import type { MemoryTables } from './types';
 import type { ViewItem } from './view-types';
 
-// Reads each named item as the memory view lists it, in the order named, with its current version's
-// text while its key exists. An ID that names no item is left out.
 export async function readViewItems(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   itemIDs: readonly string[],
@@ -17,7 +15,6 @@ export async function readViewItems(
     return [];
   }
 
-  // a forgotten item's date is the time of the record that completed its forget
   const db = log.writer.db.$extendTables<
     MemoryTables & { records: { sequence: number; recorded_at: number } }
   >();
@@ -58,7 +55,6 @@ export async function readViewItems(
 
   const byID = new Map(rows.map((row) => [row.item_id, row]));
 
-  // the rows in the order of the IDs, without an ID that matched no item
   const found = itemIDs.flatMap((itemID) => byID.get(itemID) ?? []);
 
   return Promise.all(found.map((row) => openViewItem(row, keys.get(row.item_id))));

@@ -3,12 +3,10 @@ import { useState } from 'react';
 import { css } from '../styled-system/css';
 
 export interface MemorySearchFormProps {
-  // the search the view shows, or null for none
   readonly query: string | null;
   readonly onSearch: (query: string | null) => void;
 }
 
-// The search box: a search runs when you submit it, and clearing it shows every active item again.
 export function MemorySearchForm(props: MemorySearchFormProps): ReactNode {
   const [text, setText] = useState(props.query ?? '');
 

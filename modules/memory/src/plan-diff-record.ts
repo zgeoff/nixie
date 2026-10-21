@@ -13,20 +13,15 @@ export interface PlannedSummary {
 export interface DiffPlan {
   readonly changes: readonly StagedChange[];
 
-  // the model of the session that staged the diff, or null for a run that needed none
   readonly model: string | null;
   readonly shownItems: number;
 
-  // the summary the session left for you, and every item it was shown, or null when it left none
   readonly summary: PlannedSummary | null;
   readonly now: number;
   readonly lapseMs: number;
   readonly definitions: Definitions;
 }
 
-// Plans the records that propose a run's diff: the diff, each change sealed under its first input's
-// key, then the summary, if any. A change whose first input lost its key since the session read it
-// drops out, and so does a summary when any shown item lost its key.
 export async function planDiffRecord(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   plan: DiffPlan,
@@ -54,7 +49,6 @@ export async function planDiffRecord(
     payload: {
       diffID,
 
-      // the task runtime's clock, which the schedule reads, and not the record's wall-clock time
       at: plan.now,
       model: plan.model,
       shownItems: plan.shownItems,
@@ -94,7 +88,6 @@ async function encodeChange(
   };
 }
 
-// the summary's record, or null when no item was shown or a shown item has no key left
 async function planSummaryRecord(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   diffID: string,

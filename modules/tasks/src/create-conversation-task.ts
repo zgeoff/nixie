@@ -4,9 +4,6 @@ import { taskCreatedCodec } from './task-created-codec';
 import { taskRevivedCodec } from './task-revived-codec';
 import type { TasksContext, TasksTables } from './types';
 
-// Creates the conversation's task on first start and leaves it be on every start after. It has no
-// brief, so it waits for your first message. A conversation that an earlier release let fail is
-// made ready again, because the conversation now never fails, and a failed task never wakes.
 export async function createConversationTask(
   context: Pick<TasksContext, 'definitions' | 'log'>,
 ): Promise<void> {

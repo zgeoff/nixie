@@ -11,9 +11,6 @@ type LabelResult =
   | { readonly status: 'invalid_label' }
   | { readonly status: 'not_found' };
 
-// Sets the label of a device session that is not revoked, in place of the device name it enrolled
-// with, and every message the session sends after it carries the label. The record of the change
-// encrypts the label, as the enrolment record encrypts the device name.
 export function updateSessionLabel(context: APIContext, input: LabelInput): Promise<LabelResult> {
   const label = normalizeLabel(input.label);
 
@@ -55,11 +52,8 @@ export function updateSessionLabel(context: APIContext, input: LabelInput): Prom
   });
 }
 
-// the limit the contract sets on the device name a session enrols with
 const maxLabelLength = 100;
 
-// a label renders on one line beside the send time, so each run of white space becomes one space,
-// and it keeps to the device name's limit
 function normalizeLabel(label: string): string | null {
   const normalized = label.replaceAll(/\s+/gu, ' ').trim();
 

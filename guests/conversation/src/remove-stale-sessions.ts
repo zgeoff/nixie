@@ -1,9 +1,6 @@
 import { readdir, rm } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
-// Removes every SDK session on the guest's disk but the one the turn resumes. Each turn forks a
-// session that copies the history up to its boundary, so keeping the old ones would grow the disk
-// by a whole transcript per turn. With no config folder set, it removes nothing.
 export async function removeStaleSessions(
   configDir: string | undefined,
   keep: string | null,
@@ -29,7 +26,6 @@ export async function removeStaleSessions(
   await Promise.all(stale.map((path) => rm(path, { recursive: true, force: true })));
 }
 
-// a session's transcript is <id>.jsonl, and its side files sit in a folder named <id>
 function isKeptSession(name: string, keep: string | null): boolean {
   return keep !== null && (name === keep || name === `${keep}.jsonl`);
 }

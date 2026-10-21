@@ -12,10 +12,8 @@ import type { BuildSchema, Migration, StoredSchema } from './types';
 export interface RunMigrationsOptions {
   readonly schema: BuildSchema;
 
-  // where the copy taken before the first migration goes, as nixie-schema-<version>.db
   readonly copyDir: string;
 
-  // runs first in every transaction the runner opens, such as the writer epoch check
   readonly requireWriter?: (tx: Transaction<unknown>) => Promise<void>;
 }
 
@@ -25,9 +23,6 @@ export interface MigrationReport {
   readonly copyPath: string | null;
 }
 
-// Brings the database to the schema this build writes, copying it first unless it holds no schema
-// yet. A database newer than the build stays as it is when the build can read it, and is refused
-// when it cannot.
 export async function runMigrations(
   db: Kysely<unknown>,
   options: RunMigrationsOptions,
@@ -49,7 +44,6 @@ export async function runMigrations(
   return { from: stored.version, to: writes, copyPath };
 }
 
-// The schema_version table predates every migration, because it records which migrations ran.
 function createSchemaVersion(
   db: Kysely<unknown>,
   options: RunMigrationsOptions,
@@ -72,7 +66,6 @@ function createSchemaVersion(
       z.object({ version: z.number(), oldest_reader: z.number() }),
     );
 
-    // the insert above leaves the one row in place
     invariant(row);
 
     return { version: row.version, oldestReader: row.oldest_reader };
@@ -116,7 +109,6 @@ function parseCopyVersion(name: string): number | null {
   return version === undefined ? null : Number(version);
 }
 
-// a database with no schema yet holds nothing to lose, so it gets no copy
 async function createCopyBeforeMigration(
   db: Kysely<unknown>,
   version: number,
@@ -133,9 +125,8 @@ async function createCopyBeforeMigration(
   return copyPath;
 }
 
-// SQLite ignores the foreign_keys pragma inside a transaction, so the runner turns enforcement off
-// around the migrations. Otherwise a table rebuild's DROP TABLE would cascade into its child rows.
-// Each migration checks the foreign keys before it commits instead.
+// SQLite ignores the foreign_keys pragma inside a transaction, so enforcement goes off around the
+// migrations. Otherwise a table rebuild's DROP TABLE cascades into its child rows.
 async function runPendingMigrations(
   db: Kysely<unknown>,
   options: RunMigrationsOptions,
@@ -176,7 +167,6 @@ function runMigration(
       );
     }
 
-    // a version short of the build's own can be read by the builds that write it
     const version = pending.index + 1;
     const oldestReader = Math.min(options.schema.oldestReader, version);
 

@@ -1,5 +1,3 @@
-// One record of the log as the test reads it from the database: its envelope and its plain
-// payload, never its erasable fields.
 export interface TestRecord {
   readonly sequence: number;
   readonly kind: string;

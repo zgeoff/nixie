@@ -8,17 +8,12 @@ import { useNixieClient } from '../use-nixie-client';
 export interface ForgetControlProps {
   readonly record: LiveRecord;
 
-  // whether the message still shows its text; a forget the stream reports as started drops it
   readonly hasText: boolean;
   readonly onForgotten: () => void;
 }
 
-// The control stays small and quiet below the text, so it never competes with the message.
 const control = css({ color: 'textMuted', display: 'block', fontSize: 'sm', marginTop: '1' });
 
-// The checked forget of one message or reply: the first press asks, and only the confirm forgets.
-// Each confirmation keeps one client action ID, so a confirm that fails and goes again forgets once.
-// A forget in flight or failed keeps its control after the text goes, so a failed cleanup can retry.
 export function ForgetControl(props: ForgetControlProps): ReactNode {
   const nixie = useNixieClient();
   const queryClient = useQueryClient();
@@ -29,7 +24,6 @@ export function ForgetControl(props: ForgetControlProps): ReactNode {
       onSuccess: (_result, input) => {
         setActionID(null);
 
-        // a forgotten message's images are gone, so no page shows a copy this client kept
         queryClient.removeQueries({
           queryKey: nixie.queryUtils.conversation.readImage.key({
             input: { thread: input.thread, sequence: input.sequence },
@@ -86,7 +80,6 @@ export function ForgetControl(props: ForgetControlProps): ReactNode {
 interface ForgetConfirmationProps {
   readonly noun: string;
 
-  // a forget whose start already dropped the text cannot be kept, only retried
   readonly canKeep: boolean;
   readonly isPending: boolean;
   readonly isError: boolean;

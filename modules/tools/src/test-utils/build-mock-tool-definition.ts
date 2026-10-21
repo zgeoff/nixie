@@ -3,8 +3,6 @@ import type { JSONObject, JSONValue } from '@heynixie/log';
 import type { EffectDeclaration } from '@heynixie/policy';
 import type { ToolDefinition } from '../types';
 
-// input, output and the declaration's results merge into the defaults key by key; an array, such
-// as a schema's required list or the declaration's effects, replaces its default whole
 export type MockToolDefinitionOverrides = Partial<
   Omit<ToolDefinition, 'input' | 'output' | 'declaration'>
 > & {
@@ -13,7 +11,6 @@ export type MockToolDefinitionOverrides = Partial<
   readonly declaration?: Partial<EffectDeclaration>;
 };
 
-// A direct read tool that takes a query and returns one note.
 export function buildMockToolDefinition(
   overrides: MockToolDefinitionOverrides = {},
 ): ToolDefinition {

@@ -1,4 +1,3 @@
-// The result of both reload tools: each skill's version before and after, null for none.
 export const skillReloadOutput = {
   type: 'object',
   properties: {

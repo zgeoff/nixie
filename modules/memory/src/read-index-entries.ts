@@ -3,8 +3,6 @@ import { decodeVersionText } from './decode-version-text';
 import type { IndexEntry } from './start-memory-index';
 import type { MemoryContext, MemoryTables } from './types';
 
-// Reads the current text of every active item for the index. An item whose key fails stays out of
-// the index, and recall leaves it out too.
 export async function readIndexEntries(context: MemoryContext): Promise<readonly IndexEntry[]> {
   const rows = await context.log.writer.db
     .$extendTables<MemoryTables>()

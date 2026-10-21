@@ -4,7 +4,6 @@ import invariant from 'tiny-invariant';
 import { buildTestConversationTools } from './build-test-conversation-tools';
 import { startTestServer } from './start-test-server';
 
-// a test server whose context the tools are built on
 async function setupTest() {
   return { server: await startTestServer() };
 }

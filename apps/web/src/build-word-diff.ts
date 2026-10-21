@@ -1,12 +1,8 @@
-// One run of a word diff: text both versions hold, text the later version added, or text it removed.
 export interface DiffPart {
   readonly kind: 'same' | 'added' | 'removed';
   readonly text: string;
 }
 
-// Diffs two texts word by word, keeping the spaces between words, so a reader sees what an edit
-// changed in an item. It takes the longest run of words both texts share and marks the rest as
-// removed from the earlier text or added in the later one, removals first.
 export function buildWordDiff(before: string, after: string): readonly DiffPart[] {
   const left = splitTokens(before);
   const right = splitTokens(after);
@@ -19,7 +15,6 @@ function splitTokens(text: string): readonly string[] {
   return text.split(/(?<space>\s+)/u).filter((token) => token !== '');
 }
 
-// lengths[row][column] holds the longest common run of tokens from left[row] and right[column] on
 function buildCommonLengths(left: readonly string[], right: readonly string[]): number[][] {
   const lengths = Array.from({ length: left.length + 1 }, () =>
     Array.from({ length: right.length + 1 }, () => 0),
@@ -39,7 +34,6 @@ function buildCommonLengths(left: readonly string[], right: readonly string[]): 
   return lengths;
 }
 
-// joins neighbouring parts of one kind, so a changed phrase reads as one run
 function mergeParts(parts: readonly DiffPart[]): readonly DiffPart[] {
   return parts.reduce<DiffPart[]>((merged, part) => {
     const last = merged.at(-1);
@@ -54,7 +48,6 @@ function mergeParts(parts: readonly DiffPart[]): readonly DiffPart[] {
   }, []);
 }
 
-// walks both texts from their starts, one part per step, until both are spent
 function collectParts(
   left: readonly string[],
   right: readonly string[],

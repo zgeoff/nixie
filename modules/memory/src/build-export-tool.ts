@@ -1,8 +1,5 @@
 import type { ToolDefinition } from '@heynixie/tools';
 
-// Builds memory.export, which declares export, so the fixed rule denies it and the model never
-// exports on its own. The export is the memory view's action, which saves the file where the owner
-// picks; a call a later rule lets through still exports nothing, as the tool takes no destination.
 export function buildExportTool(): ToolDefinition {
   return {
     name: 'memory.export',

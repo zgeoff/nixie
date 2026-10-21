@@ -16,7 +16,6 @@ test('it reads a pinned item whose key is gone as a gap that takes no tokens', a
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  // each item's key sits in the key store under the item's ID
   await removeRecordKey(ctx.memory.log, item.itemID);
 
   const core = await ctx.memory.store.view.readPinnedCore();

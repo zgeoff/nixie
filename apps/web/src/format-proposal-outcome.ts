@@ -20,8 +20,6 @@ const refusalNotices: Readonly<
   WRONG_STATE: 'Nothing changed: the item is in a state this answer cannot change.',
 };
 
-// What an answer to a proposal did, in words, or null for an answer that applied as asked. A close
-// match names no item here, because the proposal shows the item it matched.
 export function formatProposalOutcome(outcome: ProposalOutcome): string | null {
   if (outcome.status === 'stale') {
     return staleNotices[outcome.cause];

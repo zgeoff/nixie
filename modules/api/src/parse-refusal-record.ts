@@ -7,8 +7,6 @@ interface RefusalRecord {
   readonly refusedAt: number;
 }
 
-// Reads an identity.refused record's payload, or null for a record of another kind or one whose
-// payload lacks a field.
 export function parseRefusalRecord(
   record: Pick<EnvelopeRecord, 'kind' | 'payload'>,
 ): RefusalRecord | null {

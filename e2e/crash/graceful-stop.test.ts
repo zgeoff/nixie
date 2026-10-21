@@ -3,8 +3,6 @@ import { waitForCondition } from '@heynixie/testing';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 
-// A test of the graceful stop: the test sends SIGTERM while a scripted turn runs, which waits on a
-// held model reply, and nixie gives the step 30 s on the clock to commit.
 async function setupTest() {
   const nixie = await startTestNixie();
 
@@ -29,8 +27,6 @@ test('it commits a step that finishes inside the grace window once, and claims n
   nixie.signal('SIGTERM');
 
   const grace = await nixie.waitForArrival('sigterm.grace');
-
-  // work that arrives after the signal waits for the next start
   const created = await nixie.request('createTask', { brief: 'Start after the stop.' });
 
   const taskID = String(created);
@@ -72,7 +68,6 @@ test('it stops with a step still running at the deadline, which the restart reco
 
   await first.ready;
 
-  // the first turn's reply never comes, so its step outlives the grace window
   ctx.nixie.model.addReplies(
     { text: 'Late.', gate: Promise.withResolvers<void>().promise },
     { text: 'Hi.' },

@@ -3,13 +3,10 @@ import type { Lease, TasksContext, TasksTables } from './types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
 export interface LeaseRenewal {
-  // aborts when a renewal finds the lease gone, so the work stops what it can no longer commit
   readonly signal: AbortSignal;
   readonly stop: () => Promise<void>;
 }
 
-// Renews a lease every third of its length until stopped. Why: renewing at a third survives 2
-// missed renewals, and a dead runner still frees its work within one lease length.
 export function startLeaseRenewal(
   context: Pick<TasksContext, 'clock' | 'log'>,
   lease: Lease,
@@ -51,6 +48,8 @@ async function runRenewals(
   const renewal = { held: true };
 
   while (renewal.held) {
+    // A renewal at each third of the lease survives 2 missed renewals, and a dead runner still frees
+    // its work within one lease length.
     await context.clock.sleep(loop.durationMs / 3, loop.stopping);
 
     if (loop.stopping.aborted) {
@@ -63,7 +62,6 @@ async function runRenewals(
   }
 }
 
-// one renewal: true while the lease stands, false once it is lost
 async function runRenewal(
   context: Pick<TasksContext, 'clock' | 'log'>,
   loop: RenewalLoop,
@@ -83,7 +81,6 @@ async function runRenewal(
   return held;
 }
 
-// a renewal that finds no lease, or fails, reports the loss and ends the renewals
 async function tryUpdateLeaseExpiry(
   context: Pick<TasksContext, 'clock' | 'log'>,
   loop: RenewalLoop,
@@ -103,7 +100,6 @@ async function tryUpdateLeaseExpiry(
   }
 }
 
-// moves the expiry one lease length past now, only while the lease still stands as claimed
 function updateLeaseExpiry(
   context: Pick<TasksContext, 'clock' | 'log'>,
   loop: RenewalLoop,

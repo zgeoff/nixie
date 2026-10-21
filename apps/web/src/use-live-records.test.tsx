@@ -9,10 +9,8 @@ import { renderHook } from './test-utils/render-hook';
 import { useLiveRecords } from './use-live-records';
 
 async function setupTest() {
-  // the API streams the log only to a signed-in browser
   const session = await createDeviceSession();
 
-  // records each follow request's input, and lets the mock API answer it
   const follows = mock<(body: unknown) => void>();
 
   server.use(
@@ -78,13 +76,11 @@ test('it catches up after the stream drops, with no gap and no repeat', async ()
     expect(hook.result.current.records).toHaveLength(1);
   });
 
-  // the browser comes back online, which ends the open connection, and the next attempt fails
   server.use(http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }));
   globalThis.dispatchEvent(new Event('online'));
 
   const two = await store.records.create({ kind: 'tool_result' });
 
-  // the client pauses before it follows again after a failed attempt
   await waitFor(
     () => {
       expect(hook.result.current.records.map((record) => record.sequence)).toStrictEqual([
@@ -105,7 +101,6 @@ test('it follows the log again at once when the page becomes visible', async () 
 
   const stalled = mock();
 
-  // the first connection opens and then delivers nothing, as one that died unseen does
   server.use(
     http.post(
       '*/rpc/records/follow',
@@ -153,7 +148,6 @@ test('it keeps reporting live updates unavailable while the API refuses a revoke
     },
   });
 
-  // each refusal takes a round trip, as over a network, so React renders any state between
   server.use(
     http.post('*/rpc/records/follow', async () => {
       await delay(20);
@@ -168,7 +162,6 @@ test('it keeps reporting live updates unavailable while the API refuses a revoke
     return live;
   });
 
-  // the fourth advance waits for the fourth refusal, one past the notice
   await ctx.timer.advanceToNext();
   await ctx.timer.advanceToNext();
   await ctx.timer.advanceToNext();
@@ -190,12 +183,10 @@ test('it keeps live updates available after two failed attempts in a row', async
 
   await ctx.timer.advanceToNext();
 
-  // the second failure starts the second pause
   await waitFor(() => {
     expect(ctx.timer.countPending()).toBe(1);
   });
 
-  // lets React render whatever the second failure set before the test reads it
   await act(() => Promise.resolve());
 
   expect(hook.result.current.unavailable).toBeFalse();
@@ -221,7 +212,6 @@ test('it reports live updates unavailable after three failed attempts in a row',
 test('it clears the unavailable report once the stream connects again', async () => {
   const ctx = await setupTest();
 
-  // three attempts fail and the fourth connects
   server.use(
     http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),
     http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),

@@ -13,13 +13,9 @@ export type ServerInputs = Pick<
   ServerPartsOptions,
   'config' | 'secrets' | 'images' | 'sandbox' | 'definitionsExport' | 'log'
 > & {
-  // the encoder, which the server stops with its other parts, or null for keyword search alone
   readonly encoder: ONNXEncoder | null;
 };
 
-// Loads what the server starts from, and refuses an invalid configuration, secrets file, sandbox
-// manifest or encoder model before the server opens anything. From the configuration on, the server
-// logs only the events at the configured level or above it.
 export async function loadServerInputs(options: ServerOptions): Promise<ServerInputs> {
   const loaded = await loadDeploymentConfig(options.configPath);
 
@@ -34,8 +30,6 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
 
   const images = await loadSandboxManifest(options.manifestPath);
 
-  // the model loads from the local folder alone, and a missing file stops the start rather than
-  // leaving memory search on keywords for the life of the process
   const encoder =
     options.encoderDir === undefined ? null : await startONNXEncoder(options.encoderDir);
 

@@ -8,7 +8,6 @@ import { ConversationPageSize } from './test-utils/conversation-page-size';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { render } from './test-utils/render';
 
-// the live stream replays the forget soon after the return, so the check reads the first screen
 test('it shows no forgotten text when you come back to the conversation from the memory view', async () => {
   await createDeviceSession();
 
@@ -59,8 +58,8 @@ test('it reads a fresh page without the forgotten text when you come back', asyn
   expect(list).toHaveTextContent(/^You Forgotten/u);
 });
 
-// a hidden Activity stops the view's effects and keeps the view, as React's StrictMode does once at
-// mount, so a page read again would hold the record that arrived meanwhile
+// A hidden Activity stops the view's effects and keeps the view, as React's StrictMode does once
+// at mount.
 test('it keeps the page it shows when its effects stop and start again in place', async () => {
   await createDeviceSession();
 

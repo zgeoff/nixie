@@ -14,8 +14,6 @@ export interface ResumedSession {
   readonly plan: InboxPlan;
 }
 
-// Runs the turn at the session boundary, or on a rebuilt session when its images leave no room for
-// those of your next message, which every later request would repeat.
 export async function runResumedTurn(
   step: SessionStep,
   session: ResumedSession,
@@ -28,7 +26,6 @@ export async function runResumedTurn(
   return isFull ? runRebuiltTurn(step, session, 'images') : runBoundaryTurn(step, session);
 }
 
-// the session cannot take the turn, so the turn runs on a rebuilt one
 async function runRebuiltTurn(
   step: SessionStep,
   session: ResumedSession,
@@ -43,9 +40,6 @@ async function runRebuiltTurn(
   });
 }
 
-// The turn runs at the boundary, or on a rebuilt session when the guest lost it, with the context
-// read again for the new session. A turn that overflowed the window compacts the session from the
-// boundary instead, and the next step runs the turn again on the new session.
 async function runBoundaryTurn(step: SessionStep, session: ResumedSession): Promise<StepResult> {
   const source = { definitions: step.run.context.definitions, model: step.run.model };
 

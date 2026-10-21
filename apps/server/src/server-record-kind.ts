@@ -1,4 +1,3 @@
-// The record kinds the server registers with the log.
 export type ServerRecordKind = 'server.started';
 
 declare module '@heynixie/log' {

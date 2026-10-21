@@ -87,7 +87,6 @@ test("it gives a tool use of the guest's reply the result of the run's real endp
     .filter((line) => line !== '')
     .map((line) => z.object({ role: z.string(), text: z.string() }).parse(JSON.parse(line)));
 
-  // the input, the tool use, its result, then the reply
   const toolResult = entries.at(2);
 
   invariant(toolResult !== undefined);

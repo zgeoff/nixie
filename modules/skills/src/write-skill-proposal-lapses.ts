@@ -5,9 +5,6 @@ import { skillProposalLapseMs } from './skill-proposal-lapse-ms';
 import { skillsWriteLapsedCodec } from './skills-write-lapsed-codec';
 import type { SkillProposalContext } from './types';
 
-// Records the lapse of each skill proposal that waited past its lapse time with no answer, on the
-// proposal's thread, and returns how many lapsed. The read and the records share one write
-// transaction, so an answer never lands between them.
 export function writeSkillProposalLapses(context: SkillProposalContext): Promise<number> {
   const log = context.log;
 

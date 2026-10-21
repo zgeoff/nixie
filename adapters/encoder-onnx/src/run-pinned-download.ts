@@ -1,6 +1,3 @@
-// The pinned download: `bun adapters/encoder-onnx/src/run-pinned-download.ts <list> <outdir>`
-// writes each file the list names into outdir after checking its SHA-256, and exits 1 on a file
-// that differs, so the image build stops before it holds a model the repo never pinned.
 import { writePinnedFiles } from './write-pinned-files';
 
 const [listPath, outDir] = process.argv.slice(2);

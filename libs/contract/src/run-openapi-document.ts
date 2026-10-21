@@ -1,5 +1,3 @@
-// `bun run --cwd libs/contract openapi` writes the contract's OpenAPI document to openapi.json, and
-// a contract change commits the new file in the same pull request.
 import { join } from 'node:path';
 import { buildOpenAPIDocument } from './build-openapi-document';
 

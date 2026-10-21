@@ -12,19 +12,14 @@ import type { BootFileExtras, BootFiles } from './write-boot-files';
 import { writeBootFiles } from './write-boot-files';
 
 export interface TestNixieOptions {
-  // YAML lines appended to the configuration file, such as a key no module reads
   readonly extraConfig?: readonly string[];
 
-  // YAML lines appended to the secrets file, such as a private setting the configuration names
   readonly extraSecrets?: readonly string[];
 
-  // YAML lines under the configuration's definitions section, such as the export
   readonly extraDefinitions?: readonly string[];
 
-  // a release bundle's main.js to run in place of a test build of the source
   readonly entry?: string;
 
-  // the server section's log level, info when unset
   readonly logLevel?: NonNullable<BootFileExtras['logLevel']>;
 }
 
@@ -32,36 +27,25 @@ export interface TestNixie extends BootFiles {
   readonly directory: string;
   readonly model: ScriptedModel;
 
-  // every line nixie wrote to stdout and stderr so far
   readonly readOutput: () => string;
 
-  // waits for the first JSON log line with the event, and returns it
   readonly waitForLogEvent: (event: string) => Promise<Readonly<Record<string, unknown>>>;
   readonly sendSignal: (signal: NodeJS.Signals) => void;
 
-  // sends SIGTERM and waits until nixie logs that its stop began
   readonly sendStopSignal: () => Promise<void>;
   readonly exited: Promise<number>;
 
-  // waits for nixie to exit, then reads every record with its decrypted fields
   readonly waitForExit: () => Promise<{ readonly exitCode: number; readonly records: LogRecord[] }>;
 
-  // starts nixie again on the same files and data directory, as the container runtime restarts it
-  // once it exits, with an output of its own
   readonly startAgain: () => TestNixie;
 
-  // each file at the data directory's root, such as nixie.db and keys.db, as latin1 text
   readonly readDataFiles: () => Promise<
     readonly { readonly name: string; readonly text: string }[]
   >;
 
-  // the ID of each sandbox whose disk the process double holds in the data directory
   readonly readSandboxIDs: () => Promise<readonly string[]>;
 }
 
-// Starts nixie as its own process the way the image runs it: a test build of the source, or the
-// release bundle that entry names, beside the scripted model and a sops stand-in. When the test
-// finishes it kills nixie if it still runs, stops the model and removes the directory.
 export async function startTestNixie(options: TestNixieOptions = {}): Promise<TestNixie> {
   const stack = new AsyncDisposableStack();
 
@@ -81,7 +65,6 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
     definitions: options.extraDefinitions ?? [],
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
 
-    // a release bundle refuses the test sandbox, so it runs on imp, which it finds down
     sandboxAdapter: options.entry === undefined ? 'test' : 'imp',
   });
 
@@ -94,7 +77,6 @@ interface TestNixieFiles {
   readonly files: BootFiles;
   readonly entry: string | undefined;
 
-  // the test's cleanup, which kills each nixie it started before it removes the directory
   readonly stack: AsyncDisposableStack;
 }
 
@@ -130,8 +112,6 @@ function buildServeArgs(files: BootFiles): readonly string[] {
     '--sops',
     files.sopsPath,
 
-    // nixie in a test runs memory search on keywords, since the encoder's model files are no test
-    // input
     '--encoder',
     '',
   ];
@@ -179,7 +159,6 @@ function buildTestNixie(parts: TestNixieParts): TestNixie {
   };
 }
 
-// everything nixie wrote to stdout and stderr, in the order it arrived
 interface Output {
   readonly read: () => string;
   readonly append: (text: string) => void;

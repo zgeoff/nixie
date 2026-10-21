@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
 import { checkDatabase } from './check-database';
 
-// a writer on a fresh data directory
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 

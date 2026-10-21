@@ -6,8 +6,8 @@ export interface WaitForConditionOptions {
 const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_INTERVAL_MS = 5;
 
-// Polls check on the real clock until it returns true, and throws when the timeout passes first.
-// Work behind a test clock still runs real database I/O, so a test waits on the state it expects.
+// Work behind a test clock still does real database I/O, which a test clock cannot advance, so the
+// poll runs on the real clock.
 export async function waitForCondition(
   check: () => boolean | Promise<boolean>,
   options: WaitForConditionOptions = {},

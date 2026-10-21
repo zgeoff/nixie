@@ -22,12 +22,8 @@ import {
 import { toolCalledCodec, toolResultCodec } from '@heynixie/tools';
 import { z } from 'zod';
 
-// your message, and a reply from the conversation's model
 const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.reply']);
 
-// Turns a log record into the record a client renders, or null for one in no thread, which no
-// client view shows. A forgotten message or reply keeps its place with no text, and a payload that
-// does not fit its kind's codec gives none of its fields.
 export function toContractRecord(record: LogRecord): ContractRecord | null {
   if (record.thread === null) {
     return null;
@@ -82,7 +78,6 @@ function toMessage(record: LogRecord): Message | undefined {
 
 type Task = NonNullable<ContractRecord['task']>;
 
-// the task records that name their task, which a wake does not
 const taskCodecs = [
   taskCreatedCodec,
   taskRevivedCodec,
@@ -98,9 +93,6 @@ interface TaskFields {
   readonly stepKey?: string | undefined;
 }
 
-// A step's start names its step in the payload, and its commit in the record's own step key. A
-// failed step's record holds the error's message as its one erasable field, and a forgotten one
-// keeps its task, step and retry with no error.
 function toTask(record: LogRecord): Task | undefined {
   const codec = taskCodecs.find((candidate) => candidate.kind === record.kind);
   const fields: TaskFields | null | undefined = codec?.tryDecodePartial(record.payload);
@@ -123,8 +115,6 @@ function toTask(record: LogRecord): Task | undefined {
   };
 }
 
-// A failed step's errors in a row, the limit in force, which a record from before the limit was
-// recorded lacks, and the time its task tries again.
 function toRetry(payload: JSONObject): Pick<Task, 'errorLimit' | 'errors' | 'retryAt'> {
   const retry = taskStepErroredCodec.tryDecodePartial(payload);
 
@@ -137,7 +127,6 @@ function toRetry(payload: JSONObject): Pick<Task, 'errorLimit' | 'errors' | 'ret
 
 type ToolCall = NonNullable<ContractRecord['toolCall']>;
 
-// a tool call, and the result that answers it
 const toolCodecs = [toolCalledCodec, toolResultCodec];
 
 interface ToolFields {
@@ -146,8 +135,6 @@ interface ToolFields {
   readonly outcome?: string | undefined;
 }
 
-// The call's record holds its input as its one erasable field, and the result's record holds the
-// content the tool returned. A forgotten call keeps its tool and outcome with no content.
 function toToolCall(record: LogRecord): ToolCall | undefined {
   const codec = toolCodecs.find((candidate) => candidate.kind === record.kind);
   const call: ToolFields | null | undefined = codec?.tryDecodePartial(record.payload);
@@ -175,8 +162,6 @@ function isJSONObject(value: JSONValue | undefined): value is JSONObject {
 
 type Recall = NonNullable<ContractRecord['recall']>;
 
-// A recall's record lists the versions it delivered, each with its match score when a query ranked
-// it, and holds no text.
 function toRecall(record: LogRecord): Recall {
   const items = memoryRecalledCodec.tryDecodePartial(record.payload)?.items ?? [];
 
@@ -185,7 +170,6 @@ function toRecall(record: LogRecord): Recall {
 
 type RecallItem = Recall['items'][number];
 
-// the delivered version and its match score, never the similarity a client does not show
 function toRecallItem(item: RecallItem & { readonly similarity?: number }): RecallItem {
   return item.score === undefined
     ? { itemID: item.itemID, version: item.version }
@@ -194,8 +178,6 @@ function toRecallItem(item: RecallItem & { readonly similarity?: number }): Reca
 
 type Rating = NonNullable<ContractRecord['rating']>;
 
-// A rating's record names the recall it rates and each item's verdict, and holds each note sealed,
-// which memory.readRatingNotes opens. A record that names no recall gives no rating.
 function toRating(record: LogRecord): Rating | undefined {
   const rated = memoryRatedCodec.tryDecodePartial(record.payload);
 
@@ -220,8 +202,6 @@ type SessionFields = Pick<
   'compaction' | 'compactionFailure' | 'context' | 'summary'
 >;
 
-// What the conversation's session records carry: a turn end's context, a compaction of the SDK's,
-// and nixie's summary or a failed compaction in its place.
 function toSessionFields(record: LogRecord): SessionFields {
   const context = record.kind === 'model.turn_ended' ? toContext(record) : undefined;
   const compaction = record.kind === 'model.compacted' ? toCompaction(record) : undefined;
@@ -240,8 +220,6 @@ function toSessionFields(record: LogRecord): SessionFields {
 
 type Context = NonNullable<ContractRecord['context']>;
 
-// A turn end names the context its last model call read and the window it compacts within; one
-// from before nixie recorded them has neither.
 function toContext(record: LogRecord): Context | undefined {
   const turn = modelTurnEndedCodec.tryDecodePartial(record.payload);
 
@@ -252,8 +230,6 @@ function toContext(record: LogRecord): Context | undefined {
 
 type Compaction = NonNullable<ContractRecord['compaction']>;
 
-// A compaction's record holds its trigger and its token counts, and a null after count when the
-// session reported none.
 function toCompaction(record: LogRecord): Compaction | undefined {
   const compacted = modelCompactedCodec.tryDecodePartial(record.payload);
 
@@ -272,8 +248,6 @@ function toCompaction(record: LogRecord): Compaction | undefined {
 
 type Summary = NonNullable<ContractRecord['summary']>;
 
-// A summary's record holds what asked for it and its sizes, and its text while its key exists. A
-// summary a forget erased keeps its place with no text.
 function toSummary(record: LogRecord): Summary | undefined {
   const summary = modelSessionSummarizedCodec.tryDecodePartial(record.payload);
   const text = record.erasable.status === 'readable' ? record.erasable.fields['text'] : undefined;
@@ -292,14 +266,12 @@ function toSummary(record: LogRecord): Summary | undefined {
 
 type CompactionFailure = NonNullable<ContractRecord['compactionFailure']>;
 
-// A failed compaction's record counts the failures in a row; its error stays out of the client.
 function toCompactionFailure(record: LogRecord): CompactionFailure | undefined {
   const failures = modelCompactionFailedCodec.tryDecodePartial(record.payload)?.failures;
 
   return failures === undefined ? undefined : { failures };
 }
 
-// the start and the end of a forget of your message or a reply
 const forgetCodecs = [recordForgetStartedCodec, recordForgottenCodec];
 
 function toForget(record: LogRecord): Pick<ContractRecord, 'forget'> {

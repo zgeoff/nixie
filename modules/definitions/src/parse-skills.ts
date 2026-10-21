@@ -7,9 +7,6 @@ import { parseSkillsLock } from './parse-skills-lock';
 import { skillsLockPath } from './skills-lock-path';
 import type { ParsedSkill, Snapshot } from './types';
 
-// Reads every skill under skills/ and runs the seed checks on each: the frontmatter and its name, no
-// hidden or bidirectional control character, and a vendored skill's lock entry. A failed check
-// throws with every problem it found.
 export function parseSkills(
   snapshot: Pick<Snapshot, 'files'>,
   texts: ReadonlyMap<string, string>,
@@ -39,7 +36,6 @@ export function parseSkills(
 interface SplitFolders {
   readonly folders: ReadonlyMap<string, SkillFolder>;
 
-  // the files under skills/ that sit in no skill's folder
   readonly problems: readonly ParseProblem[];
 }
 
@@ -76,15 +72,14 @@ function splitSkillFolders(
   return { folders, problems };
 }
 
-// The UTF-8 decoder drops a byte order mark that opens a file, so a skill's text gains it back from
-// the bytes: the hidden-character check then refuses it, and the text keeps to the hashed bytes.
+// The UTF-8 TextDecoder drops a leading byte order mark, which the hash still covers, so the text
+// gets it back from the bytes and the hidden-character check sees it.
 function restoreByteOrderMark(bytes: Uint8Array, text: string): string {
   const hasMark = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
 
   return hasMark && !text.startsWith('﻿') ? `﻿${text}` : text;
 }
 
-// a lock entry with no skill folder locks nothing, such as the stale entry of a removed skill
 function collectOrphanedEntries(
   lock: SkillsLock,
   folders: ReadonlyMap<string, SkillFolder>,

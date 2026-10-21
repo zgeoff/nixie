@@ -42,7 +42,6 @@ test('it runs 3 steps at once by default', async () => {
     await runners.stop(0);
   });
 
-  // 3 runners renew their leases and the timer runner polls, so every runner has settled
   await waitForCondition(() => running.size === 3 && ctx.clock.countSleepers() === 4);
 
   const waiting = await ctx.db

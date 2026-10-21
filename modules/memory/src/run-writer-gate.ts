@@ -4,19 +4,13 @@ import type { GatedWrite } from './write-memory-batch';
 import type { GateBatch, SourceMessage, StagedWrite, WriterGate } from './writer-types';
 
 export interface GateLookups {
-  // the batch's readable message a write cites, or undefined for one outside the batch
   readonly findSource: (sequence: number) => SourceMessage | undefined;
 
-  // whether the session was shown an item with exactly this text
   readonly isShownText: (text: string) => boolean;
 
-  // the batch the writes belong to, which each proposal names
   readonly batch: GateBatch;
 }
 
-// Gates each staged write against the source it cites, one at a time and outside any transaction.
-// A write that repeats a current item's text exactly writes nothing. A gate that throws partway
-// releases what it made for the writes it already gated.
 export async function runWriterGate(
   gate: WriterGate,
   writes: readonly StagedWrite[],
@@ -52,7 +46,6 @@ interface VerdictCollection {
   readonly gate: WriterGate;
   readonly lookups: GateLookups;
 
-  // takes each gated write as it comes, so the caller can release them when a later check throws
   readonly onGated: (entry: GatedWrite) => void;
 }
 

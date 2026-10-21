@@ -8,9 +8,6 @@ import type { TestMemoryWriterOptions } from './test-utils/start-test-memory-wri
 import { startTestMemoryWriter } from './test-utils/start-test-memory-writer';
 import { writeOwnerMessages } from './test-utils/write-owner-messages';
 
-// memory and its writer on a session host, which runs the real guest in the process double; a test
-// starts the writer after it records the messages the catch-up covers, and a test that passes a
-// checker wires the store's batch gate
 async function setupTest(options: TestMemoryWriterOptions = {}) {
   const host = await startTestSessionHost({ projections: memoryProjections });
 
@@ -80,7 +77,6 @@ test('it publishes nothing from a message forgotten while the model extracts fro
 
   await ctx.memory.start();
 
-  // the first request stages the write, and the forget lands before the session's second
   ctx.memory.model.addReplies(
     buildRememberReply({
       text: 'Your sister is called Robin.',
@@ -123,7 +119,6 @@ test('it backs off, doubling each wait, after more failed model calls than the t
 
   const status = await ctx.memory.readStatus();
 
-  // the waits run 30 s, 60 s and 120 s from the first failure at 1,000,000 ms, then 240 s
   expect(status).toMatchObject({
     failures: 4,
     retryAt: 1_450_000,
@@ -167,7 +162,6 @@ test('it resumes the batch once the model answers after a backoff', async () => 
 test('it closes the writer tool socket when the writer fails to start', async () => {
   const ctx = await setupTest();
 
-  // the writer's start reads the definitions snapshot after its tool endpoint opens the run socket
   const starting = ctx.memory.start({
     context: {
       ...ctx.memory.context,
@@ -217,7 +211,6 @@ test('it applies a staged fact that the store gate confirms against the message 
     input: expect.toInclude('By the way, «evidence»my sister Ada lives in Leeds«/evidence».'),
   });
 
-  // the evidence is the quote's place in the cited message: characters 12 to 40
   expect(entries.filter((entry) => entry.record.kind === 'memory.version_added')).toMatchObject([
     {
       record: {
@@ -301,7 +294,6 @@ test('it splits a batch over the proposal cap and publishes each half, so the cu
 
   await ctx.memory.start();
 
-  // the whole batch stages 2 proposals, one over the cap, so it splits and runs each half
   ctx.memory.model.addReplies(
     buildRememberReply({ text: 'Might move to Oslo.', quote: 'move to Oslo', sourceID: first }),
     buildRememberReply({ text: 'Might learn cello.', quote: 'learn the cello', sourceID: second }),
@@ -380,7 +372,6 @@ test('it leaves no key behind for the proposals of a batch that split', async ()
     .where('key_id', 'is not', null)
     .execute();
 
-  // every key seals a record or a published proposal
   expect(keys.map((key) => key.key_id)).toIncludeSameMembers([
     ...recordKeys.map((key) => key.key_id),
     ...pending.map((proposal) => proposal.itemID),

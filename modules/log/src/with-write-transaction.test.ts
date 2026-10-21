@@ -20,7 +20,6 @@ async function setupTest() {
 
   stack.defer(() => db.destroy());
 
-  // a second connection on the same file stands in for a second process
   const other = startDatabase(join(dataDir, 'nixie.db'));
 
   stack.defer(() => other.destroy());
@@ -47,8 +46,6 @@ test('it fires a commit event once the write has committed', async () => {
   const ctx = await setupTest();
   const epoch = await claimWriterEpoch(ctx.db);
 
-  // a read that another connection starts on the event sees the write, so the event came after the
-  // commit
   const reads: Promise<{ readonly rows: readonly unknown[] }>[] = [];
 
   ctx.commits.addEventListener('commit', () => {

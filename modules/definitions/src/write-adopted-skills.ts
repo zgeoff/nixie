@@ -3,7 +3,6 @@ import type { DefinitionsSkillRef, WrittenSkill } from './build-skill-overlay';
 import type { DefinitionsTables } from './types';
 import { writeWrittenSkillState } from './write-written-skill-state';
 
-// the written skills a seed adopts, your definitions' skills, and when
 export interface AdoptedSkillsInput {
   readonly adopted: readonly WrittenSkill[];
   readonly skills: readonly DefinitionsSkillRef[];

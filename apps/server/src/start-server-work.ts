@@ -7,9 +7,6 @@ import { startPartGraph } from './start-part-graph';
 import type { Server, ServerPartsOptions } from './start-server';
 import type { AnyPartDeclaration, Cleanup, PartGraph } from './types';
 
-// Starts the server's parts in the order their declarations derive, and returns once the control
-// socket opens. The parts behind it start in the background on a cleanup of their own, so a reset
-// stops them and leaves the writer and the sockets.
 export async function startServerWork(options: ServerPartsOptions): Promise<Server> {
   const failed = Promise.withResolvers<unknown>();
   const work = buildCleanup();
@@ -51,8 +48,6 @@ interface StartFailure {
   readonly onFailure: (error: unknown) => void;
 }
 
-// A part that fails outside the retries ends the server, so the container runtime restarts it
-// instead of leaving it live with no runners. A stop that cuts the start short is no failure.
 async function waitForStartFailure(
   graph: PartGraph<ServerPartValues>,
   failure: StartFailure,
@@ -73,8 +68,6 @@ interface Stops {
   readonly waitForReset: () => Promise<void>;
 }
 
-// The stop ends the start at its next part and waits for its part in flight, and for a reset in
-// flight, so no part closes under either.
 function makeStop(
   stops: Stops,
   options: ServerPartsOptions,
@@ -85,7 +78,6 @@ function makeStop(
     stops.cleanup.abort();
     stops.work.abort();
 
-    // the start failure report reads the rejection
     await waitForSettled(graph.done);
 
     await stops.waitForReset();

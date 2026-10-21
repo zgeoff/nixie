@@ -8,13 +8,12 @@ import { buildContractEnv } from '../test-utils/build-contract-env';
 import { collectToolCalls } from '../test-utils/collect-tool-calls';
 import { runContractQuery } from '../test-utils/run-contract-query';
 
-// The probes call the model on the subscription, so only a contract run enables them. Bun 1.4.2's
+// Each probe calls the model on the subscription, so only a contract run enables it. Bun 1.4.2's
 // skipIf takes a boolean and has no in-body skip.
 const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 
-// A config directory of the run's own, a copy of the probe's mods, and the options of a session that
-// may run Bash with no permission prompt. The CLI writes type files into each mod it loads, so it
-// loads the copy and never the committed mods.
+// The CLI writes type files into each mod it loads, so the probe loads a copy and never the
+// committed mods.
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-mods-'));
 

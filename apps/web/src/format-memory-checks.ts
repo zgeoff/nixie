@@ -1,5 +1,3 @@
-// The verdicts of a version's write checks on one line, such as "quote passed · checker asserted",
-// in the order the checks ran. A check whose verdict holds no plain value is left out.
 export function formatMemoryChecks(checks: Readonly<Record<string, unknown>>): string {
   return Object.entries(checks)
     .flatMap(([name, verdict]) => {
@@ -10,7 +8,6 @@ export function formatMemoryChecks(checks: Readonly<Record<string, unknown>>): s
     .join(' · ');
 }
 
-// a code check holds pass or fail, and the checker an object with its verdict
 function findVerdict(verdict: unknown): string | null {
   if (verdict === 'pass') {
     return 'passed';

@@ -1,4 +1,3 @@
-// The parts' needs form a cycle, so no part in it can start first.
 export class PartCycleError extends Error {
   override readonly name = 'PartCycleError';
 

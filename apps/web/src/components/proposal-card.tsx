@@ -15,7 +15,6 @@ export interface ProposalCardProps {
   readonly isSelected: boolean;
   readonly onSelect: (isSelected: boolean) => void;
 
-  // your edited text while you edit the proposal, or null
   readonly draft: string | null;
   readonly onDraft: (draft: string | null) => void;
 }
@@ -25,9 +24,6 @@ const body = css({ alignItems: 'flex-start', display: 'flex', gap: '2' });
 const meta = css({ color: 'textMuted', fontSize: 'sm' });
 const field = css({ display: 'flex', flexDirection: 'column', fontSize: 'sm', gap: '1' });
 
-// One pending proposal: its text or your edit of it beside the photo it comes from, its marks and
-// quote, when it lapses, and your answers to it. An approval an active item closely matches holds,
-// and the card asks how to apply it.
 export function ProposalCard(props: ProposalCardProps): ReactNode {
   const proposal = props.proposal;
   const shown = props.answers.outcomes[proposal.proposalID]?.outcome;
@@ -114,7 +110,6 @@ const controls = css({
   marginTop: '1',
 });
 
-// the item that already says this, and the 2 ways an approval may still apply
 function CloseMatchChoice(props: CloseMatchChoiceProps): ReactNode {
   const edit = buildEdit(props.proposal, props.draft);
 
@@ -149,12 +144,10 @@ function CloseMatchChoice(props: CloseMatchChoiceProps): ReactNode {
   );
 }
 
-// an edit that leaves the text as proposed approves the proposal as it is
 function buildEdit(proposal: MemoryProposal, draft: string | null) {
   return draft === null || draft === proposal.text ? {} : { editedText: draft };
 }
 
-// approve, with your edited text while you edit, edit, or reject with an optional reason
 function ProposalControls(props: ProposalCardProps): ReactNode {
   const [reason, setReason] = useState<string | null>(null);
   const proposal = props.proposal;
@@ -235,7 +228,6 @@ function RejectionForm(props: RejectionFormProps): ReactNode {
   );
 }
 
-// a retirement adds no text, so it takes no edit
 function EditToggle(props: ProposalCardProps): ReactNode {
   if (props.proposal.operation === 'retire') {
     return null;

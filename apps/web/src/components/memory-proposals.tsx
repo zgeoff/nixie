@@ -11,7 +11,6 @@ import { ProposalCard } from './proposal-card';
 import { ProposalSelectionBar } from './proposal-selection-bar';
 
 export interface MemoryProposalsProps {
-  // the links to the app's other views, which the route supplies
   readonly navigation?: ReactNode;
 }
 
@@ -24,9 +23,6 @@ const layout = css({
 
 const header = css({ alignItems: 'baseline', display: 'flex', justifyContent: 'space-between' });
 
-// Every pending memory proposal, to approve, edit and approve, or reject with a reason, one at a
-// time or every selected one at once. An answer that met a lapsed or changed proposal shows what
-// stopped it, and changed nothing.
 export function MemoryProposals(props: MemoryProposalsProps): ReactNode {
   const nixie = useNixieClient();
   const listed = useQuery(nixie.queryUtils.memory.listProposals.queryOptions());
@@ -76,8 +72,6 @@ interface AnswerNoticesProps {
   readonly answers: ProposalAnswers;
 }
 
-// what stopped each answer that changed nothing, by the proposal's text, since a stale proposal
-// leaves the list; a failed call keeps its answers to send again
 function AnswerNotices(props: AnswerNoticesProps): ReactNode {
   const notices = Object.entries(props.answers.outcomes).flatMap(([proposalID, shown]) => {
     const notice = formatProposalOutcome(shown.outcome);

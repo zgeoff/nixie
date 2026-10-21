@@ -1,9 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the store of skills that nixie writes, one row per approval, and marks each snapshot
-// skill with the approval that applied it. The new column is nullable, so the release before still
-// inserts rows. Each step is safe to run again.
 export const writtenSkillsMigration: Migration = {
   name: 'create the store of skills that nixie writes',
   up: async (tx) => {
@@ -21,7 +18,6 @@ export const writtenSkillsMigration: Migration = {
       updated_at integer not null
     ) strict`.execute(tx);
 
-    // a skill has at most one version in force that nixie wrote
     await sql`create unique index if not exists written_skills_in_force
       on written_skills (name) where state = 'in_force'`.execute(tx);
 

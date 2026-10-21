@@ -5,17 +5,12 @@ import { z } from 'zod';
 export interface StubToolServer {
   readonly config: McpSdkServerConfigWithInstance;
 
-  // the name of each tool the model called, in order
   readonly calls: readonly string[];
 
-  // resolves once the model calls note_wait, which then holds until release
   readonly waitForHeldCall: () => Promise<void>;
   readonly release: () => void;
 }
 
-// Creates an in-process stand-in for nixie's tool server, named nixie as the real one is. A guest
-// never imports a module, so its tests serve these stub tools: note_read answers at once, and
-// note_wait holds its call open until the test releases it.
 export function createStubToolServer(): StubToolServer {
   const calls: string[] = [];
   const held = Promise.withResolvers<void>();

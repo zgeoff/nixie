@@ -1,8 +1,5 @@
 import type { OwnerConfig } from './owner-config-schema';
 
-// Resolves each of the owner's name and pronouns that is a deployment:<name> reference to the entry
-// <name> under the secrets' settings, and keeps each plain value. It refuses a missing entry, so
-// nixie stops at start rather than showing the model the reference.
 export function resolveOwnerConfig(
   config: OwnerConfig,
   settings: Readonly<Record<string, string>>,

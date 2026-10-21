@@ -23,7 +23,6 @@ async function setupTest() {
   const io = {
     frames,
 
-    // the guest's own environment: its home, its path, and the placeholder the grant replaces
     env: { HOME: home, PATH: process.env['PATH'] ?? '', ANTHROPIC_API_KEY: 'imp-placeholder' },
     emit: (frame: GuestFrame) => {
       io.frames.push(frame);
@@ -32,7 +31,6 @@ async function setupTest() {
     },
   };
 
-  // a committed turn the summary forks from, which ends at its reply
   model.addReplies({ text: 'The gauge reads 3.2 metres.' });
 
   await runTurn(

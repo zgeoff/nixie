@@ -6,12 +6,10 @@ const callSchema = z
     pair: z.number().int().nonnegative(),
     repeat: z.number().int().nonnegative(),
 
-    // the SHA-256 of the checker input the call sent
     input: z.string().startsWith('sha256:'),
     verdict: z.enum(['asserted', 'not_asserted', 'unsure']),
     reason: z.string(),
 
-    // why the checker gave no verdict of its own, which reads as unsure
     failure: z.enum(['timeout', 'error', 'unreadable']).nullable(),
     costUSD: z.number().nonnegative(),
     latencyMs: z.number().nonnegative(),
@@ -23,10 +21,8 @@ const reportSchema = z
     model: z.string().min(1),
     effort: z.string().min(1),
 
-    // the SHA-256 of the checker prompt the run used
     prompt: z.string().startsWith('sha256:'),
 
-    // the owner name the prompt and the memories used, or null for "the owner"
     ownerName: z.string().min(1).nullable(),
     repeats: z.number().int().positive(),
     calls: z.array(callSchema).readonly(),
@@ -37,7 +33,6 @@ export type CheckerReport = z.infer<typeof reportSchema>;
 
 export type CheckerCall = z.infer<typeof callSchema>;
 
-// Loads a committed checker eval report: the model, the prompt and each call's verdict.
 export async function loadCheckerReport(path: string): Promise<CheckerReport> {
   const json: unknown = await Bun.file(path).json();
 

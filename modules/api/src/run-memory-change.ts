@@ -16,7 +16,6 @@ interface ChangeErrors {
   readonly PINNED_CORE_FULL?: () => Error;
 }
 
-// what a change reads of its call: the caller's session and the errors its procedure declares
 interface ChangeCall {
   readonly context: { readonly sessionToken: string | undefined };
   readonly errors: ChangeErrors;
@@ -27,9 +26,6 @@ interface ChangeParts {
   readonly readMemory: ReadViewMemory;
 }
 
-// Resolves the caller, waits for the store, and runs the change as a checked action, answering a
-// refusal with the typed error the procedure declares for it. It returns the store the change ran
-// on.
 export async function runMemoryChange(
   parts: ChangeParts,
   call: ChangeCall,

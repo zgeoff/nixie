@@ -157,7 +157,6 @@ test('it keeps what a turn on a session opened in place of a lost one retrieved,
       payload: { taskID: 'conversation', stepKey: 'conversation:1', generation: 1 },
     },
 
-    // the retrieval for the resume that found its session lost, then the one for the new session
     {
       kind: 'memory.recalled',
       definitions,
@@ -196,7 +195,6 @@ test('it keeps the recalls a lost session opening made after its mark, such as a
 
   await createConversationTask(ctx.tasks.context);
 
-  // the recall for the resume that found its session lost, which the opening's mark names
   const [, lostRecall] = await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_started',
@@ -411,7 +409,6 @@ test('it leaves out a recall that came after the last result its turn ended at',
 
   invariant(settled);
 
-  // a recall for a live message, from a guest that died before its next result
   await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'memory.recalled',
@@ -462,7 +459,6 @@ test('it keeps a recall that came after a compaction in the same step', async ()
 
   invariant(summarized && held);
 
-  // the step commits its compaction after every recall, marked at the recall it summarized
   await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'model.compacted',

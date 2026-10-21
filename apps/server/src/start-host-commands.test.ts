@@ -8,7 +8,6 @@ import { buildCleanup } from './build-cleanup';
 import { buildHostClient } from './build-host-client';
 import { startHostCommands } from './start-host-commands';
 
-// the host commands over the API's context in a fresh data directory, behind a gate the test closes
 async function setupTest() {
   const dataDir = await mkdtemp(join(tmpdir(), 'nixie-host-'));
 

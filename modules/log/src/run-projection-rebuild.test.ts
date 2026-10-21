@@ -37,7 +37,6 @@ test('it folds a recorded log into the live tables once every projection is drop
     { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:dd44' }, thread: 'conversation' },
   ]);
 
-  // every projection row and every change row as one value, so the 2 reads compare whole
   const readTables = sql`select
     (select json_group_array(json_array(thread, first_sequence, last_sequence, record_count,
       last_recorded_at)) from (select * from threads order by thread)) as threads,

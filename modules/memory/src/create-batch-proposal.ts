@@ -12,19 +12,15 @@ export interface ReviewedWrite {
   readonly write: StagedWrite;
   readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
 
-  // the text the proposal holds: the staged text, or the item's text for a retirement
   readonly text: string;
 }
 
 export interface BatchProposal {
   readonly verdict: Extract<GateVerdict, { readonly outcome: 'propose' }>;
 
-  // the new item whose key the proposal created, or null for a change to an existing item
   readonly newItemID: string | null;
 }
 
-// Seals a batch write's proposal and builds its record, which the batch publishes. The proposal
-// names the writer as its caller and groups by the batch's bounds for the cap and the notice.
 export async function createBatchProposal(
   parts: StoreParts,
   reviewed: ReviewedWrite,
@@ -47,7 +43,6 @@ export async function createBatchProposal(
       newItemID,
     };
   } catch (error) {
-    // no verdict carries the new key to release, so a record that fails to build drops it here
     if (newItemID !== null) {
       await removeRecordKey(parts.context.log, newItemID);
     }

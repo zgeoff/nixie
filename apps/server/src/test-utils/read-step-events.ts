@@ -6,7 +6,6 @@ interface StreamedRecord {
 interface ReceivedEvent {
   readonly kind: string;
 
-  // how long after nixie recorded the record the test received it
   readonly lagMs: number;
 }
 
@@ -20,8 +19,6 @@ const stepEnds: ReadonlySet<string> = new Set([
   'task.step_interrupted',
 ]);
 
-// Reads a live stream through the end of the next step, and notes when each record arrived. The
-// stream stays open for the caller to end.
 export async function readStepEvents(stream: EventStream, now: () => number): Promise<Events> {
   const received: ReceivedEvent[] = [];
 

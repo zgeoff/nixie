@@ -17,9 +17,6 @@ export interface MemoryConfig {
   readonly rebuildTokens: number;
 }
 
-// The memory section of the deployment configuration: the write gate, the checker's timeout, the
-// pinned core's budget, per-turn retrieval's counts of items, self-notes and past messages and its
-// floors, and a rebuilt session's history budget. A setting left out takes its default.
 export const memoryConfigSchema = z
   .strictObject({
     evidence_window: countSchema.default(defaultGateLimits.evidenceWindow),
@@ -27,7 +24,7 @@ export const memoryConfigSchema = z
     proposal_cap: countSchema.default(defaultGateLimits.proposalCap),
     close_match_score: z.number().min(0).max(1).default(defaultGateLimits.closeMatchScore),
 
-    // a live check took about 9 s, so 20 s keeps a slow one inside the timeout
+    // A live check took about 9 s, so 20 s keeps a slow check inside the timeout.
     checker_timeout_ms: countSchema.default(20_000),
     pinned_core_tokens: z.int().positive().default(2000),
     retrieval_items: z.int().nonnegative().max(100).default(5),
@@ -35,8 +32,8 @@ export const memoryConfigSchema = z
     retrieval_messages: z.int().nonnegative().max(20).default(3),
     retrieval_min_score: z.number().nonnegative().default(0.25),
 
-    // on the encoder spike's items, small talk such as "hello" peaked near 0.38 and two thirds of
-    // the questions placed their item above it
+    // Over a sample of items, small talk such as "hello" scored near 0.38, and two thirds of the
+    // questions placed their item above it.
     retrieval_min_similarity: z.number().min(-1).max(1).default(0.38),
     rebuild_tokens: z.int().nonnegative().default(30_000),
   })

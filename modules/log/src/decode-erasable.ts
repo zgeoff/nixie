@@ -3,7 +3,6 @@ import type { JSONObject } from './types';
 
 const IV_BYTES = 12;
 
-// Decrypts what encodeErasable wrote. A wrong key, a wrong key ID or a changed byte rejects.
 export async function decodeErasable(
   key: CryptoKey,
   keyID: string,

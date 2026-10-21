@@ -2,8 +2,6 @@ import type { TextRange } from './collect-quoted-blocks';
 import { collectQuotedBlocks } from './collect-quoted-blocks';
 import type { OwnerMessage } from './gate-types';
 
-// Finds the runs of a message that you typed outside every quoted block, in order, as text. Typed
-// spans that touch join into one run, so a token typed across 2 spans stays whole.
 export function collectTypedSegments(message: OwnerMessage): readonly string[] {
   const blocks = collectQuotedBlocks(message.text);
   const runs: TextRange[] = [];

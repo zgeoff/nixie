@@ -11,26 +11,19 @@ type ScriptedMessage = (
 ) & {
   readonly gate?: Promise<void>;
 
-  // the input tokens the reply reports, 10 by default, so a test can fill the CLI's context
   readonly inputTokens?: number;
 };
 
-// a 400 with the API's message, such as the one that refuses a prompt past the model's window
 interface ScriptedRefusal {
   readonly refusal: string;
   readonly gate?: Promise<void>;
 }
 
-// a 401 with the API's message for a credential it does not accept, and the header that tells the
-// CLI not to retry it
 interface ScriptedAuthFailure {
   readonly authFailure: string;
   readonly gate?: Promise<void>;
 }
 
-// One reply the stub model gives: a text block that ends the turn, or a tool_use block that asks
-// for a tool by its name as the model sees it, such as mcp__nixie__note_read. A gate holds the
-// reply until it resolves, so a test can keep a turn running.
 export type ScriptedReply = ScriptedMessage | ScriptedRefusal | ScriptedAuthFailure;
 
 const scriptedMessageSchema = z.looseObject({ role: z.string(), content: z.unknown() });
@@ -46,7 +39,6 @@ const scriptedModelBodySchema = z.looseObject({
 
 type ScriptedModelBody = z.infer<typeof scriptedModelBodySchema>;
 
-// One request the stub model received, with its body parsed.
 export interface ScriptedModelRequest {
   readonly path: string;
   readonly headers: Readonly<Record<string, string>>;
@@ -57,14 +49,10 @@ export interface ScriptedModel {
   readonly url: string;
   readonly requests: readonly ScriptedModelRequest[];
 
-  // appends replies to the script, which the stub answers in order, one per request
   readonly addReplies: (...replies: readonly ScriptedReply[]) => void;
   readonly stop: () => Promise<void>;
 }
 
-// Starts the scripted model: a local stand-in for the Messages API that answers each request with
-// the next scripted reply, and records every request. A request past the script's end gets a 400
-// the CLI does not retry, so a test that scripts too few replies fails rather than hangs.
 export function startScriptedModel(): ScriptedModel {
   const requests: ScriptedModelRequest[] = [];
   const script: ScriptedReply[] = [];

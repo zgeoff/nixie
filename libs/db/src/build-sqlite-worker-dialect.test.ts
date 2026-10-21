@@ -123,7 +123,7 @@ test('it loses no update when 2 connections race read-then-write transactions', 
   await sql`create table counter (id integer primary key, value integer not null)`.execute(ctx.db);
   await sql`insert into counter (id, value) values (1, 0)`.execute(ctx.db);
 
-  // a plain BEGIN fails most of these with "database is locked"; BEGIN IMMEDIATE queues them
+  // A plain BEGIN fails most of these with "database is locked", and BEGIN IMMEDIATE queues them.
   await Promise.all(
     [ctx.db, other].flatMap((db) =>
       Array.from({ length: 25 }, () =>
@@ -159,7 +159,6 @@ test('it opens 2 connections that write to a new file at once without a busy err
     await Promise.all(handles.map((db) => db.destroy()));
   });
 
-  // each connection switches its new file to WAL as it opens, while the other may already write
   await Promise.all(
     handles.flatMap((db) =>
       Array.from({ length: 10 }, () =>

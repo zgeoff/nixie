@@ -1,6 +1,5 @@
 const decoder = new TextDecoder('utf-8', { fatal: true });
 
-// Parses a fetch message's bytes as a JSON object, and throws when they hold anything else.
 export function parseFetchObject(
   bytes: Uint8Array,
   name: 'request' | 'reply',

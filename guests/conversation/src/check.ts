@@ -1,7 +1,5 @@
 import { runCheckGuest } from './run-check-guest';
 
-// The checker's entry on the conversation image: one check over framed stdin and stdout. It exits
-// once the reply is out.
 const writer = Bun.stdout.writer();
 
 await runCheckGuest({

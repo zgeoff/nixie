@@ -1,5 +1,3 @@
-// Formats how long ago you wrote a message that waits on you, as in 5 min ago, 3 h ago or 2 d ago,
-// each rounded down. A message with no written time reads as written earlier.
 export function formatOutboxAge(writtenAt: string | undefined, now: number): string {
   const at = writtenAt === undefined ? Number.NaN : Date.parse(writtenAt);
 

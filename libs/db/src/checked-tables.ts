@@ -1,9 +1,6 @@
 import type { SelectType } from 'kysely';
 import type { NixieTables } from './nixie-tables';
 
-// A module's table map, held to the tables the migrations build, so typecheck fails where the two
-// disagree. Views names the tables the module reads only part of, which may leave columns out.
-// `bun run --cwd libs/db tables` rewrites nixie-tables.ts after a migration.
 export type CheckedTables<
   Tables extends MatchedTables<Tables, Views>,
   Views extends keyof Tables = never,
@@ -24,12 +21,10 @@ type MatchedView<Declared, Built> = {
     : 'no migration creates this column';
 };
 
-// Requires every built column the map leaves out, so the error names it.
 type MissingColumns<Declared, Built> = Readonly<
   Record<Exclude<keyof Built, keyof Declared>, unknown>
 >;
 
-// The declared column itself when it matches, so the constraint holds, and a message otherwise.
 type MatchedColumn<Declared, Built> = [SelectType<Declared>] extends [Built]
   ? null extends Built
     ? null extends SelectType<Declared>

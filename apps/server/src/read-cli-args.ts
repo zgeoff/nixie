@@ -18,7 +18,6 @@ const CLI_OPTIONS = {
   config: { type: 'string', default: '/etc/nixie/config.yaml' },
   manifest: { type: 'string', default: '/app/sandbox-manifest.json' },
 
-  // an empty value serves with keyword memory search alone, as the tests that run nixie do
   encoder: { type: 'string', default: '/app/encoder' },
   sops: { type: 'string', default: '/usr/local/bin/sops' },
   live: { type: 'boolean', default: false },
@@ -40,8 +39,6 @@ interface CLIParams {
   readonly extensions: ExtendContext;
 }
 
-// Reads nixie's command line: the command, serve when none is given, every flag, and the words
-// after the command's name. Every command takes every flag.
 export async function readCLIArgs(
   argv: readonly string[],
   commandNames: readonly string[],
@@ -61,7 +58,6 @@ export async function readCLIArgs(
       name,
       lazy(
         () => (ctx: Readonly<CommandContext<CLIParams>>) => {
-          // a word after `--` may start with a dash, and it is an argument too
           read(name, ctx, [...ctx.positionals.slice(ctx.commandPath.length), ...ctx.rest]);
         },
         { name, args: CLI_OPTIONS },
@@ -73,8 +69,8 @@ export async function readCLIArgs(
     name: 'nixie',
     args: CLI_OPTIONS,
 
-    // A command line with no command before `--` takes its command from the first word after it,
-    // which the parser leaves unread.
+    // gunshi leaves the words after `--` unread, so a command line with no command before `--`
+    // takes its command from the first of them.
     run: (ctx) => {
       const [command, ...args] = ctx.rest;
 
@@ -97,7 +93,7 @@ export async function readCLIArgs(
   return parsed;
 }
 
-// The parser records a flag missing its value without stopping the command, so the flags are
+// gunshi records a flag that lacks its value without stopping the command, so the flags are
 // checked before any command runs.
 function requireValidFlags(ctx: Readonly<CommandContext>): void {
   if (ctx.validationError !== undefined) {
@@ -105,8 +101,8 @@ function requireValidFlags(ctx: Readonly<CommandContext>): void {
   }
 }
 
-// The parser throws one error that holds every reason it refused the command line; anything else
-// it throws is not the command line's fault.
+// gunshi throws one AggregateError that holds every reason it refused the command line, so any
+// other error is not the command line's fault.
 function parseRefusal(error: unknown): ParsedCLIArgs {
   if (!(error instanceof AggregateError)) {
     throw error;

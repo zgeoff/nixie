@@ -5,15 +5,10 @@ import { ConsolidationChangeNotFoundError } from './consolidation-change-not-fou
 import type { MemoryConsolidations } from './consolidation-types';
 import { makeInputRecorder } from './make-input-recorder';
 
-// What memory.comment reaches: the comment path of the consolidator's diffs, and nothing that
-// answers a change.
 export interface CommentToolStore {
   readonly consolidations: Pick<MemoryConsolidations, 'comment'>;
 }
 
-// Builds memory.comment, which declares note and keeps the model's comment beside one change of
-// the pending consolidation diff, for the owner's review. A change holds one comment, so a second
-// replaces the first. The comment answers nothing: the change waits for the owner as before.
 export function buildCommentTool(memory: CommentToolStore): ToolDefinition {
   return {
     name: 'memory.comment',
@@ -50,7 +45,6 @@ export function buildCommentTool(memory: CommentToolStore): ToolDefinition {
     },
     execution: 'direct',
 
-    // the model can copy an item's text into the comment, which the change's key seals
     recordInput: makeInputRecorder(['comment']),
     run: (call, context) => runCommentCall(memory, call, context),
   };
@@ -58,8 +52,6 @@ export function buildCommentTool(memory: CommentToolStore): ToolDefinition {
 
 const commentArguments = z.object({ changeID: z.string(), comment: z.string() });
 
-// An unknown change or one that no longer waits is the model's to read; any other failure
-// propagates. The result names the change by its short ID, whichever ID the model passed.
 async function runCommentCall(
   memory: CommentToolStore,
   call: ToolCall,

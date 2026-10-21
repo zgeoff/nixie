@@ -5,8 +5,8 @@ type ImageParts = Pick<ServerParts, 'images' | 'log' | 'state'> & {
   readonly tools: Pick<Tools, 'adapter'>;
 };
 
-// Adds each image in the sandbox manifest to the sandbox runtime, which pulls one image at a time.
 export async function registerSandboxImages(parts: ImageParts): Promise<void> {
+  // The sandbox runtime pulls one image at a time, so the images are added one after another.
   for (const image of Object.values(parts.images)) {
     await parts.tools.adapter.addImage(image);
 

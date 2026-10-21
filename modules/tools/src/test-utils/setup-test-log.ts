@@ -10,8 +10,6 @@ interface TestLog {
   readonly log: Log;
 }
 
-// Starts a writer on a fresh data directory, with a new deployment key and the log's own
-// projections. When the test finishes it stops the writer, then removes the directory.
 export async function setupTestLog(): Promise<TestLog> {
   const stack = new AsyncDisposableStack();
 

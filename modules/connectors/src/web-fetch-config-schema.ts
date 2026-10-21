@@ -4,8 +4,6 @@ import { webFetchDefaults } from './web-fetch-defaults';
 
 const countSchema = z.number().int().positive();
 
-// The web_fetch section of the deployment configuration: the 4 fetch limits. A setting the file
-// leaves out takes its default.
 export const webFetchConfigSchema = z
   .strictObject({
     body_bytes: countSchema.default(webFetchDefaults.limits.bodyBytes),

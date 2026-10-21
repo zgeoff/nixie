@@ -2,8 +2,6 @@ import type { Projection } from '@heynixie/log';
 import { parseRefusalRecord } from './parse-refusal-record';
 import type { APITables } from './types';
 
-// One row per channel and external ID that nixie refused: when it last wrote a refusal for it. The
-// time comes from the record's payload, never the clock, so a rebuild gives the live rows.
 export const refusalsProjection: Projection = {
   table: 'refusals',
   keyColumn: 'refusal_key',
@@ -16,6 +14,7 @@ export const refusalsProjection: Projection = {
 
     const refusalKey = `${refusal.channel}:${refusal.externalID}`;
 
+    // The time comes from the payload, never the clock, so a rebuild gives the same rows.
     await tx
       .$extendTables<APITables>()
       .insertInto('refusals')

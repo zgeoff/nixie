@@ -1,9 +1,8 @@
 import { getLogger } from '@logtape/logtape';
 import type { LogFields, LogLevel, Logger } from './types';
 
-// Makes the logger that passes each event to LogTape under the nixie category. A line holds the
-// event and its envelope fields only, such as IDs and outcomes, because a line that copied a
-// message or a tool's result would keep it after its key is gone.
+// A line holds envelope fields only, because a log line that copies a message or a tool's result
+// keeps that text after its key is shredded.
 export function makeLogger(): Logger {
   const logger = getLogger(['nixie']);
 

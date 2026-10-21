@@ -14,9 +14,6 @@ import { subjectColumn } from './subject-column';
 import { toReviewReason } from './to-review-reason';
 import type { MemoryTables, StoreParts } from './types';
 
-// Reads the proposals that wait for your answer, oldest first, with their text opened and every
-// source that proposed each one. A proposal whose item was forgotten has no key left, so it reads
-// as nothing and drops out of the list. A filter keeps only the proposals of its subjects.
 export async function readPendingProposals(
   parts: StoreParts,
   filter: PendingFilter = {},
@@ -76,7 +73,6 @@ export async function readPendingProposals(
   return proposals.filter((proposal) => proposal !== null);
 }
 
-// each proposal's merged sources, oldest first
 async function readMergeSources(
   parts: StoreParts,
   rows: readonly MemoryProposalRow[],
@@ -126,7 +122,6 @@ function buildFirstSource(row: MemoryProposalRow): ProposalSource {
   };
 }
 
-// the photo of yours the proposal comes from, in the thread whose message holds it
 function findProposalImage(row: MemoryProposalRow): ProposalImage | null {
   const image = row.checks === null ? null : findImageSource(JSON.parse(row.checks));
 

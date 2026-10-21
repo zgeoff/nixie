@@ -4,8 +4,6 @@ import invariant from 'tiny-invariant';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 
-// A test of lease expiry: runners A and B share one nixie process, whose task pool runs 3 runners,
-// and the conversation's step is the work they contend for.
 async function setupTest() {
   const nixie = await startTestNixie();
 
@@ -15,7 +13,6 @@ async function setupTest() {
 test('it lets runner B take an expired lease at the next generation, and commits the step once', async () => {
   const ctx = await setupTest();
 
-  // only the first claim holds, so runner B passes the point
   const nixie = ctx.nixie.harness.start([{ point: 'claim.after', kind: 'task' }]);
 
   await nixie.ready;
@@ -25,7 +22,6 @@ test('it lets runner B take an expired lease at the next generation, and commits
 
   const runnerA = await nixie.waitForArrival('claim.after', 'conversation');
 
-  // past the 60 s lease, so an idle runner wakes and claims the task
   await ctx.nixie.harness.advance(60_001);
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
   await nixie.request('arm', { point: 'step.commit.before', workID: 'conversation' });
@@ -76,25 +72,21 @@ test('it lets runner B claim only once the renewed lease expires, never before',
 
   await nixie.ready;
 
-  // runner A's turn waits on the model, so its step outlives its lease
   ctx.nixie.model.addReplies({ text: 'Late.', gate: lateReply.promise }, { text: 'Hi.' });
   void nixie.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
 
-  // runner A's request takes the held reply before runner B's turn starts
   await waitForCondition(() =>
     ctx.nixie.model.requests.some((request) => request.path === '/v1/messages'),
   );
 
   await ctx.nixie.harness.advance(20_000);
 
-  // the renewal at 1,020,000 moved the expiry to 1,080,000, and A's renewals stop here
   const renewal = await nixie.waitForArrival('renew.after', 'conversation');
 
   await ctx.nixie.harness.advance(59_999, { settle: true });
 
   const beforeExpiry = await ctx.nixie.readRecords();
 
-  // one poll on, past the expiry, an idle runner wakes and claims
   await ctx.nixie.harness.advance(1000);
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
   await nixie.request('arm', { point: 'step.commit.before', workID: 'conversation' });
@@ -146,7 +138,6 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
 
   await nixie.ready;
 
-  // runner A's turn asks for test.send once its lease has expired, while runner B's turn still runs
   ctx.nixie.model.addReplies(
     {
       toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } },
@@ -164,7 +155,6 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
 
   await ctx.nixie.harness.advance(20_000);
 
-  // A's renewals stop here, so A never learns that its lease expired
   const renewal = await nixie.waitForArrival('renew.after', 'conversation');
 
   await ctx.nixie.harness.advance(61_000);

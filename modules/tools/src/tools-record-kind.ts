@@ -1,4 +1,3 @@
-// The record kinds the tools module registers with the log: a tool call and its result.
 export type ToolsRecordKind = 'tool_called' | 'tool_result';
 
 declare module '@heynixie/log' {

@@ -42,7 +42,6 @@ test('it reports the imp runtime ready once impd answers again after a call that
   const ctx = await setupTest();
   const recorder = await setupTestRecorder();
 
-  // a half-open connection: impd takes the first call and never answers it
   const answer = buildStubCheck(() => Promise.withResolvers<Response>().promise);
   const answerRequest = () => answer.check();
   const impd = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: answerRequest });
@@ -68,7 +67,6 @@ test('it reports the imp runtime ready once impd answers again after a call that
     () => refresh.read('imp_runtime').reason === 'the check took longer than 2000 ms',
   );
 
-  // impd answers every oRPC call in the RPC protocol's envelope, and only system.info reaches it
   answer.answerWith(() =>
     Promise.resolve(Response.json({ json: { version: '2.0.0', features: {}, egress: {} } })),
   );
@@ -79,6 +77,5 @@ test('it reports the imp runtime ready once impd answers again after a call that
 
   await waitForCondition(() => refresh.read('imp_runtime').isReady);
 
-  // one call each round: the hung one, then the one impd answers
   expect(answer.check).toHaveBeenCalledTimes(2);
 });

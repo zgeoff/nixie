@@ -17,9 +17,6 @@ import { readConsolidationSummary } from './read-consolidation-summary';
 import { readVersionTexts } from './read-version-texts';
 import type { MemoryTables, StoreParts, VersionRef } from './types';
 
-// Reads the diff whose changes wait for your answer, opened, with each input at the version read
-// and the session's summary. A change whose first input was forgotten drops out. With no change
-// waiting, it reads the last run's summary alone until it lapses.
 export async function readPendingDiff(parts: StoreParts): Promise<ConsolidationDiff | null> {
   const db = parts.context.log.writer.db.$extendTables<ConsolidationTables & MemoryTables>();
   const now = parts.context.gate.clock.now();
@@ -62,7 +59,6 @@ export async function readPendingDiff(parts: StoreParts): Promise<ConsolidationD
   };
 }
 
-// the last run as a diff with no changes, while its summary is readable and has not lapsed
 async function readSummaryOnlyDiff(
   parts: StoreParts,
   now: number,
@@ -123,7 +119,6 @@ async function readChanges(
   return changes.filter((change) => change !== null);
 }
 
-// when each comment was left: the wall-clock time of the record that left it
 async function readCommentTimes(
   parts: StoreParts,
   rows: readonly ConsolidationChangeRow[],
@@ -146,7 +141,6 @@ async function readCommentTimes(
   return new Map(records.map((record) => [record.sequence, record.recorded_at]));
 }
 
-// each input's text at the version read, and whether the item still stands active at it
 async function readInputs(
   parts: StoreParts,
   inputs: readonly VersionRef[],

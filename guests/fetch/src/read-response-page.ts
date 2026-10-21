@@ -7,9 +7,6 @@ import { decodeContent } from './decode-content';
 import { findBotChallenge } from './find-bot-challenge';
 import { readLimitedBody } from './read-limited-body';
 
-// Reads a final response into the result: an HTML page returns its readable text, another text
-// type returns as it arrived, and a binary type returns no body. The text stops at the text limit,
-// and either limit marks the result truncated. A bot challenge in place of the page sets blocked.
 export async function readResponsePage(
   url: URL,
   response: IncomingMessage,
@@ -70,7 +67,6 @@ async function readContent(
   };
 }
 
-// the body decoded from its content coding and its charset, cut at the body limit
 async function readBodyText(
   response: IncomingMessage,
   limits: FetchLimits,
@@ -85,12 +81,11 @@ async function readBodyText(
   return { text, isTruncated: body.isTruncated };
 }
 
-// a decoder for the charset the Content-Type names when TextDecoder knows it, and UTF-8 otherwise
 function makeTextDecoder(contentType: string | null): TextDecoder {
   const charset =
     /charset="?(?<label>[\w-]+)"?/iu.exec(contentType ?? '')?.groups?.['label'] ?? 'utf8';
 
-  // TextDecoder takes any WHATWG label at runtime, which its type narrows to a fixed list
+  // TextDecoder takes any WHATWG label at runtime, but its type narrows to a fixed list.
   try {
     const decoder: unknown = Reflect.construct(TextDecoder, [charset]);
 

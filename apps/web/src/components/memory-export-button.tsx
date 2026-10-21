@@ -6,8 +6,6 @@ import { useNixieClient } from '../use-nixie-client';
 
 const section = css({ alignItems: 'baseline', display: 'flex', gap: '2', marginBlock: '3' });
 
-// The export of every memory item with its history to one JSON file, saved where you pick. An
-// export that fails keeps its client action ID, so the try after it is the same checked action.
 export function MemoryExportButton(): ReactNode {
   const nixie = useNixieClient();
   const [actionID, setActionID] = useState(() => crypto.randomUUID());
@@ -51,7 +49,6 @@ const jsonTypes: readonly FileType[] = [
   { description: 'JSON file', accept: { 'application/json': ['.json'] } },
 ];
 
-// A browser with a save picker writes the file as it streams; any other downloads it whole.
 async function writeExportFile(client: NixieClient, actionID: string): Promise<ExportOutcome> {
   const fileName = `nixie-memory-${new Date().toISOString().slice(0, 10)}.json`;
   const showSaveFilePicker = findSaveFilePicker();
@@ -84,11 +81,10 @@ async function writeExportFile(client: NixieClient, actionID: string): Promise<E
 function findSaveFilePicker(): ShowSaveFilePicker | null {
   const picker = globalThis.showSaveFilePicker;
 
-  // the picker is a method of the window, which refuses a call with no window as its receiver
+  // The browser refuses a call to the picker with no window as its receiver.
   return picker === undefined ? null : picker.bind(globalThis);
 }
 
-// the browser saves a link's download where its settings say, and asks where when set to ask
 async function writeDownload(
   client: NixieClient,
   actionID: string,
@@ -102,12 +98,12 @@ async function writeDownload(
   link.href = url;
   link.download = fileName;
 
-  // a link outside the document downloads nothing in some browsers
+  // Some browsers download nothing from a link outside the document.
   document.body.append(link);
   link.click();
   link.remove();
 
-  // the download reads the URL after the click returns
+  // The browser reads the download URL after the click returns.
   setTimeout(() => {
     URL.revokeObjectURL(url);
   }, 1000);
@@ -119,8 +115,6 @@ async function readExportBlob(client: NixieClient, actionID: string): Promise<Bl
   return new Blob(chunks, { type: 'application/json' });
 }
 
-// The file's chunks in order. A stream can end cleanly before the file does, so the export counts
-// only once its completion event arrives, and a stream that ends without it throws.
 async function* readExportChunks(client: NixieClient, actionID: string): AsyncGenerator<string> {
   const events = await client.memory.export({ clientActionID: actionID });
 
@@ -139,8 +133,6 @@ async function* readExportChunks(client: NixieClient, actionID: string): AsyncGe
   }
 }
 
-// each chunk goes to the file as it arrives, and a failed or incomplete export leaves the file
-// unwritten
 async function writePickedFile(
   handle: Readonly<FileSystemFileHandle>,
   client: NixieClient,

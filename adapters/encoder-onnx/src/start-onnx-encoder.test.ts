@@ -6,9 +6,8 @@ import { readRecords } from '@heynixie/log';
 import { createMemoryItem, startTestMemory } from '@heynixie/memory/test-utils';
 import { startONNXEncoder } from './start-onnx-encoder';
 
-// Bun 1.4.2's skipIf takes a boolean and has no in-body skip. The model files come from `bun run
-// models`, which `bun run test` runs first, so a plain `bun test` without them skips these tests and
-// CI, which always has them, never does.
+// Bun 1.4.2's skipIf takes a boolean and has no in-body skip, so the file looks for the model files
+// at load. `bun run test` downloads them first, so only a plain `bun test` without them skips.
 const isModelMissing =
   !(await Bun.file(
     join(import.meta.dir, '../../../node_modules/.cache/nixie-encoder/tokenizer.json'),
@@ -110,8 +109,6 @@ test.skipIf(isModelMissing)(
 
     expect(result.items.map((item) => item.itemID)).toStrictEqual([boiler.itemID]);
 
-    // a similarity and no keyword score: the vector index placed the item, and the keyword index
-    // matched nothing
     expect(recalled?.record.payload).toStrictEqual({
       items: [{ itemID: boiler.itemID, version: 1, similarity: expect.toBeWithin(0.38, 1) }],
       searchMode: 'hybrid',

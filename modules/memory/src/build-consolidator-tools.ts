@@ -4,9 +4,6 @@ import { z } from 'zod';
 import type { ConsolidationStaging } from './create-consolidation-staging';
 import type { MemoryStore, RecalledItem } from './types';
 
-// Builds the consolidator's 2 tools: recall, which declares read, and consolidate, which stages the
-// run's one diff instead of applying it, so a session that dies leaves nothing behind and every
-// change waits for your answer.
 export function buildConsolidatorTools(
   store: Pick<MemoryStore, 'recall'>,
   staging: ConsolidationStaging,
@@ -37,9 +34,6 @@ const recallOutput = {
 
 const recallArguments = z.object({ query: z.string() });
 
-// A recall shows the session each item it returns, so a later change to one binds to that version,
-// and returns each item's quote, so the session checks an item it found against the words it was
-// saved from, as it does for each item in its list.
 function buildRecallTool(
   store: Pick<MemoryStore, 'recall'>,
   staging: ConsolidationStaging,
@@ -93,7 +87,6 @@ function buildRecallTool(
   };
 }
 
-// an item as the session reads it: its short ID, its text, and its quote when it has one
 function toRecalledItemJSON(item: RecalledItem): JSONObject {
   return item.evidenceQuote === null
     ? { itemID: item.shortID, text: item.text }
@@ -122,8 +115,6 @@ const consolidateInput = {
   additionalProperties: false,
 };
 
-// The diff in one call: each change names its items by the IDs the session read, and the host binds
-// each to the version the session read. A refusal stages nothing, so the model fixes the diff and calls again.
 function buildConsolidateTool(staging: ConsolidationStaging): ToolDefinition {
   return {
     name: 'memory.consolidate',

@@ -1,9 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-// Collects every file under a directory whose bytes hold the text, as paths relative to it. It
-// reads every file it reports as clean, whatever its size, and finds nothing under a missing
-// directory.
 export async function readFilesWithText(root: string, text: string): Promise<readonly string[]> {
   const entries = await readdir(root, { recursive: true, withFileTypes: true }).catch(() => []);
 

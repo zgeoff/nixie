@@ -6,7 +6,6 @@ import { parseSkillFrontmatter } from './parse-skill-frontmatter';
 import type { SkillsLock } from './parse-skills-lock';
 import type { ParsedSkill } from './types';
 
-// one skill's files by their path inside its folder, as bytes for the hash and as text
 export interface SkillFolder {
   readonly bytes: ReadonlyMap<string, Uint8Array>;
   readonly texts: ReadonlyMap<string, string>;
@@ -17,9 +16,6 @@ export interface SkillCheck {
   readonly problems: readonly ParseProblem[];
 }
 
-// Runs the seed checks on one skill's folder: the frontmatter and its name, no hidden or
-// bidirectional control character, and a vendored skill's lock entry. It returns the checked skill,
-// or null with every problem it found.
 export function checkSkill(name: string, folder: SkillFolder, lock: SkillsLock): SkillCheck {
   const skillPath = `skills/${name}/SKILL.md`;
   const text = folder.texts.get('SKILL.md');

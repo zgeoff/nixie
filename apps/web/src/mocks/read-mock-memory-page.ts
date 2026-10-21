@@ -7,8 +7,6 @@ interface PageRequest {
   readonly limit?: number | undefined;
 }
 
-// Reads one page of the items in a state, in the order the store created them, as nixie's API
-// does. The forgotten page holds each item a forget began. A cursor no page returned reads as null.
 export function readMockMemoryPage(request: PageRequest) {
   const start = request.after === undefined ? 0 : Number(request.after);
 

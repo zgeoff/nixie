@@ -16,9 +16,6 @@ type IssueResult =
   | { readonly status: 'reused' }
   | { readonly status: 'unauthorized' };
 
-// Issues an enrolment code for one more device. nixie keeps only the code's hash, so the caller's
-// retry answers with a fresh code that replaces the first, with the same lapse time. Once the first
-// code is used or lapsed the action is over, and a retry is refused as reused.
 export function writeIssuedCode(
   context: APIContext,
   caller: Identity,
@@ -60,8 +57,6 @@ interface CodeRetry {
   readonly earlier: ClientAction;
 }
 
-// swaps the caller's unused, unlapsed code for a fresh one, or null when the ID belongs to another
-// action or caller, or its code no longer works
 async function updateRetriedCode(
   tx: Transaction<unknown>,
   context: APIContext,

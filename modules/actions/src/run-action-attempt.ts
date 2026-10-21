@@ -26,9 +26,6 @@ const attemptWithoutResult: SettledOutcome = {
   reason: 'attempt_without_result',
 };
 
-// Runs one attempt of a claimed action: an attempt record, the provider call, then the result and
-// outcome together. A claim that finds an attempt record with no result marks the action unknown
-// first, never a plain second attempt, because the call may have reached the provider.
 export async function runActionAttempt(
   context: TasksContext,
   lease: Lease,
@@ -59,7 +56,6 @@ export async function runActionAttempt(
 interface Settlement {
   readonly outcome: SettledOutcome;
 
-  // the connector's result or the provider's reason, free text kept in the erasable fields
   readonly details?: JSONObject;
 }
 
@@ -69,7 +65,6 @@ interface Attempt {
   readonly attempt: number;
 }
 
-// settles the action: its outcome record lands in the task's inbox and wakes the task
 async function writeOutcome(
   context: TasksContext,
   attempt: Attempt,
@@ -103,11 +98,9 @@ async function writeOutcome(
 interface LeasedRecord {
   readonly record: RecordInput;
 
-  // frees the lease in the same transaction, once the attempt has nothing left to commit
   readonly reset: boolean;
 }
 
-// one write under the lease: a runner whose lease expired or was taken commits nothing
 async function writeLeasedRecord(
   context: TasksContext,
   lease: Lease,
@@ -123,9 +116,6 @@ async function writeLeasedRecord(
   });
 }
 
-// The waits between the 5 attempts of an action: 30 s, 2 min, 8 min and 30 min, each 4 times the
-// last up to 30 min. Why: the schedule rides out a rate limit or a short outage within about 40 min,
-// and an action still failing after that needs you more than another attempt.
 export const defaultRetryDelaysMs: readonly number[] = [1, 2, 3, 4].map((failures) =>
   planBackoffDelay(failures, { firstMs: 30_000, maxMs: 1_800_000, factor: 4 }),
 );
@@ -158,7 +148,6 @@ async function runAttempt(
   });
 }
 
-// the arguments sit in the queued record's erasable fields, so a forgotten action has none
 async function readArguments(context: TasksContext, sequence: number): Promise<JSONObject | null> {
   const [entry] = await readRecords(context.log, { afterSequence: sequence - 1, limit: 1 });
 
@@ -168,7 +157,6 @@ async function readArguments(context: TasksContext, sequence: number): Promise<J
   return isJSONObject(args) ? args : null;
 }
 
-// stage 1: the attempt record commits before the provider call
 async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Promise<void> {
   await writeLeasedRecord(context, attempt.lease, {
     record: {
@@ -194,8 +182,7 @@ interface ConnectorCall {
   readonly options: ActionAttemptOptions;
 }
 
-// stage 2: the provider call, under a renewed lease; a call that throws may have reached the
-// provider, so it counts as an ambiguity
+// A call that throws may have reached the provider, so it counts as an ambiguity.
 async function runConnector(
   context: TasksContext,
   attempt: Attempt,
@@ -223,8 +210,6 @@ interface AttemptResult {
   readonly retryDelaysMs: readonly number[];
 }
 
-// stage 3: the result and the outcome commit together; a refusal that can clear waits for its
-// next attempt, and any other outcome settles the action and reaches the task's inbox
 async function writeAttemptResult(
   context: TasksContext,
   attempt: Attempt,

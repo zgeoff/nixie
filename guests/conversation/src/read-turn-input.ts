@@ -5,20 +5,14 @@ import type { TurnFrame } from './build-query-options';
 import { isUUID } from './is-uuid';
 
 export interface TurnInputState {
-  // the uuids of messages the SDK took and has not yet read
   readonly pending: Set<string>;
 
-  // resolves true once nixie's tool server has connected, or false when the turn stops without it
   readonly toolsReady: PromiseWithResolvers<boolean>;
 
-  // resolves with the error the host's message stream threw, which fails the turn at once
   readonly inputFailed: PromiseWithResolvers<Error>;
   readonly ended: PromiseWithResolvers<void>;
 }
 
-// Reads the prompt stream of one turn, once its tools connect: the turn's inbox, then each host
-// message until the turn ends. The SDK aborts on an error from its prompt stream, yet the CLI still answers the message it
-// holds, so a host stream error ends the stream and fails the turn through its state instead.
 export async function* readTurnInput(
   turn: TurnFrame,
   messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>,
@@ -72,8 +66,6 @@ function buildUserMessage(message: InboxMessage): SDKUserMessage {
 
 type UserContent = SDKUserMessage['message']['content'];
 
-// A message with images reads as its text, then each image after the marker that names it, so the
-// model sees which marker in the text stands for which image. A message with none stays a string.
 function buildContent(message: InboxMessage): UserContent {
   const images = message.images ?? [];
 
@@ -106,6 +98,8 @@ async function readNextMessage(
   try {
     return await Promise.race([iterator.next(), state.ended.promise.then(() => null)]);
   } catch (error) {
+    // The SDK aborts on an error from its prompt stream, yet the CLI still answers the message it
+    // holds, so the stream ends and the turn fails through its state.
     const failure = error instanceof Error ? error : new Error(String(error));
 
     state.inputFailed.resolve(failure);

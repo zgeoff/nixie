@@ -1,8 +1,5 @@
 import { z } from 'zod';
 
-// The usage defaults to 10 input tokens and no cache tokens, and a test sets more to fill the
-// context the CLI counts. A reply with thinking carries a summarized thinking block, with its
-// signature, before its text or tool_use block, and reports its thinking tokens in the usage.
 type ScriptedMessage = (
   | { readonly text: string }
   | {
@@ -22,9 +19,6 @@ type ScriptedMessage = (
   };
 };
 
-// One reply the stub model gives: a text block, a tool_use block by the name the model sees, such
-// as mcp__nixie__note_read, a 400 with the API's refusal message, or a 401 for a refused credential
-// that the CLI does not retry.
 type ScriptedReply =
   | ScriptedMessage
   | {
@@ -52,7 +46,6 @@ const stubModelBodySchema = z.looseObject({
 
 type StubModelBody = z.infer<typeof stubModelBodySchema>;
 
-// One request the stub model received, with its body parsed.
 interface StubModelRequest {
   readonly path: string;
   readonly headers: Readonly<Record<string, string>>;
@@ -63,14 +56,10 @@ export interface StubModel {
   readonly url: string;
   readonly requests: readonly StubModelRequest[];
 
-  // appends replies to the script, which the stub answers in order, one per request
   readonly addReplies: (...replies: readonly ScriptedReply[]) => void;
   readonly stop: () => Promise<void>;
 }
 
-// Starts a local stand-in for the Messages API that answers each /v1/messages request with the next
-// scripted reply, and records every request. A request past the script's end gets a 400 the CLI
-// does not retry, so a test that scripts too few replies fails rather than hangs.
 export function startStubModel(): StubModel {
   const requests: StubModelRequest[] = [];
   const script: ScriptedReply[] = [];
@@ -187,7 +176,6 @@ function renderStream(reply: ScriptedMessage, model: string): Response {
       type: 'message_delta',
       delta: { stop_reason: isTool ? 'tool_use' : 'end_turn', stop_sequence: null },
 
-      // a message_delta reports output tokens alone; the input and cache counts came in message_start
       usage: {
         output_tokens: 5,
         ...(reply.thinking === undefined

@@ -6,28 +6,20 @@ import { skillsLockSchema } from './skills-lock-schema';
 import { toSkillExportBranch } from './to-skill-export-branch';
 import type { DefinitionsChange, SkillVersion } from './types';
 
-// A skill that nixie wrote and an approval put in force, with what the base branch of your
-// definitions repo holds for it.
 export interface SkillExport {
   readonly approvalID: string;
   readonly proposalID: string;
   readonly version: SkillVersion;
 
-  // the version in your definitions that it replaces, or null when they lack the skill
   readonly beneath: SkillVersion | null;
   readonly isBeneathVendored: boolean;
 
-  // the path of each file in the skill's folder on the base branch, from the folder
   readonly existing: readonly string[];
 
-  // the text of the lock file and of nixie.yaml on the base branch, each null when it is missing
   readonly lock: string | null;
   readonly manifest: string | null;
 }
 
-// Builds the change that carries a skill nixie wrote to your definitions repo: its files in its
-// folder, the removal of each file the folder holds and it lacks, and the removal of a vendored
-// skill's lock entry, so the seed after the merge reads the folder as your own skill.
 export function buildSkillExportChange(skillExport: SkillExport): DefinitionsChange {
   const name = skillExport.version.name;
   const folder = `skills/${name}`;
@@ -79,7 +71,6 @@ export function buildSkillExportChange(skillExport: SkillExport): DefinitionsCha
   };
 }
 
-// the lock file without the skill's entry, or null when it holds no entry for the skill
 function buildUnlocked(lock: string | null, name: string): string | null {
   if (lock === null) {
     return null;
@@ -110,7 +101,6 @@ function parseJSON(text: string): unknown {
 
 const manifestFormatSchema = z.looseObject({ format: z.number() });
 
-// the format that nixie.yaml holds when the seed under it applies no skill, or null
 function findFormatBeforeSkills(manifest: string | null): number | null {
   if (manifest === null) {
     return null;
@@ -131,8 +121,6 @@ function parseYAML(text: string): unknown {
   }
 }
 
-// whether nixie.yaml lists the conversation's skills without the skill, which a merge alone then
-// leaves off the conversation's list
 function isUnlisted(manifest: string | null, name: string): boolean {
   if (manifest === null) {
     return false;

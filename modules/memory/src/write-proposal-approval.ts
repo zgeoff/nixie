@@ -7,9 +7,6 @@ import { writeApprovedNewItem } from './write-approved-new-item';
 import { writeApprovedRemember } from './write-approved-remember';
 import { writeApprovedRetirement } from './write-approved-retirement';
 
-// Applies the operation a proposal binds to, with your approval, while the proposal is pending
-// under the hash you saw. A moved-on item fails as stale and applies nothing. An edit approves your
-// own text, which takes you as its origin and its source.
 export async function writeProposalApproval(
   parts: StoreParts,
   answer: ProposalAnswer,

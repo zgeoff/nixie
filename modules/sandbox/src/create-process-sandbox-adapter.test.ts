@@ -13,13 +13,9 @@ import { startStubToolEndpoint } from './test-utils/start-stub-tool-endpoint';
 import type { Sandbox, SandboxAdapter, SandboxSpec } from './types';
 
 interface SetupConfig {
-  // the stop's kill deadline, when a test needs one shorter than the default
   readonly killGraceMs?: number;
 }
 
-// The process adapter on a fresh recorder, with the stub tool endpoint in its root. The stack's hook
-// registers before the recorder's, and hooks run first in, first out, so each sandbox that
-// createSandbox made writes its destroy record before the writer stops.
 async function setupTest(config: SetupConfig = {}) {
   const stack = new AsyncDisposableStack();
 
@@ -32,7 +28,6 @@ async function setupTest(config: SetupConfig = {}) {
 
   startStubToolEndpoint(join(rootDir, 'tools.sock'));
 
-  // a test that needs the host's environment passes it here, as the server passes its own
   const createAdapter = (hostEnv: Readonly<Record<string, string>> = {}) =>
     createProcessSandboxAdapter({
       recorder: recorder.recorder,
@@ -269,8 +264,6 @@ test('it kills the whole group when SIGTERM leaves it running', async () => {
   const ctx = await setupTest({ killGraceMs: 300 });
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
 
-  // the child starts with SIGTERM ignored; the shell then traps it, notes it in term.txt, and goes
-  // on waiting, so only the kill ends the group; ready.txt shows both traps are set
   const stream = await sandbox.spawn({
     argv: [
       'sh',
@@ -341,8 +334,8 @@ test('it stops the command of an aborted exec', async () => {
   expect(result).toMatchObject({ code: null, signal: 'SIGTERM' });
 });
 
-// 34 is a real-time signal with no name. A guest inherits the signals its host blocks, and some hosts
-// block 34, which a shell's kill then leaves pending, so the guest unblocks it before it sends it.
+// A guest inherits the signals its host blocks, and some hosts block the real-time signal 34, which a
+// shell's kill then leaves pending. The guest unblocks it before it sends it.
 test('it reports a signal with no name as its number', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());

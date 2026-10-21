@@ -5,9 +5,6 @@ import { requireItem } from './require-item';
 import { runForgetCleanup } from './run-forget-cleanup';
 import type { ForgetRequest, MemoryTables, StoreParts } from './types';
 
-// Forgets one item for good, bound to the version the confirmation showed. Under the delivery lock
-// it commits memory.forget_started, which stops every later recall from delivering the item, and
-// drops the item and the messages that backed it from the indexes. The cleanup then deletes the key and finishes the forget.
 export async function runForget(parts: StoreParts, request: ForgetRequest): Promise<void> {
   const log = parts.context.log;
   const itemID = request.target.itemID;
@@ -16,7 +13,6 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
     const evidenceSequences = await withWriteTransaction(log.writer, async (tx) => {
       const db = tx.$extendTables<MemoryTables>();
 
-      // the caller's own write, such as a checked action's result, ends a settled retry first
       await request.writeInTransaction?.(tx);
 
       await requireItem(db, {
@@ -47,7 +43,6 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
 
     parts.vectors?.remove(itemID);
 
-    // a message that backed the item would bring its words back through retrieval
     await removeMessageEntries(parts, evidenceSequences);
   });
 

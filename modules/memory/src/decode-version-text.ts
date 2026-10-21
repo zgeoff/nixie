@@ -3,11 +3,8 @@ import { defineSealedCodec } from './define-sealed-codec';
 import type { VersionRef, VersionText } from './types';
 import { versionTextSchema } from './version-text-schema';
 
-// no prefix: the version key alone is the additional data
 const versionText = defineSealedCodec('', versionTextSchema);
 
-// Opens what encodeVersionText sealed. A wrong key, a wrong item or version, or a changed byte
-// rejects.
 export function decodeVersionText(
   key: CryptoKey,
   ref: VersionRef,

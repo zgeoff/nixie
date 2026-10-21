@@ -13,22 +13,16 @@ export interface StubSandboxes {
   readonly created: readonly SandboxSpec[];
   readonly destroyed: readonly string[];
 
-  // every turn frame the guests received, in order
   readonly turns: readonly TurnFrame[];
 
-  // every summarize frame the guests received, in order
   readonly summaries: readonly SummarizeFrame[];
 
-  // the ID of the sandbox each purge frame reached, in order
   readonly purged: readonly string[];
 
-  // sets how the guest of each later spawn answers its turn
   readonly setGuestScript: (script: StubGuestScript) => void;
 
-  // sets how the guest of each later spawn answers a summarize frame
   readonly setSummaryScript: (script: StubSummaryScript) => void;
 
-  // sets the frames the guest of each later spawn answers a purge frame with, purged by default
   readonly setPurgeAnswer: (frames: readonly GuestFrame[]) => void;
 }
 
@@ -45,9 +39,6 @@ interface StubState {
   purgeAnswer: readonly GuestFrame[];
 }
 
-// Builds a stand-in for the sandbox adapter whose sandboxes run a scripted conversation guest. It
-// speaks the real turn frames over a framed stream, as the guest does, so the host side runs as it
-// would against a sandbox, with no process and no model.
 export function buildStubSandboxes(): StubSandboxes {
   const state: StubState = {
     secrets: [],
@@ -104,8 +95,6 @@ export function buildStubSandboxes(): StubSandboxes {
   };
 }
 
-// The stub guest's script until a test sets one: it reads every inbox message, answers Hello. and
-// ends the turn at a new chain entry.
 function buildHelloTurn(turn: TurnFrame): readonly GuestFrame[] {
   return [
     { type: 'read', uuids: turn.input.map((message) => message.uuid) },
@@ -121,7 +110,6 @@ function buildHelloTurn(turn: TurnFrame): readonly GuestFrame[] {
   ];
 }
 
-// The stub guest's summary until a test sets one: a short summary at a new chain entry.
 function buildSummary(): readonly GuestFrame[] {
   return [
     {
@@ -171,7 +159,6 @@ function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
   };
 }
 
-// the stub runs the guest and nothing else
 function requireSpawnOnly(): Promise<never> {
   return Promise.reject(new Error('the stub sandbox only spawns the guest'));
 }
@@ -186,7 +173,6 @@ interface RecordingState {
   readonly purgeAnswer: readonly GuestFrame[];
 }
 
-// each sandbox records what reaches it in the stub's state, and runs the script set at the time
 function buildHooks(state: RecordingState): StubSandboxHooks {
   return {
     onTurn: (turn, guest) => {

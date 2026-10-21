@@ -60,7 +60,6 @@ test('it throws when another holder already claimed the conversation task', asyn
 
   const sent = sendTestMessage(server.context, mock(), 'Say a fruit.');
 
-  // the send writes through the writer, so it settles before the test stops the writer
   await sent.catch(() => {});
 
   expect(sent).rejects.toThrowWithMessage(Error, 'the conversation had no work to claim');

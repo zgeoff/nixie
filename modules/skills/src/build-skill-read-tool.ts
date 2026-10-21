@@ -7,9 +7,6 @@ import type { SkillToolsContext } from './types';
 
 const readArguments = z.object({ name: z.string(), path: z.string().optional() });
 
-// Builds skill_read, which declares read and returns a skill at the version the task is pinned to:
-// the SKILL.md body without its frontmatter and the list of the skill's other files, or one file by
-// its path inside the folder. A skill off the caller's list, and a path outside the folder, fail.
 export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
   return {
     name: 'skill_read',
@@ -52,8 +49,8 @@ export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
       amount: null,
       content: [],
 
-      // the text and the file paths come from the skill's folder, which a vendored skill fills with
-      // someone else's text; the name and the version come from the catalog and the seed
+      // A vendored skill fills its folder with someone else's text, so the text and the file paths
+      // are untrusted. The name and the version come from the owner's catalog.
       results: {
         skill: 'owner_data',
         version: 'owner_data',

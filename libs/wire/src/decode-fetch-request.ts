@@ -1,8 +1,6 @@
 import type { FetchLimits, FetchRequest } from './fetch-request';
 import { parseFetchObject } from './parse-fetch-object';
 
-// Decodes the request nixie sends the fetcher, and throws on a malformed one, so the fetcher never
-// runs with a limit or a list it did not get.
 export function decodeFetchRequest(bytes: Uint8Array): FetchRequest {
   const request = parseFetchObject(bytes, 'request');
   const limits = request['limits'];

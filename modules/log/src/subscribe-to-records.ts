@@ -9,15 +9,11 @@ export interface SubscribeToRecordsOptions {
   readonly thread?: string;
   readonly signal?: AbortSignal;
 
-  // the writer's commit bus by default; a reader in another process passes the WAL subscription
   readonly subscribeToChanges?: SubscribeToChanges;
 }
 
 const BATCH_SIZE = 100;
 
-// Yields every record after a sequence, with its changed projection rows, then waits for the next
-// commit and reads again. The stream ends once the signal aborts. A commit during a read makes the
-// next read run at once, so no commit goes unread.
 export async function* subscribeToRecords(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   options: SubscribeToRecordsOptions,
@@ -46,7 +42,6 @@ export async function* subscribeToRecords(
   }
 }
 
-// the reset comes before the read, so a commit that lands during the read wakes the stream again
 function readNextBatch(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   wake: RecordWake,

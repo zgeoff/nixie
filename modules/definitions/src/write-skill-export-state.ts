@@ -3,8 +3,6 @@ import { match } from 'ts-pattern';
 import { canMoveSkillExport } from './can-move-skill-export';
 import type { DefinitionsTables, PullRequestRef, SkillExportState } from './types';
 
-// An opened export names its pull request and base. A closed one keeps the pull request it closed,
-// and an export that closes before it recorded its pull request names the one it found, if any.
 export type SkillExportMove =
   | { readonly approvalID: string; readonly to: 'exporting'; readonly at: number }
   | {
@@ -21,9 +19,6 @@ export type SkillExportMove =
       readonly at: number;
     };
 
-// Writes the export state of a skill that nixie wrote inside the caller's write transaction, and
-// refuses a move the transition table lacks. An export in flight is a mark beside the export's row,
-// so a run that stops between the write to your definitions repo and its record leaves the mark.
 export async function writeSkillExportState(
   tx: Transaction<unknown>,
   move: SkillExportMove,
@@ -43,7 +38,6 @@ export async function writeSkillExportState(
     .exhaustive();
 }
 
-// an export in flight, whatever its row holds, or the row's state, or null with neither
 async function readSkillExportState(
   tx: Transaction<unknown>,
   approvalID: string,
@@ -112,7 +106,6 @@ async function removeAttempt(tx: Transaction<unknown>, approvalID: string): Prom
     .execute();
 }
 
-// an export that closes before it recorded a pull request keeps a row only for one it found
 async function writeClosed(
   tx: Transaction<unknown>,
   move: Extract<SkillExportMove, { to: 'closed' }>,

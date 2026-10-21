@@ -1,7 +1,5 @@
 import type { ModelProfile, ModelRole, ModelsConfig } from './types';
 
-// The profile a role uses: the one the role map names, or the conversation's when the role is
-// unset.
 export function resolveRoleProfile(config: ModelsConfig, role: ModelRole): ModelProfile {
   const profileID = config.roles[role] ?? config.roles.conversation;
   const profile = config.profiles[profileID];

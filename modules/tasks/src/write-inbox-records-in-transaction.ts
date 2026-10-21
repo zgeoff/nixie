@@ -4,9 +4,8 @@ import type { Transaction } from 'kysely';
 import { isInboxRecord } from './is-inbox-record';
 import type { TasksContext, TasksTables } from './types';
 
-// Writes records into tasks' inboxes inside a write transaction that the caller opened with
-// withWriteTransaction, so a module's own rows and the messages they describe commit together.
-// Each record must be of an inbox kind and name a task that has not ended as its thread.
+// The caller must hold the writer's write transaction, so its own rows and these records commit
+// together.
 export async function writeInboxRecordsInTransaction(
   tx: Transaction<unknown>,
   context: Pick<TasksContext, 'log'>,

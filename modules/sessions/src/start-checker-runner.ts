@@ -15,7 +15,6 @@ import { makeChecker } from './make-checker';
 import { runSandboxCheck } from './run-sandbox-check';
 
 export interface CheckerRunnerOptions {
-  // the checker role's profile, read once at start
   readonly profile: ResolvedProfile;
   readonly sandboxes: SandboxAdapter;
   readonly image: string;
@@ -23,19 +22,13 @@ export interface CheckerRunnerOptions {
   readonly command: GuestCommand;
   readonly timeoutMs?: number;
 
-  // the clock each check's timeout runs on
   readonly clock: Clock;
 
-  // takes each check's timings
   readonly log: Logger;
 }
 
-// the owner of the checker's sandbox, which lives for the deployment, so recovery keeps it
 export const checkerOwner = 'checker';
 
-// Starts the checker on its role's profile, in its own long-lived sandbox on the conversation
-// image: one query with no tools per check. It keeps the sandbox when its spec still matches and
-// replaces it otherwise, so the checker never shares a sandbox with the conversation.
 export async function startCheckerRunner(options: CheckerRunnerOptions): Promise<RunCheck> {
   const secret = deriveModelSecret(options.profile);
 
@@ -77,7 +70,6 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
   });
 }
 
-// keeps the one sandbox whose spec matches and its adapter has not retired, destroys the rest, or creates one when none matches
 async function createCheckerSandbox(
   sandboxes: SandboxAdapter,
   spec: SandboxSpec,

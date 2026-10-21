@@ -9,8 +9,6 @@ type HostErrors = Readonly<
   Record<string, (options: HostErrorOptions) => ORPCError<string, unknown>>
 >;
 
-// Turns an error a host procedure threw into the typed error the host contract declares for its
-// code, such as a stale version's STALE_VERSION, or into a 500 that keeps the error's reason.
 export function toHostError(error: unknown, errors: HostErrors): ORPCError<string, unknown> {
   const message = error instanceof Error ? error.message : String(error);
   const code = error instanceof Error && 'code' in error ? error.code : null;

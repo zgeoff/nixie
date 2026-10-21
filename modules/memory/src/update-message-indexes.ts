@@ -1,9 +1,6 @@
 import { readMessageEntries } from './read-message-entries';
 import type { StoreParts } from './types';
 
-// Adds your messages recorded since the last catch-up to the message indexes, and waits for their
-// vectors unless a rebuild runs, so a message matches by meaning on the next turn. A message
-// forgotten while the catch-up read it is dropped again, so its words never stay.
 export function updateMessageIndexes(
   parts: Pick<StoreParts, 'context' | 'messages'>,
 ): Promise<void> {

@@ -282,7 +282,6 @@ test('it recalls only the items the block lists, and counts the rest past its ca
       }),
   );
 
-  // the tenth item, the last the block lists before its cap
   const tenth = items.at(9);
 
   invariant(tenth);

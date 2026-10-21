@@ -7,8 +7,6 @@ interface StubAPIRequest {
   readonly path: string;
 }
 
-// Serves the mock API on a loopback port for a process outside the test, such as the built web
-// server, and records the credentials each request carried.
 export function startStubAPI() {
   const requests: StubAPIRequest[] = [];
 

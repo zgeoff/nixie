@@ -71,7 +71,6 @@ test('it records the lapse of a proposal past its lapse time on the next sweep',
     return lapses.length > 0;
   });
 
-  // the writer stops before the fallback stop runs, so no sweep may still be in flight then
   await sweep.stop();
 
   const lapses = await readRecords(ctx.log, { afterSequence: 0, kinds: ['skills.write_lapsed'] });

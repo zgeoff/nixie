@@ -9,7 +9,6 @@ import { startFakeForward } from './start-fake-forward';
 interface FakeExec {
   readonly argv: readonly string[];
 
-  // impd ends the session without an exit after a stop, as a lost connection does
   readonly failsOnStop: boolean;
   readonly options: ImpExecOptions;
   readonly signals: string[];
@@ -22,7 +21,6 @@ interface FakeState {
   readonly execs: FakeExec[];
   readonly secrets: Map<string, readonly string[]>;
 
-  // each image impd holds, by name, with its digest and the reference it came from
   readonly images: Map<string, { readonly digest: string; readonly ref: string }>;
   features: ImpFeatures;
   failFeatures: boolean;
@@ -30,18 +28,13 @@ interface FakeState {
   failRemove: boolean;
   failExitOnStop: boolean;
 
-  // refuse every image add, as impd refuses a token limited to some imps that may add no image
   refuseImageAdd: boolean;
 }
 
-// A wake, an exec or a listen that arrives during an idle sleep waits for it, then wakes the imp.
 interface FakeImp extends FakeState, Pick<FakeSleeps, 'startIdleSleep' | 'sleepsAfterWake'> {
   readonly port: ImpPort;
 }
 
-// Stands in for impd, logging every call in order. Each exec runs as a local process group with
-// the imp's environment, and the guest kills the group killGraceMs after a SIGTERM. A reverse
-// forward listens on a free local port, which a local guest reaches as the imp's loopback port.
 export async function startFakeImp(): Promise<FakeImp> {
   const stack = new AsyncDisposableStack();
 
@@ -109,7 +102,6 @@ function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposa
       state.created.push(input);
     },
 
-    // the backup flag of the imp's newest create, as impd holds it
     readImpBackup: (name) =>
       Promise.resolve(state.created.findLast((input) => input.name === name)?.backup ?? null),
     removeImp: async (name) => {
@@ -129,7 +121,6 @@ function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposa
     },
     ...buildFakeSecretCalls(state, updateCallLog),
 
-    // like imp's client, it returns the handle at once, and the exec starts once the imp is awake
     openExec: (name, argv, options) => {
       const exec: FakeExec = { argv, options, signals: [], failsOnStop: state.failExitOnStop };
 
@@ -179,8 +170,6 @@ function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): F
   };
 }
 
-// the variables impd 0.40 sets for an exec in an imp with a grant, the placeholders of a preset kind
-// left out
 const brokerEnv: Readonly<Record<string, string>> = {
   HTTPS_PROXY: 'http://broker.invalid:3128',
   https_proxy: 'http://broker.invalid:3128',
@@ -242,7 +231,6 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
   };
 }
 
-// An exec that requires the broker gets these, and impd refuses one whose env replaces any.
 function requireBrokerEnv(options: ImpExecOptions): void {
   const env = options.env;
 
@@ -260,13 +248,11 @@ function requireBrokerEnv(options: ImpExecOptions): void {
 function sendGroupSignal(pid: number, signal: NodeJS.Signals): void {
   try {
     process.kill(-pid, signal);
-  } catch {
-    // the group is gone already
-  }
+  } catch {}
 }
 
-// Sends the group SIGTERM, then SIGKILL after the grace. The kill must not outlive the fake, or it
-// could signal a later test's process group that reuses the PID.
+// The SIGKILL timer must not outlive the fake, because the kernel can reuse the PID for a later
+// test's process group.
 function stopProcessGroup(pid: number, graceMs: number, stack: AsyncDisposableStack): void {
   sendGroupSignal(pid, 'SIGTERM');
 

@@ -12,8 +12,6 @@ import type { MemoryChangeAction } from './write-memory-change';
 import { writeMemoryChange } from './write-memory-change';
 import { writeSessionRevocation } from './write-session-revocation';
 
-// a test API, a memory store over its log whose gate has no checker, since no test writes through
-// the gate, and a signed-in laptop
 async function setupTest() {
   const api = await startTestAPI();
 
@@ -39,7 +37,6 @@ async function setupTest() {
 
   onTestFinished(() => memory.stop());
 
-  // boot data: a change is a checked action of a signed-in device
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   return { ...api, memory, laptop };

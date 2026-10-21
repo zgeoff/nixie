@@ -1,7 +1,5 @@
 import type { SandboxAdapter } from '@heynixie/sandbox';
 
-// Destroys every imp the recorder holds for the owners. A create whose rollback failed leaves its
-// imp recorded, so the sweep reaches it. Each failure is reported once all have run.
 export async function removeOwnedSandboxes(
   adapter: SandboxAdapter,
   owners: readonly string[],

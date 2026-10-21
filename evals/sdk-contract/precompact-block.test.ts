@@ -9,12 +9,12 @@ import { buildFiller } from '../test-utils/build-filler';
 import { loadSessionTranscript } from '../test-utils/load-session-transcript';
 import { runContractQuery } from '../test-utils/run-contract-query';
 
-// The probes call the model on the subscription, so only a contract run enables them. Bun 1.4.2's
+// Each probe calls the model on the subscription, so only a contract run enables it. Bun 1.4.2's
 // skipIf takes a boolean and has no in-body skip.
 const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 
-// A config directory of the run's own, and a session of 2 turns of about 12,000 tokens each under
-// the default window, so neither compacts. A compaction needs more than one turn to summarise.
+// The CLI compacts only a session of more than one turn, so the seed holds 2 turns of about 12,000
+// tokens each, which stay under the default window.
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-precompact-'));
 
@@ -61,8 +61,8 @@ test.skipIf(!isContractRun)(
         resume: ctx.sessionID,
         forkSession: true,
 
-        // auto-compaction then fires at 15% of a 100,000-token window, under the seed's 24,000
-        // tokens
+        // The CLI's auto-compaction fires at 15% of a 100,000-token window, under the seed's 24,000
+        // tokens.
         env: {
           ...ctx.options.env,
           CLAUDE_AUTOCOMPACT_PCT_OVERRIDE: '15',
@@ -101,8 +101,8 @@ test.skipIf(!isContractRun)(
         resume: ctx.sessionID,
         forkSession: true,
 
-        // auto-compaction then fires at 15% of a 100,000-token window, under the seed's 24,000
-        // tokens
+        // The CLI's auto-compaction fires at 15% of a 100,000-token window, under the seed's 24,000
+        // tokens.
         env: {
           ...ctx.options.env,
           CLAUDE_AUTOCOMPACT_PCT_OVERRIDE: '15',

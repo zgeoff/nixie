@@ -1,7 +1,5 @@
 import type { Cleanup } from './types';
 
-// Builds the list of stops that a server stop runs, the last registered first, so each part stops
-// after the parts that use it. A part that fails to stop never keeps the rest running.
 export function buildCleanup(): Cleanup {
   const stopping = new AbortController();
 

@@ -20,7 +20,6 @@ test('it applies a staged memory with the message it cites as its evidence, outs
     spans: [{ start: 0, end: 34, source: 'typed' }],
   });
 
-  // a newer message pushes the cited one out of the conversation's one-message window
   await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'What is on today?',
@@ -633,7 +632,5 @@ test('it removes the key of a new item whose proposal record could not be built'
     .execute();
 
   expect(checking).rejects.toThrow('the definitions snapshot is unreadable');
-
-  // only the message's own key is left
   expect(keys).toHaveLength(1);
 });

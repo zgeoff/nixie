@@ -3,9 +3,6 @@ import { requirePendingProposal } from './require-pending-proposal';
 import type { StoreParts } from './types';
 import type { VersionExtras } from './write-memory-version';
 
-// What an approved version adds inside its transaction: the proposal must still be pending under
-// the hash you saw, the caller's own write follows that check, and the approval record commits with
-// the version and consumes the proposal.
 export function buildApprovalExtras(
   parts: StoreParts,
   row: MemoryProposalRow,

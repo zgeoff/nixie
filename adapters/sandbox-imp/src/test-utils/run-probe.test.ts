@@ -8,8 +8,6 @@ import { buildImpSandboxAdapter } from '../build-imp-sandbox-adapter';
 import { runProbe } from './run-probe';
 import { startFakeImp } from './start-fake-imp';
 
-// The fake impd runs each exec as a local process, so curl in the guest reaches this machine's
-// loopback.
 async function setupTest() {
   const recorder = await setupTestRecorder();
   const imp = await startFakeImp();
@@ -60,8 +58,6 @@ test('it goes through the proxy that the guest env names when it uses the broker
 
   ctx.imp.secrets.set(grant.secret, [grant.host]);
 
-  // the fake impd names an unresolvable broker, so curl's exit for a proxy it cannot resolve shows
-  // that the probe went to the proxy
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ grants: [grant], toolRoute: false }),
   );

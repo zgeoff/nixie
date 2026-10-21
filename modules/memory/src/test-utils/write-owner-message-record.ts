@@ -7,17 +7,11 @@ export interface OwnerMessageRecord {
   readonly thread: string;
   readonly text: string;
 
-  // how each span of the text arrived, covering it in order, as the client records them
   readonly spans: readonly MessageSpan[];
 
-  // the media type of each image the message carries, in the order sent; a message with none names
-  // no images, as the API writes it
   readonly images?: readonly string[];
 }
 
-// Writes a message of yours as the API writes one: an owner_message record in the thread, with its
-// text and spans in the erasable fields and each image's media type in the payload, without the
-// image's bytes. It returns the record's sequence.
 export async function writeOwnerMessageRecord(
   log: Log,
   message: OwnerMessageRecord,

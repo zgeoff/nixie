@@ -7,8 +7,6 @@ import { RetirementEditError } from './retirement-edit-error';
 import type { StoreParts, VersionRef } from './types';
 import { writeRetirement } from './write-retirement';
 
-// Applies an approved retirement proposal with its intent quote and evidence. A retirement adds no
-// text, so an answer with edited text is refused.
 export function writeApprovedRetirement(
   parts: StoreParts,
   opened: OpenedProposal,

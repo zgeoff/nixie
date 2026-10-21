@@ -18,13 +18,9 @@ import type {
 } from './types';
 
 export interface MemoryExportRequest {
-  // when the export started, which the header names
   readonly exportedAt: number;
 }
 
-// Reads every item into the export file's text: the header, then each item in the order it was
-// created, a page at a time, so the file never sits whole in memory. A forgotten item, or one a
-// forget began, is only its ID and the time its forget completed.
 export async function* readMemoryExport(
   context: Pick<MemoryContext, 'log' | 'definitions'>,
   request: MemoryExportRequest,
@@ -50,8 +46,6 @@ type ExportLog = Pick<Log, 'deploymentKey' | 'writer'>;
 
 const pageSize = 100;
 
-// every item in the order it was created, a page at a time, each page read after the last
-// sequence of the page before it
 function readExportItems(log: ExportLog): AsyncGenerator<MemoryExportItem, void, undefined> {
   return readPages(async (after) => {
     const rows = await readItemRows(log, after);
@@ -77,9 +71,7 @@ interface ItemRow {
   readonly forgotten_at: number | null;
 }
 
-// one more row than a page, so a full page knows whether another follows
 function readItemRows(log: ExportLog, after: number): Promise<readonly ItemRow[]> {
-  // a forgotten item's time is the time of the record that completed its forget
   const db = log.writer.db.$extendTables<
     MemoryTables & { records: { sequence: number; recorded_at: number } }
   >();
@@ -132,7 +124,6 @@ function isReadable(state: MemoryState): state is 'active' | 'retired' {
   return state === 'active' || state === 'retired';
 }
 
-// every version of the named items, oldest first within each item
 function readVersionRows(
   log: ExportLog,
   itemIDs: readonly string[],
@@ -172,7 +163,6 @@ async function loadReadableItem(row: ReadableRow, parts: ItemParts): Promise<Mem
 
 type ExportVersion = Extract<MemoryExportItem, { versions: unknown }>['versions'][number];
 
-// a version whose key or ciphertext fails exports with no text and no quote
 async function loadExportVersion(row: MemoryVersionRow, parts: ItemParts): Promise<ExportVersion> {
   const opened = await readViewText(parts.key, {
     itemID: row.item_id,

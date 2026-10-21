@@ -7,7 +7,6 @@ interface MemoryChangeInput {
   readonly itemID: string;
   readonly version: number;
 
-  // for a pin, whether the item goes into the pinned core or out of it
   readonly isPinned?: boolean;
 }
 
@@ -15,9 +14,6 @@ type MemoryChangeResult =
   | { readonly status: 'applied' }
   | { readonly status: 'reused' | 'not_found' | 'stale' | 'wrong_state' | 'core_full' };
 
-// Makes a change from the memory view in the mock store as nixie's API does: once per client
-// action ID, bound to the version the view showed. A retire and a restore add a version with the
-// same text, and a pin adds none.
 export async function writeMockMemoryChange(input: MemoryChangeInput): Promise<MemoryChangeResult> {
   const bound = JSON.stringify([input.change, input.itemID, input.version, input.isPinned]);
 
@@ -59,7 +55,6 @@ function readRefusal(input: MemoryChangeInput): Refusal | null {
 
   const isPin = input.change === 'pin' && input.isPinned === true;
 
-  // only an active item joins the pinned core, whatever its subject
   if (!statesByChange[input.change].includes(item.state) || (isPin && item.state !== 'active')) {
     return 'wrong_state';
   }
@@ -69,7 +64,6 @@ function readRefusal(input: MemoryChangeInput): Refusal | null {
     : null;
 }
 
-// the core's size with the item's text in it, as the mock counts it
 function probeCoreRoom(text: string): boolean {
   const core = readMockPinnedCore();
 
@@ -118,7 +112,6 @@ async function applyPin(input: MemoryChangeInput): Promise<void> {
   });
 }
 
-// a pin takes the place after every pin before it
 function getNextPinnedSequence(): number {
   return Math.max(0, ...store.memoryItems.all().map((item) => item.pinnedSequence)) + 1;
 }

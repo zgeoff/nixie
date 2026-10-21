@@ -8,8 +8,6 @@ import {
 import invariant from 'tiny-invariant';
 import { writeKeptSession } from './write-kept-session';
 
-// The fake guest sandboxes, each with a disk of its own, so a file reaches the replacement only
-// through the copy.
 async function setupTest() {
   const recorder = await setupTestRecorder();
 
@@ -226,7 +224,6 @@ test('it leaves no resumable transcript when the move of the staged copy fails',
     },
   ]);
 
-  // a folder where the transcript goes, so the move onto it fails
   await to.copyIn([
     {
       path: `/home/nixie/.claude/projects/-home-nixie-conversation/${sessionID}.jsonl/held`,

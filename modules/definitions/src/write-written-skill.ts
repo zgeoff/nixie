@@ -3,7 +3,6 @@ import { readDefinitionsInForce } from './read-definitions-in-force';
 import type { DefinitionsTables, SkillVersion } from './types';
 import { writeWrittenSkillState } from './write-written-skill-state';
 
-// The approval that applies a skill nixie wrote, and the version it applies.
 export interface WrittenSkillInput {
   readonly approvalID: string;
   readonly proposalID: string;
@@ -11,9 +10,6 @@ export interface WrittenSkillInput {
   readonly approvedAt: number;
 }
 
-// Stores a skill that nixie wrote as in force, inside the approval's write transaction. It
-// supersedes a written version in force and keeps its base; otherwise the base is your
-// definitions' version in force, or none for a new skill.
 export async function writeWrittenSkill(
   tx: Transaction<unknown>,
   input: WrittenSkillInput,
@@ -69,7 +65,6 @@ export async function writeWrittenSkill(
     .execute();
 }
 
-// the version of the skill in your definitions in force, as both the base and the newest one
 async function readDefinitionsBase(tx: Transaction<unknown>, name: string) {
   const inForce = await readDefinitionsInForce(tx);
 

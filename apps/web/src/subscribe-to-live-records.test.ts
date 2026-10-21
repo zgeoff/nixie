@@ -9,10 +9,8 @@ import { buildStubTimer } from './test-utils/build-stub-timer';
 import { createDeviceSession } from './test-utils/create-device-session';
 
 async function setupTest() {
-  // the API streams the log only to a signed-in browser
   const session = await createDeviceSession();
 
-  // records each follow request's input, and lets the mock API answer it
   const follows = mock<(body: unknown) => void>();
 
   server.use(
@@ -41,7 +39,6 @@ async function setupTest() {
 test('it waits twice as long after each failed attempt in a row', async () => {
   const ctx = await setupTest();
 
-  // every attempt fails, as one behind a content blocker does
   server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
 
   void subscribeToLiveRecords({
@@ -70,7 +67,6 @@ test('it waits the shortest time again after a failure that follows a connection
 
   await store.records.create({ kind: 'tool_called' });
 
-  // the first attempt fails and the second connects
   server.use(http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }));
 
   void subscribeToLiveRecords({
@@ -89,7 +85,6 @@ test('it waits the shortest time again after a failure that follows a connection
     expect(onRecord).toHaveBeenCalledOnce();
   });
 
-  // the browser comes back online, which ends the connection, and the next attempt fails
   server.use(http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }));
   globalThis.dispatchEvent(new Event('online'));
 
@@ -99,7 +94,6 @@ test('it waits the shortest time again after a failure that follows a connection
 test('it backs off from a revoked session, as from a stream that never opens', async () => {
   const ctx = await setupTest();
 
-  // the API refuses each attempt before it opens the stream
   await store.sessions.update(ctx.session, {
     data(draft) {
       draft.revokedAt = new Date();
@@ -126,7 +120,6 @@ test('it backs off from a revoked session, as from a stream that never opens', a
 test('it backs off from a stream that opens and then ends with UNAUTHORIZED', async () => {
   const ctx = await setupTest();
 
-  // a server that checks the session after it opens the stream sends these bytes
   server.use(
     http.post(
       '*/rpc/records/follow',
@@ -158,7 +151,6 @@ test('it backs off from a stream that opens and then ends with UNAUTHORIZED', as
 test('it follows the log again at once when the browser comes back online during the longest pause', async () => {
   const ctx = await setupTest();
 
-  // six attempts fail, as offline, and the seventh reaches the API
   server.use(
     ...Array.from({ length: 6 }, () =>
       http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),
@@ -175,7 +167,6 @@ test('it follows the log again at once when the browser comes back online during
     thread: 'conversation',
   });
 
-  // the pauses of 1, 2, 4, 8 and 16 s pass, and the sixth failure starts the 30 s pause
   for (let pauses = 0; pauses < 5; pauses += 1) {
     await ctx.timer.advanceToNext();
   }
@@ -186,7 +177,6 @@ test('it follows the log again at once when the browser comes back online during
 
   globalThis.dispatchEvent(new Event('online'));
 
-  // no time passes, so only the wake can start the attempt
   await waitFor(() => {
     expect(ctx.follows).toHaveBeenCalledOnce();
   });
@@ -197,7 +187,6 @@ test('it follows the log again at once when the browser comes back online during
 test('it follows the log again at once when the page becomes visible during the longest pause', async () => {
   const ctx = await setupTest();
 
-  // six attempts fail, as offline, and the seventh reaches the API
   server.use(
     ...Array.from({ length: 6 }, () =>
       http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),
@@ -214,7 +203,6 @@ test('it follows the log again at once when the page becomes visible during the 
     thread: 'conversation',
   });
 
-  // the pauses of 1, 2, 4, 8 and 16 s pass, and the sixth failure starts the 30 s pause
   for (let pauses = 0; pauses < 5; pauses += 1) {
     await ctx.timer.advanceToNext();
   }
@@ -225,7 +213,6 @@ test('it follows the log again at once when the page becomes visible during the 
 
   globalThis.document.dispatchEvent(new Event('visibilitychange'));
 
-  // no time passes, so only the wake can start the attempt
   await waitFor(() => {
     expect(ctx.follows).toHaveBeenCalledOnce();
   });

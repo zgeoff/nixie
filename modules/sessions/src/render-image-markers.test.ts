@@ -16,7 +16,6 @@ test('it renders a numbered marker with a fresh random ID for each image, in the
     expect.stringMatching(/^<dropped-image id="[0-9a-f]{12}" n="2"\/>$/u),
   ]);
 
-  // with the numbers taken out, two markers that shared an ID would be one
   expect(new Set(markers.map((marker) => marker.replace(/ n="\d+"/u, ''))).size).toBe(2);
 });
 

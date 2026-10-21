@@ -1,5 +1,3 @@
-// A downloaded file's SHA-256 differs from the one the repo records, so the file is not the one
-// pinned and the download writes nothing.
 export class ChecksumMismatchError extends Error {
   override readonly name = 'ChecksumMismatchError';
 

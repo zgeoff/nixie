@@ -150,7 +150,6 @@ test('it reaches sigterm.grace when a stop finds work in flight', async () => {
   const work = buildStubPoolWork(['a']);
   const reached: string[] = [];
 
-  // the run in flight finishes once the stop reaches its grace wait
   setFaultPointHandler((id) => {
     reached.push(id);
     work.releaseAll();

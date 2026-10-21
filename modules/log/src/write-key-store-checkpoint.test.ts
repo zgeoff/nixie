@@ -44,7 +44,6 @@ test('it finishes with a short busy timeout when no connection holds a read', as
   await expect(writeKeyStoreCheckpoint(ctx.log, null)).toResolve();
 });
 
-// the key store waits out its busy timeout, 50 ms here, before it reports the reader
 test('it refuses while another connection holds a read on the key store', async () => {
   const ctx = await setupTest({ keyStoreBusyTimeoutMs: 50 });
 

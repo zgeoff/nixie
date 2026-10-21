@@ -185,7 +185,6 @@ test('it keeps an update that lands while the rebuild encodes the older text', a
 });
 
 test('it counts only the first 256 numbers of each vector', async () => {
-  // the item and the query agree on their first 256 numbers and disagree on every number after
   const item = Float32Array.from({ length: 512 }, (_, index) => (index < 256 ? 1 : -1));
   const query = Float32Array.from({ length: 512 }, () => 1);
 

@@ -4,8 +4,6 @@ import { readTurnContext } from './read-turn-context';
 import type { SessionTurn } from './run-planned-turn';
 import type { SessionStep } from './types';
 
-// Reads what the step's turn adds to the session: the memory context for its batch of the inbox.
-// A new session holds no item yet, so its retrieval leaves none out.
 export async function readSessionTurn(
   step: SessionStep,
   isNewSession: boolean,

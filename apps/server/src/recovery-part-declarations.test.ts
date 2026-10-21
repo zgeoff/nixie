@@ -5,8 +5,6 @@ import { waitForCondition } from '@heynixie/testing';
 import { z } from 'zod';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
-// nixie's test files after one start reached ready and stopped, with the data directory emptied
-// again, so the next start runs on an empty database as a fresh pod does
 async function setupTest() {
   const nixie = await startTestNixie();
 

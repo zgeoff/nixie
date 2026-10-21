@@ -11,7 +11,6 @@ import {
 import { startWriter } from '@heynixie/log';
 import { buildSeedLogFields } from './build-seed-log-fields';
 
-// the writer's data directory holds the definitions root too, so one removal cleans up both
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
@@ -109,7 +108,6 @@ test('it logs a new revision and content hash for a changed file the seed leaves
 
   const second = await ctx.seed({ rules: [{ id: 'slice1.read-only' }], tools: [] });
 
-  // the snapshot hash covers only the definitions in force, and the rule is not in force
   expect(second).toMatchObject({
     status: 'seeded',
     inForceSnapshotHash: first['inForceSnapshotHash'],
@@ -144,7 +142,6 @@ test('it logs the error and the last good seed for a refused seed', async () => 
 
   const first = await ctx.seed({ rules: [{ id: 'slice1.read-only' }], tools: [] });
 
-  // a compiled Python file under a skill is kept, and fails to decode as UTF-8
   await ctx.write('skills/notes/helper.pyc', new Uint8Array([0xff, 0xfe]));
 
   const fields = await ctx.seed({ rules: [{ id: 'slice1.read-only' }], tools: [] });

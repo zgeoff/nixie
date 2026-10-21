@@ -3,15 +3,12 @@ import { canMoveWrittenSkill } from './can-move-written-skill';
 import type { DefinitionsTables, WrittenSkillState } from './types';
 import { WrittenSkillStateError } from './written-skill-state-error';
 
-// the skill the approval applied, the state it moves to, and when
 export interface WrittenSkillMove {
   readonly approvalID: string;
   readonly to: WrittenSkillState;
   readonly at: number;
 }
 
-// Moves a skill that nixie wrote to a new state, inside the caller's write transaction, and refuses
-// a move the transition table lacks with nothing written. It returns the skill's name.
 export async function writeWrittenSkillState(
   tx: Transaction<unknown>,
   move: WrittenSkillMove,

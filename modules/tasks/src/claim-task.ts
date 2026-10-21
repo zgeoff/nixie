@@ -12,8 +12,6 @@ export interface ClaimTaskOptions {
   readonly leaseMs: number;
 }
 
-// Claims the next task that has work: a ready task past its retry time, or a running task whose
-// runner's lease expired. The claim records the step it starts.
 export async function claimTask(
   context: TasksContext,
   options: ClaimTaskOptions,
@@ -51,9 +49,6 @@ async function readClaimableTask(tx: Transaction<unknown>, now: number): Promise
   return row?.task_id ?? null;
 }
 
-// Records the step the claim starts, keyed by the next step number, so a rerun of an interrupted
-// step keeps its key. A step that the lost runner left without a commit is marked interrupted
-// first.
 async function writeStepStart(
   tx: Transaction<unknown>,
   context: TasksContext,

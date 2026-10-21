@@ -6,14 +6,10 @@ import type {
   WriterGate,
 } from '../writer-types';
 
-// A stand-in for the memory checks' content gate. It applies a write whose quote is word for word
-// in its source message, with the quote's place and the batch's model, and holds every other write
-// as a proposal with one test record, as the real gate holds a write it cannot check.
 export function buildStubGate(): WriterGate {
   return {
     check: (write, source, batch) => Promise.resolve(buildStubVerdict(write, source, batch)),
 
-    // the stub creates no key, so nothing it made outlives a batch
     release: () => Promise.resolve(),
   };
 }

@@ -7,8 +7,6 @@ import { createConsolidationDiff } from './test-utils/create-consolidation-diff'
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemory } from './test-utils/start-test-memory';
 
-// a test memory on a test clock, and a tasks context over its log that can create the
-// consolidator's task
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
 

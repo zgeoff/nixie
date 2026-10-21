@@ -7,9 +7,6 @@ import { requireViewMemory } from './require-view-memory';
 import type { APIContext, ReadViewMemory } from './types';
 import { writeMemoryChange } from './write-memory-change';
 
-// Builds the export of every memory item for a signed-in device, as a checked action whose record
-// commits with the export's time, schema version and snapshot hash before the file streams. A retry
-// with the same ID streams the file again, as it reads now, and only to the device that asked.
 export function createMemoryExportProcedures(context: APIContext, readMemory: ReadViewMemory) {
   return {
     export: apiImplementer.memory.export.handler(async (options) => {
@@ -47,8 +44,6 @@ export function createMemoryExportProcedures(context: APIContext, readMemory: Re
   };
 }
 
-// Each piece of the file's text as one event, in the order the file holds them, then the event
-// that marks the file complete, so a client tells a whole file from a stream that ended early.
 async function* streamChunkEvents(chunks: Readonly<AsyncIterable<string>>) {
   for await (const chunk of chunks) {
     yield { chunk };

@@ -1,8 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the table of merges into memory proposals: one row for each later write that proposed
-// the same change as a pending proposal, with who proposed it, so the proposal shows every source.
 export const memoryProposalMergesMigration: Migration = {
   name: 'create the memory proposal merges table',
   up: async (tx) => {

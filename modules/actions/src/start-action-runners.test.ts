@@ -8,7 +8,6 @@ import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionsTables } from './types';
 
-// the step that makes the tool calls, claimed by its task runner
 async function setupTest() {
   const actions = await startTestActions();
   const step = await createTestStep(actions.context);
@@ -45,7 +44,6 @@ test('it retries a refusal that can clear on the schedule', async () => {
 
   onTestFinished(() => runners.stop(0));
 
-  // after each attempt settles, time moves on by the delay before the next one
   for (const [index, delayMs] of [30_000, 120_000, 480_000, 1_800_000, 0].entries()) {
     await waitForCondition(async () => {
       const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
@@ -82,7 +80,6 @@ test('it fails a refusal that can clear on its fifth attempt', async () => {
 
   onTestFinished(() => runners.stop(0));
 
-  // after each attempt settles, time moves on by the delay before the next one
   for (const [index, delayMs] of [30_000, 120_000, 480_000, 1_800_000, 0].entries()) {
     await waitForCondition(async () => {
       const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
@@ -128,7 +125,6 @@ test('it runs 4 actions at once by default', async () => {
 
   onTestFinished(() => runners.stop(0));
 
-  // 4 runners each renew a lease mid-call, so none is free to claim the fifth action
   await waitForCondition(() => stub.calls.length === 4 && ctx.clock.countSleepers() === 4);
 
   const untouched = await ctx.db

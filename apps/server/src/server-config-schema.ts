@@ -10,9 +10,6 @@ export interface ServerConfig {
   readonly logLevel: LogLevel;
 }
 
-// The server section of the deployment configuration: the data volume's mount root, where the API
-// and the health endpoint listen, nixie's encrypted secrets file, and the lowest level of event the
-// log writes. Each has the default the reference Compose recipe and manifests use.
 export const serverConfigSchema = z
   .strictObject({
     data_dir: z.string().min(1).default('/data'),

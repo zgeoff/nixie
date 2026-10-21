@@ -5,9 +5,6 @@ export interface PlainAttachment {
 
 const IV_BYTES = 12;
 
-// Encrypts one attachment with AES-256-GCM under its record key, as the 12-byte IV and then the
-// ciphertext. The key ID and position are the additional data, so a ciphertext moved to another
-// record or position, or swapped with the record's erasable fields, does not decrypt.
 export async function encodeAttachment(
   key: CryptoKey,
   keyID: string,

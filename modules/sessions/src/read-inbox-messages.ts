@@ -11,15 +11,9 @@ import type { ImageTally, MessageTimeOptions } from './types';
 export interface InboxRead {
   readonly times: MessageTimeOptions;
 
-  // the most images, in base64 bytes and in count, that the messages may carry together; the first
-  // message always goes, so one message of yours with the most images a send takes still reaches
-  // the model
   readonly imageBudget: ImageTally;
 }
 
-// Reads the inbox records a turn takes as the guest passes them to the model, oldest first, each
-// with its images. It stops before the record whose images would pass the budget, and the rest wait
-// for the next turn; a message with no images passes a budget already spent.
 export async function readInboxMessages(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   records: readonly LogRecord[],

@@ -3,9 +3,6 @@ import { SandboxSpecRefusedError, requireSandboxSpec } from '@heynixie/sandbox';
 import type { PublicEgressConfig } from './parse-imp-config';
 import type { ImpFeatures, ImpPort } from './types';
 
-// Checks what the shared rule cannot: the imp must stay out of impd's backups, public egress needs
-// the deployment's host addresses and an impd that enforces imp's public policy, and each grant's
-// secret must cover its one host alone.
 export async function requireImpSpec(
   port: ImpPort,
   publicEgress: PublicEgressConfig | null,
@@ -38,7 +35,6 @@ function requirePublicEgress(features: ImpFeatures, publicEgress: PublicEgressCo
   }
 }
 
-// a grant never reaches further than its spec says
 async function requireGrantHost(port: ImpPort, secret: string, host: string): Promise<void> {
   const hosts = await port.readSecretHosts(secret);
 

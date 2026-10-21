@@ -19,24 +19,17 @@ import type {
 export interface ProcessSandboxOptions {
   readonly recorder: SandboxRecorder;
 
-  // each sandbox gets a directory of its own here
   readonly rootDir: string;
   readonly toolTarget: ToolTargetResolver;
   readonly killGraceMs?: number;
 
-  // the host's environment, whose credential broker variables a guest with a grant gets, so the
-  // host's broker injects the credential that the guest holds a placeholder for
   readonly hostEnv?: Readonly<Record<string, string | undefined>>;
 }
 
-// The test sandbox, a test-build double that runs each guest as a local process. It is NOT a
-// security boundary: a guest reads whatever nixie's user can and reaches any network the host does.
-// It records and refuses as imp does, but passes each grant's placeholders instead of injecting it.
+// This sandbox is NOT a security boundary: a guest reads whatever nixie's user can read and reaches
+// any network the host reaches.
 export function createProcessSandboxAdapter(input: ProcessSandboxOptions): SandboxAdapter {
-  // the root through its symlinks, resolved once, so a guest's home is the path its processes see
   const options = { ...input, rootDir: createRealRootDir(input.rootDir) };
-
-  // the root as configured, which a command's HOME may name instead of the real path
   const aliasRootDir = resolve(input.rootDir);
 
   const live = new Map<string, ProcessState>();
@@ -85,13 +78,10 @@ export function createProcessSandboxAdapter(input: ProcessSandboxOptions): Sandb
       return rows.map((row) => getSandbox(row.sandboxID, row.spec));
     },
 
-    // the double injects no grant, so it holds no secret
     addSecret: () => Promise.resolve(),
 
-    // the double runs each guest from the workspace, so it pulls no image
     addImage: () => Promise.resolve(),
 
-    // the double's runtime is this process, which answers while it runs
     checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
   };
 }
@@ -107,8 +97,6 @@ interface ProcessSandboxes {
   readonly removeSandbox: (id: string) => Promise<void>;
 }
 
-// Writes the created record before it makes anything, so recovery finds a sandbox that a crash
-// cut short. A failure removes what it made and records the sandbox as destroyed.
 async function createProcessSandbox(
   options: ProcessSandboxOptions,
   spec: SandboxSpec,
@@ -131,7 +119,7 @@ async function createProcessSandbox(
 }
 
 // impd gives every built image a filesystem of this size and fails the create of a sandbox on a
-// smaller disk, so the double fails it too.
+// smaller disk.
 const imageFilesystemMiB = 4096;
 
 async function setupProcessSandbox(

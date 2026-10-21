@@ -3,11 +3,8 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import type { SkillsRecordKind } from './skills-record-kind';
 
-// Where a task's skill versions stand: no pin yet, or pinned.
 type PinState = 'none' | 'pinned';
 
-// The pin record kinds, each with the states it may follow. A first pin follows none, so a task
-// pins once, and only a reload moves a pinned task on.
 const pinTransitions = {
   'skills.pinned': ['none'],
   'skills.reloaded': ['pinned'],
@@ -15,9 +12,6 @@ const pinTransitions = {
 
 type PinRecordKind = keyof typeof pinTransitions;
 
-// Writes a pin record on its thread when the task's pin state allows the kind, in one write
-// transaction with the read of that state, so 2 first loads of a task never both pin it. It
-// returns false, and writes nothing, when the state refuses the kind.
 export function writePinRecord(
   log: Log,
   input: RecordInput & { readonly kind: PinRecordKind; readonly thread: string },
@@ -37,7 +31,6 @@ export function writePinRecord(
   });
 }
 
-// every kind that leaves a task pinned
 const pinKinds: readonly SkillsRecordKind[] = ['skills.pinned', 'skills.reloaded'];
 
 async function readPinState(tx: Transaction<unknown>, thread: string): Promise<PinState> {

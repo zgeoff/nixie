@@ -11,13 +11,9 @@ import { useOutbox } from './use-outbox';
 import { writeOutboxImages } from './write-outbox-images';
 
 async function setupTest() {
-  // every send needs a signed-in browser
   await createDeviceSession();
 
-  // the page's clock reads half a minute after each stored message was written
   const options = { now: () => Date.parse('2026-10-17T09:00:30.000Z') };
-
-  // the stored outbox runs inside the outbox, which is how the page uses it
   const rendered = renderHook(() => useOutbox([], options));
 
   return { options, rendered };
@@ -47,7 +43,6 @@ test('it keeps the images of an unsent message across a reload, and sends them w
     expect(kept).toHaveLength(2);
   });
 
-  // the page goes away with the message unsent, and the network is back for the next page
   ctx.rendered.unmount();
   server.resetHandlers();
 
@@ -72,7 +67,6 @@ test('it keeps the images of an unsent message across a reload, and sends them w
 });
 
 test('it keeps a stored message unsent when its images do not read back after a reload', async () => {
-  // the message's images were never written to IndexedDB, or this browser lost them
   globalThis.localStorage.setItem(
     'nixie.outbox',
     JSON.stringify([
@@ -324,7 +318,6 @@ test('it keeps a message that another tab discarded out of storage and out of th
     ]),
   );
 
-  // two tabs hold the same stale message
   const first = renderHook(() => useOutbox([], options));
   const second = renderHook(() => useOutbox([], options));
 
@@ -336,7 +329,6 @@ test('it keeps a message that another tab discarded out of storage and out of th
     first.result.current.discard('7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20');
   });
 
-  // the second tab writes storage before it hears of the discard
   act(() => {
     second.result.current.add({
       clientMessageId: '2d6f8a1c-3e5b-4c7d-9f0a-b1c2d3e4f5a6',
@@ -390,7 +382,6 @@ test('it holds a fresh stored message that passed 2 minutes old while an earlier
     ]),
   );
 
-  // the first send stalls until the test lets it through, after the clock moved on
   server.use(
     http.post(
       '*/rpc/conversation/send',
@@ -447,7 +438,6 @@ test('it never sends a message that another tab discarded while its send waited 
     ]),
   );
 
-  // two tabs hold the same stale message
   const first = renderHook(() => useOutbox([], options));
   const second = renderHook(() => useOutbox([], options));
 
@@ -455,7 +445,6 @@ test('it never sends a message that another tab discarded while its send waited 
     expect(first.result.current.entries[0]?.status).toBe('held');
   });
 
-  // the first tab's next send stalls, and its Send on the held message waits behind it
   server.use(
     http.post(
       '*/rpc/conversation/send',
@@ -519,7 +508,6 @@ test('it keeps a discarded message out of storage when a tab that slept for days
     ]),
   );
 
-  // two tabs hold the same stale message, and the second sleeps through the discard
   const first = renderHook(() => useOutbox([], options));
   const second = renderHook(() => useOutbox([], options));
 

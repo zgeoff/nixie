@@ -11,13 +11,11 @@ import { runGuestTurn } from './run-guest-turn';
 export interface SessionRunnerOptions {
   readonly context: TasksContext;
 
-  // the role's profile, read once at start: a role change reaches the runner at its next start
   readonly profile: ResolvedProfile;
   readonly sandboxes: SandboxAdapter;
   readonly tools: Pick<ToolEndpoint, 'startRun'>;
   readonly toolNames: readonly string[];
 
-  // the system task the sessions run for, which owns the sandbox and names the tool run
   readonly taskID: string;
   readonly image: string;
   readonly limits: SandboxLimits;
@@ -30,7 +28,6 @@ export interface SessionInput {
   readonly signal: AbortSignal;
 }
 
-// The token counts of one session, over every model call it made.
 export interface SessionUsage {
   readonly inputTokens: number;
   readonly outputTokens: number;
@@ -41,14 +38,10 @@ export interface SessionUsage {
 export interface SessionRunner {
   readonly model: ToolRunModel;
 
-  // runs one fresh session to its result, and throws when the session fails
   readonly runSession: (session: SessionInput) => Promise<SessionUsage>;
   readonly stop: () => Promise<void>;
 }
 
-// Starts a system task's model runner on its role's profile, such as the memory writer's, in the
-// task's long-lived worker sandbox, kept while its spec matches, with the task's tool endpoint.
-// Each session starts fresh, with no history from the one before.
 export async function startSessionRunner(options: SessionRunnerOptions): Promise<SessionRunner> {
   const secret = deriveModelSecret(options.profile);
 
@@ -75,8 +68,6 @@ export async function startSessionRunner(options: SessionRunnerOptions): Promise
   };
 }
 
-// the sandbox's owner is the system task, which never finishes, so the sandbox outlives each
-// session
 async function setupSessionSandbox(
   options: SessionRunnerOptions,
   grant: ReturnType<typeof buildModelGrant>,
@@ -103,15 +94,12 @@ async function setupSessionSandbox(
 interface SessionRun extends SessionRunnerOptions {
   readonly sandbox: Sandbox;
 
-  // the run's bearer token on its tool endpoint
   readonly token: string;
 }
 
-// runs one session to its result, with no session to resume, and throws when it fails
 async function runSession(run: SessionRun, session: SessionInput): Promise<SessionUsage> {
   const route = await run.sandbox.toolRoute();
 
-  // a worker sandbox's spec always asks for a tool route, and every adapter gives one then
   invariant(route, 'the session sandbox has no tool route');
 
   const profile = run.profile.profile;
@@ -128,7 +116,8 @@ async function runSession(run: SessionRun, session: SessionInput): Promise<Sessi
         authHeader: profile.authHeader,
         contextTokens: profile.contextTokens,
 
-        // each run starts a fresh session, so a 1-hour entry would only cost more to write
+        // Each run starts a fresh session, so a 1-hour cache entry costs more to write and is never
+        // read again.
         cacheTTL: '5m',
       },
       tools: { url: route.url, token: run.token },
@@ -153,8 +142,6 @@ async function runSession(run: SessionRun, session: SessionInput): Promise<Sessi
 
 type EndedFrame = Awaited<ReturnType<typeof runGuestTurn>>['ended'][number];
 
-// a session a model API error ended has no result the writer can trust, and the error names an
-// overflow apart from any other model API error
 function requireTrustedEnd(taskID: string, ended: readonly EndedFrame[]): void {
   if (ended.some((frame) => isContextOverflow(frame))) {
     throw new Error(`the ${taskID} session's context passed its window`);
@@ -165,7 +152,6 @@ function requireTrustedEnd(taskID: string, ended: readonly EndedFrame[]): void {
   }
 }
 
-// the token counts over every model call the session made
 function countSessionUsage(ended: readonly EndedFrame[]): SessionUsage {
   const countTotal = (pick: (usage: EndedFrame['usage']) => number) =>
     ended.reduce((total, frame) => total + pick(frame.usage), 0);

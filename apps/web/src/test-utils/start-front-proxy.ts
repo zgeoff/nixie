@@ -5,9 +5,6 @@ interface FrontProxyTargets {
   readonly webURL: string;
 }
 
-// Serves the web server and the API on one loopback origin, as the reverse proxy in front of
-// nixie does, so a browser calls /rpc on the origin of the page it loaded. Like the reverse proxy, it
-// answers 502 for a server that is down, and ends a stream whose server stops partway.
 export function startFrontProxy(targets: FrontProxyTargets) {
   const forwardRequest = (request: Request) => {
     const url = new URL(request.url);
@@ -37,8 +34,6 @@ export function startFrontProxy(targets: FrontProxyTargets) {
   return { url: `http://127.0.0.1:${server.port}` };
 }
 
-// a test stops its servers while the page may still follow the live stream, so a body that fails
-// partway ends there rather than raise an error between tests
 function buildEndingResponse(response: Response): Response {
   if (response.body === null) {
     return response;

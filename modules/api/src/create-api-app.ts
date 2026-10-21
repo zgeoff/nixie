@@ -9,13 +9,9 @@ interface RouteContext {
   readonly request: Request;
 }
 
-// Builds the API's Elysia app, which serves every procedure and the live stream under /rpc. A call
-// without the custom client header is refused before any procedure runs, because a cross-site form
-// cannot send one. The server mounts the app and listens, and fills the memory store once it starts.
 export function createAPIApp(context: APIContext, readMemory: ReadViewMemory) {
   const handler = new RPCHandler(createAPIRouter(context, readMemory), {
-    // A quiet live stream carries a keepalive this often, and the web client treats a stream
-    // that misses three in a row as dead.
+    // The web client treats a live stream that misses three keepalives in a row as dead.
     eventIteratorKeepAliveInterval: 5000,
     plugins: [new ResponseHeadersPlugin()],
   });
@@ -26,6 +22,7 @@ export function createAPIApp(context: APIContext, readMemory: ReadViewMemory) {
     async (route: RouteContext) => {
       const request = route.request;
 
+      // A cross-site form cannot send a custom header, so the API refuses a call without one.
       if ((request.headers.get(clientHeaderName) ?? '') === '') {
         return new Response('the client header is missing', { status: 403 });
       }
@@ -41,7 +38,8 @@ export function createAPIApp(context: APIContext, readMemory: ReadViewMemory) {
   );
 }
 
-// a bearer token wins over the cookie, so a server render forwards exactly the browser's session
+// A server render forwards the browser's session as a bearer token, so the bearer token wins over
+// the cookie.
 function findSessionToken(headers: Headers): APIRequestContext {
   const bearer = /^Bearer (?<token>\S+)$/u.exec(headers.get('authorization') ?? '');
 

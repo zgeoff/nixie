@@ -8,31 +8,21 @@ export interface BootFiles {
   readonly manifestPath: string;
   readonly sopsPath: string;
 
-  // the deployment key in the secrets file, as base64 of its 32 bytes
   readonly deploymentKey: string;
 }
 
 export interface BootFileExtras {
-  // YAML lines appended to the configuration file
   readonly config: readonly string[];
 
-  // YAML lines appended to the secrets file
   readonly secrets: readonly string[];
 
-  // YAML lines under the definitions section, which the configuration writes last of its own
   readonly definitions?: readonly string[];
 
-  // the server section's log level, which the configuration leaves at its default when unset
   readonly logLevel?: LogLevel;
 
-  // the sandbox adapter the configuration selects, the test sandbox when unset; a release bundle
-  // refuses the test sandbox, so a test that runs one names imp
   readonly sandboxAdapter?: 'imp' | 'test';
 }
 
-// Writes what nixie needs to start in a test directory: the definitions, a plaintext secrets file
-// for the sops stand-in, the sandbox manifest, and a configuration on a free loopback port with
-// the scripted model as the conversation's profile.
 export async function writeBootFiles(
   directory: string,
   modelURL: string,
@@ -64,7 +54,6 @@ export async function writeBootFiles(
   };
 }
 
-// the seed needs a manifest and a persona
 async function writeDefinitions(definitionsDir: string): Promise<void> {
   await mkdir(definitionsDir);
   await writeFile(join(definitionsDir, 'nixie.yaml'), 'format: 1\n');
@@ -87,7 +76,6 @@ async function writeSecrets(
   await writeFile(path, `${lines.join('\n')}\n`);
 }
 
-// a test build's process double runs each guest from the workspace, whatever the image
 async function writeManifest(path: string): Promise<void> {
   const manifest = {
     conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
@@ -97,7 +85,6 @@ async function writeManifest(path: string): Promise<void> {
   await writeFile(path, JSON.stringify(manifest));
 }
 
-// nixie runs sops as one executable path
 async function writeStubSops(path: string): Promise<void> {
   const stub = join(import.meta.dir, 'run-stub-sops.ts');
 

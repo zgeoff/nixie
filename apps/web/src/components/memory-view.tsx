@@ -11,7 +11,6 @@ import { PinnedCorePanel } from './pinned-core-panel';
 import { WriterStatusPanel } from './writer-status-panel';
 
 export interface MemoryViewProps {
-  // the links to the app's other views, which the route supplies
   readonly navigation?: ReactNode;
 }
 
@@ -24,14 +23,8 @@ const layout = css({
 
 const header = css({ alignItems: 'baseline', display: 'flex', justifyContent: 'space-between' });
 
-// Every memory item, to see, search, review and export: the writer's progress, the pinned core,
-// the export, the active facts and self-notes apart, or the matches of a search split the same
-// way, then the retired items and the forgotten ones apart from them.
 export function MemoryView(props: MemoryViewProps): ReactNode {
   const [query, setQuery] = useState<string | null>(null);
-
-  // a refused change refreshes the lists and can move its item to another list, so its reason
-  // shows at the top of the page, apart from every row
   const [notice, setNotice] = useState<string | null>(null);
   const renderItem = makeMemoryItemRenderer(setNotice);
 
@@ -71,7 +64,6 @@ interface ActiveItemsProps {
   readonly renderItem: (item: MemoryItem) => ReactNode;
 }
 
-// the active facts, then the active self-notes apart from them
 function ActiveItems(props: ActiveItemsProps): ReactNode {
   return (
     <>

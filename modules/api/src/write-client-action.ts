@@ -11,9 +11,6 @@ interface ClientActionInput {
   readonly recordedAt: number;
 }
 
-// Keeps the first result of a checked action in the caller's write transaction, so the action and
-// the result that answers its retries commit together. A retry that updates the result passes the
-// same ID again.
 export async function writeClientAction(
   tx: Transaction<unknown>,
   action: ClientActionInput,

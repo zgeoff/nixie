@@ -9,32 +9,24 @@ import { buildTestNotesTools } from './test-utils/build-test-notes-tools';
 import { startTestServer } from './test-utils/start-test-server';
 
 interface RunnerConfig {
-  // the conversation image's name, whose change replaces the conversation's sandbox
   readonly image: string;
   readonly contextTokens?: number;
   readonly memorySettings?: Parameters<typeof startConversation>[0]['memorySettings'];
 
-  // the conversation's tool list and the definitions in force, for a test that calls a tool
   readonly toolNames?: readonly string[];
   readonly getDefinitions?: Parameters<typeof startConversation>[0]['getDefinitions'];
 }
 
-// the tools the test server's endpoint serves, and the topics of a stub encoder for the memory store
 interface TestOptions {
   readonly tools?: Parameters<typeof startTestServer>[0];
   readonly encoderTopics?: readonly (readonly string[])[];
 }
 
-// a test server on the fake guest, a memory store whose forget cleans up the sessions of the runner
-// a test started last, a start that stops the runner before it as a deploy does, and a driver that
-// sends your message to the runner last started
 async function setupTest(options: TestOptions = {}) {
   const server = await startTestServer(options.tools, { fakeGuest: true });
 
   const log = mock<Parameters<typeof startConversation>[0]['log']>();
   const context = server.context;
-
-  // before a runner starts, no session holds anything to clean up
   const runners: { last: Awaited<ReturnType<typeof startConversation>> | null } = { last: null };
 
   const memory = await startTestMemoryStore(
@@ -122,7 +114,6 @@ test('it runs each turn in the conversation guest on the role profile and resume
 
   expect(first.resume).toBeNull();
 
-  // the first turn ended at its reply, which the next turn resumes at
   expect(second).toMatchObject({
     resume: { sessionID: expect.toBeString(), messageID: replies[0]?.payload['messageID'] },
   });
@@ -170,7 +161,6 @@ test('it resumes the session after a change to the policy alone, and decides the
     ],
   });
 
-  // the second turn resumes the first turn's session instead of rebuilding it
   expect(second.resume).toStrictEqual({
     sessionID: expect.toBeString(),
     messageID: expect.toBeString(),
@@ -231,7 +221,6 @@ test('it opens a new session with a pinned item and the line that says where it 
 
   expect(turn.systemPrompt).not.toInclude('Goes by Sam');
 
-  // the item's day is the day the test runs, so the line's day reads as a placeholder
   expect(turn.input[0]?.text.replace(/ v1 · \d{1,2} \w{3} · /u, ' v1 · <day> · ')).toMatch(
     new RegExp(
       String.raw`^<system-message type="pinned-memory" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\nAbout the owner:\n- Goes by Sam\n  ${shortID} v1 · <day> · the owner said this\n<\/system-message id="\k<blockID>">\n\n<system-message type="status"`,
@@ -284,7 +273,6 @@ test('it rebuilds the session with the recent turns once a replaced sandbox has 
 
   await ctx.conversation.send('Say a fruit.');
 
-  // with every session gone, the replacement has no session to carry over
   ctx.guest.removeSessions(conversationTaskID);
 
   await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
@@ -393,7 +381,6 @@ test('it summarizes a session past 0.8 of its window in the guest, and opens the
     createConversationTask(ctx.context),
   ]);
 
-  // the first turn ends with a context past 0.8 of the 200,000-token window
   ctx.guest.setContextSize(170_000);
 
   ctx.guest.addReplies(
@@ -404,14 +391,12 @@ test('it summarizes a session past 0.8 of its window in the guest, and opens the
 
   await ctx.conversation.send('What does the tide gauge read?');
 
-  // the step this message wakes compacts first, and the next one opens the new session
   const compaction = await ctx.conversation.sendForStep('And tomorrow?');
   const opening = await ctx.conversation.send('Is that high?');
   const records = await ctx.readRecords();
 
   const summary = 'Summary of the session: 2 entries, the last reply was "The gauge reads 3.2 m.".';
 
-  // the summary call forks the session after the first turn and adds the instruction to it
   expect(compaction.turns).toStrictEqual([]);
 
   expect(compaction.summaries).toMatchObject([
@@ -443,8 +428,6 @@ test('it compacts a session whose turn overflows the window with its own summary
     createConversationTask(ctx.context),
   ]);
 
-  // the second turn's call is refused past the window, and the last two replies answer the two
-  // messages on the new session
   ctx.guest.addReplies(
     { text: 'The gauge reads 3.2 m.' },
     { overflow: 'prompt_too_long' },
@@ -453,8 +436,6 @@ test('it compacts a session whose turn overflows the window with its own summary
   );
 
   await ctx.conversation.send('What does the tide gauge read?');
-
-  // the overflowed step compacts and leaves its message unread; the next one opens the new session
   await ctx.conversation.sendForStep('And tomorrow?');
 
   const opening = await ctx.conversation.send('Is that high?');
@@ -500,8 +481,6 @@ test('it erases the summary when you forget a memory item, and opens the next se
   ctx.guest.addReplies({ text: 'Under the flowerpot.' }, { text: 'You asked about a key.' });
 
   await ctx.conversation.send('Where is the spare key?');
-
-  // the step this message wakes compacts first and sends no turn
   await ctx.conversation.sendForStep('Thanks.');
 
   await ctx.memory.forget({
@@ -548,7 +527,6 @@ test('it resumes the session on a sandbox that a new image replaced between two 
     { payload: { kind: 'first' } },
   ]);
 
-  // the new sandbox resumes the first turn's reply, which the old sandbox's session carried over
   expect(turn).toMatchObject({
     resume: { sessionID: expect.toBeString(), messageID: reply?.payload['messageID'] },
   });
@@ -564,7 +542,6 @@ test('it resumes the session on a sandbox that replaced a retired one between tw
 
   await ctx.conversation.send('Say a fruit.');
 
-  // as the imp adapter retires an imp that impd still backs up
   const retired = await ctx.retireSandboxes(conversationTaskID);
 
   await ctx.startRunner({ image: 'nixie-conversation-0123456789ab' });
@@ -595,7 +572,6 @@ test('it takes the session into a replacement that a stopped start left beside t
 
   await ctx.conversation.send('Say a fruit.');
 
-  // the replacement a start made before it stopped, with neither the session copy nor the destroy
   const sandboxes = await ctx.sandboxes.list(conversationTaskID);
 
   await Promise.all(
@@ -651,7 +627,6 @@ test('it starts the new sandbox and the next turn on a fresh session when the se
 
   await ctx.conversation.send('Say a fruit.');
 
-  // the old sandbox cannot read its transcript
   ctx.guest.failCopyOut(conversationTaskID, 'EACCES: permission denied');
 
   await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
@@ -829,13 +804,10 @@ test('it retrieves an item again in the session that opens after a compaction', 
     ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
-  // the first turn ends with a context past 0.8 of the window, so the next step compacts
   ctx.guest.setContextSize(170_000);
   ctx.guest.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
 
   await ctx.conversation.send('Where is the spare key?');
-
-  // the step this message wakes compacts first and sends no turn
   await ctx.conversation.sendForStep('Where is the spare key again?');
   await ctx.conversation.send('Where is the spare key now?');
 
@@ -871,7 +843,6 @@ test('it retrieves an item again on a rebuilt session that lost the turn it came
 
   await ctx.conversation.send('Where is the spare key?');
 
-  // with every session gone, the replacement has no session to carry over
   ctx.guest.removeSessions(conversationTaskID);
 
   await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
@@ -1098,7 +1069,6 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
 
   const note = { ...provenance, origin: 'conversation', model: 'claude-opus-5-5' } as const;
 
-  // with no score floor, 9 matches need no items beside them to pass it
   await Promise.all([
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
@@ -1126,7 +1096,6 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
     /type="retrieved-memory" [^>]+>\nFrom your memory[^\n]+\nAbout the owner:(?:\n- [^\n]+\n {2}[^\n]+){5}\n<\/system-message/u,
   );
 
-  // block IDs, times, short IDs and days change on each run, so each reads as a mark
   expect(
     /<system-message type="retrieved-self-notes"[^]*?<\/system-message id="[\da-f]{12}">/u
       .exec(opening)?.[0]
@@ -1157,8 +1126,6 @@ test("it lists the self-notes it places beside the facts in the recall record an
 
   const note = { ...provenance, origin: 'conversation', model: 'claude-opus-5-5' } as const;
 
-  // with no score floor, 9 matches need no items beside them to pass it; the longest fact and the
-  // longest note rank last
   await Promise.all([
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
@@ -1215,7 +1182,6 @@ test('it places no self-note block when the cap is 0', async () => {
 
   const note = { ...provenance, origin: 'conversation', model: 'claude-opus-5-5' } as const;
 
-  // with no score floor, both matches need no items beside them to pass it
   const [kettle] = await Promise.all([
     ctx.memory.remember({ text: 'Keeps a tin of tea by the kettle', provenance }),
     ctx.startRunner({

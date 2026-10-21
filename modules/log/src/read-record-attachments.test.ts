@@ -115,7 +115,6 @@ test('it reads an attachment whose ciphertext fails to decrypt as unreadable', a
     },
   ]);
 
-  // the append-only trigger refuses the damage, so the test removes it first
   await sql`drop trigger record_attachments_refuse_update;
     update record_attachments set sealed = randomblob(64)`.execute(ctx.writer.db);
 

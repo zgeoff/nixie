@@ -7,9 +7,8 @@ export interface ResetMarkerProps {
   readonly record: LiveRecord;
 }
 
-// A rule at the top of the feed where a reset removed every earlier record, with the time it ran
-// in the browser's locale and time zone. The server knows neither, so its render and hydration
-// leave the time out, and the browser adds it.
+// The server knows neither the browser's locale nor its time zone, so the server render and
+// hydration leave the time out, and the browser adds it.
 export function ResetMarker(props: ResetMarkerProps): ReactNode {
   const isHydrated = useSyncExternalStore(
     subscribeToNothing,
@@ -26,7 +25,6 @@ export function ResetMarker(props: ResetMarkerProps): ReactNode {
   );
 }
 
-// whether the page hydrated never changes once it has, so there is nothing to listen to
 function subscribeToNothing(): () => void {
   return () => {};
 }

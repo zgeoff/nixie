@@ -3,8 +3,6 @@ import { buildVersionKey } from './build-version-key';
 import { parseMemoryRecord } from './parse-memory-record';
 import type { MemoryTables } from './types';
 
-// One row per version, appended and never changed. The text stays sealed under the item's key, and
-// the provenance sits in plain columns that the fold copies from the record.
 export const memoryVersionsProjection: Projection = {
   table: 'memory_versions',
   keyColumn: 'version_key',

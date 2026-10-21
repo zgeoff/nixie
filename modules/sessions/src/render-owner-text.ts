@@ -4,9 +4,6 @@ import { z } from 'zod';
 
 const messageSpans = z.array(z.object({ start: z.number(), end: z.number(), source: z.string() }));
 
-// Renders your message as you wrote it, with each span you pasted or dropped in wrapped in a block
-// whose fresh random ID is on both tags, so a pasted closing tag cannot end it. A forgotten message
-// keeps its place with a note, so the model never reads a gap as silence.
 export function renderOwnerText(record: LogRecord): string {
   const fields = record.erasable.status === 'readable' ? record.erasable.fields : {};
   const text = fields['text'];
@@ -27,7 +24,6 @@ export function renderOwnerText(record: LogRecord): string {
     .join('');
 }
 
-// the spans the model reads as someone else's words; typed and unknown spans render bare
 function isForeignSource(source: string): source is 'pasted' | 'dropped' {
   return source === 'pasted' || source === 'dropped';
 }
@@ -37,6 +33,8 @@ function renderSpan(part: string, source: string): string {
     return part;
   }
 
+  // Pasted text is untrusted, so each block gets a fresh random ID that a pasted closing tag cannot
+  // match.
   const blockID = mintBlockID();
 
   return `<${source} id="${blockID}">${part}</${source} id="${blockID}">`;

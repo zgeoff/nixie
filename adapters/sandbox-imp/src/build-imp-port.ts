@@ -4,14 +4,11 @@ import { ORPCError, createImpClient, openReverseForward } from '@impz/client';
 import type { ImpPort } from './types';
 
 export interface ImpConnection {
-  // impd's API, such as http://localhost:7070
   readonly url: string;
 
-  // a token with manage scope on nixie's imps
   readonly token: string;
 }
 
-// Builds the port on imp's client, the only place nixie imports it.
 export function buildImpPort(connection: ImpConnection): ImpPort {
   const client = createImpClient({ url: connection.url, token: connection.token });
 
@@ -76,7 +73,7 @@ function buildLifecycleCalls(client: ImpClient): LifecycleCalls {
       try {
         const imp = await client.imps.get({ name });
 
-        // impd leaves the flag out for an imp it backs up
+        // impd leaves the flag out for an imp that it backs up.
         return imp.backup !== false;
       } catch (error) {
         requireNotFound(error);
@@ -100,8 +97,6 @@ function buildLifecycleCalls(client: ImpClient): LifecycleCalls {
   };
 }
 
-// One system.info call through the client's version check, which the signal ends, such as on a
-// half-open connection; the check returns the answer it read, so the features come from it too
 async function readFeatures(
   client: ImpClient,
   signal: AbortSignal | undefined,
@@ -110,7 +105,6 @@ async function readFeatures(
 
   const check = await client.checkServer(options);
 
-  // the client speaks only an impd of its own major, so this 2.x client refuses an impd 1.x
   if (!check.compatible) {
     throw new Error(`impd ${check.serverVersion} does not speak imp client ${check.clientVersion}`);
   }
@@ -122,9 +116,8 @@ async function readFeatures(
   };
 }
 
-// impd's error for a call it refuses, such as RAM_BUDGET_EXCEEDED when its memory budget is full,
-// carries its code and its own text, but its name is plain Error, so the call rethrows it as a
-// SandboxHostError that names the call, and a failed turn's step error and log line say why
+// impd's refusal, such as RAM_BUDGET_EXCEEDED, arrives as an ORPCError whose name is plain Error,
+// so a log line would not say which call failed or why. The error is rethrown with the call named.
 async function withHostError(call: string, run: () => Promise<unknown>): Promise<void> {
   try {
     await run();
@@ -140,7 +133,6 @@ async function withHostError(call: string, run: () => Promise<unknown>): Promise
   }
 }
 
-// an imp that is gone already counts as removed, so a retried destroy succeeds
 function requireNotFound(error: unknown): void {
   if (!(error instanceof ORPCError && error.code === 'NOT_FOUND')) {
     throw error;

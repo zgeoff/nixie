@@ -6,13 +6,9 @@ import type { WriterModel } from '../writer-types';
 export interface StubConsolidatorSession {
   readonly staging: ConsolidationStaging;
 
-  // the model whose session stages the diff each time it runs, and records each call
   readonly model: WriterModel & { readonly runSession: ReturnType<typeof mock> };
 }
 
-// A stand-in for the consolidator's model session and the staging its tools write to. Each session
-// stages the one diff, with the summary when one is given, into the run the step opened, as a
-// model that calls memory.consolidate once does, and ends with fixed token counts.
 export function createStubConsolidatorSession(
   requests: readonly ChangeRequest[],
   summary?: string,

@@ -15,13 +15,10 @@ import type { GuestSummary } from './run-guest-summary';
 import { runGuestSummary } from './run-guest-summary';
 import type { CompactionSettings, LogContext } from './types';
 
-// The model loop whose session nixie compacts, as the conversation's runner or a task's holds it:
-// the log, the sandbox and the guest that runs the summary call, and the profile it runs on.
 export interface CompactionRun {
   readonly context: LogContext & { readonly definitions: () => Definitions };
   readonly model: ModelRecordSource['model'];
 
-  // the profile as every guest frame carries it, with no credential reference and no prices
   readonly turnProfile: TurnProfile;
   readonly sandbox: Sandbox;
   readonly command: GuestCommand;
@@ -31,39 +28,27 @@ export interface CompactionRun {
 export interface CompactionRequest {
   readonly taskID: string;
 
-  // the session's last committed boundary, which the summary call forks from
   readonly resume: SessionPoint;
 
-  // what asked for it: a turn that ended past the threshold, or one that overflowed the window
   readonly trigger: 'threshold' | 'overflow';
 
-  // the context the session held before the compaction, when the turn reported one
   readonly contextSize: number | null;
 
-  // the compactions that failed in a row before this one
   readonly failures: number;
 
-  // aborts when the step's lease is lost or a forget invalidates the session
   readonly signal: AbortSignal;
 
-  // the system prompt of the session's turns, which the summary call keeps
   readonly systemPrompt: string;
 
-  // the time now, as the instruction states it, and the user's name, or null for "the owner"
   readonly at: string;
   readonly ownerName: string | null;
 }
 
-// What a compaction commits: the summary record and whether the summary call gave one, or the
-// failure record in its place.
 export interface CompactionOutcome {
   readonly isSummarized: boolean;
   readonly record: RecordInput;
 }
 
-// Asks the model for a summary of the session at its committed boundary, with one request to cut a
-// summary past the cap, and returns the record to commit. It writes nothing itself, so a rerun after
-// a crash forks from the same boundary. A failed call returns a failure record, and an abort throws.
 export async function runSessionCompaction(
   run: CompactionRun,
   request: CompactionRequest,
@@ -95,7 +80,6 @@ export async function runSessionCompaction(
   }
 }
 
-// the last sequence the session held: its newest turn end, which commits after the turn's replies
 async function readThroughSequence(run: CompactionRun, taskID: string): Promise<number> {
   const [turn] = await readRecords(run.context.log, {
     afterSequence: 0,
@@ -111,15 +95,11 @@ async function readThroughSequence(run: CompactionRun, taskID: string): Promise<
 interface SessionSummary {
   readonly text: string;
 
-  // the summary's size, which nixie counts as the rebuild budget does
   readonly tokens: number;
 
-  // whether nixie asked for a cut
   readonly isCut: boolean;
 }
 
-// One call for the summary, and one more on its fork to cut it when it passes the cap. A summary
-// still past the cap, or one whose cut failed, commits as it stands with its size.
 async function runSummaryCalls(
   run: CompactionRun,
   request: CompactionRequest,
@@ -178,8 +158,6 @@ function runSummaryCall(
   });
 }
 
-// The failure record in place of the summary, with the count of failures in a row, which the
-// client's notice reads, and the error in its erasable fields.
 function buildFailedRecord(
   source: ModelRecordSource,
   request: CompactionRequest,

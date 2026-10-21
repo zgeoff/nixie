@@ -1,15 +1,9 @@
-// The messages between the crash harness in the test process and the nixie process it runs, over
-// Bun's IPC channel, as JSON.
-
-// Which work reached a fault point: the FaultPointContext of modules/tasks, which a lib cannot
-// import.
+// A lib cannot import a module, so this type mirrors the fault point context of modules/tasks.
 export interface FaultPointWork {
   readonly kind: string;
   readonly id: string | null;
 }
 
-// A fault point the harness holds a runner at: every arrival at the point, or only the arrivals of
-// one kind or one piece of work, up to times arrivals (1 by default).
 export interface FaultPointArm {
   readonly point: string;
   readonly kind?: string;

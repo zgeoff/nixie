@@ -6,9 +6,6 @@ export interface AttachedImage {
   readonly file: File;
 }
 
-// Holds the scaled copies of the images attached to the message you are writing, up to the most a
-// message takes, and leaves out an image that does not read or fit, with a notice that says why.
-// The images are pending while any still scales, so a send waits rather than leave one behind.
 export function useAttachedImages(normalizeImage: (image: File) => Promise<File>) {
   const [images, setImages] = useState<readonly AttachedImage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -56,7 +53,7 @@ export function useAttachedImages(normalizeImage: (image: File) => Promise<File>
   return { attach, clear, images, isPending: scaling > 0, notice, remove };
 }
 
-// a HEIC photo from a phone's files can come with no type, so its name counts too
+// A HEIC photo from a phone's files can come with no type, so its name counts too.
 function isImageFile(file: File): boolean {
   return file.type.startsWith('image/') || /\.hei[cf]$/iu.test(file.name);
 }
@@ -64,17 +61,14 @@ function isImageFile(file: File): boolean {
 interface ScaleOptions {
   readonly normalizeImage: (image: File) => Promise<File>;
 
-  // the free slots in the message
   readonly room: number;
 }
 
-// The scaled copies that read and fit, in the order picked, with the count of each image left out.
 interface ScaledImages {
   readonly files: readonly File[];
   readonly unread: number;
   readonly over: number;
 
-  // the images never scaled, because the free slots held images that read and fit before them
   readonly unscaled: number;
 }
 
@@ -84,7 +78,6 @@ interface ScaledTally {
   over: number;
 }
 
-// scales one image at a time, so a large selection decodes no more photos than the free slots take
 async function readScaledImages(
   picked: readonly File[],
   options: ScaleOptions,

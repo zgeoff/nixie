@@ -14,18 +14,13 @@ export type LiveRecord = ReadonlyDeep<LogRecord>;
 export interface LiveRecords {
   readonly records: readonly LiveRecord[];
 
-  // whether the stream failed several attempts in a row, until it connects again
   readonly unavailable: boolean;
 }
 
 export interface LiveRecordsOptions {
-  // Times the pause before each reconnect. The platform timer by default.
   readonly startTimer?: StartTimer;
 }
 
-// Follows the log from the sequence a page was read at, so the conversation misses no record and
-// repeats none. A dropped stream follows again from the last record it delivered, and a stream
-// that keeps failing backs off and reports itself unavailable.
 export function useLiveRecords(
   thread: string,
   afterSequence: number | undefined,
@@ -71,8 +66,6 @@ interface StreamState {
 
 type StreamCallbacks = Pick<SubscribeOptions, 'onAvailability' | 'onRecord'>;
 
-// A log_reset ends what the client read before it, so the queries read again then, and once more
-// when the stream next connects, since the server restarts after a reset.
 function buildStreamCallbacks(state: StreamState): StreamCallbacks {
   const reset = { isPending: false };
 

@@ -4,7 +4,6 @@ import type { StoreParts } from './types';
 import { writeGatedRemember } from './write-gated-remember';
 import { writeGatedRetirement } from './write-gated-retirement';
 
-// The gated write paths of the model and the memory writer over the store's parts.
 export function buildMemoryWrites(parts: StoreParts): MemoryWrites {
   return {
     remember: (request) => writeGatedRemember(parts, request),

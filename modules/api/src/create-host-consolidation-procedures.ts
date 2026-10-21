@@ -3,9 +3,6 @@ import { hostImplementer } from './host-implementer';
 import { requireHostMemory } from './require-host-memory';
 import type { ReadHostMemory } from './types';
 
-// Builds the host procedures over the consolidator's pending diff: show it, and answer its changes
-// under the action hashes memory-diff showed, an approval of one change, of several or of the
-// whole diff, or a rejection of one change.
 export function createHostConsolidationProcedures(readMemory: ReadHostMemory) {
   const consolidation = hostImplementer.memory.consolidation;
 
@@ -46,7 +43,6 @@ export function createHostConsolidationProcedures(readMemory: ReadHostMemory) {
   };
 }
 
-// what a host command shows of the diff, each change with its inputs at the versions read
 function buildDiffEntry(diff: ConsolidationDiff) {
   return {
     diffID: diff.diffID,

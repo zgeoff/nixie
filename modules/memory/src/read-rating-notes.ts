@@ -4,23 +4,17 @@ import { decodeRatingNote } from './decode-rating-note';
 import { memoryRatedCodec } from './memory-rated-codec';
 import { readItemKey } from './read-item-key';
 
-// One rated item's note, named by the sequence of its memory.rated record and the item's ID.
 export interface RatingNoteRef {
   readonly sequence: number;
   readonly itemID: string;
 }
 
-// A note as a view shows it. A note whose item's key is gone reads as shredded, one whose key or
-// ciphertext fails reads as unreadable, and a rating with no note, or no such rating, reads as
-// missing.
 export type RatingNoteResult = RatingNoteRef &
   (
     | { readonly status: 'readable'; readonly text: string }
     | { readonly status: 'shredded' | 'unreadable' | 'missing' }
   );
 
-// Reads the notes of the named ratings, in the order named, so a view can show them beside the
-// memories they rate. It delivers nothing to a task, so it writes no record.
 export function readRatingNotes(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   refs: readonly RatingNoteRef[],
@@ -45,7 +39,6 @@ interface SealedNote {
   readonly sealedNote: string;
 }
 
-// the note the rating record at the sequence holds for the item, or null when there is none
 async function readSealedNote(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   ref: RatingNoteRef,
@@ -67,7 +60,6 @@ async function readSealedNote(
     : { ratingID: payload.ratingID, itemID: ref.itemID, sealedNote: rating.sealedNote };
 }
 
-// opens a note under its item's key, while the key exists
 async function openSealedNote(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   ref: RatingNoteRef,

@@ -7,7 +7,6 @@ import { toBareHost } from './to-bare-host';
 export interface PinnedTarget {
   readonly url: URL;
 
-  // the address the hop checked, which the connection goes to whatever DNS says later
   readonly address: string;
 }
 
@@ -16,13 +15,8 @@ export interface PinnedRequestOptions {
   readonly ca?: string;
 }
 
-// a browser-shaped user agent that still names nixie, for sites that refuse an agent they cannot
-// place; it claims no browser, so a site can tell the fetcher apart
 const userAgent = 'Mozilla/5.0 (compatible; nixie-fetch/1.0)';
 
-// Sends a GET to the checked address, with the host name for TLS and in the Host header. It carries
-// no credential, cookie or stored header, and never goes through a proxy, which would resolve the
-// host itself: an empty proxyEnv stops the runtime from reading one from the environment.
 export function sendPinnedRequest(
   target: PinnedTarget,
   options: PinnedRequestOptions,
@@ -37,9 +31,12 @@ export function sendPinnedRequest(
       path: `${target.url.pathname}${target.url.search}`,
       method: 'GET',
 
-      // SNI never carries an address
+      // TLS forbids an IP address in SNI (RFC 6066).
       ...(isIP(host) === 0 ? { servername: host } : {}),
       lookup: makePinnedLookup(target.address),
+
+      // A proxy would resolve the host itself, and an empty proxyEnv stops the runtime from reading
+      // one from the environment.
       agent: new Agent({ keepAlive: false, proxyEnv: {} }),
       ...(options.ca === undefined ? {} : { ca: options.ca }),
       headers: {
@@ -58,7 +55,6 @@ export function sendPinnedRequest(
   return response.promise;
 }
 
-// a lookup that answers every host name with the one checked address
 function makePinnedLookup(address: string): LookupFunction {
   const family = isIP(address);
 

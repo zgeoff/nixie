@@ -12,8 +12,6 @@ import { makeQueueCheckStep } from '../make-queue-check-step';
 import { createTestStep } from './create-test-step';
 import { runTestAttempt } from './run-test-attempt';
 
-// a writer with the tasks and actions projections, a claimed step, the queue check's step that
-// queues an actions.log action, and a recorder of the connector's log lines
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 

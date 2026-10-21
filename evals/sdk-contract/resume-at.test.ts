@@ -9,11 +9,10 @@ import { buildFiller } from '../test-utils/build-filler';
 import { loadSessionTranscript } from '../test-utils/load-session-transcript';
 import { runContractQuery } from '../test-utils/run-contract-query';
 
-// The probes call the model on the subscription, so only a contract run enables them. Bun 1.4.2's
+// Each probe calls the model on the subscription, so only a contract run enables it. Bun 1.4.2's
 // skipIf takes a boolean and has no in-body skip.
 const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 
-// a config directory of the run's own, and the options of a one-call turn with no tools
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-resume-'));
 
@@ -101,7 +100,6 @@ test.skipIf(!isContractRun)(
         includePartialMessages: true,
       },
 
-      // the abort lands once the answer starts to stream, so the turn ends mid-answer
       onMessage: (message) => {
         if (message.type === 'stream_event') {
           abortController.abort();
@@ -156,7 +154,6 @@ test.skipIf(!isContractRun)(
 
     invariant(boundary);
 
-    // a turn that never commits, then a compaction that keeps that turn and leaves the boundary out
     await runContractQuery({
       prompt: 'The code word is now CHERRY. Reply with OK only.',
       options: { ...ctx.options, resume: sessionID },

@@ -1,6 +1,3 @@
-// Renders the consolidator's system prompt: the persona in force, then the consolidator's rules,
-// which name you as the conversation does, so it words a change the way the assistant speaks of
-// you. The rules hold the diff's cap.
 export function renderConsolidatorSystemPrompt(
   persona: string,
   maxChanges: number,
@@ -12,8 +9,6 @@ export function renderConsolidatorSystemPrompt(
   return trimmed === '' ? rules : `${trimmed}\n\n${rules}`;
 }
 
-// Without a name the rules call you "the owner", and the rule that swaps "the owner" for your name
-// drops out, since it would ask for no change.
 function renderConsolidatorRules(maxChanges: number, ownerName: string | null): string {
   const owner = ownerName ?? 'the owner';
 

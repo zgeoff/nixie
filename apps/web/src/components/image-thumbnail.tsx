@@ -15,8 +15,6 @@ const thumbnail = css({
   width: '16',
 });
 
-// A small view of an image the page holds, through an object URL that it releases once the image
-// leaves the page, so a removed or sent image does not stay in the browser's memory.
 export function ImageThumbnail(props: ImageThumbnailProps): ReactNode {
   const [url, setURL] = useState<string | null>(null);
 

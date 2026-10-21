@@ -5,7 +5,6 @@ import type { ToolDefinition } from '@heynixie/tools';
 import type { MemoryProposal, MemoryProposals } from './gate-types';
 import type { ItemIDStore, MemoryOrigin } from './types';
 
-// What memory.pending reads: the proposals that wait for the owner's review.
 export interface PendingToolStore extends Pick<ItemIDStore, 'readShortIDs'> {
   readonly proposals: Pick<MemoryProposals, 'listPending'>;
 }
@@ -49,9 +48,6 @@ const pendingOutput = {
   additionalProperties: false,
 };
 
-// Builds memory.pending, which declares read and lists every memory proposal that still waits for
-// the owner's review, the conversation's own and the note-taker's, oldest first. It never answers
-// one. The proposals hold every source a write can quote, so the result takes the most cautious.
 export function buildPendingTool(
   memory: PendingToolStore,
   clock: Pick<Clock, 'now'>,
@@ -83,7 +79,6 @@ export function buildPendingTool(
 
       const now = clock.now();
 
-      // the record holds only the proposal IDs, so a forget leaves no readable copy of the text
       return {
         status: 'ok',
         result: {
@@ -97,7 +92,6 @@ export function buildPendingTool(
   };
 }
 
-// the proposal as the model reads it, with the item an edit or a retirement names by its short ID
 function toPendingJSON(proposal: MemoryProposal, shortID: string, now: number): JSONObject {
   return {
     proposalID: proposal.proposalID,
@@ -121,7 +115,6 @@ function pickChange(proposal: MemoryProposal): 'new' | 'edit' | 'retire' {
   return proposal.targetVersion === null ? 'new' : 'edit';
 }
 
-// the words the model reads for who noted a memory: the conversation is the model itself
 const notedByWords: Readonly<Record<MemoryOrigin, string>> = {
   conversation: 'you noted it',
   memory_writer: 'the note-taker noted it',
@@ -129,7 +122,6 @@ const notedByWords: Readonly<Record<MemoryOrigin, string>> = {
   owner: 'the owner noted it',
 };
 
-// each origin that proposed it once, in the order it first proposed it
 function buildNotedBy(proposal: MemoryProposal): readonly string[] {
   const origins = new Set(proposal.sources.map((source) => source.origin));
 

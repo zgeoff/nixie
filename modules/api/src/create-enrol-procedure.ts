@@ -4,9 +4,6 @@ import { apiImplementer } from './api-implementer';
 import { claimEnrolmentCode } from './claim-enrolment-code';
 import type { APIContext } from './types';
 
-// Builds enrolment, the one procedure that needs no device session. A browser gets its token only
-// in the HttpOnly cookie, so no client script ever reads it, and the Android app gets it in the
-// output.
 export function createEnrolProcedure(context: APIContext) {
   return apiImplementer.sessions.enrol.handler(async (options) => {
     const result = await claimEnrolmentCode(context, options.input);

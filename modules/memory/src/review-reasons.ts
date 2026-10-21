@@ -1,4 +1,3 @@
-// Every reason a write waits for your review instead of applying, as the proposal record stores it.
 export const reviewReasons = [
   'no_quote',
   'quote_not_typed',
@@ -12,7 +11,6 @@ export const reviewReasons = [
   'ambiguous_target',
   'pinned',
 
-  // a reason that a later release writes and this one does not know, as every reader shows it
   'other',
   'self_note',
   'from_photo',

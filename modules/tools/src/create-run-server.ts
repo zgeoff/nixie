@@ -4,9 +4,6 @@ import type { ToolCallOptions } from './run-tool-call';
 import { runToolCall } from './run-tool-call';
 import type { ToolRun } from './types';
 
-// Builds the MCP server for one request to a run's endpoint. tools/list lists only the tools on the
-// run's list, and tools/call takes every call to the call steps, a tool missing from the list
-// included, so the decision point's scope stage still decides it.
 // oxlint-disable-next-line typescript/no-deprecated -- McpServer answers a call to a tool it does not list itself, so the scope stage would never see it
 export function createRunServer(run: ToolRun, options: ToolCallOptions): Server {
   // oxlint-disable-next-line typescript/no-deprecated -- as above
@@ -18,7 +15,6 @@ export function createRunServer(run: ToolRun, options: ToolCallOptions): Server 
   const tools = run.tools.flatMap((name) => {
     const registered = options.registry.findTool(name);
 
-    // the model sees the name, the description and the input schema, and nothing else
     return registered === null
       ? []
       : [

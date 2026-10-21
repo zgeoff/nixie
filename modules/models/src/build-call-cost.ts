@@ -1,7 +1,5 @@
 import type { ModelPrices } from './types';
 
-// The token counts of one Messages API response, in the API's own field names. The cache writes
-// split by lifetime under cache_creation, which an endpoint without 1-hour entries may leave out.
 export interface CallUsage {
   readonly input_tokens: number;
   readonly output_tokens: number;
@@ -13,12 +11,11 @@ export interface CallUsage {
   } | null;
 }
 
-// The cost of one model call, in the currency of the profile's prices. Only the writes the response
-// reports as 5-minute take the 5-minute price, and a split larger than the total counts in full, so
-// a missing or inconsistent count never lowers a charge.
 export function buildCallCost(usage: CallUsage, prices: ModelPrices): number {
   const cacheWrites5m = usage.cache_creation?.ephemeral_5m_input_tokens ?? 0;
 
+  // An endpoint can leave out the split by cache lifetime, or report one that disagrees with the
+  // total, so the larger count wins and a missing count never lowers a charge.
   const cacheWrites = Math.max(
     usage.cache_creation_input_tokens ?? 0,
     cacheWrites5m + (usage.cache_creation?.ephemeral_1h_input_tokens ?? 0),

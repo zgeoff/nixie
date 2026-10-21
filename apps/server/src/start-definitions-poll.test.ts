@@ -50,7 +50,6 @@ test('it seeds on the first probe token once the interval passes', async () => {
 
   ctx.clock.advance(60_000);
 
-  // the poll sleeps again once its probe and seed finish
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
   expect(seed).toHaveBeenCalledOnce();

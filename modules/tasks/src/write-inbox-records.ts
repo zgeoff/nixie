@@ -4,9 +4,6 @@ import type { TasksContext } from './types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 import { writeInboxRecordsInTransaction } from './write-inbox-records-in-transaction';
 
-// Writes records into tasks' inboxes, such as your messages, in one transaction. Each record must
-// be of an inbox kind and name a task that has not ended as its thread. A waiting task becomes
-// ready in the same transaction, through the tasks projection.
 export async function writeInboxRecords(
   context: Pick<TasksContext, 'log'>,
   inputs: readonly RecordInput[],

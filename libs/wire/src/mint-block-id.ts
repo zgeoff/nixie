@@ -1,5 +1,5 @@
-// Mints the fresh random ID that a block's opening and closing tags both carry, so text inside the
-// block cannot close it early: 12 hex characters, which text written before the block cannot guess.
+// The ID is random so that text written before the block cannot guess it and close the block
+// early.
 export function mintBlockID(): string {
   return crypto.randomUUID().replaceAll('-', '').slice(0, 12);
 }

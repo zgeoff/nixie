@@ -6,8 +6,6 @@ import type { ServerPartValues } from './server-part-values';
 import { startConversationImp } from './start-conversation-imp';
 import type { AnyPartDeclaration, ServerParts } from './types';
 
-// The first parts behind the health endpoint, each run again after a failure. Each turn reads the
-// memory store, which starts after the conversation and before any runner claims work.
 export const recoveryPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
   {
     name: 'first_seed',
@@ -34,7 +32,6 @@ export const recoveryPartDeclarations: readonly AnyPartDeclaration<ServerPartVal
   },
 ];
 
-// every record carries a snapshot hash, so a first start seeds before anything else writes
 async function requireFirstSeed(parts: ServerParts): Promise<void> {
   if (parts.inForce.read() !== null) {
     return;

@@ -9,9 +9,6 @@ import { startMemoryWriter } from './start-memory-writer';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writerConfigSchema } from './writer-config-schema';
 
-// The writer's options over a test memory whose log also folds the tasks projections, because the
-// writer's start creates its system task and wakes it through the task's inbox. The model and the
-// gate never run, because no test runs a step.
 async function setupTest() {
   const memory = await startTestMemory();
 

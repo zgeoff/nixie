@@ -10,9 +10,6 @@ import { toAppliedResult } from './to-applied-result';
 import type { MemorySubject, MemoryTables, StoreParts } from './types';
 import { writeApprovedRemember } from './write-approved-remember';
 
-// Applies an approved proposal for a new item. An active item that closely matches its text holds
-// the approval and is named in the result, so you answer again: as a revision of that item, which
-// leaves the proposal's own key sealing nothing, or as a new item anyway.
 export async function writeApprovedNewItem(
   parts: StoreParts,
   opened: OpenedProposal,
@@ -29,7 +26,6 @@ export async function writeApprovedNewItem(
         requireSameSubject(db, revisionOf.itemID, getRowSubject(opened.row)),
     });
 
-    // the closed-proposal sweep removes a key that a crash here leaves
     await removeRecordKey(parts.context.log, opened.row.item_id);
 
     return toAppliedResult(ref);
@@ -50,7 +46,6 @@ const subjectNames: Readonly<Record<MemorySubject, string>> = {
   shared: 'a shared item',
 };
 
-// a proposal revises only an item of its own subject, because an item keeps its subject
 async function requireSameSubject(
   db: Kysely<MemoryTables>,
   itemID: string,
@@ -69,9 +64,6 @@ async function requireSameSubject(
   }
 }
 
-// The search runs before the delivery lock, so the write searches again under it: a concurrent
-// approval of a reworded proposal may have created the match since. That write applies nothing,
-// and the approval starts over to report the match.
 async function writeUnmatchedNewItem(
   parts: StoreParts,
   opened: OpenedProposal,

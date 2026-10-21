@@ -2,31 +2,24 @@ import type { ModelSecrets } from '@heynixie/models';
 import { secretsSchema } from './secrets-schema';
 
 export interface SecretsOptions {
-  // nixie's sops-encrypted secrets file, mounted read-only
   readonly path: string;
 
-  // the sops command; sops finds the host's age key through SOPS_AGE_KEY_FILE
   readonly sopsArgv: readonly string[];
 }
 
-// nixie's secrets, held in this process's memory only.
 export interface Secrets {
   readonly deploymentKey: CryptoKey;
 
-  // impd's API token, or null when the secrets file holds none, as a test sandbox's need not
   readonly impdToken: string | null;
 
-  // the definitions repo's GitHub token, or null when the secrets file holds none
   readonly definitionsExportToken: string | null;
   readonly models: ModelSecrets;
 
-  // the private settings, which a deployment:<name> reference in the configuration names
   readonly settings: Readonly<Record<string, string>>;
 }
 
-// Decrypts the secrets file with sops in this process and keeps the plaintext in memory only,
-// never on a tmpfs, in an environment variable or in a Compose secret. A failure names the file
-// and the problem's path, never a value.
+// The plaintext stays in this process's memory, never on a tmpfs, in an environment variable or in
+// a Compose secret, and an error never quotes a secret value.
 export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
   const child = Bun.spawn([...options.sopsArgv, 'decrypt', '--output-type', 'json', options.path], {
     stdin: 'ignore',

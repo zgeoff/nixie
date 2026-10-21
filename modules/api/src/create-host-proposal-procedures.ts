@@ -4,8 +4,6 @@ import { requireHostMemory } from './require-host-memory';
 import { toContractKind } from './to-contract-kind';
 import type { ReadHostMemory } from './types';
 
-// Builds the host procedures over the pending memory proposals: list them, and approve or reject
-// one under the action hash memory-pending showed.
 export function createHostProposalProcedures(readMemory: ReadHostMemory) {
   const proposals = hostImplementer.memory.proposals;
 
@@ -47,8 +45,6 @@ export function createHostProposalProcedures(readMemory: ReadHostMemory) {
   };
 }
 
-// What a host command shows of a pending proposal: its text, every source that proposed it, and
-// the hash an answer binds to.
 function buildPendingEntry(proposal: MemoryProposal) {
   return {
     proposalID: proposal.proposalID,

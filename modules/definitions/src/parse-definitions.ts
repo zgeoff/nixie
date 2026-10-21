@@ -9,9 +9,6 @@ import type { ParsedDefinitions, Snapshot } from './types';
 
 const personaPath = 'persona.md';
 
-// Reads what the seed applies: the format version, the persona, and from format 2 on, the skills.
-// Every other file only has to parse, and the seed lists it as unapplied. A file that fails to
-// decode or parse, or a skill that fails a seed check, fails the whole snapshot.
 export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
   const texts = decodeFiles(snapshot.files);
   const formatVersion = parseManifest(texts.get(manifestPath));

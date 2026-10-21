@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { removeStaleSessions } from './remove-stale-sessions';
 
-// a config folder with one project folder for the guest's working directory
 async function setupTest() {
   const configDir = await mkdtemp(join(tmpdir(), 'nixie-sessions-'));
 

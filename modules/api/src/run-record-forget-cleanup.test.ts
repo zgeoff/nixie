@@ -9,11 +9,8 @@ import type { CleanupRecordSessions } from './types';
 import { writeOwnerMessage } from './write-owner-message';
 import { writeRecordForget } from './write-record-forget';
 
-// a test API with a signed-in device
 async function setupTest() {
   const api = await startTestAPI();
-
-  // boot data: a forget is a checked action of a signed-in device
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   return { ...api, laptop };

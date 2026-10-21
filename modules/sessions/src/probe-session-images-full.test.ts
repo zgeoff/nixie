@@ -23,7 +23,6 @@ test('it reads the session as full when the first message would take its images 
     },
   ]);
 
-  // 6 bytes read as 8 in base64, which passes the 24 MiB budget by 4
   const isFull = await probeSessionImagesFull(ctx.run, {
     inbox,
     images: { bytes: 24 * 1024 * 1024 - 4, count: 1 },

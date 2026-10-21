@@ -1,6 +1,3 @@
-// Runs each corpus pair through the production checker, prompt and gate input, named as a
-// deployment with the owner name given would be, and writes the report the eval suite checks. It
-// calls the model with the local Claude Code login, so CI never runs it (see the README).
 import { mkdtemp } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -128,9 +125,6 @@ async function runCall(call: PlannedCall, guestHome: string): Promise<CheckerCal
   };
 }
 
-// Makes a query with the guest's options and the local login in place of the placeholder key the
-// host would broker. The checker's timeout aborts the signal, which closes the query, so a timed-out
-// call never runs on beside the next one or spends what the report leaves out.
 function makeLoggedInQuery(signal: AbortSignal): typeof query {
   return (params) => {
     const { ANTHROPIC_API_KEY: _placeholder, ...env } = params.options?.env ?? {};
@@ -148,7 +142,7 @@ function makeLoggedInQuery(signal: AbortSignal): typeof query {
       },
     });
 
-    // the SDK's abort controller lets a query in flight finish and bill its answer; close ends it
+    // The SDK's abort controller lets a query in flight finish and bill its answer, and close ends it.
     signal.addEventListener(
       'abort',
       () => {
@@ -157,7 +151,7 @@ function makeLoggedInQuery(signal: AbortSignal): typeof query {
       { once: true },
     );
 
-    // a timeout that fired before the query started finds no listener, so the query closes here
+    // An AbortSignal that aborted before the listener was added never calls it.
     if (signal.aborted) {
       session.close();
     }
@@ -166,7 +160,7 @@ function makeLoggedInQuery(signal: AbortSignal): typeof query {
   };
 }
 
-// a host that reaches the API through an HTTPS proxy needs the proxy and its CA in the query too
+// A host that reaches the API through an HTTPS proxy needs the proxy and its CA in the query too.
 function readProxyEnv(): Record<string, string> {
   const names = [
     'HTTPS_PROXY',

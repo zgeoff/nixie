@@ -11,9 +11,6 @@ export interface FetcherIO {
   readonly write: (bytes: Uint8Array) => Promise<void>;
 }
 
-// Runs one fetch: reads one request frame from the input, reads the page, and writes one reply
-// frame. A malformed request or an input that closes first throws, so the process exits non-zero
-// and nixie replaces the sandbox.
 export async function runFetcher(
   io: FetcherIO,
   readPageFor: (request: FetchRequest) => Promise<FetchReply>,
@@ -27,7 +24,6 @@ export async function runFetcher(
   await io.write(encodeFrame(encodeFetchMessage(reply)));
 }
 
-// the largest request the fetcher takes: a URL and the deployment's ranges
 const maxRequestBytes = 65_536;
 
 async function readFirstFrame(

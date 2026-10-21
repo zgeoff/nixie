@@ -36,9 +36,8 @@ test('it yields nothing when the first page is empty and the last', async () => 
   expect(items).toStrictEqual([]);
 });
 
-// A walk that hands each page to a new generator through `yield*` passes every item through one
-// frame per page before it, so 100,000 items over 1,000 pages took 2.8 s to 5.5 s. One loop walks
-// them in about 20 ms, and the budget leaves room for a slow runner.
+// A `yield*` walk took 2.8 s to 5.5 s and one loop about 20 ms, and the budget leaves room for a
+// slow runner.
 test('it walks 100,000 items over 1,000 pages within a linear time budget', async () => {
   const pages = Array.from({ length: 1000 }, (_, page): ItemPage<number> => ({
     items: Array.from({ length: 100 }, (_item, index) => page * 100 + index),

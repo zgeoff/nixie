@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadSecrets } from './load-secrets';
 
-// a directory for the secrets file, and the stub that decrypts it as sops would
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-secrets-'));
 

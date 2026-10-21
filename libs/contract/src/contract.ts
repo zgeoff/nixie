@@ -10,19 +10,12 @@ import { spanSchema } from './span-schema';
 import { taskSchema } from './task-schema';
 import { toolCallSchema } from './tool-call-schema';
 
-// The contract is add-only once released: a later release adds procedures, optional input fields,
-// output fields and enum members, and never removes or renames one. The server validates every
-// input and output against it, and a client imports it as types.
-
-// A client creates the ID once per action and sends it again on every retry, so the server applies
-// the action once and answers a retry with the first result.
 const clientActionIDSchema = z.uuid();
 const sequenceSchema = z.int().nonnegative();
 const threadSchema = z.string().min(1).max(200);
 const imageSchema = z.object({ mediaType: z.enum(imageLimits.mediaTypes) });
 const imageFilesSchema = z.array(z.file());
 
-// one image of your message on a thread, by its position in the order sent
 const imageRefSchema = z.object({
   position: z.int().nonnegative(),
   sequence: sequenceSchema,
@@ -34,21 +27,14 @@ const versionRefSchema = z.object({
   version: z.int().nonnegative(),
 });
 
-// A recall's delivered versions, each with its match score when a query ranked it. The record
-// holds references and scores, never text; memory.readVersions reads the text.
 const recallItemSchema = versionRefSchema.extend({ score: z.number().optional() });
 const recallSchema = z.object({ items: z.array(recallItemSchema) });
 
-// The conversation's model's rating of one memory a recall delivered: whether it helped, was noise
-// or misled, and whether a note came with it. The record holds the note sealed under the item's
-// key; memory.readRatingNotes reads it.
 const ratingItemSchema = versionRefSchema.extend({
   hasNote: z.boolean(),
   verdict: z.enum(['helpful', 'noise', 'misleading']),
 });
 
-// The ratings of one memory.rate call, the sequence of the memory.recalled record they rate, and
-// the agent's name the deployment config gives, which a client shows beside each rating.
 const ratingSchema = z.object({
   items: z.array(ratingItemSchema),
   ratedBy: z.string().optional(),
@@ -56,22 +42,14 @@ const ratingSchema = z.object({
 });
 
 const tokenCountSchema = z.int().nonnegative();
-
-// The context the conversation's last model call read, in tokens, and the window its session
-// compacts within.
 const contextSchema = z.object({ size: tokenCountSchema, window: z.int().positive() });
 
-// A compaction of the conversation's session: what started it, and the context's tokens before and
-// after, the after count absent when the session did not report one. It never holds the summary.
 const compactionSchema = z.object({
   postTokens: tokenCountSchema.optional(),
   preTokens: tokenCountSchema,
   trigger: z.enum(['manual', 'auto']),
 });
 
-// A summary of the conversation's session that nixie committed: what asked for it, the context the
-// session held before it when the turn reported one, the summary's own size, and its text while its
-// key exists.
 const summarySchema = z.object({
   contextSize: tokenCountSchema.optional(),
   summaryTokens: tokenCountSchema,
@@ -79,12 +57,8 @@ const summarySchema = z.object({
   trigger: z.enum(['threshold', 'overflow']),
 });
 
-// A compaction of the conversation's session that failed, and the failures in a row it ends.
 const compactionFailureSchema = z.object({ failures: z.int().positive() });
 
-// A rating's note, named by its memory.rated record's sequence and the rated item, while the
-// item's key exists. A forgotten item's note reads as shredded, and a rating with no note as
-// missing.
 const ratingNoteRefSchema = z.object({
   itemID: z.string().min(1).max(200),
   sequence: sequenceSchema,
@@ -95,61 +69,43 @@ const ratingNoteSchema = ratingNoteRefSchema.extend({
   text: z.string().optional(),
 });
 
-// A version's text while its key exists. A forgotten item's version reads as shredded.
 const versionTextSchema = versionRefSchema.extend({
   status: z.enum(['readable', 'shredded', 'unreadable', 'missing']),
   text: z.string().optional(),
 });
 
 const recordSchema = z.object({
-  // Set on a model.compacted record.
   compaction: compactionSchema.optional(),
 
-  // Set on a model.compaction_failed record.
   compactionFailure: compactionFailureSchema.optional(),
 
-  // Set on a record.forget_started or record.forgotten record: the sequence of the message or reply
-  // it forgets, which a client then shows with no text.
   forget: z.object({ sequence: sequenceSchema }).optional(),
 
-  // Set on a model.turn_ended record whose turn reported the context of its last model call.
   context: contextSchema.optional(),
 
-  // The kind decides how a client renders the record, and a client shows an unfamiliar kind by
-  // its name.
   kind: z.string(),
 
-  // Set on a record that holds a message, from you or from the conversation.
   message: z
     .object({
       clientMessageId: z.uuid().optional(),
 
-      // Set on your message when it holds images: each one's type, in the order sent. A client
-      // reads an image's bytes with conversation.readImage.
       images: z.array(imageSchema).optional(),
       spans: z.array(spanSchema).optional(),
       text: z.string(),
     })
     .optional(),
 
-  // Set on a memory.rated record: how the memories of the recall it names worked for the model.
   rating: ratingSchema.optional(),
 
-  // Set on a memory.recalled record: the memory versions the recall delivered.
   recall: recallSchema.optional(),
   recordedAt: z.date(),
   sequence: sequenceSchema,
 
-  // Set on a model.session_summarized record.
   summary: summarySchema.optional(),
   thread: threadSchema,
 
-  // Set on a task record: the task it belongs to, and the step for a step record.
   task: taskSchema.optional(),
 
-  // Set on a tool call's record and its result's record, which share the call ID. The call
-  // carries the tool and its input, and the result its outcome and content, while they are
-  // readable.
   toolCall: toolCallSchema.optional(),
 });
 
@@ -165,8 +121,6 @@ const sessionSchema = z.object({
   sessionID: z.uuid(),
 });
 
-// A checked action needs a device session and refuses a client action ID that arrived before with
-// a different input.
 const checkedAction = signedIn.errors(reusedIDErrors);
 
 const followRecords = signedIn
@@ -175,8 +129,6 @@ const followRecords = signedIn
 
 export const contract = {
   conversation: {
-    // Returns one page of a thread, newest last, and the log sequence the page was read at, which
-    // a client passes to records.follow so it misses no record and repeats none.
     read: signedIn
       .errors({ THREAD_NOT_FOUND: { message: 'No thread has this ID', status: 404 } })
       .input(
@@ -192,15 +144,10 @@ export const contract = {
           readAtSequence: sequenceSchema,
           records: z.array(recordSchema),
 
-          // The newest record on the thread that ended a step of its task, at or before
-          // readAtSequence, whether or not the page holds it, so a client knows how the last step
-          // ended when a long step pushes that record off the page.
           lastStepEnd: recordSchema.nullable().optional(),
         }),
       ),
 
-    // A checked action whose client action ID is `clientMessageId`, the name the client design
-    // gives it. The client retries an unsent message with the same ID until the server confirms it.
     send: checkedAction
       .errors({
         IMAGE_REFUSED: imageRefusedError,
@@ -210,34 +157,23 @@ export const contract = {
         z.object({
           clientMessageId: clientActionIDSchema,
 
-          // Each image scaled and re-encoded on the device, in the order the model reads them.
-          // The server checks the bytes against imageLimits and takes each type from them.
           images: imageFilesSchema.optional(),
           spans: z.array(spanSchema).max(100_000),
           text: z.string().min(1).max(100_000),
           thread: threadSchema,
 
-          // The sending device's IANA time zone, such as Europe/London. The server stores a zone
-          // it knows with the message and drops one it does not, and the message still sends.
           timeZone: z.string().min(1).max(100).optional(),
 
-          // When you wrote the message, by the sending device's clock, as an ISO 8601 UTC time. A
-          // retry carries the first one, so the server keeps it beside when the message arrived.
           writtenAt: z.iso.datetime().optional(),
         }),
       )
       .output(z.object({ duplicate: z.boolean(), sequence: sequenceSchema })),
 
-    // Reads one image of your message, by its position in the order sent. An image whose message
-    // was forgotten reads as not found, as one that never existed does.
     readImage: signedIn
       .errors({ IMAGE_NOT_FOUND: imageNotFoundError })
       .input(imageRefSchema)
       .output(z.file()),
 
-    // Forgets one of your messages or one of nixie's replies for good: the server deletes its key,
-    // so its text reads as a gap everywhere nixie keeps it, and cleans up every live session that
-    // could hold it. Forgetting a forgotten record answers with the first forget's time.
     forget: checkedAction
       .errors({
         RECORD_NOT_FOUND: {
@@ -255,21 +191,14 @@ export const contract = {
       .output(z.object({ forgottenAt: z.date() })),
   },
   memory: {
-    // Reads the text of named memory versions, such as those a recall delivered, in the order
-    // named. A forgotten item's version reads as shredded and carries no text.
     readVersions: signedIn
       .input(z.object({ versions: z.array(versionRefSchema).min(1).max(100) }))
       .output(z.object({ versions: z.array(versionTextSchema) })),
 
-    // Reads the notes of named ratings, in the order named. A forgotten item's note reads as
-    // shredded and carries no text.
     readRatingNotes: signedIn
       .input(z.object({ notes: z.array(ratingNoteRefSchema).min(1).max(100) }))
       .output(z.object({ notes: z.array(ratingNoteSchema) })),
 
-    // The memory writer's progress: its cursor over the event log, how many of your messages wait
-    // for it, whether its catch-up over the log from before memory is still running, and its last
-    // error with when it tries again. The writer never stops on an error; it backs off.
     writerStatus: signedIn.output(
       z.object({
         backlog: z.int().nonnegative(),
@@ -284,20 +213,14 @@ export const contract = {
     ...memoryViewContract,
   },
   log: {
-    // The live stream under its first name, kept for the clients of earlier releases. A content
-    // blocker's generic rule for /rpc/log/ stops a browser from calling it, so the web client
-    // calls records.follow, and a later release may remove this one.
+    // Clients of earlier releases call this path. A content blocker's generic rule for /rpc/log/
+    // stops a browser from reaching it.
     follow: followRecords.route({ deprecated: true }),
   },
   records: {
-    // The live stream. Each event's ID is its record's sequence, so a client that reconnects with
-    // Last-Event-ID receives exactly the records it missed.
     follow: followRecords,
   },
   sessions: {
-    // Turns an enrolment code into a device session: an HttpOnly cookie for a browser, or a bearer
-    // token in the output for the Android app. A retry with the same client action ID answers with
-    // the same session and a fresh token, in the cookie or the output, that replaces the first.
     enrol: oc
       .errors(reusedIDErrors)
       .errors({
@@ -316,14 +239,11 @@ export const contract = {
       )
       .output(z.object({ sessionID: z.uuid(), token: z.string().optional() })),
 
-    // Issues a code that enrols one more device. It works once and lapses unused after 15 min by
-    // default. A retry answers with a fresh code that replaces the first, with the same lapse time.
     issueCode: checkedAction
       .input(z.object({ clientActionID: clientActionIDSchema }))
       .output(z.object({ code: z.string(), expiresAt: z.date() })),
     list: signedIn.output(z.object({ sessions: z.array(sessionSchema) })),
 
-    // Revoking a session that is already revoked succeeds and changes nothing.
     revoke: checkedAction
       .errors({ SESSION_NOT_FOUND: { message: 'No session has this ID', status: 404 } })
       .input(z.object({ clientActionID: clientActionIDSchema, sessionID: z.uuid() }))

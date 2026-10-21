@@ -32,7 +32,6 @@ test('it refuses with an oRPC error, as impd does', async () => {
 test('it stops listening once the test finishes', () => {
   const url = startStubImpd({ code: 'NOT_FOUND', status: 404, message: 'no imp nixie-b' });
 
-  // registered after the stub's own stop, so it runs once the stub stopped
   onTestFinished(() => {
     expect(fetch(url)).rejects.toThrow();
   });

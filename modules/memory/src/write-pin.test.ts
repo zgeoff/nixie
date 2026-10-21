@@ -127,7 +127,6 @@ test('it rejects a pin of a retired item', async () => {
 test('it rejects a pin that takes the pinned core past 2,000 tokens, and pins nothing', async () => {
   const ctx = await setupTest();
 
-  // about 1,100 tokens each, at 4 characters a token
   await ctx.memory.store.remember({
     text: 'Keeps a long packing list for trips. '.repeat(119),
     isPinned: true,
@@ -200,7 +199,6 @@ test('it rejects a new pinned item that takes the pinned core past 2,000 tokens'
 test('it counts the owner name each pinned line shows against the pinned core budget', async () => {
   const memory = await startTestMemory({ gate: { ownerName: 'Bartholomew '.repeat(100).trim() } });
 
-  // about 1,800 tokens of text, which fits beside a short name and not beside this one
   const remember = memory.store.remember({
     text: 'Keeps a long reading list for winter. '.repeat(190),
     isPinned: true,
@@ -227,7 +225,6 @@ test('it pins an item that fits the pinned core budget beside a short owner name
 test('it rejects a pin whose quotes take the pinned core past 2,000 tokens', async () => {
   const ctx = await setupTest();
 
-  // short texts, with quotes of about 1,100 tokens each at 4 characters a token
   await ctx.memory.store.remember({
     text: 'Likes the window seat',
     evidenceQuote: 'I always take the window seat on the train to the coast. '.repeat(77),

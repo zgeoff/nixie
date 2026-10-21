@@ -19,9 +19,6 @@ import type {
   SkillProposalState,
 } from './types';
 
-// Records your answer to a skill proposal that still waits for one, on the proposal's thread, in
-// one write transaction with its checks, so 2 answers never both close a proposal. An approval
-// stores the skill as in force, and a seed then puts it in force for the next task.
 export async function writeSkillProposalAnswer(
   context: SkillAnswerContext,
   answer: SkillProposalAnswer,
@@ -55,7 +52,6 @@ export async function writeSkillProposalAnswer(
   return result;
 }
 
-// The proposal the answer names, once findAnswerRefusal finds no reason to refuse the answer.
 async function readOpenProposal(
   tx: Transaction<unknown>,
   context: SkillProposalContext,
@@ -71,13 +67,11 @@ async function readOpenProposal(
     throw refusal;
   }
 
-  // findAnswerRefusal refuses an answer to a proposal no record holds
   invariant(state);
 
   return state;
 }
 
-// the open proposal an approval closes, and your edited files, or null to apply the proposal's
 interface Approval {
   readonly state: SkillProposalState;
   readonly files: readonly SkillFile[] | null;

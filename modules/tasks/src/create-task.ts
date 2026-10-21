@@ -2,8 +2,6 @@ import { writeRecords } from '@heynixie/log';
 import { taskCreatedCodec } from './task-created-codec';
 import type { TasksContext } from './types';
 
-// Creates a task with its brief, ready for a runner to claim. The brief is free text, so it sits in
-// the record's erasable fields. Returns the task ID.
 export async function createTask(
   context: Pick<TasksContext, 'definitions' | 'log'>,
   brief: string,

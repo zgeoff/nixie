@@ -3,9 +3,6 @@ import type { MemoryToolStore } from '@heynixie/memory';
 import { buildMemoryTools } from '@heynixie/memory';
 import type { ToolDefinition } from '@heynixie/tools';
 
-// What the memory tools reach: the store through readStore, which returns null until it starts,
-// the clock memory.pending ages a proposal on, the owner's name and the zone each recalled line
-// reads, and the agent's first name, which the owner sees beside each rating.
 export interface ConversationMemory {
   readonly readStore: () => MemoryToolStore | null;
   readonly clock: Pick<Clock, 'now'>;
@@ -14,8 +11,6 @@ export interface ConversationMemory {
   readonly defaultZone: string;
 }
 
-// The conversation's tools that reach no memory store: web fetch, the time tool, the log reader
-// and the skill tools.
 export interface ConversationReaders {
   readonly webFetch: ToolDefinition;
   readonly time: ToolDefinition;
@@ -23,9 +18,6 @@ export interface ConversationReaders {
   readonly skills: readonly ToolDefinition[];
 }
 
-// Builds the conversation's tool definitions: the web fetch tool, the time tool, the log reader,
-// the skill tools and the 11 memory tools. The registry exists before the memory store starts, so the memory tools
-// reach the store through readStore. A call before the store starts throws.
 export function buildConversationTools(
   readers: ConversationReaders,
   memory: ConversationMemory,

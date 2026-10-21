@@ -9,9 +9,6 @@ import { startTestMemory } from './test-utils/start-test-memory';
 import { writePlannedBatch } from './test-utils/write-planned-batch';
 import { writerConfigSchema } from './writer-config-schema';
 
-// The writer's parts over a test memory, with the store's real batch gate and publish, and the
-// input of a step that holds the lease. The checker answers that it failed, so each write the gate
-// reaches waits for review as a proposal from the memory writer.
 async function setupTest() {
   const memory = await startTestMemory();
 

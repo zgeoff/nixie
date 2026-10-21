@@ -14,9 +14,8 @@ export interface ProcessGroup extends ProcessIO {
   readonly resume: () => void;
 }
 
-// Starts a command as the leader of its own process group, the double's stand-in for imp's cgroup.
-// A stop sends SIGTERM to the group and SIGKILL killGraceMs later, and exit waits for the group.
-// A member that leaves the group with setsid escapes it, which imp's cgroup kill catches.
+// A process group stands in for imp's cgroup. A member that calls setsid escapes the group's kill,
+// which imp's cgroup kill catches.
 export function startProcessGroup(options: ProcessGroupOptions): ProcessGroup {
   const child = Bun.spawn([...options.argv], {
     cwd: options.cwd,
@@ -56,7 +55,6 @@ export function startProcessGroup(options: ProcessGroupOptions): ProcessGroup {
 interface GroupStop {
   readonly send: () => void;
 
-  // resolves once the kill at the deadline ran, or never when no stop was sent
   readonly deadline: () => Promise<void> | null;
 }
 
@@ -89,7 +87,6 @@ interface Leader {
   readonly readExit: () => ExecExit;
 }
 
-// the exit of the leader, and after a stop the end of the whole group, as imp's EXIT means
 async function waitForProcessExit(leader: Leader, stop: GroupStop): Promise<ExecExit> {
   await leader.exited;
 
@@ -102,8 +99,8 @@ async function waitForProcessExit(leader: Leader, stop: GroupStop): Promise<Exec
   return leader.readExit();
 }
 
-// After the kill, a member gets this long to go, as imp's guest agent allows; a zombie no one reaps
-// would otherwise hold the exit forever.
+// imp's guest agent allows a member this long to go after the kill. Without the limit, a zombie that
+// no process reaps would hold the exit forever.
 const reapGraceMs = 5000;
 
 async function waitForGroupExit(pid: number, deadline: Promise<void>): Promise<void> {
@@ -135,7 +132,7 @@ function hasGroup(pid: number): boolean {
 }
 
 function toExecExit(child: Bun.Subprocess): ExecExit {
-  // Bun gives a signal with no name, such as a real-time one, as its number
+  // Bun gives a signal with no name, such as a real-time one, as its number.
   const signal = child.signalCode === null ? null : String(child.signalCode);
 
   return { code: child.signalCode === null ? child.exitCode : null, signal };

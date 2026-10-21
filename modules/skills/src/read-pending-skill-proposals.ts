@@ -4,9 +4,6 @@ import { readSkillProposals } from './read-skill-proposals';
 import { skillProposalLapseMs } from './skill-proposal-lapse-ms';
 import type { PendingSkillProposal, SkillProposalContext } from './types';
 
-// Reads the skill proposals that wait for your answer, oldest first, each with the version of its
-// skill in force now and whether the version an answer judges against moved past the proposal's
-// base. A proposal past its lapse time drops out before the sweep records its lapse.
 export async function readPendingSkillProposals(
   context: Pick<SkillProposalContext, 'log' | 'clock'>,
 ): Promise<readonly PendingSkillProposal[]> {

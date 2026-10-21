@@ -8,11 +8,9 @@ export interface ProposalSelectionBarProps {
   readonly proposals: readonly MemoryProposal[];
   readonly answers: ProposalAnswers;
 
-  // the IDs of the selected proposals, which may name proposals the list no longer holds
   readonly selected: ReadonlySet<string>;
   readonly onSelect: (selected: ReadonlySet<string>) => void;
 
-  // your edited text of each proposal you edit, by its ID
   readonly drafts: Readonly<Record<string, string>>;
 }
 
@@ -25,8 +23,6 @@ const bar = css({
   paddingBlock: '2',
 });
 
-// The answers to every selected proposal at once, each its own checked action: approve them, each
-// with your edited text where you edited it, or reject them with one optional reason.
 export function ProposalSelectionBar(props: ProposalSelectionBarProps): ReactNode {
   const [reason, setReason] = useState('');
   const chosen = props.proposals.filter((proposal) => props.selected.has(proposal.proposalID));
@@ -105,7 +101,6 @@ function SelectAll(props: SelectAllProps): ReactNode {
   );
 }
 
-// an edit that leaves the text as proposed approves the proposal as it is
 function buildApproval(proposal: MemoryProposal, drafts: Readonly<Record<string, string>>) {
   const draft = drafts[proposal.proposalID];
 

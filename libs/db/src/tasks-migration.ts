@@ -1,9 +1,8 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the tasks and timers projections and the leases table. The state check lists all 8
-// design states, because a SQLite check changes only with a table rebuild. Leases are not a
-// projection: a claim or a renewal changes a lease without a record, and a rebuild leaves them be.
+// A SQLite check constraint changes only with a table rebuild, so the state check lists every
+// state the design defines, whether or not code writes it.
 export const tasksMigration: Migration = {
   name: 'create the tasks, timers and leases',
   up: async (tx) => {
@@ -38,7 +37,6 @@ export const tasksMigration: Migration = {
 
     await sql`create index timers_by_due on timers (fired_at, due_at)`.execute(tx);
 
-    // one row per piece of work a runner ever claimed; the generation only rises
     await sql`create table leases (
       kind text not null check (kind in ('task', 'action')),
       work_id text not null,

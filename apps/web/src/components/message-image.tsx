@@ -8,14 +8,11 @@ export interface MessageImageProps {
   readonly thread: string;
   readonly sequence: number;
 
-  // the image's place among its message's images, from 0
   readonly position: number;
 }
 
 const gap = css({ color: 'textMuted', fontSize: 'sm' });
 
-// One image of one of your messages, read from the API once and kept while the page shows it. An
-// image the API no longer holds, such as one of a forgotten message, shows as a gap.
 export function MessageImage(props: MessageImageProps): ReactNode {
   const nixie = useNixieClient();
 

@@ -37,7 +37,7 @@ test.each([['constructor'], ['__proto__'], ['toString']])(
     const ctx = setupTest();
 
     const refresh = startPartRefresh({
-      // fromEntries makes the part an own key, where a literal __proto__ key sets the prototype
+      // A literal __proto__ key sets the prototype, so the test builds the object with fromEntries.
       checks: Object.fromEntries([[part, () => Promise.withResolvers<never>().promise]]),
       clock: ctx.clock,
       intervalMs: 5000,
@@ -126,7 +126,6 @@ test('it skips a part whose check still runs past its timeout in later rounds', 
 
   ctx.clock.advance(2000);
 
-  // the first round's report lands just before the interval's sleep starts
   await waitForCondition(
     () => !refresh.read('imp_runtime').isReady && refresh.read('disk').isReady,
   );
@@ -168,7 +167,6 @@ test('it checks a part again once its check that outlasted the timeout settles',
   stub.answerWith(() => Promise.resolve({ isReady: true, reason: null }));
   slow.resolve({ isReady: false, reason: 'impd does not answer' });
 
-  // the refresh's own reaction to the late answer runs before this await returns
   await slow.promise;
 
   ctx.clock.advance(5000);
@@ -194,7 +192,6 @@ test('it reports a check that rejects as unready, and checks the part again once
 
   onTestFinished(() => refresh.stop());
 
-  // the first round's report lands just before the interval's sleep starts
   await waitForCondition(
     () => refresh.read('imp_runtime').reason === 'the check failed: TypeError',
   );
@@ -252,7 +249,6 @@ test('it never checks again before the interval passes', async () => {
 
   onTestFinished(() => refresh.stop());
 
-  // the first round's report lands just before the interval's sleep starts
   await waitForCondition(() => refresh.read('disk').isReady);
 
   ctx.clock.advance(4999);
@@ -278,7 +274,6 @@ test('it answers with the last report while a later check runs', async () => {
     await refresh.stop();
   });
 
-  // the first round's report lands just before the interval's sleep starts
   await waitForCondition(() => refresh.read('imp_runtime').isReady);
 
   stub.answerWith(() => Promise.withResolvers<PartReport>().promise);

@@ -19,16 +19,11 @@ export interface GuestIO {
   readonly write: (bytes: Uint8Array) => Promise<void>;
   readonly env: Readonly<Record<string, string | undefined>>;
 
-  // creates nixie's tool server for the turn; production reaches the run's HTTP endpoint
   readonly createToolServer?: (turn: TurnFrame) => McpServerConfig;
 
-  // the pause before the turn's one reconnect to nixie's tool server
   readonly waitBeforeReconnect?: () => Promise<void>;
 }
 
-// Runs the conversation guest for one turn: the first host frame starts it, each later message
-// frame goes into it, and its frames go out framed. A summarize frame in its place runs one summary
-// call instead, and a purge frame removes the session state. A failure becomes a failed frame, so the host always learns how the run ended.
 export async function runConversationGuest(io: GuestIO): Promise<void> {
   const frames = readHostFrames(io.input)[Symbol.asyncIterator]();
   const emit = (frame: GuestFrame) => io.write(encodeFrame(encodeTurnFrame(frame)));
@@ -93,13 +88,14 @@ async function runFirstFrame(
   });
 }
 
-// The run's Streamable HTTP endpoint behind its bearer token. alwaysLoad holds the CLI's start
-// until the server connects, so init shows its real status and the first prompt lists its tools.
 function buildHTTPToolServer(turn: TurnFrame): McpServerConfig {
   return {
     type: 'http',
     url: new URL('/mcp', turn.tools.url).href,
     headers: { authorization: `Bearer ${turn.tools.token}` },
+
+    // alwaysLoad holds the CLI's start until the server connects, so init shows the server's real
+    // status and the first prompt lists its tools.
     alwaysLoad: true,
   };
 }

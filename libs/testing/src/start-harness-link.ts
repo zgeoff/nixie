@@ -5,7 +5,6 @@ import { buildTestClock } from './build-test-clock';
 import { harnessEnv } from './harness-env';
 import type { FaultPointArm, FaultPointWork, HarnessMessage, NixieMessage } from './types';
 
-// The IPC channel to the harness: Bun's process.send and message events in nixie, or a stand-in.
 export interface HarnessChannel {
   readonly send: (message: NixieMessage) => void;
   readonly subscribe: (onMessage: (message: HarnessMessage) => void) => void;
@@ -13,9 +12,6 @@ export interface HarnessChannel {
 
 export type HarnessOperation<Args> = (args: Args) => unknown;
 
-// nixie's half of the crash harness: the one clock, which the harness sets at start and advances,
-// the fault point handler, which holds a runner at an armed point until the harness releases it,
-// and the operations the harness asks nixie to run, such as writing your message.
 export interface HarnessLink {
   readonly clock: TestClock;
   readonly waitAtFaultPoint: (point: string, work: FaultPointWork) => Promise<void>;
@@ -53,13 +49,9 @@ const advanceArgsSchema = z.object({
   durationMs: z.number(),
   settle: z.boolean().exactOptional(),
 
-  // how long an advance waits for the sleepers it woke to sleep again
   settleTimeoutMs: z.number().exactOptional(),
 });
 
-// Starts the link from the clock time and the armed fault points the harness passed in the
-// environment. Two operations are built in: advance, which moves the clock and, with settle, waits
-// for every sleeper it woke to sleep again, and arm, which holds one more fault point.
 export function startHarnessLink(
   env: Readonly<Record<string, string | undefined>> = process.env,
   channel: HarnessChannel = processChannel,
@@ -116,7 +108,6 @@ export function startHarnessLink(
   };
 }
 
-// an arm and how many more arrivals it holds
 interface HeldArm {
   readonly arm: FaultPointArm;
   readonly held: { remaining: number };
@@ -168,9 +159,8 @@ async function runRequest(
 ): Promise<void> {
   const operation = operations.get(request.operation);
 
-  // A release and a request can arrive in one read, whose messages Bun emits in one task. The
-  // request waits a task, so the code a release let go, such as a graceful stop that starts its
-  // grace sleep, runs to its next wait before an advance moves the clock.
+  // Bun emits every message of one IPC read in one task, so a release and a request can share it.
+  // The request waits a task, so the code that the release let go reaches its next wait first.
   await setImmediate();
 
   try {

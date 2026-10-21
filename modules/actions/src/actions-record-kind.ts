@@ -1,5 +1,3 @@
-// The record kinds the actions module registers with the log. The outcome is an inbox kind, so the
-// tasks module registers it.
 export type ActionsRecordKind =
   | 'action.queued'
   | 'action.attempt_started'

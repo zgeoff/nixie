@@ -25,8 +25,8 @@ test('it plans the diff with only the keys that a release before reads, and the 
   const [proposed, summarized] = records;
   const changes = z.array(z.record(z.string(), z.json())).parse(proposed?.payload?.['changes']);
 
-  // 0.16.0's reader takes the diff and each change as strict objects, so one more key fails its
-  // rebuild, and it skips a record of a kind it does not know
+  // The release before reads the diff and each change as strict objects, so one more key fails its
+  // rebuild.
   expect(Object.keys(proposed?.payload ?? {}).toSorted()).toStrictEqual([
     'at',
     'changes',

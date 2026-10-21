@@ -4,14 +4,9 @@ import type { IndexEntry } from './start-memory-index';
 import type { StoreParts } from './types';
 
 export interface UpdatedIndexes {
-  // the vector indexes' rebuild, which runs on after the keyword indexes are full; false with no
-  // encoder, or when either rebuild failed
   readonly rebuilt: Promise<boolean>;
 }
 
-// Fills the keyword indexes from the readable active items and your readable messages, and starts
-// the vector indexes' rebuild from the same entries, which takes seconds, so the store starts
-// without waiting for it.
 export async function updateStoreIndexes(parts: StoreParts): Promise<UpdatedIndexes> {
   const entries = await readIndexEntries(parts.context);
   const messages = await readMessageEntries(parts.context, 0);

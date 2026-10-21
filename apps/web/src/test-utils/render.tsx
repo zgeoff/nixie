@@ -10,9 +10,6 @@ interface ProvidersProps {
   readonly children: ReactNode;
 }
 
-// Renders a view inside the providers the web client gives it: the browser's oRPC client, and a
-// fresh query cache per call with no retries, so a refused call shows at once. A rerender keeps
-// the providers and the cache, as a navigation between the app's pages does.
 export function render(ui: ReactNode): RenderResult {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 

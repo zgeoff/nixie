@@ -1,11 +1,8 @@
 import type { Clock } from '@heynixie/clock';
 
-// The clock a test sets and advances, so leases, timers and retry delays pass without a sleep.
 export interface TestClock extends Clock {
-  // moves time forward and wakes every sleeper whose due time it passed, earliest first
   readonly advance: (durationMs: number) => void;
 
-  // how many sleeps are waiting, so a test advances only once the code it drives sleeps
   readonly countSleepers: () => number;
 }
 
@@ -14,8 +11,6 @@ interface Sleeper {
   readonly stop: () => void;
 }
 
-// Builds a test clock that starts at startMs. A sleep resolves when an advance reaches its due time
-// or when its signal aborts, as the system clock's sleep does; a sleep of no time resolves at once.
 export function buildTestClock(startMs: number): TestClock {
   const state = { now: startMs };
 

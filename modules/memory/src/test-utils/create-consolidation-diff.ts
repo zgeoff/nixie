@@ -10,18 +10,13 @@ import type { TestMemory } from './start-test-memory';
 export interface DiffRequest {
   readonly changes: readonly StagedChange[];
 
-  // the run's time on the clock the store's gate reads, now by default
   readonly now?: number;
 
-  // how long each change waits for an answer, a week by default
   readonly lapseMs?: number;
 
-  // the summary the session left and the items it was shown, none by default
   readonly summary?: PlannedSummary;
 }
 
-// Writes the records a consolidator run commits for the staged changes and its summary, on the
-// consolidator's thread, and returns the pending diff they made.
 export async function createConsolidationDiff(
   memory: Pick<TestMemory, 'log' | 'store'>,
   request: DiffRequest,

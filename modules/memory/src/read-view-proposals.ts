@@ -5,9 +5,6 @@ import { readPendingProposals } from './read-pending-proposals';
 import type { StoreParts } from './types';
 import type { ViewEvidence, ViewProposal } from './view-types';
 
-// Reads the pending proposals for the memory view, each with its quote inside the message it came
-// from. A proposal opens only under its item's key, so a forgotten item's proposal is already gone
-// from the list, and never shows the words it came from.
 export async function readViewProposals(parts: StoreParts): Promise<readonly ViewProposal[]> {
   const pending = await readPendingProposals(parts);
 

@@ -5,8 +5,6 @@ import type { NetworkInterfaceInfo } from 'node:os';
 import { networkInterfaces } from 'node:os';
 import { hasRoutableIPv6 } from './has-routable-ipv6';
 
-// A target whose listener is optional may have nothing on its port, such as a host address where
-// impd does not listen; a refusal there leaves the target unprovable instead of failed.
 interface IsolationTarget {
   host: string;
   port: number;
@@ -19,9 +17,6 @@ interface ListenerCheckOptions {
   openSocket: (host: string, port: number) => Socket;
 }
 
-// A sandbox's failed connection proves isolation only when its target has a live listener, so this
-// machine, the trusted vantage point, connects to each target too, and prints each target it cannot
-// prove. Each line is `<target> listener <x>; sandbox <y>`.
 export async function checkIsolationTargets(
   targets: readonly Readonly<IsolationTarget>[],
   probeFromSandbox: (host: string, port: number) => Promise<string>,
@@ -77,8 +72,6 @@ async function checkListener(
   return `failed ${failure}`;
 }
 
-// the socket closes on every outcome, so a target that drops packets leaves no connection retrying
-// after its deadline
 async function tryCheckConnection(
   target: Readonly<IsolationTarget>,
   options: Readonly<ListenerCheckOptions>,

@@ -22,23 +22,15 @@ type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 
 export interface StubGuestSandboxesOptions {
-  // the recorder the adapter writes its sandboxes' lifecycle through, as a real adapter does
   readonly recorder: SandboxRecorder;
 
-  // how the guest calls a tool the model asks for; a tool use with none fails the turn
   readonly callTool?: StubGuestToolCaller;
 
-  // the tokens a text adds to the context, which each session entry's size and the context size
-  // the guest reports come from
   readonly countTokens: (text: string) => number;
 
-  // the host folder that holds each sandbox's own folder, as the process sandbox's root does: a
-  // command with no HOME then has its home at the guest's root, which is that folder on the host;
-  // with none, such a command has no home
   readonly hostRoot?: string;
 }
 
-// A host frame as one sandbox's guest received it.
 export interface ReceivedFrame {
   readonly sandboxID: string;
   readonly frame: HostFrame;
@@ -47,32 +39,22 @@ export interface ReceivedFrame {
 export interface StubGuestSandboxes {
   readonly adapter: SandboxAdapter;
 
-  // every host frame the guests received, in order
   readonly received: readonly ReceivedFrame[];
   readonly turns: readonly TurnFrame[];
   readonly summaries: readonly SummarizeFrame[];
 
-  // the ID of the sandbox each purge frame reached, in order
   readonly purged: readonly string[];
 
-  // the ID of each sandbox the adapter holds and has not destroyed
   readonly readSandboxIDs: () => readonly string[];
 
-  // appends replies to the queue the guests answer from, one per model call, in order; a call past
-  // the queue's end gets a default reply
   readonly addReplies: (...replies: readonly StubGuestReply[]) => void;
 
-  // makes the next turn that ends reach this context size, in tokens, unless it already passed it
   readonly setContextSize: (tokens: number) => void;
 
-  // the path of each file on any sandbox's disk whose text includes the text
   readonly collectFilesWithText: (text: string) => readonly string[];
 
-  // removes every session from the disk of each sandbox the owner holds, as a sandbox that lost its
-  // disk has none
   readonly removeSessions: (owner: string) => void;
 
-  // makes each later copy out of the sandboxes the owner holds fail with this reason
   readonly failCopyOut: (owner: string, reason: string) => void;
 }
 
@@ -96,9 +78,6 @@ interface StubState {
   contextSize: number | null;
 }
 
-// Builds a stand-in for the sandbox adapter whose sandboxes hold the state of a conversation guest.
-// Each sandbox keeps its sessions as transcripts on a disk of its own, so a session reaches a
-// replacement sandbox only through the host's copy. It speaks the real frames, with no process.
 export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): StubGuestSandboxes {
   const state: StubState = {
     options,
@@ -164,7 +143,6 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
   };
 }
 
-// Writes the created record before it makes anything, as a real adapter does, then the grants.
 async function createSandbox(state: StubState, spec: SandboxSpec): Promise<Sandbox> {
   requireSandboxSpec(spec);
 
@@ -185,7 +163,6 @@ async function createSandbox(state: StubState, spec: SandboxSpec): Promise<Sandb
 }
 
 function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: SandboxState): Sandbox {
-  // the process double refuses a call to a sleeping sandbox, so a test that forgets a wake fails
   const requireAwake = () => {
     if (own.isAsleep) {
       return Promise.reject(new Error(`sandbox ${id} is asleep`));
@@ -221,7 +198,6 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
     },
     resolveHome: (env) => Promise.try(() => resolveHome(state.options.hostRoot, id, env)),
 
-    // a list and a move run in the guest, as imp runs them, so a sleeping sandbox refuses them
     readFilePaths: async (directory, options) => {
       await requireAwake();
 
@@ -259,9 +235,6 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
   };
 }
 
-// The HOME a command sets is the guest's home in both forms. A command with no HOME has its home at
-// the guest's root, whose own path is the sandbox's folder under the host root; with no host root it
-// has none.
 function findGuestHome(
   hostRoot: string | undefined,
   id: string,
@@ -284,7 +257,6 @@ interface GuestSandbox {
 
 const defaultReply = 'Hello.';
 
-// the guest of one spawn: it records each frame it receives and answers from the sandbox's disk
 function startGuest(state: StubState, sandbox: GuestSandbox, home: GuestHome | null) {
   const runWithGuestHome = (
     run: (home: GuestHome) => Promise<readonly GuestFrame[]> | readonly GuestFrame[],
@@ -325,7 +297,6 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: GuestHome | n
           takeMessage: () => guest.takeMessage?.(),
           ...(guest.emit === undefined ? {} : { emit: guest.emit }),
 
-          // a guest with no signal is one no host stops
           signal: guest.signal ?? new AbortController().signal,
         }),
       ),
@@ -368,8 +339,6 @@ function resolveHome(
   return home;
 }
 
-// every file under the directory down to the depth, relative to it; the disk holds files only, so a
-// directory is the prefix its files share
 function collectDiskPaths(
   disk: StubGuestDisk,
   directory: string,
@@ -383,7 +352,6 @@ function collectDiskPaths(
     .filter((path) => path.split('/').length <= maxDepth);
 }
 
-// a rename: it replaces a file at the target, and fails on a missing source or a directory target
 function applyMove(disk: StubGuestDisk, from: string, to: string): void {
   const content = disk.files.get(from);
 
@@ -404,8 +372,6 @@ interface SandboxRow {
   readonly spec: SandboxSpec;
 }
 
-// the sandbox's state in the registry, with an empty disk registered for a sandbox it lacks, such
-// as one a restarted adapter finds in the recorder
 function registerSandboxState(state: StubState, row: SandboxRow): SandboxState {
   const registered = state.sandboxes.get(row.sandboxID);
 

@@ -11,7 +11,6 @@ import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { Conversation } from './conversation';
 
 async function setupTest() {
-  // the conversation renders only for a signed-in browser
   await createDeviceSession();
 
   return { user: userEvent.setup() };
@@ -141,7 +140,6 @@ test('it drops the messages from before a reset that arrives on the live stream 
 
   await rendered.findByText('It is now.');
 
-  // the server restarts after the reset, so the read again fails and the client keeps its cache
   server.use(http.post('*/rpc/conversation/read', () => new HttpResponse(null, { status: 503 })));
 
   await store.records.create({
@@ -159,7 +157,6 @@ test('it drops the messages from before a reset that arrives on the live stream 
 test('it drops a message this tab sent before a reset and stops working', async () => {
   const ctx = await setupTest();
 
-  // the API never answers the send, so the message stays in the outbox, sending
   server.use(
     http.post('*/rpc/conversation/send', async () => {
       await delay('infinite');
@@ -183,8 +180,6 @@ test('it drops a message this tab sent before a reset and stops working', async 
   expect(rendered.queryByRole('progressbar', { name: 'nixie is working' })).toBeNull();
 });
 
-// The server's clock runs a minute ahead of the browser's, so the reset carries a time after the
-// message the tab writes once the reset shows.
 test('it keeps a message this tab sends after a reset while its clock runs behind the server', async () => {
   const ctx = await setupTest();
 
@@ -211,7 +206,6 @@ test('it keeps a message this tab sends after a reset while its clock runs behin
   });
 });
 
-// The client pauses 1 s and then 2 s between the three attempts, on the platform timer.
 test('it says live updates are unavailable while the live stream keeps failing', async () => {
   await setupTest();
 
@@ -275,7 +269,6 @@ test('it drops the failure notice of a step a reset removed while the read after
 
   await rendered.findByRole('alert');
 
-  // the server restarts after the reset, so the read again fails and the client keeps its cache
   server.use(http.post('*/rpc/conversation/read', () => new HttpResponse(null, { status: 503 })));
   store.records.clear();
 
@@ -324,7 +317,6 @@ test('it keeps a failed forget and its retry once the forget start drops the tex
     message: { text: 'The shed code is 4417.' },
   });
 
-  // the API commits the forget's start, so the stream drops the text, and then its cleanup fails
   server.use(
     http.post('*/rpc/conversation/forget', async () => {
       await store.records.create({
@@ -359,7 +351,6 @@ test('it finishes a failed forget when you confirm it again', async () => {
     message: { text: 'The shed code is 4417.' },
   });
 
-  // the first confirm fails, and the next one reaches the mock API
   server.use(http.post('*/rpc/conversation/forget', () => HttpResponse.error(), { once: true }));
 
   const rendered = render(<Conversation thread="conversation" />);
@@ -514,7 +505,6 @@ test('it sends stored messages in the order you sent them', async () => {
     ]),
   );
 
-  // the first send is slow, so a client that sends both at once writes the second one first
   server.use(
     http.post(
       '*/rpc/conversation/send',

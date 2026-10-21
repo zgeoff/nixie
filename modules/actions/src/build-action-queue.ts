@@ -9,14 +9,9 @@ import { waitForActionOutcome } from './wait-for-action-outcome';
 export interface ActionQueueBridge {
   readonly queue: ActionQueue;
 
-  // wraps the task runners' step, so a queued call that a step's model makes queues under the
-  // claim of that step
   readonly trackSteps: (runStep: RunStep) => RunStep;
 }
 
-// Builds the action queue that the tool endpoint hands each allowed queued call to. A call from the
-// step that holds its thread's claim queues under that claim, with an action hash of its tool and
-// arguments, so a rerun of a crashed step matches the action it queued; any other call queues nothing.
 export function buildActionQueue(context: TasksContext): ActionQueueBridge {
   const steps = new Map<string, TaskClaim>();
 
@@ -59,7 +54,6 @@ export function buildActionQueue(context: TasksContext): ActionQueueBridge {
       try {
         return await runStep(input);
       } finally {
-        // a runner that lost its lease ends after the one that took the task over started
         if (steps.get(input.taskID) === step) {
           steps.delete(input.taskID);
         }
@@ -68,8 +62,6 @@ export function buildActionQueue(context: TasksContext): ActionQueueBridge {
   };
 }
 
-// A pending action, and a done action whose result was forgotten, give no outcome inside the turn;
-// the outcome reaches the task's inbox either way.
 function toActionOutcome(view: ModelView): ActionOutcome | null {
   if (view.status === 'done') {
     return view.result === null ? null : { outcome: 'done', result: view.result };

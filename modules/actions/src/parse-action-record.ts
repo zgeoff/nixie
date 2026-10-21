@@ -1,7 +1,6 @@
 import type { EnvelopeRecord, JSONValue } from '@heynixie/log';
 import type { ActionStatus, OutcomeReason } from './types';
 
-// The action records the actions projection folds, each with its plain payload.
 export type ActionRecord =
   | {
       readonly kind: 'action.queued';
@@ -72,8 +71,6 @@ const actionRecordParsers: ReadonlyMap<string, (getField: GetField) => ActionRec
   ],
 ]);
 
-// Reads an action record's payload into its typed shape, or null for a record of another kind. An
-// action record whose payload lacks a field throws, so a fold never writes a half-read row.
 export function parseActionRecord(record: EnvelopeRecord): ActionRecord | null {
   const parse = actionRecordParsers.get(record.kind);
 

@@ -2,9 +2,6 @@ import type { SeedResult } from '@heynixie/definitions';
 import type { LogFields } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 
-// The fields of a definitions.seeded line, each naming the definitions in force after the seed, so
-// a refused seed shows the last good one. The revision and the content hash follow every file; the
-// snapshot hash follows only what is in force.
 export function buildSeedLogFields(result: SeedResult): LogFields {
   return {
     status: result.status,

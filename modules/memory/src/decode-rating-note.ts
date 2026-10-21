@@ -4,8 +4,6 @@ import type { RatingNotePlace } from './sealed-types';
 
 const ratingNote = defineSealedCodec('rating-note/', sealedTextSchema);
 
-// Opens what encodeRatingNote sealed. A wrong key, another rating's or item's ID, or a changed byte
-// rejects.
 export async function decodeRatingNote(
   key: CryptoKey,
   place: RatingNotePlace,

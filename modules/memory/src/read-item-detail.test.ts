@@ -227,7 +227,6 @@ test("it reads the writer's model from the batch that applied a version whose ro
     },
   ]);
 
-  // a version the writer applied before its versions kept the model
   const item = await ctx.memory.store.remember({
     text: 'Plays the cello on Thursdays',
     provenance: {

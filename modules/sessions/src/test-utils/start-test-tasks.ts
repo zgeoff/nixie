@@ -16,12 +16,9 @@ interface TestTasks {
   readonly clock: TestClock;
   readonly context: TasksContext;
 
-  // the writer's handle with the tasks tables typed, for a test that reads a task's row
   readonly db: Kysely<TasksTables>;
 }
 
-// Starts a writer on a fresh data directory with the log's and the tasks projections, and a test
-// clock at 1,000,000 ms. When the test finishes it stops the writer, then removes the directory.
 export async function startTestTasks(): Promise<TestTasks> {
   const stack = new AsyncDisposableStack();
 

@@ -11,7 +11,6 @@ import { writeInboxRecords } from './write-inbox-records';
 async function setupTest() {
   const tasks = await startTestTasks();
 
-  // nixie creates the conversation on its first start
   await createConversationTask(tasks.context);
 
   return { ...tasks, db: tasks.writer.db.$extendTables<TasksTables>() };
@@ -198,7 +197,6 @@ test('it aborts the step and commits nothing once the lease is lost', async () =
     runStep: async (input) => {
       await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
-      // the runner stalled past every renewal, so the next one finds the lease expired
       ctx.clock.advance(60_000);
 
       await waitForCondition(() => input.signal.aborted);

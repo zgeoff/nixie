@@ -129,7 +129,6 @@ test('it holds a new session the messages its recent turns reach back to within 
     isNewSession: true,
     beforeSequence: pending.sequence,
 
-    // room for the short recent message's line and not the long one before it
     rebuildTokens: 20,
     times: { defaultZone: 'UTC', now: new Date() },
   });

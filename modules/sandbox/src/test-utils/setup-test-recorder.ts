@@ -15,8 +15,6 @@ export interface TestRecorder {
   readonly readSandboxRecords: () => Promise<readonly LogRecord[]>;
 }
 
-// Starts a writer on a fresh data directory with the sandboxes projection, and a recorder on it.
-// When the test finishes it stops the writer, then removes the directory.
 export async function setupTestRecorder(): Promise<TestRecorder> {
   const stack = new AsyncDisposableStack();
 

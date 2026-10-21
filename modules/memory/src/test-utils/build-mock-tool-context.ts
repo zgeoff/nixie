@@ -1,7 +1,6 @@
 import { faker } from '@faker-js/faker';
 import type { ToolContext, ToolRun } from '@heynixie/tools';
 
-// A conversation run with no tool list, a run ID and a model ID.
 export function buildMockToolContext(overrides: Partial<ToolRun> = {}): ToolContext {
   return {
     run: {

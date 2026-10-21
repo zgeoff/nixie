@@ -5,9 +5,9 @@ import { join } from 'node:path';
 import { $ } from 'bun';
 import { startStubToolEndpoint } from './start-stub-tool-endpoint';
 
-// The test preload's mock server drops fetch's unix option on the requests it passes through, so
-// these tests reach the socket with curl, as a guest process does. curl runs in the socket's
-// directory, because a temp path can pass the length a unix socket address holds.
+// The test preload's mock server drops fetch's unix option, so these tests reach the socket with
+// curl. curl runs in the socket's directory, because a temp path can pass the length limit of a
+// unix socket address.
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-tool-endpoint-'));
 
@@ -46,14 +46,12 @@ test('it stops listening when the test finishes', async () => {
 
   startStubToolEndpoint(join(directory, 'tools.sock'));
 
-  // hooks run first in, first out: the stub stops, this check runs, then the directory goes
   onTestFinished(async () => {
     const result = await $`curl -sS --unix-socket tools.sock http://localhost/`
       .cwd(directory)
       .nothrow()
       .quiet();
 
-    // curl's exit code for a connection that reached no server
     expect(result.exitCode).toBe(7);
   });
 

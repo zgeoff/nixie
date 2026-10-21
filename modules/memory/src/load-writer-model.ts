@@ -10,9 +10,6 @@ const publishedBatch = z.object({
   model: z.string().nullable(),
 });
 
-// Loads the model that wrote a version. A version the memory writer applied before its versions
-// kept the model holds none, so it takes the model of the batch that applied it: that batch's
-// published record commits after its versions, in the same transaction and the writer's thread.
 export async function loadWriterModel(
   log: Pick<Log, 'writer'>,
   row: MemoryVersionRow,

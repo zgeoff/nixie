@@ -9,8 +9,6 @@ import { z } from 'zod';
 import { collectToolCalls } from './collect-tool-calls';
 import { runContractQuery } from './run-contract-query';
 
-// the scripted model, and the options of a query that may call two in-process tools: one that
-// echoes its text, and one that never answers
 async function setupTest() {
   const model = startScriptedModel();
 

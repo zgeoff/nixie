@@ -1,8 +1,5 @@
 import type { KeyStoreTables, Log } from './types';
 
-// Reads and unwraps the record keys under keyIDs. A key that the key store no longer holds, because
-// a forget or an expiry deleted it, is missing from the map. A key that fails to unwrap, such as one
-// wrapped by another deployment key, maps to null.
 export async function readRecordKeys(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   keyIDs: readonly string[],

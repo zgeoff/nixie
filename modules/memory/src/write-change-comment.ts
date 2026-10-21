@@ -12,9 +12,6 @@ import { encodeChangeComment } from './encode-change-comment';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
 import type { StoreParts } from './types';
 
-// Keeps the conversation's comment, sealed under the first input's key, beside one change that
-// still waits for your answer, in place of any it held, and returns the change's short ID. The
-// comment answers nothing: the change stays pending under the same action hash.
 export async function writeChangeComment(
   parts: StoreParts,
   request: ChangeCommentRequest,
@@ -55,8 +52,6 @@ export async function writeChangeComment(
   return row.short_id ?? buildShortIDFromUUID(row.change_id);
 }
 
-// the change a comment names by its short ID or its UUID, while it is pending and not past its
-// lapse time
 async function requireOpenChange(
   db: Kysely<ConsolidationTables>,
   changeID: string,
@@ -79,8 +74,8 @@ async function requireOpenChange(
   return row;
 }
 
-// the change by its stored alias or its UUID, or else the one whose derived short ID matches: an
-// older build leaves short_id null, and the read path shows the derived ID for such a change
+// A build without the short_id column leaves it null, and the read path shows the derived short ID
+// for such a change, so the lookup matches the derived ID too.
 async function readChange(
   db: Kysely<ConsolidationTables>,
   changeID: string,

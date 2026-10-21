@@ -127,14 +127,15 @@ links to the repository and its page shows the source. GHCR creates each package
 first push. The sandbox packages must then be set public once in their package settings, because
 impd pulls without credentials, and the check-pulls stage fails the release until they are.
 
-Every pull request rehearses the image stages against a registry that lives only for the job. It
-builds all 4 images, writes the sandbox manifest, checks that the nixie image carries it, pulls the
-sandbox images with no credentials, and tags every image twice to prove the tag stage keeps each
-digest and repeats safely. It then builds `release.json` from those digests, as the assets stage
-does, and checks that each image it names resolves its tag to its digest. It runs the upload script
-against a stand-in for the GitHub CLI, which proves the schema goes up before `release.json` and
-that a failed schema upload stops the run before `release.json` goes out. A broken Dockerfile or
-release script therefore fails the pull request, never a release.
+The Images workflow rehearses the image stages against a registry that lives only for the job. It
+runs on each push to main, and on each pull request that changes a file the images or the stages
+read. It builds all 4 images, writes the sandbox manifest, checks that the nixie image carries it,
+pulls the sandbox images with no credentials, and tags every image twice to prove the tag stage
+keeps each digest and repeats safely. It then builds `release.json` from those digests, as the
+assets stage does, and checks that each image it names resolves its tag to its digest. It runs the
+upload script against a stand-in for the GitHub CLI, which proves the schema goes up before
+`release.json` and that a failed schema upload stops the run before `release.json` goes out. A
+broken Dockerfile or release script therefore fails the pull request, never a release.
 
 ## Attestations
 
@@ -149,7 +150,9 @@ an attestation at deploy yet.
 
 Pull-request CI compares each pull request with the last release, the newest `v*` tag reachable from
 its base. Before the first release, CI skips the contract check, and the migration check lists every
-migration and refuses none.
+migration and refuses none. A pull request that changes neither the contract nor the database
+library skips both checks, and each push to main checks the pushed commit against the newest `v*`
+tag reachable from it.
 
 The contract check generates an OpenAPI document from the oRPC contract and diffs it with oasdiff
 against the copy the release tag holds. The repo commits that document beside the contract, and a

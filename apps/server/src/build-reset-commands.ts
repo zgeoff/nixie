@@ -2,7 +2,6 @@ import { resolveSocketPath } from './resolve-socket-path';
 import { sendHostRequest } from './send-host-request';
 import type { CLIFlags, CLIIO, Command } from './types';
 
-// reset removes every record and keeps the live device sessions, under 0046
 export function buildResetCommands(): readonly (readonly [string, Command])[] {
   return [['reset', runReset]];
 }
@@ -15,8 +14,6 @@ const resetWarning = [
   backupNote,
 ].join('\n');
 
-// The only undo for a reset by mistake is a restore from backup, so the command runs only with
-// --yes, and only with --keep-sessions, because a reset that signs every device out is not built.
 async function runReset(flags: CLIFlags, io: CLIIO): Promise<number> {
   if (!flags['keep-sessions']) {
     io.print(

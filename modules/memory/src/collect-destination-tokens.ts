@@ -1,5 +1,3 @@
-// A destination-like token in a text, with the form it compares in. A BSB and account number also
-// carries the account number alone as its part.
 export interface DestinationToken {
   readonly kind: 'account' | 'domain' | 'email' | 'handle' | 'phone' | 'url';
   readonly key: string;
@@ -26,16 +24,12 @@ const patterns: readonly TokenPattern[] = [
     pattern: /\b[A-Z]{2}\d{2}(?:\s?[A-Z\d]{4}){2,7}(?:\s?[A-Z\d]{1,4})?\b/gu,
   },
 
-  // an Australian BSB and its account number, whose digits may sit in groups, with an optional
-  // account word between them; neither pattern takes part of a longer run of digit groups or of an
-  // international number, which the phone pattern takes whole
   {
     kind: 'account',
     pattern:
       /(?<!\+[\p{Zs}\t]?|\d[\p{Zs}\t-]?)\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+(?<account>\d(?:[\p{Zs}\t]?\d){4,8})\b(?![\p{Zs}\t-]?\d)/giu,
   },
 
-  // a run of 6 to 17 digits right after an account word, such as "account number is"
   {
     kind: 'account',
     pattern:
@@ -45,8 +39,6 @@ const patterns: readonly TokenPattern[] = [
   { kind: 'domain', pattern: /\b(?:[\p{L}\p{N}-]+\.)+\p{L}{2,63}\b/gu },
 ];
 
-// Finds the destination-like tokens in a text. A URL is found before an email inside it, and an
-// email's domain or a URL's host is never a second token.
 export function collectDestinationTokens(text: string): readonly DestinationToken[] {
   const tokens: DestinationToken[] = [];
   const taken: TokenRange[] = [];
@@ -60,8 +52,6 @@ export function collectDestinationTokens(text: string): readonly DestinationToke
 
 const trailing = /[.,;:!?)\]}'"’”]+$/u;
 
-// a match that overlaps a token an earlier pattern took is part of that token, a phone number needs
-// at least 7 digits, and a BSB and account number keeps the account number alone as its part
 function collectPatternTokens(
   text: string,
   entry: TokenPattern,
@@ -90,9 +80,6 @@ function collectPatternTokens(
   });
 }
 
-// Phone numbers and IBANs compare by their digits and letters, a domestic account number by its
-// digits alone, a URL by its scheme and host without case and its path, query and fragment exactly,
-// and every other kind without case.
 function buildTokenKey(kind: DestinationToken['kind'], raw: string): string {
   const cleaned = raw.normalize('NFC').replace(trailing, '');
 

@@ -2,9 +2,7 @@ import { imageLimits } from '@heynixie/contract';
 import invariant from 'tiny-invariant';
 import { ImageUnreadableError } from './image-unreadable-error';
 
-// Turns an image you attach into the copy nixie keeps: the browser decodes it, HEIC included where
-// the browser reads HEIC, and draws it with its long edge at most 1568 px, upright as the camera
-// took it. The new encoding carries none of the file's metadata, such as where a photo was taken.
+// The new encoding carries none of the file's metadata, such as where a photo was taken.
 export async function normalizeImage(image: Blob): Promise<File> {
   const bitmap = await createImageBitmap(image).catch((error: unknown) => {
     throw new ImageUnreadableError(error);
@@ -19,7 +17,6 @@ export async function normalizeImage(image: Blob): Promise<File> {
 
   const context = canvas.getContext('2d');
 
-  // a fresh OffscreenCanvas always has a 2d context to give
   invariant(context, 'the canvas has no 2d context');
 
   context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
@@ -37,7 +34,6 @@ interface Encoding {
   readonly quality?: number;
 }
 
-// a PNG past the byte limit, such as a photo saved as PNG, goes again as JPEG
 async function encodeCanvas(canvas: OffscreenCanvas, encoding: Encoding): Promise<Blob> {
   const encoded = await canvas.convertToBlob(encoding);
 
@@ -48,7 +44,6 @@ async function encodeCanvas(canvas: OffscreenCanvas, encoding: Encoding): Promis
   return canvas.convertToBlob({ type: 'image/jpeg', quality: 0.85 });
 }
 
-// a screenshot or a drawing keeps its sharp edges and its transparency as PNG; a photo goes as JPEG
 function pickEncoding(type: string): Encoding {
   return type === 'image/png' || type === 'image/gif' || type === 'image/webp'
     ? { type: 'image/png' }

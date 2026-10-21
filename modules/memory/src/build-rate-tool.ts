@@ -4,8 +4,6 @@ import { z } from 'zod';
 import { MemoryRatingError } from './memory-rating-error';
 import type { MemoryStore } from './types';
 
-// The names the rate tool reads: the owner's name, or null for "the owner", and the agent's name
-// that the owner sees beside each rating, or null when the config names none.
 export interface RateToolOptions {
   readonly ownerName: string | null;
   readonly agentName: string | null;
@@ -38,9 +36,6 @@ const rateInput = {
   additionalProperties: false,
 };
 
-// Builds memory.rate, which declares note and keeps the model's ratings of the memories the
-// thread's latest recall delivered, for the owner to see on that turn. A rating is no memory write:
-// it passes no gate, and nothing acts on it.
 export function buildRateTool(
   memory: Pick<MemoryStore, 'rate'>,
   options: RateToolOptions,
@@ -68,15 +63,11 @@ export function buildRateTool(
     },
     execution: 'direct',
 
-    // the model can copy an item's text into a note, which the item's key seals
     recordInput: buildRecordedInput,
     run: (call, context) => runRateCall(memory, { call, context, owner, options }),
   };
 }
 
-// Each rating with an item that is an ID and a known verdict, and nothing else. The runner records
-// a call before the input schema checks it, so a malformed value, such as text in a verdict or an
-// item, is dropped rather than kept in the call's record, which a forget never reaches.
 function buildRecordedInput(input: JSONObject): JSONObject {
   const ratings = input['ratings'];
 
@@ -89,7 +80,6 @@ function isJSONArray(value: JSONValue | undefined): value is readonly JSONValue[
   return Array.isArray(value);
 }
 
-// a short ID, a lowercase letter then 9 lowercase letters or digits, or an item's UUID
 const itemIDPattern =
   /^(?:[a-z][a-z0-9]{9}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/u;
 
@@ -130,7 +120,6 @@ const ratingArgument = z.object({
 
 const rateArguments = z.object({ ratings: z.array(ratingArgument) });
 
-// A refused rating is the model's to read; any other failure propagates.
 async function runRateCall(
   memory: Pick<MemoryStore, 'rate'>,
   rate: RateCall,

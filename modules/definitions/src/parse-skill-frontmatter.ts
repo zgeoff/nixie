@@ -1,14 +1,11 @@
 import { skillFrontmatterSchema } from './skill-frontmatter-schema';
 import type { SkillFrontmatter } from './types';
 
-// The parts of a SKILL.md: its frontmatter, and the body after it.
 export interface SkillDocument {
   readonly frontmatter: SkillFrontmatter;
   readonly body: string;
 }
 
-// Parses the YAML frontmatter that opens a SKILL.md and checks it against the Agent Skills format.
-// It returns the reasons a frontmatter fails, each naming its field, or the parsed document.
 export function parseSkillFrontmatter(text: string): SkillDocument | readonly string[] {
   const match = /^---\n(?<yaml>[\s\S]*?)\n---(?:\n|$)/u.exec(text);
   const yaml = match?.groups?.['yaml'];

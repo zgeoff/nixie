@@ -5,9 +5,6 @@ import { requirePendingChange } from './require-pending-change';
 import type { StoreParts } from './types';
 import { writeConsolidatorWakeInTransaction } from './write-consolidator-wake-in-transaction';
 
-// Closes one consolidation change with your rejection, while it is pending under the hash you saw.
-// Nothing in memory changes, and the other changes of its diff still wait; the last answer wakes the
-// consolidator.
 export async function writeChangeRejection(parts: StoreParts, answer: ChangeAnswer): Promise<void> {
   await withWriteTransaction(parts.context.log.writer, async (tx) => {
     await requirePendingChange(tx.$extendTables<ConsolidationTables>(), {

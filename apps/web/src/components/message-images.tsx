@@ -10,8 +10,6 @@ export interface MessageImagesProps {
 
 const list = css({ display: 'flex', flexWrap: 'wrap', gap: '2', marginBlock: '1' });
 
-// The images of one of your messages in the thread, each read from the API on its own. An image the
-// API no longer holds, such as one of a message forgotten on another device, shows as a gap.
 export function MessageImages(props: MessageImagesProps): ReactNode {
   return (
     <ul aria-label="Images" className={list}>

@@ -4,11 +4,8 @@ import { readViewItems } from './read-view-items';
 import type { StoreParts } from './types';
 import type { ViewItem, ViewMatch, ViewMatches } from './view-types';
 
-// the most matches one search shows, as many as one recall delivers
 const matchLimit = 100;
 
-// Finds the active items whose text matches a query, ranked as a recall ranks them, and reads each
-// as the memory view lists it. An item that left the active state after the ranking is left out.
 export async function readViewMatches(parts: StoreParts, query: string): Promise<ViewMatches> {
   const ranked = await readRankedMatches(parts, { query, limit: matchLimit, excludedIDs: [] });
 
@@ -27,7 +24,6 @@ export async function readViewMatches(parts: StoreParts, query: string): Promise
   };
 }
 
-// an item with each score an index gave it, leaving out an index that did not place it
 function buildViewMatch(item: ViewItem, match: MatchScores | undefined): ViewMatch {
   return {
     ...item,

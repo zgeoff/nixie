@@ -4,22 +4,15 @@ import { runTaskStep } from '../run-task-step';
 import type { RunStep, TaskClaim, TasksContext } from '../types';
 
 export interface TaskStepsOptions {
-  // the step of each task the run drives, by task ID
   readonly steps: Readonly<Record<string, RunStep>>;
 
-  // moves the context's test clock forward, so the next timer falls due without a sleep
   readonly advance: (durationMs: number) => void;
 
-  // checked after each step: true ends the run before the tasks settle
   readonly probeDone?: () => Promise<boolean>;
 
-  // the most steps the run takes before it throws, so a task that never settles fails the test
   readonly maxSteps: number;
 }
 
-// Runs task steps the way a runner does, firing each due timer first and moving the clock to the
-// next timer when no task has work, until no timer is left or probeDone holds. It returns how many
-// steps ran, and throws on a claimed task it has no step for.
 export async function runTaskSteps(
   context: TasksContext,
   options: TaskStepsOptions,
@@ -41,8 +34,6 @@ export async function runTaskSteps(
   throw new Error(`the tasks ran ${String(options.maxSteps)} steps and still had work`);
 }
 
-// runs the next step, after moving the clock to the next timer when no task has work, or returns
-// false when no task has work and no timer is left
 async function runNextStep(context: TasksContext, options: TaskStepsOptions): Promise<boolean> {
   await runDueTimers(context);
 

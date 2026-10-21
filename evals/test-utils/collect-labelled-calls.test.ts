@@ -116,7 +116,6 @@ test('it refuses a report run before the corpus changed the message of a pair', 
             pair: 0,
             repeat: 0,
 
-            // the input the message rendered before it gained "I forget."
             input: 'sha256:5d0b1a8e1d3286e241801739bf482b76bedba4b7dc1d0eeada38d01d2f2b0bbb',
             verdict: 'not_asserted',
             reason: 'It is a question.',

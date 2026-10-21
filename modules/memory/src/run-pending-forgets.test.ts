@@ -5,7 +5,6 @@ import { startNextTestMemory } from './test-utils/start-next-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { CleanupSessions } from './types';
 
-// the session cleanup that the restarted store runs
 async function setupTest() {
   return {
     memory: await startTestMemory(),

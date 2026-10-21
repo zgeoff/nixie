@@ -1,9 +1,6 @@
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the memory writer's projection: one row that holds the writer's cursor over the event
-// log, the batch it planned and has not published, the sequence at which memory started, and its
-// failures and backoff, so the memory view shows the writer's progress and its last error.
 export const memoryWriterMigration: Migration = {
   name: 'create the memory writer projection',
   up: async (tx) => {

@@ -2,9 +2,6 @@ import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import type { Migration } from './types';
 
-// Creates the tables the memory write gate keeps: memory proposals with their review reason and
-// status, the entries of each turn's notice, and the messages that backed a forgotten item. A
-// version gains the model ID of the call that wrote it.
 export const memoryGateMigration: Migration = {
   name: 'create the memory gate tables',
   up: async (tx) => {

@@ -10,7 +10,6 @@ import { makeStepErrorLogger } from './make-step-error-logger';
 import { sendTestMessage } from './test-utils/send-test-message';
 import { startTestServer } from './test-utils/start-test-server';
 
-// a fresh log and task store, with the conversation's task in it
 async function setupTest() {
   const server = await startTestServer();
 

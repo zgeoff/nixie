@@ -18,8 +18,6 @@ async function setupTest() {
     abort.abort();
   });
 
-  // a reader on its own connections stands in for one in another process, which sees a commit
-  // only through the WAL file or a poll
   const readerDB = startDatabase(join(started.dataDir, 'nixie.db'));
 
   onTestFinished(() => readerDB.destroy());
@@ -44,10 +42,7 @@ test('it yields the records after the sequence, then a new record on the next co
     { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:aa11' }, thread: 'conversation' },
   ]);
 
-  // the writer's test clock never advances, so only the commit bus can wake the stream
   const stream = subscribeToRecords(ctx.log, { afterSequence: 1, signal: ctx.signal });
-
-  // the second pull starts once the first returned, so it waits for the next commit
   const [first, waiting] = [await stream.next(), stream.next()];
 
   await writeRecords(ctx.log, [
@@ -88,14 +83,11 @@ test('it yields a new record to a reader in another process on the poll when the
 
   const waiting = stream.next();
 
-  // the reader's snapshot hides the commit from every read the WAL watcher wakes, as a slow disk
-  // sync does when it publishes the commit late
   const statusWhileHidden = await withReadSnapshot(ctx.readerDB, async () => {
     await writeRecords(ctx.log, [
       { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
     ]);
 
-    // the injected delay: the commit stays hidden for 500 ms, past the last 250 ms settle wake
     await Bun.sleep(500);
 
     return Bun.peek.status(waiting);

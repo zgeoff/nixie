@@ -13,9 +13,6 @@ export interface StepGroupProps {
   readonly step: StepActivity;
 }
 
-// One step of a task as one collapsed line, with a marker under it for each compaction and summary. Opening it
-// shows a collapsible section per source: the step, its memories, its context, its tool calls with
-// their inputs and results, and the error of a failed step.
 export function StepGroup(props: StepGroupProps): ReactNode {
   const step = props.step;
 
@@ -55,7 +52,6 @@ export function StepGroup(props: StepGroupProps): ReactNode {
   );
 }
 
-// task conversation · step conversation:146 · events: started, memory.recalled, committed
 function formatStepLine(step: StepActivity): string {
   const events = step.records.map((record) => record.kind.replace(/^(?:task\.step_|model\.)/u, ''));
 

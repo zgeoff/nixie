@@ -14,7 +14,7 @@ async function setupTest() {
 test('it finds the key, the match and the session copy of an item a turn recalled', async () => {
   const ctx = await setupTest();
 
-  // BM25 ranks nothing in an index of 1 or 2 items, so per-turn retrieval needs 3 to place one
+  // BM25 ranks nothing in an index of 1 or 2 items, so per-turn retrieval needs 3 to place one.
   const [item] = await createApprovedItems(ctx.nixie, ctx.client, [
     'The spare key sits under the blue flowerpot',
     'Allergic to hazelnuts',

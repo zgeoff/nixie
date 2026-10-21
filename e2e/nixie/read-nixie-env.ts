@@ -3,12 +3,10 @@ interface NixieEnv {
   readonly deploymentKey: string;
   readonly modelURL: string;
 
-  // the memory writer's own scripted model, or null when the crash test runs no writer
   readonly writerModelURL: string | null;
   readonly providerURL: string;
 }
 
-// Reads the paths and the endpoints that the crash harness passes the test build of nixie.
 export function readNixieEnv(env: Readonly<Record<string, string | undefined>>): NixieEnv {
   return {
     dataDir: requireValue(env, 'NIXIE_DATA_DIR'),

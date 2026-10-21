@@ -1,9 +1,6 @@
 import { isMockItemShredded } from './is-mock-item-shredded';
 import { store } from './store';
 
-// Reads the pending proposals as nixie's API lists them: oldest first, with no proposal past its
-// lapse time. A proposal whose item was forgotten has no key left, so it reads as nothing and drops
-// out of the list once the forget's cleanup removes that key.
 export function readMockPendingProposals() {
   const pending = store.memoryProposals.findMany(
     (query) =>
@@ -38,7 +35,6 @@ export function readMockPendingProposals() {
   }));
 }
 
-// whether the proposal's item lost its key; a proposal for a new item has no stored item yet
 function hasShreddedItem(itemID: string): boolean {
   const item = store.memoryItems.findFirst((query) => query.where({ itemID }));
 

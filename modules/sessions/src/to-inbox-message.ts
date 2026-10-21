@@ -6,8 +6,6 @@ import { renderImageMarkers } from './render-image-markers';
 import { renderInboxMessage } from './render-inbox-message';
 import type { MessageTimeOptions } from './types';
 
-// An inbox record as the guest passes it to the model, with its sequence in the message's uuid and
-// each image of your message, from the record's attachments, after the marker that names it.
 export function toInboxMessage(
   record: LogRecord,
   times: MessageTimeOptions,
@@ -23,7 +21,6 @@ export function toInboxMessage(
   return images.length === 0 ? message : { ...message, images };
 }
 
-// an image whose bytes or type did not read stays out, so the model never reads a broken block
 function buildInboxImages(
   record: LogRecord,
   attachments: readonly Uint8Array[],

@@ -8,9 +8,6 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-// Start's server entry, which the Vite build bundles into dist/server/server.js with every
-// dependency. Bun serves a main module whose default export has a fetch method, on the port in
-// PORT, so `bun dist/server/server.js` is the whole web server.
 export default createServerEntry({
   fetch: makeWebFetch({
     apiURL: requireAPIURL(),

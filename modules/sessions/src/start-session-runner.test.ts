@@ -11,7 +11,6 @@ interface RunnerConfig {
   readonly credential: string;
 }
 
-// the stub sandboxes and tool endpoint, and a runner for the memory writer's system task
 async function setupTest() {
   const tasks = await startTestTasks();
 

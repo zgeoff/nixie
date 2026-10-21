@@ -2,8 +2,6 @@ import { faker } from '@faker-js/faker';
 import { Collection } from '@msw/data';
 import { z } from 'zod';
 
-// a repo the mock serves, the token it accepts, and whether it cuts each recursive tree read short,
-// as GitHub does past its size limit
 const repos = new Collection({
   schema: z.object({
     repository: z
@@ -14,7 +12,6 @@ const repos = new Collection({
   }),
 });
 
-// the text of each file of a tree by its path from the repo's root
 const filesSchema = z.record(z.string(), z.string());
 
 const trees = new Collection({
@@ -34,7 +31,6 @@ const commits = new Collection({
   }),
 });
 
-// a branch of a repo and the commit at its head
 const refs = new Collection({
   schema: z.object({
     repository: z.string().default(() => faker.lorem.slug()),
@@ -58,8 +54,6 @@ const pulls = new Collection({
   }),
 });
 
-// The mock GitHub's state: the repos it serves, their git objects and branches, and their pull
-// requests.
 export const githubStore = {
   repos,
   trees,
@@ -67,7 +61,6 @@ export const githubStore = {
   refs,
   pulls,
 
-  // no collection references another's records, so the order is free
   reset: (): void => {
     for (const collection of [pulls, refs, commits, trees, repos]) {
       collection.clear();

@@ -5,8 +5,6 @@ import { buildServerReset } from './build-server-reset';
 import { runTestSeed } from './test-utils/run-test-seed';
 import { startTestServer } from './test-utils/start-test-server';
 
-// a test server and the cleanup of the work its start sequence started; boot data: a reset needs
-// definitions in force, which every start seeds
 async function setupTest() {
   const server = await startTestServer();
 

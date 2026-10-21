@@ -13,7 +13,6 @@ import { runWrittenSkillsSeed } from './run-written-skills-seed';
 import { buildStubHeldSource } from './test-utils/build-stub-held-source';
 import { startTestLog } from './test-utils/start-test-log';
 
-// a fresh log, the definitions in force over it, and a definitions folder beside it
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 

@@ -1,18 +1,15 @@
 type FileEnding = 'open' | 'closed' | 'aborted';
 
-// One file the stub picker saved: the text written to it in order, and how its writing ended.
 interface StubSavedFile {
   readonly name: string;
   readonly text: string;
   readonly ending: FileEnding;
 }
 
-// what the page passes the picker that the stub reads
 interface SavePickerOptions {
   readonly suggestedName: string;
 }
 
-// the parts of a file handle and its writable that the page reads
 interface StubFileHandle {
   readonly kind: 'file';
   readonly name: string;
@@ -24,11 +21,8 @@ interface StubFileHandle {
 }
 
 export interface StubSaveFilePicker {
-  // the browser's showSaveFilePicker, which saves to the name the page suggests, as a user who
-  // accepts that name does
   readonly showSaveFilePicker: (options: SavePickerOptions) => Promise<StubFileHandle>;
 
-  // each file the picker opened, in the order it opened them
   readonly readFiles: () => readonly StubSavedFile[];
 }
 
@@ -38,15 +32,12 @@ interface OpenFile {
   ending: FileEnding;
 }
 
-// Stands in for the File System Access API's save picker, which happy-dom lacks, called on the
-// window as the browser's is. Each file's writable takes string chunks and ends once, by close or
-// by abort.
 export function buildStubSaveFilePicker(): StubSaveFilePicker {
   const files: OpenFile[] = [];
 
   return {
     showSaveFilePicker(this: unknown, options) {
-      // the browser's picker is a method of the window, and refuses a call with no window as this
+      // The browser refuses a call to the picker with no window as its receiver.
       if (this !== globalThis) {
         return Promise.reject(new TypeError('Illegal invocation'));
       }
@@ -80,7 +71,6 @@ export function buildStubSaveFilePicker(): StubSaveFilePicker {
   };
 }
 
-// a file's writing ends once
 function updateFileEnding(file: OpenFile, ending: Exclude<FileEnding, 'open'>): Promise<void> {
   if (file.ending !== 'open') {
     return Promise.reject(new TypeError('the file is no longer open'));

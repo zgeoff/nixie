@@ -5,8 +5,6 @@ import { queueCheckTaskID } from './queue-check-task-id';
 import { runWithRetry } from './run-with-retry';
 import type { ServerParts } from './types';
 
-// Puts the queue check into service as a system task and wakes it, so each start queues one action
-// for the log-only connector. The step it returns runs the check's steps and passes the rest on.
 export async function startQueueCheckTask(parts: ServerParts, runStep: RunStep): Promise<RunStep> {
   await runWithRetry(() => createQueueCheckWake(parts), {
     signal: parts.cleanup.signal,

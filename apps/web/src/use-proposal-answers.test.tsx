@@ -8,7 +8,6 @@ import { renderHook } from './test-utils/render-hook';
 import { useProposalAnswers } from './use-proposal-answers';
 
 async function setupTest() {
-  // every answer needs a signed-in browser
   await createDeviceSession();
 }
 

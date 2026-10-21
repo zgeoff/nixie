@@ -7,9 +7,6 @@ import { encodeErasable } from './encode-erasable';
 import { MissingDefinitionsError } from './missing-definitions-error';
 import type { JSONObject, Log, LogRecord, LogTables, RecordInput } from './types';
 
-// Appends records inside a write transaction that the caller opened with withWriteTransaction, so a
-// module's own rows and the records that describe them commit together. Each record's erasable
-// fields and attachments are encrypted under a new key, committed to the key store first.
 export async function writeRecordsInTransaction(
   tx: Transaction<unknown>,
   log: Log,
@@ -32,8 +29,6 @@ export async function writeRecordsInTransaction(
   return records;
 }
 
-// the type demands the field, and this check covers a caller that reached past the type, such as
-// one that parsed its input or passed an empty hash
 function requireDefinitions(input: RecordInput): void {
   const partial: Partial<RecordInput> = input;
   const hash: unknown = partial.definitions?.snapshotHash;
@@ -49,7 +44,6 @@ interface SealedFields {
   readonly attachments: readonly Uint8Array<ArrayBuffer>[];
 }
 
-// a record with no erasable fields and no attachments gets no key
 async function encodeErasableFields(log: Log, input: RecordInput): Promise<SealedFields | null> {
   const attachments = input.attachments ?? [];
 

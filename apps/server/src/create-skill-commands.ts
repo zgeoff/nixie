@@ -3,9 +3,6 @@ import { resolveSocketPath } from './resolve-socket-path';
 import { sendHostRequest } from './send-host-request';
 import type { CLIFlags, CLIIO, Command } from './types';
 
-// The skill host commands, each printing JSON: list and answer the pending skill proposals under
-// the --hash skill-pending printed, and list the skills nixie wrote that are in force and keep
-// nixie's or your definitions' version of one.
 export function createSkillCommands(): readonly (readonly [string, Command])[] {
   return [
     ['skill-pending', (flags, io) => runSkillPending(flags.config, io)],
@@ -119,7 +116,6 @@ async function runSkillResolve(
   const [approvalID, ...extra] = args;
   const keep = flags.keep;
 
-  // the parser holds --keep to its choices, and the command takes one word, the approval ID
   if (approvalID === undefined || extra.length > 0 || keep === undefined) {
     io.print('nixie skill-resolve takes an approval ID and --keep nixie|definitions');
 

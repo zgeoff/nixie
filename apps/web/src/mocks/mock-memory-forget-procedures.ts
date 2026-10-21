@@ -6,8 +6,6 @@ import { writeMockMemoryForget } from './write-mock-memory-forget';
 
 const memory = mockImplementer.memory;
 
-// The memory view's forget over the mock store: the preview bound to the version the view showed,
-// then the checked forget.
 export const mockMemoryForgetProcedures = {
   previewForget: memory.previewForget.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
@@ -30,7 +28,6 @@ export const mockMemoryForgetProcedures = {
 
     const result = await writeMockMemoryForget(options.input);
 
-    // nixie's API answers a failed cleanup as an internal error, after the forget began
     if (result.status === 'cleanup_failed') {
       throw new Error('the session cleanup failed');
     }

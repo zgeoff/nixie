@@ -7,7 +7,6 @@ import { store } from './store';
 
 function setupTest() {
   return {
-    // Builds a client that reaches the mock API with the headers a caller chooses.
     buildClient: (headers: Readonly<Record<string, string>>): ContractClient =>
       createORPCClient<ContractClient>(
         new RPCLink({

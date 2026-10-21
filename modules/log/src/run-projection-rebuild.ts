@@ -5,9 +5,6 @@ import { buildEnvelopeRecord } from './build-envelope-record';
 import type { Log, LogTables, Projection } from './types';
 import { withWriteTransaction } from './with-write-transaction';
 
-// Drops every projection row and folds the log again from the first record, in one write
-// transaction, so no reader sees a half-built projection. A fold reads no erasable field, so a
-// rebuild after a forget gives the rows the live fold gave.
 export function runProjectionRebuild(log: Pick<Log, 'projections' | 'writer'>): Promise<void> {
   return withWriteTransaction(log.writer, async (tx) => {
     await resetProjections(tx, log.projections);
@@ -21,7 +18,6 @@ async function resetProjections(
 ): Promise<void> {
   await tx.$extendTables<LogTables>().deleteFrom('projection_changes').execute();
 
-  // a later projection may refer to an earlier one, so it empties first
   for (const projection of projections.toReversed()) {
     await sql`delete from ${sql.table(projection.table)}`.execute(tx);
   }

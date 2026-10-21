@@ -11,8 +11,6 @@ export interface TurnFrameOverrides {
   readonly input?: TurnFrame['input'];
 }
 
-// A turn frame that starts a fresh session from one inbox message. Each nested override merges
-// into fresh defaults.
 export function buildMockTurnFrame(overrides: TurnFrameOverrides = {}): TurnFrame {
   return {
     type: 'turn',

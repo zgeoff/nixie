@@ -21,7 +21,6 @@ async function setupTest() {
     model,
     written,
     io: {
-      // the guest's own environment: its home, its path, and the placeholder the grant replaces
       env: { HOME: home, PATH: process.env['PATH'] ?? '', ANTHROPIC_API_KEY: 'imp-placeholder' },
       write: (bytes: Uint8Array) => {
         written.push(bytes);

@@ -8,11 +8,6 @@ import { makeTurnNoteReader } from '@heynixie/server';
 import { startTestConversation, startTestServer } from '@heynixie/server/test-utils';
 import { writeInboxRecords } from '@heynixie/tasks';
 
-// The journey runs a writer batch over your message, then the conversation's next turn, whose note
-// carries what the batch did.
-
-// memory and its writer on a test server, which a test starts after it records the messages the
-// catch-up covers
 async function setupTest() {
   const server = await startTestServer();
 

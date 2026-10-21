@@ -9,20 +9,14 @@ import type { MessageTimeOptions } from './types';
 export interface HeldMessagesQuery {
   readonly taskID: string;
 
-  // whether the turn opens a new session, whose recent turns the opening has yet to read
   readonly isNewSession: boolean;
 
-  // the turn's first inbox record, which a new session's recent turns never reach
   readonly beforeSequence: number;
 
-  // the budget, in tokens, of a new session's recent turns
   readonly rebuildTokens: number;
   readonly times: MessageTimeOptions;
 }
 
-// Reads the sequences of your messages in the thread that the session holds word for word: each one
-// from the oldest recent turn its opening holds on. A new session reads its recent turns as its
-// opening will, and an opening that kept no mark holds every message of the thread.
 export async function readHeldMessages(
   context: Pick<TasksContext, 'log'>,
   query: HeldMessagesQuery,
@@ -43,7 +37,6 @@ export async function readHeldMessages(
   return rows.map((row) => row.sequence);
 }
 
-// the oldest record a new session's recent turns hold, after its summary and before the turn
 async function readRecentStart(
   context: Pick<TasksContext, 'log'>,
   query: HeldMessagesQuery,
@@ -61,7 +54,6 @@ async function readRecentStart(
   return recent.at(0)?.record.sequence ?? query.beforeSequence;
 }
 
-// the mark the newest opening kept, or 0 for one without it
 async function readOpenedFrom(context: Pick<TasksContext, 'log'>, taskID: string): Promise<number> {
   const [opened] = await readRecords(context.log, {
     afterSequence: 0,
@@ -71,7 +63,6 @@ async function readOpenedFrom(context: Pick<TasksContext, 'log'>, taskID: string
     limit: 1,
   });
 
-  // a rebuild record comes from before openings kept the mark
   const payload =
     opened?.record.kind === 'model.session_opened'
       ? modelSessionOpenedCodec.tryDecodePartial(opened.record.payload)

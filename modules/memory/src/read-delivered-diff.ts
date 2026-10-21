@@ -2,9 +2,6 @@ import type { ConsolidationDiff } from './consolidation-types';
 import { readPendingDiff } from './read-pending-diff';
 import type { MemoryTables, StoreParts } from './types';
 
-// Reads the pending diff for the model under recall's delivery lock, so a forget starts after the
-// read or before it. A change with an input that is forgetting or forgotten drops out whole, as
-// does a summary sealed under such an item, because either can hold that item's words.
 export function readDeliveredDiff(parts: StoreParts): Promise<ConsolidationDiff | null> {
   return parts.lock(async () => {
     const diff = await readPendingDiff(parts);
@@ -31,7 +28,6 @@ export function readDeliveredDiff(parts: StoreParts): Promise<ConsolidationDiff 
   });
 }
 
-// the items among those given that a forget has begun on
 async function readForgottenItemIDs(
   parts: StoreParts,
   itemIDs: readonly string[],

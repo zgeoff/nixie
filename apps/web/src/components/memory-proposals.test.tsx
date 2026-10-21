@@ -13,7 +13,6 @@ import { RecordItem } from './record-item';
 async function setupTest() {
   const user = userEvent.setup();
 
-  // every proposal read and answer needs a signed-in browser
   const session = await createDeviceSession();
 
   return { user, session };

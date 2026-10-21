@@ -6,9 +6,6 @@ import { planSkillReload } from './plan-skill-reload';
 import { recordSkillReload } from './record-skill-reload';
 import type { SkillToolsContext } from './types';
 
-// Runs a reload for a skill tool: it seeds a fresh snapshot, moves one named skill, or with no name
-// every skill, to the version then in force, and records each skill's old and new hash. Reloads on
-// one thread run one at a time, so each plans from the pin the one before it wrote.
 export async function runSkillReload(
   context: SkillToolsContext,
   run: ToolRun,
@@ -16,8 +13,6 @@ export async function runSkillReload(
 ): Promise<ToolOutcome> {
   const chains = registerReloadChains(context.log.writer);
   const reload = waitThenReload(chains.get(run.thread), context, run, name);
-
-  // the caller of the reload gets its failure, so the chain only waits for it to end
   const tail = waitForSettled(reload);
 
   chains.set(run.thread, tail);
@@ -31,10 +26,8 @@ export async function runSkillReload(
   return reload;
 }
 
-// each writer's reloads by thread: the end of the newest reload on the thread, which never rejects
 const reloadChains = new WeakMap<object, Map<string, Promise<void>>>();
 
-// registers the writer's chains in the cache on its first reload, and returns them
 function registerReloadChains(writer: object): Map<string, Promise<void>> {
   const chains = reloadChains.get(writer) ?? new Map<string, Promise<void>>();
 
@@ -54,7 +47,6 @@ async function waitThenReload(
   return runOneReload(context, run, name);
 }
 
-// A name that is neither pinned nor on the caller's list fails.
 async function runOneReload(
   context: SkillToolsContext,
   run: ToolRun,
@@ -87,7 +79,6 @@ async function runOneReload(
 
   const isRecorded = await recordSkillReload(context.log, { thread: run.thread, inForce, plan });
 
-  // the load above pins a task with definitions in force, so the task holds a pin to move on
   invariant(isRecorded);
 
   return {

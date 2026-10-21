@@ -7,13 +7,10 @@ interface RatingNote {
   readonly ratingID: string;
   readonly itemID: string;
 
-  // the ID the refusal names the item by, never the item's own ID
   readonly shortID: string;
   readonly note: string;
 }
 
-// Seals a rating's note under its item's key, and refuses a note on an item that a forget since the
-// recall has removed.
 export async function requireSealedNote(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   note: RatingNote,

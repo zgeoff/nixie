@@ -6,12 +6,9 @@ import { buildReadinessChecks } from './build-readiness-checks';
 import { buildStartState } from './build-start-state';
 import { makeConversationFailureMarker } from './make-conversation-failure-marker';
 
-// The health endpoint on a start state and its readiness checks, for the test that reads
-// readiness through the endpoint Kubernetes routes on.
 function setupTest() {
   const state = buildStartState({ isReady: true, reason: null });
 
-  // boot data: every readiness part ready, as nixie stands once its start finishes
   state.update({
     definitions: { isReady: true, reason: null },
     areImagesAdded: true,

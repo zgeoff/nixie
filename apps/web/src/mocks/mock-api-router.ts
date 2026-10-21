@@ -9,19 +9,14 @@ import { store } from './store';
 import { toLogRecord } from './to-log-record';
 import { writeMockForget } from './write-mock-forget';
 
-// The contract's implementer, under the short name oRPC's examples give it.
 const os = mockImplementer;
 
-// The live stream, under its current name and the deprecated one the contract keeps. As the API
-// does, it checks the session before it returns the stream.
 const followProcedure = os.records.follow.handler((options) => {
   requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
   return streamRecordEvents({ ...options.input, signal: options.signal });
 });
 
-// A stand-in for nixie's API that implements the contract over the mock store, so the client's
-// real link, serialisation and typed errors run in every test.
 export const mockAPIRouter = os.router({
   conversation: {
     read: os.conversation.read.handler((options) => {
@@ -85,7 +80,6 @@ export const mockAPIRouter = os.router({
       return { duplicate: true, sequence: earlier.sequence };
     }),
 
-    // an image of a message the store holds, which a forget removes with the message's text
     readImage: os.conversation.readImage.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
@@ -107,7 +101,6 @@ export const mockAPIRouter = os.router({
       });
     }),
 
-    // forgets your message or a reply as the API's forget leaves the log
     forget: os.conversation.forget.handler(async (options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
@@ -193,7 +186,6 @@ export const mockAPIRouter = os.router({
   },
 });
 
-// the API takes an image's type from its bytes; the mock trusts the type the client gives
 async function readStoredImage(image: Blob) {
   const mediaType = mediaTypes.find((known) => known === image.type) ?? 'image/png';
 
@@ -208,8 +200,6 @@ interface RecordStream {
   readonly thread?: string | undefined;
 }
 
-// Each record of the thread after the sequence, then each one the store gains, as one event whose
-// ID is the record's sequence.
 async function* streamRecordEvents(stream: RecordStream) {
   const cursor = { after: stream.afterSequence };
 
@@ -235,8 +225,8 @@ function collectRecordsAfter(after: number, thread: string | undefined): readonl
   );
 }
 
-// Resolves when the store gains a record or the caller goes away. A collection runs its create
-// hooks before it adds the record, so the wait ends a macrotask later, once the record is in.
+// A collection runs its create hooks before it adds the record, so the wait ends a macrotask
+// later, once the record is in.
 async function waitForRecord(signal: AbortSignal | undefined): Promise<void> {
   await new Promise<void>((resolve) => {
     const waiting = new AbortController();
@@ -252,7 +242,6 @@ async function waitForRecord(signal: AbortSignal | undefined): Promise<void> {
   });
 }
 
-// A code works for one enrolment, and a retry of that enrolment with its client action ID.
 function findUsableCode(code: string, clientActionID: string) {
   return store.enrolmentCodes.findFirst((query) =>
     query.where(
@@ -269,14 +258,11 @@ interface EnrolInput {
   readonly code: string;
   readonly deviceName: string;
 
-  // The session the code made on an earlier attempt of this enrolment.
   readonly sessionID: string | null;
 }
 
 type StoredSession = NonNullable<ReturnType<typeof store.sessions.findFirst>>;
 
-// Uses a code for one enrolment. A retry of that enrolment answers with the session the code
-// made the first time.
 async function claimEnrolmentCode(input: EnrolInput): Promise<StoredSession> {
   const earlier = store.sessions.findFirst((query) =>
     query.where({ sessionID: input.sessionID ?? '' }),

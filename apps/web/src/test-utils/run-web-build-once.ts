@@ -1,11 +1,8 @@
 import { onTestFinished } from 'bun:test';
 import { join } from 'node:path';
 
-// The one build of this test process, shared by every suite that runs the built server.
 const builds: { web?: Promise<string> } = {};
 
-// Builds the web client with Vite once per test process and resolves with the built server
-// entry. The build is an immutable input, so the suites that run it share it.
 export function runWebBuildOnce(): Promise<string> {
   builds.web ??= runBuild();
 
@@ -16,7 +13,7 @@ const webDir = join(import.meta.dir, '..', '..');
 
 async function runBuild(): Promise<string> {
   // Node's wasm trap handler reserves more address space than a `ulimit -v` cap allows, and Vite
-  // loads wasm, so the build turns it off to run on a host with such a cap
+  // loads wasm.
   const nodeOptions = [process.env['NODE_OPTIONS'], '--disable-wasm-trap-handler'];
 
   const child = Bun.spawn(['bun', 'run', 'build'], {
@@ -26,7 +23,6 @@ async function runBuild(): Promise<string> {
     stdout: 'pipe',
   });
 
-  // a build that outlives the test that started it stops with that test, which failed on it
   onTestFinished(() => {
     child.kill();
   });

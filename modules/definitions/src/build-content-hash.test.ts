@@ -50,7 +50,7 @@ test('it matches the hash that the vendoring guide computes over a skill folder'
   await writeFile(join(ctx.directory, 'skills', 'pdf-forms', 'scripts', 'fill.py'), script);
   await writeFile(join(ctx.directory, 'skills', 'pdf-forms', '-example.txt'), 'example\n');
 
-  // U+FF21 sorts before U+1F600 by code point and after it by UTF-16 code unit
+  // U+FF21 sorts before U+1F600 by code point and after it by UTF-16 code unit.
   await writeFile(join(ctx.directory, 'skills', 'pdf-forms', '\u{FF21}.md'), 'wide\n');
   await writeFile(join(ctx.directory, 'skills', 'pdf-forms', '\u{1F600}.md'), 'smile\n');
   await writeFile(join(ctx.directory, 'skills', 'pdf-forms', '.git', 'HEAD'), 'ref: main\n');

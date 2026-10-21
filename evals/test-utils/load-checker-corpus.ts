@@ -37,8 +37,6 @@ export type CheckerSample = CheckerCorpus['samples'][number];
 
 export type CheckerPair = z.infer<typeof pairSchema>;
 
-// Loads the checker corpus: messages, each with the memories it does and does not assert, labelled
-// before any model saw a case.
 export async function loadCheckerCorpus(path: string): Promise<CheckerCorpus> {
   const json: unknown = await Bun.file(path).json();
 

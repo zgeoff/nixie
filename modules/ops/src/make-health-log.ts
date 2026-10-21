@@ -3,12 +3,8 @@ import type { HealthReport, PartReport } from './types';
 
 export type HealthProbe = 'live' | 'ready';
 
-// what a part counts as before its first answer, so a part unready at its first answer logs
 const readyReport: PartReport = { isReady: true, reason: null };
 
-// Makes the recorder that logs a part of a health answer by name when it turns unready or its reason
-// changes, and when it turns ready again. A part logs only when it changes, so a probe every few
-// seconds never floods the log.
 export function makeHealthLog(log: Logger): (probe: HealthProbe, report: HealthReport) => void {
   const lastReports = new Map<string, PartReport>();
 

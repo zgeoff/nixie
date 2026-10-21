@@ -10,8 +10,6 @@ export interface SummarizeFrameOverrides {
   readonly instruction?: string;
 }
 
-// A summarize frame that asks for a summary of a session at one point. The profile override merges
-// into fresh defaults.
 export function buildMockSummarizeFrame(overrides: SummarizeFrameOverrides = {}): SummarizeFrame {
   return {
     type: 'summarize',

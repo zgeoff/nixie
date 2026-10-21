@@ -1,5 +1,5 @@
-// Builds invented harbour notes of about the given number of tokens, about 30 a line. Each line
-// carries its own number, so no two lines match and the prompt cache cannot fold them.
+// A line runs about 30 tokens. Each line carries its own number, so no two lines match and the
+// prompt cache cannot fold them.
 export function buildFiller(tokens: number, topic: string): string {
   const count = Math.ceil(tokens / 30);
 

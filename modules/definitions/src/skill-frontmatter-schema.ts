@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { skillNamePattern } from './skill-name-pattern';
 
-// The SKILL.md fields nixie reads, with the Agent Skills format's limits. The format leaves other
-// fields to each product, so the schema keeps them out of the skill and refuses none.
+// The Agent Skills format leaves other fields to each product, so the schema drops them and
+// refuses none.
 export const skillFrontmatterSchema = z.object({
   name: z
     .string()

@@ -23,7 +23,6 @@ const webFetchInput = {
   additionalProperties: false,
 };
 
-// x-endorsed marks the fields whose type policy endorses as clean
 const webFetchOutput = {
   type: 'object',
   properties: {
@@ -48,9 +47,6 @@ export interface WebFetchToolOptions {
   readonly textBytes: number;
 }
 
-// Builds the web fetch tool, which fetches one public HTTPS page through the fetch sandbox, direct,
-// with every result field outside content and only the status and the truncated mark endorsed. A
-// page's links read as IDs the session numbered, whose targets the link store keeps.
 export function buildWebFetchTool(
   readPage: (url: string) => Promise<FetchReply>,
   options: WebFetchToolOptions,

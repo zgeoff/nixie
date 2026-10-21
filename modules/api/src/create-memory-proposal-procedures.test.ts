@@ -12,8 +12,6 @@ import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 
-// a test API that serves a memory store over its log, whose gate has no checker, so every write it
-// gates becomes a proposal, and a signed-in laptop
 async function setupTest() {
   const api = await startTestAPI();
 
@@ -41,7 +39,6 @@ async function setupTest() {
 
   api.setMemory(memory);
 
-  // boot data: every proposal procedure needs a signed-in device
   const laptop = await createDeviceSession(api.context, 'laptop');
 
   return { ...api, memory, laptop, client: buildTestClient(api.url, laptop.token) };
@@ -55,7 +52,6 @@ test('#memory.listProposals lists a proposal whose review reason a later release
     caller: buildMockWriteCaller(),
   });
 
-  // a later release's reason, in the row it left behind before a rollback
   await ctx.context.log.writer.db
     .$extendTables<{ memory_proposals: { review_reason: string } }>()
     .updateTable('memory_proposals')

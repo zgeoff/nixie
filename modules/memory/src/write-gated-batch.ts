@@ -20,9 +20,6 @@ interface GatedBatch extends WriterStepState {
   readonly usage: WriterUsage | null;
 }
 
-// Publishes a gated batch, or splits one over the proposal cap so each half runs again. A batch
-// that a newer change superseded runs again at once. Either way the gate then releases what it
-// made for each proposal that never published.
 export async function writeGatedBatch(
   parts: WriterParts,
   gated: GatedBatch,

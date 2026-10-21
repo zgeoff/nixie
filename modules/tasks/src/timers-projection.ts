@@ -2,8 +2,6 @@ import type { Projection } from '@heynixie/log';
 import { parseTaskRecord } from './parse-task-record';
 import type { TasksTables } from './types';
 
-// One row per durable timer: a step commit sets it with its due time, and its fire record stores
-// when it fired. A timer row with no fire time is still pending, whatever the clock says.
 export const timersProjection: Projection = {
   table: 'timers',
   keyColumn: 'timer_id',

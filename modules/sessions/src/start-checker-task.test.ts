@@ -4,7 +4,6 @@ import { buildTestClock, startScriptedModel } from '@heynixie/testing';
 import { startCheckerTask } from './start-checker-task';
 import { startTestSessionHost } from './test-utils/start-test-session-host';
 
-// a session host for its process sandboxes, and the scripted model
 async function setupTest() {
   const host = await startTestSessionHost();
 

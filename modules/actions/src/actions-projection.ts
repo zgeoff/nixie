@@ -4,9 +4,6 @@ import type { ActionRecord } from './parse-action-record';
 import { parseActionRecord } from './parse-action-record';
 import type { ActionsTables } from './types';
 
-// One row per queued action: its outcome, its attempt count, whether an attempt is open without a
-// result, and the time of its next attempt, so a restart resumes the retry schedule where it
-// stopped. Every value comes from the record, so a rebuild gives the live rows.
 export const actionsProjection: Projection = {
   table: 'actions',
   keyColumn: 'action_id',

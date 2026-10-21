@@ -11,8 +11,8 @@ import { apiProjections } from '../api-projections';
 import { createAPIApp } from '../create-api-app';
 import { defaultAPISettings } from '../default-api-settings';
 
-// the context and the memory store the app takes, named from its signature to keep the file's
-// imports to ten
+// The lint cap on imports per file holds this file to ten, so these types come from the app's
+// signature.
 type APIContext = Parameters<typeof createAPIApp>[0];
 
 type ViewMemoryStore = NonNullable<ReturnType<Parameters<typeof createAPIApp>[1]>>;
@@ -20,19 +20,14 @@ type ViewMemoryStore = NonNullable<ReturnType<Parameters<typeof createAPIApp>[1]
 interface TestAPI {
   readonly dataDir: string;
 
-  // fills the memory store the memory view's procedures reach, which no test API holds at its start
   readonly setMemory: (store: ViewMemoryStore) => void;
   readonly writer: Writer;
   readonly clock: TestClock;
   readonly context: APIContext;
 
-  // the API's origin on a loopback port, such as http://127.0.0.1:41234
   readonly url: string;
 }
 
-// Starts the API on a fresh data directory and a loopback port, with memory's projections, the
-// conversation's task, a test clock at 1,000,000 ms, the default settings and no session cleanup.
-// When the test finishes it stops the server and the writer, then removes the directory.
 export async function startTestAPI(): Promise<TestAPI> {
   const stack = new AsyncDisposableStack();
 
@@ -85,7 +80,6 @@ async function createTestContext(
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     settings: defaultAPISettings,
 
-    // no conversation runs beside the API, so a record forget leaves its session cleanup to a test
     readSessionCleanup: () => null,
   };
 
@@ -94,7 +88,6 @@ async function createTestContext(
   return context;
 }
 
-// listens on a loopback port and serves the memory store once the test sets one
 function startTestApp(
   context: APIContext,
 ): Pick<TestAPI, 'url' | 'setMemory'> & { readonly stop: () => Promise<void> } {

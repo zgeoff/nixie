@@ -11,8 +11,6 @@ import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 import type { APITables } from './types';
 
-// a test API that serves a memory store over its log, whose gate has no checker, since no test
-// writes through the gate
 async function setupTest() {
   const api = await startTestAPI();
 

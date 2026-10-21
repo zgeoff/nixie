@@ -3,9 +3,6 @@ import type { ConsolidationTables } from './consolidation-types';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
 import type { MemoryTables, StoreParts } from './types';
 
-// Lapses in one transaction every pending consolidation change past its lapse time, and every one
-// whose first input is forgotten, since its text went with that item's key and nothing can apply
-// it; returns how many. A lapse leaves no key behind, and frees the consolidator's next run.
 export function runChangeLapses(parts: StoreParts): Promise<number> {
   return withWriteTransaction(parts.context.log.writer, async (tx) => {
     const rows = await tx

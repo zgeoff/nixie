@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test';
 import { startTestNixie } from './start-test-nixie';
 import { writeSeedMessages } from './write-seed-messages';
 
-// a crash test's data directory, with no nixie started on it
 async function setupTest() {
   return { nixie: await startTestNixie() };
 }

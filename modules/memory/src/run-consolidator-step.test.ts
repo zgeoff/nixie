@@ -10,8 +10,6 @@ import type { StubConsolidatorSession } from './test-utils/create-stub-consolida
 import { createStubConsolidatorSession } from './test-utils/create-stub-consolidator-session';
 import { startTestMemory } from './test-utils/start-test-memory';
 
-// A test memory on a test clock, with the task projections, and a step runner that starts the
-// consolidator on the session the test gives, claims its task, runs one step and commits it.
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
 
@@ -261,7 +259,6 @@ test('it runs the session on a list cut at the budget, even when the cut list ho
 
   const session = createStubConsolidatorSession([]);
 
-  // 'Keeps bees on the roof' takes 6 tokens and 24 of overhead, so 40 fits it and no second item
   await ctx.runStep(session, { item_list_tokens: 40 });
 
   expect(session.model.runSession).toHaveBeenCalledExactlyOnceWith({

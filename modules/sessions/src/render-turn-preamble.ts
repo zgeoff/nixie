@@ -6,8 +6,6 @@ import { renderRetrievedMessages } from './render-retrieved-messages';
 import { renderRetrievedSelfNotes } from './render-retrieved-self-notes';
 import type { MemoryLineOptions } from './types';
 
-// What goes before a turn's first message: the pinned core's change note, what retrieval placed,
-// the turn's thread, and the time each block carries.
 export interface TurnPreamble {
   readonly changes: string | null;
   readonly retrieval: TurnRetrieval;
@@ -15,9 +13,6 @@ export interface TurnPreamble {
   readonly at: string;
 }
 
-// Renders the blocks that go before a turn's first message, each a system message, in this order:
-// the change note, the retrieved facts, the retrieved self-notes, then the past messages. A block
-// with nothing in it is left out.
 export function renderTurnPreamble(
   preamble: TurnPreamble,
   lines: MemoryLineOptions,

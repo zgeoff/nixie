@@ -104,7 +104,6 @@ test('it refuses to move a written skill that left force, and writes nothing', a
 test('it refuses an approval that applied no skill', async () => {
   const ctx = await setupTest();
 
-  // the refusal settles before the writer stops, so its transaction never outlives the test
   const refusal = await withWriteTransaction(ctx.writer, (tx) =>
     writeWrittenSkillState(tx, {
       approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',

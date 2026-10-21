@@ -14,21 +14,14 @@ import { toolServerName } from './tool-server-name';
 import type { TurnDependencies } from './types';
 
 interface TurnState extends TurnInputState {
-  // the session's last chain entry so far
   boundary: SessionPoint | null;
 
-  // the last chain entry that is not the CLI's own message for an API error, or the turn's resume
-  // point before the turn writes one
   committed: SessionPoint | null;
 
-  // the tokens the last main-chain model call read, or null before one reports its usage
   contextSize: number | null;
   readonly compactWindow: number;
 }
 
-// Runs one model turn over the turn's inbox and the host's later messages, each with its record's
-// uuid. The turn ends at a result once the SDK has read every message it took, and stops at once
-// when nixie's tool server is not connected, because the model would invent the tools' output.
 export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<void> {
   const options = buildQueryOptions(turn, { env: deps.env, toolServer: deps.toolServer });
 
@@ -55,15 +48,14 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
   } finally {
     state.ended.resolve();
 
-    // close() ends a read still waiting on the CLI, and return() waits for the CLI process to exit,
-    // so the next turn and the guest's file cleanup never meet a live CLI
+    // In the SDK, close() ends a read that still waits on the CLI, and return() waits for the CLI
+    // process to exit, so no later step meets a live CLI.
     session.close();
 
     await session.return();
   }
 }
 
-// the turn's input waits for nixie's tool server, and a turn that never gets its tools sends none
 async function drainConnectedSession(
   session: ReturnType<typeof query>,
   deps: TurnDependencies,
@@ -104,7 +96,6 @@ async function drainSession(
 
 type MessageOutcome = 'continue' | 'result' | 'stop';
 
-// the frames one SDK message gives the host, and whether the turn goes on
 function emitMessageFrames(
   message: SDKMessage,
   deps: TurnDependencies,
@@ -163,8 +154,6 @@ async function emitInit(message: InitMessage, deps: TurnDependencies): Promise<M
   return 'stop';
 }
 
-// Claude Code reports a message folded in at a tool boundary through a command lifecycle that the
-// SDK types leave out, and stamps no assistant message with it.
 async function emitCommandRead(
   message: SDKMessage,
   deps: TurnDependencies,
@@ -199,14 +188,11 @@ async function emitReads(
 
 type AssistantMessage = Extract<SDKMessage, { type: 'assistant' }>;
 
-// the CLI's codes for a credential the model API refused: an invalid one, and an OAuth credential
-// that the organization does not allow
 const refusedCredentialErrors: ReadonlySet<string> = new Set([
   'authentication_failed',
   'oauth_org_not_allowed',
 ]);
 
-// a subagent's message carries its parent's tool use and stays off the main chain
 async function emitAssistant(
   message: AssistantMessage,
   deps: TurnDependencies,
@@ -216,7 +202,6 @@ async function emitAssistant(
     return 'continue';
   }
 
-  // the CLI's own message for a credential the model API refused is no reply from the model
   if (message.error !== undefined && refusedCredentialErrors.has(message.error)) {
     await deps.emit({
       type: 'failed',
@@ -229,7 +214,6 @@ async function emitAssistant(
 
   state.boundary = { sessionID: message.session_id, messageID: message.uuid };
 
-  // the CLI's own message for an API error carries no usage from the model
   if (message.error === undefined) {
     state.committed = state.boundary;
     state.contextSize = countContextTokens(message.message.usage);
@@ -237,8 +221,6 @@ async function emitAssistant(
 
   await emitReads(deps, state, [message.user_message_uuid, ...(message.user_message_uuids ?? [])]);
 
-  // the summarized display gives the model's reasoning as its own thinking-only message, ahead of
-  // the message that carries the reply's text
   const summary = collectSummary(message.message.content);
 
   await deps.emit({
@@ -258,15 +240,12 @@ function collectText(content: AssistantMessage['message']['content']): string {
   return content.flatMap((block) => (block.type === 'text' ? [block.text] : [])).join('\n\n');
 }
 
-// the reasoning is the thinking blocks' text; the signature beside it is the API's encrypted copy
-// that only the API reads back, so nixie cannot use it and leaves it out of the recorded reasoning
 function collectSummary(content: AssistantMessage['message']['content']): string {
   return content
     .flatMap((block) => (block.type === 'thinking' ? [block.thinking] : []))
     .join('\n\n');
 }
 
-// a tool result is a chain entry too, and a turn can end on one
 function updateUserBoundary(
   message: Extract<SDKMessage, { type: 'user' }>,
   state: TurnState,
@@ -280,7 +259,6 @@ function updateUserBoundary(
   }
 }
 
-// the CLI's error when the session to resume is not on this guest's disk
 const missingSessionPrefix = 'No conversation found with session ID';
 
 async function emitResult(
@@ -313,13 +291,8 @@ async function emitResult(
   return 'result';
 }
 
-// the SDK's reasons for a turn whose context passed the window: blocking_limit when the CLI refused
-// the next call itself, and prompt_too_long when the model API refused it
 const overflowReasons: ReadonlySet<string> = new Set(['blocking_limit', 'prompt_too_long']);
 
-// An overflow ends the turn at the CLI's `Prompt is too long` message, and the turn's boundary stays
-// before it, so a retry from the boundary forks the session before the overflow. A fresh session
-// whose first call overflows has no entry before that message, so its boundary stays on it.
 function pickBoundary(
   message: Extract<SDKResultMessage, { subtype: 'success' }>,
   state: TurnState,
@@ -335,8 +308,8 @@ function buildEnded(
   boundary: SessionPoint,
   state: TurnState,
 ): GuestFrame {
-  // the model API reports the turn's thinking tokens once, in the result's usage; the per-message
-  // usage never carries them, so the count is the turn's total and not one message's
+  // The model API reports thinking tokens only in the result's usage, as the turn's total. The
+  // per-message usage never carries them.
   const thinkingTokens = message.usage.output_tokens_details.thinking_tokens;
 
   return {

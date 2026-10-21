@@ -9,8 +9,6 @@ export interface StepContextProps {
   readonly context: ContextActivity | undefined;
 }
 
-// How full the context stood at the step's last model call, against the window its session
-// compacts within, and each compaction in the step.
 export function StepContext(props: StepContextProps): ReactNode {
   return (
     <StepSection title="Context">
@@ -22,7 +20,6 @@ export function StepContext(props: StepContextProps): ReactNode {
   );
 }
 
-// 41k / 400k tokens · 10% at the last model call
 function formatContextLine(context: ContextActivity): string {
   const percent = Math.round((context.size / context.window) * 100);
 

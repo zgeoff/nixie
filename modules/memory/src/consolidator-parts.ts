@@ -5,9 +5,6 @@ import type { ConsolidationStaging } from './create-consolidation-staging';
 import type { MemoryStore } from './types';
 import type { WriterModel } from './writer-types';
 
-// What the consolidator's step reaches: the log and the clock, the store's recall and its diffs'
-// schedule and lapses, the staging area its tools write to, its model, its settings, and
-// the persona and the name its rules use.
 export interface ConsolidatorParts {
   readonly context: TasksContext;
   readonly store: Pick<MemoryStore, 'recall'> & {
@@ -15,17 +12,12 @@ export interface ConsolidatorParts {
   };
   readonly staging: ConsolidationStaging;
 
-  // one fresh session for each run, on the memory-consolidator role's profile, with the
-  // consolidator's tools served to it
   readonly model: WriterModel;
   readonly config: ConsolidationConfig;
 
-  // the persona in force, read at each run
   readonly getPersona: () => string;
 
-  // your name, which the rules call you by, or null to call you "the owner"
   readonly ownerName: string | null;
 
-  // a run failed; the step logs it and tries again after the retry wait
   readonly onError: (error: unknown) => void;
 }

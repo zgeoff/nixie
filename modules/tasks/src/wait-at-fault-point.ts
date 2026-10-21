@@ -1,9 +1,8 @@
 import { faultPointSlot } from './fault-point-slot';
 import type { FaultPointContext, FaultPointID } from './types';
 
-// Holds the caller at a named transition while the installed handler decides: the harness reports
-// the arrival, then kills the process or releases the runner. With no handler it returns at once.
-// Every call sits inside `if (NIXIE_TEST_BUILD)`, so the release bundle holds no fault point ID.
+// Each caller must wrap the call in `if (NIXIE_TEST_BUILD)`, so the release bundle drops it and
+// holds no fault point ID.
 export async function waitAtFaultPoint(
   id: FaultPointID,
   context: FaultPointContext,

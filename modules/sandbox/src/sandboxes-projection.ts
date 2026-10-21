@@ -7,9 +7,6 @@ import { sandboxSleptCodec } from './sandbox-slept-codec';
 import { sandboxWokenCodec } from './sandbox-woken-codec';
 import type { SandboxTables } from './types';
 
-// One row per sandbox that nixie made and has not destroyed. A created record adds the row, a sleep
-// and a wake set its state, and a destroy removes it, so the table answers crash recovery's question
-// of which sandboxes still stand. A grant changes no row.
 export const sandboxesProjection: Projection = {
   table: 'sandboxes',
   keyColumn: 'sandbox_id',
@@ -34,14 +31,12 @@ const sandboxCodecs = [
   sandboxDestroyedCodec,
 ];
 
-// the sandbox a sandbox record names, or null for a record of another kind or one that names none
 function findSandboxID(record: EnvelopeRecord): string | null {
   const codec = sandboxCodecs.find((candidate) => candidate.kind === record.kind);
 
   return codec?.tryDecodePartial(record.payload)?.sandboxID ?? null;
 }
 
-// applies one sandbox record to its row, and tells whether the row changed
 async function applySandboxRecord(
   db: Transaction<SandboxTables>,
   sandboxID: string,

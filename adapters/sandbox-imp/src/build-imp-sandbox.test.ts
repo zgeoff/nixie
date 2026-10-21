@@ -12,8 +12,6 @@ import invariant from 'tiny-invariant';
 import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
 import { startFakeImp } from './test-utils/start-fake-imp';
 
-// A conversation sandbox on a fake impd, created with its tool route open as a turn before left it.
-// The stub tool endpoint listens on a unix socket in a scratch directory.
 async function setupTest() {
   const recorder = await setupTestRecorder();
   const imp = await startFakeImp();
@@ -45,7 +43,6 @@ test('it lets a turn that starts during an idle sleep reach the tool endpoint on
 
   void ctx.imp.startIdleSleep(ctx.sandbox.id, snapshot.promise);
 
-  // the guest's tool check, which connects at once
   const turn = ctx.sandbox.exec({
     argv: [
       process.execPath,
@@ -55,7 +52,6 @@ test('it lets a turn that starts during an idle sleep reach the tool endpoint on
     env: { TOOL_URL: ctx.toolURL },
   });
 
-  // the turn's first call to impd waits for the sleep
   await waitForCondition(() => ctx.imp.calls.some((call) => call.startsWith('wait ')));
 
   snapshot.resolve();
@@ -69,7 +65,6 @@ test('it lets a turn that starts during an idle sleep reach the tool endpoint on
     authorization: 'Bearer run-token',
   });
 
-  // the forward listens on the woken imp before the exec starts there
   expect(ctx.imp.calls.slice(ctx.imp.calls.indexOf(`slept ${ctx.sandbox.id}`))).toStrictEqual([
     `slept ${ctx.sandbox.id}`,
     `woken by wake ${ctx.sandbox.id}`,
@@ -85,7 +80,6 @@ test('it lets a turn reach the tool endpoint when an idle sleep starts between i
 
   ctx.imp.sleepsAfterWake.set(ctx.sandbox.id, snapshot.promise);
 
-  // the guest's tool check, which connects again once after a pause, as checkToolServer does
   const turn = ctx.sandbox.exec({
     argv: [
       process.execPath,

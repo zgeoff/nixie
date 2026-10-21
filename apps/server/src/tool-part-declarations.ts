@@ -8,9 +8,6 @@ import { startConversationEndpoint } from './start-conversation-endpoint';
 import { startWebFetch } from './start-web-fetch';
 import type { AnyPartDeclaration } from './types';
 
-// The parts the conversation's tools run on. The adapter reads the tool endpoint when a guest
-// connects, after the endpoint started, and the memory tools read the memory store, which starts
-// behind the health endpoint.
 export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
   {
     name: 'sandbox_adapter',

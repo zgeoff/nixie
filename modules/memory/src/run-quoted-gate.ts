@@ -8,12 +8,9 @@ import type { MemoryContext } from './types';
 export interface QuotedEvidence {
   readonly quote: string;
 
-  // where the quote's evidence lies, as the caller's lookup found it
   readonly found: QuoteEvidenceResult;
 }
 
-// The gate for a write with a quote: the quote must be one you typed, the memory's tokens must
-// appear in it, and the checker must find the quote asserts the memory.
 export function runQuotedGate(
   context: Pick<MemoryContext, 'gate'>,
   request: ContentGateRequest,

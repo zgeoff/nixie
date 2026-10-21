@@ -3,9 +3,6 @@ import { store } from './store';
 import type { StoredMemoryItem } from './to-mock-memory-item';
 import { toMockMemoryItem } from './to-mock-memory-item';
 
-// Reads one item with every version as nixie's API does, each version's quote with the message it
-// points into. Once the item's key is gone its versions read as gaps that show no message, and a
-// message the store keeps without its text reads as forgotten. Null when no item has the ID.
 export function readMockMemoryItem(itemID: string) {
   const item = store.memoryItems.findFirst((query) => query.where({ itemID }));
 
@@ -23,8 +20,6 @@ export function readMockMemoryItem(itemID: string) {
 
 type StoredVersion = StoredMemoryItem['versions'][number];
 
-// one version as nixie's API reads it, as a gap once the item's key is gone; a version whose text
-// fails to open shows neither its quote nor its message
 function readMockVersion(version: StoredVersion, number: number, isGone: boolean) {
   const isClosed = isGone || version.isUnreadable;
 

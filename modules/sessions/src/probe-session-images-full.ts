@@ -8,12 +8,9 @@ import type { ConversationRun, ImageTally } from './types';
 export interface SessionImages {
   readonly inbox: StepInput['inbox'];
 
-  // the images the session holds after its last turn
   readonly images: ImageTally;
 }
 
-// Whether the images the session holds leave no room for those of the inbox's first message, which
-// a turn always takes, so the session must open again. A message with no images always fits.
 export async function probeSessionImagesFull(
   run: Pick<ConversationRun, 'context' | 'defaultZone'>,
   session: SessionImages,

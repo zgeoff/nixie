@@ -8,8 +8,6 @@ import type { APIContext } from './types';
 import { writeOwnerMessage } from './write-owner-message';
 import { writeRecordForget } from './write-record-forget';
 
-// Builds the conversation's procedures: a page of a thread, your message into a task's inbox, one
-// image of your message, and the forget of a message or a reply.
 export function createConversationProcedures(context: APIContext) {
   return {
     read: apiImplementer.conversation.read.handler(async (options) => {
@@ -50,7 +48,6 @@ export function createConversationProcedures(context: APIContext) {
   };
 }
 
-// your message checks its images before it writes anything, so a refused image leaves no record
 function createSendProcedure(context: APIContext) {
   return apiImplementer.conversation.send.handler(async (options) => {
     const caller = await requireCaller(

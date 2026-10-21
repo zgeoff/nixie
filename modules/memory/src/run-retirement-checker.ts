@@ -6,8 +6,6 @@ import { retirementCheckerPrompt } from './retirement-checker-prompt';
 import type { FoundEvidence } from './run-memory-checker';
 import type { MemoryContext } from './types';
 
-// Asks the checker whether your message asks to retire the item, whose text it reads as untrusted
-// data. A retirement passes only on an asserted verdict.
 export async function runRetirementChecker(
   context: Pick<MemoryContext, 'gate'>,
   itemText: string,

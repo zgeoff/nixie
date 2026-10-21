@@ -13,12 +13,9 @@ import type { ServerParts } from './types';
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
 
-  // the queue an allowed queued call goes to, which no conversation tool reaches while each runs
-  // direct
   readonly queue: ActionQueue;
   readonly readStore: () => MemoryToolStore | null;
 
-  // the definitions in force, and a fresh seed that the skill reloads run
   readonly readInForce: () => DefinitionsInForce | null;
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
 }
@@ -28,9 +25,6 @@ export interface ConversationEndpoint {
   readonly definitions: readonly ToolDefinition[];
 }
 
-// Starts the tool endpoint over the conversation's tools, the web fetch tool, the time tool, the log
-// reader, the skill tools and the memory tools, and stops it on cleanup. The registry is fixed here, so the memory
-// tools reach the store through readStore.
 export async function startConversationEndpoint(
   options: Pick<ServerParts, 'cleanup' | 'config' | 'context'>,
   tools: ConversationEndpointTools,

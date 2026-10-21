@@ -19,14 +19,11 @@ export interface HTTPServerOptions {
   readonly cleanup: Cleanup;
   readonly log: Logger;
 
-  // the memory store once it starts, which the memory view reads
   readonly readMemory: ReadViewMemory;
 
-  // the gate a reset closes, which every request passes through
   readonly gate: APIGate;
 }
 
-// Serves the health endpoint and the API on the configured address. The memory view reads the memory store once the start sequence fills its slot.
 export async function startHTTPServer(options: HTTPServerOptions): Promise<number> {
   const health = await startServerHealth({
     writer: options.writer,

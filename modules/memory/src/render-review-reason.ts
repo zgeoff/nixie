@@ -7,7 +7,6 @@ interface ReviewWords {
   readonly window: number;
 }
 
-// one sentence for each reason, which the type keeps complete
 const reasonSentences: Readonly<Record<ReviewReason, (words: ReviewWords) => string>> = {
   no_quote: (words) =>
     `The write gave no quote, or neither ${words.owner}'s ${formatWindow(words.window)} nor the message its eventID names contains it.`,
@@ -33,9 +32,6 @@ const reasonSentences: Readonly<Record<ReviewReason, (words: ReviewWords) => str
     `It comes from a photo, and a memory from a photo waits for ${words.their} review.`,
 };
 
-// Renders a review reason as the fixed sentence the model reads after its code: the write is saved
-// as a proposal for you to review, and why. Each sentence names you as the config does, and the
-// quote's window is the gate's own, so the model never reads a bare code or guesses what it means.
 export function renderReviewReason(
   reason: ReviewReason,
   gate: Pick<GateContext, 'ownerName' | 'ownerPronouns' | 'limits'>,
@@ -56,7 +52,6 @@ function formatWindow(window: number): string {
   return window === 1 ? 'last message' : `last ${window} messages`;
 }
 
-// "the owner" opens a sentence as "The owner"
 function toSentenceCase(sentence: string): string {
   return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 }

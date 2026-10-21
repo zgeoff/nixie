@@ -11,8 +11,6 @@ import { startMemoryConsolidatorRunner } from './start-memory-consolidator-runne
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemoryStore } from './test-utils/start-test-memory-store';
 
-// memory on a session host and a test clock, with the consolidator on its own scripted model and
-// the process double, which runs the real guest against the consolidator's tool endpoint
 async function setupTest() {
   const host = await startTestSessionHost({ projections: memoryProjections });
 
@@ -27,7 +25,6 @@ async function setupTest() {
   const consolidator = await startMemoryConsolidatorRunner({
     context,
 
-    // one profile on the scripted model, which the conversation and the consolidator share
     models: modelsConfigSchema.parse({
       profiles: {
         'tidy-direct': {
@@ -186,8 +183,6 @@ test('it carries an idiom word for word, a pronoun through a merge, and a summar
     createMemoryItem(ctx.store, { text: 'Takes coffee black with no milk' }),
   ]);
 
-  // the scripted call proposes a rewrite that only names the owner, a merge that keeps "she", and a
-  // summary of the 2 coffee items it leaves alone
   ctx.model.addReplies(
     {
       toolUse: {

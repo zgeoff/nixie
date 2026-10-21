@@ -1,8 +1,5 @@
 import type { Span } from '@heynixie/contract';
 
-// Spans that run from 0 to the text's end in order, each non-empty, with no gap or overlap, are kept
-// as sent. Anything else makes the whole message one unknown span, so a client that cannot tell
-// fails closed. Offsets count UTF-16 code units, as the text's length does.
 interface NormalizedSpans {
   readonly spans: readonly Span[];
   readonly labelled: 'as_sent' | 'unknown';
@@ -26,5 +23,6 @@ function isSpanCover(text: string, spans: readonly Span[]): boolean {
     0,
   );
 
+  // Span offsets count UTF-16 code units, as a JavaScript string's length does.
   return covered === text.length;
 }

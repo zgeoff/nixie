@@ -5,7 +5,6 @@ import { ProposalCapError } from './proposal-cap-error';
 import type { MemoryTables, StoreParts } from './types';
 import type { ProposalPlan } from './write-memory-proposal';
 
-// A proposal's sealed text and action hash, ready to record.
 export interface SealedProposal {
   readonly proposalID: string;
   readonly itemID: string;
@@ -18,8 +17,6 @@ export interface PendingProposal {
   readonly sealed: SealedProposal;
 }
 
-// Records a proposal inside the caller's transaction. The cap counts every proposal of the turn,
-// task run or batch, so a flood of writes stops at the cap and the write past it is refused.
 export async function writeProposalRecord(
   tx: Transaction<unknown>,
   parts: StoreParts,

@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { runCLI } from './run-cli';
 import { writeBootFiles } from './test-utils/write-boot-files';
 
-// the boot files a deployment command reads, and the IO it prints and logs to
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-deployment-commands-'));
 

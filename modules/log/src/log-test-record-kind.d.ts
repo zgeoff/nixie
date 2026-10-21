@@ -1,5 +1,3 @@
-// The record kinds the log's own tests write. No module sits below the log, so its tests register the
-// kinds they borrow here, and this file reaches no other package's program.
 export type LogTestRecordKind =
   | 'owner_message'
   | 'model.reply'

@@ -4,8 +4,6 @@ import { buildImpSandboxAdapter } from '../build-imp-sandbox-adapter';
 import { removeOwnedSandboxes } from './remove-owned-sandboxes';
 import { startFakeImp } from './start-fake-imp';
 
-// The imp adapter on a fresh recorder and a fake impd. No spec here takes a tool route, so the
-// tool target is never reached.
 async function setupTest() {
   const recorder = await setupTestRecorder();
   const imp = await startFakeImp();

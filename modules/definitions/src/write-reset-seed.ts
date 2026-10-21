@@ -6,9 +6,6 @@ import type { ResetSeed } from './read-reset-seed';
 import type { DefinitionsInForce, DefinitionsTables } from './types';
 import { writeSkillRows } from './write-skill-rows';
 
-// Seeds the definitions in force again as the first record of a reset log, inside the reset's
-// transaction, with the payload of the seed it repeats, so the next start finds them unchanged.
-// The skills nixie wrote stay in force over the definitions with the versions beneath them.
 export async function writeResetSeed(
   tx: Transaction<unknown>,
   log: Log,
@@ -42,7 +39,6 @@ export async function writeResetSeed(
     },
   ]);
 
-  // the log writes one record for each input
   invariant(record);
 
   const inForce = { ...seed.inForce, seededAt: new Date(), recordSequence: record.sequence };

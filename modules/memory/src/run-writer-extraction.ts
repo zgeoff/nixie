@@ -14,19 +14,13 @@ import type { BatchMessage, StagedFlag, StagedWrite, WriterUsage } from './write
 export interface WriterExtraction {
   readonly writes: readonly StagedWrite[];
 
-  // the possible self-notes the session flagged for the assistant
   readonly flags: readonly StagedFlag[];
 
-  // the session's token counts, or null when the batch needed no session
   readonly usage: WriterUsage | null;
 
-  // the current text of every item the session was shown, in its prompt or through a recall
   readonly shownTexts: ReadonlySet<string>;
 }
 
-// Runs one fresh model session over the batch, with the items it may revise and the pending
-// proposals it must not repeat, and collects what the session staged. A batch with none of your
-// messages left to read needs no session.
 export async function runWriterExtraction(
   parts: WriterParts,
   batch: WriterBatch,
@@ -65,14 +59,12 @@ export async function runWriterExtraction(
     await waitAtFaultPoint('writer.batch.extracted', { kind: 'task', id: memoryWriterTaskID });
   }
 
-  // a recall during the session shows more items, and a repeat of any of them writes nothing
   return {
     ...session,
     shownTexts: new Set([...shown.items.map((item) => item.text), ...staged.readRecalledTexts()]),
   };
 }
 
-// each readable record, with your pasted spans marked and a marker line for each image
 function buildBatchMessages(batch: WriterBatch): readonly BatchMessage[] {
   return batch.entries.flatMap((entry) => {
     if (entry.text === null) {
@@ -98,8 +90,6 @@ interface SessionRequest {
   readonly staged: StagingHandle;
 }
 
-// the batch closes whether the session ends or fails, so a failed batch leaves nothing staged, and
-// a step that lost its lease closes only its own batch, never a newer step's
 async function runSession(
   parts: WriterParts,
   session: SessionRequest,

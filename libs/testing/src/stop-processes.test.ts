@@ -14,17 +14,18 @@ test('it kills a process and every member of the group it leads', async () => {
     stopProcesses([leader.pid]);
   });
 
-  await waitForCondition(() => readDescendants(leader.pid).length > 0);
+  // each bound stays under half of Bun's 5000 ms test timeout, so a slow wait fails with its own
+  // error rather than with the test's timeout
+  await waitForCondition(() => readDescendants(leader.pid).length > 0, { timeoutMs: 2000 });
 
   const [memberPID] = readDescendants(leader.pid);
 
   stopProcesses([leader.pid]);
 
   await leader.exited;
-  await waitForCondition(() => probeProcessGone(Number(memberPID))).catch(() => null);
+  await waitForCondition(() => probeProcessGone(Number(memberPID)), { timeoutMs: 2000 });
 
   expect(leader.signalCode).toBe('SIGKILL');
-  expect(probeProcessGone(Number(memberPID))).toBe(true);
 });
 
 test('it skips a process that is already gone', async () => {

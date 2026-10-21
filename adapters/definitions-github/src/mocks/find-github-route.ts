@@ -3,12 +3,9 @@ import type { GitHubOperation } from '../github-contract';
 export interface GitHubRoute<Name extends string> {
   readonly name: Name;
 
-  // each parameter of the route's path, decoded
   readonly params: Readonly<Record<string, string>>;
 }
 
-// Finds the operation whose method and path a request matches, as GitHub routes it. A `:name`
-// parameter matches one segment, and a `*name` parameter the rest of the path.
 export function findGitHubRoute<Name extends string>(
   operations: Readonly<Record<Name, GitHubOperation>>,
   method: string,

@@ -23,19 +23,13 @@ export type Span = ContractInputs['conversation']['send']['spans'][number];
 
 export type SpanSource = Span['source'];
 
-// The text of a message box and how each span of it arrived. Spans cover the text in order, with
-// no gap and no overlap.
 export interface SpanState {
   readonly spans: readonly Span[];
   readonly text: string;
 
-  // the typed text the last edit removed, kept only until the next edit: a keyboard that splits a
-  // run-together word deletes it and inserts it again with a space
   readonly removed?: { readonly at: number; readonly text: string };
 }
 
-// What a client learns before an edit lands: the selection it replaces and how the new text
-// arrives. A backward edit, such as a backspace, ends at the caret.
 export interface PendingInput {
   readonly selection: {
     readonly backward: boolean;
@@ -44,10 +38,7 @@ export interface PendingInput {
   };
   readonly source: SpanSource;
 
-  // the text of an insertText of several words, which counts as typed only when it puts back the
-  // typed text the edit before it removed, with spaces added
   readonly respacing?: string;
 }
 
-// One of the image types a message takes.
 export type ImageMediaType = (typeof imageLimits.mediaTypes)[number];

@@ -45,7 +45,6 @@ test('it exits a second process on the same data directory with the writer lock 
     await first.exited;
   });
 
-  // the stub prints its epoch once it holds the lock
   await first.stdout.getReader().read();
 
   const second = Bun.spawn([process.execPath, ctx.stubServer, ctx.dataDir], {
@@ -199,7 +198,6 @@ test('it copies the database before the first migration of a release and never t
 
   onTestFinished(() => release2.stop());
 
-  // stopping checkpoints each WAL, so only the database files remain
   await release2.stop();
 
   const names = await readdir(ctx.dataDir);

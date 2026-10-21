@@ -14,8 +14,6 @@ export interface CheckIO extends CheckDependencies {
   readonly write: (bytes: Uint8Array) => Promise<void>;
 }
 
-// Runs the check guest for one check: it reads the request frame, runs the query, and writes one
-// reply frame. A failure becomes a failed reply, so the host always learns how the check ended.
 export async function runCheckGuest(io: CheckIO): Promise<void> {
   const reply = await readReply(io);
 

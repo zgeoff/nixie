@@ -1,7 +1,6 @@
 import type { StatusEntry } from '@heynixie/sessions';
 import { nixieVersion } from './nixie-version';
 
-// The status entry for the nixie version that opened the session.
 export function buildVersionStatus(version: string = nixieVersion): StatusEntry {
   return {
     name: 'nixie_version',

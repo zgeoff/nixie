@@ -3,12 +3,8 @@ import { createTestClient } from './test-utils/create-test-client';
 import { readStepEvents } from './test-utils/read-step-events';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
-// nixie in a test build at ready, with a device signed in through the code it printed at start, and
-// a signal that ends each stream the test follows
 async function setupTest() {
   const nixie = await startTestNixie();
-
-  // boot data: every procedure but enrol needs a device session
   const clients = await createTestClient(nixie);
 
   const stopping = new AbortController();
@@ -44,7 +40,6 @@ test('it streams a tool call and its result within a second of nixie recording t
 
   const received = await readStepEvents(stream, () => Date.now());
 
-  // nixie and the test share one clock, so each lag is the stream's own delay
   expect(received.filter((event) => event.kind.startsWith('tool_'))).toStrictEqual([
     { kind: 'tool_called', lagMs: expect.toBeWithin(0, 1000) },
     { kind: 'tool_result', lagMs: expect.toBeWithin(0, 1000) },

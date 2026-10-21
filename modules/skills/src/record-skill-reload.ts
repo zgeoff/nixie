@@ -10,9 +10,6 @@ export interface SkillReloadRecord {
   readonly plan: SkillReloadPlan;
 }
 
-// Records a reload on the task's thread, under the definitions it moved the task to. The record
-// becomes the task's pin, and the next turn's note names the skills it changed. A reload moves
-// only a pinned task on, so it returns false, and writes nothing, for a task with no pin.
 export function recordSkillReload(log: Log, input: SkillReloadRecord): Promise<boolean> {
   return writePinRecord(log, {
     kind: 'skills.reloaded',

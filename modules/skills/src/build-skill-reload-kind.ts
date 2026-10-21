@@ -8,16 +8,12 @@ export interface SkillReloadChange {
   readonly change: 'joined' | 'updated' | 'left';
 }
 
-// The skills one reload changed, each with how it changed.
 export interface SkillReloadEvent {
   readonly changes: readonly SkillReloadChange[];
 }
 
-// the most reloads one note reads, past which the block's count of more stops growing
 const readLimit = 1000;
 
-// The event kind for a reload on the thread, read from each reload's record. It lists only a
-// reload that changed a skill, so the turn after it names the skills whose catalog line changed.
 export function buildSkillReloadKind(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   thread: string,

@@ -128,7 +128,6 @@ test("it doubles the conversation's retry delay with each error until the delay 
 
   const claims = { next: await createTestConversationClaim(ctx.context, 'what is on today?') };
 
-  // each error's retry comes due before the next claim, so the clock reads the last retry time
   for (let errors = 1; errors <= 5; errors += 1) {
     const errored = await writeStepError(ctx.context, claims.next, {
       error: new Error('the provider is overloaded'),
@@ -148,7 +147,6 @@ test("it doubles the conversation's retry delay with each error until the delay 
 
   const entries = await readRecords(ctx.context.log, { afterSequence: 0 });
 
-  // 30 s, 60 s, then 100 s three times
   expect(
     entries
       .filter((entry) => entry.record.kind === 'task.step_errored')

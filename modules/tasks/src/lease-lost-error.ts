@@ -1,6 +1,5 @@
 import type { Lease } from './types';
 
-// The lease expired or another runner claimed the work since, so this runner must commit nothing.
 export class LeaseLostError extends Error {
   override readonly name = 'LeaseLostError';
 

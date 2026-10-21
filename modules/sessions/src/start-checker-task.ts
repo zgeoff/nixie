@@ -15,8 +15,6 @@ export interface CheckerTask {
   readonly check: RunCheck;
 }
 
-// Starts the checker on the checker role's profile, as a system task with its own session: one
-// query with no tools per check, in its own sandbox on the conversation image.
 export const startCheckerTask = makeSystemTaskRunner<CheckerTaskOptions, CheckerTask>({
   role: 'checker',
   entry: 'check',

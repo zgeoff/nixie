@@ -7,15 +7,11 @@ import { buildMockWriteCaller } from './build-mock-write-caller';
 export interface ProposalRequest {
   readonly text: string;
 
-  // the item and version an edit names; a new item when absent
   readonly target?: VersionRef;
 
-  // the conversation write that makes it, with a random model by default
   readonly caller?: WriteCaller;
 }
 
-// Writes a conversation memory.remember with no quote, which the gate always holds for review, and
-// returns the pending proposal it made.
 export async function createProposal(
   store: Pick<StartedMemoryStore, 'writes' | 'proposals'>,
   request: ProposalRequest,

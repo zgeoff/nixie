@@ -4,9 +4,6 @@ import type { SkillAnswerContext } from '@heynixie/skills';
 import { writeWrittenSkillResolution } from '@heynixie/skills';
 import { hostImplementer } from './host-implementer';
 
-// Builds the host procedures over the skills that nixie wrote and that are in force: list them,
-// each marked when your definitions changed it after the approval and with its export's pull
-// request, and keep one side of a skill.
 export function createHostWrittenSkillProcedures(context: SkillAnswerContext) {
   const written = hostImplementer.skills.written;
 

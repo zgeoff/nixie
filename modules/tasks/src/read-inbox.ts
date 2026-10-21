@@ -3,8 +3,6 @@ import { readRecords } from '@heynixie/log';
 import { isInboxRecord } from './is-inbox-record';
 import type { TasksContext, TasksTables } from './types';
 
-// Reads a task's unread inbox, oldest first: every inbox record past its read cursor, with its
-// erasable fields decrypted. A step passes each record's sequence back once the model read it.
 export async function readInbox(
   context: Pick<TasksContext, 'log'>,
   taskID: string,

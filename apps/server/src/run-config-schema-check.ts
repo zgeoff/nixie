@@ -1,6 +1,3 @@
-// `bun apps/server/src/run-config-schema-check.ts [--released <schema.json> --last-tag <tag>]
-// [--title <title>] [--release-body <body.md>] [--summary <out.json>]` compares the committed config
-// schema with the last release's; --title fails a breaking change that the title leaves unmarked.
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';

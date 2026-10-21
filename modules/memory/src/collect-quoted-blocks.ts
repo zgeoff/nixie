@@ -1,12 +1,8 @@
-// A range of a message, as offsets into its text.
 export interface TextRange {
   readonly start: number;
   readonly end: number;
 }
 
-// Finds the quoted blocks of a message, which never count as evidence: blockquote lines, code
-// fences, and everything below a reply or forward header. Inline quotation marks are left to the
-// checker, because the user quotes names and titles inside statements of their own.
 export function collectQuotedBlocks(text: string): readonly TextRange[] {
   const lines = collectLines(text);
   const fences = collectFences(lines, text.length);
@@ -28,7 +24,6 @@ export function collectQuotedBlocks(text: string): readonly TextRange[] {
 }
 
 interface Line extends TextRange {
-  // the line with its leading whitespace removed
   readonly trimmed: string;
 }
 
@@ -49,8 +44,8 @@ interface OpenFence {
   readonly run: string;
 }
 
-// a fence closes on a run of its own character at least as long as its opening run, with nothing
-// after it, and an unclosed fence runs to the end of the message
+// CommonMark closes a fence on a run of its opening character at least as long as the opening run,
+// with nothing after it, and an unclosed fence runs to the end of the message.
 function collectFences(lines: readonly Line[], length: number): readonly TextRange[] {
   const fences: TextRange[] = [];
   let open: OpenFence | null = null;
@@ -70,7 +65,6 @@ function collectFences(lines: readonly Line[], length: number): readonly TextRan
   return open === null ? fences : [...fences, { start: open.start, end: length }];
 }
 
-// a run of the same character at least as long as the opening run starts with the opening run
 function isClosingFence(trimmed: string, opening: string): boolean {
   const closing = /^(?<run>`+|~+)\s*$/u.exec(trimmed)?.groups?.['run'];
 

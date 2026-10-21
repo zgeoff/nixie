@@ -13,7 +13,6 @@ const pickerButton = css({
   paddingInline: '3',
 });
 
-// the input stays in the page, where a label click opens it, and out of sight
 const hiddenInput = css({
   height: '1px',
   opacity: '0',
@@ -22,9 +21,6 @@ const hiddenInput = css({
   width: '1px',
 });
 
-// The two ways to add images by hand: a phone opens its camera from the first and its gallery from
-// the second, and a desktop opens a file picker from either. Each input clears after a pick, so the
-// same image can go again.
 export function ImagePickers(props: ImagePickersProps): ReactNode {
   return (
     <>

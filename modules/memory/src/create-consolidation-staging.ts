@@ -4,8 +4,6 @@ import { findMissingToken } from './find-missing-token';
 import { pickLeastTrustedSource } from './pick-least-trusted-source';
 import type { MemorySubject } from './types';
 
-// An item the session was shown: the short ID the model names it by, the version it read, the text
-// and source of that version, whether the item is pinned, and whose it is.
 interface ShownItem {
   readonly shortID: string;
   readonly version: number;
@@ -15,8 +13,6 @@ interface ShownItem {
   readonly subject: MemorySubject;
 }
 
-// A change as the session asks for it: its kind, the items it names, its new text for a merge or a
-// rewrite, and why.
 export interface ChangeRequest {
   readonly kind: ChangeKind;
   readonly itemIDs: readonly string[];
@@ -29,27 +25,18 @@ type StageResult =
   | { readonly status: 'refused'; readonly reason: string };
 
 interface ConsolidationHandle {
-  // closes this run, if it is still the open one, and returns its diff, or null when the session
-  // staged none
   readonly close: () => readonly StagedChange[] | null;
 
-  // the item IDs of every item the session was shown, in its prompt or through a recall
   readonly readShownItemIDs: () => readonly string[];
 
-  // the summary staged with the diff, or null when the session gave none
   readonly readSummary: () => string | null;
 }
 
-// The consolidator's staging area: the run the open session stages into, and the one diff it
-// staged. One run is open at a time; opening one replaces any run a lost step left open.
 export interface ConsolidationStaging {
   readonly open: (shown: ReadonlyMap<string, ShownItem>, maxChanges: number) => ConsolidationHandle;
 
-  // records an item a recall showed the session, at the version it showed
   readonly show: (itemID: string, item: ShownItem) => void;
 
-  // stages the run's diff: its changes, and the session's summary for you, such as the items it
-  // left alone because they conflict
   readonly stage: (requests: readonly ChangeRequest[], summary?: string) => StageResult;
 }
 
@@ -62,8 +49,6 @@ interface OpenRun {
 
 const noRun: StageResult = { status: 'refused', reason: 'no consolidation run is open' };
 
-// Creates the staging area. A diff names only items the session was shown, each at most once, and
-// binds each to the version the session read; one diff a run, all of it or none.
 export function createConsolidationStaging(): ConsolidationStaging {
   const state: { run: OpenRun | null } = { run: null };
 
@@ -93,7 +78,6 @@ export function createConsolidationStaging(): ConsolidationStaging {
   };
 }
 
-// what one memory.consolidate call stages: its changes, and its summary when it gave one
 interface StagedInput {
   readonly requests: readonly ChangeRequest[];
   readonly summary: string | undefined;
@@ -118,22 +102,17 @@ function updateStagedRun(run: OpenRun, staged: StagedInput): StageResult {
   return { status: 'staged', changes: planned.changes.length };
 }
 
-// why a change or a diff is refused, which goes back to the model
 interface Refusal {
   readonly refusal: string;
 }
 
 type PlannedDiff = { readonly changes: readonly StagedChange[] } | Refusal;
 
-// what planning a diff reads of the open run
 interface RunView {
   readonly shown: ReadonlyMap<string, ShownItem>;
   readonly maxChanges: number;
 }
 
-// The diff the requests stage, or why the whole diff is refused: too many changes, an item in 2
-// changes, an item the session was never shown, a change of the wrong shape, or new text that
-// holds a destination none of its items holds.
 function planDiff(run: RunView, requests: readonly ChangeRequest[]): PlannedDiff {
   if (requests.length > run.maxChanges) {
     return {
@@ -152,7 +131,6 @@ function planDiff(run: RunView, requests: readonly ChangeRequest[]): PlannedDiff
   return planChanges(run, requests);
 }
 
-// the first item that 2 changes name, or that one change names twice
 function findRepeatedItem(requests: readonly ChangeRequest[]): string | null {
   const named = requests.flatMap((request) => request.itemIDs);
 
@@ -207,8 +185,6 @@ function planChange(run: RunView, request: ChangeRequest): PlannedChange {
   return buildStagedChange(request, sortSurvivorFirst(inputs));
 }
 
-// the shape each kind takes: a merge names 2 or more items and gives their text, a rewrite names
-// one item and gives new text, and a retirement names one item and gives no text
 function findShapeError(request: ChangeRequest): string | null {
   if (request.reason.trim() === '') {
     return 'give a reason the owner can read';
@@ -244,8 +220,6 @@ interface NamedInput {
   readonly item: ShownItem;
 }
 
-// a merge keeps one item's subject, so its inputs must share it: a shared item merged into an
-// owner fact would leave the shared memory
 function findMixedSubject(inputs: readonly NamedInput[]): string | null {
   const [first, ...rest] = inputs;
   const other = rest.find((input) => input.item.subject !== first?.item.subject);
@@ -255,8 +229,6 @@ function findMixedSubject(inputs: readonly NamedInput[]): string | null {
     : `items ${first.item.shortID} and ${other.item.shortID} have different subjects, ${first.item.subject} and ${other.item.subject}; merge only items of one subject`;
 }
 
-// A change binds each input to the version the session read, and takes the least trusted source
-// among them.
 function buildStagedChange(request: ChangeRequest, inputs: readonly NamedInput[]): PlannedChange {
   const [first, ...rest] = inputs.map((input) => ({
     itemID: input.itemID,
@@ -282,8 +254,6 @@ function buildStagedChange(request: ChangeRequest, inputs: readonly NamedInput[]
     : { refusal: refused };
 }
 
-// A destination in new text must come from one of its inputs, so a change never brings one in,
-// and a rewrite must change the words.
 function findTextError(
   text: string,
   kind: ChangeKind,
@@ -306,8 +276,6 @@ function buildTextChange(kind: 'merge' | 'rewrite', change: TextChange): StagedC
   return kind === 'merge' ? { kind, ...change } : { kind, ...change, inputs: [change.inputs[0]] };
 }
 
-// A merge keeps its first input and retires the rest, so a pinned input goes first: the merged
-// fact then stays in the pinned core. The order is otherwise the session's.
 function sortSurvivorFirst(inputs: readonly NamedInput[]): readonly NamedInput[] {
   const pinned = inputs.findIndex((input) => input.item.isPinned);
 
@@ -316,8 +284,6 @@ function sortSurvivorFirst(inputs: readonly NamedInput[]): readonly NamedInput[]
     : [...inputs.slice(pinned, pinned + 1), ...inputs.filter((_, index) => index !== pinned)];
 }
 
-// The requests with each item named by its item ID, whether the model passed the short ID it read
-// or the item ID. An ID that names no shown item stays as given, so its refusal names it that way.
 function resolveItemIDs(
   shown: ReadonlyMap<string, ShownItem>,
   requests: readonly ChangeRequest[],

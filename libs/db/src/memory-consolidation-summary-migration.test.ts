@@ -23,7 +23,6 @@ async function setupTest() {
 
   stack.defer(() => db.destroy());
 
-  // the schema the release before leaves, which the migration starts from
   await runMigrations(db, {
     schema: {
       migrations: nixieSchema.migrations.slice(
@@ -35,7 +34,6 @@ async function setupTest() {
     copyDir: directory,
   });
 
-  // a run that a release before folded, which names no summary columns
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.consolidation_proposed', 'snapshot-a', '{}')`.execute(db);
 

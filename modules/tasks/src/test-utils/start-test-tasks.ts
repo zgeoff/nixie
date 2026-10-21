@@ -10,7 +10,6 @@ import { tasksProjections } from '../tasks-projections';
 import type { TasksContext } from '../types';
 
 export interface TestTasks {
-  // adds a cleanup that runs when the test finishes, before the writer stops
   readonly defer: (cleanup: () => Promise<void>) => void;
   readonly dataDir: string;
   readonly writer: Writer;
@@ -18,8 +17,6 @@ export interface TestTasks {
   readonly context: TasksContext;
 }
 
-// Starts a writer on a fresh data directory with the log's and the tasks projections, and a test
-// clock at 1,000,000 ms. When the test finishes it stops the writer, then removes the directory.
 export async function startTestTasks(): Promise<TestTasks> {
   const stack = new AsyncDisposableStack();
 

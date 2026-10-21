@@ -6,8 +6,6 @@ import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { buildStartState } from './build-start-state';
 import { registerSandboxImages } from './register-sandbox-images';
 
-// The imp adapter on a fake impd and a fresh recorder, with the start state the step reports to.
-// The step adds images only, so the tool target is never reached.
 async function setupTest() {
   const recorder = await setupTestRecorder();
   const imp = await startFakeImp();

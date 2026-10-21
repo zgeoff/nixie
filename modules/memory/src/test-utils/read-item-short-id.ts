@@ -1,8 +1,6 @@
 import type { Log } from '@heynixie/log';
 import type { MemoryTables } from '../types';
 
-// Reads the short ID that the items table holds for an item, and fails when the item or its short
-// ID is missing, so a test compares what the model reads against the stored value.
 export async function readItemShortID(log: Pick<Log, 'writer'>, itemID: string): Promise<string> {
   const row = await log.writer.db
     .$extendTables<MemoryTables>()

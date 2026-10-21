@@ -4,13 +4,10 @@ import invariant from 'tiny-invariant';
 import type { BatchBounds } from '../writer-types';
 
 export interface PlannedBatch {
-  // the sequences of your messages, in the order of the texts
   readonly sequences: readonly number[];
   readonly bounds: BatchBounds;
 }
 
-// Records the writer's first start at sequence 0, then your messages, then a live batch planned
-// from the cursor through the last message, the way the log stands just before the batch publishes.
 export async function writePlannedBatch(log: Log, texts: readonly string[]): Promise<PlannedBatch> {
   const records = await writeRecords(log, [
     {
