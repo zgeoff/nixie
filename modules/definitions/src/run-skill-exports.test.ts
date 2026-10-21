@@ -1234,3 +1234,53 @@ test('it never writes the pull request of a skill that left force after the run 
 
   expect(attempts.rows).toStrictEqual([]);
 });
+
+test('it closes the pull request it wrote when the skill is retired while the export runs', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  ctx.repo.delayNextAnswer(() =>
+    withWriteTransaction(ctx.writer, (tx) =>
+      writeWrittenSkillState(tx, {
+        approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+        to: 'retired',
+        at: 2,
+      }),
+    ),
+  );
+
+  const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+
+  const exports = await sql`select state, pull_request_number from skill_exports`.execute(
+    ctx.writer.db,
+  );
+
+  const attempts = await sql`select approval_id from skill_export_attempts`.execute(ctx.writer.db);
+
+  expect(result).toStrictEqual({
+    exported: [],
+    closed: ['5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31'],
+  });
+
+  expect(ctx.repo.readPullRequests()).toMatchObject([{ number: 1, state: 'closed' }]);
+  expect(exports.rows).toStrictEqual([{ state: 'closed', pull_request_number: 1 }]);
+  expect(attempts.rows).toStrictEqual([]);
+});
