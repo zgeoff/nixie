@@ -291,6 +291,7 @@ export const store = {
   ratingNotes,
   records,
 
+  // Clears records before the sessions and codes they reference; the order is deliberate.
   reset: (): void => {
     for (const collection of [
       records,
