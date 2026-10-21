@@ -26,7 +26,7 @@ const options = {
 };
 
 export function buildRoleTools(set: ToolSet): readonly ListedTool[] {
-  const webFetch = buildWebFetchTool(() => Promise.reject(new Error('unused')));
+  const webFetch = buildWebFetchTool(() => Promise.reject(new Error('unused')), unused);
   const definitions = {
     conversation: () => [
       webFetch,
