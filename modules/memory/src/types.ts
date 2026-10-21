@@ -63,7 +63,6 @@ export interface RememberRequest {
   readonly subject?: MemorySubject;
 }
 
-// The write refuses the change by throwing, and a change that fails rolls the write back.
 export type WriteInTransaction = (tx: Transaction<unknown>) => Promise<void>;
 
 export interface RetireRequest {
