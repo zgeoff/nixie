@@ -24,7 +24,7 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
     buildTools: (context) => {
       const definitions = buildConversationTools(
         {
-          webFetch: buildWebFetchTool(() => Promise.resolve(reply)),
+          webFetch: buildWebFetchTool(() => Promise.resolve(reply), context.log),
           time: buildTimeTool({
             clock: context.clock,
             findTimeZone: () => Promise.resolve(null),

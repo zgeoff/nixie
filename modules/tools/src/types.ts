@@ -91,6 +91,10 @@ export interface ToolRun {
   // the run identity of the step whose step token the call arrived with, which the action queue
   // checks against the task's current claim; absent for a call under the run's own token
   readonly stepRunID?: string;
+
+  // the random key of the conversation session the step's turn runs on, which a store that lasts a
+  // session keys its rows by; absent for a call under the run's own token
+  readonly sessionKey?: string;
 }
 
 // The model ID and the profile name of a run, set from the profile nixie started the run with and
@@ -134,8 +138,8 @@ export interface RunEndpoint {
   readonly token: string;
 
   // issues a token of the step's own, so each call that arrives with it carries the step's run
-  // identity; the run's stop revokes it too
-  readonly startStep: (stepRunID: string) => StepToken;
+  // identity and the key of the session its turn runs on; the run's stop revokes it too
+  readonly startStep: (stepRunID: string, sessionKey?: string) => StepToken;
 
   // the Unix socket the run's endpoint listens on, which target names
   readonly socketPath: string;

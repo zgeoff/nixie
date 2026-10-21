@@ -12,6 +12,7 @@
   "dependencies": {
     "@heynixie/clock": "workspace:*",
     "@heynixie/contract": "workspace:*",
+    "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/tasks": "workspace:*",

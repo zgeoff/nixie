@@ -27,7 +27,7 @@ test('it numbers each step token a run issues and records which ones stopped', a
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   });
 
-  const first = endpoint.startStep('conversation:1@1');
+  const first = endpoint.startStep('conversation:1@1', 'session-a');
   const second = endpoint.startStep('conversation:2@2');
 
   await first.stop();
@@ -36,7 +36,12 @@ test('it numbers each step token a run issues and records which ones stopped', a
   expect(second.token).toBe('step-token-2');
 
   expect(stub.steps).toStrictEqual([
-    { stepRunID: 'conversation:1@1', token: 'step-token-1', isStopped: true },
-    { stepRunID: 'conversation:2@2', token: 'step-token-2', isStopped: false },
+    {
+      stepRunID: 'conversation:1@1',
+      sessionKey: 'session-a',
+      token: 'step-token-1',
+      isStopped: true,
+    },
+    { stepRunID: 'conversation:2@2', sessionKey: null, token: 'step-token-2', isStopped: false },
   ]);
 });

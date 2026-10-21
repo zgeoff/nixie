@@ -12,6 +12,7 @@ import { skillExportsMigration } from './skill-exports-migration';
 import { skillsMigration } from './skills-migration';
 import { tasksMigration } from './tasks-migration';
 import type { BuildSchema } from './types';
+import { webFetchLinksMigration } from './web-fetch-links-migration';
 import { writtenSkillsMigration } from './written-skills-migration';
 
 // The schema this build writes. A migration appends to the list and never changes an entry already
@@ -33,6 +34,7 @@ export const nixieSchema: BuildSchema = {
     writtenSkillsMigration,
     skillExportsMigration,
     skillExportAttemptsMigration,
+    webFetchLinksMigration,
   ],
   oldestReader: 0,
 };

@@ -168,9 +168,15 @@ function makeStepStarter(
 
   handlers: Map<string, McpHandler>,
 ): RunEndpoint['startStep'] {
-  return (stepRunID) => {
+  return (stepRunID, sessionKey) => {
     const token = randomBytes(32).toString('base64url');
-    const stepRun: ToolRun = { ...spec.run, stepRunID };
+
+    const stepRun: ToolRun = {
+      ...spec.run,
+      stepRunID,
+      ...(sessionKey === undefined ? {} : { sessionKey }),
+    };
+
     const handler = createMcpHandler(() => createRunServer(stepRun, spec.options));
 
     handlers.set(token, handler);

@@ -34,6 +34,7 @@ test('it returns the readable text of an HTML page over a connection to the chec
     status: 200,
     contentType: 'text/html; charset=utf-8',
     text: 't\n\nHello\n\nworld',
+    links: [],
     isTruncated: false,
     blocked: null,
   });
@@ -252,6 +253,7 @@ test('it follows redirects up to the limit and returns the final URL', async () 
     status: 200,
     contentType: 'text/plain',
     text: 'arrived',
+    links: [],
     isTruncated: false,
     blocked: null,
   });
@@ -283,7 +285,8 @@ test('it resolves the links of a page against its final URL after a redirect', a
     url: `https://site.test:${site.port}/guides/setup/`,
     status: 200,
     contentType: 'text/html',
-    text: `Install [→ https://site.test:${site.port}/guides/install] first.`,
+    text: 'Install \u{E000}0\u{E001} first.',
+    links: [`https://site.test:${site.port}/guides/install`],
     isTruncated: false,
     blocked: null,
   });
@@ -312,6 +315,7 @@ test('it cuts the list of other links before the text of the page at the text li
     status: 200,
     contentType: 'text/html',
     text: 'The article.\n\nOther links on this page',
+    links: [`https://site.test:${site.port}/a`, `https://site.test:${site.port}/b`],
     isTruncated: true,
     blocked: null,
   });
@@ -360,6 +364,7 @@ test('it returns the blocked reason for a Cloudflare challenge in place of the p
     status: 403,
     contentType: 'text/html; charset=UTF-8',
     text: 'Just a moment...',
+    links: [],
     isTruncated: false,
     blocked: "blocked by the site's bot protection (Cloudflare challenge)",
   });
@@ -473,6 +478,7 @@ test('it stops at the body limit and marks the result truncated', async () => {
   expect(reply).toMatchObject({
     kind: 'page',
     text: '0123456789012345678901234',
+    links: [],
     isTruncated: true,
   });
 });
@@ -708,6 +714,7 @@ test('it returns a binary type with no body', async () => {
     status: 200,
     contentType: 'image/png',
     text: null,
+    links: [],
     isTruncated: false,
     blocked: null,
   });
@@ -734,6 +741,7 @@ test('it returns another text type as it arrived', async () => {
     kind: 'page',
     status: 404,
     text: '{"a": "<b>"}',
+    links: [],
     isTruncated: false,
     blocked: null,
   });
@@ -771,7 +779,7 @@ test('it cuts a long article full of links to the start that fits the default te
     throw new Error('the fetcher returned no page text');
   }
 
-  expect(buildReadableText(html, new URL(reply.url)).length).toBeWithin(68_000, 72_000);
+  expect(buildReadableText(html, new URL(reply.url)).text.length).toBeWithin(26_000, 30_000);
   expect(reply.isTruncated).toBeTrue();
 
   expect(Buffer.byteLength(reply.text)).toBeWithin(
@@ -780,8 +788,13 @@ test('it cuts a long article full of links to the start that fits the default te
   );
 
   expect(reply.text).toStartWith(
-    "Gannet Rock Light\n\nKeeper's log 0: the lamp at Gannet Rock burned through the fog, as the volume 0 [→ https://lighthouses.example/archive/gannet-rock/logbook/volume-0/entry-0?view=full&lang=en]",
+    "Gannet Rock Light\n\nKeeper's log 0: the lamp at Gannet Rock burned through the fog, as the volume 0 \u{E000}0\u{E001} and its tide tables \u{E000}1\u{E001} record.",
   );
+
+  expect(reply.links.slice(0, 2)).toStrictEqual([
+    'https://lighthouses.example/archive/gannet-rock/logbook/volume-0/entry-0?view=full&lang=en',
+    'https://lighthouses.example/archive/gannet-rock/weather/0/barometer-readings-and-tide-tables',
+  ]);
 });
 
 test('it decodes the text in the charset the page names', async () => {

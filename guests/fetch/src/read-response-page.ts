@@ -1,5 +1,6 @@
 import type { IncomingMessage } from 'node:http';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
+import { stripLinkMarks } from '@heynixie/wire';
 import { buildReadableText } from './build-readable-text';
 import { decodeContent } from './decode-content';
 import { findBotChallenge } from './find-bot-challenge';
@@ -36,6 +37,7 @@ async function readContent(
   limits: FetchLimits,
 ): Promise<{
   readonly text: string | null;
+  readonly links: readonly string[];
   readonly isTruncated: boolean;
   readonly blocked: string | null;
 }> {
@@ -44,6 +46,7 @@ async function readContent(
   if (kind === 'binary') {
     return {
       text: null,
+      links: [],
       isTruncated: false,
       blocked: findBotChallenge(status, response.headers, null),
     };
@@ -51,11 +54,16 @@ async function readContent(
 
   const body = await readBodyText(response, limits);
 
-  const readable = kind === 'html' ? buildReadableText(body.text, url) : body.text;
-  const text = buildTextWithinLimit(readable, limits.textBytes);
+  const readable =
+    kind === 'html'
+      ? buildReadableText(body.text, url)
+      : { text: stripLinkMarks(body.text), links: [] };
+
+  const text = buildTextWithinLimit(readable.text, limits.textBytes);
 
   return {
     text: text.text,
+    links: readable.links,
     isTruncated: body.isTruncated || text.isCut,
     blocked: findBotChallenge(status, response.headers, body.text),
   };

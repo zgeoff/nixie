@@ -30,6 +30,35 @@ When a site's bot protection answers in place of the page, the result is a page 
 a blocked reason, so the model can tell the user why the fetch has no content instead of retrying. A
 blocked page is a page, so nixie keeps the fetch sandbox after it.
 
+A call names the page by its URL or by the ID of a link that a page fetched earlier in the session
+showed, and the tool refuses a call that gives both or neither.
+
+## Link IDs
+
+Each link in a page's text reads as a short ID that the conversation session numbers, such as
+`[L12]`, so a link costs a few characters in place of its whole URL. A link that leaves the page's
+site shows its host after the ID, such as `[L40 · example.org]`, so the model can tell where a link
+goes before it follows it. The tool fetches the page a link ID names, and its result holds the URL
+the fetch ended at, as a fetch by URL does.
+
+The session numbers each URL once, from a count of its own, so a URL keeps one ID across every page
+the session fetches, and the IDs of two sessions are unrelated. A new session's opening record keeps
+a random session key, each turn on that session hands the key to its tool calls, and the link store
+keys each row by it. A compaction or a forget opens a new session, so an ID from an earlier session
+fails with an error that tells the model to fetch the page by its URL again. A call under the run's
+own token runs in no session, so the tool keys its links by the run.
+
+Link IDs are the one exception to the rule that every record the model sees takes a short ID from
+the database library ([short IDs](../core/database.md#short-ids)). A link ID names a link, not a
+record, and it lasts one session, so a count gives the shortest ID and no rebuild from the log needs
+it.
+
+The link store belongs to the web fetch tool alone. Each row holds a URL, and a URL can carry text
+the user forgets, so a forget removes every link on the conversation's thread
+([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session)). A fetch
+that numbers links while a forget's cleanup runs can outlive the cleanup, so the first session after
+the forget removes the thread's links again before it opens.
+
 ## The fetch sandbox
 
 nixie keeps one long-lived fetch sandbox and creates it on the first fetch. Each fetch spawns a new
@@ -89,15 +118,17 @@ and the fetcher takes the next of those when one holds no text. The text of navi
 never counts as main content, so site menus never come before the content. An article comes before
 the main element because a site's main element often holds toolbars around the article.
 
-The readable text keeps each link's target, so the model can follow a link to the next page. A link
-in the main content reads as its text followed by `[→ <target>]`, with the target resolved against
-the page's final URL. After the main content comes a list headed "Other links on this page", which
-holds the links from the rest of the page, such as its navigation, asides, header and footer. The
-list holds each target once, leaves out a target the main content shows, and stops at a fixed count,
-so a page of menus cannot fill the text limit. The list comes last, so a page cut at the text limit
-loses its list before its article. A link to the page itself, to a fragment of it, or through a
-scheme other than `https` and `http`, such as `javascript:`, keeps only its text, because the model
-has nothing to fetch there.
+The readable text marks where each link ends, so the model can follow a link to the next page. The
+fetcher writes a mark after the text of each link in the main content and lists each mark's target,
+resolved against the page's final URL, beside the text, and nixie writes each mark as the link's ID.
+A mark is the link's index between two private-use characters, and the fetcher strips both
+characters from the page's own text, so a page cannot forge a mark. After the main content comes a
+list headed "Other links on this page", which holds the links from the rest of the page, such as its
+navigation, asides, header and footer. The list holds each target once, leaves out a target the main
+content shows, and stops at a fixed count, so a page of menus cannot fill the text limit. The list
+comes last, so a page cut at the text limit loses its list before its article. A link to the page
+itself, to a fragment of it, or through a scheme other than `https` and `http`, such as
+`javascript:`, keeps only its text and gets no mark, because the model has nothing to fetch there.
 
 Another text type returns as it arrived, in the charset its content type names, and a binary type
 returns no text, so the fetcher never reads its body. A 403 or 503 that carries Cloudflare's
