@@ -2,8 +2,6 @@ import { parseEvidence } from './parse-evidence';
 import type { RetireRequest } from './types';
 import type { VersionPlan } from './write-version-in-transaction';
 
-// Plans the version that retires an active item. The text stays as it was with its source and
-// evidence, and the version carries your request to retire it when one exists.
 export function planRetiredVersion(request: RetireRequest): VersionPlan {
   return {
     requirement: { target: request.target, operation: 'retire', states: ['active'] },

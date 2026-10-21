@@ -50,17 +50,12 @@ const writerFailed = z
   })
   .readonly();
 
-// The memory writer's records, each with its plain payload: the writer's first start, a batch's
-// fixed bounds, a batch that published with the cursor it advanced, and a failure with its backoff.
-// A failure's message is free text, so it sits in the record's erasable fields.
 export type WriterRecord =
   | ({ readonly kind: 'memory.writer_started' } & z.infer<typeof writerStarted>)
   | ({ readonly kind: 'memory.batch_planned' } & z.infer<typeof batchPlanned>)
   | ({ readonly kind: 'memory.batch_published' } & z.infer<typeof batchPublished>)
   | ({ readonly kind: 'memory.writer_failed' } & z.infer<typeof writerFailed>);
 
-// Reads a writer record's payload into its typed shape, or null for a record of another kind. A
-// writer record whose payload breaks its shape throws, so a fold never writes a half-read row.
 export function parseWriterRecord(record: EnvelopeRecord): WriterRecord | null {
   if (record.kind === 'memory.writer_started') {
     return { kind: record.kind, ...writerStarted.parse(record.payload) };

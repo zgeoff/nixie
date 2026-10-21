@@ -9,27 +9,20 @@ import { normalizeFactText } from './normalize-fact-text';
 import { subjectColumn } from './subject-column';
 import type { MemorySubject, MemoryTables, StoreParts, VersionRef } from './types';
 
-// A change a write proposes, as a pending proposal must match it to take the write in.
 export interface ProposedChange {
   readonly operation: 'remember' | 'retire';
 
-  // the item and version an edit names, or null for a new item
   readonly target: VersionRef | null;
   readonly isPinned: boolean;
   readonly text: string;
 
-  // the subject of the item, owner when unset
   readonly subject?: MemorySubject;
 
-  // the write's checks, which name the photo of yours it comes from, if any
   readonly checks?: JSONObject | null;
 }
 
 const checksColumn = z.record(z.string(), z.json());
 
-// Finds the oldest pending remember proposal that makes the same change: the same target, or a new
-// item of the same kind for both, the same pin, the same photo or none, and the same text once
-// normalized. Each text is sealed under its own item's key, so the search opens each one.
 export async function readMatchingProposal(
   db: Kysely<MemoryTables>,
   parts: Pick<StoreParts, 'context'>,
@@ -50,8 +43,6 @@ export async function readMatchingProposal(
     .where('operation', '=', 'remember')
     .where('is_pinned', '=', isPinned);
 
-  // a proposal for an edit takes its item's subject whoever proposed it, so the target alone
-  // decides, and only a new item's proposal is matched by the subject the write asks for
   const sameTarget =
     target === null
       ? pending.where('is_new_item', '=', 1).where(subjectColumn, '=', change.subject ?? 'owner')
@@ -59,8 +50,6 @@ export async function readMatchingProposal(
 
   const rows = await sameTarget.orderBy('created_sequence').execute();
 
-  // a merge keeps the pending proposal's checks, so a write from a photo merges only into a
-  // proposal from the same photo, and any other write never merges into one
   const image = findImageSource(change.checks ?? null);
 
   const samePhoto = rows.filter((row) => {
@@ -94,7 +83,6 @@ async function readSameText(
     rows.map(async (row) => {
       const key = keys.get(row.item_id);
 
-      // a forgotten item's proposal has no key left, so it holds no text to match
       if (key === null || key === undefined) {
         return null;
       }

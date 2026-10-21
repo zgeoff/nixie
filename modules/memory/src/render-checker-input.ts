@@ -1,16 +1,13 @@
 import type { TextRange } from './collect-quoted-blocks';
 import type { OwnerMessage } from './gate-types';
 
-// What the checker reads beside your message: a candidate memory, or the item a retirement would
-// end, which the checker reads as untrusted data.
 export interface CheckedText {
   readonly kind: 'candidate_memory' | 'item_to_retire';
   readonly text: string;
 }
 
-// Renders the checker's whole input: your one message, with the cited words marked «evidence» and
-// every span you did not type marked «pasted», then the text it checks. The evidence mark avoids a
-// quotation word, because the checker read words marked «quote» as someone else's speech.
+// The evidence mark avoids a quotation word, because the checker model read words marked «quote»
+// as someone else's speech.
 export function renderCheckerInput(
   message: OwnerMessage,
   evidence: TextRange,
@@ -29,7 +26,6 @@ export function renderCheckerInput(
     ),
   ];
 
-  // at one offset a closing mark goes before an opening one
   const sorted = marks.toSorted(
     (left, right) => left.at - right.at || getMarkRank(left.mark) - getMarkRank(right.mark),
   );

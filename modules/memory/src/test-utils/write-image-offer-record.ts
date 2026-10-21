@@ -5,24 +5,18 @@ import invariant from 'tiny-invariant';
 export interface ImageOfferRecord {
   readonly thread: string;
 
-  // the message that holds the image, and the image's number in it, from 1
   readonly messageSequence: number;
   readonly image: number;
 
-  // the text the model offered to save
   readonly text: string;
 }
 
 export interface WrittenImageOffer {
   readonly sequence: number;
 
-  // the key the record's erasable fields are sealed under
   readonly keyID: string;
 }
 
-// Writes a memory.image_offered record as an earlier release's image offer wrote one: the image in
-// the plain payload, and the offered text sealed under the record's own key. It returns the
-// record's sequence and its key.
 export async function writeImageOfferRecord(
   log: Log,
   offer: ImageOfferRecord,

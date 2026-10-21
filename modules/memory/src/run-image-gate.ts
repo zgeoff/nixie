@@ -4,12 +4,8 @@ import { readTokenVerdict } from './read-token-verdict';
 import { runRuleGate } from './run-rule-gate';
 import type { MemoryContext } from './types';
 
-// Unicode format characters, as the content gate refuses them
 const invisible = /\p{Cf}/u;
 
-// The gate for a remember from a photo of yours, which is never your words, so it waits for your
-// review with the photo reason whatever its quote. Only your allow rule that names the image source
-// lets it apply, under that rule's token check; a rule on memory.remember alone never covers it.
 export async function runImageGate(
   context: Pick<MemoryContext, 'log' | 'gate'>,
   request: ContentGateRequest,

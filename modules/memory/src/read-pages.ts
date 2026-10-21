@@ -1,13 +1,11 @@
 export interface ItemPage<Item> {
   readonly items: readonly Item[];
 
-  // the cursor the next page reads after, or null when this page is the last
   readonly next: number | null;
 }
 
-// Yields every item of every page in order, from the page after cursor 0 to the page whose next
-// cursor is null. One loop walks the pages, so each item crosses one generator frame however many
-// pages came before it, and the walk's time grows with the item count alone.
+// One loop walks the pages, because a `yield*` per page passes each item through one generator
+// frame for every page before it.
 export async function* readPages<Item>(
   readPage: (after: number) => Promise<ItemPage<Item>>,
 ): AsyncGenerator<Item, void, undefined> {

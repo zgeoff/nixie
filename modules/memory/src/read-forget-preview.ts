@@ -6,9 +6,6 @@ import { requireItem } from './require-item';
 import type { MemoryTables, VersionRef } from './types';
 import type { ForgetPreview } from './view-types';
 
-// Reads what a forget of the item at the version the view showed destroys: the item with every
-// version, the messages that backed it and its proposals. It refuses as the forget does, so a
-// confirmation never opens for an item that is gone, moved on or being forgotten.
 export async function readForgetPreview(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   target: VersionRef,
@@ -27,7 +24,6 @@ export async function readForgetPreview(
       .executeTakeFirstOrThrow(),
   ]);
 
-  // requireItem found the item, and no read deletes its row
   invariant(detail);
 
   return {

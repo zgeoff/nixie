@@ -42,9 +42,6 @@ const editArguments = z.object({
   eventID: z.string().optional(),
 });
 
-// Builds memory.edit, which declares note and runs each edit through the content gate on the same
-// path as a remembered fact, with the item and version it read as the target. The model names the
-// item by its short ID, or by an item ID it read before short IDs.
 export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefinition {
   return {
     name: 'memory.edit',
@@ -67,8 +64,6 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
     },
     execution: 'direct',
 
-    // the text is the item's, which the version holds under the item's key, and the quote can
-    // repeat it before the gate checks the quote
     recordInput: makeInputRecorder(['text', 'quote']),
     run: async (call: ToolCall, context: ToolContext) => {
       const input = editArguments.parse(call.input);

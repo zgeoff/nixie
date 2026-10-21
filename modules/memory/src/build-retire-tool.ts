@@ -8,8 +8,6 @@ import { readItemIDs } from './read-item-ids';
 import { runWriteCall } from './run-write-call';
 import type { ItemIDStore } from './types';
 
-// Builds memory.retire, which declares note and runs each retirement through the intent gate. The
-// model names the item by its short ID, or by an item ID it read before short IDs.
 export function buildRetireTool(memory: ModelWriteStore & ItemIDStore): ToolDefinition {
   return {
     name: 'memory.retire',
@@ -46,7 +44,6 @@ export function buildRetireTool(memory: ModelWriteStore & ItemIDStore): ToolDefi
     },
     execution: 'direct',
 
-    // the model can copy the item's text into the intent quote before the gate checks it
     recordInput: makeInputRecorder(['intentQuote']),
     run: (call, context) => runRetireCall(memory, call, context),
   };

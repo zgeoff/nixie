@@ -1,9 +1,6 @@
 import type { MemoryNotice, NoticeEntry } from './gate-types';
 import type { MemoryTables, StoreParts } from './types';
 
-// Reads the grouped notices of a thread, oldest first: one per turn or batch, with a count of what
-// it remembered, retired and proposed, and each entry with the version an undo binds to. An undo
-// of an entry is the store's undo at that version, so a later change makes it stale.
 export async function readMemoryNotices(
   parts: StoreParts,
   thread: string,

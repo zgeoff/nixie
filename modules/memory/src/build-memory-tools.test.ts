@@ -16,12 +16,9 @@ import { buildMockToolContext } from './test-utils/build-mock-tool-context';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
 
-// a test memory with the gate the config gives, the memory tools' registry, and the options a tool
-// call runs under, which record each call and its result in the memory's log
 async function setupTest(config: TestMemoryOptions = {}) {
   const memory = await startTestMemory(config);
 
-  // each recalled item's line needs a name and a zone, and these keep its words the defaults
   const registry = buildToolRegistry(
     buildMemoryTools(memory.store, {
       clock: { now: () => Date.now() },
@@ -37,7 +34,6 @@ async function setupTest(config: TestMemoryOptions = {}) {
     toolCallOptions: {
       registry,
 
-      // every call is allowed, so each reaches its tool
       decide: () => ({
         decision: { outcome: 'allow' as const, stage: 3, rule: null },
         sentence: null,
@@ -45,7 +41,6 @@ async function setupTest(config: TestMemoryOptions = {}) {
       log: memory.log,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-      // the memory tools run direct, so nothing reaches the queue
       queue: {
         enqueue: () => Promise.reject(new Error('no memory tool runs queued')),
         waitForOutcome: () => Promise.resolve(null),
@@ -1132,7 +1127,6 @@ test('it applies a remembered fact and leaves no readable copy of its text once 
 
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
-  // the owner's own message keeps its words, and only the item's text is gone
   expect(result.structuredContent).toStrictEqual({
     status: 'applied',
     itemID: item.short_id,

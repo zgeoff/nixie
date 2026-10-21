@@ -3,19 +3,14 @@ import { readRecords } from '@heynixie/log';
 import type { EventKind } from '@heynixie/sessions';
 import { z } from 'zod';
 
-// A possible self-note the note-taker flagged, with the ID of your message it came from.
 export interface SelfNoteFlagEvent {
   readonly text: string;
   readonly sourceSequence: number;
 }
 
-// the most flags one events block reads, which the block's own cap then trims
 const maxFlags = 50;
 const flagPayload = z.object({ sourceSequence: z.int() });
 
-// The event kind for a possible self-note the note-taker flagged. The line tells the assistant the
-// flag is a nudge and never a note, so the assistant writes the self-note in its own voice or lets
-// it go. A flag whose text a forget erased lists nothing.
 export function buildSelfNoteFlagKind(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
 ): EventKind<SelfNoteFlagEvent> {

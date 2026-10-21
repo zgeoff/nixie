@@ -5,14 +5,11 @@ import { readVersion } from './read-version';
 import { requireItem } from './require-item';
 import type { MemorySubject, MemoryTables, StoreParts, VersionRef } from './types';
 
-// The text of the item a retirement names, with the item's subject.
 export interface RetirableItem {
   readonly text: string;
   readonly subject: MemorySubject;
 }
 
-// Reads the text and kind of an active item at the version a retirement names. A missing item, a
-// stale version or a retired item is refused.
 export async function readItemText(parts: StoreParts, target: VersionRef): Promise<RetirableItem> {
   const db = parts.context.log.writer.db.$extendTables<MemoryTables>();
 

@@ -6,23 +6,18 @@ import { z } from 'zod';
 import type { MemoryProposals } from './gate-types';
 import type { MemoryOrigin, MemoryStore, MemoryTables, VersionRef } from './types';
 
-// The owner's answer to a memory proposal, with the text it quotes, or null when none is readable.
 export interface ProposalAnswerEvent {
   readonly proposalID: string;
   readonly answer: 'approved' | 'edited' | 'rejected';
 
-  // who proposed it: the conversation's own proposal reads as "your"
   readonly origin: MemoryOrigin;
 
-  // the item and version an approval wrote, which the block quotes when it lists the event
   readonly written: VersionRef | null;
   readonly text: string | null;
 
-  // the reason the owner gave for a rejection, or null when they gave none or its key is gone
   readonly reason: string | null;
 }
 
-// What the kind reads its quotes through, so each passes the delivery lock and no forget's item.
 export type AnswerQuoteSource = Pick<MemoryStore, 'recall'> & {
   readonly proposals: Pick<MemoryProposals, 'readRejectedEdits'>;
 };
@@ -33,9 +28,6 @@ const proposerWords: Readonly<Record<Exclude<MemoryOrigin, 'conversation'>, stri
   memory_writer: 'your note-taker',
 };
 
-// The event kind for the owner's answer to a memory proposal from any source, the conversation's
-// own included. An approval quotes the current version it wrote, recalled so the record names only
-// what the block shows; a rejection quotes only the conversation's own edit, then any reason.
 export function buildProposalAnswerKind(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   store: AnswerQuoteSource,
@@ -73,7 +65,7 @@ export function buildProposalAnswerKind(
   };
 }
 
-// mapped types, because Kysely's table map needs the index signature an interface lacks
+// A type alias, because Kysely's table map needs the index signature that an interface lacks.
 type RecordTables = Readonly<{
   records: {
     readonly sequence: number;
@@ -91,13 +83,10 @@ interface AnsweredRow {
   readonly recorded_at: number;
   readonly payload: string;
 
-  // the item the approval wrote, which differs from the proposal's when the approval revised another
   readonly version_item_id: string | null;
   readonly version: number | null;
 }
 
-// every proposal approved or rejected in the range, with the record that answered it and the
-// version an approval wrote
 function readAnsweredProposals(
   log: Pick<Log, 'writer'>,
   range: TurnNoteRange,
@@ -125,9 +114,6 @@ function readAnsweredProposals(
     .execute();
 }
 
-// The reason of each rejection in the range, by the sequence of the record that rejected it. A
-// reason sits in that record's erasable fields, so a record with none, or whose key is gone, gives
-// no reason.
 async function readRejectionReasons(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   range: TurnNoteRange,
@@ -139,8 +125,6 @@ async function readRejectionReasons(
     return new Map();
   }
 
-  // each rejected row's resolving record is one rejection record in the range, so the limit reads
-  // them all
   const records = await readRecords(log, {
     afterSequence: range.after,
     beforeSequence: range.through + 1,
@@ -181,17 +165,12 @@ function buildAnswerEvent(
   };
 }
 
-// the version an approval wrote, on the item it wrote it to, which differs from the proposal's
-// item when the approval revised another
 function buildWrittenVersion(row: AnsweredRow): VersionRef | null {
   return row.status === 'consumed' && row.version !== null
     ? { itemID: row.version_item_id ?? row.item_id, version: row.version }
     : null;
 }
 
-// Each listed approval's text, through a recall of the exact version it wrote, which records only
-// that version as a turn note's and leaves out an item that a forget has begun or that changed
-// since.
 async function readApprovedTexts(
   store: Pick<MemoryStore, 'recall'>,
   events: readonly NotedEvent<ProposalAnswerEvent>[],
@@ -226,8 +205,6 @@ async function readApprovedTexts(
   });
 }
 
-// Each listed rejection's text, which the store gives only for the conversation's own edit of an
-// item no forget has begun, so the session reads back only what it proposed.
 async function readRejectedTexts(
   store: AnswerQuoteSource,
   events: readonly NotedEvent<ProposalAnswerEvent>[],

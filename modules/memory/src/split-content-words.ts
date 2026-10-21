@@ -1,15 +1,10 @@
-// Splits text into its words and leaves out the function words, so neither a query nor an item
-// that the index stores holds one. Porter stems some content words to a function word ("one" to
-// "on"), so a filter on the query side alone lets "one" match an item that holds "on".
+// Porter stems some content words to a function word ("one" to "on"), so a filter on the query
+// side alone lets "one" match an item that holds "on".
 export function splitContentWords(text: string): readonly string[] {
-  // a combining mark stays inside its word, so a decomposed "München" stays one word
   return (text.match(/[\p{L}\p{M}\p{N}]+/gu) ?? []).filter((word) => !isFunctionWord(word));
 }
 
-// English function words in lower case, which carry grammar and no topic, and the fragments a
-// contraction leaves once text splits at its apostrophe ("don't" gives "don" and "t").
 const functionWords: ReadonlySet<string> = new Set([
-  // articles and determiners
   'a',
   'all',
   'an',
@@ -40,7 +35,6 @@ const functionWords: ReadonlySet<string> = new Set([
   'this',
   'those',
 
-  // pronouns
   'anybody',
   'anyone',
   'anything',
@@ -88,7 +82,6 @@ const functionWords: ReadonlySet<string> = new Set([
   'yourself',
   'yourselves',
 
-  // prepositions
   'about',
   'above',
   'across',
@@ -137,7 +130,6 @@ const functionWords: ReadonlySet<string> = new Set([
   'within',
   'without',
 
-  // conjunctions
   'although',
   'and',
   'as',
@@ -154,7 +146,6 @@ const functionWords: ReadonlySet<string> = new Set([
   'while',
   'yet',
 
-  // auxiliaries and modals
   'am',
   'are',
   'be',
@@ -180,7 +171,6 @@ const functionWords: ReadonlySet<string> = new Set([
   'will',
   'would',
 
-  // question words, adverbs and particles
   'again',
   'also',
   'always',
@@ -205,7 +195,6 @@ const functionWords: ReadonlySet<string> = new Set([
   'where',
   'why',
 
-  // contraction fragments
   'ain',
   'aren',
   'couldn',
@@ -233,7 +222,6 @@ const functionWords: ReadonlySet<string> = new Set([
   'wouldn',
 ]);
 
-// a word of 2 or more capitals is an acronym, such as "US" or "IT", and never a function word
 function isFunctionWord(word: string): boolean {
   return !/^\p{Lu}{2,}$/u.test(word) && functionWords.has(word.toLowerCase());
 }

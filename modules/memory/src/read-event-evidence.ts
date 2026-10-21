@@ -10,13 +10,9 @@ export interface EventSearch {
   readonly thread: string;
   readonly quote: string;
 
-  // the sequence of the record the quote cites
   readonly eventID: number;
 }
 
-// Finds a quote in the one record it cites by event ID, however old: only a message of yours in the
-// write's thread backs it, with the quote typed outside every quoted block. A reply or a tool result,
-// such as a fetched page, holds no words you typed, and an erased message holds none at all.
 export async function readEventEvidence(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   search: EventSearch,
@@ -31,7 +27,6 @@ export async function readEventEvidence(
 const messageSpan = z.object({ start: z.int(), end: z.int(), source: z.string() });
 const messageFields = z.object({ text: z.string(), spans: z.array(messageSpan).optional() });
 
-// the message the event ID names in the thread, or why it cannot back a quote
 async function readEventMessage(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   search: EventSearch,

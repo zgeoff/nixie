@@ -9,9 +9,6 @@ import { readShortIDs } from './read-short-ids';
 import { requireSealedNote } from './require-sealed-note';
 import type { StoreParts } from './types';
 
-// Keeps the model's ratings as one memory.rated record bound to the thread's latest recall, each at
-// the newest version that recall delivered. A note is sealed under its item's key, and a refusal
-// names an item only by its stored short ID, so a forget leaves no readable copy of either.
 export async function writeMemoryRatings(parts: StoreParts, request: RateRequest): Promise<void> {
   const log = parts.context.log;
 
@@ -47,9 +44,6 @@ export async function writeMemoryRatings(parts: StoreParts, request: RateRequest
   );
 }
 
-// Each named item, by the item ID it names and the short ID the store holds for it. The model can
-// pass any text as an item, so an item that names no memory is refused in fixed words, and every
-// other refusal names an item by its stored short ID, never by what the model passed.
 interface RatedItems {
   readonly found: ReadonlyMap<string, string>;
   readonly shortIDs: ReadonlyMap<string, string>;
@@ -73,8 +67,6 @@ async function readRatedItems(
   return { found, shortIDs: await readShortIDs(parts, [...found.values()]) };
 }
 
-// An item rated twice in one call has no one verdict to keep, whether the model named it the same
-// way twice or once by its short ID and once by its item ID.
 function requireRatedOnce(ratings: readonly MemoryRating[], items: RatedItems): void {
   const seen = new Set<string>();
 
@@ -109,7 +101,6 @@ interface RecalledItems extends RatedItems {
   readonly versions: ReadonlyMap<string, number>;
 }
 
-// Refuses the whole call when any item is one the latest recall did not deliver, and names each.
 function requireRecalled(ratings: readonly MemoryRating[], recalled: RecalledItems): void {
   const missing = ratings
     .map((rating) => getItemID(recalled, rating))
@@ -132,8 +123,6 @@ interface RatingParts extends RecalledItems {
   readonly ratingID: string;
 }
 
-// The rating as its record holds it: the item ID and version, never the ID the model passed, and a
-// note only as the ciphertext under the item's key.
 type Rating = ReturnType<typeof memoryRatedCodec.decode>['ratings'][number];
 
 async function sealRatingJSON(parts: StoreParts, rating: RatingParts): Promise<Rating> {

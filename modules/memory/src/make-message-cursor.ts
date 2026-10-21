@@ -1,6 +1,3 @@
-// How far the message indexes have read the log, and the messages forgotten since start, which a
-// catch-up that read one before its forget drops again. The state stays in the closure, so the
-// store's parts hold functions only.
 export interface MessageCursor {
   readonly readThrough: () => number;
   readonly updateThrough: (sequence: number) => void;
@@ -8,7 +5,6 @@ export interface MessageCursor {
   readonly isRemoved: (sequence: number) => boolean;
 }
 
-// Makes a cursor at the start of the log with no message removed.
 export function makeMessageCursor(): MessageCursor {
   const state = { through: 0 };
 

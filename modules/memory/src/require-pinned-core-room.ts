@@ -4,8 +4,6 @@ import { getPinnedCoreBudget } from './get-pinned-core-budget';
 import { PinnedCoreFullError } from './pinned-core-full-error';
 import type { MemoryContext, RecalledItem } from './types';
 
-// Fails when a pinned item would take the pinned core past its token budget, because the core
-// rides in the cached start of every session. The item's earlier version leaves the count.
 export function requirePinnedCoreRoom(
   context: Pick<MemoryContext, 'pinnedCoreTokens' | 'gate'>,
   pinned: readonly RecalledItem[],

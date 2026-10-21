@@ -8,20 +8,15 @@ import { renderReviewReason } from './render-review-reason';
 import type { StoreParts } from './types';
 
 export interface MemoryGate {
-  // the gated write paths of the model and the memory writer
   readonly writes: MemoryWrites;
   readonly proposals: MemoryProposals;
 
-  // the consolidator's diffs and your answers to their changes
   readonly consolidations: MemoryConsolidations;
   readonly readNotices: (thread: string) => Promise<readonly MemoryNotice[]>;
 
-  // the sentence a review reason reads as, with your name, your pronouns and the gate's window
   readonly renderReviewReason: (reason: ReviewReason) => string;
 }
 
-// The gated write paths over the store's parts, with the proposals they make, the consolidator's
-// diffs and the notices.
 export function buildMemoryGate(parts: StoreParts): MemoryGate {
   return {
     writes: buildMemoryWrites(parts),

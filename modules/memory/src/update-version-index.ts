@@ -1,9 +1,7 @@
 import type { StoreParts } from './types';
 import type { NewVersion } from './write-version-in-transaction';
 
-// Puts an item's current text in the keyword index after its version commits, and queues it for the
-// vector index outside the write transaction, or drops an item that left the active state from
-// both. The caller still holds the delivery lock.
+// The caller must still hold the delivery lock.
 export async function updateVersionIndex(
   parts: StoreParts,
   itemID: string,

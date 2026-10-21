@@ -14,9 +14,6 @@ import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record
 import { writePlannedBatch } from './test-utils/write-planned-batch';
 import { writerConfigSchema } from './writer-config-schema';
 
-// The writer's parts over a test memory, with the store's real batch gate and publish, and the
-// input of a step that holds the lease. The checker answers that it failed unless the config wires
-// another, so each write the gate reaches waits for review. Each test supplies the session.
 async function setupTest(options: TestMemoryOptions = {}) {
   const memory = await startTestMemory(options);
 
@@ -219,7 +216,6 @@ test("it applies a write the checker confirms with both the writer's and the che
     },
   ]);
 
-  // the quote check passes only on words you typed, so the message records its typed span
   const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'conversation',
     text: 'I keep bees on the roof.',

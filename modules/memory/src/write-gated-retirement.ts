@@ -10,7 +10,6 @@ import type { StoreParts } from './types';
 import { writeMemoryProposal } from './write-memory-proposal';
 import { writeRetirement } from './write-retirement';
 
-// no quote of yours backs it, and the version copies the stored text's own source
 const selfNoteRetirement: ContentGateResult = {
   status: 'pass',
   source: 'untrusted',
@@ -18,9 +17,6 @@ const selfNoteRetirement: ContentGateResult = {
   checks: { selfNote: 'retired' },
 };
 
-// Runs a memory.retire through the intent gate, or applies the conversation's retire of a self-note
-// at once. An applied retirement keeps the source of the text it copies; any other is a proposal. A
-// missing item, a stale version or a retired item is refused before any check runs.
 export async function writeGatedRetirement(
   parts: StoreParts,
   request: GatedRetireRequest,
@@ -29,8 +25,6 @@ export async function writeGatedRetirement(
 
   const itemText = item.text;
 
-  // the conversation's retire of its own self-note applies at once with a notice and undo, because
-  // a retirement only narrows what the conversation reads and the undo brings the note back
   const gate =
     item.subject === 'self' && request.caller.origin === 'conversation'
       ? selfNoteRetirement
@@ -58,7 +52,6 @@ interface PassedRetirement {
   readonly itemText: string;
 }
 
-// a forget that completed while the checker answered turns a passing retirement into a proposal
 async function applyPassedRetirement(
   parts: StoreParts,
   request: GatedRetireRequest,
@@ -105,7 +98,6 @@ async function applyRetirement(
         model: caller.model,
       },
 
-      // an intent quote counts only where the gate found it in your typed words
       ...(evidence === null || request.intentQuote === undefined
         ? {}
         : { intentQuote: request.intentQuote, intentEvidence: evidence }),

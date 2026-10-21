@@ -1,7 +1,6 @@
 import { getItemShortID } from './get-item-short-id';
 import type { MemoryTables, StoreParts } from './types';
 
-// The short ID of each item, by item ID, for the items that exist, forgotten ones included.
 export async function readShortIDs(
   parts: StoreParts,
   itemIDs: readonly string[],

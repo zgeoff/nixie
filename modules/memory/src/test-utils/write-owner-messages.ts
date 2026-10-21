@@ -1,8 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 
-// Records your messages on the conversation thread, oldest first, the way a past conversation left
-// them, each typed in full, and returns their sequences.
 export async function writeOwnerMessages(
   log: Log,
   texts: readonly string[],

@@ -18,15 +18,11 @@ import type {
   WriterTables,
 } from './writer-types';
 
-// One write of a batch with the gate's verdict on it.
 export interface GatedWrite {
   readonly write: StagedWrite;
   readonly verdict: GateVerdict;
 }
 
-// What the batch kept once every source was read again: the versions it applied, how many
-// proposals it published and how many writes it left out because their source became unreadable,
-// and the flags whose source is still readable.
 export interface BatchOutcome {
   readonly applied: readonly VersionRef[];
   readonly proposed: number;
@@ -35,19 +31,14 @@ export interface BatchOutcome {
 }
 
 export interface BatchPublication {
-  // the writer step's lease, which the transaction checks first
   readonly lease: Lease;
 
-  // the task clock, which the transaction reads before it checks the lease, so a lease that
-  // expired while the publish waited for the delivery lock or the transaction never publishes
   readonly clock: { readonly now: () => number };
   readonly bounds: BatchBounds;
   readonly writes: readonly GatedWrite[];
 
-  // the possible self-notes the session flagged, which publish as events and create no item
   readonly flags: readonly StagedFlag[];
 
-  // the batch's own records, such as the advanced cursor and the notice, built from what it kept
   readonly buildRecords: (outcome: BatchOutcome) => readonly RecordInput[];
 }
 
@@ -55,9 +46,6 @@ export type PublishResult =
   | ({ readonly status: 'published' } & BatchOutcome)
   | { readonly status: 'superseded' };
 
-// Publishes one writer batch in one transaction under the delivery lock: the applied versions, the
-// proposals, the notices and the advanced cursor. A write whose source was forgotten never
-// publishes, and a stale revision fails the whole batch, a proposed one included.
 export function writeMemoryBatch(
   parts: StoreParts,
   publication: BatchPublication,
@@ -83,7 +71,6 @@ export function writeMemoryBatch(
   });
 }
 
-// the versions the batch applied, as the publish wrote them
 type WrittenVersions = Awaited<ReturnType<typeof writeAppliedVersions>>;
 
 type WrittenBatch =
@@ -94,9 +81,6 @@ type WrittenBatch =
     }
   | { readonly status: 'superseded' };
 
-// The transaction checks the step's lease and that the batch is still the one the cursor waits on,
-// then reads every cited source again and leaves out each write whose source is gone. A kept
-// proposal whose item moved on fails the batch, so every proposal it publishes can be approved.
 async function writeBatchInTransaction(
   parts: StoreParts,
   tx: Transaction<unknown>,
@@ -125,8 +109,6 @@ async function writeBatchInTransaction(
   return { status: 'published', written, outcome };
 }
 
-// the batch is still the one the cursor waits on, so a rerun after a commit that a crash hid
-// publishes nothing twice
 async function probePendingBatch(tx: Transaction<unknown>, bounds: BatchBounds): Promise<boolean> {
   const row = await tx
     .$extendTables<WriterTables>()

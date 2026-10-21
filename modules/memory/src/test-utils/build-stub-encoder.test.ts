@@ -3,8 +3,6 @@ import { buildStubEncoder } from './build-stub-encoder';
 
 test('it encodes a text as the unit vector over the numbers of the topics its words name', () => {
   const encoder = buildStubEncoder([['sister', 'sibling'], ['boiler', 'heating'], ['leeds']]);
-
-  // 2 of 3 topics, 16 numbers each: 32 numbers of 1 / sqrt(32)
   const named = Array.from({ length: 16 }, () => Math.fround(1 / Math.sqrt(32)));
   const unnamed = Array.from({ length: 16 }, () => 0);
 

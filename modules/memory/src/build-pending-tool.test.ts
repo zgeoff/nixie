@@ -9,12 +9,9 @@ import { createProposal } from './test-utils/create-proposal';
 import { createWriterProposal } from './test-utils/create-writer-proposal';
 import { startTestMemory } from './test-utils/start-test-memory';
 
-// A test memory, memory.pending in a registry on a test clock, and the options a call runs under.
-// The checker answers that it failed, so each write the gate reaches waits for review.
 async function setupTest() {
   const startedAt = Date.UTC(2026, 9, 13, 9, 30);
 
-  // the wall clock stops where the test clock starts, so a proposal is recorded at its start
   setSystemTime(new Date(startedAt));
 
   onTestFinished(() => {
@@ -32,7 +29,6 @@ async function setupTest() {
     toolCallOptions: {
       registry,
 
-      // every call is allowed, so each reaches its tool
       decide: () => ({
         decision: { outcome: 'allow' as const, stage: 3, rule: null },
         sentence: null,
@@ -40,7 +36,6 @@ async function setupTest() {
       log: memory.log,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-      // memory.pending runs direct, so nothing reaches the queue
       queue: {
         enqueue: () => Promise.reject(new Error('no memory tool runs queued')),
         waitForOutcome: () => Promise.resolve(null),

@@ -9,13 +9,9 @@ export interface ConsolidationItemsQuery {
 export interface ConsolidationItems {
   readonly items: readonly RecalledItem[];
 
-  // whether the items are every active item, or the oldest ones that fit the budget
   readonly isComplete: boolean;
 }
 
-// Reads the active items the consolidator sees, a page at a time in the order they were created,
-// until their text and quotes pass the list budget. Every read goes through recall, which records what it
-// delivered, and no read touches the conversation.
 export async function readConsolidationItems(
   store: Pick<MemoryStore, 'recall'>,
   query: ConsolidationItemsQuery,
@@ -46,10 +42,8 @@ function buildPageRequest(thread: string, after: string | null): RecallRequest {
   return { limit: pageSize, thread, ...(after === null ? {} : { after }) };
 }
 
-// the list line's ID, date, flags and punctuation around each item's text and quote
 const itemOverheadTokens = 24;
 
-// the leading items of a page whose text and quote fit the tokens left, and the tokens they take
 function collectFittingItems(
   items: readonly RecalledItem[],
   budget: number,

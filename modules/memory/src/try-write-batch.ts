@@ -14,9 +14,6 @@ export interface BatchToWrite extends WriterStepState {
   readonly usage: WriterUsage | null;
 }
 
-// Publishes the batch, with a stale revision captured as a superseded batch: an item that moved on
-// or was forgotten since the session read it fails the publish, and the next step
-// extracts the batch again.
 export async function tryWriteBatch(
   parts: WriterParts,
   batch: BatchToWrite,

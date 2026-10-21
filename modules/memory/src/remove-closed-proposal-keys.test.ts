@@ -13,7 +13,6 @@ test('it removes on the next lapse sweep a key that a closed proposal left behin
   const memory = await startTestMemory();
   const proposed = await createProposal(memory.store, { text: 'Likes jazz' });
 
-  // the close commits, and the process dies before the key goes
   await withWriteTransaction(memory.writer, (tx) =>
     writeRecordsInTransaction(tx, memory.log, [
       {
@@ -42,7 +41,6 @@ test('it removes at start a key that a rejected proposal left behind', async () 
   const memory = await startTestMemory();
   const proposed = await createProposal(memory.store, { text: 'Likes jazz' });
 
-  // the rejection commits, and the process dies before the key goes
   await withWriteTransaction(memory.writer, (tx) =>
     writeRecordsInTransaction(tx, memory.log, [
       {
@@ -85,7 +83,6 @@ test('it never removes the key of a pending proposal', async () => {
   expect(keys.get(row.item_id)).toBeInstanceOf(CryptoKey);
 });
 
-// each blocked checkpoint waits out the key store's busy timeout, 50 ms here, before it reports the reader
 test('it finishes on the next lapse sweep a key removal whose checkpoint a reader blocked', async () => {
   const clock = buildTestClock(1_000_000);
 

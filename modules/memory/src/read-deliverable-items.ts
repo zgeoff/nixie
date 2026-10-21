@@ -21,13 +21,10 @@ export interface DeliverableQuery {
   readonly states: readonly MemoryState[];
   readonly includeHistory: boolean;
 
-  // the connection to read through, such as a write transaction's; the writer's when unset
   readonly db?: Kysely<MemoryTables>;
 }
 
-// Reads the current version of each item in the order given, decrypted, and leaves out any item that
-// is not in one of the states, whose key is gone or whose text fails to decrypt. A caller holds the
-// delivery lock, so no forget runs between this check and the delivery.
+// The caller must hold the delivery lock, so no forget runs between this check and the delivery.
 export async function readDeliverableItems(
   parts: StoreParts,
   query: DeliverableQuery,
@@ -71,11 +68,9 @@ interface ItemToRead {
   readonly key: CryptoKey;
   readonly includeHistory: boolean;
 
-  // the connection to read through, such as a write transaction's; the writer's when unset
   readonly db?: Kysely<MemoryTables>;
 }
 
-// an item whose text fails to decrypt is left out, never delivered as a gap
 async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<RecalledItem | null> {
   const versions = await db
     .selectFrom('memory_versions')
@@ -111,8 +106,6 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
   }
 }
 
-// a version row with the operation and review reason of the memory proposal it came from, which
-// are null for a version that applied at once and for one from an approved consolidation change
 interface ApprovableVersionRow extends MemoryVersionRow {
   readonly proposal_operation: 'remember' | 'retire' | null;
   readonly review_reason: string | null;

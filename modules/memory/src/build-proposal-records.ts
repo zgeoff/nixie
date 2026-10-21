@@ -7,9 +7,6 @@ const proposalMarkKinds = {
   shared: 'memory.proposal_shared_noted',
 } as const;
 
-// The memory.proposed record of a sealed proposal, with its lapse time from the gate's clock. Its
-// text stays sealed, so the record's own content source is untrusted. A new self-note's proposal
-// takes a mark of its own after it, and so does a shared one, which the release before skips.
 export function buildProposalRecords(
   parts: Pick<StoreParts, 'context'>,
   pending: PendingProposal,

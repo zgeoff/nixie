@@ -6,8 +6,6 @@ import { readForgottenSequences } from './read-forgotten-sequences';
 import { readOwnerMessages } from './read-owner-messages';
 import type { QuoteEvidence } from './types';
 
-// Where a quote's evidence lies: in a message you typed, or a review reason that says why no
-// message backs it.
 export type QuoteEvidenceResult =
   | {
       readonly status: 'found';
@@ -22,13 +20,8 @@ export interface QuoteSearch {
   readonly window: number;
 }
 
-// Unicode format characters: zero-width spaces and joiners, bidirectional controls, the byte order
-// mark and the soft hyphen
 const invisible = /\p{Cf}/u;
 
-// Finds the quote in your latest messages, newest first: the newest one that holds it typed backs
-// the write. A message that backed a forgotten item never backs one again, so a forget never
-// returns through a fresh quote of the same words.
 export async function readQuoteEvidence(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   search: QuoteSearch,
@@ -75,8 +68,6 @@ export async function readQuoteEvidence(
     : { status: 'found', ...backing };
 }
 
-// a quote in a quoted block anywhere says more than one that touches a pasted span, and either says
-// more than a quote found nowhere
 function pickFailure(matches: readonly QuoteMatch[]): ReviewReason {
   if (matches.some((match) => match.status === 'in_quoted_block')) {
     return 'quote_in_quoted_block';

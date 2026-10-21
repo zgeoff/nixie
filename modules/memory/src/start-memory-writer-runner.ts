@@ -14,21 +14,16 @@ export interface MemoryWriterRunnerOptions extends SystemTaskOptions, ToolSessio
   readonly gate: WriterGate;
   readonly config: WriterConfig;
 
-  // the persona in force, read at each batch
   readonly getPersona: () => string;
 
-  // your configured name, which the writer's memories use, or null for "the owner"
   readonly ownerName: string | null;
 
-  // the assistant's configured name, which labels its messages, or null for "the assistant"
   readonly assistantName: string | null;
   readonly onError: (error: unknown) => void;
 }
 
 export type MemoryWriterRunner = SystemTaskRunner<MemoryWriter>;
 
-// Starts the memory writer on the memory-writer role's profile, as a system task with its own
-// session. Its tool endpoint serves only the writer's 5 tools.
 export const startMemoryWriterRunner = makeSystemTaskRunner<
   MemoryWriterRunnerOptions,
   MemoryWriter

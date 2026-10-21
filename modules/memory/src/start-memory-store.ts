@@ -13,18 +13,12 @@ import type { BatchPublication, PublishResult } from './write-memory-batch';
 import { writeMemoryBatch } from './write-memory-batch';
 
 export interface StartedMemoryStore extends MemoryStore, MemoryGate, ItemIDStore {
-  // publishes one memory writer batch with its cursor in one transaction
   readonly writeBatch: (publication: BatchPublication) => Promise<PublishResult>;
 
-  // resolves once the vector indexes' start rebuild and every encoding queued so far end: true
-  // when the rebuild finished, and false when it failed, the store stopped or no encoder runs
   readonly waitForSemanticIndex: () => Promise<boolean>;
   readonly stop: () => Promise<void>;
 }
 
-// Puts memory into service: it resumes every pending forget, removes each key a crash left behind,
-// then fills the indexes from the readable active items and messages.
-// The log must already hold the memory projections.
 export async function startMemoryStore(context: MemoryContext): Promise<StartedMemoryStore> {
   const indexes = await startStoreIndexes(context);
 

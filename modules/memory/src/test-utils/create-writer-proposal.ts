@@ -11,18 +11,13 @@ import type { TestMemory } from './start-test-memory';
 import { writePlannedBatch } from './write-planned-batch';
 
 export interface WriterProposalRequest {
-  // the owner message the batch reads, and the memory text and quote the writer stages from it
   readonly message: string;
   readonly text: string;
   readonly quote: string;
 
-  // the subject the writer stages, owner when unset
   readonly subject?: WriterSubject;
 }
 
-// Runs one memory writer batch over the message through the store's real batch gate, which holds
-// the write for review because the message has no typed span, and returns the pending proposal.
-// It claims the writer's lease, so a test calls it once.
 export async function createWriterProposal(
   memory: Pick<TestMemory, 'log' | 'store'>,
   request: WriterProposalRequest,

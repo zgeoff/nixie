@@ -1,6 +1,3 @@
-// The output of memory.remember, memory.edit and memory.retire: the item and version a write
-// applied, or the proposal it waits in with the review reason, and whether it merged into a pending
-// proposal of the same change, so the model can tell the user what happened.
 export const memoryWriteOutput = {
   type: 'object',
   properties: {

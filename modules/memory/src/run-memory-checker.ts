@@ -10,8 +10,6 @@ import type { MemoryContext } from './types';
 
 export type FoundEvidence = Extract<QuoteEvidenceResult, { readonly status: 'found' }>;
 
-// Asks the memory checker whether the quote asserts the memory. A write passes only on an asserted
-// verdict, and a pinning write waits for review even then.
 export async function runMemoryChecker(
   context: Pick<MemoryContext, 'gate'>,
   request: ContentGateRequest,
@@ -39,8 +37,6 @@ export async function runMemoryChecker(
   return { status: 'pass', source: 'owner', evidence: found.evidence, checks };
 }
 
-// the checker's reason text is free text that may repeat the memory, so it stays out of the plain
-// checks and reaches only the sealed proposal
 function toCheckerJSON(answer: CheckerAnswer): JSONObject {
   return { verdict: answer.verdict, model: answer.model, failure: answer.failure };
 }

@@ -8,8 +8,6 @@ export interface ReadableVersion {
   readonly text: VersionText;
 }
 
-// Reads one version of an item that the caller already holds the key of, and decrypts its text.
-// The caller passes a version the item's row says exists.
 export async function readVersion(
   db: Kysely<MemoryTables>,
   key: CryptoKey,

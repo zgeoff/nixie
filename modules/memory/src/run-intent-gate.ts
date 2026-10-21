@@ -11,13 +11,9 @@ export interface IntentGateRequest {
   readonly intentQuote: string | null;
   readonly thread: string;
 
-  // the text of the item at the target version, which the checker reads as untrusted data
   readonly itemText: string;
 }
 
-// Runs the retirement intent gate outside any transaction: the thread must have read the item at
-// that version, the intent quote must be typed, and the checker must confirm the request. A
-// retirement adds no text, so the token check never runs.
 export async function runIntentGate(
   context: Pick<MemoryContext, 'log' | 'gate'>,
   request: IntentGateRequest,
@@ -43,8 +39,6 @@ export async function runIntentGate(
   return runRetirementChecker(context, request.itemText, found);
 }
 
-// A recall record lists each item and version it delivered to the thread, so the thread read the
-// target when one of them names it.
 async function probeReadVersion(
   context: Pick<MemoryContext, 'log'>,
   request: IntentGateRequest,

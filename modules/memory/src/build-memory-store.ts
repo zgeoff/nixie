@@ -10,7 +10,6 @@ import { writeRestoration } from './write-restoration';
 import { writeRetirement } from './write-retirement';
 import { writeUndo } from './write-undo';
 
-// The one interface over the store's parts, which the model's tools and the client both call.
 export function buildMemoryStore(parts: StoreParts): MemoryStore {
   return {
     ...buildRecallStore(parts),

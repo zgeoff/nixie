@@ -1,5 +1,3 @@
-// The record kinds the memory test utils write: the stub gate's stand-in for a held write's record,
-// and filler that pushes a log past a page. Each package that loads these test utils sees them.
 export type MemoryTestRecordKind = 'test.proposal' | 'test.filler';
 
 declare module '@heynixie/log' {

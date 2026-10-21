@@ -8,9 +8,6 @@ import { SelfNoteError } from './self-note-error';
 import { StaleVersionError } from './stale-version-error';
 import type { ItemIDStore } from './types';
 
-// Runs one memory write for a tool, on itemID when it targets an item. A store refusal, such as a
-// stale version, a self-note refusal or an image source that is no image of yours, is the model's to read; any other failure propagates. The
-// result and the error name the item by the short ID, and a proposal's reason adds its sentence.
 export async function runWriteCall(
   memory: Pick<ItemIDStore, 'readShortIDs'> & Pick<ModelWriteStore, 'renderReviewReason'>,
   call: () => Promise<WriteOutcome>,
@@ -48,7 +45,6 @@ export async function runWriteCall(
   }
 }
 
-// the error's message with the item ID it names swapped for the item's short ID
 async function readShortIDMessage(
   memory: Pick<ItemIDStore, 'readShortIDs'>,
   message: string,

@@ -9,18 +9,14 @@ export interface ProposalOperation {
   readonly text: string;
   readonly quote: string | null;
 
-  // random bytes sealed beside the text, so the hash says nothing about the text once a forget
-  // makes the text unreadable
+  // The salt keeps the hash from revealing the text once a forget makes the text unreadable.
   readonly salt: string;
 
-  // the subject of the item, which only a self-note's or a shared item's hash names, under the key
-  // itemKind that self-notes took first, so an owner item's hash and a pending self-note's hash
-  // stay as they were before subjects
+  // Stored hashes name the subject under the key itemKind, and only for a self-note or a shared
+  // item, so a change to either rule changes the hash of every pending proposal.
   readonly subject?: MemorySubject;
 }
 
-// The action hash of a memory proposal: SHA-256 over its exact operation in a fixed field order,
-// so one changed word makes a different hash.
 export function buildProposalHash(operation: ProposalOperation): string {
   const canonical = JSON.stringify({
     kind: 'memory_write',

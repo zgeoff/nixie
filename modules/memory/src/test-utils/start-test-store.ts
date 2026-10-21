@@ -9,8 +9,6 @@ import type { TestMemory, TestMemoryOptions } from './start-test-memory';
 
 type StoreWiring = Pick<TestMemory, 'dataDir' | 'deploymentKey' | 'defer'>;
 
-// Starts a writer on the data directory with the log's and the memory projections, and a store
-// over it, and defers stopping both to the test's cleanup.
 export async function startTestStore(
   wiring: StoreWiring,
   options: TestMemoryOptions,

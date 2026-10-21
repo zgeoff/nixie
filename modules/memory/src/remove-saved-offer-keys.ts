@@ -4,9 +4,6 @@ import { sql } from 'kysely';
 import { readHeldRecordKeys } from './read-held-record-keys';
 import type { MemoryTables, StoreParts } from './types';
 
-// Removes the key of each saved offer's record that an earlier release's crash, between the
-// version's commit and the key's removal, left behind, so a forget of the saved item leaves the
-// offered text unreadable.
 export async function removeSavedOfferKeys(parts: StoreParts): Promise<void> {
   const log = parts.context.log;
 
@@ -31,13 +28,11 @@ export async function removeSavedOfferKeys(parts: StoreParts): Promise<void> {
 
   const left = await readHeldRecordKeys(log, keyIDs);
 
-  // one key removal at a time, because each checkpoints the key store
   await left.reduce(
     (removed, keyID) => removed.then(() => removeRecordKey(log, keyID)),
     Promise.resolve(),
   );
 
-  // a removal whose checkpoint a reader blocked left no row to find, so the checkpoint runs again
   if (keyIDs.length > 0) {
     await writeKeyStoreCheckpoint(log, null);
   }

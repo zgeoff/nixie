@@ -6,8 +6,6 @@ export interface ThreadRecordQuery {
   readonly sequence: number;
 }
 
-// Reads the one record at a sequence when it belongs to the thread, or null when no record of the
-// thread sits there.
 export async function readThreadRecord(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   query: ThreadRecordQuery,

@@ -5,9 +5,6 @@ import { parseMemoryRecord } from './parse-memory-record';
 import { parseProposalRecord } from './parse-proposal-record';
 import type { MemoryTables } from './types';
 
-// One row per entry of a notice: a version that a gated write applied, or a proposal it made, under
-// the notice of its turn or batch. A version or proposal with no notice, such as your own action in
-// the client, adds no entry.
 export const memoryNoticesProjection: Projection = {
   table: 'memory_notice_entries',
   keyColumn: 'entry_key',
@@ -57,7 +54,6 @@ function buildNoticeEntry(record: EnvelopeRecord): NoticeEntryValues | null {
 
   const proposal = version === null ? parseProposalRecord(record) : null;
 
-  // a write that merged into a pending proposal shows that proposal in its own turn's notice
   if (proposal?.kind === 'memory.proposal_merged' && proposal.noticeKey !== null) {
     return {
       entry_key: `merge/${proposal.mergeID}`,
@@ -83,7 +79,6 @@ function buildNoticeEntry(record: EnvelopeRecord): NoticeEntryValues | null {
   return null;
 }
 
-// a write that merged into a proposal its own notice already lists adds no second entry for it
 async function probeProposalEntry(
   db: Kysely<MemoryTables>,
   entry: NoticeEntryValues,

@@ -8,7 +8,6 @@ export interface GateReviewDetail {
   readonly checkerReason?: string;
 }
 
-// A gate outcome that sends the write to review with its reason and the checks that ran.
 export function buildGateReview(reason: ReviewReason, detail: GateReviewDetail): ContentGateResult {
   return {
     status: 'review',

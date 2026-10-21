@@ -5,7 +5,6 @@ import { readForgottenSequences } from './read-forgotten-sequences';
 import type { IndexEntry } from './start-memory-index';
 import type { MemoryContext } from './types';
 
-// The entries of one read of the log, and the last sequence the read reached.
 export interface MessageEntries {
   readonly entries: readonly IndexEntry[];
   readonly through: number;
@@ -13,9 +12,6 @@ export interface MessageEntries {
 
 const pageSize = 200;
 
-// Reads the words you typed in each of your messages after the sequence, each keyed by its
-// sequence. A message with no typed words, one whose key is gone, or one that backed a forgotten
-// item stays out, so neither a paste nor a forget comes back as your past message.
 export async function readMessageEntries(
   context: Pick<MemoryContext, 'log'>,
   afterSequence: number,
@@ -61,9 +57,6 @@ async function readReadableEntries(
 
 const messageSpans = z.array(z.object({ start: z.int(), end: z.int(), source: z.string() }));
 
-// your typed spans, with a line break for each other span so words beside a paste never join; the
-// whole text when no span carries a label, as from a client that sends none; null with no typed
-// words, or once a forget erased them
 function findTypedText(record: LogRecord): string | null {
   if (record.erasable.status !== 'readable') {
     return null;

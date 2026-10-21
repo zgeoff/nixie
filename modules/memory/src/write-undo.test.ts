@@ -42,7 +42,6 @@ test('it undoes an edit by adding a version with the text before it', async () =
 test('it rejects an undo that brings back text too long for the 2,000-token pinned core', async () => {
   const ctx = await setupTest();
 
-  // about 1,100 tokens each, at 4 characters a token
   await ctx.memory.store.remember({
     text: 'Keeps a long packing list for trips. '.repeat(119),
     isPinned: true,

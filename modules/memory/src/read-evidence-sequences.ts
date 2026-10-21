@@ -2,8 +2,6 @@ import type { Kysely } from 'kysely';
 import { parseEvidence } from './parse-evidence';
 import type { MemoryTables } from './types';
 
-// The messages that backed any version of the item or any proposal for it, by sequence, so a later
-// write that cites one waits for review.
 export async function readEvidenceSequences(
   db: Kysely<MemoryTables>,
   itemID: string,

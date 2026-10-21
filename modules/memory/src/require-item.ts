@@ -10,9 +10,6 @@ export interface ItemRequirement {
   readonly states: readonly MemoryState[];
 }
 
-// Reads the target item and throws unless the caller may change it: the item exists and is not
-// forgotten or being forgotten, it is still at the version the caller read, and its state allows
-// the operation.
 export async function requireItem(
   db: Kysely<MemoryTables>,
   requirement: ItemRequirement,

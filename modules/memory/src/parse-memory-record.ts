@@ -22,12 +22,9 @@ const versionAdded = z.strictObject({
   proposalID: z.string().nullable(),
   checks: z.record(z.string(), z.json()).nullable(),
 
-  // a version from before the gate carries neither
   model: z.string().nullable().default(null),
   noticeKey: z.string().nullable().default(null),
 
-  // a created version carries its item's short ID; any other version, and a version from before
-  // short IDs, carries none
   shortID: z.string().nullable().default(null),
 });
 
@@ -37,8 +34,6 @@ const forgetStarted = z.strictObject({
   itemID: z.string(),
   version: z.int().min(1),
 
-  // the sequences of the messages that backed any version of the item; a forget from before the
-  // gate carries none
   evidenceSequences: z.array(z.int()).default([]),
 });
 
@@ -60,16 +55,11 @@ interface VersionAddedRecord {
   readonly checks: JSONObject | null;
   readonly model: string | null;
 
-  // the turn's or the batch's notice the version joins, or null for your own action
   readonly noticeKey: string | null;
 
-  // the short ID a created version gives its item, or null
   readonly shortID: string | null;
 }
 
-// The memory records the memory projections fold, each with its plain payload. A version's text
-// sits in the payload sealed under the item's key, so the fold rebuilds every version without the
-// record's erasable fields, and a forget of the item's key reaches the log's copy too.
 export type MemoryRecord =
   | VersionAddedRecord
   | { readonly kind: 'memory.pinned'; readonly itemID: string; readonly isPinned: boolean }
@@ -81,8 +71,6 @@ export type MemoryRecord =
     }
   | { readonly kind: 'memory.forgotten'; readonly itemID: string };
 
-// Reads a memory record's payload into its typed shape, or null for a record of another kind. A
-// memory record whose payload breaks its shape throws, so a fold never writes a half-read row.
 export function parseMemoryRecord(record: EnvelopeRecord): MemoryRecord | null {
   if (record.kind === 'memory.version_added') {
     return { kind: record.kind, ...versionAdded.parse(record.payload) };

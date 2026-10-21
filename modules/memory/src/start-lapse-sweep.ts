@@ -7,22 +7,17 @@ export interface LapseSweepOptions {
     readonly consolidations: Pick<MemoryConsolidations, 'lapse'>;
   };
 
-  // how often the sweep runs, hourly by default
   readonly intervalMs?: number;
 
-  // a sweep that fails is logged, and the next one tries again
   readonly onError: (error: unknown) => void;
 }
 
 export interface LapseSweep {
-  // completes once the sweep in flight, if any, has finished
   readonly stop: () => Promise<void>;
 }
 
 const lapseSweepMs = 60 * 60 * 1000;
 
-// Starts the sweep that lapses each proposal and each consolidation change past its lapse time, so
-// none waits on a restart. A sweep still running when the next one is due lets that one pass.
 export function startLapseSweep(options: LapseSweepOptions): LapseSweep {
   let running: Promise<void> | null = null;
 
@@ -31,7 +26,7 @@ export function startLapseSweep(options: LapseSweepOptions): LapseSweep {
       try {
         await runLapseSweep(options);
       } catch {
-        // an onError that throws loses only its own report, and the next sweep still runs
+        // A throw from onError loses only its own report, and the next sweep still runs.
       } finally {
         running = null;
       }
@@ -47,7 +42,6 @@ export function startLapseSweep(options: LapseSweepOptions): LapseSweep {
   };
 }
 
-// each lapse reports its own failure, so a failed proposal lapse never holds back the consolidations
 async function runLapseSweep(options: LapseSweepOptions): Promise<void> {
   await tryRunLapse(() => options.store.proposals.lapse(), options.onError);
   await tryRunLapse(() => options.store.consolidations.lapse(), options.onError);

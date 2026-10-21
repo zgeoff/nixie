@@ -23,12 +23,9 @@ import type {
   WriteInTransaction,
 } from './types';
 
-// The version an operation adds, built from the versions of the item before it.
 export interface NewVersion {
   readonly change: MemoryChange;
 
-  // the source of the copied text, which a change that keeps earlier text keeps too, so a state
-  // change never relabels outside content as the actor's words
   readonly source?: ContentSource;
   readonly state: VersionState;
   readonly text: VersionText;
@@ -36,12 +33,9 @@ export interface NewVersion {
   readonly intentEvidence: QuoteEvidence | null;
 }
 
-// Reads one earlier version of the item, decrypted.
 type ReadEarlierVersion = (version: number) => Promise<ReadableVersion>;
 
 export interface VersionPlan {
-  // the item and the version the caller read, with the states the operation applies to, or null
-  // for a new item
   readonly requirement: ItemRequirement | null;
   readonly provenance: Provenance;
   readonly readNextVersion: (
@@ -49,40 +43,31 @@ export interface VersionPlan {
     current: number,
   ) => Promise<NewVersion>;
 
-  // pins a new item in the same transaction
   readonly isPinned?: boolean;
 
-  // a new item's subject, owner when unset; a later version keeps the item's own
   readonly subject?: MemorySubject;
 
-  // the ID of a new item whose key already exists, as for an approved proposal that created it
   readonly newItemID?: string;
 
-  // the turn's or the batch's notice the version joins
   readonly noticeKey?: string;
 
-  // checks that the operation may still run, inside the version's transaction
   readonly requireInTransaction?: (db: Kysely<MemoryTables>) => Promise<void>;
 
-  // the caller's own write in the version's transaction, after that check
   readonly writeInTransaction?: WriteInTransaction;
 
-  // the approval the version consumes: its envelope, and the record that holds your answer
   readonly approval?: {
     readonly envelope: Approval;
     readonly record: RecordInput;
   };
 }
 
-// The version a write added, and the version it describes, for the index update after the commit.
 export interface WrittenVersion {
   readonly ref: VersionRef;
   readonly next: NewVersion;
 }
 
-// Adds one version to an item, or creates the item with its key and first version, inside the
-// caller's write transaction, which the delivery lock must hold. The stale-version check, the
-// record and the item's row commit with the transaction, and the caller updates the index after.
+// The caller's transaction must hold the delivery lock, and the caller updates the index after the
+// commit.
 export async function writeVersionInTransaction(
   parts: StoreParts,
   tx: Transaction<unknown>,
@@ -123,7 +108,6 @@ export async function writeVersionInTransaction(
   return { ref, next };
 }
 
-// the plan's own check that the operation may still run, then the caller's own write
 async function runCallerSteps(plan: VersionPlan, tx: Transaction<unknown>): Promise<void> {
   await plan.requireInTransaction?.(tx.$extendTables<MemoryTables>());
   await plan.writeInTransaction?.(tx);
@@ -137,13 +121,9 @@ interface PinnableVersion {
   readonly subject: MemorySubject;
   readonly next: NewVersion;
 
-  // whether the item was pinned before this version
   readonly wasPinned: boolean;
 }
 
-// Seals the new version's text, after it refuses a pin of a version that is not active, because
-// only an active item joins the pinned core. A version that leaves the item pinned must fit the
-// core's budget, because an edit, an undo or a batch write of a pinned item changes the core.
 async function encodePinnableVersion(
   parts: StoreParts,
   db: Kysely<MemoryTables>,
@@ -234,8 +214,6 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
         ]
       : [];
 
-  // a created item's subject mark follows its version as a record of its own, which the release
-  // before skips
   const subject = written.plan.subject ?? 'owner';
 
   const marked: readonly RecordInput[] =

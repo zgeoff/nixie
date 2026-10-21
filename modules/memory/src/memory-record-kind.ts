@@ -1,5 +1,3 @@
-// The record kinds the memory module registers with the log. A record forget is written by the api
-// and read by memory, so memory, the lower of the two, registers it.
 export type MemoryRecordKind =
   | 'memory.approval_recorded'
   | 'memory.batch_planned'

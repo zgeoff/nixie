@@ -28,7 +28,6 @@ test('it lapses a proposal past its lapse time on the next sweep', async () => {
     return pending.length === 0;
   });
 
-  // the store stops before the fallback stop runs, so no sweep may still be in flight then
   await sweep.stop();
 
   const pending = await memory.store.proposals.listPending();

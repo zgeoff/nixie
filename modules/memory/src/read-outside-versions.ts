@@ -4,7 +4,6 @@ import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { MemoryChange, MemoryOrigin, MemoryTables } from './types';
 import type { WriterTables } from './writer-types';
 
-// One version that something other than the conversation wrote.
 export interface OutsideVersion {
   readonly item_id: string;
   readonly change: MemoryChange;
@@ -13,15 +12,11 @@ export interface OutsideVersion {
   readonly recorded_at: number;
 }
 
-// The outside versions in a range, split into the catch-up's, which the writer wrote before the
-// catch-up ended, and every other, each oldest first.
 export interface OutsideVersions {
   readonly catchUp: readonly OutsideVersion[];
   readonly listed: readonly OutsideVersion[];
 }
 
-// Reads the versions in the range that came from outside the conversation, such as a writer batch
-// or an edit in the memory view, and splits off the catch-up's.
 export async function readOutsideVersions(
   log: Pick<Log, 'writer'>,
   range: TurnNoteRange,
@@ -38,8 +33,6 @@ export async function readOutsideVersions(
   };
 }
 
-// The versions of items no forget has begun, so a forgotten item never takes a place under the
-// events block's cap that its recall would then leave empty.
 function readVersionRows(
   log: Pick<Log, 'writer'>,
   range: TurnNoteRange,

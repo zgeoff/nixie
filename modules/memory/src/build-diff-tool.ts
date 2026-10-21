@@ -3,7 +3,6 @@ import type { ToolDefinition } from '@heynixie/tools';
 import type { ConsolidationChange, MemoryConsolidations } from './consolidation-types';
 import type { ItemIDStore } from './types';
 
-// What memory.diff reads: the consolidator's pending diff, and the short IDs of the items it names.
 export interface DiffToolStore extends Pick<ItemIDStore, 'readShortIDs'> {
   readonly consolidations: Pick<MemoryConsolidations, 'readDelivered'>;
 }
@@ -52,9 +51,6 @@ const diffOutput = {
   additionalProperties: false,
 };
 
-// Builds memory.diff, which declares read and shows each pending change with its reason, inputs
-// and comment, and the consolidator's summary, and never answers one. The inputs hold every source
-// memory holds, so the changes and the summary written from them take the most cautious one.
 export function buildDiffTool(memory: DiffToolStore): ToolDefinition {
   return {
     name: 'memory.diff',
@@ -88,7 +84,6 @@ export function buildDiffTool(memory: DiffToolStore): ToolDefinition {
         diff.changes.flatMap((change) => change.inputs.map((input) => input.itemID)),
       );
 
-      // the record holds only the change IDs, so a forget leaves no readable copy of the text
       return {
         status: 'ok',
         result: {
@@ -102,14 +97,12 @@ export function buildDiffTool(memory: DiffToolStore): ToolDefinition {
   };
 }
 
-// a minute-precise UTC date, such as 2026-10-01 09:30 UTC
 function formatProposedAt(time: number): string {
   const iso = new Date(time).toISOString();
 
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
-// the change as the model reads it, with the change and each input named by its short ID
 function toChangeJSON(
   change: ConsolidationChange,
   shortIDs: ReadonlyMap<string, string>,

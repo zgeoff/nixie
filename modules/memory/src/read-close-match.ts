@@ -8,28 +8,19 @@ import type { MemorySubject, MemoryTables, RecalledItem, StoreParts } from './ty
 export interface CloseMatchQuery {
   readonly text: string;
 
-  // the subject of the proposal's item, because an item matches only one of its own subject; owner
-  // when unset
   readonly subject?: MemorySubject;
 
-  // a write transaction that holds the delivery lock, which reads the candidates with no recall
-  // record; through a recall, which records what it delivered, when unset
   readonly db?: Kysely<MemoryTables>;
 }
 
 const candidateLimit = 5;
 
-// Finds the active item that best matches a proposal's text: the retrieval index ranks the
-// candidates, and the item that shares the most content words with the text, at or above the
-// close-match score, is the match. It returns null when no item comes that close.
 export async function readCloseMatch(
   parts: StoreParts,
   query: CloseMatchQuery,
 ): Promise<CloseMatch | null> {
   const subject = query.subject ?? 'owner';
 
-  // the other subjects' items leave the ranking before its limit applies, so a run of them never
-  // pushes a match of the proposal's own subject past the cut
   const itemIDs = await parts.index.readItemIDs(query.text, {
     limit: candidateLimit,
     excludedIDs: await readOtherSubjectIDs(parts, subject, query.db),
@@ -109,8 +100,6 @@ const stopWords = new Set([
   'with',
 ]);
 
-// the words that carry a fact, lower case and without a plural s, so "The owner likes cats" and
-// "Owner likes cat" share every word that matters
 function collectContentWords(text: string): readonly string[] {
   const words =
     text
@@ -127,7 +116,6 @@ function collectContentWords(text: string): readonly string[] {
   ];
 }
 
-// the Dice coefficient of two word sets: twice the shared words over the words in both
 function buildOverlapScore(first: readonly string[], second: readonly string[]): number {
   const total = first.length + second.length;
 

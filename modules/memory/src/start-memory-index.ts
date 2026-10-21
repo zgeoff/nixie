@@ -9,7 +9,6 @@ export interface IndexEntry {
   readonly text: string;
 }
 
-// A match of the index: the item and its BM25 score, negated so higher is better.
 interface IndexMatch {
   readonly itemID: string;
   readonly score: number;
@@ -18,39 +17,29 @@ interface IndexMatch {
 interface MatchOptions {
   readonly limit: number;
 
-  // drops a match whose BM25 score, negated so higher is better, falls below it; in an index of 1
-  // or 2 items BM25 gives every word about zero weight, so a floor above zero drops every match
+  // In an index of 1 or 2 items, BM25 gives every word about zero weight, so a floor above zero
+  // drops every match.
   readonly minScore?: number;
 
-  // leaves these items out before the limit applies
   readonly excludedIDs?: readonly string[];
 
-  // leaves out each query word that stems the same as a word of one of these, whatever its case
   readonly excludedWords?: readonly string[];
 }
 
-// The keyword index of active memory items. It ranks item IDs and never supplies the text a recall
-// returns, which the store reads and decrypts again under the delivery lock.
 export interface MemoryIndex {
-  // empties the index and fills it from entries, as at start
   readonly updateAll: (entries: readonly IndexEntry[]) => Promise<void>;
 
-  // replaces the item's entry with the current text of an active item
   readonly update: (entry: IndexEntry) => Promise<void>;
   readonly remove: (itemID: string) => Promise<void>;
 
-  // the IDs of the items that match any word of query other than a function word or an excluded
-  // word, best match first
   readonly readItemIDs: (query: string, options: MatchOptions) => Promise<readonly string[]>;
 
-  // the same matches with their scores, best match first
   readonly readMatches: (query: string, options: MatchOptions) => Promise<readonly IndexMatch[]>;
   readonly stop: () => Promise<void>;
 }
 
-// Starts an FTS5 index with the porter tokenizer in an in-memory SQLite database. Nothing writes it
-// to disk, so a forgotten item's words never outlive the process, and each start rebuilds it from
-// the readable active items. A second table with the same tokenizer stems a query's words.
+// The index lives in an in-memory SQLite database and never reaches disk, so a forgotten item's
+// words never outlive the process.
 export async function startMemoryIndex(): Promise<MemoryIndex> {
   const db = startDatabase(':memory:');
 
@@ -103,8 +92,6 @@ export async function startMemoryIndex(): Promise<MemoryIndex> {
   };
 }
 
-// stores the item's content words only, so a function word in its text never matches a query word
-// that stems to it
 async function writeEntry(db: Kysely<unknown>, entry: IndexEntry): Promise<void> {
   const text = splitContentWords(entry.text).join(' ');
 
@@ -139,9 +126,6 @@ async function readMatches(
   return rows.map((row) => ({ itemID: row.item_id, score: -row.rank }));
 }
 
-// The content words of a query, less each one whose stems all belong to an excluded word. A message
-// that shares only "to" or "a" with an item says nothing about it, so function words stay out. The
-// tokenizer stems and case-folds both sides, so "Nixie's" drops with "nixie".
 async function readQueryWords(
   db: Kysely<unknown>,
   query: string,
@@ -181,7 +165,7 @@ async function readQueryWords(
   });
 }
 
-// Quotes each word and joins them with OR, so no character in the query reads as FTS5 syntax.
+// Each word is quoted so that no character in the query reads as FTS5 syntax.
 function buildMatchExpression(words: readonly string[]): string {
   return words.map((word) => `"${word}"`).join(' OR ');
 }

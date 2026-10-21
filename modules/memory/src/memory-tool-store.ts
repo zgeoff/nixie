@@ -5,8 +5,6 @@ import type { ModelWriteStore } from './gate-types';
 import type { StartedMemoryStore } from './start-memory-store';
 import type { ItemIDStore } from './types';
 
-// What the model's tools reach: recall and its ratings, the pending proposals, the gated write
-// paths, and the pending consolidation diff with its comment path. Nothing here answers a change.
 export type MemoryToolStore = Pick<StartedMemoryStore, 'recall' | 'rate'> &
   PendingToolStore &
   DiffToolStore &

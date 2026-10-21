@@ -1,9 +1,5 @@
-// A lock that runs one callback at a time, in the order they arrive.
 export type DeliveryLock = <T>(fn: () => Promise<T>) => Promise<T>;
 
-// Makes the delivery lock that writes, retire, forget and the last step of a recall share. A recall
-// checks an item, decrypts it and records the delivery while it holds the lock, so a forget either
-// starts after the delivery is recorded or before the check, which then finds the item gone.
 export function makeDeliveryLock(): DeliveryLock {
   const tail: { last: Promise<void> } = { last: Promise.resolve() };
 

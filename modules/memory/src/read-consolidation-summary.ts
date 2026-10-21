@@ -9,8 +9,6 @@ type ConsolidationRow = Selectable<ConsolidationTables['memory_consolidations']>
 
 const summaryShares = z.array(z.strictObject({ itemID: z.string(), sealed: z.base64() }));
 
-// Reads a run's summary opened, or null when the run left none, the summary lapsed, or a forget
-// destroyed the key of an item that holds a share of the summary's key.
 export async function readConsolidationSummary(
   parts: StoreParts,
   run: ConsolidationRow,

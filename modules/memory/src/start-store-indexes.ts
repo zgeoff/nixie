@@ -8,28 +8,22 @@ import type { VectorIndex } from './start-vector-index';
 import { startVectorIndex } from './start-vector-index';
 import type { MemoryContext } from './types';
 
-// The indexes of your past messages, each entry keyed by its record's sequence, apart from the
-// items' indexes so a recall of items never ranks a message.
 interface MessageIndexes {
   readonly index: MemoryIndex;
 
-  // null when the context names no encoder
   readonly vectors: VectorIndex | null;
   readonly cursor: MessageCursor;
 
-  // runs one catch-up at a time, so two never read the same records
   readonly lock: DeliveryLock;
 }
 
 export interface StoreIndexes {
   readonly index: MemoryIndex;
 
-  // null when the context names no encoder
   readonly vectors: VectorIndex | null;
   readonly messages: MessageIndexes;
 }
 
-// Starts the keyword indexes, and the vector indexes when the context names an encoder, all empty.
 export async function startStoreIndexes(context: MemoryContext): Promise<StoreIndexes> {
   const index = await startMemoryIndex();
   const messageIndex = await startMemoryIndex();

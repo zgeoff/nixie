@@ -6,8 +6,6 @@ import type { StoreParts } from './types';
 import { writeProposalApproval } from './write-proposal-approval';
 import { writeProposalRejection } from './write-proposal-rejection';
 
-// The proposals in the memory view over the store's parts: the pending ones, your answers to them,
-// their lapses, and the conversation's own rejected edits.
 export function buildMemoryProposals(parts: StoreParts): MemoryProposals {
   return {
     listPending: (filter) => readPendingProposals(parts, filter),

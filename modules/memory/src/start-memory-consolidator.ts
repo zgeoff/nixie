@@ -8,8 +8,6 @@ export interface MemoryConsolidator {
   readonly runStep: RunStep;
 }
 
-// Puts the memory consolidator into service as a system task, before any runner claims work, and
-// wakes it, so its first step sets the timer for the next run, or runs at once on a first start.
 export async function startMemoryConsolidator(
   parts: ConsolidatorParts,
 ): Promise<MemoryConsolidator> {

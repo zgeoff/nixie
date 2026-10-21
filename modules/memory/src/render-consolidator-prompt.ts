@@ -3,13 +3,9 @@ import type { RecalledItem } from './types';
 export interface ConsolidatorPromptInput {
   readonly items: readonly RecalledItem[];
 
-  // whether the items are every active item, or only the ones that fit the list
   readonly isComplete: boolean;
 }
 
-// Renders the items the consolidator reads: each active item with its short ID, the date of its current
-// version and whether it is pinned, oldest first, and under it the quote the version was saved from,
-// when it has one. Each text and quote keeps to its one line, because outside content can reach them.
 export function renderConsolidatorPrompt(input: ConsolidatorPromptInput): string {
   const heading = input.isComplete
     ? 'Current memory items (the complete list):'

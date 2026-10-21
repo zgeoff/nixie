@@ -6,17 +6,13 @@ import { z } from 'zod';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { SourceSpan } from './writer-types';
 
-// One conversation record after the writer's cursor: your message or a reply, with its text when
-// it is still readable, and the time the writer's wake recorded for your message's arrival.
 export interface BacklogEntry {
   readonly sequence: number;
   readonly role: 'owner' | 'assistant';
 
-  // null once the record's text is forgotten, so it can never be evidence
   readonly text: string | null;
   readonly spans: readonly SourceSpan[];
 
-  // a marker line for each image of your message, and never the image's bytes; a reply has none
   readonly imageMarkers?: readonly string[];
   readonly recordedAt: number;
   readonly arrivedAt: number | null;
@@ -25,16 +21,11 @@ export interface BacklogEntry {
 export interface BacklogRange {
   readonly after: number;
 
-  // stops once the backlog holds more of your messages than this
   readonly ownerLimit: number;
 
-  // the last sequence to read, or null to read to the end
   readonly through: number | null;
 }
 
-// Reads your messages and the replies after a sequence, oldest first, until the backlog holds more
-// of your messages than the limit, passes the last sequence, or reaches the end, so the planner
-// sees every reply of the last message a batch can take.
 export async function readWriterBacklog(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   range: BacklogRange,
@@ -49,14 +40,13 @@ export async function readWriterBacklog(
   });
 }
 
-// mapped types, because Kysely's table map needs the index signature an interface lacks
+// A type alias, because Kysely's table map needs the index signature that an interface lacks.
 type WakeTables = Readonly<{
   records: { sequence: number; thread: string | null; kind: RecordKind; payload: string };
 }>;
 
 const wakePayload = z.object({ messageSequence: z.int(), at: z.int() });
 
-// the clock time each of your messages arrived, from the first wake the writer recorded for it
 async function readArrivals(
   log: Pick<Log, 'writer'>,
   cursor: number,
@@ -78,7 +68,6 @@ async function readArrivals(
     return wake.success ? [[wake.data.messageSequence, wake.data.at] as const] : [];
   });
 
-  // the rows run newest first, so each message keeps the time of its first wake
   return new Map(wakes);
 }
 
@@ -151,7 +140,6 @@ function toBacklogEntry(
   return null;
 }
 
-// a record's erasable fields in their shape, or null once they are forgotten or unreadable
 function parseFields<Fields>(record: LogRecord, schema: z.ZodType<Fields>): Fields | null {
   if (record.erasable.status !== 'readable') {
     return null;

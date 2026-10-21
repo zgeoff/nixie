@@ -3,9 +3,6 @@ import { JSON_OBJECT_SCHEMA, readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import type { MemoryProposal } from '../gate-types';
 
-// Reads the records that one proposal's approval wrote, oldest first, from every page of the log.
-// Values no two approvals share read as placeholders, such as the IDs, the action hash, the sealed
-// text and the time, so two approvals' records compare whole.
 export async function readApprovalRecords(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   proposal: Pick<MemoryProposal, 'proposalID' | 'itemID' | 'actionHash'>,
@@ -42,7 +39,6 @@ export async function readApprovalRecords(
     });
 }
 
-// one page at a time, since a read returns at most one page of the log
 async function readEveryRecord(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   afterSequence: number,

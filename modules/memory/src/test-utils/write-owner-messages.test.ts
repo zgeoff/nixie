@@ -3,7 +3,6 @@ import { readRecords } from '@heynixie/log';
 import { startTestTasks } from '@heynixie/tasks/test-utils';
 import { writeOwnerMessages } from './write-owner-messages';
 
-// a writer with the tasks projections, whose log the messages go to
 async function setupTest() {
   const tasks = await startTestTasks();
 

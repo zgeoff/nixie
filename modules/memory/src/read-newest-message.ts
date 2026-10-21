@@ -1,6 +1,5 @@
 import type { Log, LogTables } from '@heynixie/log';
 
-// Finds the sequence of your newest message in the thread, or null when the thread holds none.
 export async function readNewestMessage(
   log: Pick<Log, 'writer'>,
   thread: string,

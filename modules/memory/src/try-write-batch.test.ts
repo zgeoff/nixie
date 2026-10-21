@@ -9,8 +9,6 @@ import { writePlannedBatch } from './test-utils/write-planned-batch';
 import { tryWriteBatch } from './try-write-batch';
 import { writerConfigSchema } from './writer-config-schema';
 
-// the writer's parts over a test memory, with the store's real publish, and the input of a writer
-// step that holds the lease; the model and the gate never run, because a publish reaches neither
 async function setupTest() {
   const memory = await startTestMemory();
 

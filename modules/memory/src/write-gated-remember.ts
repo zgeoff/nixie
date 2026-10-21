@@ -9,9 +9,6 @@ import type { MemorySubject, StoreParts } from './types';
 import { writeMemoryProposal } from './write-memory-proposal';
 import { writeRememberedItem } from './write-remembered-item';
 
-// Runs a memory.remember, or a memory.edit when the write names its target, through the gate of its
-// item's subject. A passing write applies at once and any other becomes a proposal; a self-note never
-// passes. An edit of a missing item or a moved-on version is refused before any check runs.
 export async function writeGatedRemember(
   parts: StoreParts,
   request: GatedRememberRequest,
@@ -37,7 +34,6 @@ interface PassedRemember {
   readonly subject: MemorySubject;
 }
 
-// a forget that completed while the checker answered turns a passing write into a proposal
 async function applyPassedRemember(
   parts: StoreParts,
   request: GatedRememberRequest,
@@ -60,8 +56,6 @@ async function applyPassedRemember(
       checkerReason: null,
     };
 
-    // a self-note never passes the gate, so only the owner's or a shared item turns into a
-    // proposal here
     return writeRememberProposal(parts, request, {
       review,
       group: passed.group,
@@ -70,7 +64,6 @@ async function applyPassedRemember(
   }
 }
 
-// the version takes the source and checks the gate gave it, and the model of the call that wrote it
 async function applyRemember(
   parts: StoreParts,
   request: GatedRememberRequest,
@@ -127,7 +120,6 @@ async function writeRememberProposal(
     isPinned: request.isPinned === true,
     text: request.text,
 
-    // no check ties a photo's write to a quote, so its proposal shows none as your words
     quote: request.image === undefined ? (request.quote ?? null) : null,
     reason: review.reason,
     evidence: review.evidence,

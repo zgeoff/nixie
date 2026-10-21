@@ -8,10 +8,7 @@ import { createMemoryItem } from './test-utils/create-memory-item';
 import { readItemShortID } from './test-utils/read-item-short-id';
 import { startTestMemory } from './test-utils/start-test-memory';
 
-// A test memory, memory.diff in a registry, and the options a call runs under, which record each
-// call and its result in the memory's log.
 async function setupTest() {
-  // the wall clock stops, so the diff's time and its lapse read the same on every run
   setSystemTime(new Date(Date.UTC(2026, 9, 12, 3, 0)));
 
   onTestFinished(() => {
@@ -27,7 +24,6 @@ async function setupTest() {
     toolCallOptions: {
       registry,
 
-      // every call is allowed, so each reaches its tool
       decide: () => ({
         decision: { outcome: 'allow' as const, stage: 3, rule: null },
         sentence: null,
@@ -35,7 +31,6 @@ async function setupTest() {
       log: memory.log,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-      // memory.diff runs direct, so nothing reaches the queue
       queue: {
         enqueue: () => Promise.reject(new Error('no memory tool runs queued')),
         waitForOutcome: () => Promise.resolve(null),
@@ -242,7 +237,6 @@ test('it shows no text of an item once its forget has started, before its key is
     ],
   });
 
-  // the record a forget commits first, which leaves the item forgetting with its key still held
   await writeRecords(ctx.memory.log, [
     {
       kind: 'memory.forget_started',
@@ -452,7 +446,6 @@ test('it leaves out the summary once a forget starts on an item it is sealed und
     },
   });
 
-  // the record a forget commits first, which leaves the item forgetting with its key still held
   await writeRecords(ctx.memory.log, [
     {
       kind: 'memory.forget_started',

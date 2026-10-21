@@ -6,8 +6,6 @@ import { readForgottenSequences } from './read-forgotten-sequences';
 import type { QuoteEvidenceResult } from './read-quote-evidence';
 import type { SourceMessage } from './writer-types';
 
-// Unicode format characters: zero-width spaces and joiners, bidirectional controls, the byte order
-// mark and the soft hyphen
 const invisible = /\p{Cf}/u;
 
 const failureReasons: Readonly<Record<Exclude<QuoteMatch['status'], 'typed'>, ReviewReason>> = {
@@ -16,9 +14,6 @@ const failureReasons: Readonly<Record<Exclude<QuoteMatch['status'], 'typed'>, Re
   missing: 'no_quote',
 };
 
-// Finds a batch write's quote in the one message it cites, never in a window of recent messages:
-// the quote must be typed there, outside every quoted block. A message that backed a forgotten
-// item never backs a write again.
 export async function readSourceEvidence(
   log: Pick<Log, 'writer'>,
   source: SourceMessage,
@@ -50,7 +45,6 @@ export async function readSourceEvidence(
 
 const spanSources: readonly MessageSpan['source'][] = ['typed', 'pasted', 'dropped', 'unknown'];
 
-// a span with a source the gates do not know counts as unknown, which never passes as typed
 function toOwnerMessage(source: SourceMessage): OwnerMessage {
   return {
     sequence: source.sequence,

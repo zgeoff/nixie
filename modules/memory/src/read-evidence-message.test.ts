@@ -53,7 +53,6 @@ test('it reads a record with no text as missing', async () => {
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  // the first record is the version's, whose text sits sealed in its payload
   const message = await readEvidenceMessage(ctx.memory.log, 1);
 
   expect(message).toStrictEqual({ status: 'missing' });

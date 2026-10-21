@@ -1,4 +1,3 @@
-// An answer offered edited text for a retirement proposal, which adds no text to edit.
 export class RetirementEditError extends Error {
   override readonly name = 'RetirementEditError';
 

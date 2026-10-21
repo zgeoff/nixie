@@ -2,8 +2,6 @@ import type { Log } from '@heynixie/log';
 import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/sessions';
 import type { MemoryOrigin, MemoryTables } from './types';
 
-// A write outside the conversation that proposed the same change as one of the conversation's
-// pending proposals, and merged into it.
 export interface ProposalMergeEvent {
   readonly proposalID: string;
   readonly origin: MemoryOrigin;
@@ -15,9 +13,6 @@ const proposerWords: Readonly<Record<Exclude<MemoryOrigin, 'owner'>, string>> = 
   memory_writer: 'Your note-taker',
 };
 
-// The event kind for a write from outside the conversation that merged into one of its proposals,
-// so the conversation knows its proposal still waits. A proposal that closed before the next turn
-// has nothing left to wait for, so its merges are left out.
 export function buildProposalMergeKind(log: Pick<Log, 'writer'>): EventKind<ProposalMergeEvent> {
   return {
     name: 'memory_merge',
@@ -50,7 +45,6 @@ interface MergeRow {
   readonly recorded_at: number;
 }
 
-// every merge in the range into a pending proposal the conversation made, from a write outside it
 function readOutsideMerges(
   log: Pick<Log, 'writer'>,
   range: TurnNoteRange,

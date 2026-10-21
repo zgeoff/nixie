@@ -10,9 +10,6 @@ export interface ReadableWrites {
   readonly flags: readonly StagedFlag[];
 }
 
-// The writes and flags of a batch whose cited source is still readable and backed no item
-// forgotten since the gate ran, so a forget that completes while the checker answers still stops
-// the write, and a flag never quotes a forgotten message.
 export async function filterReadableWrites(
   parts: StoreParts,
   tx: Transaction<unknown>,
@@ -40,9 +37,8 @@ interface SourceRow {
   readonly key_id: string | null;
 }
 
-// Every cited source whose erasable fields still decrypt. A forget of a message deletes its key, so
-// the source reads as gone here. The key store is a separate database, so a key deleted after this
-// read and before the commit still publishes; no message forget exists yet to race it.
+// The key store is a separate database, so a key deleted between this read and the commit does not
+// stop the publish.
 async function readReadableSources(
   parts: StoreParts,
   tx: Transaction<unknown>,

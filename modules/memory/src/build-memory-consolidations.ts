@@ -9,8 +9,6 @@ import { writeChangeComment } from './write-change-comment';
 import { writeChangeRejection } from './write-change-rejection';
 import { writeDiffApproval } from './write-diff-approval';
 
-// The consolidator's diffs over the store's parts: the pending diff, the schedule, your answers to
-// each change or the whole diff, the conversation's comments on them, and their lapses.
 export function buildMemoryConsolidations(parts: StoreParts): MemoryConsolidations {
   return {
     readPending: () => readPendingDiff(parts),

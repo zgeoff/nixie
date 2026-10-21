@@ -8,9 +8,6 @@ import { readViewProposals } from './read-view-proposals';
 import type { StoreParts } from './types';
 import type { MemoryView } from './view-types';
 
-// The reads of the memory view over the store's parts. Search ranks through the store's indexes,
-// the pending proposals open under their items' keys, and every other read, the export among them,
-// goes to the log alone.
 export function buildMemoryView(parts: StoreParts): MemoryView {
   const log = parts.context.log;
 

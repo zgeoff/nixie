@@ -1,8 +1,6 @@
 import type { ConsolidationSchedule, ConsolidationTables } from './consolidation-types';
 import type { StoreParts } from './types';
 
-// Reads when the consolidator last ran, and how many of its changes still wait for your answer
-// with the earliest time one lapses.
 export async function readConsolidationSchedule(parts: StoreParts): Promise<ConsolidationSchedule> {
   const db = parts.context.log.writer.db.$extendTables<ConsolidationTables>();
 

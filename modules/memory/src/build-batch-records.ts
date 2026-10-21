@@ -17,9 +17,6 @@ export interface PublishedBatch {
   readonly outcome: BatchOutcome;
 }
 
-// The batch's record, which advances the cursor, its notices and a record for each flag it kept: a
-// live batch that applied writes adds a quiet notice, and the batch that ends the catch-up adds one
-// notice with the count of everything the catch-up remembered.
 export function buildBatchRecords(
   parts: Pick<WriterParts, 'context' | 'model'>,
   batch: PublishedBatch,
@@ -49,7 +46,6 @@ interface NoticeFields {
   readonly count: number;
 }
 
-// a quiet notice in the conversation's thread, with no push and no entry in the approval digest
 function buildNotice(parts: Pick<WriterParts, 'context'>, fields: NoticeFields): RecordInput {
   return {
     kind: 'memory.notice',
@@ -68,8 +64,6 @@ function toRefJSON(ref: VersionRef): JSONObject {
   return { itemID: ref.itemID, version: ref.version };
 }
 
-// The flag's text is the model's line about your message, so it goes in the erasable fields and
-// counts as outside content. It sits in the conversation's thread, beside the notices.
 function buildFlagRecord(parts: Pick<WriterParts, 'context'>, flag: StagedFlag): RecordInput {
   return {
     kind: 'memory.self_note_flagged',
