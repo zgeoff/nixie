@@ -12,7 +12,6 @@ import { startSeedPoll } from './start-seed-poll';
 import { startTestLog } from './test-utils/start-test-log';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
-// nixie in a test build after one start reached ready and stopped, so its database holds a seed
 async function setupTest() {
   const nixie = await startTestNixie();
 

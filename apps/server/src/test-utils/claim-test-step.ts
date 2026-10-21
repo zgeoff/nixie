@@ -1,8 +1,6 @@
 import type { StepInput, TasksContext } from '@heynixie/tasks';
 import { claimTask, readInbox } from '@heynixie/tasks';
 
-// Claims the next step the way a task runner does, with its task's unread inbox, and throws when no
-// task is claimable.
 export async function claimTestStep(context: TasksContext): Promise<StepInput> {
   const claim = await claimTask(context, { holder: 'runner-a', leaseMs: 60_000 });
 

@@ -12,24 +12,18 @@ import type { TestServer } from './start-test-server';
 export interface TestConversation {
   readonly runner: ConversationRunner;
 
-  // the conversation's own scripted model
   readonly model: ScriptedModel;
 }
 
 export interface TestConversationOptions {
-  // the context the conversation runs on, such as one on a test clock
   readonly context: TasksContext;
   readonly readTurnNote?: ConversationRunnerOptions['readTurnNote'];
 
-  // the tools the conversation lists, from those the server's endpoint serves, and none when unset
   readonly toolNames?: readonly string[];
 
-  // the memory each turn reads, such as a started store, and a memory that holds nothing when unset
   readonly memory?: ConversationOptions['memory'];
 }
 
-// Creates the conversation task and starts the conversation on a test server, on a scripted model
-// of its own with the tools named or none, and stops it when the test finishes.
 export async function startTestConversation(
   server: TestServer,
   options: TestConversationOptions,
@@ -66,8 +60,6 @@ export async function startTestConversation(
     }),
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),
 
-    // unless the test passes one, a memory with no pinned items that recalls nothing, so a turn
-    // places no memory
     memory:
       options.memory ??
       (() => ({

@@ -8,7 +8,6 @@ import { z } from 'zod';
 import { buildConfigJSONSchema } from './build-config-json-schema';
 import { deploymentConfigSchema } from './deployment-config-schema';
 
-// The published schema describes a release build, so each test reads nixie's own schema as one
 function setupTest() {
   Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
 
@@ -186,8 +185,6 @@ test('it refuses a model URL that is not HTTP', () => {
   });
 });
 
-// Each row holds a whole configuration and the answer that both the published schema and a release
-// build of nixie give for it, so a rule that one of them drops fails its row
 test.each([
   [
     'a configuration with only the required sections',
@@ -543,8 +540,6 @@ test.each([
   expect(isNixieValid).toBe(expected);
 });
 
-// nixie reads any zone that Intl resolves, and the schema lists only the canonical names, so it can
-// refuse a zone that nixie reads but never pass one that nixie refuses
 test('it refuses a time zone alias that a release build reads', () => {
   const ctx = setupTest();
 
@@ -573,7 +568,6 @@ test('it refuses a time zone alias that a release build reads', () => {
   expect(isNixieValid).toBeTrue();
 });
 
-// The schema leaves out the rules that span keys, which nixie checks at start
 test('it accepts a role that names a missing profile, which a release build refuses', () => {
   const ctx = setupTest();
 

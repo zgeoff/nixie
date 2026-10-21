@@ -9,11 +9,8 @@ import { runTestReset } from './test-utils/run-test-reset';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
-// nixie in a test build at ready, with a device signed in through the code it printed at start
 async function setupTest() {
   const nixie = await startTestNixie();
-
-  // boot data: every procedure but enrol needs a device session, whose name each message carries
   const clients = await createTestClient(nixie);
 
   return { ...nixie, ...clients };
@@ -224,7 +221,6 @@ test('it answers a message with a reply that used a tool, with each step in the 
   await waitForCondition(async () => {
     const page = await ctx.client.conversation.read({ thread: 'conversation' });
 
-    // a step that errors ends the turn too, so the assertions below report how it went
     return page.records.some((record) => /^task\.step_(?:committed|errored)$/u.test(record.kind));
   });
 
@@ -260,7 +256,6 @@ test('it answers a message with a reply that used a tool, with each step in the 
     'It is a quarter past four in Lisbon.',
   );
 
-  // the model writes its reply after it reads the tool's result
   expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toMatch(
     /"type":"tool_result".*Europe\/Lisbon/u,
   );
@@ -289,8 +284,6 @@ test('it completes a turn that calls a tool from the test sandbox the configurat
   });
 
   const page = await ctx.client.conversation.read({ thread: 'conversation' });
-
-  // the test sandbox keeps a directory per sandbox in the data directory, and imp keeps none there
   const sandboxIDs = await ctx.readSandboxIDs();
 
   expect(sandboxIDs.length).toBeGreaterThan(0);
@@ -356,7 +349,6 @@ test('it shows the model when you typed a message that reached nixie over 2 minu
 
   ctx.model.addReplies({ text: 'Noted.' }, { text: 'On it.' });
 
-  // the first message went out as you wrote it, and the second waited hours on the device
   await ctx.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
@@ -463,8 +455,6 @@ test('it applies a remembered fact that the owner typed, with their words as its
     thread: 'conversation',
   });
 
-  // the turn runs the model, the memory checker and the model again, so it waits as long as a sent
-  // message's reply does
   await waitForCondition(
     async () => {
       const page = await ctx.client.conversation.read({ thread: 'conversation' });
@@ -482,7 +472,6 @@ test('it applies a remembered fact that the owner typed, with their words as its
 
   invariant(message, 'the run recorded no owner message');
 
-  // the evidence is the quote's span in the typed message: characters 14 to 42
   expect(run.records.filter((record) => record.kind === 'memory.version_added')).toMatchObject([
     {
       contentSource: 'owner',
@@ -510,7 +499,6 @@ test('it applies a remembered fact cited by the event ID its stamp showed, with 
     'Got it.',
   );
 
-  // the model reads the event ID at the head of the stamp of the message it was sent
   const sent = JSON.stringify(
     ctx.model.requests.findLast((request) => request.path === '/v1/messages'),
   );
@@ -519,7 +507,6 @@ test('it applies a remembered fact cited by the event ID its stamp showed, with 
     /\[#(?<eventID>\d+) · [^\]]+\] My bike lock/u.exec(sent)?.groups?.['eventID'],
   );
 
-  // no log.read call: the newer message holds the same words, so only the event ID picks the older
   ctx.model.addReplies(
     {
       toolUse: {
@@ -548,7 +535,6 @@ test('it applies a remembered fact cited by the event ID its stamp showed, with 
 
   const run = await ctx.waitForExit();
 
-  // the quote's span in the older message: characters 3 to 25
   expect(run.records.filter((record) => record.kind === 'memory.version_added')).toMatchObject([
     { payload: { source: 'owner', evidence: { recordSequence: eventID, start: 3, end: 25 } } },
   ]);
@@ -646,7 +632,6 @@ test('it lists the proposal the model made when the model calls the pending tool
     return page.records.some((record) => record.message?.text === 'One proposal waits.');
   });
 
-  // the model's request after the call carries the tool's result
   const sent = JSON.stringify(
     ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body?.messages,
   );
@@ -1158,7 +1143,6 @@ test('it leaves no old key and no old text in the data files after a reset', asy
     return page.records.some((record) => record.message?.text === 'Fennel-reply-8WD');
   });
 
-  // every key ID is a UUID, so the key store's files name each key they hold
   const before = await ctx.readDataFiles();
 
   const keyIDs = before

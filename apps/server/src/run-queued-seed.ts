@@ -3,18 +3,13 @@ import type { SeedResult } from '@heynixie/definitions';
 import { buildSeedLogFields } from './build-seed-log-fields';
 import type { ServerParts } from './types';
 
-// the server parts a seed reads and updates
 export type SeedParts = Pick<
   ServerParts,
   'context' | 'source' | 'policy' | 'inForce' | 'state' | 'log'
 >;
 
-// the newest seed each set of parts started, which the next one waits for
 const pendingSeeds = new WeakMap<SeedParts, Promise<void>>();
 
-// Runs one seed after every seed queued before it over the same parts, as the seed needs, so the
-// poll, a skill reload and an approval never commit an older revision after a newer one. A seed
-// that fails gives its failure to its caller, and the next seed still runs.
 export function runQueuedSeed(
   parts: SeedParts,
   seed: () => Promise<SeedResult>,

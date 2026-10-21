@@ -4,24 +4,17 @@ import { toErrorFields } from '@heynixie/logger';
 import { planBackoffDelay } from '@heynixie/retry';
 
 export interface RetryOptions {
-  // the start step's name, which each failure's log line carries
   readonly step: string;
 
-  // aborts on a stop, which ends the retries with the signal's reason
   readonly signal: AbortSignal;
   readonly log: Logger;
 
-  // the clock each wait between attempts runs on
   readonly clock: Clock;
 
-  // the first wait after a failure, which doubles up to maxDelayMs: 1 s and 30 s by default
   readonly firstDelayMs?: number;
   readonly maxDelayMs?: number;
 }
 
-// Runs a start step until it succeeds, logging each failure and waiting longer after each. A step
-// that needs impd, or a definitions seed that is refused, keeps nixie live and unready rather than
-// stopping it, so the health endpoint shows which part holds the start.
 export async function runWithRetry<T>(
   attempt: () => Promise<T>,
   options: RetryOptions,

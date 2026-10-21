@@ -1,25 +1,18 @@
 export interface APIGate {
-  // runs one request through next while the gate is open, and answers an API call with 503 once it
-  // closes; the health endpoints always pass, and a close never waits for them
   readonly run: (
     request: Request,
     next: (request: Request) => Promise<Response>,
   ) => Promise<Response>;
 
-  // refuses every later API call, then waits for the API calls in flight to answer
   readonly close: () => Promise<void>;
 }
 
-// the API calls in flight, and the closes that wait for none to be left
 interface APICalls {
   isClosed: boolean;
   inFlight: number;
   readonly waiters: (() => void)[];
 }
 
-// Builds the gate in front of the HTTP server and the control socket that a reset closes before it
-// removes anything, so a device's call or a host command during the reset is refused instead of
-// committing a write the reset then deletes.
 export function buildAPIGate(): APIGate {
   const calls: APICalls = { isClosed: false, inFlight: 0, waiters: [] };
 

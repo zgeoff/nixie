@@ -4,9 +4,6 @@ import { findNoAllowRule, startLapseSweep, startMemoryStore } from '@heynixie/me
 import { startCheckerTask } from '@heynixie/sessions';
 import type { ServerParts } from './types';
 
-// Starts the checker, then the memory store after recovery and after the conversation imp, which
-// supplies the session cleanup a forget runs. The store resumes every pending forget, cleanup
-// included, and builds the keyword index before any runner claims work.
 export async function startMemory(
   parts: ServerParts,
   cleanupSessions: CleanupSessions,
@@ -64,8 +61,6 @@ export async function startMemory(
   return store;
 }
 
-// The vector index rebuilds after the store starts, and search reads keywords until it ends, so the
-// log shows when meaning joins the search and how long the rebuild took.
 async function waitForSemanticIndex(parts: ServerParts, store: StartedMemoryStore): Promise<void> {
   if (parts.encoder === null) {
     return;

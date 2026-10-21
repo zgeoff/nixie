@@ -17,16 +17,11 @@ import { toSessionDefinitions } from './to-session-definitions';
 import type { ServerParts } from './types';
 
 export interface ConversationImp {
-  // clears the failing mark on the conversation's turns after each turn that succeeds
   readonly runStep: RunStep;
 
-  // the session cleanup a forget runs, which the memory store and the record forget take
   readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
 }
 
-// Starts the conversation on its image from the manifest, which replaces its sandbox when the image
-// or the profile changed. Each turn reads memory and its note through the getter, because the
-// store starts after the conversation and before any runner claims work.
 export async function startConversationImp(
   parts: ServerParts,
   memory: () => StartedMemoryStore,

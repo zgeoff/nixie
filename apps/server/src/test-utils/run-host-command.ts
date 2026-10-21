@@ -6,9 +6,6 @@ export interface HostCommandRun {
   readonly stdout: string;
 }
 
-// Runs one host command of the test build as its own process against the configuration given, as
-// a shell in nixie's container runs it, and returns its exit code and its stdout. A test that fails
-// before the command exits kills it.
 export async function runHostCommand(
   configPath: string,
   args: readonly string[],
@@ -30,7 +27,6 @@ export async function runHostCommand(
     command.kill();
   });
 
-  // stderr drains too, so a long write to it never blocks the command
   const [exitCode, stdout] = await Promise.all([
     command.exited,
     new Response(command.stdout).text(),

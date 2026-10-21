@@ -7,13 +7,9 @@ import { startControlSocket } from '../start-control-socket';
 export interface TestControlSocketOptions {
   readonly path: string;
 
-  // the memory store the memory procedures reach, none by default
   readonly readMemory?: HostRouterOptions['readMemory'];
 }
 
-// Starts the API on a fresh data directory and the control socket at path, which serves the host
-// procedures over the API's context and the memory given. A reset fails, because no server runs
-// behind the socket. It stops the socket when the test finishes.
 export async function startTestControlSocket(options: TestControlSocketOptions): Promise<void> {
   const api = await startTestAPI();
 
@@ -23,7 +19,6 @@ export async function startTestControlSocket(options: TestControlSocketOptions):
       context: api.context,
       readMemory: options.readMemory ?? (() => null),
 
-      // no seed runs behind the test socket, so an approval stays in the store of written skills
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no server runs behind the test socket')),
     }),

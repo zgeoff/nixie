@@ -6,25 +6,18 @@ import { runHostCommand } from './run-host-command';
 import type { TestNixie } from './start-test-nixie';
 
 export interface TestReset {
-  // the reset command's exit code and stdout, and the exit code of the server it reset
   readonly command: HostCommandRun;
   readonly serverExit: number;
 
-  // the old log's highest sequence, from the server's log line of the finished reset
   readonly lastSequence: number;
 
-  // the server started again on the same data directory, once it is ready
   readonly again: TestNixie;
 
-  // a client of the server started again: the device that holds the token, or signed out
   readonly connect: (token?: string) => ContractClient;
 
-  // stops the server started again, then reads every record with its decrypted fields
   readonly stop: () => Promise<{ readonly exitCode: number; readonly records: LogRecord[] }>;
 }
 
-// Runs the reset command against a running test nixie, waits for the server to exit, and starts it
-// again on the same data directory, as the container runtime does, until it is ready.
 export async function runTestReset(nixie: TestNixie): Promise<TestReset> {
   const command = await runHostCommand(nixie.configPath, ['reset', '--keep-sessions', '--yes']);
   const finished = await nixie.waitForLogEvent('reset.finished');

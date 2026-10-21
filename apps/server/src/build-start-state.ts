@@ -1,24 +1,16 @@
 import type { PartReport } from '@heynixie/ops';
 
-// What the start sequence and the runners have reported so far, which readiness reads.
 interface StartReports {
-  // migrations finished and the integrity check at start passed
   readonly database: PartReport;
 
-  // the last seed applied, with no refused snapshot pending
   readonly definitions: PartReport;
 
-  // every image in the sandbox manifest is added
   readonly areImagesAdded: boolean;
 
-  // the conversation's sandbox stands
   readonly conversation: PartReport;
 
-  // the conversation's turns are not failing: unready once its errors in a row reach the limit,
-  // until a turn succeeds. Readiness reports it as an advisory part, which routing never waits on.
   readonly turns: PartReport;
 
-  // the runners claim work, which every start step before them holds back
   readonly areRunnersStarted: boolean;
 }
 
@@ -27,7 +19,6 @@ export interface StartState {
   readonly update: (reports: Partial<StartReports>) => void;
 }
 
-// The state before the start sequence reaches each part, from the database check at start.
 export function buildStartState(database: PartReport): StartState {
   const current: { reports: StartReports } = {
     reports: {

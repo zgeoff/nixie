@@ -4,14 +4,12 @@ import type { TasksContext } from '@heynixie/tasks';
 import { z } from 'zod';
 import { nixieVersion } from './nixie-version';
 
-// What the conversation is given at a start: the names of its tools and the version of its
-// persona, or null before the first seed.
 export interface StartGiven {
   readonly tools: readonly string[];
   readonly personaVersion: string | null;
 }
 
-// mapped types, because Kysely's table map needs the index signature an interface lacks
+// A type alias, because Kysely's table map needs the index signature that an interface lacks.
 type RecordTables = Readonly<{
   records: { readonly sequence: number; readonly kind: RecordKind; readonly payload: string };
 }>;
@@ -23,9 +21,6 @@ const givenPayload = z.object({
 
 const startPayload = z.object({ version: z.string(), given: givenPayload.optional() });
 
-// Records that nixie started, with its version, the version of the start before it, and what the
-// conversation is given, with what changed in that since the start before. The first start, and a
-// start after one from a release that recorded nothing given, has no changes.
 export function writeStartRecord(
   context: Pick<TasksContext, 'definitions' | 'log'>,
   given: StartGiven,
@@ -66,9 +61,7 @@ export function writeStartRecord(
   });
 }
 
-// What changed in what the conversation is given since the start before: the tools added and
-// removed, by name, and whether the persona changed. A type alias, because a record's payload
-// needs the index signature an interface lacks.
+// A type alias, because a record's payload needs the index signature that an interface lacks.
 export type StartChanges = Readonly<{
   addedTools: readonly string[];
   removedTools: readonly string[];

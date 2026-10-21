@@ -4,9 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkEncoder } from './check-encoder';
 
-// Bun 1.4.2's skipIf takes a boolean and has no in-body skip. The model files come from `bun run
-// models`, which `bun run test` runs first, so a plain `bun test` without them skips this test and
-// CI, which always has them, never does.
+// Bun's skipIf takes a boolean and has no in-body skip. `bun run test` downloads the model files
+// first, so a plain `bun test` without them skips this test, and CI never skips it.
 const isModelMissing =
   !(await Bun.file(
     join(import.meta.dir, '../../../node_modules/.cache/nixie-encoder/tokenizer.json'),

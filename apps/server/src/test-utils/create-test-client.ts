@@ -7,16 +7,12 @@ import type { TestNixie } from './start-test-nixie';
 interface TestClient {
   readonly url: string;
 
-  // a client with no session, which reaches only enrol
   readonly signedOut: ContractClient;
   readonly client: ContractClient;
 
-  // the device's bearer token, which a client built after a restart signs in with
   readonly token: string;
 }
 
-// Waits for nixie to be ready, then enrols a device named laptop through the code nixie printed at
-// start, and returns a client signed in with the device's bearer token beside a signed-out one.
 export async function createTestClient(
   nixie: Pick<TestNixie, 'waitForLogEvent'>,
 ): Promise<TestClient> {

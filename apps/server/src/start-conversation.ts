@@ -22,43 +22,31 @@ export interface ConversationOptions {
   readonly tools: Pick<ToolEndpoint, 'startRun'>;
   readonly toolNames: readonly string[];
 
-  // the conversation image's name in impd, from the sandbox manifest
   readonly image: string;
 
-  // the persona in force and the persona and policy hashes, read as each step begins
   readonly getDefinitions: ConversationRunnerOptions['getDefinitions'];
 
-  // the note of memory changes made outside the conversation, read before each turn
   readonly readTurnNote?: ConversationRunnerOptions['readTurnNote'];
 
-  // the catalog of the skills the conversation is pinned to, loaded as each step begins
   readonly loadOrPinSkillCatalog?: ConversationRunnerOptions['loadOrPinSkillCatalog'];
 
-  // the lines of a new session's status, in order
   readonly status?: ConversationRunnerOptions['status'];
 
-  // the memory store, read at each turn, which starts after the conversation
   readonly memory: () => ConversationMemory;
   readonly memorySettings?: Partial<ConversationMemorySettings>;
 
-  // when the session compacts, from the deployment configuration's compaction section
   readonly compaction?: CompactionSettings;
 
-  // the IANA zone your message renders its send time in when it carries no zone of its own
   readonly defaultZone?: string;
 
-  // the server's log, which takes a warning when a replaced sandbox's session does not carry over
   readonly log: Logger;
 }
 
-// Starts the conversation on the conversation role's profile. Every profile's credential resolves
-// first, so a reference the secrets file lacks stops nixie at start.
 export function startConversation(options: ConversationOptions): Promise<ConversationRunner> {
   const credentials = resolveModelCredentials(options.models, options.secrets);
   const profile = resolveRoleProfile(options.models, 'conversation');
   const resolved = credentials[profile.id];
 
-  // the credentials resolve for every profile, or resolveModelCredentials throws first
   invariant(resolved, `the conversation profile ${profile.id} has no credential`);
 
   return startConversationRunner({

@@ -14,8 +14,6 @@ import { runDefinitionsSeed } from './run-definitions-seed';
 import type { SeedParts } from './run-queued-seed';
 import { startTestLog } from './test-utils/start-test-log';
 
-// the server's seed parts over a fresh log and a definitions folder beside it, and the
-// conversation's skill tools in a registry, reloading through the server's own refresh
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 

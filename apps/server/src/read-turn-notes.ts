@@ -9,19 +9,13 @@ export interface TurnNotesOptions {
   readonly log: Pick<Log, 'writer'>;
   readonly events: EventRegistry;
 
-  // the clock the note's messages take their time from
   readonly clock: Pick<Clock, 'now'>;
 
-  // the owner's name, or null for "the owner"
   readonly ownerName: string | null;
 
-  // the zone events show in until one of the owner's messages carries a zone
   readonly defaultZone: string;
 }
 
-// Reads the note before the next turn, or over a span a new session's recent turns cover: the
-// events block over one range, memory changes included, as a system message. Times show in the
-// zone of the owner's newest message, as the time tool answers.
 export async function readTurnNotes(
   options: TurnNotesOptions,
   request: TurnNoteRequest = {},

@@ -2,9 +2,6 @@ import { resolveSocketPath } from './resolve-socket-path';
 import { sendHostRequest } from './send-host-request';
 import type { CLIIO, Command } from './types';
 
-// The device session host commands: enrol-code asks the running server for a code that signs one
-// device in, sessions lists the live device sessions as JSON, and session-label sets the label of
-// one.
 export function createSessionCommands(): readonly (readonly [string, Command])[] {
   return [
     ['enrol-code', (flags, io) => runEnrolCode(flags.config, io)],
@@ -37,7 +34,6 @@ async function runSessions(configPath: string, io: CLIIO): Promise<number> {
   return 0;
 }
 
-// the label is every word after the session's ID, so a label with spaces needs no quotes
 async function runSessionLabel(
   configPath: string,
   io: CLIIO,

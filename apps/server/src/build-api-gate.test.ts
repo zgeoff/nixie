@@ -47,7 +47,6 @@ test('it closes only once the requests in flight have answered', async () => {
 
   const closed = gate.close();
 
-  // a turn of the event loop, in which a close that never waited would settle
   const statusBefore = await Bun.sleep(0).then(() => Bun.peek.status(closed));
 
   call.release();

@@ -6,9 +6,6 @@ import { startMemory } from './start-memory';
 import { startWriterTask } from './start-writer-task';
 import type { AnyPartDeclaration } from './types';
 
-// The memory store, which takes the conversation's session cleanup, then the cleanup the API's
-// record forget reads, each pending record forget, the memory writer and the memory consolidator,
-// so no turn runs before the store is there or on a session that holds a forgotten record's text.
 export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
   {
     name: 'memory',
@@ -18,8 +15,6 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     ),
   },
   {
-    // the cleanup is ready once the store is, so a forget that read it before is pending; a
-    // forgotten message leaves the message indexes before its session cleanup runs
     name: 'session_cleanup',
     needs: ['conversation_imp', 'memory'],
     start: (reader) => {

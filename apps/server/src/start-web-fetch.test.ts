@@ -9,7 +9,7 @@ import { buildConnectProbe } from './test-utils/build-connect-probe';
 import { checkIsolationTargets } from './test-utils/check-isolation-targets';
 import { isClearIsolationLine } from './test-utils/is-clear-isolation-line';
 
-// The imp tests run against a real impd on a host with /dev/kvm, with the fetch image built into it.
+// These tests need a real impd on a host with /dev/kvm and the fetch image built into it.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn them on.
 const hasImpHost =
   process.env['NIXIE_IMP_TEST_URL'] !== undefined &&
@@ -17,11 +17,11 @@ const hasImpHost =
   process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'] !== undefined &&
   (process.env['NIXIE_IMP_TEST_FETCH_IMAGE'] ?? '') !== '';
 
-// The stack's disposal registers before the recorder's, and onTestFinished runs first in, first
-// out, so a sandbox that a test registers on it is destroyed while the recorder's writer still runs.
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
+  // onTestFinished runs its callbacks first in, first out, so a sandbox on the stack is destroyed
+  // while the recorder's writer still runs.
   onTestFinished(() => stack.disposeAsync());
 
   const testRecorder = await setupTestRecorder();
@@ -210,8 +210,6 @@ test.skipIf(!hasImpHost)(
     // nothing about reach; the test host resolves it, and the guest probes each address
     const impdAddresses = await Bun.dns.lookup(impd.hostname);
 
-    // impd listens on its own addresses, so each needs a live listener; a host address may have
-    // nothing on impd's port, and a refusal there prints it as unprovable instead of failing
     const lines = await checkIsolationTargets(
       [
         ...impdAddresses.map(

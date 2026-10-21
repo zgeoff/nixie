@@ -9,11 +9,8 @@ import { runHostCommands } from './test-utils/run-host-commands';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
-// nixie in a test build at ready, with a device signed in through the code it printed at start
 async function setupTest() {
   const nixie = await startTestNixie();
-
-  // boot data: every procedure but enrol needs a device session
   const clients = await createTestClient(nixie);
 
   return { ...nixie, ...clients };
@@ -155,7 +152,6 @@ test('it forgets an item through the memory view, which leaves no key, match or 
 
   const after = await readItemTraces(ctx, ctx.client, key);
 
-  // the session state held the item, and the cleanup removed the guest's whole state directory
   expect(before).toStrictEqual({
     hasKey: true,
     isMatched: true,
@@ -223,7 +219,6 @@ test('it forgets an item through memory-forget, which leaves no key, match or se
 
   expect(JSON.parse(forgotten.stdout)).toStrictEqual({ itemID: lock.itemID });
 
-  // the session state held the item, and the cleanup removed the guest's whole state directory
   expect(before).toStrictEqual({
     hasKey: true,
     isMatched: true,

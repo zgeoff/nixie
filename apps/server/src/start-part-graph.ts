@@ -5,13 +5,9 @@ import { PartNotStartedError } from './part-not-started-error';
 import type { AnyPartDeclaration, PartDeclaration, PartGraph, PartReader } from './types';
 
 export interface PartGraphOptions {
-  // checked before each part starts, so a stop ends the start at the next part
   readonly signal?: AbortSignal;
 }
 
-// Starts the parts one at a time: each once every part it needs is ready, and parts that need
-// nothing of each other in the order declared. A name no declaration has, or a cycle of needs,
-// throws before any part starts, and a part that fails leaves every part after it unstarted.
 export function startPartGraph<Values>(
   declarations: readonly AnyPartDeclaration<Values>[],
   options: PartGraphOptions = {},
@@ -20,7 +16,6 @@ export function startPartGraph<Values>(
   const state = buildGraphState(order);
   const done = runParts(order, state, options);
 
-  // a start failure reaches each caller through done or waitFor, so no rejection goes unhandled
   void waitForSettled(done);
 
   return {
@@ -29,7 +24,6 @@ export function startPartGraph<Values>(
   };
 }
 
-// the declarations in start order, after each one's names are checked against the rest
 function planPartOrder<Values>(
   declarations: readonly AnyPartDeclaration<Values>[],
 ): readonly AnyPartDeclaration<Values>[] {
@@ -53,7 +47,6 @@ function planPartOrder<Values>(
   return order;
 }
 
-// the index of the first pending declaration whose needs all come earlier in the order
 function pickNextPart<Values>(
   pending: readonly AnyPartDeclaration<Values>[],
   order: readonly AnyPartDeclaration<Values>[],
@@ -71,7 +64,6 @@ function pickNextPart<Values>(
   return next;
 }
 
-// the started parts and the waiter for each part, read and changed only through these functions
 interface GraphState<Values> {
   readonly findStarted: <Name extends keyof Values>(
     name: Name,
@@ -87,7 +79,6 @@ function buildGraphState<Values>(order: readonly AnyPartDeclaration<Values>[]): 
   const addWaiter = <Name extends keyof Values>(name: Name): PromiseWithResolvers<Values[Name]> => {
     const waiter = Promise.withResolvers<Values[Name]>();
 
-    // a caller that never waits on a part leaves its rejection unread
     void waitForSettled(waiter.promise);
     waiters[name] = waiter;
 
@@ -145,7 +136,6 @@ async function startPart<Values, Name extends keyof Values>(
   state.getWaiter(declaration.name).resolve(value);
 }
 
-// the reader a part's start gets, which reads only the parts its declaration names
 function buildPartReader<Values, Name extends keyof Values>(
   declaration: PartDeclaration<Values, Name>,
   state: GraphState<Values>,

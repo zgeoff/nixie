@@ -1,6 +1,3 @@
-// `bun apps/server/src/run-release-manifest.ts --version <version> --commit <sha> --server <ref> ...
-// --out <release.json>` writes the release.json that the release workflow publishes, from each
-// image's <repository>@sha256:<digest> ref and the --summary files of the two schema checks.
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';

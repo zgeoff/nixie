@@ -28,7 +28,6 @@ test('it reads every section, with the default of each setting the file leaves o
     ].join('\n'),
   );
 
-  // a model profile's fields and each memory section's settings have tests of their own
   const { models, ...sections } = await loadDeploymentConfig(ctx.path);
 
   const { memory_writer: memoryWriter, memory, memory_consolidation: _, ...rest } = sections;

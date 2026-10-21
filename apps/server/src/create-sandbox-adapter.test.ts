@@ -5,12 +5,11 @@ import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createSandboxAdapter } from './create-sandbox-adapter';
 import { startTestServer } from './test-utils/start-test-server';
 
-// The parts of a test build that the adapter wires to, from the test server. The stack's disposal
-// registers before the server's, and onTestFinished runs first in, first out, so a sandbox that a
-// test registers on it is destroyed while the writer that its recorder writes through still runs.
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
+  // onTestFinished runs its callbacks first in, first out, so a sandbox on the stack is destroyed
+  // while the server's writer still runs.
   onTestFinished(() => stack.disposeAsync());
 
   const server = await startTestServer();
@@ -89,7 +88,6 @@ test('it bundles the imp adapter and no part of the process double in a release 
 
   const bundle = texts.join('\n');
 
-  // a string only the imp adapter holds, and one only the process double holds
   expect(bundle).toInclude('public egress without the host addresses in imp.host_addresses');
   expect(bundle).not.toInclude('the tool relay has no TCP address');
 });
@@ -103,7 +101,6 @@ test('it bundles the process double in a test build', async () => {
 
   const texts = await Promise.all(build.outputs.map((output) => output.text()));
 
-  // a string only the process double holds
   expect(texts.join('\n')).toInclude('the tool relay has no TCP address');
 });
 

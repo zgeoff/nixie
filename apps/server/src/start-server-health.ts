@@ -18,9 +18,6 @@ export interface ServerHealthOptions {
   readonly log: Logger;
 }
 
-// Starts the readiness refresh and builds the health endpoint on it. Liveness holds while the
-// process answers and the database opens; readiness lists the slice 1 parts, the dependency parts
-// and the advisory ones.
 export async function startServerHealth(options: ServerHealthOptions) {
   const refresh = startReadinessRefresh(options.adapter, options.dataDir, options.clock);
 

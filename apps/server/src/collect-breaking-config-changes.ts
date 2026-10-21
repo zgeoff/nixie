@@ -1,6 +1,3 @@
-// Collects each change from the released config schema to the current one that can refuse a
-// config.yaml the released schema accepts, as `<path>: <change>`. A change it cannot prove
-// harmless counts as breaking, so the list can hold a false alarm but never misses a break.
 export function collectBreakingConfigChanges(
   released: unknown,
   current: unknown,
@@ -8,7 +5,6 @@ export function collectBreakingConfigChanges(
   return collectNodeChanges(toNode(released), toNode(current), []);
 }
 
-// A node of the JSON Schema that buildConfigJSONSchema emits
 type SchemaNode = Readonly<Record<string, unknown>>;
 
 function collectNodeChanges(
@@ -30,7 +26,6 @@ function collectNodeChanges(
   );
 }
 
-// One keyword's value in the released node and in the current node, which hold it
 interface KeywordChange {
   readonly keyword: string;
   readonly before: unknown;
@@ -40,10 +35,8 @@ interface KeywordChange {
   readonly path: readonly string[];
 }
 
-// keywords that annotate a schema and never refuse a value
 const annotations = new Set(['$schema', 'title', 'description', 'default', 'examples']);
 
-// properties alone refuses nothing, and required lists keys rather than narrowing one
 const listCollectors: Readonly<Record<string, (change: KeywordChange) => readonly string[]>> = {
   properties: collectPropertyChanges,
   required: collectRequiredChanges,
@@ -97,8 +90,6 @@ const droppable = new Set([
   'dependentRequired',
 ]);
 
-// A key the current schema drops passes only where additionalProperties accepts any value, and a key
-// it names for the first time had to pass the released additionalProperties
 function collectPropertyChanges(change: KeywordChange): readonly string[] {
   const before = toNode(change.before);
   const after = toNode(change.after);
@@ -197,7 +188,6 @@ function collectUpperBoundChange(change: KeywordChange): readonly string[] {
     : [];
 }
 
-// a number accepts every integer, so an integer that becomes a number refuses nothing
 function collectTypeChange(change: KeywordChange): readonly string[] {
   const after = toArray(change.after);
 
@@ -217,7 +207,6 @@ function collectEnumChanges(change: KeywordChange): readonly string[] {
     .map((value) => `${formatPath(change.path)}: drops the value ${JSON.stringify(value)}`);
 }
 
-// A subschema is a schema object, or true or false for any value or none
 function collectSubschemaChanges(change: KeywordChange, segment: string): readonly string[] {
   const path = [...change.path, segment];
 

@@ -8,16 +8,11 @@ export interface QueueCheckStepOptions {
   readonly context: TasksContext;
   readonly queue: ActionQueue;
 
-  // the log-only connector's tool, the one tool on the check's list
   readonly tool: ToolDefinition;
 }
 
-// The queue check runs no model, so its calls' records name none.
 const noModel = { model: 'none', profile: 'none' };
 
-// Makes the queue check's step. A wake in the inbox, which each start writes, calls the log-only
-// connector's tool through the decision point and the action queue, as a model's call would go,
-// and leaves its outcome to reach the inbox. A step that holds only that outcome reads it and waits.
 export function makeQueueCheckStep(options: QueueCheckStepOptions): RunStep {
   const registry = buildToolRegistry([options.tool]);
 
@@ -26,8 +21,6 @@ export function makeQueueCheckStep(options: QueueCheckStepOptions): RunStep {
   });
 
   return async (input) => {
-    // the newest wake's sequence keys the call, so each start queues its own action past one that a
-    // crash left unknown, and a rerun of the step on the same inbox matches the action it queued
     const wake = input.inbox.findLast((record) => record.kind === 'task.wake');
 
     if (wake !== undefined) {
@@ -47,7 +40,6 @@ export function makeQueueCheckStep(options: QueueCheckStepOptions): RunStep {
           definitions: options.context.definitions,
           queue: options.queue,
 
-          // the action's outcome reaches the inbox, so the step never waits on it
           queuedWaitMs: 0,
         },
       );

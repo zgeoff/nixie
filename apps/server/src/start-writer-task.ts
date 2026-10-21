@@ -4,9 +4,6 @@ import { startMemoryWriterRunner } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
 import type { ServerParts } from './types';
 
-// Starts the memory writer with the store's batch gate, and returns its step. Its first start
-// leaves the cursor at the first record of the log, so the catch-up covers everything from before
-// and starts by itself.
 export async function startWriterTask(
   parts: ServerParts,
   store: StartedMemoryStore,
@@ -30,7 +27,6 @@ export async function startWriterTask(
     },
   });
 
-  // a failed read stops this writer, so the start's retry never leaves a second one running
   const status = await writer.readStatus().catch(async (error: unknown) => {
     await writer.stop();
 

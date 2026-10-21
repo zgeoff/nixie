@@ -8,7 +8,6 @@ import type { ConversationImp } from './start-conversation-imp';
 import type { Tools } from './tools';
 import type { ServerParts } from './types';
 
-// The value of each part of the server's start, by the part's name.
 export interface ServerPartValues {
   readonly inputs: ServerInputs;
   readonly state: ServerParts['state'];
@@ -29,7 +28,6 @@ export interface ServerPartValues {
   readonly conversation_imp: ConversationImp;
   readonly memory: StartedMemoryStore;
 
-  // the conversation's session cleanup, which a record forget runs once the memory store started
   readonly session_cleanup: CleanupRecordSessions;
   readonly record_forgets: void;
   readonly memory_writer: ConversationImp['runStep'];
@@ -41,7 +39,6 @@ export interface ServerPartValues {
   readonly seed_poll: void;
   readonly skill_lapse_sweep: void;
 
-  // the export of the skills nixie wrote, or null when the configuration names no definitions repo
   readonly skill_exports: SkillExportSweep | null;
   readonly ready: void;
 }

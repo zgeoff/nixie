@@ -3,13 +3,9 @@ import type { Sandbox, SandboxAdapter } from '@heynixie/sandbox';
 export interface TestSandboxes {
   readonly sandboxes: SandboxAdapter;
 
-  // marks every sandbox the owner holds retired on each later get and list, as the imp adapter
-  // marks an imp that impd still backs up, and returns their IDs
   readonly retireSandboxes: (owner: string) => Promise<readonly string[]>;
 }
 
-// Wraps an adapter so a test can retire an owner's sandboxes, which the owner then replaces.
-// Everything else reaches the adapter unchanged.
 export function buildRetirableSandboxes(adapter: SandboxAdapter): TestSandboxes {
   const retired = new Set<string>();
 

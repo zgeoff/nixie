@@ -9,7 +9,6 @@ import { loadSkillPin } from '@heynixie/skills';
 import invariant from 'tiny-invariant';
 import { makeSkillCatalogLoader } from './make-skill-catalog-loader';
 
-// the writer's data directory holds the definitions root too, so one removal cleans up both
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
@@ -102,7 +101,6 @@ test("it caps the catalog at its share of the profile's context window", async (
     log: ctx.log,
     readInForce: () => inForce,
 
-    // 2% of a 2,000-token window leaves 40 tokens, which the catalog head alone outgrows
     profile: { model: 'claude-test-1', contextTokens: 2000 },
     skills: { catalogShare: 0.02 },
   });
@@ -136,7 +134,6 @@ test('it keeps a description that a larger configured share leaves room for', as
     log: ctx.log,
     readInForce: () => inForce,
 
-    // 10% of a 2,000-token window leaves 200 tokens, room for the head and the skill's line
     profile: { model: 'claude-test-1', contextTokens: 2000 },
     skills: { catalogShare: 0.1 },
   });

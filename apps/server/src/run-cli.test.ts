@@ -10,8 +10,6 @@ import { runCLI } from './run-cli';
 import { startControlSocket } from './start-control-socket';
 import { writeBootFiles } from './test-utils/write-boot-files';
 
-// the boot files a host command reads its data directory from, and the IO it prints and logs to;
-// no model answers, because no host command starts a server
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-cli-'));
 

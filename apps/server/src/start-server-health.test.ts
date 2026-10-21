@@ -22,7 +22,6 @@ async function setupTest() {
   const clock = buildTestClock(0);
   const cleanup = buildCleanup();
 
-  // the test clock never reaches a hung check's timeout by itself, so the stop advances it
   onTestFinished(() => {
     clock.advance(2000);
 
@@ -58,7 +57,6 @@ test('it answers readiness from the last impd report while a later impd check ha
     log: () => {},
   });
 
-  // readiness answers ready once the first round's reports land, just before the interval's sleep
   await waitForCondition(async () => {
     const response = await app.handle(new Request('http://nixie.test/health/ready'));
     const body: unknown = await response.json();
@@ -106,7 +104,6 @@ test('it answers readiness with 200 and the status degraded, and logs the imp ho
     log,
   });
 
-  // the disk check settles and ends its timeout, so only the impd check's timeout still sleeps
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
   ctx.clock.advance(2000);

@@ -1,8 +1,6 @@
 import { faker } from '@faker-js/faker';
 import type { StepInput } from '@heynixie/tasks';
 
-// The input of the conversation's first step: an empty inbox, no session boundary yet, and a lease
-// held by a runner whose signal has not aborted.
 export function buildMockStepInput(overrides: Partial<StepInput> = {}): StepInput {
   return {
     taskID: 'conversation',

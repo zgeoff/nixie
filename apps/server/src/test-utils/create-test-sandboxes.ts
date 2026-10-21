@@ -10,12 +10,9 @@ export interface TestSandboxesOptions {
   readonly definitions: () => Definitions;
   readonly toolTarget: ToolTargetResolver;
 
-  // the folder that holds each sandbox of the process double
   readonly rootDir: string;
 }
 
-// The test build's process double, which creates its root folder, wrapped so a test can retire an
-// owner's sandboxes, which the owner then replaces. Everything else reaches the double unchanged.
 export function createTestSandboxes(options: TestSandboxesOptions): TestSandboxes {
   const adapter = createSandboxAdapter({
     recorder: buildSandboxRecorder({ log: options.log, definitions: options.definitions }),

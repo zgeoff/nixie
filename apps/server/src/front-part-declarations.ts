@@ -9,9 +9,6 @@ import { startHostCommands } from './start-host-commands';
 import { startHTTPServer } from './start-http-server';
 import type { AnyPartDeclaration } from './types';
 
-// The parts the server starts before it answers. The API reads the conversation's session cleanup
-// and the memory store, and the host commands read the memory store, once each starts behind the
-// health endpoint.
 export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
   {
     name: 'state',

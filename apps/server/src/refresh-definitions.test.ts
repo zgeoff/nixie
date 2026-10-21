@@ -10,7 +10,6 @@ import { refreshDefinitions } from './refresh-definitions';
 import type { SeedParts } from './run-queued-seed';
 import { startTestLog } from './test-utils/start-test-log';
 
-// a fresh log, the definitions in force over it, and a definitions folder beside it
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 

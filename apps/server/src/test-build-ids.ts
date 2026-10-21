@@ -1,8 +1,5 @@
 import type { FaultPointID } from '@heynixie/tasks';
 
-// The text each fault point leaves in a test build. The record covers every fault point ID, so a
-// new fault point fails the typecheck until it is listed here. recovery.step.<n> is one template
-// over the recovery steps.
 const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'claim.after': 'claim.after',
   'renew.before': 'renew.before',
@@ -33,9 +30,6 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'writer.publish.after': 'writer.publish.after',
 };
 
-// The IDs that only a test build may hold: every fault point, the test rule's ID, and a text that
-// only the test sandbox holds, the error of its tool relay, so the release build refuses a bundle
-// that could run a guest with no isolation.
 export const testBuildIDs: readonly string[] = [
   ...new Set(Object.values(faultPointTexts)),
   'test.allow-send',

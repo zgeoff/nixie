@@ -9,8 +9,6 @@ import { loadStartState } from './load-start-state';
 import { sendTestMessage } from './test-utils/send-test-message';
 import { startTestLog } from './test-utils/start-test-log';
 
-// a log on a fresh data directory, and a restart that stops its writer and starts nixie's writer
-// again on that directory
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
@@ -30,7 +28,6 @@ async function setupTest() {
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
 
-  // boot data: every start creates the conversation before its first turn
   await createConversationTask(context);
 
   return {
@@ -113,7 +110,6 @@ test('it reports the database and the conversation turns as unchecked when the i
 
   await file.write(Buffer.alloc(4096, 0xff), 0, 4096, stats.size - 4096);
 
-  // the writer stopped above, so the restart only starts it again
   const restarted = await ctx.restart();
   const state = await loadStartState(restarted);
 

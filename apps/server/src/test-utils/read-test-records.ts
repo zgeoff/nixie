@@ -1,8 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import { readRecords, startWriter } from '@heynixie/log';
 
-// Reads every record of a stopped nixie's data directory with its erasable fields, decrypted with
-// the deployment key that the secrets file held as base64.
 export async function readTestRecords(
   dataDir: string,
   deploymentKey: string,
@@ -15,7 +13,6 @@ export async function readTestRecords(
     ['wrapKey', 'unwrapKey'],
   );
 
-  // the key imports first, so a bad key leaves no writer open
   const writer = await startWriter({ dataDir });
 
   try {

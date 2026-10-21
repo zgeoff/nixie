@@ -9,7 +9,6 @@ import { runDefinitionsSeed } from './run-definitions-seed';
 import type { SeedParts } from './run-queued-seed';
 import { startTestLog } from './test-utils/start-test-log';
 
-// a fresh log, the definitions in force over it, and a definitions folder beside it
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
@@ -63,7 +62,6 @@ test('it turns the definitions part unready while a refused snapshot is pending,
   expect(ctx.context.inForce.read()).toStrictEqual(first.inForce);
 });
 
-// the start state reports the definitions part unready until a seed applies
 test('it turns the definitions part ready once a seed succeeds', async () => {
   const ctx = await setupTest();
 

@@ -2,9 +2,6 @@ import { resolveSocketPath } from './resolve-socket-path';
 import { sendHostRequest } from './send-host-request';
 import type { CLIFlags, CLIIO, Command } from './types';
 
-// The consolidation host commands: they print the consolidator's pending diff as JSON, approve the
-// changes each <changeID>=<actionHash> names, one or the whole diff, or reject one change under
-// --hash.
 export function createConsolidationCommands(): readonly (readonly [string, Command])[] {
   return [
     ['memory-diff', (flags, io) => runMemoryDiff(flags.config, io)],
@@ -25,7 +22,6 @@ async function runMemoryDiff(configPath: string, io: CLIIO): Promise<number> {
   return 0;
 }
 
-// each answer binds to the action hash memory-diff printed for its change
 async function runDiffApprove(
   flags: CLIFlags,
   io: CLIIO,
@@ -52,7 +48,6 @@ async function runDiffApprove(
   return 0;
 }
 
-// <changeID>=<actionHash>, as memory-diff prints each change, or null when malformed
 function parseChangeAnswer(arg: string): { changeID: string; actionHash: string } | null {
   const at = arg.indexOf('=');
 

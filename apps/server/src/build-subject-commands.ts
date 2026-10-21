@@ -3,9 +3,6 @@ import { resolveSocketPath } from './resolve-socket-path';
 import { sendHostRequest } from './send-host-request';
 import type { CLIFlags, CLIIO, Command } from './types';
 
-// memory-subjects prints how many memory items and proposals each subject holds, from the running
-// server, or with --dry-run --database <path> what the subjects migration would do to a copy of
-// that database file, such as a backup, before and after it runs.
 export function buildSubjectCommands(): readonly (readonly [string, Command])[] {
   return [['memory-subjects', runMemorySubjects]];
 }

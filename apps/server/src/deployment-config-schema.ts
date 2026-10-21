@@ -14,9 +14,6 @@ import { ownerConfigSchema } from './owner-config-schema';
 import { sandboxSections } from './sandbox-sections';
 import { serverConfigSchema } from './server-config-schema';
 
-// The deployment configuration, composed from one schema per module for the section it reads.
-// Every object refuses an unknown key, so a typo never passes as a default, and no section holds a
-// secret. The imp section is required unless the sandbox section selects the test sandbox.
 export const deploymentConfigSchema = z
   .strictObject({
     server: serverConfigSchema.default(serverConfigSchema.parse({})),

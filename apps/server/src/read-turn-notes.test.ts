@@ -52,7 +52,6 @@ test('it lists a memory change beside the other events in one events message, an
 
   invariant(last);
 
-  // each message's random ID reads as a placeholder; the renderer's own tests pin the ID
   expect({
     ...note,
     text: note.text?.replaceAll(/ id="[\da-f]{12}"/gu, ' id="<id>"'),
