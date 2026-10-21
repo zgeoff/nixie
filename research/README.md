@@ -1,7 +1,7 @@
 # Spikes
 
-A spike is a throwaway experiment that answers one research question for a design. Each folder here
-holds one spike as its own Bun package, pinned to the exact versions it ran against. Its README
+A spike is a short throwaway experiment that answers one research question for a design. Each folder
+here holds one spike as its own Bun package, pinned to the exact versions it ran against. Its README
 gives the question, how to run it, the output it produced and what it left untested. The root
 workspace installs the spikes, and CI typechecks each one, so a spike that a later design reruns
 still compiles. CI runs no spike and no spike test, and product code never imports from a spike.
