@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.39.1](https://github.com/zgeoff/nixie/compare/v0.39.0...v0.39.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **definitions:** warn in a skill export pull request under format 1 ([#500](https://github.com/zgeoff/nixie/issues/500)) ([932d21d](https://github.com/zgeoff/nixie/commit/932d21df46bed3b065fdf1b22a58c1833664a366))
+* keep a long web page inline as truncated text ([#503](https://github.com/zgeoff/nixie/issues/503)) ([cc94867](https://github.com/zgeoff/nixie/commit/cc94867bdab46c19d59efefc5d74bc342de3834f))
+
 ## [0.39.0](https://github.com/zgeoff/nixie/compare/v0.38.0...v0.39.0) (2026-10-21)
 
 
