@@ -19,6 +19,9 @@ export interface StubSandboxAdapter extends SandboxAdapter {
   readonly created: readonly { readonly id: string; readonly spec: SandboxSpec }[];
   readonly destroyed: readonly string[];
   readonly spawned: readonly { readonly sandboxID: string; readonly argv: readonly string[] }[];
+
+  // the most sandboxes that were live at one time
+  readonly countMostLive: () => number;
 }
 
 // How one create fails: the adapter refuses it with message, as an unreachable runtime does, or it
@@ -46,6 +49,8 @@ export function buildStubSandboxAdapter(
 
   const live = new Map<string, Sandbox>();
 
+  const mostLive = { count: 0 };
+
   return {
     id: 'stub',
     boundary: 'process',
@@ -65,6 +70,8 @@ export function buildStubSandboxAdapter(
       live.set(id, sandbox);
       created.push({ id, spec });
 
+      mostLive.count = Math.max(mostLive.count, live.size);
+
       return sandbox;
     },
     read: (id) => Promise.resolve(live.get(id) ?? null),
@@ -73,6 +80,7 @@ export function buildStubSandboxAdapter(
     addSecret: () => Promise.resolve(),
     addImage: () => Promise.resolve(),
     checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
+    countMostLive: () => mostLive.count,
   };
 }
 

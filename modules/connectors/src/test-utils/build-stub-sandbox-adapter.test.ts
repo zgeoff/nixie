@@ -142,6 +142,28 @@ test('it lists the live sandboxes of an owner only', async () => {
   expect(listed.map((sandbox) => sandbox.id)).toStrictEqual([kept.id]);
 });
 
+test('it counts the most sandboxes that were live at one time', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
+
+  const spec = {
+    kind: 'fetch' as const,
+    image: 'fetch',
+    owner: 'web_fetch',
+    egress: { kind: 'public' as const },
+    grants: [],
+    toolRoute: false,
+    limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  };
+
+  const first = await adapter.create(spec);
+
+  await adapter.create(spec);
+  await first.destroy();
+  await adapter.create(spec);
+
+  expect(adapter.countMostLive()).toBe(2);
+});
+
 test('it refuses a spec a real adapter refuses', () => {
   const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
 

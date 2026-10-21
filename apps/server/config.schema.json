@@ -382,12 +382,6 @@
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991
-        },
-        "fetches_per_sandbox": {
-          "default": 50,
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 9007199254740991
         }
       },
       "additionalProperties": false

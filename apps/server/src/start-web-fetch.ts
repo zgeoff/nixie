@@ -35,8 +35,8 @@ const testFetchArgv: readonly string[] = [
   join(import.meta.dir, '../../../guests/fetch/src/main.ts'),
 ];
 
-// Starts the web fetch tool on its fetch sandbox, with the tuning defaults unless config names
-// others.
+// Starts the web fetch tool, which runs each fetch in a new fetch sandbox, with the tuning defaults
+// unless config names others.
 export function startWebFetch(options: WebFetchOptions): WebFetch {
   const config = options.config ?? webFetchDefaults;
 

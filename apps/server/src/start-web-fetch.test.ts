@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { buildSandboxSpec } from '@heynixie/sandbox';
 import { buildImpPort, buildImpSandboxAdapter, parseImpConfig } from '@heynixie/sandbox-imp';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
+import { waitForCondition } from '@heynixie/testing';
 import { createSandboxAdapter } from './create-sandbox-adapter';
 import { fetchImageArgv, startWebFetch } from './start-web-fetch';
 import { buildConnectProbe } from './test-utils/build-connect-probe';
@@ -34,7 +35,7 @@ async function setupTest() {
   };
 }
 
-test("it fetches through a new fetcher process in a test build's fetch sandbox", async () => {
+test("it fetches through a new fetcher process in a test build's fetch sandbox, and destroys the sandbox", async () => {
   const ctx = await setupTest();
 
   const adapter = createSandboxAdapter({
@@ -67,7 +68,11 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox",
     },
   );
 
-  const left = await ctx.recorder.list('process', 'web_fetch');
+  await waitForCondition(async () => {
+    const left = await ctx.recorder.list('process', 'web_fetch');
+
+    return left.length === 0;
+  });
 
   expect(outcome).toStrictEqual({
     status: 'error',
@@ -76,8 +81,6 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox",
       'localhost resolves to ::1, which is not a public address',
     ]),
   });
-
-  expect(left).toStrictEqual([]);
 });
 
 test.skipIf(!hasImpHost)(

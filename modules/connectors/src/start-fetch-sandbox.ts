@@ -15,7 +15,6 @@ export interface FetchSandboxOptions {
 
   // the ranges the deployment lists as internal, for the fetcher's own address check
   readonly deniedRanges: readonly string[];
-  readonly fetchesPerSandbox: number;
   readonly sandboxLimits: SandboxLimits;
 
   // the time past the fetch's own limit that nixie waits for the reply before it stops the fetcher
@@ -31,87 +30,63 @@ export interface FetchSandboxOptions {
 export interface FetchSandbox {
   readonly readPage: (url: string) => Promise<FetchReply>;
 
-  // fails every later fetch, waits for the fetch in flight, then destroys the sandbox
+  // fails every later fetch, then waits for the fetch in flight and the destroy of its sandbox
   readonly stop: () => Promise<void>;
 }
 
 interface FetchSandboxState {
-  sandbox: Promise<Sandbox> | null;
-  fetches: number;
+  // settles once the last fetch's sandbox is destroyed
   queue: Promise<void>;
   isStopped: boolean;
 }
 
 const stoppedReply: FetchReply = { kind: 'failed', reason: 'the fetch sandbox is stopped' };
 
-// Starts the long-lived fetch sandbox, which nixie creates on the first fetch. Each fetch runs one
-// at a time in a new fetcher process, over its stdin and stdout and never the sandbox's network.
-// A new sandbox replaces it after fetchesPerSandbox fetches, or after a fetch with no page.
+// Starts the web fetch's sandboxes: each fetch creates a new fetch sandbox, runs one fetcher
+// process in it over its stdin and stdout, and destroys it. Fetches run one at a time, and the
+// next fetch starts only once the last one's sandbox is destroyed, so no two fetches share a sandbox.
 export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
-  const state: FetchSandboxState = {
-    sandbox: null,
-    fetches: 0,
-    queue: Promise.resolve(),
-    isStopped: false,
-  };
+  const state: FetchSandboxState = { queue: Promise.resolve(), isStopped: false };
 
   return {
     readPage: async (url) => {
       const previous = state.queue;
-      const done = Promise.withResolvers<void>();
+      const ended = Promise.withResolvers<void>();
 
-      state.queue = done.promise;
+      state.queue = ended.promise;
 
-      try {
-        await previous;
+      await previous;
 
-        return state.isStopped ? stoppedReply : await runFetch(options, state, url);
-      } finally {
-        done.resolve();
+      if (state.isStopped) {
+        ended.resolve();
+
+        return stoppedReply;
       }
+
+      return runFetch(options, url, ended.resolve);
     },
     stop: async () => {
       state.isStopped = true;
 
       await state.queue;
-      await removeSandbox(options, state);
     },
   };
 }
 
+// returns the reply as soon as the fetcher sends it, and destroys the sandbox after, off the reply's
+// path
 async function runFetch(
   options: FetchSandboxOptions,
-  state: FetchSandboxState,
   url: string,
+  onEnded: () => void,
 ): Promise<FetchReply> {
-  const reply = await tryRunFetcher(options, state, url);
+  const creating = waitOrTimeOut(createFetchSandbox(options), buildSandboxCallLimit(options));
 
-  state.fetches += 1;
+  const reply = await tryRunFetcher(creating, options, url);
 
-  if (reply.kind !== 'page' || state.fetches >= options.fetchesPerSandbox) {
-    await removeSandbox(options, state);
-  }
+  void removeSandbox(options, creating, onEnded);
 
   return reply;
-}
-
-// the reply, or a failure when the sandbox or the fetcher went wrong
-async function tryRunFetcher(
-  options: FetchSandboxOptions,
-  state: FetchSandboxState,
-  url: string,
-): Promise<FetchReply> {
-  try {
-    state.sandbox ??= waitOrTimeOut(createFetchSandbox(options), buildSandboxCallLimit(options));
-
-    const sandbox = await state.sandbox;
-
-    return await runFetcher(sandbox, options, url);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-
-    return { kind: 'failed', reason: `the fetch sandbox failed: ${message}` };
-  }
 }
 
 interface TimeLimit {
@@ -149,7 +124,7 @@ async function waitForDeadline(limit: TimeLimit, settled: AbortSignal): Promise<
 // the owner of every fetch sandbox, which a new sandbox's start reads to remove any left behind
 export const fetchSandboxOwner = 'web_fetch';
 
-// destroys every fetch sandbox a past process left, then creates a new one
+// destroys every fetch sandbox a past process or an earlier fetch left, then creates a new one
 async function createFetchSandbox(options: FetchSandboxOptions): Promise<Sandbox> {
   const leftovers = await options.adapter.list(fetchSandboxOwner);
 
@@ -175,6 +150,23 @@ function buildSandboxCallLimit(options: FetchSandboxOptions): TimeLimit {
     deadline: clock.now() + (options.sandboxCallTimeoutMs ?? defaultSandboxCallTimeoutMs),
     message: 'the sandbox call passed its time limit',
   };
+}
+
+// the reply, or a failure when the sandbox or the fetcher went wrong
+async function tryRunFetcher(
+  creating: Promise<Sandbox>,
+  options: FetchSandboxOptions,
+  url: string,
+): Promise<FetchReply> {
+  try {
+    const sandbox = await creating;
+
+    return await runFetcher(sandbox, options, url);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    return { kind: 'failed', reason: `the fetch sandbox failed: ${message}` };
+  }
 }
 
 const defaultReplyGraceMs = 5000;
@@ -250,23 +242,22 @@ async function readFirstMessage(messages: AsyncIterable<Uint8Array>): Promise<Ui
   return first.done === true ? null : first.value;
 }
 
-// A destroy that fails or never ends leaves the sandbox to the next create, which removes every
-// sandbox of the owner, so a failed destroy never stops the next fetch.
+// A destroy that fails or never ends, or a create that finishes after its time limit, leaves the
+// sandbox to the next create, which removes every sandbox of the owner first.
 async function removeSandbox(
   options: FetchSandboxOptions,
-  state: FetchSandboxState,
+  creating: Promise<Sandbox>,
+  onRemoved: () => void,
 ): Promise<void> {
-  const sandbox = state.sandbox;
   const limit = buildSandboxCallLimit(options);
 
-  state.sandbox = null;
-  state.fetches = 0;
-
   try {
-    const created = await sandbox;
+    const created = await creating;
 
-    await waitOrTimeOut(created?.destroy() ?? Promise.resolve(), limit);
+    await waitOrTimeOut(created.destroy(), limit);
   } catch {
     // a create that failed made nothing to destroy
+  } finally {
+    onRemoved();
   }
 }
