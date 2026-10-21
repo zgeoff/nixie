@@ -307,6 +307,12 @@ export interface NixieTables {
     readonly fired_at: number | null;
     readonly fired_sequence: number | null;
   };
+  readonly web_fetch_links: {
+    readonly session_key: string;
+    readonly number: number;
+    readonly url: string;
+    readonly thread: string;
+  };
   readonly written_skills: {
     readonly approval_id: string;
     readonly proposal_id: string;

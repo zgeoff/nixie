@@ -94,6 +94,8 @@ The `zgeoff/import-zones` lint rule refuses each of these imports outside its on
 - Every new record the model can see exposes a short ID from `createShortID` in `libs/db`, and the
   model reads and passes that ID, never the record's UUID.
   [Short IDs](docs/architecture/core/database.md#short-ids) gives the reason.
+- One exception: the web fetch tool's link IDs, such as `L12`, come from a count per conversation
+  session, as [link IDs](docs/architecture/connectors/web-fetch.md#link-ids) explains.
 
 ## Public repo
 

@@ -1,6 +1,8 @@
 import type { IncomingMessage } from 'node:http';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
+import { stripLinkMarks } from '@heynixie/wire';
 import { buildReadableText } from './build-readable-text';
+import { buildTextWithinLimit } from './build-text-within-limit';
 import { decodeContent } from './decode-content';
 import { findBotChallenge } from './find-bot-challenge';
 import { readLimitedBody } from './read-limited-body';
@@ -33,6 +35,7 @@ async function readContent(
   limits: FetchLimits,
 ): Promise<{
   readonly text: string | null;
+  readonly links: readonly string[];
   readonly isTruncated: boolean;
   readonly blocked: string | null;
 }> {
@@ -41,6 +44,7 @@ async function readContent(
   if (kind === 'binary') {
     return {
       text: null,
+      links: [],
       isTruncated: false,
       blocked: findBotChallenge(status, response.headers, null),
     };
@@ -48,11 +52,16 @@ async function readContent(
 
   const body = await readBodyText(response, limits);
 
-  const readable = kind === 'html' ? buildReadableText(body.text, url) : body.text;
+  const readable =
+    kind === 'html'
+      ? buildReadableText(body.text, url)
+      : { text: stripLinkMarks(body.text), links: [] };
+
   const text = buildTextWithinLimit(readable, limits.textBytes);
 
   return {
     text: text.text,
+    links: text.links,
     isTruncated: body.isTruncated || text.isCut,
     blocked: findBotChallenge(status, response.headers, body.text),
   };
@@ -84,17 +93,6 @@ function makeTextDecoder(contentType: string | null): TextDecoder {
   } catch {
     return new TextDecoder();
   }
-}
-
-function buildTextWithinLimit(
-  text: string,
-  limit: number,
-): { readonly text: string; readonly isCut: boolean } {
-  const written = new TextEncoder().encodeInto(text, new Uint8Array(limit));
-
-  return written.read === text.length
-    ? { text, isCut: false }
-    : { text: text.slice(0, written.read), isCut: true };
 }
 
 const htmlTypes: ReadonlySet<string> = new Set(['text/html', 'application/xhtml+xml']);

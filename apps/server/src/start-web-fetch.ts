@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import type { WebFetchConfig } from '@heynixie/connectors';
 import { buildWebFetchTool, startFetchSandbox, webFetchDefaults } from '@heynixie/connectors';
+import type { Log } from '@heynixie/log';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { isTestSandbox } from '@heynixie/sandbox';
 import type { ToolDefinition } from '@heynixie/tools';
@@ -13,6 +14,9 @@ export interface WebFetchOptions {
 
   readonly deniedRanges: readonly string[];
   readonly config?: WebFetchConfig;
+
+  // the log whose writer holds the link store
+  readonly log: Pick<Log, 'writer'>;
 }
 
 export interface WebFetch {
@@ -38,5 +42,11 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
     ...config,
   });
 
-  return { tool: buildWebFetchTool(fetchSandbox.readPage), stop: fetchSandbox.stop };
+  return {
+    tool: buildWebFetchTool(fetchSandbox.readPage, {
+      log: options.log,
+      textBytes: config.limits.textBytes,
+    }),
+    stop: fetchSandbox.stop,
+  };
 }

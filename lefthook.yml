@@ -28,6 +28,12 @@ pre-commit:
         - '.worktrees/**'
       run: node_modules/.bin/format-codemod --quiet {staged_files}
       stage_fixed: true
+    # after the fixers, so it checks what they wrote; skipped when no staged
+    # file matches the glob. On tsrs a full run takes about 6 s and peaks at
+    # about 1.3 GiB on 2 CPUs
+    - name: typecheck
+      glob: '*.{js,mjs,cjs,ts,mts,cts,tsx,json,jsonc}'
+      run: bun run typecheck
     # last so it scans what the fixers above re-staged; needs the gitleaks
     # binary on PATH (mise: `mise use -g gitleaks`)
     - name: gitleaks
@@ -85,13 +91,13 @@ pre-push:
         done | sort -zu | xargs -0 -r node_modules/.bin/oxlint --no-error-on-unmatched-pattern
     # the packages each pushed commit affects, one package and one checker at
     # a time: turbo's default 10 at once ran a 2 GiB host out of memory, and
-    # tsc's default checkers take apps/server to about 1.2 GiB, one checker to
+    # tsc's default checkers took apps/server to about 1.2 GiB, one checker to
     # 0.6. A set TURBO_SCM_HEAD leaves the working tree's changes out
     - name: typecheck
       use_stdin: true
       run: |
         commits=$(.lefthook/pushed-commits.sh) || exit 1
-        node_modules/.bin/tsc --noEmit --checkers 1 || exit 1
+        node_modules/.bin/tsrs --noEmit --checkers 1 || exit 1
         for commit in $commits; do
           TURBO_SCM_BASE=origin/main TURBO_SCM_HEAD=$commit node_modules/.bin/turbo run typecheck --affected --concurrency=1 --output-logs=errors-only -- --checkers 1 || exit 1
         done
