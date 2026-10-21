@@ -34,6 +34,7 @@ export async function runOpenedTurn(turn: SessionTurn, opening: Opening): Promis
           ...opened.opening,
           personaHash: turn.definitions.personaHash,
           policyHash: turn.definitions.policyHash,
+          sessionKey: turn.sessionKey,
         },
       }),
     ],

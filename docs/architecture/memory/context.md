@@ -80,14 +80,16 @@ word. An item places when its keyword score or its similarity clears that index'
 that half the items hold places nothing, and neither does small talk such as a greeting, which sits
 at about the same small distance from every item. The search leaves out function words such as "to",
 so a message that shares only those with an item places nothing, as
-[the store](./store.md#the-indexes) explains. The search also leaves out the user's name and the
-names the deployment configuration gives the agent, because nearly every item names one of them, so
-a message that says "Nix" would otherwise place any item that does. The store drops each query word
-that the index stems the same as one of those names, whatever its case, and leaves the names out of
-the text it encodes. The `memory.recall` tool keeps names in its query, because there a name may be
-the point of the search, and its similarity floor sits lower, because the model asked for memory.
-While the vector index rebuilds after a start, retrieval places keyword matches alone. The number of
-items and both floors are configurable.
+[the store](./store.md#the-indexes) explains.
+
+The search also leaves out the user's name and the names the deployment configuration gives the
+agent, because nearly every item names one of them, so a message that says "Nix" would otherwise
+place any item that does. The store drops each query word that the index stems the same as one of
+those names, whatever its case, and leaves the names out of the text it encodes. The `memory.recall`
+tool keeps names in its query, because there a name may be the point of the search, and its
+similarity floor sits lower, because the model asked for memory. While the vector index rebuilds
+after a start, retrieval places keyword matches alone. The number of items and both floors are
+configurable.
 
 The turn places the items in a block before the first message, each with the line that says where it
 came from and how it came up. The recall appends its own record of each item and version it
@@ -207,9 +209,11 @@ record it ran for. The cleanup runs in order:
    resumes a session that existed before the record, even one whose step commits later.
 3. It deletes the key of every session summary on the conversation's thread, because any summary can
    hold the forgotten text ([compaction](../core/compaction.md#forgetting)).
-4. It starts the guest in the conversation's sandbox with a purge frame, and the guest removes the
+4. It removes every web fetch link the thread's sessions numbered, because a link's target can hold
+   the forgotten text ([web fetch](../connectors/web-fetch.md#link-ids)).
+5. It starts the guest in the conversation's sandbox with a purge frame, and the guest removes the
    CLI's whole state directory, every transcript and fork included.
-5. It commits a session-cleanup-completed record.
+6. It commits a session-cleanup-completed record.
 
 A turn and a cleanup never overlap: a turn that starts while a cleanup runs waits for it, and each
 cleanup waits for the one before it. Turns never wait for each other, because a runner that took a
