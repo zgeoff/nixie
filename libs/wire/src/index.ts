@@ -20,4 +20,5 @@ export { makeFrameDecoder } from './make-frame-decoder';
 export { mintBlockID } from './mint-block-id';
 export type { SystemMessage, SystemMessageType } from './render-system-message';
 export { renderSystemMessage } from './render-system-message';
+export { toolOutputLimitTokens } from './tool-output-limit-tokens';
 export { turnFrameLimitBytes } from './turn-frame-limit-bytes';

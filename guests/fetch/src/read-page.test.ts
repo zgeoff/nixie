@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { gzipSync } from 'node:zlib';
+import { buildReadableText } from './build-readable-text';
 import { makeAddressCheck } from './make-address-check';
 import { readPage } from './read-page';
 import { buildStubResolver } from './test-utils/build-stub-resolver';
@@ -735,6 +736,42 @@ test('it returns another text type as it arrived', async () => {
     isTruncated: false,
     blocked: null,
   });
+});
+
+test('it cuts a long article full of links to the start that fits the default text limit', async () => {
+  const paragraphs = Array.from(
+    { length: 228 },
+    (_, index) =>
+      `<p>Keeper's log ${index}: the lamp at Gannet Rock burned through the fog, as the ` +
+      `<a href="https://lighthouses.example/archive/gannet-rock/logbook/volume-${index}/entry-${index}?view=full&amp;lang=en">volume ${index}</a> ` +
+      `and <a href="https://lighthouses.example/archive/gannet-rock/weather/${index}/barometer-readings-and-tide-tables">its tide tables</a> record.</p>`,
+  ).join('');
+
+  const html = `<html><head><title>Gannet Rock Light</title></head><body><article>${paragraphs}</article></body></html>`;
+
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: () => new Response(html, { headers: { 'content-type': 'text/html' } }),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 20_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  if (reply.kind !== 'page' || reply.text === null) {
+    throw new Error('the fetcher returned no page text');
+  }
+
+  expect(buildReadableText(html, new URL(reply.url)).length).toBeWithin(68_000, 72_000);
+  expect(reply.isTruncated).toBeTrue();
+  expect(Buffer.byteLength(reply.text)).toBeWithin(19_000, 20_001);
+
+  expect(reply.text).toStartWith(
+    "Gannet Rock Light\n\nKeeper's log 0: the lamp at Gannet Rock burned through the fog, as the volume 0 [→ https://lighthouses.example/archive/gannet-rock/logbook/volume-0/entry-0?view=full&lang=en]",
+  );
 });
 
 test('it decodes the text in the charset the page names', async () => {

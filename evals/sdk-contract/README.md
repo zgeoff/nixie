@@ -40,6 +40,12 @@ model's prose wherever the SDK exposes the answer.
   runs when no hook blocks it. [Compaction](../../docs/architecture/core/compaction.md) turns
   auto-compaction off instead, and the hook stays the second way to keep nixie's compactor the only
   one.
+- `tool-output`: under the CLI's defaults, a tool result past its tool-output limit reaches the
+  model as a pointer to a saved file. With the limit and the large output files that the
+  conversation guest sets, a web fetch result at the default text limit reaches the model whole, and
+  a longer result reaches it cut and inline.
+  [Web fetch](../../docs/architecture/connectors/web-fetch.md) keeps its text limit under that
+  limit.
 - `mod-policy`: a Claude Code mod loaded into a query denies, rewrites and answers tool calls, and a
   catch handler turns a throwing hook into a deny. The mod's command is missing from the session
   when the mod throws as it loads, and leaves it when a hook wedges the hooks worker. No nixie code

@@ -1,5 +1,6 @@
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import type { HostFrame } from '@heynixie/wire';
+import { toolOutputLimitTokens } from '@heynixie/wire';
 import { getConfigDir } from './get-config-dir';
 import { getHome } from './get-home';
 import { getWorkDir } from './get-work-dir';
@@ -129,5 +130,10 @@ function buildQueryEnv(
     // turns off the automatic compaction and the manual /compact alike
     DISABLE_COMPACT: '1',
     DISABLE_AUTOUPDATER: '1',
+
+    // the CLI saves a tool result past its tool-output limit to a file, which the model has no tool
+    // to read, unless large output files are off; then it cuts the result and keeps it inline
+    MAX_MCP_OUTPUT_TOKENS: String(toolOutputLimitTokens),
+    ENABLE_MCP_LARGE_OUTPUT_FILES: '0',
   };
 }

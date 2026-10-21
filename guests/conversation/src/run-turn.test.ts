@@ -120,6 +120,8 @@ test('it gives every query() the profile base URL, model and effort in its env',
       CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
       DISABLE_COMPACT: '1',
       DISABLE_AUTOUPDATER: '1',
+      MAX_MCP_OUTPUT_TOKENS: '12000',
+      ENABLE_MCP_LARGE_OUTPUT_FILES: '0',
     },
   ]);
 });

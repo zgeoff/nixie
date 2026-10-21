@@ -378,7 +378,7 @@
           "maximum": 9007199254740991
         },
         "text_bytes": {
-          "default": 262144,
+          "default": 20000,
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991

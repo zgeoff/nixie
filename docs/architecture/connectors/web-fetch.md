@@ -75,6 +75,11 @@ after a compressed body is decoded, so a small compressed body cannot expand pas
 body limit or the text limit stops the read and marks the result truncated, and the text cut never
 splits a character. Passing the time limit or the redirect limit fails the fetch.
 
+The default text limit sits under the tool-output limit that the conversation guest sets for the
+Agent SDK's CLI, so a long page reaches the model as its start, marked truncated. The CLI saves a
+result past its tool-output limit to a file, and the model has no tool to read a file. The guest
+turns those files off, so the CLI cuts any longer result and keeps it inline.
+
 ### The page text
 
 An HTML page returns its readable text: the title, then the text of the page's main content, outside

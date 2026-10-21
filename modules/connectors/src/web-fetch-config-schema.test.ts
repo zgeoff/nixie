@@ -5,7 +5,7 @@ test('it takes every default when the section is empty', () => {
   const result = webFetchConfigSchema.safeParse({});
 
   expect(result.data).toStrictEqual({
-    limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 262_144 },
+    limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 20_000 },
     fetchesPerSandbox: 50,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
   });
