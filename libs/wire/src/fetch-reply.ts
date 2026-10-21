@@ -9,8 +9,11 @@ export type FetchReply =
       readonly status: number;
       readonly contentType: string | null;
 
-      // null for a binary type
+      // null for a binary type; an HTML page's text marks where each link ends
       readonly text: string | null;
+
+      // the target of each link the text marks, by the index its mark names
+      readonly links: readonly string[];
       readonly isTruncated: boolean;
 
       // the reason a bot protection answered in place of the page, or null

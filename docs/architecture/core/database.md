@@ -111,6 +111,11 @@ short ID is an alias that only the model's side of each tool reads and writes. A
 ID accepts the short ID, and the UUID too, because a session can hold IDs that the model read before
 its record had a short ID.
 
+The web fetch tool's link IDs, such as `L12`, are the one exception: a count per conversation
+session numbers them ([link IDs](../connectors/web-fetch.md#link-ids)). A link ID names a link that
+a fetched page showed, not a record, and it lasts one session, so the shortest ID wins and no
+rebuild from the log needs it.
+
 The record that creates a row carries the row's short ID, so a rebuild from the log gives the same
 ID. A row from before short IDs takes one derived from its UUID, and the migration that adds the
 short ID backfills the same derived value, so the fold and the backfill agree. A memory

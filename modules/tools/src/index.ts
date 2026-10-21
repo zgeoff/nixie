@@ -24,6 +24,7 @@ export type {
   ToolRegistry,
   ToolRun,
   ToolRunModel,
+  ToolSession,
 } from './types';
 
 export type { ToolsRecordKind } from './tools-record-kind';

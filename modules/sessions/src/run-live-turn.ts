@@ -1,5 +1,6 @@
 import type { StepInput } from '@heynixie/tasks';
 import { buildStepRunID } from '@heynixie/tasks';
+import type { ToolSession } from '@heynixie/tools';
 import type { InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { CompletedTurn } from './build-step-result';
@@ -26,6 +27,9 @@ export interface LiveTurnPlan {
 
   // the images the session holds before the turn: none for a new session
   readonly images: ImageTally;
+
+  // the session the turn runs on, which the turn's step token hands each tool call
+  readonly session: ToolSession;
 }
 
 // Runs one turn in the guest on the step's inbox, as much as readTurnBatch lets through, resuming at
@@ -36,7 +40,7 @@ export async function runLiveTurn(
   input: StepInput,
   plan: LiveTurnPlan,
 ): Promise<CompletedTurn> {
-  const stepToken = run.endpoint.startStep(buildStepRunID(input));
+  const stepToken = run.endpoint.startStep(buildStepRunID(input), plan.session);
 
   try {
     return await runTokenTurn(run, input, { ...plan, token: stepToken.token });
