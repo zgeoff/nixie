@@ -165,8 +165,9 @@ connection's value, and the line names it.
   builder.
 - nixie counts the failed calls and the job runs without the connection over each break, for the
   recovery event.
-- The connection argument loses a connection's value while that connection is not healthy, and gets
-  it back on recovery.
+- The connection argument loses a connection's value while that connection is `failing`,
+  `needs_consent` or `disconnected`, and gets it back on recovery. An `expiring` connection keeps
+  its value, because its calls still work.
 - A job run's context gains the line beside its trigger details.
 - The client's reconnect place becomes template text, so a change to the client changes the
   template.
