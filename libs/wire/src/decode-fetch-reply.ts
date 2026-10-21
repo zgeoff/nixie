@@ -19,6 +19,7 @@ export function decodeFetchReply(bytes: Uint8Array): FetchReply {
     status: requireStatus(reply),
     contentType: requireStringOrNull(reply, 'contentType'),
     text: requireStringOrNull(reply, 'text'),
+    links: requireStrings(reply, 'links'),
     isTruncated: requireBoolean(reply, 'isTruncated'),
     blocked: requireStringOrNull(reply, 'blocked'),
   };
@@ -55,6 +56,18 @@ function requireStringOrNull(
   }
 
   return value;
+}
+
+function requireStrings(reply: Readonly<Record<string, unknown>>, name: string): string[] {
+  const value: unknown = reply[name];
+  const items: readonly unknown[] = Array.isArray(value) ? value : [];
+  const strings = items.filter((item): item is string => typeof item === 'string');
+
+  if (!Array.isArray(value) || strings.length !== items.length) {
+    throw new TypeError(`a fetch reply needs ${name}, a list of strings`);
+  }
+
+  return strings;
 }
 
 // oxlint-disable-next-line zgeoff/verb-contract -- it returns a field's value, not a yes/no answer
