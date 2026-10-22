@@ -131,7 +131,9 @@ The page keeps the set it first showed while the confirmation is open, so a refr
 never changes what the user confirmed. A stale set closes the confirmation with the reason, and
 nothing is deleted. A run whose cleanup failed keeps the confirmation open with a count of deleted
 and pending items, which the status read returns, and offers to finish the run. That retry sends the
-same client action ID, so the server runs the cleanup of each pending item again.
+same client action ID, so the server runs the cleanup of each pending item again. The page keeps
+each bulk call in the query client, as it keeps each single forget, so the retired list still offers
+to finish a failed run after the user leaves the page and comes back.
 
 ## Proposals
 

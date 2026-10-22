@@ -1,46 +1,15 @@
-import { ORPCError } from '@orpc/client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { formatItemCount } from '../format-item-count';
 import { css } from '../styled-system/css';
-import type { ForgetStatus, RetiredForgetItem } from '../types';
+import type { RetiredForgetItem } from '../types';
 import { useNixieClient } from '../use-nixie-client';
+import type { RetiredForgetInput } from '../use-retired-forget';
+import { useRetiredForget } from '../use-retired-forget';
 
 export interface MemoryRetiredForgetControlProps {
   readonly onSettled: (notice: string) => void;
-}
-
-export function MemoryRetiredForgetControl(props: MemoryRetiredForgetControlProps): ReactNode {
-  const [isOpen, setIsOpen] = useState(false);
-
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => {
-          setIsOpen(true);
-        }}
-        type="button"
-      >
-        Delete retired items
-      </button>
-    );
-  }
-
-  return (
-    <RetiredForgetConfirmation
-      onClose={(notice) => {
-        setIsOpen(false);
-
-        if (notice !== null) {
-          props.onSettled(notice);
-        }
-      }}
-    />
-  );
-}
-
-interface RetiredForgetConfirmationProps {
-  readonly onClose: (notice: string | null) => void;
 }
 
 const confirmation = css({
@@ -52,6 +21,61 @@ const confirmation = css({
   marginBlock: '2',
   padding: '2',
 });
+
+export function MemoryRetiredForgetControl(props: MemoryRetiredForgetControlProps): ReactNode {
+  const [isOpen, setIsOpen] = useState(false);
+  const forget = useRetiredForget(props.onSettled);
+
+  if (isOpen) {
+    return (
+      <RetiredForgetConfirmation
+        onClose={(notice) => {
+          setIsOpen(false);
+
+          if (notice !== null) {
+            props.onSettled(notice);
+          }
+        }}
+      />
+    );
+  }
+
+  // The query client keeps every bulk call apart from this control, so a run whose cleanup failed
+  // still offers its finish after the page is left and opened again.
+  if (forget.unfinished !== null) {
+    const input = forget.unfinished;
+
+    return (
+      <div aria-label="Finish the deletion" className={confirmation} role="group">
+        <ForgetProgress targets={input.targets} />
+        <button
+          disabled={forget.isPending}
+          onClick={() => {
+            forget.send(input);
+          }}
+          type="button"
+        >
+          Finish the deletion
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => {
+        setIsOpen(true);
+      }}
+      type="button"
+    >
+      Delete retired items
+    </button>
+  );
+}
+
+interface RetiredForgetConfirmationProps {
+  readonly onClose: (notice: string | null) => void;
+}
 
 function RetiredForgetConfirmation(props: RetiredForgetConfirmationProps): ReactNode {
   const nixie = useNixieClient();
@@ -96,17 +120,9 @@ interface RetiredForgetFormProps {
   readonly onClose: (notice: string | null) => void;
 }
 
-interface SentForget {
-  readonly clientActionID: string;
-  readonly targets: readonly { readonly itemID: string; readonly version: number }[];
-}
-
 const itemList = css({ display: 'flex', flexDirection: 'column', gap: '1' });
 
 function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
-  const nixie = useNixieClient();
-  const queryClient = useQueryClient();
-
   // The confirmation binds to the set the preview first showed, and a refetch after a failed run
   // must not swap that set for the items still retired.
   const [items] = useState(props.items);
@@ -115,21 +131,8 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
     () => new Set(items.map((item) => item.itemID)),
   );
 
-  const [sent, setSent] = useState<SentForget | null>(null);
-
-  const forget = useMutation({
-    mutationFn: (input: SentForget) =>
-      nixie.client.memory.forgetRetired({ ...input, targets: [...input.targets] }),
-    onSettled: async (status, error) => {
-      const notice = status === undefined ? findRefusalNotice(error) : formatDeleted(status);
-
-      if (notice !== null) {
-        props.onClose(notice);
-      }
-
-      await queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() });
-    },
-  });
+  const [sent, setSent] = useState<RetiredForgetInput | null>(null);
+  const forget = useRetiredForget(props.onClose);
 
   if (items.length === 0) {
     return (
@@ -147,8 +150,6 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
     );
   }
 
-  const isPending = forget.isPending;
-  const hasFailed = forget.isError && findRefusalNotice(forget.error) === null;
   const isLocked = sent !== null;
 
   return (
@@ -183,7 +184,7 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
           </li>
         ))}
       </ul>
-      {hasFailed && sent !== null ? <ForgetProgress itemIDs={sent.targets} /> : null}
+      {forget.hasFailed && sent !== null ? <ForgetProgress targets={sent.targets} /> : null}
       <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
         {isLocked ? null : (
           <>
@@ -206,7 +207,7 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
           </>
         )}
         <button
-          disabled={selected.size === 0 || isPending}
+          disabled={selected.size === 0 || forget.isPending}
           onClick={() => {
             const input = sent ?? {
               clientActionID: crypto.randomUUID(),
@@ -217,11 +218,11 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
 
             setSent(input);
 
-            forget.mutate(input);
+            forget.send(input);
           }}
           type="button"
         >
-          {isLocked ? 'Finish the deletion' : `Delete ${formatCount(selected.size)} for good`}
+          {isLocked ? 'Finish the deletion' : `Delete ${formatItemCount(selected.size)} for good`}
         </button>
         {isLocked ? null : (
           <button
@@ -236,31 +237,6 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
       </div>
     </>
   );
-}
-
-const refusalNotices: Readonly<Record<string, string>> = {
-  MEMORY_ITEM_NOT_FOUND:
-    'An item in the list is gone, so nothing was deleted. Check the retired items, then try again.',
-  STALE_VERSION:
-    'An item changed after the list loaded, so nothing was deleted. Check the retired items, then try again.',
-  WRONG_STATE:
-    'An item is no longer retired, so nothing was deleted. Check the retired items, then try again.',
-};
-
-function findRefusalNotice(error: unknown): string | null {
-  if (error instanceof ORPCError && typeof error.code === 'string') {
-    return refusalNotices[error.code] ?? null;
-  }
-
-  return null;
-}
-
-function formatDeleted(status: ForgetStatus): string {
-  return `Deleted ${formatCount(status.deleted.length)} for good.`;
-}
-
-function formatCount(count: number): string {
-  return `${String(count)} ${count === 1 ? 'item' : 'items'}`;
 }
 
 function toggleItem(
@@ -280,7 +256,7 @@ function toggleItem(
 }
 
 interface ForgetProgressProps {
-  readonly itemIDs: SentForget['targets'];
+  readonly targets: RetiredForgetInput['targets'];
 }
 
 function ForgetProgress(props: ForgetProgressProps): ReactNode {
@@ -288,7 +264,7 @@ function ForgetProgress(props: ForgetProgressProps): ReactNode {
 
   const status = useQuery(
     nixie.queryUtils.memory.readForgetStatus.queryOptions({
-      input: { itemIDs: props.itemIDs.map((target) => target.itemID) },
+      input: { itemIDs: props.targets.map((target) => target.itemID) },
     }),
   );
 
@@ -297,8 +273,8 @@ function ForgetProgress(props: ForgetProgressProps): ReactNode {
       <p>The deletion did not finish. Finish it to delete the rest.</p>
       {status.data === undefined ? null : (
         <p>
-          {formatCount(status.data.deleted.length)} deleted,{' '}
-          {formatCount(status.data.pending.length)} still pending.
+          {formatItemCount(status.data.deleted.length)} deleted,{' '}
+          {formatItemCount(status.data.pending.length)} still pending.
         </p>
       )}
     </div>

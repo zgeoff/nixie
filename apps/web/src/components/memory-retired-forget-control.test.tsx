@@ -181,6 +181,56 @@ test('it shows the deleted and pending counts after a run fails, and finishes th
   expect(forgotten.map((item) => item.shortID)).toIncludeSameMembers(['r7tq2w', 'p2vb8m']);
 });
 
+test('it still offers to finish a failed run after the page is left and opened again', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.memoryItems.create({
+    shortID: 'r7tq2w',
+    state: 'retired',
+    versions: [{ text: 'Owns a red canoe' }],
+  });
+
+  await store.memoryItems.create({
+    failsForgetCleanup: true,
+    shortID: 'p2vb8m',
+    state: 'retired',
+    versions: [{ text: 'Plays the oboe badly' }],
+  });
+
+  const rendered = render(<MemoryView />);
+
+  await ctx.user.click(
+    within(rendered.getByRole('region', { name: 'Retired' })).getByRole('button', {
+      name: 'Delete retired items',
+    }),
+  );
+
+  await rendered.findByRole('list', { name: 'Retired items to delete' });
+  await ctx.user.click(rendered.getByRole('button', { name: 'Delete 2 items for good' }));
+  await rendered.findByText('1 item deleted, 1 item still pending.');
+
+  rendered.rerender(<p>Elsewhere</p>);
+  rendered.rerender(<MemoryView />);
+
+  const finish = await within(rendered.getByRole('region', { name: 'Retired' })).findByRole(
+    'group',
+    { name: 'Finish the deletion' },
+  );
+
+  await within(finish).findByText('1 item deleted, 1 item still pending.');
+
+  await ctx.user.click(within(finish).getByRole('button', { name: 'Finish the deletion' }));
+
+  const alert = await rendered.findByRole('alert');
+
+  const forgotten = store.memoryItems.findMany((query) => query.where({ state: 'forgotten' }));
+
+  expect(alert).toHaveTextContent('Deleted 2 items for good.');
+  expect(forgotten.map((item) => item.shortID)).toIncludeSameMembers(['r7tq2w', 'p2vb8m']);
+});
+
 test('it closes the confirmation and deletes nothing when the user keeps the items', async () => {
   const ctx = setupTest();
 
