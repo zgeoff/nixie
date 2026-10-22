@@ -16,8 +16,8 @@
     // the image build and `bun run models` run the pinned download by its path, so no import
     // reaches it
     "adapters/encoder-onnx": { "entry": ["src/run-pinned-download.ts"] },
-    // the nixie image runs the bundle of main.ts, the image build runs the release build, a test
-    // spawns the sops stand-in, and the workflows run the config schema check and the release.json
+    // the nixie image runs the bundle of main.ts, the image build runs the release build, tests
+    // spawn the sops and fetcher stand-ins, and the workflows run the config schema check and the release.json
     // script, so no import reaches them
     // the release builds the counting proxy binary from main.ts, so no import reaches it
     "apps/counting-proxy": { "entry": ["src/main.ts"] },
@@ -25,7 +25,7 @@
       "entry": [
         "src/main.ts",
         "src/run-release-build.ts",
-        "src/test-utils/run-stub-sops.ts",
+        "src/test-utils/run-stub-*.ts",
         "src/run-config-schema-check.ts",
         "src/run-release-manifest.ts",
         "src/run-preview-route-config.ts"
