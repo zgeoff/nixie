@@ -86,7 +86,9 @@ The proxy treats a counter store it cannot use as a store that holds no room:
   no way to the model API.
 
 A stop signal closes the listener and lets each reply under way finish, up to a bounded wait, so the
-count holds every reply the model sent before the proxy exits.
+count holds every reply that finishes within that wait. A reply still open when the wait ends is cut
+off: a stream counts only the usage its events reported so far, and a call still waiting on the
+model API counts nothing, so the count can fall short of that reply's spend.
 
 The release attaches the proxy as one compiled binary for Linux, so a host runs it without a Bun
 install. The [preview recipe](../../../preview/README.md#model-calls) covers how a preview names its
