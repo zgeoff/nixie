@@ -117,7 +117,7 @@ async function writeRememberProposal(
   const written = await writeMemoryProposal(parts, {
     operation: 'remember',
     target: request.target ?? null,
-    isPinned: request.isPinned === true,
+    isPinned: false,
     text: request.text,
 
     quote: request.image === undefined ? (request.quote ?? null) : null,

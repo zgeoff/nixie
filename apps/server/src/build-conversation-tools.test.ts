@@ -9,7 +9,12 @@ import { buildSkillTools } from '@heynixie/skills';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { buildConversationTools } from './build-conversation-tools';
+import { createApprovedItems } from './test-utils/create-approved-items';
+import { createTestClient } from './test-utils/create-test-client';
+import { runHostCommand } from './test-utils/run-host-command';
+import { sendClientMessage } from './test-utils/send-client-message';
 import { startTestLog } from './test-utils/start-test-log';
+import { startTestNixie } from './test-utils/start-test-nixie';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -89,11 +94,48 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
     'memory.remember',
     'memory.edit',
     'memory.retire',
+    'memory.pin',
+    'memory.unpin',
     'memory.diff',
     'memory.comment',
     'memory.export',
   ]);
 });
+
+test("it unpins an item through memory.unpin at once, and the next turn's change note names it", async () => {
+  const nixie = await startTestNixie();
+  const api = await createTestClient(nixie);
+  const [item] = await createApprovedItems(nixie, api.client, ['Runs a book club on Tuesdays']);
+
+  await runHostCommand(nixie.configPath, ['memory-pin', item.itemID]);
+
+  const shown = await api.client.memory.readItem({ itemID: item.itemID });
+
+  nixie.model.addReplies(
+    { text: 'Morning.' },
+    { toolUse: { name: 'mcp__nixie__memory_unpin', input: { itemID: shown.shortID } } },
+    { text: 'Unpinned it.' },
+    { text: 'Sure.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'Morning!' }, 'Morning.');
+
+  await sendClientMessage(
+    api.client,
+    { text: 'Take the book club out of the core.' },
+    'Unpinned it.',
+  );
+
+  await sendClientMessage(api.client, { text: 'Thanks.' }, 'Sure.');
+
+  const core = await api.client.memory.readPinnedCore();
+
+  expect(core.items).toStrictEqual([]);
+
+  expect(JSON.stringify(nixie.model.requests.at(-1)?.body?.messages)).toInclude(
+    `- Unpinned [${shown.shortID}]`,
+  );
+}, 90_000);
 
 test('it fails a memory call that runs before the memory store starts', async () => {
   const ctx = await setupTest();
@@ -224,6 +266,8 @@ test('it allows the time tool, the log reader and each memory tool but export, a
     'memory.remember',
     'memory.edit',
     'memory.retire',
+    'memory.pin',
+    'memory.unpin',
     'memory.diff',
     'memory.comment',
   ];
