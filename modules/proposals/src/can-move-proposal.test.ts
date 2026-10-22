@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { canMoveSkillProposal } from './can-move-skill-proposal';
+import { canMoveProposal } from './can-move-proposal';
 
 test.each([
   ['pending', 'approved', true],
@@ -12,5 +12,5 @@ test.each([
   ['lapsed', 'approved', false],
   ['lapsed', 'rejected', false],
 ] as const)('it answers whether a %s proposal closes as %s: %p', (from, to, isAllowed) => {
-  expect(canMoveSkillProposal(from, to)).toBe(isAllowed);
+  expect(canMoveProposal(from, to)).toBe(isAllowed);
 });

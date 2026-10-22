@@ -106,6 +106,10 @@ answer closes the proposal on the thread that wrote it:
 - A proposal that waits past its lapse time with no answer lapses. An hourly sweep records each
   lapse, and the listing leaves out a proposal past its lapse time before the sweep reaches it.
 
+A proposal moves once, from pending to approved, rejected or lapsed. `modules/proposals` holds those
+moves, the lapse time and the sweep for any kind of proposal, and `modules/skills` gives it the
+records that each skill proposal's move reads and writes.
+
 `skill_pending` lists the pending proposals to the model, oldest first, so the model knows what it
 proposed after a compaction drops the turn it proposed in, and never proposes a skill that already
 waits. Each entry gives the proposal's short ID, the skill's name, whether it is a new skill or a

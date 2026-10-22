@@ -1,37 +1,20 @@
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { canMoveSkillProposal } from './can-move-skill-proposal';
+import { writeProposalLapses } from '@heynixie/proposals';
 import { readSkillProposals } from './read-skill-proposals';
-import { skillProposalLapseMs } from './skill-proposal-lapse-ms';
 import { skillsWriteLapsedCodec } from './skills-write-lapsed-codec';
 import type { SkillProposalContext } from './types';
 
 export function writeSkillProposalLapses(context: SkillProposalContext): Promise<number> {
-  const log = context.log;
+  return writeProposalLapses(context, {
+    readProposals: async (db) => {
+      const proposals = await readSkillProposals(db);
 
-  return withWriteTransaction(log.writer, async (tx) => {
-    const now = context.clock.now();
-
-    const proposals = await readSkillProposals(tx);
-
-    const lapsed = proposals.filter(
-      (entry) =>
-        canMoveSkillProposal(entry.outcome ?? 'pending', 'lapsed') &&
-        entry.proposedAt + skillProposalLapseMs <= now,
-    );
-
-    if (lapsed.length > 0) {
-      await writeRecordsInTransaction(
-        tx,
-        log,
-        lapsed.map((entry) => ({
-          kind: 'skills.write_lapsed',
-          definitions: context.definitions(),
-          ...(entry.thread === null ? {} : { thread: entry.thread }),
-          payload: skillsWriteLapsedCodec.encode({ proposalID: entry.proposal.proposalID }),
-        })),
-      );
-    }
-
-    return lapsed.length;
+      return proposals.map((entry) => ({
+        proposalID: entry.proposal.proposalID,
+        thread: entry.thread,
+        proposedAt: entry.proposedAt,
+        outcome: entry.outcome,
+      }));
+    },
+    lapsedCodec: skillsWriteLapsedCodec,
   });
 }

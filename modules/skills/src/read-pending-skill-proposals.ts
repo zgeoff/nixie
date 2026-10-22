@@ -1,7 +1,7 @@
 import { loadSkillVersions, readDefinitionsInForce } from '@heynixie/definitions';
+import { proposalLapseMs } from '@heynixie/proposals';
 import { readCurrentSkillHashes } from './read-current-skill-hashes';
 import { readSkillProposals } from './read-skill-proposals';
-import { skillProposalLapseMs } from './skill-proposal-lapse-ms';
 import type { PendingSkillProposal, SkillProposalContext } from './types';
 
 export async function readPendingSkillProposals(
@@ -13,7 +13,7 @@ export async function readPendingSkillProposals(
   const proposals = await readSkillProposals(db);
 
   const pending = proposals.filter(
-    (entry) => entry.outcome === null && entry.proposedAt + skillProposalLapseMs > now,
+    (entry) => entry.outcome === null && entry.proposedAt + proposalLapseMs > now,
   );
 
   if (pending.length === 0) {
@@ -38,7 +38,7 @@ export async function readPendingSkillProposals(
       proposal: entry.proposal,
       thread: entry.thread,
       proposedAt: entry.proposedAt,
-      lapseAt: entry.proposedAt + skillProposalLapseMs,
+      lapseAt: entry.proposedAt + proposalLapseMs,
       isStale: (current.get(entry.proposal.name) ?? null) !== entry.proposal.baseHash,
       inForce:
         ref === undefined || version === undefined

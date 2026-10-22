@@ -1,7 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import { assign, fromCallback, fromPromise, setup } from 'xstate';
 
-export interface SkillLapseSweepMachineInput {
+export interface ProposalLapseSweepMachineInput {
   readonly sweep: () => Promise<unknown>;
 
   readonly clock: Clock;
@@ -11,16 +11,16 @@ export interface SkillLapseSweepMachineInput {
   readonly onError: (error: unknown) => void;
 }
 
-interface SkillLapseSweepContext {
-  readonly input: SkillLapseSweepMachineInput;
+interface ProposalLapseSweepContext {
+  readonly input: ProposalLapseSweepMachineInput;
 
   readonly isStopping: boolean;
 }
 
-type SkillLapseSweepEvent = { readonly type: 'tick' } | { readonly type: 'stop' };
+type ProposalLapseSweepEvent = { readonly type: 'tick' } | { readonly type: 'stop' };
 
-const skillLapseSweepActors = {
-  timer: fromCallback<SkillLapseSweepEvent, SkillLapseSweepMachineInput>((timer) => {
+const proposalLapseSweepActors = {
+  timer: fromCallback<ProposalLapseSweepEvent, ProposalLapseSweepMachineInput>((timer) => {
     const controller = new AbortController();
 
     void runTimer(timer.input, controller.signal, () => {
@@ -31,23 +31,23 @@ const skillLapseSweepActors = {
       controller.abort();
     };
   }),
-  sweep: fromPromise<unknown, SkillLapseSweepMachineInput>((sweep) => sweep.input.sweep()),
+  sweep: fromPromise<unknown, ProposalLapseSweepMachineInput>((sweep) => sweep.input.sweep()),
 };
 
 // xstate's `setup` takes its type parameters in this order: context, events, actors, children,
 // actions, guards, delays, tags, then input.
-export const skillLapseSweepMachine = setup<
-  SkillLapseSweepContext,
-  SkillLapseSweepEvent,
-  typeof skillLapseSweepActors,
+export const proposalLapseSweepMachine = setup<
+  ProposalLapseSweepContext,
+  ProposalLapseSweepEvent,
+  typeof proposalLapseSweepActors,
   Record<string, never>,
   Record<string, never>,
   Record<string, never>,
   never,
   string,
-  SkillLapseSweepMachineInput
->({ actors: skillLapseSweepActors }).createMachine({
-  id: 'skillLapseSweep',
+  ProposalLapseSweepMachineInput
+>({ actors: proposalLapseSweepActors }).createMachine({
+  id: 'proposalLapseSweep',
   context: (start) => ({ input: start.input, isStopping: false }),
 
   invoke: {
@@ -98,7 +98,7 @@ export const skillLapseSweepMachine = setup<
 });
 
 async function runTimer(
-  input: SkillLapseSweepMachineInput,
+  input: ProposalLapseSweepMachineInput,
   signal: AbortSignal,
   onTick: () => void,
 ): Promise<void> {
@@ -111,7 +111,7 @@ async function runTimer(
   }
 }
 
-function reportFailure(input: SkillLapseSweepMachineInput, error: unknown): void {
+function reportFailure(input: ProposalLapseSweepMachineInput, error: unknown): void {
   try {
     input.onError(error);
   } catch {}
