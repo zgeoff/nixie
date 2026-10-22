@@ -30,7 +30,7 @@ const command = define({
     const proxy = await startCountingProxy({
       configPath: ctx.values.config,
       log,
-      drainTimeoutMs,
+      waitForDrainDeadline: () => Bun.sleep(drainTimeoutMs),
     });
 
     log('signal.received', { signal: await received.promise });
