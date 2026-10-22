@@ -83,6 +83,44 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox, 
   });
 });
 
+test("it reads a skill's page through its own fetch sandbox, which refuses a private address", async () => {
+  const ctx = await setupTest();
+
+  const adapter = createSandboxAdapter({
+    recorder: ctx.recorder,
+    toolTarget: () => ({ path: '/nonexistent.sock' }),
+    sandbox: { adapter: 'test' },
+    testRootDir: ctx.dataDir,
+    hostEnv: {},
+  });
+
+  const webFetch = startWebFetch({
+    adapter,
+    image: 'fetch',
+    argv: [process.execPath, join(import.meta.dir, '../../../guests/fetch/src/main.ts')],
+    deniedRanges: [],
+    log: ctx.log,
+  });
+
+  ctx.stack.defer(() => webFetch.stop());
+
+  const reply = await webFetch.readSkillPage('https://localhost/skills/SKILL.md');
+
+  await waitForCondition(async () => {
+    const left = await ctx.recorder.list('process', 'web_fetch');
+
+    return left.length === 0;
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'refused',
+    reason: expect.toBeOneOf([
+      'localhost resolves to 127.0.0.1, which is not a public address',
+      'localhost resolves to ::1, which is not a public address',
+    ]),
+  });
+});
+
 test.skipIf(!hasImpHost)(
   'it fetches a public page through the fetch sandbox on an imp host',
   async () => {

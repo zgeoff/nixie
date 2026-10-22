@@ -42,17 +42,19 @@ name, so a names-only catalog that is longer than the cap stays whole and goes p
 
 ## The skill tools
 
-The conversation's tool endpoint serves five skill tools. Each of the three that read or reload acts
-only on a skill that the caller's list or the task's pin holds. A run other than the conversation
-has an empty skill list on that endpoint, so it reads no skill.
+The conversation's tool endpoint serves five skill tools, and a sixth, `skill_vendor`, when the
+deployment exports to a definitions repo. Each of the three that read or reload acts only on a skill
+that the caller's list or the task's pin holds. A run other than the conversation has an empty skill
+list on that endpoint, so it reads no skill.
 
-| Tool               | Effect | Returns                                                      |
-| ------------------ | ------ | ------------------------------------------------------------ |
-| `skill_read`       | `read` | The pinned version's instructions and file list, or one file |
-| `skill_reload`     | `note` | The named skill's old and new version                        |
-| `skill_reload_all` | `note` | The old and new version of each skill on the list or the pin |
-| `skill_write`      | `note` | The proposal's short ID, pending approval                    |
-| `skill_pending`    | `read` | Each skill proposal that waits for the user's answer         |
+| Tool               | Effect  | Returns                                                      |
+| ------------------ | ------- | ------------------------------------------------------------ |
+| `skill_read`       | `read`  | The pinned version's instructions and file list, or one file |
+| `skill_reload`     | `note`  | The named skill's old and new version                        |
+| `skill_reload_all` | `note`  | The old and new version of each skill on the list or the pin |
+| `skill_write`      | `note`  | The proposal's short ID, pending approval                    |
+| `skill_pending`    | `read`  | Each skill proposal that waits for the user's answer         |
+| `skill_vendor`     | `fetch` | The URL of the pull request that adds a published skill      |
 
 `skill_read` serves the pinned version. Without a path, it returns the instructions without their
 frontmatter and the paths of the skill's other files. With a path, it returns that one file, and it
@@ -120,3 +122,40 @@ untrusted, as `memory.pending` does in [the memory store](../memory/store.md#the
 The conversation's next turn names each of its proposals that closed, with the reason for a
 rejection, so the model learns why the user turned a skill down. The note on an approval tells the
 model to reload the skill, because the conversation's pin holds the versions it started with.
+
+## Vendored skills
+
+`skill_vendor` copies a published skill from a public GitHub repository into the user's definitions
+repo as a pull request, and the user's merge is the review: nothing reaches a task until the merge
+and the next seed. The call names the repository URL, the path of the skill's folder and a full
+commit SHA. The tool refuses a branch, a tag or a short SHA before it fetches anything, because only
+a full SHA pins content that cannot move.
+
+The tool reads the commit, walks its trees to the folder and reads each file through a fetch sandbox
+of its own, which keeps the public-address checks of [the web fetch](../connectors/web-fetch.md) and
+allows a file up to the definitions size limit. It declares `fetch`, with the repository as its
+destination. Each file's text must hash to the git blob hash that the commit's tree lists, so the
+pull request holds the commit's exact bytes, and a file that is not plain UTF-8 text fails the call.
+A path with a part that starts with a dot stays out, because the definitions source never reads one.
+
+The tool then runs [the checks the seed runs](./definitions.md#skills) on the folder, with CRLF line
+endings turned to LF, and a skill that fails one returns every problem as an error. A skill that
+passes becomes a pull request through the same repository writer as
+[the export](./definitions.md#the-export-to-the-definitions-repo), on a branch of its own per skill.
+The pull request holds the files under the skill's folder, removes the files of a vendored version
+it replaces, and writes the skill's lock entry with the content hash the seed recomputes. The tool
+refuses to replace a skill of the user's own, one with no lock entry.
+
+The pull request body holds a review report that code builds from the files:
+
+- each destination-like token, by the token check that memory writes use, with the file and line of
+  each place it appears
+- each line that installs a package or reaches the network, such as `pip install` or `curl`
+- the skill's `allowed-tools` and `compatibility` fields, which nixie never grants
+- the commit's signature, when the publisher signed it, as GitHub verified it or with the reason it
+  failed
+- the paths the copy left out
+
+A call may ask for an advisory review. The checker model reads the files as data and returns a
+verdict and a reason, which the report shows under its own heading. Nothing in the report approves
+the skill, and a deployment with no checker refuses a call that asks for one.

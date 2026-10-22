@@ -170,6 +170,8 @@ export type {
 export { getTypedQuote } from './get-typed-quote';
 export type { UntypedTokenQuery } from './check-untyped-token';
 export { checkUntypedToken } from './check-untyped-token';
+export type { DestinationToken } from './collect-destination-tokens';
+export { collectDestinationTokens } from './collect-destination-tokens';
 export { removeImageOfferKeys } from './remove-image-offer-keys';
 export { renderCheckerInput } from './render-checker-input';
 export { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';

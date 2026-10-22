@@ -1,6 +1,6 @@
-import { z } from 'zod';
 import { definitionsFormats } from './definitions-formats';
-import { manifestSkillsSchema } from './manifest-skills-schema';
+import { findFormatBeforeSkills } from './find-format-before-skills';
+import { isSkillUnlisted } from './is-skill-unlisted';
 import { renderTemplate } from './render-template';
 import { skillsLockPath } from './skills-lock-path';
 import { skillsLockSchema } from './skills-lock-schema';
@@ -56,7 +56,7 @@ export function buildSkillExportChange(skillExport: SkillExport): DefinitionsCha
     notes.push(`The change removes the lock entry of the vendored \`${name}\` skill it replaces.`);
   }
 
-  if (skillExport.beneath === null && isUnlisted(skillExport.manifest, name)) {
+  if (skillExport.beneath === null && isSkillUnlisted(skillExport.manifest, name)) {
     notes.push(
       `nixie.yaml lists the conversation's skills. Add \`${name}\` to that list to keep the skill in the conversation after the merge.`,
     );
@@ -125,38 +125,6 @@ function parseJSON(text: string): unknown {
   } catch {
     return null;
   }
-}
-
-const manifestFormatSchema = z.looseObject({ format: z.number() });
-
-function findFormatBeforeSkills(manifest: string | null): number | null {
-  if (manifest === null) {
-    return null;
-  }
-
-  const parsed = manifestFormatSchema.safeParse(parseYAML(manifest));
-
-  return parsed.success && parsed.data.format < definitionsFormats.skills
-    ? parsed.data.format
-    : null;
-}
-
-function parseYAML(text: string): unknown {
-  try {
-    return Bun.YAML.parse(text);
-  } catch {
-    return null;
-  }
-}
-
-function isUnlisted(manifest: string | null, name: string): boolean {
-  if (manifest === null) {
-    return false;
-  }
-
-  const parsed = manifestSkillsSchema.safeParse(parseYAML(manifest));
-
-  return parsed.success && parsed.data.skills !== undefined && !parsed.data.skills.includes(name);
 }
 
 function buildDefaultTitle(name: string, beneath: SkillVersion | null): string {

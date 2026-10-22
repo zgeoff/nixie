@@ -1,6 +1,7 @@
 import type { CleanupRecordSessions } from '@heynixie/api';
 import type { SeedResult, SkillExportSweep } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
+import type { CheckerTask } from '@heynixie/sessions';
 import type { APIGate } from './build-api-gate';
 import type { ServerResetControl } from './build-server-reset';
 import type { ServerInputs } from './server-inputs';
@@ -26,6 +27,7 @@ export interface ServerPartValues {
   readonly recovery: void;
   readonly add_images: void;
   readonly conversation_imp: ConversationImp;
+  readonly checker: CheckerTask;
   readonly memory: StartedMemoryStore;
 
   readonly session_cleanup: CleanupRecordSessions;
