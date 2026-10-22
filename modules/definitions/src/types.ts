@@ -237,6 +237,10 @@ export interface DueDefinitionsExport {
   readonly branch: string;
   readonly baseHash: string | null;
 
+  readonly readSource: (db: Kysely<unknown>) => Promise<DefinitionsExportSource>;
+}
+
+export interface DefinitionsExportSource {
   readonly readChange: (repo: DefinitionsRepo, revision: string) => Promise<DefinitionsChange>;
 }
 

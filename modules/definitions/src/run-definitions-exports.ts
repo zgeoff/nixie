@@ -134,6 +134,8 @@ async function writeExport(
   kind: DefinitionsChangeKind,
   row: DueDefinitionsExport,
 ): Promise<'opened' | 'closed'> {
+  const source = await row.readSource(options.log.writer.db);
+
   // GitHub can apply a write whose answer is lost, so the mark goes first and a later close still
   // looks for the pull request.
   const isMarked = await withWriteTransaction(options.log.writer, async (tx) => {
@@ -155,7 +157,7 @@ async function writeExport(
   }
 
   const revision = await options.repo.readBaseRevision();
-  const change = await row.readChange(options.repo, revision);
+  const change = await source.readChange(options.repo, revision);
   const pullRequest = await options.repo.writePullRequest(change, revision);
 
   const isOpened = await withWriteTransaction(options.log.writer, async (tx) => {

@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { buildSkillChangeKind } from './build-skill-change-kind';
 import { checkSkillFiles } from './check-skill-files';
@@ -84,13 +85,16 @@ test('it exports a second change kind beside skills through the same pull reques
           approvalID: '9f3b6d21-4a7e-4c18-b2f5-6e0d8a3c1f94',
           branch: 'nixie/stub/greeting',
           baseHash: 'base-greeting',
-          readChange: () =>
+          readSource: () =>
             Promise.resolve({
-              branch: 'nixie/stub/greeting',
-              title: 'Change the greeting',
-              message: 'Change the greeting',
-              body: 'The stub change kind wrote this change.\n',
-              files: new Map([['stub/greeting.md', 'Good evening.\n']]),
+              readChange: () =>
+                Promise.resolve({
+                  branch: 'nixie/stub/greeting',
+                  title: 'Change the greeting',
+                  message: 'Change the greeting',
+                  body: 'The stub change kind wrote this change.\n',
+                  files: new Map([['stub/greeting.md', 'Good evening.\n']]),
+                }),
             }),
         },
       ]),
@@ -218,7 +222,10 @@ test('it passes a failed export to onError and goes on to the next change kind',
               approvalID: '3d8a1f60-7c2b-4e94-a5d7-b9e04f6c2a18',
               branch: 'nixie/stub/farewell',
               baseHash: null,
-              readChange: () => Promise.reject(new Error('the farewell part is missing')),
+              readSource: () =>
+                Promise.resolve({
+                  readChange: () => Promise.reject(new Error('the farewell part is missing')),
+                }),
             },
           ]),
         readClosing: () => Promise.resolve([]),
@@ -233,13 +240,16 @@ test('it passes a failed export to onError and goes on to the next change kind',
               approvalID: '9f3b6d21-4a7e-4c18-b2f5-6e0d8a3c1f94',
               branch: 'nixie/stub/greeting',
               baseHash: null,
-              readChange: () =>
+              readSource: () =>
                 Promise.resolve({
-                  branch: 'nixie/stub/greeting',
-                  title: 'Change the greeting',
-                  message: 'Change the greeting',
-                  body: 'The stub change kind wrote this change.\n',
-                  files: new Map([['stub/greeting.md', 'Good evening.\n']]),
+                  readChange: () =>
+                    Promise.resolve({
+                      branch: 'nixie/stub/greeting',
+                      title: 'Change the greeting',
+                      message: 'Change the greeting',
+                      body: 'The stub change kind wrote this change.\n',
+                      files: new Map([['stub/greeting.md', 'Good evening.\n']]),
+                    }),
                 }),
             },
           ]),
@@ -260,4 +270,68 @@ test('it passes a failed export to onError and goes on to the next change kind',
   expect(onError.mock.calls).toStrictEqual([
     [expect.objectContaining({ message: 'the farewell part is missing' })],
   ]);
+});
+
+test('it exports a good skill and reports the error of a skill whose stored files are malformed', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const broken = checkSkillFiles('star-charts', [
+    { path: 'SKILL.md', text: '---\nname: star-charts\ndescription: Reads a star chart.\n---\n' },
+  ]);
+
+  const good = checkSkillFiles('moon-phases', [
+    { path: 'SKILL.md', text: '---\nname: moon-phases\ndescription: Names a moon phase.\n---\n' },
+  ]);
+
+  invariant('skillHash' in broken);
+  invariant('skillHash' in good);
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await writeWrittenSkill(tx, {
+      approvalID: '7e2c9a41-0b6f-4d35-8c1e-f4a7d29b0c63',
+      proposalID: 'm4ks8v2zte',
+      skill: broken,
+      approvedAt: 1,
+    });
+
+    await writeWrittenSkill(tx, {
+      approvalID: '0c4e7a19-6b2d-4f80-9e35-a1d8c2f47b60',
+      proposalID: 'r7tn2x9wqe',
+      skill: good,
+      approvedAt: 2,
+    });
+  });
+
+  await runWrittenSkillSeed({ log: ctx.log, policy });
+
+  await sql`update skill_versions set files = '42' where name = 'star-charts'`.execute(
+    ctx.writer.db,
+  );
+
+  const onError = mock<(error: unknown) => void>();
+
+  const result = await runDefinitionsExports({
+    log: ctx.log,
+    repo: ctx.repo,
+    kinds: [buildSkillChangeKind({ title: null, message: null, agentName: null, ownerName: null })],
+    onError,
+  });
+
+  expect(result).toStrictEqual({
+    exported: ['0c4e7a19-6b2d-4f80-9e35-a1d8c2f47b60'],
+    closed: [],
+  });
+
+  expect(ctx.repo.readPullRequests()).toMatchObject([
+    { change: { branch: 'nixie/skill/moon-phases' } },
+  ]);
+
+  expect(onError.mock.calls).toStrictEqual([[expect.objectContaining({ name: 'ZodError' })]]);
 });

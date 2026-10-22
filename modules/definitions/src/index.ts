@@ -54,6 +54,7 @@ export type {
   DefinitionsChange,
   DefinitionsChangeKind,
   DefinitionsExportMove,
+  DefinitionsExportSource,
   DefinitionsInForce,
   DefinitionsRepo,
   DefinitionsSkillOrigin,

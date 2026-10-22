@@ -11,7 +11,9 @@ import type {
   ClosingDefinitionsExport,
   DefinitionsChange,
   DefinitionsChangeKind,
+  DefinitionsExportSource,
   DefinitionsRepo,
+  DefinitionsSkillOrigin,
   DefinitionsTables,
   DueDefinitionsExport,
   SkillExportText,
@@ -28,8 +30,6 @@ export function buildSkillChangeKind(text: SkillExportText): DefinitionsChangeKi
     writeState: writeSkillExportState,
   };
 }
-
-type SkillExportInput = Omit<SkillExport, 'existing' | 'lock' | 'manifest'>;
 
 async function readDueSkills(
   db: Kysely<unknown>,
@@ -60,33 +60,48 @@ async function readDueSkills(
     .orderBy('written.name')
     .execute();
 
-  const hashes = due.flatMap((row) =>
-    row.definitions_hash === null ? [row.skill_hash] : [row.skill_hash, row.definitions_hash],
-  );
+  return due.map((row) => ({
+    approvalID: row.approval_id,
+    branch: toSkillExportBranch(row.name),
+    baseHash: row.base_hash,
+    readSource: (database) => readSkillSource(database, row, text),
+  }));
+}
+
+interface DueSkillRow {
+  readonly approval_id: string;
+  readonly proposal_id: string;
+  readonly skill_hash: string;
+  readonly definitions_hash: string | null;
+  readonly definitions_origin: DefinitionsSkillOrigin | null;
+}
+
+type SkillExportInput = Omit<SkillExport, 'existing' | 'lock' | 'manifest'>;
+
+async function readSkillSource(
+  db: Kysely<unknown>,
+  row: DueSkillRow,
+  text: SkillExportText,
+): Promise<DefinitionsExportSource> {
+  const hashes =
+    row.definitions_hash === null ? [row.skill_hash] : [row.skill_hash, row.definitions_hash];
 
   const versions = await loadSkillVersions(db, hashes);
 
-  return due.map((row) => {
-    const version = versions.get(row.skill_hash);
+  const version = versions.get(row.skill_hash);
 
-    invariant(version);
+  invariant(version);
 
-    const skillExport: SkillExportInput = {
-      approvalID: row.approval_id,
-      proposalID: row.proposal_id,
-      version,
-      text,
-      beneath: row.definitions_hash === null ? null : (versions.get(row.definitions_hash) ?? null),
-      isBeneathVendored: row.definitions_origin === 'vendored',
-    };
+  const skillExport: SkillExportInput = {
+    approvalID: row.approval_id,
+    proposalID: row.proposal_id,
+    version,
+    text,
+    beneath: row.definitions_hash === null ? null : (versions.get(row.definitions_hash) ?? null),
+    isBeneathVendored: row.definitions_origin === 'vendored',
+  };
 
-    return {
-      approvalID: row.approval_id,
-      branch: toSkillExportBranch(row.name),
-      baseHash: row.base_hash,
-      readChange: (repo, revision) => readSkillChange(repo, revision, skillExport),
-    };
-  });
+  return { readChange: (repo, revision) => readSkillChange(repo, revision, skillExport) };
 }
 
 async function readSkillChange(
