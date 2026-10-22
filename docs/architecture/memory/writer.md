@@ -191,10 +191,12 @@ A conversation turn hears of memory that changed outside it through
 [the events block](../core/conversation-turns.md#the-events-block), where memory registers its kinds
 of event. A memory change is an item that anything but the conversation itself wrote, such as a
 writer batch or an edit in the memory view. Each item lists once, at its latest version in the
-block's range, with its current text. The catch-up's items appear as one event that counts them,
-because the catch-up covers conversation the user already had. A merge names each of the
-conversation's pending proposals that another source proposed again, so the conversation knows its
-proposal merged and still waits. A flag of a possible self-note lists as the note-taker's nudge, as
+block's range, with its current text. An item the lapse sweep retired lists as lapsed, with the end
+time it was set to last until in the block's zone, so the model reads that its time ran out, not
+that someone chose to retire it. The catch-up's items appear as one event that counts them, because
+the catch-up covers conversation the user already had. A merge names each of the conversation's
+pending proposals that another source proposed again, so the conversation knows its proposal merged
+and still waits. A flag of a possible self-note lists as the note-taker's nudge, as
 [flags of possible self-notes](#flags-of-possible-self-notes) sets out.
 
 The block reads a listed item's text through a recall marked as a turn note's, and only after its
