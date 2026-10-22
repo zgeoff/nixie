@@ -94,8 +94,9 @@ keeps the current one, and an edit can clear it. The store refuses an end time t
 
 Recall treats an active item past its end time as retired from that instant, before any version
 records it. A recall of active items and the pinned core drop the item, and a recall that asks for
-retired items returns it as retired and unpinned. The cut-off sits at read time, against the store's
-clock, because the indexes change only when a version is written.
+retired items returns it as retired and unpinned. A restore accepts such an item as it accepts a
+retired one. The cut-off sits at read time, against the store's clock, because the indexes change
+only when a version is written.
 
 The lapse sweep, which also lapses old proposals and consolidation changes, retires each active item
 past its end time with the lapse origin. The retirement keeps the end time on its version, so the

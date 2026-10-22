@@ -169,3 +169,41 @@ test('it clears the end time of a lapsed item it restores, so the next sweep lea
 
   expect(row.until).toBeNull();
 });
+
+test('it restores an item past its end time before any sweep retires it', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  await memory.store.restore({ target: item, provenance: buildMockProvenance() });
+
+  const lapsed = await memory.store.lapse();
+  const recalled = await memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(lapsed).toBe(0);
+  expect(recalled.items).toMatchObject([{ version: 2, change: 'restored', state: 'active' }]);
+});
+
+test('it rejects a restore of an active item whose end time is still to come', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  expect(
+    memory.store.restore({ target: item, provenance: buildMockProvenance() }),
+  ).rejects.toMatchObject({ code: 'WRONG_STATE' });
+});
