@@ -2,6 +2,7 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Logger } from '@heynixie/logger';
 import { startScriptedModel } from '@heynixie/testing';
 import { startCountingProxy } from './start-counting-proxy';
 
@@ -14,7 +15,7 @@ async function setupTest() {
 
   onTestFinished(() => model.stop());
 
-  return { directory, model, log: mock() };
+  return { directory, model, log: mock<Logger>(() => {}) };
 }
 
 test('it serves its routes from a config file and writes each count to its store', async () => {

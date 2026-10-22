@@ -2,6 +2,7 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Logger } from '@heynixie/logger';
 import { startScriptedModel } from '@heynixie/testing';
 import { createCounterStore } from './create-counter-store';
 import { makeProxyHandler } from './make-proxy-handler';
@@ -19,7 +20,7 @@ async function setupTest() {
 
   const store = await createCounterStore(storePath);
 
-  const log = mock();
+  const log = mock<Logger>(() => {});
 
   return { directory, model, storePath, store, log };
 }
