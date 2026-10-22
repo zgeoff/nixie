@@ -6,12 +6,18 @@ import type { WriteGroup } from './build-write-group';
 import { createSealedProposal } from './create-sealed-proposal';
 import type { ReviewReason, WriteCaller } from './gate-types';
 import { readMatchingProposal } from './read-matching-proposal';
-import type { MemorySubject, MemoryTables, QuoteEvidence, StoreParts } from './types';
+import type {
+  MemorySubject,
+  MemoryTables,
+  ProposalOperationKind,
+  QuoteEvidence,
+  StoreParts,
+} from './types';
 import type { PendingProposal } from './write-proposal-record';
 import { writeProposalRecord } from './write-proposal-record';
 
 export interface ProposalPlan {
-  readonly operation: 'remember' | 'retire';
+  readonly operation: ProposalOperationKind;
 
   readonly target: { readonly itemID: string; readonly version: number } | null;
   readonly isPinned: boolean;

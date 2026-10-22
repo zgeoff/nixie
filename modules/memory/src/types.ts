@@ -22,6 +22,8 @@ export type MemorySubject = 'owner' | 'self' | 'shared';
 
 export type MemoryChange = 'created' | 'edited' | 'retired' | 'restored' | 'undone';
 
+export type ProposalOperationKind = 'remember' | 'retire' | 'pin';
+
 export type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'memory_writer' | 'lapse';
 
 export type ProposalOrigin = Exclude<MemoryOrigin, 'lapse'>;

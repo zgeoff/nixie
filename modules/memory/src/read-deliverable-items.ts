@@ -11,6 +11,7 @@ import type {
   MemoryState,
   MemoryTables,
   MemoryVersionRow,
+  ProposalOperationKind,
   RecalledItem,
   RecalledVersion,
   StoreParts,
@@ -123,7 +124,7 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
 }
 
 interface ApprovableVersionRow extends MemoryVersionRow {
-  readonly proposal_operation: 'remember' | 'retire' | null;
+  readonly proposal_operation: ProposalOperationKind | null;
   readonly review_reason: string | null;
 }
 

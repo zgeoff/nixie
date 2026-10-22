@@ -263,7 +263,7 @@ const memoryProposals = new Collection({
     itemID: z.uuid().default(() => faker.string.uuid()),
     subject: z.enum(['owner', 'self', 'shared']).default('owner'),
     lapseAt: z.date().default(() => faker.date.soon({ days: 7 })),
-    operation: z.enum(['remember', 'retire']).default('remember'),
+    operation: z.enum(['remember', 'retire', 'pin']).default('remember'),
     origin: z.enum(['owner', 'conversation', 'task', 'memory_writer']).default('memory_writer'),
     proposalID: z.uuid().default(() => faker.string.uuid()),
     quote: z.string().nullable().default(null),

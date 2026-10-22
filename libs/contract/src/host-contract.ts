@@ -39,7 +39,7 @@ const proposalSourceSchema = z.object({
 
 const pendingProposalSchema = z.object({
   proposalID: z.string(),
-  operation: z.enum(['remember', 'retire']),
+  operation: z.enum(['remember', 'retire', 'pin']),
   itemID: z.string(),
   targetVersion: z.int().nullable(),
   isPinned: z.boolean(),
@@ -156,6 +156,7 @@ const memory = oc.errors({
   PINNED_CORE_FULL: { message: 'the pinned core is full', status: 409 },
   REVISION_TARGET: { message: 'that item cannot take the revision', status: 400 },
   RETIREMENT_EDIT: { message: 'a retirement takes no edited text', status: 400 },
+  PIN_EDIT: { message: 'a pin takes no edited text', status: 400 },
   SELF_NOTE_REFUSED: { message: 'a self-note never takes that change', status: 409 },
 });
 

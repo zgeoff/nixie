@@ -72,6 +72,10 @@ function renderProposal(proposal: ShownProposal): string {
     return `- ${proposal.proposalID} (${proposal.subject}, retires ${proposal.itemID}): ${text}`;
   }
 
+  if (proposal.operation === 'pin') {
+    return `- ${proposal.proposalID} (${proposal.subject}, pins ${proposal.itemID}): ${text}`;
+  }
+
   return proposal.targetVersion === null
     ? `- ${proposal.proposalID} (${proposal.subject}): ${text}`
     : `- ${proposal.proposalID} (${proposal.subject}, revises ${proposal.itemID}): ${text}`;

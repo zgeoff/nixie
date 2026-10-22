@@ -249,6 +249,43 @@ test('it approves one proposal with your edited text', async () => {
   ]);
 });
 
+test('it shows a pin with no edit, and pins the item when you approve it', async () => {
+  const ctx = setupTest();
+
+  const session = await createDeviceSession();
+
+  const item = await store.memoryItems.create({
+    versions: [{ text: 'Waters the ferns on Sundays' }],
+  });
+
+  const proposal = await store.memoryProposals.create({
+    isPinned: true,
+    itemID: item.itemID,
+    operation: 'pin',
+    reason: 'pinned',
+    targetVersion: 1,
+    text: 'Waters the ferns on Sundays',
+  });
+
+  const rendered = render(<MemoryProposals />);
+
+  const card = await rendered.findByRole('listitem', { name: 'Waters the ferns on Sundays' });
+
+  expect(card).toHaveTextContent('Pin: Waters the ferns on Sundays');
+  expect(within(card).queryByRole('button', { name: 'Edit' })).toBeNull();
+
+  await ctx.user.click(within(card).getByRole('button', { name: 'Approve' }));
+  await rendered.findByText('No proposal waits for you.');
+
+  const pinned = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(pinned?.isPinned).toBe(true);
+
+  expect(store.records.all().map((record) => record.answer)).toStrictEqual([
+    { answer: 'approved', identityID: session.sessionID, proposalID: proposal.proposalID },
+  ]);
+});
+
 test('it rejects one proposal with your reason', async () => {
   const ctx = setupTest();
 

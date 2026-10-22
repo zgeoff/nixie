@@ -265,6 +265,104 @@ test('it retires the item that a retirement proposal names', async () => {
   expect(stored?.state).toBe('retired');
 });
 
+test('it pins the item that a pin proposal names, with no new version', async () => {
+  const item = await store.memoryItems.create({ versions: [{ text: 'Keeps bees on the roof' }] });
+
+  const proposal = await store.memoryProposals.create({
+    isPinned: true,
+    itemID: item.itemID,
+    operation: 'pin',
+    targetVersion: 1,
+  });
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(outcome).toStrictEqual({ proposalID: proposal.proposalID, status: 'applied' });
+  expect(stored).toMatchObject({ isPinned: true, versions: [{ text: 'Keeps bees on the roof' }] });
+});
+
+test('it refuses edited text for a pin proposal, and writes nothing', async () => {
+  const item = await store.memoryItems.create({ versions: [{}] });
+
+  const proposal = await store.memoryProposals.create({
+    isPinned: true,
+    itemID: item.itemID,
+    operation: 'pin',
+    targetVersion: 1,
+  });
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    editedText: 'Keeps no bees',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+  });
+
+  expect(outcome).toMatchObject({ code: 'PIN_EDIT', status: 'refused' });
+  expect(store.records.all()).toStrictEqual([]);
+});
+
+test('it refuses a pin of a retired item, and writes nothing', async () => {
+  const item = await store.memoryItems.create({ state: 'retired', versions: [{}] });
+
+  const proposal = await store.memoryProposals.create({
+    isPinned: true,
+    itemID: item.itemID,
+    operation: 'pin',
+    targetVersion: 1,
+  });
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+  });
+
+  expect(outcome).toMatchObject({ code: 'WRONG_STATE', status: 'refused' });
+  expect(store.records.all()).toStrictEqual([]);
+});
+
+test('it refuses a pin that takes the pinned core past its budget, and writes nothing', async () => {
+  await store.memoryItems.create({ isPinned: true, versions: [{ text: 'b'.repeat(7960) }] });
+
+  const item = await store.memoryItems.create({
+    versions: [{ text: 'Keeps bees on the roof and in the back garden' }],
+  });
+
+  const proposal = await store.memoryProposals.create({
+    isPinned: true,
+    itemID: item.itemID,
+    operation: 'pin',
+    targetVersion: 1,
+  });
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(outcome).toMatchObject({ code: 'PINNED_CORE_FULL', status: 'refused' });
+  expect(stored?.isPinned).toBe(false);
+  expect(store.records.all()).toStrictEqual([]);
+});
+
 test('it refuses edited text for a retirement proposal', async () => {
   const item = await store.memoryItems.create({ versions: [{}] });
 

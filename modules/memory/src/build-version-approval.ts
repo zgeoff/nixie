@@ -1,8 +1,9 @@
 import type { MemoryApproval } from '@heynixie/sessions';
 import type { ReviewReason } from './gate-types';
+import type { ProposalOperationKind } from './types';
 
 export interface ApprovedProposal {
-  readonly operation: 'remember' | 'retire';
+  readonly operation: ProposalOperationKind;
   readonly reason: ReviewReason;
 }
 

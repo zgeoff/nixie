@@ -7,21 +7,32 @@ import { readPinnedItems } from './read-pinned-items';
 import { requirePinnedCoreRoom } from './require-pinned-core-room';
 import { StaleVersionError } from './stale-version-error';
 import type { MemoryState, MemoryTables, PinRequest, StoreParts } from './types';
+import type { VersionExtras } from './write-memory-version';
 
-export function writePin(parts: StoreParts, request: PinRequest): Promise<void> {
+export type PinExtras = Pick<VersionExtras, 'requireInTransaction' | 'approval'>;
+
+export function writePin(
+  parts: StoreParts,
+  request: PinRequest,
+  extras: PinExtras = {},
+): Promise<void> {
   const log = parts.context.log;
+  const approval = extras.approval;
 
   return parts.lock(() =>
     withWriteTransaction(log.writer, async (tx) => {
+      await extras.requireInTransaction?.(tx.$extendTables<MemoryTables>());
       await request.writeInTransaction?.(tx);
 
       await requirePinnableItem(parts, tx, request);
 
       await writeRecordsInTransaction(tx, log, [
+        ...(approval === undefined ? [] : [approval.record]),
         {
           kind: 'memory.pinned',
           definitions: parts.context.definitions(),
           ...(request.provenance.thread === undefined ? {} : { thread: request.provenance.thread }),
+          ...(approval === undefined ? {} : { approval: approval.envelope }),
           payload: { itemID: request.itemID, isPinned: request.isPinned },
         },
       ]);

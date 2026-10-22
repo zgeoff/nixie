@@ -21,7 +21,7 @@ export async function writeGatedRetirement(
   parts: StoreParts,
   request: GatedRetireRequest,
 ): Promise<WriteOutcome> {
-  const item = await readItemText(parts, request.target);
+  const item = await readItemText(parts, request.target, 'retire');
 
   const itemText = item.text;
 

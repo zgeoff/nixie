@@ -6,7 +6,11 @@ import {
   findNoAllowRule,
   startMemoryStore,
 } from '@heynixie/memory';
-import { buildMockWriteCaller, createProposal } from '@heynixie/memory/test-utils';
+import {
+  buildMockWriteCaller,
+  createMemoryItem,
+  createProposal,
+} from '@heynixie/memory/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from './test-utils/build-test-client';
@@ -431,4 +435,127 @@ test('#memory.rejectProposals rejects each proposal with its own rejection recor
     ],
     [{ proposalID: second.proposalID }, { status: 'none' }],
   ]);
+});
+
+test('#memory.listProposals lists a pin with the pin operation, the item and the version it pins', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const item = await createMemoryItem(ctx.memory, { text: 'Swims at the lido on Saturdays' });
+
+  await ctx.memory.writes.pin({ target: item, caller: buildMockWriteCaller() });
+
+  const listed = await buildTestClient(ctx.url, laptop.token).memory.listProposals();
+
+  expect(listed.proposals).toMatchObject([
+    {
+      operation: 'pin',
+      itemID: item.itemID,
+      targetVersion: 1,
+      isPinned: true,
+      reason: 'pinned',
+      text: 'Swims at the lido on Saturdays',
+      quote: null,
+    },
+  ]);
+});
+
+test('#memory.approveProposals puts the item of an approved pin in the pinned core', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await createMemoryItem(ctx.memory, { text: 'Swims at the lido on Saturdays' });
+  const outcome = await ctx.memory.writes.pin({ target: item, caller: buildMockWriteCaller() });
+
+  invariant(outcome.status === 'proposed');
+
+  const [pending] = await ctx.memory.proposals.listPending();
+
+  invariant(pending);
+
+  const approved = await client.memory.approveProposals({
+    answers: [
+      {
+        clientActionID: '3c8f1e72-5a4d-4b9e-8f20-7d6a1c4e9b53',
+        proposalID: pending.proposalID,
+        actionHash: pending.actionHash,
+      },
+    ],
+  });
+
+  const core = await client.memory.readPinnedCore();
+
+  expect(approved).toStrictEqual({
+    outcomes: [{ proposalID: outcome.proposalID, status: 'applied' }],
+  });
+
+  expect(core.items).toMatchObject([{ itemID: item.itemID, isPinned: true }]);
+});
+
+test('#memory.approveProposals refuses a pin with edited text, and leaves the pinned core as it was', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await createMemoryItem(ctx.memory, { text: 'Swims at the lido on Saturdays' });
+
+  await ctx.memory.writes.pin({ target: item, caller: buildMockWriteCaller() });
+
+  const [pending] = await ctx.memory.proposals.listPending();
+
+  invariant(pending);
+
+  const approved = await client.memory.approveProposals({
+    answers: [
+      {
+        clientActionID: '6e1d4a93-2f7c-4b58-9a0e-3c5b8d1f7e26',
+        proposalID: pending.proposalID,
+        actionHash: pending.actionHash,
+        editedText: 'Swims at the lido on Sundays',
+      },
+    ],
+  });
+
+  const core = await client.memory.readPinnedCore();
+
+  expect(approved).toStrictEqual({
+    outcomes: [{ proposalID: pending.proposalID, status: 'refused', code: 'PIN_EDIT' }],
+  });
+
+  expect(core.items).toStrictEqual([]);
+});
+
+test('#memory.rejectProposals leaves the pinned core as it was when you reject a pin', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await createMemoryItem(ctx.memory, { text: 'Swims at the lido on Saturdays' });
+
+  await ctx.memory.writes.pin({ target: item, caller: buildMockWriteCaller() });
+
+  const [pending] = await ctx.memory.proposals.listPending();
+
+  invariant(pending);
+
+  const rejected = await client.memory.rejectProposals({
+    answers: [
+      {
+        clientActionID: '8b2f5c14-7e9a-4d63-a1b0-4f6c2e8d9a71',
+        proposalID: pending.proposalID,
+        actionHash: pending.actionHash,
+      },
+    ],
+  });
+
+  const core = await client.memory.readPinnedCore();
+
+  expect(rejected).toStrictEqual({
+    outcomes: [{ proposalID: pending.proposalID, status: 'rejected' }],
+  });
+
+  expect(core.items).toStrictEqual([]);
 });
