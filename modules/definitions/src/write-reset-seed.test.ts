@@ -11,6 +11,7 @@ import { readDefinitionsInForce } from './read-definitions-in-force';
 import { readResetSeed } from './read-reset-seed';
 import { runSeed } from './run-seed';
 import { runWrittenSkillSeed } from './run-written-skill-seed';
+import { createStubGitSyncWorktree } from './test-utils/create-stub-git-sync-worktree';
 import { writeResetSeed } from './write-reset-seed';
 import { writeWrittenSkill } from './write-written-skill';
 import { writeWrittenSkillState } from './write-written-skill-state';
@@ -38,6 +39,7 @@ async function setupTest() {
   ]);
 
   return {
+    directory,
     root,
     writer,
     log: { writer, deploymentKey, projections: [] },
@@ -111,6 +113,51 @@ test('it puts the same definitions in force under the new record', async () => {
     seededAt: expect.toBeValidDate(),
     recordSequence: 2,
   });
+});
+
+test('it keeps the commit and the repository of a git-sync seed through a reset', async () => {
+  const ctx = await setupTest();
+
+  const sync = join(ctx.directory, 'sync');
+
+  const worktree = await createStubGitSyncWorktree(sync, {
+    commit: 'c7e2a9f4b1d6083e5a7c9f2b4d6e8a1c3f5b7d02',
+    config: '[remote "origin"]\n\turl = https://git.example.test/puffin-co/auk-definitions\n',
+  });
+
+  await Promise.all([
+    writeFile(join(worktree, 'nixie.yaml'), 'format: 1\n'),
+    writeFile(join(worktree, 'persona.md'), '# Persona\n\nCalm and short.\n'),
+  ]);
+
+  const seeded = await runSeed({
+    log: ctx.log,
+    source: createPathSource({ directory: join(sync, 'current') }),
+    policy: { rules: [], tools: [] },
+  });
+
+  await runLogReset(ctx.log, {
+    keptTables: [],
+    readKept: (tx) => readResetSeed(tx),
+    writeFirstRecords: async (tx, seed) => {
+      invariant(seed);
+
+      await writeResetSeed(tx, ctx.log, seed);
+    },
+  });
+
+  const after = await readDefinitionsInForce(ctx.writer.db);
+
+  invariant(seeded.inForce);
+
+  expect(after).toStrictEqual({
+    ...seeded.inForce,
+    seededAt: expect.toBeValidDate(),
+    recordSequence: 2,
+  });
+
+  expect(after?.sourceRepository).toBe('https://git.example.test/puffin-co/auk-definitions');
+  expect(after?.revision).toBe('c7e2a9f4b1d6083e5a7c9f2b4d6e8a1c3f5b7d02');
 });
 
 test('it seeds the skills in force again with their files', async () => {
