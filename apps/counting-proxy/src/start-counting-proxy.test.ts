@@ -117,6 +117,13 @@ test('it lets a streamed reply under way finish and counts it before a stop reso
     waitForDrainDeadline: () => deadline.promise,
   });
 
+  onTestFinished(async () => {
+    deadline.resolve(undefined);
+    gate.resolve(undefined);
+
+    await proxy.stop();
+  });
+
   const reply = fetch(`${proxy.url}/preview/v1/messages`, {
     method: 'POST',
     body: JSON.stringify({ model: 'model-small', messages: [], stream: true }),
