@@ -8,14 +8,14 @@ import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { ForgetControl } from './forget-control';
 
-async function setupTest() {
-  await createDeviceSession();
-
+function setupTest() {
   return { user: userEvent.setup() };
 }
 
 test('it forgets the message only once you confirm', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const onForgotten = mock<() => void>();
 
@@ -46,7 +46,9 @@ test('it forgets the message only once you confirm', async () => {
 });
 
 test('it asks to forget a reply by its name', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const rendered = render(
     <ForgetControl
@@ -62,7 +64,9 @@ test('it asks to forget a reply by its name', async () => {
 });
 
 test('it keeps the message when you choose to keep it', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const onForgotten = mock<() => void>();
 
@@ -98,7 +102,9 @@ test('it shows no control for a message with no text and no forget of its own', 
 });
 
 test('it says so when the forget fails', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const onForgotten = mock<() => void>();
 

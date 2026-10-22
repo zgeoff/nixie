@@ -34,12 +34,6 @@ async function setupTest() {
     copyDir: directory,
   });
 
-  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-    values (1, 1767225600000, 'memory.consolidation_proposed', 'snapshot-a', '{}')`.execute(db);
-
-  await sql`insert into memory_consolidations (diff_id, model, changes, shown_items, sequence,
-    created_at) values ('diff-1', 'claude-test-1', 0, 2, 1, 1767225600000)`.execute(db);
-
   return { db };
 }
 
@@ -49,6 +43,12 @@ test('it moves the schema to version 14', () => {
 
 test('it leaves an existing run with no summary, and a run a release before folds after it too', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.consolidation_proposed', 'snapshot-a', '{}')`.execute(ctx.db);
+
+  await sql`insert into memory_consolidations (diff_id, model, changes, shown_items, sequence,
+    created_at) values ('diff-1', 'claude-test-1', 0, 2, 1, 1767225600000)`.execute(ctx.db);
 
   await ctx.db.transaction().execute((tx) => memoryConsolidationSummaryMigration.up(tx));
 
@@ -66,6 +66,12 @@ test('it leaves an existing run with no summary, and a run a release before fold
 
 test('it keeps a summary as it is when it runs again', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.consolidation_proposed', 'snapshot-a', '{}')`.execute(ctx.db);
+
+  await sql`insert into memory_consolidations (diff_id, model, changes, shown_items, sequence,
+    created_at) values ('diff-1', 'claude-test-1', 0, 2, 1, 1767225600000)`.execute(ctx.db);
 
   await ctx.db.transaction().execute((tx) => memoryConsolidationSummaryMigration.up(tx));
 

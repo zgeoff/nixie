@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,6 +6,7 @@ import { startTestAPI } from '@heynixie/api/test-utils';
 import { buildAPIGate } from './build-api-gate';
 import { buildCleanup } from './build-cleanup';
 import { buildHostClient } from './build-host-client';
+import type { ServerReset } from './run-server-reset';
 import { startHostCommands } from './start-host-commands';
 
 async function setupTest() {
@@ -20,14 +21,15 @@ async function setupTest() {
 
   onTestFinished(() => cleanup.stop());
 
+  const runReset = mock<() => Promise<ServerReset>>();
+
   await startHostCommands(
     {
       dataDir,
       apiContext: api.context,
       readMemory: () => null,
       seedWrittenSkills: () => Promise.resolve(),
-      runReset: () =>
-        Promise.resolve({ resetAt: new Date(2_000_000), lastSequence: 12, keptSessions: 1 }),
+      runReset,
       gate,
     },
     cleanup,
@@ -35,7 +37,7 @@ async function setupTest() {
 
   const socketPath = join(dataDir, 'run', 'control.sock');
 
-  return { gate, socketPath, client: buildHostClient(socketPath) };
+  return { gate, runReset, socketPath, client: buildHostClient(socketPath) };
 }
 
 test('it answers a host command while the gate is open', async () => {
@@ -56,6 +58,12 @@ test('it refuses a host command once a reset closes the gate', async () => {
 test('it runs the reset itself once the gate is closed', async () => {
   const ctx = await setupTest();
 
+  ctx.runReset.mockResolvedValue({
+    resetAt: new Date(2_000_000),
+    lastSequence: 12,
+    keptSessions: 1,
+  });
+
   await ctx.gate.close();
 
   const reset = await ctx.client.reset();
@@ -65,6 +73,12 @@ test('it runs the reset itself once the gate is closed', async () => {
 
 test('it runs a reset sent with a trailing slash once the gate is closed, as oRPC routes it to the reset', async () => {
   const ctx = await setupTest();
+
+  ctx.runReset.mockResolvedValue({
+    resetAt: new Date(2_000_000),
+    lastSequence: 12,
+    keptSessions: 1,
+  });
 
   await ctx.gate.close();
 

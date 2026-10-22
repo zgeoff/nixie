@@ -5,7 +5,6 @@ import { startTestNixie } from './test-utils/start-test-nixie';
 
 async function setupTest() {
   const nixie = await startTestNixie();
-  const clients = await createTestClient(nixie);
 
   const stopping = new AbortController();
 
@@ -13,14 +12,15 @@ async function setupTest() {
     stopping.abort();
   });
 
-  return { ...nixie, ...clients, signal: stopping.signal };
+  return { ...nixie, signal: stopping.signal };
 }
 
 test('it streams a tool call and its result within a second of nixie recording them', async () => {
   const ctx = await setupTest();
-  const page = await ctx.client.conversation.read({ thread: 'conversation', limit: 1 });
+  const api = await createTestClient(ctx);
+  const page = await api.client.conversation.read({ thread: 'conversation', limit: 1 });
 
-  const stream = await ctx.client.records.follow(
+  const stream = await api.client.records.follow(
     { afterSequence: page.readAtSequence, thread: 'conversation' },
     { signal: ctx.signal },
   );
@@ -30,7 +30,7 @@ test('it streams a tool call and its result within a second of nixie recording t
     { text: 'It is ten to six in Oslo.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'What time is it in Oslo?',

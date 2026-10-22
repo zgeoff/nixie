@@ -44,8 +44,6 @@ async function setupTest() {
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
 
-  const step = await createTestStep(context);
-
   const log = mock(() => {});
   const actions = buildActions(context, log);
 
@@ -53,12 +51,12 @@ async function setupTest() {
     makeQueueCheckStep({ context, queue: actions.queue, tool: actions.logConnector.tool }),
   );
 
-  const wake = () =>
+  const wake = (taskID: string) =>
     writeInboxRecords(context, [
       {
         kind: 'task.wake',
         definitions: context.definitions(),
-        thread: step.taskID,
+        thread: taskID,
         payload: { at: context.clock.now() },
       },
     ]);
@@ -67,13 +65,12 @@ async function setupTest() {
     context,
     log,
     db: writer.db.$extendTables<ActionsTables>(),
-    step,
     runStep,
     wake,
 
-    startAgain: async () => {
+    startAgain: async (taskID: string) => {
       await writeUnknownOutcomes(context);
-      await wake();
+      await wake(taskID);
     },
     runNextStep: async () => {
       const next = await claimTestStep(context);
@@ -100,8 +97,9 @@ async function setupTest() {
 
 test('it queues one actions.log action under the step that a wake starts, allowed by slice1.queue-check', async () => {
   const ctx = await setupTest();
-  const inbox = await ctx.wake();
-  const result = await ctx.runStep({ ...ctx.step, inbox });
+  const step = await createTestStep(ctx.context);
+  const inbox = await ctx.wake(step.taskID);
+  const result = await ctx.runStep({ ...step, inbox });
   const actions = await ctx.db.selectFrom('actions').selectAll().execute();
 
   const called = await readRecords(ctx.context.log, {
@@ -111,8 +109,8 @@ test('it queues one actions.log action under the step that a wake starts, allowe
 
   expect(actions).toMatchObject([
     {
-      task_id: ctx.step.taskID,
-      step_key: ctx.step.stepKey,
+      task_id: step.taskID,
+      step_key: step.stepKey,
       tool: 'actions.log',
       status: 'pending',
     },
@@ -135,8 +133,9 @@ test('it queues one actions.log action under the step that a wake starts, allowe
 
 test('it queues nothing more for the outcome of the action it queued, and reads that outcome', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
-  await ctx.runStep({ ...ctx.step, inbox: await ctx.wake() });
+  await ctx.runStep({ ...step, inbox: await ctx.wake(step.taskID) });
   await ctx.runNextAttempt();
 
   const outcome = await readRecords(ctx.context.log, {
@@ -146,7 +145,7 @@ test('it queues nothing more for the outcome of the action it queued, and reads 
 
   const inbox = outcome.map((read) => read.record);
 
-  const result = await ctx.runStep({ ...ctx.step, inbox });
+  const result = await ctx.runStep({ ...step, inbox });
   const actions = await ctx.db.selectFrom('actions').select('status').execute();
 
   expect(actions).toStrictEqual([{ status: 'done' }]);
@@ -155,12 +154,13 @@ test('it queues nothing more for the outcome of the action it queued, and reads 
 
 test('it queues a fresh action at the next start after a crash left the last action unknown, and the connector runs it', async () => {
   const ctx = await setupTest();
-  const first = await ctx.runStep({ ...ctx.step, inbox: await ctx.wake() });
+  const step = await createTestStep(ctx.context);
+  const first = await ctx.runStep({ ...step, inbox: await ctx.wake(step.taskID) });
 
-  await writeStepCommit(ctx.context, ctx.step, first);
+  await writeStepCommit(ctx.context, step, first);
 
   await ctx.runCrashedAttempt();
-  await ctx.startAgain();
+  await ctx.startAgain(step.taskID);
 
   const next = await ctx.runNextStep();
 
@@ -173,7 +173,7 @@ test('it queues a fresh action at the next start after a crash left the last act
     .execute();
 
   expect(actions).toMatchObject([
-    { step_key: `${ctx.step.taskID}:1`, status: 'unknown' },
+    { step_key: `${step.taskID}:1`, status: 'unknown' },
     { step_key: `${next.taskID}:2`, status: 'done' },
   ]);
 
@@ -185,10 +185,11 @@ test('it queues a fresh action at the next start after a crash left the last act
 
 test('it reuses the action it queued when a retry of the step runs on the same inbox', async () => {
   const ctx = await setupTest();
-  const inbox = await ctx.wake();
+  const step = await createTestStep(ctx.context);
+  const inbox = await ctx.wake(step.taskID);
 
-  await ctx.runStep({ ...ctx.step, inbox });
-  await ctx.failStep(ctx.step);
+  await ctx.runStep({ ...step, inbox });
+  await ctx.failStep(step);
 
   const retry = await ctx.runNextStep();
   const actions = await ctx.db.selectFrom('actions').select(['action_id', 'step_key']).execute();
@@ -199,12 +200,12 @@ test('it reuses the action it queued when a retry of the step runs on the same i
   });
 
   expect(retry).toMatchObject({
-    stepKey: ctx.step.stepKey,
-    lease: { generation: ctx.step.lease.generation + 1 },
+    stepKey: step.stepKey,
+    lease: { generation: step.lease.generation + 1 },
     inbox,
   });
 
-  expect(actions).toMatchObject([{ step_key: ctx.step.stepKey }]);
+  expect(actions).toMatchObject([{ step_key: step.stepKey }]);
 
   expect(results.map((read) => read.record.payload['actionID'])).toStrictEqual([
     actions[0]?.action_id,

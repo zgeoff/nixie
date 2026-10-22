@@ -11,17 +11,17 @@ import { startTestNixie } from './test-utils/start-test-nixie';
 
 async function setupTest() {
   const nixie = await startTestNixie();
-  const clients = await createTestClient(nixie);
 
-  return { ...nixie, ...clients };
+  return nixie;
 }
 
 test('it keeps no message text in nixie.db, the key store or the logs', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Quince-reply-4ZT9' });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Plum-message-7QK2',
@@ -29,7 +29,7 @@ test('it keeps no message text in nixie.db, the key store or the logs', async ()
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Quince-reply-4ZT9');
   });
@@ -51,11 +51,12 @@ test('it keeps no message text in nixie.db, the key store or the logs', async ()
 
 test('it puts the snapshot hash of the definitions in force on every record', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
   const seeded = await ctx.waitForLogEvent('definitions.seeded');
 
   ctx.model.addReplies({ text: 'Quince-reply-4ZT9' });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Plum-message-7QK2',
@@ -98,10 +99,11 @@ test('it puts the snapshot hash of the definitions in force on every record', as
 
 test('it lists the memory tools, web fetch, the time tool and the log reader to the conversation model', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Hello.' });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Hi.',
@@ -159,6 +161,7 @@ test('it calls the owner by the name the secrets file holds, which the configura
 
 test('it answers the time tool in the zone of the newest message', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies(
     { text: 'Safe travels.' },
@@ -166,7 +169,7 @@ test('it answers the time tool in the zone of the newest message', async () => {
     { text: 'It is evening in London.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Flying out of Tokyo tonight.',
@@ -175,12 +178,12 @@ test('it answers the time tool in the zone of the newest message', async () => {
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Safe travels.');
   });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Landed. What time is it here?',
@@ -189,12 +192,12 @@ test('it answers the time tool in the zone of the newest message', async () => {
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'It is evening in London.');
   });
 
-  const page = await ctx.client.conversation.read({ thread: 'conversation' });
+  const page = await api.client.conversation.read({ thread: 'conversation' });
 
   expect(page.records.find((record) => record.kind === 'tool_result')?.toolCall).toMatchObject({
     outcome: 'result',
@@ -204,13 +207,14 @@ test('it answers the time tool in the zone of the newest message', async () => {
 
 test('it answers a message with a reply that used a tool, with each step in the event log', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies(
     { toolUse: { name: 'mcp__nixie__time_now', input: {} } },
     { text: 'It is a quarter past four in Lisbon.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'What time is it in Lisbon?',
@@ -219,12 +223,12 @@ test('it answers a message with a reply that used a tool, with each step in the 
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => /^task\.step_(?:committed|errored)$/u.test(record.kind));
   });
 
-  const page = await ctx.client.conversation.read({ thread: 'conversation' });
+  const page = await api.client.conversation.read({ thread: 'conversation' });
 
   expect(page.records.map((record) => record.kind)).toStrictEqual([
     'task.created',
@@ -263,13 +267,14 @@ test('it answers a message with a reply that used a tool, with each step in the 
 
 test('it completes a turn that calls a tool from the test sandbox the configuration selects', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies(
     { toolUse: { name: 'mcp__nixie__time_now', input: {} } },
     { text: 'It is just past noon in Reykjavik.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'What time is it in Reykjavik?',
@@ -278,12 +283,12 @@ test('it completes a turn that calls a tool from the test sandbox the configurat
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => /^task\.step_(?:committed|errored)$/u.test(record.kind));
   });
 
-  const page = await ctx.client.conversation.read({ thread: 'conversation' });
+  const page = await api.client.conversation.read({ thread: 'conversation' });
   const sandboxIDs = await ctx.readSandboxIDs();
 
   expect(sandboxIDs.length).toBeGreaterThan(0);
@@ -301,10 +306,11 @@ test('it completes a turn that calls a tool from the test sandbox the configurat
 
 test('it shows the model when each message was sent, in its own zone or the default one', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Hello.' }, { text: 'Welcome to Tokyo.' });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Hi.',
@@ -312,12 +318,12 @@ test('it shows the model when each message was sent, in its own zone or the defa
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Hello.');
   });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Just landed.',
@@ -326,7 +332,7 @@ test('it shows the model when each message was sent, in its own zone or the defa
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Welcome to Tokyo.');
   });
@@ -346,10 +352,11 @@ test('it shows the model when each message was sent, in its own zone or the defa
 
 test('it shows the model when you typed a message that reached nixie over 2 minutes late', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Noted.' }, { text: 'On it.' });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Back home.',
@@ -359,12 +366,12 @@ test('it shows the model when you typed a message that reached nixie over 2 minu
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
   });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Book the dentist.',
@@ -374,7 +381,7 @@ test('it shows the model when you typed a message that reached nixie over 2 minu
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'On it.');
   });
@@ -394,6 +401,7 @@ test('it shows the model when you typed a message that reached nixie over 2 minu
 
 test('it shows the model the label you set on a session through the session commands', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
   const listed = await runHostCommand(ctx.configPath, ['sessions']);
 
   const [session] = z.tuple([z.object({ sessionID: z.string() })]).parse(JSON.parse(listed.stdout));
@@ -407,7 +415,7 @@ test('it shows the model the label you set on a session through the session comm
 
   ctx.model.addReplies({ text: 'Hello.' });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Hi.',
@@ -415,7 +423,7 @@ test('it shows the model the label you set on a session through the session comm
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Hello.');
   });
@@ -436,6 +444,7 @@ test('it shows the model the label you set on a session through the session comm
 
 test('it applies a remembered fact that the owner typed, with their words as its evidence', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies(
     {
@@ -448,7 +457,7 @@ test('it applies a remembered fact that the owner typed, with their words as its
     { text: 'Noted.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [{ start: 0, end: 43, source: 'typed' }],
     text: 'Remember that my sister Ada lives in Leeds.',
@@ -457,7 +466,7 @@ test('it applies a remembered fact that the owner typed, with their words as its
 
   await waitForCondition(
     async () => {
-      const page = await ctx.client.conversation.read({ thread: 'conversation' });
+      const page = await api.client.conversation.read({ thread: 'conversation' });
 
       return page.records.some((record) => record.message?.text === 'Noted.');
     },
@@ -490,11 +499,12 @@ test('it applies a remembered fact that the owner typed, with their words as its
 
 test('it applies a remembered fact cited by the event ID its stamp showed, with no log read, against that message alone', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Got it.' });
 
   await sendClientMessage(
-    ctx.client,
+    api.client,
     { text: 'My bike lock code is 3906.', spans: [{ start: 0, end: 26, source: 'typed' }] },
     'Got it.',
   );
@@ -523,7 +533,7 @@ test('it applies a remembered fact cited by the event ID its stamp showed, with 
   );
 
   await sendClientMessage(
-    ctx.client,
+    api.client,
     {
       text: 'Remember my bike lock code is 3906.',
       spans: [{ start: 0, end: 35, source: 'typed' }],
@@ -542,6 +552,7 @@ test('it applies a remembered fact cited by the event ID its stamp showed, with 
 
 test('it keeps the ratings the model gives two retrieved items against the turn that retrieved them', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   // retrieval scores a word by how few items hold it, so memory holds 3 items beside the 2 rated
   const quotes = [
@@ -555,7 +566,7 @@ test('it keeps the ratings the model gives two retrieved items against the turn 
   ctx.model.addReplies(...buildCheckedRememberReplies(quotes), { text: 'Noted all five.' });
 
   const remembered = await sendClientMessage(
-    ctx.client,
+    api.client,
     {
       text: `Remember that ${quotes.join(', ')}.`,
       spans: [{ start: 0, end: 119, source: 'typed' }],
@@ -580,7 +591,7 @@ test('it keeps the ratings the model gives two retrieved items against the turn 
   );
 
   const records = await sendClientMessage(
-    ctx.client,
+    api.client,
     { text: 'Which day do the bins go out, and is the boiler code still 4471?' },
     'Tuesday.',
   );
@@ -598,6 +609,7 @@ test('it keeps the ratings the model gives two retrieved items against the turn 
 
 test('it lists the proposal the model made when the model calls the pending tool', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies(
     { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Keeps two cats' } } },
@@ -606,7 +618,7 @@ test('it lists the proposal the model made when the model calls the pending tool
     { text: 'One proposal waits.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'I keep two cats.',
@@ -614,12 +626,12 @@ test('it lists the proposal the model made when the model calls the pending tool
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
   });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'What still waits for me?',
@@ -627,7 +639,7 @@ test('it lists the proposal the model made when the model calls the pending tool
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'One proposal waits.');
   });
@@ -636,7 +648,7 @@ test('it lists the proposal the model made when the model calls the pending tool
     ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body?.messages,
   );
 
-  const page = await ctx.client.conversation.read({ thread: 'conversation' });
+  const page = await api.client.conversation.read({ thread: 'conversation' });
 
   expect(sent).toInclude(
     String.raw`\"change\":\"new\",\"text\":\"Keeps two cats\",\"notedBy\":[\"you noted it\"],\"subject\":\"owner\",\"reason\":\"no_quote\",\"age\":\"under a minute\"`,
@@ -650,11 +662,12 @@ test('it lists the proposal the model made when the model calls the pending tool
 
 test('it runs the turn after you forget a message the live session holds on a rebuilt session without its text', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Noted-reply-2KC' }, { text: 'Welcome-reply-9TB' });
 
   const before = await sendClientMessage(
-    ctx.client,
+    api.client,
     { text: 'Lilac-message-5JX is the shed code.' },
     'Noted-reply-2KC',
   );
@@ -665,13 +678,13 @@ test('it runs the turn after you forget a message the live session holds on a re
 
   invariant(message);
 
-  await ctx.client.conversation.forget({
+  await api.client.conversation.forget({
     clientActionID: crypto.randomUUID(),
     sequence: message.sequence,
     thread: 'conversation',
   });
 
-  const after = await sendClientMessage(ctx.client, { text: 'Thanks.' }, 'Welcome-reply-9TB');
+  const after = await sendClientMessage(api.client, { text: 'Thanks.' }, 'Welcome-reply-9TB');
 
   const sent = JSON.stringify(
     ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body,
@@ -701,11 +714,12 @@ test('it runs the turn after you forget a message the live session holds on a re
 
 test('it keeps the text of a forgotten message in no data file', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Noted-reply-2KC' });
 
   const records = await sendClientMessage(
-    ctx.client,
+    api.client,
     { text: 'Lilac-message-5JX is the shed code.' },
     'Noted-reply-2KC',
   );
@@ -716,7 +730,7 @@ test('it keeps the text of a forgotten message in no data file', async () => {
 
   invariant(message);
 
-  await ctx.client.conversation.forget({
+  await api.client.conversation.forget({
     clientActionID: crypto.randomUUID(),
     sequence: message.sequence,
     thread: 'conversation',
@@ -761,7 +775,8 @@ test('it queues one action for the log-only connector at start, which the action
 
 test('it answers liveness per part', async () => {
   const ctx = await setupTest();
-  const live = await fetch(`${ctx.url}/health/live`);
+  const api = await createTestClient(ctx);
+  const live = await fetch(`${api.url}/health/live`);
   const liveReport: unknown = await live.json();
 
   expect(live.status).toBe(200);
@@ -774,7 +789,8 @@ test('it answers liveness per part', async () => {
 
 test('it answers readiness per part, with the slice 1 parts, the dependency parts and the advisory parts only', async () => {
   const ctx = await setupTest();
-  const ready = await fetch(`${ctx.url}/health/ready`);
+  const api = await createTestClient(ctx);
+  const ready = await fetch(`${api.url}/health/ready`);
   const readyReport: unknown = await ready.json();
 
   expect(ready.status).toBe(200);
@@ -798,10 +814,11 @@ test('it answers readiness per part, with the slice 1 parts, the dependency part
 
 test('it fails a turn the model API refused for its credential with no reply, and reports the turns as not ready', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ authFailure: 'invalid x-api-key' });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'What is on my list today?',
@@ -810,13 +827,13 @@ test('it fails a turn the model API refused for its credential with no reply, an
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => /^task\.step_(?:committed|errored)$/u.test(record.kind));
   });
 
-  const page = await ctx.client.conversation.read({ thread: 'conversation' });
-  const ready = await fetch(`${ctx.url}/health/ready`);
+  const page = await api.client.conversation.read({ thread: 'conversation' });
+  const ready = await fetch(`${api.url}/health/ready`);
   const readyReport: unknown = await ready.json();
 
   expect(page.records.map((record) => record.kind)).not.toContain('model.reply');
@@ -836,12 +853,13 @@ test('it fails a turn the model API refused for its credential with no reply, an
 
 test('it stops claiming steps on SIGTERM, lets the turn in flight commit and exits 0', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   const gate = Promise.withResolvers<void>();
 
   ctx.model.addReplies({ text: 'Held-reply', gate: gate.promise });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Hello.',
@@ -867,9 +885,10 @@ test('it stops claiming steps on SIGTERM, lets the turn in flight commit and exi
 
 test('it issues a code from the running server through the enrol-code command', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
   const command = await runHostCommand(ctx.configPath, ['enrol-code']);
 
-  const session = await ctx.signedOut.sessions.enrol({
+  const session = await api.signedOut.sessions.enrol({
     clientActionID: crypto.randomUUID(),
     code: command.stdout.split('\n')[0] ?? '',
     deviceName: 'phone',
@@ -882,13 +901,14 @@ test('it issues a code from the running server through the enrol-code command', 
 
 test('it lists a pending memory proposal and approves it through the memory commands', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies(
     { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Likes jazz' } } },
     { text: 'Noted.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'I like jazz.',
@@ -896,7 +916,7 @@ test('it lists a pending memory proposal and approves it through the memory comm
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
   });
@@ -932,6 +952,7 @@ test('it lists a pending memory proposal and approves it through the memory comm
 
 test('it shows the conversation your reason for a proposal you rejected in the web client on its next turn', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies(
     { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Plays squash daily' } } },
@@ -939,15 +960,15 @@ test('it shows the conversation your reason for a proposal you rejected in the w
     { text: 'Understood.' },
   );
 
-  await sendClientMessage(ctx.client, { text: 'I played squash today.' }, 'Noted.');
+  await sendClientMessage(api.client, { text: 'I played squash today.' }, 'Noted.');
 
-  const listed = await ctx.client.memory.listProposals();
+  const listed = await api.client.memory.listProposals();
 
   const [proposal] = listed.proposals;
 
   invariant(proposal);
 
-  await ctx.client.memory.rejectProposals({
+  await api.client.memory.rejectProposals({
     answers: [
       {
         clientActionID: crypto.randomUUID(),
@@ -958,7 +979,7 @@ test('it shows the conversation your reason for a proposal you rejected in the w
     ],
   });
 
-  await sendClientMessage(ctx.client, { text: 'Did you save the squash thing?' }, 'Understood.');
+  await sendClientMessage(api.client, { text: 'Did you save the squash thing?' }, 'Understood.');
 
   const sent = JSON.stringify(
     ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body?.messages,
@@ -1043,6 +1064,9 @@ test('it refuses to start when a pronoun names a settings entry the secrets file
 
 test('it resets the running server through the reset command, which exits 0 with the server', async () => {
   const ctx = await setupTest();
+
+  await createTestClient(ctx);
+
   const reset = await runTestReset(ctx);
 
   expect(reset.command.exitCode).toBe(0);
@@ -1056,24 +1080,26 @@ test('it resets the running server through the reset command, which exits 0 with
 
 test('it keeps a live device signed in across a reset', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
   const reset = await runTestReset(ctx);
-  const listed = await reset.connect(ctx.token).sessions.list();
+  const listed = await reset.connect(api.token).sessions.list();
 
   expect(listed.sessions.map((session) => session.deviceName)).toStrictEqual(['laptop']);
 }, 120_000);
 
 test('it refuses a token revoked before a reset as a stranger', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
   const issued = await runHostCommand(ctx.configPath, ['enrol-code']);
 
-  const phone = await ctx.signedOut.sessions.enrol({
+  const phone = await api.signedOut.sessions.enrol({
     clientActionID: crypto.randomUUID(),
     code: issued.stdout.split('\n')[0] ?? '',
     deviceName: 'phone',
     tokenDelivery: 'bearer',
   });
 
-  await ctx.client.sessions.revoke({
+  await api.client.sessions.revoke({
     clientActionID: crypto.randomUUID(),
     sessionID: phone.sessionID,
   });
@@ -1098,6 +1124,9 @@ test('it refuses a token revoked before a reset as a stranger', async () => {
 
 test('it refuses an enrolment code issued before a reset', async () => {
   const ctx = await setupTest();
+
+  await createTestClient(ctx);
+
   const issued = await runHostCommand(ctx.configPath, ['enrol-code']);
   const reset = await runTestReset(ctx);
 
@@ -1115,6 +1144,9 @@ test('it refuses an enrolment code issued before a reset', async () => {
 
 test('it destroys every sandbox in a reset', async () => {
   const ctx = await setupTest();
+
+  await createTestClient(ctx);
+
   const before = await ctx.readSandboxIDs();
 
   await runTestReset(ctx);
@@ -1127,10 +1159,11 @@ test('it destroys every sandbox in a reset', async () => {
 
 test('it leaves no old key and no old text in the data files after a reset', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Fennel-reply-8WD' });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Kettle-message-3VQ',
@@ -1138,7 +1171,7 @@ test('it leaves no old key and no old text in the data files after a reset', asy
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Fennel-reply-8WD');
   });
@@ -1168,10 +1201,11 @@ test('it leaves no old key and no old text in the data files after a reset', asy
 
 test('it gives a live stream that resumes from the old last sequence the reset as its next record', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
   const reset = await runTestReset(ctx);
 
   const connection = await reset
-    .connect(ctx.token)
+    .connect(api.token)
     .records.follow({ afterSequence: reset.lastSequence, thread: 'conversation' });
 
   const next = await connection.next();
@@ -1189,10 +1223,11 @@ test('it gives a live stream that resumes from the old last sequence the reset a
 
 test('it starts the next turn after a reset with no history', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Fennel-reply-8WD' }, { text: 'Hello again.' });
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Kettle-message-3VQ',
@@ -1205,7 +1240,7 @@ test('it starts the next turn after a reset with no history', async () => {
 
   const reset = await runTestReset(ctx);
 
-  await reset.connect(ctx.token).conversation.send({
+  await reset.connect(api.token).conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Lantern-message-6HN',

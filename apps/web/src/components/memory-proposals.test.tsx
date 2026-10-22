@@ -10,16 +10,12 @@ import { render } from '../test-utils/render';
 import { MemoryProposals } from './memory-proposals';
 import { RecordItem } from './record-item';
 
-async function setupTest() {
-  const user = userEvent.setup();
-
-  const session = await createDeviceSession();
-
-  return { user, session };
+function setupTest() {
+  return { user: userEvent.setup() };
 }
 
 test('it lists a pending proposal with why it waits for review, its quote inside its message, and when it lapses', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.memoryProposals.create({
     evidence: {
@@ -52,7 +48,7 @@ test('it lists a pending proposal with why it waits for review, its quote inside
 });
 
 test('it marks a self-note proposal with a self-note badge and why it waits for review', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.memoryProposals.create({
     subject: 'self',
@@ -71,7 +67,7 @@ test('it marks a self-note proposal with a self-note badge and why it waits for 
 });
 
 test('it shows the photo a proposal comes from beside its text', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const photo = await store.records.create({
     kind: 'owner_message',
@@ -99,7 +95,7 @@ test('it shows the photo a proposal comes from beside its text', async () => {
 });
 
 test("it shows a proposal's photo as unavailable once you forget the photo's message", async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const photo = await store.records.create({
     kind: 'owner_message',
@@ -130,7 +126,9 @@ test("it shows a proposal's photo as unavailable once you forget the photo's mes
 });
 
 test("it shows a proposal's photo as unavailable once you forget its message after the page showed the photo", async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const photo = await store.records.create({
     kind: 'owner_message',
@@ -165,7 +163,9 @@ test("it shows a proposal's photo as unavailable once you forget its message aft
 });
 
 test('it approves 3 selected proposals in one action, each with its own approval record', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  const session = await createDeviceSession();
 
   const proposals = await Promise.all(
     ['Keeps bees on the roof', 'Cycles to work on Mondays', 'Reads crime novels'].map((text) =>
@@ -187,14 +187,16 @@ test('it approves 3 selected proposals in one action, each with its own approval
   expect(records.map((record) => record.answer)).toIncludeSameMembers(
     proposals.map((proposal) => ({
       answer: 'approved',
-      identityID: ctx.session.sessionID,
+      identityID: session.sessionID,
       proposalID: proposal.proposalID,
     })),
   );
 });
 
 test('it approves each selected proposal with the text you edited, and the rest as proposed', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const [edited, kept] = await Promise.all([
     store.memoryProposals.create({ text: 'Keeps bes on the roof' }),
@@ -227,7 +229,9 @@ test('it approves each selected proposal with the text you edited, and the rest 
 });
 
 test('it approves one proposal with your edited text', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  const session = await createDeviceSession();
   const proposal = await store.memoryProposals.create({ text: 'Keeps bes on the roof' });
 
   const rendered = render(<MemoryProposals />);
@@ -241,12 +245,14 @@ test('it approves one proposal with your edited text', async () => {
   await rendered.findByText('No proposal waits for you.');
 
   expect(store.records.all().map((record) => record.answer)).toStrictEqual([
-    { answer: 'edited', identityID: ctx.session.sessionID, proposalID: proposal.proposalID },
+    { answer: 'edited', identityID: session.sessionID, proposalID: proposal.proposalID },
   ]);
 });
 
 test('it rejects one proposal with your reason', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  const session = await createDeviceSession();
   const proposal = await store.memoryProposals.create({ text: 'Keeps bees on the roof' });
 
   const rendered = render(<MemoryProposals />);
@@ -269,7 +275,7 @@ test('it rejects one proposal with your reason', async () => {
     {
       answer: {
         answer: 'rejected',
-        identityID: ctx.session.sessionID,
+        identityID: session.sessionID,
         proposalID: proposal.proposalID,
         reason: 'the bees were a neighbour',
       },
@@ -279,7 +285,9 @@ test('it rejects one proposal with your reason', async () => {
 });
 
 test('it rejects every selected proposal with one reason, each with its own rejection record', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  const session = await createDeviceSession();
   const first = await store.memoryProposals.create({ text: 'Keeps bees on the roof' });
   const second = await store.memoryProposals.create({ text: 'Cycles to work on Mondays' });
 
@@ -299,13 +307,13 @@ test('it rejects every selected proposal with one reason, each with its own reje
   expect(store.records.all().map((record) => record.answer)).toIncludeSameMembers([
     {
       answer: 'rejected',
-      identityID: ctx.session.sessionID,
+      identityID: session.sessionID,
       proposalID: first.proposalID,
       reason: 'both were about a guest',
     },
     {
       answer: 'rejected',
-      identityID: ctx.session.sessionID,
+      identityID: session.sessionID,
       proposalID: second.proposalID,
       reason: 'both were about a guest',
     },
@@ -313,7 +321,10 @@ test('it rejects every selected proposal with one reason, each with its own reje
 });
 
 test('it shows an approval of a proposal that lapsed after the list loaded as stale, and writes no record', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
   const proposal = await store.memoryProposals.create({ text: 'Keeps bees on the roof' });
 
   const rendered = render(<MemoryProposals />);
@@ -338,7 +349,9 @@ test('it shows an approval of a proposal that lapsed after the list loaded as st
 });
 
 test('it holds an approval that an active item states, then adds it as a new item when you choose', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ versions: [{ text: 'Keeps bees on the roof' }] });
 
@@ -365,7 +378,10 @@ test('it holds an approval that an active item states, then adds it as a new ite
 });
 
 test('it revises the item that already says it when you choose', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
   const item = await store.memoryItems.create({ versions: [{ text: 'Keeps bees on the roof' }] });
 
   await store.memoryProposals.create({ text: 'keeps bees on the roof' });
@@ -389,7 +405,9 @@ test('it revises the item that already says it when you choose', async () => {
 });
 
 test('it shows a revision of an item that changed after the match as stale', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const [item] = await Promise.all([
     store.memoryItems.create({ versions: [{ text: 'Keeps bees on the roof' }] }),

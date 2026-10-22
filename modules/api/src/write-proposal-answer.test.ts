@@ -38,16 +38,15 @@ async function setupTest() {
 
   onTestFinished(() => memory.stop());
 
-  const laptop = await createDeviceSession(api.context, 'laptop');
-
-  return { ...api, memory, laptop };
+  return { ...api, memory };
 }
 
 test('it approves the proposal and keeps its outcome with it', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
   const proposal = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
 
-  const outcome = await writeProposalAnswer(ctx.context, ctx.laptop.caller, {
+  const outcome = await writeProposalAnswer(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.approveProposals',
     proposalID: proposal.proposalID,
@@ -57,7 +56,7 @@ test('it approves the proposal and keeps its outcome with it', async () => {
       await ctx.memory.proposals.approve({
         proposalID: proposal.proposalID,
         actionHash: proposal.actionHash,
-        identityID: ctx.laptop.caller.identityID,
+        identityID: laptop.caller.identityID,
         writeInTransaction,
       });
 
@@ -77,7 +76,7 @@ test('it approves the proposal and keeps its outcome with it', async () => {
   expect(actions).toStrictEqual([
     {
       procedure: 'memory.approveProposals',
-      identity_id: ctx.laptop.caller.identityID,
+      identity_id: laptop.caller.identityID,
       result: JSON.stringify({ proposalID: proposal.proposalID, status: 'applied' }),
     },
   ]);
@@ -85,6 +84,7 @@ test('it approves the proposal and keeps its outcome with it', async () => {
 
 test('it answers a retry with its first outcome without answering again', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
   const proposal = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
 
   const action = {
@@ -97,7 +97,7 @@ test('it answers a retry with its first outcome without answering again', async 
       await ctx.memory.proposals.reject({
         proposalID: proposal.proposalID,
         actionHash: proposal.actionHash,
-        identityID: ctx.laptop.caller.identityID,
+        identityID: laptop.caller.identityID,
         writeInTransaction,
       });
 
@@ -105,19 +105,20 @@ test('it answers a retry with its first outcome without answering again', async 
     },
   };
 
-  await writeProposalAnswer(ctx.context, ctx.laptop.caller, action);
+  await writeProposalAnswer(ctx.context, laptop.caller, action);
 
-  const retried = await writeProposalAnswer(ctx.context, ctx.laptop.caller, action);
+  const retried = await writeProposalAnswer(ctx.context, laptop.caller, action);
 
   expect(retried).toStrictEqual({ proposalID: proposal.proposalID, status: 'rejected' });
 });
 
 test('it refuses an ID that another action used, and answers nothing', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
   const first = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
   const second = await createProposal(ctx.memory, { text: 'Cycles to work' });
 
-  await writeProposalAnswer(ctx.context, ctx.laptop.caller, {
+  await writeProposalAnswer(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.rejectProposals',
     proposalID: first.proposalID,
@@ -127,7 +128,7 @@ test('it refuses an ID that another action used, and answers nothing', async () 
       await ctx.memory.proposals.reject({
         proposalID: first.proposalID,
         actionHash: first.actionHash,
-        identityID: ctx.laptop.caller.identityID,
+        identityID: laptop.caller.identityID,
         writeInTransaction,
       });
 
@@ -135,7 +136,7 @@ test('it refuses an ID that another action used, and answers nothing', async () 
     },
   });
 
-  const outcome = await writeProposalAnswer(ctx.context, ctx.laptop.caller, {
+  const outcome = await writeProposalAnswer(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.rejectProposals',
     proposalID: second.proposalID,
@@ -145,7 +146,7 @@ test('it refuses an ID that another action used, and answers nothing', async () 
       await ctx.memory.proposals.reject({
         proposalID: second.proposalID,
         actionHash: second.actionHash,
-        identityID: ctx.laptop.caller.identityID,
+        identityID: laptop.caller.identityID,
         writeInTransaction,
       });
 
@@ -166,14 +167,15 @@ test('it refuses an ID that another action used, and answers nothing', async () 
 
 test('it answers nothing for a session revoked after the call resolved it', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
   const proposal = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
 
-  await writeSessionRevocation(ctx.context, ctx.laptop.caller, {
+  await writeSessionRevocation(ctx.context, laptop.caller, {
     clientActionID: '9a3e6c21-4b7d-4f8a-b2c5-1d0e7f9a6b34',
-    sessionID: ctx.laptop.sessionID,
+    sessionID: laptop.sessionID,
   });
 
-  const outcome = await writeProposalAnswer(ctx.context, ctx.laptop.caller, {
+  const outcome = await writeProposalAnswer(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.rejectProposals',
     proposalID: proposal.proposalID,
@@ -183,7 +185,7 @@ test('it answers nothing for a session revoked after the call resolved it', asyn
       await ctx.memory.proposals.reject({
         proposalID: proposal.proposalID,
         actionHash: proposal.actionHash,
-        identityID: ctx.laptop.caller.identityID,
+        identityID: laptop.caller.identityID,
         writeInTransaction,
       });
 
@@ -199,11 +201,12 @@ test('it answers nothing for a session revoked after the call resolved it', asyn
 
 test('it answers a proposal past its lapse time as stale, and keeps no result', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
   const proposal = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
 
   ctx.clock.advance(proposal.lapseAt - ctx.clock.now());
 
-  const outcome = await writeProposalAnswer(ctx.context, ctx.laptop.caller, {
+  const outcome = await writeProposalAnswer(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.rejectProposals',
     proposalID: proposal.proposalID,
@@ -213,7 +216,7 @@ test('it answers a proposal past its lapse time as stale, and keeps no result', 
       await ctx.memory.proposals.reject({
         proposalID: proposal.proposalID,
         actionHash: proposal.actionHash,
-        identityID: ctx.laptop.caller.identityID,
+        identityID: laptop.caller.identityID,
         writeInTransaction,
       });
 
@@ -248,8 +251,9 @@ test.each([
   ['WRONG_STATE', { status: 'refused', code: 'WRONG_STATE' }],
 ] as const)('it answers a refusal coded %s as its outcome', async (code, expected) => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
 
-  const outcome = await writeProposalAnswer(ctx.context, ctx.laptop.caller, {
+  const outcome = await writeProposalAnswer(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.approveProposals',
     proposalID: 'proposal-a',
@@ -263,6 +267,7 @@ test.each([
 
 test('it answers a proposal already answered as stale', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
   const proposal = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
 
   await ctx.memory.proposals.reject({
@@ -271,7 +276,7 @@ test('it answers a proposal already answered as stale', async () => {
     identityID: 'host',
   });
 
-  const outcome = await writeProposalAnswer(ctx.context, ctx.laptop.caller, {
+  const outcome = await writeProposalAnswer(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.approveProposals',
     proposalID: proposal.proposalID,
@@ -281,7 +286,7 @@ test('it answers a proposal already answered as stale', async () => {
       await ctx.memory.proposals.approve({
         proposalID: proposal.proposalID,
         actionHash: proposal.actionHash,
-        identityID: ctx.laptop.caller.identityID,
+        identityID: laptop.caller.identityID,
         writeInTransaction,
       });
 
@@ -298,8 +303,9 @@ test('it answers a proposal already answered as stale', async () => {
 
 test('it throws an error the store gives no known code for', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
 
-  const answered = writeProposalAnswer(ctx.context, ctx.laptop.caller, {
+  const answered = writeProposalAnswer(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.approveProposals',
     proposalID: 'proposal-a',
@@ -315,6 +321,7 @@ test('it throws an error the store gives no known code for', async () => {
 
 test('it answers 2 overlapping calls with one ID with the outcome the first one committed', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
   const proposal = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
 
   const action = {
@@ -327,7 +334,7 @@ test('it answers 2 overlapping calls with one ID with the outcome the first one 
       await ctx.memory.proposals.approve({
         proposalID: proposal.proposalID,
         actionHash: proposal.actionHash,
-        identityID: ctx.laptop.caller.identityID,
+        identityID: laptop.caller.identityID,
         writeInTransaction,
       });
 
@@ -336,8 +343,8 @@ test('it answers 2 overlapping calls with one ID with the outcome the first one 
   };
 
   const outcomes = await Promise.all([
-    writeProposalAnswer(ctx.context, ctx.laptop.caller, action),
-    writeProposalAnswer(ctx.context, ctx.laptop.caller, action),
+    writeProposalAnswer(ctx.context, laptop.caller, action),
+    writeProposalAnswer(ctx.context, laptop.caller, action),
   ]);
 
   expect(outcomes).toStrictEqual([

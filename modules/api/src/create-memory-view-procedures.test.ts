@@ -5,6 +5,7 @@ import {
   findNoAllowRule,
   startMemoryStore,
 } from '@heynixie/memory';
+import { createConversationTask } from '@heynixie/tasks';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
@@ -226,6 +227,9 @@ test('#memory.readPinnedCore reads the pinned items with the core size against i
 
 test("#memory.readItem reads a version's quote inside the message it came from", async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const client = buildTestClient(ctx.url, laptop.token);

@@ -7,13 +7,14 @@ import { startTestNixie } from './start-test-nixie';
 async function setupTest() {
   const nixie = await startTestNixie();
 
-  return { nixie, ...(await createTestClient(nixie)) };
+  return { nixie };
 }
 
 test('it approves each text the turn proposed as an active item of yours, in the order given', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx.nixie);
 
-  const items = await createApprovedItems(ctx.nixie, ctx.client, [
+  const items = await createApprovedItems(ctx.nixie, api.client, [
     'Allergic to hazelnuts',
     'Prefers window seats on trains',
   ]);

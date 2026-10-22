@@ -7,16 +7,16 @@ import { createDeviceSession } from './create-device-session';
 import { render } from './render';
 import { runMemoryForget } from './run-memory-forget';
 
-async function setupTest() {
+function setupTest() {
   const user = userEvent.setup();
-
-  await createDeviceSession();
 
   return { user };
 }
 
 test('it forgets the item in the row once the preview has read it', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Keeps bees' }] });
 

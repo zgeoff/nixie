@@ -10,16 +10,16 @@ import { writeUnknownOutcomes } from './write-unknown-outcomes';
 
 async function setupTest() {
   const actions = await startTestActions();
-  const step = await createTestStep(actions.context);
 
-  return { ...actions, step };
+  return { ...actions };
 }
 
 test('it marks an action whose attempt record has no result unknown', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
@@ -56,9 +56,10 @@ test('it marks an action whose attempt record has no result unknown', async () =
 
 test('it writes the unknown outcome to the task inbox', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
@@ -86,16 +87,17 @@ test('it writes the unknown outcome to the task inbox', async () => {
     .execute();
 
   expect(before).toStrictEqual([]);
-  expect(records).toStrictEqual([{ kind: 'action.outcome', thread: ctx.step.lease.workID }]);
+  expect(records).toStrictEqual([{ kind: 'action.outcome', thread: step.lease.workID }]);
 });
 
 test('it runs as recovery step 3, between the interrupted steps and the late timers', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const reached: string[] = [];
 
   await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
@@ -131,9 +133,10 @@ test('it runs as recovery step 3, between the interrupted steps and the late tim
 
 test('it frees the step and the action leases through recovery', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
@@ -167,9 +170,10 @@ test('it frees the step and the action leases through recovery', async () => {
 
 test('it readies the task through recovery', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
@@ -203,9 +207,10 @@ test('it readies the task through recovery', async () => {
 
 test('it leaves an action with no open attempt as it was', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },

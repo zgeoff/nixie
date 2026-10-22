@@ -40,15 +40,12 @@ async function setupTest() {
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
 
-  const step = await createTestStep(context);
-
   const log = mock(() => {});
   const actions = buildActions(context, log);
 
   return {
     context,
     db: writer.db.$extendTables<ActionsTables>(),
-    step,
     log,
     connectors: actions.connectors,
     runStep: actions.trackSteps(
@@ -59,17 +56,18 @@ async function setupTest() {
 
 test('it runs the queued action through its connector', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const inbox = await writeInboxRecords(ctx.context, [
     {
       kind: 'task.wake',
       definitions: { snapshotHash: 'sha256:test' },
-      thread: ctx.step.taskID,
+      thread: step.taskID,
       payload: { at: 1_000_000 },
     },
   ]);
 
-  await ctx.runStep({ ...ctx.step, inbox });
+  await ctx.runStep({ ...step, inbox });
 
   await runTestAttempt(ctx.context, ctx.connectors);
 

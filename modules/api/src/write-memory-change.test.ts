@@ -37,20 +37,19 @@ async function setupTest() {
 
   onTestFinished(() => memory.stop());
 
-  const laptop = await createDeviceSession(api.context, 'laptop');
-
-  return { ...api, memory, laptop };
+  return { ...api, memory };
 }
 
 test('it makes the change and keeps its result with it', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const item = await ctx.memory.remember({
     text: 'Keeps a spare key with the neighbour',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const outcome = await writeMemoryChange(ctx.context, ctx.laptop.caller, {
+  const outcome = await writeMemoryChange(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.retire',
     input: { itemID: item.itemID, version: 1 },
@@ -89,6 +88,7 @@ test('it makes the change and keeps its result with it', async () => {
 
 test('it answers a retry as applied without running the change again', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const item = await ctx.memory.remember({
     text: 'Keeps a spare key with the neighbour',
@@ -114,9 +114,9 @@ test('it answers a retry as applied without running the change again', async () 
       }),
   };
 
-  await writeMemoryChange(ctx.context, ctx.laptop.caller, action);
+  await writeMemoryChange(ctx.context, laptop.caller, action);
 
-  const retried = await writeMemoryChange(ctx.context, ctx.laptop.caller, action);
+  const retried = await writeMemoryChange(ctx.context, laptop.caller, action);
   const history = await ctx.memory.readHistory(item.itemID);
 
   expect(retried).toBe('applied');
@@ -125,6 +125,7 @@ test('it answers a retry as applied without running the change again', async () 
 
 test('it answers an ID that another action used as reused, and changes nothing', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const first = await ctx.memory.remember({
     text: 'Keeps a spare key with the neighbour',
@@ -136,7 +137,7 @@ test('it answers an ID that another action used as reused, and changes nothing',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  await writeMemoryChange(ctx.context, ctx.laptop.caller, {
+  await writeMemoryChange(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.retire',
     input: { itemID: first.itemID, version: 1 },
@@ -155,7 +156,7 @@ test('it answers an ID that another action used as reused, and changes nothing',
       }),
   });
 
-  const outcome = await writeMemoryChange(ctx.context, ctx.laptop.caller, {
+  const outcome = await writeMemoryChange(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.retire',
     input: { itemID: second.itemID, version: 1 },
@@ -182,18 +183,19 @@ test('it answers an ID that another action used as reused, and changes nothing',
 
 test('it refuses a change from a session revoked after the call resolved it', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const item = await ctx.memory.remember({
     text: 'Keeps a spare key with the neighbour',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  await writeSessionRevocation(ctx.context, ctx.laptop.caller, {
+  await writeSessionRevocation(ctx.context, laptop.caller, {
     clientActionID: '9a3e6c21-4b7d-4f8a-b2c5-1d0e7f9a6b34',
-    sessionID: ctx.laptop.sessionID,
+    sessionID: laptop.sessionID,
   });
 
-  const outcome = await writeMemoryChange(ctx.context, ctx.laptop.caller, {
+  const outcome = await writeMemoryChange(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.retire',
     input: { itemID: item.itemID, version: 1 },
@@ -220,13 +222,14 @@ test('it refuses a change from a session revoked after the call resolved it', as
 
 test('it keeps no result when the change fails', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const item = await ctx.memory.remember({
     text: 'Keeps a spare key with the neighbour',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const change = writeMemoryChange(ctx.context, ctx.laptop.caller, {
+  const change = writeMemoryChange(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     procedure: 'memory.restore',
     input: { itemID: item.itemID, version: 1 },

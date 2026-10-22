@@ -34,13 +34,6 @@ async function setupTest() {
     copyDir: directory,
   });
 
-  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(db);
-
-  await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
-    updated_sequence, short_id) values
-    ('3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', 1, 'active', 0, 1, 1, 'b7kq2m9xza')`.execute(db);
-
   return { db };
 }
 
@@ -50,6 +43,13 @@ test('it moves the schema to version 16', () => {
 
 test('it gives every existing item the fact kind, and runs again without a change', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
+
+  await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
+    updated_sequence, short_id) values
+    ('3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', 1, 'active', 0, 1, 1, 'b7kq2m9xza')`.execute(ctx.db);
 
   await ctx.db.transaction().execute((tx) => memoryKindsMigration.up(tx));
   await ctx.db.transaction().execute((tx) => memoryKindsMigration.up(tx));
@@ -63,6 +63,13 @@ test('it gives every existing item the fact kind, and runs again without a chang
 
 test('it adds the kind to memory proposals', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
+
+  await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
+    updated_sequence, short_id) values
+    ('3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', 1, 'active', 0, 1, 1, 'b7kq2m9xza')`.execute(ctx.db);
 
   await ctx.db.transaction().execute((tx) => memoryKindsMigration.up(tx));
 

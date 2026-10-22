@@ -15,8 +15,6 @@ async function setupTest() {
   const clock = buildTestClock(1_000_000);
   const context = { log: memory.log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
 
-  const lease = await claimWriterLease(context);
-
   const parts = {
     context,
     store: memory.store,
@@ -28,6 +26,13 @@ async function setupTest() {
     assistantName: null,
   };
 
+  return { memory, clock, parts };
+}
+
+test('it merges a conversation write into the pending proposal the writer made of the same text, and tells the conversation it merged', async () => {
+  const ctx = await setupTest();
+  const lease = await claimWriterLease(ctx.parts.context);
+
   const input = {
     taskID: 'memory-writer',
     stepKey: 'step-1',
@@ -37,11 +42,6 @@ async function setupTest() {
     signal: new AbortController().signal,
   };
 
-  return { memory, clock, parts, input };
-}
-
-test('it merges a conversation write into the pending proposal the writer made of the same text, and tells the conversation it merged', async () => {
-  const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I keep bees on the allotment.']);
 
   await runWriterBatch(
@@ -56,7 +56,7 @@ test('it merges a conversation write into the pending proposal the writer made o
         itemID: null,
       }),
     },
-    { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+    { input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
 
   const [proposed] = await ctx.memory.store.proposals.listPending();
@@ -91,6 +91,16 @@ test('it merges a conversation write into the pending proposal the writer made o
 
 test('it merges a writer proposal into the pending proposal the conversation made of the same text', async () => {
   const ctx = await setupTest();
+  const lease = await claimWriterLease(ctx.parts.context);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
 
   const first = await ctx.memory.store.writes.remember({
     text: 'The owner keeps bees.',
@@ -111,7 +121,7 @@ test('it merges a writer proposal into the pending proposal the conversation mad
         itemID: null,
       }),
     },
-    { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+    { input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
 
   const pending = await ctx.memory.store.proposals.listPending();
@@ -130,6 +140,17 @@ test('it merges a writer proposal into the pending proposal the conversation mad
 
 test('it makes one proposal of 2 writes of the same text in one batch', async () => {
   const ctx = await setupTest();
+  const lease = await claimWriterLease(ctx.parts.context);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I keep bees.', 'Yes, I keep bees.']);
 
   const session = createStubWriterSession({
@@ -170,7 +191,7 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
 
   await runWriterBatch(
     { ...ctx.parts, ...session },
-    { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+    { input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
 
   const pending = await ctx.memory.store.proposals.listPending();

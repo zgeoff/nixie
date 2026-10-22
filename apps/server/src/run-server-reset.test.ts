@@ -17,15 +17,14 @@ async function setupTest() {
     readSessionCleanup: () => null,
   };
 
-  const seeded = await runTestSeed(context.log, server.dataDir);
-
-  await createConversationTask(context);
-
-  return { ...server, context, seeded };
+  return { ...server, context };
 }
 
 test('it starts the new log with the definitions in force, then the reset on the conversation thread', async () => {
   const ctx = await setupTest();
+  const seeded = await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  await createConversationTask(ctx.context);
 
   await writeRecords(ctx.context.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
@@ -44,13 +43,13 @@ test('it starts the new log with the definitions in force, then the reset on the
       sequence: 4,
       kind: 'definitions_seeded',
       thread: null,
-      definitions: { snapshotHash: ctx.seeded.inForce?.snapshotHash },
+      definitions: { snapshotHash: seeded.inForce?.snapshotHash },
     },
     {
       sequence: 5,
       kind: 'log_reset',
       thread: 'conversation',
-      definitions: { snapshotHash: ctx.seeded.inForce?.snapshotHash },
+      definitions: { snapshotHash: seeded.inForce?.snapshotHash },
       payload: {
         resetAt: reset.resetAt.getTime(),
         lastSequence: 3,
@@ -64,6 +63,8 @@ test('it starts the new log with the definitions in force, then the reset on the
 
 test('it destroys every sandbox before it resets', async () => {
   const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
 
   const sandbox = await ctx.sandboxes.create(
     buildMockSandboxSpec({ kind: 'conversation', image: 'conversation', owner: 'conversation' }),
@@ -85,6 +86,9 @@ test('it destroys every sandbox before it resets', async () => {
 
 test('it removes nothing from the database or the key store when a sandbox destroy fails', async () => {
   const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+  await createConversationTask(ctx.context);
 
   await ctx.sandboxes.create(
     buildMockSandboxSpec({ kind: 'conversation', image: 'conversation', owner: 'conversation' }),
@@ -154,6 +158,9 @@ test('it refuses a reset before any definitions are in force, and stops no work'
 test('it commits nothing of a turn still running at the end of the stop grace', async () => {
   const ctx = await setupTest();
 
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+  await createConversationTask(ctx.context);
+
   await writeRecords(ctx.context.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
   ]);
@@ -201,6 +208,8 @@ test('it commits nothing of a turn still running at the end of the stop grace', 
 
 test('it folds the reset on the conversation thread, which the conversation task the start creates again takes up', async () => {
   const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
 
   const reset = await runServerReset({
     context: ctx.context,

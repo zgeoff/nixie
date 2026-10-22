@@ -10,7 +10,7 @@ import { render } from '../test-utils/render';
 import { MemoryView } from './memory-view';
 
 // happy-dom follows a clicked download link as a page load, so the test records each click instead.
-async function setupTest() {
+function setupTest() {
   const user = userEvent.setup();
   const picker = buildStubSaveFilePicker();
 
@@ -35,13 +35,13 @@ async function setupTest() {
     document.removeEventListener('click', onDocumentClick, { capture: true });
   });
 
-  await createDeviceSession();
-
   return { user, picker, downloads };
 }
 
 test('it saves every item to the file the user picks, with a forgotten item as only its ID and time', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const active = await store.memoryItems.create({
     versions: [{ text: 'Rents allotment plot 14' }],
@@ -82,7 +82,9 @@ test('it saves every item to the file the user picks, with a forgotten item as o
 });
 
 test('it exports nothing when the user closes the save picker', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   Object.assign(globalThis, {
     showSaveFilePicker: () =>
@@ -104,7 +106,9 @@ test('it exports nothing when the user closes the save picker', async () => {
 });
 
 test('it downloads the file in a browser with no save picker', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   Reflect.deleteProperty(globalThis, 'showSaveFilePicker');
 
@@ -126,7 +130,9 @@ test('it downloads the file in a browser with no save picker', async () => {
 });
 
 test('it tells the user an export that did not finish, and tries again as the same action', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/memory/export', () => HttpResponse.error(), { once: true }));
 
@@ -146,7 +152,9 @@ test('it tells the user an export that did not finish, and tries again as the sa
 });
 
 test('it aborts the file and tells the user when the stream ends before the export completes', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const header =
     '{"header":{"schemaVersion":2,"exportedAt":"2026-10-14T08:00:00.000Z","snapshotHash":"sha256:mock"},"items":[';

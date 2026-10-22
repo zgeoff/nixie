@@ -9,10 +9,15 @@ async function setupTest() {
 
   const sandboxes = buildStubSandboxes();
 
-  const sandbox = await sandboxes.adapter.create(buildMockSandboxSpec({ kind: 'worker' }));
+  return { log, sandboxes };
+}
+
+test('it summarizes a task session and returns the summary record through its last turn end', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.sandboxes.adapter.create(buildMockSandboxSpec({ kind: 'worker' }));
 
   const run = {
-    context: { log: log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
+    context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
     turnProfile: {
       model: 'claude-test',
@@ -26,18 +31,12 @@ async function setupTest() {
     command: { argv: ['guest'], env: {} },
   } as const;
 
-  return { log, sandboxes, run };
-}
-
-test('it summarizes a task session and returns the summary record through its last turn end', async () => {
-  const ctx = await setupTest();
-
   await writeRecords(ctx.log.log, [
     { kind: 'model.turn_ended', definitions: { snapshotHash: 'sha256:test' }, thread: 'task-7' },
   ]);
 
   const outcome = await runSessionCompaction(
-    { ...ctx.run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
+    { ...run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
     {
       taskID: 'task-7',
       resume: {
@@ -79,9 +78,25 @@ test('it summarizes a task session and returns the summary record through its la
 
 test('it sends the summary call the task profile, the system prompt and an instruction stamped with the time', async () => {
   const ctx = await setupTest();
+  const sandbox = await ctx.sandboxes.adapter.create(buildMockSandboxSpec({ kind: 'worker' }));
+
+  const run = {
+    context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
+    model: { model: 'claude-test', profile: 'task-direct' },
+    turnProfile: {
+      model: 'claude-test',
+      baseURL: 'https://models.example.test',
+      effort: 'medium',
+      authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
+    },
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+  } as const;
 
   await runSessionCompaction(
-    { ...ctx.run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
+    { ...run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
     {
       taskID: 'task-7',
       resume: {
@@ -101,7 +116,7 @@ test('it sends the summary call the task profile, the system prompt and an instr
   expect(ctx.sandboxes.summaries).toStrictEqual([
     {
       type: 'summarize',
-      profile: ctx.run.turnProfile,
+      profile: run.turnProfile,
       resume: {
         sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
         messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
@@ -114,6 +129,22 @@ test('it sends the summary call the task profile, the system prompt and an instr
 
 test('it asks once, on the summary fork, to cut a summary past the cap', async () => {
   const ctx = await setupTest();
+  const sandbox = await ctx.sandboxes.adapter.create(buildMockSandboxSpec({ kind: 'worker' }));
+
+  const run = {
+    context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
+    model: { model: 'claude-test', profile: 'task-direct' },
+    turnProfile: {
+      model: 'claude-test',
+      baseURL: 'https://models.example.test',
+      effort: 'medium',
+      authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
+    },
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+  } as const;
 
   const long = 'The ferry to the island leaves at nine, and the hostel holds the bags. '.repeat(40);
 
@@ -130,7 +161,7 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
   ]);
 
   const outcome = await runSessionCompaction(
-    { ...ctx.run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 100 } },
+    { ...run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 100 } },
     {
       taskID: 'task-7',
       resume: {
@@ -160,13 +191,29 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
 
 test('it returns a failure record with the count in a row when the summary call fails', async () => {
   const ctx = await setupTest();
+  const sandbox = await ctx.sandboxes.adapter.create(buildMockSandboxSpec({ kind: 'worker' }));
+
+  const run = {
+    context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
+    model: { model: 'claude-test', profile: 'task-direct' },
+    turnProfile: {
+      model: 'claude-test',
+      baseURL: 'https://models.example.test',
+      effort: 'medium',
+      authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
+    },
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+  } as const;
 
   ctx.sandboxes.setSummaryScript(() => [
     { type: 'failed', reason: 'error', detail: 'the summary call ended with no summary' },
   ]);
 
   const outcome = await runSessionCompaction(
-    { ...ctx.run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
+    { ...run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
     {
       taskID: 'task-7',
       resume: {
@@ -204,9 +251,25 @@ test('it returns a failure record with the count in a row when the summary call 
 
 test('it throws the abort reason instead of a failure record when the signal aborts', async () => {
   const ctx = await setupTest();
+  const sandbox = await ctx.sandboxes.adapter.create(buildMockSandboxSpec({ kind: 'worker' }));
+
+  const run = {
+    context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
+    model: { model: 'claude-test', profile: 'task-direct' },
+    turnProfile: {
+      model: 'claude-test',
+      baseURL: 'https://models.example.test',
+      effort: 'medium',
+      authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
+    },
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+  } as const;
 
   const compaction = runSessionCompaction(
-    { ...ctx.run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
+    { ...run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
     {
       taskID: 'task-7',
       resume: {

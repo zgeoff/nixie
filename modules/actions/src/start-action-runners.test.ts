@@ -10,18 +10,18 @@ import type { ActionsTables } from './types';
 
 async function setupTest() {
   const actions = await startTestActions();
-  const step = await createTestStep(actions.context);
 
-  return { ...actions, db: actions.writer.db.$extendTables<ActionsTables>(), step };
+  return { ...actions, db: actions.writer.db.$extendTables<ActionsTables>() };
 }
 
 test('it retries a refusal that can clear on the schedule', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const attemptTimes: number[] = [];
 
   await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
@@ -59,9 +59,10 @@ test('it retries a refusal that can clear on the schedule', async () => {
 
 test('it fails a refusal that can clear on its fifth attempt', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   await createAllowedAction(ctx.context, {
-    step: ctx.step,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
@@ -97,6 +98,7 @@ test('it fails a refusal that can clear on its fifth attempt', async () => {
 
 test('it runs 4 actions at once by default', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
   const unanswered = Promise.withResolvers<ProviderResponse>();
 
@@ -107,7 +109,7 @@ test('it runs 4 actions at once by default', async () => {
   await Promise.all(
     ['sha256:1', 'sha256:2', 'sha256:3', 'sha256:4', 'sha256:5'].map((actionHash) =>
       createAllowedAction(ctx.context, {
-        step: ctx.step,
+        step,
         tool: 'test.send',
         actionHash,
         arguments: { to: 'team' },

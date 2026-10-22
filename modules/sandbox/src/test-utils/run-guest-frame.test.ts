@@ -14,21 +14,21 @@ async function setupTest() {
     countTokens: (text) => Math.ceil(text.length / 4),
   });
 
-  const sandbox = await stub.adapter.create(
-    buildMockSandboxSpec({ kind: 'conversation', owner: 'conversation' }),
-  );
-
-  return { stub, sandbox };
+  return { stub };
 }
 
 test('it returns every frame the guest answers with, in order, and the ended frame among them', async () => {
   const ctx = await setupTest();
 
+  const sandbox = await ctx.stub.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', owner: 'conversation' }),
+  );
+
   ctx.stub.addReplies({ text: 'APPLE' });
 
   const input = [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Say a fruit.' }];
 
-  const run = await runGuestFrame(ctx.sandbox, buildMockTurnFrame({ input }));
+  const run = await runGuestFrame(sandbox, buildMockTurnFrame({ input }));
 
   expect(run.frames).toMatchObject([
     { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000002'] },
@@ -44,9 +44,13 @@ test('it returns every frame the guest answers with, in order, and the ended fra
 test('it returns no ended frame for a guest that fails', async () => {
   const ctx = await setupTest();
 
+  const sandbox = await ctx.stub.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', owner: 'conversation' }),
+  );
+
   const resume = { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() };
 
-  const run = await runGuestFrame(ctx.sandbox, buildMockTurnFrame({ resume }));
+  const run = await runGuestFrame(sandbox, buildMockTurnFrame({ resume }));
 
   expect(run).toStrictEqual({
     frames: [
@@ -62,7 +66,12 @@ test('it returns no ended frame for a guest that fails', async () => {
 
 test('it starts the guest with the environment given', async () => {
   const ctx = await setupTest();
-  const run = await runGuestFrame(ctx.sandbox, buildMockTurnFrame(), {});
+
+  const sandbox = await ctx.stub.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', owner: 'conversation' }),
+  );
+
+  const run = await runGuestFrame(sandbox, buildMockTurnFrame(), {});
 
   expect(run.frames).toStrictEqual([
     { type: 'failed', reason: 'error', detail: 'the conversation guest needs HOME' },

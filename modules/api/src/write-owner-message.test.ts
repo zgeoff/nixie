@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords, removeRecordKey } from '@heynixie/log';
+import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
@@ -20,6 +21,9 @@ async function setupTest() {
 
 test('it writes your message into the conversation inbox', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const result = await writeOwnerMessage(ctx.context, laptop.caller, {
@@ -48,6 +52,9 @@ test('it writes your message into the conversation inbox', async () => {
 
 test('it writes a message once for the same client message ID', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const input = {
@@ -79,6 +86,9 @@ test('it writes a message once for the same client message ID', async () => {
 
 test('it refuses the same client message ID with a different text', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   await writeOwnerMessage(ctx.context, laptop.caller, {
@@ -100,6 +110,9 @@ test('it refuses the same client message ID with a different text', async () => 
 
 test('it answers a retry of a forgotten message by its thread alone', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const input = {
@@ -148,6 +161,9 @@ test('it refuses a message to a thread no task has', async () => {
 
 test('it refuses a message to a task that is done', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   await ctx.db
@@ -168,6 +184,9 @@ test('it refuses a message to a task that is done', async () => {
 
 test('it encrypts the spans with the text and keeps neither in plain text', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   await writeOwnerMessage(ctx.context, laptop.caller, {
@@ -217,6 +236,9 @@ test('it encrypts the spans with the text and keeps neither in plain text', asyn
 
 test('it labels the whole message unknown when its spans leave a gap', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   await writeOwnerMessage(ctx.context, laptop.caller, {
@@ -247,6 +269,9 @@ test('it labels the whole message unknown when its spans leave a gap', async () 
 
 test('it keeps on each message the label of the session it came from', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
   const phone = await createDeviceSession(ctx.context, 'phone');
 
@@ -297,6 +322,9 @@ test('it refuses a caller whose session was revoked after the call resolved it',
 
 test('it refuses a client message ID that another device used for the same text', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
   const phone = await createDeviceSession(ctx.context, 'phone');
 
@@ -316,6 +344,9 @@ test('it refuses a client message ID that another device used for the same text'
 
 test('it keeps the sending device time zone in the message payload', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const result = await writeOwnerMessage(ctx.context, laptop.caller, {
@@ -338,6 +369,9 @@ test('it keeps the sending device time zone in the message payload', async () =>
 
 test('it writes a message with a time zone the server does not know, and leaves the zone out', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const result = await writeOwnerMessage(ctx.context, laptop.caller, {
@@ -361,6 +395,9 @@ test('it writes a message with a time zone the server does not know, and leaves 
 
 test('it keeps when the device says you wrote the message in the message payload', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const result = await writeOwnerMessage(ctx.context, laptop.caller, {
@@ -383,6 +420,9 @@ test('it keeps when the device says you wrote the message in the message payload
 
 test('it writes a message whose written time does not parse, and leaves the time out', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const result = await writeOwnerMessage(ctx.context, laptop.caller, {
