@@ -18,8 +18,8 @@ export interface ProxyHandlerDeps {
 }
 
 export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => Promise<Response> {
-  // a count that failed to write leaves the store behind the spend, so every later request is
-  // refused until the proxy restarts on a store it can read
+  // a count that failed to write, or a reply lost before its usage arrived, leaves the store behind
+  // the spend, so every later request is refused until the proxy restarts
   let countFailed = false;
   let limitLogged = false;
 
@@ -67,7 +67,15 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       );
     }
 
-    const totals = countFailed ? null : await readTotals(deps);
+    if (countFailed) {
+      return renderAPIError(
+        503,
+        'api_error',
+        'the counting proxy lost the count of a reply, so it refuses every request until it restarts',
+      );
+    }
+
+    const totals = await readTotals(deps);
 
     if (totals === null) {
       return renderAPIError(
@@ -126,7 +134,18 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       );
     }
 
-    const text = await upstream.text();
+    const text = await upstream.text().catch((error: unknown) => {
+      deps.log('upstream.body_failed', toErrorFields(error), 'error');
+
+      return null;
+    });
+
+    // the model may have spent on a reply whose usage never arrived, so the count is behind
+    if (text === null) {
+      countFailed = true;
+
+      return renderAPIError(502, 'api_error', 'the counting proxy lost the reply of the model API');
+    }
 
     await count(target.route, parseReportedUsage(findBodyUsage(text)));
 
