@@ -71,7 +71,7 @@ test('it reports the summary with its own chain entry and the token counts of it
       },
     },
   ]);
-}, 30_000);
+});
 
 test('it sends the instruction after the session history, with no tools, and writes the summary on a fork', async () => {
   const ctx = await setupTest();
@@ -118,7 +118,7 @@ test('it sends the instruction after the session history, with no tools, and wri
     (frame: GuestFrame) =>
       frame.type === 'summarized' && frame.boundary.sessionID !== ended.boundary.sessionID,
   );
-}, 30_000);
+});
 
 test('it reports a failed call as a failure and never as a summary', async () => {
   const ctx = await setupTest();
@@ -147,7 +147,7 @@ test('it reports a failed call as a failure and never as a summary', async () =>
   expect(ctx.io.frames).toStrictEqual([
     { type: 'failed', reason: 'error', detail: expect.toStartWith('the summary call ended') },
   ]);
-}, 30_000);
+});
 
 test('it reports a session to resume that is not on the guest disk as missing', async () => {
   const ctx = await setupTest();
@@ -184,7 +184,7 @@ test('it reports a session to resume that is not on the guest disk as missing', 
       detail: 'No conversation found with session ID: 7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
     },
   ]);
-}, 30_000);
+});
 
 test('it keeps the session it forked from on the guest disk', async () => {
   const ctx = await setupTest();
@@ -213,4 +213,4 @@ test('it keeps the session it forked from on the guest disk', async () => {
   const files = await readdir(`${ctx.home}/.claude/projects`, { recursive: true });
 
   expect(files).toSatisfyAny((path: string) => path.endsWith(`/${ended.boundary.sessionID}.jsonl`));
-}, 30_000);
+});

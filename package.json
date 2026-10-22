@@ -90,7 +90,7 @@
     "postinstall": "bun run --cwd apps/web codegen",
     "prepare": "command -v git > /dev/null 2>&1 && lefthook install --force || true",
     "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md AGENTS.md ':(glob)docs/**/*.md' ':(glob)research/**/*.md' .claude/skills/project-code-style .claude/skills/project-docs-writing .claude/skills/project-testing && bash .claude/skills/skill-writing/scripts/check-skill.sh",
-    "test": "bun run models && bun test --parallel --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.browser.test.ts' && bun test --preload ./apps/web/src/test-utils/start-browser.ts .browser.test.ts",
+    "test": "bun run models && bun test --parallel --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.browser.test.ts' --path-ignore-patterns='**/*.sdk.test.ts' && bun test --preload ./apps/web/src/test-utils/start-browser.ts .browser.test.ts && bun test --parallel=1 --timeout=30000 .sdk.test.ts",
     "typecheck": "tsrs --noEmit && turbo run typecheck"
   },
   "devDependencies": {

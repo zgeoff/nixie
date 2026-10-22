@@ -108,11 +108,14 @@ pre-push:
     # the tests each pushed commit's changes select, so a push of one stack layer from
     # the top layer's worktree runs that layer's tests only. Each test file runs in its own
     # process, as in CI, so a file's own MSW server never meets the web client's; one worker
-    # at a time, because the host may have little memory
+    # at a time, because the host may have little memory. The ignore patterns repeat
+    # bunfig.toml's, because a pattern on the command line replaces that list; the
+    # Agent SDK suites run after, with the limit the root test script gives them
     - name: test
       use_stdin: true
       run: |
         commits=$(.lefthook/pushed-commits.sh) || exit 1
         for commit in $commits; do
-          bun test --parallel=1 --changed="origin/main...$commit" || exit 1
+          bun test --parallel=1 --changed="origin/main...$commit" --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.sdk.test.ts' || exit 1
+          bun test --parallel=1 --timeout=30000 --changed="origin/main...$commit" .sdk.test.ts || exit 1
         done

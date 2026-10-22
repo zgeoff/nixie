@@ -88,7 +88,7 @@ test('it gives every query() nixie tools alone, no settings, skills or SDK memor
       env: expect.toBeObject(),
     },
   ]);
-}, 30_000);
+});
 
 test('it gives every query() the profile base URL, model and effort in its env', async () => {
   const ctx = await setupTest();
@@ -121,7 +121,7 @@ test('it gives every query() the profile base URL, model and effort in its env',
       ENABLE_MCP_LARGE_OUTPUT_FILES: '0',
     },
   ]);
-}, 30_000);
+});
 
 test('it offers the model nixie tools alone, on the profile model, with the placeholder credential', async () => {
   const ctx = await setupTest();
@@ -144,7 +144,7 @@ test('it offers the model nixie tools alone, on the profile model, with the plac
       },
     },
   ]);
-}, 30_000);
+});
 
 test('it sends a message of /clear to the model as text, never as a CLI command', async () => {
   const ctx = await setupTest();
@@ -162,7 +162,7 @@ test('it sends a message of /clear to the model as text, never as a CLI command'
   const request = ctx.model.requests.findLast((candidate) => candidate.path === '/v1/messages');
 
   expect(request?.body?.messages).toPartiallyContain({ role: 'user', content: '/clear' });
-}, 30_000);
+});
 
 test('it stops the turn with no model output when nixie tool server stays unreachable', async () => {
   const ctx = await setupTest();
@@ -184,7 +184,7 @@ test('it stops the turn with no model output when nixie tool server stays unreac
   ]);
 
   expect(ctx.model.requests).toStrictEqual([]);
-}, 30_000);
+});
 
 test('it returns from a turn that ends at a result once the CLI process has exited', async () => {
   const ctx = await setupTest();
@@ -200,7 +200,7 @@ test('it returns from a turn that ends at a result once the CLI process has exit
   );
 
   expect(workDirs).not.toContain(join(ctx.home, 'conversation'));
-}, 30_000);
+});
 
 test('it returns from a turn that stops early once the CLI process has exited', async () => {
   const ctx = await setupTest();
@@ -218,7 +218,7 @@ test('it returns from a turn that stops early once the CLI process has exited', 
   );
 
   expect(workDirs).not.toContain(join(ctx.home, 'conversation'));
-}, 30_000);
+});
 
 test('it reports each inbox message the model read, then the turn end at the last chain entry', async () => {
   const ctx = await setupTest();
@@ -263,7 +263,7 @@ test('it reports each inbox message the model read, then the turn end at the las
       context: { size: 10, window: 200_000 },
     },
   ]);
-}, 30_000);
+});
 
 test('it reports the context of the last model call and the profile cap at the turn end', async () => {
   const ctx = await setupTest();
@@ -288,7 +288,7 @@ test('it reports the context of the last model call and the profile cap at the t
     usage: { inputTokens: 500, cacheReadTokens: 68_000, cacheWriteTokens: 6700 },
     context: { size: 41_000, window: 400_000 },
   });
-}, 30_000);
+});
 
 test('it carries the reasoning summary on the thinking frame, the thinking tokens on the turn end, and no signature on any frame', async () => {
   const ctx = await setupTest();
@@ -346,7 +346,7 @@ test('it carries the reasoning summary on the thinking frame, the thinking token
   ]);
 
   expect(JSON.stringify(ctx.frames)).not.toInclude('c2lnbmF0dXJlLWJsb2I');
-}, 30_000);
+});
 
 test('it keeps a tool-call turn working under the summarized display, with a summary on each reply that thought', async () => {
   const ctx = await setupTest();
@@ -404,7 +404,7 @@ test('it keeps a tool-call turn working under the summarized display, with a sum
 
   expect(ended.subtype).toBe('success');
   expect(ended.thinkingTokens).toBe(46);
-}, 30_000);
+});
 
 test('it keeps a resumed session working under the summarized display', async () => {
   const ctx = await setupTest();
@@ -448,7 +448,7 @@ test('it keeps a resumed session working under the summarized display', async ()
   expect(summaries).toStrictEqual(['I greet.', 'I recall the apple.']);
   expect(messages).toInclude('APPLE');
   expect(rerun.sessionID).not.toBe(first.sessionID);
-}, 30_000);
+});
 
 test('it marks the turn end as an error when the model API refuses the request', async () => {
   const ctx = await setupTest();
@@ -486,7 +486,7 @@ test('it marks the turn end as an error when the model API refuses the request',
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
   ]);
-}, 30_000);
+});
 
 test('it fails the turn with no assistant frame when the model API refuses the credential', async () => {
   const ctx = await setupTest();
@@ -504,7 +504,7 @@ test('it fails the turn with no assistant frame when the model API refuses the c
   expect(ctx.frames).toStrictEqual([
     { type: 'failed', reason: 'model_auth', detail: 'Invalid API key · Fix external API key' },
   ]);
-}, 30_000);
+});
 
 test('it fails the turn with no assistant frame when the model API refuses an OAuth credential for its organization', async () => {
   const ctx = await setupTest();
@@ -529,7 +529,7 @@ test('it fails the turn with no assistant frame when the model API refuses an OA
         'Your organization has disabled Claude subscription access for Claude Code · Use an Anthropic API key instead, or ask your admin to enable access',
     },
   ]);
-}, 30_000);
+});
 
 test('it ends the turn with the overflow reason when the model API refuses a prompt past its window', async () => {
   const ctx = await setupTest();
@@ -544,7 +544,7 @@ test('it ends the turn with the overflow reason when the model API refuses a pro
     isError: true,
     terminalReason: 'prompt_too_long',
   });
-}, 30_000);
+});
 
 test('it ends an overflowed turn at its last chain entry before the overflow message', async () => {
   const ctx = await setupTest();
@@ -588,7 +588,7 @@ test('it ends an overflowed turn at its last chain entry before the overflow mes
         .find((line) => line.includes(`"uuid":"${ended.boundary.messageID}"`)) ?? 'null',
     ),
   ).toMatchObject({ type: 'user', message: { content: [{ type: 'tool_result' }] } });
-}, 30_000);
+});
 
 test('it ends an overflowed turn at its resume point when the overflow is its first chain entry', async () => {
   const ctx = await setupTest();
@@ -622,7 +622,7 @@ test('it ends an overflowed turn at its resume point when the overflow is its fi
 
   expect(overflowed.terminalReason).toBe('prompt_too_long');
   expect(overflowed.boundary).toStrictEqual(first.boundary);
-}, 30_000);
+});
 
 test('it passes a message into the running turn at the next tool boundary and reports it read', async () => {
   const ctx = await setupTest();
@@ -665,7 +665,7 @@ test('it passes a message into the running turn at the next tool boundary and re
   ]);
 
   expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toInclude('Also buy eggs.');
-}, 30_000);
+});
 
 test('it fails the turn with the error its host message stream throws', async () => {
   const ctx = await setupTest();
@@ -681,7 +681,7 @@ test('it fails the turn with the error its host message stream throws', async ()
       messages: ctx.channel.readable,
     }),
   ).rejects.toThrow('a turn is already running');
-}, 30_000);
+});
 
 test('it fails the turn at once when the host message stream throws during a held tool call', async () => {
   const ctx = await setupTest();
@@ -708,7 +708,7 @@ test('it fails the turn at once when the host message stream throws during a hel
 
   void writer.abort(new Error('a turn is already running'));
   expect(turn).rejects.toThrow('a turn is already running');
-}, 30_000);
+});
 
 test('it resumes at a boundary on a new session that holds nothing after the boundary', async () => {
   const ctx = await setupTest();
@@ -745,7 +745,7 @@ test('it resumes at a boundary on a new session that holds nothing after the bou
   expect(messages).toInclude('APPLE');
   expect(messages).not.toInclude('BANANA');
   expect(rerun.sessionID).not.toBe(first.sessionID);
-}, 30_000);
+});
 
 test('it sends the system prompt of each turn on a resumed session, not the one the session began with', async () => {
   const ctx = await setupTest();
@@ -775,7 +775,7 @@ test('it sends the system prompt of each turn on a resumed session, not the one 
   const system = JSON.stringify(ctx.model.requests.at(-1)?.body?.system);
 
   expect(system).toInclude('Pinned: the spare key sits under the blue flowerpot.');
-}, 30_000);
+});
 
 test('it offers the model the changed form of a tool on the next turn of a resumed session', async () => {
   const ctx = await setupTest();
@@ -823,7 +823,7 @@ test('it offers the model the changed form of a tool on the next turn of a resum
       required: ['noteID'],
     },
   });
-}, 30_000);
+});
 
 test('it offers the model the listed form of a tool at the next step of a turn when the server sends no notice', async () => {
   const ctx = await setupTest();
@@ -865,7 +865,7 @@ test('it offers the model the listed form of a tool at the next step of a turn w
     description: 'Reads a note by its name.',
     input_schema: { type: 'object', properties: { name: { type: 'string' } } },
   });
-}, 30_000);
+});
 
 test('it offers the model the changed form of a tool at the next step of a turn once the CLI lists the tools after a notice', async () => {
   const ctx = await setupTest();
@@ -913,7 +913,7 @@ test('it offers the model the changed form of a tool at the next step of a turn 
       required: ['noteID'],
     },
   });
-}, 30_000);
+});
 
 test('it never compacts the session itself when a call reads past the profile window', async () => {
   const ctx = await setupTest();
@@ -941,7 +941,7 @@ test('it never compacts the session itself when a call reads past the profile wi
     { type: 'assistant', text: 'CHERRY' },
     { type: 'ended', context: { window: 100_000 } },
   ]);
-}, 30_000);
+});
 
 test('it reports a session to resume that is not on the guest disk as missing', async () => {
   const ctx = await setupTest();
@@ -964,7 +964,7 @@ test('it reports a session to resume that is not on the guest disk as missing', 
       detail: 'No conversation found with session ID: 7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
     },
   ]);
-}, 30_000);
+});
 
 test('it keeps only the session it resumes and the fork it writes on the guest disk', async () => {
   const ctx = await setupTest();
@@ -998,4 +998,4 @@ test('it keeps only the session it resumes and the fork it writes on the guest d
   expect(
     files.filter((path) => path.endsWith('.jsonl')).map((path) => basename(path)),
   ).toIncludeSameMembers([`${second.sessionID}.jsonl`, `${third.sessionID}.jsonl`]);
-}, 30_000);
+});

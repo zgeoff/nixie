@@ -59,4 +59,4 @@ test('it serves its tools as the nixie server and records each call', async () =
   expect(callsWhileHeld).toStrictEqual(['note_wait']);
   expect(tools.calls).toStrictEqual(['note_wait', 'note_read']);
   expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toInclude('the note a');
-}, 30_000);
+});
