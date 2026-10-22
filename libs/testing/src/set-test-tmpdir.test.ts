@@ -41,6 +41,32 @@ test.skipIf(!hasMemoryTmpdir)(
   30_000,
 );
 
+test.skipIf(!hasMemoryTmpdir)(
+  "it puts a test run's temp directory on /dev/shm through the repo's test configuration",
+  async () => {
+    const ctx = await setupTest();
+
+    const probe = join(ctx.original, 'harbour.test.ts');
+
+    await Bun.write(
+      probe,
+      "import { test } from 'bun:test';\nimport { tmpdir } from 'node:os';\n\ntest('it reports', () => {\n  console.log('tmpdir=' + tmpdir());\n});\n",
+    );
+
+    const child = Bun.spawn([process.execPath, 'test', probe], {
+      cwd: join(import.meta.dir, '../../..'),
+      env: { ...process.env, TMPDIR: ctx.original },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+
+    const output = await new Response(child.stdout).text();
+
+    expect(output).toInclude('tmpdir=/dev/shm\n');
+  },
+  30_000,
+);
+
 test.skipIf(hasMemoryTmpdir)(
   'it keeps a process temp directory and its temp files where TMPDIR points when /dev/shm is unsuitable',
   async () => {
