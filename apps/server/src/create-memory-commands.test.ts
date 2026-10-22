@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { waitForCondition } from '@heynixie/testing';
 import { z } from 'zod';
 import { createApprovedItems } from './test-utils/create-approved-items';
 import { createTestClient } from './test-utils/create-test-client';
@@ -8,6 +7,7 @@ import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startTestNixie } from './test-utils/start-test-nixie';
+import { waitForTurn } from './test-utils/wait-for-turn';
 
 async function setupTest() {
   const nixie = await startTestNixie();
@@ -31,7 +31,7 @@ test('it approves a proposal with your text, then edits, retires, restores and p
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
@@ -89,7 +89,7 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
@@ -117,7 +117,7 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Understood.');

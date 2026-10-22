@@ -2,12 +2,12 @@ import { expect, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { checkSkillFiles } from '@heynixie/definitions';
-import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { startTestNixie } from './test-utils/start-test-nixie';
+import { waitForTurn } from './test-utils/wait-for-turn';
 
 async function setupTest() {
   const nixie = await startTestNixie();
@@ -45,7 +45,7 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
@@ -75,7 +75,7 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Understood.');
@@ -137,7 +137,7 @@ test('it lists a new version beside the version in force with the untyped token,
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
@@ -237,7 +237,7 @@ test('it approves your edited files in place of the proposal, and puts them in f
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
@@ -311,7 +311,7 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
@@ -346,7 +346,7 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Reloaded.');
@@ -410,7 +410,7 @@ test("it resolves a skill nixie wrote by keeping the definitions' version, which
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
