@@ -3,6 +3,7 @@ import { buildForgetStore } from './build-forget-store';
 import { buildRecallStore } from './build-recall-store';
 import { readItemHistory } from './read-item-history';
 import { readPinnedCore } from './read-pinned-core';
+import { readPinnedCoreUse } from './read-pinned-core-use';
 import { runItemLapses } from './run-item-lapses';
 import type { MemoryStore, StoreParts } from './types';
 import { writeKeep } from './write-keep';
@@ -24,6 +25,7 @@ export function buildMemoryStore(parts: StoreParts): MemoryStore {
     keep: (request) => writeKeep(parts, request),
     pin: (request) => writePin(parts, request),
     readPinnedCore: () => readPinnedCore(parts),
+    readPinnedCoreUse: () => readPinnedCoreUse(parts),
     readHistory: (itemID) => readItemHistory(parts, itemID),
     readSubjectCounts: () => readMemorySubjectCounts(parts.context.log.writer.db),
   };

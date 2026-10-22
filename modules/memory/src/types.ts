@@ -1,6 +1,6 @@
 import type { CheckedTables, MemorySubjectCounts } from '@heynixie/db';
 import type { ContentSource, Definitions, JSONObject, Log } from '@heynixie/log';
-import type { MemoryApproval } from '@heynixie/sessions';
+import type { MemoryApproval, PinnedCoreUse } from '@heynixie/sessions';
 import type { Selectable, Transaction } from 'kysely';
 import type {
   GateContext,
@@ -211,6 +211,7 @@ export interface MemoryStore {
   readonly pin: (request: PinRequest) => Promise<void>;
 
   readonly readPinnedCore: () => Promise<readonly RecalledItem[]>;
+  readonly readPinnedCoreUse: () => Promise<PinnedCoreUse>;
 
   readonly forget: (request: ForgetRequest) => Promise<void>;
 

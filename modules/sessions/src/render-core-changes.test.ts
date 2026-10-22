@@ -22,6 +22,7 @@ test('it renders no note before the first turn', () => {
       defaultZone: 'UTC',
       now: new Date('2026-10-14T12:00:00Z'),
       unpinnedShortIDs: new Map(),
+      use: { items: 1, tokens: 31, budget: 2000 },
     },
   );
 
@@ -49,6 +50,7 @@ test('it renders no note when the pinned core is unchanged', () => {
       defaultZone: 'UTC',
       now: new Date('2026-10-14T12:00:00Z'),
       unpinnedShortIDs: new Map(),
+      use: { items: 1, tokens: 31, budget: 2000 },
     },
   );
 
@@ -90,6 +92,7 @@ test('it notes each item pinned and edited since the last turn in full, and each
       defaultZone: 'UTC',
       now: new Date('2026-10-14T12:00:00Z'),
       unpinnedShortIDs: new Map([['7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001', 'r2vd6t0jmy']]),
+      use: { items: 2, tokens: 64, budget: 2000 },
     },
   );
 
@@ -101,8 +104,53 @@ test('it notes each item pinned and edited since the last turn in full, and each
     - Pinned [b7kq2m9xza]:
       - Uses they/them
         b7kq2m9xza v1 · 12 Oct · you noted it · the owner said this
-    - Unpinned [r2vd6t0jmy]"
+    - Unpinned [r2vd6t0jmy]
+    Pinned memory now: 2 items, 64 of 2000 tokens."
   `);
+});
+
+test('it gives the count and the tokens of an empty core after the last item is unpinned', () => {
+  const note = renderCoreChanges(
+    [{ itemID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001', version: 3 }],
+    [],
+    {
+      ownerName: null,
+      defaultZone: 'UTC',
+      now: new Date('2026-10-14T12:00:00Z'),
+      unpinnedShortIDs: new Map([['7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001', 'r2vd6t0jmy']]),
+      use: { items: 0, tokens: 0, budget: 1500 },
+    },
+  );
+
+  expect(note).toEndWith('- Unpinned [r2vd6t0jmy]\nPinned memory now: 0 items, 0 of 1500 tokens.');
+});
+
+test('it counts a core of one item as 1 item', () => {
+  const note = renderCoreChanges(
+    [],
+    [
+      {
+        itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01',
+        shortID: 'b7kq2m9xza',
+        version: 1,
+        origin: 'conversation',
+        source: 'owner',
+        evidenceQuote: null,
+        approval: null,
+        recordedAt: Date.parse('2026-10-12T09:00:00Z'),
+        text: 'Uses they/them',
+      },
+    ],
+    {
+      ownerName: null,
+      defaultZone: 'UTC',
+      now: new Date('2026-10-14T12:00:00Z'),
+      unpinnedShortIDs: new Map(),
+      use: { items: 1, tokens: 31, budget: 2000 },
+    },
+  );
+
+  expect(note).toEndWith('\nPinned memory now: 1 item, 31 of 2000 tokens.');
 });
 
 test('it keeps where a changed item came from, so an unconfirmed edit still reads as unconfirmed', () => {
@@ -126,6 +174,7 @@ test('it keeps where a changed item came from, so an unconfirmed edit still read
       defaultZone: 'UTC',
       now: new Date('2026-10-14T12:00:00Z'),
       unpinnedShortIDs: new Map(),
+      use: { items: 1, tokens: 31, budget: 2000 },
     },
   );
 

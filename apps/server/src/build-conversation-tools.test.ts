@@ -102,7 +102,7 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
   ]);
 });
 
-test("it unpins an item through memory.unpin at once, and the next turn's change note names it", async () => {
+test("it unpins an item through memory.unpin at once, and the next turn's change note names it with the core's count and tokens", async () => {
   const nixie = await startTestNixie();
   const api = await createTestClient(nixie);
   const [item] = await createApprovedItems(nixie, api.client, ['Runs a book club on Tuesdays']);
@@ -110,6 +110,7 @@ test("it unpins an item through memory.unpin at once, and the next turn's change
   await runHostCommand(nixie.configPath, ['memory-pin', item.itemID]);
 
   const shown = await api.client.memory.readItem({ itemID: item.itemID });
+  const pinned = await api.client.memory.readPinnedCore();
 
   nixie.model.addReplies(
     { text: 'Morning.' },
@@ -130,10 +131,22 @@ test("it unpins an item through memory.unpin at once, and the next turn's change
 
   const core = await api.client.memory.readPinnedCore();
 
+  const [opening] = nixie.model.requests;
+  const afterPin = nixie.model.requests.at(-4);
+  const afterUnpin = nixie.model.requests.at(-1);
+
   expect(core.items).toStrictEqual([]);
 
-  expect(JSON.stringify(nixie.model.requests.at(-1)?.body?.messages)).toInclude(
-    `- Unpinned [${shown.shortID}]`,
+  expect(JSON.stringify(opening?.body?.messages)).toInclude(
+    String.raw`- Pinned memory: 0 items\n- Pinned memory tokens: 0 of ${String(pinned.budget)}`,
+  );
+
+  expect(JSON.stringify(afterPin?.body?.messages)).toInclude(
+    `Pinned memory now: 1 item, ${String(pinned.tokens)} of ${String(pinned.budget)} tokens.`,
+  );
+
+  expect(JSON.stringify(afterUnpin?.body?.messages)).toInclude(
+    String.raw`- Unpinned [${shown.shortID}]\nPinned memory now: 0 items, 0 of ${String(pinned.budget)} tokens.`,
   );
 }, 90_000);
 

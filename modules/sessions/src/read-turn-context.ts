@@ -1,5 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import { formatMessageTime } from './format-message-time';
+import { isCoreChanged } from './is-core-changed';
 import { readTurnRetrieval } from './read-turn-retrieval';
 import { renderCoreChanges } from './render-core-changes';
 import { renderPinnedMemory } from './render-pinned-memory';
@@ -81,11 +82,17 @@ async function readCoreChanges(
 
   const previousCore = query.isNewSession ? null : query.previousCore;
 
+  if (previousCore === null || !isCoreChanged(previousCore, pinned.core)) {
+    return null;
+  }
+
   const unpinnedShortIDs = await memory.readShortIDs(
-    (previousCore ?? []).filter((ref) => !pinnedIDs.has(ref.itemID)).map((ref) => ref.itemID),
+    previousCore.filter((ref) => !pinnedIDs.has(ref.itemID)).map((ref) => ref.itemID),
   );
 
-  return renderCoreChanges(previousCore, pinned.core, { ...pinned.lines, unpinnedShortIDs });
+  const use = await memory.readPinnedCoreUse();
+
+  return renderCoreChanges(previousCore, pinned.core, { ...pinned.lines, unpinnedShortIDs, use });
 }
 
 function toMemoryRef(item: MemoryItem): MemoryRef {

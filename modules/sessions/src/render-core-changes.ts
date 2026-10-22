@@ -1,8 +1,9 @@
 import { renderMemoryItem } from './render-memory-item';
-import type { MemoryItem, MemoryLineOptions, MemoryRef } from './types';
+import type { MemoryItem, MemoryLineOptions, MemoryRef, PinnedCoreUse } from './types';
 
 export interface CoreChangeOptions extends MemoryLineOptions {
   readonly unpinnedShortIDs: ReadonlyMap<string, string>;
+  readonly use: PinnedCoreUse;
 }
 
 type PinnedItem = Omit<MemoryItem, 'subject' | 'model'>;
@@ -41,6 +42,7 @@ export function renderCoreChanges(
   return [
     'The pinned memory changed since your last turn. Where these differ from the pinned memory this session opened with, or from anything said earlier, these hold.',
     ...lines,
+    renderCoreUse(options.use),
   ].join('\n');
 }
 
@@ -53,4 +55,10 @@ function renderChangedItem(
     `- ${label} [${item.shortID}]:`,
     ...renderMemoryItem(item, options).map((line) => `  ${line}`),
   ];
+}
+
+function renderCoreUse(use: PinnedCoreUse): string {
+  const items = `${String(use.items)} ${use.items === 1 ? 'item' : 'items'}`;
+
+  return `Pinned memory now: ${items}, ${String(use.tokens)} of ${String(use.budget)} tokens.`;
 }

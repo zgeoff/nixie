@@ -75,8 +75,15 @@ export interface PastMessage {
   readonly isCut: boolean;
 }
 
+export interface PinnedCoreUse {
+  readonly items: number;
+  readonly tokens: number;
+  readonly budget: number;
+}
+
 export interface ConversationMemory {
   readonly readPinnedCore: () => Promise<readonly MemoryItem[]>;
+  readonly readPinnedCoreUse: () => Promise<PinnedCoreUse>;
   readonly recall: (request: MemoryRetrieval) => Promise<{ readonly items: readonly MemoryItem[] }>;
 
   readonly recallMessages: (

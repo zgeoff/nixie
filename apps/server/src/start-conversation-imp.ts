@@ -1,4 +1,5 @@
 import type { StartedMemoryStore } from '@heynixie/memory';
+import { buildPinnedCoreStatus } from '@heynixie/memory';
 import { resolveRoleProfile } from '@heynixie/models';
 import {
   buildModelStatus,
@@ -56,6 +57,7 @@ export async function startConversationImp(
       buildStartTimeStatus(),
       buildVersionStatus(),
       buildModelStatus(),
+      ...buildPinnedCoreStatus(() => memory().readPinnedCoreUse()),
     ]),
     memory,
     memorySettings: {

@@ -68,6 +68,7 @@ export type {
   MemoryApproval,
   MemoryLineOptions,
   NotedEvent,
+  PinnedCoreUse,
   SessionCleanupCause,
   SessionDefinitions,
   TurnNote,
