@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { buildPinTool } from './build-pin-tool';
 import type { TestMemoryOptions } from './test-utils';
@@ -126,6 +127,56 @@ test('it answers a pin of a retired item with an error that names its short ID',
     isError: true,
     content: [{ type: 'text', text: `memory item ${shortID} is retired, so pin does not apply` }],
   });
+});
+
+test('it answers a pin of a version the item moved past with an error, and writes nothing', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Walks the coast path on bank holidays',
+    provenance: buildMockProvenance(),
+  });
+
+  const revised = await ctx.memory.store.remember({
+    text: 'Walks the coast path on summer weekends',
+    target: item,
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Walks the coast path on autumn weekends',
+    target: revised,
+    provenance: buildMockProvenance(),
+  });
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const result = await runToolCall(
+    { tool: 'memory.pin', input: { itemID: shortID, version: 2 }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.pin'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  const pending = await ctx.memory.store.proposals.listPending();
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['memory.pinned'] });
+
+  expect(result).toMatchObject({
+    isError: true,
+    content: [
+      {
+        type: 'text',
+        text: `memory item ${shortID} is at version 3, not the version 2 the caller read`,
+      },
+    ],
+  });
+
+  expect(pending).toStrictEqual([]);
+  expect(records).toStrictEqual([]);
 });
 
 test('it answers a pin under an allow rule that takes the core past its budget with an error', async () => {
