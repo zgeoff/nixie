@@ -96,14 +96,16 @@ async function readSameText(
   );
 
   const proposalTexts = await Promise.all(
-    rows.map((row) => {
+    rows.map(async (row) => {
       const key = keys.get(row.item_id);
 
       if (key === null || key === undefined) {
         return null;
       }
 
-      return decodeProposalText(key, row.proposal_id, row.sealed);
+      const opened = await decodeProposalText(key, row.proposal_id, row.sealed);
+
+      return opened;
     }),
   );
 
