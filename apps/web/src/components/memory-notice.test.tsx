@@ -23,9 +23,20 @@ test('it undoes one item of a 3-item notice under the reply, and keeps the other
 
   await store.records.create({ kind: 'model.reply', message: { text: 'Noted, all three.' } });
 
-  const runs = await store.memoryItems.create({ shortID: 'r7k2pa', versions: [{ text: 'Runs on Sundays' }] });
-  const bell = await store.memoryItems.create({ shortID: 'b4n8wq', versions: [{ text: 'Owns a kettlebell' }] });
-  const herb = await store.memoryItems.create({ shortID: 'h2c5xe', versions: [{ text: 'Hates cilantro' }] });
+  const runs = await store.memoryItems.create({
+    shortID: 'r7k2pa',
+    versions: [{ text: 'Runs on Sundays' }],
+  });
+
+  const bell = await store.memoryItems.create({
+    shortID: 'b4n8wq',
+    versions: [{ text: 'Owns a kettlebell' }],
+  });
+
+  const herb = await store.memoryItems.create({
+    shortID: 'h2c5xe',
+    versions: [{ text: 'Hates cilantro' }],
+  });
 
   await store.memoryNotices.create({
     entries: [
