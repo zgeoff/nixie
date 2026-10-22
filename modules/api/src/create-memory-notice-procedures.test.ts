@@ -174,6 +174,8 @@ test('#memory.undo refuses a caller with no session, and writes nothing', async 
 
   invariant(written.status === 'applied');
 
+  const before = await ctx.memory.readHistory(written.itemID);
+
   const undo = buildTestClient(ctx.url).memory.undo({
     clientActionID: '0b6f3e2a-71c4-4d8e-9a5b-2f1c8e7d6a43',
     itemID: written.itemID,
@@ -182,7 +184,7 @@ test('#memory.undo refuses a caller with no session, and writes nothing', async 
 
   await undo.catch(() => {});
 
-  const history = await ctx.memory.readHistory(written.itemID);
+  const after = await ctx.memory.readHistory(written.itemID);
 
   const actions = await ctx.db
     .selectFrom('client_actions')
@@ -191,7 +193,7 @@ test('#memory.undo refuses a caller with no session, and writes nothing', async 
     .execute();
 
   expect(undo).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
-  expect(history?.versions).toHaveLength(1);
+  expect(after).toStrictEqual(before);
   expect(actions).toStrictEqual([]);
 });
 
@@ -208,6 +210,8 @@ test('#memory.keep refuses a caller with no session, and writes nothing', async 
 
   invariant(written.status === 'applied');
 
+  const before = await ctx.memory.readHistory(written.itemID);
+
   const keep = buildTestClient(ctx.url).memory.keep({
     clientActionID: '0b6f3e2a-71c4-4d8e-9a5b-2f1c8e7d6a43',
     itemID: written.itemID,
@@ -216,6 +220,8 @@ test('#memory.keep refuses a caller with no session, and writes nothing', async 
 
   await keep.catch(() => {});
 
+  const after = await ctx.memory.readHistory(written.itemID);
+
   const actions = await ctx.db
     .selectFrom('client_actions')
     .select('procedure')
@@ -223,6 +229,7 @@ test('#memory.keep refuses a caller with no session, and writes nothing', async 
     .execute();
 
   expect(keep).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(after).toStrictEqual(before);
   expect(actions).toStrictEqual([]);
 });
 
