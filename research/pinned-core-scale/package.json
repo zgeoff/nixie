@@ -1,0 +1,16 @@
+{
+  "name": "@heynixie/spike-pinned-core-scale",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.296",
+    "@modelcontextprotocol/server": "2.3.1"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3"
+  },
+  "scripts": {
+    "typecheck": "tsrs --noEmit"
+  }
+}
