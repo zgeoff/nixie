@@ -33,6 +33,8 @@ const caseSchema = z
     patterns: z.array(z.string().min(1)).readonly(),
 
     until: z.iso.datetime({ offset: true }).exactOptional(),
+
+    sentAt: z.iso.datetime({ offset: true }).exactOptional(),
   })
   .readonly();
 

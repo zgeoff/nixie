@@ -67,8 +67,42 @@ test('it renders the production prompts over the case, with the guest names of t
     ]),
   );
 
-  expect(input.startedAt).toBeGreaterThan(Date.parse('2026-10-14T09:01:00Z'));
+  expect(input.startedAt).toBe(Date.parse('2026-10-14T10:00:00Z'));
   expect(input.shown).toStrictEqual(new Map([['item-tea', { version: 1, subject: 'owner' }]]));
+});
+
+test('it sends the messages of a case at the time the case sets, and starts its batch an hour later', () => {
+  const tools = buildWriterTools(
+    { recall: () => Promise.resolve({ items: [], next: null }) },
+    createWriterStaging(),
+    5,
+  );
+
+  const input = buildWriterEvalInput(
+    {
+      persona: 'You are Wren.',
+      ownerName: 'Sam',
+      assistantName: 'Wren',
+      timeZone: 'Europe/London',
+    },
+    {
+      id: 'lisbon-week',
+      items: [],
+      messages: [{ role: 'owner', text: "I'm in Lisbon this week." }],
+      rule: 'owner_item',
+      target: null,
+      patterns: ['Lisbon'],
+      until: '2030-10-20T23:59:59+01:00',
+      sentAt: '2030-10-14T08:00:00Z',
+    },
+    tools,
+  );
+
+  expect(input.prompt).toInclude(
+    "[1] Mon 14 Oct 2030, 09:00, Europe/London (UTC+01:00) Sam (owner): I'm in Lisbon this week.",
+  );
+
+  expect(input.startedAt).toBe(Date.parse('2030-10-14T09:00:00Z'));
 });
 
 test('it gives the same input the same hash, and another case another hash', () => {

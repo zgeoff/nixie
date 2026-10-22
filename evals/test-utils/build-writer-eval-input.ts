@@ -37,12 +37,13 @@ export function buildWriterEvalInput(
 ): WriterEvalInput {
   const names = { owner: cases.ownerName, assistant: cases.assistantName };
   const systemPrompt = renderWriterSystemPrompt(cases.persona, names);
+  const sentAt = Date.parse(writerCase.sentAt ?? '2026-10-14T09:00:00Z');
 
   const messages = writerCase.messages.map((message, index) => ({
     sequence: index + 1,
     role: message.role,
     shown: message.text,
-    recordedAt: Date.UTC(2026, 9, 14, 9, index),
+    recordedAt: sentAt + index * 60_000,
     timeZone: message.role === 'owner' ? cases.timeZone : null,
   }));
 
@@ -94,7 +95,7 @@ export function buildWriterEvalInput(
     tools: evalTools,
     sources,
     shown,
-    startedAt: Date.UTC(2026, 9, 14, 10),
+    startedAt: sentAt + 3_600_000,
     hash: `sha256:${hash}`,
   };
 }

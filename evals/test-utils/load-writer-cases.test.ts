@@ -36,7 +36,8 @@ test('it loads each case with its items, its messages and its rule', async () =>
         rule: 'owner_item' as const,
         target: null,
         patterns: ['Lisbon'],
-        until: '2026-10-18T23:59:59+01:00',
+        until: '2030-10-20T23:59:59+01:00',
+        sentAt: '2030-10-14T08:00:00Z',
       },
     ],
   };

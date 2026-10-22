@@ -7,7 +7,9 @@ you say ends an end time. Each case is one invented batch with the rule that eve
 meet, and the patterns that the text of the write the rule asks for must match, such as the
 exception a correction adds.
 
-[cases.json](cases.json) holds 11 cases, sent from one time zone:
+[cases.json](cases.json) holds 11 cases, sent from one time zone. The two time-limit cases send
+their messages in 2030, because Claude Code gives the model the real date, and a model that sees the
+end of an invented week already past skips the fact as lapsed:
 
 | Case                      | Every run must                                            |
 | ------------------------- | --------------------------------------------------------- |
@@ -46,11 +48,9 @@ differs from the one its case names, or when it has one and its case names none.
 ## Results
 
 Haiku 5.5 at low effort. The prompt with end times passed all 11 cases on every run, and each run of
-the two time-limit cases staged the end time its case names. Claude Code gives the model the real
-date, which falls after these invented messages, so a writer told only to keep a fact until its end
-skipped "this week" as already past in 1 of 3 runs. The prompt therefore tells the writer to stage
-such a fact and leave the passed-time check to staging, and with that rule a run of that case alone
-staged the fact in 6 of 6 runs.
+the two time-limit cases staged the end time its case names. While those cases were dated before the
+real date, the writer skipped "this week" as already past in 1 of 3 runs, even with a rule to stage
+it, and a run of the whole set once missed the flag of `mixed-item` in 1 of 3 runs.
 
 The prompt with subjects, before end times, passed all 9 of its cases on every run, and its flip
 cases filed no owner item in any of their 6 runs. The prompt before subjects, run on the flip cases
