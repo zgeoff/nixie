@@ -1,4 +1,5 @@
-import type { RecalledMemory, StepActivity } from './build-activity';
+import { z } from 'zod';
+import type { RecalledMemory, StepActivity, ToolActivity } from './build-activity';
 import { formatContext } from './format-context';
 
 export function formatStepSummary(step: StepActivity): string {
@@ -42,7 +43,7 @@ function formatTools(step: StepActivity): string {
 
   for (const call of step.calls) {
     const targets = byTool.get(call.tool) ?? [];
-    const target = formatTarget(call.input);
+    const target = formatTarget(call);
     const next = target === undefined ? targets : [...targets, target];
 
     byTool.set(call.tool, next);
@@ -57,17 +58,40 @@ function formatTools(step: StepActivity): string {
 
 const targetLimit = 60;
 
-function formatTarget(input: Readonly<Record<string, unknown>> | undefined): string | undefined {
-  const text = Object.values(input ?? {}).find((value) => typeof value === 'string');
+function formatTarget(call: ToolActivity): string | undefined {
+  const text = findFinalURL(call) ?? findInputText(call.input);
 
-  if (typeof text !== 'string' || text === '') {
+  if (text === undefined || text === '') {
     return undefined;
   }
 
-  const host = URL.parse(text)?.hostname;
-  const target = host === undefined || host === '' ? text : host.replace(/^www\./u, '');
+  const url = URL.parse(text);
+  const target = url === null || url.hostname === '' ? text : formatShortURL(url);
 
   return target.length > targetLimit ? `${target.slice(0, targetLimit)}…` : target;
+}
+
+// A fetch by link ID names no URL in its input, and a fetch by URL can end at another page after a
+// redirect, so the URL the fetch returned names the page it read.
+const fetchResultSchema = z.object({ result: z.object({ url: z.string() }) });
+
+function findFinalURL(call: ToolActivity): string | undefined {
+  return call.tool === 'web_fetch'
+    ? fetchResultSchema.safeParse(call.content).data?.result.url
+    : undefined;
+}
+
+function findInputText(input: Readonly<Record<string, unknown>> | undefined): string | undefined {
+  const text = Object.values(input ?? {}).find((value) => typeof value === 'string');
+
+  return typeof text === 'string' ? text : undefined;
+}
+
+function formatShortURL(url: URL): string {
+  const host = url.hostname.replace(/^www\./u, '');
+  const path = url.pathname.replace(/\/$/u, '');
+
+  return `${host}${path}`;
 }
 
 function formatToolName(tool: string): string {

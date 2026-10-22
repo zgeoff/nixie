@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { formatStepSummary } from './format-step-summary';
 import { buildMockStepActivity } from './test-utils/build-mock-step-activity';
 
-test('it names the tool once with the host of each page it fetched', () => {
+test('it names the tool once with the host and path of each page it fetched', () => {
   expect(
     formatStepSummary(
       buildMockStepActivity({
@@ -13,7 +13,108 @@ test('it names the tool once with the host of each page it fetched', () => {
         ],
       }),
     ),
-  ).toBe('task · web fetch: theverge.com, arstechnica.com, news.ycombinator.com');
+  ).toBe('task · web fetch: theverge.com, arstechnica.com/gadgets, news.ycombinator.com');
+});
+
+test('it labels a fetch by link ID with the host and path of the same fetch by URL', () => {
+  const content = { result: { url: 'https://www.tidecharts.test/harbours/north-bay' } };
+
+  const byURL = formatStepSummary(
+    buildMockStepActivity({
+      calls: [
+        {
+          callID: 'a',
+          content,
+          input: { url: 'https://www.tidecharts.test/harbours/north-bay' },
+          outcome: 'result',
+          tool: 'web_fetch',
+        },
+      ],
+    }),
+  );
+
+  const byID = formatStepSummary(
+    buildMockStepActivity({
+      calls: [
+        { callID: 'a', content, input: { link: 'L12' }, outcome: 'result', tool: 'web_fetch' },
+      ],
+    }),
+  );
+
+  expect(byURL).toBe('task · web fetch: tidecharts.test/harbours/north-bay');
+  expect(byID).toBe('task · web fetch: tidecharts.test/harbours/north-bay');
+});
+
+test('it labels a fetch that a redirect moved with the page it ended at', () => {
+  expect(
+    formatStepSummary(
+      buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { url: 'https://docs.kettle.test/guide/brewing' } },
+            input: { url: 'https://kettle.test/docs' },
+            outcome: 'result',
+            tool: 'web_fetch',
+          },
+        ],
+      }),
+    ),
+  ).toBe('task · web fetch: docs.kettle.test/guide/brewing');
+});
+
+test('it leaves the query and fragment out of the path of a fetched page', () => {
+  expect(
+    formatStepSummary(
+      buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { url: 'https://maps.lantern.test/trails?near=ridge#top' } },
+            input: { link: 'L3' },
+            outcome: 'result',
+            tool: 'web_fetch',
+          },
+        ],
+      }),
+    ),
+  ).toBe('task · web fetch: maps.lantern.test/trails');
+});
+
+test('it names the link ID of a fetch by ID that returned no page', () => {
+  expect(
+    formatStepSummary(
+      buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { message: 'L40 is not a link from this session.' },
+            input: { link: 'L40' },
+            outcome: 'error',
+            tool: 'web_fetch',
+          },
+        ],
+      }),
+    ),
+  ).toBe('task · web fetch: L40');
+});
+
+test('it labels another tool by its input even when its result holds a URL', () => {
+  expect(
+    formatStepSummary(
+      buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { url: 'https://files.orchard.test/upload/9' } },
+            input: { name: 'pears.csv' },
+            outcome: 'result',
+            tool: 'files.upload',
+          },
+        ],
+      }),
+    ),
+  ).toBe('task · files upload: pears.csv');
 });
 
 test('it lists each tool of a step that called several', () => {
