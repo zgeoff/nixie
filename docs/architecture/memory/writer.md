@@ -85,7 +85,8 @@ conversation saves. The rules keep the user's own distinctive words where those 
 meaning, because a generic paraphrase loses what made the fact worth saving. A correction of a fact
 or a deal edits the item that holds it and never adds a second item.
 
-The prompt holds the batch's records with their sequences, the user's pasted spans marked, a marker
+The prompt holds the batch's records with their sequences and the time each was sent, in the zone
+the user sent it from or the deployment's default zone, the user's pasted spans marked, a marker
 line for each image the user sent and never its bytes, the active items, and the pending proposals
 with the item each one changes, each with its subject. It lists every active item while the list
 fits its budget, else the items a keyword recall over the batch finds. Neither the list nor a recall
@@ -98,10 +99,16 @@ The session's tools are recall, remember, edit, retire and flag-self-note. Remem
 item, and edit is the one tool that changes an item's text, as in the conversation. Remember and
 edit take the subject owner or shared, and their input schema refuses self, so only the conversation
 writes a [self-note](./writes.md#self-notes). Recall, remember, edit and retire stage writes instead
-of applying them. Staging refuses a write that cites a record outside the batch, a change to an item
-the session was never shown, a second change to the same item, and an edit that changes its item's
-subject, and the refusal goes back to the model at once. Staging binds each change to the version
-the session was shown, never to a version the model sent.
+of applying them.
+
+Staging refuses a write that cites a record outside the batch, a change to an item the session was
+never shown, a second change to the same item, an edit that changes its item's subject, and a write
+whose [end time](./writes.md#end-times-on-writes) passed before the batch ran, and the refusal goes
+back to the model at once. A fact that ended before the writer reached it therefore never enters
+memory, and the rest of the batch goes on. The prompt tells the writer to stage a fact with a stated
+end even when the end looks past, and to leave that check to staging, because a session's own idea
+of the date can differ from the batch's start. Staging binds each change to the version the session
+was shown, never to a version the model sent.
 
 A batch's staging belongs to the step that opened it. A step that lost its lease and stops late
 closes only its own staging, so it never empties the staging of the step that replaced it.

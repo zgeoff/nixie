@@ -2,11 +2,12 @@
 
 This eval checks that the [memory writer](../../docs/architecture/memory/writer.md) keeps track of
 who is who: it files a fact about you as yours, files something between you and the assistant as
-shared, and flags what you say about the assistant instead of writing it in your name. Each case is
-one invented batch with the rule that every run of it must meet, and the patterns that the text of
-the write the rule asks for must match, such as the exception a correction adds.
+shared, flags what you say about the assistant instead of writing it in your name, and gives a fact
+you say ends an end time. Each case is one invented batch with the rule that every run of it must
+meet, and the patterns that the text of the write the rule asks for must match, such as the
+exception a correction adds.
 
-[cases.json](cases.json) holds 9 cases:
+[cases.json](cases.json) holds 11 cases, sent from one time zone:
 
 | Case                      | Every run must                                            |
 | ------------------------- | --------------------------------------------------------- |
@@ -19,6 +20,8 @@ the write the rule asks for must match, such as the exception a correction adds.
 | `flip-persona-check-in`   | file no owner item                                        |
 | `flip-human-like`         | file no owner item                                        |
 | `nickname-assistant-only` | write and flag nothing for a name only the assistant used |
+| `trip-this-week`          | file a new owner item that ends at the end of that Sunday |
+| `off-until-friday`        | file a new owner item that ends at the end of that Friday |
 
 The two flip cases rewrite, with invented details, two batches that the writer once filed with the
 subjects swapped. Their messages were reworded until the writer prompt before subjects, run on the
@@ -37,14 +40,19 @@ bun test evals
 ```
 
 The suite fails when the report came from other prompts or tools, skipped a run, or holds a run that
-did not finish, and when a run breaks its case's rule.
+did not finish, and when a run breaks its case's rule. A new item breaks the rule when its end time
+differs from the one its case names, or when it has one and its case names none.
 
 ## Results
 
-Haiku 5.5 at low effort. The prompt with subjects passed all 9 cases on every run, and its flip
+Haiku 5.5 at low effort. The prompt with end times passed all 11 cases on every run, and each run of
+the two time-limit cases staged the end time its case names. Claude Code gives the model the real
+date, which falls after these invented messages, so a writer told only to keep a fact until its end
+skipped "this week" as already past in 1 of 3 runs. The prompt therefore tells the writer to stage
+such a fact and leave the passed-time check to staging, and with that rule a run of that case alone
+staged the fact in 6 of 6 runs.
+
+The prompt with subjects, before end times, passed all 9 of its cases on every run, and its flip
 cases filed no owner item in any of their 6 runs. The prompt before subjects, run on the flip cases
 alone, filed an owner item in all 6 runs, such as "Sam wants the assistant to be human-like and not
 a tool".
-
-In 2 runs of `flip-human-like`, the writer filed a shared item that holds your wish for the
-assistant, beside a flag; the third run only flagged.

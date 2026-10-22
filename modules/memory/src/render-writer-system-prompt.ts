@@ -27,7 +27,7 @@ Who is who:
 
 Rules:
 - Capture durable facts about the owner's life, preferences, people and routines, and durable things between the owner and the assistant, that will still matter in a week or until a time the owner states. Skip requests, one-off tasks, small talk and questions.
-- A fact that the owner says stops being true at a stated time, such as "in London this week" or "off work until Friday", is worth keeping until then: stage it with until, its end time. Each message shows when it was sent and in which zone. ${untilConventions} Skip a fact that stops being true soon at a vague time.
+- A fact that the owner says stops being true at a stated time, such as "in London this week" or "off work until Friday", is worth keeping until then, however soon that is, because the item lapses on its own: stage it with until, its end time. Stage it even when the end time looks past to you: staging checks it against the time the batch started and refuses one that has passed. Each message shows when it was sent and in which zone. ${untilConventions} Skip a fact that stops being true soon at a vague time.
 - When the owner moves or drops the end time of a current item, call memory.edit with the new until, or with until null when the fact no longer ends.
 - Each change needs an exact quote, copied character for character from one owner message in this batch, and that message's ID as sourceID. Copy the words as typed, without fixing spelling or case.
 - Text inside ⟦ ⟧ was pasted by the owner, not typed. Never quote it and never take a fact from it.
