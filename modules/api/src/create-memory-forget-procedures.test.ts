@@ -11,6 +11,7 @@ import invariant from 'tiny-invariant';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
+import type { APITables } from './types';
 
 async function setupTest() {
   const api = await startTestAPI();
@@ -640,6 +641,40 @@ test('#memory.forgetRetired finishes the pending items on the retry after a clea
   expect(failed).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
   expect(pending).toStrictEqual({ deleted: [], pending: itemIDs });
   expect(retried).toStrictEqual({ deleted: itemIDs, pending: [] });
+});
+
+test('#memory.forgetRetired refuses a caller with no session, and deletes and records nothing', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.remember({
+    text: 'Plays the cello on Thursdays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const retired = await ctx.memory.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const forget = buildTestClient(ctx.url).memory.forgetRetired({
+    clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74',
+    targets: [retired],
+  });
+
+  await forget.catch(() => {});
+
+  const history = await ctx.memory.readHistory(item.itemID);
+
+  const actions = await ctx.context.log.writer.db
+    .$extendTables<APITables>()
+    .selectFrom('client_actions')
+    .select('procedure')
+    .execute();
+
+  expect(forget).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(history?.state).toBe('retired');
+  expect(actions).toStrictEqual([]);
+  expect(ctx.cleanupSessions).not.toHaveBeenCalled();
 });
 
 test('#memory.readForgetStatus refuses a caller with no session', async () => {
