@@ -13,6 +13,7 @@ export interface ProxyHandlerDeps {
   readonly routes: Readonly<Record<string, ProxyRoute>>;
   readonly limits: ProxyLimits;
   readonly store: CounterStore;
+  readonly sendUpstream: (url: string, init: RequestInit) => Promise<Response>;
   readonly log: Logger;
 }
 
@@ -91,16 +92,18 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       );
     }
 
-    const upstream = await fetch(`${target.route.upstream}${target.path}${url.search}`, {
-      method: request.method,
-      headers: buildUpstreamHeaders(request.headers),
-      body,
-      redirect: 'manual',
-    }).catch((error: unknown) => {
-      deps.log('upstream.failed', toErrorFields(error), 'error');
+    const upstream = await deps
+      .sendUpstream(`${target.route.upstream}${target.path}${url.search}`, {
+        method: request.method,
+        headers: buildUpstreamHeaders(request.headers),
+        body,
+        redirect: 'manual',
+      })
+      .catch((error: unknown) => {
+        deps.log('upstream.failed', toErrorFields(error), 'error');
 
-      return null;
-    });
+        return null;
+      });
 
     if (upstream === null) {
       return renderAPIError(502, 'api_error', 'the counting proxy could not reach the model API');

@@ -24,6 +24,7 @@ export async function startCountingProxy(options: CountingProxyOptions): Promise
     routes: config.routes,
     limits: config.limits,
     store,
+    sendUpstream: fetch,
     log: options.log,
   });
 

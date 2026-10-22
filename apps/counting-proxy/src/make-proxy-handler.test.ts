@@ -49,6 +49,7 @@ test('it prices a reply through its route profile, the 1-hour cache write price 
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -91,6 +92,7 @@ test('it prices a streamed reply from its message start and its last delta', asy
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -129,6 +131,7 @@ test('it refuses every request once the replies it counted reach its dollar limi
     },
     limits: { dollars: 0.01, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -179,6 +182,7 @@ test('it refuses every request once the replies it counted reach its token limit
     },
     limits: { dollars: null, tokens: 1000 },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -213,6 +217,7 @@ test('it logs the limit once when a count reaches it', async () => {
     },
     limits: { dollars: null, tokens: 1000 },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -249,6 +254,7 @@ test('it refuses every request when its counter store is down', async () => {
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -289,6 +295,7 @@ test('it refuses every request when its counter store holds no count it can read
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -325,6 +332,7 @@ test('it refuses every later request once a count fails to write, even after the
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -365,6 +373,7 @@ test('it refuses a request for a model its route does not price', async () => {
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -409,6 +418,7 @@ test.each([
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -431,6 +441,7 @@ test('it sends on a request for the model list', async () => {
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -452,6 +463,7 @@ test('it answers a path outside every route with a 404 and sends nothing on', as
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -479,6 +491,7 @@ test('it sends a request on with its path past the route, its query and its cred
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -521,6 +534,7 @@ test('it passes an upstream error through without counting it', async () => {
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
@@ -551,6 +565,7 @@ test('it answers a 502 when the upstream cannot be reached', async () => {
     },
     limits: { dollars: 1, tokens: null },
     store: ctx.store,
+    sendUpstream: fetch,
     log: ctx.log,
   });
 
