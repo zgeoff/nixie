@@ -3,27 +3,33 @@ import { join } from 'node:path';
 import { makeDecisionPoint } from '@heynixie/policy';
 import { buildToolRegistry } from '../build-tool-registry';
 import { startToolEndpoint } from '../start-tool-endpoint';
-import type { ToolDefinition } from '../types';
 import { buildMockToolDefinition } from './build-mock-tool-definition';
 import { sendTestToolCall } from './send-test-tool-call';
 import { setupTestLog } from './setup-test-log';
 
-interface SetupConfig {
-  readonly tools: readonly ToolDefinition[];
-}
-
-async function setupTest(config: SetupConfig) {
+async function setupTest() {
   const testLog = await setupTestLog();
 
-  const registry = buildToolRegistry(config.tools);
+  return { dataDir: testLog.dataDir, log: testLog.log };
+}
+
+test('it calls a tool on the run endpoint with the run token and returns its result', async () => {
+  const ctx = await setupTest();
+
+  const registry = buildToolRegistry([
+    buildMockToolDefinition({
+      name: 'notes_read',
+      run: () => Promise.resolve({ status: 'ok', result: { text: 'Buy oat milk.' } }),
+    }),
+  ]);
 
   const endpoint = await startToolEndpoint({
-    socketDir: join(testLog.dataDir, 'tools'),
+    socketDir: join(ctx.dataDir, 'tools'),
     registry,
     decide: makeDecisionPoint({
       findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
     }),
-    log: testLog.log,
+    log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
     queue: { enqueue: mock(), waitForOutcome: mock() },
@@ -31,20 +37,7 @@ async function setupTest(config: SetupConfig) {
 
   onTestFinished(() => endpoint.stop());
 
-  return { endpoint };
-}
-
-test('it calls a tool on the run endpoint with the run token and returns its result', async () => {
-  const ctx = await setupTest({
-    tools: [
-      buildMockToolDefinition({
-        name: 'notes_read',
-        run: () => Promise.resolve({ status: 'ok', result: { text: 'Buy oat milk.' } }),
-      }),
-    ],
-  });
-
-  const run = await ctx.endpoint.startRun({
+  const run = await endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -62,9 +55,25 @@ test('it calls a tool on the run endpoint with the run token and returns its res
 });
 
 test('it rejects a call that carries a token the endpoint does not know', async () => {
-  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+  const ctx = await setupTest();
 
-  const run = await ctx.endpoint.startRun({
+  const registry = buildToolRegistry([buildMockToolDefinition({ name: 'notes_read' })]);
+
+  const endpoint = await startToolEndpoint({
+    socketDir: join(ctx.dataDir, 'tools'),
+    registry,
+    decide: makeDecisionPoint({
+      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+    }),
+    log: ctx.log,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+
+    queue: { enqueue: mock(), waitForOutcome: mock() },
+  });
+
+  onTestFinished(() => endpoint.stop());
+
+  const run = await endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],

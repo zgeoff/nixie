@@ -3,27 +3,31 @@ import { join } from 'node:path';
 import { makeDecisionPoint } from '@heynixie/policy';
 import { buildToolRegistry } from '../build-tool-registry';
 import { startToolEndpoint } from '../start-tool-endpoint';
-import type { ToolDefinition } from '../types';
 import { buildMockToolDefinition } from './build-mock-tool-definition';
 import { setupTestLog } from './setup-test-log';
 import { withTestToolClient } from './with-test-tool-client';
 
-interface SetupConfig {
-  readonly tools: readonly ToolDefinition[];
-}
-
-async function setupTest(config: SetupConfig) {
+async function setupTest() {
   const testLog = await setupTestLog();
 
-  const registry = buildToolRegistry(config.tools);
+  return { dataDir: testLog.dataDir, log: testLog.log };
+}
+
+test('it runs the callback with a client connected to the run endpoint and returns its result', async () => {
+  const ctx = await setupTest();
+
+  const registry = buildToolRegistry([
+    buildMockToolDefinition({ name: 'notes_read' }),
+    buildMockToolDefinition({ name: 'notes_search' }),
+  ]);
 
   const endpoint = await startToolEndpoint({
-    socketDir: join(testLog.dataDir, 'tools'),
+    socketDir: join(ctx.dataDir, 'tools'),
     registry,
     decide: makeDecisionPoint({
       findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
     }),
-    log: testLog.log,
+    log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
     queue: { enqueue: mock(), waitForOutcome: mock() },
@@ -31,18 +35,7 @@ async function setupTest(config: SetupConfig) {
 
   onTestFinished(() => endpoint.stop());
 
-  return { endpoint };
-}
-
-test('it runs the callback with a client connected to the run endpoint and returns its result', async () => {
-  const ctx = await setupTest({
-    tools: [
-      buildMockToolDefinition({ name: 'notes_read' }),
-      buildMockToolDefinition({ name: 'notes_search' }),
-    ],
-  });
-
-  const run = await ctx.endpoint.startRun({
+  const run = await endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
