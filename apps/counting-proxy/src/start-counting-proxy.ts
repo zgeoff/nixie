@@ -1,4 +1,5 @@
 import type { Logger } from '@heynixie/logger';
+import { toErrorFields } from '@heynixie/logger';
 import { createCounterStore } from './create-counter-store';
 import { makeProxyHandler } from './make-proxy-handler';
 import { proxyConfigSchema } from './proxy-config-schema';
@@ -55,6 +56,17 @@ export async function startCountingProxy(options: CountingProxyOptions): Promise
       const drained = server.stop();
 
       await Promise.race([drained, options.waitForDrainDeadline()]);
+
+      // a reply still open at the deadline is cut off before its whole usage arrives, so the store
+      // keeps the count's mark as lost for the next start to refuse
+      if (server.pendingRequests > 0) {
+        options.log('count.cut_off', { replies: server.pendingRequests }, 'error');
+
+        await store.markLost().catch((error: unknown) => {
+          options.log('counter.mark_failed', toErrorFields(error), 'error');
+        });
+      }
+
       await server.stop(true);
       await store.settle();
     },

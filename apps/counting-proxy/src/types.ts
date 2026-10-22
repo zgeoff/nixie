@@ -23,9 +23,15 @@ export interface SpendTotals {
   readonly tokens: number;
 }
 
+// lost marks a count that fell behind the spend, which stays marked until an operator clears it
+export interface StoredCount extends SpendTotals {
+  readonly lost: boolean;
+}
+
 export interface CounterStore {
-  readonly read: () => Promise<SpendTotals>;
+  readonly read: () => Promise<StoredCount>;
   readonly add: (spend: SpendTotals) => Promise<SpendTotals>;
+  readonly markLost: () => Promise<void>;
 
   // resolves once every add made so far has written or failed
   readonly settle: () => Promise<void>;

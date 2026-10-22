@@ -207,3 +207,101 @@ test('it closes a reply that outlasts the drain deadline and resolves the stop',
 
   expect(settled?.status).toBe('rejected');
 });
+
+test('it refuses every request after a restart once a stop cut off a reply at the drain deadline', async () => {
+  const ctx = await setupTest();
+
+  // the reply never starts until the test ends
+  const gate = Promise.withResolvers<undefined>();
+
+  ctx.model.addReplies(
+    { text: 'cut off', usage: { input_tokens: 600, output_tokens: 400 }, gate: gate.promise },
+    { text: 'never sent', usage: { input_tokens: 600, output_tokens: 400 } },
+  );
+
+  await writeFile(
+    join(ctx.directory, 'proxy.yaml'),
+    [
+      'listen: { port: 0 }',
+      `store: ${join(ctx.directory, 'counter.json')}`,
+      'limits: { dollars: 1 }',
+      'routes:',
+      '  preview:',
+      `    upstream: ${ctx.model.url}`,
+      '    model: model-small',
+      '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+    ].join('\n'),
+  );
+
+  const proxy = await startCountingProxy({
+    configPath: join(ctx.directory, 'proxy.yaml'),
+    log: ctx.log,
+    waitForDrainDeadline: () => Promise.resolve(),
+  });
+
+  onTestFinished(async () => {
+    gate.resolve(undefined);
+
+    await proxy.stop();
+  });
+
+  // settled at once, so the reply's failure is held until the test ends
+  const reply = Promise.allSettled([
+    fetch(`${proxy.url}/preview/v1/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', messages: [], stream: true }),
+    }),
+  ]);
+
+  onTestFinished(() => reply);
+
+  await waitForCondition(() => ctx.model.requests.length === 1);
+
+  await proxy.stop();
+
+  const restarted = await startCountingProxy({
+    configPath: join(ctx.directory, 'proxy.yaml'),
+    log: ctx.log,
+    waitForDrainDeadline: () => Promise.resolve(),
+  });
+
+  onTestFinished(() => restarted.stop());
+
+  const response = await fetch(`${restarted.url}/preview/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-small', messages: [] }),
+  });
+
+  expect(response.status).toBe(503);
+  expect(ctx.model.requests).toHaveLength(1);
+});
+
+test('it leaves the count unmarked when a stop finds no reply under way', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    join(ctx.directory, 'proxy.yaml'),
+    [
+      'listen: { port: 0 }',
+      `store: ${join(ctx.directory, 'counter.json')}`,
+      'limits: { dollars: 1 }',
+      'routes:',
+      '  preview:',
+      `    upstream: ${ctx.model.url}`,
+      '    model: model-small',
+      '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+    ].join('\n'),
+  );
+
+  const proxy = await startCountingProxy({
+    configPath: join(ctx.directory, 'proxy.yaml'),
+    log: ctx.log,
+    waitForDrainDeadline: () => Promise.resolve(),
+  });
+
+  await proxy.stop();
+
+  const stored = await readFile(join(ctx.directory, 'counter.json'), 'utf8');
+
+  expect(stored).toBe('{"dollars":0,"tokens":0}');
+});

@@ -30,7 +30,33 @@ test('it keeps the count an existing counter file holds', async () => {
   const store = await createCounterStore(join(ctx.directory, 'counter.json'));
   const totals = await store.read();
 
-  expect(totals).toStrictEqual({ dollars: 1.5, tokens: 300 });
+  expect(totals).toStrictEqual({ dollars: 1.5, tokens: 300, lost: false });
+});
+
+test('it keeps a lost mark through each later add', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.directory, 'counter.json'), '{"dollars":1.5,"tokens":300}');
+
+  const store = await createCounterStore(join(ctx.directory, 'counter.json'));
+
+  await store.markLost();
+  await store.add({ dollars: 0.5, tokens: 20 });
+
+  const stored = await readFile(join(ctx.directory, 'counter.json'), 'utf8');
+
+  expect(stored).toBe('{"dollars":2,"tokens":320,"lost":true}');
+});
+
+test('it reads a count whose file holds the lost mark as lost', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.directory, 'counter.json'), '{"dollars":1.5,"tokens":300,"lost":true}');
+
+  const store = await createCounterStore(join(ctx.directory, 'counter.json'));
+  const totals = await store.read();
+
+  expect(totals).toStrictEqual({ dollars: 1.5, tokens: 300, lost: true });
 });
 
 test('it adds every spend once when several adds run together', async () => {
@@ -45,7 +71,7 @@ test('it adds every spend once when several adds run together', async () => {
 
   const totals = await store.read();
 
-  expect(totals).toStrictEqual({ dollars: 1, tokens: 60 });
+  expect(totals).toStrictEqual({ dollars: 1, tokens: 60, lost: false });
 });
 
 test('it returns the new totals from an add', async () => {

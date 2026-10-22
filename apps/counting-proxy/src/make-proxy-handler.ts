@@ -8,7 +8,7 @@ import { findProxyEndpoint } from './find-proxy-endpoint';
 import { isRecord } from './is-record';
 import { parseJSONOrNull } from './parse-json-or-null';
 import { parseReportedUsage } from './parse-reported-usage';
-import type { CounterStore, ProxyLimits, ProxyRoute, SpendTotals } from './types';
+import type { CounterStore, ProxyLimits, ProxyRoute, SpendTotals, StoredCount } from './types';
 
 export interface ProxyHandlerDeps {
   readonly routes: Readonly<Record<string, ProxyRoute>>;
@@ -20,9 +20,18 @@ export interface ProxyHandlerDeps {
 
 export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => Promise<Response> {
   // a count that failed to write, or a reply lost before its usage arrived, leaves the store behind
-  // the spend, so every later request is refused until the proxy restarts
+  // the spend, so the store keeps a mark that refuses every later request, across a restart, until
+  // an operator clears it; the latch refuses in this process when the mark cannot be written
   let countFailed = false;
   let limitLogged = false;
+
+  const loseCount = async (): Promise<void> => {
+    countFailed = true;
+
+    await deps.store.markLost().catch((error: unknown) => {
+      deps.log('counter.mark_failed', toErrorFields(error), 'error');
+    });
+  };
 
   // required marks a reply that spent for certain, or may have, so one with no usage the proxy
   // can read leaves the count behind
@@ -32,9 +41,9 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     required: boolean,
   ): Promise<void> => {
     if (usage === null && required) {
-      countFailed = true;
-
       deps.log('count.lost', {}, 'error');
+
+      await loseCount();
 
       return;
     }
@@ -55,9 +64,9 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
         deps.log('limit.reached', { ...totals }, 'warn');
       }
     } catch (error) {
-      countFailed = true;
-
       deps.log('counter.write_failed', toErrorFields(error), 'error');
+
+      await loseCount();
     }
   };
 
@@ -84,14 +93,6 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       );
     }
 
-    if (countFailed) {
-      return renderAPIError(
-        503,
-        'api_error',
-        'the counting proxy lost the count of a reply, so it refuses every request until it restarts',
-      );
-    }
-
     const totals = await readTotals(deps);
 
     if (totals === null) {
@@ -99,6 +100,14 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
         503,
         'api_error',
         'the counting proxy cannot read its counter store, so it refuses every request',
+      );
+    }
+
+    if (countFailed || totals.lost) {
+      return renderAPIError(
+        503,
+        'api_error',
+        'the counting proxy lost the count of a reply, so it refuses every request until an operator clears the mark in its counter store',
       );
     }
 
@@ -144,7 +153,9 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
 
     // a connection can break after the model API took the call, so the model may have spent
     if (upstream === null) {
-      countFailed ||= endpoint.spends;
+      if (endpoint.spends) {
+        await loseCount();
+      }
 
       return renderAPIError(502, 'api_error', 'the counting proxy could not reach the model API');
     }
@@ -182,7 +193,9 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
 
     // the model may have spent on a reply whose usage never arrived, so the count is behind
     if (text === null) {
-      countFailed ||= endpoint.spends;
+      if (endpoint.spends) {
+        await loseCount();
+      }
 
       return renderAPIError(502, 'api_error', 'the counting proxy lost the reply of the model API');
     }
@@ -216,7 +229,7 @@ function renderAPIError(status: number, type: string, message: string): Response
   return Response.json({ type: 'error', error: { type, message } }, { status });
 }
 
-async function readTotals(deps: ProxyHandlerDeps): Promise<SpendTotals | null> {
+async function readTotals(deps: ProxyHandlerDeps): Promise<StoredCount | null> {
   try {
     return await deps.store.read();
   } catch (error) {

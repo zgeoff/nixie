@@ -67,28 +67,31 @@ replies that were running at that moment.
 
 ## Failing closed
 
-The proxy treats a counter store it cannot use as a store that holds no room:
+The proxy treats a counter store it cannot use, and a count it has lost, as a store that holds no
+room. A lost count is one that fell behind the spend, and the proxy marks it as lost in the store
+itself. While the lost mark stands, the proxy answers every request with a 503 and sends nothing
+upstream, across restarts, until an operator removes the `lost` field from the store file. The mark
+survives a restart because a restart cannot recover the spend the count missed. When the mark cannot
+be written, the proxy still refuses every later request until it exits.
 
 - **The store cannot be read.** A missing store file, a missing directory or a file that holds no
   count fails the read, and the proxy answers the request with a 503 and sends nothing upstream.
-- **A count cannot be written.** The reply that could not be counted still reaches its caller, but
-  the proxy refuses every later request until it restarts, because its store now holds less than was
-  spent.
+- **A count cannot be written.** The reply that could not be counted still reaches its caller, and
+  the proxy marks the count as lost, because its store now holds less than was spent.
 - **A message reply is lost before its usage arrives.** A call whose connection fails, or whose
   whole reply breaks, gets the caller a 502, and a stream that breaks or that its caller cancels
-  ends where it stopped. Either way the proxy refuses every later request until it restarts, because
-  the model may have spent on a reply the proxy never counted. A failed token count or model list
-  spends nothing, so it only gets the caller a 502.
+  ends where it stopped. Either way the proxy marks the count as lost, because the model may have
+  spent on a reply the proxy never counted. A failed token count or model list spends nothing, so it
+  only gets the caller a 502.
 - **A successful message reply holds no usage the proxy can read.** The reply reaches its caller,
-  and the proxy refuses every later request until it restarts, because the reply spent an amount the
-  proxy cannot count.
+  and the proxy marks the count as lost, because the reply spent an amount the proxy cannot count.
 - **The store directory does not exist at start.** The proxy exits, so the route it would serve has
   no way to the model API.
 
 A stop signal closes the listener and lets each reply under way finish, up to a bounded wait, so the
 count holds every reply that finishes within that wait. A reply still open when the wait ends is cut
-off: a stream counts only the usage its events reported so far, and a call still waiting on the
-model API counts nothing, so the count can fall short of that reply's spend.
+off before its whole usage arrives, so the proxy marks the count as lost before it closes that
+reply.
 
 The release attaches the proxy as one compiled binary for Linux, so a host runs it without a Bun
 install. The [preview recipe](../../../preview/README.md#model-calls) covers how a preview names its

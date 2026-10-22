@@ -66,7 +66,7 @@ test('it prices a reply through its route profile, the 1-hour cache write price 
   // 40 × $1 + 1,000 × $1.25 + 2,000 × $2 + 800 × $0.10 + 12 × $5, per million tokens
   const totals = await store.read();
 
-  expect(totals).toStrictEqual({ dollars: 0.00543, tokens: 3852 });
+  expect(totals).toStrictEqual({ dollars: 0.00543, tokens: 3852, lost: false });
 });
 
 test('it prices a streamed reply from its message start and its last delta', async () => {
@@ -114,7 +114,7 @@ test('it prices a streamed reply from its message start and its last delta', asy
 
   const totals = await store.read();
 
-  expect(totals).toStrictEqual({ dollars: 0.00543, tokens: 3852 });
+  expect(totals).toStrictEqual({ dollars: 0.00543, tokens: 3852, lost: false });
 });
 
 test('it refuses every request once the replies it counted reach its dollar limit', async () => {
@@ -751,7 +751,7 @@ test('it passes an upstream error through without counting it', async () => {
 
   const totals = await store.read();
 
-  expect(totals).toStrictEqual({ dollars: 0, tokens: 0 });
+  expect(totals).toStrictEqual({ dollars: 0, tokens: 0, lost: false });
 });
 
 test('it answers a 502 when the upstream cannot be reached', async () => {
@@ -823,6 +823,76 @@ test('it refuses every later request once a message call fails before its reply 
 
   expect(failed.status).toBe(502);
   expect(later.status).toBe(503);
+  expect(sendUpstream).toHaveBeenCalledOnce();
+});
+
+test('it refuses every request after a restart once a lost count marks its store', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
+  const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
+    Promise.reject(new Error('connection reset')),
+  );
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        upstream: 'http://model.test',
+        model: 'model-small',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store,
+    sendUpstream,
+    log: ctx.log,
+  });
+
+  await handler(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', messages: [] }),
+    }),
+  );
+
+  // a handler on a store opened again stands for the proxy after a restart
+  const restarted = makeProxyHandler({
+    routes: {
+      preview: {
+        upstream: 'http://model.test',
+        model: 'model-small',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store: await createCounterStore(ctx.storePath),
+    sendUpstream,
+    log: ctx.log,
+  });
+
+  const response = await restarted(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', messages: [] }),
+    }),
+  );
+
+  const body: unknown = await response.json();
+
+  expect(response.status).toBe(503);
+
+  expect(body).toStrictEqual({
+    type: 'error',
+    error: {
+      type: 'api_error',
+      message:
+        'the counting proxy lost the count of a reply, so it refuses every request until an operator clears the mark in its counter store',
+    },
+  });
+
   expect(sendUpstream).toHaveBeenCalledOnce();
 });
 

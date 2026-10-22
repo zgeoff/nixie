@@ -1,18 +1,18 @@
 import { rename } from 'node:fs/promises';
 import { z } from 'zod';
-import type { CounterStore, SpendTotals } from './types';
+import type { CounterStore, SpendTotals, StoredCount } from './types';
 
 export async function createCounterStore(path: string): Promise<CounterStore> {
   const exists = await Bun.file(path).exists();
 
   if (!exists) {
-    await writeTotals(path, { dollars: 0, tokens: 0 });
+    await writeCount(path, { dollars: 0, tokens: 0, lost: false });
   }
 
-  // one add at a time, so two replies that end together never write over each other's count
+  // one change at a time, so two replies that end together never write over each other's count
   let tail = Promise.resolve();
 
-  const add = async (spend: SpendTotals): Promise<SpendTotals> => {
+  const withTurn = async <T>(change: () => Promise<T>): Promise<T> => {
     const previous = tail;
     const turn = Promise.withResolvers<undefined>();
 
@@ -21,17 +21,29 @@ export async function createCounterStore(path: string): Promise<CounterStore> {
     await previous;
 
     try {
-      const totals = await readTotals(path);
-
-      const sum = { dollars: totals.dollars + spend.dollars, tokens: totals.tokens + spend.tokens };
-
-      await writeTotals(path, sum);
-
-      return sum;
+      return await change();
     } finally {
       turn.resolve(undefined);
     }
   };
+
+  const add = (spend: SpendTotals): Promise<SpendTotals> =>
+    withTurn(async () => {
+      const stored = await readCount(path);
+
+      const sum = { dollars: stored.dollars + spend.dollars, tokens: stored.tokens + spend.tokens };
+
+      await writeCount(path, { ...sum, lost: stored.lost });
+
+      return sum;
+    });
+
+  const markLost = (): Promise<void> =>
+    withTurn(async () => {
+      const stored = await readCount(path);
+
+      await writeCount(path, { ...stored, lost: true });
+    });
 
   const settle = async (): Promise<void> => {
     let awaited: Promise<unknown>;
@@ -43,25 +55,28 @@ export async function createCounterStore(path: string): Promise<CounterStore> {
     } while (awaited !== tail);
   };
 
-  return { read: () => readTotals(path), add, settle };
+  return { read: () => readCount(path), add, markLost, settle };
 }
 
-// a crash between the write and the rename leaves the last whole count in place
-async function writeTotals(path: string, totals: SpendTotals): Promise<void> {
+// a crash between the write and the rename leaves the last whole count in place; the file holds
+// the lost mark only while it stands, so an operator clears it by deleting the field
+async function writeCount(path: string, count: StoredCount): Promise<void> {
   const part = `${path}.part`;
+  const stored = count.lost ? count : { dollars: count.dollars, tokens: count.tokens };
 
-  await Bun.write(part, JSON.stringify(totals), { createPath: false });
+  await Bun.write(part, JSON.stringify(stored), { createPath: false });
 
   await rename(part, path);
 }
 
-const totalsSchema = z.strictObject({
+const countSchema = z.strictObject({
   dollars: z.number().nonnegative(),
   tokens: z.number().nonnegative(),
+  lost: z.boolean().default(false),
 });
 
-async function readTotals(path: string): Promise<SpendTotals> {
+async function readCount(path: string): Promise<StoredCount> {
   const stored: unknown = await Bun.file(path).json();
 
-  return totalsSchema.parse(stored);
+  return countSchema.parse(stored);
 }
