@@ -15,6 +15,7 @@ import { createPathSource } from './create-path-source';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readWrittenSkills } from './read-written-skills';
 import { runSeed } from './run-seed';
+import { createStubGitSyncWorktree } from './test-utils/create-stub-git-sync-worktree';
 import { writeSkillExportState } from './write-skill-export-state';
 import { writeWrittenSkill } from './write-written-skill';
 import { writeWrittenSkillState } from './write-written-skill-state';
@@ -88,12 +89,90 @@ test('it seeds the persona and records the source ID, the revision and the conte
       payload: {
         sourceID: `path:${ctx.root}`,
         sourceKind: 'path',
+        sourceRepository: null,
         revision: buildContentHash(files),
         contentHash: buildContentHash(files),
         formatVersion: 1,
         policyHash: built.policyHash,
         unapplied: [],
         skipped: [],
+      },
+    },
+  });
+});
+
+test('it seeds a plain directory with its content hash as the revision and no repository', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  const seeds = await sql`select source_id, source_kind, source_repository, revision, content_hash
+    from definition_seeds`.execute(ctx.writer.db);
+
+  const contentHash = buildContentHash(
+    new Map([
+      ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+      ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ]),
+  );
+
+  expect(seeds.rows).toStrictEqual([
+    {
+      source_id: `path:${ctx.root}`,
+      source_kind: 'path',
+      source_repository: null,
+      revision: contentHash,
+      content_hash: contentHash,
+    },
+  ]);
+});
+
+test('it seeds a git-sync worktree with its commit as the revision and names the repository', async () => {
+  const ctx = await setupTest();
+
+  const sync = join(ctx.directory, 'sync');
+
+  const worktree = await createStubGitSyncWorktree(sync, {
+    commit: '5be0c4f1a9d27e83b6c0f4a1d9e72b5c8a3f6d10',
+    config: '[remote "origin"]\n\turl = https://git.example.test/harbor-lab/tern-definitions\n',
+  });
+
+  await writeFile(join(worktree, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(worktree, 'persona.md'), '# Persona\n');
+
+  const source = createPathSource({ directory: join(sync, 'current') });
+
+  const result = await runSeed({ log: ctx.log, source, policy: { rules: [], tools: [] } });
+
+  const seeds = await sql`select source_id, source_kind, source_repository, revision, content_hash
+    from definition_seeds`.execute(ctx.writer.db);
+
+  const contentHash = buildContentHash(
+    new Map([
+      ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+      ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ]),
+  );
+
+  expect(seeds.rows).toStrictEqual([
+    {
+      source_id: `path:${join(sync, 'current')}`,
+      source_kind: 'path',
+      source_repository: 'https://git.example.test/harbor-lab/tern-definitions',
+      revision: '5be0c4f1a9d27e83b6c0f4a1d9e72b5c8a3f6d10',
+      content_hash: contentHash,
+    },
+  ]);
+
+  expect(result).toMatchObject({
+    status: 'seeded',
+    record: {
+      payload: {
+        sourceRepository: 'https://git.example.test/harbor-lab/tern-definitions',
+        revision: '5be0c4f1a9d27e83b6c0f4a1d9e72b5c8a3f6d10',
+        contentHash,
       },
     },
   });
@@ -121,6 +200,7 @@ test('it returns the definitions it put in force', async () => {
     seededAt: new Date(ctx.writer.clock.now()),
     sourceID: `path:${ctx.root}`,
     sourceKind: 'path',
+    sourceRepository: null,
     revision: snapshot.revision,
     contentHash: snapshot.contentHash,
     formatVersion: 1,
@@ -279,6 +359,70 @@ test('it refuses a first snapshot that fails to parse and leaves no seed', async
   });
 
   expect(seeds.rows).toStrictEqual([]);
+});
+
+test('it seeds again when git-sync moves to a new commit over the same files', async () => {
+  const ctx = await setupTest();
+
+  const sync = join(ctx.directory, 'sync');
+
+  const first = await createStubGitSyncWorktree(sync, {
+    commit: '5be0c4f1a9d27e83b6c0f4a1d9e72b5c8a3f6d10',
+    config: '[remote "origin"]\n\turl = https://git.example.test/harbor-lab/tern-definitions\n',
+  });
+
+  await writeFile(join(first, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(first, 'persona.md'), '# Persona\n');
+
+  const source = createPathSource({ directory: join(sync, 'current') });
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source, policy });
+
+  const second = await createStubGitSyncWorktree(sync, {
+    commit: 'a3d91f6c0e2b84d7f5c1a9e3b6d0f2c8e4a7b519',
+    config: '[remote "origin"]\n\turl = https://git.example.test/harbor-lab/tern-definitions\n',
+  });
+
+  await writeFile(join(second, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(second, 'persona.md'), '# Persona\n');
+
+  const result = await runSeed({ log: ctx.log, source, policy });
+
+  expect(result.status).toBe('seeded');
+  expect(result.inForce?.revision).toBe('a3d91f6c0e2b84d7f5c1a9e3b6d0f2c8e4a7b519');
+});
+
+test('it seeds again when the origin changes over the same commit and files', async () => {
+  const ctx = await setupTest();
+
+  const sync = join(ctx.directory, 'sync');
+
+  const worktree = await createStubGitSyncWorktree(sync, {
+    commit: '5be0c4f1a9d27e83b6c0f4a1d9e72b5c8a3f6d10',
+    config: '[remote "origin"]\n\turl = https://git.example.test/harbor-lab/tern-definitions\n',
+  });
+
+  await writeFile(join(worktree, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(worktree, 'persona.md'), '# Persona\n');
+
+  const source = createPathSource({ directory: join(sync, 'current') });
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source, policy });
+
+  await writeFile(
+    join(sync, '.git', 'config'),
+    '[remote "origin"]\n\turl = https://git.example.test/gannet-co/tern-definitions\n',
+  );
+
+  const result = await runSeed({ log: ctx.log, source, policy });
+
+  expect(result.status).toBe('seeded');
+
+  expect(result.inForce?.sourceRepository).toBe(
+    'https://git.example.test/gannet-co/tern-definitions',
+  );
 });
 
 test('it writes nothing when the newest seed already holds the same definitions', async () => {

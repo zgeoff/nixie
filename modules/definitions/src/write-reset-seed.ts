@@ -77,6 +77,7 @@ async function writeSeedRow(tx: Transaction<unknown>, inForce: DefinitionsInForc
       seeded_at: inForce.seededAt.getTime(),
       source_id: inForce.sourceID,
       source_kind: inForce.sourceKind,
+      source_repository: inForce.sourceRepository,
       revision: inForce.revision,
       content_hash: inForce.contentHash,
       format_version: inForce.formatVersion,

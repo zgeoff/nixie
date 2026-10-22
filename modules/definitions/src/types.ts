@@ -16,6 +16,7 @@ export interface Snapshot {
   readonly files: ReadonlyMap<string, Uint8Array>;
 
   readonly revision: string;
+  readonly repository: string | null;
 
   readonly skipped: readonly string[];
 }
@@ -92,6 +93,7 @@ export interface DefinitionsInForce {
   readonly seededAt: Date;
   readonly sourceID: string;
   readonly sourceKind: SourceKind;
+  readonly sourceRepository: string | null;
   readonly revision: string;
   readonly contentHash: string;
   readonly formatVersion: number;
@@ -126,6 +128,7 @@ interface SeedRow {
   readonly seeded_at: number;
   readonly source_id: string;
   readonly source_kind: SourceKind;
+  readonly source_repository: string | null;
   readonly revision: string;
   readonly content_hash: string;
   readonly format_version: number;

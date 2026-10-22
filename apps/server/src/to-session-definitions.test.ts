@@ -7,6 +7,7 @@ test('it reads the persona, its hash and the policy hash from the definitions in
       seededAt: new Date('2026-10-14T09:00:00Z'),
       sourceID: 'path:/srv/definitions',
       sourceKind: 'path',
+      sourceRepository: null,
       revision: 'sha256:content',
       contentHash: 'sha256:content',
       formatVersion: 1,

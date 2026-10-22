@@ -1,9 +1,10 @@
-import { lstat, readdir, realpath } from 'node:fs/promises';
+import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { buildContentHash } from './build-content-hash';
 import { defaultSizeLimits } from './default-size-limits';
 import { isDefinitionsPath } from './is-definitions-path';
 import { isDefinitionsRootEntry } from './is-definitions-root-entry';
+import { readGitCheckout } from './read-git-checkout';
 import { readKeptFile } from './read-kept-file';
 import { SnapshotError } from './snapshot-error';
 import type { DefinitionsSource, SizeLimits, Snapshot } from './types';
@@ -22,7 +23,9 @@ export function createPathSource(options: PathSourceOptions): DefinitionsSource 
     probe: async () => {
       const snapshot = await readPathSnapshot(options.directory, limits);
 
-      return snapshot.contentHash;
+      return snapshot.revision === snapshot.contentHash
+        ? snapshot.contentHash
+        : JSON.stringify([snapshot.revision, snapshot.contentHash, snapshot.repository]);
     },
     snapshot: () => readPathSnapshot(options.directory, limits),
   };
@@ -43,7 +46,15 @@ async function readPathSnapshot(directory: string, limits: SizeLimits): Promise<
 
   const contentHash = buildContentHash(files);
 
-  return { contentHash, files, revision: contentHash, skipped: entries.skipped.toSorted() };
+  const checkout = await readGitCheckout(base, (path) => readFile(path, 'utf8'));
+
+  return {
+    contentHash,
+    files,
+    revision: checkout?.commit ?? contentHash,
+    repository: checkout?.repository ?? null,
+    skipped: entries.skipped.toSorted(),
+  };
 }
 
 interface WalkFile {

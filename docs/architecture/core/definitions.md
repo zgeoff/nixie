@@ -30,8 +30,17 @@ A source has a probe and a snapshot. The probe returns a token that changes when
 change, so a poll takes a snapshot only on a token that has not seeded yet. A snapshot holds the
 files by path relative to the definitions root, a revision, the content hash, and the paths the
 source skipped. The local path source is the one source built, and it lives in the module because it
-reaches nothing outside nixie. A directory has no commit, so the path source uses the content hash
-as both its revision and its probe token.
+reaches nothing outside nixie. A plain directory has no commit, so the path source uses the content
+hash as both its revision and its probe token.
+
+A git-sync sidecar checks each commit of the definitions repo out as a linked git worktree, and the
+path source reads that commit from the files git keeps beside the checkout, without running git.
+When the root resolves to a linked worktree whose HEAD holds a bare commit, the commit becomes the
+revision. The source names the repo by the origin URL in the repo's git config, with any user name,
+password, query and fragment removed, because a sync can carry its credential in that URL. The probe
+token joins the commit and the repo to the content hash, so a new commit or a new origin over the
+same files seeds again. A checkout on a branch, or a directory with no git file, keeps the content
+hash as its revision and names no repo.
 
 A source reads only the known definitions paths: the manifest and the persona at the root, and the
 jobs, rules and skills folders. It skips every other entry at the root by name, without reading or
@@ -207,7 +216,7 @@ whitespace, so the same definitions always give the same bytes.
 The policy holds the fixed rule and every tool declaration in the build's registry. The fixed rule
 decides by a tool's declared effects ([the decision point](../policy/decision-point.md)), so a
 replay needs the declarations that were in force. A release that changes a tool declaration
-therefore changes the snapshot hash over the same files. A probe token follows the files alone, so
+therefore changes the snapshot hash over the same files. A probe token follows the source alone, so
 the change enters with the next seed the release runs, which compares the snapshot hash as well as
 the revision.
 
@@ -215,15 +224,16 @@ the revision.
 
 A seed reads and parses a snapshot, builds its snapshot hash, and writes in one write transaction:
 the persona under its persona version, the snapshot under its snapshot hash with its list of skills,
-each skill version under its content hash, a seed record, and a seed row that ties the source and
-its revision to both hashes. A persona, a snapshot or a skill version seen before keeps its first
-row. The definitions in force are the newest seed, and every record takes its snapshot hash from it.
+each skill version under its content hash, a seed record, and a seed row that ties the source, the
+repo it names and its revision to both hashes. A persona, a snapshot or a skill version seen before
+keeps its first row. The definitions in force are the newest seed, and every record takes its
+snapshot hash from it.
 
-| Result    | When                                                                                                          | Writes                                            |
-| --------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Seeded    | The source, revision, content hash or snapshot hash differs from the last, or a written skill becomes adopted | The rows                                          |
-| Unchanged | The newest seed holds the same source, revision and both hashes, and no written skill becomes adopted         | Only the record of an adopted skill that lacks it |
-| Refused   | The snapshot failed to read, parse or validate                                                                | Nothing                                           |
+| Result    | When                                                                                                                | Writes                                            |
+| --------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Seeded    | The source, repo, revision, content hash or snapshot hash differs from the last, or a written skill becomes adopted | The rows                                          |
+| Unchanged | The newest seed holds the same source, repo, revision and both hashes, and no written skill becomes adopted         | Only the record of an adopted skill that lacks it |
+| Refused   | The snapshot failed to read, parse or validate                                                                      | Nothing                                           |
 
 A refused seed comes back as a value with its error and the definitions still in force, never as a
 throw, so the caller reports the refusal while the last good seed keeps serving. A half-applied seed

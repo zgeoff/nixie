@@ -11,7 +11,9 @@ test('it reads the format version and the persona, and lists every other file un
     ['notes.md', new TextEncoder().encode('# Notes\n')],
   ]);
 
-  expect(parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] })).toStrictEqual({
+  expect(
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+  ).toStrictEqual({
     formatVersion: 1,
     persona: '# Persona\n',
     skills: [],
@@ -24,7 +26,7 @@ test('it refuses definitions without a manifest', () => {
   const files = new Map([['persona.md', new TextEncoder().encode('# Persona\n')]]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(Error, 'nixie.yaml: the definitions have no manifest');
 });
 
@@ -38,7 +40,7 @@ test.each([
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(
     Error,
     /^nixie\.yaml: format \d is not one this release reads, which is 1 or 2$/u,
@@ -56,7 +58,7 @@ test.each([
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(Error, 'nixie.yaml: format must be a whole number');
 });
 
@@ -64,7 +66,7 @@ test('it refuses definitions without a persona', () => {
   const files = new Map([['nixie.yaml', new TextEncoder().encode('format: 1\n')]]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(Error, 'persona.md: the definitions have no persona');
 });
 
@@ -75,7 +77,7 @@ test('it refuses an empty persona', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(Error, 'persona.md: the persona is empty');
 });
 
@@ -86,7 +88,7 @@ test('it refuses a persona that is not UTF-8 text', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(Error, 'persona.md: the file is not UTF-8 text');
 });
 
@@ -98,7 +100,7 @@ test('it refuses an unapplied YAML file that fails to parse', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(Error, /^rules\/mail\.yaml: YAML Parse error/u);
 });
 
@@ -110,7 +112,7 @@ test('it refuses an unapplied JSON file that fails to parse', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(Error, /^jobs\/morning\.json: JSON Parse error/u);
 });
 
@@ -121,7 +123,9 @@ test('it lists a skill script as unapplied under format 1', () => {
     ['skills/pdf-forms/scripts/fill.py', new TextEncoder().encode('print("fill")\n')],
   ]);
 
-  expect(parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] })).toStrictEqual({
+  expect(
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+  ).toStrictEqual({
     formatVersion: 1,
     persona: '# Persona\n',
     skills: [],
@@ -138,7 +142,7 @@ test('it refuses a skill file that is not UTF-8 text', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(Error, 'skills/pdf-forms/form.pdf: the file is not UTF-8 text');
 });
 
@@ -158,7 +162,9 @@ test('it reads each skill under format 2, and lists none of its files as unappli
     ['scripts/read.py', new TextEncoder().encode(script)],
   ]);
 
-  expect(parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] })).toStrictEqual({
+  expect(
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+  ).toStrictEqual({
     formatVersion: 2,
     persona: '# Persona\n',
     skills: [
@@ -199,7 +205,13 @@ test('it gives the conversation only the skills that the manifest lists', () => 
     ],
   ]);
 
-  const parsed = parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] });
+  const parsed = parseDefinitions({
+    contentHash: 'c',
+    files,
+    revision: 'r',
+    repository: null,
+    skipped: [],
+  });
 
   expect(parsed.conversationSkills).toStrictEqual(['tide-tables']);
 });
@@ -221,7 +233,13 @@ test('it gives the conversation each listed skill once, in name order', () => {
     ],
   ]);
 
-  const parsed = parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] });
+  const parsed = parseDefinitions({
+    contentHash: 'c',
+    files,
+    revision: 'r',
+    repository: null,
+    skipped: [],
+  });
 
   expect(parsed.conversationSkills).toStrictEqual(['bird-log', 'tide-tables']);
 });
@@ -237,7 +255,7 @@ test('it refuses a manifest skill list that names no skill', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(Error, 'nixie.yaml: skills: no skill is named tide-table');
 });
 
@@ -248,7 +266,7 @@ test('it refuses a manifest skill list that is not a list of names', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(Error, 'nixie.yaml: skills must be a list of skill names');
 });
 
@@ -260,7 +278,7 @@ test('it refuses a skill under format 2 whose SKILL.md fails a seed check', () =
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(
     Error,
     'skills/tide-tables/SKILL.md: the file does not open with YAML frontmatter between --- lines',
