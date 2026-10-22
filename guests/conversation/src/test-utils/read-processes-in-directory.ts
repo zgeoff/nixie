@@ -1,7 +1,7 @@
 import { readdir, readlink } from 'node:fs/promises';
 
-// Linux shows a removed working directory as the old path with " (deleted)" after it, so a prefix
-// match still finds a process whose directory is gone. A process can exit between the listing and
+// Linux shows a removed working directory as the old path with " (deleted)" after it, so that exact
+// form still finds a process whose directory is gone. A process can exit between the listing and
 // the read, so a failed read counts as no match.
 export async function readProcessesInDirectory(directory: string): Promise<readonly number[]> {
   const entries = await readdir('/proc');
@@ -14,5 +14,7 @@ export async function readProcessesInDirectory(directory: string): Promise<reado
 }
 
 function isInside(path: string, directory: string): boolean {
-  return path === directory || path.startsWith(`${directory}/`) || path.startsWith(`${directory} `);
+  return (
+    path === directory || path === `${directory} (deleted)` || path.startsWith(`${directory}/`)
+  );
 }

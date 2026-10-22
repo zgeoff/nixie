@@ -49,10 +49,13 @@ test('it reads a process whose directory was removed while it ran', async () => 
   expect(pids).toStrictEqual([child.pid]);
 });
 
-test('it reads no process for a directory that a sibling with a longer name holds', async () => {
+test.each([
+  ['a hyphen', '-sibling'],
+  ['a space', ' sibling'],
+])('it reads no process for a sibling directory whose name adds %s', async (_label, suffix) => {
   const ctx = await setupTest();
 
-  const sibling = `${ctx.directory}-sibling`;
+  const sibling = `${ctx.directory}${suffix}`;
 
   await mkdir(sibling);
 
