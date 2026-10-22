@@ -116,6 +116,6 @@ pre-push:
       run: |
         commits=$(.lefthook/pushed-commits.sh) || exit 1
         for commit in $commits; do
-          bun test --parallel=1 --changed="origin/main...$commit" --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.sdk.test.ts' || exit 1
-          bun test --parallel=1 --timeout=30000 --changed="origin/main...$commit" .sdk.test.ts || exit 1
+          bun test --parallel=1 --changed="origin/main...$commit" --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.sdk.test.ts' --path-ignore-patterns='**/*.process.test.ts' || exit 1
+          bun test --parallel=1 --timeout=30000 --changed="origin/main...$commit" .sdk.test.ts .process.test.ts || exit 1
         done

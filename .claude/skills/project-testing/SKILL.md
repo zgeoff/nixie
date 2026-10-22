@@ -68,11 +68,12 @@ short directory or point `BUN_CHROME_PATH` at Playwright's `chrome-headless-shel
 such socket. Chrome stops under a `ulimit -v` cap, because it reserves more address space than it
 uses, so the browser suites skip there.
 
-The guest suites that start the real Agent SDK, the `*.sdk.test.ts` files, run in a lane of their
-own. A cold start of the SDK's CLI on a small host outlasts Bun's default test limit, so
-`bun run test` leaves these suites out of the parallel run and runs them after it, one file at a
-time, under one raised limit for the whole lane. The pre-push test job splits its run the same way.
-A test in the lane sets no limit of its own.
+Two kinds of suite run in a lane of their own: the guest suites that start the real Agent SDK, the
+`*.sdk.test.ts` files, and the suites that spawn nixie or a build of it as a child process, the
+`*.process.test.ts` files. A cold start of the SDK's CLI or of nixie on a small host outlasts Bun's
+default test limit, so `bun run test` leaves these suites out of the parallel run and runs them
+after it, one file at a time, under one raised limit for the whole lane. The pre-push test job
+splits its run the same way. A test in the lane sets no limit of its own.
 
 `bun run test` runs the crash suites in `e2e/crash/`, which spawn the test build of nixie from
 [`e2e/nixie/main.ts`](../../../e2e/nixie/main.ts) as a child process and drive it through
@@ -125,6 +126,13 @@ its certificate names and response handler, so a test calls it in its body.
 [`startFakeImp`](../../../adapters/sandbox-imp/src/test-utils/start-fake-imp.ts) takes none, so
 `setupTest()` may wrap it.
 
-Each conversation turn starts its own Agent SDK process, and a cold start on a small host outlasts
-Bun's 5 s test limit and the condition wait's default alike. A server suite that waits on a turn of
-a spawned nixie calls [`waitForTurn`](../../../apps/server/src/test-utils/wait-for-turn.ts).
+A server suite runs nixie in the test process through
+[`startTestNixie`](../../../apps/server/src/test-utils/start-test-nixie.ts), with the stub guest
+from
+[`buildStubGuestSandboxes`](../../../modules/sandbox/src/test-utils/build-stub-guest-sandboxes.ts)
+in place of the sandbox adapter, so a turn starts no guest and no Agent SDK. A test that checks what
+the model sees asserts on the turn frames the stub guest received. The stub never imitates the SDK's
+request to the model, because a copy of the SDK's logic drifts from it unseen. Only a suite in the
+process lane spawns nixie, through
+[`spawnTestNixie`](../../../apps/server/src/test-utils/spawn-test-nixie.ts), and runs the real
+guest.

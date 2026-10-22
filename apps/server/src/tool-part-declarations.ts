@@ -17,9 +17,10 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     start: (parts) => {
       const options = parts.get('inputs').options;
       const apiContext = parts.get('context').apiContext;
+      const create = options.createSandboxAdapter ?? createSandboxAdapter;
 
       return Promise.resolve(
-        createSandboxAdapter({
+        create({
           recorder: buildSandboxRecorder({
             log: apiContext.log,
             definitions: apiContext.definitions,

@@ -1,5 +1,11 @@
 import { expect, test } from 'bun:test';
-import { decodeTurnFrame, encodeTurnFrame, guestFrameSchema } from '@heynixie/wire';
+import type { CheckRequest } from '@heynixie/wire';
+import {
+  checkReplySchema,
+  decodeTurnFrame,
+  encodeTurnFrame,
+  guestFrameSchema,
+} from '@heynixie/wire';
 import { buildMockSummarizeFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -194,6 +200,19 @@ test('it ends a turn that overflows the window at the point it resumed, as an er
     isError: true,
     terminalReason: 'prompt_too_long',
   });
+});
+
+test('it fails a turn whose reply is a refused credential as a model auth failure, with no answer', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies({ modelAuthRefusal: 'invalid x-api-key' });
+
+  const run = await runGuestFrame(sandbox, buildMockTurnFrame());
+
+  expect(run.frames).toStrictEqual([
+    { type: 'failed', reason: 'model_auth', detail: 'invalid x-api-key' },
+  ]);
 });
 
 test('it calls the tool a reply asks for and replies after it, in the same turn', async () => {
@@ -738,7 +757,7 @@ test('it refuses a spec the real adapters refuse', async () => {
   expect(ctx.stub.adapter.create(spec)).rejects.toThrow('no owner');
 });
 
-test('it records every frame the guests receive, in order, with the sandbox they reached', async () => {
+test('it records every frame the guests receive, in order, with the sandbox they reached and its owner', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
 
@@ -754,9 +773,9 @@ test('it records every frame the guests receive, in order, with the sandbox they
   await runGuestFrame(sandbox, { type: 'purge' });
 
   expect(ctx.stub.received).toStrictEqual([
-    { sandboxID: sandbox.id, frame: turn },
-    { sandboxID: sandbox.id, frame: summarize },
-    { sandboxID: sandbox.id, frame: { type: 'purge' } },
+    { sandboxID: sandbox.id, owner: 'conversation', frame: turn },
+    { sandboxID: sandbox.id, owner: 'conversation', frame: summarize },
+    { sandboxID: sandbox.id, owner: 'conversation', frame: { type: 'purge' } },
   ]);
 
   expect(ctx.stub.turns).toStrictEqual([turn]);
@@ -889,6 +908,54 @@ test('it writes no transcript from a turn the host stopped during a tool call, s
   expect(ctx.stub.collectFilesWithText('blue flowerpot')).toStrictEqual([]);
 });
 
+test('it holds a gated reply until its gate opens, then answers with it', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  const gate = Promise.withResolvers<void>();
+
+  ctx.stub.addReplies({ text: 'The ferry is late.', gate: gate.promise });
+
+  const stream = await sandbox.spawn({
+    argv: ['guest'],
+    env: { HOME: '/home/nixie' },
+    maxMessageBytes: 1 << 20,
+  });
+
+  await stream.send(encodeTurnFrame(buildMockTurnFrame()));
+
+  gate.resolve();
+
+  const messages = await Array.fromAsync(stream.messages);
+
+  expect(messages.map((message) => decodeTurnFrame(guestFrameSchema, message))).toMatchObject([
+    { type: 'read' },
+    { type: 'assistant', text: 'The ferry is late.' },
+    { type: 'ended' },
+  ]);
+});
+
+test('it ends a turn the host stopped while a gated reply waits, with no frame', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies({ text: 'Never sent.', gate: new Promise(() => {}) });
+
+  const stream = await sandbox.spawn({
+    argv: ['guest'],
+    env: { HOME: '/home/nixie' },
+    maxMessageBytes: 1 << 20,
+  });
+
+  await stream.send(encodeTurnFrame(buildMockTurnFrame()));
+
+  const exited = await stream.stop();
+  const messages = await Array.fromAsync(stream.messages);
+
+  expect(exited.signal).toBe('SIGTERM');
+  expect(messages).toStrictEqual([]);
+});
+
 test('it keeps the frames and transcript of an input that completed before a stop', async () => {
   const release = Promise.withResolvers<string>();
 
@@ -967,4 +1034,56 @@ test('it keeps the inputs that completed before a later input fails, and resumes
   invariant(next.ended !== null);
 
   expect(next.ended.isError).toBeUndefined();
+});
+
+test('it answers a check in a checker sandbox with the queued answer, then fails the next with none queued', async () => {
+  const ctx = await setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(
+    buildMockSandboxSpec({ kind: 'checker', owner: 'checker' }),
+  );
+
+  ctx.stub.addCheckAnswers({ verdict: 'asserted', reason: 'Stated.' });
+
+  const request: CheckRequest = {
+    profile: {
+      model: 'claude-test-1',
+      baseURL: 'http://127.0.0.1:9',
+      effort: 'low',
+      authHeader: 'x-api-key',
+    },
+    systemPrompt: 'You check one candidate memory.',
+    input: '<owner_message>\nI swim on Fridays\n</owner_message>',
+  };
+
+  const answered = await sandbox.spawn({ argv: ['check'], maxMessageBytes: 1 << 20 });
+
+  await answered.send(new TextEncoder().encode(JSON.stringify(request)));
+
+  const unanswered = await sandbox.spawn({ argv: ['check'], maxMessageBytes: 1 << 20 });
+
+  await unanswered.send(new TextEncoder().encode(JSON.stringify(request)));
+
+  const replies = await Promise.all(
+    [answered, unanswered].map(async (stream) => {
+      const messages = await Array.fromAsync(stream.messages);
+
+      return messages.map((message) => decodeTurnFrame(checkReplySchema, message));
+    }),
+  );
+
+  expect(replies).toStrictEqual([
+    [
+      {
+        kind: 'answer',
+        output: { verdict: 'asserted', reason: 'Stated.' },
+        costUSD: 0,
+        durationMs: 0,
+        apiMs: 0,
+      },
+    ],
+    [{ kind: 'failed', reason: 'the stub check holds no answer' }],
+  ]);
+
+  expect(ctx.stub.checks).toStrictEqual([request, request]);
 });

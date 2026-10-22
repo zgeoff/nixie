@@ -15,9 +15,10 @@ test('it seeds the first definitions within seconds of a checkout that lands aft
   const ctx = await setupTest();
 
   await ctx.waitForLogEvent('ready');
-  await ctx.sendStopSignal();
-  await ctx.waitForExit();
 
+  ctx.signalStop();
+
+  await ctx.exited;
   await rm(ctx.dataDir, { recursive: true });
   await mkdir(ctx.dataDir);
 
@@ -35,18 +36,15 @@ test('it seeds the first definitions within seconds of a checkout that lands aft
 
   const landedAt = Date.now();
 
-  await waitForCondition(
-    async () => {
-      const ready = await fetch(`http://127.0.0.1:${String(listening['port'])}/health/ready`);
-      const body: unknown = await ready.json();
+  await waitForCondition(async () => {
+    const ready = await fetch(`http://127.0.0.1:${String(listening['port'])}/health/ready`);
+    const body: unknown = await ready.json();
 
-      const definitions = z.object({ isReady: z.boolean() });
-      const report = z.object({ parts: z.object({ definitions }) }).parse(body);
+    const definitions = z.object({ isReady: z.boolean() });
+    const report = z.object({ parts: z.object({ definitions }) }).parse(body);
 
-      return report.parts.definitions.isReady;
-    },
-    { timeoutMs: 30_000 },
-  );
+    return report.parts.definitions.isReady;
+  });
 
   expect(Date.now() - landedAt).toBeLessThan(5000);
-}, 60_000);
+});

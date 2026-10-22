@@ -22,8 +22,10 @@ test('it reports the definitions ready within seconds of a checkout that lands a
   const ctx = await setupTest();
 
   await ctx.waitForLogEvent('ready');
-  await ctx.sendStopSignal();
-  await ctx.waitForExit();
+
+  ctx.signalStop();
+
+  await ctx.exited;
 
   const definitionsDir = join(ctx.directory, 'definitions');
 
@@ -39,17 +41,14 @@ test('it reports the definitions ready within seconds of a checkout that lands a
 
   const landedAt = Date.now();
 
-  await waitForCondition(
-    async () => {
-      const ready = await fetch(`http://127.0.0.1:${String(listening['port'])}/health/ready`);
+  await waitForCondition(async () => {
+    const ready = await fetch(`http://127.0.0.1:${String(listening['port'])}/health/ready`);
 
-      return ready.ok;
-    },
-    { timeoutMs: 30_000 },
-  );
+    return ready.ok;
+  });
 
   expect(Date.now() - landedAt).toBeLessThan(5000);
-}, 60_000);
+});
 
 test('it reports the definitions ready again once the source returns to its last good revision after a reload refused another', async () => {
   const dataDir = await mkdtemp(join(tmpdir(), 'nixie-seed-poll-'));

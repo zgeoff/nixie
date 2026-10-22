@@ -1,7 +1,9 @@
 import type { Writer } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
+import type { SandboxAdapter } from '@heynixie/sandbox';
 import { buildCleanup } from './build-cleanup';
+import type { SandboxAdapterOptions } from './create-sandbox-adapter';
 import type { DeploymentConfig } from './deployment-config-schema';
 import type { SandboxImages } from './load-sandbox-manifest';
 import type { Secrets } from './load-secrets';
@@ -20,6 +22,10 @@ export interface ServerOptions {
 
   readonly encoderDir?: string;
   readonly log: Logger;
+
+  readonly createSandboxAdapter?: (options: SandboxAdapterOptions) => SandboxAdapter;
+
+  readonly taskPollMs?: number;
 }
 
 export interface Server {

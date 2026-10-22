@@ -1,9 +1,8 @@
 import type { ContractClient, LogRecord } from '@heynixie/contract';
-import { waitForTurn } from './wait-for-turn';
+import { waitForCondition } from '@heynixie/testing';
 
 interface ClientMessage {
   readonly text: string;
-
   readonly spans?: readonly {
     readonly start: number;
     readonly end: number;
@@ -25,7 +24,7 @@ export async function sendClientMessage(
     thread: 'conversation',
   });
 
-  await waitForTurn(async () => {
+  await waitForCondition(async () => {
     const read = await client.conversation.read({ thread: 'conversation' });
 
     page.records = read.records;

@@ -1,53 +1,44 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
-import { probeProcessGone, readDescendants, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { loadDeploymentConfig } from '../load-deployment-config';
 import { createTestClient } from './create-test-client';
 import { startTestNixie } from './start-test-nixie';
-import { waitForTurn } from './wait-for-turn';
 
-test('it starts nixie in a test build and reaches ready', async () => {
+test('it starts nixie in the test process and reaches ready', async () => {
   const nixie = await startTestNixie();
   const ready = await nixie.waitForLogEvent('ready');
 
-  expect(ready).toMatchObject({ event: 'ready' });
-}, 60_000);
+  expect(ready).toMatchObject({ event: 'ready', level: 'info' });
+});
 
-test('it reads the records and the exit code once nixie exits', async () => {
+test('it reads the records and the exit code once nixie stops', async () => {
   const nixie = await startTestNixie();
 
   await nixie.waitForLogEvent('ready');
 
-  nixie.sendSignal('SIGTERM');
+  nixie.signalStop();
 
   const run = await nixie.waitForExit();
 
   expect(run.exitCode).toBe(0);
   expect(run.records).toIncludeAllPartialMembers([{ kind: 'definitions_seeded' }]);
-}, 60_000);
+});
 
 test('it rejects a wait for a log event once nixie exits without it', async () => {
   const nixie = await startTestNixie();
 
   await nixie.waitForLogEvent('ready');
 
-  nixie.sendSignal('SIGTERM');
+  nixie.signalStop();
 
-  await nixie.waitForExit();
+  await nixie.exited;
 
   expect(nixie.waitForLogEvent('no-such-event')).rejects.toThrow(
-    /^nixie exited without the log event no-such-event:\n/u,
+    'nixie exited without the log event no-such-event',
   );
-}, 60_000);
-
-test('it returns from the stop signal once nixie logs that its stop began', async () => {
-  const nixie = await startTestNixie();
-
-  await nixie.waitForLogEvent('ready');
-  await nixie.sendStopSignal();
-
-  expect(nixie.readOutput()).toInclude('"event":"stopping"');
-}, 60_000);
+});
 
 test('it reads nixie.db and keys.db from the data directory', async () => {
   const nixie = await startTestNixie();
@@ -57,84 +48,127 @@ test('it reads nixie.db and keys.db from the data directory', async () => {
   const files = await nixie.readDataFiles();
 
   expect(files.map((file) => file.name)).toIncludeAllMembers(['nixie.db', 'keys.db']);
-}, 60_000);
+});
 
-test('it removes its directory once the test finishes', async () => {
+test('it stops nixie and removes its directory once the test finishes', async () => {
   const nixie = await startTestNixie();
 
   onTestFinished(() => {
+    expect(nixie.exited).resolves.toBe(0);
     expect(stat(nixie.directory)).rejects.toThrow();
   });
 
   const listening = await nixie.waitForLogEvent('http.listening');
 
   expect(listening['port']).toBeNumber();
-}, 60_000);
+});
 
-test('it stops the guest of a turn still running once the test finishes', async () => {
+test('it answers a turn through the stub guest, which receives the turn frame', async () => {
   const nixie = await startTestNixie();
-  const clients = await createTestClient(nixie);
+  const api = await createTestClient(nixie);
 
-  nixie.model.addReplies({ text: 'Held.', gate: Promise.withResolvers<void>().promise });
+  nixie.guest.addReplies({ text: 'The tide turns at noon.' });
 
-  await clients.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
-    text: 'Check the tide at noon.',
+    text: 'When does the tide turn?',
     thread: 'conversation',
   });
 
-  await waitForTurn(() => nixie.model.requests.some((request) => request.path === '/v1/messages'));
+  await waitForCondition(async () => {
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
-  const turnPIDs = readDescendants(process.pid);
-
-  onTestFinished(async () => {
-    await waitForCondition(() => turnPIDs.every((pid) => probeProcessGone(pid)));
+    return page.records.some((record) => record.message?.text === 'The tide turns at noon.');
   });
 
-  expect(turnPIDs.length).toBeGreaterThanOrEqual(3);
-}, 60_000);
+  expect(nixie.guest.turns).toMatchObject([
+    { input: [{ text: expect.toInclude('When does the tide turn?') }] },
+  ]);
+});
 
-test('it starts nixie again on the same data directory once it exits', async () => {
+test('it reads the names of the tools a turn frame offers while its turn runs', async () => {
+  const nixie = await startTestNixie();
+  const api = await createTestClient(nixie);
+
+  const gate = Promise.withResolvers<void>();
+
+  nixie.guest.addReplies({ text: 'Low tide is at four.', gate: gate.promise });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'When is low tide?',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(() => nixie.guest.turns.length === 1);
+
+  const [received] = nixie.guest.received;
+
+  invariant(received);
+
+  const names = await nixie.readToolNames(received);
+
+  gate.resolve();
+
+  expect(names).toIncludeAllMembers(['time.now', 'memory.recall']);
+});
+
+test('it keeps the result of each tool call the stub guest makes, in order', async () => {
+  const nixie = await startTestNixie();
+  const api = await createTestClient(nixie);
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'time.now', input: {} } },
+    { text: 'It is noon in Oslo.' },
+  );
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'What time is it in Oslo?',
+    thread: 'conversation',
+    timeZone: 'Europe/Oslo',
+  });
+
+  await waitForCondition(async () => {
+    const page = await api.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'It is noon in Oslo.');
+  });
+
+  expect(nixie.toolResults).toStrictEqual([
+    { name: 'time.now', result: expect.toInclude('Europe/Oslo') },
+  ]);
+});
+
+test('it starts nixie again on the same data directory and the same guest once it exits', async () => {
   const nixie = await startTestNixie();
 
   await nixie.waitForLogEvent('ready');
 
-  nixie.sendSignal('SIGTERM');
+  const before = nixie.guest.readSandboxIDs();
 
-  await nixie.waitForExit();
+  nixie.signalStop();
+
+  await nixie.exited;
 
   const again = nixie.startAgain();
 
   const started = await again.waitForLogEvent('writer.started');
 
+  await again.waitForLogEvent('ready');
+
   expect(started['schemaFrom']).toBeGreaterThan(0);
   expect(again.dataDir).toBe(nixie.dataDir);
-}, 60_000);
-
-test('it reads the ID of each sandbox the process double holds', async () => {
-  const nixie = await startTestNixie();
-
-  await nixie.waitForLogEvent('ready');
-
-  const ids = await nixie.readSandboxIDs();
-
-  nixie.sendSignal('SIGTERM');
-
-  const run = await nixie.waitForExit();
-
-  expect(ids.length).toBeGreaterThan(0);
-
-  expect(
-    run.records
-      .filter((record) => record.kind === 'sandbox.created')
-      .map((record) => record.payload['sandboxID']),
-  ).toIncludeAllMembers([...ids]);
-}, 60_000);
+  expect(before.length).toBeGreaterThan(0);
+  expect(again.guest.readSandboxIDs()).toIncludeAllMembers([...before]);
+});
 
 test('it writes the log level it names into the configuration', async () => {
   const nixie = await startTestNixie({ logLevel: 'warn' });
   const config = await loadDeploymentConfig(nixie.configPath);
 
   expect(config.server.logLevel).toBe('warn');
-}, 60_000);
+});

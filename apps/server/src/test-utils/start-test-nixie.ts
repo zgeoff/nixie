@@ -1,18 +1,22 @@
 import { onTestFinished } from 'bun:test';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { countTextTokens } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
+import type { LogFields, LogLevel, Logger } from '@heynixie/logger';
+import type { SandboxRecorder, ToolTargetResolver } from '@heynixie/sandbox';
+import type { ReceivedFrame, StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
+import { buildStubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { ScriptedModel } from '@heynixie/testing';
-import {
-  readDescendants,
-  startScriptedModel,
-  stopProcesses,
-  waitForCondition,
-} from '@heynixie/testing';
-import { z } from 'zod';
+import { startScriptedModel, waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
+import type { SandboxAdapterOptions } from '../create-sandbox-adapter';
+import { runCLI } from '../run-cli';
 import { readDataFiles } from './read-data-files';
 import { readTestRecords } from './read-test-records';
+import { readTestToolNames } from './read-test-tool-names';
+import { sendTestToolCall } from './send-test-tool-call';
 import type { BootFileExtras, BootFiles } from './write-boot-files';
 import { writeBootFiles } from './write-boot-files';
 
@@ -23,21 +27,35 @@ export interface TestNixieOptions {
 
   readonly extraDefinitions?: readonly string[];
 
-  readonly entry?: string;
-
   readonly logLevel?: NonNullable<BootFileExtras['logLevel']>;
+}
+
+type TestLogEvent = Readonly<Record<string, unknown>> & {
+  readonly event: string;
+  readonly level: LogLevel;
+};
+
+interface TestToolResult {
+  readonly name: string;
+
+  readonly result: string;
 }
 
 export interface TestNixie extends BootFiles {
   readonly directory: string;
   readonly model: ScriptedModel;
 
-  readonly readOutput: () => string;
+  readonly guest: StubGuestSandboxes;
 
-  readonly waitForLogEvent: (event: string) => Promise<Readonly<Record<string, unknown>>>;
-  readonly sendSignal: (signal: NodeJS.Signals) => void;
+  readonly toolResults: readonly TestToolResult[];
 
-  readonly sendStopSignal: () => Promise<void>;
+  readonly readToolNames: (received: ReceivedFrame) => Promise<readonly string[]>;
+
+  readonly readLogEvents: () => readonly TestLogEvent[];
+
+  readonly waitForLogEvent: (event: string) => Promise<TestLogEvent>;
+
+  readonly signalStop: () => void;
   readonly exited: Promise<number>;
 
   readonly waitForExit: () => Promise<{ readonly exitCode: number; readonly records: LogRecord[] }>;
@@ -47,8 +65,6 @@ export interface TestNixie extends BootFiles {
   readonly readDataFiles: () => Promise<
     readonly { readonly name: string; readonly text: string }[]
   >;
-
-  readonly readSandboxIDs: () => Promise<readonly string[]>;
 }
 
 export async function startTestNixie(options: TestNixieOptions = {}): Promise<TestNixie> {
@@ -69,48 +85,151 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
     secrets: options.extraSecrets ?? [],
     definitions: options.extraDefinitions ?? [],
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
-
-    sandboxAdapter: options.entry === undefined ? 'test' : 'imp',
   });
 
-  return startNixieRun({ directory, model, files, entry: options.entry, stack });
+  const host = buildRunHost();
+  const toolResults: TestToolResult[] = [];
+
+  const guest = buildStubGuestSandboxes({
+    recorder: host.recorder,
+    callTool: async (call) => {
+      const result = await sendTestToolCall({
+        target: host.toolTarget({ id: call.sandboxID, owner: call.owner }),
+        token: call.token,
+        name: call.name,
+        input: call.input,
+      });
+
+      toolResults.push({ name: call.name, result });
+
+      return result;
+    },
+    countTokens: countTextTokens,
+  });
+
+  return startNixieRun({ directory, model, files, guest, toolResults, host, stack });
+}
+
+interface RunHost {
+  readonly recorder: SandboxRecorder;
+  readonly toolTarget: ToolTargetResolver;
+
+  readonly attach: (options: SandboxAdapterOptions) => void;
+}
+
+// The stub guest outlives each run, as a sandbox host outlives nixie, so it reaches the recorder and
+// the tool endpoint of the run that started last.
+function buildRunHost(): RunHost {
+  const current: { options: SandboxAdapterOptions | null } = { options: null };
+
+  const getOptions = () => {
+    invariant(current.options, 'no nixie run has created its sandbox adapter');
+
+    return current.options;
+  };
+
+  return {
+    recorder: {
+      write: (event) => getOptions().recorder.write(event),
+      readRow: (adapter, sandboxID) => getOptions().recorder.readRow(adapter, sandboxID),
+      list: (adapter, owner) => getOptions().recorder.list(adapter, owner),
+    },
+    toolTarget: (sandbox) => getOptions().toolTarget(sandbox),
+    attach: (options) => {
+      current.options = options;
+    },
+  };
 }
 
 interface TestNixieFiles {
   readonly directory: string;
   readonly model: ScriptedModel;
   readonly files: BootFiles;
-  readonly entry: string | undefined;
+  readonly guest: StubGuestSandboxes;
+  readonly toolResults: readonly TestToolResult[];
+  readonly host: RunHost;
 
   readonly stack: AsyncDisposableStack;
 }
 
 function startNixieRun(start: TestNixieFiles): TestNixie {
-  const child = Bun.spawn([...buildCommand(start.entry), ...buildServeArgs(start.files)], {
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
+  const events: TestLogEvent[] = [];
+  const stopSignal = Promise.withResolvers<string>();
+  const state = { hasExited: false };
 
-  // A turn's guest and its Agent SDK process outlive a killed nixie, and one ran on for over 80 s
-  // beside the next tests. Linux reparents them once nixie dies, so the tree is read first.
+  const log: Logger = (event, fields: LogFields = {}, level = 'info') => {
+    events.push({ ...fields, event, level });
+  };
+
+  const runServe = async () => {
+    try {
+      return await runCLI(buildServeArgs(start.files), {
+        log,
+        print: () => {},
+        waitForSignal: () => stopSignal.promise,
+        createSandboxAdapter: (options) => {
+          start.host.attach(options);
+
+          return start.guest.adapter;
+        },
+
+        // nothing wakes an idle task runner when a message lands, so each turn waits up to one poll
+        taskPollMs: 20,
+      });
+    } finally {
+      state.hasExited = true;
+    }
+  };
+
+  const exited = runServe();
+
   start.stack.defer(async () => {
-    const descendants = readDescendants(child.pid);
+    stopSignal.resolve('SIGTERM');
 
-    child.kill('SIGKILL');
-
-    stopProcesses(descendants);
-
-    await child.exited;
+    await exited;
   });
 
-  return buildTestNixie({ ...start, child, startAgain: () => startNixieRun(start) });
-}
+  const findEvent = (event: string) => events.find((logged) => logged.event === event);
 
-function buildCommand(entry: string | undefined): readonly string[] {
-  return entry === undefined
-    ? [process.execPath, '--define', 'NIXIE_TEST_BUILD=true', join(import.meta.dir, '../main.ts')]
-    : [process.execPath, entry];
+  return {
+    ...start.files,
+    directory: start.directory,
+    model: start.model,
+    guest: start.guest,
+    toolResults: start.toolResults,
+    readToolNames: (received) => {
+      invariant(received.frame.type === 'turn', 'only a turn frame carries a tool route');
+
+      return readTestToolNames({
+        target: start.host.toolTarget({ id: received.sandboxID, owner: received.owner }),
+        token: received.frame.tools.token,
+      });
+    },
+    readLogEvents: () => events,
+    waitForLogEvent: async (event) => {
+      await waitForCondition(() => findEvent(event) !== undefined || state.hasExited);
+
+      const logged = findEvent(event);
+
+      if (logged === undefined) {
+        throw new Error(`nixie exited without the log event ${event}`);
+      }
+
+      return logged;
+    },
+    signalStop: () => {
+      stopSignal.resolve('SIGTERM');
+    },
+    exited,
+    waitForExit: async () => {
+      const exitCode = await exited;
+      const records = await readTestRecords(start.files.dataDir, start.files.deploymentKey);
+
+      return { exitCode, records };
+    },
+    readDataFiles: () => readDataFiles(start.files.dataDir),
+    startAgain: () => startNixieRun(start),
+  };
 }
 
 function buildServeArgs(files: BootFiles): readonly string[] {
@@ -126,100 +245,4 @@ function buildServeArgs(files: BootFiles): readonly string[] {
     '--encoder',
     '',
   ];
-}
-
-interface TestNixieParts {
-  readonly directory: string;
-  readonly model: ScriptedModel;
-  readonly files: BootFiles;
-  readonly child: Bun.Subprocess<'ignore', 'pipe', 'pipe'>;
-  readonly startAgain: () => TestNixie;
-}
-
-function buildTestNixie(parts: TestNixieParts): TestNixie {
-  const output = buildOutput();
-  const waitForLogEvent = makeLogEventWaiter(() => parts.child.exitCode, output);
-
-  void pipeOutput(parts.child.stdout, output);
-  void pipeOutput(parts.child.stderr, output);
-
-  return {
-    ...parts.files,
-    directory: parts.directory,
-    model: parts.model,
-    readOutput: output.read,
-    waitForLogEvent,
-    sendSignal: (signal) => {
-      parts.child.kill(signal);
-    },
-    sendStopSignal: async () => {
-      parts.child.kill('SIGTERM');
-
-      await waitForLogEvent('stopping');
-    },
-    exited: parts.child.exited,
-    waitForExit: async () => {
-      const exitCode = await parts.child.exited;
-      const records = await readTestRecords(parts.files.dataDir, parts.files.deploymentKey);
-
-      return { exitCode, records };
-    },
-    readDataFiles: () => readDataFiles(parts.files.dataDir),
-    readSandboxIDs: () => readdir(join(parts.files.dataDir, 'sandboxes')),
-    startAgain: parts.startAgain,
-  };
-}
-
-interface Output {
-  readonly read: () => string;
-  readonly append: (text: string) => void;
-}
-
-function buildOutput(): Output {
-  const current = { text: '' };
-
-  return {
-    read: () => current.text,
-    append: (text) => {
-      current.text += text;
-    },
-  };
-}
-
-function makeLogEventWaiter(
-  readExitCode: () => number | null,
-  output: Output,
-): TestNixie['waitForLogEvent'] {
-  return async (event) => {
-    const findLine = () => parseLogLines(output.read()).find((line) => line['event'] === event);
-
-    await waitForCondition(() => findLine() !== undefined || readExitCode() !== null, {
-      timeoutMs: 30_000,
-    });
-
-    const line = findLine();
-
-    if (line === undefined) {
-      throw new Error(`nixie exited without the log event ${event}:\n${output.read()}`);
-    }
-
-    return line;
-  };
-}
-
-const logLineSchema = z.record(z.string(), z.unknown()).readonly();
-
-function parseLogLines(text: string): readonly Readonly<Record<string, unknown>>[] {
-  return text
-    .split('\n')
-    .filter((line) => line.startsWith('{'))
-    .map((line) => logLineSchema.parse(JSON.parse(line)));
-}
-
-async function pipeOutput(stream: ReadableStream<Uint8Array>, output: Output): Promise<void> {
-  const decoder = new TextDecoder();
-
-  for await (const chunk of stream) {
-    output.append(decoder.decode(chunk, { stream: true }));
-  }
 }
