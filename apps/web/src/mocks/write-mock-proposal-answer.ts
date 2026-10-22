@@ -336,14 +336,23 @@ async function applyApproval(
       isPinned: proposal.isPinned,
       itemID,
       subject: proposal.subject,
+      until: proposal.until,
       versions: [version],
     });
 
     return;
   }
 
+  const isNewEndTime =
+    proposal.operation === 'remember' &&
+    (proposal.until !== null || proposal.targetVersion !== null);
+
   await store.memoryItems.update((query) => query.where({ itemID }), {
     data(draft) {
+      if (isNewEndTime) {
+        draft.until = proposal.until;
+      }
+
       draft.versions.push({
         ...version,
         change: proposal.operation === 'retire' ? 'retired' : 'edited',
