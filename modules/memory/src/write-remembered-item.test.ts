@@ -1,9 +1,12 @@
 import { expect, test } from 'bun:test';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { buildTestClock } from '@heynixie/testing';
 import { isCuid } from '@paralleldrive/cuid2';
+import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
+import { UntilPassedError } from './until-passed-error';
 
 async function setupTest() {
   const memory = await startTestMemory();
@@ -48,6 +51,7 @@ test('it creates an item at version 1 with its provenance', async () => {
       sequence: 1,
       snapshot_hash: 'sha256:test',
       recorded_at: expect.toBeNumber(),
+      until: null,
     },
   ]);
 });
@@ -281,4 +285,128 @@ test('it keeps no item text in plain form in nixie.db or any file beside it', as
 
   expect(names).toIncludeAllMembers(['nixie.db', 'nixie.db-wal', 'keys.db']);
   expect(contents).not.toMatch(/marmalade|periwinkle|tangerine|saffron/u);
+});
+
+test('it refuses a new item whose end time has passed, and writes nothing', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const refused = await memory.store
+    .remember({
+      text: 'Is in Lisbon this week',
+      until: Date.parse('2026-10-19T08:59:59Z'),
+      provenance: buildMockProvenance(),
+    })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  const rows = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('item_id')
+    .execute();
+
+  expect(refused).toBeInstanceOf(UntilPassedError);
+  expect(rows).toStrictEqual([]);
+});
+
+test('it refuses an edit to an end time that is now', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    provenance: buildMockProvenance(),
+  });
+
+  expect(
+    memory.store.remember({
+      target: item,
+      text: 'Is in Lisbon this week',
+      until: Date.parse('2026-10-19T09:00:00Z'),
+      provenance: buildMockProvenance(),
+    }),
+  ).rejects.toMatchObject({ code: 'UNTIL_PASSED' });
+});
+
+test('it stores the end time of a new item on its version and its row', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const db = memory.writer.db.$extendTables<MemoryTables>();
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  const version = await db
+    .selectFrom('memory_versions')
+    .select('until')
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  const row = await db
+    .selectFrom('memory_items')
+    .select('until')
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(version.until).toBe(Date.parse('2026-10-19T22:59:59Z'));
+  expect(row.until).toBe(Date.parse('2026-10-19T22:59:59Z'));
+});
+
+test('it keeps the end time through an edit that leaves it out', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  await memory.store.remember({
+    target: item,
+    text: 'Is in Lisbon with a colleague this week',
+    provenance: buildMockProvenance(),
+  });
+
+  clock.advance(Date.parse('2026-10-19T22:59:59Z') - clock.now());
+
+  const recalled = await memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(recalled.items).toStrictEqual([]);
+});
+
+test('it clears the end time through an edit that sets it to null', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  await memory.store.remember({
+    target: item,
+    text: 'Is in Lisbon for another week',
+    until: null,
+    provenance: buildMockProvenance(),
+  });
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  const recalled = await memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(recalled.items).toMatchObject([{ version: 2, text: 'Is in Lisbon for another week' }]);
 });

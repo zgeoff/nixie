@@ -5,6 +5,7 @@ import { eventLogMigration } from './event-log-migration';
 import { memoryKindsMigration } from './memory-kinds-migration';
 import { memoryMigrations } from './memory-migrations';
 import { memorySubjectsMigration } from './memory-subjects-migration';
+import { memoryUntilMigration } from './memory-until-migration';
 import { recordAttachmentsMigration } from './record-attachments-migration';
 import { sandboxesMigration } from './sandboxes-migration';
 import { skillExportAttemptsMigration } from './skill-export-attempts-migration';
@@ -32,6 +33,7 @@ export const nixieSchema: BuildSchema = {
     skillExportsMigration,
     skillExportAttemptsMigration,
     webFetchLinksMigration,
+    memoryUntilMigration,
   ],
-  oldestReader: 0,
+  oldestReader: 23,
 };

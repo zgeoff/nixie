@@ -23,7 +23,7 @@ export async function readCloseMatch(
 
   const itemIDs = await parts.index.readItemIDs(query.text, {
     limit: candidateLimit,
-    excludedIDs: await readOtherSubjectIDs(parts, subject, query.db),
+    excludedIDs: await readExcludedIDs(parts, subject, query.db),
   });
 
   if (itemIDs.length === 0) {
@@ -47,16 +47,18 @@ export async function readCloseMatch(
     : { itemID: best.itemID, version: best.version, text: best.text };
 }
 
-async function readOtherSubjectIDs(
+async function readExcludedIDs(
   parts: StoreParts,
   subject: MemorySubject,
   db: Kysely<MemoryTables> | undefined,
 ): Promise<readonly string[]> {
+  const now = parts.context.gate.clock.now();
+
   const rows = await (db ?? parts.context.log.writer.db.$extendTables<MemoryTables>())
     .selectFrom('memory_items')
     .select('item_id')
-    .where(subjectColumn, '!=', subject)
     .where('state', '=', 'active')
+    .where((row) => row.or([row(subjectColumn, '!=', subject), row('until', '<=', now)]))
     .execute();
 
   return rows.map((row) => row.item_id);

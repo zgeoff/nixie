@@ -101,16 +101,29 @@ test('it reports the conversation turns as passing when the conversation has no 
 test('it reports the database and the conversation turns as unchecked when the integrity check fails', async () => {
   const ctx = await setupTest();
 
+  const page = await ctx.writer.db
+    .$extendTables<{
+      sqlite_schema: { name: string; rootpage: number };
+      pragma_page_size: { page_size: number };
+    }>()
+    .selectFrom(['sqlite_schema', 'pragma_page_size'])
+    .select(['rootpage', 'page_size'])
+    .where('name', '=', 'web_fetch_links_thread')
+    .executeTakeFirstOrThrow();
+
   await ctx.writer.stop();
 
-  // overwrites the file's last page, which the integrity check reads and the writer's open does not
+  // overwrites the root page of an index that the integrity check reads and the writer's open does not
   const file = await open(join(ctx.dataDir, 'nixie.db'), 'r+');
 
   onTestFinished(() => file.close());
 
-  const stats = await file.stat();
-
-  await file.write(Buffer.alloc(4096, 0xff), 0, 4096, stats.size - 4096);
+  await file.write(
+    Buffer.alloc(page.page_size, 0xff),
+    0,
+    page.page_size,
+    (page.rootpage - 1) * page.page_size,
+  );
 
   const restarted = await ctx.restart();
   const state = await loadStartState(restarted);

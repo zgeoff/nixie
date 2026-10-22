@@ -4,13 +4,13 @@ import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/sessions';
 import { conversationTaskID } from '@heynixie/tasks';
 import { z } from 'zod';
 import type { MemoryProposals } from './gate-types';
-import type { MemoryOrigin, MemoryStore, MemoryTables, VersionRef } from './types';
+import type { MemoryStore, MemoryTables, ProposalOrigin, VersionRef } from './types';
 
 export interface ProposalAnswerEvent {
   readonly proposalID: string;
   readonly answer: 'approved' | 'edited' | 'rejected';
 
-  readonly origin: MemoryOrigin;
+  readonly origin: ProposalOrigin;
 
   readonly written: VersionRef | null;
   readonly text: string | null;
@@ -22,7 +22,7 @@ export type AnswerQuoteSource = Pick<MemoryStore, 'recall'> & {
   readonly proposals: Pick<MemoryProposals, 'readRejectedEdits'>;
 };
 
-const proposerWords: Readonly<Record<Exclude<MemoryOrigin, 'conversation'>, string>> = {
+const proposerWords: Readonly<Record<Exclude<ProposalOrigin, 'conversation'>, string>> = {
   owner: 'the owner',
   task: 'a task',
   memory_writer: 'your note-taker',
@@ -78,7 +78,7 @@ interface AnsweredRow {
   readonly proposal_id: string;
   readonly item_id: string;
   readonly status: string;
-  readonly origin: MemoryOrigin;
+  readonly origin: ProposalOrigin;
   readonly sequence: number;
   readonly recorded_at: number;
   readonly payload: string;

@@ -12,6 +12,7 @@ const notedWords: Readonly<Record<MemoryOrigin, string | null>> = {
   memory_writer: 'the note-taker noted it',
   task: 'a task noted it',
   owner: null,
+  lapse: 'its end time passed',
 };
 
 export function renderMemoryLine(

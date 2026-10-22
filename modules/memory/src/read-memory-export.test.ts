@@ -1,5 +1,6 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import { memoryExportSchema } from './memory-export-schema';
 import type { TestMemoryOptions } from './test-utils/start-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -81,6 +82,7 @@ test('it exports an active item with its text, its quote and its provenance, and
           state: 'active',
           text: 'Rents allotment plot 14',
           evidenceQuote: 'the allotment plot is number 14',
+          until: null,
           provenance: {
             origin: 'memory_writer',
             source: 'owner',
@@ -223,7 +225,7 @@ test("it heads the file with the export time, the schema version and the definit
 
   expect(JSON.parse(text)).toStrictEqual({
     header: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },
@@ -252,4 +254,32 @@ test('it exports every item in the order it was created across more than one pag
   expect(
     memoryExportSchema.safeParse(JSON.parse(text)).data?.items.map((item) => item.itemID),
   ).toStrictEqual(created.map((item) => item.itemID));
+});
+
+test('it exports the end time of each version and the lapse that retired it', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const ctx = await setupTest({ gate: { clock } });
+
+  await ctx.memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  await ctx.memory.store.lapse();
+
+  const text = await ctx.readExportText(Date.parse('2026-10-20T08:00:00.000Z'));
+
+  expect(memoryExportSchema.safeParse(JSON.parse(text)).data?.items).toMatchObject([
+    {
+      state: 'retired',
+      versions: [
+        { version: 1, until: '2026-10-19T22:59:59.000Z', provenance: { origin: 'owner' } },
+        { version: 2, until: '2026-10-19T22:59:59.000Z', provenance: { origin: 'lapse' } },
+      ],
+    },
+  ]);
 });

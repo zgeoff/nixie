@@ -3,7 +3,7 @@ import type { StoredMemoryItem } from './to-mock-memory-item';
 
 export function readMockMemoryExport(exportedAt: Date): readonly string[] {
   const header = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     exportedAt: exportedAt.toISOString(),
     snapshotHash: 'sha256:mock',
   };
@@ -32,6 +32,7 @@ function toExportItem(item: StoredMemoryItem) {
       state: version.state,
       text: version.isUnreadable ? null : version.text,
       evidenceQuote: version.isUnreadable ? null : version.evidenceQuote,
+      until: null,
       provenance: {
         origin: version.origin,
         source: version.source,
