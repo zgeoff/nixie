@@ -240,7 +240,7 @@ single forget.
 
 ## The model's tools
 
-The model reaches memory through 8 tools over the same interface:
+The model reaches memory through these tools over the same interface:
 
 | Tool              | Effect | Does                                                       |
 | ----------------- | ------ | ---------------------------------------------------------- |
@@ -249,6 +249,8 @@ The model reaches memory through 8 tools over the same interface:
 | `memory.remember` | `note` | Creates an item, with a quote or a photo as its source     |
 | `memory.edit`     | `note` | Edits an item at a version it read, with a quote           |
 | `memory.retire`   | `note` | Retires an item at a version it read, with an intent quote |
+| `memory.pin`      | `note` | Asks to pin an item at a version it read                   |
+| `memory.unpin`    | `note` | Takes an item out of the pinned core                       |
 | `memory.diff`     | `read` | Shows the pending consolidation diff                       |
 | `memory.comment`  | `note` | Leaves a comment on one change of that diff                |
 | `memory.rate`     | `note` | Rates how the items of the thread's latest recall worked   |
@@ -287,9 +289,10 @@ the words the conversation reads ([how an item reads](./context.md#how-an-item-r
 description tells the model to reach for it when a half-remembered detail would change an answer. A
 past version's line names the version that replaced or retired it. A stale version, a missing item
 or a wrong state returns to the model as the tool's refusal, so the model reads the item again. The
-model can retire an item and can never restore, undo or forget one. The server registers the 10
-tools beside web fetch, and the conversation's tool list names them. The read-only rule allows them,
-because they declare `read` and `note` and run direct.
+model can retire, pin and unpin an item and can never restore, undo or forget one
+([pins](./writes.md#pins)). The server registers the memory tools and the log reader beside web
+fetch, and the conversation's tool list names them. The read-only rule allows them, because they
+declare `read` and `note` and run direct.
 
 `memory.pending` lists every pending proposal, the model's own and the note-taker's, so the model
 knows what it proposed after a compaction drops the turn it proposed in, and never proposes a change

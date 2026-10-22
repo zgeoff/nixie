@@ -88,6 +88,8 @@ order the status shows:
 | The start time    | the sessions package | when the session opened, in the zone of the newest message     |
 | The nixie version | the server           | the release that opened the session                            |
 | The model         | the sessions package | the model of the conversation's profile, so it can name itself |
+| The pinned items  | the memory package   | how many items the pinned core holds                           |
+| The pinned tokens | the memory package   | the pinned core's tokens against its budget                    |
 
 The kind of start says that earlier history is in the event log. After a forget, it says that the
 forget erased the summary of earlier sessions, so the model reads the gap as deliberate. The start
