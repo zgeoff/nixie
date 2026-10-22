@@ -715,3 +715,71 @@ test('it answers a 502 when the upstream cannot be reached', async () => {
 
   expect(response.status).toBe(502);
 });
+
+test('it refuses every later request once a message call fails before its reply arrives', async () => {
+  const ctx = await setupTest();
+
+  const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
+    Promise.reject(new Error('connection reset')),
+  );
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        upstream: 'http://model.test',
+        model: 'model-small',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store: ctx.store,
+    sendUpstream,
+    log: ctx.log,
+  });
+
+  const sendRequest = () =>
+    handler(
+      new Request('http://proxy.test/preview/v1/messages', {
+        method: 'POST',
+        body: JSON.stringify({ model: 'model-small', messages: [] }),
+      }),
+    );
+
+  const failed = await sendRequest();
+  const later = await sendRequest();
+
+  expect(failed.status).toBe(502);
+  expect(later.status).toBe(503);
+  expect(sendUpstream).toHaveBeenCalledOnce();
+});
+
+test('it keeps sending on after a call that spends nothing fails', async () => {
+  const ctx = await setupTest();
+
+  const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
+    Promise.reject(new Error('connection reset')),
+  );
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        upstream: 'http://model.test',
+        model: 'model-small',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store: ctx.store,
+    sendUpstream,
+    log: ctx.log,
+  });
+
+  const sendRequest = () => handler(new Request('http://proxy.test/preview/v1/models'));
+
+  const failed = await sendRequest();
+  const later = await sendRequest();
+
+  expect(failed.status).toBe(502);
+  expect(later.status).toBe(502);
+  expect(sendUpstream).toHaveBeenCalledTimes(2);
+});

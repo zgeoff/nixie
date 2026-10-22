@@ -141,7 +141,10 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
         return null;
       });
 
+    // a connection can break after the model API took the call, so the model may have spent
     if (upstream === null) {
+      countFailed ||= endpoint.spends;
+
       return renderAPIError(502, 'api_error', 'the counting proxy could not reach the model API');
     }
 
@@ -172,7 +175,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
 
     // the model may have spent on a reply whose usage never arrived, so the count is behind
     if (text === null) {
-      countFailed = true;
+      countFailed ||= endpoint.spends;
 
       return renderAPIError(502, 'api_error', 'the counting proxy lost the reply of the model API');
     }

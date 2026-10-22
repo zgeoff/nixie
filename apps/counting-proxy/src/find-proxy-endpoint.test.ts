@@ -2,12 +2,12 @@ import { expect, test } from 'bun:test';
 import { findProxyEndpoint } from './find-proxy-endpoint';
 
 test.each([
-  ['POST', '/v1/messages', 'messages'],
-  ['POST', '/v1/messages/count_tokens', 'count_tokens'],
-  ['GET', '/v1/models', 'models'],
-  ['GET', '/v1/models/model-small', 'models'],
-])('it finds %s %s as the %s endpoint', (method, path, name) => {
-  expect(findProxyEndpoint(method, path)).toMatchObject({ name, method });
+  ['POST', '/v1/messages', 'messages', true],
+  ['POST', '/v1/messages/count_tokens', 'count_tokens', false],
+  ['GET', '/v1/models', 'models', false],
+  ['GET', '/v1/models/model-small', 'models', false],
+])('it finds %s %s as the %s endpoint, which spends: %p', (method, path, name, spends) => {
+  expect(findProxyEndpoint(method, path)).toMatchObject({ name, method, spends });
 });
 
 test.each([

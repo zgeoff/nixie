@@ -74,10 +74,11 @@ The proxy treats a counter store it cannot use as a store that holds no room:
 - **A count cannot be written.** The reply that could not be counted still reaches its caller, but
   the proxy refuses every later request until it restarts, because its store now holds less than was
   spent.
-- **A reply ends before its usage arrives.** A whole reply that breaks gets the caller a 502, and a
-  stream that breaks or that its caller cancels ends where it stopped. Either way the proxy refuses
-  every later request until it restarts, because the model may have spent on a reply the proxy never
-  counted.
+- **A message reply is lost before its usage arrives.** A call whose connection fails, or whose
+  whole reply breaks, gets the caller a 502, and a stream that breaks or that its caller cancels
+  ends where it stopped. Either way the proxy refuses every later request until it restarts, because
+  the model may have spent on a reply the proxy never counted. A failed token count or model list
+  spends nothing, so it only gets the caller a 502.
 - **The store directory does not exist at start.** The proxy exits, so the route it would serve has
   no way to the model API.
 
