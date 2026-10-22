@@ -1,4 +1,4 @@
-import type { input } from '@pulumi/kubernetes/types';
+import type { types } from '@pulumi/kubernetes';
 import type { Input } from '@pulumi/pulumi';
 
 export const nixieWebLabels = { app: 'nixie-web' };
@@ -11,7 +11,7 @@ export interface NixieWebSpecInputs {
   readonly apiURL: Input<string>;
 }
 
-export function buildNixieWebSpec(inputs: NixieWebSpecInputs): input.apps.v1.DeploymentSpec {
+export function buildNixieWebSpec(inputs: NixieWebSpecInputs): types.input.apps.v1.DeploymentSpec {
   return {
     replicas: 1,
     selector: { matchLabels: nixieWebLabels },

@@ -1,4 +1,4 @@
-import type { input } from '@pulumi/kubernetes/types';
+import type { types } from '@pulumi/kubernetes';
 import type { Input } from '@pulumi/pulumi';
 
 export interface BackupPodInputs {
@@ -9,7 +9,7 @@ export interface BackupPodInputs {
   readonly pullSecret: Input<string>;
 }
 
-export function buildBackupPodSpec(inputs: BackupPodInputs): input.core.v1.PodSpec {
+export function buildBackupPodSpec(inputs: BackupPodInputs): types.input.core.v1.PodSpec {
   return {
     restartPolicy: 'OnFailure',
 

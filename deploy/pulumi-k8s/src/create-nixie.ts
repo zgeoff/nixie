@@ -1,9 +1,6 @@
-// the package root, because Node's ESM loader refuses the SDK's directory subpaths, which it ships
-// with no exports map
+// the package root, because Node's ESM loader and TypeScript's node16 resolution refuse the SDK's
+// directory subpaths, which it ships with no exports map
 import { apps, batch, core } from '@pulumi/kubernetes';
-import type { Deployment, StatefulSet } from '@pulumi/kubernetes/apps/v1';
-import type { CronJob } from '@pulumi/kubernetes/batch/v1';
-import type { Service } from '@pulumi/kubernetes/core/v1';
 import type { ComponentResourceOptions, CustomResourceOptions, Input } from '@pulumi/pulumi';
 import { ComponentResource, interpolate, rootStackResource, secret } from '@pulumi/pulumi';
 import { buildBackupPodSpec } from './build-backup-pod-spec';
@@ -23,9 +20,9 @@ import type { NixieArgs, NixieBackupArgs } from './types';
 
 export interface Nixie {
   readonly component: ComponentResource;
-  readonly api: Service;
-  readonly web: Service;
-  readonly statefulSet: StatefulSet;
+  readonly api: core.v1.Service;
+  readonly web: core.v1.Service;
+  readonly statefulSet: apps.v1.StatefulSet;
 }
 
 // Pulumi waits for readiness, and nixie turns ready only once impd has pulled its sandbox images
@@ -155,9 +152,9 @@ function createDefinitionsKey(args: NixieArgs, opts: CustomResourceOptions): Inp
 
 function createWebDeployment(
   args: NixieArgs,
-  api: Service,
+  api: core.v1.Service,
   opts: CustomResourceOptions,
-): Deployment {
+): apps.v1.Deployment {
   return new apps.v1.Deployment(
     'nixie-web',
     {
@@ -178,9 +175,9 @@ const backupEnvSecret = 'nixie-backup';
 function createBackupJob(
   namespace: Input<string>,
   backup: NixieBackupArgs,
-  statefulSet: StatefulSet,
+  statefulSet: apps.v1.StatefulSet,
   opts: CustomResourceOptions,
-): CronJob {
+): batch.v1.CronJob {
   const env = new core.v1.Secret(
     'nixie-backup',
     {

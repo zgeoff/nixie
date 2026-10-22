@@ -24,6 +24,8 @@ trap 'cp "$work/package.json" "$package/package.json"; rm -rf "$package/dist" "$
   cd "$package"
   bun build src/index.ts --outdir dist --target node --format esm --packages external > /dev/null
   bunx tsrs -p tsconfig.build.json
+  # node16 resolution needs an extension on each relative import, and the source writes none
+  sed -i -E "s#(from '\./[a-z0-9-]+)'#\1.js'#" dist/*.d.ts
 )
 jq --arg version "$version" '.version = $version
   | .exports = { ".": { types: "./dist/index.d.ts", default: "./dist/index.js" } }
@@ -48,16 +50,30 @@ fi
 
 if [[ $mode == --dry-run ]]; then
   consumer="$work/consumer"
+  # the newest TypeScript that @pulumi/pulumi's peer range admits, which stops below 7
+  consumer_typescript=6.0.3
   mkdir "$consumer"
   echo '{ "type": "module" }' > "$consumer/package.json"
   npm install --prefix "$consumer" --no-audit --no-fund --silent "$tarball" \
     "@pulumi/pulumi@$(jq -r '.devDependencies["@pulumi/pulumi"]' <<< "$packed")" \
-    "@pulumi/kubernetes@$(jq -r '.devDependencies["@pulumi/kubernetes"]' <<< "$packed")"
+    "@pulumi/kubernetes@$(jq -r '.devDependencies["@pulumi/kubernetes"]' <<< "$packed")" \
+    "typescript@$consumer_typescript"
   (cd "$consumer" && node --input-type=module -e "
     const component = await import('$name');
     if (typeof component.createNixie !== 'function') throw new Error('$name exports no createNixie');
     console.log('node imports $name, which exports ' + Object.keys(component).join(', '));
   ")
+
+  # the strictest resolution a consumer can pick, so the declarations resolve under any of them
+  cat > "$consumer/main.ts" << EOF
+import { createNixie } from '$name';
+import type { NixieArgs } from '$name';
+export const create = (args: NixieArgs) => createNixie('nixie', args).api.metadata.name;
+EOF
+  echo '{ "compilerOptions": { "module": "nodenext", "strict": true, "noEmit": true },
+    "files": ["main.ts"] }' > "$consumer/tsconfig.json"
+  (cd "$consumer" && npx tsc -p tsconfig.json)
+  echo "TypeScript's nodenext resolution typechecks a program that imports $name"
 
   # npm refuses a prerelease version, such as a rehearsal's, without a tag
   npm publish "$tarball" --access public --tag rehearsal --dry-run

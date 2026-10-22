@@ -150,7 +150,8 @@ publishes the tarball through trusted publishing, which ties the package to the 
 the workflow's own token, so the repo holds no npm token. The K8s package workflow rehearses the
 publish on each push to main, and on each pull request that changes a file the package or the
 publish reads: it packs the component, checks that the tarball holds no workspace version and no
-TypeScript source, imports the installed tarball in Node, and runs npm's publish as a dry run.
+TypeScript source, imports the installed tarball in Node, typechecks a program that imports it under
+TypeScript's strictest module resolution, and runs npm's publish as a dry run.
 
 ## Attestations
 

@@ -1,4 +1,4 @@
-import type { ServiceArgs } from '@pulumi/kubernetes/core/v1';
+import type { core } from '@pulumi/kubernetes';
 import type { Input } from '@pulumi/pulumi';
 
 export interface ServiceShape {
@@ -8,7 +8,7 @@ export interface ServiceShape {
   readonly port: number;
 }
 
-export function buildServiceArgs(shape: ServiceShape): ServiceArgs {
+export function buildServiceArgs(shape: ServiceShape): core.v1.ServiceArgs {
   return {
     metadata: {
       name: shape.name,
