@@ -11,6 +11,9 @@ export interface CountingProxy {
 export interface CountingProxyOptions {
   readonly configPath: string;
   readonly log: Logger;
+
+  // how long a stop waits for the replies under way before it closes their connections
+  readonly drainTimeoutMs: number;
 }
 
 export async function startCountingProxy(options: CountingProxyOptions): Promise<CountingProxy> {
@@ -46,7 +49,13 @@ export async function startCountingProxy(options: CountingProxyOptions): Promise
   return {
     url: `http://${config.listen.hostname}:${String(server.port)}`,
     stop: async () => {
+      // Bun's graceful stop refuses new connections and waits for each streamed reply to end, so
+      // the spend of a call under way reaches the count before the process exits
+      const drained = server.stop();
+
+      await Promise.race([drained, Bun.sleep(options.drainTimeoutMs)]);
       await server.stop(true);
+      await store.settle();
     },
   };
 }

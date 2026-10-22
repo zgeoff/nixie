@@ -85,6 +85,27 @@ test('it fails an add when the counter directory is gone, and the next add still
   expect(next).toBeInstanceOf(Error);
 });
 
+test('it settles once every add made so far has written', async () => {
+  const ctx = await setupTest();
+  const store = await createCounterStore(join(ctx.directory, 'counter.json'));
+
+  void store.add({ dollars: 0.25, tokens: 10 });
+  void store.add({ dollars: 0.5, tokens: 20 });
+
+  await store.settle();
+
+  const stored = await readFile(join(ctx.directory, 'counter.json'), 'utf8');
+
+  expect(stored).toBe('{"dollars":0.75,"tokens":30}');
+});
+
+test('it settles with no add made', async () => {
+  const ctx = await setupTest();
+  const store = await createCounterStore(join(ctx.directory, 'counter.json'));
+
+  await expect(store.settle()).toResolve();
+});
+
 test('it refuses to start when the counter directory does not exist', async () => {
   const ctx = await setupTest();
 

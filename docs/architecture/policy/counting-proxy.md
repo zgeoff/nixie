@@ -80,6 +80,9 @@ The proxy treats a counter store it cannot use as a store that holds no room:
 - **The store directory does not exist at start.** The proxy exits, so the route it would serve has
   no way to the model API.
 
+A stop signal closes the listener and lets each reply under way finish, up to a bounded wait, so the
+count holds every reply the model sent before the proxy exits.
+
 The release attaches the proxy as one compiled binary for Linux, so a host runs it without a Bun
 install. The [preview recipe](../../../preview/README.md#model-calls) covers how a preview names its
 route.

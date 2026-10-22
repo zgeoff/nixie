@@ -33,7 +33,17 @@ export async function createCounterStore(path: string): Promise<CounterStore> {
     }
   };
 
-  return { read: () => readTotals(path), add };
+  const settle = async (): Promise<void> => {
+    let awaited: Promise<unknown>;
+
+    do {
+      awaited = tail;
+
+      await awaited;
+    } while (awaited !== tail);
+  };
+
+  return { read: () => readTotals(path), add, settle };
 }
 
 // a crash between the write and the rename leaves the last whole count in place

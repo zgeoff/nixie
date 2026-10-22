@@ -26,4 +26,7 @@ export interface SpendTotals {
 export interface CounterStore {
   readonly read: () => Promise<SpendTotals>;
   readonly add: (spend: SpendTotals) => Promise<SpendTotals>;
+
+  // resolves once every add made so far has written or failed
+  readonly settle: () => Promise<void>;
 }

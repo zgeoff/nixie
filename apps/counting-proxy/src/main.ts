@@ -18,12 +18,20 @@ await startLineLog((line) => {
 
 const log = makeLogger();
 
+// inside systemd's default stop timeout, past which the kill would lose the count of each reply
+// still under way
+const drainTimeoutMs = 30_000;
+
 const command = define({
   name: 'counting-proxy',
   description: 'Counts the spend of each model reply and refuses requests past the limit',
   args: { config: { type: 'string', required: true, description: 'the proxy config file' } },
   run: async (ctx) => {
-    const proxy = await startCountingProxy({ configPath: ctx.values.config, log });
+    const proxy = await startCountingProxy({
+      configPath: ctx.values.config,
+      log,
+      drainTimeoutMs,
+    });
 
     log('signal.received', { signal: await received.promise });
 
