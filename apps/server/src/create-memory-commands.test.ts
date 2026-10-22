@@ -11,20 +11,20 @@ import { startTestNixie } from './test-utils/start-test-nixie';
 
 async function setupTest() {
   const nixie = await startTestNixie();
-  const clients = await createTestClient(nixie);
 
-  return { ...nixie, ...clients };
+  return nixie;
 }
 
 test('it approves a proposal with your text, then edits, retires, restores and pins the item through the memory commands', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies(
     { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Likes jaz' } } },
     { text: 'Noted.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'I like jazz.',
@@ -32,7 +32,7 @@ test('it approves a proposal with your text, then edits, retires, restores and p
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
   });
@@ -74,6 +74,7 @@ test('it approves a proposal with your text, then edits, retires, restores and p
 
 test('it rejects a proposal with your reason, which the next turn reads in its events block', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies(
     { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Plays the oboe' } } },
@@ -81,7 +82,7 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
     { text: 'Understood.' },
   );
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'I tried the oboe once.',
@@ -89,7 +90,7 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
   });
@@ -109,7 +110,7 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
     'only tried it once',
   ]);
 
-  await ctx.client.conversation.send({
+  await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Anyway, how are you?',
@@ -117,7 +118,7 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
   });
 
   await waitForCondition(async () => {
-    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Understood.');
   });
@@ -129,9 +130,10 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
 
 test('it forgets an item through the memory view, which leaves no key, match or session copy of it', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   // BM25 ranks nothing in an index of 1 or 2 items, so per-turn retrieval needs 3 to place one
-  const [key] = await createApprovedItems(ctx, ctx.client, [
+  const [key] = await createApprovedItems(ctx, api.client, [
     'The spare key sits under the blue flowerpot',
     'Allergic to hazelnuts',
     'Prefers window seats on trains',
@@ -139,18 +141,18 @@ test('it forgets an item through the memory view, which leaves no key, match or 
 
   ctx.model.addReplies({ text: 'Under the flowerpot.' });
 
-  await sendClientMessage(ctx.client, { text: 'Where is the spare key?' }, 'Under the flowerpot.');
+  await sendClientMessage(api.client, { text: 'Where is the spare key?' }, 'Under the flowerpot.');
 
-  const before = await readItemTraces(ctx, ctx.client, key);
-  const preview = await ctx.client.memory.previewForget({ itemID: key.itemID, version: 1 });
+  const before = await readItemTraces(ctx, api.client, key);
+  const preview = await api.client.memory.previewForget({ itemID: key.itemID, version: 1 });
 
-  await ctx.client.memory.forget({
+  await api.client.memory.forget({
     clientActionID: crypto.randomUUID(),
     itemID: key.itemID,
     version: preview.version,
   });
 
-  const after = await readItemTraces(ctx, ctx.client, key);
+  const after = await readItemTraces(ctx, api.client, key);
 
   expect(before).toStrictEqual({
     hasKey: true,
@@ -165,8 +167,9 @@ test('it forgets an item through the memory view, which leaves no key, match or 
 
 test('it runs the turn after a forget through the memory view on a rebuilt session without the item', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
-  const [key] = await createApprovedItems(ctx, ctx.client, [
+  const [key] = await createApprovedItems(ctx, api.client, [
     'The spare key sits under the blue flowerpot',
     'Allergic to hazelnuts',
     'Prefers window seats on trains',
@@ -174,11 +177,11 @@ test('it runs the turn after a forget through the memory view on a rebuilt sessi
 
   ctx.model.addReplies({ text: 'Under the flowerpot.' }, { text: 'You are welcome.' });
 
-  await sendClientMessage(ctx.client, { text: 'Where is the spare key?' }, 'Under the flowerpot.');
+  await sendClientMessage(api.client, { text: 'Where is the spare key?' }, 'Under the flowerpot.');
 
-  await ctx.client.memory.forget({ clientActionID: crypto.randomUUID(), ...key, version: 1 });
+  await api.client.memory.forget({ clientActionID: crypto.randomUUID(), ...key, version: 1 });
 
-  await sendClientMessage(ctx.client, { text: 'Thanks.' }, 'You are welcome.');
+  await sendClientMessage(api.client, { text: 'Thanks.' }, 'You are welcome.');
 
   ctx.sendSignal('SIGTERM');
 
@@ -202,8 +205,9 @@ test('it runs the turn after a forget through the memory view on a rebuilt sessi
 
 test('it forgets an item through memory-forget, which leaves no key, match or session copy of it', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
-  const [lock] = await createApprovedItems(ctx, ctx.client, [
+  const [lock] = await createApprovedItems(ctx, api.client, [
     'The bike lock code is 6082',
     'Allergic to hazelnuts',
     'Prefers window seats on trains',
@@ -211,11 +215,11 @@ test('it forgets an item through memory-forget, which leaves no key, match or se
 
   ctx.model.addReplies({ text: 'It is 6082.' });
 
-  await sendClientMessage(ctx.client, { text: 'What is the bike lock code?' }, 'It is 6082.');
+  await sendClientMessage(api.client, { text: 'What is the bike lock code?' }, 'It is 6082.');
 
-  const before = await readItemTraces(ctx, ctx.client, lock);
+  const before = await readItemTraces(ctx, api.client, lock);
   const forgotten = await runHostCommand(ctx.configPath, ['memory-forget', `${lock.itemID}@1`]);
-  const after = await readItemTraces(ctx, ctx.client, lock);
+  const after = await readItemTraces(ctx, api.client, lock);
 
   expect(JSON.parse(forgotten.stdout)).toStrictEqual({ itemID: lock.itemID });
 
@@ -232,8 +236,9 @@ test('it forgets an item through memory-forget, which leaves no key, match or se
 
 test('it runs the turn after memory-forget on a rebuilt session without the item', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
-  const [lock] = await createApprovedItems(ctx, ctx.client, [
+  const [lock] = await createApprovedItems(ctx, api.client, [
     'The bike lock code is 6082',
     'Allergic to hazelnuts',
     'Prefers window seats on trains',
@@ -241,9 +246,9 @@ test('it runs the turn after memory-forget on a rebuilt session without the item
 
   ctx.model.addReplies({ text: 'It is 6082.' }, { text: 'You are welcome.' });
 
-  await sendClientMessage(ctx.client, { text: 'What is the bike lock code?' }, 'It is 6082.');
+  await sendClientMessage(api.client, { text: 'What is the bike lock code?' }, 'It is 6082.');
   await runHostCommand(ctx.configPath, ['memory-forget', `${lock.itemID}@1`]);
-  await sendClientMessage(ctx.client, { text: 'Thanks.' }, 'You are welcome.');
+  await sendClientMessage(api.client, { text: 'Thanks.' }, 'You are welcome.');
 
   ctx.sendSignal('SIGTERM');
 

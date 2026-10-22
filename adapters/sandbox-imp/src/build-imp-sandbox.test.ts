@@ -28,28 +28,27 @@ async function setupTest() {
     guestToolPort: imp.guestToolPort,
   });
 
-  const sandbox = await adapter.create(buildMockSandboxSpec({ toolRoute: true }));
-  const route = await sandbox.toolRoute();
-
-  invariant(route);
-
-  return { imp, sandbox, toolURL: route.url };
+  return { imp, adapter };
 }
 
 test('it lets a turn that starts during an idle sleep reach the tool endpoint on the woken imp', async () => {
   const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ toolRoute: true }));
+  const route = await sandbox.toolRoute();
+
+  invariant(route);
 
   const snapshot = Promise.withResolvers<void>();
 
-  void ctx.imp.startIdleSleep(ctx.sandbox.id, snapshot.promise);
+  void ctx.imp.startIdleSleep(sandbox.id, snapshot.promise);
 
-  const turn = ctx.sandbox.exec({
+  const turn = sandbox.exec({
     argv: [
       process.execPath,
       '-e',
       'const r = await fetch(process.env.TOOL_URL + "/mcp", { headers: { authorization: "Bearer run-token" } }); console.log(await r.text())',
     ],
-    env: { TOOL_URL: ctx.toolURL },
+    env: { TOOL_URL: route.url },
   });
 
   await waitForCondition(() => ctx.imp.calls.some((call) => call.startsWith('wait ')));
@@ -65,31 +64,35 @@ test('it lets a turn that starts during an idle sleep reach the tool endpoint on
     authorization: 'Bearer run-token',
   });
 
-  expect(ctx.imp.calls.slice(ctx.imp.calls.indexOf(`slept ${ctx.sandbox.id}`))).toStrictEqual([
-    `slept ${ctx.sandbox.id}`,
-    `woken by wake ${ctx.sandbox.id}`,
-    `wake ${ctx.sandbox.id}`,
-    `forward ${ctx.sandbox.id} ${ctx.imp.guestToolPort}`,
+  expect(ctx.imp.calls.slice(ctx.imp.calls.indexOf(`slept ${sandbox.id}`))).toStrictEqual([
+    `slept ${sandbox.id}`,
+    `woken by wake ${sandbox.id}`,
+    `wake ${sandbox.id}`,
+    `forward ${sandbox.id} ${ctx.imp.guestToolPort}`,
   ]);
 });
 
 test('it lets a turn reach the tool endpoint when an idle sleep starts between its wake and its exec', async () => {
   const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ toolRoute: true }));
+  const route = await sandbox.toolRoute();
+
+  invariant(route);
 
   const snapshot = Promise.withResolvers<void>();
 
-  ctx.imp.sleepsAfterWake.set(ctx.sandbox.id, snapshot.promise);
+  ctx.imp.sleepsAfterWake.set(sandbox.id, snapshot.promise);
 
-  const turn = ctx.sandbox.exec({
+  const turn = sandbox.exec({
     argv: [
       process.execPath,
       '-e',
       'const get = () => fetch(process.env.TOOL_URL + "/mcp", { headers: { authorization: "Bearer run-token" } }); const r = await get().catch(async () => { await Bun.sleep(200); return get(); }); console.log(await r.text())',
     ],
-    env: { TOOL_URL: ctx.toolURL },
+    env: { TOOL_URL: route.url },
   });
 
-  await waitForCondition(() => ctx.imp.calls.includes(`wait exec ${ctx.sandbox.id}`));
+  await waitForCondition(() => ctx.imp.calls.includes(`wait exec ${sandbox.id}`));
 
   snapshot.resolve();
 

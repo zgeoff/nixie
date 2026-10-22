@@ -5,18 +5,18 @@ import { startTestNixie } from './start-test-nixie';
 
 async function setupTest() {
   const nixie = await startTestNixie();
-  const clients = await createTestClient(nixie);
 
-  return { ...nixie, ...clients };
+  return nixie;
 }
 
 test('it sends the message with its spans and returns the thread once the reply arrives', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Hello back.' });
 
   const records = await sendClientMessage(
-    ctx.client,
+    api.client,
     { text: 'Hello.', spans: [{ start: 0, end: 6, source: 'typed' }] },
     'Hello back.',
   );
@@ -32,10 +32,11 @@ test('it sends the message with its spans and returns the thread once the reply 
 
 test('it sends a message with no spans, which the server labels unknown', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Hello back.' });
 
-  const records = await sendClientMessage(ctx.client, { text: 'Hello.' }, 'Hello back.');
+  const records = await sendClientMessage(api.client, { text: 'Hello.' }, 'Hello back.');
 
   expect(records.find((record) => record.kind === 'owner_message')?.message?.spans).toStrictEqual([
     { start: 0, end: 6, source: 'unknown' },
@@ -44,10 +45,11 @@ test('it sends a message with no spans, which the server labels unknown', async 
 
 test('it waits for the model reply when the reply repeats the message', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Echo.' });
 
-  const records = await sendClientMessage(ctx.client, { text: 'Echo.' }, 'Echo.');
+  const records = await sendClientMessage(api.client, { text: 'Echo.' }, 'Echo.');
 
   expect(records.filter((record) => record.message?.text === 'Echo.')).toMatchObject([
     { kind: 'owner_message' },
@@ -57,12 +59,13 @@ test('it waits for the model reply when the reply repeats the message', async ()
 
 test('it waits for a new reply when an earlier turn gave the same one', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx);
 
   ctx.model.addReplies({ text: 'Noted.' }, { text: 'Noted.' });
 
-  await sendClientMessage(ctx.client, { text: 'First.' }, 'Noted.');
+  await sendClientMessage(api.client, { text: 'First.' }, 'Noted.');
 
-  const records = await sendClientMessage(ctx.client, { text: 'Second.' }, 'Noted.');
+  const records = await sendClientMessage(api.client, { text: 'Second.' }, 'Noted.');
 
   expect(records.filter((record) => record.message !== undefined)).toMatchObject([
     { kind: 'owner_message', message: { text: 'First.' } },

@@ -9,13 +9,6 @@ import { makeConversationFailureMarker } from './make-conversation-failure-marke
 function setupTest() {
   const state = buildStartState({ isReady: true, reason: null });
 
-  state.update({
-    definitions: { isReady: true, reason: null },
-    areImagesAdded: true,
-    conversation: { isReady: true, reason: null },
-    areRunnersStarted: true,
-  });
-
   const app = createHealthApp({
     liveness: {
       database: () => Promise.resolve({ isReady: true, reason: null }),
@@ -123,6 +116,13 @@ test("it leaves the conversation turns passing when another task's errors reach 
 test('it keeps readiness at 200 and shows the failing turns in its advisory parts after the error limit', async () => {
   const ctx = setupTest();
 
+  ctx.state.update({
+    definitions: { isReady: true, reason: null },
+    areImagesAdded: true,
+    conversation: { isReady: true, reason: null },
+    areRunnersStarted: true,
+  });
+
   makeConversationFailureMarker(ctx.state)({
     taskID: 'conversation',
     stepKey: 'conversation:7',
@@ -164,6 +164,13 @@ test('it keeps readiness at 200 and shows the failing turns in its advisory part
 
 test('it reports the conversation turns as not ready on readiness after one turn the model API refused for its credential', async () => {
   const ctx = setupTest();
+
+  ctx.state.update({
+    definitions: { isReady: true, reason: null },
+    areImagesAdded: true,
+    conversation: { isReady: true, reason: null },
+    areRunnersStarted: true,
+  });
 
   makeConversationFailureMarker(ctx.state)({
     taskID: 'conversation',

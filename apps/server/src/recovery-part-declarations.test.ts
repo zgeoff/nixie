@@ -8,18 +8,18 @@ import { startTestNixie } from './test-utils/start-test-nixie';
 async function setupTest() {
   const nixie = await startTestNixie();
 
-  await nixie.waitForLogEvent('ready');
-  await nixie.sendStopSignal();
-  await nixie.waitForExit();
-
-  await rm(nixie.dataDir, { recursive: true });
-  await mkdir(nixie.dataDir);
-
   return nixie;
 }
 
 test('it seeds the first definitions within seconds of a checkout that lands after a fresh start', async () => {
   const ctx = await setupTest();
+
+  await ctx.waitForLogEvent('ready');
+  await ctx.sendStopSignal();
+  await ctx.waitForExit();
+
+  await rm(ctx.dataDir, { recursive: true });
+  await mkdir(ctx.dataDir);
 
   const definitionsDir = join(ctx.directory, 'definitions');
 
