@@ -29,6 +29,40 @@ test("it places a turn's notice after the turn's reply, before your next message
   expect([...placement]).toStrictEqual([[2, [notice]]]);
 });
 
+test.each([
+  [
+    'a reply',
+    { kind: 'message', record: buildMockLogRecord({ kind: 'model.reply', sequence: 1 }) },
+  ],
+  ['a reset', { kind: 'reset', record: buildMockLogRecord({ kind: 'log_reset', sequence: 1 }) }],
+  ['a step', buildMockStepActivity({ key: 1 })],
+] as const)(
+  "it never starts a turn at %s that holds the turn message's sequence",
+  (_label, start) => {
+    const notice = {
+      entries: [buildMockMemoryNoticeEntry({ sequence: 3 })],
+      kind: 'turn',
+      messageSequence: 1,
+      noticeKey: `turn/conversation/${String(1)}`,
+      proposed: 0,
+      remembered: 1,
+      retired: 0,
+      sequence: 3,
+    } as const;
+
+    const placement = buildNoticePlacement(
+      [
+        start,
+        { kind: 'message', record: buildMockLogRecord({ kind: 'model.reply', sequence: 5 }) },
+        { kind: 'message', record: buildMockLogRecord({ kind: 'owner_message', sequence: 7 }) },
+      ],
+      [notice],
+    );
+
+    expect([...placement]).toStrictEqual([[0, [notice]]]);
+  },
+);
+
 test("it places the newest turn's notice after the last item", () => {
   const notice = {
     entries: [buildMockMemoryNoticeEntry({ sequence: 3 })],
