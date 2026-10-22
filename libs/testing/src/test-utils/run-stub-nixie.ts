@@ -4,6 +4,13 @@ import { startHarnessLink } from '../start-harness-link';
 const link = startHarnessLink();
 
 link.registerOperation('now', z.null(), () => link.clock.now());
+link.registerOperation('readArgs', z.null(), () => process.argv.slice(2));
+
+link.registerOperation('print', z.string(), (text) => {
+  process.stdout.write(`${text}\n`);
+
+  return null;
+});
 
 link.registerOperation('hold', z.string(), async (workID) => {
   await link.waitAtFaultPoint('stub.point', { kind: 'stub', id: workID });
