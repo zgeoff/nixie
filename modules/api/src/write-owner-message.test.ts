@@ -161,6 +161,9 @@ test('it refuses a message to a thread no task has', async () => {
 
 test('it refuses a message to a task that is done', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   await ctx.db
