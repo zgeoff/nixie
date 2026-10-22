@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { probeProcessGone } from './probe-process-gone';
 import { readDescendants } from './read-descendants';
 import { stopProcesses } from './stop-processes';
-import { probeProcessGone } from './test-utils/probe-process-gone';
 import { waitForCondition } from './wait-for-condition';
 
 test('it kills a process and every member of the group it leads', async () => {

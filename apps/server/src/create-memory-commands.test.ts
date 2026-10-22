@@ -1,6 +1,6 @@
-import { expect, test } from 'bun:test';
-import { waitForCondition } from '@heynixie/testing';
+import { expect, mock, test } from 'bun:test';
 import { z } from 'zod';
+import { runCLI } from './run-cli';
 import { createApprovedItems } from './test-utils/create-approved-items';
 import { createTestClient } from './test-utils/create-test-client';
 import { readItemTraces } from './test-utils/read-item-traces';
@@ -8,6 +8,7 @@ import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startTestNixie } from './test-utils/start-test-nixie';
+import { waitForTurn } from './test-utils/wait-for-turn';
 
 async function setupTest() {
   const nixie = await startTestNixie();
@@ -31,7 +32,7 @@ test('it approves a proposal with your text, then edits, retires, restores and p
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
@@ -89,7 +90,7 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
@@ -117,7 +118,7 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Understood.');
@@ -270,26 +271,45 @@ test('it runs the turn after memory-forget on a rebuilt session without the item
   ]);
 }, 60_000);
 
-test('it refuses a reason on an approval before it reads the configuration', async () => {
-  const run = await runHostCommand('/nonexistent/config.yaml', [
-    'memory-approve',
-    'proposal-1',
-    '--hash',
-    'sha256:hash',
-    '--reason',
-    'looks right',
-  ]);
+test.each([
+  ['no --hash', ['memory-approve', 'proposal-1']],
+  [
+    'a reason',
+    ['memory-approve', 'proposal-1', '--hash', 'sha256:hash', '--reason', 'looks right'],
+  ],
+  [
+    'a revision target with no version',
+    ['memory-approve', 'proposal-1', '--hash', 'sha256:hash', '--revise', 'item-1'],
+  ],
+])('it refuses an approval given %s before it reads the configuration', async (_label, args) => {
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  expect(run.exitCode).toBe(2);
+  const exitCode = await runCLI([...args, '--config', '/nonexistent/config.yaml'], io);
+
+  expect(exitCode).toBe(2);
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(
+    'nixie memory-approve takes a proposal ID and --hash <action hash>, then --text <edited text>, ' +
+      'and --revise <itemID>@<version> or --as-new',
+  );
 });
 
-test('it refuses a version target that is not a plain decimal before it reads the configuration', async () => {
-  const runs = await runHostCommands('/nonexistent/config.yaml', [
-    ['memory-retire', 'item-1@0x2'],
-    ['memory-restore', 'item-1@ 2'],
+test.each([
+  [['memory-retire', 'item-1@0x2'], 'nixie memory-retire takes <itemID>@<version>'],
+  [['memory-restore', 'item-1@ 2'], 'nixie memory-restore takes <itemID>@<version>'],
+  [
     ['memory-edit', 'item-1@', '--text', 'Likes jazz'],
-    ['memory-forget', 'item-1'],
-  ]);
+    'nixie memory-edit takes <itemID>@<version> and --text <new text>',
+  ],
+  [['memory-forget', 'item-1'], 'nixie memory-forget takes <itemID>@<version>'],
+])(
+  'it refuses %p, whose version target is not a plain decimal, before it reads the configuration',
+  async (args, refusal) => {
+    const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  expect(runs.map((run) => run.exitCode)).toStrictEqual([2, 2, 2, 2]);
-});
+    const exitCode = await runCLI([...args, '--config', '/nonexistent/config.yaml'], io);
+
+    expect(exitCode).toBe(2);
+    expect(io.print).toHaveBeenCalledExactlyOnceWith(refusal);
+  },
+);

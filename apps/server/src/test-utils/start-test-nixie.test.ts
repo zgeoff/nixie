@@ -1,7 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
+import { probeProcessGone, readDescendants, waitForCondition } from '@heynixie/testing';
 import { loadDeploymentConfig } from '../load-deployment-config';
+import { createTestClient } from './create-test-client';
 import { startTestNixie } from './start-test-nixie';
+import { waitForTurn } from './wait-for-turn';
 
 test('it starts nixie in a test build and reaches ready', async () => {
   const nixie = await startTestNixie();
@@ -66,6 +69,30 @@ test('it removes its directory once the test finishes', async () => {
   const listening = await nixie.waitForLogEvent('http.listening');
 
   expect(listening['port']).toBeNumber();
+}, 60_000);
+
+test('it stops the guest of a turn still running once the test finishes', async () => {
+  const nixie = await startTestNixie();
+  const clients = await createTestClient(nixie);
+
+  nixie.model.addReplies({ text: 'Held.', gate: Promise.withResolvers<void>().promise });
+
+  await clients.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Check the tide at noon.',
+    thread: 'conversation',
+  });
+
+  await waitForTurn(() => nixie.model.requests.some((request) => request.path === '/v1/messages'));
+
+  const turnPIDs = readDescendants(process.pid);
+
+  onTestFinished(async () => {
+    await waitForCondition(() => turnPIDs.every((pid) => probeProcessGone(pid)));
+  });
+
+  expect(turnPIDs.length).toBeGreaterThanOrEqual(3);
 }, 60_000);
 
 test('it starts nixie again on the same data directory once it exits', async () => {

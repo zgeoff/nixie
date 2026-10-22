@@ -14,7 +14,12 @@ test('it reads the children of a process and their children', async () => {
     stopProcesses([child.pid]);
   });
 
-  await waitForCondition(() => readDescendants(child.pid).length > 0);
+  // the shell forks before the child execs sleep, so the name changes once the exec lands
+  await waitForCondition(() =>
+    readDescendants(child.pid).some((pid) =>
+      readFileSync(`/proc/${pid}/stat`, 'utf8').includes('(sleep)'),
+    ),
+  );
 
   const [grandchild] = readDescendants(child.pid);
   const grandchildStat = readFileSync(`/proc/${grandchild}/stat`, 'utf8');

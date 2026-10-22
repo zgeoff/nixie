@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
-import { waitForCondition } from '@heynixie/testing';
 import { z } from 'zod';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { startTestNixie } from './test-utils/start-test-nixie';
+import { waitForTurn } from './test-utils/wait-for-turn';
 
 test('it logs a skill export that fails at the error level', async () => {
   // nothing listens on the discard port, so the export's first request fails
@@ -41,7 +41,7 @@ test('it logs a skill export that fails at the error level', async () => {
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await clients.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');

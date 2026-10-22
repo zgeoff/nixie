@@ -1,17 +1,22 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { McpServerConfig, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { checkToolServer } from './check-tool-server';
 import { createStubToolServer } from './test-utils/create-stub-tool-server';
+import { readProcessesInDirectory } from './test-utils/read-processes-in-directory';
 import { startStubHTTPToolServer } from './test-utils/start-stub-http-tool-server';
 
 async function setupTest() {
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
   const home = await mkdtemp(join(tmpdir(), 'nixie-tool-check-'));
 
-  onTestFinished(() => rm(home, { recursive: true, force: true }));
+  stack.defer(() => rm(home, { recursive: true, force: true }));
 
   const startSession = (toolServer: McpServerConfig) => {
     const session = query({
@@ -31,15 +36,39 @@ async function setupTest() {
       },
     });
 
-    onTestFinished(() => {
-      session.close();
+    // close() returns before the CLI exits, and the CLI writes to its home on the way out, so the
+    // home is removed only once return() has awaited the exit.
+    stack.defer(async () => {
+      await session.return();
     });
 
     return session;
   };
 
-  return { startSession };
+  return { home, startSession };
 }
+
+test('it removes the home a session ran in only once the CLI has exited', async () => {
+  const ctx = await setupTest();
+  const tools = await startStubHTTPToolServer();
+
+  onTestFinished(() => tools.stop());
+
+  const session = ctx.startSession(tools.config);
+
+  await checkToolServer(session, () => Promise.resolve());
+
+  const running = await readProcessesInDirectory(ctx.home);
+
+  onTestFinished(async () => {
+    const left = await readProcessesInDirectory(ctx.home);
+
+    expect(left).toStrictEqual([]);
+    expect(stat(ctx.home)).rejects.toThrow();
+  });
+
+  expect(running.length).toBeGreaterThanOrEqual(1);
+});
 
 test('it reconnects once to a server whose first connection the route reset, and lets the turn go on', async () => {
   const ctx = await setupTest();

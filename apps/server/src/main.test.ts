@@ -8,6 +8,7 @@ import { runHostCommand } from './test-utils/run-host-command';
 import { runTestReset } from './test-utils/run-test-reset';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startTestNixie } from './test-utils/start-test-nixie';
+import { waitForTurn } from './test-utils/wait-for-turn';
 
 async function setupTest() {
   const nixie = await startTestNixie();
@@ -28,7 +29,7 @@ test('it keeps no message text in nixie.db, the key store or the logs', async ()
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Quince-reply-4ZT9');
@@ -63,9 +64,7 @@ test('it puts the snapshot hash of the definitions in force on every record', as
     thread: 'conversation',
   });
 
-  await waitForCondition(() =>
-    ctx.model.requests.some((request) => request.path === '/v1/messages'),
-  );
+  await waitForTurn(() => ctx.model.requests.some((request) => request.path === '/v1/messages'));
 
   ctx.sendSignal('SIGTERM');
 
@@ -110,9 +109,7 @@ test('it lists the memory tools, web fetch, the time tool and the log reader to 
     thread: 'conversation',
   });
 
-  await waitForCondition(() =>
-    ctx.model.requests.some((request) => request.path === '/v1/messages'),
-  );
+  await waitForTurn(() => ctx.model.requests.some((request) => request.path === '/v1/messages'));
 
   expect(ctx.model.requests.find((request) => request.path === '/v1/messages')?.body).toMatchObject(
     {
@@ -146,9 +143,7 @@ test('it calls the owner by the name the secrets file holds, which the configura
     thread: 'conversation',
   });
 
-  await waitForCondition(() =>
-    nixie.model.requests.some((request) => request.path === '/v1/messages'),
-  );
+  await waitForTurn(() => nixie.model.requests.some((request) => request.path === '/v1/messages'));
 
   expect(
     nixie.model.requests.find((request) => request.path === '/v1/messages')?.body,
@@ -177,7 +172,7 @@ test('it answers the time tool in the zone of the newest message', async () => {
     timeZone: 'Asia/Tokyo',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Safe travels.');
@@ -191,7 +186,7 @@ test('it answers the time tool in the zone of the newest message', async () => {
     timeZone: 'Europe/London',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'It is evening in London.');
@@ -222,7 +217,7 @@ test('it answers a message with a reply that used a tool, with each step in the 
     timeZone: 'Europe/Lisbon',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => /^task\.step_(?:committed|errored)$/u.test(record.kind));
@@ -282,7 +277,7 @@ test('it completes a turn that calls a tool from the test sandbox the configurat
     timeZone: 'Atlantic/Reykjavik',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => /^task\.step_(?:committed|errored)$/u.test(record.kind));
@@ -317,7 +312,7 @@ test('it shows the model when each message was sent, in its own zone or the defa
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Hello.');
@@ -331,7 +326,7 @@ test('it shows the model when each message was sent, in its own zone or the defa
     timeZone: 'Asia/Tokyo',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Welcome to Tokyo.');
@@ -365,7 +360,7 @@ test('it shows the model when you typed a message that reached nixie over 2 minu
     writtenAt: new Date().toISOString(),
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
@@ -380,7 +375,7 @@ test('it shows the model when you typed a message that reached nixie over 2 minu
     writtenAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'On it.');
@@ -422,7 +417,7 @@ test('it shows the model the label you set on a session through the session comm
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Hello.');
@@ -464,14 +459,11 @@ test('it applies a remembered fact that the owner typed, with their words as its
     thread: 'conversation',
   });
 
-  await waitForCondition(
-    async () => {
-      const page = await api.client.conversation.read({ thread: 'conversation' });
+  await waitForTurn(async () => {
+    const page = await api.client.conversation.read({ thread: 'conversation' });
 
-      return page.records.some((record) => record.message?.text === 'Noted.');
-    },
-    { timeoutMs: 30_000 },
-  );
+    return page.records.some((record) => record.message?.text === 'Noted.');
+  });
 
   ctx.sendSignal('SIGTERM');
 
@@ -625,7 +617,7 @@ test('it lists the proposal the model made when the model calls the pending tool
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
@@ -638,7 +630,7 @@ test('it lists the proposal the model made when the model calls the pending tool
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'One proposal waits.');
@@ -768,7 +760,7 @@ test('it queues one action for the log-only connector at start, which the action
           .parse(JSON.parse(line)),
       );
 
-  await waitForCondition(() => readLogged().length > 0);
+  await nixie.waitForLogEvent('action.logged');
 
   expect(readLogged()).toMatchObject([{ event: 'action.logged', attempt: 1 }]);
 }, 60_000);
@@ -826,7 +818,7 @@ test('it fails a turn the model API refused for its credential with no reply, an
     timeZone: 'Europe/London',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => /^task\.step_(?:committed|errored)$/u.test(record.kind));
@@ -866,9 +858,7 @@ test('it stops claiming steps on SIGTERM, lets the turn in flight commit and exi
     thread: 'conversation',
   });
 
-  await waitForCondition(() =>
-    ctx.model.requests.some((request) => request.path === '/v1/messages'),
-  );
+  await waitForTurn(() => ctx.model.requests.some((request) => request.path === '/v1/messages'));
 
   await ctx.sendStopSignal();
 
@@ -915,7 +905,7 @@ test('it lists a pending memory proposal and approves it through the memory comm
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
@@ -993,11 +983,14 @@ test('it shows the conversation your reason for a proposal you rejected in the w
 test('it writes no info event, its stop included, at the warn level the configuration sets', async () => {
   const nixie = await startTestNixie({ logLevel: 'warn' });
 
-  await waitForCondition(async () => {
-    const files = await nixie.readDataFiles();
+  await waitForCondition(
+    async () => {
+      const files = await nixie.readDataFiles();
 
-    return files.some((file) => file.name === 'nixie.db');
-  });
+      return files.some((file) => file.name === 'nixie.db');
+    },
+    { timeoutMs: 30_000 },
+  );
 
   nixie.sendSignal('SIGTERM');
 
@@ -1016,11 +1009,14 @@ test('it writes no info event, its stop included, at the warn level the configur
 test('it writes its info events, its stop included, at the default level', async () => {
   const nixie = await startTestNixie();
 
-  await waitForCondition(async () => {
-    const files = await nixie.readDataFiles();
+  await waitForCondition(
+    async () => {
+      const files = await nixie.readDataFiles();
 
-    return files.some((file) => file.name === 'nixie.db');
-  });
+      return files.some((file) => file.name === 'nixie.db');
+    },
+    { timeoutMs: 30_000 },
+  );
 
   nixie.sendSignal('SIGTERM');
 
@@ -1170,7 +1166,7 @@ test('it leaves no old key and no old text in the data files after a reset', asy
     thread: 'conversation',
   });
 
-  await waitForCondition(async () => {
+  await waitForTurn(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Fennel-reply-8WD');
@@ -1234,9 +1230,7 @@ test('it starts the next turn after a reset with no history', async () => {
     thread: 'conversation',
   });
 
-  await waitForCondition(() =>
-    ctx.model.requests.some((request) => request.path === '/v1/messages'),
-  );
+  await waitForTurn(() => ctx.model.requests.some((request) => request.path === '/v1/messages'));
 
   const reset = await runTestReset(ctx);
 
@@ -1247,7 +1241,7 @@ test('it starts the next turn after a reset with no history', async () => {
     thread: 'conversation',
   });
 
-  await waitForCondition(() =>
+  await waitForTurn(() =>
     JSON.stringify(ctx.model.requests.at(-1)?.body).includes('Lantern-message-6HN'),
   );
 
