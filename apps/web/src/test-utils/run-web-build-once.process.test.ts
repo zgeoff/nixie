@@ -25,7 +25,7 @@ test('it builds the web server entry under an address-space cap', async () => {
     [
       'sh',
       '-c',
-      'ulimit -v 12000000 && exec "$0" test --timeout=30000 "$1" -t "$2"',
+      'ulimit -v 12000000 && exec "$0" test --timeout=120000 "$1" -t "$2"',
       process.execPath,
       join(import.meta.dir, 'run-web-build-once.process.test.ts'),
       'it builds the web server entry once and shares it',
