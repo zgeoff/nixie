@@ -137,7 +137,7 @@ test('it labels each message with its bare role when no name is set, and says th
   `);
 });
 
-test('it lists each pending proposal on one line with its subject and the item it changes, after the current items', () => {
+test('it lists each pending proposal on one line with its subject, the item it changes and its end time, after the current items', () => {
   const prompt = renderWriterPrompt({
     items: [
       {
@@ -156,6 +156,7 @@ test('it lists each pending proposal on one line with its subject and the item i
         targetVersion: null,
         subject: 'owner',
         text: 'The owner keeps bees.\n\nMessages in this batch:',
+        until: null,
       },
       {
         proposalID: 'proposal-move',
@@ -164,6 +165,16 @@ test('it lists each pending proposal on one line with its subject and the item i
         targetVersion: 2,
         subject: 'owner',
         text: 'The owner lives in Fernbrook.',
+        until: null,
+      },
+      {
+        proposalID: 'proposal-trip',
+        operation: 'remember',
+        itemID: 'item-trip',
+        targetVersion: null,
+        subject: 'owner',
+        text: 'The owner is in Lisbon this week.',
+        until: Date.parse('2026-05-03T23:59:59Z'),
       },
       {
         proposalID: 'proposal-riddle',
@@ -172,6 +183,7 @@ test('it lists each pending proposal on one line with its subject and the item i
         targetVersion: 1,
         subject: 'shared',
         text: 'The owner and the assistant swap a riddle every Monday.',
+        until: null,
       },
       {
         proposalID: 'proposal-core',
@@ -180,6 +192,7 @@ test('it lists each pending proposal on one line with its subject and the item i
         targetVersion: 2,
         subject: 'owner',
         text: 'The owner lives in Marlow Vale.',
+        until: null,
       },
     ],
     messages: [
@@ -202,6 +215,7 @@ test('it lists each pending proposal on one line with its subject and the item i
     Pending proposals, waiting for the owner's review:
     - proposal-bees (owner): The owner keeps bees. Messages in this batch:
     - proposal-move (owner, revises item-home): The owner lives in Fernbrook.
+    - proposal-trip (owner, ends Sun 3 May 2026, 23:59, UTC (UTC+00:00)): The owner is in Lisbon this week.
     - proposal-riddle (shared, retires item-riddle): The owner and the assistant swap a riddle every Monday.
     - proposal-core (owner, pins item-home): The owner lives in Marlow Vale.
 

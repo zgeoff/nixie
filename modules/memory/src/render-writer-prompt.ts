@@ -18,7 +18,7 @@ export interface SpeakerNames {
 
 type ShownProposal = Pick<
   MemoryProposal,
-  'proposalID' | 'operation' | 'itemID' | 'targetVersion' | 'subject' | 'text'
+  'proposalID' | 'operation' | 'itemID' | 'targetVersion' | 'subject' | 'text' | 'until'
 >;
 
 export interface WriterPromptInput {
@@ -54,7 +54,7 @@ export function renderWriterPrompt(input: WriterPromptInput): string {
   const proposals =
     input.proposals.length === 0
       ? '(none)'
-      : input.proposals.map((proposal) => renderProposal(proposal)).join('\n');
+      : input.proposals.map((proposal) => renderProposal(proposal, input.defaultZone)).join('\n');
 
   return `${heading}\n${items}\n\nPending proposals, waiting for the owner's review:\n${proposals}\n\nMessages in this batch:\n\n${messages}`;
 }
@@ -65,7 +65,7 @@ function formatSpeaker(names: SpeakerNames, role: BatchMessage['role']): string 
   return name === null ? role : `${name} (${role})`;
 }
 
-function renderProposal(proposal: ShownProposal): string {
+function renderProposal(proposal: ShownProposal, zone: string): string {
   const text = proposal.text.replaceAll(/\s+/gu, ' ');
 
   const action = match(proposal.operation)
@@ -74,5 +74,10 @@ function renderProposal(proposal: ShownProposal): string {
     .with('remember', () => (proposal.targetVersion === null ? '' : `, revises ${proposal.itemID}`))
     .exhaustive();
 
-  return `- ${proposal.proposalID} (${proposal.subject}${action}): ${text}`;
+  const ends =
+    proposal.operation === 'remember' && proposal.until !== null
+      ? `, ends ${formatZonedTime(proposal.until, zone)}`
+      : '';
+
+  return `- ${proposal.proposalID} (${proposal.subject}${action}${ends}): ${text}`;
 }

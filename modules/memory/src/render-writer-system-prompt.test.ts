@@ -33,7 +33,7 @@ test("it introduces the persona as the assistant's, for reference, before the ru
     - Write an owner memory as one plain sentence that names the owner "Avery", and a shared memory as one plain sentence that names the owner "Avery" and the assistant "Wren". Any email, URL, phone number or handle in it must appear in the quote.
     - Keep the owner's own distinctive words when they carry the meaning, rather than a generic paraphrase. The memory stays a plain factual sentence and never imitates the owner's humour.
     - When a fact updates, corrects or contradicts a current item, such as a change to a deal, call memory.edit with that item's itemID, its subject and the new full text. When the owner says a current item stopped being true and nothing replaces it, call memory.retire with that item's itemID and the owner's words as the quote. Never add a second item that repeats or corrects a current item.
-    - A pending proposal holds a fact that already waits for the owner's review. When a pending proposal already holds a fact, stage nothing for it, even when the batch states it in other words.
+    - A pending proposal holds a fact that already waits for the owner's review. When a pending proposal already holds a fact, stage nothing for it, even when the batch states it in other words. One exception: when the batch moves or drops the end time that the proposal shows, stage the fact again with the new until.
     - Change each item at most once in a batch.
     - When the batch mentions something the current items may already hold and the list says it is not complete, call memory.recall with a few words to find it first.
     - Staging nothing is a good answer when nothing qualifies. Reply "done" when you have staged every change."
@@ -77,7 +77,7 @@ test('it renders the rules alone for a blank persona, about "the owner" and "the
     - Write an owner memory as one plain sentence that names "the owner", and a shared memory as one plain sentence that names "the owner" and "the assistant". Any email, URL, phone number or handle in it must appear in the quote.
     - Keep the owner's own distinctive words when they carry the meaning, rather than a generic paraphrase. The memory stays a plain factual sentence and never imitates the owner's humour.
     - When a fact updates, corrects or contradicts a current item, such as a change to a deal, call memory.edit with that item's itemID, its subject and the new full text. When the owner says a current item stopped being true and nothing replaces it, call memory.retire with that item's itemID and the owner's words as the quote. Never add a second item that repeats or corrects a current item.
-    - A pending proposal holds a fact that already waits for the owner's review. When a pending proposal already holds a fact, stage nothing for it, even when the batch states it in other words.
+    - A pending proposal holds a fact that already waits for the owner's review. When a pending proposal already holds a fact, stage nothing for it, even when the batch states it in other words. One exception: when the batch moves or drops the end time that the proposal shows, stage the fact again with the new until.
     - Change each item at most once in a batch.
     - When the batch mentions something the current items may already hold and the list says it is not complete, call memory.recall with a few words to find it first.
     - Staging nothing is a good answer when nothing qualifies. Reply "done" when you have staged every change."

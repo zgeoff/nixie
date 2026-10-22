@@ -88,12 +88,13 @@ or a deal edits the item that holds it and never adds a second item.
 The prompt holds the batch's records with their sequences and the time each was sent, in the zone
 the user sent it from or the deployment's default zone, the user's pasted spans marked, a marker
 line for each image the user sent and never its bytes, the active items, and the pending proposals
-with the item each one changes, each with its subject. It lists every active item while the list
-fits its budget, else the items a keyword recall over the batch finds. Neither the list nor a recall
-shows a self-note, and the pending proposals leave out a self-note's, because a self-note is the
-assistant's own to write. A rule tells the writer to stage nothing for a fact that a pending
-proposal already holds, even in other words, because the gate merges only a proposal of the same
-text.
+with the item each one changes, each with its subject and any end time it sets. It lists every
+active item while the list fits its budget, else the items a keyword recall over the batch finds.
+Neither the list nor a recall shows a self-note, and the pending proposals leave out a self-note's,
+because a self-note is the assistant's own to write. A rule tells the writer to stage nothing for a
+fact that a pending proposal already holds, even in other words, because the gate merges only a
+proposal of the same text. One exception: a batch that moves or drops a proposal's end time stages
+the fact again with the new end time, which the gate keeps as a proposal of its own.
 
 The session's tools are recall, remember, edit, retire and flag-self-note. Remember only creates an
 item, and edit is the one tool that changes an item's text, as in the conversation. Remember and
