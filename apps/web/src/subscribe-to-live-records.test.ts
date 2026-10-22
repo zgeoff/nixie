@@ -8,9 +8,7 @@ import { subscribeToLiveRecords } from './subscribe-to-live-records';
 import { buildStubTimer } from './test-utils/build-stub-timer';
 import { createDeviceSession } from './test-utils/create-device-session';
 
-async function setupTest() {
-  const session = await createDeviceSession();
-
+function setupTest() {
   const follows = mock<(body: unknown) => void>();
 
   server.use(
@@ -30,14 +28,15 @@ async function setupTest() {
   return {
     client: buildBrowserClient(),
     follows,
-    session,
     signal: following.signal,
     timer: buildStubTimer(),
   };
 }
 
 test('it waits twice as long after each failed attempt in a row', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
 
@@ -61,7 +60,9 @@ test('it waits twice as long after each failed attempt in a row', async () => {
 });
 
 test('it waits the shortest time again after a failure that follows a connection', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const onRecord = mock<() => void>();
 
@@ -92,9 +93,11 @@ test('it waits the shortest time again after a failure that follows a connection
 });
 
 test('it backs off from a revoked session, as from a stream that never opens', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
-  await store.sessions.update(ctx.session, {
+  const session = await createDeviceSession();
+
+  await store.sessions.update(session, {
     data(draft) {
       draft.revokedAt = new Date();
     },
@@ -118,7 +121,9 @@ test('it backs off from a revoked session, as from a stream that never opens', a
 });
 
 test('it backs off from a stream that opens and then ends with UNAUTHORIZED', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(
     http.post(
@@ -149,7 +154,9 @@ test('it backs off from a stream that opens and then ends with UNAUTHORIZED', as
 });
 
 test('it follows the log again at once when the browser comes back online during the longest pause', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(
     ...Array.from({ length: 6 }, () =>
@@ -185,7 +192,9 @@ test('it follows the log again at once when the browser comes back online during
 });
 
 test('it follows the log again at once when the page becomes visible during the longest pause', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(
     ...Array.from({ length: 6 }, () =>

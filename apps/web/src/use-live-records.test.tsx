@@ -8,9 +8,7 @@ import { createDeviceSession } from './test-utils/create-device-session';
 import { renderHook } from './test-utils/render-hook';
 import { useLiveRecords } from './use-live-records';
 
-async function setupTest() {
-  const session = await createDeviceSession();
-
+function setupTest() {
   const follows = mock<(body: unknown) => void>();
 
   server.use(
@@ -21,11 +19,13 @@ async function setupTest() {
     }),
   );
 
-  return { follows, session, timer: buildStubTimer() };
+  return { follows, timer: buildStubTimer() };
 }
 
 test('it delivers a tool call and its result within a second of the API recording them', async () => {
-  await setupTest();
+  setupTest();
+
+  await createDeviceSession();
 
   const hook = renderHook(() => useLiveRecords('conversation', 0));
 
@@ -44,7 +44,9 @@ test('it delivers a tool call and its result within a second of the API recordin
 });
 
 test('it drops the records it delivered before a reset once the reset arrives', async () => {
-  await setupTest();
+  setupTest();
+
+  await createDeviceSession();
 
   const hook = renderHook(() => useLiveRecords('conversation', 0));
 
@@ -66,7 +68,9 @@ test('it drops the records it delivered before a reset once the reset arrives', 
 });
 
 test('it catches up after the stream drops, with no gap and no repeat', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const hook = renderHook(() => useLiveRecords('conversation', 0));
 
@@ -97,7 +101,9 @@ test('it catches up after the stream drops, with no gap and no repeat', async ()
 });
 
 test('it follows the log again at once when the page becomes visible', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const stalled = mock();
 
@@ -138,11 +144,13 @@ test('it follows the log again at once when the page becomes visible', async () 
 });
 
 test('it keeps reporting live updates unavailable while the API refuses a revoked session', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  const session = await createDeviceSession();
 
   const reported: boolean[] = [];
 
-  await store.sessions.update(ctx.session, {
+  await store.sessions.update(session, {
     data(draft) {
       draft.revokedAt = new Date();
     },
@@ -173,7 +181,9 @@ test('it keeps reporting live updates unavailable while the API refuses a revoke
 });
 
 test('it keeps live updates available after two failed attempts in a row', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
 
@@ -193,7 +203,9 @@ test('it keeps live updates available after two failed attempts in a row', async
 });
 
 test('it reports live updates unavailable after three failed attempts in a row', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
 
@@ -210,7 +222,9 @@ test('it reports live updates unavailable after three failed attempts in a row',
 });
 
 test('it clears the unavailable report once the stream connects again', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(
     http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),

@@ -8,16 +8,16 @@ import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { MemoryView } from './memory-view';
 
-async function setupTest() {
+function setupTest() {
   const user = userEvent.setup();
-
-  await createDeviceSession();
 
   return { user };
 }
 
 test('it retires an active item once the user confirms', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Plays the cello' }] });
 
@@ -46,7 +46,9 @@ test('it retires an active item once the user confirms', async () => {
 });
 
 test('it restores a retired item once the user confirms', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({
     shortID: 'k3m9qa',
@@ -82,7 +84,9 @@ test('it restores a retired item once the user confirms', async () => {
 });
 
 test('it pins an item into the pinned core once the user confirms', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Plays the cello' }] });
 
@@ -111,7 +115,9 @@ test('it pins an item into the pinned core once the user confirms', async () => 
 });
 
 test('it unpins an item from the pinned core once the user confirms', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({
     isPinned: true,
@@ -140,7 +146,9 @@ test('it unpins an item from the pinned core once the user confirms', async () =
 });
 
 test('it changes nothing and says why when the item changed after the confirmation opened', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Plays the cello' }] });
 
@@ -192,7 +200,9 @@ test('it changes nothing and says why when the item changed after the confirmati
 });
 
 test('it shows the item new text once a stale confirmation closes', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Plays the cello' }] });
 
@@ -236,7 +246,9 @@ test('it shows the item new text once a stale confirmation closes', async () => 
 });
 
 test('it retires the item once when a failed confirm goes again', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Plays the cello' }] });
 
@@ -273,7 +285,9 @@ test('it retires the item once when a failed confirm goes again', async () => {
 });
 
 test('it keeps the item as it is when the user steps back from the confirmation', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Plays the cello' }] });
 
@@ -292,7 +306,9 @@ test('it keeps the item as it is when the user steps back from the confirmation'
 });
 
 test('it says the pinned core is full when a pin finds no room', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await Promise.all([
     store.memoryItems.create({
@@ -326,7 +342,9 @@ test('it says the pinned core is full when a pin finds no room', async () => {
 });
 
 test('it keeps the reason for a refusal after the refreshed item moves to another list', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Plays the cello' }] });
 
@@ -361,7 +379,7 @@ test('it keeps the reason for a refusal after the refreshed item moves to anothe
 });
 
 test('it offers no change for an item a forget began, even while its text still opens', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.memoryItems.create({
     isShredded: false,
@@ -383,7 +401,7 @@ test('it offers no change for an item a forget began, even while its text still 
 });
 
 test('it offers a pin on a self-note', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.memoryItems.create({ subject: 'self', shortID: 'k3m9qa', versions: [{}] });
 
