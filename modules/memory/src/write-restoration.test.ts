@@ -207,3 +207,26 @@ test('it rejects a restore of an active item whose end time is still to come', a
     memory.store.restore({ target: item, provenance: buildMockProvenance() }),
   ).rejects.toMatchObject({ code: 'WRONG_STATE' });
 });
+
+test('it restores a pinned item past its end time unpinned, as after the sweep', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    isPinned: true,
+    provenance: buildMockProvenance(),
+  });
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  await memory.store.restore({ target: item, provenance: buildMockProvenance() });
+
+  const core = await memory.store.readPinnedCore();
+  const recalled = await memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(core).toStrictEqual([]);
+  expect(recalled.items).toMatchObject([{ version: 2, state: 'active', isPinned: false }]);
+});
