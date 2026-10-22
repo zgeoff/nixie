@@ -58,14 +58,21 @@ test('it undoes one item of a 3-item notice under the reply, and keeps the other
   await ctx.user.click(within(notice).getByRole('button', { name: 'View' }));
 
   const changes = within(notice).getByRole('list', { name: 'Memory changes' });
+  const bellRow = within(changes).getByRole('listitem', { name: 'b4n8wq' });
+  const runsRow = within(changes).getByRole('listitem', { name: 'r7k2pa' });
+  const herbRow = within(changes).getByRole('listitem', { name: 'h2c5xe' });
 
-  await ctx.user.click(
-    within(within(changes).getByRole('listitem', { name: 'b4n8wq' })).getByRole('button', {
-      name: 'Undo',
-    }),
-  );
+  await ctx.user.click(within(bellRow).getByRole('button', { name: 'Undo' }));
 
-  await within(within(changes).getByRole('listitem', { name: 'b4n8wq' })).findByText('Undone');
+  await within(bellRow).findByText('Undone');
+
+  await ctx.user.click(within(runsRow).getByRole('button', { name: 'Keep' }));
+
+  await within(runsRow).findByText('Kept');
+
+  await ctx.user.click(within(herbRow).getByRole('button', { name: 'Keep' }));
+
+  await within(herbRow).findByText('Kept');
 
   const stored = store.memoryItems.all();
 
@@ -74,20 +81,15 @@ test('it undoes one item of a 3-item notice under the reply, and keeps the other
     versions: [{ change: 'created' }, { change: 'undone', origin: 'owner', state: 'retired' }],
   });
 
-  expect(stored.find((item) => item.itemID === runs.itemID)?.versions).toHaveLength(1);
-  expect(stored.find((item) => item.itemID === herb.itemID)?.versions).toHaveLength(1);
+  expect(stored.find((item) => item.itemID === runs.itemID)).toMatchObject({
+    state: 'active',
+    versions: [{ change: 'created' }],
+  });
 
-  expect(
-    within(within(changes).getByRole('listitem', { name: 'r7k2pa' })).getByRole('button', {
-      name: 'Undo',
-    }),
-  ).toBeEnabled();
-
-  expect(
-    within(within(changes).getByRole('listitem', { name: 'h2c5xe' })).getByRole('button', {
-      name: 'Undo',
-    }),
-  ).toBeEnabled();
+  expect(stored.find((item) => item.itemID === herb.itemID)).toMatchObject({
+    state: 'active',
+    versions: [{ change: 'created' }],
+  });
 });
 
 test("it places a turn's notice under the turn's reply", async () => {
