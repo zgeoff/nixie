@@ -1,3 +1,5 @@
+import type { Options } from '@anthropic-ai/claude-agent-sdk';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 // @boundaries-ignore a spike imports the code it measures
 import { runTurn } from '../../guests/conversation/src/run-turn';
 // @boundaries-ignore a spike imports the code it measures
@@ -5,7 +7,8 @@ import type { GuestFrame, InboxMessage, SessionPoint } from '../../libs/wire/src
 import { startEmptyToolServer } from './start-empty-tool-server';
 
 // the conversation's profile in the reference deployment configuration, with the cache lifetime
-// the models config gives a profile that sets none
+// the models config gives a profile that sets none; the runs swap its credential for the
+// subscription's
 export const profile = {
   model: 'claude-opus-5-5',
   effort: 'medium',
@@ -87,6 +90,7 @@ async function runSpikeTurn(request: SpikeTurnRequest): Promise<SpikeTurn> {
         env: buildGuestEnv(request.home),
         toolServer: server.config,
         messages: [],
+        runQuery: (params) => query({ ...params, options: toSubscriptionOptions(params.options) }),
         emit: (frame) => {
           frames.push(frame);
 
@@ -113,6 +117,15 @@ async function runSpikeTurn(request: SpikeTurnRequest): Promise<SpikeTurn> {
     costUSD: usage === null ? 0 : buildCost(usage),
     error: thrown ?? (failed === undefined ? endError : `${failed.reason}: ${failed.detail}`),
   };
+}
+
+// The guest's options with one change: the CLI holds a placeholder subscription token in place of
+// the profile's API key, and talks to its default endpoint, so the host's egress sends each call
+// on the Claude subscription and the runs spend no API money.
+function toSubscriptionOptions(options: Options | undefined): Options {
+  const { ANTHROPIC_API_KEY: _key, ANTHROPIC_BASE_URL: _url, ...env } = options?.env ?? {};
+
+  return { ...options, env: { ...env, CLAUDE_CODE_OAUTH_TOKEN: 'placeholder' } };
 }
 
 function sumUsage(usages: readonly TurnUsage[]): TurnUsage {
