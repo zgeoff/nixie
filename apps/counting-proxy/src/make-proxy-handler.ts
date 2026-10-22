@@ -2,11 +2,11 @@ import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import type { CallUsage } from '@heynixie/models';
 import { buildCallCost } from '@heynixie/models';
+import { parseJSONOrNull } from '@heynixie/wire';
 import { buildCallTokens } from './build-call-tokens';
 import { buildCountedStream } from './build-counted-stream';
 import { findProxyEndpoint } from './find-proxy-endpoint';
 import { isRecord } from './is-record';
-import { parseJSONOrNull } from './parse-json-or-null';
 import { parseReportedUsage } from './parse-reported-usage';
 import type { CounterStore, ProxyLimits, ProxyRoute, SpendTotals, StoredCount } from './types';
 

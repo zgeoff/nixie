@@ -1,5 +1,6 @@
 import type { SizeLimits } from '@heynixie/definitions';
 import type { FetchReply } from '@heynixie/wire';
+import { parseJSONOrNull } from '@heynixie/wire';
 import { z } from 'zod';
 import type { SkillVendorSource } from './parse-skill-vendor-input';
 
@@ -134,19 +135,11 @@ async function readJSON<Schema extends z.ZodType>(
     };
   }
 
-  const parsed = schema.safeParse(parseJSON(reply.text));
+  const parsed = schema.safeParse(parseJSONOrNull(reply.text));
 
   return parsed.success
     ? { status: 'ok', value: parsed.data }
     : { status: 'refused', reason: `${url} answered with JSON nixie cannot read`, httpStatus: 200 };
-}
-
-function parseJSON(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
 }
 
 type Refusal = Extract<GitHubSkillRead, { readonly status: 'refused' }>;

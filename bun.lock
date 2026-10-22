@@ -70,6 +70,7 @@
       "dependencies": {
         "@heynixie/logger": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "gunshi": "catalog:",
         "zod": "catalog:",
       },
