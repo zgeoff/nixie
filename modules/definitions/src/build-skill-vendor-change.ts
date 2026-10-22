@@ -1,13 +1,13 @@
-import type { z } from 'zod';
 import { definitionsFormats } from './definitions-formats';
 import { findFormatBeforeSkills } from './find-format-before-skills';
 import { isSkillUnlisted } from './is-skill-unlisted';
+import type { SkillsLock } from './parse-skills-lock';
+import { parseSkillsLock } from './parse-skills-lock';
 import { skillsLockPath } from './skills-lock-path';
-import { skillsLockSchema } from './skills-lock-schema';
 import { toSkillVendorBranch } from './to-skill-vendor-branch';
 import type { DefinitionsChange, SkillVersion } from './types';
 
-export type SkillLockEntry = z.infer<typeof skillsLockSchema>[string];
+export type SkillLockEntry = SkillsLock[string];
 
 export interface SkillVendor {
   readonly version: SkillVersion;
@@ -27,15 +27,16 @@ export type SkillVendorChange =
 export function buildSkillVendorChange(vendor: SkillVendor): SkillVendorChange {
   const name = vendor.version.name;
   const folder = `skills/${name}`;
-  const entries = parseLockEntries(vendor.lock);
+  const parsed = parseSkillsLock(vendor.lock ?? undefined);
 
-  if (entries === null) {
+  if (parsed.problems.length > 0) {
     return {
       status: 'refused',
       reason: `${skillsLockPath} on the base branch is not a valid lock file, so fix it first`,
     };
   }
 
+  const entries = parsed.entries;
   const current = Object.hasOwn(entries, name) ? entries[name] : undefined;
 
   if (current === undefined && vendor.existing.length > 0) {
@@ -79,24 +80,6 @@ export function buildSkillVendorChange(vendor: SkillVendor): SkillVendorChange {
       files,
     },
   };
-}
-
-function parseLockEntries(lock: string | null): z.infer<typeof skillsLockSchema> | null {
-  if (lock === null) {
-    return {};
-  }
-
-  const parsed = skillsLockSchema.safeParse(parseJSON(lock));
-
-  return parsed.success ? parsed.data : null;
-}
-
-function parseJSON(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
 }
 
 function buildNotes(vendor: SkillVendor, current: SkillLockEntry | undefined): readonly string[] {
