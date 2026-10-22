@@ -2,9 +2,12 @@ import { createFirstEnrolmentCode } from '@heynixie/api';
 import { toErrorFields } from '@heynixie/logger';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
 import { startSkillLapseSweep } from '@heynixie/skills';
-import { createConversationTask } from '@heynixie/tasks';
+import type { RunStep } from '@heynixie/tasks';
+import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
 import { makeRetriedStart } from './make-retried-start';
+import { registerHarnessOperations } from './register-harness-operations';
 import { runDefinitionsSeed } from './run-definitions-seed';
+import { runTestTaskStep } from './run-test-task-step';
 import type { ServerPartValues } from './server-part-values';
 import { startRunners } from './start-runners';
 import { startSeedPoll } from './start-seed-poll';
@@ -36,6 +39,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'runners',
     needs: [
+      'inputs',
       'server_parts',
       'conversation_task',
       'conversation_imp',
@@ -51,10 +55,18 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       ]);
 
       const conversationStep = reader.get('conversation_imp').runStep;
+      const harness = reader.get('inputs').options.harness;
 
-      await startRunners(parts, (input) =>
-        (systemSteps.get(input.taskID) ?? conversationStep)(input),
-      );
+      // A task that a crash test creates runs the test step, so its scenario needs no model.
+      const otherStep: RunStep =
+        NIXIE_TEST_BUILD && harness !== undefined
+          ? (input) =>
+              input.taskID === conversationTaskID
+                ? conversationStep(input)
+                : Promise.resolve(runTestTaskStep(parts.context.clock, input))
+          : conversationStep;
+
+      await startRunners(parts, (input) => (systemSteps.get(input.taskID) ?? otherStep)(input));
 
       parts.state.update({ areRunnersStarted: true });
     },
@@ -114,8 +126,12 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       parts.log('ready');
 
-      if (NIXIE_TEST_BUILD) {
-        reader.get('inputs').options.harness?.sendReady();
+      const harness = reader.get('inputs').options.harness;
+
+      if (NIXIE_TEST_BUILD && harness !== undefined) {
+        registerHarnessOperations(harness.link, parts.context);
+
+        harness.link.sendReady();
       }
     },
   },

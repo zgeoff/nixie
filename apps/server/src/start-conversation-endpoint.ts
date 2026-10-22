@@ -14,6 +14,8 @@ import type { ServerParts } from './types';
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
 
+  readonly testTools: readonly ToolDefinition[];
+
   readonly queue: ActionQueue;
   readonly readStore: () => MemoryToolStore | null;
 
@@ -61,7 +63,7 @@ export async function startConversationEndpoint(
     },
   );
 
-  const registry = buildToolRegistry(definitions);
+  const registry = buildToolRegistry([...definitions, ...tools.testTools]);
 
   const endpoint = await startToolEndpoint({
     socketDir: join(options.config.server.dataDir, 'run', 'tools'),
@@ -76,5 +78,5 @@ export async function startConversationEndpoint(
 
   await options.cleanup.defer(() => endpoint.stop());
 
-  return { endpoint, definitions };
+  return { endpoint, definitions: [...definitions, ...tools.testTools] };
 }

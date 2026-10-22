@@ -21,7 +21,7 @@ export const recoveryPartDeclarations: readonly AnyPartDeclaration<ServerPartVal
       if (NIXIE_TEST_BUILD) {
         await reader
           .get('inputs')
-          .options.harness?.waitAtFaultPoint('test.recovered', { kind: 'recovery', id: null });
+          .options.harness?.link.waitAtFaultPoint('test.recovered', { kind: 'recovery', id: null });
       }
     }),
   },

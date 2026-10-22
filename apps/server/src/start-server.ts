@@ -3,10 +3,10 @@ import type { Writer } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { SandboxAdapter } from '@heynixie/sandbox';
-import type { HarnessLink } from '@heynixie/testing';
 import { buildCleanup } from './build-cleanup';
 import type { SandboxAdapterOptions } from './create-sandbox-adapter';
 import type { DeploymentConfig } from './deployment-config-schema';
+import type { CrashHarness } from './join-crash-harness';
 import type { SandboxImages } from './load-sandbox-manifest';
 import type { Secrets } from './load-secrets';
 import { loadServerInputs } from './load-server-inputs';
@@ -27,7 +27,7 @@ export interface ServerOptions {
 
   readonly createSandboxAdapter?: (options: SandboxAdapterOptions) => SandboxAdapter;
 
-  readonly harness?: HarnessLink;
+  readonly harness?: CrashHarness;
 }
 
 export interface Server {
@@ -72,7 +72,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
     const writer = await startLoggedWriter(inputs.config.server.dataDir, {
       log: inputs.log,
       cleanup,
-      ...(options.harness === undefined ? {} : { clock: options.harness.clock }),
+      ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
     });
 
     return await startServerWork({ ...options, ...inputs, writer, cleanup });
