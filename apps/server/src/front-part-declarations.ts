@@ -1,3 +1,4 @@
+import { defaultAPISettings } from '@heynixie/api';
 import { buildAPIGate } from './build-api-gate';
 import { buildSeedInputs } from './build-seed-inputs';
 import { buildServerReset } from './build-server-reset';
@@ -22,8 +23,15 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
     start: (parts) => {
       const options = parts.get('inputs').options;
 
-      return createServerContext(options.writer, options.secrets.deploymentKey, () =>
-        parts.find('session_cleanup'),
+      return createServerContext(
+        options.writer,
+        options.secrets.deploymentKey,
+        () => parts.find('session_cleanup'),
+        {
+          ...defaultAPISettings,
+          isMemoryWriterEnabled: options.config.memory_writer.isEnabled,
+          isMemoryConsolidatorEnabled: options.config.memory_consolidation.isEnabled,
+        },
       );
     },
   },

@@ -3,6 +3,7 @@ import { z } from 'zod';
 const dayMs = 24 * 60 * 60 * 1000;
 
 export interface ConsolidationConfig {
+  readonly isEnabled: boolean;
   readonly periodMs: number;
   readonly maxChanges: number;
   readonly itemListTokens: number;
@@ -13,6 +14,7 @@ export interface ConsolidationConfig {
 
 export const consolidationConfigSchema = z
   .strictObject({
+    enabled: z.boolean().default(true),
     period_days: z.number().positive().default(7),
     max_changes: z.int().positive().max(30).default(30),
     item_list_tokens: z.int().positive().default(24_000),
@@ -21,6 +23,7 @@ export const consolidationConfigSchema = z
     retry_minutes: z.number().positive().default(60),
   })
   .transform((config): ConsolidationConfig => ({
+    isEnabled: config.enabled,
     periodMs: Math.round(config.period_days * dayMs),
     maxChanges: config.max_changes,
     itemListTokens: config.item_list_tokens,

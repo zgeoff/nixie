@@ -881,6 +881,10 @@
     "memory_writer": {
       "type": "object",
       "properties": {
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
         "batch_messages": {
           "default": 4,
           "type": "integer",
@@ -1020,6 +1024,10 @@
     "memory_consolidation": {
       "type": "object",
       "properties": {
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
         "period_days": {
           "default": 7,
           "type": "number",

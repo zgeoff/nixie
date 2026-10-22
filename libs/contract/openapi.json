@@ -2081,6 +2081,9 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "isEnabled": {
+                      "type": "boolean"
+                    },
                     "backlog": {
                       "type": "integer",
                       "minimum": 0,
@@ -2153,6 +2156,7 @@
                     }
                   },
                   "required": [
+                    "isEnabled",
                     "backlog",
                     "batches",
                     "cursor",
@@ -2160,6 +2164,91 @@
                     "isCatchingUp",
                     "lastError",
                     "retryAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/memory/consolidatorStatus": {
+      "post": {
+        "operationId": "memory.consolidatorStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "isEnabled": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "isEnabled"
                   ]
                 }
               }

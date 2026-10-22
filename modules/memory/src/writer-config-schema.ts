@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export interface WriterConfig {
+  readonly isEnabled: boolean;
   readonly batchMessages: number;
   readonly batchTokens: number;
   readonly idleMs: number;
@@ -16,6 +17,7 @@ export interface WriterConfig {
 
 export const writerConfigSchema = z
   .strictObject({
+    enabled: z.boolean().default(true),
     batch_messages: z.int().positive().default(4),
     batch_tokens: z.int().positive().default(12_000),
     idle_minutes: z.number().positive().default(5),
@@ -28,6 +30,7 @@ export const writerConfigSchema = z
     max_backoff_minutes: z.number().positive().default(60),
   })
   .transform((config): WriterConfig => ({
+    isEnabled: config.enabled,
     batchMessages: config.batch_messages,
     batchTokens: config.batch_tokens,
     idleMs: Math.round(config.idle_minutes * 60_000),

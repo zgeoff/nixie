@@ -22,12 +22,18 @@ flowchart LR
 
 ## A run
 
-The server starts the consolidator on every start of nixie, and its first run is due at once. Each
-later run is due a configurable period after the last one. A run waits while any change from an
-earlier diff still waits for an answer, until that change is answered or lapses, so the user never
-holds 2 diffs that touch the same item. The answer that leaves no change pending wakes the
-consolidator in the answer's own transaction, so the next run follows the period instead of the
-lapse the step waited for. A failed run waits a retry time and never fails the task.
+The server starts the consolidator on every start of nixie that leaves it on, and its first run is
+due at once. Each later run is due a configurable period after the last one. A run waits while any
+change from an earlier diff still waits for an answer, until that change is answered or lapses, so
+the user never holds 2 diffs that touch the same item. The answer that leaves no change pending
+wakes the consolidator in the answer's own transaction, so the next run follows the period instead
+of the lapse the step waited for. A failed run waits a retry time and never fails the task.
+
+The deployment configuration can turn the consolidator off. The server then never starts it, so no
+run happens, and the memory view shows it as off. The task runners read the records an earlier start
+left in the consolidator task's inbox in a step that does nothing else. The changes of a diff
+delivered before still lapse through the store's lapse sweep, which runs apart from the
+consolidator.
 
 Each run opens one fresh model session in the consolidator's own worker sandbox on the conversation
 image. The prompt lists the active items, oldest first, each with the quote its version was saved

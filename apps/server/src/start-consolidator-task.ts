@@ -3,12 +3,19 @@ import { toErrorFields } from '@heynixie/logger';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import { startMemoryConsolidatorRunner } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
+import { runOffTaskStep } from './run-off-task-step';
 import type { ServerParts } from './types';
 
 export async function startConsolidatorTask(
   parts: ServerParts,
   store: StartedMemoryStore,
 ): Promise<RunStep> {
+  if (!parts.config.memory_consolidation.isEnabled) {
+    parts.log('memory_consolidator.off');
+
+    return runOffTaskStep;
+  }
+
   const consolidator = await startMemoryConsolidatorRunner({
     context: parts.context,
     models: parts.config.models,

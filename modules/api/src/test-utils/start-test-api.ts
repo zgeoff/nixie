@@ -28,7 +28,9 @@ interface TestAPI {
   readonly url: string;
 }
 
-export async function startTestAPI(): Promise<TestAPI> {
+export async function startTestAPI(
+  settings: APIContext['settings'] = defaultAPISettings,
+): Promise<TestAPI> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -41,7 +43,7 @@ export async function startTestAPI(): Promise<TestAPI> {
 
   stack.defer(() => writer.stop());
 
-  const context = await createTestContext(writer);
+  const context = await createTestContext(writer, settings);
 
   const served = startTestApp(context);
 
@@ -59,6 +61,7 @@ export async function startTestAPI(): Promise<TestAPI> {
 
 async function createTestContext(
   writer: Writer,
+  settings: APIContext['settings'],
 ): Promise<APIContext & { readonly clock: TestClock }> {
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',
@@ -78,7 +81,7 @@ async function createTestContext(
     },
     clock: buildTestClock(1_000_000),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    settings: defaultAPISettings,
+    settings,
 
     readSessionCleanup: () => null,
   };
