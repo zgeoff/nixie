@@ -213,12 +213,13 @@ async function runWriter(): Promise<readonly SessionResult[]> {
     join(dir, 'runs', 'conversation-claude-opus-5-5-medium.json'),
   ).json()) as { sessions: SessionResult[] };
   const messages = fixtures.conversation.flatMap((message, index) => [
-    { sequence: ownerSequence(index), role: 'owner' as const, shown: message.text, recordedAt: fixtures.day + index * 600_000 },
+    { sequence: ownerSequence(index), role: 'owner' as const, shown: message.text, recordedAt: fixtures.day + index * 600_000, timeZone: 'Europe/Lisbon' },
     {
       sequence: ownerSequence(index) + 1,
       role: 'assistant' as const,
       shown: conversationRun.sessions[index]?.replies.join('\n\n') ?? '',
       recordedAt: fixtures.day + index * 600_000 + 20_000,
+      timeZone: null,
     },
   ]);
   const items = [...fixtures.coreItems, ...fixtures.otherItems.slice(0, 10)].map((item) => ({
@@ -238,6 +239,7 @@ async function runWriter(): Promise<readonly SessionResult[]> {
       proposals: [],
       messages: messages.slice(start, start + 4),
       names,
+      defaultZone: 'Europe/Lisbon',
     });
     // oxlint-disable-next-line no-await-in-loop -- the writer runs one batch at a time
     const result = await runGuestSession(`batch-${start / 4 + 1}`, 'memory-writer', {
