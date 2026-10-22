@@ -1,7 +1,7 @@
 # 0031: Memory capture, context and removal
 
 - Date: 2026-10-09
-- Updated: 2026-10-14
+- Updated: 2026-10-22
 - Status: decided
 - Design: [memory store](../design/platform/memory/store.md),
   [memory writes](../design/platform/memory/writes.md),
@@ -41,6 +41,11 @@ retired-memory view deletes in bulk after a preview bound to a fixed set of item
 changed or restored item makes the preview stale, and a later retirement does not join it. A
 destroyed key cannot be restored. Your original messages and nixie's replies stay separate records.
 
+A memory item can carry an end time for a short-lived fact. Past it, the item stops reaching the
+model at once, and a sweep retires it with its own `lapse` origin. A lapse never destroys an item,
+because the end time is a model's reading of words such as "this week", and a restore that clears
+the end time undoes an early lapse.
+
 ## Grouped notices with undo
 
 Writes that apply at once show as one group per turn or batch, such as "Remembered 3 things · View",
@@ -78,3 +83,5 @@ index generations and concurrent key publication extend it later with no change 
 - 2026-10-14: nixie's own compaction replaces SDK compaction, under
   [0045](0045-session-opening-and-compaction.md), and custom session rollover leaves the
   alternatives.
+- 2026-10-22: a memory item can carry an end time, recall drops the item once the end time passes,
+  and the lapse sweep retires it with the `lapse` origin.

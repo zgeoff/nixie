@@ -6,7 +6,7 @@ import invariant from 'tiny-invariant';
 import { buildStubEncoder } from './test-utils/build-stub-encoder';
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemory } from './test-utils/start-test-memory';
-import type { CleanupSessions } from './types';
+import type { CleanupSessions, MemoryTables } from './types';
 
 async function setupTest() {
   const cleanupSessions = mock<CleanupSessions>(() => Promise.resolve());
@@ -244,4 +244,28 @@ test('it commits the caller’s own write with the forget’s start, and its ref
   expect(ctx.cleanupSessions).not.toHaveBeenCalled();
   expect(detail).toMatchObject({ state: 'active', status: 'readable' });
   expect(records.map((entry) => entry.record.kind)).toStrictEqual(['memory.version_added']);
+});
+
+test('it clears the end time of the item it forgets', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.now() + 86_400_000,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.forget({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const row = await ctx.memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['state', 'until'])
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({ state: 'forgotten', until: null });
 });

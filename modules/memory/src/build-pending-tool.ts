@@ -3,7 +3,7 @@ import { formatAge } from '@heynixie/clock';
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import type { MemoryProposal, MemoryProposals } from './gate-types';
-import type { ItemIDStore, MemoryOrigin } from './types';
+import type { ItemIDStore, ProposalOrigin } from './types';
 
 export interface PendingToolStore extends Pick<ItemIDStore, 'readShortIDs'> {
   readonly proposals: Pick<MemoryProposals, 'listPending'>;
@@ -115,7 +115,7 @@ function pickChange(proposal: MemoryProposal): 'new' | 'edit' | 'retire' {
   return proposal.targetVersion === null ? 'new' : 'edit';
 }
 
-const notedByWords: Readonly<Record<MemoryOrigin, string>> = {
+const notedByWords: Readonly<Record<ProposalOrigin, string>> = {
   conversation: 'you noted it',
   memory_writer: 'the note-taker noted it',
   task: 'a task noted it',

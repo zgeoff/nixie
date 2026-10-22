@@ -22,7 +22,9 @@ export type MemorySubject = 'owner' | 'self' | 'shared';
 
 export type MemoryChange = 'created' | 'edited' | 'retired' | 'restored' | 'undone';
 
-export type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'memory_writer';
+export type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'memory_writer' | 'lapse';
+
+export type ProposalOrigin = Exclude<MemoryOrigin, 'lapse'>;
 
 export interface QuoteEvidence {
   readonly recordSequence: number;
@@ -61,6 +63,8 @@ export interface RememberRequest {
   readonly isPinned?: boolean;
 
   readonly subject?: MemorySubject;
+
+  readonly until?: number | null;
 }
 
 export type WriteInTransaction = (tx: Transaction<unknown>) => Promise<void>;
@@ -180,6 +184,8 @@ export interface MemoryStore {
   readonly removeMessages: (sequences: readonly number[]) => Promise<void>;
   readonly remember: (request: RememberRequest) => Promise<VersionRef>;
   readonly retire: (request: RetireRequest) => Promise<VersionRef>;
+
+  readonly lapse: () => Promise<number>;
   readonly restore: (request: RestoreRequest) => Promise<VersionRef>;
   readonly undo: (request: UndoRequest) => Promise<VersionRef>;
   readonly pin: (request: PinRequest) => Promise<void>;
@@ -253,6 +259,7 @@ interface MemoryItemTable {
 
   readonly kind: 'fact' | 'self';
   readonly subject: MemorySubject | null;
+  readonly until: number | null;
 }
 
 interface MemoryVersionTable {
@@ -274,12 +281,13 @@ interface MemoryVersionTable {
   readonly sequence: number;
   readonly snapshot_hash: string;
   readonly recorded_at: number;
+  readonly until: number | null;
 }
 
 interface MemoryProposalMergeTable {
   readonly merge_id: string;
   readonly proposal_id: string;
-  readonly origin: MemoryOrigin;
+  readonly origin: ProposalOrigin;
   readonly task_id: string | null;
   readonly thread: string | null;
   readonly model: string | null;

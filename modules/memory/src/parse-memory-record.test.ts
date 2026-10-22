@@ -38,6 +38,7 @@ test('it reads a version record into its typed shape', () => {
     model: null,
     noticeKey: null,
     shortID: null,
+    until: null,
   });
 });
 

@@ -1,6 +1,6 @@
 {
   "header": {
-    "schemaVersion": 3,
+    "schemaVersion": 4,
     "exportedAt": "2026-10-14T08:00:00.000Z",
     "snapshotHash": "sha256:4be1c0"
   },
@@ -18,6 +18,7 @@
           "state": "active",
           "text": "Rents allotment plot 14",
           "evidenceQuote": "the allotment plot is number 14",
+          "until": null,
           "provenance": {
             "origin": "memory_writer",
             "source": "owner",
@@ -52,6 +53,7 @@
           "state": "active",
           "text": "Takes the 7:40 ferry to work",
           "evidenceQuote": null,
+          "until": "2026-10-13T17:59:59.000Z",
           "provenance": {
             "origin": "owner",
             "source": "owner",
@@ -70,8 +72,9 @@
           "state": "retired",
           "text": "Takes the 7:40 ferry to work",
           "evidenceQuote": null,
+          "until": "2026-10-13T17:59:59.000Z",
           "provenance": {
-            "origin": "owner",
+            "origin": "lapse",
             "source": "owner",
             "taskID": null,
             "proposalID": null,
@@ -97,6 +100,7 @@
           "state": "active",
           "text": "I like ending a long answer with a short summary line",
           "evidenceQuote": null,
+          "until": null,
           "provenance": {
             "origin": "conversation",
             "source": "untrusted",

@@ -37,6 +37,7 @@ test('it reads a readable item with every version and a forgotten item as only i
             state: 'active',
             text: 'Rents allotment plot 14',
             evidenceQuote: 'the allotment plot is number 14',
+            until: null,
             provenance: {
               origin: 'owner',
               source: 'owner',
@@ -56,12 +57,12 @@ test('it reads a readable item with every version and a forgotten item as only i
   });
 });
 
-test('it heads the file with schema version 3, the export time and the mock snapshot hash', () => {
+test('it heads the file with schema version 4, the export time and the mock snapshot hash', () => {
   const chunks = readMockMemoryExport(new Date('2026-10-14T08:00:00.000Z'));
 
   expect(JSON.parse(chunks.join(''))).toStrictEqual({
     header: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:mock',
     },

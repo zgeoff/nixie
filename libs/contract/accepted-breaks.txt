@@ -6,3 +6,10 @@
 GEO-556: POST /memory/listProposals added the new `other` enum value to the `proposals/items/reason` response property for the response status `200`
 GEO-556: POST /memory/listProposals added the new `self_note` enum value to the `proposals/items/reason` response property for the response status `200`
 GEO-1168: POST /memory/listProposals added the new `from_photo` enum value to the `proposals/items/reason` response property for the response status `200`
+GEO-1114: POST /memory/findItems added the new `lapse` enum value to the `items/items/origin` response property for the response status `200`
+GEO-1114: POST /memory/listItems added the new `lapse` enum value to the `items/items/origin` response property for the response status `200`
+GEO-1114: POST /memory/previewForget added the new `lapse` enum value to the `origin` response property for the response status `200`
+GEO-1114: POST /memory/previewForget added the new `lapse` enum value to the `versions/items/origin` response property for the response status `200`
+GEO-1114: POST /memory/readItem added the new `lapse` enum value to the `origin` response property for the response status `200`
+GEO-1114: POST /memory/readItem added the new `lapse` enum value to the `versions/items/origin` response property for the response status `200`
+GEO-1114: POST /memory/readPinnedCore added the new `lapse` enum value to the `items/items/origin` response property for the response status `200`

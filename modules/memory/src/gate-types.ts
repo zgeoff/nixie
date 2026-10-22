@@ -5,8 +5,8 @@ import type { Selectable } from 'kysely';
 import type { reviewReasons } from './review-reasons';
 import type {
   MemoryChange,
-  MemoryOrigin,
   MemorySubject,
+  ProposalOrigin,
   QuoteEvidence,
   VersionRef,
   WriteInTransaction,
@@ -135,7 +135,7 @@ export interface MemoryProposal {
   readonly subject: MemorySubject;
   readonly reason: ReviewReason;
   readonly actionHash: string;
-  readonly origin: MemoryOrigin;
+  readonly origin: ProposalOrigin;
   readonly source: ContentSource;
   readonly createdAt: number;
   readonly lapseAt: number;
@@ -154,7 +154,7 @@ export interface ProposalImage extends ImageRef {
 }
 
 export interface ProposalSource {
-  readonly origin: MemoryOrigin;
+  readonly origin: ProposalOrigin;
   readonly thread: string | null;
   readonly taskID: string | null;
   readonly model: string | null;
@@ -238,7 +238,7 @@ export interface MemoryProposalTable {
   readonly action_hash: string;
   readonly sealed: string;
   readonly evidence: string | null;
-  readonly origin: MemoryOrigin;
+  readonly origin: ProposalOrigin;
   readonly source: ContentSource;
   readonly task_id: string | null;
   readonly thread: string | null;

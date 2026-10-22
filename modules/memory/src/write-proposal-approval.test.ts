@@ -658,6 +658,45 @@ test('it retires an item when you approve a retirement proposal', async () => {
   expect(history).toMatchObject({ state: 'retired' });
 });
 
+test('it holds an approval whose text a live item matches when more lapsed items rank above that item', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  await Promise.all(
+    Array.from({ length: 5 }, () =>
+      memory.store.remember({
+        text: 'Owner is allergic to peanuts',
+        until: Date.parse('2026-10-19T22:59:59Z'),
+        provenance: {
+          origin: 'owner',
+          source: 'owner',
+          taskID: null,
+          proposalID: null,
+          checks: null,
+        },
+      }),
+    ),
+  );
+
+  const live = await memory.store.remember({
+    text: 'The owner is allergic to peanuts, says the nurse',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const pending = await createProposal(memory.store, { text: 'Owner is allergic to peanuts' });
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  const result = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  expect(result).toMatchObject({ status: 'close_match', item: { itemID: live.itemID } });
+});
+
 test('it holds an approval whose text an active item closely matches, and reports that item', async () => {
   const memory = await startTestMemory();
 
