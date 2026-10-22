@@ -1,0 +1,431 @@
+{
+  "ranAt": "2026-10-22T23:29:06.176Z",
+  "profile": {
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "cacheTTL": "5m"
+  },
+  "core": {
+    "items": 41,
+    "tokens": 1970,
+    "budget": 2000
+  },
+  "changedCore": {
+    "items": 41,
+    "tokens": 1957,
+    "budget": 2000
+  },
+  "spentUSD": 0.1894136,
+  "trials": [
+    [
+      {
+        "label": "opening, old core",
+        "sentAt": "2026-10-22T23:27:44.652Z",
+        "blocks": "opening",
+        "message": "Two quick things before I post Edda's birthday card: which city does she live in, and what's Biscuit's vet called?",
+        "reply": "Edda lives in Ghent, and Biscuit's vet is Dr. Amara Osei at Larkfield Vets.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 2,
+          "outputTokens": 43,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 4556
+        },
+        "costUSD": 0.023648,
+        "error": null
+      },
+      {
+        "label": "change note",
+        "sentAt": "2026-10-22T23:27:48.072Z",
+        "blocks": "note",
+        "message": "I'm sending Edda a parcel with a courier. Which city do I put on the label?",
+        "reply": "Rotterdam. My memory now says Edda has moved there, so I was wrong to say Ghent a moment ago. If the birthday card hasn't gone out yet, it needs Rotterdam too. I don't have her street address, so check that with her.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": true
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 142,
+          "cacheReadTokens": 4206,
+          "cacheWriteTokens": 790
+        },
+        "costUSD": 0.0076472,
+        "error": null
+      },
+      {
+        "label": "next turn, no note",
+        "sentAt": "2026-10-22T23:27:52.455Z",
+        "blocks": "none",
+        "message": "A pharmacy form asks for any medicine allergies, and for my sister's city for the emergency contact. What do I write for each?",
+        "reply": "- Allergies: penicillin.\n- Emergency contact city: Rotterdam, for Edda.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 35,
+          "cacheReadTokens": 4996,
+          "cacheWriteTokens": 213
+        },
+        "costUSD": 0.0027802,
+        "error": null
+      },
+      {
+        "label": "unchanged items",
+        "sentAt": "2026-10-22T23:27:54.840Z",
+        "blocks": "none",
+        "message": "And what's the guest wifi password, and which dentist practice do I go to?",
+        "reply": "- Guest wifi: heron-42\n- Dentist: Tandartspraktijk Oudegracht",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 64,
+          "cacheReadTokens": 5209,
+          "cacheWriteTokens": 89
+        },
+        "costUSD": 0.0027828,
+        "error": null
+      }
+    ],
+    [
+      {
+        "label": "opening, old core",
+        "sentAt": "2026-10-22T23:28:00.169Z",
+        "blocks": "opening",
+        "message": "Two quick things before I post Edda's birthday card: which city does she live in, and what's Biscuit's vet called?",
+        "reply": "Edda lives in Ghent, and Biscuit's vet is Dr. Amara Osei at Larkfield Vets.\n\nBit late for card-posting, it's gone 01:30. Bed soon?",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 2,
+          "outputTokens": 69,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 4561
+        },
+        "costUSD": 0.024193,
+        "error": null
+      },
+      {
+        "label": "change note",
+        "sentAt": "2026-10-22T23:28:03.251Z",
+        "blocks": "note",
+        "message": "I'm sending Edda a parcel with a courier. Which city do I put on the label?",
+        "reply": "Rotterdam. My notes now say Edda has moved there, so I was wrong to say Ghent a moment ago. That goes for the birthday card too. If you don't have her new street address yet, it's worth checking with her before the courier collects.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": true
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 166,
+          "cacheReadTokens": 4212,
+          "cacheWriteTokens": 821
+        },
+        "costUSD": 0.0082834,
+        "error": null
+      },
+      {
+        "label": "next turn, no note",
+        "sentAt": "2026-10-22T23:28:07.993Z",
+        "blocks": "none",
+        "message": "A pharmacy form asks for any medicine allergies, and for my sister's city for the emergency contact. What do I write for each?",
+        "reply": "- Allergies: penicillin\n- Edda's city: Rotterdam",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 26,
+          "cacheReadTokens": 5033,
+          "cacheWriteTokens": 237
+        },
+        "costUSD": 0.0027275999999999997,
+        "error": null
+      },
+      {
+        "label": "unchanged items",
+        "sentAt": "2026-10-22T23:28:10.293Z",
+        "blocks": "none",
+        "message": "And what's the guest wifi password, and which dentist practice do I go to?",
+        "reply": "- Guest wifi: heron-42\n- Dentist: Tandartspraktijk Oudegracht",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 65,
+          "cacheReadTokens": 5270,
+          "cacheWriteTokens": 80
+        },
+        "costUSD": 0.00277,
+        "error": null
+      }
+    ],
+    [
+      {
+        "label": "opening, old core",
+        "sentAt": "2026-10-22T23:28:14.258Z",
+        "blocks": "opening",
+        "message": "Two quick things before I post Edda's birthday card: which city does she live in, and what's Biscuit's vet called?",
+        "reply": "Edda lives in Ghent, and Biscuit's vet is Dr. Amara Osei at Larkfield Vets.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 2,
+          "outputTokens": 43,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 4554
+        },
+        "costUSD": 0.023638,
+        "error": null
+      },
+      {
+        "label": "change note",
+        "sentAt": "2026-10-22T23:28:17.506Z",
+        "blocks": "note",
+        "message": "I'm sending Edda a parcel with a courier. Which city do I put on the label?",
+        "reply": "Rotterdam. My memory now says she's moved there, so my \"Ghent\" a moment ago was out of date. If you posted the birthday card to Ghent, it may go astray. Double-check her full new address with her before you book the courier.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": true
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 190,
+          "cacheReadTokens": 4204,
+          "cacheWriteTokens": 792
+        },
+        "costUSD": 0.008616799999999999,
+        "error": null
+      },
+      {
+        "label": "next turn, no note",
+        "sentAt": "2026-10-22T23:28:22.939Z",
+        "blocks": "none",
+        "message": "A pharmacy form asks for any medicine allergies, and for my sister's city for the emergency contact. What do I write for each?",
+        "reply": "- **Allergies:** penicillin\n- **Emergency contact city:** Rotterdam (Edda's new city)\n\nIf you have any other allergies I don't know about, add those too.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 86,
+          "cacheReadTokens": 4996,
+          "cacheWriteTokens": 261
+        },
+        "costUSD": 0.0040402,
+        "error": null
+      },
+      {
+        "label": "unchanged items",
+        "sentAt": "2026-10-22T23:28:27.363Z",
+        "blocks": "none",
+        "message": "And what's the guest wifi password, and which dentist practice do I go to?",
+        "reply": "- **Guest wifi:** heron-42\n- **Dentist:** Tandartspraktijk Oudegracht",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 40,
+          "cacheReadTokens": 5257,
+          "cacheWriteTokens": 140
+        },
+        "costUSD": 0.0025674,
+        "error": null
+      }
+    ],
+    [
+      {
+        "label": "opening, old core",
+        "sentAt": "2026-10-22T23:28:29.857Z",
+        "blocks": "opening",
+        "message": "Two quick things before I post Edda's birthday card: which city does she live in, and what's Biscuit's vet called?",
+        "reply": "Edda lives in Ghent, and Biscuit's vet is Dr. Amara Osei at Larkfield Vets.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 2,
+          "outputTokens": 43,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 4545
+        },
+        "costUSD": 0.023593,
+        "error": null
+      },
+      {
+        "label": "change note",
+        "sentAt": "2026-10-22T23:28:33.420Z",
+        "blocks": "note",
+        "message": "I'm sending Edda a parcel with a courier. Which city do I put on the label?",
+        "reply": "Rotterdam. My notes now say Edda has moved there; I told you Ghent a moment ago, but that was outdated, so check the address on her birthday card too. I don't have her new street address, so you'll need that from her.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": true
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 175,
+          "cacheReadTokens": 4196,
+          "cacheWriteTokens": 797
+        },
+        "costUSD": 0.0083402,
+        "error": null
+      },
+      {
+        "label": "next turn, no note",
+        "sentAt": "2026-10-22T23:28:38.820Z",
+        "blocks": "none",
+        "message": "A pharmacy form asks for any medicine allergies, and for my sister's city for the emergency contact. What do I write for each?",
+        "reply": "- **Allergies:** penicillin. That's the only medicine allergy I have noted, so add any others you know of.\n- **Sister's city:** Rotterdam.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 90,
+          "cacheReadTokens": 4993,
+          "cacheWriteTokens": 246
+        },
+        "costUSD": 0.0040446,
+        "error": null
+      },
+      {
+        "label": "unchanged items",
+        "sentAt": "2026-10-22T23:28:42.958Z",
+        "blocks": "none",
+        "message": "And what's the guest wifi password, and which dentist practice do I go to?",
+        "reply": "Guest wifi is heron-42, and your dentist is Tandartspraktijk Oudegracht.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 42,
+          "cacheReadTokens": 5239,
+          "cacheWriteTokens": 144
+        },
+        "costUSD": 0.0026238000000000004,
+        "error": null
+      }
+    ],
+    [
+      {
+        "label": "opening, old core",
+        "sentAt": "2026-10-22T23:28:46.903Z",
+        "blocks": "opening",
+        "message": "Two quick things before I post Edda's birthday card: which city does she live in, and what's Biscuit's vet called?",
+        "reply": "Edda's in Ghent, and Biscuit's vet is Dr. Amara Osei at Larkfield Vets.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 2,
+          "outputTokens": 101,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 4555
+        },
+        "costUSD": 0.024803,
+        "error": null
+      },
+      {
+        "label": "change note",
+        "sentAt": "2026-10-22T23:28:52.045Z",
+        "blocks": "note",
+        "message": "I'm sending Edda a parcel with a courier. Which city do I put on the label?",
+        "reply": "Rotterdam. My memory has just updated to say Edda has moved there, so I gave you the wrong city a moment ago. If the birthday card isn't posted yet, address it to Rotterdam too. You'll need her new street address, which I don't have.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 165,
+          "cacheReadTokens": 4555,
+          "cacheWriteTokens": 503
+        },
+        "costUSD": 0.006742,
+        "error": null
+      },
+      {
+        "label": "next turn, no note",
+        "sentAt": "2026-10-22T23:28:57.660Z",
+        "blocks": "none",
+        "message": "A pharmacy form asks for any medicine allergies, and for my sister's city for the emergency contact. What do I write for each?",
+        "reply": "- Allergies: penicillin\n- Emergency contact city: Rotterdam",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 28,
+          "cacheReadTokens": 5058,
+          "cacheWriteTokens": 236
+        },
+        "costUSD": 0.0027676,
+        "error": null
+      },
+      {
+        "label": "unchanged items",
+        "sentAt": "2026-10-22T23:29:00.978Z",
+        "blocks": "none",
+        "message": "And what's the guest wifi password, and which dentist practice do I go to?",
+        "reply": "Guest wifi is heron-42, and your dentist is Tandartspraktijk Oudegracht.",
+        "grade": {
+          "hasCurrent": true,
+          "hasStale": false
+        },
+        "attempts": 1,
+        "usage": {
+          "inputTokens": 4,
+          "outputTokens": 66,
+          "cacheReadTokens": 5294,
+          "cacheWriteTokens": 82
+        },
+        "costUSD": 0.0028048,
+        "error": null
+      }
+    ]
+  ]
+}
