@@ -2,6 +2,7 @@ import { ORPCError } from '@orpc/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { match } from 'ts-pattern';
 import { formatNoticeSummary } from '../format-notice-summary';
 import type { NoticeEntryStatus } from '../pick-notice-entry-status';
 import { pickNoticeEntryStatus } from '../pick-notice-entry-status';
@@ -197,13 +198,11 @@ async function sendChange(client: NixieClient, input: ChangeInput): Promise<void
     version: input.version,
   };
 
-  if (input.change === 'undo') {
-    await client.memory.undo(target);
-  } else if (input.change === 'keep') {
-    await client.memory.keep(target);
-  } else {
-    await client.memory.retire(target);
-  }
+  await match(input.change)
+    .with('undo', () => client.memory.undo(target))
+    .with('keep', () => client.memory.keep(target))
+    .with('retire', () => client.memory.retire(target))
+    .exhaustive();
 }
 
 const refusalNotices: Readonly<Record<string, string>> = {

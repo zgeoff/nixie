@@ -125,6 +125,7 @@
         "react-dom": "catalog:",
         "react-markdown": "catalog:",
         "remark-gfm": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
