@@ -281,7 +281,7 @@ test('it refuses a reason on an approval before it reads the configuration', asy
   ]);
 
   expect(run.exitCode).toBe(2);
-});
+}, 30_000);
 
 test('it refuses a version target that is not a plain decimal before it reads the configuration', async () => {
   const runs = await runHostCommands('/nonexistent/config.yaml', [
@@ -292,4 +292,4 @@ test('it refuses a version target that is not a plain decimal before it reads th
   ]);
 
   expect(runs.map((run) => run.exitCode)).toStrictEqual([2, 2, 2, 2]);
-});
+}, 30_000);

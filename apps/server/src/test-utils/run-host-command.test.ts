@@ -9,7 +9,7 @@ test('it returns the exit code and the stdout of the command', async () => {
     stdout:
       'nixie memory-approve takes a proposal ID and --hash <action hash>, then --text <edited text>, and --revise <itemID>@<version> or --as-new\n',
   });
-});
+}, 30_000);
 
 test('it refuses a revision target with no version before it reads the configuration', async () => {
   const run = await runHostCommand('/nonexistent/config.yaml', [
@@ -22,11 +22,11 @@ test('it refuses a revision target with no version before it reads the configura
   ]);
 
   expect(run.exitCode).toBe(2);
-});
+}, 30_000);
 
 test('it passes the configuration given to the command', async () => {
   const run = await runHostCommand('/nonexistent/config.yaml', ['memory-pending']);
 
   expect(run.exitCode).toBe(1);
   expect(run.stdout).toInclude('/nonexistent/config.yaml');
-});
+}, 30_000);

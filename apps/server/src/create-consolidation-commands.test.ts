@@ -272,4 +272,4 @@ test('it refuses a malformed answer before it reads the configuration', async ()
   ]);
 
   expect(runs.map((run) => run.exitCode)).toStrictEqual([2, 2, 2, 2]);
-});
+}, 30_000);

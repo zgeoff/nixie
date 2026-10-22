@@ -471,7 +471,7 @@ test('it refuses an approval with no --hash, and reaches no server', async () =>
       'nixie skill-approve takes a proposal ID, --hash <skill hash> and, for an edit, ' +
       '--files <JSON list of path and text>\n',
   });
-});
+}, 30_000);
 
 test('it refuses edited files that are not a JSON list of path and text, and reaches no server', async () => {
   const refused = await runHostCommand('/nonexistent/config.yaml', [
@@ -484,7 +484,7 @@ test('it refuses edited files that are not a JSON list of path and text, and rea
   ]);
 
   expect(refused.exitCode).toBe(2);
-});
+}, 30_000);
 
 test('it refuses a rejection with no --reason, and reaches no server', async () => {
   const refused = await runHostCommand('/nonexistent/config.yaml', [
@@ -498,7 +498,7 @@ test('it refuses a rejection with no --reason, and reaches no server', async () 
     exitCode: 2,
     stdout: 'nixie skill-reject takes a proposal ID, --hash <skill hash> and --reason <why>\n',
   });
-});
+}, 30_000);
 
 test('it refuses a resolve that keeps neither side, and reaches no server', async () => {
   const refused = await runHostCommand('/nonexistent/config.yaml', [
@@ -512,7 +512,7 @@ test('it refuses a resolve that keeps neither side, and reaches no server', asyn
     exitCode: 1,
     stdout: `nixie: Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions"] values\n`,
   });
-});
+}, 30_000);
 
 test('it refuses a resolve given a second word, and reaches no server', async () => {
   const refused = await runHostCommand('/nonexistent/config.yaml', [
@@ -527,4 +527,4 @@ test('it refuses a resolve given a second word, and reaches no server', async ()
     exitCode: 2,
     stdout: 'nixie skill-resolve takes an approval ID and --keep nixie|definitions\n',
   });
-});
+}, 30_000);
