@@ -1,11 +1,12 @@
 import { expect, test } from 'bun:test';
-import { renderWriterSystemPrompt } from './render-writer-system-prompt';
+import { renderPrompt } from './render-prompt';
 
 test("it introduces the persona as the assistant's, for reference, before the rules, which name the owner and the assistant", () => {
   expect(
-    renderWriterSystemPrompt('  You are Wren, a calm assistant.\n', {
-      owner: 'Avery',
-      assistant: 'Wren',
+    renderPrompt('writer', {
+      persona: '  You are Wren, a calm assistant.\n',
+      owner: { name: 'Avery' },
+      assistant: { name: 'Wren' },
     }),
   ).toMatchInlineSnapshot(`
     "The assistant's persona, for reference. It describes the assistant, not you:
@@ -41,21 +42,25 @@ test("it introduces the persona as the assistant's, for reference, before the ru
 });
 
 test('it renders the same prompt for the same persona and names', () => {
-  const first = renderWriterSystemPrompt('You are Wren, a calm assistant.', {
-    owner: 'Avery',
-    assistant: 'Wren',
+  const first = renderPrompt('writer', {
+    persona: 'You are Wren, a calm assistant.',
+    owner: { name: 'Avery' },
+    assistant: { name: 'Wren' },
   });
 
-  const second = renderWriterSystemPrompt('You are Wren, a calm assistant.', {
-    owner: 'Avery',
-    assistant: 'Wren',
+  const second = renderPrompt('writer', {
+    persona: 'You are Wren, a calm assistant.',
+    owner: { name: 'Avery' },
+    assistant: { name: 'Wren' },
   });
 
   expect(first).toBe(second);
 });
 
 test('it renders the rules alone for a blank persona, about "the owner" and "the assistant" when no name is set', () => {
-  expect(renderWriterSystemPrompt(' \n ', { owner: null, assistant: null })).toMatchInlineSnapshot(`
+  expect(
+    renderPrompt('writer', { persona: ' \n ', owner: { name: null }, assistant: { name: null } }),
+  ).toMatchInlineSnapshot(`
     "You are the note-taker. You keep the long-term memory for one person's personal assistant, and you are not that assistant. You read a batch of messages between the owner and the assistant, and you stage changes to the memory with your tools.
 
     Who is who:
@@ -90,14 +95,20 @@ test.each([
 ])(
   "it tells the writer to keep the owner's distinctive words with %s",
   (_label, owner, assistant) => {
-    expect(renderWriterSystemPrompt('', { owner, assistant })).toInclude(
+    expect(
+      renderPrompt('writer', {
+        persona: '',
+        owner: { name: owner },
+        assistant: { name: assistant },
+      }),
+    ).toInclude(
       "- Keep the owner's own distinctive words when they carry the meaning, rather than a generic paraphrase. The memory stays a plain factual sentence and never imitates the owner's humour.",
     );
   },
 );
 
 test('it tells the writer that "you" in the owner\'s messages means the assistant', () => {
-  expect(renderWriterSystemPrompt('', { owner: 'Avery', assistant: 'Wren' })).toInclude(
-    'When the owner writes "you", they mean the assistant, never you.',
-  );
+  expect(
+    renderPrompt('writer', { persona: '', owner: { name: 'Avery' }, assistant: { name: 'Wren' } }),
+  ).toInclude('When the owner writes "you", they mean the assistant, never you.');
 });

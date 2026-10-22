@@ -19,13 +19,13 @@ import '../../modules/memory/src/memory-record-kind';
 // @boundaries-ignore a spike imports the code it measures
 import { runTurn } from '../../guests/conversation/src/run-turn';
 // @boundaries-ignore a spike imports the code it measures
+import { renderPrompt } from '../../modules/prompts/src/render-prompt';
+// @boundaries-ignore a spike imports the code it measures
 import { formatMessageTime } from '../../modules/sessions/src/format-message-time';
 // @boundaries-ignore a spike imports the code it measures
 import { renderPinnedMemory } from '../../modules/sessions/src/render-pinned-memory';
 // @boundaries-ignore a spike imports the code it measures
 import { renderRetrievedItems } from '../../modules/sessions/src/render-retrieved-items';
-// @boundaries-ignore a spike imports the code it measures
-import { renderSystemPrompt } from '../../modules/sessions/src/render-system-prompt';
 // @boundaries-ignore the token use spike's fixtures, tools and tool server, so both spikes measure one context
 import { buildRoleTools } from '../turn-tokens/build-role-tools';
 // @boundaries-ignore the token use spike's fixtures, tools and tool server, so both spikes measure one context
@@ -90,7 +90,7 @@ interface TurnResult {
 async function runConversation(): Promise<readonly TurnResult[]> {
   const home = await mkdtemp(join(tmpdir(), 'cache-lifetime-'));
   // a run's own nonce ends the system prompt, so no run reads a cache entry another run wrote
-  const systemPrompt = `${renderSystemPrompt(fixtures.persona, null, lines)}\n\nRun ${crypto.randomUUID()}.`;
+  const systemPrompt = `${renderPrompt('session', { persona: fixtures.persona, skillCatalog: null, owner: { name: lines.ownerName } })}\n\nRun ${crypto.randomUUID()}.`;
   const at = formatMessageTime(lines.now, null, lines);
 
   // a new session opens with the pinned core in its first message, as the session opening renders it

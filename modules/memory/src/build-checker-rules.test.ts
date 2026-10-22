@@ -1,19 +1,21 @@
 import { expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
+import { renderPrompt } from '@heynixie/prompts';
 import invariant from 'tiny-invariant';
 import { buildCheckerRules } from './build-checker-rules';
-import { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';
-import { retirementCheckerPrompt } from './retirement-checker-prompt';
 
-test('it lists each checker prompt by its ID with the SHA-256 of its text for the owner name', () => {
+test('it lists each checker prompt by its ID with the SHA-256 of its rendered text for the owner name', () => {
+  const contentChecker = renderPrompt('content-checker', { owner: { name: 'Avery' } });
+  const retirementChecker = renderPrompt('retirement-checker', {});
+
   expect(buildCheckerRules('Avery')).toStrictEqual([
     {
       id: 'memory.content-checker',
-      prompt: `sha256:${createHash('sha256').update(renderMemoryCheckerPrompt('Avery')).digest('hex')}`,
+      prompt: `sha256:${createHash('sha256').update(contentChecker).digest('hex')}`,
     },
     {
       id: 'memory.retirement-checker',
-      prompt: `sha256:${createHash('sha256').update(retirementCheckerPrompt).digest('hex')}`,
+      prompt: `sha256:${createHash('sha256').update(retirementChecker).digest('hex')}`,
     },
   ]);
 });

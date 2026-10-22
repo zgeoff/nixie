@@ -197,6 +197,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "@heynixie/sessions": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
@@ -341,6 +342,7 @@
       "dependencies": {
         "@heynixie/log": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "zod": "catalog:",
@@ -413,6 +415,7 @@
         "@heynixie/compaction": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "@heynixie/retry": "workspace:*",
         "@heynixie/sessions": "workspace:*",
         "@heynixie/tasks": "workspace:*",
@@ -472,6 +475,13 @@
         "tiny-invariant": "catalog:",
       },
     },
+    "modules/prompts": {
+      "name": "@heynixie/prompts",
+      "version": "0.0.0",
+      "dependencies": {
+        "tiny-invariant": "catalog:",
+      },
+    },
     "modules/proposals": {
       "name": "@heynixie/proposals",
       "version": "0.0.0",
@@ -516,6 +526,7 @@
         "@heynixie/logger": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/policy": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
@@ -961,6 +972,8 @@
     "@heynixie/ops": ["@heynixie/ops@workspace:modules/ops"],
 
     "@heynixie/policy": ["@heynixie/policy@workspace:modules/policy"],
+
+    "@heynixie/prompts": ["@heynixie/prompts@workspace:modules/prompts"],
 
     "@heynixie/proposals": ["@heynixie/proposals@workspace:modules/proposals"],
 

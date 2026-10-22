@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { renderMemoryCheckerPrompt } from '@heynixie/memory';
+import { renderPrompt } from '@heynixie/prompts';
 import { buildCheckerEvalInput } from '../test-utils/build-checker-eval-input';
 import type { LabelledCall } from '../test-utils/collect-labelled-calls';
 import { collectLabelledCalls } from '../test-utils/collect-labelled-calls';
@@ -39,7 +39,7 @@ test.each([
   const ctx = await setupTest({ name });
 
   const promptHash = new Bun.CryptoHasher('sha256')
-    .update(renderMemoryCheckerPrompt(ctx.report.ownerName))
+    .update(renderPrompt('content-checker', { owner: { name: ctx.report.ownerName } }))
     .digest('hex');
 
   expect(ctx.report.prompt).toBe(`sha256:${promptHash}`);
