@@ -9,9 +9,13 @@ import { createStubToolServer } from './test-utils/create-stub-tool-server';
 import { startStubHTTPToolServer } from './test-utils/start-stub-http-tool-server';
 
 async function setupTest() {
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
   const home = await mkdtemp(join(tmpdir(), 'nixie-tool-check-'));
 
-  onTestFinished(() => rm(home, { recursive: true, force: true }));
+  stack.defer(() => rm(home, { recursive: true, force: true }));
 
   const startSession = (toolServer: McpServerConfig) => {
     const session = query({
@@ -31,8 +35,10 @@ async function setupTest() {
       },
     });
 
-    onTestFinished(() => {
-      session.close();
+    // close() returns before the CLI exits, and the CLI writes to its home on the way out, so the
+    // home is removed only once return() has awaited the exit.
+    stack.defer(async () => {
+      await session.return();
     });
 
     return session;
@@ -57,7 +63,7 @@ test('it reconnects once to a server whose first connection the route reset, and
   expect(result).toBeNull();
   expect(waitBeforeReconnect).toHaveBeenCalledOnce();
   expect(tools.resets()).toBeGreaterThanOrEqual(1);
-});
+}, 30_000);
 
 test('it fails the turn with the CLI connection error when the reconnect fails too', async () => {
   const ctx = await setupTest();
@@ -75,7 +81,7 @@ test('it fails the turn with the CLI connection error when the reconnect fails t
     reason: 'tools_not_connected',
     detail: expect.toStartWith("nixie's tool server is failed: ECONNREFUSED"),
   });
-});
+}, 30_000);
 
 test('it lets the turn go on with no reconnect when the server connected at start', async () => {
   const ctx = await setupTest();
@@ -90,7 +96,7 @@ test('it lets the turn go on with no reconnect when the server connected at star
 
   expect(result).toBeNull();
   expect(waitBeforeReconnect).not.toHaveBeenCalled();
-});
+}, 30_000);
 
 test('it lets the turn go on when the CLI has not listed an in-process server yet', async () => {
   const ctx = await setupTest();
@@ -100,7 +106,7 @@ test('it lets the turn go on when the CLI has not listed an in-process server ye
   const result = await checkToolServer(session, () => Promise.resolve());
 
   expect(result).toBeNull();
-});
+}, 30_000);
 
 test('it lets the turn go on to read why when the CLI has ended', async () => {
   const ctx = await setupTest();
@@ -112,4 +118,4 @@ test('it lets the turn go on to read why when the CLI has ended', async () => {
   const result = await checkToolServer(session, () => Promise.resolve());
 
   expect(result).toBeNull();
-});
+}, 30_000);
