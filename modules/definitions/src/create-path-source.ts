@@ -1,4 +1,4 @@
-import { lstat, readdir, realpath } from 'node:fs/promises';
+import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { buildContentHash } from './build-content-hash';
 import { defaultSizeLimits } from './default-size-limits';
@@ -46,7 +46,7 @@ async function readPathSnapshot(directory: string, limits: SizeLimits): Promise<
 
   const contentHash = buildContentHash(files);
 
-  const checkout = await readGitCheckout(base);
+  const checkout = await readGitCheckout(base, (path) => readFile(path, 'utf8'));
 
   return {
     contentHash,

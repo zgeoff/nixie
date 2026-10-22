@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 export interface GitCheckout {
@@ -6,16 +5,21 @@ export interface GitCheckout {
   readonly repository: string | null;
 }
 
+export type ReadText = (path: string) => Promise<string>;
+
 const commitPattern = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
 
-export async function readGitCheckout(directory: string): Promise<GitCheckout | null> {
-  const gitDir = await readGitDir(directory);
+export async function readGitCheckout(
+  directory: string,
+  readText: ReadText,
+): Promise<GitCheckout | null> {
+  const gitDir = await readGitDir(directory, readText);
 
   if (gitDir === null) {
     return null;
   }
 
-  const head = await readText(join(gitDir, 'HEAD'));
+  const head = await readOptionalText(readText, join(gitDir, 'HEAD'));
 
   const commit = head?.trim() ?? '';
 
@@ -23,28 +27,28 @@ export async function readGitCheckout(directory: string): Promise<GitCheckout | 
     return null;
   }
 
-  const commonDir = await readText(join(gitDir, 'commondir'));
+  const commonDir = await readOptionalText(readText, join(gitDir, 'commondir'));
 
   const commonPath = resolve(gitDir, commonDir?.trim() ?? '.');
 
-  const config = await readText(join(commonPath, 'config'));
+  const config = await readOptionalText(readText, join(commonPath, 'config'));
 
   const origin = config === null ? null : parseOriginURL(config);
 
   return { commit, repository: origin === null ? null : toRedactedURL(origin) };
 }
 
-async function readGitDir(directory: string): Promise<string | null> {
-  const link = await readText(join(directory, '.git'));
+async function readGitDir(directory: string, readText: ReadText): Promise<string | null> {
+  const link = await readOptionalText(readText, join(directory, '.git'));
 
   const gitDir = link === null ? undefined : /^gitdir:\s*(?<path>.+)$/u.exec(link.trim())?.groups;
 
   return gitDir?.['path'] === undefined ? null : resolve(directory, gitDir['path']);
 }
 
-async function readText(path: string): Promise<string | null> {
+async function readOptionalText(readText: ReadText, path: string): Promise<string | null> {
   try {
-    return await readFile(path, 'utf8');
+    return await readText(path);
   } catch (error) {
     if (isMissing(error)) {
       return null;
