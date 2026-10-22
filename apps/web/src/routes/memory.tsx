@@ -5,6 +5,10 @@ import { SignedInPage } from '../components/signed-in-page';
 import { readSessionState } from '../read-session-state';
 import { css } from '../styled-system/css';
 
+interface MemorySearch {
+  readonly item?: string;
+}
+
 export const Route = createFileRoute('/memory')({
   component: Memory,
   validateSearch: (search: Record<string, unknown>): MemorySearch =>
@@ -18,10 +22,6 @@ export const Route = createFileRoute('/memory')({
     ),
   }),
 });
-
-interface MemorySearch {
-  readonly item?: string;
-}
 
 function Memory(): ReactNode {
   const data = Route.useLoaderData();

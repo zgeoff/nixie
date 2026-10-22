@@ -51,7 +51,6 @@ interface NoticeEntryProps {
 }
 
 const entryText = css({ color: 'text', whiteSpace: 'pre-wrap' });
-const controls = css({ display: 'flex', flexWrap: 'wrap', gap: '2', marginTop: '1' });
 const link = css({ color: 'link', textDecoration: 'underline' });
 
 const statusLabels: Readonly<Record<Exclude<NoticeEntryStatus, 'open'>, string>> = {
@@ -75,11 +74,10 @@ function NoticeEntry(props: NoticeEntryProps): ReactNode {
         <p className={entryText}>{item.text}</p>
       ) : null}
       {refusal === null ? null : <p role="alert">{refusal}</p>}
-      {status === 'open' ? (
-        item === null ? null : (
-          <EntryChanges entry={props.entry} onRefused={setRefusal} version={item.version} />
-        )
-      ) : (
+      {status === 'open' && item !== null ? (
+        <EntryChanges entry={props.entry} onRefused={setRefusal} version={item.version} />
+      ) : null}
+      {status === 'open' ? null : (
         <p>
           <span>{statusLabels[status]}</span>
           {status === 'proposed' ? (
@@ -112,6 +110,8 @@ interface EntryChangesProps {
   readonly onRefused: (refusal: string | null) => void;
 }
 
+const controls = css({ display: 'flex', flexWrap: 'wrap', gap: '2', marginTop: '1' });
+
 function EntryChanges(props: EntryChangesProps): ReactNode {
   const nixie = useNixieClient();
   const queryClient = useQueryClient();
@@ -131,7 +131,7 @@ function EntryChanges(props: EntryChangesProps): ReactNode {
         version: props.version,
       }),
     onError: (error) => {
-      props.onRefused(findRefusalNotice(error));
+      props.onRefused(getRefusalNotice(error));
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() }),
   });
@@ -192,7 +192,7 @@ const refusalNotices: Readonly<Record<string, string>> = {
   WRONG_STATE: 'Nothing changed: this item moved to another state after the notice.',
 };
 
-function findRefusalNotice(error: unknown): string {
+function getRefusalNotice(error: unknown): string {
   if (error instanceof ORPCError && typeof error.code === 'string') {
     return refusalNotices[error.code] ?? 'The change did not finish. Try again.';
   }

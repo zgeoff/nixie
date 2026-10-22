@@ -63,10 +63,9 @@ test('it opens the item a notice linked to at the top of the page', async () => 
   const rendered = render(<MemoryView openItemID={item.itemID} />);
 
   const opened = await rendered.findByRole('region', { name: 'Opened item' });
+  const row = await within(opened).findByRole('listitem', { name: 'k3m9qa' });
 
-  expect(await within(opened).findByRole('listitem', { name: 'k3m9qa' })).toHaveTextContent(
-    'Plays the cello',
-  );
+  expect(row).toHaveTextContent('Plays the cello');
 });
 
 test('it says so when the item a notice linked to is gone', async () => {
@@ -75,10 +74,9 @@ test('it says so when the item a notice linked to is gone', async () => {
   const rendered = render(<MemoryView openItemID="d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5a" />);
 
   const opened = await rendered.findByRole('region', { name: 'Opened item' });
+  const alert = await within(opened).findByRole('alert');
 
-  expect(await within(opened).findByRole('alert')).toHaveTextContent(
-    'This item did not load. It may be gone.',
-  );
+  expect(alert).toHaveTextContent('This item did not load. It may be gone.');
 });
 
 test('it lists retired items apart from the active ones', async () => {
