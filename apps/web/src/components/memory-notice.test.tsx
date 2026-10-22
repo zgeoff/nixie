@@ -146,7 +146,9 @@ test('it follows a notice that loads after the conversation to the end of the vi
 
   const rendered = render(<Conversation thread="conversation" />);
 
-  const scroller = (await rendered.findByRole('list', { name: 'Conversation' })).parentElement;
+  const list = await rendered.findByRole('list', { name: 'Conversation' });
+
+  const scroller = list.parentElement;
 
   invariant(scroller);
 
