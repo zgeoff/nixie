@@ -6,6 +6,7 @@ import { createPathSource, runSeed } from '@heynixie/definitions';
 import { buildStubDefinitionsRepo } from '@heynixie/definitions/test-utils';
 import { startWriter } from '@heynixie/log';
 import { buildMockCheckerAnswer } from '@heynixie/memory/test-utils';
+import { waitForCondition } from '@heynixie/testing';
 import type { FetchReply } from '@heynixie/wire';
 import { $ } from 'bun';
 import invariant from 'tiny-invariant';
@@ -484,4 +485,82 @@ test('it moves a vendored skill to a new commit and removes the files the new co
   expect(pullRequest.change.files.get('skills/tide-tables/SKILL.md')).toBe(
     '---\nname: tide-tables\ndescription: Reads a tide table well.\n---\n',
   );
+});
+
+test('it writes a second call for one skill after the first call, so the pull request holds the files and the report of one call', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+
+  const publisher = await createStubGitHubRepo(ctx.publisherDir, {
+    owner: 'example',
+    name: 'skills',
+    files: {
+      'tide-tables/SKILL.md': '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n',
+      'mirror/tide-tables/SKILL.md':
+        '---\nname: tide-tables\ndescription: Reads a mirrored tide table.\n---\n',
+    },
+  });
+
+  const tool = buildSkillVendorTool({
+    readPage: publisher.readPage,
+    repo: ctx.definitions,
+    readReviewer: () => null,
+  });
+
+  const gate = Promise.withResolvers<void>();
+
+  ctx.definitions.delayNextAnswer(() => gate.promise);
+
+  const first = tool.run(
+    {
+      callID: 'call-1',
+      tool: 'skill_vendor',
+      input: {
+        repository: 'https://github.com/example/skills',
+        path: 'tide-tables',
+        commit: publisher.commit,
+      },
+      toolUseID: null,
+    },
+    ctx.context,
+  );
+
+  await waitForCondition(() => ctx.definitions.readPullRequests().length === 1);
+
+  const second = tool.run(
+    {
+      callID: 'call-2',
+      tool: 'skill_vendor',
+      input: {
+        repository: 'https://github.com/example/skills',
+        path: 'mirror/tide-tables',
+        commit: publisher.commit,
+      },
+      toolUseID: null,
+    },
+    ctx.context,
+  );
+
+  gate.resolve();
+
+  const outcomes = await Promise.all([first, second]);
+
+  const [pullRequest] = ctx.definitions.readPullRequests();
+
+  invariant(pullRequest);
+
+  const lock: unknown = JSON.parse(pullRequest.change.files.get('skills/skills.lock.json') ?? '');
+
+  expect(outcomes).toMatchObject([{ status: 'ok' }, { status: 'ok' }]);
+
+  expect(pullRequest.change.body).toInclude(
+    `nixie copied the \`tide-tables\` skill from \`mirror/tide-tables\` in https://github.com/example/skills`,
+  );
+
+  expect(pullRequest.change.files.get('skills/tide-tables/SKILL.md')).toBe(
+    '---\nname: tide-tables\ndescription: Reads a mirrored tide table.\n---\n',
+  );
+
+  expect(lock).toMatchObject({ 'tide-tables': { path: 'mirror/tide-tables' } });
 });

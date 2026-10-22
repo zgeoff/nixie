@@ -7,6 +7,8 @@ import {
 } from '@heynixie/definitions';
 import type { RunCheck } from '@heynixie/sessions';
 import type { ToolCall, ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import type { KeyedQueue } from './make-keyed-queue';
+import { makeKeyedQueue } from './make-keyed-queue';
 import { parseSkillVendorInput } from './parse-skill-vendor-input';
 import { parseVendoredSkill } from './parse-vendored-skill';
 import type { ReadPage } from './read-github-skill';
@@ -22,6 +24,8 @@ export interface SkillVendorContext {
 }
 
 export function buildSkillVendorTool(context: SkillVendorContext): ToolDefinition {
+  const queue = makeKeyedQueue();
+
   return {
     name: 'skill_vendor',
     description:
@@ -69,11 +73,15 @@ export function buildSkillVendorTool(context: SkillVendorContext): ToolDefinitio
       results: { name: 'untrusted', contentHash: 'owner_data', pullRequest: 'owner_data' },
     },
     execution: 'direct',
-    run: (call) => runSkillVendor(context, call),
+    run: (call) => runSkillVendor(context, queue, call),
   };
 }
 
-async function runSkillVendor(context: SkillVendorContext, call: ToolCall): Promise<ToolOutcome> {
+async function runSkillVendor(
+  context: SkillVendorContext,
+  queue: KeyedQueue,
+  call: ToolCall,
+): Promise<ToolOutcome> {
   const input = parseSkillVendorInput(call.input);
 
   if (input.status === 'refused') {
@@ -113,30 +121,34 @@ async function runSkillVendor(context: SkillVendorContext, call: ToolCall): Prom
     review,
   });
 
-  const revision = await context.repo.readBaseRevision();
+  // A pull request write updates the branch and then the body, so two calls for one skill that
+  // overlap would leave one call's files under the other's report.
+  return queue(name, async (): Promise<ToolOutcome> => {
+    const revision = await context.repo.readBaseRevision();
 
-  const vendored = buildSkillVendorChange({
-    version: checked,
-    entry: {
-      source: input.source.repository,
-      path: input.source.path,
-      commit: input.source.commit,
-    },
-    report,
-    existing: await context.repo.readFolder(`skills/${name}`, revision),
-    sizes: await context.repo.readFileSizes(revision),
-    lock: await context.repo.readFile(skillsLockPath, revision),
-    manifest: await context.repo.readFile(manifestPath, revision),
+    const vendored = buildSkillVendorChange({
+      version: checked,
+      entry: {
+        source: input.source.repository,
+        path: input.source.path,
+        commit: input.source.commit,
+      },
+      report,
+      existing: await context.repo.readFolder(`skills/${name}`, revision),
+      sizes: await context.repo.readFileSizes(revision),
+      lock: await context.repo.readFile(skillsLockPath, revision),
+      manifest: await context.repo.readFile(manifestPath, revision),
+    });
+
+    if (vendored.status === 'refused') {
+      return { status: 'error', message: vendored.reason };
+    }
+
+    const pullRequest = await context.repo.writePullRequest(vendored.change, revision);
+
+    return {
+      status: 'ok',
+      result: { name, contentHash: checked.skillHash, pullRequest: pullRequest.url },
+    };
   });
-
-  if (vendored.status === 'refused') {
-    return { status: 'error', message: vendored.reason };
-  }
-
-  const pullRequest = await context.repo.writePullRequest(vendored.change, revision);
-
-  return {
-    status: 'ok',
-    result: { name, contentHash: checked.skillHash, pullRequest: pullRequest.url },
-  };
 }
