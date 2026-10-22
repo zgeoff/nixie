@@ -15,7 +15,7 @@ test('it builds the web server entry once and shares it', async () => {
   ).exists();
 
   expect(built).toBeTrue();
-}, 120_000);
+});
 
 // This cap still refuses Node's wasm trap handler reservation, and a lower one leaves some Node
 // releases no room for their own heap.
@@ -40,4 +40,4 @@ test('it builds the web server entry under an address-space cap', async () => {
 
   expect(stderr).toInclude('\n 1 pass\n');
   expect(exitCode).toBe(0);
-}, 120_000);
+});

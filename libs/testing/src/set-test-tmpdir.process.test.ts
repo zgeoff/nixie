@@ -38,7 +38,6 @@ test.skipIf(!hasMemoryTmpdir)(
       made: expect.toStartWith('/dev/shm/harbour-'),
     });
   },
-  30_000,
 );
 
 test.skipIf(!hasMemoryTmpdir)(
@@ -64,7 +63,6 @@ test.skipIf(!hasMemoryTmpdir)(
 
     expect(output).toInclude('tmpdir=/dev/shm\n');
   },
-  30_000,
 );
 
 test.skipIf(hasMemoryTmpdir)(
@@ -90,5 +88,4 @@ test.skipIf(hasMemoryTmpdir)(
       made: expect.toStartWith(`${ctx.original}/harbour-`),
     });
   },
-  30_000,
 );

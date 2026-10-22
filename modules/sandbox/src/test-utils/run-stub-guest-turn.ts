@@ -8,7 +8,7 @@ import { readStubGuestHistory } from './read-stub-guest-history';
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 
 export type StubGuestReply =
-  | { readonly text: string; readonly gate?: Promise<void> }
+  | { readonly text: string; readonly gate?: () => Promise<void> }
   | {
       readonly toolUse: {
         readonly name: string;
@@ -16,7 +16,8 @@ export type StubGuestReply =
       };
     }
   | { readonly overflow: 'blocking_limit' | 'prompt_too_long' }
-  | { readonly modelAuthRefusal: string };
+  | { readonly modelAuthRefusal: string }
+  | { readonly failure: string };
 
 export interface StubGuestToolCall {
   readonly sandboxID: string;
@@ -182,11 +183,15 @@ async function runInputCall(
     const reply = run.takeReply();
 
     if ('gate' in reply) {
-      await waitUnlessStopped(reply.gate, run.signal);
+      await waitUnlessStopped(reply.gate(), run.signal);
     }
 
     if ('modelAuthRefusal' in reply) {
       return { frames, overflow: null, refusal: reply.modelAuthRefusal };
+    }
+
+    if ('failure' in reply) {
+      throw new Error(reply.failure);
     }
 
     if ('overflow' in reply) {
@@ -273,7 +278,10 @@ interface AssistantEntrySpec {
 }
 
 function buildAssistantEntry(
-  reply: Exclude<StubGuestReply, { overflow: unknown } | { modelAuthRefusal: unknown }>,
+  reply: Exclude<
+    StubGuestReply,
+    { overflow: unknown } | { modelAuthRefusal: unknown } | { failure: unknown }
+  >,
   spec: AssistantEntrySpec,
 ): StubSessionEntry {
   const text = 'text' in reply ? reply.text : JSON.stringify(reply.toolUse);

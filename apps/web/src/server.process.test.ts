@@ -7,7 +7,6 @@ import { startBuiltWeb } from './test-utils/start-built-web';
 import { startStubAPI } from './test-utils/start-stub-api';
 
 async function setupTest() {
-  // The first test in the process waits here for the Vite build, so each test allows two minutes.
   const serverPath = await runWebBuildOnce();
 
   const api = startStubAPI();
@@ -30,7 +29,7 @@ test('it renders the conversation with the device session from the browser cooki
   const html = await response.text();
 
   expect(html).toInclude('Is it raining?');
-}, 120_000);
+});
 
 test('it forwards the device session to the API as a bearer token and never as a cookie', async () => {
   const ctx = await setupTest();
@@ -45,7 +44,7 @@ test('it forwards the device session to the API as a bearer token and never as a
       path: '/rpc/conversation/read',
     },
   ]);
-}, 120_000);
+});
 
 test('it sets no cookie of its own', async () => {
   const ctx = await setupTest();
@@ -56,7 +55,7 @@ test('it sets no cookie of its own', async () => {
   });
 
   expect(response.headers.getSetCookie()).toStrictEqual([]);
-}, 120_000);
+});
 
 test('it keeps no session from one request to the next', async () => {
   const ctx = await setupTest();
@@ -70,7 +69,7 @@ test('it keeps no session from one request to the next', async () => {
     cookie: null,
     path: '/rpc/conversation/read',
   });
-}, 120_000);
+});
 
 test('it leaves a refused session for the browser to check before it shows the enrolment form', async () => {
   const ctx = await setupTest();
@@ -86,14 +85,14 @@ test('it leaves a refused session for the browser to check before it shows the e
 
   expect(html).not.toInclude('Enrol this browser');
   expect(html).not.toInclude('Is it raining?');
-}, 120_000);
+});
 
 test('it answers ready once it reaches the API', async () => {
   const ctx = await setupTest();
   const response = await fetch(`${ctx.url}/health/ready`);
 
   expect(response.status).toBe(200);
-}, 120_000);
+});
 
 test('it ships no private URL or session handling to the browser', async () => {
   const ctx = await setupTest();
@@ -108,4 +107,4 @@ test('it ships no private URL or session handling to the browser', async () => {
   expect(['NIXIE_API_URL', 'nixie_session', 'Bearer ', 'getCookie']).toSatisfyAll(
     (forbidden: string) => !bundle.includes(forbidden),
   );
-}, 120_000);
+});

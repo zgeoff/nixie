@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import type { StartTimer } from '../start-platform-timer';
 import { css } from '../styled-system/css';
 import { useConversationRecords } from '../use-conversation-records';
 import { useMemoryNotices } from '../use-memory-notices';
@@ -15,6 +16,8 @@ export interface ConversationProps {
   readonly thread: string;
 
   readonly navigation?: ReactNode;
+
+  readonly startTimer?: StartTimer;
 }
 
 const layout = css({ display: 'flex', flexDirection: 'column', height: '100dvh' });
@@ -39,7 +42,8 @@ const composerBar = css({
 });
 
 export function Conversation(props: ConversationProps): ReactNode {
-  const conversation = useConversationRecords(props.thread);
+  const liveOptions = props.startTimer === undefined ? {} : { startTimer: props.startTimer };
+  const conversation = useConversationRecords(props.thread, liveOptions);
 
   const outbox = useOutbox(conversation.forgottenClientMessageIDs, {
     resetSequence: conversation.liveResetSequence,

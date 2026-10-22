@@ -41,5 +41,6 @@ preload = [
   "@zgeoff/bun-test-extended",
   "@zgeoff/bun-test-react",
   "./libs/testing/src/restore-native-form-data.ts",
+  "./libs/testing/src/restore-native-base64.ts",
   "./apps/web/src/mocks/test-preload.ts",
 ]

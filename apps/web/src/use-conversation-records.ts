@@ -1,5 +1,5 @@
 import { useConversationPage } from './use-conversation-page';
-import type { LiveRecord } from './use-live-records';
+import type { LiveRecord, LiveRecordsOptions } from './use-live-records';
 import { useLiveRecords } from './use-live-records';
 
 export interface ConversationRecords {
@@ -15,9 +15,12 @@ export interface ConversationRecords {
   readonly liveResetSequence: number | undefined;
 }
 
-export function useConversationRecords(thread: string): ConversationRecords {
+export function useConversationRecords(
+  thread: string,
+  options: LiveRecordsOptions = {},
+): ConversationRecords {
   const page = useConversationPage(thread);
-  const live = useLiveRecords(thread, page.data?.readAtSequence);
+  const live = useLiveRecords(thread, page.data?.readAtSequence, options);
   const merged = mergeRecords(page.data?.records ?? [], live.records);
 
   if (page.data === undefined) {

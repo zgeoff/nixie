@@ -1,11 +1,11 @@
-import { onTestFinished } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { modelsConfigSchema } from '@heynixie/models';
+import type { StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { TestSessionHost } from '@heynixie/sessions/test-utils';
 import type { RunStep, TasksContext } from '@heynixie/tasks';
 import { runTaskSteps } from '@heynixie/tasks/test-utils';
-import type { ScriptedModel, TestClock } from '@heynixie/testing';
-import { buildTestClock, startScriptedModel } from '@heynixie/testing';
+import type { TestClock } from '@heynixie/testing';
+import { buildTestClock } from '@heynixie/testing';
 import { defaultGateLimits } from '../default-gate-limits';
 import { defaultOwnerPronouns } from '../default-owner-pronouns';
 import { findNoAllowRule } from '../find-no-allow-rule';
@@ -33,7 +33,7 @@ export interface TestMemoryWriter {
   readonly context: TasksContext;
   readonly clock: TestClock;
 
-  readonly model: ScriptedModel;
+  readonly guest: StubGuestSandboxes;
   readonly store: StartedMemoryStore;
 
   readonly listSocketNames: () => Promise<readonly string[]>;
@@ -52,7 +52,10 @@ export interface TestMemoryWriterOptions {
   readonly writerConfig?: WriterConfigInput;
 }
 
-export type TestWriterHost = Pick<TestSessionHost, 'context' | 'sandboxes' | 'socketDir' | 'defer'>;
+export type TestWriterHost = Pick<
+  TestSessionHost,
+  'context' | 'sandboxes' | 'guest' | 'socketDir' | 'defer'
+>;
 
 export async function startTestMemoryWriter(
   host: TestWriterHost,
@@ -60,9 +63,6 @@ export async function startTestMemoryWriter(
 ): Promise<TestMemoryWriter> {
   const clock = buildTestClock(1_000_000);
   const context = { ...host.context, clock };
-  const model = startScriptedModel();
-
-  onTestFinished(() => model.stop());
 
   const store = await startTestStore(host, { context, clock, check: options.check });
 
@@ -71,13 +71,12 @@ export async function startTestMemoryWriter(
   return {
     context,
     clock,
-    model,
+    guest: host.guest,
     store,
     listSocketNames: () => readdir(host.socketDir),
     start: async (start = {}) => {
       started.writer = await startTestWriterRunner(host, {
         context: start.context ?? context,
-        model,
         store,
         options,
       });
@@ -145,7 +144,6 @@ function buildClosedGate(clock: TestClock): GateContext {
 
 interface WriterWiring {
   readonly context: TasksContext;
-  readonly model: ScriptedModel;
   readonly store: StartedMemoryStore;
   readonly options: TestMemoryWriterOptions;
 }
@@ -159,7 +157,7 @@ async function startTestWriterRunner(
     models: modelsConfigSchema.parse({
       profiles: {
         'writer-direct': {
-          base_url: wiring.model.url,
+          base_url: 'https://models.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
           model: 'claude-test-1',

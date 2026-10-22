@@ -1,9 +1,10 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { buildActionQueue } from '@heynixie/actions';
 import { modelsConfigSchema } from '@heynixie/models';
 import { startTestSessionHost } from '@heynixie/sessions/test-utils';
 import { runTaskSteps } from '@heynixie/tasks/test-utils';
-import { buildTestClock, startScriptedModel } from '@heynixie/testing';
+import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { buildMemoryTools } from './build-memory-tools';
 import { consolidationConfigSchema } from './consolidation-config-schema';
 import { memoryProjections } from './memory-projections';
@@ -16,9 +17,6 @@ async function setupTest() {
 
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
   const context = { ...host.context, clock };
-  const model = startScriptedModel();
-
-  onTestFinished(() => model.stop());
 
   const store = await startTestMemoryStore(context, () => Promise.resolve());
 
@@ -28,7 +26,7 @@ async function setupTest() {
     models: modelsConfigSchema.parse({
       profiles: {
         'tidy-direct': {
-          base_url: model.url,
+          base_url: 'https://models.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
           model: 'claude-test-1',
@@ -54,7 +52,7 @@ async function setupTest() {
   host.defer(() => consolidator.stop());
 
   return {
-    model,
+    host,
     store,
     run: () =>
       runTaskSteps(context, {
@@ -77,10 +75,10 @@ test('it runs a session over the active items and leaves the diff its model prop
     createMemoryItem(ctx.store, { text: 'Has a dentist appointment on 2026-03-02' }),
   ]);
 
-  ctx.model.addReplies(
+  ctx.host.guest.addReplies(
     {
       toolUse: {
-        name: 'mcp__nixie__memory_consolidate',
+        name: 'memory.consolidate',
         input: {
           changes: [
             {
@@ -115,7 +113,7 @@ test('it runs a session over the active items and leaves the diff its model prop
       { kind: 'retire', inputs: [{ ...stale, isCurrent: true }], text: null },
     ],
   });
-}, 60_000);
+});
 
 test('it gives the session only recall and consolidate', async () => {
   const ctx = await setupTest();
@@ -125,23 +123,34 @@ test('it gives the session only recall and consolidate', async () => {
     createMemoryItem(ctx.store, { text: 'Sings in a choir' }),
   ]);
 
-  ctx.model.addReplies({
-    toolUse: { name: 'mcp__nixie__memory_consolidate', input: { changes: [] } },
-  });
+  const gate = Promise.withResolvers<void>();
 
-  ctx.model.addReplies({ text: 'done' });
+  ctx.host.guest.addReplies(
+    {
+      toolUse: {
+        name: 'memory.consolidate',
+        input: { changes: [], summary: 'Nothing here needs tidying.' },
+      },
+    },
+    { text: 'done', gate: () => gate.promise },
+  );
 
-  await ctx.run();
+  const running = ctx.run();
 
-  const tools = ctx.model.requests[0]?.body?.tools?.map((tool) => tool.name);
+  await waitForCondition(() => ctx.host.guest.turns.length === 1);
 
-  expect(tools).toIncludeAllMembers([
-    'mcp__nixie__memory_recall',
-    'mcp__nixie__memory_consolidate',
-  ]);
+  const [received] = ctx.host.guest.received;
 
-  expect(tools?.filter((name) => name.startsWith('mcp__nixie__'))).toHaveLength(2);
-}, 60_000);
+  invariant(received);
+
+  const names = await ctx.host.readToolNames(received);
+
+  gate.resolve();
+
+  await running;
+
+  expect(names).toIncludeSameMembers(['memory.recall', 'memory.consolidate']);
+});
 
 test("it shows the session the owner's name and each item's quote under its text", async () => {
   const ctx = await setupTest();
@@ -154,21 +163,26 @@ test("it shows the session the owner's name and each item's quote under its text
     createMemoryItem(ctx.store, { text: 'Sings in a choir' }),
   ]);
 
-  ctx.model.addReplies(
-    { toolUse: { name: 'mcp__nixie__memory_consolidate', input: { changes: [] } } },
+  ctx.host.guest.addReplies(
+    {
+      toolUse: {
+        name: 'memory.consolidate',
+        input: { changes: [], summary: 'Nothing here needs tidying.' },
+      },
+    },
     { text: 'done' },
   );
 
   await ctx.run();
 
-  const [first] = ctx.model.requests;
+  const [first] = ctx.host.guest.turns;
 
-  expect(JSON.stringify(first?.body?.system)).toInclude("You read Marisol's current memory items");
+  expect(first?.systemPrompt).toInclude("You read Marisol's current memory items");
 
-  expect(JSON.stringify(first?.body?.messages)).toInclude(
-    String.raw`: The owner calls Mondays the wet sock of the week\n  quote: honestly mondays are the wet sock of the week\n- `,
+  expect(first?.input.map((message) => message.text).join('\n')).toInclude(
+    ': The owner calls Mondays the wet sock of the week\n  quote: honestly mondays are the wet sock of the week\n- ',
   );
-}, 60_000);
+});
 
 test('it carries an idiom word for word, a pronoun through a merge, and a summary of 2 conflicting items it left alone', async () => {
   const ctx = await setupTest();
@@ -183,10 +197,10 @@ test('it carries an idiom word for word, a pronoun through a merge, and a summar
     createMemoryItem(ctx.store, { text: 'Takes coffee black with no milk' }),
   ]);
 
-  ctx.model.addReplies(
+  ctx.host.guest.addReplies(
     {
       toolUse: {
-        name: 'mcp__nixie__memory_consolidate',
+        name: 'memory.consolidate',
         input: {
           changes: [
             {
@@ -214,9 +228,14 @@ test('it carries an idiom word for word, a pronoun through a merge, and a summar
 
   const diff = await ctx.store.consolidations.readPending();
 
-  expect(JSON.stringify(ctx.model.requests[1]?.body?.messages)).toInclude(
-    String.raw`"type":"tool_result","content":"{\"staged\":2}"`,
-  );
+  const [consolidated] = ctx.host.toolResults;
+
+  invariant(consolidated);
+
+  const answer: unknown = JSON.parse(consolidated.result);
+
+  expect(consolidated.name).toBe('memory.consolidate');
+  expect(answer).toMatchObject({ structuredContent: { staged: 2 } });
 
   expect(diff?.changes).toMatchObject([
     {
@@ -241,7 +260,7 @@ test('it carries an idiom word for word, a pronoun through a merge, and a summar
   expect(diff?.summary?.text).toBe(
     'Two items conflict and stay unchanged: one says Marisol takes oat milk in her coffee, and the other says she only drinks it black.',
   );
-}, 60_000);
+});
 
 test('it leaves the summary of a run that proposed no change for your review and for memory.diff', async () => {
   const ctx = await setupTest();
@@ -253,8 +272,8 @@ test('it leaves the summary of a run that proposed no change for your review and
     createMemoryItem(ctx.store, { text: 'Takes coffee black with no milk' }),
   ]);
 
-  ctx.model.addReplies(
-    { toolUse: { name: 'mcp__nixie__memory_consolidate', input: { changes: [], summary } } },
+  ctx.host.guest.addReplies(
+    { toolUse: { name: 'memory.consolidate', input: { changes: [], summary } } },
     { text: 'done' },
   );
 
@@ -283,4 +302,4 @@ test('it leaves the summary of a run that proposed no change for your review and
 
   expect(pending).toMatchObject({ changes: [], summary: { text: summary } });
   expect(conversation).toMatchObject({ status: 'ok', result: { changes: [], summary } });
-}, 60_000);
+});

@@ -102,7 +102,10 @@ The root [`bunfig.toml`](../../../bunfig.toml) preloads, in order:
 5. [`restore-native-form-data.ts`](../../../libs/testing/src/restore-native-form-data.ts), which
    puts Bun's own `File` and `FormData` back in place of happy-dom's, because Bun's fetch cannot
    send happy-dom's as a multipart body.
-6. The web client's [`test-preload.ts`](../../../apps/web/src/mocks/test-preload.ts), which seeds
+6. [`restore-native-base64.ts`](../../../libs/testing/src/restore-native-base64.ts), which puts
+   Bun's own `atob` and `btoa` back in place of happy-dom's script versions, because zod's base64
+   check calls `atob` on every image a frame carries.
+7. The web client's [`test-preload.ts`](../../../apps/web/src/mocks/test-preload.ts), which seeds
    faker, points happy-dom at the web origin, sets an in-memory IndexedDB from fake-indexeddb, and
    runs the web client's MSW server for the whole run. After each test it resets the handlers, the
    mock store, the browser cookies, `localStorage`, IndexedDB, the system's light or dark setting
