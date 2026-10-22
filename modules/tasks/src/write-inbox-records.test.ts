@@ -14,13 +14,13 @@ async function setupTest() {
 
   const db = tasks.writer.db.$extendTables<TasksTables>();
 
-  await createConversationTask(tasks.context);
-
   return { ...tasks, db };
 }
 
 test('it wakes a waiting task with a message in its inbox', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   await writeInboxRecords(ctx.context, [
     {
@@ -117,6 +117,8 @@ test('it refuses a record for a task that does not exist', async () => {
 test('it refuses a record for a task that is done', async () => {
   const ctx = await setupTest();
 
+  await createConversationTask(ctx.context);
+
   await ctx.db.updateTable('tasks').set({ state: 'done' }).execute();
 
   const write = writeInboxRecords(ctx.context, [
@@ -130,6 +132,8 @@ test('it refuses a record for a task that is done', async () => {
 
 test('it reaches inbox.write.after once the message commits', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const reached: { id: FaultPointID; context: FaultPointContext }[] = [];
 

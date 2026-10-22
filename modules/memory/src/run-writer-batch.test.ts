@@ -20,8 +20,6 @@ async function setupTest(options: TestMemoryOptions = {}) {
   const clock = buildTestClock(1_000_000);
   const context = { log: memory.log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
 
-  const lease = await claimWriterLease(context);
-
   const parts = {
     context,
     store: memory.store,
@@ -33,6 +31,13 @@ async function setupTest(options: TestMemoryOptions = {}) {
     assistantName: null,
   };
 
+  return { memory, clock, parts };
+}
+
+test('it publishes no proposal for an edit whose item moved on after the gate, and leaves the batch to run again', async () => {
+  const ctx = await setupTest();
+  const lease = await claimWriterLease(ctx.parts.context);
+
   const input = {
     taskID: 'memory-writer',
     stepKey: 'step-1',
@@ -41,12 +46,6 @@ async function setupTest(options: TestMemoryOptions = {}) {
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
-
-  return { memory, clock, parts, input };
-}
-
-test('it publishes no proposal for an edit whose item moved on after the gate, and leaves the batch to run again', async () => {
-  const ctx = await setupTest();
 
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
@@ -81,7 +80,7 @@ test('it publishes no proposal for an edit whose item moved on after the gate, a
         itemID: item.itemID,
       }),
     },
-    { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+    { input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
 
   const [pending, after] = await Promise.all([
@@ -96,6 +95,16 @@ test('it publishes no proposal for an edit whose item moved on after the gate, a
 
 test('it extracts the batch again after a moved-on edit, and proposes the edit against the version now current', async () => {
   const ctx = await setupTest();
+  const lease = await claimWriterLease(ctx.parts.context);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
 
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
@@ -131,13 +140,13 @@ test('it extracts the batch again after a moved-on edit, and proposes the edit a
   );
 
   await runWriterBatch(parts, {
-    input: ctx.input,
+    input,
     row: await readWriterRow(ctx.memory.log),
     now: ctx.clock.now(),
   });
 
   await runWriterBatch(parts, {
-    input: ctx.input,
+    input,
     row: await readWriterRow(ctx.memory.log),
     now: ctx.clock.now(),
   });
@@ -155,6 +164,16 @@ test('it never runs the checker on an edit whose item moved on during extraction
   const check = mock(() => Promise.reject(new Error('the checker must not run')));
 
   const ctx = await setupTest({ gate: { check } });
+  const lease = await claimWriterLease(ctx.parts.context);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
 
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
@@ -189,7 +208,7 @@ test('it never runs the checker on an edit whose item moved on during extraction
         itemID: item.itemID,
       }),
     },
-    { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+    { input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
 
   const pending = await ctx.memory.store.proposals.listPending();
@@ -206,6 +225,17 @@ test("it applies a write the checker confirms with both the writer's and the che
         Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted', model: 'claude-checker-1' })),
     },
   });
+
+  const lease = await claimWriterLease(ctx.parts.context);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
 
   await writeRecords(ctx.memory.log, [
     {
@@ -243,7 +273,7 @@ test("it applies a write the checker confirms with both the writer's and the che
         itemID: null,
       }),
     },
-    { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+    { input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
 
   const recalled = await ctx.memory.store.recall({ query: 'bees' });
@@ -266,6 +296,17 @@ test("it applies a write the checker confirms with both the writer's and the che
 
 test('it publishes a flag as a record in the conversation, and creates no item or proposal', async () => {
   const ctx = await setupTest();
+  const lease = await claimWriterLease(ctx.parts.context);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
+
   const planned = await writePlannedBatch(ctx.memory.log, ['You always pick the jazz station.']);
 
   await runWriterBatch(
@@ -277,7 +318,7 @@ test('it publishes a flag as a record in the conversation, and creates no item o
         sourceSequence: planned.bounds.end,
       }),
     },
-    { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+    { input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
 
   const [flags, recalled, pending] = await Promise.all([

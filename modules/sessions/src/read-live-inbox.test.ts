@@ -13,13 +13,13 @@ async function setupTest() {
     controller.abort();
   });
 
-  await createConversationTask(tasks.context);
-
   return { ...tasks, signal: controller.signal };
 }
 
 test('it yields a message that lands during the turn and adds its images to the session', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const images = {
     spent: { bytes: 8, count: 1 },
@@ -62,6 +62,8 @@ test('it yields a message that lands during the turn and adds its images to the 
 test('it ends the feed at a message whose images would pass the session budget', async () => {
   const ctx = await setupTest();
 
+  await createConversationTask(ctx.context);
+
   const images = {
     spent: { bytes: 12, count: 1 },
     budget: { bytes: 16, count: 100 },
@@ -101,6 +103,8 @@ test('it ends the feed at a message whose images would pass the session budget',
 test('it ends the feed at a message whose images would pass the session count', async () => {
   const ctx = await setupTest();
 
+  await createConversationTask(ctx.context);
+
   const images = {
     spent: { bytes: 800, count: 100 },
     budget: { bytes: 24 * 1024 * 1024, count: 100 },
@@ -134,6 +138,8 @@ test('it ends the feed at a message whose images would pass the session count', 
 
 test('it yields a message with no images past a spent session budget', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const images = {
     spent: { bytes: 16, count: 2 },

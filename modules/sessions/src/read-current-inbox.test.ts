@@ -8,13 +8,13 @@ import { startTestTasks } from './test-utils/start-test-tasks';
 async function setupTest() {
   const tasks = await startTestTasks();
 
-  await createConversationTask(tasks.context);
-
   return tasks;
 }
 
 test('it reads a message whose key a forget deleted after the first read as forgotten', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const [message] = await writeInboxRecords(ctx.context, [
     {
@@ -48,6 +48,8 @@ test('it reads a message whose key a forget deleted after the first read as forg
 
 test('it reads every record still readable as it was, in order', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   await writeInboxRecords(ctx.context, [
     {
