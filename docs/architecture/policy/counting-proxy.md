@@ -29,6 +29,10 @@ The proxy prices every reply on a route with that route's table, so a request fo
 would be priced wrong. The proxy refuses a request whose body names a model other than its route's,
 and sends nothing upstream. A path whose first segment names no route gets a 404.
 
+The proxy forwards only the endpoints whose spend it can count: messages, token counts and the model
+list. It refuses every other endpoint with a 403, because a message batch, for one, spends after its
+reply and names its models inside each request, out of reach of both the count and the model check.
+
 The proxy passes every header through except the hop-by-hop ones, and asks the upstream for an
 uncompressed reply so that it can read the usage as the reply passes. It never adds or reads a
 credential: a credential broker in front of it, or the deployment itself, supplies one.

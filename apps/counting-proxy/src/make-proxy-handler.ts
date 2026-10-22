@@ -58,6 +58,14 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       );
     }
 
+    if (!isCountedEndpoint(request.method, target.path)) {
+      return renderAPIError(
+        403,
+        'permission_error',
+        `the counting proxy forwards only requests whose spend it can count, so it refuses ${request.method} ${target.path}`,
+      );
+    }
+
     const totals = countFailed ? null : await readTotals(deps);
 
     if (totals === null) {
@@ -144,6 +152,16 @@ function findRouteTarget(
 
 function renderAPIError(status: number, type: string, message: string): Response {
   return Response.json({ type: 'error', error: { type, message } }, { status });
+}
+
+// a reply to any other endpoint, such as a message batch, spends without the usage the proxy reads,
+// or names its models where the route's model check never looks
+function isCountedEndpoint(method: string, path: string): boolean {
+  if (method === 'POST') {
+    return path === '/v1/messages' || path === '/v1/messages/count_tokens';
+  }
+
+  return method === 'GET' && /^\/v1\/models(?:\/[^/]+)?$/u.test(path);
 }
 
 async function readTotals(deps: ProxyHandlerDeps): Promise<SpendTotals | null> {

@@ -390,6 +390,54 @@ test('it refuses a request for a model its route does not price', async () => {
   expect(ctx.model.requests).toHaveLength(0);
 });
 
+test.each([
+  ['POST', '/v1/messages/batches'],
+  ['GET', '/v1/messages/batches/msgbatch_example'],
+  ['POST', '/v1/files'],
+  ['DELETE', '/v1/models/model-small'],
+])('it refuses %s %s, whose spend it cannot count, and sends nothing on', async (method, path) => {
+  const ctx = await setupTest();
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        upstream: ctx.model.url,
+        model: 'model-small',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store: ctx.store,
+    log: ctx.log,
+  });
+
+  const response = await handler(new Request(`http://proxy.test/preview${path}`, { method }));
+
+  expect(response.status).toBe(403);
+  expect(ctx.model.requests).toHaveLength(0);
+});
+
+test('it sends on a request for the model list', async () => {
+  const ctx = await setupTest();
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        upstream: ctx.model.url,
+        model: 'model-small',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store: ctx.store,
+    log: ctx.log,
+  });
+
+  await handler(new Request('http://proxy.test/preview/v1/models'));
+
+  expect(ctx.model.requests).toMatchObject([{ path: '/v1/models' }]);
+});
+
 test('it answers a path outside every route with a 404 and sends nothing on', async () => {
   const ctx = await setupTest();
 
