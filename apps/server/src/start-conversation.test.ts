@@ -257,7 +257,7 @@ test('it keeps the system prompt the same bytes when a pinned item is edited dur
   expect(second.systemPrompt).toBe(first.systemPrompt);
 
   expect(second.input[0]?.text).toMatch(
-    /<system-message type="pinned-memory-changes" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\n- Changed \[(?<shortID>[\da-z]+)\]:\n  - Goes by Sasha\n    \k<shortID> v2 · [^\n]+ · the owner said this\n<\/system-message id="\k<blockID>">\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
+    /<system-message type="pinned-memory-changes" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\n- Changed \[(?<shortID>[\da-z]+)\]:\n  - Goes by Sasha\n    \k<shortID> v2 · [^\n]+ · the owner said this\nPinned memory now: 1 item, 21 of 2000 tokens\.\n<\/system-message id="\k<blockID>">\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
   );
 });
 
