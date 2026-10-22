@@ -129,7 +129,8 @@ whose line a forget erased lists nothing.
 
 The host runs the content gate over each staged write outside the database transaction, because a
 gate check can call a model. A write that repeats the text of an item the session was shown skips
-the gate and writes nothing.
+the gate and writes nothing. One exception: an edit that keeps its item's text and moves or clears
+its end time runs the gate as any edit does.
 
 The batch gate runs the checks that [memory writes](./writes.md) sets out for a single write, one
 staged write at a time, against the one message the write cites. That message is the write's whole

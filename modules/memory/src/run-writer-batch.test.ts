@@ -12,6 +12,7 @@ import type { TestMemoryOptions } from './test-utils/start-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import { writePlannedBatch } from './test-utils/write-planned-batch';
+import type { MemoryTables } from './types';
 import { writerConfigSchema } from './writer-config-schema';
 
 async function setupTest(options: TestMemoryOptions = {}) {
@@ -293,6 +294,78 @@ test("it applies a write the checker confirms with both the writer's and the che
       checkerModel: 'claude-checker-1',
     },
   ]);
+});
+
+test('it publishes an edit that clears the end time of an item and keeps its text', async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: 'Works from the Lisbon office',
+    until: Date.parse('2099-10-25T23:59:59Z'),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const lease = await claimWriterLease(ctx.parts.context);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.writer_started',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'memory-writer',
+      payload: { startSequence: 0, at: 1_000_000 },
+    },
+  ]);
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'I work from the Lisbon office for good now.',
+    spans: [{ start: 0, end: 43, source: 'typed' }],
+  });
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.batch_planned',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'memory-writer',
+      payload: { start: 0, end: sequence, mode: 'live', at: 1_000_000 },
+    },
+  ]);
+
+  await runWriterBatch(
+    {
+      ...ctx.parts,
+      ...createStubWriterSession({
+        op: 'remember',
+        subject: 'owner',
+        text: 'Works from the Lisbon office',
+        quote: 'I work from the Lisbon office for good now',
+        sourceSequence: sequence,
+        itemID: item.itemID,
+        until: null,
+      }),
+    },
+    { input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+  );
+
+  const row = await ctx.memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['until', 'version'])
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({ until: null, version: 2 });
 });
 
 test('it publishes a flag as a record in the conversation, and creates no item or proposal', async () => {
