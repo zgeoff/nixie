@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildTestClock } from '@heynixie/testing';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startFaultPointHold } from './test-utils/start-fault-point-hold';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -100,6 +101,25 @@ test('it never reads an item that a forget began', async () => {
   hold.release();
 
   await forget;
+
+  expect(core).toStrictEqual([]);
+});
+
+test('it leaves a pinned item out from its end time, before any sweep runs', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    isPinned: true,
+    provenance: buildMockProvenance(),
+  });
+
+  clock.advance(Date.parse('2026-10-19T22:59:59Z') - clock.now());
+
+  const core = await memory.store.readPinnedCore();
 
   expect(core).toStrictEqual([]);
 });
