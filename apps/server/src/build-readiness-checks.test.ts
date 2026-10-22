@@ -5,7 +5,7 @@ import { buildStartState } from './build-start-state';
 test('it reports the imp host with the refresh report while impd does not answer', async () => {
   const state = buildStartState({ isReady: true, reason: null });
 
-  state.update({ areImagesAdded: true });
+  state.update({ images: { isReady: true, reason: null } });
 
   const checks = buildReadinessChecks(state, {
     read: (part) =>
@@ -39,7 +39,7 @@ test('it reports the imp host ready once impd answers and the images are added',
   const state = buildStartState({ isReady: true, reason: null });
   const checks = buildReadinessChecks(state, { read: () => ({ isReady: true, reason: null }) });
 
-  state.update({ areImagesAdded: true });
+  state.update({ images: { isReady: true, reason: null } });
 
   const report = await checks.dependencies.imp_host();
 

@@ -1,6 +1,7 @@
 import type {
   Sandbox,
   SandboxAdapter,
+  SandboxImage,
   SandboxRecorder,
   SandboxRow,
   SandboxSpec,
@@ -53,11 +54,17 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
 
   const getRowSandbox = makeRowSandboxReader(options.port, sleeping, getSandbox);
 
+  const images = new Map<string, SandboxImage>();
+
+  const addImage = makeImageAdder(options.port, images);
+
   return {
     id: 'imp',
     boundary: 'microvm',
     create: (spec) =>
       createImpSandbox(options, spec, {
+        addImage,
+        images,
         getSandbox,
         removeSandbox: async (id) => {
           await routes.close(id);
@@ -75,7 +82,7 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
       return Promise.all(rows.map((row) => getRowSandbox(row)));
     },
     addSecret: makeSecretAdder(options.port),
-    addImage: makeImageAdder(options.port),
+    addImage,
     checkRuntime: makeRuntimeChecker(options.port),
   };
 }
@@ -94,7 +101,57 @@ function makeRowSandboxReader(
   };
 }
 
+function makeImageAdder(
+  port: ImpPort,
+  added: Map<string, SandboxImage>,
+): SandboxAdapter['addImage'] {
+  return async (image) => {
+    const digest = findPinnedDigest(image.ref);
+
+    if (digest === undefined) {
+      throw new Error(`the image ${image.name} is not pinned by digest: ${image.ref}`);
+    }
+
+    const images = await port.listImages();
+
+    const held = images.find((row) => row.name === image.name);
+
+    if (held === undefined) {
+      await createImpImage(port, { name: image.name, digest, ref: image.ref });
+    } else if (held.digest !== digest && findPinnedDigest(held.ref) !== digest) {
+      throw new Error(
+        `impd holds the image ${image.name} at ${held.digest} from ${held.ref}, not ${digest}`,
+      );
+    }
+
+    added.set(image.name, image);
+  };
+}
+
+function findPinnedDigest(ref: string): string | undefined {
+  return /@(?<digest>sha256:[\da-f]{64})$/u.exec(ref)?.groups?.['digest'];
+}
+
+// impd's refusal names neither the image nor the ref, so the log could not say which image the host
+// owner must add.
+async function createImpImage(
+  port: ImpPort,
+  image: Parameters<ImpPort['addImage']>[0],
+): Promise<void> {
+  try {
+    await port.addImage(image);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+
+    throw new Error(`impd did not add the image ${image.name} from ${image.ref}: ${reason}`, {
+      cause: error,
+    });
+  }
+}
+
 interface ImpSandboxes {
+  readonly addImage: SandboxAdapter['addImage'];
+  readonly images: ReadonlyMap<string, SandboxImage>;
   readonly getSandbox: (id: string, spec: SandboxSpec) => Sandbox;
   readonly removeSandbox: (id: string) => Promise<void>;
 }
@@ -105,6 +162,14 @@ async function createImpSandbox(
   sandboxes: ImpSandboxes,
 ): Promise<Sandbox> {
   await requireImpSpec(options.port, options.config.publicEgress, spec);
+
+  const image = sandboxes.images.get(spec.image);
+
+  // impd's image eviction removes an unpinned image that no imp uses, and a token scoped to some
+  // imps cannot pin one, so a create adds an image that this process added before and impd lost.
+  if (image !== undefined) {
+    await sandboxes.addImage(image);
+  }
 
   const sandbox = sandboxes.getSandbox(createSandboxID(), spec);
 
@@ -167,49 +232,6 @@ function makeSecretAdder(port: ImpPort): SandboxAdapter['addSecret'] {
         : { header: 'x-api-key', scheme: 'raw' }),
     });
   };
-}
-
-function makeImageAdder(port: ImpPort): SandboxAdapter['addImage'] {
-  return async (image) => {
-    const digest = findPinnedDigest(image.ref);
-
-    if (digest === undefined) {
-      throw new Error(`the image ${image.name} is not pinned by digest: ${image.ref}`);
-    }
-
-    const images = await port.listImages();
-
-    const held = images.find((row) => row.name === image.name);
-
-    if (held === undefined) {
-      await createImpImage(port, { name: image.name, digest, ref: image.ref });
-    } else if (held.digest !== digest && findPinnedDigest(held.ref) !== digest) {
-      throw new Error(
-        `impd holds the image ${image.name} at ${held.digest} from ${held.ref}, not ${digest}`,
-      );
-    }
-  };
-}
-
-function findPinnedDigest(ref: string): string | undefined {
-  return /@(?<digest>sha256:[\da-f]{64})$/u.exec(ref)?.groups?.['digest'];
-}
-
-// impd's refusal names neither the image nor the ref, so the log could not say which image the host
-// owner must add.
-async function createImpImage(
-  port: ImpPort,
-  image: Parameters<ImpPort['addImage']>[0],
-): Promise<void> {
-  try {
-    await port.addImage(image);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-
-    throw new Error(`impd did not add the image ${image.name} from ${image.ref}: ${reason}`, {
-      cause: error,
-    });
-  }
 }
 
 function makeRuntimeChecker(port: ImpPort): SandboxAdapter['checkRuntime'] {

@@ -38,7 +38,7 @@ test('it answers readiness from the last impd report while a later impd check ha
 
   state.update({
     definitions: { isReady: true, reason: null },
-    areImagesAdded: true,
+    images: { isReady: true, reason: null },
     conversation: { isReady: true, reason: null },
     areRunnersStarted: true,
   });
@@ -87,7 +87,7 @@ test('it answers readiness with 200 and the status degraded, and logs the imp ho
 
   state.update({
     definitions: { isReady: true, reason: null },
-    areImagesAdded: true,
+    images: { isReady: true, reason: null },
     conversation: { isReady: true, reason: null },
     areRunnersStarted: true,
   });

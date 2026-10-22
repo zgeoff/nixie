@@ -741,6 +741,45 @@ test('it stores no secret when one already has the name', async () => {
   expect(ctx.imp.calls).toStrictEqual([]);
 });
 
+test('it adds an image again before a create when impd removed it after the add', async () => {
+  const ctx = await setupTest();
+
+  await ctx.adapter.addImage({
+    name: 'nixie-fetch-aaaaaaaaaaaa',
+    ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+  });
+
+  ctx.imp.images.delete('nixie-fetch-aaaaaaaaaaaa');
+
+  const sandbox = await ctx.adapter.create(
+    buildMockSandboxSpec({ kind: 'fetch', image: 'nixie-fetch-aaaaaaaaaaaa' }),
+  );
+
+  expect(ctx.imp.calls.slice(0, 3)).toStrictEqual([
+    `image nixie-fetch-aaaaaaaaaaaa ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+    `image nixie-fetch-aaaaaaaaaaaa ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+    `create ${sandbox.id}`,
+  ]);
+});
+
+test('it adds no image before a create when impd holds the image it added', async () => {
+  const ctx = await setupTest();
+
+  await ctx.adapter.addImage({
+    name: 'nixie-fetch-aaaaaaaaaaaa',
+    ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+  });
+
+  const sandbox = await ctx.adapter.create(
+    buildMockSandboxSpec({ kind: 'fetch', image: 'nixie-fetch-aaaaaaaaaaaa' }),
+  );
+
+  expect(ctx.imp.calls.slice(0, 2)).toStrictEqual([
+    `image nixie-fetch-aaaaaaaaaaaa ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+    `create ${sandbox.id}`,
+  ]);
+});
+
 test('it adds an image by its reference under its name', async () => {
   const ctx = await setupTest();
 

@@ -57,15 +57,20 @@ ends, and the memory checker's, which the deployment owns.
 The server adds each image in the manifest to impd before any part creates a sandbox, because a step
 that creates a sandbox on an image impd lacks would fail. The server sends no add for an image that
 impd holds under its name at the manifest's digest, so a token that may add no image still starts a
-release once impd's administrator has added that release's images. The conversation imp then starts
-on its image from the manifest, and the sandbox adapter replaces its sandbox when the image or the
-model profile changed. The memory checker starts next on the conversation image
-([the checker](../memory/writes.md#the-checker)), and the memory store starts behind it. The store
-starts after the conversation imp, because a forget cleans up the conversation's sessions through
-it, and before any runner claims work, so every forget that a crash left pending completes before a
-turn can read the item ([forgetting](../memory/store.md#forgetting)). The seed runs after the memory
-store, so a release's new definitions apply to the turns it runs. A record of the start follows the
-seed, so the conversation hears of the restart
+release once impd's administrator has added that release's images. When impd refuses an add, the imp
+host part stays unready with the name of the image as its reason, and the retry's log line holds
+impd's answer, so a token that may not add images shows in the readiness report at start instead of
+as a refusal at a sandbox's first use.
+
+The conversation imp starts after the images are added, on its image from the manifest, and the
+sandbox adapter replaces its sandbox when the image or the model profile changed. The memory checker
+starts next on the conversation image ([the checker](../memory/writes.md#the-checker)), and the
+memory store starts behind it. The store starts after the conversation imp, because a forget cleans
+up the conversation's sessions through it, and before any runner claims work, so every forget that a
+crash left pending completes before a turn can read the item
+([forgetting](../memory/store.md#forgetting)). The seed runs after the memory store, so a release's
+new definitions apply to the turns it runs. A record of the start follows the seed, so the
+conversation hears of the restart
 ([the events block](../core/conversation-turns.md#the-events-block)). The record holds nixie's
 version, the version of the start before it, and what the conversation is given: the names of its
 tools and the version of its persona. Because the record follows the seed, it holds the persona this

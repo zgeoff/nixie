@@ -106,6 +106,10 @@ and the secrets.
   opt-out stays backed up, so the adapter marks one it lists as retired. Its owner then replaces it
   as it does for a changed spec, and the conversation's sandbox carries its session into the
   replacement.
+- **Images.** impd's image eviction removes an unpinned image that no imp uses, and a token scoped
+  to nixie's imps cannot pin one. The fetch sandbox lives for one fetch, so its image can go between
+  fetches. Before each create, the adapter adds the sandbox's image again when impd no longer holds
+  it, from the ref the server added it with at start.
 
 ## Running a command
 
