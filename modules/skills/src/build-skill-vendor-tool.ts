@@ -1,20 +1,14 @@
-import type {
-  DefinitionsRepo,
-  ParseProblem,
-  ParsedSkill,
-  SkillDocument,
-} from '@heynixie/definitions';
+import type { DefinitionsRepo } from '@heynixie/definitions';
 import {
   buildSkillVendorChange,
-  checkSkillFiles,
   defaultSizeLimits,
   manifestPath,
-  parseSkillFrontmatter,
   skillsLockPath,
 } from '@heynixie/definitions';
 import type { RunCheck } from '@heynixie/sessions';
 import type { ToolCall, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { parseSkillVendorInput } from './parse-skill-vendor-input';
+import { parseVendoredSkill } from './parse-vendored-skill';
 import type { ReadPage } from './read-github-skill';
 import { readGitHubSkill } from './read-github-skill';
 import { renderSkillVendorReport } from './render-skill-vendor-report';
@@ -101,27 +95,14 @@ async function runSkillVendor(context: SkillVendorContext, call: ToolCall): Prom
     return { status: 'error', message: read.reason };
   }
 
-  const instructions = read.skill.files.find((file) => file.path === 'SKILL.md');
+  const parsed = parseVendoredSkill(input.source.path, read.skill.files);
 
-  const document =
-    instructions === undefined
-      ? null
-      : parseSkillFrontmatter(instructions.text.replaceAll('\r\n', '\n'));
-
-  if (document === null || !isSkillDocument(document)) {
-    return {
-      status: 'error',
-      message: `${input.source.path} holds no SKILL.md with valid frontmatter, so it is no skill`,
-    };
+  if (parsed.status === 'refused') {
+    return { status: 'error', message: parsed.reason };
   }
 
-  const name = document.frontmatter.name;
-  const checked = checkSkillFiles(name, read.skill.files);
-
-  if (isProblemList(checked)) {
-    return { status: 'error', message: renderProblems(checked) };
-  }
-
+  const checked = parsed.skill;
+  const name = checked.name;
   const review = reviewer === null ? null : await runSkillVendorReview(reviewer, checked.files);
 
   const report = renderSkillVendorReport({
@@ -157,20 +138,4 @@ async function runSkillVendor(context: SkillVendorContext, call: ToolCall): Prom
     status: 'ok',
     result: { name, contentHash: checked.skillHash, pullRequest: pullRequest.url },
   };
-}
-
-function isSkillDocument(document: SkillDocument | readonly string[]): document is SkillDocument {
-  return !Array.isArray(document);
-}
-
-function isProblemList(
-  checked: ParsedSkill | readonly ParseProblem[],
-): checked is readonly ParseProblem[] {
-  return Array.isArray(checked);
-}
-
-function renderProblems(problems: readonly ParseProblem[]): string {
-  const lines = problems.map((problem) => `${problem.path}: ${problem.reason}`);
-
-  return `the skill fails the checks the seed runs, so nixie cannot vendor it:\n${lines.join('\n')}`;
 }
