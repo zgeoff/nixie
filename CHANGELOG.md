@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.41.0](https://github.com/zgeoff/nixie/compare/v0.40.0...v0.41.0) (2026-10-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **connectors:** run each web fetch in a sandbox of its own ([#530](https://github.com/zgeoff/nixie/issues/530))
+
+### Features
+
+* **connectors:** run each web fetch in a sandbox of its own ([#530](https://github.com/zgeoff/nixie/issues/530)) ([924b969](https://github.com/zgeoff/nixie/commit/924b969be1e8b4faf827783758e1cbba1378ac6e))
+* **counting-proxy:** count model spend and refuse past a limit ([#566](https://github.com/zgeoff/nixie/issues/566)) ([8a1018c](https://github.com/zgeoff/nixie/commit/8a1018c509ff62c3d2a55e28a5e70afe15a6ae70))
+* **db:** admit the pin operation in memory proposals ([#559](https://github.com/zgeoff/nixie/issues/559)) ([9dc1bc3](https://github.com/zgeoff/nixie/commit/9dc1bc314a37a43803a3770a5e99bb79237a7722))
+* **definitions:** record the git-sync commit and repo in each seed ([#563](https://github.com/zgeoff/nixie/issues/563)) ([43cc476](https://github.com/zgeoff/nixie/commit/43cc476d495d44cce959369f327f423a46f4c957))
+* **definitions:** template the skill export's title and message ([#554](https://github.com/zgeoff/nixie/issues/554)) ([6138075](https://github.com/zgeoff/nixie/commit/6138075eb9583ef4187f0db75b82144513aefeef))
+* **memory:** add a pin proposal for an item the model asks to pin ([#562](https://github.com/zgeoff/nixie/issues/562)) ([e7dc2c4](https://github.com/zgeoff/nixie/commit/e7dc2c4e9f8c9b2e496e9cd3d40184222495f05e))
+* **memory:** add memory.pin and memory.unpin for the model ([#564](https://github.com/zgeoff/nixie/issues/564)) ([583ac83](https://github.com/zgeoff/nixie/commit/583ac83d772cfd2091c70e77525bc514b5d08bac))
+* **memory:** delete selected retired memory items in one checked action ([#558](https://github.com/zgeoff/nixie/issues/558)) ([5ca6adb](https://github.com/zgeoff/nixie/commit/5ca6adb3d212a175eb2c3bf7a7e37832a5e460b0))
+* **memory:** let a deployment turn off the writer and the consolidator ([#569](https://github.com/zgeoff/nixie/issues/569)) ([d197999](https://github.com/zgeoff/nixie/commit/d1979994dd2f342a067927aa18121a3a72fb9b8d))
+* **memory:** let a memory item with an end time lapse on its own ([#553](https://github.com/zgeoff/nixie/issues/553)) ([2f16522](https://github.com/zgeoff/nixie/commit/2f165225f72dc0fe4add1fcb89b9c299df3035ed))
+* **memory:** show memory notices with undo, keep and retire ([#552](https://github.com/zgeoff/nixie/issues/552)) ([7970062](https://github.com/zgeoff/nixie/commit/797006287486c0bb090e35ae621271f768e5c3d6))
+* **memory:** show the pinned count and tokens to the model ([#567](https://github.com/zgeoff/nixie/issues/567)) ([6a49f94](https://github.com/zgeoff/nixie/commit/6a49f94eb98dffd996c6004d0bafdbf65efac7ec))
+* **server:** name the refused image in imp host readiness ([#556](https://github.com/zgeoff/nixie/issues/556)) ([3e541ba](https://github.com/zgeoff/nixie/commit/3e541badd7d58de10f7a042417f420c2fe74d88a))
+* **web:** label each web fetch with the page it ended at ([#570](https://github.com/zgeoff/nixie/issues/570)) ([6d36f25](https://github.com/zgeoff/nixie/commit/6d36f252caa98a10a55d22630e306d4d558b1c5f))
+
+
+### Bug Fixes
+
+* **compose:** re-pin caddy to the rebuilt 2.11.7-alpine digest ([#546](https://github.com/zgeoff/nixie/issues/546)) ([c447b64](https://github.com/zgeoff/nixie/commit/c447b6412b19ae78b3a6d89d1a138164d2d9209f))
+* **deps:** update @tanstack/react-start to v1.169.2 ([#538](https://github.com/zgeoff/nixie/issues/538)) ([2053513](https://github.com/zgeoff/nixie/commit/20535135722053ce7b7a1a7205dbb34aee3700bf))
+* **testing:** treat a dead process state as gone in the process probe ([#542](https://github.com/zgeoff/nixie/issues/542)) ([8104fe0](https://github.com/zgeoff/nixie/commit/8104fe07231905fd218cb64688f8e88f5acbb6f0))
+
 ## [0.40.0](https://github.com/zgeoff/nixie/compare/v0.39.2...v0.40.0) (2026-10-21)
 
 
