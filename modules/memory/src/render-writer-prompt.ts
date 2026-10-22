@@ -1,3 +1,4 @@
+import { match } from 'ts-pattern';
 import type { MemoryProposal } from './gate-types';
 import type { MemorySubject } from './types';
 import type { BatchMessage } from './writer-types';
@@ -68,15 +69,11 @@ function formatSpeaker(names: SpeakerNames, role: BatchMessage['role']): string 
 function renderProposal(proposal: ShownProposal): string {
   const text = proposal.text.replaceAll(/\s+/gu, ' ');
 
-  if (proposal.operation === 'retire') {
-    return `- ${proposal.proposalID} (${proposal.subject}, retires ${proposal.itemID}): ${text}`;
-  }
+  const action = match(proposal.operation)
+    .with('retire', () => `, retires ${proposal.itemID}`)
+    .with('pin', () => `, pins ${proposal.itemID}`)
+    .with('remember', () => (proposal.targetVersion === null ? '' : `, revises ${proposal.itemID}`))
+    .exhaustive();
 
-  if (proposal.operation === 'pin') {
-    return `- ${proposal.proposalID} (${proposal.subject}, pins ${proposal.itemID}): ${text}`;
-  }
-
-  return proposal.targetVersion === null
-    ? `- ${proposal.proposalID} (${proposal.subject}): ${text}`
-    : `- ${proposal.proposalID} (${proposal.subject}, revises ${proposal.itemID}): ${text}`;
+  return `- ${proposal.proposalID} (${proposal.subject}${action}): ${text}`;
 }
