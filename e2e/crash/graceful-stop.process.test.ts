@@ -59,7 +59,7 @@ test('it commits a step that finishes inside the grace window once, and claims n
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it stops with a step still running at the deadline, which the restart recovers as after a crash', async () => {
   const ctx = await setupTest();
@@ -131,4 +131,4 @@ test('it stops with a step still running at the deadline, which the restart reco
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});

@@ -75,7 +75,7 @@ default test limit, so `bun run test` leaves these suites out of the parallel ru
 after it, one file at a time, under one raised limit for the whole lane. The pre-push test job
 splits its run the same way. A test in the lane sets no limit of its own.
 
-`bun run test` runs the crash suites in `e2e/crash/`, which spawn the test build of nixie from
+The crash suites in `e2e/crash/` run in the process lane. They spawn the test build of nixie from
 [`e2e/nixie/main.ts`](../../../e2e/nixie/main.ts) as a child process and drive it through
 [`startCrashHarness`](../../../libs/testing/src/start-crash-harness.ts), which holds it at fault
 points, kills it, and restarts it. The poisoned page journey in `e2e/` runs in process on the

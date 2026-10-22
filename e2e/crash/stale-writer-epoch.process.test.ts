@@ -74,4 +74,4 @@ test('it stops the stale writer at its first write, and the new writer expires i
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});

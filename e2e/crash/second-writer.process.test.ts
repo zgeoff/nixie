@@ -59,7 +59,7 @@ test('it refuses a second process while the first holds the writer lock, and let
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it refuses a second process while the first is frozen, and the first resumes after SIGCONT', async () => {
   const ctx = await setupTest();
@@ -99,4 +99,4 @@ test('it refuses a second process while the first is frozen, and the first resum
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
