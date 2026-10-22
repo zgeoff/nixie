@@ -5,7 +5,6 @@ import { toErrorFields } from '@heynixie/logger';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
 import { startSkillLapseSweep } from '@heynixie/skills';
 import { createConversationTask } from '@heynixie/tasks';
-import { buildSkillExportText } from './build-skill-export-text';
 import { makeRetriedStart } from './make-retried-start';
 import { runDefinitionsSeed } from './run-definitions-seed';
 import type { ServerPartValues } from './server-part-values';
@@ -90,8 +89,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     needs: ['inputs', 'server_parts', 'start_record'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
-      const options = reader.get('inputs').options;
-      const settings = options.definitionsExport;
+      const settings = reader.get('inputs').options.definitionsExport;
 
       if (settings === null) {
         return null;
@@ -99,8 +97,8 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       const sweep = startSkillExportSweep({
         log: parts.context.log,
-        repo: buildGitHubDefinitionsRepo(settings),
-        text: buildSkillExportText(options.config),
+        repo: buildGitHubDefinitionsRepo(settings.repo),
+        text: settings.text,
         onError: (error) => {
           parts.log('skills.export_failed', toErrorFields(error), 'error');
         },
