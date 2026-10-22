@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -9,6 +9,7 @@ import {
   startTestMemory,
 } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
+import { runCLI } from './run-cli';
 import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
 import { startTestControlSocket } from './test-utils/start-test-control-socket';
@@ -263,13 +264,28 @@ test('it approves the whole diff when it names every change', async () => {
   });
 }, 60_000);
 
-test('it refuses a malformed answer before it reads the configuration', async () => {
-  const runs = await runHostCommands('/nonexistent/config.yaml', [
-    ['memory-diff-approve'],
+test.each([
+  [['memory-diff-approve'], 'nixie memory-diff-approve takes one or more <changeID>=<actionHash>'],
+  [
     ['memory-diff-approve', 'change-1'],
+    'nixie memory-diff-approve takes one or more <changeID>=<actionHash>',
+  ],
+  [
     ['memory-diff-approve', 'change-1='],
+    'nixie memory-diff-approve takes one or more <changeID>=<actionHash>',
+  ],
+  [
     ['memory-diff-reject', 'change-1'],
-  ]);
+    'nixie memory-diff-reject takes a change ID and --hash <action hash>',
+  ],
+])(
+  'it refuses the malformed answer %p before it reads the configuration',
+  async (args, refusal) => {
+    const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  expect(runs.map((run) => run.exitCode)).toStrictEqual([2, 2, 2, 2]);
-}, 30_000);
+    const exitCode = await runCLI([...args, '--config', '/nonexistent/config.yaml'], io);
+
+    expect(exitCode).toBe(2);
+    expect(io.print).toHaveBeenCalledExactlyOnceWith(refusal);
+  },
+);

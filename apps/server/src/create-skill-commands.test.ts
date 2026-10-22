@@ -1,9 +1,10 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { checkSkillFiles } from '@heynixie/definitions';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { runCLI } from './run-cli';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { startTestNixie } from './test-utils/start-test-nixie';
@@ -463,68 +464,102 @@ test("it resolves a skill nixie wrote by keeping the definitions' version, which
 }, 60_000);
 
 test('it refuses an approval with no --hash, and reaches no server', async () => {
-  const refused = await runHostCommand('/nonexistent/config.yaml', ['skill-approve', 'k3x9m2p7qa']);
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  expect(refused).toStrictEqual({
-    exitCode: 2,
-    stdout:
-      'nixie skill-approve takes a proposal ID, --hash <skill hash> and, for an edit, ' +
-      '--files <JSON list of path and text>\n',
-  });
-}, 30_000);
+  const exitCode = await runCLI(
+    ['skill-approve', 'k3x9m2p7qa', '--config', '/nonexistent/config.yaml'],
+    io,
+  );
+
+  expect(exitCode).toBe(2);
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(
+    'nixie skill-approve takes a proposal ID, --hash <skill hash> and, for an edit, ' +
+      '--files <JSON list of path and text>',
+  );
+});
 
 test('it refuses edited files that are not a JSON list of path and text, and reaches no server', async () => {
-  const refused = await runHostCommand('/nonexistent/config.yaml', [
-    'skill-approve',
-    'k3x9m2p7qa',
-    '--hash',
-    'hash-b',
-    '--files',
-    '{"path":"SKILL.md"}',
-  ]);
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  expect(refused.exitCode).toBe(2);
-}, 30_000);
+  const exitCode = await runCLI(
+    [
+      'skill-approve',
+      'k3x9m2p7qa',
+      '--hash',
+      'hash-b',
+      '--files',
+      '{"path":"SKILL.md"}',
+      '--config',
+      '/nonexistent/config.yaml',
+    ],
+    io,
+  );
+
+  expect(exitCode).toBe(2);
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(
+    'nixie skill-approve takes a proposal ID, --hash <skill hash> and, for an edit, ' +
+      '--files <JSON list of path and text>',
+  );
+});
 
 test('it refuses a rejection with no --reason, and reaches no server', async () => {
-  const refused = await runHostCommand('/nonexistent/config.yaml', [
-    'skill-reject',
-    'k3x9m2p7qa',
-    '--hash',
-    'hash-b',
-  ]);
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  expect(refused).toStrictEqual({
-    exitCode: 2,
-    stdout: 'nixie skill-reject takes a proposal ID, --hash <skill hash> and --reason <why>\n',
-  });
-}, 30_000);
+  const exitCode = await runCLI(
+    ['skill-reject', 'k3x9m2p7qa', '--hash', 'hash-b', '--config', '/nonexistent/config.yaml'],
+    io,
+  );
+
+  expect(exitCode).toBe(2);
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(
+    'nixie skill-reject takes a proposal ID, --hash <skill hash> and --reason <why>',
+  );
+});
 
 test('it refuses a resolve that keeps neither side, and reaches no server', async () => {
-  const refused = await runHostCommand('/nonexistent/config.yaml', [
-    'skill-resolve',
-    '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
-    '--keep',
-    'both',
-  ]);
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  expect(refused).toStrictEqual({
-    exitCode: 1,
-    stdout: `nixie: Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions"] values\n`,
-  });
-}, 30_000);
+  const exitCode = await runCLI(
+    [
+      'skill-resolve',
+      '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      '--keep',
+      'both',
+      '--config',
+      '/nonexistent/config.yaml',
+    ],
+    io,
+  );
+
+  expect(exitCode).toBe(1);
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(
+    `nixie: Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions"] values`,
+  );
+});
 
 test('it refuses a resolve given a second word, and reaches no server', async () => {
-  const refused = await runHostCommand('/nonexistent/config.yaml', [
-    'skill-resolve',
-    '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
-    '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
-    '--keep',
-    'nixie',
-  ]);
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  expect(refused).toStrictEqual({
-    exitCode: 2,
-    stdout: 'nixie skill-resolve takes an approval ID and --keep nixie|definitions\n',
-  });
-}, 30_000);
+  const exitCode = await runCLI(
+    [
+      'skill-resolve',
+      '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      '9e4a2f61-7b0c-4d38-b5e2-1a6c8f3d0b74',
+      '--keep',
+      'nixie',
+      '--config',
+      '/nonexistent/config.yaml',
+    ],
+    io,
+  );
+
+  expect(exitCode).toBe(2);
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(
+    'nixie skill-resolve takes an approval ID and --keep nixie|definitions',
+  );
+});
