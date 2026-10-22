@@ -32,6 +32,10 @@ test("it registers nixie's StatefulSet on the Service, the ConfigMap and the Sec
       deployKey: 'an ssh key for tests',
     },
     storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
   });
 
   const lockedDown = {
@@ -183,6 +187,10 @@ test("it registers the Service that selects nixie's pod", async () => {
       deployKey: 'an ssh key for tests',
     },
     storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
   });
 
   const service = await ctx.stub.whenRegistered('kubernetes:core/v1:Service::nixie');
@@ -218,6 +226,10 @@ test('it registers the config as a ConfigMap that Pulumi names', async () => {
       deployKey: 'an ssh key for tests',
     },
     storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
   });
 
   const config = await ctx.stub.whenRegistered('kubernetes:core/v1:ConfigMap::nixie-config');
@@ -246,6 +258,10 @@ test('it registers the secrets file and the age key as a secret', async () => {
       deployKey: 'an ssh key for tests',
     },
     storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
   });
 
   const secrets = await ctx.stub.whenRegistered('kubernetes:core/v1:Secret::nixie-secrets');
@@ -277,6 +293,10 @@ test("it registers the definitions deploy key as a secret that ends in one newli
       deployKey: 'an ssh key for tests\n\n',
     },
     storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
   });
 
   const key = await ctx.stub.whenRegistered('kubernetes:core/v1:Secret::nixie-definitions-key');
@@ -316,11 +336,24 @@ test('it parents each resource to the component, with an alias to the stack', as
         deployKey: 'an ssh key for tests',
       },
       storageClassName: 'local-retain',
+      web: {
+        image:
+          'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+      },
+      backup: {
+        image:
+          'ghcr.io/example/backup:1.0.0@sha256:3333333333333333333333333333333333333333333333333333333333333333',
+        pullSecret: 'registry-pull',
+        script: '#!/bin/sh\necho backup\n',
+        schedule: '30 2 * * *',
+        timeZone: 'Europe/Oslo',
+        environment: { RESTIC_REPOSITORY: 's3:https://backups.example.test/assistant' },
+      },
     },
     { transformations: [transformation] },
   );
 
-  await ctx.stub.whenRegistered('kubernetes:apps/v1:StatefulSet::nixie');
+  await ctx.stub.whenRegistered('kubernetes:batch/v1:CronJob::nixie-backup');
 
   expect(
     transformation.mock.calls.map(([args]) => ({
@@ -355,5 +388,437 @@ test('it parents each resource to the component, with an alias to the stack', as
       parent: nixie.component,
       aliases: expect.arrayContaining([{ parent: rootStackResource }]),
     },
+    {
+      resource: 'kubernetes:core/v1:Service::nixie-web',
+      parent: nixie.component,
+      aliases: expect.arrayContaining([{ parent: rootStackResource }]),
+    },
+    {
+      resource: 'kubernetes:apps/v1:Deployment::nixie-web',
+      parent: nixie.component,
+      aliases: expect.arrayContaining([{ parent: rootStackResource }]),
+    },
+    {
+      resource: 'kubernetes:core/v1:Secret::nixie-backup',
+      parent: nixie.component,
+      aliases: expect.arrayContaining([{ parent: rootStackResource }]),
+    },
+    {
+      resource: 'kubernetes:core/v1:ConfigMap::nixie-backup-script',
+      parent: nixie.component,
+      aliases: expect.arrayContaining([{ parent: rootStackResource }]),
+    },
+    {
+      resource: 'kubernetes:batch/v1:CronJob::nixie-backup',
+      parent: nixie.component,
+      aliases: expect.arrayContaining([{ parent: rootStackResource }]),
+    },
+  ]);
+});
+
+test("it rolls the web client and the backup out after nixie's StatefulSet, and waits longer for both rollouts", async () => {
+  const ctx = await setupTest();
+
+  const transformation = mock<ResourceTransformation>();
+
+  const nixie = createNixie(
+    'nixie',
+    {
+      namespace: 'assistant',
+      image:
+        'ghcr.io/example/nixie:1.2.3@sha256:1111111111111111111111111111111111111111111111111111111111111111',
+      config: 'models: {}\n',
+      secretsFile: 'sops: {}\n',
+      ageKey: 'AGE-SECRET-KEY-1EXAMPLE',
+      definitions: {
+        repository: 'example/assistant-definitions',
+        ref: 'live',
+        deployKey: 'an ssh key for tests',
+      },
+      storageClassName: 'local-retain',
+      web: {
+        image:
+          'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+      },
+      backup: {
+        image:
+          'ghcr.io/example/backup:1.0.0@sha256:3333333333333333333333333333333333333333333333333333333333333333',
+        pullSecret: 'registry-pull',
+        script: '#!/bin/sh\necho backup\n',
+        schedule: '30 2 * * *',
+        timeZone: 'Europe/Oslo',
+        environment: { RESTIC_REPOSITORY: 's3:https://backups.example.test/assistant' },
+      },
+    },
+    { transformations: [transformation] },
+  );
+
+  await ctx.stub.whenRegistered('kubernetes:batch/v1:CronJob::nixie-backup');
+
+  expect(
+    transformation.mock.calls
+      .filter(
+        ([args]) =>
+          args.type.startsWith('kubernetes:apps/') || args.type.startsWith('kubernetes:batch/'),
+      )
+      .map(([args]) => ({
+        resource: `${args.type}::${args.name}`,
+        dependsOn: args.opts.dependsOn,
+        customTimeouts: args.opts.customTimeouts,
+      })),
+  ).toStrictEqual([
+    {
+      resource: 'kubernetes:apps/v1:StatefulSet::nixie',
+      dependsOn: undefined,
+      customTimeouts: { create: '30m', update: '30m' },
+    },
+    {
+      resource: 'kubernetes:apps/v1:Deployment::nixie-web',
+      dependsOn: [nixie.statefulSet],
+      customTimeouts: { create: '30m', update: '30m' },
+    },
+    {
+      resource: 'kubernetes:batch/v1:CronJob::nixie-backup',
+      dependsOn: [expect.anything(), expect.anything(), nixie.statefulSet],
+      customTimeouts: undefined,
+    },
+  ]);
+});
+
+test("it registers the web client's Deployment, which calls nixie's API by its Service", async () => {
+  const ctx = await setupTest();
+
+  createNixie('nixie', {
+    namespace: 'assistant',
+    image:
+      'ghcr.io/example/nixie:1.2.3@sha256:1111111111111111111111111111111111111111111111111111111111111111',
+    config: 'models: {}\n',
+    secretsFile: 'sops: {}\n',
+    ageKey: 'AGE-SECRET-KEY-1EXAMPLE',
+    definitions: {
+      repository: 'example/assistant-definitions',
+      ref: 'live',
+      deployKey: 'an ssh key for tests',
+    },
+    storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
+  });
+
+  const deployment = await ctx.stub.whenRegistered('kubernetes:apps/v1:Deployment::nixie-web');
+
+  expect(deployment).toStrictEqual({
+    apiVersion: 'apps/v1',
+    kind: 'Deployment',
+    metadata: { name: 'nixie-web', namespace: 'assistant' },
+    spec: {
+      replicas: 1,
+      selector: { matchLabels: { app: 'nixie-web' } },
+      template: {
+        metadata: { labels: { app: 'nixie-web' } },
+        spec: {
+          securityContext: { runAsNonRoot: true, seccompProfile: { type: 'RuntimeDefault' } },
+          volumes: [{ name: 'tmp', emptyDir: {} }],
+          containers: [
+            {
+              name: 'web',
+              image:
+                'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+              ports: [{ name: 'http', containerPort: 3000 }],
+              env: [
+                { name: 'NIXIE_API_URL', value: 'http://nixie.assistant.svc.cluster.local:8080' },
+                { name: 'PORT', value: '3000' },
+              ],
+              livenessProbe: {
+                httpGet: { path: '/health/live', port: 3000 },
+                periodSeconds: 30,
+                failureThreshold: 3,
+              },
+              readinessProbe: { httpGet: { path: '/health/ready', port: 3000 }, periodSeconds: 10 },
+              volumeMounts: [{ name: 'tmp', mountPath: '/tmp' }],
+              securityContext: {
+                allowPrivilegeEscalation: false,
+                readOnlyRootFilesystem: true,
+                capabilities: { drop: ['ALL'] },
+                runAsUser: 1000,
+                runAsGroup: 1000,
+              },
+              resources: { requests: { cpu: '20m', memory: '96Mi' }, limits: { memory: '512Mi' } },
+            },
+          ],
+        },
+      },
+    },
+  });
+});
+
+test("it registers the Service that selects the web client's pod", async () => {
+  const ctx = await setupTest();
+
+  createNixie('nixie', {
+    namespace: 'assistant',
+    image:
+      'ghcr.io/example/nixie:1.2.3@sha256:1111111111111111111111111111111111111111111111111111111111111111',
+    config: 'models: {}\n',
+    secretsFile: 'sops: {}\n',
+    ageKey: 'AGE-SECRET-KEY-1EXAMPLE',
+    definitions: {
+      repository: 'example/assistant-definitions',
+      ref: 'live',
+      deployKey: 'an ssh key for tests',
+    },
+    storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
+  });
+
+  const service = await ctx.stub.whenRegistered('kubernetes:core/v1:Service::nixie-web');
+
+  expect(service).toStrictEqual({
+    apiVersion: 'v1',
+    kind: 'Service',
+    metadata: {
+      name: 'nixie-web',
+      namespace: 'assistant',
+      annotations: { 'pulumi.com/skipAwait': 'true' },
+    },
+    spec: {
+      selector: { app: 'nixie-web' },
+      ports: [{ name: 'http', port: 3000, targetPort: 'http' }],
+    },
+  });
+});
+
+test("it registers the backup CronJob on nixie's data volume, with the deployment's schedule and image", async () => {
+  const ctx = await setupTest();
+
+  createNixie('nixie', {
+    namespace: 'assistant',
+    image:
+      'ghcr.io/example/nixie:1.2.3@sha256:1111111111111111111111111111111111111111111111111111111111111111',
+    config: 'models: {}\n',
+    secretsFile: 'sops: {}\n',
+    ageKey: 'AGE-SECRET-KEY-1EXAMPLE',
+    definitions: {
+      repository: 'example/assistant-definitions',
+      ref: 'live',
+      deployKey: 'an ssh key for tests',
+    },
+    storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
+    backup: {
+      image:
+        'ghcr.io/example/backup:1.0.0@sha256:3333333333333333333333333333333333333333333333333333333333333333',
+      pullSecret: 'registry-pull',
+      script: '#!/bin/sh\necho backup\n',
+      schedule: '30 2 * * *',
+      timeZone: 'Europe/Oslo',
+      environment: { RESTIC_REPOSITORY: 's3:https://backups.example.test/assistant' },
+    },
+  });
+
+  const cronJob = await ctx.stub.whenRegistered('kubernetes:batch/v1:CronJob::nixie-backup');
+
+  expect(cronJob).toStrictEqual({
+    apiVersion: 'batch/v1',
+    kind: 'CronJob',
+    metadata: { name: 'nixie-backup', namespace: 'assistant' },
+    spec: {
+      schedule: '30 2 * * *',
+      timeZone: 'Europe/Oslo',
+      suspend: false,
+      concurrencyPolicy: 'Forbid',
+      jobTemplate: {
+        spec: {
+          backoffLimit: 2,
+          template: {
+            spec: {
+              restartPolicy: 'OnFailure',
+              securityContext: {
+                runAsNonRoot: true,
+                runAsUser: 10_001,
+                runAsGroup: 10_001,
+                fsGroup: 10_001,
+                seccompProfile: { type: 'RuntimeDefault' },
+              },
+              automountServiceAccountToken: false,
+              imagePullSecrets: [{ name: 'registry-pull' }],
+              containers: [
+                {
+                  name: 'backup',
+                  image:
+                    'ghcr.io/example/backup:1.0.0@sha256:3333333333333333333333333333333333333333333333333333333333333333',
+                  command: ['/bin/sh', '/opt/nixie-backup/backup.sh'],
+                  args: ['backup'],
+                  env: [
+                    { name: 'STATE_DIR', value: '/state' },
+                    { name: 'HOME', value: '/tmp' },
+                  ],
+                  envFrom: [{ secretRef: { name: 'nixie-backup' } }],
+                  volumeMounts: [
+                    { name: 'state', mountPath: '/state' },
+                    { name: 'script', mountPath: '/opt/nixie-backup', readOnly: true },
+                    { name: 'tmp', mountPath: '/tmp' },
+                  ],
+                  resources: {
+                    requests: { cpu: '50m', memory: '64Mi' },
+                    limits: { memory: '256Mi' },
+                  },
+                  securityContext: {
+                    allowPrivilegeEscalation: false,
+                    capabilities: { drop: ['ALL'] },
+                  },
+                },
+              ],
+              volumes: [
+                { name: 'state', persistentVolumeClaim: { claimName: 'data-nixie-0' } },
+                { name: 'script', configMap: { name: 'nixie-backup-script' } },
+                { name: 'tmp', emptyDir: {} },
+              ],
+            },
+          },
+        },
+      },
+    },
+  });
+});
+
+test("it registers the backup's environment as a secret in a Secret that the restore Job names", async () => {
+  const ctx = await setupTest();
+
+  createNixie('nixie', {
+    namespace: 'assistant',
+    image:
+      'ghcr.io/example/nixie:1.2.3@sha256:1111111111111111111111111111111111111111111111111111111111111111',
+    config: 'models: {}\n',
+    secretsFile: 'sops: {}\n',
+    ageKey: 'AGE-SECRET-KEY-1EXAMPLE',
+    definitions: {
+      repository: 'example/assistant-definitions',
+      ref: 'live',
+      deployKey: 'an ssh key for tests',
+    },
+    storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
+    backup: {
+      image:
+        'ghcr.io/example/backup:1.0.0@sha256:3333333333333333333333333333333333333333333333333333333333333333',
+      pullSecret: 'registry-pull',
+      script: '#!/bin/sh\necho backup\n',
+      schedule: '30 2 * * *',
+      timeZone: 'Europe/Oslo',
+      environment: {
+        RESTIC_REPOSITORY: 's3:https://backups.example.test/assistant',
+        RESTIC_PASSWORD: 'a restic password for tests',
+      },
+    },
+  });
+
+  const env = await ctx.stub.whenRegistered('kubernetes:core/v1:Secret::nixie-backup');
+
+  expect(env).toStrictEqual({
+    apiVersion: 'v1',
+    kind: 'Secret',
+    metadata: { name: 'nixie-backup', namespace: 'assistant' },
+    stringData: {
+      [runtime.specialSigKey]: runtime.specialSecretSig,
+      value: {
+        RESTIC_REPOSITORY: 's3:https://backups.example.test/assistant',
+        RESTIC_PASSWORD: 'a restic password for tests',
+      },
+    },
+  });
+});
+
+test('it registers the backup script as a ConfigMap that the restore Job names', async () => {
+  const ctx = await setupTest();
+
+  createNixie('nixie', {
+    namespace: 'assistant',
+    image:
+      'ghcr.io/example/nixie:1.2.3@sha256:1111111111111111111111111111111111111111111111111111111111111111',
+    config: 'models: {}\n',
+    secretsFile: 'sops: {}\n',
+    ageKey: 'AGE-SECRET-KEY-1EXAMPLE',
+    definitions: {
+      repository: 'example/assistant-definitions',
+      ref: 'live',
+      deployKey: 'an ssh key for tests',
+    },
+    storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
+    backup: {
+      image:
+        'ghcr.io/example/backup:1.0.0@sha256:3333333333333333333333333333333333333333333333333333333333333333',
+      pullSecret: 'registry-pull',
+      script: '#!/bin/sh\necho backup\n',
+      schedule: '30 2 * * *',
+      timeZone: 'Europe/Oslo',
+      environment: { RESTIC_REPOSITORY: 's3:https://backups.example.test/assistant' },
+    },
+  });
+
+  const script = await ctx.stub.whenRegistered('kubernetes:core/v1:ConfigMap::nixie-backup-script');
+
+  expect(script).toStrictEqual({
+    apiVersion: 'v1',
+    kind: 'ConfigMap',
+    metadata: { name: 'nixie-backup-script', namespace: 'assistant' },
+    data: { 'backup.sh': '#!/bin/sh\necho backup\n' },
+  });
+});
+
+test('it registers no backup resource when the deployment sets no backup', async () => {
+  const ctx = await setupTest();
+
+  const transformation = mock<ResourceTransformation>();
+
+  createNixie(
+    'nixie',
+    {
+      namespace: 'assistant',
+      image:
+        'ghcr.io/example/nixie:1.2.3@sha256:1111111111111111111111111111111111111111111111111111111111111111',
+      config: 'models: {}\n',
+      secretsFile: 'sops: {}\n',
+      ageKey: 'AGE-SECRET-KEY-1EXAMPLE',
+      definitions: {
+        repository: 'example/assistant-definitions',
+        ref: 'live',
+        deployKey: 'an ssh key for tests',
+      },
+      storageClassName: 'local-retain',
+      web: {
+        image:
+          'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+      },
+    },
+    { transformations: [transformation] },
+  );
+
+  await ctx.stub.whenRegistered('kubernetes:apps/v1:Deployment::nixie-web');
+
+  expect(transformation.mock.calls.map(([args]) => `${args.type}::${args.name}`)).toStrictEqual([
+    'heynixie:k8s:Nixie::nixie',
+    'kubernetes:core/v1:Service::nixie',
+    'kubernetes:core/v1:ConfigMap::nixie-config',
+    'kubernetes:core/v1:Secret::nixie-secrets',
+    'kubernetes:core/v1:Secret::nixie-definitions-key',
+    'kubernetes:apps/v1:StatefulSet::nixie',
+    'kubernetes:core/v1:Service::nixie-web',
+    'kubernetes:apps/v1:Deployment::nixie-web',
   ]);
 });
