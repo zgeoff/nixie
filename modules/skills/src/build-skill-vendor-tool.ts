@@ -2,7 +2,6 @@ import type {
   DefinitionsRepo,
   ParseProblem,
   ParsedSkill,
-  SizeLimits,
   SkillDocument,
 } from '@heynixie/definitions';
 import {
@@ -26,8 +25,6 @@ export interface SkillVendorContext {
   readonly repo: DefinitionsRepo;
 
   readonly readReviewer: () => RunCheck | null;
-
-  readonly limits?: SizeLimits;
 }
 
 export function buildSkillVendorTool(context: SkillVendorContext): ToolDefinition {
@@ -83,7 +80,6 @@ export function buildSkillVendorTool(context: SkillVendorContext): ToolDefinitio
 }
 
 async function runSkillVendor(context: SkillVendorContext, call: ToolCall): Promise<ToolOutcome> {
-  const limits = context.limits ?? defaultSizeLimits;
   const input = parseSkillVendorInput(call.input);
 
   if (input.status === 'refused') {
@@ -99,7 +95,7 @@ async function runSkillVendor(context: SkillVendorContext, call: ToolCall): Prom
     };
   }
 
-  const read = await readGitHubSkill(context.readPage, input.source, limits);
+  const read = await readGitHubSkill(context.readPage, input.source, defaultSizeLimits);
 
   if (read.status === 'refused') {
     return { status: 'error', message: read.reason };
@@ -120,7 +116,7 @@ async function runSkillVendor(context: SkillVendorContext, call: ToolCall): Prom
   }
 
   const name = document.frontmatter.name;
-  const checked = checkSkillFiles(name, read.skill.files, limits);
+  const checked = checkSkillFiles(name, read.skill.files);
 
   if (isProblemList(checked)) {
     return { status: 'error', message: renderProblems(checked) };
