@@ -36,11 +36,11 @@ hash as both its revision and its probe token.
 A git-sync sidecar checks each commit of the definitions repo out as a linked git worktree, and the
 path source reads that commit from the files git keeps beside the checkout, without running git.
 When the root resolves to a linked worktree whose HEAD holds a bare commit, the commit becomes the
-revision, and the probe token joins the commit to the content hash, so a new commit over the same
-files seeds again. The source names the repo by the origin URL in the repo's git config, with any
-user name, password, query and fragment removed, because a sync can carry its credential in that
-URL. A checkout on a branch, or a directory with no git file, keeps the content hash as its revision
-and names no repo.
+revision. The source names the repo by the origin URL in the repo's git config, with any user name,
+password, query and fragment removed, because a sync can carry its credential in that URL. The probe
+token joins the commit and the repo to the content hash, so a new commit or a new origin over the
+same files seeds again. A checkout on a branch, or a directory with no git file, keeps the content
+hash as its revision and names no repo.
 
 A source reads only the known definitions paths: the manifest and the persona at the root, and the
 jobs, rules and skills folders. It skips every other entry at the root by name, without reading or

@@ -25,7 +25,7 @@ export function createPathSource(options: PathSourceOptions): DefinitionsSource 
 
       return snapshot.revision === snapshot.contentHash
         ? snapshot.contentHash
-        : `${snapshot.revision}:${snapshot.contentHash}`;
+        : JSON.stringify([snapshot.revision, snapshot.contentHash, snapshot.repository]);
     },
     snapshot: () => readPathSnapshot(options.directory, limits),
   };

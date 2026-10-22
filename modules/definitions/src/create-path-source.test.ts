@@ -311,19 +311,69 @@ test('it leaves the credentials and the query out of the repository it names', a
   expect(snapshot.repository).toBe('https://git.example.test/kestrel-labs/wren-definitions');
 });
 
-test('it keeps an scp-style origin as git wrote it', async () => {
+test.each([
+  [
+    'a quoted URL with a comment after it',
+    'url = "https://sync-bot:pa55-word@git.example.test/kestrel-labs/wren-definitions" # sync',
+    'https://git.example.test/kestrel-labs/wren-definitions',
+  ],
+  [
+    'a URL with a semicolon comment',
+    'url = https://sync-bot:pa55-word@git.example.test/kestrel-labs/wren-definitions ; sync',
+    'https://git.example.test/kestrel-labs/wren-definitions',
+  ],
+  [
+    'a URL split into quoted runs',
+    'url = "https://sync-bot:pa55-word@"git.example.test/kestrel-labs/wren-definitions',
+    'https://git.example.test/kestrel-labs/wren-definitions',
+  ],
+  [
+    'an scp-style address with a password',
+    'url = sync-bot:pa55-word@git.example.test:kestrel-labs/wren-definitions.git',
+    'git.example.test:kestrel-labs/wren-definitions.git',
+  ],
+  [
+    'an scp-style address',
+    'url = git@git.example.test:kestrel-labs/wren-definitions.git',
+    'git.example.test:kestrel-labs/wren-definitions.git',
+  ],
+])('it names the repository with no credentials from %s', async (_, line, repository) => {
   const ctx = await setupTest();
 
   const worktree = await createStubGitSyncWorktree(ctx.directory, {
     commit: '9d4e2b7a1c6f0e8d3b5a7c9e1f2d4b6a8c0e3f71',
-    config: '[remote "origin"]\n\turl = git@git.example.test:kestrel-labs/wren-definitions.git\n',
+    config: `[remote "origin"] # the sync remote\n\t${line}\n`,
   });
 
   await writeFile(join(worktree, 'persona.md'), '# Persona\n');
 
   const snapshot = await createPathSource({ directory: join(ctx.directory, 'current') }).snapshot();
 
-  expect(snapshot.repository).toBe('git@git.example.test:kestrel-labs/wren-definitions.git');
+  expect(snapshot.repository).toBe(repository);
+});
+
+test('it probes with a token that changes when the origin changes over the same commit', async () => {
+  const ctx = await setupTest();
+
+  const worktree = await createStubGitSyncWorktree(ctx.directory, {
+    commit: '9d4e2b7a1c6f0e8d3b5a7c9e1f2d4b6a8c0e3f71',
+    config: '[remote "origin"]\n\turl = https://git.example.test/kestrel-labs/wren-definitions\n',
+  });
+
+  await writeFile(join(worktree, 'persona.md'), '# Persona\n');
+
+  const source = createPathSource({ directory: join(ctx.directory, 'current') });
+
+  const before = await source.probe();
+
+  await writeFile(
+    join(ctx.directory, '.git', 'config'),
+    '[remote "origin"]\n\turl = https://git.example.test/finch-co/wren-definitions\n',
+  );
+
+  const after = await source.probe();
+
+  expect(after).not.toBe(before);
 });
 
 test('it takes the commit with no repository from a worktree whose repo has no origin', async () => {

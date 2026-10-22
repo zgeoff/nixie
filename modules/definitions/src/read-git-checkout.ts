@@ -67,22 +67,55 @@ function parseOriginURL(config: string): string | null {
 
   for (const line of config.split(/\r?\n/u).map((text) => text.trim())) {
     if (line.startsWith('[')) {
-      isInOrigin = /^\[\s*remote\s+"origin"\s*\]$/iu.test(line);
+      isInOrigin = /^\[\s*remote\s+"origin"\s*\]\s*(?:[#;].*)?$/iu.test(line);
     }
 
-    const url = isInOrigin ? /^url\s*=\s*(?<value>.+)$/iu.exec(line)?.groups?.['value'] : undefined;
+    const raw = isInOrigin ? /^url\s*=(?<value>.*)$/iu.exec(line)?.groups?.['value'] : undefined;
+    const url = raw === undefined ? '' : parseConfigValue(raw);
 
-    if (url !== undefined) {
-      return url.replace(/^"(?<quoted>.*)"$/u, '$<quoted>');
+    if (url !== '') {
+      return url;
     }
   }
 
   return null;
 }
 
+const configEscapes = new Map([
+  ['n', '\n'],
+  ['t', '\t'],
+  ['b', '\b'],
+]);
+
+// A git config value can hold quoted runs, escapes and a trailing comment, and a URL read without
+// that parse keeps them, fails URL parsing and skips the redaction.
+function parseConfigValue(raw: string): string {
+  let value = '';
+  let isQuoted = false;
+
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw.charAt(index);
+
+    if (char === '\\') {
+      index += 1;
+      value += configEscapes.get(raw.charAt(index)) ?? raw.charAt(index);
+    } else if (char === '"') {
+      isQuoted = !isQuoted;
+    } else if (!isQuoted && (char === '#' || char === ';')) {
+      break;
+    } else {
+      value += char;
+    }
+  }
+
+  return value.trim();
+}
+
+// An scp-style address such as `user:secret@host:path` parses as a URL whose scheme is the user
+// name, so only a value with `://` goes through URL parsing.
 function toRedactedURL(origin: string): string {
-  if (!URL.canParse(origin)) {
-    return origin;
+  if (!origin.includes('://') || !URL.canParse(origin)) {
+    return origin.replace(/^(?<scheme>[^/@]*:\/\/)?[^/@]*@/u, '$<scheme>');
   }
 
   const url = new URL(origin);
