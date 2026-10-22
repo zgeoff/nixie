@@ -1,4 +1,5 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import { buildRecordedCommits } from '@heynixie/log/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { claimTask } from './claim-task';
 import { createTask } from './create-task';
@@ -128,6 +129,28 @@ test('it stops waking on commits once stopped', async () => {
   await createTask(ctx.context, 'sweep the porch');
 
   expect(ran).not.toHaveBeenCalled();
+});
+
+test('it removes its commit listener once stopped', async () => {
+  const ctx = await setupTest();
+
+  const recorded = buildRecordedCommits();
+
+  const runners = startTaskRunners(
+    {
+      ...ctx.context,
+      log: { ...ctx.context.log, writer: { ...ctx.context.log.writer, commits: recorded.commits } },
+    },
+    {
+      runStep: () => Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
+      onStepErrored: () => {},
+      onError: () => {},
+    },
+  );
+
+  await runners.stop(0);
+
+  expect(recorded.calls).toStrictEqual(['add commit', 'remove commit']);
 });
 
 test('it reports a step that throws once its error record commits', async () => {
