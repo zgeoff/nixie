@@ -804,6 +804,19 @@ test('it never runs the memory consolidator the configuration turns off', async 
   expect(nixie.readOutput()).not.toInclude('memory_consolidator.started');
 }, 60_000);
 
+test('it reports the memory writer and consolidator the configuration turns off as off to a device', async () => {
+  const nixie = await startTestNixie({
+    extraConfig: ['memory_writer: { enabled: false }', 'memory_consolidation: { enabled: false }'],
+  });
+
+  const api = await createTestClient(nixie);
+  const writer = await api.client.memory.writerStatus();
+  const consolidator = await api.client.memory.consolidatorStatus();
+
+  expect(writer.isEnabled).toBeFalse();
+  expect(consolidator).toStrictEqual({ isEnabled: false });
+}, 60_000);
+
 test('it queues one action for the log-only connector at start, which the action runners log', async () => {
   const nixie = await startTestNixie();
 
