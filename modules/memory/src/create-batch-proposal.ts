@@ -13,6 +13,8 @@ export interface ReviewedWrite {
   readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
 
   readonly text: string;
+
+  readonly until?: number | null;
 }
 
 export interface BatchProposal {
@@ -80,5 +82,6 @@ function buildBatchProposalPlan(reviewed: ReviewedWrite, batch: GateBatch): Prop
     ...(reviewed.write.op === 'remember' && reviewed.write.target === null
       ? { subject: reviewed.write.subject }
       : {}),
+    ...(reviewed.until === undefined ? {} : { until: reviewed.until }),
   };
 }

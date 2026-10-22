@@ -33,6 +33,7 @@ async function setupTest() {
           failure: 'error',
         }),
       clock: api.clock,
+      defaultZone: 'UTC',
       findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
@@ -68,6 +69,23 @@ test('#memory.listProposals lists a proposal whose review reason a later release
 
   expect(listed.proposals).toMatchObject([
     { reason: 'other', text: 'Keeps a rowing boat at the lake' },
+  ]);
+});
+
+test('#memory.listProposals gives the end time a proposal sets as a date', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  await ctx.memory.writes.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2099-01-04T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  const listed = await buildTestClient(ctx.url, laptop.token).memory.listProposals();
+
+  expect(listed.proposals).toMatchObject([
+    { text: 'Is in Lisbon this week', until: new Date('2099-01-04T23:59:59Z') },
   ]);
 });
 
@@ -131,6 +149,7 @@ test('#memory.listProposals lists each pending proposal with its review reason, 
           message: { status: 'readable', text: 'I signed up for the harbour swim.' },
         },
         image: null,
+        until: null,
       },
     ],
   });

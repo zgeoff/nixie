@@ -1,4 +1,5 @@
 import { match } from 'ts-pattern';
+import { formatZonedTime } from './format-zoned-time';
 import type { MemoryProposal } from './gate-types';
 import type { MemorySubject } from './types';
 import type { BatchMessage } from './writer-types';
@@ -29,6 +30,8 @@ export interface WriterPromptInput {
   readonly messages: readonly BatchMessage[];
 
   readonly names: SpeakerNames;
+
+  readonly defaultZone: string;
 }
 
 export function renderWriterPrompt(input: WriterPromptInput): string {
@@ -44,7 +47,7 @@ export function renderWriterPrompt(input: WriterPromptInput): string {
   const messages = input.messages
     .map(
       (message) =>
-        `[${String(message.sequence)}] ${formatDate(message.recordedAt)} ${formatSpeaker(input.names, message.role)}: ${message.shown}`,
+        `[${String(message.sequence)}] ${formatZonedTime(message.recordedAt, message.timeZone ?? input.defaultZone)} ${formatSpeaker(input.names, message.role)}: ${message.shown}`,
     )
     .join('\n\n');
 
@@ -54,10 +57,6 @@ export function renderWriterPrompt(input: WriterPromptInput): string {
       : input.proposals.map((proposal) => renderProposal(proposal)).join('\n');
 
   return `${heading}\n${items}\n\nPending proposals, waiting for the owner's review:\n${proposals}\n\nMessages in this batch:\n\n${messages}`;
-}
-
-function formatDate(at: number): string {
-  return new Date(at).toISOString().slice(0, 10);
 }
 
 function formatSpeaker(names: SpeakerNames, role: BatchMessage['role']): string {

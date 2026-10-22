@@ -34,6 +34,7 @@ export async function startTestMemoryStore(
           failure: 'error',
         }),
       clock: context.clock,
+      defaultZone: 'UTC',
       findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,

@@ -50,6 +50,7 @@ test('it reads your messages and the replies after the sequence, oldest first', 
       imageMarkers: [],
       recordedAt: message.recordedAt.getTime(),
       arrivedAt: null,
+      timeZone: null,
     },
     {
       sequence: reply.sequence,
@@ -58,6 +59,7 @@ test('it reads your messages and the replies after the sequence, oldest first', 
       spans: [],
       recordedAt: reply.recordedAt.getTime(),
       arrivedAt: null,
+      timeZone: null,
     },
   ]);
 });

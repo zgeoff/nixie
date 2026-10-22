@@ -25,6 +25,8 @@ export interface ProposedChange {
   readonly subject?: MemorySubject;
 
   readonly checks?: JSONObject | null;
+
+  readonly until?: number | null;
 }
 
 const checksColumn = z.record(z.string(), z.json());
@@ -64,17 +66,25 @@ export async function readMatchingProposal(
     return isSameImage(findImageSource(checks), image);
   });
 
-  return readSameText(parts, samePhoto, normalizeFactText(change.text));
+  return readSameText(parts, samePhoto, {
+    text: normalizeFactText(change.text),
+    until: change.until ?? null,
+  });
 }
 
 function isSameImage(left: ImageRef | null, right: ImageRef | null): boolean {
   return left?.messageSequence === right?.messageSequence && left?.image === right?.image;
 }
 
+interface WantedText {
+  readonly text: string;
+  readonly until: number | null;
+}
+
 async function readSameText(
   parts: Pick<StoreParts, 'context'>,
   rows: readonly MemoryProposalRow[],
-  wanted: string,
+  wanted: WantedText,
 ): Promise<MemoryProposalRow | null> {
   if (rows.length === 0) {
     return null;
@@ -85,25 +95,28 @@ async function readSameText(
     rows.map((row) => row.item_id),
   );
 
-  const texts = await Promise.all(
-    rows.map(async (row) => {
+  const proposalTexts = await Promise.all(
+    rows.map((row) => {
       const key = keys.get(row.item_id);
 
       if (key === null || key === undefined) {
         return null;
       }
 
-      const opened = await decodeProposalText(key, row.proposal_id, row.sealed);
-
-      return opened.text;
+      return decodeProposalText(key, row.proposal_id, row.sealed);
     }),
   );
 
   return (
     rows.find((_, index) => {
-      const text = texts[index];
+      const opened = proposalTexts[index];
 
-      return text !== null && text !== undefined && normalizeFactText(text) === wanted;
+      return (
+        opened !== null &&
+        opened !== undefined &&
+        normalizeFactText(opened.text) === wanted.text &&
+        (opened.until ?? null) === wanted.until
+      );
     }) ?? null
   );
 }

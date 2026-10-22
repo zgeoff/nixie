@@ -26,6 +26,7 @@ async function setupTest() {
     gate: {
       check: () => Promise.resolve(buildMockCheckerAnswer()),
       clock: api.clock,
+      defaultZone: 'UTC',
       findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,

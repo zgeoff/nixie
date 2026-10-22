@@ -24,6 +24,7 @@ test('it builds a default entry for an item created at version 1', () => {
       status: 'readable',
       subject: 'owner',
       text: expect.toBeString(),
+      until: null,
       version: 1,
     },
   });

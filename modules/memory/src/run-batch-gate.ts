@@ -12,6 +12,8 @@ import type { SourceMessage, StagedWrite } from './writer-types';
 export interface BatchGateResult {
   readonly gate: ContentGateResult;
   readonly text: string;
+
+  readonly until?: number | null;
 }
 
 export async function runBatchGate(
@@ -29,10 +31,11 @@ export async function runBatchGate(
     return null;
   }
 
+  const until = write.until === undefined ? (item?.until ?? null) : write.until;
   const early = findEarlyReview(write.text);
 
   if (early !== null) {
-    return { gate: early, text: write.text };
+    return { gate: early, text: write.text, until };
   }
 
   const isPinned = item?.is_pinned === 1;
@@ -47,11 +50,12 @@ export async function runBatchGate(
       eventID: source.sequence,
       isPinned,
       thread: memoryWriterTaskID,
+      until: write.until ?? null,
     },
     { quote: write.quote, found },
   );
 
-  return { gate, text: write.text };
+  return { gate, text: write.text, until };
 }
 
 function requireEditTarget(parts: StoreParts, target: VersionRef): Promise<MemoryItemRow> {

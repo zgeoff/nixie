@@ -5,8 +5,20 @@ test('it stages a new item that cites one of your messages in the batch', () => 
   const staging = createWriterStaging();
 
   staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I play the cello', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I play the cello',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   const result = staging.stage({
@@ -21,12 +33,149 @@ test('it stages a new item that cites one of your messages in the batch', () => 
   expect(result).toStrictEqual({ status: 'staged' });
 });
 
+test('it stages a new item with the end time it is given', () => {
+  const staging = createWriterStaging();
+
+  const staged = staging.open({
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: "I'm in Lisbon this week",
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: 'Europe/Lisbon',
+        },
+      ],
+    ]),
+    shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
+  });
+
+  staging.stage({
+    op: 'remember',
+    subject: 'owner',
+    text: 'The owner is in Lisbon this week.',
+    quote: "I'm in Lisbon this week",
+    sourceSequence: 7,
+    itemID: null,
+    until: Date.parse('2026-10-25T23:59:59Z'),
+  });
+
+  expect(staged.close()).toStrictEqual([
+    {
+      op: 'remember',
+      subject: 'owner',
+      text: 'The owner is in Lisbon this week.',
+      quote: "I'm in Lisbon this week",
+      sourceSequence: 7,
+      target: null,
+      until: Date.parse('2026-10-25T23:59:59Z'),
+    },
+  ]);
+});
+
+test('it refuses a write whose end time passed before the batch ran, and stages nothing', () => {
+  const staging = createWriterStaging();
+
+  const staged = staging.open({
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: "I'm in Lisbon today",
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: 'Europe/Lisbon',
+        },
+      ],
+    ]),
+    shown: new Map(),
+    startedAt: Date.parse('2026-10-20T10:00:00Z'),
+  });
+
+  const result = staging.stage({
+    op: 'remember',
+    subject: 'owner',
+    text: 'The owner is in Lisbon today.',
+    quote: "I'm in Lisbon today",
+    sourceSequence: 7,
+    itemID: null,
+    until: Date.parse('2026-10-19T22:59:59Z'),
+  });
+
+  expect(result).toStrictEqual({
+    status: 'refused',
+    reason:
+      'that end time passed before this batch ran, so the fact has already lapsed; stage nothing for it',
+  });
+
+  expect(staged.close()).toStrictEqual([]);
+});
+
+test('it stages an edit that clears the end time of its item', () => {
+  const staging = createWriterStaging();
+
+  const staged = staging.open({
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: "I'm staying in Lisbon for good",
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
+    shown: new Map([['item-trip', { version: 2, subject: 'owner' }]]),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
+  });
+
+  staging.stage({
+    op: 'remember',
+    subject: 'owner',
+    text: 'The owner lives in Lisbon.',
+    quote: "I'm staying in Lisbon for good",
+    sourceSequence: 7,
+    itemID: 'item-trip',
+    until: null,
+  });
+
+  expect(staged.close()).toStrictEqual([
+    {
+      op: 'remember',
+      subject: 'owner',
+      text: 'The owner lives in Lisbon.',
+      quote: "I'm staying in Lisbon for good",
+      sourceSequence: 7,
+      target: { itemID: 'item-trip', version: 2 },
+      until: null,
+    },
+  ]);
+});
+
 test('it returns the staged writes in order when the batch closes', () => {
   const staging = createWriterStaging();
 
   const staged = staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I moved to Marlow Vale', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I moved to Marlow Vale',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map([['item-home', { version: 3, subject: 'owner' }]]),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   staging.stage({
@@ -71,8 +220,20 @@ test('it binds a retirement to the version the session was shown', () => {
   const staging = createWriterStaging();
 
   const staged = staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I sold the bike', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I sold the bike',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map([['item-bike', { version: 2, subject: 'owner' }]]),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   staging.stage({ op: 'retire', quote: 'I sold the bike', sourceSequence: 7, itemID: 'item-bike' });
@@ -91,8 +252,20 @@ test('it binds a change to an item a recall showed the session', () => {
   const staging = createWriterStaging();
 
   const staged = staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I sold the bike', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I sold the bike',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   staging.show('item-bike', { version: 5, subject: 'owner' }, 'The owner rides a red bike.');
@@ -112,8 +285,20 @@ test('it refuses a write citing a message outside the batch', () => {
   const staging = createWriterStaging();
 
   staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I play the cello', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I play the cello',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   const result = staging.stage({
@@ -135,8 +320,20 @@ test('it refuses a change to an item the session was never shown', () => {
   const staging = createWriterStaging();
 
   staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I play the cello', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I play the cello',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   const result = staging.stage({
@@ -158,8 +355,20 @@ test('it refuses a retirement of an item the session was never shown', () => {
   const staging = createWriterStaging();
 
   staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I sold the bike', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I sold the bike',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   const result = staging.stage({
@@ -179,8 +388,20 @@ test('it refuses a second change to the same item in a batch', () => {
   const staging = createWriterStaging();
 
   staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I sold the bike', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I sold the bike',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map([['item-bike', { version: 2, subject: 'owner' }]]),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   staging.stage({ op: 'retire', quote: 'I sold the bike', sourceSequence: 7, itemID: 'item-bike' });
@@ -219,8 +440,20 @@ test('it refuses a write once the batch closes', () => {
   const staging = createWriterStaging();
 
   const staged = staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I moved', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I moved',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   staged.close();
@@ -241,8 +474,20 @@ test('it keeps the text of each item a recall showed the batch', () => {
   const staging = createWriterStaging();
 
   const staged = staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I sold the bike', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I sold the bike',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   staging.show('item-bike', { version: 5, subject: 'owner' }, 'The owner rides a red bike.');
@@ -254,8 +499,20 @@ test('it refuses an edit that changes the subject of its item', () => {
   const staging = createWriterStaging();
 
   staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'Our deal is tea on Fridays', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'Our deal is tea on Fridays',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map([['item-deal', { version: 1, subject: 'shared' }]]),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   const result = staging.stage({
@@ -277,8 +534,20 @@ test('it binds an edit of a shared item that keeps its subject', () => {
   const staging = createWriterStaging();
 
   const staged = staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'Our deal is tea on Fridays now', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'Our deal is tea on Fridays now',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map([['item-deal', { version: 1, subject: 'shared' }]]),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   staging.stage({
@@ -306,8 +575,20 @@ test('it keeps each flag in the order the session flagged it, and stages no writ
   const staging = createWriterStaging();
 
   const staged = staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'You love puns, admit it', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'You love puns, admit it',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   staging.flag({ text: 'The assistant enjoys puns.', sourceSequence: 7 });
@@ -325,8 +606,20 @@ test('it refuses a flag citing a message outside the batch', () => {
   const staging = createWriterStaging();
 
   staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'You love puns, admit it', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'You love puns, admit it',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   const result = staging.flag({ text: 'The assistant enjoys puns.', sourceSequence: 9 });
@@ -348,13 +641,37 @@ test('it keeps a newer batch open when an older batch closes', () => {
   const staging = createWriterStaging();
 
   const older = staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I moved', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I moved',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I moved', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I moved',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   older.close();

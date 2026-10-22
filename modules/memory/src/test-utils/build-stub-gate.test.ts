@@ -13,7 +13,13 @@ test('it applies a write whose quote is in its source, with the quote as the evi
       sourceSequence: 12,
       target: null,
     },
-    { sequence: 12, text: 'I moved to 4 Elm Row.', spans: [] },
+    {
+      sequence: 12,
+      text: 'I moved to 4 Elm Row.',
+      spans: [],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
+    },
     { bounds: { start: 0, end: 12 }, model: 'claude-test-1' },
   );
 
@@ -38,7 +44,13 @@ test('it holds a write whose quote is not in its source as a proposal', async ()
       sourceSequence: 12,
       target: null,
     },
-    { sequence: 12, text: 'I moved to 4 Elm Row.', spans: [] },
+    {
+      sequence: 12,
+      text: 'I moved to 4 Elm Row.',
+      spans: [],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
+    },
     { bounds: { start: 0, end: 12 }, model: 'claude-test-1' },
   );
 
@@ -67,7 +79,13 @@ test('it holds a write with an empty quote as a proposal', async () => {
       sourceSequence: 12,
       target: { itemID: 'item-a', version: 1 },
     },
-    { sequence: 12, text: 'I moved to 4 Elm Row.', spans: [] },
+    {
+      sequence: 12,
+      text: 'I moved to 4 Elm Row.',
+      spans: [],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
+    },
     { bounds: { start: 0, end: 12 }, model: 'claude-test-1' },
   );
 

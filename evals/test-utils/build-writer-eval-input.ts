@@ -25,11 +25,13 @@ export interface WriterEvalInput {
     { readonly version: number; readonly subject: 'owner' | 'shared' }
   >;
 
+  readonly startedAt: number;
+
   readonly hash: string;
 }
 
 export function buildWriterEvalInput(
-  cases: Pick<WriterCases, 'persona' | 'ownerName' | 'assistantName'>,
+  cases: Pick<WriterCases, 'persona' | 'ownerName' | 'assistantName' | 'timeZone'>,
   writerCase: WriterCase,
   tools: readonly WriterToolSpec[],
 ): WriterEvalInput {
@@ -41,6 +43,7 @@ export function buildWriterEvalInput(
     role: message.role,
     shown: message.text,
     recordedAt: Date.UTC(2026, 9, 14, 9, index),
+    timeZone: message.role === 'owner' ? cases.timeZone : null,
   }));
 
   const prompt = renderWriterPrompt({
@@ -49,6 +52,7 @@ export function buildWriterEvalInput(
     proposals: [],
     messages,
     names,
+    defaultZone: cases.timeZone,
   });
 
   const evalTools = tools.map((tool) => ({
@@ -63,7 +67,13 @@ export function buildWriterEvalInput(
         ? [
             [
               message.sequence,
-              { sequence: message.sequence, text: message.shown, spans: [] },
+              {
+                sequence: message.sequence,
+                text: message.shown,
+                spans: [],
+                sentAt: message.recordedAt,
+                timeZone: message.timeZone,
+              },
             ] as const,
           ]
         : [],
@@ -78,5 +88,13 @@ export function buildWriterEvalInput(
     .update(JSON.stringify({ systemPrompt, prompt, tools: evalTools }))
     .digest('hex');
 
-  return { systemPrompt, prompt, tools: evalTools, sources, shown, hash: `sha256:${hash}` };
+  return {
+    systemPrompt,
+    prompt,
+    tools: evalTools,
+    sources,
+    shown,
+    startedAt: Date.UTC(2026, 9, 14, 10),
+    hash: `sha256:${hash}`,
+  };
 }

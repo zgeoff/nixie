@@ -240,10 +240,13 @@ test('it proposes a write when the checker times out', async () => {
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'checker_unreachable' });
 });
 
-test('it gives the checker only your one message and the memory text', async () => {
+test('it gives the checker your one message with when and where you sent it, and the memory text', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
 
-  const memory = await startTestMemory({ gate: { check } });
+  const memory = await startTestMemory({
+    gate: { check },
+    logClock: buildTestClock(Date.parse('2026-10-19T08:14:00Z')),
+  });
 
   await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
@@ -258,6 +261,7 @@ test('it gives the checker only your one message and the memory text', async () 
       { start: 0, end: 52, source: 'typed' },
       { start: 52, end: 66, source: 'pasted' },
     ],
+    timeZone: 'Europe/London',
   });
 
   await memory.store.writes.remember({
@@ -269,6 +273,7 @@ test('it gives the checker only your one message and the memory text', async () 
   expect(check).toHaveBeenCalledExactlyOnceWith({
     prompt: expect.toStartWith('You check one candidate memory'),
     input:
+      '<sent>Mon 19 Oct 2026, 09:14, Europe/London (UTC+01:00)</sent>\n\n' +
       '<owner_message>\n' +
       '«evidence»My new number is 0400 000 002«/evidence», the old one is gone: «pasted»see screenshot«/pasted»\n' +
       '</owner_message>\n\n' +
@@ -556,6 +561,254 @@ test('it refuses an edit of a version that moved on before any check runs', asyn
 
   expect(edit).rejects.toMatchObject({ code: 'STALE_VERSION' });
   expect(check).not.toHaveBeenCalled();
+});
+
+test('it applies a write with an end time at once when the checker confirms its time limit, and shows the checker that end time', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
+
+  const memory = await startTestMemory({
+    gate: { check, clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+    logClock: buildTestClock(Date.parse('2026-10-19T08:14:00Z')),
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: "I'm in Lisbon this week",
+    spans: [{ start: 0, end: 23, source: 'typed' }],
+    timeZone: 'Europe/Lisbon',
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Is in Lisbon this week',
+    quote: "I'm in Lisbon this week",
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(outcome.status === 'applied');
+
+  const item = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('until')
+    .where('item_id', '=', outcome.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(item.until).toBe(Date.parse('2026-10-25T23:59:59Z'));
+
+  expect(check).toHaveBeenCalledExactlyOnceWith({
+    prompt: expect.toStartWith('You check one candidate memory'),
+    input:
+      '<sent>Mon 19 Oct 2026, 09:14, Europe/Lisbon (UTC+01:00)</sent>\n\n' +
+      "<owner_message>\n«evidence»I'm in Lisbon this week«/evidence»\n</owner_message>\n\n" +
+      '<candidate_memory>\nIs in Lisbon this week\n</candidate_memory>\n\n' +
+      '<end_time>Sun 25 Oct 2026, 23:59, Europe/Lisbon (UTC+00:00)</end_time>',
+  });
+});
+
+test('it proposes a write with an end time that the checker does not confirm, and the proposal keeps the end time', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'not_asserted' })),
+      clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')),
+    },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I live in Lisbon',
+    spans: [{ start: 0, end: 16, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Lives in Lisbon',
+    quote: 'I live in Lisbon',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'checker_not_asserted' });
+
+  expect(pending).toMatchObject([
+    { text: 'Lives in Lisbon', until: Date.parse('2026-10-25T23:59:59Z') },
+  ]);
+});
+
+test('it lapses a proposal at its end time when that comes before the lapse window ends', async () => {
+  const memory = await startTestMemory({
+    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+  });
+
+  await memory.store.writes.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(pending).toMatchObject([{ lapseAt: Date.parse('2026-10-25T23:59:59Z') }]);
+});
+
+test('it refuses a write whose end time has passed, before any check runs and with no proposal', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
+  const memory = await startTestMemory({
+    gate: { check, clock: buildTestClock(Date.parse('2026-10-26T08:30:00Z')) },
+  });
+
+  const write = memory.store.writes.remember({
+    text: 'Is in Lisbon this week',
+    quote: "I'm in Lisbon this week",
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  await write.catch(() => {});
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(write).rejects.toMatchObject({ code: 'UNTIL_PASSED' });
+  expect(check).not.toHaveBeenCalled();
+  expect(pending).toStrictEqual([]);
+});
+
+test('it proposes an edit that adds an end time without a quote that backs it', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
+  const memory = await startTestMemory({
+    gate: { check, clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Lives on Elm Street',
+    target: item,
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+
+  expect(pending).toMatchObject([
+    { itemID: item.itemID, targetVersion: 1, until: Date.parse('2026-10-25T23:59:59Z') },
+  ]);
+
+  expect(check).not.toHaveBeenCalled();
+});
+
+test('it keeps the end time of an item that an edit without an end time rewrites', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      check: () => Promise.resolve(buildMockCheckerAnswer()),
+      clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')),
+    },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: "Actually it's Porto this week, not Lisbon",
+    spans: [{ start: 0, end: 41, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Is in Porto this week',
+    quote: "Actually it's Porto this week",
+    target: item,
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(outcome.status === 'applied');
+
+  const version = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .select('until')
+    .where('item_id', '=', item.itemID)
+    .where('version', '=', outcome.version)
+    .executeTakeFirstOrThrow();
+
+  expect(version.until).toBe(Date.parse('2026-10-25T23:59:59Z'));
+});
+
+test('it clears the end time of an item that an edit with a null end time rewrites', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      check: () => Promise.resolve(buildMockCheckerAnswer()),
+      clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')),
+    },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: "Actually I'm staying in Lisbon for good",
+    spans: [{ start: 0, end: 39, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Lives in Lisbon',
+    quote: "I'm staying in Lisbon for good",
+    target: item,
+    until: null,
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(outcome.status === 'applied');
+
+  const version = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .select('until')
+    .where('item_id', '=', item.itemID)
+    .where('version', '=', outcome.version)
+    .executeTakeFirstOrThrow();
+
+  expect(version.until).toBeNull();
+});
+
+test('it keeps writes of the same text with different end times as proposals of their own', async () => {
+  const memory = await startTestMemory({
+    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+  });
+
+  await memory.store.writes.remember({
+    text: 'Is in Lisbon',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  await memory.store.writes.remember({
+    text: 'Is in Lisbon',
+    until: Date.parse('2026-11-01T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(pending.map((proposal) => proposal.until)).toStrictEqual([
+    Date.parse('2026-10-25T23:59:59Z'),
+    Date.parse('2026-11-01T23:59:59Z'),
+  ]);
 });
 
 test('it applies a write under your allow rule with outside content as its source', async () => {

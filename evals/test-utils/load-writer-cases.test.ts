@@ -19,6 +19,7 @@ test('it loads each case with its items, its messages and its rule', async () =>
     persona: 'You are Wren, a calm assistant.',
     ownerName: 'Sam',
     assistantName: 'Wren',
+    timeZone: 'Europe/London',
     cases: [
       {
         id: 'oat-milk',
@@ -27,6 +28,15 @@ test('it loads each case with its items, its messages and its rule', async () =>
         rule: 'owner_item' as const,
         target: null,
         patterns: ['oat milk'],
+      },
+      {
+        id: 'lisbon-week',
+        items: [],
+        messages: [{ role: 'owner' as const, text: "I'm in Lisbon this week." }],
+        rule: 'owner_item' as const,
+        target: null,
+        patterns: ['Lisbon'],
+        until: '2026-10-18T23:59:59+01:00',
       },
     ],
   };
@@ -47,6 +57,7 @@ test('it refuses an item whose subject is self', async () => {
       persona: 'You are Wren, a calm assistant.',
       ownerName: 'Sam',
       assistantName: 'Wren',
+      timeZone: 'Europe/London',
       cases: [
         {
           id: 'oat-milk',
@@ -74,6 +85,7 @@ test('it refuses a case with a rule it does not know', async () => {
       persona: 'You are Wren, a calm assistant.',
       ownerName: 'Sam',
       assistantName: 'Wren',
+      timeZone: 'Europe/London',
       cases: [
         {
           id: 'oat-milk',

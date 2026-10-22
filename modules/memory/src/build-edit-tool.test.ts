@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildTestClock } from '@heynixie/testing';
 import { buildEditTool } from './build-edit-tool';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
@@ -7,6 +8,7 @@ import { makeToolAllowRule } from './test-utils/make-tool-allow-rule';
 import { readItemShortID } from './test-utils/read-item-short-id';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
+import type { MemoryTables } from './types';
 
 test('it applies an edit with no quote under your allow rule on memory.edit', async () => {
   const memory = await startTestMemory({
@@ -34,6 +36,79 @@ test('it applies an edit with no quote under your allow rule on memory.edit', as
     status: 'ok',
     result: { status: 'applied', itemID: shortID, version: 2 },
   });
+});
+
+test('it clears the end time of an item when the edit passes a null end time', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      findAllowRule: makeToolAllowRule('memory.edit'),
+      clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')),
+    },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await buildEditTool(memory.store).run(
+    {
+      callID: 'call-1',
+      tool: 'memory.edit',
+      input: { itemID: item.itemID, version: 1, text: 'Lives in Lisbon', until: null },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['version', 'until'])
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({ version: 2, until: null });
+});
+
+test('it moves the end time of an item to the one the edit passes', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      findAllowRule: makeToolAllowRule('memory.edit'),
+      clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')),
+    },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await buildEditTool(memory.store).run(
+    {
+      callID: 'call-1',
+      tool: 'memory.edit',
+      input: {
+        itemID: item.itemID,
+        version: 1,
+        text: 'Is in Lisbon until Wednesday',
+        until: '2026-10-21T23:59:59+01:00',
+      },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['version', 'until'])
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({ version: 2, until: Date.parse('2026-10-21T22:59:59Z') });
 });
 
 test('it proposes an edit with no quote when your allow rule names only memory.remember', async () => {

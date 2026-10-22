@@ -31,6 +31,8 @@ export interface ProposalPlan {
   readonly group: WriteGroup;
 
   readonly subject?: MemorySubject;
+
+  readonly until?: number | null;
 }
 
 export interface WrittenProposal {

@@ -36,6 +36,7 @@ async function setupTest() {
     getPersona: () => '',
     ownerName: null,
     assistantName: null,
+    defaultZone: 'UTC',
     onError: mock(),
   };
 

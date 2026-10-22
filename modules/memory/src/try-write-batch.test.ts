@@ -33,6 +33,7 @@ async function setupTest() {
     getPersona: () => '',
     ownerName: null,
     assistantName: null,
+    defaultZone: 'UTC',
   };
 
   return { memory, clock, parts };

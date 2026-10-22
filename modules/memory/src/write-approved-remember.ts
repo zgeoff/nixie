@@ -28,6 +28,7 @@ export function writeApprovedRemember(
   const isEdited = answer.editedText !== undefined;
   const evidence = isEdited ? null : parseEvidence(row.evidence);
   const approvalExtras = buildApprovalExtras(parts, row, answer);
+  const until = opened.text.until;
 
   const extras = {
     ...approvalExtras,
@@ -48,6 +49,7 @@ export function writeApprovedRemember(
         ? {}
         : { evidence, evidenceQuote: opened.text.quote }),
       ...(row.is_pinned === 1 ? { isPinned: true } : {}),
+      ...(until === undefined || (until === null && row.target_version === null) ? {} : { until }),
       subject: getRowSubject(row),
     },
     extras,

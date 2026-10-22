@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildCheckerEvalInput } from './build-checker-eval-input';
 
-test('it marks the quote as evidence and each pasted span, then gives the candidate memory', () => {
+test('it gives when the message was sent, marks the quote as evidence and each pasted span, then gives the candidate memory', () => {
   expect(
     buildCheckerEvalInput(
       {
@@ -12,6 +12,8 @@ test('it marks the quote as evidence and each pasted span, then gives the candid
             { start: 0, end: 16, source: 'typed' },
             { start: 16, end: 34, source: 'pasted' },
           ],
+          sentAt: '2026-10-19T08:00:00Z',
+          timeZone: 'Europe/London',
         },
         pairs: [],
       },
@@ -24,8 +26,39 @@ test('it marks the quote as evidence and each pasted span, then gives the candid
       null,
     ),
   ).toBe(
-    '<owner_message>\n«evidence»from my sister«/evidence»: «pasted»We moved to Leeds.«/pasted»\n</owner_message>\n\n' +
+    '<sent>Mon 19 Oct 2026, 09:00, Europe/London (UTC+01:00)</sent>\n\n' +
+      '<owner_message>\n«evidence»from my sister«/evidence»: «pasted»We moved to Leeds.«/pasted»\n</owner_message>\n\n' +
       "<candidate_memory>\nThe owner's sister lives in Leeds.\n</candidate_memory>",
+  );
+});
+
+test('it gives the end time of a pair in the zone the message was sent from', () => {
+  expect(
+    buildCheckerEvalInput(
+      {
+        id: 'lisbon',
+        message: {
+          text: "I'm in Lisbon this week",
+          spans: [{ start: 0, end: 23, source: 'typed' }],
+          sentAt: '2026-10-19T08:00:00Z',
+          timeZone: 'Europe/Lisbon',
+        },
+        pairs: [],
+      },
+      {
+        asserted: true,
+        bucket: 'matching time limit',
+        memory: 'The owner is in Lisbon this week.',
+        quote: "I'm in Lisbon this week",
+        until: '2026-10-25T23:59:59+00:00',
+      },
+      null,
+    ),
+  ).toBe(
+    '<sent>Mon 19 Oct 2026, 09:00, Europe/Lisbon (UTC+01:00)</sent>\n\n' +
+      "<owner_message>\n«evidence»I'm in Lisbon this week«/evidence»\n</owner_message>\n\n" +
+      '<candidate_memory>\nThe owner is in Lisbon this week.\n</candidate_memory>\n\n' +
+      '<end_time>Sun 25 Oct 2026, 23:59, Europe/Lisbon (UTC+00:00)</end_time>',
   );
 });
 
@@ -37,6 +70,8 @@ test('it marks the original words of a quote that matched with its whitespace co
         message: {
           text: 'I am  vegetarian. Since May.',
           spans: [{ start: 0, end: 28, source: 'typed' }],
+          sentAt: '2026-10-19T08:00:00Z',
+          timeZone: 'Europe/London',
         },
         pairs: [],
       },
@@ -49,7 +84,8 @@ test('it marks the original words of a quote that matched with its whitespace co
       null,
     ),
   ).toBe(
-    '<owner_message>\n«evidence»I am  vegetarian.«/evidence» Since May.\n</owner_message>\n\n' +
+    '<sent>Mon 19 Oct 2026, 09:00, Europe/London (UTC+01:00)</sent>\n\n' +
+      '<owner_message>\n«evidence»I am  vegetarian.«/evidence» Since May.\n</owner_message>\n\n' +
       '<candidate_memory>\nThe owner is vegetarian.\n</candidate_memory>',
   );
 });
@@ -62,6 +98,8 @@ test('it names the owner in the candidate memory wherever the corpus says the ow
         message: {
           text: 'The plumber charged me double, and my landlord owner-occupies upstairs.',
           spans: [{ start: 0, end: 71, source: 'typed' }],
+          sentAt: '2026-10-19T08:00:00Z',
+          timeZone: 'Europe/London',
         },
         pairs: [],
       },
@@ -75,7 +113,8 @@ test('it names the owner in the candidate memory wherever the corpus says the ow
       'Sam',
     ),
   ).toBe(
-    '<owner_message>\n«evidence»The plumber charged me double«/evidence», and my landlord owner-occupies upstairs.\n</owner_message>\n\n' +
+    '<sent>Mon 19 Oct 2026, 09:00, Europe/London (UTC+01:00)</sent>\n\n' +
+      '<owner_message>\n«evidence»The plumber charged me double«/evidence», and my landlord owner-occupies upstairs.\n</owner_message>\n\n' +
       "<candidate_memory>\nThe plumber charged Sam double, and Sam's landlord owner-occupies upstairs.\n</candidate_memory>",
   );
 });
@@ -91,6 +130,8 @@ test('it refuses a pair whose quote the gate would not find in typed text', () =
             { start: 0, end: 16, source: 'typed' },
             { start: 16, end: 34, source: 'pasted' },
           ],
+          sentAt: '2026-10-19T08:00:00Z',
+          timeZone: 'Europe/London',
         },
         pairs: [],
       },

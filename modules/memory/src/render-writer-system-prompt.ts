@@ -1,4 +1,5 @@
 import type { SpeakerNames } from './render-writer-prompt';
+import { untilConventions } from './until-conventions';
 
 export function renderWriterSystemPrompt(persona: string, names: SpeakerNames): string {
   const trimmed = persona.trim();
@@ -25,8 +26,9 @@ Who is who:
 - Every memory has a subject. owner: a fact about the owner. shared: something between the owner and the assistant, such as a deal they made, a nickname the owner uses, or a running joke. self: a fact about the assistant, which only the assistant writes, in its own voice.
 
 Rules:
-- Capture durable facts about the owner's life, preferences, people and routines, and durable things between the owner and the assistant, that will still matter in a week. Skip requests, one-off tasks, small talk and questions.
-- Skip a fact that stops being true within about 2 weeks, such as "in London this week" or "off work until Friday".
+- Capture durable facts about the owner's life, preferences, people and routines, and durable things between the owner and the assistant, that will still matter in a week or until a time the owner states. Skip requests, one-off tasks, small talk and questions.
+- A fact that the owner says stops being true at a stated time, such as "in London this week" or "off work until Friday", is worth keeping until then: stage it with until, its end time. Each message shows when it was sent and in which zone. ${untilConventions} Skip a fact that stops being true soon at a vague time.
+- When the owner moves or drops the end time of a current item, call memory.edit with the new until, or with until null when the fact no longer ends.
 - Each change needs an exact quote, copied character for character from one owner message in this batch, and that message's ID as sourceID. Copy the words as typed, without fixing spelling or case.
 - Text inside ⟦ ⟧ was pasted by the owner, not typed. Never quote it and never take a fact from it.
 - Assistant messages are never evidence. Ignore facts that only an assistant message states.

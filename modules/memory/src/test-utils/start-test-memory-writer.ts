@@ -135,6 +135,7 @@ function buildClosedGate(clock: TestClock): GateContext {
         failure: 'error',
       }),
     clock,
+    defaultZone: 'UTC',
     findAllowRule: findNoAllowRule,
     limits: defaultGateLimits,
     ownerName: null,
@@ -183,6 +184,7 @@ async function startTestWriterRunner(
     getPersona: () => '',
     ownerName: null,
     assistantName: null,
+    defaultZone: 'UTC',
     onError: (error) => {
       throw error;
     },

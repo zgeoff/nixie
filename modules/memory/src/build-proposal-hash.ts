@@ -15,6 +15,8 @@ export interface ProposalOperation {
   // Stored hashes name the subject under the key itemKind, and only for a self-note or a shared
   // item, so a change to either rule changes the hash of every pending proposal.
   readonly subject?: MemorySubject;
+
+  readonly until?: number | null;
 }
 
 export function buildProposalHash(operation: ProposalOperation): string {
@@ -30,6 +32,9 @@ export function buildProposalHash(operation: ProposalOperation): string {
     ...(operation.subject === undefined || operation.subject === 'owner'
       ? {}
       : { itemKind: operation.subject }),
+    ...(operation.until === undefined || operation.until === null
+      ? {}
+      : { until: operation.until }),
   });
 
   return `sha256:${createHash('sha256').update(canonical).digest('hex')}`;

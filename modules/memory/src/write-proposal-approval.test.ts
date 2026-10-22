@@ -35,6 +35,98 @@ test('it applies an approved proposal as proposed, keeping its outside source', 
   expect(remaining).toStrictEqual([]);
 });
 
+test('it sets the end time a proposal holds on the item you approve', async () => {
+  const memory = await startTestMemory({
+    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+  });
+
+  await memory.store.writes.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const item = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('until')
+    .where('item_id', '=', pending.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(item.until).toBe(Date.parse('2026-10-25T23:59:59Z'));
+});
+
+test('it refuses an approval at the end time a proposal holds as lapsed, and writes no item', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T08:30:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  await memory.store.writes.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  clock.advance(Date.parse('2026-10-25T23:59:59Z') - clock.now());
+
+  const approval = memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  await approval.catch(() => {});
+
+  const history = await memory.store.readHistory(pending.itemID);
+
+  expect(approval).rejects.toMatchObject({ code: 'PROPOSAL_CLOSED', status: 'lapsed' });
+  expect(history).toBeNull();
+});
+
+test('it keeps the end time of the item you approve a proposal with none as a revision of', async () => {
+  const memory = await startTestMemory({
+    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const pending = await createProposal(memory.store, { text: 'Is in Lisbon until Sunday' });
+
+  await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+    revisionOf: { itemID: item.itemID, version: 1 },
+  });
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['version', 'until'])
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({ version: 2, until: Date.parse('2026-10-25T23:59:59Z') });
+});
+
 test('it creates a self-note when you approve its proposal, and recall reads it as one with its model', async () => {
   const memory = await startTestMemory();
 

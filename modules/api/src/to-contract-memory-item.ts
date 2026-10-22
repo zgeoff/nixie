@@ -15,6 +15,7 @@ export function toContractMemoryItem(item: ViewItem) {
     createdAt: new Date(item.createdAt),
     changedAt: new Date(item.changedAt),
     forgottenAt: item.forgottenAt === null ? null : new Date(item.forgottenAt),
+    until: item.until === null ? null : new Date(item.until),
     status: item.status,
     ...(item.status === 'readable' ? { text: item.text } : {}),
   };

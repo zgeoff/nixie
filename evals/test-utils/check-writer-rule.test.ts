@@ -11,7 +11,9 @@ test.each([
     checkWriterRule(
       { rule, target: null, patterns: [] },
       {
-        writes: [{ op: 'remember', subject, itemID: null, text: 'Sam drinks oat milk.' }],
+        writes: [
+          { op: 'remember', subject, itemID: null, text: 'Sam drinks oat milk.', until: null },
+        ],
         flags: [],
       },
     ),
@@ -23,11 +25,83 @@ test('it refuses a new item whose text misses a pattern', () => {
     checkWriterRule(
       { rule: 'owner_item', target: null, patterns: ['oat milk'] },
       {
-        writes: [{ op: 'remember', subject: 'owner', itemID: null, text: 'Sam drinks tea.' }],
+        writes: [
+          { op: 'remember', subject: 'owner', itemID: null, text: 'Sam drinks tea.', until: null },
+        ],
         flags: [],
       },
     ),
   ).toBe("a write's text misses /oat milk/");
+});
+
+test('it accepts a new item that ends at the end time the case names', () => {
+  expect(
+    checkWriterRule(
+      {
+        rule: 'owner_item',
+        target: null,
+        patterns: ['Lisbon'],
+        until: '2026-10-18T23:59:59+01:00',
+      },
+      {
+        writes: [
+          {
+            op: 'remember',
+            subject: 'owner',
+            itemID: null,
+            text: 'Sam is in Lisbon this week.',
+            until: Date.parse('2026-10-18T22:59:59Z'),
+          },
+        ],
+        flags: [],
+      },
+    ),
+  ).toBeNull();
+});
+
+test('it refuses a new item that ends at another time than the case names', () => {
+  expect(
+    checkWriterRule(
+      {
+        rule: 'owner_item',
+        target: null,
+        patterns: ['Lisbon'],
+        until: '2026-10-18T23:59:59+01:00',
+      },
+      {
+        writes: [
+          {
+            op: 'remember',
+            subject: 'owner',
+            itemID: null,
+            text: 'Sam is in Lisbon this week.',
+            until: Date.parse('2026-10-16T22:59:59Z'),
+          },
+        ],
+        flags: [],
+      },
+    ),
+  ).toBe('a write ends at 2026-10-16T22:59:59.000Z, not 2026-10-18T22:59:59.000Z');
+});
+
+test('it refuses a new item with an end time when the case names none', () => {
+  expect(
+    checkWriterRule(
+      { rule: 'owner_item', target: null, patterns: ['oat milk'] },
+      {
+        writes: [
+          {
+            op: 'remember',
+            subject: 'owner',
+            itemID: null,
+            text: 'Sam drinks oat milk.',
+            until: Date.parse('2026-10-18T22:59:59Z'),
+          },
+        ],
+        flags: [],
+      },
+    ),
+  ).toBe('a write ends at 2026-10-18T22:59:59.000Z, not no end time');
 });
 
 test('it accepts an edit of the target whose text matches every pattern, without case', () => {
@@ -45,6 +119,7 @@ test('it accepts an edit of the target whose text matches every pattern, without
             subject: 'shared',
             itemID: 'item-practice',
             text: 'Wren reminds Sam to practise every day except Fridays.',
+            until: null,
           },
         ],
         flags: [],
@@ -64,6 +139,7 @@ test('it refuses an edit that keeps the old text of the target', () => {
             subject: 'shared',
             itemID: 'item-practice',
             text: 'Wren reminds Sam to practise every day.',
+            until: null,
           },
         ],
         flags: [],
@@ -78,7 +154,13 @@ test('it refuses an edit of another item', () => {
       { rule: 'edit_not_add', target: 'item-practice', patterns: [] },
       {
         writes: [
-          { op: 'remember', subject: 'shared', itemID: 'item-other', text: 'Sam plays piano.' },
+          {
+            op: 'remember',
+            subject: 'shared',
+            itemID: 'item-other',
+            text: 'Sam plays piano.',
+            until: null,
+          },
         ],
         flags: [],
       },
@@ -92,8 +174,20 @@ test('it refuses an edit with a new item beside it', () => {
       { rule: 'edit_not_add', target: 'item-practice', patterns: [] },
       {
         writes: [
-          { op: 'remember', subject: 'shared', itemID: 'item-practice', text: 'A new deal.' },
-          { op: 'remember', subject: 'owner', itemID: null, text: 'Sam skips Fridays.' },
+          {
+            op: 'remember',
+            subject: 'shared',
+            itemID: 'item-practice',
+            text: 'A new deal.',
+            until: null,
+          },
+          {
+            op: 'remember',
+            subject: 'owner',
+            itemID: null,
+            text: 'Sam skips Fridays.',
+            until: null,
+          },
         ],
         flags: [],
       },
@@ -120,6 +214,7 @@ test.each([
             subject: 'shared' as const,
             itemID: null,
             text: 'Sam and Wren call Mondays the porch talk.',
+            until: null,
           })),
           flags: Array.from({ length: flagCount }, () => 'Wren loves thunderstorms.'),
         },
@@ -136,7 +231,15 @@ test.each([
     checkWriterRule(
       { rule: 'no_owner_item', target: null, patterns: [] },
       {
-        writes: [{ op: 'remember', subject, itemID: null, text: 'Sam wants Wren to stay warm.' }],
+        writes: [
+          {
+            op: 'remember',
+            subject,
+            itemID: null,
+            text: 'Sam wants Wren to stay warm.',
+            until: null,
+          },
+        ],
         flags: ['Wren likes its own voice.'],
       },
     ),
