@@ -8,6 +8,13 @@ const TURN_TIMEOUT_MS = 30_000;
 // requests took a fifth of the turn's time from the guest's start.
 const TURN_INTERVAL_MS = 100;
 
-export function waitForTurn(check: () => boolean | Promise<boolean>): Promise<void> {
-  return waitForCondition(check, { timeoutMs: TURN_TIMEOUT_MS, intervalMs: TURN_INTERVAL_MS });
+export function waitForTurn(
+  check: () => boolean | Promise<boolean>,
+  now?: () => number,
+): Promise<void> {
+  return waitForCondition(check, {
+    timeoutMs: TURN_TIMEOUT_MS,
+    intervalMs: TURN_INTERVAL_MS,
+    ...(now === undefined ? {} : { now }),
+  });
 }

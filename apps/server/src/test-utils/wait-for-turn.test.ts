@@ -1,34 +1,29 @@
-import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
+import { buildTestClock } from '@heynixie/testing';
 import { waitForTurn } from './wait-for-turn';
 
 test('it waits past the condition wait default of 5 s for a turn that takes 20 s', async () => {
-  const startedAt = Date.now();
-
-  onTestFinished(() => {
-    setSystemTime();
-  });
+  const clock = buildTestClock(0);
 
   const wait = waitForTurn(() => {
-    const now = Date.now();
+    const elapsedMs = clock.now();
 
-    setSystemTime(now + 10_000);
+    clock.advance(10_000);
 
-    return now - startedAt >= 20_000;
-  });
+    return elapsedMs >= 20_000;
+  }, clock.now);
 
   await expect(wait).toResolve();
 });
 
 test('it fails a turn that outlasts 30 s', () => {
-  onTestFinished(() => {
-    setSystemTime();
-  });
+  const clock = buildTestClock(0);
 
   const wait = waitForTurn(() => {
-    setSystemTime(Date.now() + 10_000);
+    clock.advance(10_000);
 
     return false;
-  });
+  }, clock.now);
 
   expect(wait).rejects.toThrowWithMessage(Error, 'condition not met within 30000 ms');
 });
