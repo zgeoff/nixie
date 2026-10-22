@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
+import { buildStubDefinitionsRepo } from '@heynixie/definitions/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
@@ -40,17 +41,37 @@ async function setupTest() {
     log: () => {},
   };
 
-  const registry = buildToolRegistry(
-    buildConversationSkillTools({
-      log: context.apiContext.log,
-      clock: buildTestClock(0),
-      readInForce: () => context.inForce.read(),
-      refreshDefinitions: () => refreshDefinitions(parts, context.inForce),
-    }),
-  );
+  const skillContext = {
+    log: context.apiContext.log,
+    clock: buildTestClock(0),
+    readInForce: () => context.inForce.read(),
+    refreshDefinitions: () => refreshDefinitions(parts, context.inForce),
+  };
 
-  return { root, parts, registry };
+  const registry = buildToolRegistry(buildConversationSkillTools(skillContext, null));
+
+  return { root, parts, registry, skillContext, definitionsRepo: buildStubDefinitionsRepo(root) };
 }
+
+test('it serves skill_vendor when the deployment exports to a definitions repo', async () => {
+  const ctx = await setupTest();
+
+  const tools = buildConversationSkillTools(ctx.skillContext, {
+    readPage: () => Promise.resolve({ kind: 'failed', reason: 'no fetch in this test' }),
+    repo: ctx.definitionsRepo,
+    readReviewer: () => null,
+  });
+
+  expect(tools.map((tool) => tool.name)).toContain('skill_vendor');
+});
+
+test('it leaves skill_vendor out when the deployment exports nowhere', async () => {
+  const ctx = await setupTest();
+
+  const tools = buildConversationSkillTools(ctx.skillContext, null);
+
+  expect(tools.map((tool) => tool.name)).not.toContain('skill_vendor');
+});
 
 test("it reads a skill on the conversation's list for the conversation", async () => {
   const ctx = await setupTest();

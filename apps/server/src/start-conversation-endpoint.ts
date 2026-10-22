@@ -5,7 +5,6 @@ import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import type { SkillVendorContext } from '@heynixie/skills';
-import { buildSkillVendorTool } from '@heynixie/skills';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildConversationSkillTools } from './build-conversation-skill-tools';
@@ -41,15 +40,15 @@ export async function startConversationEndpoint(
 
   const logRead = buildLogReadTool(options.context.log);
 
-  const skills = [
-    ...buildConversationSkillTools({
+  const skills = buildConversationSkillTools(
+    {
       log: options.context.log,
       clock: options.context.clock,
       readInForce: tools.readInForce,
       refreshDefinitions: tools.refreshDefinitions,
-    }),
-    ...(tools.vendor === null ? [] : [buildSkillVendorTool(tools.vendor)]),
-  ];
+    },
+    tools.vendor,
+  );
 
   const definitions = buildConversationTools(
     { webFetch: tools.webFetch, time, logRead, skills },
