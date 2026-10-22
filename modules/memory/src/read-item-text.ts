@@ -9,6 +9,7 @@ export interface ActiveItem {
   readonly text: string;
   readonly subject: MemorySubject;
   readonly isPinned: boolean;
+  readonly until: number | null;
 }
 
 export async function readItemText(
@@ -27,5 +28,10 @@ export async function readItemText(
 
   const version = await readVersion(db, key, target);
 
-  return { text: version.text.text, subject: getRowSubject(item), isPinned: item.is_pinned === 1 };
+  return {
+    text: version.text.text,
+    subject: getRowSubject(item),
+    isPinned: item.is_pinned === 1,
+    until: item.until,
+  };
 }

@@ -1,5 +1,7 @@
 import { buildWriteGroup } from './build-write-group';
 import type { GatedPinRequest, WriteOutcome } from './gate-types';
+import { isItemLapsed } from './is-item-lapsed';
+import { MemoryStateError } from './memory-state-error';
 import { readItemText } from './read-item-text';
 import { readNewestMessage } from './read-newest-message';
 import type { StoreParts } from './types';
@@ -11,6 +13,10 @@ export async function writeGatedPin(
   request: GatedPinRequest,
 ): Promise<WriteOutcome> {
   const item = await readItemText(parts, request.target, 'pin');
+
+  if (isItemLapsed({ state: 'active', until: item.until }, parts.context.gate.clock.now())) {
+    throw new MemoryStateError(request.target.itemID, 'pin', 'retired');
+  }
 
   const applied = { status: 'applied' as const, ...request.target };
 

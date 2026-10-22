@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
@@ -94,6 +95,31 @@ test('it refuses a pin of a retired item, and writes nothing', async () => {
   const retired = await memory.store.retire({ target: item, provenance: buildMockProvenance() });
 
   const pin = memory.store.writes.pin({ target: retired, caller: buildMockWriteCaller() });
+
+  await pin.catch(() => {});
+
+  const pending = await memory.store.proposals.listPending();
+  const records = await readRecords(memory.log, { afterSequence: 0, kinds: ['memory.pinned'] });
+
+  expect(pin).rejects.toMatchObject({ code: 'WRONG_STATE' });
+  expect(pending).toStrictEqual([]);
+  expect(records).toStrictEqual([]);
+});
+
+test('it refuses a pin of an item whose end time passed before the sweep, and writes nothing', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  const pin = memory.store.writes.pin({ target: item, caller: buildMockWriteCaller() });
 
   await pin.catch(() => {});
 

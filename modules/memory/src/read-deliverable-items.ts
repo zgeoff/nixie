@@ -5,6 +5,7 @@ import { buildVersionApproval } from './build-version-approval';
 import { decodeVersionText } from './decode-version-text';
 import { getItemShortID } from './get-item-short-id';
 import { getRowSubject } from './get-row-subject';
+import { isItemLapsed } from './is-item-lapsed';
 import { toReviewReason } from './to-review-reason';
 import type {
   MemoryItemRow,
@@ -74,9 +75,7 @@ export async function readDeliverableItems(
 }
 
 function toDeliveredRow(row: MemoryItemRow, now: number): MemoryItemRow {
-  const isLapsed = row.state === 'active' && row.until !== null && row.until <= now;
-
-  return isLapsed ? { ...row, state: 'retired', is_pinned: 0 } : row;
+  return isItemLapsed(row, now) ? { ...row, state: 'retired', is_pinned: 0 } : row;
 }
 
 interface ItemToRead {

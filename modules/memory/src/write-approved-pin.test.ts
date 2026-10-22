@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
@@ -158,4 +159,39 @@ test('it refuses to approve a pin of a version the item moved past', async () =>
   });
 
   expect(approve).rejects.toMatchObject({ code: 'STALE_VERSION' });
+});
+
+test('it refuses to approve a pin of an item whose end time passed before the sweep, and keeps the proposal', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  await memory.store.writes.pin({ target: item, caller: buildMockWriteCaller() });
+
+  const [proposal] = await memory.store.proposals.listPending();
+
+  invariant(proposal);
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  const approve = memory.store.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'identity-1',
+  });
+
+  await approve.catch(() => {});
+
+  const pending = await memory.store.proposals.listPending();
+  const records = await readRecords(memory.log, { afterSequence: 0, kinds: ['memory.pinned'] });
+
+  expect(approve).rejects.toMatchObject({ code: 'WRONG_STATE' });
+  expect(pending).toMatchObject([{ proposalID: proposal.proposalID }]);
+  expect(records).toStrictEqual([]);
 });
