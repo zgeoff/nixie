@@ -22,6 +22,18 @@ test('it lets a later arrival at the fault point through', async () => {
   ).toResolve();
 });
 
+test('it lets an arrival for another ID through, and throws at the first one for the ID it names', async () => {
+  startFaultPointFailure('memory.forget.key_removed', 'item-2');
+
+  await expect(
+    waitAtFaultPoint('memory.forget.key_removed', { kind: 'memory', id: 'item-1' }),
+  ).toResolve();
+
+  expect(
+    waitAtFaultPoint('memory.forget.key_removed', { kind: 'memory', id: 'item-2' }),
+  ).rejects.toThrowWithMessage(Error, 'crashed at memory.forget.key_removed');
+});
+
 test('it lets another fault point through', async () => {
   startFaultPointFailure('memory.forget.key_removed');
 

@@ -7,6 +7,7 @@ import {
   findNoAllowRule,
   startMemoryStore,
 } from '@heynixie/memory';
+import invariant from 'tiny-invariant';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
@@ -352,4 +353,301 @@ test('#memory.forget refuses a caller with no session', async () => {
   await forget.catch(() => {});
 
   expect(forget).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});
+
+test('#memory.previewForgetRetired lists each retired item at its version with what its forget destroys', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await ctx.memory.remember({
+    text: 'Plays the cello on Thursdays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.remember({
+    text: 'Grows chillies on the balcony',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const preview = await client.memory.previewForgetRetired();
+
+  expect(preview).toStrictEqual({
+    hasMore: false,
+    items: [
+      {
+        changedAt: expect.toBeValidDate(),
+        createdAt: expect.toBeValidDate(),
+        forgottenAt: null,
+        isPinned: false,
+        itemID: item.itemID,
+        kind: 'fact',
+        lost: { evidenceMessages: 0, proposals: 0 },
+        origin: 'owner',
+        shortID: expect.any(String),
+        source: 'owner',
+        state: 'retired',
+        status: 'readable',
+        subject: 'owner',
+        text: 'Plays the cello on Thursdays',
+        version: 2,
+      },
+    ],
+  });
+});
+
+test('#memory.previewForgetRetired refuses a caller with no session', async () => {
+  const ctx = await setupTest();
+
+  const preview = buildTestClient(ctx.url).memory.previewForgetRetired();
+
+  await preview.catch(() => {});
+
+  expect(preview).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});
+
+test('#memory.forgetRetired deletes the confirmed set, with a forgotten record for each item', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const items = await Promise.all(
+    ['Plays the cello on Thursdays', 'Grows chillies on the balcony'].map((text) =>
+      ctx.memory.remember({
+        text,
+        provenance: {
+          origin: 'owner',
+          source: 'owner',
+          taskID: null,
+          proposalID: null,
+          checks: null,
+        },
+      }),
+    ),
+  );
+
+  await Promise.all(
+    items.map((target) =>
+      ctx.memory.retire({
+        target,
+        provenance: {
+          origin: 'owner',
+          source: 'owner',
+          taskID: null,
+          proposalID: null,
+          checks: null,
+        },
+      }),
+    ),
+  );
+
+  const preview = await client.memory.previewForgetRetired();
+
+  const status = await client.memory.forgetRetired({
+    clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74',
+    targets: preview.items.map((item) => ({ itemID: item.itemID, version: item.version })),
+  });
+
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  expect(status).toStrictEqual({
+    deleted: preview.items.map((item) => item.itemID),
+    pending: [],
+  });
+
+  expect(
+    records
+      .filter((entry) => entry.record.kind === 'memory.forgotten')
+      .map((entry) => entry.record.payload),
+  ).toIncludeSameMembers(items.map((item) => ({ itemID: item.itemID })));
+});
+
+test('#memory.forgetRetired refuses a confirmation made stale by a restore after the preview, and deletes nothing', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const items = await Promise.all(
+    ['Plays the cello on Thursdays', 'Grows chillies on the balcony'].map((text) =>
+      ctx.memory.remember({
+        text,
+        provenance: {
+          origin: 'owner',
+          source: 'owner',
+          taskID: null,
+          proposalID: null,
+          checks: null,
+        },
+      }),
+    ),
+  );
+
+  const retired = await Promise.all(
+    items.map((target) =>
+      ctx.memory.retire({
+        target,
+        provenance: {
+          origin: 'owner',
+          source: 'owner',
+          taskID: null,
+          proposalID: null,
+          checks: null,
+        },
+      }),
+    ),
+  );
+
+  const preview = await client.memory.previewForgetRetired();
+
+  const [, restored] = retired;
+
+  invariant(restored);
+
+  await client.memory.restore({
+    clientActionID: '7a3e9c1d-2b58-4f06-9d4a-c81e5f7b3d29',
+    ...restored,
+  });
+
+  const before = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  const forget = client.memory.forgetRetired({
+    clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74',
+    targets: preview.items.map((item) => ({ itemID: item.itemID, version: item.version })),
+  });
+
+  await forget.catch(() => {});
+
+  const after = await readRecords(ctx.context.log, { afterSequence: 0 });
+  const left = await client.memory.previewForgetRetired();
+
+  expect(forget).rejects.toMatchObject({ code: 'STALE_VERSION' });
+  expect(after).toStrictEqual(before);
+  expect(left.items).toMatchObject([{ itemID: items[0]?.itemID, status: 'readable' }]);
+  expect(ctx.cleanupSessions).not.toHaveBeenCalled();
+});
+
+test('#memory.forgetRetired leaves alone an item retired after the preview', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const first = await ctx.memory.remember({
+    text: 'Plays the cello on Thursdays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const second = await ctx.memory.remember({
+    text: 'Grows chillies on the balcony',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.retire({
+    target: first,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const preview = await client.memory.previewForgetRetired();
+
+  await client.memory.retire({ clientActionID: '7a3e9c1d-2b58-4f06-9d4a-c81e5f7b3d29', ...second });
+
+  const status = await client.memory.forgetRetired({
+    clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74',
+    targets: preview.items.map((item) => ({ itemID: item.itemID, version: item.version })),
+  });
+
+  const left = await client.memory.previewForgetRetired();
+
+  expect(status).toStrictEqual({ deleted: [first.itemID], pending: [] });
+
+  expect(left.items).toMatchObject([
+    { itemID: second.itemID, status: 'readable', text: 'Grows chillies on the balcony' },
+  ]);
+});
+
+test('#memory.forgetRetired refuses a target listed twice', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const forget = buildTestClient(ctx.url, laptop.token).memory.forgetRetired({
+    clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74',
+    targets: [
+      { itemID: 'item-a', version: 2 },
+      { itemID: 'item-a', version: 2 },
+    ],
+  });
+
+  await forget.catch(() => {});
+
+  expect(forget).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+});
+
+test('#memory.forgetRetired finishes the pending items on the retry after a cleanup failed', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const items = await Promise.all(
+    ['Plays the cello on Thursdays', 'Grows chillies on the balcony'].map((text) =>
+      ctx.memory.remember({
+        text,
+        provenance: {
+          origin: 'owner',
+          source: 'owner',
+          taskID: null,
+          proposalID: null,
+          checks: null,
+        },
+      }),
+    ),
+  );
+
+  const retired = await Promise.all(
+    items.map((target) =>
+      ctx.memory.retire({
+        target,
+        provenance: {
+          origin: 'owner',
+          source: 'owner',
+          taskID: null,
+          proposalID: null,
+          checks: null,
+        },
+      }),
+    ),
+  );
+
+  ctx.cleanupSessions.mockImplementationOnce(() =>
+    Promise.reject(new Error('the guest did not answer')),
+  );
+
+  const input = { clientActionID: '0b7d4e2a-9c61-4f38-8a5d-3e1f6c9b2a74', targets: retired };
+  const itemIDs = retired.map((target) => target.itemID);
+
+  const failed = await client.memory.forgetRetired(input).catch((error: unknown) => error);
+  const pending = await client.memory.readForgetStatus({ itemIDs });
+  const retried = await client.memory.forgetRetired(input);
+
+  expect(failed).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
+  expect(pending).toStrictEqual({ deleted: [], pending: itemIDs });
+  expect(retried).toStrictEqual({ deleted: itemIDs, pending: [] });
+});
+
+test('#memory.readForgetStatus refuses a caller with no session', async () => {
+  const ctx = await setupTest();
+
+  const status = buildTestClient(ctx.url).memory.readForgetStatus({ itemIDs: ['item-a'] });
+
+  await status.catch(() => {});
+
+  expect(status).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });

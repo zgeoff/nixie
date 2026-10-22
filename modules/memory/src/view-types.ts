@@ -2,6 +2,7 @@ import type { ContentSource, JSONObject } from '@heynixie/log';
 import type { MemoryNotice, MemoryProposal, NoticeEntry } from './gate-types';
 import type { MemoryExportRequest } from './read-memory-export';
 import type {
+  ForgetStatus,
   MemoryChange,
   MemoryOrigin,
   MemoryState,
@@ -108,12 +109,17 @@ export type ViewVersion = ViewText & {
 
 export type ViewItemDetail = ViewItem & { readonly versions: readonly ViewVersion[] };
 
-export type ForgetPreview = ViewItemDetail & {
-  readonly lost: {
-    readonly evidenceMessages: number;
-    readonly proposals: number;
-  };
-};
+export interface ForgetLoss {
+  readonly evidenceMessages: number;
+  readonly proposals: number;
+}
+
+export type ForgetPreview = ViewItemDetail & { readonly lost: ForgetLoss };
+
+export interface RetiredForgetPreview {
+  readonly items: readonly (ViewItem & { readonly lost: ForgetLoss })[];
+  readonly hasMore: boolean;
+}
 
 export type ViewNoticeKind = 'turn' | 'batch' | 'catch_up' | 'run';
 
@@ -139,6 +145,10 @@ export interface MemoryView {
   readonly readProposals: () => Promise<readonly ViewProposal[]>;
 
   readonly readForgetPreview: (target: VersionRef) => Promise<ForgetPreview>;
+
+  readonly readRetiredForgetPreview: () => Promise<RetiredForgetPreview>;
+
+  readonly readForgetStatus: (itemIDs: readonly string[]) => Promise<ForgetStatus>;
 
   readonly readNotices: (thread: string) => Promise<readonly ViewNotice[]>;
 

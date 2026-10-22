@@ -48,7 +48,16 @@ export type ReadHostMemory = () => HostMemoryStore | null;
 
 export type ViewMemoryStore = Pick<
   MemoryStore,
-  'view' | 'retire' | 'restore' | 'undo' | 'keep' | 'pin' | 'forget' | 'finishForget'
+  | 'view'
+  | 'retire'
+  | 'restore'
+  | 'undo'
+  | 'keep'
+  | 'pin'
+  | 'forget'
+  | 'finishForget'
+  | 'forgetRetired'
+  | 'finishForgets'
 > & {
   readonly proposals: Pick<MemoryProposals, 'approve' | 'reject'>;
 };

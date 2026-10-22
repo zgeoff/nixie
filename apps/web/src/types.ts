@@ -37,6 +37,12 @@ export type MemoryItem = ContractOutputs['memory']['listItems']['items'][number]
 
 export type ForgetPreview = ReadonlyDeep<ContractOutputs['memory']['previewForget']>;
 
+export type ForgetStatus = ReadonlyDeep<ContractOutputs['memory']['forgetRetired']>;
+
+export type RetiredForgetItem = ReadonlyDeep<
+  ContractOutputs['memory']['previewForgetRetired']['items'][number]
+>;
+
 export type MemoryVersion = ReadonlyDeep<ContractOutputs['memory']['readItem']['versions'][number]>;
 
 export type MemoryProposal = ReadonlyDeep<

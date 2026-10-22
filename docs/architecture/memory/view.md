@@ -119,6 +119,20 @@ therefore keeps each forget call in the query client, apart from every row, and 
 item's row in the forgotten list offers to finish the forget while its last call failed. That retry
 sends the same client action ID, so the server runs the cleanup again.
 
+## Deleting retired items
+
+The retired list offers one checked action that forgets selected retired items, or all of them, in a
+[bulk forget](./store.md#forgetting-retired-items-in-bulk). Its preview lists the oldest retired
+items up to a cap, each at its version with what its forget destroys, and says when more remain. The
+confirmation starts with every listed item selected, states that the deletion cannot be undone and
+that chat records stay, and sends the selected items with the versions the preview showed.
+
+The page keeps the set it first showed while the confirmation is open, so a refresh of the lists
+never changes what the user confirmed. A stale set closes the confirmation with the reason, and
+nothing is deleted. A run whose cleanup failed keeps the confirmation open with a count of deleted
+and pending items, which the status read returns, and offers to finish the run. That retry sends the
+same client action ID, so the server runs the cleanup of each pending item again.
+
 ## Proposals
 
 The view lists every pending proposal on a page of its own, which the memory page links to. Each

@@ -12,6 +12,8 @@ export interface MemoryItemListProps {
 
   readonly empty: string;
 
+  readonly actions?: ReactNode;
+
   readonly renderItem: (item: MemoryItem) => ReactNode;
 }
 
@@ -35,6 +37,7 @@ export function MemoryItemList(props: MemoryItemListProps): ReactNode {
   return (
     <section aria-label={props.title} className={section}>
       <h2 className={heading}>{props.title}</h2>
+      {props.actions}
       <ItemPages
         empty={props.empty}
         hasNextPage={pages.hasNextPage}
