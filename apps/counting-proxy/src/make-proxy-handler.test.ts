@@ -753,6 +753,49 @@ test('it refuses every later request once a message call fails before its reply 
   expect(sendUpstream).toHaveBeenCalledOnce();
 });
 
+test('it refuses every later request once a successful message reply holds usage it cannot read', async () => {
+  const ctx = await setupTest();
+
+  const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
+    Promise.resolve(
+      Response.json({
+        type: 'message',
+        content: [{ type: 'text', text: 'unreadable usage' }],
+        usage: { input_tokens: 'many', output_tokens: 12 },
+      }),
+    ),
+  );
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        upstream: 'http://model.test',
+        model: 'model-small',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store: ctx.store,
+    sendUpstream,
+    log: ctx.log,
+  });
+
+  const sendRequest = () =>
+    handler(
+      new Request('http://proxy.test/preview/v1/messages', {
+        method: 'POST',
+        body: JSON.stringify({ model: 'model-small', messages: [] }),
+      }),
+    );
+
+  const unreadable = await sendRequest();
+  const later = await sendRequest();
+
+  expect(unreadable.status).toBe(200);
+  expect(later.status).toBe(503);
+  expect(sendUpstream).toHaveBeenCalledOnce();
+});
+
 test('it keeps sending on after a call that spends nothing fails', async () => {
   const ctx = await setupTest();
 

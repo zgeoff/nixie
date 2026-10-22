@@ -24,13 +24,14 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
   let countFailed = false;
   let limitLogged = false;
 
+  // required marks a reply that spent for certain, or may have, so one with no usage the proxy
+  // can read leaves the count behind
   const count = async (
     route: ProxyRoute,
     usage: CallUsage | null,
-    complete: boolean,
+    required: boolean,
   ): Promise<void> => {
-    // a stream that broke or was cancelled before its first usage event may still have spent
-    if (usage === null && !complete) {
+    if (usage === null && required) {
       countFailed = true;
 
       deps.log('count.lost', {}, 'error');
@@ -154,14 +155,20 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       headers: buildDownstreamHeaders(upstream.headers),
     };
 
+    // a successful message reply has spent, and an error reply has not
+    const spent = endpoint.spends && upstream.ok;
+
     if (upstream.body === null) {
+      await count(target.route, null, spent);
+
       return new Response(null, init);
     }
 
+    // a stream that broke or was cancelled before its first usage event may still have spent
     if (upstream.headers.get('content-type')?.startsWith('text/event-stream') === true) {
       return new Response(
         buildCountedStream(upstream.body, (usage, complete) =>
-          count(target.route, usage, complete),
+          count(target.route, usage, spent || !complete),
         ),
         init,
       );
@@ -180,7 +187,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(502, 'api_error', 'the counting proxy lost the reply of the model API');
     }
 
-    await count(target.route, parseReportedUsage(findBodyUsage(text)), true);
+    await count(target.route, parseReportedUsage(findBodyUsage(text)), spent);
 
     return new Response(text, init);
   };

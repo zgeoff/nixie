@@ -79,6 +79,9 @@ The proxy treats a counter store it cannot use as a store that holds no room:
   ends where it stopped. Either way the proxy refuses every later request until it restarts, because
   the model may have spent on a reply the proxy never counted. A failed token count or model list
   spends nothing, so it only gets the caller a 502.
+- **A successful message reply holds no usage the proxy can read.** The reply reaches its caller,
+  and the proxy refuses every later request until it restarts, because the reply spent an amount the
+  proxy cannot count.
 - **The store directory does not exist at start.** The proxy exits, so the route it would serve has
   no way to the model API.
 
