@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { defineRecordCodec, readRecords, startWriter } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { z } from 'zod';
+import { buildMockProposalState } from './test-utils/build-mock-proposal-state';
 import { writeProposalLapses } from './write-proposal-lapses';
 
 async function setupTest() {
@@ -37,6 +38,8 @@ test('it lapses a pending proposal 14 days old under the lapsed kind, and keeps 
   );
 
   const olderAt = Date.UTC(2026, 4, 11, 8, 0);
+  const older = buildMockProposalState({ thread: 'conversation', proposedAt: olderAt });
+  const younger = buildMockProposalState({ proposedAt: olderAt + 1 });
 
   const lapsed = await writeProposalLapses(
     {
@@ -45,16 +48,7 @@ test('it lapses a pending proposal 14 days old under the lapsed kind, and keeps 
       definitions: () => ({ snapshotHash: 'snapshot-c' }),
     },
     {
-      readProposals: () =>
-        Promise.resolve([
-          { proposalID: 'r4t8v2b6nq', thread: 'conversation', proposedAt: olderAt, outcome: null },
-          {
-            proposalID: 'h7j3k9m1wx',
-            thread: 'conversation',
-            proposedAt: olderAt + 1,
-            outcome: null,
-          },
-        ]),
+      readProposals: () => Promise.resolve([older, younger]),
       lapsedCodec,
     },
   );
@@ -68,7 +62,7 @@ test('it lapses a pending proposal 14 days old under the lapsed kind, and keeps 
       kind: 'test.proposal_lapsed',
       definitions: { snapshotHash: 'snapshot-c' },
       thread: 'conversation',
-      payload: { proposalID: 'r4t8v2b6nq' },
+      payload: { proposalID: older.proposalID },
     },
   ]);
 });
@@ -82,6 +76,7 @@ test('it lapses a proposal with no thread without a thread', async () => {
   );
 
   const proposedAt = Date.UTC(2026, 4, 11, 8, 0);
+  const proposal = buildMockProposalState({ thread: null, proposedAt });
 
   await writeProposalLapses(
     {
@@ -90,8 +85,7 @@ test('it lapses a proposal with no thread without a thread', async () => {
       definitions: () => ({ snapshotHash: 'snapshot-c' }),
     },
     {
-      readProposals: () =>
-        Promise.resolve([{ proposalID: 'r4t8v2b6nq', thread: null, proposedAt, outcome: null }]),
+      readProposals: () => Promise.resolve([proposal]),
       lapsedCodec,
     },
   );
@@ -99,7 +93,7 @@ test('it lapses a proposal with no thread without a thread', async () => {
   const records = await readRecords(ctx.log, { afterSequence: 0 });
 
   expect(records.map((entry) => entry.record)).toMatchObject([
-    { kind: 'test.proposal_lapsed', thread: null, payload: { proposalID: 'r4t8v2b6nq' } },
+    { kind: 'test.proposal_lapsed', thread: null, payload: { proposalID: proposal.proposalID } },
   ]);
 });
 
@@ -112,6 +106,9 @@ test('it lapses no proposal that an answer or a lapse closed', async () => {
   );
 
   const proposedAt = Date.UTC(2026, 4, 11, 8, 0);
+  const approved = buildMockProposalState({ proposedAt, outcome: 'approved' });
+  const rejected = buildMockProposalState({ proposedAt, outcome: 'rejected' });
+  const closedByLapse = buildMockProposalState({ proposedAt, outcome: 'lapsed' });
 
   const lapsed = await writeProposalLapses(
     {
@@ -120,12 +117,7 @@ test('it lapses no proposal that an answer or a lapse closed', async () => {
       definitions: () => ({ snapshotHash: 'snapshot-c' }),
     },
     {
-      readProposals: () =>
-        Promise.resolve([
-          { proposalID: 'a1s2d3f4gh', thread: 'conversation', proposedAt, outcome: 'approved' },
-          { proposalID: 'z9x8c7v6bn', thread: 'conversation', proposedAt, outcome: 'rejected' },
-          { proposalID: 'q5w4e3r2ty', thread: 'conversation', proposedAt, outcome: 'lapsed' },
-        ]),
+      readProposals: () => Promise.resolve([approved, rejected, closedByLapse]),
       lapsedCodec,
     },
   );
