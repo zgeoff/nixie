@@ -121,24 +121,29 @@ Each message stands on its own line, a reset stands on its own line too, and eve
 folds into the step it belongs to, from the step's start to its end. A record before a step, such as
 the task's creation, folds into the step that follows it. A page holds only the thread's newest
 records, so it can start partway through a step: a step's end with no start before it closes the
-records before it as one step, with the status its end records. A step shows as one collapsed line
-of short facts: its task, how many memories its recalls delivered with how many of them the model
-rated as noise, each tool it called with its targets, such as the host of each page a web fetch
-read, how full the context stood at its last model call against the window nixie compacts within,
-and how long it ran. A fact shows only once its record exists. Each compaction in the step adds a
-marker under that line with the context's tokens before and after, so the user can compare the turns
-on each side of it. A summary that closed the session shows as a rule across the feed with the
-context's size before it and the summary's own size, and opens to the summary's text while a forget
-has not erased it. Opening the step shows one collapsible section per source: the step with its
-records, the memories with each one's match score, the first line of its text and the model's rating
-with its note, the context with each compaction, each call with its input and its result, and a
-failed step's error. Each section opens on its own. A recall record holds no text and a rating
-record holds its note sealed, so the memories section reads the texts and the notes each time it
-opens, and a memory forgotten since then shows as forgotten. A rating can arrive in a later step
-than the recall it rates, and the view shows it beside the memory in the step that recalled it. A
-long value shows its start and opens in full on demand, because a fetched page's text runs to many
-kilobytes. Its toggle sits above the text and sticks to the top of the view while the text scrolls
-past, so the user closes an open value without scrolling back to find the control.
+records before it as one step, with the status its end records.
+
+A step shows as one collapsed line of short facts: its task, how many memories its recalls delivered
+with how many of them the model rated as noise, each tool it called with its targets, such as the
+host and path of the page each web fetch ended at, how full the context stood at its last model call
+against the window nixie compacts within, and how long it ran. A fact shows only once its record
+exists.
+
+Each compaction in the step adds a marker under that line with the context's tokens before and
+after, so the user can compare the turns on each side of it. A summary that closed the session shows
+as a rule across the feed with the context's size before it and the summary's own size, and opens to
+the summary's text while a forget has not erased it.
+
+Opening the step shows one collapsible section per source: the step with its records, the memories
+with each one's match score, the first line of its text and the model's rating with its note, the
+context with each compaction, each call with its input and its result, and a failed step's error.
+Each section opens on its own. A recall record holds no text and a rating record holds its note
+sealed, so the memories section reads the texts and the notes each time it opens, and a memory
+forgotten since then shows as forgotten. A rating can arrive in a later step than the recall it
+rates, and the view shows it beside the memory in the step that recalled it. A long value shows its
+start and opens in full on demand, because a fetched page's text runs to many kilobytes. Its toggle
+sits above the text and sticks to the top of the view while the text scrolls past, so the user
+closes an open value without scrolling back to find the control.
 
 Each message carries a forget control, which first asks and forgets only on the confirm. A
 confirmation keeps one client action ID, so a confirm that fails and goes again forgets once. A

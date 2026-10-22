@@ -66,6 +66,40 @@ test('it folds the records of a step into one line between the messages', async 
   ]);
 });
 
+test('it labels a fetch by link ID with the page the fetch returned', async () => {
+  await createDeviceSession();
+
+  await store.records.create({
+    kind: 'task.step_started',
+    recordedAt: new Date(0),
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  await store.records.create({
+    kind: 'tool_called',
+    toolCall: { callID: 'call-1', input: { link: 'L7' }, tool: 'web_fetch' },
+  });
+
+  await store.records.create({
+    kind: 'tool_result',
+    toolCall: {
+      callID: 'call-1',
+      content: { result: { text: 'calm', url: 'https://www.harbour.test/tides/today' } },
+      outcome: 'result',
+    },
+  });
+
+  await store.records.create({ kind: 'task.step_committed', recordedAt: new Date(1500) });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const summary = await rendered.findByText(
+    'conversation · web fetch: harbour.test/tides/today · 1.5s',
+  );
+
+  expect(summary).toBeVisible();
+});
+
 test('it sends a message with a span for each way its text arrived', async () => {
   const ctx = setupTest();
 
