@@ -5,6 +5,7 @@ import { toErrorFields } from '@heynixie/logger';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
 import { startSkillLapseSweep } from '@heynixie/skills';
 import { createConversationTask } from '@heynixie/tasks';
+import { buildSkillExportText } from './build-skill-export-text';
 import { makeRetriedStart } from './make-retried-start';
 import { runDefinitionsSeed } from './run-definitions-seed';
 import type { ServerPartValues } from './server-part-values';
@@ -99,12 +100,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const sweep = startSkillExportSweep({
         log: parts.context.log,
         repo: buildGitHubDefinitionsRepo(settings),
-        text: {
-          title: options.config.definitions.export?.title ?? null,
-          message: options.config.definitions.export?.message ?? null,
-          agentName: options.config.agent.names[0] ?? null,
-          ownerName: options.config.owner.name,
-        },
+        text: buildSkillExportText(options.config),
         onError: (error) => {
           parts.log('skills.export_failed', toErrorFields(error), 'error');
         },
