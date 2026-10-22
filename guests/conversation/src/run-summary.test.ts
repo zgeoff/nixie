@@ -31,30 +31,30 @@ async function setupTest() {
     },
   };
 
-  model.addReplies({ text: 'The gauge reads 3.2 metres.' });
-
-  await runTurn(
-    buildMockTurnFrame({
-      profile: { baseURL: model.url },
-      input: [{ uuid: crypto.randomUUID(), text: 'What does the tide gauge read?' }],
-    }),
-    { ...io, toolServer: createStubToolServer().config, messages: [] },
-  );
-
-  const ended = io.frames.splice(0).find((frame) => frame.type === 'ended');
-
-  invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
-
-  return { home, model, io, boundary: ended.boundary };
+  return { home, model, io };
 }
 
 test('it reports the summary with its own chain entry and the token counts of its one call', async () => {
   const ctx = await setupTest();
 
+  ctx.model.addReplies({ text: 'The gauge reads 3.2 metres.' });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: crypto.randomUUID(), text: 'What does the tide gauge read?' }],
+    }),
+    { ...ctx.io, toolServer: createStubToolServer().config, messages: [] },
+  );
+
+  const ended = ctx.io.frames.splice(0).find((frame) => frame.type === 'ended');
+
+  invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
+
   ctx.model.addReplies({ text: 'Open threads: the gauge read 3.2 metres.' });
 
   await runSummary(
-    buildMockSummarizeFrame({ profile: { baseURL: ctx.model.url }, resume: ctx.boundary }),
+    buildMockSummarizeFrame({ profile: { baseURL: ctx.model.url }, resume: ended.boundary }),
     ctx.io,
   );
 
@@ -76,12 +76,26 @@ test('it reports the summary with its own chain entry and the token counts of it
 test('it sends the instruction after the session history, with no tools, and writes the summary on a fork', async () => {
   const ctx = await setupTest();
 
+  ctx.model.addReplies({ text: 'The gauge reads 3.2 metres.' });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: crypto.randomUUID(), text: 'What does the tide gauge read?' }],
+    }),
+    { ...ctx.io, toolServer: createStubToolServer().config, messages: [] },
+  );
+
+  const ended = ctx.io.frames.splice(0).find((frame) => frame.type === 'ended');
+
+  invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
+
   ctx.model.addReplies({ text: 'Open threads: none.' });
 
   await runSummary(
     buildMockSummarizeFrame({
       profile: { baseURL: ctx.model.url },
-      resume: ctx.boundary,
+      resume: ended.boundary,
       systemPrompt: 'You are nixie.',
       instruction: 'Write the summary now.',
     }),
@@ -102,17 +116,31 @@ test('it sends the instruction after the session history, with no tools, and wri
 
   expect(ctx.io.frames).toSatisfyAll(
     (frame: GuestFrame) =>
-      frame.type === 'summarized' && frame.boundary.sessionID !== ctx.boundary.sessionID,
+      frame.type === 'summarized' && frame.boundary.sessionID !== ended.boundary.sessionID,
   );
 });
 
 test('it reports a failed call as a failure and never as a summary', async () => {
   const ctx = await setupTest();
 
+  ctx.model.addReplies({ text: 'The gauge reads 3.2 metres.' });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: crypto.randomUUID(), text: 'What does the tide gauge read?' }],
+    }),
+    { ...ctx.io, toolServer: createStubToolServer().config, messages: [] },
+  );
+
+  const ended = ctx.io.frames.splice(0).find((frame) => frame.type === 'ended');
+
+  invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
+
   ctx.model.addReplies({ refusal: 'Overloaded, try again later' });
 
   await runSummary(
-    buildMockSummarizeFrame({ profile: { baseURL: ctx.model.url }, resume: ctx.boundary }),
+    buildMockSummarizeFrame({ profile: { baseURL: ctx.model.url }, resume: ended.boundary }),
     ctx.io,
   );
 
@@ -123,6 +151,20 @@ test('it reports a failed call as a failure and never as a summary', async () =>
 
 test('it reports a session to resume that is not on the guest disk as missing', async () => {
   const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'The gauge reads 3.2 metres.' });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: crypto.randomUUID(), text: 'What does the tide gauge read?' }],
+    }),
+    { ...ctx.io, toolServer: createStubToolServer().config, messages: [] },
+  );
+
+  const ended = ctx.io.frames.splice(0).find((frame) => frame.type === 'ended');
+
+  invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
 
   await runSummary(
     buildMockSummarizeFrame({
@@ -147,14 +189,28 @@ test('it reports a session to resume that is not on the guest disk as missing', 
 test('it keeps the session it forked from on the guest disk', async () => {
   const ctx = await setupTest();
 
+  ctx.model.addReplies({ text: 'The gauge reads 3.2 metres.' });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: crypto.randomUUID(), text: 'What does the tide gauge read?' }],
+    }),
+    { ...ctx.io, toolServer: createStubToolServer().config, messages: [] },
+  );
+
+  const ended = ctx.io.frames.splice(0).find((frame) => frame.type === 'ended');
+
+  invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
+
   ctx.model.addReplies({ text: 'Open threads: none.' });
 
   await runSummary(
-    buildMockSummarizeFrame({ profile: { baseURL: ctx.model.url }, resume: ctx.boundary }),
+    buildMockSummarizeFrame({ profile: { baseURL: ctx.model.url }, resume: ended.boundary }),
     ctx.io,
   );
 
   const files = await readdir(`${ctx.home}/.claude/projects`, { recursive: true });
 
-  expect(files).toSatisfyAny((path: string) => path.endsWith(`/${ctx.boundary.sessionID}.jsonl`));
+  expect(files).toSatisfyAny((path: string) => path.endsWith(`/${ended.boundary.sessionID}.jsonl`));
 });
