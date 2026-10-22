@@ -4,6 +4,7 @@ import type { DefinitionsInForce } from '@heynixie/definitions';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
+import type { SkillVendorContext } from '@heynixie/skills';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildConversationSkillTools } from './build-conversation-skill-tools';
@@ -18,6 +19,8 @@ export interface ConversationEndpointTools {
 
   readonly readInForce: () => DefinitionsInForce | null;
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
+
+  readonly vendor: SkillVendorContext | null;
 }
 
 export interface ConversationEndpoint {
@@ -37,12 +40,15 @@ export async function startConversationEndpoint(
 
   const logRead = buildLogReadTool(options.context.log);
 
-  const skills = buildConversationSkillTools({
-    log: options.context.log,
-    clock: options.context.clock,
-    readInForce: tools.readInForce,
-    refreshDefinitions: tools.refreshDefinitions,
-  });
+  const skills = buildConversationSkillTools(
+    {
+      log: options.context.log,
+      clock: options.context.clock,
+      readInForce: tools.readInForce,
+      refreshDefinitions: tools.refreshDefinitions,
+    },
+    tools.vendor,
+  );
 
   const definitions = buildConversationTools(
     { webFetch: tools.webFetch, time, logRead, skills },

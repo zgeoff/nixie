@@ -1,51 +1,19 @@
-import type { Clock } from '@heynixie/clock';
-import { systemClock } from '@heynixie/clock';
-import { createActor, toPromise } from 'xstate';
-import type { SkillExportOptions } from './run-skill-exports';
-import { runSkillExports } from './run-skill-exports';
-import { skillExportSweepMachine } from './skill-export-sweep-machine';
+import { buildSkillChangeKind } from './build-skill-change-kind';
+import type {
+  DefinitionsExportSweep,
+  DefinitionsExportSweepOptions,
+} from './start-definitions-export-sweep';
+import { startDefinitionsExportSweep } from './start-definitions-export-sweep';
 import type { SkillExportText } from './types';
 
-export interface SkillExportSweepOptions extends SkillExportOptions {
+export interface SkillExportSweepOptions extends Omit<DefinitionsExportSweepOptions, 'kinds'> {
   readonly text: SkillExportText;
-
-  readonly intervalMs?: number;
-
-  readonly clock?: Clock;
 }
 
-export interface SkillExportSweep {
-  readonly wake: () => void;
-
-  readonly stop: () => Promise<void>;
-}
-
-const exportSweepMs = 60 * 60 * 1000;
+export type SkillExportSweep = DefinitionsExportSweep;
 
 export function startSkillExportSweep(options: SkillExportSweepOptions): SkillExportSweep {
-  const sweep = createActor(skillExportSweepMachine, {
-    input: {
-      sweep: () => runSkillExports(options),
-      clock: options.clock ?? systemClock,
-      intervalMs: options.intervalMs ?? exportSweepMs,
-      onError: options.onError,
-    },
-  });
+  const { text, ...sweepOptions } = options;
 
-  sweep.start();
-
-  return {
-    wake: () => {
-      if (sweep.getSnapshot().status === 'active') {
-        sweep.send({ type: 'wake' });
-      }
-    },
-    stop: async () => {
-      if (sweep.getSnapshot().status === 'active') {
-        sweep.send({ type: 'stop' });
-      }
-
-      await toPromise(sweep);
-    },
-  };
+  return startDefinitionsExportSweep({ ...sweepOptions, kinds: [buildSkillChangeKind(text)] });
 }

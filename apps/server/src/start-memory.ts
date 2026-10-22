@@ -1,25 +1,14 @@
 import { toErrorFields } from '@heynixie/logger';
 import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
 import { findNoAllowRule, startLapseSweep, startMemoryStore } from '@heynixie/memory';
-import { startCheckerTask } from '@heynixie/sessions';
+import type { RunCheck } from '@heynixie/sessions';
 import type { ServerParts } from './types';
 
 export async function startMemory(
   parts: ServerParts,
   cleanupSessions: CleanupSessions,
+  check: RunCheck,
 ): Promise<StartedMemoryStore> {
-  const checker = await startCheckerTask({
-    models: parts.config.models,
-    secrets: parts.modelSecrets,
-    sandboxes: parts.tools.adapter,
-    image: parts.images.conversation.name,
-    timeoutMs: parts.config.memory.checkerTimeoutMs,
-    clock: parts.context.clock,
-    log: parts.log,
-  });
-
-  await parts.cleanup.defer(() => checker.stop());
-
   const store = await startMemoryStore({
     log: parts.context.log,
     definitions: parts.context.definitions,
@@ -36,7 +25,7 @@ export async function startMemory(
           },
         }),
     gate: {
-      check: checker.check,
+      check,
       clock: parts.context.clock,
       defaultZone: parts.config.time.default_zone,
       findAllowRule: findNoAllowRule,

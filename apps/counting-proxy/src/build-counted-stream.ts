@@ -1,6 +1,6 @@
 import type { CallUsage } from '@heynixie/models';
+import { parseJSONOrNull } from '@heynixie/wire';
 import { isRecord } from './is-record';
-import { parseJSONOrNull } from './parse-json-or-null';
 import { parseReportedUsage } from './parse-reported-usage';
 
 type ReportedFields = Readonly<Record<string, unknown>>;

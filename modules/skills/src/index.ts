@@ -2,6 +2,9 @@ export type { SkillReloadChange, SkillReloadEvent } from './build-skill-reload-k
 export { buildSkillReloadKind } from './build-skill-reload-kind';
 export { buildSkillProposalAnswerKind } from './build-skill-proposal-answer-kind';
 export { buildSkillTools } from './build-skill-tools';
+export type { SkillVendorContext } from './build-skill-vendor-tool';
+export { buildSkillVendorTool } from './build-skill-vendor-tool';
+export type { ReadPage } from './read-github-skill';
 export type { TaskSkill, TaskSkillsQuery } from './load-or-pin-task-skills';
 export { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 export { loadSkillPin } from './load-skill-pin';

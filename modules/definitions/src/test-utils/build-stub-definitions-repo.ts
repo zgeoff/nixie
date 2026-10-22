@@ -84,6 +84,14 @@ export function buildStubDefinitionsRepo(directory: string): StubDefinitionsRepo
       return readFilePaths(join(directory, path));
     },
 
+    readFileSizes: async (revision) => {
+      await requireRevision(revision);
+
+      const paths = await readFilePaths(directory);
+
+      return new Map(paths.map((path) => [path, Bun.file(join(directory, path)).size]));
+    },
+
     writePullRequest: async (change, revision) => {
       const written = writeOpen(change, revision);
       const delay = nextAnswerDelay;

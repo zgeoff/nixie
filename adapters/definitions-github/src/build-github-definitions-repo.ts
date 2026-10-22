@@ -34,21 +34,29 @@ export function buildGitHubDefinitionsRepo(options: GitHubDefinitionsOptions): D
     },
 
     readFolder: async (path, revision) => {
-      const tree = await send(githubContract.readTree, {
-        params: { sha: revision },
-        query: { recursive: '1' },
-      });
-
-      // GitHub truncates a recursive tree past its size limit, which would hide a file to remove.
-      if (tree.truncated) {
-        throw new Error(`the tree of ${revision} is too large to read whole`);
-      }
+      const tree = await readWholeTree(send, revision);
 
       const prefix = `${path}/`;
 
-      return tree.tree
+      return tree
         .filter((entry) => entry.type === 'blob' && entry.path.startsWith(prefix))
         .map((entry) => entry.path.slice(prefix.length));
+    },
+
+    readFileSizes: async (revision) => {
+      const tree = await readWholeTree(send, revision);
+
+      const blobs = tree.filter((entry) => entry.type === 'blob');
+
+      return new Map(
+        blobs.map((entry) => {
+          if (entry.size === undefined) {
+            throw new Error(`GitHub listed ${entry.path} in ${revision} with no size`);
+          }
+
+          return [entry.path, entry.size];
+        }),
+      );
     },
 
     writePullRequest: async (change, revision) => {
@@ -144,6 +152,23 @@ async function allowMissing<Value>(lookup: Promise<Value>): Promise<Value | null
 
     throw error;
   }
+}
+
+async function readWholeTree(
+  send: GitHubSender,
+  revision: string,
+): Promise<z.output<typeof githubContract.readTree.response>['tree']> {
+  const tree = await send(githubContract.readTree, {
+    params: { sha: revision },
+    query: { recursive: '1' },
+  });
+
+  // GitHub truncates a recursive tree past its size limit, which would hide a file from a listing.
+  if (tree.truncated) {
+    throw new Error(`the tree of ${revision} is too large to read whole`);
+  }
+
+  return tree.tree;
 }
 
 async function writeChangeCommit(
