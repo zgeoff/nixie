@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildContentHash } from './build-content-hash';
 import { createPathSource } from './create-path-source';
+import { createStubGitSyncWorktree } from './test-utils/create-stub-git-sync-worktree';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-definitions-'));
@@ -38,6 +39,7 @@ test('it reads each definitions file under the root with its path relative to th
     contentHash: buildContentHash(files),
     files,
     revision: buildContentHash(files),
+    repository: null,
     skipped: [],
   });
 });
@@ -265,6 +267,123 @@ test('it probes with the content hash, which changes after an edit', async () =>
   const persona = new TextEncoder().encode('# Persona\n');
 
   expect(before).toBe(buildContentHash(new Map([['persona.md', persona]])));
+  expect(after).not.toBe(before);
+});
+
+test('it takes the commit and the origin of a git-sync worktree as the revision and the repository', async () => {
+  const ctx = await setupTest();
+
+  const worktree = await createStubGitSyncWorktree(ctx.directory, {
+    commit: '9d4e2b7a1c6f0e8d3b5a7c9e1f2d4b6a8c0e3f71',
+    config:
+      '[core]\n\tbare = false\n[remote "upstream"]\n\turl = https://git.example.test/other/fork\n' +
+      '[remote "origin"]\n\turl = https://git.example.test/kestrel-labs/wren-definitions\n',
+  });
+
+  await writeFile(join(worktree, 'persona.md'), '# Persona\n');
+
+  const snapshot = await createPathSource({ directory: join(ctx.directory, 'current') }).snapshot();
+
+  const files = new Map([['persona.md', new TextEncoder().encode('# Persona\n')]]);
+
+  expect(snapshot).toStrictEqual({
+    contentHash: buildContentHash(files),
+    files,
+    revision: '9d4e2b7a1c6f0e8d3b5a7c9e1f2d4b6a8c0e3f71',
+    repository: 'https://git.example.test/kestrel-labs/wren-definitions',
+    skipped: ['.git'],
+  });
+});
+
+test('it leaves the credentials and the query out of the repository it names', async () => {
+  const ctx = await setupTest();
+
+  const worktree = await createStubGitSyncWorktree(ctx.directory, {
+    commit: '9d4e2b7a1c6f0e8d3b5a7c9e1f2d4b6a8c0e3f71',
+    config:
+      '[remote "origin"]\n\turl = "https://sync-bot:pa55-word@git.example.test/kestrel-labs/wren-definitions?token=t0k3n"\n',
+  });
+
+  await writeFile(join(worktree, 'persona.md'), '# Persona\n');
+
+  const snapshot = await createPathSource({ directory: join(ctx.directory, 'current') }).snapshot();
+
+  expect(snapshot.repository).toBe('https://git.example.test/kestrel-labs/wren-definitions');
+});
+
+test('it keeps an scp-style origin as git wrote it', async () => {
+  const ctx = await setupTest();
+
+  const worktree = await createStubGitSyncWorktree(ctx.directory, {
+    commit: '9d4e2b7a1c6f0e8d3b5a7c9e1f2d4b6a8c0e3f71',
+    config: '[remote "origin"]\n\turl = git@git.example.test:kestrel-labs/wren-definitions.git\n',
+  });
+
+  await writeFile(join(worktree, 'persona.md'), '# Persona\n');
+
+  const snapshot = await createPathSource({ directory: join(ctx.directory, 'current') }).snapshot();
+
+  expect(snapshot.repository).toBe('git@git.example.test:kestrel-labs/wren-definitions.git');
+});
+
+test('it takes the commit with no repository from a worktree whose repo has no origin', async () => {
+  const ctx = await setupTest();
+
+  const worktree = await createStubGitSyncWorktree(ctx.directory, {
+    commit: '9d4e2b7a1c6f0e8d3b5a7c9e1f2d4b6a8c0e3f71',
+    config: '[core]\n\tbare = false\n',
+  });
+
+  await writeFile(join(worktree, 'persona.md'), '# Persona\n');
+
+  const snapshot = await createPathSource({ directory: join(ctx.directory, 'current') }).snapshot();
+
+  expect(snapshot.revision).toBe('9d4e2b7a1c6f0e8d3b5a7c9e1f2d4b6a8c0e3f71');
+  expect(snapshot.repository).toBeNull();
+});
+
+test('it keeps the content hash as the revision of a worktree whose HEAD names a branch', async () => {
+  const ctx = await setupTest();
+
+  const worktree = await createStubGitSyncWorktree(ctx.directory, {
+    commit: '9d4e2b7a1c6f0e8d3b5a7c9e1f2d4b6a8c0e3f71',
+    config: '[remote "origin"]\n\turl = https://git.example.test/kestrel-labs/wren-definitions\n',
+    head: 'ref: refs/heads/main',
+  });
+
+  await writeFile(join(worktree, 'persona.md'), '# Persona\n');
+
+  const snapshot = await createPathSource({ directory: join(ctx.directory, 'current') }).snapshot();
+
+  const files = new Map([['persona.md', new TextEncoder().encode('# Persona\n')]]);
+
+  expect(snapshot.revision).toBe(buildContentHash(files));
+  expect(snapshot.repository).toBeNull();
+});
+
+test('it probes with a token that changes when git-sync moves to a new commit over the same files', async () => {
+  const ctx = await setupTest();
+
+  const first = await createStubGitSyncWorktree(ctx.directory, {
+    commit: '9d4e2b7a1c6f0e8d3b5a7c9e1f2d4b6a8c0e3f71',
+    config: '[remote "origin"]\n\turl = https://git.example.test/kestrel-labs/wren-definitions\n',
+  });
+
+  await writeFile(join(first, 'persona.md'), '# Persona\n');
+
+  const source = createPathSource({ directory: join(ctx.directory, 'current') });
+
+  const before = await source.probe();
+
+  const second = await createStubGitSyncWorktree(ctx.directory, {
+    commit: '2f8a0c6e4b1d9f3a5c7e0b2d4f6a8c1e3b5d7f92',
+    config: '[remote "origin"]\n\turl = https://git.example.test/kestrel-labs/wren-definitions\n',
+  });
+
+  await writeFile(join(second, 'persona.md'), '# Persona\n');
+
+  const after = await source.probe();
+
   expect(after).not.toBe(before);
 });
 

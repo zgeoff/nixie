@@ -1,5 +1,6 @@
 import { actionsMigration } from './actions-migration';
 import { apiMigration } from './api-migration';
+import { definitionSeedRepositoryMigration } from './definition-seed-repository-migration';
 import { definitionsMigration } from './definitions-migration';
 import { eventLogMigration } from './event-log-migration';
 import { memoryKindsMigration } from './memory-kinds-migration';
@@ -34,6 +35,7 @@ export const nixieSchema: BuildSchema = {
     skillExportAttemptsMigration,
     webFetchLinksMigration,
     memoryUntilMigration,
+    definitionSeedRepositoryMigration,
   ],
   oldestReader: 23,
 };

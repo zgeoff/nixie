@@ -18,6 +18,7 @@ export interface SeedPlan {
   readonly source: {
     readonly id: string;
     readonly kind: SourceKind;
+    readonly repository: string | null;
     readonly revision: string;
     readonly contentHash: string;
   };
@@ -55,6 +56,7 @@ export async function writeSeed(
     seededAt: new Date(seededAt),
     sourceID: plan.source.id,
     sourceKind: plan.source.kind,
+    sourceRepository: plan.source.repository,
     revision: plan.source.revision,
     contentHash: plan.source.contentHash,
     formatVersion: plan.formatVersion,
@@ -136,6 +138,7 @@ async function writeSeedRecord(
       payload: {
         sourceID: plan.source.id,
         sourceKind: plan.source.kind,
+        sourceRepository: plan.source.repository,
         revision: plan.source.revision,
         contentHash: plan.source.contentHash,
         formatVersion: plan.formatVersion,
@@ -177,6 +180,7 @@ async function writeSeedRow(tx: Transaction<unknown>, inForce: DefinitionsInForc
       seeded_at: inForce.seededAt.getTime(),
       source_id: inForce.sourceID,
       source_kind: inForce.sourceKind,
+      source_repository: inForce.sourceRepository,
       revision: inForce.revision,
       content_hash: inForce.contentHash,
       format_version: inForce.formatVersion,

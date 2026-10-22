@@ -34,6 +34,7 @@ export interface NixieTables {
     readonly format_version: number;
     readonly snapshot_hash: string;
     readonly record_sequence: number;
+    readonly source_repository: string | null;
   };
   readonly definition_snapshots: {
     readonly snapshot_hash: string;

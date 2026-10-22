@@ -76,6 +76,7 @@ test('it reads the seed in force with its snapshot row and the payload of its re
     payload: {
       sourceID: `path:${ctx.root}`,
       sourceKind: 'path',
+      sourceRepository: null,
       revision: seeded.inForce.revision,
       contentHash: seeded.inForce.contentHash,
       formatVersion: 1,

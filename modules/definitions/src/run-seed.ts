@@ -80,6 +80,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       source: {
         id: options.source.id,
         kind: options.source.kind,
+        repository: read.snapshot.repository,
         revision: read.snapshot.revision,
         contentHash: read.snapshot.contentHash,
       },
@@ -117,6 +118,7 @@ function isSameSeed(
 ): boolean {
   return (
     inForce.sourceID === plan.sourceID &&
+    inForce.sourceRepository === plan.snapshot.repository &&
     inForce.revision === plan.snapshot.revision &&
     inForce.contentHash === plan.snapshot.contentHash &&
     inForce.snapshotHash === plan.built.snapshotHash

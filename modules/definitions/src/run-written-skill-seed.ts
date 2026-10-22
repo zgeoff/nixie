@@ -56,6 +56,7 @@ export function runWrittenSkillSeed(options: WrittenSkillSeedOptions): Promise<S
       source: {
         id: inForce.sourceID,
         kind: inForce.sourceKind,
+        repository: inForce.sourceRepository,
         revision: inForce.revision,
         contentHash: inForce.contentHash,
       },
