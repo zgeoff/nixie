@@ -18,15 +18,16 @@ test('it builds the web server entry once and shares it', async () => {
 });
 
 // This cap still refuses Node's wasm trap handler reservation, and a lower one leaves some Node
-// releases no room for their own heap.
+// releases no room for their own heap. The lane's raised limit stops at this process, so the child
+// run takes the same limit on its own command line.
 test('it builds the web server entry under an address-space cap', async () => {
   const child = Bun.spawn(
     [
       'sh',
       '-c',
-      'ulimit -v 12000000 && exec "$0" test "$1" -t "$2"',
+      'ulimit -v 12000000 && exec "$0" test --timeout=30000 "$1" -t "$2"',
       process.execPath,
-      join(import.meta.dir, 'run-web-build-once.test.ts'),
+      join(import.meta.dir, 'run-web-build-once.process.test.ts'),
       'it builds the web server entry once and shares it',
     ],
     { cwd: import.meta.dir, stderr: 'pipe', stdout: 'ignore' },
