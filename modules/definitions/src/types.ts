@@ -193,6 +193,8 @@ export interface DefinitionsRepo {
 
   readonly readFolder: (path: string, revision: string) => Promise<readonly string[]>;
 
+  readonly readFileSizes: (revision: string) => Promise<ReadonlyMap<string, number>>;
+
   readonly writePullRequest: (
     change: DefinitionsChange,
     revision: string,

@@ -11,7 +11,12 @@ export interface GitHubOperation {
 const shaSchema = z.object({ sha: z.string() });
 const refSchema = z.object({ object: shaSchema });
 const pullSchema = z.object({ number: z.number().int(), html_url: z.string() });
-const treeListingSchema = z.object({ path: z.string(), type: z.string() });
+
+const treeListingSchema = z.object({
+  path: z.string(),
+  type: z.string(),
+  size: z.number().int().optional(),
+});
 
 const pullUpdateSchema = z
   .object({ title: z.string(), body: z.string(), state: z.enum(['open', 'closed']) })

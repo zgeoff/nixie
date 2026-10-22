@@ -1,6 +1,7 @@
 import { runPendingRecordForgets } from '@heynixie/api';
 import { makeRetriedStart } from './make-retried-start';
 import type { ServerPartValues } from './server-part-values';
+import { startChecker } from './start-checker';
 import { startConsolidatorTask } from './start-consolidator-task';
 import { startMemory } from './start-memory';
 import { startWriterTask } from './start-writer-task';
@@ -8,10 +9,19 @@ import type { AnyPartDeclaration } from './types';
 
 export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
   {
-    name: 'memory',
+    name: 'checker',
     needs: ['server_parts', 'conversation_imp'],
+    start: makeRetriedStart('checker', (parts) => startChecker(parts)),
+  },
+  {
+    name: 'memory',
+    needs: ['server_parts', 'conversation_imp', 'checker'],
     start: makeRetriedStart('memory', (parts, reader) =>
-      startMemory(parts, reader.get('conversation_imp').cleanupSessions),
+      startMemory(
+        parts,
+        reader.get('conversation_imp').cleanupSessions,
+        reader.get('checker').check,
+      ),
     ),
   },
   {

@@ -135,6 +135,71 @@ test('it lists the files under a folder at a revision, nested ones included', as
   expect(listed).toIncludeSameMembers(['SKILL.md', 'scripts/read.ts']);
 });
 
+test('it reads the byte size of every file at the base revision', async () => {
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
+
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'nixie.yaml',
+    text: 'format: 2\n',
+  });
+
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'skills/tide-tables/SKILL.md',
+    text: '# Tides ✓\n',
+  });
+
+  const repo = buildGitHubDefinitionsRepo({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+    apiURL: githubAPIURL,
+  });
+
+  const revision = await repo.readBaseRevision();
+  const sizes = await repo.readFileSizes(revision);
+
+  expect(sizes).toStrictEqual(
+    new Map([
+      ['nixie.yaml', 10],
+      ['skills/tide-tables/SKILL.md', 12],
+    ]),
+  );
+});
+
+test('it refuses a size listing that GitHub cut short', async () => {
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
+
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'nixie.yaml',
+    text: 'format: 2\n',
+  });
+
+  await githubStore.repos.update((query) => query.where({ repository: 'harbour/definitions' }), {
+    data(draft) {
+      draft.isTruncated = true;
+    },
+  });
+
+  const repo = buildGitHubDefinitionsRepo({
+    repository: 'harbour/definitions',
+    base: 'main',
+    token: 'token-a',
+    apiURL: githubAPIURL,
+  });
+
+  const revision = await repo.readBaseRevision();
+
+  expect(repo.readFileSizes(revision)).rejects.toThrow(
+    `the tree of ${revision} is too large to read whole`,
+  );
+});
+
 test('it refuses a folder listing that GitHub cut short', async () => {
   await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 

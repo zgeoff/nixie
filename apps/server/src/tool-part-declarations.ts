@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-github';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildActions } from './build-actions';
 import { createSandboxAdapter } from './create-sandbox-adapter';
@@ -63,10 +64,11 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'tool_endpoint',
     needs: ['inputs', 'context', 'web_fetch', 'actions'],
-    uses: ['memory', 'server_parts'],
+    uses: ['memory', 'server_parts', 'checker'],
     start: (parts) => {
       const options = parts.get('inputs').options;
       const inForce = parts.get('context').inForce;
+      const definitionsExport = options.definitionsExport;
 
       return startConversationEndpoint(
         {
@@ -80,6 +82,14 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           readStore: () => parts.find('memory'),
           readInForce: () => inForce.read(),
           refreshDefinitions: () => refreshDefinitions(parts.find('server_parts'), inForce),
+          vendor:
+            definitionsExport === null
+              ? null
+              : {
+                  readPage: parts.get('web_fetch').readSkillPage,
+                  repo: buildGitHubDefinitionsRepo(definitionsExport.repo),
+                  readReviewer: () => parts.find('checker')?.check ?? null,
+                },
         },
       );
     },

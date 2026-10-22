@@ -1,4 +1,10 @@
 export { buildContentHash } from './build-content-hash';
+export type { SkillLockEntry, SkillVendor, SkillVendorChange } from './build-skill-vendor-change';
+export { buildSkillVendorChange } from './build-skill-vendor-change';
+export { manifestPath } from './manifest-path';
+export type { SkillDocument } from './parse-skill-frontmatter';
+export { parseSkillFrontmatter } from './parse-skill-frontmatter';
+export { skillsLockPath } from './skills-lock-path';
 export type { DefinitionsSnapshotInput } from './build-definitions-snapshot';
 export { checkSkillFiles } from './check-skill-files';
 export { buildDefinitionsSnapshot } from './build-definitions-snapshot';

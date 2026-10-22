@@ -41,10 +41,14 @@ const patterns: readonly TokenPattern[] = [
 
 export function collectDestinationTokens(text: string): readonly DestinationToken[] {
   const tokens: DestinationToken[] = [];
-  const taken: TokenRange[] = [];
+  let taken: readonly TokenRange[] = [];
 
   for (const entry of patterns) {
-    tokens.push(...collectPatternTokens(text, entry, taken));
+    const collected = collectPatternTokens(text, entry, taken);
+
+    tokens.push(...collected.tokens);
+
+    taken = mergeRanges(taken, collected.ranges);
   }
 
   return tokens;
@@ -52,21 +56,29 @@ export function collectDestinationTokens(text: string): readonly DestinationToke
 
 const trailing = /[.,;:!?)\]}'"’”]+$/u;
 
+interface PatternTokens {
+  readonly tokens: readonly DestinationToken[];
+  readonly ranges: readonly TokenRange[];
+}
+
+// One pattern's matches never overlap each other, so a match is checked only against the sorted
+// ranges of the patterns before it, which keeps a text full of matches from costing quadratic time.
 function collectPatternTokens(
   text: string,
   entry: TokenPattern,
-  taken: TokenRange[],
-): readonly DestinationToken[] {
-  return [...text.matchAll(entry.pattern)].flatMap((match) => {
+  taken: readonly TokenRange[],
+): PatternTokens {
+  const ranges: TokenRange[] = [];
+
+  const tokens = [...text.matchAll(entry.pattern)].flatMap((match) => {
     const range = { start: match.index, end: match.index + match[0].length };
-    const overlaps = taken.some((other) => range.start < other.end && other.start < range.end);
     const isShortNumber = entry.kind === 'phone' && match[0].replaceAll(/\D/gu, '').length < 7;
 
-    if (overlaps || isShortNumber) {
+    if (hasOverlap(taken, range) || isShortNumber) {
       return [];
     }
 
-    taken.push(range);
+    ranges.push(range);
 
     const token = {
       kind: entry.kind,
@@ -78,6 +90,29 @@ function collectPatternTokens(
 
     return part === undefined ? [token] : [{ ...token, part }];
   });
+
+  return { tokens, ranges };
+}
+
+// The ranges are sorted and never overlap, so their ends are sorted too, and the first range that
+// ends after the start is the only one that can overlap.
+function hasOverlap(taken: readonly TokenRange[], range: TokenRange): boolean {
+  let low = 0;
+  let high = taken.length;
+
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+
+    if ((taken[middle]?.end ?? 0) <= range.start) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+
+  const next = taken[low];
+
+  return next !== undefined && next.start < range.end;
 }
 
 function buildTokenKey(kind: DestinationToken['kind'], raw: string): string {
@@ -101,4 +136,11 @@ function buildTokenKey(kind: DestinationToken['kind'], raw: string): string {
   }
 
   return cleaned.toLowerCase();
+}
+
+function mergeRanges(
+  left: readonly TokenRange[],
+  right: readonly TokenRange[],
+): readonly TokenRange[] {
+  return [...left, ...right].toSorted((first, second) => first.start - second.start);
 }

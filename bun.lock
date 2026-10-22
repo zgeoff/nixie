@@ -70,6 +70,7 @@
       "dependencies": {
         "@heynixie/logger": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "gunshi": "catalog:",
         "zod": "catalog:",
       },
@@ -541,6 +542,7 @@
         "@heynixie/proposals": "workspace:*",
         "@heynixie/sessions": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
         "ts-pattern": "catalog:",
