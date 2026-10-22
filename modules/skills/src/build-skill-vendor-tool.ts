@@ -124,6 +124,7 @@ async function runSkillVendor(context: SkillVendorContext, call: ToolCall): Prom
     },
     report,
     existing: await context.repo.readFolder(`skills/${name}`, revision),
+    sizes: await context.repo.readFileSizes(revision),
     lock: await context.repo.readFile(skillsLockPath, revision),
     manifest: await context.repo.readFile(manifestPath, revision),
   });

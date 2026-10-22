@@ -27,6 +27,7 @@ test('it adds the skill and its lock entry, and puts the report under the notes'
       },
       report: '## Review report',
       existing: [],
+      sizes: new Map(),
       lock: `{\n  "harbour-hours": {\n    "source": "https://github.com/example/harbour",\n    "path": "harbour-hours",\n    "commit": "9d2e7b6a4c1f0e8d3b5a7c9e1f2d4b6a8c0e2f4a",\n    "contentHash": "${'c'.repeat(
         64,
       )}"\n  }\n}\n`,
@@ -106,6 +107,7 @@ test('it removes the files of the version it replaces and names that version', (
     },
     report: '## Review report',
     existing: ['SKILL.md', 'scripts/old.py'],
+    sizes: new Map(),
     lock: JSON.stringify({
       'tide-tables': {
         source: 'https://github.com/example/skills',
@@ -159,6 +161,7 @@ test('it refuses to replace a skill of the owner that has no lock entry', () => 
       },
       report: '## Review report',
       existing: ['SKILL.md'],
+      sizes: new Map(),
       lock: null,
       manifest: null,
     }),
@@ -192,6 +195,7 @@ test('it refuses a base branch whose lock file is not valid', () => {
       },
       report: '## Review report',
       existing: [],
+      sizes: new Map(),
       lock: '{"tide-tables": {"commit": "main"}}',
       manifest: null,
     }),
@@ -223,6 +227,7 @@ test('it tells the owner to set the skills format and to list the skill', () => 
     },
     report: '## Review report',
     existing: [],
+    sizes: new Map(),
     lock: null,
     manifest: 'format: 1\nskills: [harbour-hours]\n',
   });
@@ -234,5 +239,42 @@ test('it tells the owner to set the skills format and to list the skill', () => 
         "nixie.yaml holds format 1, and the seed applies skills only from format 2, so set `format: 2` in nixie.yaml with the merge to apply the skill.\n\nnixie.yaml lists the conversation's skills. Add `tide-tables` to that list to give the conversation the skill after the merge.",
       ),
     },
+  });
+});
+
+test('it refuses a change that takes the definitions past the total size limit', () => {
+  expect(
+    buildSkillVendorChange({
+      version: {
+        name: 'tide-tables',
+        skillHash: 'b'.repeat(64),
+        frontmatter: {
+          name: 'tide-tables',
+          description: 'Reads a tide table.',
+          license: null,
+          compatibility: null,
+          allowedTools: null,
+          metadata: {},
+        },
+        files: new Map([['SKILL.md', '# Tides\n']]),
+      },
+      entry: {
+        source: 'https://github.com/example/skills',
+        path: 'tide-tables',
+        commit: '3f6c1a528e0b4d7a9c215b7e4f0d9a133f6c1a52',
+      },
+      report: '## Review report',
+      existing: [],
+      sizes: new Map([
+        ['persona.md', 10 * 1024 * 1024 - 100],
+        ['.github/workflows/check.yml', 50_000],
+      ]),
+      lock: null,
+      manifest: null,
+    }),
+  ).toStrictEqual({
+    status: 'refused',
+    reason:
+      'the definitions would hold 10485917 bytes with the skill, past the 10485760-byte limit the seed keeps to',
   });
 });

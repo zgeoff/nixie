@@ -25,6 +25,24 @@ test('it reads a file at the base revision, and null for a missing one', async (
   expect(missing).toBeNull();
 });
 
+test('it reads the byte size of every file at the base revision', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.directory, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.directory, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.directory, 'skills', 'tide-tables', 'SKILL.md'), '# Tides ✓\n');
+
+  const revision = await ctx.repo.readBaseRevision();
+  const sizes = await ctx.repo.readFileSizes(revision);
+
+  expect(sizes).toStrictEqual(
+    new Map([
+      ['nixie.yaml', 10],
+      ['skills/tide-tables/SKILL.md', 12],
+    ]),
+  );
+});
+
 test('it lists the files under a folder at the base revision, nested ones included', async () => {
   const ctx = await setupTest();
 

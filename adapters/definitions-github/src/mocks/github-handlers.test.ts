@@ -110,7 +110,7 @@ test('it serves a file at a commit after the base branch moves past it', async (
   });
 });
 
-test("it lists a commit's tree recursively, each folder and each file", async () => {
+test("it lists a commit's tree recursively, each folder and each file with its byte size", async () => {
   await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
   await writeMockBranchFile({
@@ -132,7 +132,7 @@ test("it lists a commit's tree recursively, each folder and each file", async ()
     tree: [
       { path: 'skills', type: 'tree' },
       { path: 'skills/tide-tables', type: 'tree' },
-      { path: 'skills/tide-tables/SKILL.md', type: 'blob' },
+      { path: 'skills/tide-tables/SKILL.md', type: 'blob', size: 8 },
     ],
     truncated: false,
   });

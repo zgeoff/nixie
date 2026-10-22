@@ -212,7 +212,11 @@ function answerTreeRead(call: MockCall): Response {
     sha,
     tree: [
       ...[...folders].map((path) => ({ path, type: 'tree' })),
-      ...paths.map((path) => ({ path, type: 'blob' })),
+      ...paths.map((path) => ({
+        path,
+        type: 'blob',
+        size: new TextEncoder().encode(files[path]).byteLength,
+      })),
     ],
     truncated: repo?.isTruncated ?? false,
   });

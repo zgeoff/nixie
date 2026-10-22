@@ -1,5 +1,7 @@
+import { defaultSizeLimits } from './default-size-limits';
 import { definitionsFormats } from './definitions-formats';
 import { findFormatBeforeSkills } from './find-format-before-skills';
+import { isDefinitionsPath } from './is-definitions-path';
 import { isSkillUnlisted } from './is-skill-unlisted';
 import type { SkillsLock } from './parse-skills-lock';
 import { parseSkillsLock } from './parse-skills-lock';
@@ -15,6 +17,7 @@ export interface SkillVendor {
   readonly report: string;
 
   readonly existing: readonly string[];
+  readonly sizes: ReadonlyMap<string, number>;
 
   readonly lock: string | null;
   readonly manifest: string | null;
@@ -62,6 +65,16 @@ export function buildSkillVendorChange(vendor: SkillVendor): SkillVendorChange {
 
   files.set(skillsLockPath, `${JSON.stringify(lock, null, 2)}\n`);
 
+  const total = buildSnapshotBytes(vendor.sizes, files);
+  const maxTotalBytes = defaultSizeLimits.maxTotalBytes;
+
+  if (total > maxTotalBytes) {
+    return {
+      status: 'refused',
+      reason: `the definitions would hold ${String(total)} bytes with the skill, past the ${String(maxTotalBytes)}-byte limit the seed keeps to`,
+    };
+  }
+
   const short = vendor.entry.commit.slice(0, 12);
   const repository = vendor.entry.source.replace(/^https:\/\/github\.com\//u, '');
 
@@ -80,6 +93,27 @@ export function buildSkillVendorChange(vendor: SkillVendor): SkillVendorChange {
       files,
     },
   };
+}
+
+// The seed's total limit counts only the files the definitions source reads.
+function buildSnapshotBytes(
+  sizes: ReadonlyMap<string, number>,
+  files: ReadonlyMap<string, string | null>,
+): number {
+  const encoder = new TextEncoder();
+  const after = new Map(sizes);
+
+  for (const [path, text] of files) {
+    if (text === null) {
+      after.delete(path);
+    } else {
+      after.set(path, encoder.encode(text).byteLength);
+    }
+  }
+
+  return [...after]
+    .filter(([path]) => isDefinitionsPath(path))
+    .reduce((total, [, size]) => total + size, 0);
 }
 
 function buildNotes(vendor: SkillVendor, current: SkillLockEntry | undefined): readonly string[] {
