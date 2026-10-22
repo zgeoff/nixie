@@ -446,6 +446,45 @@ test('it refuses a request for a model its route does not price', async () => {
   expect(ctx.model.requests).toHaveLength(0);
 });
 
+test('it refuses a message request whose body names no model', async () => {
+  const ctx = await setupTest();
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        upstream: ctx.model.url,
+        model: 'model-small',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store: ctx.store,
+    sendUpstream: fetch,
+    log: ctx.log,
+  });
+
+  const response = await handler(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [] }),
+    }),
+  );
+
+  const body: unknown = await response.json();
+
+  expect(response.status).toBe(400);
+
+  expect(body).toStrictEqual({
+    type: 'error',
+    error: {
+      type: 'invalid_request_error',
+      message: 'the counting proxy needs a JSON body that names its model for messages',
+    },
+  });
+
+  expect(ctx.model.requests).toHaveLength(0);
+});
+
 test.each([
   ['POST', '/v1/messages/batches'],
   ['GET', '/v1/messages/batches/msgbatch_example'],

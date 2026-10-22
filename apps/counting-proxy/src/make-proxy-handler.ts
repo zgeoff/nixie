@@ -4,6 +4,7 @@ import type { CallUsage } from '@heynixie/models';
 import { buildCallCost } from '@heynixie/models';
 import { buildCallTokens } from './build-call-tokens';
 import { buildCountedStream } from './build-counted-stream';
+import { findProxyEndpoint } from './find-proxy-endpoint';
 import { isRecord } from './is-record';
 import { parseJSONOrNull } from './parse-json-or-null';
 import { parseReportedUsage } from './parse-reported-usage';
@@ -59,7 +60,9 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       );
     }
 
-    if (!isCountedEndpoint(request.method, target.path)) {
+    const endpoint = findProxyEndpoint(request.method, target.path);
+
+    if (endpoint === null) {
       return renderAPIError(
         403,
         'permission_error',
@@ -89,14 +92,26 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(403, 'permission_error', formatLimitRefusal(totals, deps.limits));
     }
 
-    const body = request.body === null ? null : await request.arrayBuffer();
-    const model = findRequestModel(body);
+    const body = endpoint.body === null ? null : await request.arrayBuffer();
 
-    if (model !== null && model !== target.route.model) {
+    const parsed =
+      endpoint.body === null || body === null
+        ? null
+        : endpoint.body.safeParse(parseJSONOrNull(new TextDecoder().decode(body)));
+
+    if (parsed?.success === false) {
       return renderAPIError(
         400,
         'invalid_request_error',
-        `the counting proxy prices this route for ${target.route.model}, so it refuses a request for ${model}`,
+        `the counting proxy needs a JSON body that names its model for ${endpoint.name}`,
+      );
+    }
+
+    if (parsed !== null && parsed.data.model !== target.route.model) {
+      return renderAPIError(
+        400,
+        'invalid_request_error',
+        `the counting proxy prices this route for ${target.route.model}, so it refuses a request for ${parsed.data.model}`,
       );
     }
 
@@ -176,16 +191,6 @@ function renderAPIError(status: number, type: string, message: string): Response
   return Response.json({ type: 'error', error: { type, message } }, { status });
 }
 
-// a reply to any other endpoint, such as a message batch, spends without the usage the proxy reads,
-// or names its models where the route's model check never looks
-function isCountedEndpoint(method: string, path: string): boolean {
-  if (method === 'POST') {
-    return path === '/v1/messages' || path === '/v1/messages/count_tokens';
-  }
-
-  return method === 'GET' && /^\/v1\/models(?:\/[^/]+)?$/u.test(path);
-}
-
 async function readTotals(deps: ProxyHandlerDeps): Promise<SpendTotals | null> {
   try {
     return await deps.store.read();
@@ -203,12 +208,6 @@ function formatLimitRefusal(totals: SpendTotals, limits: ProxyLimits): string {
   ].filter((part) => part !== null);
 
   return `the counting proxy reached its spending limit (${spent.join(', ')}), so it refuses every further request`;
-}
-
-function findRequestModel(body: ArrayBuffer | null): string | null {
-  const parsed = body === null ? null : parseJSONOrNull(new TextDecoder().decode(body));
-
-  return isRecord(parsed) && typeof parsed['model'] === 'string' ? parsed['model'] : null;
 }
 
 // hop-by-hop headers, and the ones the proxy sets again for the body it sends on
