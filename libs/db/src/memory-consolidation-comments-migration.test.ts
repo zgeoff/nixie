@@ -34,12 +34,6 @@ async function setupTest() {
     copyDir: directory,
   });
 
-  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-    values (1, 1767225600000, 'memory.consolidation_proposed', 'snapshot-a', '{}')`.execute(db);
-
-  await sql`insert into memory_consolidations (diff_id, model, changes, shown_items, sequence,
-    created_at) values ('diff-1', 'claude-test-1', 2, 2, 1, 1767225600000)`.execute(db);
-
   return { db };
 }
 
@@ -49,6 +43,12 @@ test('it moves the schema to version 13', () => {
 
 test('it backfills each existing change with the short ID its UUID gives and no comment', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.consolidation_proposed', 'snapshot-a', '{}')`.execute(ctx.db);
+
+  await sql`insert into memory_consolidations (diff_id, model, changes, shown_items, sequence,
+    created_at) values ('diff-1', 'claude-test-1', 2, 2, 1, 1767225600000)`.execute(ctx.db);
 
   await sql`insert into memory_consolidation_changes (change_id, diff_id, position, kind, item_id,
     inputs, source, status, action_hash, sealed, model, created_sequence, created_at, lapse_at)
@@ -83,6 +83,12 @@ test('it backfills each existing change with the short ID its UUID gives and no 
 
 test('it leaves the short IDs as they are when it runs again', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.consolidation_proposed', 'snapshot-a', '{}')`.execute(ctx.db);
+
+  await sql`insert into memory_consolidations (diff_id, model, changes, shown_items, sequence,
+    created_at) values ('diff-1', 'claude-test-1', 2, 2, 1, 1767225600000)`.execute(ctx.db);
 
   await sql`insert into memory_consolidation_changes (change_id, diff_id, position, kind, item_id,
     inputs, source, status, action_hash, sealed, model, created_sequence, created_at, lapse_at)

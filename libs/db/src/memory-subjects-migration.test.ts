@@ -34,9 +34,6 @@ async function setupTest() {
     copyDir: directory,
   });
 
-  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(db);
-
   return { db };
 }
 
@@ -46,6 +43,9 @@ test('it moves the schema to version 18', () => {
 
 test('it maps each self-note item to the self subject and every other item to owner', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
 
   await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
     updated_sequence, short_id, kind) values
@@ -71,6 +71,9 @@ test('it maps each self-note item to the self subject and every other item to ow
 test('it maps a self-note proposal to the self subject and a fact proposal to owner', async () => {
   const ctx = await setupTest();
 
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
+
   await sql`insert into memory_proposals (proposal_id, item_id, is_new_item, operation,
     target_version, is_pinned, review_reason, status, action_hash, sealed, origin, source, cap_group,
     created_sequence, created_at, lapse_at, kind) values
@@ -95,6 +98,9 @@ test('it maps a self-note proposal to the self subject and a fact proposal to ow
 test('it runs again without a change', async () => {
   const ctx = await setupTest();
 
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
+
   await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
     updated_sequence, short_id, kind) values
     ('8d2e4b71-0c5f-4e9a-b3d6-1f7a9c2e5b80', 1, 'active', 0, 1, 1, 'q4wz8n3vtc', 'self')`.execute(
@@ -111,6 +117,9 @@ test('it runs again without a change', async () => {
 
 test('it keeps the shared subject of an item and a proposal when it runs again', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
 
   await ctx.db.transaction().execute((tx) => memorySubjectsMigration.up(tx));
 
@@ -139,6 +148,9 @@ test('it keeps the shared subject of an item and a proposal when it runs again',
 
 test('it leaves a row that the release before inserts afterwards with no subject', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
 
   await ctx.db.transaction().execute((tx) => memorySubjectsMigration.up(tx));
 

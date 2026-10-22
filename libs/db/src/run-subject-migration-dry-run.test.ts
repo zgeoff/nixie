@@ -34,14 +34,14 @@ async function setupTest() {
     copyDir: directory,
   });
 
-  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(db);
-
   return { db, path };
 }
 
 test('it reports the subject counts before and after the migration that a copy of the database takes', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
 
   await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
     updated_sequence, short_id, kind) values
@@ -67,6 +67,9 @@ test('it reports the subject counts before and after the migration that a copy o
 test('it leaves the database it reads at the schema it found', async () => {
   const ctx = await setupTest();
 
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
+
   await runSubjectMigrationDryRun(ctx.path);
 
   const version = await sql`select version from schema_version`.execute(ctx.db);
@@ -81,6 +84,9 @@ test('it leaves the database it reads at the schema it found', async () => {
 test('it refuses a path that holds no database', async () => {
   const ctx = await setupTest();
 
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
+
   expect(runSubjectMigrationDryRun(`${ctx.path}.missing`)).rejects.toMatchObject({
     code: 'SQLITE_CANTOPEN',
   });
@@ -88,6 +94,9 @@ test('it refuses a path that holds no database', async () => {
 
 test('it counts the rows a database still holds only in its write-ahead log, while its writer stays open', async () => {
   const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
 
   await sql`pragma wal_autocheckpoint = 0`.execute(ctx.db);
 
