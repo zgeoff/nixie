@@ -54,10 +54,18 @@ and `SSL_CERT_FILE` the CA bundle that holds the certificate its proxy signs wit
 so every `docker compose` command there, `docker compose run --rm enrol` too, keeps the broker in
 place. Without them, nixie starts and reports ready, and each turn fails at its model call.
 
+A preview host can cap each preview's model spend with a
+[counting proxy](../docs/architecture/policy/counting-proxy.md) of its own. Its broker then sends
+the model API's host to that proxy, and `PREVIEW_MODEL_ROUTE` in the host's environment names the
+preview's route. `run-preview.sh` adds the route to the end of the model profile's base URL, so
+every model call carries it, and it refuses a route that is not a lowercase slug. Without the
+variable, the base URL stays as `config.yaml` sets it.
+
 ## Files
 
 - `compose.yaml` runs nixie, the `enrol` service, the web client and the Caddy origin, and routes
   nixie's model calls through a host's broker. CI runs it on each push to main, and on each pull
   request that changes a file the preview reads.
 - `config.yaml` selects the test sandbox and the preview's model profile.
-- `run-preview.sh` writes the throwaway secrets file on the first start, then runs nixie.
+- `run-preview.sh` writes the throwaway secrets file on the first start, adds a host's model route
+  to the config, then runs nixie.

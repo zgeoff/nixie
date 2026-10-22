@@ -20,6 +20,9 @@ services:
       NODE_USE_ENV_PROXY: '1'
       SSL_CERT_FILE: ${SSL_CERT_FILE:+/etc/nixie-preview/broker-ca.pem}
       NODE_EXTRA_CA_CERTS: ${SSL_CERT_FILE:+/etc/nixie-preview/broker-ca.pem}
+      # a host that counts each preview's model spend names the route its counting proxy holds for
+      # this preview, which goes in front of every model API path; empty, the calls take none
+      NIXIE_PREVIEW_MODEL_ROUTE: ${PREVIEW_MODEL_ROUTE:-}
     volumes:
       - data:/data
       - secrets:/var/lib/nixie-preview
