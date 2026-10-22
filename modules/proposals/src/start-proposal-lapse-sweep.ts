@@ -1,9 +1,11 @@
-import { systemClock } from '@heynixie/clock';
+import type { Clock } from '@heynixie/clock';
 import { createActor, toPromise } from 'xstate';
 import { proposalLapseSweepMachine } from './proposal-lapse-sweep-machine';
 
 export interface ProposalLapseSweepOptions {
   readonly sweep: () => Promise<unknown>;
+
+  readonly clock: Clock;
 
   readonly intervalMs?: number;
 
@@ -21,7 +23,7 @@ export function startProposalLapseSweep(options: ProposalLapseSweepOptions): Pro
     input: {
       sweep: options.sweep,
 
-      clock: systemClock,
+      clock: options.clock,
       intervalMs: options.intervalMs ?? lapseSweepMs,
       onError: options.onError,
     },

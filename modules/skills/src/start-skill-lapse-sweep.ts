@@ -1,3 +1,4 @@
+import { systemClock } from '@heynixie/clock';
 import type { ProposalLapseSweep } from '@heynixie/proposals';
 import { startProposalLapseSweep } from '@heynixie/proposals';
 import type { SkillProposalContext } from './types';
@@ -14,6 +15,7 @@ export interface SkillLapseSweepOptions {
 export function startSkillLapseSweep(options: SkillLapseSweepOptions): ProposalLapseSweep {
   return startProposalLapseSweep({
     sweep: () => writeSkillProposalLapses(options.context),
+    clock: systemClock,
     ...(options.intervalMs === undefined ? {} : { intervalMs: options.intervalMs }),
     onError: options.onError,
   });
