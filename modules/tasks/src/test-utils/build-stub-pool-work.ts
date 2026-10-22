@@ -1,4 +1,4 @@
-export interface HeldMiss {
+interface HeldMiss {
   readonly started: Promise<void>;
 
   readonly release: () => void;
