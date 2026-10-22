@@ -1229,6 +1229,51 @@ test('it keeps an item in search until its end time', async () => {
   expect(searched.items.map((recalled) => recalled.text)).toStrictEqual(['Is in Lisbon this week']);
 });
 
+test('it fills a listing page with a live item when an item past its end time comes first', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  await memory.store.remember({ text: 'Lives in Bristol', provenance: buildMockProvenance() });
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  const listed = await memory.store.recall({ limit: 1 });
+
+  expect(listed.items.map((recalled) => recalled.text)).toStrictEqual(['Lives in Bristol']);
+});
+
+test('it ranks a live match in place of a better match past its end time', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  await memory.store.remember({
+    text: 'Has a cousin who moved to Lisbon for work last spring',
+    provenance: buildMockProvenance(),
+  });
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  const searched = await memory.store.recall({ query: 'Lisbon this week', limit: 1 });
+
+  expect(searched.items.map((recalled) => recalled.text)).toStrictEqual([
+    'Has a cousin who moved to Lisbon for work last spring',
+  ]);
+});
+
 test('it returns an item past its end time as retired to a recall that includes retired items', async () => {
   const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
 
