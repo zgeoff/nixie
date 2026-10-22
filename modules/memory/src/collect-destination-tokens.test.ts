@@ -17,6 +17,35 @@ test.each([
   );
 });
 
+test(
+  'it collects 75,000 URLs on one line in linear time',
+  () => {
+    const tokens = collectDestinationTokens('https://a.co '.repeat(75_000));
+
+    expect(tokens).toHaveLength(75_000);
+
+    expect(tokens[74_999]).toStrictEqual({
+      kind: 'url',
+      key: 'https://a.co',
+      raw: 'https://a.co',
+    });
+  },
+  { timeout: 3000 },
+);
+
+test('it skips a token that lies inside one an earlier pattern found', () => {
+  expect(
+    collectDestinationTokens('Write to ops@harbour.example or see https://harbour.example/ops'),
+  ).toStrictEqual([
+    {
+      kind: 'url',
+      key: 'https://harbour.example/ops',
+      raw: 'https://harbour.example/ops',
+    },
+    { kind: 'email', key: 'ops@harbour.example', raw: 'ops@harbour.example' },
+  ]);
+});
+
 test('it finds a BSB and account number as one token whose part is the account number', () => {
   expect(collectDestinationTokens('Pay BSB 062-000 account no. 12345678 today')).toStrictEqual([
     {
