@@ -10,9 +10,10 @@ test.each([
     'Remembered 2 things, Retired 1 thing, Proposed 1 thing',
   ],
   [{ kind: 'run', remembered: 0, retired: 0, proposed: 2 }, 'Proposed 2 things'],
+  [{ kind: 'batch', remembered: 4, retired: 0, proposed: 0 }, 'Remembered 4 things'],
   [
-    { kind: 'batch', remembered: 4, retired: 0, proposed: 0 },
-    'Remembered 4 things from earlier conversation',
+    { kind: 'catch_up', remembered: 12, retired: 0, proposed: 0 },
+    'Remembered 12 things from earlier conversation',
   ],
 ] as const)('it sums up the notice %o as "%s"', (notice, expected) => {
   expect(formatNoticeSummary(notice)).toBe(expected);

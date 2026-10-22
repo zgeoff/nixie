@@ -45,8 +45,7 @@ function getFirstSequence(item: ActivityItem): number {
 }
 
 function findLastBefore(activity: readonly ActivityItem[], notice: MemoryNotice): number | null {
-  const newest = Math.max(...notice.entries.map((entry) => entry.sequence));
-  const index = activity.findLastIndex((item) => getFirstSequence(item) <= newest);
+  const index = activity.findLastIndex((item) => getFirstSequence(item) <= notice.sequence);
 
   return index === -1 ? null : index;
 }

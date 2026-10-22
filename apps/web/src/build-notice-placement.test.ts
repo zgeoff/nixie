@@ -13,6 +13,7 @@ test("it places a turn's notice after the turn's reply, before your next message
     proposed: 0,
     remembered: 1,
     retired: 0,
+    sequence: 3,
   } as const;
 
   const placement = buildNoticePlacement(
@@ -37,6 +38,7 @@ test("it places the newest turn's notice after the last item", () => {
     proposed: 0,
     remembered: 1,
     retired: 0,
+    sequence: 3,
   } as const;
 
   const placement = buildNoticePlacement(
@@ -50,18 +52,43 @@ test("it places the newest turn's notice after the last item", () => {
   expect([...placement]).toStrictEqual([[1, [notice]]]);
 });
 
-test("it places a batch's notice after the last item before its newest write", () => {
+test("it places a batch's notice after the last item before the notice", () => {
   const notice = {
     entries: [
-      buildMockMemoryNoticeEntry({ sequence: 6 }),
+      buildMockMemoryNoticeEntry({ sequence: 9 }),
       buildMockMemoryNoticeEntry({ sequence: 9 }),
     ],
     kind: 'batch',
     messageSequence: null,
-    noticeKey: 'batch/4c1e',
+    noticeKey: `notice/${String(9)}`,
     proposed: 0,
     remembered: 2,
     retired: 0,
+    sequence: 9,
+  } as const;
+
+  const placement = buildNoticePlacement(
+    [
+      { kind: 'message', record: buildMockLogRecord({ kind: 'owner_message', sequence: 1 }) },
+      { kind: 'message', record: buildMockLogRecord({ kind: 'model.reply', sequence: 5 }) },
+      { kind: 'message', record: buildMockLogRecord({ kind: 'owner_message', sequence: 12 }) },
+    ],
+    [notice],
+  );
+
+  expect([...placement]).toStrictEqual([[1, [notice]]]);
+});
+
+test('it places the end of the catch-up, which lists no entry, by its own sequence', () => {
+  const notice = {
+    entries: [],
+    kind: 'catch_up',
+    messageSequence: null,
+    noticeKey: `notice/${String(6)}`,
+    proposed: 0,
+    remembered: 12,
+    retired: 0,
+    sequence: 6,
   } as const;
 
   const placement = buildNoticePlacement(
@@ -81,10 +108,11 @@ test('it leaves out a notice older than every item shown', () => {
     entries: [buildMockMemoryNoticeEntry({ sequence: 4 })],
     kind: 'batch',
     messageSequence: null,
-    noticeKey: 'batch/4c1e',
+    noticeKey: `notice/${String(4)}`,
     proposed: 0,
     remembered: 1,
     retired: 0,
+    sequence: 4,
   } as const;
 
   const placement = buildNoticePlacement(

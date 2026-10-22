@@ -28,6 +28,7 @@ export function createMemoryNoticeProcedures(context: APIContext, readMemory: Re
           noticeKey: notice.noticeKey,
           kind: notice.kind,
           messageSequence: notice.messageSequence,
+          sequence: notice.sequence,
           remembered: notice.remembered,
           retired: notice.retired,
           proposed: notice.proposed,

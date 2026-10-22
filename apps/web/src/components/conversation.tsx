@@ -69,7 +69,10 @@ export function Conversation(props: ConversationProps): ReactNode {
       {conversation.unavailable ? <LiveUpdatesNotice /> : null}
       <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
       <CompactionFailureNotice records={records} />
-      <ConversationScroller arrivals={records.length + outbox.entries.length} sends={sends}>
+      <ConversationScroller
+        arrivals={records.length + outbox.entries.length + notices.length}
+        sends={sends}
+      >
         <ConversationList
           entries={outbox.entries}
           notices={notices}

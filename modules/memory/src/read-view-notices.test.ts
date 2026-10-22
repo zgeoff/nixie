@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
@@ -65,6 +66,89 @@ test("it reads a turn's notice with each item as it now stands", async () => {
           item: { version: 2, state: 'retired', change: 'retired', text: 'Keeps bees' },
         },
       ],
+    },
+  ]);
+});
+
+test("it reads a writer batch's notice with each version it applied", async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Bakes sourdough on Saturdays',
+    provenance: {
+      origin: 'memory_writer',
+      source: 'owner',
+      taskID: 'memory-writer',
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  const [record] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.notice',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        notice: 'batch',
+        versions: [{ itemID: item.itemID, version: item.version }],
+        count: 1,
+        isQuiet: true,
+      },
+    },
+  ]);
+
+  const notices = await ctx.memory.store.view.readNotices('conversation');
+
+  invariant(record);
+
+  expect(notices).toMatchObject([
+    {
+      kind: 'batch',
+      messageSequence: null,
+      sequence: record.sequence,
+      remembered: 1,
+      retired: 0,
+      proposed: 0,
+      entries: [
+        {
+          itemID: item.itemID,
+          change: 'created',
+          version: 1,
+          sequence: record.sequence,
+          item: { version: 1, text: 'Bakes sourdough on Saturdays' },
+        },
+      ],
+    },
+  ]);
+});
+
+test('it reads the end of the catch-up as a count with no entries', async () => {
+  const ctx = await setupTest();
+
+  const [record] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.notice',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { notice: 'catch_up', versions: [], count: 12, isQuiet: true },
+    },
+  ]);
+
+  const notices = await ctx.memory.store.view.readNotices('conversation');
+
+  invariant(record);
+
+  expect(notices).toStrictEqual([
+    {
+      noticeKey: `notice/${String(record.sequence)}`,
+      kind: 'catch_up',
+      messageSequence: null,
+      sequence: record.sequence,
+      remembered: 12,
+      retired: 0,
+      proposed: 0,
+      entries: [],
     },
   ]);
 });

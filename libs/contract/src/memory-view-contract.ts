@@ -177,12 +177,13 @@ const noticeEntrySchema = z.object({
 
 const memoryNoticeSchema = z.object({
   entries: z.array(noticeEntrySchema),
-  kind: z.enum(['turn', 'batch', 'run']),
+  kind: z.enum(['turn', 'batch', 'catch_up', 'run']),
   messageSequence: z.int().nonnegative().nullable(),
   noticeKey: z.string(),
   proposed: z.int().nonnegative(),
   remembered: z.int().nonnegative(),
   retired: z.int().nonnegative(),
+  sequence: z.int().nonnegative(),
 });
 
 export const memoryViewContract = {

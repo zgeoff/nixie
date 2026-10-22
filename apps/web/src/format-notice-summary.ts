@@ -11,7 +11,7 @@ export function formatNoticeSummary(
 
   const summary = parts.join(', ');
 
-  if (notice.kind === 'batch') {
+  if (notice.kind === 'catch_up') {
     return `${summary} from earlier conversation`;
   }
 

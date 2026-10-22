@@ -13,10 +13,12 @@ export function readMockMemoryNotices(thread: string): readonly MemoryNotice[] {
     messageSequence: notice.messageSequence,
     noticeKey: notice.noticeKey,
     proposed: notice.entries.filter((entry) => entry.change === 'proposed').length,
-    remembered: notice.entries.filter(
-      (entry) => entry.change === 'created' || entry.change === 'edited',
-    ).length,
+    remembered:
+      notice.count ??
+      notice.entries.filter((entry) => entry.change === 'created' || entry.change === 'edited')
+        .length,
     retired: notice.entries.filter((entry) => entry.change === 'retired').length,
+    sequence: notice.sequence ?? Math.max(0, ...notice.entries.map((entry) => entry.sequence)),
   }));
 }
 

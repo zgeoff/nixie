@@ -25,16 +25,18 @@ export function MemoryNotice(props: MemoryNoticeProps): ReactNode {
     <li aria-label={summary} className={quiet}>
       <span>{summary}</span>
       {' · '}
-      <button
-        aria-expanded={isOpen}
-        className={viewButton}
-        onClick={() => {
-          setIsOpen(!isOpen);
-        }}
-        type="button"
-      >
-        View
-      </button>
+      {props.notice.entries.length === 0 ? (
+        <a className={viewButton} href="/memory">
+          View
+        </a>
+      ) : (
+        <ViewToggle
+          isOpen={isOpen}
+          onToggle={() => {
+            setIsOpen(!isOpen);
+          }}
+        />
+      )}
       {isOpen ? (
         <ul aria-label="Memory changes" className={entries}>
           {props.notice.entries.map((entry) => (
@@ -43,6 +45,25 @@ export function MemoryNotice(props: MemoryNoticeProps): ReactNode {
         </ul>
       ) : null}
     </li>
+  );
+}
+
+interface ViewToggleProps {
+  readonly isOpen: boolean;
+
+  readonly onToggle: () => void;
+}
+
+function ViewToggle(props: ViewToggleProps): ReactNode {
+  return (
+    <button
+      aria-expanded={props.isOpen}
+      className={viewButton}
+      onClick={props.onToggle}
+      type="button"
+    >
+      View
+    </button>
   );
 }
 

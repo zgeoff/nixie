@@ -213,10 +213,12 @@ const noticeEntrySchema = z.object({
 
 const memoryNotices = new Collection({
   schema: z.object({
-    entries: z.array(noticeEntrySchema).min(1),
-    kind: z.enum(['turn', 'batch', 'run']).default('turn'),
+    count: z.int().nonnegative().nullable().default(null),
+    entries: z.array(noticeEntrySchema).default([]),
+    kind: z.enum(['turn', 'batch', 'catch_up', 'run']).default('turn'),
     messageSequence: z.int().nonnegative().nullable().default(null),
     noticeKey: z.string().default(() => `batch/${faker.string.uuid()}`),
+    sequence: z.int().nonnegative().nullable().default(null),
     thread: z.string().default('conversation'),
   }),
 });

@@ -1,7 +1,9 @@
 import { expect, test } from 'bun:test';
-import { within } from '@testing-library/react';
+import { fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { delay, http } from 'msw';
 import invariant from 'tiny-invariant';
+import { server } from '../mocks/node';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -115,6 +117,51 @@ test("it places a turn's notice under the turn's reply", async () => {
   expect(rendered.getByRole('list', { name: 'Conversation' })).toHaveTextContent(
     /You I run on Sundays.*nixie Noted\..*Remembered 1 thing · View.*You What next\?/u,
   );
+});
+
+test('it follows a notice that loads after the conversation to the end of the view', async () => {
+  await setupTest();
+
+  server.use(
+    http.post('*/rpc/memory/listNotices', async () => {
+      await delay(500);
+    }),
+  );
+
+  const message = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'I run on Sundays' },
+  });
+
+  await store.records.create({ kind: 'model.reply', message: { text: 'Noted.' } });
+
+  const runs = await store.memoryItems.create({ versions: [{ text: 'Runs on Sundays' }] });
+
+  await store.memoryNotices.create({
+    entries: [{ itemID: runs.itemID, sequence: message.sequence + 1 }],
+    kind: 'turn',
+    messageSequence: message.sequence,
+    noticeKey: `turn/conversation/${String(message.sequence)}`,
+  });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const scroller = (await rendered.findByRole('list', { name: 'Conversation' })).parentElement;
+
+  invariant(scroller);
+
+  // happy-dom lays nothing out, so fixed sizes stand in for the browser's layout.
+  Object.defineProperty(scroller, 'clientHeight', { configurable: true, value: 400 });
+  Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 1000 });
+
+  scroller.scrollTop = 600;
+
+  fireEvent.scroll(scroller);
+  Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 1200 });
+
+  await rendered.findByRole('listitem', { name: 'Remembered 1 thing' });
+
+  expect(scroller.scrollTop).toBe(1200);
 });
 
 test('it refuses an undo of an item that changed after the notice loaded, and changes nothing', async () => {
@@ -266,7 +313,32 @@ test('it links each item to the memory view', async () => {
   );
 });
 
-test("it shows a batch's writes as a quiet notice from earlier conversation", async () => {
+test('it shows the end of the catch-up as a count that opens the memory view', async () => {
+  await setupTest();
+
+  const message = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'I run on Sundays' },
+  });
+
+  await store.records.create({ kind: 'model.reply', message: { text: 'Noted.' } });
+
+  await store.memoryNotices.create({
+    count: 12,
+    kind: 'catch_up',
+    sequence: message.sequence + 2,
+  });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const notice = await rendered.findByRole('listitem', {
+    name: 'Remembered 12 things from earlier conversation',
+  });
+
+  expect(within(notice).getByRole('link', { name: 'View' })).toHaveAttribute('href', '/memory');
+});
+
+test("it shows a batch's writes as a notice after the reply they followed", async () => {
   await setupTest();
 
   const message = await store.records.create({
@@ -285,11 +357,11 @@ test("it shows a batch's writes as a quiet notice from earlier conversation", as
 
   const rendered = render(<Conversation thread="conversation" />);
 
-  const notice = await rendered.findByRole('listitem', {
-    name: 'Remembered 1 thing from earlier conversation',
-  });
+  await rendered.findByRole('listitem', { name: 'Remembered 1 thing' });
 
-  expect(notice).toHaveTextContent('Remembered 1 thing from earlier conversation · View');
+  expect(rendered.getByRole('list', { name: 'Conversation' })).toHaveTextContent(
+    /nixie Noted\..*Remembered 1 thing · View$/u,
+  );
 });
 
 test('it sends a proposal in a notice to the proposals page', async () => {

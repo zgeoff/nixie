@@ -115,7 +115,7 @@ export type ForgetPreview = ViewItemDetail & {
   };
 };
 
-export type ViewNoticeKind = 'turn' | 'batch' | 'run';
+export type ViewNoticeKind = 'turn' | 'batch' | 'catch_up' | 'run';
 
 export interface ViewNoticeEntry extends NoticeEntry {
   readonly item: (ViewItem & { readonly change: MemoryChange }) | null;
@@ -124,6 +124,7 @@ export interface ViewNoticeEntry extends NoticeEntry {
 export interface ViewNotice extends Omit<MemoryNotice, 'thread' | 'entries'> {
   readonly kind: ViewNoticeKind;
   readonly messageSequence: number | null;
+  readonly sequence: number;
   readonly entries: readonly ViewNoticeEntry[];
 }
 

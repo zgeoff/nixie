@@ -4605,6 +4605,7 @@
                             "enum": [
                               "turn",
                               "batch",
+                              "catch_up",
                               "run"
                             ],
                             "type": "string"
@@ -4638,6 +4639,11 @@
                             "type": "integer",
                             "minimum": 0,
                             "maximum": 9007199254740991
+                          },
+                          "sequence": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
                           }
                         },
                         "required": [
@@ -4647,7 +4653,8 @@
                           "noticeKey",
                           "proposed",
                           "remembered",
-                          "retired"
+                          "retired",
+                          "sequence"
                         ]
                       }
                     }
