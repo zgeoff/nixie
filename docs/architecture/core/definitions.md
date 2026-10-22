@@ -168,6 +168,12 @@ writes the skill's folder and removes each file that the folder holds at that co
 version lacks. It also removes a vendored skill's lock entry, so the seed after the merge reads the
 folder as the user's own skill and marks the written skill adopted.
 
+The export serves any kind of approved change, and a written skill is the one kind that nixie
+registers. Each change kind reads the approvals due for export and the exports to close, builds the
+branch, files, title and body of each pull request, and stores the state of its own exports. The
+export run marks, records and closes an export the same way for every kind. When the close of an
+export fails, the run skips any export due on the same branch until a later run closes it.
+
 Every export run closes the export of each approval that left force, whether a seed adopted it, a
 later approval superseded it, or the user retired it. Export runs never overlap, so a seed and an
 approval change only the written skill's state and leave its export to the next run. An export

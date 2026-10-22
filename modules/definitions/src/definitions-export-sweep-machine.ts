@@ -1,7 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import { assign, fromCallback, fromPromise, setup } from 'xstate';
 
-export interface SkillExportSweepMachineInput {
+export interface DefinitionsExportSweepMachineInput {
   readonly sweep: () => Promise<unknown>;
 
   readonly clock: Clock;
@@ -11,21 +11,21 @@ export interface SkillExportSweepMachineInput {
   readonly onError: (error: unknown) => void;
 }
 
-interface SkillExportSweepContext {
-  readonly input: SkillExportSweepMachineInput;
+interface DefinitionsExportSweepContext {
+  readonly input: DefinitionsExportSweepMachineInput;
 
   readonly isWoken: boolean;
 
   readonly isStopping: boolean;
 }
 
-type SkillExportSweepEvent =
+type DefinitionsExportSweepEvent =
   | { readonly type: 'tick' }
   | { readonly type: 'wake' }
   | { readonly type: 'stop' };
 
-const skillExportSweepActors = {
-  timer: fromCallback<SkillExportSweepEvent, SkillExportSweepMachineInput>((timer) => {
+const definitionsExportSweepActors = {
+  timer: fromCallback<DefinitionsExportSweepEvent, DefinitionsExportSweepMachineInput>((timer) => {
     const controller = new AbortController();
 
     void runTimer(timer.input, controller.signal, () => {
@@ -36,23 +36,23 @@ const skillExportSweepActors = {
       controller.abort();
     };
   }),
-  sweep: fromPromise<unknown, SkillExportSweepMachineInput>((sweep) => sweep.input.sweep()),
+  sweep: fromPromise<unknown, DefinitionsExportSweepMachineInput>((sweep) => sweep.input.sweep()),
 };
 
 // xstate's setup takes its type parameters in this order: context, events, actors, children,
 // actions, guards, delays, tags, then input.
-export const skillExportSweepMachine = setup<
-  SkillExportSweepContext,
-  SkillExportSweepEvent,
-  typeof skillExportSweepActors,
+export const definitionsExportSweepMachine = setup<
+  DefinitionsExportSweepContext,
+  DefinitionsExportSweepEvent,
+  typeof definitionsExportSweepActors,
   Record<string, never>,
   Record<string, never>,
   Record<string, never>,
   never,
   string,
-  SkillExportSweepMachineInput
->({ actors: skillExportSweepActors }).createMachine({
-  id: 'skillExportSweep',
+  DefinitionsExportSweepMachineInput
+>({ actors: definitionsExportSweepActors }).createMachine({
+  id: 'definitionsExportSweep',
   context: (start) => ({ input: start.input, isWoken: false, isStopping: false }),
 
   invoke: {
@@ -117,7 +117,7 @@ export const skillExportSweepMachine = setup<
 });
 
 async function runTimer(
-  input: SkillExportSweepMachineInput,
+  input: DefinitionsExportSweepMachineInput,
   signal: AbortSignal,
   onTick: () => void,
 ): Promise<void> {
@@ -130,7 +130,7 @@ async function runTimer(
   }
 }
 
-function reportFailure(input: SkillExportSweepMachineInput, error: unknown): void {
+function reportFailure(input: DefinitionsExportSweepMachineInput, error: unknown): void {
   try {
     input.onError(error);
   } catch {}

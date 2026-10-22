@@ -1,7 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { createActor } from 'xstate';
-import { skillExportSweepMachine } from './skill-export-sweep-machine';
+import { definitionsExportSweepMachine } from './definitions-export-sweep-machine';
 
 function setupTest() {
   const clock = buildTestClock(0);
@@ -13,7 +13,7 @@ test('it sweeps at start', () => {
   const ctx = setupTest();
   const sweep = mock(() => Promise.withResolvers<void>().promise);
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: { sweep, clock: ctx.clock, intervalMs: 3_600_000, onError: () => {} },
   });
 
@@ -30,7 +30,7 @@ test('it sweeps at start', () => {
 test('it moves from sweeping to waiting once the sweep ends', async () => {
   const ctx = setupTest();
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: {
       clock: ctx.clock,
       sweep: () => Promise.resolve(),
@@ -52,7 +52,7 @@ test('it moves from waiting to sweeping on a wake', async () => {
   const ctx = setupTest();
   const sweep = mock(() => Promise.resolve());
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: { sweep, clock: ctx.clock, intervalMs: 3_600_000, onError: () => {} },
   });
 
@@ -73,7 +73,7 @@ test('it moves from waiting to sweeping on a tick', async () => {
   const ctx = setupTest();
   const sweep = mock(() => Promise.resolve());
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: { sweep, clock: ctx.clock, intervalMs: 3_600_000, onError: () => {} },
   });
 
@@ -94,7 +94,7 @@ test('it ticks once the interval passes', async () => {
   const ctx = setupTest();
   const sweep = mock(() => Promise.resolve());
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: { sweep, clock: ctx.clock, intervalMs: 3_600_000, onError: () => {} },
   });
 
@@ -117,7 +117,7 @@ test('it starts no second sweep on a tick while a sweep runs', () => {
   const ctx = setupTest();
   const sweep = mock(() => Promise.withResolvers<void>().promise);
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: { sweep, clock: ctx.clock, intervalMs: 3_600_000, onError: () => {} },
   });
 
@@ -137,7 +137,7 @@ test('it sweeps once more after the sweep in flight on wakes while it runs', asy
   const sweeping = Promise.withResolvers<void>();
   const sweep = mock(() => sweeping.promise);
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: { sweep, clock: ctx.clock, intervalMs: 3_600_000, onError: () => {} },
   });
 
@@ -161,7 +161,7 @@ test('it sweeps once more after a failed sweep on a wake while it ran', async ()
   const sweeping = Promise.withResolvers<void>();
   const sweep = mock(() => sweeping.promise);
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: { sweep, clock: ctx.clock, intervalMs: 3_600_000, onError: () => {} },
   });
 
@@ -186,7 +186,7 @@ test('it moves from sweeping to waiting and passes the error to onError when the
 
   const onError = mock<(error: unknown) => void>();
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: {
       clock: ctx.clock,
       sweep: () => Promise.reject(failure),
@@ -209,7 +209,7 @@ test('it moves from sweeping to waiting and passes the error to onError when the
 test('it keeps running after a failed sweep whose onError throws', async () => {
   const ctx = setupTest();
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: {
       clock: ctx.clock,
       sweep: () => Promise.reject(new Error('the definitions repo refused the push')),
@@ -234,7 +234,7 @@ test('it keeps running after a failed sweep whose onError throws', async () => {
 test('it moves from waiting to stopped at once on a stop', async () => {
   const ctx = setupTest();
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: {
       clock: ctx.clock,
       sweep: () => Promise.resolve(),
@@ -259,7 +259,7 @@ test('it moves from waiting to stopped at once on a stop', async () => {
 test('it keeps sweeping on a stop while a sweep runs', () => {
   const ctx = setupTest();
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: {
       clock: ctx.clock,
       sweep: () => Promise.withResolvers<void>().promise,
@@ -284,7 +284,7 @@ test('it moves from sweeping to stopped once the sweep ends after a stop, despit
   const sweeping = Promise.withResolvers<void>();
   const sweep = mock(() => sweeping.promise);
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: { sweep, clock: ctx.clock, intervalMs: 3_600_000, onError: () => {} },
   });
 
@@ -311,7 +311,7 @@ test('it moves from sweeping to stopped and passes the error to onError when the
 
   const onError = mock<(error: unknown) => void>();
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: { clock: ctx.clock, sweep: () => sweeping.promise, intervalMs: 3_600_000, onError },
   });
 
@@ -332,7 +332,7 @@ test('it moves from sweeping to stopped and passes the error to onError when the
 test('it ticks no more once stopped', async () => {
   const ctx = setupTest();
 
-  const machine = createActor(skillExportSweepMachine, {
+  const machine = createActor(definitionsExportSweepMachine, {
     input: {
       clock: ctx.clock,
       sweep: () => Promise.resolve(),

@@ -1,27 +1,11 @@
 import type { Transaction } from 'kysely';
 import { match } from 'ts-pattern';
 import { canMoveSkillExport } from './can-move-skill-export';
-import type { DefinitionsTables, PullRequestRef, SkillExportState } from './types';
-
-export type SkillExportMove =
-  | { readonly approvalID: string; readonly to: 'exporting'; readonly at: number }
-  | {
-      readonly approvalID: string;
-      readonly to: 'opened';
-      readonly baseHash: string | null;
-      readonly pullRequest: PullRequestRef;
-      readonly at: number;
-    }
-  | {
-      readonly approvalID: string;
-      readonly to: 'closed';
-      readonly pullRequest: PullRequestRef | null;
-      readonly at: number;
-    };
+import type { DefinitionsExportMove, DefinitionsTables, SkillExportState } from './types';
 
 export async function writeSkillExportState(
   tx: Transaction<unknown>,
-  move: SkillExportMove,
+  move: DefinitionsExportMove,
 ): Promise<void> {
   const current = await readSkillExportState(tx, move.approvalID);
 
@@ -65,7 +49,7 @@ async function readSkillExportState(
 
 async function writeExporting(
   tx: Transaction<unknown>,
-  move: Extract<SkillExportMove, { to: 'exporting' }>,
+  move: Extract<DefinitionsExportMove, { to: 'exporting' }>,
 ): Promise<void> {
   await tx
     .$extendTables<DefinitionsTables>()
@@ -77,7 +61,7 @@ async function writeExporting(
 
 async function writeOpened(
   tx: Transaction<unknown>,
-  move: Extract<SkillExportMove, { to: 'opened' }>,
+  move: Extract<DefinitionsExportMove, { to: 'opened' }>,
 ): Promise<void> {
   const tables = tx.$extendTables<DefinitionsTables>();
 
@@ -108,7 +92,7 @@ async function removeAttempt(tx: Transaction<unknown>, approvalID: string): Prom
 
 async function writeClosed(
   tx: Transaction<unknown>,
-  move: Extract<SkillExportMove, { to: 'closed' }>,
+  move: Extract<DefinitionsExportMove, { to: 'closed' }>,
 ): Promise<void> {
   const tables = tx.$extendTables<DefinitionsTables>();
 
