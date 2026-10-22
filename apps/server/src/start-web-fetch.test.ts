@@ -121,6 +121,32 @@ test("it reads a skill's page through its own fetch sandbox, which refuses a pri
   });
 });
 
+test("it returns a skill file past the web fetch's text limit whole", async () => {
+  const ctx = await setupTest();
+
+  const adapter = createSandboxAdapter({
+    recorder: ctx.recorder,
+    toolTarget: () => ({ path: '/nonexistent.sock' }),
+    sandbox: { adapter: 'test' },
+    testRootDir: ctx.dataDir,
+    hostEnv: {},
+  });
+
+  const webFetch = startWebFetch({
+    adapter,
+    image: 'fetch',
+    argv: [process.execPath, join(import.meta.dir, 'test-utils/run-stub-fetcher.ts')],
+    deniedRanges: [],
+    log: ctx.log,
+  });
+
+  ctx.stack.defer(() => webFetch.stop());
+
+  const reply = await webFetch.readSkillPage('https://pages.test/files/30000');
+
+  expect(reply).toMatchObject({ kind: 'page', text: 'x'.repeat(30_000), isTruncated: false });
+});
+
 test.skipIf(!hasImpHost)(
   'it fetches a public page through the fetch sandbox on an imp host',
   async () => {
