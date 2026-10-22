@@ -652,6 +652,31 @@ test('it lapses a proposal at its end time when that comes before the lapse wind
   expect(pending).toMatchObject([{ lapseAt: Date.parse('2026-10-25T23:59:59Z') }]);
 });
 
+test('it keeps a merged proposal lapsing at its end time when a fresh lapse window would end later', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T08:30:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  await memory.store.writes.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  clock.advance(3_600_000);
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(outcome).toMatchObject({ status: 'proposed', merged: true });
+  expect(pending).toMatchObject([{ lapseAt: Date.parse('2026-10-25T23:59:59Z') }]);
+});
+
 test('it refuses a write whose end time has passed, before any check runs and with no proposal', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
 
