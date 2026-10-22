@@ -37,7 +37,8 @@ if tar -tzf "$tarball" | grep -E '\.test\.ts$|/test-utils/'; then
 fi
 
 if [[ $mode == --dry-run ]]; then
-  npm publish "$tarball" --access public --dry-run
+  # npm refuses a prerelease version, such as a rehearsal's, without a tag
+  npm publish "$tarball" --access public --tag rehearsal --dry-run
   exit 0
 fi
 
