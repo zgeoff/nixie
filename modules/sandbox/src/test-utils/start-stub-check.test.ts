@@ -39,7 +39,7 @@ test('it answers the check request it receives with one reply, then exits with c
   expect(exited).toMatchObject({ code: 0, signal: null });
 });
 
-test('it settles a stop after a request whose reply nobody reads', async () => {
+test('it drops the unread reply and settles on a stop after a request', async () => {
   const stream = startStubCheck(() => ({ kind: 'failed', reason: 'the check found no quote' }));
 
   const request: CheckRequest = {
@@ -56,8 +56,10 @@ test('it settles a stop after a request whose reply nobody reads', async () => {
   await stream.send(new TextEncoder().encode(JSON.stringify(request)));
 
   const exited = await stream.stop();
+  const messages = await Array.fromAsync(stream.messages);
 
   expect(exited).toMatchObject({ code: 0, signal: null });
+  expect(messages).toStrictEqual([]);
 });
 
 test('it ends with no reply on a stop before a request', async () => {
