@@ -10,7 +10,12 @@ async function setupTest() {
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { directory: await realpath(directory) };
+  const resolved = await realpath(directory);
+
+  // git exports GIT_DIR to its hooks, which would point these git calls at the repo under test.
+  const gitEnv = { PATH: process.env['PATH'] ?? '', HOME: resolved, GIT_CONFIG_NOSYSTEM: '1' };
+
+  return { directory: resolved, gitEnv };
 }
 
 test('it lays out a linked worktree that git reads at the commit, with its origin', async () => {
@@ -25,10 +30,11 @@ test('it lays out a linked worktree that git reads at the commit, with its origi
 
   const commonDir = await $`git rev-parse --path-format=absolute --git-common-dir`
     .cwd(current)
+    .env(ctx.gitEnv)
     .text();
 
-  const head = await $`git rev-parse HEAD`.cwd(current).text();
-  const origin = await $`git config --get remote.origin.url`.cwd(current).text();
+  const head = await $`git rev-parse HEAD`.cwd(current).env(ctx.gitEnv).text();
+  const origin = await $`git config --get remote.origin.url`.cwd(current).env(ctx.gitEnv).text();
 
   expect(commonDir.trim()).toBe(join(ctx.directory, '.git'));
   expect(head.trim()).toBe('7c1e9a4b2f0d8e6c3a5b7d9f1e2c4a6b8d0f3e57');
