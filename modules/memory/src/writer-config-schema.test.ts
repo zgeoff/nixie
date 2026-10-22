@@ -3,6 +3,7 @@ import { writerConfigSchema } from './writer-config-schema';
 
 test('it fills every default and turns each time into milliseconds', () => {
   expect(writerConfigSchema.parse({})).toStrictEqual({
+    isEnabled: true,
     batchMessages: 4,
     batchTokens: 12_000,
     idleMs: 300_000,
@@ -18,6 +19,7 @@ test('it fills every default and turns each time into milliseconds', () => {
 
 test('it turns a full configuration into the writer config', () => {
   const result = writerConfigSchema.safeParse({
+    enabled: false,
     batch_messages: 6,
     batch_tokens: 9000,
     idle_minutes: 2.5,
@@ -31,6 +33,7 @@ test('it turns a full configuration into the writer config', () => {
   });
 
   expect(result.data).toStrictEqual({
+    isEnabled: false,
     batchMessages: 6,
     batchTokens: 9000,
     idleMs: 150_000,

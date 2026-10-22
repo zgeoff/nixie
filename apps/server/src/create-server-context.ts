@@ -1,4 +1,4 @@
-import type { APIContext, CleanupRecordSessions } from '@heynixie/api';
+import type { APIContext, APISettings, CleanupRecordSessions } from '@heynixie/api';
 import { defaultAPISettings } from '@heynixie/api';
 import { readDefinitionsInForce } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
@@ -14,6 +14,7 @@ export async function createServerContext(
   writer: Writer,
   deploymentKey: CryptoKey,
   readSessionCleanup: () => CleanupRecordSessions | null,
+  settings: APISettings = defaultAPISettings,
 ): Promise<ServerContext> {
   const current = { inForce: await readDefinitionsInForce(writer.db) };
 
@@ -31,7 +32,7 @@ export async function createServerContext(
       clock: writer.clock,
 
       definitions: () => ({ snapshotHash: inForce.read()?.snapshotHash ?? '' }),
-      settings: defaultAPISettings,
+      settings,
       readSessionCleanup,
     },
   };

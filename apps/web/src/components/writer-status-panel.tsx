@@ -17,6 +17,14 @@ export function WriterStatusPanel(): ReactNode {
 
   const writer = status.data;
 
+  if (!writer.isEnabled) {
+    return (
+      <section aria-label="Memory writer" className={css({ fontSize: 'sm', marginBlock: '3' })}>
+        <p>Memory writer: off</p>
+      </section>
+    );
+  }
+
   return (
     <section aria-label="Memory writer" className={css({ fontSize: 'sm', marginBlock: '3' })}>
       <p>

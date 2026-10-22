@@ -13,6 +13,10 @@ export interface APISettings {
   readonly refusalIntervalMs: number;
 
   readonly lastSeenIntervalMs: number;
+
+  readonly isMemoryWriterEnabled: boolean;
+
+  readonly isMemoryConsolidatorEnabled: boolean;
 }
 
 export interface OwnerImage {

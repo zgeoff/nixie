@@ -3,6 +3,7 @@ import { consolidationConfigSchema } from './consolidation-config-schema';
 
 test('it runs weekly with at most 30 changes when the file sets nothing', () => {
   expect(consolidationConfigSchema.parse({})).toStrictEqual({
+    isEnabled: true,
     periodMs: 604_800_000,
     maxChanges: 30,
     itemListTokens: 24_000,
@@ -14,6 +15,7 @@ test('it runs weekly with at most 30 changes when the file sets nothing', () => 
 
 test('it reads each setting the file gives', () => {
   const result = consolidationConfigSchema.safeParse({
+    enabled: false,
     period_days: 3,
     max_changes: 12,
     item_list_tokens: 8000,
@@ -23,6 +25,7 @@ test('it reads each setting the file gives', () => {
   });
 
   expect(result.data).toStrictEqual({
+    isEnabled: false,
     periodMs: 259_200_000,
     maxChanges: 12,
     itemListTokens: 8000,

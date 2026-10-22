@@ -1025,6 +1025,7 @@ test('#memory.writerStatus reports every message of yours as backlog before the 
   const status = await laptopClient.memory.writerStatus();
 
   expect(status).toStrictEqual({
+    isEnabled: true,
     backlog: 1,
     batches: 0,
     cursor: 0,
@@ -1058,6 +1059,7 @@ test('#memory.writerStatus reports the last error with its time and when the wri
   const status = await buildTestClient(ctx.url, laptop.token).memory.writerStatus();
 
   expect(status).toStrictEqual({
+    isEnabled: true,
     backlog: 0,
     batches: 0,
     cursor: 0,
@@ -1076,6 +1078,56 @@ test('#memory.writerStatus refuses a caller with no session', async () => {
   const ctx = await setupTest();
 
   const status = buildTestClient(ctx.url).memory.writerStatus();
+
+  await status.catch(() => {});
+
+  expect(status).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});
+
+test('#memory.writerStatus reports the writer as off when the deployment turns it off', async () => {
+  const api = await startTestAPI({
+    enrolmentCodeLifetimeMs: 900_000,
+    sessionIdleMs: 2_592_000_000,
+    refusalIntervalMs: 3_600_000,
+    lastSeenIntervalMs: 60_000,
+    isMemoryWriterEnabled: false,
+    isMemoryConsolidatorEnabled: true,
+  });
+
+  const laptop = await createDeviceSession(api.context, 'laptop');
+  const status = await buildTestClient(api.url, laptop.token).memory.writerStatus();
+
+  expect(status.isEnabled).toBeFalse();
+});
+
+test('#memory.consolidatorStatus reports the consolidator as on by default', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const status = await buildTestClient(ctx.url, laptop.token).memory.consolidatorStatus();
+
+  expect(status).toStrictEqual({ isEnabled: true });
+});
+
+test('#memory.consolidatorStatus reports the consolidator as off when the deployment turns it off', async () => {
+  const api = await startTestAPI({
+    enrolmentCodeLifetimeMs: 900_000,
+    sessionIdleMs: 2_592_000_000,
+    refusalIntervalMs: 3_600_000,
+    lastSeenIntervalMs: 60_000,
+    isMemoryWriterEnabled: true,
+    isMemoryConsolidatorEnabled: false,
+  });
+
+  const laptop = await createDeviceSession(api.context, 'laptop');
+  const status = await buildTestClient(api.url, laptop.token).memory.consolidatorStatus();
+
+  expect(status).toStrictEqual({ isEnabled: false });
+});
+
+test('#memory.consolidatorStatus refuses a caller with no session', async () => {
+  const ctx = await setupTest();
+
+  const status = buildTestClient(ctx.url).memory.consolidatorStatus();
 
   await status.catch(() => {});
 

@@ -27,6 +27,7 @@ export function createMemoryProcedures(context: APIContext) {
       const status = await readWriterStatus(context.log);
 
       return {
+        isEnabled: context.settings.isMemoryWriterEnabled,
         backlog: status.backlog,
         batches: status.batches,
         cursor: status.cursor,
@@ -42,6 +43,12 @@ export function createMemoryProcedures(context: APIContext) {
               },
         retryAt: status.retryAt === null ? null : new Date(status.retryAt),
       };
+    }),
+
+    consolidatorStatus: apiImplementer.memory.consolidatorStatus.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return { isEnabled: context.settings.isMemoryConsolidatorEnabled };
     }),
   };
 }

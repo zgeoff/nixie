@@ -201,6 +201,7 @@ export const contract = {
 
     writerStatus: signedIn.output(
       z.object({
+        isEnabled: z.boolean(),
         backlog: z.int().nonnegative(),
         batches: z.int().nonnegative(),
         cursor: sequenceSchema,
@@ -210,6 +211,8 @@ export const contract = {
         retryAt: z.date().nullable(),
       }),
     ),
+
+    consolidatorStatus: signedIn.output(z.object({ isEnabled: z.boolean() })),
     ...memoryViewContract,
   },
   log: {

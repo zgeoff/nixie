@@ -231,6 +231,7 @@ test('it reports a memory writer caught up with the newest record', async () => 
   const status = await client.memory.writerStatus();
 
   expect(status).toStrictEqual({
+    isEnabled: true,
     backlog: 0,
     batches: 0,
     cursor: 2,
@@ -261,6 +262,30 @@ test('it refuses the memory writer status to a caller with no session', () => {
   const client = ctx.buildClient({ 'x-nixie-client': 'web' });
 
   expect(client.memory.writerStatus()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});
+
+test('it reports the memory consolidator as off when the store holds it off', async () => {
+  const ctx = setupTest();
+
+  const session = await store.sessions.create({});
+
+  await store.memoryConsolidator.create({ isEnabled: false });
+
+  const client = ctx.buildClient({
+    authorization: `Bearer ${session.token}`,
+    'x-nixie-client': 'web',
+  });
+
+  const status = await client.memory.consolidatorStatus();
+
+  expect(status).toStrictEqual({ isEnabled: false });
+});
+
+test('it refuses the memory consolidator status to a caller with no session', () => {
+  const ctx = setupTest();
+  const client = ctx.buildClient({ 'x-nixie-client': 'web' });
+
+  expect(client.memory.consolidatorStatus()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
 test('it carries the versions a recall delivered on its record', async () => {

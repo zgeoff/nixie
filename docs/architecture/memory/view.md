@@ -51,12 +51,13 @@ message still holds them. A message forgotten on its own reads as a gap beside a
 The web client shows the memory view as its own page, behind the same session check as the
 conversation. The page opens with the memory writer's progress: whether its catch-up over the
 conversation from before memory still runs, the record its cursor stands at, how many of the user's
-messages wait, and its last error. The pinned core with its size follows, then the active items or
-the matches of a search, then the retired and the forgotten items, each list apart. Every list draws
-an item through one row, so a control on an item shows in every list. The active items and the
-matches show self-notes in a section of their own, apart from the user's and the shared items, and a
-self-note's row in any other list carries a self-note label. A row offers a pin whatever the item's
-subject.
+messages wait, and its last error. A writer that the deployment turns off shows as off, and so does
+a consolidator that the deployment turns off. The pinned core with its size follows, then the active
+items or the matches of a search, then the retired and the forgotten items, each list apart. Every
+list draws an item through one row, so a control on an item shows in every list. The active items
+and the matches show self-notes in a section of their own, apart from the user's and the shared
+items, and a self-note's row in any other list carries a self-note label. A row offers a pin
+whatever the item's subject.
 
 An item's history loads only when the user opens it, so a long list reads no history it never shows.
 Each version shows the words it changed from the version before as a word diff, and its evidence as

@@ -79,6 +79,26 @@ test('it starts with no task and the test clock', async () => {
   expect(ctx.clock.now()).toBe(1_000_000);
 });
 
+test('it serves the API with the settings the test gives', async () => {
+  const ctx = await startTestAPI({
+    enrolmentCodeLifetimeMs: 60_000,
+    sessionIdleMs: 3_600_000,
+    refusalIntervalMs: 60_000,
+    lastSeenIntervalMs: 1000,
+    isMemoryWriterEnabled: false,
+    isMemoryConsolidatorEnabled: false,
+  });
+
+  expect(ctx.context.settings).toStrictEqual({
+    enrolmentCodeLifetimeMs: 60_000,
+    sessionIdleMs: 3_600_000,
+    refusalIntervalMs: 60_000,
+    lastSeenIntervalMs: 1000,
+    isMemoryWriterEnabled: false,
+    isMemoryConsolidatorEnabled: false,
+  });
+});
+
 test("it folds the memory writer's records into its row", async () => {
   const ctx = await startTestAPI();
 

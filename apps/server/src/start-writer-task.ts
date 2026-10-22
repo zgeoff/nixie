@@ -2,12 +2,19 @@ import { join } from 'node:path';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import { startMemoryWriterRunner } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
+import { runOffTaskStep } from './run-off-task-step';
 import type { ServerParts } from './types';
 
 export async function startWriterTask(
   parts: ServerParts,
   store: StartedMemoryStore,
 ): Promise<RunStep> {
+  if (!parts.config.memory_writer.isEnabled) {
+    parts.log('memory_writer.off');
+
+    return runOffTaskStep;
+  }
+
   const writer = await startMemoryWriterRunner({
     context: parts.context,
     models: parts.config.models,

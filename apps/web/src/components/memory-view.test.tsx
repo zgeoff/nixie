@@ -279,6 +279,40 @@ test('it shows the writer catch-up with its cursor, backlog and last error', asy
   expect(writer).toHaveTextContent('Last error: model_timeout (no answer) at Mar 2, 9:15 AM');
 });
 
+test('it shows the writer as off when the deployment turns it off', async () => {
+  await createDeviceSession();
+
+  await store.memoryWriter.create({ isEnabled: false, cursor: 5310, backlog: 1240 });
+
+  const rendered = render(<MemoryView />);
+
+  const writer = await rendered.findByRole('region', { name: 'Memory writer' });
+
+  expect(writer).toHaveTextContent(/^Memory writer: off$/u);
+});
+
+test('it shows the consolidation as off when the deployment turns it off', async () => {
+  await createDeviceSession();
+
+  await store.memoryConsolidator.create({ isEnabled: false });
+
+  const rendered = render(<MemoryView />);
+
+  const consolidation = await rendered.findByRole('region', { name: 'Memory consolidation' });
+
+  expect(consolidation).toHaveTextContent(/^Memory consolidation: off$/u);
+});
+
+test('it shows no consolidation line while the consolidator is on', async () => {
+  await createDeviceSession();
+
+  const rendered = render(<MemoryView />);
+
+  await rendered.findByRole('region', { name: 'Memory writer' });
+
+  expect(rendered.queryByRole('region', { name: 'Memory consolidation' })).toBeNull();
+});
+
 test('it shows an item with who wrote it, from what, and when', async () => {
   setupBrowserTimeZone('UTC');
 

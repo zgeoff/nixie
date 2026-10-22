@@ -745,6 +745,65 @@ test('it starts the memory writer with the batch gate, its catch-up from the fir
   expect(ctx.readOutput()).not.toInclude('memory_writer.off');
 }, 60_000);
 
+test('it starts the memory consolidator when the configuration leaves out its enabled key', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.waitForLogEvent('memory_consolidator.started');
+
+  expect(started).toMatchObject({ periodMs: 604_800_000 });
+  expect(ctx.readOutput()).not.toInclude('memory_consolidator.off');
+}, 60_000);
+
+test('it never starts the memory writer the configuration turns off, and a turn files nothing for it', async () => {
+  const nixie = await startTestNixie({
+    extraConfig: ['memory_writer: { enabled: false, batch_messages: 1 }'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  await nixie.waitForLogEvent('memory_writer.off');
+
+  nixie.model.addReplies({ text: 'Noted: the ferry leaves at nine.' });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'The ferry to the island leaves at nine.',
+    thread: 'conversation',
+  });
+
+  await waitForTurn(async () => {
+    const page = await api.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some(
+      (record) => record.message?.text === 'Noted: the ferry leaves at nine.',
+    );
+  });
+
+  nixie.sendSignal('SIGTERM');
+
+  const exited = await nixie.waitForExit();
+
+  expect(exited.records.filter((record) => record.thread === 'memory-writer')).toStrictEqual([]);
+  expect(nixie.readOutput()).not.toInclude('memory_writer.started');
+}, 60_000);
+
+test('it never runs the memory consolidator the configuration turns off', async () => {
+  const nixie = await startTestNixie({ extraConfig: ['memory_consolidation: { enabled: false }'] });
+
+  await nixie.waitForLogEvent('memory_consolidator.off');
+  await nixie.waitForLogEvent('ready');
+
+  nixie.sendSignal('SIGTERM');
+
+  const exited = await nixie.waitForExit();
+
+  expect(exited.records.filter((record) => record.thread === 'memory-consolidator')).toStrictEqual(
+    [],
+  );
+
+  expect(nixie.readOutput()).not.toInclude('memory_consolidator.started');
+}, 60_000);
+
 test('it queues one action for the log-only connector at start, which the action runners log', async () => {
   const nixie = await startTestNixie();
 

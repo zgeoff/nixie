@@ -196,8 +196,15 @@ const memoryWriter = new Collection({
     cursor: z.int().nonnegative().default(0),
     failures: z.int().nonnegative().default(0),
     isCatchingUp: z.boolean().default(false),
+    isEnabled: z.boolean().default(true),
     lastError: writerErrorSchema.nullable().default(null),
     retryAt: z.date().nullable().default(null),
+  }),
+});
+
+const memoryConsolidator = new Collection({
+  schema: z.object({
+    isEnabled: z.boolean().default(true),
   }),
 });
 
@@ -306,6 +313,7 @@ export const store = {
   enrolmentCodes,
   forgetActions,
   memoryActions,
+  memoryConsolidator,
   memoryItems,
   memoryNotices,
   memoryProposals,
@@ -324,6 +332,7 @@ export const store = {
       memoryNotices,
       memoryProposals,
       memoryWriter,
+      memoryConsolidator,
       memoryVersions,
       ratingNotes,
       enrolmentCodes,

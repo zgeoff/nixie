@@ -39,16 +39,25 @@ record and takes the same bounds, so the batch it runs again is the one it lost.
 
 ## The catch-up
 
-The server starts the writer, with the store's batch gate, on every start of nixie. The writer's
-first start records the log's head sequence as the point where memory started. Every batch that
-begins before that point is part of the catch-up, which reads the conversation from the start of the
-log. A catch-up batch stops at the start point, so a message that arrived after memory started
-always runs in a live batch. The cursor starts at the first record of the log, so the catch-up
-begins by itself on that first start.
+The server starts the writer, with the store's batch gate, on every start of nixie that leaves the
+writer on. The writer's first start records the log's head sequence as the point where memory
+started. Every batch that begins before that point is part of the catch-up, which reads the
+conversation from the start of the log. A catch-up batch stops at the start point, so a message that
+arrived after memory started always runs in a live batch. The cursor starts at the first record of
+the log, so the catch-up begins by itself on that first start.
 
 A catch-up batch posts no notice, because a notice per batch of old history would bury the
 conversation. The batch that ends the catch-up posts one quiet notice with the count of items it
 took in. When none of the user's earlier messages wait, that batch runs with no model call.
+
+## The writer turned off
+
+The deployment configuration can turn the writer off. The server then never starts the writer, so
+the writer records nothing, stages nothing and posts no notice, and the memory view shows it as off.
+Memory that the conversation writes through its own tools goes on as before. When an earlier start
+left records in the writer task's inbox, the task runners read them in a step that does nothing
+else, so they never reach the conversation's step. The cursor stays where the writer left it, so a
+later start with the writer on resumes from that record.
 
 ## A batch's session
 
