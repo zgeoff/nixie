@@ -20,13 +20,28 @@ export async function runItemLapses(parts: StoreParts): Promise<number> {
   }
 
   let lapsed = 0;
+  const failures: unknown[] = [];
 
   for (const row of due) {
-    const isLapsed = await tryWriteLapse(parts, { itemID: row.item_id, version: row.version });
+    const outcome = await tryWriteLapse(parts, { itemID: row.item_id, version: row.version }).then(
+      (isLapsed) => ({ isLapsed, error: null }),
+      (error: unknown) => ({ isLapsed: false, error }),
+    );
 
-    if (isLapsed) {
+    if (outcome.isLapsed) {
       lapsed += 1;
     }
+
+    if (outcome.error !== null) {
+      failures.push(outcome.error);
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new AggregateError(
+      failures,
+      `the lapse sweep retired ${String(lapsed)} memory items and failed on ${String(failures.length)}`,
+    );
   }
 
   return lapsed;

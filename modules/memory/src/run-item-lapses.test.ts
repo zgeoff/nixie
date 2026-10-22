@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { removeRecordKey } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startFaultPointHold } from './test-utils/start-fault-point-hold';
@@ -133,4 +134,37 @@ test('it skips an item that an edit changed after the sweep read it, and retires
   expect(recalled.items).toMatchObject([
     { version: 3, state: 'retired', change: 'retired', origin: 'lapse' },
   ]);
+});
+
+test('it retires the other lapsed items when one has no readable key, and reports that one', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const keyless = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T12:00:00Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  const healthy = await memory.store.remember({
+    text: 'Has the spare car until tonight',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  await removeRecordKey(memory.log, keyless.itemID);
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  const refused = await memory.store.lapse().then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  const recalled = await memory.store.recall({ itemIDs: [healthy.itemID], includeRetired: true });
+
+  expect(refused).toBeInstanceOf(AggregateError);
+  expect(refused).toMatchObject({ errors: [{ message: expect.toInclude(keyless.itemID) }] });
+  expect(recalled.items).toMatchObject([{ version: 2, change: 'retired', origin: 'lapse' }]);
 });
