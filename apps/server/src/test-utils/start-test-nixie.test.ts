@@ -89,9 +89,7 @@ test('it stops the guest of a turn still running once the test finishes', async 
   const turnPIDs = readDescendants(process.pid);
 
   onTestFinished(async () => {
-    await expect(
-      waitForCondition(() => turnPIDs.every((pid) => probeProcessGone(pid))),
-    ).toResolve();
+    await waitForCondition(() => turnPIDs.every((pid) => probeProcessGone(pid)));
   });
 
   expect(turnPIDs.length).toBeGreaterThanOrEqual(3);
