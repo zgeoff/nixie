@@ -1,8 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
+import { probeProcessGone } from '../probe-process-gone';
 import { startNixieProcess } from '../start-nixie-process';
 import { stopProcesses } from '../stop-processes';
-import { probeProcessGone } from './probe-process-gone';
 
 function setupTest() {
   return { entry: join(import.meta.dir, 'run-stub-nixie.ts') };

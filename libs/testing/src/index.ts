@@ -24,5 +24,6 @@ export { startNixieProcess } from './start-nixie-process';
 export type { ProviderCall, ProviderDouble, ProviderReply } from './start-provider-double';
 export { startProviderDouble } from './start-provider-double';
 export type { FaultPointArm, FaultPointWork, HarnessMessage, NixieMessage } from './types';
+export { probeProcessGone } from './probe-process-gone';
 export { readDescendants } from './read-descendants';
 export { stopProcesses } from './stop-processes';

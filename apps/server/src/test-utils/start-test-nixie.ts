@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { LogRecord } from '@heynixie/log';
 import type { ScriptedModel } from '@heynixie/testing';
-import { startScriptedModel, waitForCondition } from '@heynixie/testing';
+import {
+  readDescendants,
+  startScriptedModel,
+  stopProcesses,
+  waitForCondition,
+} from '@heynixie/testing';
 import { z } from 'zod';
 import { readDataFiles } from './read-data-files';
 import { readTestRecords } from './read-test-records';
@@ -87,8 +92,14 @@ function startNixieRun(start: TestNixieFiles): TestNixie {
     stderr: 'pipe',
   });
 
+  // A turn's guest and its Agent SDK process outlive a killed nixie, and one ran on for over 80 s
+  // beside the next tests. Linux reparents them once nixie dies, so the tree is read first.
   start.stack.defer(async () => {
+    const descendants = readDescendants(child.pid);
+
     child.kill('SIGKILL');
+
+    stopProcesses(descendants);
 
     await child.exited;
   });
