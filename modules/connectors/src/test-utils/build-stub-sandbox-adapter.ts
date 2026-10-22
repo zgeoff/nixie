@@ -17,14 +17,18 @@ export interface StubSandboxAdapter extends SandboxAdapter {
   readonly created: readonly { readonly id: string; readonly spec: SandboxSpec }[];
   readonly destroyed: readonly string[];
   readonly spawned: readonly { readonly sandboxID: string; readonly argv: readonly string[] }[];
+  readonly countMostLive: () => number;
 }
 
-type StubCreateFailure =
+type StubCallFailure =
   | { readonly kind: 'reject'; readonly message: string }
-  | { readonly kind: 'hang' };
+  | { readonly kind: 'hang' }
+  | { readonly kind: 'wait'; readonly until: Promise<void> };
 
 export interface StubSandboxAdapterOptions {
-  readonly createFailures?: readonly StubCreateFailure[];
+  readonly createFailures?: readonly StubCallFailure[];
+  readonly listFailures?: readonly StubCallFailure[];
+  readonly destroyFailures?: readonly StubCallFailure[];
 }
 
 export function buildStubSandboxAdapter(
@@ -32,11 +36,15 @@ export function buildStubSandboxAdapter(
   options: StubSandboxAdapterOptions = {},
 ): StubSandboxAdapter {
   const createFailures = [...(options.createFailures ?? [])];
+  const listFailures = [...(options.listFailures ?? [])];
+  const destroyFailures = [...(options.destroyFailures ?? [])];
   const created: { id: string; spec: SandboxSpec }[] = [];
   const destroyed: string[] = [];
   const spawned: { sandboxID: string; argv: readonly string[] }[] = [];
 
   const live = new Map<string, Sandbox>();
+
+  const mostLive = { count: 0 };
 
   return {
     id: 'stub',
@@ -49,32 +57,49 @@ export function buildStubSandboxAdapter(
 
       requireSandboxSpec(spec);
 
-      await applyCreateFailure(createFailures.shift());
+      await applyCallFailure(createFailures.shift());
 
       const id = crypto.randomUUID();
-      const sandbox = buildStubSandbox(id, spec, { guest, live, spawned, destroyed });
+
+      const sandbox = buildStubSandbox(id, spec, {
+        guest,
+        live,
+        spawned,
+        destroyed,
+        destroyFailures,
+      });
 
       live.set(id, sandbox);
       created.push({ id, spec });
 
+      mostLive.count = Math.max(mostLive.count, live.size);
+
       return sandbox;
     },
     read: (id) => Promise.resolve(live.get(id) ?? null),
-    list: (owner) =>
-      Promise.resolve([...live.values()].filter((sandbox) => sandbox.spec.owner === owner)),
+    list: async (owner) => {
+      await applyCallFailure(listFailures.shift());
+
+      return [...live.values()].filter((sandbox) => sandbox.spec.owner === owner);
+    },
     addSecret: () => Promise.resolve(),
     addImage: () => Promise.resolve(),
     checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
+    countMostLive: () => mostLive.count,
   };
 }
 
-async function applyCreateFailure(failure: StubCreateFailure | undefined): Promise<void> {
+async function applyCallFailure(failure: StubCallFailure | undefined): Promise<void> {
   if (failure?.kind === 'reject') {
     throw new Error(failure.message);
   }
 
   if (failure?.kind === 'hang') {
     await Promise.withResolvers<never>().promise;
+  }
+
+  if (failure?.kind === 'wait') {
+    await failure.until;
   }
 }
 
@@ -83,6 +108,7 @@ interface StubState {
   readonly live: Map<string, Sandbox>;
   readonly spawned: { sandboxID: string; argv: readonly string[] }[];
   readonly destroyed: string[];
+  readonly destroyFailures: StubCallFailure[];
 }
 
 function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sandbox {
@@ -107,11 +133,11 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
     toolRoute: () => Promise.resolve(null),
     suspension: { kind: 'none' },
     isRetired: false,
-    destroy: () => {
+    destroy: async () => {
+      await applyCallFailure(state.destroyFailures.shift());
+
       state.live.delete(id);
       state.destroyed.push(id);
-
-      return Promise.resolve();
     },
   };
 }

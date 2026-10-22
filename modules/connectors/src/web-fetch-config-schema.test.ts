@@ -6,7 +6,6 @@ test('it takes every default when the section is empty', () => {
 
   expect(result.data).toStrictEqual({
     limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 20_000 },
-    fetchesPerSandbox: 50,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
   });
 });
@@ -17,12 +16,10 @@ test('it takes the limits the file names', () => {
     timeout_ms: 5000,
     redirects: 0,
     text_bytes: 512,
-    fetches_per_sandbox: 10,
   });
 
   expect(result.data).toStrictEqual({
     limits: { bodyBytes: 1024, timeoutMs: 5000, redirects: 0, textBytes: 512 },
-    fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
   });
 });
@@ -40,5 +37,15 @@ test('it refuses an unknown key', () => {
     path: [],
     code: 'unrecognized_keys',
     keys: ['body_byte'],
+  });
+});
+
+test('it refuses a count of fetches per sandbox, since every fetch has a sandbox of its own', () => {
+  const result = webFetchConfigSchema.safeParse({ fetches_per_sandbox: 10 });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: [],
+    code: 'unrecognized_keys',
+    keys: ['fetches_per_sandbox'],
   });
 });

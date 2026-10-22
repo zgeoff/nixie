@@ -27,8 +27,7 @@ someone other than the user. The result schema marks the status code and the tru
 endorsed types, because a number and a boolean cannot carry the page's words, while a URL can carry
 text in its path. A refused or failed fetch returns an error with its reason, which the model reads.
 When a site's bot protection answers in place of the page, the result is a page with its status and
-a blocked reason, so the model can tell the user why the fetch has no content instead of retrying. A
-blocked page is a page, so nixie keeps the fetch sandbox after it.
+a blocked reason, so the model can tell the user why the fetch has no content instead of retrying.
 
 A call names the page by its URL or by the ID of a link that a page fetched earlier in the session
 showed, and the tool refuses a call that gives both or neither.
@@ -63,23 +62,30 @@ error when it finds one, so no row reaches the store after the cleanup removed t
 
 ## The fetch sandbox
 
-nixie keeps one long-lived fetch sandbox and creates it on the first fetch. Each fetch spawns a new
-fetcher process, so nothing from one page's parse survives in memory for the next, and the fetcher
-works inside a new temporary directory that it removes when the fetch ends. nixie talks to the
-fetcher only over that process's stdin and stdout, one frame each way, each frame holding one line
-of JSON in the format `libs/wire` defines. The request carries the URL, the fetch limits and the
-ranges the deployment lists as internal; nothing else nixie holds reaches the sandbox.
+Each fetch runs in a fetch sandbox of its own. nixie creates a new sandbox from the fetch image,
+spawns one fetcher process in it, and destroys the sandbox when the fetch ends, so a page that
+compromises the fetcher sees only its own fetch and never the URL of another. The fetcher works
+inside a new temporary directory that it removes when the fetch ends. nixie talks to the fetcher
+only over that process's stdin and stdout, one frame each way, each frame holding one line of JSON
+in the format `libs/wire` defines. The request carries the URL, the fetch limits and the ranges the
+deployment lists as internal; nothing else nixie holds reaches the sandbox.
 
-Fetches run one at a time. nixie replaces the sandbox after a configured number of fetches, and
-after any fetch that does not end in a page: a refusal, a failure the fetcher reports, a fetcher
-that exits non-zero or sends no reply, a reply nixie cannot decode, or a fetcher that outlives the
-fetch's time limit, which nixie stops. Every call nixie makes to the sandbox adapter has a time
-limit as well, so a create or a destroy that never ends fails one fetch and never blocks the fetches
-after it. Until a replacement, the fetches in one sandbox share a boundary: a page that compromises
-the fetcher can see the URLs of later fetches and send them out over public egress. The URLs carry
-no credential and every result is outside content, so the first build accepts that boundary. Every
-fetch sandbox has the same owner, and a new one removes any fetch sandbox an earlier process left,
-so a crash never leaves two.
+Fetches run one at a time, and the next fetch starts only once the last fetch's destroy ends, so no
+fetcher ever runs beside another. nixie returns the reply as soon as the fetcher sends it and
+destroys the sandbox after, which keeps the destroy off the reply's path.
+
+A fetch that does not end in a page destroys its sandbox the same way: a refusal, a failure the
+fetcher reports, a fetcher that exits non-zero or sends no reply, a reply nixie cannot decode, or a
+fetcher that outlives the fetch's time limit, which nixie stops. Every call nixie makes to the
+sandbox adapter has a time limit as well, so a create or a destroy that never ends fails one fetch
+and never blocks the fetches after it.
+
+Every fetch sandbox has the same owner. The first fetch after nixie starts removes every fetch
+sandbox of that owner, which clears what an earlier process left. The next fetch after a failed
+create or a destroy that fails or passes its time limit does the same, because a create can fail
+after the runtime made the sandbox and then fail to remove it. A create that passes its time limit
+makes no further adapter call, and nixie destroys a sandbox that the create still returns as soon as
+it arrives.
 
 ## The fetcher
 

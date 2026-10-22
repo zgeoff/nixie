@@ -37,7 +37,6 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
     argv: ['bun', '/app/fetch.js'],
     limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
     deniedRanges: [],
-    fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
 
@@ -750,7 +749,6 @@ test('it returns the reason the bot protection blocked a page in a result the sc
     argv: ['bun', '/app/fetch.js'],
     limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
     deniedRanges: [],
-    fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
 
@@ -889,7 +887,6 @@ test.each([
     argv: ['bun', '/app/fetch.js'],
     limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
     deniedRanges: [],
-    fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
 
