@@ -86,6 +86,7 @@ export type FaultPointID =
   | 'memory.recall.ranked'
   | 'memory.recall.checked'
   | 'memory.forget.key_removed'
+  | 'memory.lapse.read'
   | 'writer.batch.planned'
   | 'writer.batch.extracted'
   | 'writer.batch.gated'

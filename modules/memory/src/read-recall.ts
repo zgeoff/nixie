@@ -29,7 +29,9 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
   const states: readonly MemoryState[] =
     request.includeRetired === true ? ['active', 'retired'] : ['active'];
 
-  const candidates = await readCandidates(parts, { request, limit, states });
+  const lapsedBefore = request.includeRetired === true ? null : parts.context.gate.clock.now();
+
+  const candidates = await readCandidates(parts, { request, limit, states, lapsedBefore });
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('memory.recall.ranked', { kind: 'memory', id: null });
@@ -70,6 +72,8 @@ interface CandidateQuery {
   readonly request: RecallRequest;
   readonly limit: number;
   readonly states: readonly MemoryState[];
+
+  readonly lapsedBefore: number | null;
 }
 
 interface Candidates {
@@ -101,6 +105,11 @@ async function readCandidates(parts: StoreParts, query: CandidateQuery): Promise
     .selectFrom('memory_items')
     .select(['item_id', 'created_sequence'])
     .where('state', 'in', query.states)
+    .$if(query.lapsedBefore !== null, (listed) =>
+      listed.where((row) =>
+        row.or([row('until', 'is', null), row('until', '>', query.lapsedBefore ?? 0)]),
+      ),
+    )
     .where('created_sequence', '>', parseItemCursor(request.after))
     .$if(request.subjects !== undefined, (listed) =>
       listed.where(subjectColumn, 'in', request.subjects ?? []),
@@ -125,13 +134,14 @@ interface QueryCandidates extends CandidateQuery {
 async function readQueryCandidates(parts: StoreParts, query: QueryCandidates): Promise<Candidates> {
   const request = query.request;
 
-  const [pinned, held, others] = await Promise.all([
+  const [pinned, held, others, lapsed] = await Promise.all([
     request.excludePinned === true ? readPinnedItemIDs(parts) : [],
     readCurrentItemIDs(parts, request.excludedVersions ?? []),
     request.subjects === undefined ? [] : readOtherSubjectIDs(parts, request.subjects),
+    query.lapsedBefore === null ? [] : readLapsedItemIDs(parts, query.lapsedBefore),
   ]);
 
-  const excludedIDs = [...pinned, ...held, ...others];
+  const excludedIDs = [...pinned, ...held, ...others, ...lapsed];
   const selfLimit = request.selfNoteLimit;
 
   const ranked =
@@ -202,6 +212,18 @@ async function readOtherSubjectIDs(
     .select('item_id')
     .where('state', '=', 'active')
     .$if(subjects.length > 0, (query) => query.where(subjectColumn, 'not in', subjects))
+    .execute();
+
+  return rows.map((row) => row.item_id);
+}
+
+async function readLapsedItemIDs(parts: StoreParts, now: number): Promise<readonly string[]> {
+  const rows = await parts.context.log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('item_id')
+    .where('state', '=', 'active')
+    .where('until', '<=', now)
     .execute();
 
   return rows.map((row) => row.item_id);

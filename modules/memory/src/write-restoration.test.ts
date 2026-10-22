@@ -1,7 +1,10 @@
 import { expect, test } from 'bun:test';
 import type { LogTables } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
+import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startTestMemory } from './test-utils/start-test-memory';
+import type { MemoryTables } from './types';
 
 async function setupTest() {
   return { memory: await startTestMemory() };
@@ -126,4 +129,43 @@ test("it commits the caller's own write in the restore's transaction", async () 
     .execute();
 
   expect(kinds).toStrictEqual([{ kind: 'owner_message' }, { kind: 'memory.version_added' }]);
+});
+
+test('it clears the end time of a lapsed item it restores, so the next sweep leaves it active', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  await memory.store.lapse();
+
+  await memory.store.restore({
+    target: { itemID: item.itemID, version: 2 },
+    provenance: buildMockProvenance(),
+  });
+
+  const lapsed = await memory.store.lapse();
+  const recalled = await memory.store.recall({ itemIDs: [item.itemID] });
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('until')
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(lapsed).toBe(0);
+
+  expect(recalled.items).toMatchObject([
+    { version: 3, change: 'restored', state: 'active', text: 'Is in Lisbon this week' },
+  ]);
+
+  expect(row.until).toBeNull();
 });

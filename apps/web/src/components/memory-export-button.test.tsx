@@ -73,7 +73,7 @@ test('it saves every item to the file the user picks, with a forgotten item as o
   ]);
 
   expect(JSON.parse(files[0]?.text ?? 'null')).toMatchObject({
-    header: { schemaVersion: 3, snapshotHash: 'sha256:mock' },
+    header: { schemaVersion: 4, snapshotHash: 'sha256:mock' },
     items: [
       { itemID: active.itemID, versions: [{ text: 'Rents allotment plot 14' }] },
       { itemID: forgotten.itemID, forgottenAt: '2026-10-13T18:31:00.000Z' },

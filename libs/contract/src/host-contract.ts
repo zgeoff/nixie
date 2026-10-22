@@ -9,7 +9,7 @@ const versionTargetSchema = z.strictObject({
 });
 
 const itemTextSchema = z.string().max(2000).regex(/\S/u);
-const memoryOriginSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer']);
+const memoryOriginSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer', 'lapse']);
 const contentSourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
 
 const reviewReasonSchema = z.enum([

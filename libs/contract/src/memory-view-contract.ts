@@ -16,7 +16,7 @@ const memoryChange = memoryView.errors(reusedIDErrors).errors({
 
 const itemIDSchema = z.string().min(1).max(200);
 const itemTextSchema = z.string().max(2000).regex(/\S/u);
-const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer']);
+const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer', 'lapse']);
 const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
 const subjectSchema = z.enum(['owner', 'self', 'shared']);
 const kindSchema = z.enum(['fact', 'self']);

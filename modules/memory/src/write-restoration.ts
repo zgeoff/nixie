@@ -19,6 +19,7 @@ export function writeRestoration(parts: StoreParts, request: RestoreRequest): Pr
         evidence: parseEvidence(before.row.evidence),
         source: before.row.source,
         intentEvidence: null,
+        until: null,
       };
     },
   });

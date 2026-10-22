@@ -118,6 +118,7 @@ export interface NixieTables {
     readonly short_id: string | null;
     readonly kind: string;
     readonly subject: string | null;
+    readonly until: number | null;
   };
   readonly memory_notice_entries: {
     readonly entry_key: string;
@@ -185,6 +186,7 @@ export interface NixieTables {
     readonly snapshot_hash: string;
     readonly recorded_at: number;
     readonly model: string | null;
+    readonly until: number | null;
   };
   readonly memory_writer: {
     readonly writer_id: string;

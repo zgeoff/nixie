@@ -16,7 +16,7 @@ const versionAdded = z.strictObject({
   sealed: z.base64(),
   evidence: quoteEvidence.nullable(),
   intentEvidence: quoteEvidence.nullable(),
-  origin: z.enum(['owner', 'conversation', 'task', 'memory_writer']),
+  origin: z.enum(['owner', 'conversation', 'task', 'memory_writer', 'lapse']),
   source: z.enum(['owner', 'owner_data', 'untrusted']),
   taskID: z.string().nullable(),
   proposalID: z.string().nullable(),
@@ -26,6 +26,8 @@ const versionAdded = z.strictObject({
   noticeKey: z.string().nullable().default(null),
 
   shortID: z.string().nullable().default(null),
+
+  until: z.int().nullable().default(null),
 });
 
 const pinned = z.strictObject({ itemID: z.string(), isPinned: z.boolean() });
@@ -58,6 +60,8 @@ interface VersionAddedRecord {
   readonly noticeKey: string | null;
 
   readonly shortID: string | null;
+
+  readonly until: number | null;
 }
 
 export type MemoryRecord =

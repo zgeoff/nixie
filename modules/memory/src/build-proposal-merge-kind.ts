@@ -1,13 +1,13 @@
 import type { Log } from '@heynixie/log';
 import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/sessions';
-import type { MemoryOrigin, MemoryTables } from './types';
+import type { MemoryTables, ProposalOrigin } from './types';
 
 export interface ProposalMergeEvent {
   readonly proposalID: string;
-  readonly origin: MemoryOrigin;
+  readonly origin: ProposalOrigin;
 }
 
-const proposerWords: Readonly<Record<Exclude<MemoryOrigin, 'owner'>, string>> = {
+const proposerWords: Readonly<Record<Exclude<ProposalOrigin, 'owner'>, string>> = {
   conversation: 'Another conversation turn',
   task: 'A task',
   memory_writer: 'Your note-taker',
@@ -40,7 +40,7 @@ export function buildProposalMergeKind(log: Pick<Log, 'writer'>): EventKind<Prop
 
 interface MergeRow {
   readonly proposal_id: string;
-  readonly origin: MemoryOrigin;
+  readonly origin: ProposalOrigin;
   readonly sequence: number;
   readonly recorded_at: number;
 }

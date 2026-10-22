@@ -19,6 +19,7 @@ export function planRetiredVersion(request: RetireRequest): VersionPlan {
         evidence: parseEvidence(before.row.evidence),
         source: before.row.source,
         intentEvidence: request.intentEvidence ?? null,
+        until: before.row.until,
       };
     },
   };

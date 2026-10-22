@@ -1,6 +1,6 @@
 import type { ContentSource, EnvelopeRecord, JSONObject } from '@heynixie/log';
 import { z } from 'zod';
-import type { MemoryOrigin, QuoteEvidence } from './types';
+import type { ProposalOrigin, QuoteEvidence } from './types';
 
 const proposed = z.strictObject({
   proposalID: z.string(),
@@ -60,7 +60,7 @@ interface ProposedRecord {
   readonly actionHash: string;
   readonly sealed: string;
   readonly evidence: QuoteEvidence | null;
-  readonly origin: MemoryOrigin;
+  readonly origin: ProposalOrigin;
   readonly source: ContentSource;
   readonly taskID: string | null;
   readonly capGroup: string;
@@ -76,7 +76,7 @@ interface MergedRecord {
   readonly mergeID: string;
   readonly proposalID: string;
   readonly itemID: string;
-  readonly origin: MemoryOrigin;
+  readonly origin: ProposalOrigin;
   readonly taskID: string | null;
   readonly model: string | null;
   readonly noticeKey: string | null;

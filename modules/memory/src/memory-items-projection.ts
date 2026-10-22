@@ -56,6 +56,7 @@ async function applyMemoryRecord(
         short_id: parsed.shortID ?? buildShortIDFromUUID(parsed.itemID),
         kind: 'fact',
         subject: 'owner',
+        until: parsed.until,
       })
       .execute();
 
@@ -71,9 +72,11 @@ async function applyMemoryRecord(
 
 function buildItemUpdate(parsed: MemoryRecord, sequence: number) {
   if (parsed.kind === 'memory.version_added') {
+    const version = { version: parsed.version, state: parsed.state, until: parsed.until };
+
     return parsed.state === 'retired'
-      ? { version: parsed.version, state: parsed.state, is_pinned: 0, pinned_sequence: null }
-      : { version: parsed.version, state: parsed.state };
+      ? { ...version, is_pinned: 0, pinned_sequence: null }
+      : version;
   }
 
   if (parsed.kind === 'memory.pinned') {
@@ -84,7 +87,7 @@ function buildItemUpdate(parsed: MemoryRecord, sequence: number) {
   }
 
   if (parsed.kind === 'memory.forget_started') {
-    return { state: 'forgetting' as const, is_pinned: 0, pinned_sequence: null };
+    return { state: 'forgetting' as const, is_pinned: 0, pinned_sequence: null, until: null };
   }
 
   return { state: 'forgotten' as const, forgotten_sequence: sequence };

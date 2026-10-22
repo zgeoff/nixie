@@ -178,6 +178,7 @@ async function loadExportVersion(row: MemoryVersionRow, parts: ItemParts): Promi
     state: row.state,
     text: opened.text.status === 'readable' ? opened.text.text : null,
     evidenceQuote: opened.evidenceQuote,
+    until: row.until === null ? null : new Date(row.until).toISOString(),
     provenance: {
       origin: row.origin,
       source: row.source,

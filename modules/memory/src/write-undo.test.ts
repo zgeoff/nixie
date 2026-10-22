@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import { buildTestClock } from '@heynixie/testing';
+import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -193,4 +195,58 @@ test('it undoes the creation of an item by retiring it', async () => {
   expect(recalled.items).toMatchObject([
     { version: 2, change: 'undone', state: 'retired', text: 'Lives on Elm Street' },
   ]);
+});
+
+test('it clears the end time when it undoes a lapse, so the next sweep leaves the item active', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  await memory.store.lapse();
+
+  await memory.store.undo({
+    target: { itemID: item.itemID, version: 2 },
+    provenance: buildMockProvenance(),
+  });
+
+  const lapsed = await memory.store.lapse();
+  const recalled = await memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(lapsed).toBe(0);
+  expect(recalled.items).toMatchObject([{ version: 3, change: 'undone', state: 'active' }]);
+});
+
+test('it keeps the end time of the version it returns to when it undoes an edit', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  const edited = await memory.store.remember({
+    target: item,
+    text: 'Is in Lisbon for good',
+    until: null,
+    provenance: buildMockProvenance(),
+  });
+
+  await memory.store.undo({ target: edited, provenance: buildMockProvenance() });
+
+  clock.advance(Date.parse('2026-10-19T22:59:59Z') - clock.now());
+
+  const recalled = await memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(recalled.items).toStrictEqual([]);
 });

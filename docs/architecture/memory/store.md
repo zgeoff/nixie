@@ -32,11 +32,11 @@ subject, and the store reads its subject from its kind. The model reads and name
 short ID, and the store keys everything else, the item's key included, by the item's UUID.
 
 The versions table holds one row per version: what changed, the state that version gave the item,
-the sealed text, and the provenance. A version's provenance is its origin (the user, the
-conversation, a task or the memory writer), its source of content, the task and proposal behind it,
-the verdicts of the write checks, and the evidence offsets inside the message the quote came from.
-nixie sets every provenance field from the turn or the client action that wrote the version, and a
-tool's arguments never reach them.
+the sealed text, its [end time](#end-times), and the provenance. A version's provenance is its
+origin (the user, the conversation, a task, the memory writer or a lapse), its source of content,
+the task and proposal behind it, the verdicts of the write checks, and the evidence offsets inside
+the message the quote came from. nixie sets every provenance field from the turn or the client
+action that wrote the version, and a tool's arguments never reach them.
 
 The provenance sits in plain columns, so the memory view and a review of poisoned memory filter on
 it without decrypting anything. The text, the evidence quote and the user's request to retire the
@@ -85,6 +85,26 @@ transaction makes.
   pinned item, fails when it would take the pinned core past its budget
   ([the pinned core](./context.md#the-pinned-core)).
 
+## End times
+
+An item can carry an end time, the UTC instant after which its fact stops holding, such as the end
+of Sunday for "is in Lisbon this week". The end time sits in a plain column on each version, and the
+item's row takes it from the current version. A remember that leaves the end time out of an edit
+keeps the current one, and an edit can clear it. The store refuses an end time that has passed.
+
+Recall treats an active item past its end time as retired from that instant, before any version
+records it. A recall of active items and the pinned core drop the item, and a recall that asks for
+retired items returns it as retired and unpinned. The cut-off sits at read time, against the store's
+clock, because the indexes change only when a version is written.
+
+The lapse sweep, which also lapses old proposals and consolidation changes, retires each active item
+past its end time with the lapse origin. The retirement keeps the end time on its version, so the
+history shows when the fact was set to end, and it unpins the item as every retirement does. When an
+item changed between the sweep's read and its retirement, the sweep leaves the item to the next
+sweep. A lapse retires an item and never forgets it, so an early end costs the user one restore. A
+restore clears the end time, and so does an undo of a lapse, so the next sweep leaves the item
+active. A forget clears the end time from the item's row.
+
 ## Keys
 
 Each item's key is an AES-256-GCM key in the key store, under the item's ID, which is random as
@@ -114,12 +134,13 @@ flowchart LR
 
 The index and the listing rank candidate IDs and never supply the returned text. Under the delivery
 lock, recall reads each candidate's current row again, drops any that is not in a state the request
-allows or whose key is gone, decrypts the rest, and appends a recall record that lists each item and
-version it delivered. For a query, each item in the record carries its keyword score and its
-similarity, each where that index placed it, and the record says how the query searched, so the
-client can show what each turn was given and how well it matched. The record holds references and
-scores and no text, so a later forget leaves no readable copy of what a recall delivered. A client
-reads a delivered version's text through the API while its key exists.
+allows, counting an item past its end time as retired, or whose key is gone, decrypts the rest, and
+appends a recall record that lists each item and version it delivered. For a query, each item in the
+record carries its keyword score and its similarity, each where that index placed it, and the record
+says how the query searched, so the client can show what each turn was given and how well it
+matched. The record holds references and scores and no text, so a later forget leaves no readable
+copy of what a recall delivered. A client reads a delivered version's text through the API while its
+key exists.
 
 A query searches both indexes, each above its own floor, and reciprocal rank fusion merges the two
 rankings, because a BM25 score and a similarity share no scale. A query can also cap self-notes on
