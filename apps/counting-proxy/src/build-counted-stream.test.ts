@@ -33,13 +33,16 @@ test('it passes every byte through and reports the usage of the message start an
 
   expect(passed).toBe(text.join(''));
 
-  expect(onEnd).toHaveBeenCalledExactlyOnceWith({
-    input_tokens: 40,
-    output_tokens: 12,
-    cache_creation_input_tokens: null,
-    cache_read_input_tokens: null,
-    cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 2000 },
-  });
+  expect(onEnd).toHaveBeenCalledExactlyOnceWith(
+    {
+      input_tokens: 40,
+      output_tokens: 12,
+      cache_creation_input_tokens: null,
+      cache_read_input_tokens: null,
+      cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 2000 },
+    },
+    true,
+  );
 });
 
 test('it reports the usage seen so far when the reader stops early', async () => {
@@ -60,13 +63,16 @@ test('it reports the usage seen so far when the reader stops early', async () =>
   await reader.read();
   await reader.cancel();
 
-  expect(onEnd).toHaveBeenCalledExactlyOnceWith({
-    input_tokens: 40,
-    output_tokens: 1,
-    cache_creation_input_tokens: null,
-    cache_read_input_tokens: null,
-    cache_creation: null,
-  });
+  expect(onEnd).toHaveBeenCalledExactlyOnceWith(
+    {
+      input_tokens: 40,
+      output_tokens: 1,
+      cache_creation_input_tokens: null,
+      cache_read_input_tokens: null,
+      cache_creation: null,
+    },
+    false,
+  );
 });
 
 test('it reports the usage seen so far and fails the stream when the upstream breaks', async () => {
@@ -95,13 +101,16 @@ test('it reports the usage seen so far and fails the stream when the upstream br
 
   expect(reader.read()).rejects.toThrow('the upstream dropped the connection');
 
-  expect(onEnd).toHaveBeenCalledExactlyOnceWith({
-    input_tokens: 40,
-    output_tokens: 1,
-    cache_creation_input_tokens: null,
-    cache_read_input_tokens: null,
-    cache_creation: null,
-  });
+  expect(onEnd).toHaveBeenCalledExactlyOnceWith(
+    {
+      input_tokens: 40,
+      output_tokens: 1,
+      cache_creation_input_tokens: null,
+      cache_read_input_tokens: null,
+      cache_creation: null,
+    },
+    false,
+  );
 });
 
 test('it reports no usage for a stream with no usage event', async () => {
@@ -115,5 +124,5 @@ test('it reports no usage for a stream with no usage event', async () => {
 
   await new Response(buildCountedStream(upstream, onEnd)).text();
 
-  expect(onEnd).toHaveBeenCalledExactlyOnceWith(null);
+  expect(onEnd).toHaveBeenCalledExactlyOnceWith(null, true);
 });

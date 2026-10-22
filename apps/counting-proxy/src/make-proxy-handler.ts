@@ -24,7 +24,20 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
   let countFailed = false;
   let limitLogged = false;
 
-  const count = async (route: ProxyRoute, usage: CallUsage | null): Promise<void> => {
+  const count = async (
+    route: ProxyRoute,
+    usage: CallUsage | null,
+    complete: boolean,
+  ): Promise<void> => {
+    // a stream that broke or was cancelled before its first usage event may still have spent
+    if (usage === null && !complete) {
+      countFailed = true;
+
+      deps.log('count.lost', {}, 'error');
+
+      return;
+    }
+
     if (usage === null) {
       return;
     }
@@ -144,7 +157,9 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
 
     if (upstream.headers.get('content-type')?.startsWith('text/event-stream') === true) {
       return new Response(
-        buildCountedStream(upstream.body, (usage) => count(target.route, usage)),
+        buildCountedStream(upstream.body, (usage, complete) =>
+          count(target.route, usage, complete),
+        ),
         init,
       );
     }
@@ -162,7 +177,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(502, 'api_error', 'the counting proxy lost the reply of the model API');
     }
 
-    await count(target.route, parseReportedUsage(findBodyUsage(text)));
+    await count(target.route, parseReportedUsage(findBodyUsage(text)), true);
 
     return new Response(text, init);
   };

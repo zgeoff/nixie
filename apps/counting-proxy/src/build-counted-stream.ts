@@ -10,7 +10,7 @@ type ReportedFields = Readonly<Record<string, unknown>>;
 // that breaks, still counts what the events reported so far.
 export function buildCountedStream(
   body: ReadableStream<Uint8Array>,
-  onEnd: (usage: CallUsage | null) => Promise<void>,
+  onEnd: (usage: CallUsage | null, complete: boolean) => Promise<void>,
 ): ReadableStream<Uint8Array> {
   const reader = body.getReader();
 
@@ -32,7 +32,7 @@ export function buildCountedStream(
     }
   };
 
-  const finish = async () => {
+  const finish = async (complete: boolean) => {
     if (ended) {
       return;
     }
@@ -41,7 +41,7 @@ export function buildCountedStream(
 
     readEvents(`${decoder.decode()}\n`);
 
-    await onEnd(parseReportedUsage(reported));
+    await onEnd(parseReportedUsage(reported), complete);
   };
 
   return new ReadableStream<Uint8Array>({
@@ -52,7 +52,7 @@ export function buildCountedStream(
       );
 
       if (chunk.kind === 'failed') {
-        await finish();
+        await finish(false);
 
         controller.error(chunk.error);
 
@@ -60,7 +60,7 @@ export function buildCountedStream(
       }
 
       if (chunk.result.done) {
-        await finish();
+        await finish(true);
 
         controller.close();
 
@@ -72,7 +72,7 @@ export function buildCountedStream(
       controller.enqueue(chunk.result.value);
     },
     cancel: async (reason) => {
-      await finish();
+      await finish(false);
 
       await reader.cancel(reason);
     },
