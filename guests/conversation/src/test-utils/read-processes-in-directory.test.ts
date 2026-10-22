@@ -25,9 +25,9 @@ test('it reads a process that runs in a folder under the directory', async () =>
     child.kill('SIGKILL');
   });
 
-  const pids = await readProcessesInDirectory(ctx.directory);
+  const processIDs = await readProcessesInDirectory(ctx.directory);
 
-  expect(pids).toStrictEqual([child.pid]);
+  expect(processIDs).toStrictEqual([child.pid]);
 });
 
 test('it reads a process whose directory was removed while it ran', async () => {
@@ -44,9 +44,9 @@ test('it reads a process whose directory was removed while it ran', async () => 
 
   await rm(ctx.directory, { recursive: true, force: true });
 
-  const pids = await readProcessesInDirectory(ctx.directory);
+  const processIDs = await readProcessesInDirectory(ctx.directory);
 
-  expect(pids).toStrictEqual([child.pid]);
+  expect(processIDs).toStrictEqual([child.pid]);
 });
 
 test.each([
@@ -67,7 +67,7 @@ test.each([
     child.kill('SIGKILL');
   });
 
-  const pids = await readProcessesInDirectory(ctx.directory);
+  const processIDs = await readProcessesInDirectory(ctx.directory);
 
-  expect(pids).toStrictEqual([]);
+  expect(processIDs).toStrictEqual([]);
 });

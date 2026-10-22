@@ -6,11 +6,15 @@ import { readdir, readlink } from 'node:fs/promises';
 export async function readProcessesInDirectory(directory: string): Promise<readonly number[]> {
   const entries = await readdir('/proc');
 
-  const pids = entries.filter((entry) => /^\d+$/u.test(entry)).map(Number);
+  const processIDs = entries.filter((entry) => /^\d+$/u.test(entry)).map(Number);
 
-  const cwds = await Promise.all(pids.map((pid) => readlink(`/proc/${pid}/cwd`).catch(() => '')));
+  const workingDirectories = await Promise.all(
+    processIDs.map((processID) => readlink(`/proc/${processID}/cwd`).catch(() => '')),
+  );
 
-  return pids.filter((_pid, index) => isInside(cwds[index] ?? '', directory));
+  return processIDs.filter((_processID, index) =>
+    isInside(workingDirectories[index] ?? '', directory),
+  );
 }
 
 function isInside(path: string, directory: string): boolean {
