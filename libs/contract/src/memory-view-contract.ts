@@ -156,6 +156,27 @@ const forgetLossSchema = z.object({
 
 const forgetPreviewSchema = memoryItemDetailSchema.extend({ lost: forgetLossSchema });
 
+const retiredForgetPreviewSchema = z.object({
+  hasMore: z.boolean(),
+  items: z.array(memoryItemSchema.extend({ lost: forgetLossSchema })),
+});
+
+const retiredForgetSchema = z.object({
+  clientActionID: z.uuid(),
+  targets: z
+    .array(revisionTargetSchema)
+    .min(1)
+    .max(100)
+    .refine((targets) => new Set(targets.map((target) => target.itemID)).size === targets.length, {
+      message: 'Each item appears once',
+    }),
+});
+
+const forgetStatusSchema = z.object({
+  deleted: z.array(z.string()),
+  pending: z.array(z.string()),
+});
+
 const versionTargetSchema = z.object({
   clientActionID: z.uuid(),
   itemID: itemIDSchema,
@@ -245,6 +266,14 @@ export const memoryViewContract = {
     .output(forgetPreviewSchema),
 
   forget: memoryChange.input(versionTargetSchema).output(z.object({ itemID: z.string() })),
+
+  previewForgetRetired: memoryView.output(retiredForgetPreviewSchema),
+
+  forgetRetired: memoryChange.input(retiredForgetSchema).output(forgetStatusSchema),
+
+  readForgetStatus: memoryView
+    .input(z.object({ itemIDs: z.array(itemIDSchema).min(1).max(100) }))
+    .output(forgetStatusSchema),
 
   pin: memoryChange
     .errors({

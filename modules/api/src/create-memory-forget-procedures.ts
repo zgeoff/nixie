@@ -45,5 +45,50 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
 
       return result;
     }),
+
+    previewForgetRetired: memory.previewForgetRetired.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const store = requireViewMemory(readMemory, options.errors.MEMORY_NOT_STARTED);
+
+      const preview = await store.view.readRetiredForgetPreview();
+
+      return {
+        items: preview.items.map((item) => ({ ...toContractMemoryItem(item), lost: item.lost })),
+        hasMore: preview.hasMore,
+      };
+    }),
+
+    forgetRetired: memory.forgetRetired.handler(async (options) => {
+      const targets = options.input.targets.map((target) => ({
+        itemID: target.itemID,
+        version: target.version,
+      }));
+
+      const itemIDs = targets.map((target) => target.itemID);
+
+      const store = await runMemoryChange({ context, readMemory }, options, (memoryStore) => ({
+        clientActionID: options.input.clientActionID,
+        procedure: 'memory.forgetRetired',
+        input: { targets },
+        result: { itemIDs },
+        apply: (writeInTransaction) =>
+          memoryStore.forgetRetired({ targets, provenance: ownerProvenance, writeInTransaction }),
+      }));
+
+      const status = await store.finishForgets(itemIDs);
+
+      return { deleted: [...status.deleted], pending: [...status.pending] };
+    }),
+
+    readForgetStatus: memory.readForgetStatus.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const store = requireViewMemory(readMemory, options.errors.MEMORY_NOT_STARTED);
+
+      const status = await store.view.readForgetStatus(options.input.itemIDs);
+
+      return { deleted: [...status.deleted], pending: [...status.pending] };
+    }),
   };
 }

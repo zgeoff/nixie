@@ -41,6 +41,8 @@ test('it serves the memory store the test sets', async () => {
     pin: () => Promise.reject(new Error('no change runs here')),
     forget: () => Promise.reject(new Error('no change runs here')),
     finishForget: () => Promise.reject(new Error('no change runs here')),
+    forgetRetired: () => Promise.reject(new Error('no change runs here')),
+    finishForgets: () => Promise.reject(new Error('no change runs here')),
     proposals: {
       approve: () => Promise.reject(new Error('no answer runs here')),
       reject: () => Promise.reject(new Error('no answer runs here')),
@@ -52,6 +54,8 @@ test('it serves the memory store the test sets', async () => {
       readItem: () => Promise.resolve(null),
       readProposals: () => Promise.resolve([]),
       readForgetPreview: () => Promise.reject(new Error('no preview runs here')),
+      readRetiredForgetPreview: () => Promise.reject(new Error('no preview runs here')),
+      readForgetStatus: () => Promise.reject(new Error('no status read runs here')),
       async *readExport() {},
       readNotices: () => Promise.resolve([]),
     },

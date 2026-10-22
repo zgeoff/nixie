@@ -224,6 +224,20 @@ With no key backup registered, a forget completes after local cleanup. The sessi
 one the server passes in from the conversation, and
 [memory in context](./context.md#forgetting-and-the-live-session) covers what it removes.
 
+### Forgetting retired items in bulk
+
+A bulk forget deletes a fixed set of retired items, each bound to the version its preview showed. In
+one transaction under the delivery lock, nixie checks every item and version and appends one record
+per item that marks it forgetting. A stale or unretired target rolls the transaction back, so the
+run deletes no key unless every target holds. An item that a restore brings back after the preview
+has moved past its version, and an item retired after the preview was never in the set.
+
+The forgetting state reserves each item, because restore, undo and edit refuse an item that is
+forgetting. The store then runs each item's cleanup in turn and stops at the first failure. Each
+item gets its own forgotten record, and its state shows whether its forget is done or still pending.
+A crash leaves the rest of the set forgetting, and the store's start finishes them as it finishes a
+single forget.
+
 ## The model's tools
 
 The model reaches memory through 8 tools over the same interface:

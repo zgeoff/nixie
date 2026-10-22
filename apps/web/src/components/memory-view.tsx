@@ -7,6 +7,7 @@ import { useNixieClient } from '../use-nixie-client';
 import { makeMemoryItemRenderer } from './make-memory-item-renderer';
 import { MemoryExportButton } from './memory-export-button';
 import { MemoryItemList } from './memory-item-list';
+import { MemoryRetiredForgetControl } from './memory-retired-forget-control';
 import { MemorySearchResults } from './memory-search';
 import { MemorySearchForm } from './memory-search-form';
 import { PinnedCorePanel } from './pinned-core-panel';
@@ -52,6 +53,7 @@ export function MemoryView(props: MemoryViewProps): ReactNode {
         <MemorySearchResults query={query} renderItem={renderItem} />
       )}
       <MemoryItemList
+        actions={<MemoryRetiredForgetControl onSettled={setNotice} />}
         empty="No retired item."
         renderItem={renderItem}
         state="retired"
