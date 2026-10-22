@@ -36,6 +36,7 @@ test('it finds an active item by a word in its text, with its keyword score', as
         createdAt: expect.toBeNumber(),
         changedAt: expect.toBeNumber(),
         forgottenAt: null,
+        until: null,
         status: 'readable',
         text: 'Plays the cello on Thursdays',
         score: expect.toBeNumber(),

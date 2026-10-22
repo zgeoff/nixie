@@ -8,6 +8,7 @@ const writeSchema = z
 
     itemID: z.string().min(1).nullable(),
     text: z.string().nullable(),
+    until: z.number().int().nullable(),
   })
   .readonly();
 

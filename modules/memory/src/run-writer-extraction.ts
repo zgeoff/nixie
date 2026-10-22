@@ -39,6 +39,7 @@ export async function runWriterExtraction(
 
   const staged = parts.staging.open({
     sources: batch.sources,
+    startedAt: parts.context.clock.now(),
     shown: new Map(
       shown.items.map((item) => [item.itemID, { version: item.version, subject: item.subject }]),
     ),
@@ -51,6 +52,7 @@ export async function runWriterExtraction(
     proposals,
     messages: buildBatchMessages(batch),
     names: buildSpeakerNames(parts),
+    defaultZone: parts.defaultZone,
   });
 
   const session = await runSession(parts, { prompt, signal, staged });
@@ -76,7 +78,15 @@ function buildBatchMessages(batch: WriterBatch): readonly BatchMessage[] {
         ? [renderShownText(entry.text, entry.spans), ...(entry.imageMarkers ?? [])].join('\n')
         : entry.text;
 
-    return [{ sequence: entry.sequence, role: entry.role, shown, recordedAt: entry.recordedAt }];
+    return [
+      {
+        sequence: entry.sequence,
+        role: entry.role,
+        shown,
+        recordedAt: entry.recordedAt,
+        timeZone: entry.timeZone,
+      },
+    ];
   });
 }
 

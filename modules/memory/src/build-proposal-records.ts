@@ -1,4 +1,5 @@
 import type { RecordInput } from '@heynixie/log';
+import { buildProposalLapseTime } from './build-proposal-lapse-time';
 import type { StoreParts } from './types';
 import type { PendingProposal } from './write-proposal-record';
 
@@ -34,7 +35,7 @@ export function buildProposalRecords(
       checks: plan.checks,
       model: plan.caller.model,
       noticeKey: plan.group.noticeKey,
-      lapseAt: gate.clock.now() + gate.limits.proposalLapseMs,
+      lapseAt: buildProposalLapseTime(gate.clock.now(), gate.limits, plan.until),
     },
   };
 

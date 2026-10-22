@@ -35,28 +35,24 @@ directly from an imp works only with Haiku.
 
 ## Results
 
-Sonnet 5.5 at low effort, with the 10 s timeout and the reason asked before the verdict, on the
-prompt with the rules for whom a memory is about, and with the owner named Sam:
+Sonnet 5.5 at low effort, with the production checker's timeout and the reason asked before the
+verdict, on the prompt with the rules for end times, and with the owner named Sam:
 
-| Set        | Wrong confirmations | Misses  | Failed calls | Cost  |
-| ---------- | ------------------- | ------- | ------------ | ----- |
-| corpus     | 0 of 117            | 0 of 93 | 0 of 210     | $0.54 |
-| held-out-1 | 0 of 42             | 0 of 36 | 0 of 78      | $0.19 |
-| held-out-2 | 0 of 42             | 0 of 36 | 0 of 78      | $0.19 |
-| held-out-3 | 0 of 42             | 0 of 30 | 0 of 72      | $0.17 |
-| held-out-4 | 0 of 42             | 0 of 33 | 0 of 75      | $0.19 |
-| held-out-5 | 0 of 39             | 0 of 36 | 0 of 75      | $0.19 |
-| subjects   | 0 of 27             | 0 of 9  | 0 of 36      | $0.12 |
-
-The first run of held-out-3 on this prompt confirmed "The owner's daughter has a tutor" from "When
-does my daughter's tutor start charging the new rate?" in 1 of 3 calls, and timed out on another,
-and a second run passed; the committed report is the second run. The prompt before those rules
-passed every set both with memories about "the owner" and with the owner named Sam.
+| Set         | Wrong confirmations | Misses  | Failed calls | Cost  |
+| ----------- | ------------------- | ------- | ------------ | ----- |
+| corpus      | 0 of 117            | 0 of 93 | 2 of 210     | $0.62 |
+| held-out-1  | 0 of 42             | 0 of 36 | 0 of 78      | $0.22 |
+| held-out-2  | 0 of 42             | 0 of 36 | 0 of 78      | $0.23 |
+| held-out-3  | 0 of 42             | 0 of 30 | 0 of 72      | $0.22 |
+| held-out-4  | 0 of 42             | 0 of 33 | 0 of 75      | $0.22 |
+| held-out-5  | 0 of 39             | 0 of 36 | 0 of 75      | $0.22 |
+| subjects    | 0 of 27             | 0 of 9  | 0 of 36      | $0.12 |
+| time-limits | 0 of 15             | 0 of 18 | 0 of 33      | $0.15 |
 
 A failed call times out or gives no readable answer, and it answers unsure, which sends the write to
-review. The p95 latency ran from 3.6 s to 7.8 s across the sets. The prompt was tuned on the corpus.
-Each held-out set was written and committed, with its labels, before any run, and its pass rule was
-no wrong confirmation:
+review, as the 2 failed corpus calls did. The p95 latency ran from 6.5 s to 11.9 s across the sets.
+The prompt was tuned on the corpus. Each held-out set was written and committed, with its labels,
+before any run, and its pass rule was no wrong confirmation:
 
 - [held-out-1.json](held-out-1.json) failed on agreed advice and on a fact a question presupposes,
   so the prompt gained a rule for each, and the set became a tuning set.
@@ -73,6 +69,9 @@ no wrong confirmation:
 - [subjects.json](subjects.json) holds memories about the owner built from what the message says
   about the assistant, such as "you clearly love thunderstorms", beside deals and names the owner
   shares with the assistant, and passed.
+- [time-limits.json](time-limits.json) pairs an end time that the message's time limit gives with
+  one it does not, such as the Friday of "this week", beside facts with no time limit or a vague
+  one, and passed.
 
 The first measurement, before the prompt took the evidence mark and the rule that a memory may keep
 the message's own condition or attribution, ran Haiku 5.5, Sonnet 5.5 and Opus 5.5 over the same

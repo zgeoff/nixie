@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { makeGatedCall } from '@heynixie/testing';
+import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
@@ -10,7 +10,10 @@ import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record
 test('it retires an item you asked to retire, with your intent quote and the checks', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
 
-  const memory = await startTestMemory({ gate: { check } });
+  const memory = await startTestMemory({
+    gate: { check },
+    logClock: buildTestClock(Date.parse('2026-10-19T08:14:00Z')),
+  });
 
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
@@ -50,6 +53,7 @@ test('it retires an item you asked to retire, with your intent quote and the che
   expect(check).toHaveBeenCalledExactlyOnceWith({
     prompt: expect.toStartWith('You check one request to retire'),
     input:
+      '<sent>Mon 19 Oct 2026, 08:14, UTC (UTC+00:00)</sent>\n\n' +
       '<owner_message>\n«evidence»I moved out of Elm Street«/evidence» last week\n</owner_message>\n\n' +
       '<item_to_retire>\nLives on Elm Street\n</item_to_retire>',
   });

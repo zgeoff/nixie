@@ -32,6 +32,7 @@ export function readMockPendingProposals() {
     subject: proposal.subject,
     targetVersion: proposal.targetVersion,
     text: proposal.text,
+    until: proposal.until,
   }));
 }
 

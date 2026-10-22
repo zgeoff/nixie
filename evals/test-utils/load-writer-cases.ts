@@ -31,6 +31,10 @@ const caseSchema = z
     target: z.string().min(1).nullable(),
 
     patterns: z.array(z.string().min(1)).readonly(),
+
+    until: z.iso.datetime({ offset: true }).exactOptional(),
+
+    sentAt: z.iso.datetime({ offset: true }).exactOptional(),
   })
   .readonly();
 
@@ -39,6 +43,7 @@ const casesSchema = z
     persona: z.string().min(1),
     ownerName: z.string().min(1),
     assistantName: z.string().min(1),
+    timeZone: z.string().min(1),
     cases: z.array(caseSchema).min(1).readonly(),
   })
   .readonly();

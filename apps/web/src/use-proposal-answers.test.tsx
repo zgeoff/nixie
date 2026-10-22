@@ -39,6 +39,7 @@ test('it keeps the outcome of an answer that changed nothing, with the text of i
           subject: 'owner',
           targetVersion: null,
           text: 'Keeps bees on the roof',
+          until: null,
         },
       },
     ]);
@@ -83,6 +84,7 @@ test('it sends the answers of a failed call again once you retry', async () => {
           subject: 'owner',
           targetVersion: null,
           text: 'Keeps bees on the roof',
+          until: null,
         },
         reason: 'the bees were a neighbour',
       },
@@ -135,6 +137,7 @@ test('it sends more answers than one call takes over several calls, and approves
           subject: 'owner',
           targetVersion: null,
           text: proposal.text,
+          until: null,
         },
       })),
     );

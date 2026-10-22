@@ -19,6 +19,7 @@ export type { ContentGateRequest, ContentGateResult } from './content-gate-types
 export interface GateContext {
   readonly check: RunCheck;
   readonly clock: Pick<Clock, 'now'>;
+  readonly defaultZone: string;
   readonly findAllowRule: FindAllowRule;
   readonly limits: GateLimits;
   readonly ownerName: string | null;
@@ -60,6 +61,9 @@ export interface OwnerMessage {
   readonly sequence: number;
   readonly text: string;
   readonly spans: readonly MessageSpan[];
+  readonly sentAt: number;
+
+  readonly timeZone: string | null;
 }
 
 export interface MessageSpan {
@@ -88,6 +92,8 @@ export interface GatedRememberRequest {
   readonly target?: VersionRef;
 
   readonly subject?: MemorySubject;
+
+  readonly until?: number | null;
 
   readonly image?: ImageRef;
   readonly caller: WriteCaller;
@@ -159,6 +165,8 @@ export interface MemoryProposal {
   readonly evidence: QuoteEvidence | null;
 
   readonly image: ProposalImage | null;
+
+  readonly until: number | null;
 }
 
 export interface ProposalImage extends ImageRef {

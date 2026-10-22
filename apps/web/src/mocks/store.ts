@@ -179,6 +179,7 @@ const memoryItems = new Collection({
     itemID: z.uuid().default(() => faker.string.uuid()),
     shortID: z.string().default(() => faker.string.alphanumeric(6)),
     state: z.enum(['active', 'retired', 'forgetting', 'forgotten']).default('active'),
+    until: z.date().nullable().default(null),
     versions: z.array(memoryItemVersionSchema).min(1),
   }),
 });
@@ -296,6 +297,7 @@ const memoryProposals = new Collection({
 
     targetVersion: z.int().positive().nullable().default(null),
     text: z.string().default(() => faker.lorem.sentence()),
+    until: z.date().nullable().default(null),
     thread: z.string().default('conversation'),
   }),
 });

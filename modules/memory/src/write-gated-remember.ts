@@ -6,6 +6,7 @@ import { readNewestMessage } from './read-newest-message';
 import { requireLiveEvidence } from './require-live-evidence';
 import { runSubjectGate } from './run-subject-gate';
 import type { MemorySubject, StoreParts } from './types';
+import { UntilPassedError } from './until-passed-error';
 import { writeMemoryProposal } from './write-memory-proposal';
 import { writeRememberedItem } from './write-remembered-item';
 
@@ -13,6 +14,12 @@ export async function writeGatedRemember(
   parts: StoreParts,
   request: GatedRememberRequest,
 ): Promise<WriteOutcome> {
+  const now = parts.context.gate.clock.now();
+
+  if (request.until !== undefined && request.until !== null && request.until <= now) {
+    throw new UntilPassedError(request.until, now);
+  }
+
   const checked = await runSubjectGate(parts, request);
 
   const gate = checked.gate;
@@ -20,18 +27,25 @@ export async function writeGatedRemember(
   const newest = await readNewestMessage(parts.context.log, request.caller.thread);
 
   const group = buildWriteGroup(request.caller, newest);
+  const subject = checked.subject;
 
   if (gate.status === 'pass') {
-    return applyPassedRemember(parts, request, { gate, group, subject: checked.subject });
+    return applyPassedRemember(parts, request, { gate, group, subject, until: checked.until });
   }
 
-  return writeRememberProposal(parts, request, { review: gate, group, subject: checked.subject });
+  return writeRememberProposal(parts, request, {
+    review: gate,
+    group,
+    subject,
+    until: checked.until,
+  });
 }
 
 interface PassedRemember {
   readonly gate: Extract<ContentGateResult, { readonly status: 'pass' }>;
   readonly group: WriteGroup;
   readonly subject: MemorySubject;
+  readonly until: number | null;
 }
 
 async function applyPassedRemember(
@@ -60,6 +74,7 @@ async function applyPassedRemember(
       review,
       group: passed.group,
       subject: passed.subject,
+      until: passed.until,
     });
   }
 }
@@ -89,6 +104,7 @@ async function applyRemember(
       ...(evidence === null || request.quote === undefined
         ? {}
         : { evidence, evidenceQuote: request.quote }),
+      ...(request.until === undefined ? {} : { until: request.until }),
     },
     {
       noticeKey: passed.group.noticeKey,
@@ -105,6 +121,7 @@ interface ReviewedRemember {
   readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
   readonly group: WriteGroup;
   readonly subject: MemorySubject;
+  readonly until: number | null;
 }
 
 async function writeRememberProposal(
@@ -128,6 +145,7 @@ async function writeRememberProposal(
     caller: request.caller,
     group: reviewed.group,
     subject: reviewed.subject,
+    until: reviewed.until,
   });
 
   return { status: 'proposed', ...written, reason: review.reason };

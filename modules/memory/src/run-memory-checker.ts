@@ -17,10 +17,12 @@ export async function runMemoryChecker(
 ): Promise<ContentGateResult> {
   const answer = await context.gate.check({
     prompt: renderMemoryCheckerPrompt(context.gate.ownerName),
-    input: renderCheckerInput(found.message, found.evidence, {
-      kind: 'candidate_memory',
-      text: request.text,
-    }),
+    input: renderCheckerInput(
+      found.message,
+      found.evidence,
+      { kind: 'candidate_memory', text: request.text, until: request.until },
+      context.gate.defaultZone,
+    ),
   });
 
   const checks = { quote: 'pass', tokens: 'pass', checker: toCheckerJSON(answer) };

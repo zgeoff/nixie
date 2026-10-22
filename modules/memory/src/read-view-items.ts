@@ -38,6 +38,7 @@ export async function readViewItems(
       'item.kind',
       'item.subject',
       'item.version',
+      'item.until',
       'current.origin',
       'current.source',
       'current.sealed',
@@ -74,6 +75,7 @@ interface ViewItemRow {
   readonly changed_at: number;
   readonly created_at: number;
   readonly forgotten_at: number | null;
+  readonly until: number | null;
 }
 
 async function openViewItem(
@@ -98,6 +100,7 @@ async function openViewItem(
     createdAt: row.created_at,
     changedAt: row.changed_at,
     forgottenAt: row.forgotten_at,
+    until: row.until,
     ...opened.text,
   };
 }

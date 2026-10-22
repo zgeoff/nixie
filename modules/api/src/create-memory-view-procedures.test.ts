@@ -26,6 +26,7 @@ async function setupTest() {
           failure: 'error',
         }),
       clock: api.clock,
+      defaultZone: 'UTC',
       findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
@@ -66,12 +67,28 @@ test('#memory.listItems lists each active item with its text, origin, source and
         createdAt: expect.toBeValidDate(),
         changedAt: expect.toBeValidDate(),
         forgottenAt: null,
+        until: null,
         status: 'readable',
         text: 'Plays the cello on Thursdays',
       },
     ],
     next: null,
   });
+});
+
+test('#memory.listItems gives the end time of an item as a date', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  await ctx.memory.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2099-01-04T23:59:59Z'),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const page = await buildTestClient(ctx.url, laptop.token).memory.listItems({ state: 'active' });
+
+  expect(page.items).toMatchObject([{ until: new Date('2099-01-04T23:59:59Z') }]);
 });
 
 test('#memory.listItems lists a forgotten item as a dated gap with no text', async () => {

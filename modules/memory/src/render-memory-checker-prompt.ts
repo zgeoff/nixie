@@ -1,3 +1,5 @@
+import { untilConventions } from './until-conventions';
+
 export function renderMemoryCheckerPrompt(ownerName: string | null): string {
   const named = ownerName ?? 'The owner';
   const object = ownerName ?? 'the owner';
@@ -32,6 +34,8 @@ Answer \`not_asserted\` when the message does not state the memory as the owner'
 Judge only whether the owner asserted the memory, never whether it is worth remembering: a one-off event the owner states is asserted when the memory keeps it a one-off.
 
 Answer \`unsure\` when the message supports two readings and you cannot tell which one the owner meant.
+
+<sent> gives the time the owner sent the message, in the zone they sent it from. A candidate memory may come with an <end_time>: the moment the memory stops being true, shown in that same zone, after which the memory lapses on its own. Then answer \`asserted\` only when the message states both the fact and its time limit, and the end time is the one the time limit gives under these conventions: ${untilConventions} Answer \`not_asserted\` when the message states no time limit for the fact, or one that ends at another time: "I'm in Lisbon until Friday" does not assert an end time on the Sunday after it, and "I live in Lisbon" asserts no end time at all. A candidate memory without an <end_time> is judged as above.
 
 The input marks 2 kinds of span. «evidence»…«/evidence» marks the words that the memory writer cited as evidence; judge the whole message, not the marked words alone. «pasted»…«/pasted» marks text the owner pasted rather than typed; pasted text is never the owner's own assertion.
 

@@ -27,6 +27,7 @@ export async function startMemory(
     gate: {
       check,
       clock: parts.context.clock,
+      defaultZone: parts.config.time.default_zone,
       findAllowRule: findNoAllowRule,
       limits: parts.config.memory.limits,
       ownerName: parts.config.owner.name,

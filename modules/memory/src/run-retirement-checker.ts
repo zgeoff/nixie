@@ -13,10 +13,16 @@ export async function runRetirementChecker(
 ): Promise<ContentGateResult> {
   const answer = await context.gate.check({
     prompt: retirementCheckerPrompt,
-    input: renderCheckerInput(found.message, found.evidence, {
-      kind: 'item_to_retire',
-      text: itemText,
-    }),
+    input: renderCheckerInput(
+      found.message,
+      found.evidence,
+      {
+        kind: 'item_to_retire',
+        text: itemText,
+        until: null,
+      },
+      context.gate.defaultZone,
+    ),
   });
 
   const checks = {

@@ -19,6 +19,8 @@ export interface MemoryWriterRunnerOptions extends SystemTaskOptions, ToolSessio
   readonly ownerName: string | null;
 
   readonly assistantName: string | null;
+
+  readonly defaultZone: string;
   readonly onError: (error: unknown) => void;
 }
 
@@ -51,6 +53,7 @@ export const startMemoryWriterRunner = makeSystemTaskRunner<
       getPersona: options.getPersona,
       ownerName: options.ownerName,
       assistantName: options.assistantName,
+      defaultZone: options.defaultZone,
       onError: options.onError,
     });
 
