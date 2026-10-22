@@ -39,6 +39,27 @@ test('it answers the check request it receives with one reply, then exits with c
   expect(exited).toMatchObject({ code: 0, signal: null });
 });
 
+test('it settles a stop after a request whose reply nobody reads', async () => {
+  const stream = startStubCheck(() => ({ kind: 'failed', reason: 'the check found no quote' }));
+
+  const request: CheckRequest = {
+    profile: {
+      model: 'claude-test-1',
+      baseURL: 'http://127.0.0.1:9',
+      effort: 'low',
+      authHeader: 'x-api-key',
+    },
+    systemPrompt: 'You check one candidate memory.',
+    input: '<owner_message>\nI feed the cat at noon\n</owner_message>',
+  };
+
+  await stream.send(new TextEncoder().encode(JSON.stringify(request)));
+
+  const exited = await stream.stop();
+
+  expect(exited).toMatchObject({ code: 0, signal: null });
+});
+
 test('it ends with no reply on a stop before a request', async () => {
   const stream = startStubCheck(() => ({ kind: 'failed', reason: 'unused' }));
 

@@ -1,38 +1,51 @@
 import type { CheckReply, CheckRequest } from '@heynixie/wire';
 import { checkRequestSchema, decodeTurnFrame } from '@heynixie/wire';
+import invariant from 'tiny-invariant';
 import type { ExecStream, StreamExit } from '../types';
+
+type OutputController = ReadableStreamDefaultController<Uint8Array<ArrayBuffer>>;
 
 const noStderr = { bytes: new Uint8Array(0), totalBytes: 0, isCut: false };
 
 export function startStubCheck(answer: (request: CheckRequest) => CheckReply): ExecStream {
-  const output = new TransformStream<Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>>();
+  const opened: { controller?: OutputController } = {};
 
-  const writer = output.writable.getWriter();
+  const messages = new ReadableStream<Uint8Array<ArrayBuffer>>({
+    start: (controller) => {
+      opened.controller = controller;
+    },
+  });
+
+  const controller = opened.controller;
+
+  invariant(controller, 'a readable stream starts in its constructor');
+
   const exit = Promise.withResolvers<StreamExit>();
+  const state = { hasEnded: false };
 
-  const stopCheck = async (ended: StreamExit) => {
-    await writer.close().catch(() => {});
+  const end = (ended: StreamExit) => {
+    if (!state.hasEnded) {
+      state.hasEnded = true;
 
-    exit.resolve(ended);
+      controller.close();
+      exit.resolve(ended);
+    }
   };
 
   return {
-    messages: output.readable,
+    messages,
     send: (bytes) => {
       const reply = answer(decodeTurnFrame(checkRequestSchema, bytes));
 
-      // The write settles only once the host reads the reply, which it does after this send returns.
-      void (async () => {
-        await writer.write(new TextEncoder().encode(JSON.stringify(reply))).catch(() => {});
+      controller.enqueue(new TextEncoder().encode(JSON.stringify(reply)));
 
-        await stopCheck({ code: 0, signal: null, stderr: noStderr });
-      })();
+      end({ code: 0, signal: null, stderr: noStderr });
 
       return Promise.resolve();
     },
     exit: exit.promise,
-    stop: async () => {
-      await stopCheck({ code: null, signal: 'SIGTERM', stderr: noStderr });
+    stop: () => {
+      end({ code: null, signal: 'SIGTERM', stderr: noStderr });
 
       return exit.promise;
     },
