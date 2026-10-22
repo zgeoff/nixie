@@ -12,7 +12,7 @@ covers how the composition root wires the packages at start, and
 ## The folders
 
 ```text
-apps/       deployables: the server and the web client
+apps/       deployables: the server, the web client and the counting proxy
 modules/    domain modules, one package each
 guests/     programs that run inside a sandbox and ship in a sandbox image
 adapters/   implementations of nixie's own interfaces that reach one outside system
@@ -24,6 +24,8 @@ libs/       shared code that belongs to no domain
   them.
 - **`apps/web`** is the TanStack Start server and its client code. It reaches nixie only through the
   oRPC contract in `libs/contract`, as [the API](channels/api.md) describes.
+- **`apps/counting-proxy`** is [the counting proxy](policy/counting-proxy.md), a process of its own
+  on the host that every model request of a deployment it guards passes through.
 - **An adapter** implements one of the [0016](../decisions/0016-own-interfaces.md) interfaces
   against one outside system, and its name is `<interface>-<system>`, such as `sandbox-imp`. An
   implementation that reaches nothing outside nixie, such as the path definitions source, stays in
@@ -71,16 +73,16 @@ dependency against the rules in the root `turbo.json`. The check fails on a depe
 deny, an import of a workspace package that the importer does not declare, an import of a file
 outside the importer's package, and a cycle between packages.
 
-| Tag       | Packages      | May depend on                    |
-| --------- | ------------- | -------------------------------- |
-| `app`     | `apps/server` | modules, adapters, libs          |
-| `client`  | `apps/web`    | libs without `server-only`       |
-| `module`  | `modules/*`   | other modules, libs              |
-| `adapter` | `adapters/*`  | modules, libs                    |
-| `guest`   | `guests/*`    | libs without `server-only`       |
-| `lib`     | `libs/*`      | libs                             |
-| `e2e`     | `e2e/`        | the app, modules, adapters, libs |
-| `eval`    | `evals/`      | modules, guests, libs            |
+| Tag       | Packages                             | May depend on                    |
+| --------- | ------------------------------------ | -------------------------------- |
+| `app`     | `apps/server`, `apps/counting-proxy` | modules, adapters, libs          |
+| `client`  | `apps/web`                           | libs without `server-only`       |
+| `module`  | `modules/*`                          | other modules, libs              |
+| `adapter` | `adapters/*`                         | modules, libs                    |
+| `guest`   | `guests/*`                           | libs without `server-only`       |
+| `lib`     | `libs/*`                             | libs                             |
+| `e2e`     | `e2e/`                               | the app, modules, adapters, libs |
+| `eval`    | `evals/`                             | modules, guests, libs            |
 
 The root `turbo.json` also holds a `sidecar` tag that no package carries. Nothing depends on the
 `e2e` and `eval` packages, so their wide rules never let production code reach test code.

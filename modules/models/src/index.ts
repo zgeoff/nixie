@@ -4,6 +4,7 @@ export { buildModelGrant } from './build-model-grant';
 export type { ModelRecordSource } from './build-model-record';
 export { buildModelRecord } from './build-model-record';
 export { deriveModelSecret } from './derive-model-secret';
+export { modelPricesSchema } from './model-prices-schema';
 export { memoryRefsSchema } from './memory-refs-schema';
 export { modelCompactedCodec } from './model-compacted-codec';
 export { modelCompactionFailedCodec } from './model-compaction-failed-codec';

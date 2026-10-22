@@ -19,13 +19,16 @@
     // the nixie image runs the bundle of main.ts, the image build runs the release build, a test
     // spawns the sops stand-in, and the workflows run the config schema check and the release.json
     // script, so no import reaches them
+    // the release builds the counting proxy binary from main.ts, so no import reaches it
+    "apps/counting-proxy": { "entry": ["src/main.ts"] },
     "apps/server": {
       "entry": [
         "src/main.ts",
         "src/run-release-build.ts",
         "src/test-utils/run-stub-sops.ts",
         "src/run-config-schema-check.ts",
-        "src/run-release-manifest.ts"
+        "src/run-release-manifest.ts",
+        "src/run-preview-route-config.ts"
       ]
     },
     // the release workflows run the migration check and the schema report by their paths, so no
