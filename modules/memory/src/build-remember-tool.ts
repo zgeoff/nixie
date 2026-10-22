@@ -14,8 +14,7 @@ const rememberDescription =
   'write applies at once only when those typed words back it; otherwise it waits for the ' +
   "owner's review as a proposal, and the result says why. When a pending proposal already " +
   'holds the same text, the result says merged: the owner reviews one proposal with both ' +
-  'sources. Set pin to ask for the item in the pinned core, which always waits for review. Set ' +
-  'subject to say whose the item is: owner, the default, for a fact about the owner; shared for ' +
+  'sources. Set subject to say whose the item is: owner, the default, for a fact about the owner; shared for ' +
   'something between the owner and you, such as a deal, a nickname or a running joke; self for ' +
   'a self-note: a note about yourself in your own voice, such as your tastes or how something ' +
   "landed with you. A self-note needs no quote and always waits for the owner's review. Set " +
@@ -35,7 +34,6 @@ const rememberInput = {
       description:
         'the eventID of the message the quote comes from, as its stamp or log.read shows it',
     },
-    pin: { type: 'boolean' },
     image: {
       type: 'object',
       properties: {
@@ -100,7 +98,6 @@ const rememberArguments = z.object({
   text: z.string(),
   quote: z.string().optional(),
   eventID: z.string().optional(),
-  pin: z.boolean().optional(),
   subject: z.enum(['owner', 'self', 'shared']).optional(),
   image: z.object({ eventID: z.string(), number: z.int() }).optional(),
 });
@@ -113,7 +110,6 @@ function buildRememberRequest(call: ToolCall, context: ToolContext): GatedRememb
     caller: buildWriteCaller(context),
     ...(input.quote === undefined ? {} : { quote: input.quote }),
     ...(input.eventID === undefined ? {} : { eventID: toSequence(input.eventID) }),
-    ...(input.pin === undefined ? {} : { isPinned: input.pin }),
     ...(input.subject === undefined ? {} : { subject: input.subject }),
     ...(input.image === undefined
       ? {}

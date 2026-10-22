@@ -3,6 +3,8 @@ import type { ModelWriteStore, WriteOutcome } from './gate-types';
 import { ImageSourceError } from './image-source-error';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { MemoryStateError } from './memory-state-error';
+import { NotPinnedError } from './not-pinned-error';
+import { PinnedCoreFullError } from './pinned-core-full-error';
 import { ProposalCapError } from './proposal-cap-error';
 import { SelfNoteError } from './self-note-error';
 import { StaleVersionError } from './stale-version-error';
@@ -34,6 +36,8 @@ export async function runWriteCall(
       error instanceof StaleVersionError ||
       error instanceof MemoryItemNotFoundError ||
       error instanceof MemoryStateError ||
+      error instanceof NotPinnedError ||
+      error instanceof PinnedCoreFullError ||
       error instanceof ProposalCapError ||
       error instanceof SelfNoteError ||
       error instanceof ImageSourceError

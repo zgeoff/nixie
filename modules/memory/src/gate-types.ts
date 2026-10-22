@@ -86,7 +86,6 @@ export interface GatedRememberRequest {
 
   readonly eventID?: number;
   readonly target?: VersionRef;
-  readonly isPinned?: boolean;
 
   readonly subject?: MemorySubject;
 
@@ -102,6 +101,11 @@ export interface GatedRetireRequest {
 
 export interface GatedPinRequest {
   readonly target: VersionRef;
+  readonly caller: WriteCaller;
+}
+
+export interface UnpinRequest {
+  readonly itemID: string;
   readonly caller: WriteCaller;
 }
 
@@ -123,12 +127,13 @@ export interface MemoryWrites {
   readonly remember: (request: GatedRememberRequest) => Promise<WriteOutcome>;
   readonly retire: (request: GatedRetireRequest) => Promise<WriteOutcome>;
   readonly pin: (request: GatedPinRequest) => Promise<WriteOutcome>;
+  readonly unpin: (request: UnpinRequest) => Promise<WriteOutcome>;
 
   readonly batch: WriterGate;
 }
 
 export interface ModelWriteStore {
-  readonly writes: Pick<MemoryWrites, 'remember' | 'retire'>;
+  readonly writes: Pick<MemoryWrites, 'remember' | 'retire' | 'pin' | 'unpin'>;
   readonly renderReviewReason: (reason: ReviewReason) => string;
 }
 

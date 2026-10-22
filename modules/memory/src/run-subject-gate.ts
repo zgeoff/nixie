@@ -56,7 +56,7 @@ function runGateOfSubject(
     text: request.text,
     quote: request.quote ?? null,
     eventID: request.eventID ?? null,
-    isPinned: request.isPinned === true,
+    isPinned: false,
     thread: request.caller.thread,
   };
 

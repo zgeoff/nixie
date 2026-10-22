@@ -213,22 +213,6 @@ test('it refuses a self-note from a task, and writes nothing', async () => {
   expect(pending).toStrictEqual([]);
 });
 
-test('it sends a self-note that asks for a pin to your review with the self-note reason', async () => {
-  const memory = await startTestMemory();
-
-  const outcome = await memory.store.writes.remember({
-    text: 'I like tidy lists',
-    subject: 'self',
-    isPinned: true,
-    caller: buildMockWriteCaller(),
-  });
-
-  const pending = await memory.store.proposals.listPending();
-
-  expect(outcome).toMatchObject({ status: 'proposed', reason: 'self_note' });
-  expect(pending).toMatchObject([{ subject: 'self', isPinned: true }]);
-});
-
 test('it refuses the note-taker an edit of a self-note, and writes nothing', async () => {
   const memory = await startTestMemory();
 

@@ -50,7 +50,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
   };
 }
 
-test('it declares read for recall, pending and diff, export for export, and note for remember, edit, retire, comment and rate', async () => {
+test('it declares read for recall, pending and diff, export for export, and note for remember, edit, retire, pin, unpin, comment and rate', async () => {
   const ctx = await setupTest();
 
   const effects = [
@@ -59,6 +59,8 @@ test('it declares read for recall, pending and diff, export for export, and note
     'memory.remember',
     'memory.edit',
     'memory.retire',
+    'memory.pin',
+    'memory.unpin',
     'memory.diff',
     'memory.comment',
     'memory.rate',
@@ -71,6 +73,8 @@ test('it declares read for recall, pending and diff, export for export, and note
     ['memory.remember', ['note']],
     ['memory.edit', ['note']],
     ['memory.retire', ['note']],
+    ['memory.pin', ['note']],
+    ['memory.unpin', ['note']],
     ['memory.diff', ['read']],
     ['memory.comment', ['note']],
     ['memory.rate', ['note']],
@@ -1142,7 +1146,11 @@ test('it records a remember call with neither its text nor its quote, which the 
   await runToolCall(
     {
       tool: 'memory.remember',
-      input: { text: 'Sister Ada lives in Leeds', quote: 'Sister Ada lives in Leeds', pin: false },
+      input: {
+        text: 'Sister Ada lives in Leeds',
+        quote: 'Sister Ada lives in Leeds',
+        subject: 'owner',
+      },
       toolUseID: null,
     },
     {
@@ -1157,7 +1165,7 @@ test('it records a remember call with neither its text nor its quote, which the 
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
   expect(entries.find((entry) => entry.record.kind === 'tool_called')?.record).toMatchObject({
-    erasable: { status: 'readable', fields: { input: { pin: false } } },
+    erasable: { status: 'readable', fields: { input: { subject: 'owner' } } },
   });
 });
 
@@ -1172,7 +1180,12 @@ test.each([
   ['an edit with no itemID', 'memory.edit', { version: 1, text: 'x' }],
   ['an edit with no text', 'memory.edit', { itemID: 'item-a', version: 1 }],
   ['an edit with a pin', 'memory.edit', { itemID: 'item-a', version: 1, text: 'x', pin: true }],
+  ['a remember with a pin', 'memory.remember', { text: 'x', pin: true }],
   ['a retire with no version', 'memory.retire', { itemID: 'item-a' }],
+  ['a pin with no version', 'memory.pin', { itemID: 'item-a' }],
+  ['a pin with text', 'memory.pin', { itemID: 'item-a', version: 1, text: 'x' }],
+  ['an unpin with no itemID', 'memory.unpin', {}],
+  ['an unpin with a version', 'memory.unpin', { itemID: 'item-a', version: 1 }],
   ['a remember with an empty quote', 'memory.remember', { text: 'x', quote: '' }],
   [
     'a remember with an event ID that is not a number',

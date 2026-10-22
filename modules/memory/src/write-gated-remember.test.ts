@@ -380,27 +380,6 @@ test('it proposes a write for another item that cites a message a forgotten item
   expect(cycling).toMatchObject({ status: 'proposed', reason: 'forgotten_evidence' });
 });
 
-test('it proposes a write that pins its item even when every check passes', async () => {
-  const memory = await startTestMemory({
-    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
-  });
-
-  await writeOwnerMessageRecord(memory.log, {
-    thread: 'conversation',
-    text: 'Call me Sam',
-    spans: [{ start: 0, end: 11, source: 'typed' }],
-  });
-
-  const outcome = await memory.store.writes.remember({
-    text: 'Goes by Sam',
-    quote: 'Call me Sam',
-    isPinned: true,
-    caller: buildMockWriteCaller(),
-  });
-
-  expect(outcome).toMatchObject({ status: 'proposed', reason: 'pinned' });
-});
-
 test('it proposes a write whose quote lies only in a message outside the window', async () => {
   const memory = await startTestMemory({
     gate: {
@@ -842,7 +821,7 @@ test('it keeps the same text under another subject as a proposal of its own, and
   ]);
 });
 
-test('it keeps a reworded write, and a write that pins, as proposals of their own', async () => {
+test('it keeps a reworded write as a proposal of its own', async () => {
   const memory = await startTestMemory();
 
   await memory.store.writes.remember({
@@ -850,25 +829,18 @@ test('it keeps a reworded write, and a write that pins, as proposals of their ow
     caller: buildMockWriteCaller(),
   });
 
-  await memory.store.writes.remember({
+  const reworded = await memory.store.writes.remember({
     text: 'Collects old fountain pens.',
-    caller: buildMockWriteCaller(),
-  });
-
-  const pinned = await memory.store.writes.remember({
-    text: 'Collects vintage fountain pens.',
-    isPinned: true,
     caller: buildMockWriteCaller(),
   });
 
   const pending = await memory.store.proposals.listPending();
 
-  expect(pinned).toMatchObject({ status: 'proposed', merged: false });
+  expect(reworded).toMatchObject({ status: 'proposed', merged: false });
 
-  expect(pending.map((proposal) => [proposal.text, proposal.isPinned])).toStrictEqual([
-    ['Collects vintage fountain pens.', false],
-    ['Collects old fountain pens.', false],
-    ['Collects vintage fountain pens.', true],
+  expect(pending.map((proposal) => proposal.text)).toStrictEqual([
+    'Collects vintage fountain pens.',
+    'Collects old fountain pens.',
   ]);
 });
 

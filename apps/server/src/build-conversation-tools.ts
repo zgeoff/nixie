@@ -51,6 +51,8 @@ export function buildConversationTools(
         writes: {
           remember: (request) => requireStore().writes.remember(request),
           retire: (request) => requireStore().writes.retire(request),
+          pin: (request) => requireStore().writes.pin(request),
+          unpin: (request) => requireStore().writes.unpin(request),
         },
         renderReviewReason: (reason) => requireStore().renderReviewReason(reason),
       },
