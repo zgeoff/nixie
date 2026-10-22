@@ -135,8 +135,10 @@ The tool reads the commit, walks its trees to the folder and reads each file thr
 of its own, which keeps the public-address checks of [the web fetch](../connectors/web-fetch.md) and
 allows a file up to the definitions size limit. It declares `fetch`, with the repository as its
 destination. Each file's text must hash to the git blob hash that the commit's tree lists, so the
-pull request holds the commit's exact bytes, and a file that is not plain UTF-8 text fails the call.
-A path with a part that starts with a dot stays out, because the definitions source never reads one.
+text nixie reads is the commit's exact bytes, and a file that is not plain UTF-8 text fails the
+call. The pull request holds that text with one change: CRLF line endings become LF, as the
+definitions hash expects. A path with a part that starts with a dot stays out, because the
+definitions source never reads one.
 
 The tool then runs [the checks the seed runs](./definitions.md#skills) on the folder, with CRLF line
 endings turned to LF, and a skill that fails one returns every problem as an error. A skill that
