@@ -65,7 +65,7 @@ test('it answers a check request with the model verdict in one reply frame', asy
     durationMs: expect.toBeNumber(),
     apiMs: expect.toBeNumber(),
   });
-});
+}, 30_000);
 
 test('it sends a check input of /clear to the model as text, never as a CLI command', async () => {
   const ctx = await setupTest();
@@ -98,7 +98,7 @@ test('it sends a check input of /clear to the model as text, never as a CLI comm
     role: 'user',
     content: [{ type: 'text', text: '/clear' }],
   });
-});
+}, 30_000);
 
 test('it answers a malformed request with a failed reply', async () => {
   const ctx = await setupTest();
@@ -110,7 +110,7 @@ test('it answers a malformed request with a failed reply', async () => {
   const [frame] = makeFrameDecoder(1024 * 1024)(ctx.written[0] ?? new Uint8Array());
 
   expect(frame && decodeTurnFrame(checkReplySchema, frame)).toMatchObject({ kind: 'failed' });
-});
+}, 30_000);
 
 test('it answers an empty input stream with a failed reply', async () => {
   const ctx = await setupTest();
@@ -123,4 +123,4 @@ test('it answers an empty input stream with a failed reply', async () => {
     kind: 'failed',
     reason: 'Error: the host sent no check request',
   });
-});
+}, 30_000);

@@ -119,7 +119,7 @@ its certificate names and response handler, so a test calls it in its body.
 [`startFakeImp`](../../../adapters/sandbox-imp/src/test-utils/start-fake-imp.ts) takes none, so
 `setupTest()` may wrap it.
 
-A server suite that waits on a conversation turn of a spawned nixie calls
-[`waitForTurn`](../../../apps/server/src/test-utils/wait-for-turn.ts), never the condition wait's
-default. Each turn starts its own guest and Agent SDK process, and a cold start on a small host
-outlasts that default.
+Each conversation turn starts its own Agent SDK process, and a cold start on a small host outlasts
+Bun's 5 s test limit and the condition wait's default alike. A server suite that waits on a turn of
+a spawned nixie calls [`waitForTurn`](../../../apps/server/src/test-utils/wait-for-turn.ts), and a
+guest test that starts the Agent SDK sets a 30 s limit of its own.

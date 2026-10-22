@@ -56,7 +56,7 @@ test('it records the options of each query', async () => {
   await ctx.tools.waitForHeldCall();
 
   expect(ctx.recorder.options).toMatchObject([{ mcpServers: { nixie: ctx.tools.config } }]);
-});
+}, 30_000);
 
 test('it resolves a wait once the CLI queues a message sent during a held tool call', async () => {
   const ctx = await setupTest();
@@ -94,7 +94,7 @@ test('it resolves a wait once the CLI queues a message sent during a held tool c
     .write({ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' });
 
   await expect(ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002')).toResolve();
-});
+}, 30_000);
 
 test('it resolves a wait for a message the CLI queued before the wait began', async () => {
   const ctx = await setupTest();
@@ -134,4 +134,4 @@ test('it resolves a wait for a message the CLI queued before the wait began', as
   await ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002');
 
   await expect(ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002')).toResolve();
-});
+}, 30_000);

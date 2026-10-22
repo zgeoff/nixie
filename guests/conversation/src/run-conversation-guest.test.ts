@@ -57,7 +57,7 @@ test('it runs the turn the first frame starts and writes its frames framed', asy
   });
 
   expect(ctx.frames.map((frame) => frame.type)).toStrictEqual(['read', 'assistant', 'ended']);
-});
+}, 30_000);
 
 test('it answers a turn whose tool server connection failed at start, after one reconnect', async () => {
   const ctx = await setupTest();
@@ -87,7 +87,7 @@ test('it answers a turn whose tool server connection failed at start, after one 
   ]);
 
   expect(tools.resets()).toBeGreaterThanOrEqual(1);
-});
+}, 30_000);
 
 test('it reaches the run tool endpoint over HTTP with the run bearer token', async () => {
   const ctx = await setupTest();
@@ -122,7 +122,7 @@ test('it reaches the run tool endpoint over HTTP with the run bearer token', asy
 
   expect(seen).toContain('Bearer run-token');
   expect(ctx.frames).toMatchObject([{ type: 'failed', reason: 'tools_not_connected' }]);
-});
+}, 30_000);
 
 test('it answers a first frame that starts no turn with a failed frame', async () => {
   const ctx = await setupTest();
@@ -142,7 +142,7 @@ test('it answers a first frame that starts no turn with a failed frame', async (
       detail: 'Error: the first host frame must start a turn, a summary or a purge',
     },
   ]);
-});
+}, 30_000);
 
 test('it answers a turn frame that arrives while a turn runs with a failed frame', async () => {
   const ctx = await setupTest();
@@ -161,7 +161,7 @@ test('it answers a turn frame that arrives while a turn runs with a failed frame
   expect(ctx.frames).toStrictEqual([
     { type: 'failed', reason: 'error', detail: 'Error: a turn is already running' },
   ]);
-});
+}, 30_000);
 
 test('it removes every session transcript and the working directory on a purge frame', async () => {
   const ctx = await setupTest();
@@ -190,7 +190,7 @@ test('it removes every session transcript and the working directory on a purge f
   expect(before).toIncludeAllMembers(['.claude', 'conversation']);
   expect(after).not.toIncludeAnyMembers(['.claude', 'conversation']);
   expect(ctx.frames.at(-1)).toStrictEqual({ type: 'purged' });
-});
+}, 30_000);
 
 test('it never removes a file in the guest home outside the session state on a purge frame', async () => {
   const ctx = await setupTest();
@@ -207,4 +207,4 @@ test('it never removes a file in the guest home outside the session state on a p
 
   expect(kept).toBe('not session state');
   expect(ctx.frames).toStrictEqual([{ type: 'purged' }]);
-});
+}, 30_000);
