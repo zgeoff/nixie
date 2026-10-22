@@ -822,3 +822,40 @@ test('it registers no backup resource when the deployment sets no backup', async
     'kubernetes:apps/v1:Deployment::nixie-web',
   ]);
 });
+
+test("it waits 30 minutes for the StatefulSet's rollout", async () => {
+  const ctx = await setupTest();
+
+  const transformation = mock<ResourceTransformation>();
+
+  createNixie(
+    'nixie',
+    {
+      namespace: 'assistant',
+      image:
+        'ghcr.io/example/nixie:1.2.3@sha256:1111111111111111111111111111111111111111111111111111111111111111',
+      config: 'models: {}\n',
+      secretsFile: 'sops: {}\n',
+      ageKey: 'AGE-SECRET-KEY-1EXAMPLE',
+      definitions: {
+        repository: 'example/assistant-definitions',
+        ref: 'live',
+        deployKey: 'an ssh key for tests',
+      },
+      storageClassName: 'local-retain',
+      web: {
+        image:
+          'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+      },
+    },
+    { transformations: [transformation] },
+  );
+
+  await ctx.stub.whenRegistered('kubernetes:apps/v1:StatefulSet::nixie');
+
+  expect(
+    transformation.mock.calls
+      .filter(([args]) => args.type === 'kubernetes:apps/v1:StatefulSet')
+      .map(([args]) => args.opts.customTimeouts),
+  ).toStrictEqual([{ create: '30m', update: '30m' }]);
+});
