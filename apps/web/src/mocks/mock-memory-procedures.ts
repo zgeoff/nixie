@@ -3,6 +3,7 @@ import { findMockMemoryItems } from './find-mock-memory-items';
 import { mockImplementer } from './mock-implementer';
 import { readMemoryVersion } from './read-memory-version';
 import { readMockMemoryItem } from './read-mock-memory-item';
+import { readMockMemoryNotices } from './read-mock-memory-notices';
 import { readMockMemoryPage } from './read-mock-memory-page';
 import { readMockPinnedCore } from './read-mock-pinned-core';
 import { readMockWriterStatus } from './read-mock-writer-status';
@@ -89,6 +90,36 @@ export const mockMemoryProcedures = {
     }
 
     return { itemID: options.input.itemID, version: options.input.version + 1 };
+  }),
+
+  listNotices: memory.listNotices.handler((options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    return { notices: [...readMockMemoryNotices(options.input.thread)] };
+  }),
+
+  undo: memory.undo.handler(async (options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    const result = await writeMockMemoryChange({ ...options.input, change: 'undo' });
+
+    if (result.status !== 'applied') {
+      throw buildRefusal(result.status, options.errors);
+    }
+
+    return { itemID: options.input.itemID, version: options.input.version + 1 };
+  }),
+
+  keep: memory.keep.handler(async (options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    const result = await writeMockMemoryChange({ ...options.input, change: 'keep' });
+
+    if (result.status !== 'applied') {
+      throw buildRefusal(result.status, options.errors);
+    }
+
+    return { itemID: options.input.itemID, version: options.input.version };
   }),
 
   pin: memory.pin.handler(async (options) => {

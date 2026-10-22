@@ -46,3 +46,9 @@ export type MemoryProposal = ReadonlyDeep<
 export type ProposalOutcome = ReadonlyDeep<
   ContractOutputs['memory']['approveProposals']['outcomes'][number]
 >;
+
+export type MemoryNotice = ReadonlyDeep<
+  ContractOutputs['memory']['listNotices']['notices'][number]
+>;
+
+export type MemoryNoticeEntry = MemoryNotice['entries'][number];

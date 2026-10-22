@@ -83,6 +83,12 @@ export interface RestoreRequest {
 export interface UndoRequest {
   readonly target: VersionRef;
   readonly provenance: Provenance;
+  readonly writeInTransaction?: WriteInTransaction;
+}
+
+export interface KeepRequest {
+  readonly target: VersionRef;
+  readonly writeInTransaction: WriteInTransaction;
 }
 
 export interface PinRequest {
@@ -182,6 +188,7 @@ export interface MemoryStore {
   readonly retire: (request: RetireRequest) => Promise<VersionRef>;
   readonly restore: (request: RestoreRequest) => Promise<VersionRef>;
   readonly undo: (request: UndoRequest) => Promise<VersionRef>;
+  readonly keep: (request: KeepRequest) => Promise<void>;
   readonly pin: (request: PinRequest) => Promise<void>;
 
   readonly readPinnedCore: () => Promise<readonly RecalledItem[]>;

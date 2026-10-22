@@ -1,5 +1,6 @@
 import { createMemoryChangeProcedures } from './create-memory-change-procedures';
 import { createMemoryExportProcedures } from './create-memory-export-procedures';
+import { createMemoryNoticeProcedures } from './create-memory-notice-procedures';
 import { createMemoryProposalProcedures } from './create-memory-proposal-procedures';
 import { createMemoryViewProcedures } from './create-memory-view-procedures';
 import type { APIContext, ReadViewMemory } from './types';
@@ -8,6 +9,7 @@ export function createMemoryViewRouter(context: APIContext, readMemory: ReadView
   return {
     ...createMemoryViewProcedures(context, readMemory),
     ...createMemoryChangeProcedures(context, readMemory),
+    ...createMemoryNoticeProcedures(context, readMemory),
     ...createMemoryProposalProcedures(context, readMemory),
     ...createMemoryExportProcedures(context, readMemory),
   };

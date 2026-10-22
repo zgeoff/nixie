@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react';
+import { Fragment } from 'react';
+import type { ActivityItem } from '../build-activity';
 import { buildActivity } from '../build-activity';
+import { buildNoticePlacement } from '../build-notice-placement';
 import { isWorking } from '../is-working';
 import { css } from '../styled-system/css';
-import type { OutboxMessage } from '../types';
+import type { MemoryNotice as MemoryNoticeData, OutboxMessage } from '../types';
 import type { LiveRecord } from '../use-live-records';
 import type { OutboxEntry } from '../use-outbox';
+import { MemoryNotice } from './memory-notice';
 import { OutboxItem } from './outbox-item';
 import { RecordItem } from './record-item';
 import { ResetMarker } from './reset-marker';
@@ -12,6 +16,7 @@ import { StepGroup } from './step-group';
 
 export interface ConversationListProps {
   readonly entries: readonly OutboxEntry[];
+  readonly notices: readonly MemoryNoticeData[];
   readonly onDiscard: (clientMessageID: string) => void;
   readonly onRetry: (message: OutboxMessage) => Promise<void>;
   readonly records: readonly LiveRecord[];
@@ -47,22 +52,20 @@ export function ConversationList(props: ConversationListProps): ReactNode {
   const shown = new Set(props.records.map((record) => record.message?.clientMessageId));
 
   const activity = buildActivity(props.records);
+  const placement = buildNoticePlacement(activity, props.notices);
   const unshown = props.entries.filter((entry) => !shown.has(entry.message.clientMessageId));
 
   return (
     <>
       <ol aria-label="Conversation" className={css(column, messages)}>
-        {activity.map((item) => {
-          if (item.kind === 'message') {
-            return <RecordItem key={item.record.sequence} record={item.record} />;
-          }
-
-          if (item.kind === 'reset') {
-            return <ResetMarker key={item.record.sequence} record={item.record} />;
-          }
-
-          return <StepGroup key={item.key} step={item} />;
-        })}
+        {activity.map((item, index) => (
+          <Fragment key={item.kind === 'step' ? `step/${String(item.key)}` : item.record.sequence}>
+            <ActivityEntry item={item} />
+            {placement.get(index)?.map((notice) => (
+              <MemoryNotice key={notice.noticeKey} notice={notice} />
+            ))}
+          </Fragment>
+        ))}
         {unshown.map((entry) => (
           <OutboxItem
             entry={entry}
@@ -82,4 +85,22 @@ export function ConversationList(props: ConversationListProps): ReactNode {
       </div>
     </>
   );
+}
+
+interface ActivityEntryProps {
+  readonly item: ActivityItem;
+}
+
+function ActivityEntry(props: ActivityEntryProps): ReactNode {
+  const item = props.item;
+
+  if (item.kind === 'message') {
+    return <RecordItem record={item.record} />;
+  }
+
+  if (item.kind === 'reset') {
+    return <ResetMarker record={item.record} />;
+  }
+
+  return <StepGroup step={item} />;
 }

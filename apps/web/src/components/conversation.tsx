@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
 import { useConversationRecords } from '../use-conversation-records';
+import { useMemoryNotices } from '../use-memory-notices';
 import { useOutbox } from '../use-outbox';
 import { CompactionFailureNotice } from './compaction-failure-notice';
 import { Composer } from './composer';
@@ -45,6 +46,7 @@ export function Conversation(props: ConversationProps): ReactNode {
   });
 
   const [sends, setSends] = useState(0);
+  const notices = useMemoryNotices(props.thread, conversation.records);
 
   if (conversation.status === 'pending') {
     return <p>Loading the conversation…</p>;
@@ -70,6 +72,7 @@ export function Conversation(props: ConversationProps): ReactNode {
       <ConversationScroller arrivals={records.length + outbox.entries.length} sends={sends}>
         <ConversationList
           entries={outbox.entries}
+          notices={notices}
           onDiscard={outbox.discard}
           onRetry={outbox.retry}
           records={records}

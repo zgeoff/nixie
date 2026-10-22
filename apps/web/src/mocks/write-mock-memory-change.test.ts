@@ -47,6 +47,69 @@ test('it restores a retired item', async () => {
   expect(stored?.state).toBe('active');
 });
 
+test('it undoes an edit with a version of your own that brings back the text before it', async () => {
+  const item = await store.memoryItems.create({
+    versions: [
+      { text: 'Rents a flat on Mill Lane' },
+      { change: 'edited', text: 'Rents a flat on Quay Street' },
+    ],
+  });
+
+  await writeMockMemoryChange({
+    change: 'undo',
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    itemID: item.itemID,
+    version: 2,
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(stored?.versions.at(-1)).toMatchObject({
+    change: 'undone',
+    origin: 'owner',
+    state: 'active',
+    text: 'Rents a flat on Mill Lane',
+  });
+});
+
+test('it undoes a new item by retiring it', async () => {
+  const item = await store.memoryItems.create({
+    versions: [{ text: 'Rents a flat on Mill Lane' }],
+  });
+
+  await writeMockMemoryChange({
+    change: 'undo',
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    itemID: item.itemID,
+    version: 1,
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(stored).toMatchObject({
+    state: 'retired',
+    versions: [{ change: 'created' }, { change: 'undone', state: 'retired' }],
+  });
+});
+
+test('it keeps an item without adding a version', async () => {
+  const item = await store.memoryItems.create({
+    versions: [{ text: 'Rents a flat on Mill Lane' }],
+  });
+
+  const result = await writeMockMemoryChange({
+    change: 'keep',
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    itemID: item.itemID,
+    version: 1,
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(result).toStrictEqual({ status: 'applied' });
+  expect(stored?.versions).toHaveLength(1);
+});
+
 test('it pins an active item without adding a version', async () => {
   const item = await store.memoryItems.create({ versions: [{ text: 'Is allergic to peanuts' }] });
 

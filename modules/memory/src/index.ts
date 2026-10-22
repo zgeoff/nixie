@@ -110,6 +110,8 @@ export type {
   ViewListState,
   ViewMatch,
   ViewMatches,
+  ViewNotice,
+  ViewNoticeEntry,
   ViewPage,
   ViewPageRequest,
   ViewProposal,

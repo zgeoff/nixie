@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import type { LogTables } from '@heynixie/log';
+import { writeRecordsInTransaction } from '@heynixie/log';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -133,6 +135,71 @@ test('it rejects an undo of an edit after a later edit', async () => {
 
   expect(undo).rejects.toMatchObject({ code: 'STALE_VERSION' });
   expect(recalled.items).toMatchObject([{ version: 3, text: 'Lives on Pine Road' }]);
+});
+
+test("it rolls back the caller's own write when the undo is stale", async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Lives on Oak Avenue',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const undo = ctx.memory.store.undo({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+    writeInTransaction: async (tx) => {
+      await writeRecordsInTransaction(tx, ctx.memory.log, [
+        { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+      ]);
+    },
+  });
+
+  await undo.catch(() => {});
+
+  const written = await ctx.memory.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('kind')
+    .where('kind', '=', 'owner_message')
+    .execute();
+
+  expect(undo).rejects.toMatchObject({ code: 'STALE_VERSION' });
+  expect(written).toStrictEqual([]);
+});
+
+test("it commits the caller's own write with the undo", async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.undo({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+    writeInTransaction: async (tx) => {
+      await writeRecordsInTransaction(tx, ctx.memory.log, [
+        { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+      ]);
+    },
+  });
+
+  const written = await ctx.memory.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('kind')
+    .where('kind', '=', 'owner_message')
+    .execute();
+
+  expect(written).toStrictEqual([{ kind: 'owner_message' }]);
 });
 
 test('it undoes a retirement by making the item active again', async () => {

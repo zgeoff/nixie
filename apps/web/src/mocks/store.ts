@@ -201,6 +201,26 @@ const memoryWriter = new Collection({
   }),
 });
 
+const noticeEntrySchema = z.object({
+  change: z
+    .enum(['created', 'edited', 'retired', 'restored', 'undone', 'proposed'])
+    .default('created'),
+  itemID: z.string(),
+  proposalID: z.string().nullable().default(null),
+  sequence: z.int().nonnegative().default(0),
+  version: z.int().positive().nullable().default(1),
+});
+
+const memoryNotices = new Collection({
+  schema: z.object({
+    entries: z.array(noticeEntrySchema).min(1),
+    kind: z.enum(['turn', 'batch', 'run']).default('turn'),
+    messageSequence: z.int().nonnegative().nullable().default(null),
+    noticeKey: z.string().default(() => `batch/${faker.string.uuid()}`),
+    thread: z.string().default('conversation'),
+  }),
+});
+
 const memoryActions = new Collection({
   schema: z.object({
     clientActionID: z.uuid(),
@@ -285,6 +305,7 @@ export const store = {
   forgetActions,
   memoryActions,
   memoryItems,
+  memoryNotices,
   memoryProposals,
   memoryVersions,
   memoryWriter,
@@ -298,6 +319,7 @@ export const store = {
       forgetActions,
       memoryActions,
       memoryItems,
+      memoryNotices,
       memoryProposals,
       memoryWriter,
       memoryVersions,

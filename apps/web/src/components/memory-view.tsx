@@ -1,7 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
 import type { MemoryItem } from '../types';
+import { useNixieClient } from '../use-nixie-client';
 import { makeMemoryItemRenderer } from './make-memory-item-renderer';
 import { MemoryExportButton } from './memory-export-button';
 import { MemoryItemList } from './memory-item-list';
@@ -12,6 +14,8 @@ import { WriterStatusPanel } from './writer-status-panel';
 
 export interface MemoryViewProps {
   readonly navigation?: ReactNode;
+
+  readonly openItemID?: string;
 }
 
 const layout = css({
@@ -35,6 +39,9 @@ export function MemoryView(props: MemoryViewProps): ReactNode {
         {props.navigation}
       </header>
       {notice === null ? null : <p role="alert">{notice}</p>}
+      {props.openItemID === undefined ? null : (
+        <OpenedItem itemID={props.openItemID} renderItem={renderItem} />
+      )}
       <WriterStatusPanel />
       <PinnedCorePanel renderItem={renderItem} />
       <MemoryExportButton />
@@ -57,6 +64,32 @@ export function MemoryView(props: MemoryViewProps): ReactNode {
         title="Forgotten"
       />
     </main>
+  );
+}
+
+interface OpenedItemProps {
+  readonly itemID: string;
+
+  readonly renderItem: (item: MemoryItem) => ReactNode;
+}
+
+const section = css({ marginBlock: '4' });
+const heading = css({ fontSize: 'lg', fontWeight: 'semibold' });
+
+function OpenedItem(props: OpenedItemProps): ReactNode {
+  const nixie = useNixieClient();
+
+  const item = useQuery(
+    nixie.queryUtils.memory.readItem.queryOptions({ input: { itemID: props.itemID } }),
+  );
+
+  return (
+    <section aria-label="Opened item" className={section}>
+      <h2 className={heading}>Opened item</h2>
+      {item.isPending ? <p>Loading the item…</p> : null}
+      {item.isError ? <p role="alert">This item did not load. It may be gone.</p> : null}
+      {item.data === undefined ? null : <ul>{props.renderItem(item.data)}</ul>}
+    </section>
   );
 }
 
