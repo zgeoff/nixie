@@ -1,17 +1,17 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import type { ProposalOutcome } from '@heynixie/proposals';
+import { proposalLapseMs } from '@heynixie/proposals';
 import type { EventKind } from '@heynixie/sessions';
 import { z } from 'zod';
 import { readSkillProposals } from './read-skill-proposals';
-import { skillProposalLapseMs } from './skill-proposal-lapse-ms';
 import { skillProposalOutcomes } from './skill-proposal-outcomes';
 import { skillsWriteApprovedCodec } from './skills-write-approved-codec';
-import type { SkillProposalOutcome } from './types';
 
 export interface SkillProposalAnswerEvent {
   readonly proposalID: string;
   readonly name: string;
-  readonly outcome: SkillProposalOutcome;
+  readonly outcome: ProposalOutcome;
 
   readonly isEdited: boolean;
 
@@ -21,7 +21,7 @@ export interface SkillProposalAnswerEvent {
 }
 
 const readLimit = 1000;
-const lapseDays = skillProposalLapseMs / (24 * 60 * 60 * 1000);
+const lapseDays = proposalLapseMs / (24 * 60 * 60 * 1000);
 const closingPayload = z.object({ proposalID: z.string() });
 
 export function buildSkillProposalAnswerKind(

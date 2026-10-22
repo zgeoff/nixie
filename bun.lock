@@ -471,6 +471,20 @@
         "tiny-invariant": "catalog:",
       },
     },
+    "modules/proposals": {
+      "name": "@heynixie/proposals",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "kysely": "catalog:",
+        "xstate": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+        "zod": "catalog:",
+      },
+    },
     "modules/sandbox": {
       "name": "@heynixie/sandbox",
       "version": "0.0.0",
@@ -523,12 +537,12 @@
         "@heynixie/definitions": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
+        "@heynixie/proposals": "workspace:*",
         "@heynixie/sessions": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
         "ts-pattern": "catalog:",
-        "xstate": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -944,6 +958,8 @@
     "@heynixie/ops": ["@heynixie/ops@workspace:modules/ops"],
 
     "@heynixie/policy": ["@heynixie/policy@workspace:modules/policy"],
+
+    "@heynixie/proposals": ["@heynixie/proposals@workspace:modules/proposals"],
 
     "@heynixie/retry": ["@heynixie/retry@workspace:libs/retry"],
 

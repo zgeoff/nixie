@@ -1,7 +1,6 @@
-import { canMoveSkillProposal } from './can-move-skill-proposal';
+import { canMoveProposal, proposalLapseMs } from '@heynixie/proposals';
 import { SkillProposalClosedError } from './skill-proposal-closed-error';
 import { SkillProposalHashError } from './skill-proposal-hash-error';
-import { skillProposalLapseMs } from './skill-proposal-lapse-ms';
 import { SkillProposalNotFoundError } from './skill-proposal-not-found-error';
 import { SkillProposalStaleError } from './skill-proposal-stale-error';
 import type { SkillProposalAnswer, SkillProposalState } from './types';
@@ -27,11 +26,11 @@ export function findAnswerRefusal(facts: AnswerFacts): AnswerRefusal | null {
     return new SkillProposalNotFoundError(answer.proposalID);
   }
 
-  const isPastLapse = state.proposedAt + skillProposalLapseMs <= facts.now;
+  const isPastLapse = state.proposedAt + proposalLapseMs <= facts.now;
   const status = state.outcome ?? (isPastLapse ? 'lapsed' : 'pending');
   const outcome = answer.answer === 'approve' ? 'approved' : 'rejected';
 
-  if (!canMoveSkillProposal(status, outcome)) {
+  if (!canMoveProposal(status, outcome)) {
     return new SkillProposalClosedError(answer.proposalID, status);
   }
 

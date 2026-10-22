@@ -1,6 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import type { DefinitionsInForce, SkillOrigin } from '@heynixie/definitions';
-import type { Definitions, Log } from '@heynixie/log';
+import type { Log } from '@heynixie/log';
+import type { ProposalContext, ProposalOutcome } from '@heynixie/proposals';
 import type { ToolRun } from '@heynixie/tools';
 import type { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 
@@ -16,22 +17,14 @@ export interface SkillToolsContext {
 
 type SkillProposal = ReturnType<typeof skillsWriteProposedCodec.decode>;
 
-export type SkillProposalOutcome = 'approved' | 'rejected' | 'lapsed';
-
-export type SkillProposalStatus = 'pending' | SkillProposalOutcome;
-
 export interface SkillProposalState {
   readonly proposal: SkillProposal;
   readonly thread: string | null;
   readonly proposedAt: number;
-  readonly outcome: SkillProposalOutcome | null;
+  readonly outcome: ProposalOutcome | null;
 }
 
-export interface SkillProposalContext {
-  readonly log: Log;
-  readonly clock: Pick<Clock, 'now'>;
-  readonly definitions: () => Definitions;
-}
+export type SkillProposalContext = ProposalContext;
 
 export interface SkillAnswerContext extends SkillProposalContext {
   readonly seedWrittenSkills: () => Promise<void>;

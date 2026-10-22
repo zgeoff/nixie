@@ -1,8 +1,7 @@
-import type { RecordKind } from '@heynixie/log';
-import type { SkillProposalOutcome } from './types';
+import { buildProposalOutcomes } from '@heynixie/proposals';
 
-export const skillProposalOutcomes: ReadonlyMap<RecordKind, SkillProposalOutcome> = new Map([
-  ['skills.write_approved', 'approved'],
-  ['skills.write_rejected', 'rejected'],
-  ['skills.write_lapsed', 'lapsed'],
-]);
+export const skillProposalOutcomes = buildProposalOutcomes({
+  approved: 'skills.write_approved',
+  rejected: 'skills.write_rejected',
+  lapsed: 'skills.write_lapsed',
+});

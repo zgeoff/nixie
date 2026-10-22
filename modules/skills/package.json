@@ -17,12 +17,12 @@
     "@heynixie/definitions": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/memory": "workspace:*",
+    "@heynixie/proposals": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "ts-pattern": "catalog:",
-    "xstate": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
