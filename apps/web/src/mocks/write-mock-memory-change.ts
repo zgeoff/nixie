@@ -3,7 +3,7 @@ import { store } from './store';
 
 interface MemoryChangeInput {
   readonly clientActionID: string;
-  readonly change: 'retire' | 'restore' | 'pin';
+  readonly change: 'retire' | 'restore' | 'undo' | 'keep' | 'pin';
   readonly itemID: string;
   readonly version: number;
 
@@ -40,7 +40,13 @@ export async function writeMockMemoryChange(input: MemoryChangeInput): Promise<M
 
 type Refusal = Exclude<MemoryChangeResult['status'], 'applied' | 'reused'>;
 
-const statesByChange = { retire: ['active'], restore: ['retired'], pin: ['active', 'retired'] };
+const statesByChange = {
+  retire: ['active'],
+  restore: ['retired'],
+  undo: ['active', 'retired'],
+  keep: ['active', 'retired'],
+  pin: ['active', 'retired'],
+};
 
 function readRefusal(input: MemoryChangeInput): Refusal | null {
   const item = store.memoryItems.findFirst((query) => query.where({ itemID: input.itemID }));
@@ -71,8 +77,18 @@ function probeCoreRoom(text: string): boolean {
 }
 
 async function applyChange(input: MemoryChangeInput): Promise<void> {
+  if (input.change === 'keep') {
+    return;
+  }
+
   if (input.change === 'pin') {
     await applyPin(input);
+
+    return;
+  }
+
+  if (input.change === 'undo') {
+    await applyUndo(input);
 
     return;
   }
@@ -114,4 +130,30 @@ async function applyPin(input: MemoryChangeInput): Promise<void> {
 
 function getNextPinnedSequence(): number {
   return Math.max(0, ...store.memoryItems.all().map((item) => item.pinnedSequence)) + 1;
+}
+
+async function applyUndo(input: MemoryChangeInput): Promise<void> {
+  await store.memoryItems.update((query) => query.where({ itemID: input.itemID }), {
+    data(draft) {
+      const current = draft.versions.at(-1);
+      const earlier = draft.versions.at(-2) ?? current;
+
+      if (current === undefined || earlier === undefined) {
+        return;
+      }
+
+      const state = draft.versions.length === 1 ? 'retired' : earlier.state;
+
+      draft.versions.push({
+        ...earlier,
+        change: 'undone',
+        origin: 'owner',
+        recordedAt: new Date(),
+        state,
+      });
+
+      draft.state = state;
+      draft.isPinned &&= state === 'active';
+    },
+  });
 }

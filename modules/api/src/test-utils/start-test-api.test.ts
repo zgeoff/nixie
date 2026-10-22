@@ -36,6 +36,8 @@ test('it serves the memory store the test sets', async () => {
   ctx.setMemory({
     retire: () => Promise.reject(new Error('no change runs here')),
     restore: () => Promise.reject(new Error('no change runs here')),
+    undo: () => Promise.reject(new Error('no change runs here')),
+    keep: () => Promise.reject(new Error('no change runs here')),
     pin: () => Promise.reject(new Error('no change runs here')),
     forget: () => Promise.reject(new Error('no change runs here')),
     finishForget: () => Promise.reject(new Error('no change runs here')),
@@ -51,6 +53,7 @@ test('it serves the memory store the test sets', async () => {
       readProposals: () => Promise.resolve([]),
       readForgetPreview: () => Promise.reject(new Error('no preview runs here')),
       async *readExport() {},
+      readNotices: () => Promise.resolve([]),
     },
   });
 

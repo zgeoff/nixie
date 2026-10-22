@@ -52,6 +52,33 @@ test('it shows every active item again when the search is cleared', async () => 
   expect(within(active).getAllByRole('listitem')).toHaveLength(2);
 });
 
+test('it opens the item a notice linked to at the top of the page', async () => {
+  await createDeviceSession();
+
+  const item = await store.memoryItems.create({
+    shortID: 'k3m9qa',
+    versions: [{ text: 'Plays the cello' }],
+  });
+
+  const rendered = render(<MemoryView openItemID={item.itemID} />);
+
+  const opened = await rendered.findByRole('region', { name: 'Opened item' });
+  const row = await within(opened).findByRole('listitem', { name: 'k3m9qa' });
+
+  expect(row).toHaveTextContent('Plays the cello');
+});
+
+test('it says so when the item a notice linked to is gone', async () => {
+  await createDeviceSession();
+
+  const rendered = render(<MemoryView openItemID="d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5a" />);
+
+  const opened = await rendered.findByRole('region', { name: 'Opened item' });
+  const alert = await within(opened).findByRole('alert');
+
+  expect(alert).toHaveTextContent('This item did not load. It may be gone.');
+});
+
 test('it lists retired items apart from the active ones', async () => {
   await createDeviceSession();
 

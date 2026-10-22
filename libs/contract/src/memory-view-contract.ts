@@ -162,6 +162,31 @@ const versionTargetSchema = z.object({
   version: z.int().positive(),
 });
 
+const versionResultSchema = z.object({ itemID: z.string(), version: z.int().positive() });
+
+const noticeEntrySchema = z.object({
+  change: z.enum(['created', 'edited', 'retired', 'restored', 'undone', 'proposed']),
+  isKept: z.boolean(),
+  item: memoryItemSchema
+    .extend({ change: z.enum(['created', 'edited', 'retired', 'restored', 'undone']) })
+    .nullable(),
+  itemID: z.string(),
+  proposalID: z.string().nullable(),
+  sequence: z.int().nonnegative(),
+  version: z.int().positive().nullable(),
+});
+
+const memoryNoticeSchema = z.object({
+  entries: z.array(noticeEntrySchema),
+  kind: z.enum(['turn', 'batch', 'catch_up', 'run']),
+  messageSequence: z.int().nonnegative().nullable(),
+  noticeKey: z.string(),
+  proposed: z.int().nonnegative(),
+  remembered: z.int().nonnegative(),
+  retired: z.int().nonnegative(),
+  sequence: z.int().nonnegative(),
+});
+
 export const memoryViewContract = {
   listItems: memoryView
     .errors({ INVALID_CURSOR: { message: 'No page returned this cursor', status: 400 } })
@@ -194,13 +219,22 @@ export const memoryViewContract = {
     .input(z.object({ itemID: itemIDSchema }))
     .output(memoryItemDetailSchema),
 
-  retire: memoryChange
-    .input(versionTargetSchema)
-    .output(z.object({ itemID: z.string(), version: z.int().positive() })),
+  retire: memoryChange.input(versionTargetSchema).output(versionResultSchema),
 
-  restore: memoryChange
+  restore: memoryChange.input(versionTargetSchema).output(versionResultSchema),
+
+  listNotices: memoryView
+    .input(z.object({ thread: z.string().min(1).max(200) }))
+    .output(z.object({ notices: z.array(memoryNoticeSchema) })),
+
+  undo: memoryChange
+    .errors({
+      PINNED_CORE_FULL: { message: 'The undo takes the pinned core past its budget', status: 409 },
+    })
     .input(versionTargetSchema)
-    .output(z.object({ itemID: z.string(), version: z.int().positive() })),
+    .output(versionResultSchema),
+
+  keep: memoryChange.input(versionTargetSchema).output(versionResultSchema),
 
   previewForget: memoryView
     .errors({

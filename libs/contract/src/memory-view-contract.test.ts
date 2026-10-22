@@ -29,6 +29,40 @@ test('it declares a missing session, a store not started, a reused ID, a missing
   ]);
 });
 
+test('it refuses an undo without the version the notice showed', () => {
+  expect(
+    memoryViewContract.undo['~orpc'].inputSchema?.safeParse({
+      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      itemID: 'item-a',
+    }).error?.issues,
+  ).toPartiallyContain({ path: ['version'] });
+});
+
+test('it declares a reused ID, a stale version and a full pinned core for an undo', () => {
+  expect(memoryViewContract.undo['~orpc'].errorMap).toContainAllKeys([
+    'UNAUTHORIZED',
+    'MEMORY_NOT_STARTED',
+    'CLIENT_ACTION_ID_REUSED',
+    'MEMORY_ITEM_NOT_FOUND',
+    'STALE_VERSION',
+    'WRONG_STATE',
+    'PINNED_CORE_FULL',
+  ]);
+});
+
+test('it refuses a keep without its client action ID', () => {
+  expect(
+    memoryViewContract.keep['~orpc'].inputSchema?.safeParse({ itemID: 'item-a', version: 1 }).error
+      ?.issues,
+  ).toPartiallyContain({ path: ['clientActionID'] });
+});
+
+test('it refuses a list of notices without a thread', () => {
+  expect(
+    memoryViewContract.listNotices['~orpc'].inputSchema?.safeParse({ thread: '' }).error?.issues,
+  ).toPartiallyContain({ path: ['thread'] });
+});
+
 test('it declares a full pinned core for a pin', () => {
   expect(memoryViewContract.pin['~orpc'].errorMap).toContainKey('PINNED_CORE_FULL');
 });

@@ -78,6 +78,10 @@ or not at all. A retry with the same client action ID finds that result and make
 even though the item has moved past the version the retry names. The memory store starts after the
 API listens, so every procedure of the view refuses a call until the store starts.
 
+A memory notice's undo and keep run through the same path, bound to the version the notice wrote
+([notices](./writes.md#notices)). A notice's link opens the memory page with that item shown at the
+top, above the lists.
+
 The web page asks before each change, and the confirmation keeps the version and the client action
 ID it opened with. A list that refreshes under an open confirmation therefore never moves the change
 onto a version the user did not see, and a confirm that fails in transit and goes again changes the

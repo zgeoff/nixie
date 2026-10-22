@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
 import { useConversationRecords } from '../use-conversation-records';
+import { useMemoryNotices } from '../use-memory-notices';
 import { useOutbox } from '../use-outbox';
 import { CompactionFailureNotice } from './compaction-failure-notice';
 import { Composer } from './composer';
@@ -45,6 +46,7 @@ export function Conversation(props: ConversationProps): ReactNode {
   });
 
   const [sends, setSends] = useState(0);
+  const notices = useMemoryNotices(props.thread, conversation.records);
 
   if (conversation.status === 'pending') {
     return <p>Loading the conversation…</p>;
@@ -67,9 +69,14 @@ export function Conversation(props: ConversationProps): ReactNode {
       {conversation.unavailable ? <LiveUpdatesNotice /> : null}
       <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
       <CompactionFailureNotice records={records} />
-      <ConversationScroller arrivals={records.length + outbox.entries.length} sends={sends}>
+      {notices.isFailed ? <MemoryNoticesFailure onRetry={notices.retry} /> : null}
+      <ConversationScroller
+        arrivals={records.length + outbox.entries.length + notices.notices.length}
+        sends={sends}
+      >
         <ConversationList
           entries={outbox.entries}
+          notices={notices.notices}
           onDiscard={outbox.discard}
           onRetry={outbox.retry}
           records={records}
@@ -102,6 +109,21 @@ function LiveUpdatesNotice(): ReactNode {
   return (
     <p className={notice} role="status">
       Live updates unavailable
+    </p>
+  );
+}
+
+interface MemoryNoticesFailureProps {
+  readonly onRetry: () => void;
+}
+
+function MemoryNoticesFailure(props: MemoryNoticesFailureProps): ReactNode {
+  return (
+    <p className={notice} role="status">
+      Memory notices did not load.{' '}
+      <button onClick={props.onRetry} type="button">
+        Try again
+      </button>
     </p>
   );
 }

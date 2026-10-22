@@ -3,6 +3,7 @@ import { readItemDetail } from './read-item-detail';
 import { readMemoryExport } from './read-memory-export';
 import { readPinnedCoreView } from './read-pinned-core-view';
 import { readViewMatches } from './read-view-matches';
+import { readViewNotices } from './read-view-notices';
 import { readViewPage } from './read-view-page';
 import { readViewProposals } from './read-view-proposals';
 import type { StoreParts } from './types';
@@ -19,5 +20,6 @@ export function buildMemoryView(parts: StoreParts): MemoryView {
     readProposals: () => readViewProposals(parts),
     readForgetPreview: (target) => readForgetPreview(log, target),
     readExport: (request) => readMemoryExport(parts.context, request),
+    readNotices: (thread) => readViewNotices(parts, thread),
   };
 }

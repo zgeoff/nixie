@@ -7,6 +7,7 @@ test('it shows how full the context stood after a turn and marks its compaction 
   const rendered = render(
     <ConversationList
       entries={[]}
+      notices={[]}
       onDiscard={() => {}}
       onRetry={() => Promise.resolve()}
       records={[

@@ -214,6 +214,7 @@ export interface NoticeEntry {
   readonly change: MemoryChange | 'proposed';
   readonly version: number | null;
   readonly proposalID: string | null;
+  readonly sequence: number;
 }
 
 export interface MemoryNotice {

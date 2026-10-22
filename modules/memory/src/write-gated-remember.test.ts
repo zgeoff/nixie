@@ -702,12 +702,19 @@ test("it groups a turn's applied writes and proposals under one notice", async (
       retired: 0,
       proposed: 1,
       entries: [
-        { itemID: applied.itemID, change: 'created', version: 1, proposalID: null },
+        {
+          itemID: applied.itemID,
+          change: 'created',
+          version: 1,
+          proposalID: null,
+          sequence: expect.toBeNumber(),
+        },
         {
           itemID: expect.toBeString(),
           change: 'proposed',
           version: null,
           proposalID: proposed.proposalID,
+          sequence: expect.toBeNumber(),
         },
       ],
     },

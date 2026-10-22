@@ -88,7 +88,15 @@ test("it retires the conversation's self-note at once, with a notice entry an un
       remembered: 0,
       retired: 1,
       proposed: 0,
-      entries: [{ itemID: note.itemID, change: 'retired', version: 2, proposalID: null }],
+      entries: [
+        {
+          itemID: note.itemID,
+          change: 'retired',
+          version: 2,
+          proposalID: null,
+          sequence: expect.toBeNumber(),
+        },
+      ],
     },
   ]);
 

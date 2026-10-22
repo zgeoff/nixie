@@ -1,5 +1,5 @@
 import type { ContentSource, JSONObject } from '@heynixie/log';
-import type { MemoryProposal } from './gate-types';
+import type { MemoryNotice, MemoryProposal, NoticeEntry } from './gate-types';
 import type { MemoryExportRequest } from './read-memory-export';
 import type {
   MemoryChange,
@@ -115,6 +115,19 @@ export type ForgetPreview = ViewItemDetail & {
   };
 };
 
+export type ViewNoticeKind = 'turn' | 'batch' | 'catch_up' | 'run';
+
+export interface ViewNoticeEntry extends NoticeEntry {
+  readonly item: (ViewItem & { readonly change: MemoryChange }) | null;
+}
+
+export interface ViewNotice extends Omit<MemoryNotice, 'thread' | 'entries'> {
+  readonly kind: ViewNoticeKind;
+  readonly messageSequence: number | null;
+  readonly sequence: number;
+  readonly entries: readonly ViewNoticeEntry[];
+}
+
 export interface MemoryView {
   readonly readPage: (request: ViewPageRequest) => Promise<ViewPage>;
 
@@ -126,6 +139,8 @@ export interface MemoryView {
   readonly readProposals: () => Promise<readonly ViewProposal[]>;
 
   readonly readForgetPreview: (target: VersionRef) => Promise<ForgetPreview>;
+
+  readonly readNotices: (thread: string) => Promise<readonly ViewNotice[]>;
 
   readonly readExport: (request: MemoryExportRequest) => AsyncIterable<string>;
 }

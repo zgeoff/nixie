@@ -5,8 +5,14 @@ import { SignedInPage } from '../components/signed-in-page';
 import { readSessionState } from '../read-session-state';
 import { css } from '../styled-system/css';
 
+interface MemorySearch {
+  readonly item?: string;
+}
+
 export const Route = createFileRoute('/memory')({
   component: Memory,
+  validateSearch: (search: Record<string, unknown>): MemorySearch =>
+    typeof search['item'] === 'string' ? { item: search['item'] } : {},
   loader: async (options) => ({
     session: await readSessionState(() =>
       options.context.queryClient.query({
@@ -19,6 +25,7 @@ export const Route = createFileRoute('/memory')({
 
 function Memory(): ReactNode {
   const data = Route.useLoaderData();
+  const search = Route.useSearch();
   const router = useRouter();
 
   return (
@@ -29,6 +36,7 @@ function Memory(): ReactNode {
       session={data.session}
     >
       <MemoryView
+        {...(search.item === undefined ? {} : { openItemID: search.item })}
         navigation={
           <nav className={css({ display: 'flex', gap: '3' })}>
             <Link className={link} to="/memory/proposals">

@@ -23,6 +23,7 @@ export async function readMemoryNotices(
       change: row.change,
       version: row.version,
       proposalID: row.proposal_id,
+      sequence: row.sequence,
     });
 
     notices.set(row.notice_key, entries);
