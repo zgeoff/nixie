@@ -666,6 +666,17 @@
         "playwright-core": "1.64.0",
       },
     },
+    "research/pinned-core-scale": {
+      "name": "@heynixie/spike-pinned-core-scale",
+      "version": "0.0.0",
+      "dependencies": {
+        "@anthropic-ai/claude-agent-sdk": "0.3.296",
+        "@modelcontextprotocol/server": "2.3.1",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.3",
+      },
+    },
     "research/policy-rules": {
       "name": "@heynixie/spike-policy-rules",
       "version": "0.0.0",
@@ -995,6 +1006,8 @@
     "@heynixie/spike-model-eval": ["@heynixie/spike-model-eval@workspace:research/model-eval"],
 
     "@heynixie/spike-paste-spans": ["@heynixie/spike-paste-spans@workspace:research/paste-spans"],
+
+    "@heynixie/spike-pinned-core-scale": ["@heynixie/spike-pinned-core-scale@workspace:research/pinned-core-scale"],
 
     "@heynixie/spike-policy-rules": ["@heynixie/spike-policy-rules@workspace:research/policy-rules"],
 
