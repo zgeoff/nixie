@@ -4,8 +4,10 @@ import { buildApprovedProvenance } from './build-approved-provenance';
 import type { ProposalAnswer } from './gate-types';
 import { getRowSubject } from './get-row-subject';
 import { parseEvidence } from './parse-evidence';
+import { ProposalClosedError } from './proposal-closed-error';
 import type { OpenedProposal } from './read-open-proposal';
 import type { MemoryTables, StoreParts, VersionRef } from './types';
+import { UntilPassedError } from './until-passed-error';
 import { writeRememberedItem } from './write-remembered-item';
 
 export interface ApprovedRemember {
@@ -17,10 +19,22 @@ export interface ApprovedRemember {
   readonly requireInTransaction?: (db: Kysely<MemoryTables>) => Promise<void>;
 }
 
-export function writeApprovedRemember(
+export async function writeApprovedRemember(
   parts: StoreParts,
   approved: ApprovedRemember,
 ): Promise<VersionRef> {
+  try {
+    return await writeApprovedVersion(parts, approved);
+  } catch (error) {
+    if (error instanceof UntilPassedError) {
+      throw new ProposalClosedError(approved.opened.row.proposal_id, 'lapsed');
+    }
+
+    throw error;
+  }
+}
+
+function writeApprovedVersion(parts: StoreParts, approved: ApprovedRemember): Promise<VersionRef> {
   const opened = approved.opened;
   const answer = approved.answer;
   const target = approved.target;
