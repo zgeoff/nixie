@@ -112,8 +112,9 @@ quote and checks beside them.
 is a proposal of its own with the pinned reason, because the core opens every session and costs
 every turn that reads it, so the user decides what goes in. No quote backs a pin and no checker
 judges one: a pin adds no text, so the gate has nothing of the user's to check. `memory.remember`
-takes no pin, so a new fact that the model wants pinned is a remember and then a pin, and the user
-reviews each one.
+takes no pin, so a new fact that the model wants pinned is a remember and then a pin. The remember
+passes [the content gate](#the-content-gate) like any other, and the pin waits for the user's review
+unless an allow rule names `memory.pin`.
 
 A pin of a retired item, a forgotten one or a moved-on version fails before anything is written. An
 active item past its [end time](./store.md#end-times) counts as retired, so its pin fails the same
