@@ -1274,6 +1274,31 @@ test('it ranks a live match in place of a better match past its end time', async
   ]);
 });
 
+test('it returns a pinned item past its end time to a query that leaves pinned items out and includes retired items', async () => {
+  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+
+  const memory = await startTestMemory({ gate: { clock } });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    isPinned: true,
+    provenance: buildMockProvenance(),
+  });
+
+  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
+
+  const searched = await memory.store.recall({
+    query: 'Lisbon',
+    excludePinned: true,
+    includeRetired: true,
+  });
+
+  expect(searched.items).toMatchObject([
+    { itemID: item.itemID, state: 'retired', isPinned: false },
+  ]);
+});
+
 test('it returns an item past its end time as retired to a recall that includes retired items', async () => {
   const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
 

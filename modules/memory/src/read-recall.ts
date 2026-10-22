@@ -162,11 +162,14 @@ async function readQueryCandidates(parts: StoreParts, query: QueryCandidates): P
 }
 
 async function readPinnedItemIDs(parts: StoreParts): Promise<readonly string[]> {
+  const now = parts.context.gate.clock.now();
+
   const rows = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
     .select('item_id')
     .where('is_pinned', '=', 1)
+    .where((row) => row.or([row('until', 'is', null), row('until', '>', now)]))
     .execute();
 
   return rows.map((row) => row.item_id);
