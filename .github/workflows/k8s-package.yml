@@ -1,5 +1,6 @@
 # Rehearses the release's publish of the Kubernetes component: it packs the package at a rehearsal
-# version, checks the tarball, and runs npm's publish as a dry run. A pull request runs it only when
+# version, checks the tarball, and runs npm's publish as a dry run, then runs the release path
+# against a stand-in for npm. A pull request runs it only when
 # it changes a file the package or the publish reads; every push to main runs it in full.
 name: K8s package
 
@@ -27,6 +28,7 @@ jobs:
       paths: |
         .github/workflows/k8s-package.yml
         .github/scripts/publish-k8s-package.sh
+        .github/scripts/check-publish-k8s-package.sh
         .bun-version
         bun.lock
         bunfig.toml
@@ -59,3 +61,6 @@ jobs:
 
       - name: Pack the component and dry-run its publish
         run: .github/scripts/publish-k8s-package.sh 0.0.0-rehearsal --dry-run
+
+      - name: Run the release path against a stand-in for npm
+        run: .github/scripts/check-publish-k8s-package.sh

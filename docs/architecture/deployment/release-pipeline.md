@@ -151,7 +151,9 @@ the workflow's own token, so the repo holds no npm token. The K8s package workfl
 publish on each push to main, and on each pull request that changes a file the package or the
 publish reads: it packs the component, checks that the tarball holds no workspace version and no
 TypeScript source, imports the installed tarball in Node, typechecks a program that imports it under
-TypeScript's strictest module resolution, and runs npm's publish as a dry run.
+TypeScript's strictest module resolution, and runs npm's publish as a dry run. It then runs the
+release path against a stand-in for npm, which proves that a version npm holds publishes nothing and
+an absent one publishes with provenance.
 
 ## Attestations
 
