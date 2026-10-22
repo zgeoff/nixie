@@ -1,31 +1,49 @@
 import type { StatsFs } from 'node:fs';
-import { statfsSync } from 'node:fs';
+import { readFileSync, statfsSync } from 'node:fs';
 
-export type ReadFilesystemStats = (path: string) => Pick<StatsFs, 'type' | 'bavail' | 'bsize'>;
+export interface MemoryTmpdirReads {
+  readonly readMounts: () => string;
+
+  readonly readStats: (path: string) => Pick<StatsFs, 'bavail' | 'bsize'>;
+}
 
 const MEMORY_TMPDIR = '/dev/shm';
-
-// The statfs magic number of tmpfs, from Linux's magic.h.
-const TMPFS_MAGIC = 0x01_02_19_94;
 
 // A server suite's data directory and its sandboxes stay well under this, and Docker's default
 // /dev/shm of 64 MiB falls short of it.
 const MIN_FREE_BYTES = 512 * 1024 * 1024;
 
-export function readMemoryTmpdir(readStats: ReadFilesystemStats = statfsSync): string | null {
-  const stats = readStatsOrNull(readStats);
+const hostReads: MemoryTmpdirReads = {
+  readMounts: () => readFileSync('/proc/self/mounts', 'utf8'),
+  readStats: statfsSync,
+};
 
-  if (stats === null || stats.type !== TMPFS_MAGIC || stats.bavail * stats.bsize < MIN_FREE_BYTES) {
-    return null;
-  }
-
-  return MEMORY_TMPDIR;
-}
-
-function readStatsOrNull(readStats: ReadFilesystemStats) {
+// A server suite runs an executable stub that it writes under its temp directory, so a noexec
+// mount, common for /dev/shm, would refuse to start it.
+export function readMemoryTmpdir(reads: MemoryTmpdirReads = hostReads): string | null {
   try {
-    return readStats(MEMORY_TMPDIR);
+    const options = findTmpfsOptions(reads.readMounts());
+    const stats = reads.readStats(MEMORY_TMPDIR);
+
+    if (
+      options === null ||
+      options.includes('noexec') ||
+      stats.bavail * stats.bsize < MIN_FREE_BYTES
+    ) {
+      return null;
+    }
+
+    return MEMORY_TMPDIR;
   } catch {
     return null;
   }
+}
+
+function findTmpfsOptions(mounts: string): readonly string[] | null {
+  const fields = mounts
+    .split('\n')
+    .map((line) => line.split(' '))
+    .findLast((line) => line[1] === MEMORY_TMPDIR);
+
+  return fields?.[2] === 'tmpfs' ? (fields[3] ?? '').split(',') : null;
 }

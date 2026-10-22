@@ -82,8 +82,8 @@ The root [`bunfig.toml`](../../../bunfig.toml) preloads, in order:
 1. [`define-test-build.ts`](../../../libs/testing/src/define-test-build.ts), which sets the global
    `NIXIE_TEST_BUILD` to `true`.
 2. [`point-tmpdir-at-memory.ts`](../../../libs/testing/src/point-tmpdir-at-memory.ts), which points
-   `TMPDIR` at `/dev/shm` when that is a tmpfs with room, so a test's SQLite commits never wait on a
-   busy disk's fsync.
+   `TMPDIR` at `/dev/shm` when that is a tmpfs with room that allows executables, so a test's SQLite
+   commits never wait on a busy disk's fsync.
 3. `@zgeoff/bun-test-extended`, for the jest-extended matchers.
 4. `@zgeoff/bun-test-react`, for happy-dom and the Testing Library matchers.
 5. [`restore-native-form-data.ts`](../../../libs/testing/src/restore-native-form-data.ts), which
