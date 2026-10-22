@@ -5,6 +5,7 @@ import { definitionsMigration } from './definitions-migration';
 import { eventLogMigration } from './event-log-migration';
 import { memoryKindsMigration } from './memory-kinds-migration';
 import { memoryMigrations } from './memory-migrations';
+import { memoryPinProposalsMigration } from './memory-pin-proposals-migration';
 import { memorySubjectsMigration } from './memory-subjects-migration';
 import { memoryUntilMigration } from './memory-until-migration';
 import { recordAttachmentsMigration } from './record-attachments-migration';
@@ -36,6 +37,7 @@ export const nixieSchema: BuildSchema = {
     webFetchLinksMigration,
     memoryUntilMigration,
     definitionSeedRepositoryMigration,
+    memoryPinProposalsMigration,
   ],
-  oldestReader: 23,
+  oldestReader: 25,
 };

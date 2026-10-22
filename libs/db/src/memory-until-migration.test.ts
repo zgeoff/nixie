@@ -39,7 +39,7 @@ async function setupTest() {
 
 test('it moves the schema to version 23, which the release before cannot read', () => {
   expect(nixieSchema.migrations.indexOf(memoryUntilMigration) + 1).toBe(23);
-  expect(nixieSchema.oldestReader).toBe(23);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(23);
 });
 
 test('it keeps each version of a database it upgrades, with no end time', async () => {
