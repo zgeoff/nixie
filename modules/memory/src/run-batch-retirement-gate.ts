@@ -11,7 +11,7 @@ export async function runBatchRetirementGate(
   write: Extract<StagedWrite, { readonly op: 'retire' }>,
   source: SourceMessage,
 ): Promise<BatchGateResult> {
-  const retired = await readItemText(parts, write.target);
+  const retired = await readItemText(parts, write.target, 'retire');
   const found = await readSourceEvidence(parts.context.log, source, write.quote);
 
   if (found.status === 'review') {

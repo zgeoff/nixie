@@ -6,6 +6,7 @@ import type { reviewReasons } from './review-reasons';
 import type {
   MemoryChange,
   MemorySubject,
+  ProposalOperationKind,
   ProposalOrigin,
   QuoteEvidence,
   VersionRef,
@@ -49,7 +50,7 @@ export interface AllowRuleMatch {
 export type FindAllowRule = (call: AllowRuleCall) => Promise<AllowRuleMatch | null>;
 
 export interface AllowRuleCall {
-  readonly tool: 'memory.remember' | 'memory.edit';
+  readonly tool: 'memory.remember' | 'memory.edit' | 'memory.pin';
   readonly thread: string;
 
   readonly source?: 'image';
@@ -99,6 +100,11 @@ export interface GatedRetireRequest {
   readonly caller: WriteCaller;
 }
 
+export interface GatedPinRequest {
+  readonly target: VersionRef;
+  readonly caller: WriteCaller;
+}
+
 export type WriteOutcome =
   | { readonly status: 'applied'; readonly itemID: string; readonly version: number }
   | {
@@ -116,6 +122,7 @@ export interface ImageRef {
 export interface MemoryWrites {
   readonly remember: (request: GatedRememberRequest) => Promise<WriteOutcome>;
   readonly retire: (request: GatedRetireRequest) => Promise<WriteOutcome>;
+  readonly pin: (request: GatedPinRequest) => Promise<WriteOutcome>;
 
   readonly batch: WriterGate;
 }
@@ -127,7 +134,7 @@ export interface ModelWriteStore {
 
 export interface MemoryProposal {
   readonly proposalID: string;
-  readonly operation: 'remember' | 'retire';
+  readonly operation: ProposalOperationKind;
   readonly itemID: string;
   readonly targetVersion: number | null;
   readonly isPinned: boolean;
@@ -230,7 +237,7 @@ export interface MemoryProposalTable {
   readonly proposal_id: string;
   readonly item_id: string;
   readonly is_new_item: number;
-  readonly operation: 'remember' | 'retire';
+  readonly operation: ProposalOperationKind;
   readonly target_version: number | null;
   readonly is_pinned: number;
 

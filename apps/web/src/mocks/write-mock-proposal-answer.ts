@@ -148,6 +148,10 @@ async function writeApproval(
     return refusal;
   }
 
+  if (proposal.operation === 'pin') {
+    return writePinApproval(proposal, input);
+  }
+
   const text = input.editedText ?? proposal.text;
   const match = readCloseMatch(proposal, input, text);
 
@@ -183,6 +187,10 @@ function findApprovalRefusal(
     return { code: 'RETIREMENT_EDIT', proposalID: proposal.proposalID, status: 'refused' };
   }
 
+  if (proposal.operation === 'pin' && input.editedText !== undefined) {
+    return { code: 'PIN_EDIT', proposalID: proposal.proposalID, status: 'refused' };
+  }
+
   if (input.revisionOf === undefined) {
     return null;
   }
@@ -214,6 +222,48 @@ function findRevisionTargetRefusal(
   return item.state === 'retired' && proposal.isPinned
     ? { code: 'WRONG_STATE', proposalID, status: 'refused' }
     : null;
+}
+
+async function writePinApproval(
+  proposal: StoredProposal,
+  input: ApprovalInput,
+): Promise<MockProposalOutcome> {
+  const proposalID = proposal.proposalID;
+  const itemID = proposal.itemID;
+  const item = store.memoryItems.findFirst((query) => query.where({ itemID }));
+
+  if (item === undefined || item.state === 'forgetting' || item.state === 'forgotten') {
+    return { cause: 'gone', proposalID, status: 'stale' };
+  }
+
+  if (item.state !== 'active') {
+    return { code: 'WRONG_STATE', proposalID, status: 'refused' };
+  }
+
+  if (!item.isPinned && !probeCoreRoom(itemID, item.versions.at(-1)?.text ?? '')) {
+    return { code: 'PINNED_CORE_FULL', proposalID, status: 'refused' };
+  }
+
+  await store.memoryItems.update((query) => query.where({ itemID }), {
+    data(draft) {
+      draft.isPinned = true;
+    },
+  });
+
+  await writeClosedProposal(proposal, {
+    answer: 'approved',
+    identityID: input.identityID,
+    proposalID,
+  });
+
+  return { proposalID, status: 'applied' };
+}
+
+function probeCoreRoom(itemID: string, text: string): boolean {
+  const core = readMockPinnedCore();
+  const earlier = core.items.find((item) => item.itemID === itemID)?.text ?? '';
+
+  return core.tokens - Math.ceil(earlier.length / 4) + Math.ceil(text.length / 4) <= core.budget;
 }
 
 function readCloseMatch(proposal: StoredProposal, input: ApprovalInput, text: string) {
@@ -255,13 +305,6 @@ function pickVersionState(
   }
 
   return input.revisionOf !== undefined && item?.state === 'retired' ? 'retired' : 'active';
-}
-
-function probeCoreRoom(itemID: string, text: string): boolean {
-  const core = readMockPinnedCore();
-  const earlier = core.items.find((item) => item.itemID === itemID)?.text ?? '';
-
-  return core.tokens - Math.ceil(earlier.length / 4) + Math.ceil(text.length / 4) <= core.budget;
 }
 
 interface ApprovedVersion {

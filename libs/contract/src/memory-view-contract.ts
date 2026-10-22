@@ -114,7 +114,7 @@ const memoryProposalSchema = z.object({
   itemID: z.string(),
   kind: kindSchema,
   lapseAt: z.date(),
-  operation: z.enum(['remember', 'retire']),
+  operation: z.enum(['remember', 'retire', 'pin']),
   origin: proposalOriginSchema,
   proposalID: z.string(),
   quote: z.string().nullable(),

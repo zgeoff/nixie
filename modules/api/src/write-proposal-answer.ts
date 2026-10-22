@@ -13,6 +13,7 @@ type StaleCause = 'lapsed' | 'answered' | 'moved' | 'changed' | 'gone';
 
 type RefusalCode =
   | 'CLIENT_ACTION_ID_REUSED'
+  | 'PIN_EDIT'
   | 'PINNED_CORE_FULL'
   | 'RETIREMENT_EDIT'
   | 'REVISION_TARGET'
@@ -136,6 +137,7 @@ const staleCauses: Readonly<Record<string, StaleCause | undefined>> = {
 };
 
 const refusalCodes: Readonly<Record<string, RefusalCode | undefined>> = {
+  PIN_EDIT: 'PIN_EDIT',
   PINNED_CORE_FULL: 'PINNED_CORE_FULL',
   RETIREMENT_EDIT: 'RETIREMENT_EDIT',
   REVISION_TARGET: 'REVISION_TARGET',

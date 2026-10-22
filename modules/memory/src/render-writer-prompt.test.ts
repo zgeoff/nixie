@@ -153,6 +153,14 @@ test('it lists each pending proposal on one line with its subject and the item i
         subject: 'shared',
         text: 'The owner and the assistant swap a riddle every Monday.',
       },
+      {
+        proposalID: 'proposal-core',
+        operation: 'pin',
+        itemID: 'item-home',
+        targetVersion: 2,
+        subject: 'owner',
+        text: 'The owner lives in Marlow Vale.',
+      },
     ],
     messages: [
       { sequence: 9, role: 'owner', shown: 'Bees are thriving', recordedAt: Date.UTC(2026, 4, 1) },
@@ -168,6 +176,7 @@ test('it lists each pending proposal on one line with its subject and the item i
     - proposal-bees (owner): The owner keeps bees. Messages in this batch:
     - proposal-move (owner, revises item-home): The owner lives in Fernbrook.
     - proposal-riddle (shared, retires item-riddle): The owner and the assistant swap a riddle every Monday.
+    - proposal-core (owner, pins item-home): The owner lives in Marlow Vale.
 
     Messages in this batch:
 

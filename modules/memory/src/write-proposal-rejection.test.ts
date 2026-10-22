@@ -1,9 +1,38 @@
 import { expect, test } from 'bun:test';
 import { readRecordKeys, readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { buildMockProvenance } from './test-utils/build-mock-provenance';
+import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
 import { createProposal } from './test-utils/create-proposal';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
+
+test('it leaves the pinned core and the item as they were when you reject a pin', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Takes the early ferry on Mondays',
+    provenance: buildMockProvenance(),
+  });
+
+  await memory.store.writes.pin({ target: item, caller: buildMockWriteCaller() });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  await memory.store.proposals.reject({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const core = await memory.store.readPinnedCore();
+  const recalled = await memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(core).toStrictEqual([]);
+  expect(recalled.items).toMatchObject([{ itemID: item.itemID, isPinned: false }]);
+});
 
 test('it rejects a proposal and drops the key of the item it would have created', async () => {
   const memory = await startTestMemory();

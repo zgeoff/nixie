@@ -245,6 +245,7 @@ test.each([
   ['NOT_FOUND', { status: 'stale', cause: 'gone' }],
   ['STALE_VERSION', { status: 'stale', cause: 'moved' }],
   ['PINNED_CORE_FULL', { status: 'refused', code: 'PINNED_CORE_FULL' }],
+  ['PIN_EDIT', { status: 'refused', code: 'PIN_EDIT' }],
   ['RETIREMENT_EDIT', { status: 'refused', code: 'RETIREMENT_EDIT' }],
   ['REVISION_TARGET', { status: 'refused', code: 'REVISION_TARGET' }],
   ['SELF_NOTE_REFUSED', { status: 'refused', code: 'REVISION_TARGET' }],

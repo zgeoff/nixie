@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { match } from 'ts-pattern';
 import { formatMemoryDate } from '../format-memory-date';
 import { formatMemoryProvenance } from '../format-memory-provenance';
 import { formatReviewReason } from '../format-review-reason';
@@ -43,9 +44,7 @@ export function ProposalCard(props: ProposalCardProps): ReactNode {
       <div className={body}>
         {proposal.image === null ? null : <MessageImage {...proposal.image} />}
         {props.draft === null ? (
-          <p className={css({ whiteSpace: 'pre-wrap' })}>
-            {proposal.operation === 'retire' ? `Retire: ${proposal.text}` : proposal.text}
-          </p>
+          <p className={css({ whiteSpace: 'pre-wrap' })}>{formatProposalText(proposal)}</p>
         ) : (
           <label className={field}>
             Edited text
@@ -66,6 +65,14 @@ export function ProposalCard(props: ProposalCardProps): ReactNode {
       )}
     </li>
   );
+}
+
+function formatProposalText(proposal: MemoryProposal): string {
+  return match(proposal.operation)
+    .with('retire', () => `Retire: ${proposal.text}`)
+    .with('pin', () => `Pin: ${proposal.text}`)
+    .with('remember', () => proposal.text)
+    .exhaustive();
 }
 
 interface ProposalDetailsProps {
@@ -229,7 +236,7 @@ function RejectionForm(props: RejectionFormProps): ReactNode {
 }
 
 function EditToggle(props: ProposalCardProps): ReactNode {
-  if (props.proposal.operation === 'retire') {
+  if (props.proposal.operation !== 'remember') {
     return null;
   }
 

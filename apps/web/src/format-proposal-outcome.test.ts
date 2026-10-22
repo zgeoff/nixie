@@ -15,6 +15,7 @@ test.each([
 
 test.each([
   ['CLIENT_ACTION_ID_REUSED', 'Nothing changed: this answer clashed with another one. Try again.'],
+  ['PIN_EDIT', 'Nothing changed: a pin takes no edited text.'],
   ['PINNED_CORE_FULL', 'Nothing changed: the pinned core has no room for this item.'],
   ['RETIREMENT_EDIT', 'Nothing changed: a retirement takes no edited text.'],
   ['REVISION_TARGET', 'Nothing changed: that item cannot take this text as a revision.'],

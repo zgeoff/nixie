@@ -251,6 +251,46 @@ test('it lists a pending retirement with the text of the item it retires', async
   });
 });
 
+test('it lists a pending pin with the text of the item it pins', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Plays five-a-side on Thursdays',
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.writes.pin({
+    target: { itemID: item.itemID, version: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
+
+  const result = await runToolCall(
+    { tool: 'memory.pending', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.pending'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toMatchObject({
+    proposals: [
+      {
+        change: 'pin',
+        itemID: shortIDs.get(item.itemID),
+        version: 1,
+        text: 'Plays five-a-side on Thursdays',
+        notedBy: ['you noted it'],
+        reason: expect.toBeString(),
+      },
+    ],
+  });
+});
+
 test.each([
   ['under a minute', 59_000],
   ['1 minute', 60_000],

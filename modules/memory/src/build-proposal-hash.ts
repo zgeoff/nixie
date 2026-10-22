@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
-import type { MemorySubject } from './types';
+import type { MemorySubject, ProposalOperationKind } from './types';
 
 export interface ProposalOperation {
-  readonly operation: 'remember' | 'retire';
+  readonly operation: ProposalOperationKind;
   readonly itemID: string;
   readonly targetVersion: number | null;
   readonly isPinned: boolean;

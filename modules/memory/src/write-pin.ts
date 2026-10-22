@@ -1,27 +1,40 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Kysely, Transaction } from 'kysely';
+import type { ItemEnd } from './is-item-lapsed';
+import { isItemLapsed } from './is-item-lapsed';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { MemoryStateError } from './memory-state-error';
 import { readDeliverableItems } from './read-deliverable-items';
 import { readPinnedItems } from './read-pinned-items';
 import { requirePinnedCoreRoom } from './require-pinned-core-room';
 import { StaleVersionError } from './stale-version-error';
-import type { MemoryState, MemoryTables, PinRequest, StoreParts } from './types';
+import type { MemoryTables, PinRequest, StoreParts } from './types';
+import type { VersionExtras } from './write-memory-version';
 
-export function writePin(parts: StoreParts, request: PinRequest): Promise<void> {
+export type PinExtras = Pick<VersionExtras, 'requireInTransaction' | 'approval'>;
+
+export function writePin(
+  parts: StoreParts,
+  request: PinRequest,
+  extras: PinExtras = {},
+): Promise<void> {
   const log = parts.context.log;
+  const approval = extras.approval;
 
   return parts.lock(() =>
     withWriteTransaction(log.writer, async (tx) => {
+      await extras.requireInTransaction?.(tx.$extendTables<MemoryTables>());
       await request.writeInTransaction?.(tx);
 
       await requirePinnableItem(parts, tx, request);
 
       await writeRecordsInTransaction(tx, log, [
+        ...(approval === undefined ? [] : [approval.record]),
         {
           kind: 'memory.pinned',
           definitions: parts.context.definitions(),
           ...(request.provenance.thread === undefined ? {} : { thread: request.provenance.thread }),
+          ...(approval === undefined ? {} : { approval: approval.envelope }),
           payload: { itemID: request.itemID, isPinned: request.isPinned },
         },
       ]);
@@ -38,7 +51,7 @@ async function requirePinnableItem(
 
   const item = await db
     .selectFrom('memory_items')
-    .select(['state', 'version'])
+    .select(['state', 'version', 'until'])
     .where('item_id', '=', request.itemID)
     .executeTakeFirst();
 
@@ -55,9 +68,8 @@ async function requirePinnableItem(
   }
 }
 
-interface PinnedItem {
+interface PinnedItem extends ItemEnd {
   readonly itemID: string;
-  readonly state: MemoryState;
 }
 
 async function requireItemJoinsCore(
@@ -65,8 +77,10 @@ async function requireItemJoinsCore(
   db: Kysely<MemoryTables>,
   item: PinnedItem,
 ): Promise<void> {
-  if (item.state !== 'active') {
-    throw new MemoryStateError(item.itemID, 'pin', item.state);
+  const state = isItemLapsed(item, parts.context.gate.clock.now()) ? 'retired' : item.state;
+
+  if (state !== 'active') {
+    throw new MemoryStateError(item.itemID, 'pin', state);
   }
 
   await requireItemCoreRoom(parts, db, item.itemID);

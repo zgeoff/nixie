@@ -1,6 +1,12 @@
 import { expect, test } from 'bun:test';
-import { buildMockWriteCaller, createProposal, startTestMemory } from '@heynixie/memory/test-utils';
+import {
+  buildMockWriteCaller,
+  createMemoryItem,
+  createProposal,
+  startTestMemory,
+} from '@heynixie/memory/test-utils';
 import { createRouterClient } from '@orpc/server';
+import invariant from 'tiny-invariant';
 import { createHostProposalProcedures } from './create-host-proposal-procedures';
 
 async function setupTest() {
@@ -82,6 +88,52 @@ test('#approve applies a proposal and answers with the version it wrote', async 
   });
 
   expect(result).toStrictEqual({ status: 'applied', itemID: proposal.itemID, version: 1 });
+});
+
+test('#approve pins the item of a pin proposal, and answers with the version it pinned', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Bakes bread on Fridays' });
+
+  await ctx.memory.store.writes.pin({ target: item, caller: buildMockWriteCaller() });
+
+  const [proposal] = await ctx.client.list();
+
+  invariant(proposal);
+
+  const result = await ctx.client.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+  });
+
+  const core = await ctx.memory.store.readPinnedCore();
+
+  expect(proposal).toMatchObject({ operation: 'pin', itemID: item.itemID, targetVersion: 1 });
+  expect(result).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 1 });
+  expect(core).toMatchObject([{ itemID: item.itemID }]);
+});
+
+test('#approve refuses a pin with edited text with PIN_EDIT, and pins nothing', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Bakes bread on Fridays' });
+
+  await ctx.memory.store.writes.pin({ target: item, caller: buildMockWriteCaller() });
+
+  const [proposal] = await ctx.client.list();
+
+  invariant(proposal);
+
+  const approve = ctx.client.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    editedText: 'Bakes bread on Saturdays',
+  });
+
+  await approve.catch(() => {});
+
+  const core = await ctx.memory.store.readPinnedCore();
+
+  expect(approve).rejects.toMatchObject({ code: 'PIN_EDIT', status: 400 });
+  expect(core).toStrictEqual([]);
 });
 
 test('#approve answers an approval an active item closely matches with that item, and applies nothing', async () => {

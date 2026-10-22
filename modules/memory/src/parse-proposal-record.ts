@@ -1,12 +1,12 @@
 import type { ContentSource, EnvelopeRecord, JSONObject } from '@heynixie/log';
 import { z } from 'zod';
-import type { ProposalOrigin, QuoteEvidence } from './types';
+import type { ProposalOperationKind, ProposalOrigin, QuoteEvidence } from './types';
 
 const proposed = z.strictObject({
   proposalID: z.string(),
   itemID: z.string(),
   isNewItem: z.boolean(),
-  operation: z.enum(['remember', 'retire']),
+  operation: z.enum(['remember', 'retire', 'pin']),
   targetVersion: z.int().min(1).nullable(),
   isPinned: z.boolean(),
 
@@ -52,7 +52,7 @@ interface ProposedRecord {
   readonly proposalID: string;
   readonly itemID: string;
   readonly isNewItem: boolean;
-  readonly operation: 'remember' | 'retire';
+  readonly operation: ProposalOperationKind;
   readonly targetVersion: number | null;
   readonly isPinned: boolean;
 

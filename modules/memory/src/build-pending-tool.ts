@@ -2,6 +2,7 @@ import type { Clock } from '@heynixie/clock';
 import { formatAge } from '@heynixie/clock';
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
+import { match } from 'ts-pattern';
 import type { MemoryProposal, MemoryProposals } from './gate-types';
 import type { ItemIDStore, ProposalOrigin } from './types';
 
@@ -18,12 +19,20 @@ const pendingOutput = {
         type: 'object',
         properties: {
           proposalID: { type: 'string' },
-          change: { type: 'string', enum: ['new', 'edit', 'retire'] },
-          itemID: { type: 'string', description: 'the item an edit or a retirement names' },
-          version: { type: 'integer', description: 'the version an edit or a retirement read' },
+          change: { type: 'string', enum: ['new', 'edit', 'retire', 'pin'] },
+          itemID: {
+            type: 'string',
+            description: 'the item an edit, a retirement or a pin names',
+          },
+          version: {
+            type: 'integer',
+            description: 'the version an edit, a retirement or a pin read',
+          },
           text: {
             type: 'string',
-            description: 'the proposed text, or the item a retirement drops',
+            description:
+              'the proposed text, the item a retirement drops, or the item a pin adds to the ' +
+              'pinned core',
           },
           notedBy: {
             type: 'array',
@@ -107,12 +116,12 @@ function toPendingJSON(proposal: MemoryProposal, shortID: string, now: number): 
   };
 }
 
-function pickChange(proposal: MemoryProposal): 'new' | 'edit' | 'retire' {
-  if (proposal.operation === 'retire') {
-    return 'retire';
-  }
-
-  return proposal.targetVersion === null ? 'new' : 'edit';
+function pickChange(proposal: MemoryProposal): 'new' | 'edit' | 'retire' | 'pin' {
+  return match(proposal.operation)
+    .with('retire', () => 'retire' as const)
+    .with('pin', () => 'pin' as const)
+    .with('remember', () => (proposal.targetVersion === null ? 'new' : 'edit'))
+    .exhaustive();
 }
 
 const notedByWords: Readonly<Record<ProposalOrigin, string>> = {

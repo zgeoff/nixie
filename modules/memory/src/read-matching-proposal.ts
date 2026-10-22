@@ -7,10 +7,16 @@ import { findImageSource } from './find-image-source';
 import type { ImageRef, MemoryProposalRow } from './gate-types';
 import { normalizeFactText } from './normalize-fact-text';
 import { subjectColumn } from './subject-column';
-import type { MemorySubject, MemoryTables, StoreParts, VersionRef } from './types';
+import type {
+  MemorySubject,
+  MemoryTables,
+  ProposalOperationKind,
+  StoreParts,
+  VersionRef,
+} from './types';
 
 export interface ProposedChange {
-  readonly operation: 'remember' | 'retire';
+  readonly operation: ProposalOperationKind;
 
   readonly target: VersionRef | null;
   readonly isPinned: boolean;
@@ -28,7 +34,7 @@ export async function readMatchingProposal(
   parts: Pick<StoreParts, 'context'>,
   change: ProposedChange,
 ): Promise<MemoryProposalRow | null> {
-  if (change.operation !== 'remember') {
+  if (change.operation === 'retire') {
     return null;
   }
 
@@ -40,7 +46,7 @@ export async function readMatchingProposal(
     .selectAll()
     .where('status', '=', 'pending')
     .where('lapse_at', '>', parts.context.gate.clock.now())
-    .where('operation', '=', 'remember')
+    .where('operation', '=', change.operation)
     .where('is_pinned', '=', isPinned);
 
   const sameTarget =

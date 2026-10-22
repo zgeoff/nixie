@@ -22,6 +22,7 @@ export const proposalOutcomeSchema = z.discriminatedUnion('status', [
   z.object({
     code: z.enum([
       'CLIENT_ACTION_ID_REUSED',
+      'PIN_EDIT',
       'PINNED_CORE_FULL',
       'RETIREMENT_EDIT',
       'REVISION_TARGET',
