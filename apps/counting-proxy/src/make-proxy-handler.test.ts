@@ -17,16 +17,17 @@ async function setupTest() {
   onTestFinished(() => model.stop());
 
   const storePath = join(directory, 'counter.json');
-
-  const store = await createCounterStore(storePath);
-
   const log = mock<Logger>(() => {});
 
-  return { directory, model, storePath, store, log };
+  return { directory, model, storePath, log };
 }
 
 test('it prices a reply through its route profile, the 1-hour cache write price included', async () => {
   const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
 
   ctx.model.addReplies({
     text: 'priced',
@@ -48,7 +49,7 @@ test('it prices a reply through its route profile, the 1-hour cache write price 
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -63,13 +64,17 @@ test('it prices a reply through its route profile, the 1-hour cache write price 
   expect(response.status).toBe(200);
 
   // 40 × $1 + 1,000 × $1.25 + 2,000 × $2 + 800 × $0.10 + 12 × $5, per million tokens
-  const totals = await ctx.store.read();
+  const totals = await store.read();
 
   expect(totals).toStrictEqual({ dollars: 0.00543, tokens: 3852 });
 });
 
 test('it prices a streamed reply from its message start and its last delta', async () => {
   const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
 
   ctx.model.addReplies({
     text: 'streamed',
@@ -91,7 +96,7 @@ test('it prices a streamed reply from its message start and its last delta', asy
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -107,13 +112,17 @@ test('it prices a streamed reply from its message start and its last delta', asy
 
   expect(text).toInclude('"text_delta","text":"streamed"');
 
-  const totals = await ctx.store.read();
+  const totals = await store.read();
 
   expect(totals).toStrictEqual({ dollars: 0.00543, tokens: 3852 });
 });
 
 test('it refuses every request once the replies it counted reach its dollar limit', async () => {
   const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
 
   ctx.model.addReplies(
     { text: 'first', usage: { input_tokens: 1000, output_tokens: 1000 } },
@@ -130,7 +139,7 @@ test('it refuses every request once the replies it counted reach its dollar limi
       },
     },
     limits: { dollars: 0.01, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -167,6 +176,10 @@ test('it refuses every request once the replies it counted reach its dollar limi
 test('it refuses every request once the replies it counted reach its token limit', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   ctx.model.addReplies(
     { text: 'first', usage: { input_tokens: 600, output_tokens: 400 } },
     { text: 'second', usage: { input_tokens: 600, output_tokens: 400 } },
@@ -181,7 +194,7 @@ test('it refuses every request once the replies it counted reach its token limit
       },
     },
     limits: { dollars: null, tokens: 1000 },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -205,6 +218,10 @@ test('it refuses every request once the replies it counted reach its token limit
 test('it logs the limit once when a count reaches it', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   ctx.model.addReplies({ text: 'only', usage: { input_tokens: 600, output_tokens: 400 } });
 
   const handler = makeProxyHandler({
@@ -216,7 +233,7 @@ test('it logs the limit once when a count reaches it', async () => {
       },
     },
     limits: { dollars: null, tokens: 1000 },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -242,6 +259,10 @@ test('it logs the limit once when a count reaches it', async () => {
 test('it refuses every request when its counter store is down', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   ctx.model.addReplies({ text: 'never sent', usage: { input_tokens: 1, output_tokens: 1 } });
 
   const handler = makeProxyHandler({
@@ -253,7 +274,7 @@ test('it refuses every request when its counter store is down', async () => {
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -285,6 +306,10 @@ test('it refuses every request when its counter store is down', async () => {
 test('it refuses every request when its counter store holds no count it can read', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const handler = makeProxyHandler({
     routes: {
       preview: {
@@ -294,7 +319,7 @@ test('it refuses every request when its counter store holds no count it can read
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -314,6 +339,10 @@ test('it refuses every request when its counter store holds no count it can read
 
 test('it answers a 502 and refuses every later request when a reply body breaks before its usage arrives', async () => {
   const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
 
   const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
     Promise.resolve(
@@ -337,7 +366,7 @@ test('it answers a 502 and refuses every later request when a reply body breaks 
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream,
     log: ctx.log,
   });
@@ -361,6 +390,10 @@ test('it answers a 502 and refuses every later request when a reply body breaks 
 test('it refuses every later request when a streamed reply breaks before its usage arrives', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
     Promise.resolve(
       new Response(
@@ -383,7 +416,7 @@ test('it refuses every later request when a streamed reply breaks before its usa
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream,
     log: ctx.log,
   });
@@ -413,6 +446,10 @@ test('it refuses every later request when a streamed reply breaks before its usa
 test('it refuses every later request once a count fails to write, even after the store comes back', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const gate = Promise.withResolvers<undefined>();
 
   ctx.model.addReplies(
@@ -429,7 +466,7 @@ test('it refuses every later request once a count fails to write, even after the
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -461,6 +498,10 @@ test('it refuses every later request once a count fails to write, even after the
 test('it refuses a request for a model its route does not price', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const handler = makeProxyHandler({
     routes: {
       preview: {
@@ -470,7 +511,7 @@ test('it refuses a request for a model its route does not price', async () => {
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -501,6 +542,10 @@ test('it refuses a request for a model its route does not price', async () => {
 test('it refuses a message request whose body names no model', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const handler = makeProxyHandler({
     routes: {
       preview: {
@@ -510,7 +555,7 @@ test('it refuses a message request whose body names no model', async () => {
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -545,6 +590,10 @@ test.each([
 ])('it refuses %s %s, whose spend it cannot count, and sends nothing on', async (method, path) => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const handler = makeProxyHandler({
     routes: {
       preview: {
@@ -554,7 +603,7 @@ test.each([
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -568,6 +617,10 @@ test.each([
 test('it sends on a request for the model list', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const handler = makeProxyHandler({
     routes: {
       preview: {
@@ -577,7 +630,7 @@ test('it sends on a request for the model list', async () => {
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -590,6 +643,10 @@ test('it sends on a request for the model list', async () => {
 test('it answers a path outside every route with a 404 and sends nothing on', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const handler = makeProxyHandler({
     routes: {
       preview: {
@@ -599,7 +656,7 @@ test('it answers a path outside every route with a 404 and sends nothing on', as
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -618,6 +675,10 @@ test('it answers a path outside every route with a 404 and sends nothing on', as
 test('it sends a request on with its path past the route, its query and its credential header', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const handler = makeProxyHandler({
     routes: {
       preview: {
@@ -627,7 +688,7 @@ test('it sends a request on with its path past the route, its query and its cred
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -659,6 +720,10 @@ test('it sends a request on with its path past the route, its query and its cred
 test('it passes an upstream error through without counting it', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   ctx.model.addReplies({ refusal: 'the prompt is too long' });
 
   const handler = makeProxyHandler({
@@ -670,7 +735,7 @@ test('it passes an upstream error through without counting it', async () => {
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -684,13 +749,17 @@ test('it passes an upstream error through without counting it', async () => {
 
   expect(response.status).toBe(400);
 
-  const totals = await ctx.store.read();
+  const totals = await store.read();
 
   expect(totals).toStrictEqual({ dollars: 0, tokens: 0 });
 });
 
 test('it answers a 502 when the upstream cannot be reached', async () => {
   const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
 
   const handler = makeProxyHandler({
     routes: {
@@ -701,7 +770,7 @@ test('it answers a 502 when the upstream cannot be reached', async () => {
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream: fetch,
     log: ctx.log,
   });
@@ -719,6 +788,10 @@ test('it answers a 502 when the upstream cannot be reached', async () => {
 test('it refuses every later request once a message call fails before its reply arrives', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
     Promise.reject(new Error('connection reset')),
   );
@@ -732,7 +805,7 @@ test('it refuses every later request once a message call fails before its reply 
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream,
     log: ctx.log,
   });
@@ -756,6 +829,10 @@ test('it refuses every later request once a message call fails before its reply 
 test('it refuses every later request once a successful message reply holds usage it cannot read', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
     Promise.resolve(
       Response.json({
@@ -775,7 +852,7 @@ test('it refuses every later request once a successful message reply holds usage
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream,
     log: ctx.log,
   });
@@ -799,6 +876,10 @@ test('it refuses every later request once a successful message reply holds usage
 test('it keeps sending on after a call that spends nothing fails', async () => {
   const ctx = await setupTest();
 
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
   const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
     Promise.reject(new Error('connection reset')),
   );
@@ -812,7 +893,7 @@ test('it keeps sending on after a call that spends nothing fails', async () => {
       },
     },
     limits: { dollars: 1, tokens: null },
-    store: ctx.store,
+    store,
     sendUpstream,
     log: ctx.log,
   });
