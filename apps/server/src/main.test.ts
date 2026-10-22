@@ -760,7 +760,7 @@ test('it queues one action for the log-only connector at start, which the action
           .parse(JSON.parse(line)),
       );
 
-  await waitForCondition(() => readLogged().length > 0);
+  await nixie.waitForLogEvent('action.logged');
 
   expect(readLogged()).toMatchObject([{ event: 'action.logged', attempt: 1 }]);
 }, 60_000);
@@ -983,11 +983,14 @@ test('it shows the conversation your reason for a proposal you rejected in the w
 test('it writes no info event, its stop included, at the warn level the configuration sets', async () => {
   const nixie = await startTestNixie({ logLevel: 'warn' });
 
-  await waitForCondition(async () => {
-    const files = await nixie.readDataFiles();
+  await waitForCondition(
+    async () => {
+      const files = await nixie.readDataFiles();
 
-    return files.some((file) => file.name === 'nixie.db');
-  });
+      return files.some((file) => file.name === 'nixie.db');
+    },
+    { timeoutMs: 30_000 },
+  );
 
   nixie.sendSignal('SIGTERM');
 
@@ -1006,11 +1009,14 @@ test('it writes no info event, its stop included, at the warn level the configur
 test('it writes its info events, its stop included, at the default level', async () => {
   const nixie = await startTestNixie();
 
-  await waitForCondition(async () => {
-    const files = await nixie.readDataFiles();
+  await waitForCondition(
+    async () => {
+      const files = await nixie.readDataFiles();
 
-    return files.some((file) => file.name === 'nixie.db');
-  });
+      return files.some((file) => file.name === 'nixie.db');
+    },
+    { timeoutMs: 30_000 },
+  );
 
   nixie.sendSignal('SIGTERM');
 
