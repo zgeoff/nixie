@@ -71,6 +71,8 @@ below, and planned work lives in Linear.
 
 - [The decision point](architecture/policy/decision-point.md) — the stages, the fixed read-only
   rule, effect declarations and the test rule
+- [The counting proxy](architecture/policy/counting-proxy.md) — routes, the count and its store, the
+  spending limit and the refusals
 
 ### Connectors
 

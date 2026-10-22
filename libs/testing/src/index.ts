@@ -6,7 +6,14 @@ export type { GatedCall, GatedCallOptions } from './make-gated-call';
 export { makeGatedCall } from './make-gated-call';
 export type { WaitForConditionOptions } from './wait-for-condition';
 export { waitForCondition } from './wait-for-condition';
-export type { ScriptedModel, ScriptedModelRequest, ScriptedReply } from './start-scripted-model';
+
+export type {
+  ScriptedModel,
+  ScriptedModelRequest,
+  ScriptedReply,
+  ScriptedUsage,
+} from './start-scripted-model';
+
 export { startScriptedModel } from './start-scripted-model';
 export type { AdvanceOptions, CrashHarness, CrashHarnessOptions } from './start-crash-harness';
 export { startCrashHarness } from './start-crash-harness';

@@ -64,6 +64,19 @@
         "tiny-invariant": "catalog:",
       },
     },
+    "apps/counting-proxy": {
+      "name": "@heynixie/counting-proxy",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/models": "workspace:*",
+        "gunshi": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+      },
+    },
     "apps/server": {
       "name": "@heynixie/server",
       "version": "0.0.0",
@@ -903,6 +916,8 @@
     "@heynixie/contract": ["@heynixie/contract@workspace:libs/contract"],
 
     "@heynixie/conversation": ["@heynixie/conversation@workspace:guests/conversation"],
+
+    "@heynixie/counting-proxy": ["@heynixie/counting-proxy@workspace:apps/counting-proxy"],
 
     "@heynixie/db": ["@heynixie/db@workspace:libs/db"],
 

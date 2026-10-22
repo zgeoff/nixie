@@ -1,20 +1,11 @@
 import { z } from 'zod';
 import { getCLIContextWindow } from './get-cli-context-window';
+import { modelPricesSchema } from './model-prices-schema';
 import type { ModelProfile, ModelsConfig } from './types';
 
 const profileIDSchema = z
   .string()
   .regex(/^[a-z0-9][a-z0-9-]*$/u, 'a profile ID is a lowercase slug');
-
-const priceSchema = z.number().nonnegative();
-
-const pricesSchema = z.strictObject({
-  input: priceSchema,
-  cache_write: priceSchema,
-  cache_write_1h: priceSchema,
-  cached_input: priceSchema,
-  output: priceSchema,
-});
 
 const credentialSchema = z
   .string()
@@ -33,7 +24,7 @@ const profileSchema = z
     provider_pin: z.string().min(1).optional(),
     context_tokens: contextTokensSchema.optional(),
     cache_ttl: z.enum(['5m', '1h']).optional(),
-    prices: pricesSchema.optional(),
+    prices: modelPricesSchema.optional(),
   })
 
   // With auto-compaction off, the CLI ignores the cap and refuses a call only against the window it
@@ -105,15 +96,6 @@ function toProfile(id: string, input: z.infer<typeof profileSchema>): ModelProfi
 
     // The CLI writes 5-minute entries on an API-key or bearer profile unless told otherwise.
     cacheTTL: input.cache_ttl ?? '5m',
-    prices:
-      input.prices === undefined
-        ? null
-        : {
-            input: input.prices.input,
-            cacheWrite: input.prices.cache_write,
-            cacheWrite1h: input.prices.cache_write_1h,
-            cachedInput: input.prices.cached_input,
-            output: input.prices.output,
-          },
+    prices: input.prices ?? null,
   };
 }
