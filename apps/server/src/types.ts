@@ -5,6 +5,7 @@ import type { Encoder } from '@heynixie/memory';
 import type { ModelSecrets } from '@heynixie/models';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
+import type { HarnessLink } from '@heynixie/testing';
 import type { StartState } from './build-start-state';
 import type { SandboxAdapterOptions } from './create-sandbox-adapter';
 import type { DeploymentConfig } from './deployment-config-schema';
@@ -53,6 +54,8 @@ export interface CLIIO {
   readonly waitForSignal: () => Promise<string>;
 
   readonly createSandboxAdapter?: (options: SandboxAdapterOptions) => SandboxAdapter;
+
+  readonly harness?: HarnessLink;
 }
 
 export interface CLIFlags {

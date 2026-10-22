@@ -99,7 +99,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'ready',
-    needs: ['server_parts', 'seed_poll'],
+    needs: ['inputs', 'server_parts', 'seed_poll'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
 
@@ -113,6 +113,10 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       }
 
       parts.log('ready');
+
+      if (NIXIE_TEST_BUILD) {
+        reader.get('inputs').options.harness?.sendReady();
+      }
     },
   },
 ];
