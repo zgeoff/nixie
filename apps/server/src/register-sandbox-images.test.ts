@@ -33,18 +33,22 @@ async function setupTest() {
 
   const state = buildStartState({ isReady: true, reason: null });
 
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
   const dataDir = await mkdtemp(join(tmpdir(), 'nixie-images-'));
 
-  onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
+  stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
   const writer = await startWriter({ dataDir });
 
-  onTestFinished(() => writer.stop());
+  stack.defer(() => writer.stop());
 
   const clock = buildTestClock(0);
   const cleanup = buildCleanup();
 
-  onTestFinished(() => cleanup.stop());
+  stack.defer(() => cleanup.stop());
 
   const health = await startServerHealth({ writer, state, adapter, dataDir, clock, cleanup, log });
 
