@@ -1,10 +1,11 @@
 # Kubernetes
 
-nixie ships reference manifests for Kubernetes in `deploy/kubernetes/`, and a deployment repo keeps
-its own copy with its host name, impd's URL, its address ranges and its model profiles in place of
-the placeholders. One SQLite writer sets their shape: nixie runs as one pod that owns one volume,
-the web server runs beside it with no state, and one ingress puts both behind one host name. The
-manifests hold no host, cloud or tailnet detail, because the repo is public.
+nixie ships reference manifests for Kubernetes in `deploy/kubernetes/`, and a
+[Pulumi component](#the-pulumi-component) for a deployment that runs Pulumi. A deployment repo keeps
+its own copy of the manifests with its host name, impd's URL, its address ranges and its model
+profiles in place of the placeholders. One SQLite writer sets their shape: nixie runs as one pod
+that owns one volume, the web server runs beside it with no state, and one ingress puts both behind
+one host name. The manifests hold no host, cloud or tailnet detail, because the repo is public.
 
 [The server](./server.md) covers the process the pod runs, its configuration and secrets, and how it
 stops, and [the database](../core/database.md#the-single-writer) covers the writer lock. The
@@ -61,6 +62,25 @@ than one replica can serve. It reaches nixie's API by nixie's Service. One ingre
 one host name: a path rule sends `/rpc` to nixie and the default rule sends every other path to the
 web server, so the browser's session cookie reaches both on one origin. The ingress terminates HTTPS
 with the certificate in a TLS Secret that the deployment provides.
+
+## The Pulumi component
+
+A deployment that runs Pulumi takes nixie's pod from the Pulumi component in `deploy/pulumi-k8s/`
+instead of a copy of the manifests. The component registers nixie's StatefulSet, its Service, the
+configuration ConfigMap, the Secret of the secrets file and its age key, and the Secret of the
+definitions deploy key. Its pod differs from the manifests' pod in one way: a git-sync container
+beside nixie keeps the definitions checked out from a repo on GitHub, which the deployment names
+with its ref and its read-only deploy key.
+
+The deployment passes the namespace, the image, the configuration text, the encrypted secrets file,
+the age key and the volume's storage class. The namespace, its network policies and the ingress stay
+in the deployment's own program, because each depends on the cluster and the host name.
+
+Each resource the component registers keeps a fixed Pulumi name, and an alias to the stack as its
+parent. A stack that registered the same resources at its top level therefore moves onto the
+component with no replacement, and the StatefulSet keeps its volume. The ConfigMap and the Secrets
+take a name that Pulumi generates, so a change to one replaces it and rolls the StatefulSet, and
+nixie reads the change at its next start.
 
 ## Images
 
