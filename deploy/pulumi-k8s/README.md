@@ -22,8 +22,9 @@ ingress at the two Services it returns.
 
 ## Install
 
-The package ships TypeScript source, so your Pulumi program runs on Bun or another runtime that
-loads TypeScript, and declares `@pulumi/pulumi` 3 and `@pulumi/kubernetes` 4 itself.
+The package ships an ES module with its type declarations, so a Pulumi program on Node or on Bun
+loads it. It takes `@pulumi/pulumi` 3 and `@pulumi/kubernetes` 4 as peer dependencies, which your
+program installs.
 
 ```bash
 bun add @heynixie/pulumi-k8s

@@ -1,6 +1,9 @@
-import { Deployment, StatefulSet } from '@pulumi/kubernetes/apps/v1';
-import { CronJob } from '@pulumi/kubernetes/batch/v1';
-import { ConfigMap, Secret, Service } from '@pulumi/kubernetes/core/v1';
+// the package root, because Node's ESM loader refuses the SDK's directory subpaths, which it ships
+// with no exports map
+import { apps, batch, core } from '@pulumi/kubernetes';
+import type { Deployment, StatefulSet } from '@pulumi/kubernetes/apps/v1';
+import type { CronJob } from '@pulumi/kubernetes/batch/v1';
+import type { Service } from '@pulumi/kubernetes/core/v1';
 import type { ComponentResourceOptions, CustomResourceOptions, Input } from '@pulumi/pulumi';
 import { ComponentResource, interpolate, rootStackResource, secret } from '@pulumi/pulumi';
 import { buildBackupPodSpec } from './build-backup-pod-spec';
@@ -43,7 +46,7 @@ export function createNixie(
     aliases: [{ parent: rootStackResource }],
   };
 
-  const api = new Service(
+  const api = new core.v1.Service(
     'nixie',
     buildServiceArgs({
       name: 'nixie',
@@ -54,7 +57,7 @@ export function createNixie(
     childOptions,
   );
 
-  const statefulSet = new StatefulSet(
+  const statefulSet = new apps.v1.StatefulSet(
     'nixie',
     {
       metadata: { name: 'nixie', namespace: args.namespace },
@@ -72,7 +75,7 @@ export function createNixie(
     { ...childOptions, customTimeouts: rolloutTimeouts },
   );
 
-  const web = new Service(
+  const web = new core.v1.Service(
     'nixie-web',
     buildServiceArgs({
       name: 'nixie-web',
@@ -100,7 +103,7 @@ export function createNixie(
 // The ConfigMap and the Secrets take no fixed name: Pulumi replaces each on a change, so the
 // StatefulSet rolls and nixie reads the change at its next start.
 function createConfig(args: NixieArgs, opts: CustomResourceOptions): Input<string> {
-  const config = new ConfigMap(
+  const config = new core.v1.ConfigMap(
     'nixie-config',
     { metadata: { namespace: args.namespace }, data: { [nixieConfigKey]: args.config } },
     opts,
@@ -110,7 +113,7 @@ function createConfig(args: NixieArgs, opts: CustomResourceOptions): Input<strin
 }
 
 function createSecrets(args: NixieArgs, opts: CustomResourceOptions): Input<string> {
-  const secrets = new Secret(
+  const secrets = new core.v1.Secret(
     'nixie-secrets',
     {
       metadata: { namespace: args.namespace },
@@ -132,7 +135,7 @@ const githubKnownHosts =
   '[ssh.github.com]:443 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n';
 
 function createDefinitionsKey(args: NixieArgs, opts: CustomResourceOptions): Input<string> {
-  const key = new Secret(
+  const key = new core.v1.Secret(
     'nixie-definitions-key',
     {
       metadata: { namespace: args.namespace },
@@ -155,7 +158,7 @@ function createWebDeployment(
   api: Service,
   opts: CustomResourceOptions,
 ): Deployment {
-  return new Deployment(
+  return new apps.v1.Deployment(
     'nixie-web',
     {
       metadata: { name: 'nixie-web', namespace: args.namespace },
@@ -178,7 +181,7 @@ function createBackupJob(
   statefulSet: StatefulSet,
   opts: CustomResourceOptions,
 ): CronJob {
-  const env = new Secret(
+  const env = new core.v1.Secret(
     'nixie-backup',
     {
       metadata: { name: backupEnvSecret, namespace },
@@ -188,7 +191,7 @@ function createBackupJob(
   );
 
   // Pulumi updates the script in place, and the CronJob's next run reads it
-  const script = new ConfigMap(
+  const script = new core.v1.ConfigMap(
     'nixie-backup-script',
     {
       metadata: { name: backupScriptConfigMap, namespace },
@@ -197,7 +200,7 @@ function createBackupJob(
     opts,
   );
 
-  return new CronJob(
+  return new batch.v1.CronJob(
     'nixie-backup',
     {
       metadata: { name: 'nixie-backup', namespace },

@@ -142,13 +142,15 @@ upload script against a stand-in for the GitHub CLI, which proves the schema goe
 broken Dockerfile or release script therefore fails the pull request, never a release.
 
 The workspace keeps the component's package at version 0.0.0, so a release pull request changes no
-version that the lockfile records. The publish writes the release's version into the package for the
+version that the lockfile records. The workspace consumes the package as TypeScript source, and Node
+refuses TypeScript inside `node_modules`, so the publish builds an ES module and its declarations
+and points the package's exports at them. It writes the release's version into the package for the
 pack, and Bun packs it, because Bun turns each `catalog:` version into the version it pins. npm then
 publishes the tarball through trusted publishing, which ties the package to the release workflow by
 the workflow's own token, so the repo holds no npm token. The K8s package workflow rehearses the
 publish on each push to main, and on each pull request that changes a file the package or the
 publish reads: it packs the component, checks that the tarball holds no workspace version and no
-test file, and runs npm's publish as a dry run.
+TypeScript source, imports the installed tarball in Node, and runs npm's publish as a dry run.
 
 ## Attestations
 
