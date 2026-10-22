@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecordKeys, readRecords } from '@heynixie/log';
 import { writeImageOfferRecord } from '@heynixie/memory/test-utils';
+import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
 import { createDeviceSession } from './test-utils/create-device-session';
@@ -11,15 +12,18 @@ import { writeRecordForget } from './write-record-forget';
 
 async function setupTest() {
   const api = await startTestAPI();
-  const laptop = await createDeviceSession(api.context, 'laptop');
 
-  return { ...api, laptop };
+  return { ...api };
 }
 
 test("it leaves no readable copy of an earlier release's image offer once its image message is forgotten", async () => {
   const ctx = await setupTest();
 
-  const sent = await writeOwnerMessage(ctx.context, ctx.laptop.caller, {
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const sent = await writeOwnerMessage(ctx.context, laptop.caller, {
     clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     thread: 'conversation',
     text: 'Our new puppy',
@@ -36,7 +40,7 @@ test("it leaves no readable copy of an earlier release's image offer once its im
     text: 'The owner has a beagle called Biscuit',
   });
 
-  await writeRecordForget(ctx.context, ctx.laptop.caller, {
+  await writeRecordForget(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     thread: 'conversation',
     sequence: sent.sequence,
@@ -52,7 +56,11 @@ test("it leaves no readable copy of an earlier release's image offer once its im
 test('it commits record.forgotten once when two cleanups of the same forget overlap', async () => {
   const ctx = await setupTest();
 
-  const sent = await writeOwnerMessage(ctx.context, ctx.laptop.caller, {
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const sent = await writeOwnerMessage(ctx.context, laptop.caller, {
     clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     thread: 'conversation',
     text: 'The locker code is 2291.',
@@ -61,7 +69,7 @@ test('it commits record.forgotten once when two cleanups of the same forget over
 
   invariant(sent.status === 'written');
 
-  await writeRecordForget(ctx.context, ctx.laptop.caller, {
+  await writeRecordForget(ctx.context, laptop.caller, {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     thread: 'conversation',
     sequence: sent.sequence,
@@ -85,9 +93,13 @@ test('it commits record.forgotten once when two cleanups of the same forget over
 test('it skips the session cleanup of a record already forgotten', async () => {
   const ctx = await setupTest();
 
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
 
-  const sent = await writeOwnerMessage(ctx.context, ctx.laptop.caller, {
+  const sent = await writeOwnerMessage(ctx.context, laptop.caller, {
     clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     thread: 'conversation',
     text: 'The locker code is 2291.',
@@ -98,7 +110,7 @@ test('it skips the session cleanup of a record already forgotten', async () => {
 
   await writeRecordForget(
     { ...ctx.context, readSessionCleanup: () => () => Promise.resolve() },
-    ctx.laptop.caller,
+    laptop.caller,
     {
       clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
       thread: 'conversation',

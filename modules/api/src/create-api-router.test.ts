@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
 import { writeRecords } from '@heynixie/log';
+import { createConversationTask } from '@heynixie/tasks';
 import { isDefinedError, safe } from '@orpc/client';
 import { createEnrolmentCode } from './create-enrolment-code';
 import { buildTestClient } from './test-utils/build-test-client';
@@ -265,6 +266,9 @@ test('#sessions.revoke drops the cookie of a browser that revokes its own sessio
 
 test('#conversation.send writes a message once for the same client message ID', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -285,6 +289,9 @@ test('#conversation.send writes a message once for the same client message ID', 
 
 test('#conversation.send refuses a client message ID that came with another text', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -328,6 +335,9 @@ test('#conversation.send refuses a thread no task has', async () => {
 
 test('#conversation.send stores 2 images, which the thread lists and conversation.readImage returns', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -463,6 +473,9 @@ test('#conversation.send refuses more than 4 images with a typed error', async (
 
 test('#conversation.send refuses a client message ID that came with another number of images', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -489,6 +502,9 @@ test('#conversation.send refuses a client message ID that came with another numb
 
 test('#conversation.send refuses a client message ID that came with other image bytes', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -518,6 +534,9 @@ test('#conversation.send refuses a client message ID that came with other image 
 
 test('#conversation.send answers a retry with the same image bytes as a duplicate', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -543,6 +562,9 @@ test('#conversation.send answers a retry with the same image bytes as a duplicat
 
 test('#conversation.readImage refuses an image of a forgotten message', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -574,6 +596,9 @@ test('#conversation.readImage refuses an image of a forgotten message', async ()
 
 test('#conversation.readImage refuses a position past the images of the message', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -629,6 +654,9 @@ test('#conversation.send from a revoked session writes only a refusal record', a
 
 test('#conversation.forget forgets a message, which the thread then shows with no text', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -677,6 +705,9 @@ test('#conversation.forget refuses a sequence that names no message on the threa
 
 test('#conversation.forget refuses a client action ID that came before for another record', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -728,6 +759,9 @@ test('#conversation.forget refuses a caller with no session', async () => {
 
 test('#conversation.read returns a page of the thread and the sequence it read at', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -774,6 +808,9 @@ test('#conversation.read refuses a thread with no records', async () => {
 
 test('#records.follow streams the records of the thread after the sequence asked for', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -802,6 +839,9 @@ test('#records.follow streams the records of the thread after the sequence asked
 
 test('#log.follow still streams the records of the thread for a client of an earlier release', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -821,6 +861,9 @@ test('#log.follow still streams the records of the thread for a client of an ear
 
 test('#records.follow resumes from the last event ID with exactly the records it missed', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -965,6 +1008,9 @@ test("#sessions.issueCode refuses another session's retry of the action", async 
 
 test('#memory.writerStatus reports every message of yours as backlog before the writer starts', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);

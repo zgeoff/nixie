@@ -40,13 +40,14 @@ async function setupTest() {
 
   api.setMemory(memory);
 
-  const laptop = await createDeviceSession(api.context, 'laptop');
-
-  return { ...api, memory, cleanupSessions, client: buildTestClient(api.url, laptop.token) };
+  return { ...api, memory, cleanupSessions };
 }
 
 test('#memory.previewForget shows the item with every version and what its forget destroys', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   const item = await ctx.memory.remember({
     text: 'Plays the cello on Thursdays',
@@ -58,7 +59,7 @@ test('#memory.previewForget shows the item with every version and what its forge
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const preview = await ctx.client.memory.previewForget(retired);
+  const preview = await client.memory.previewForget(retired);
 
   expect(preview).toMatchObject({
     itemID: item.itemID,
@@ -74,6 +75,9 @@ test('#memory.previewForget shows the item with every version and what its forge
 
 test('#memory.previewForget refuses a version the item moved past', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   const item = await ctx.memory.remember({
     text: 'Plays the cello on Thursdays',
@@ -85,7 +89,7 @@ test('#memory.previewForget refuses a version the item moved past', async () => 
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const preview = ctx.client.memory.previewForget(item);
+  const preview = client.memory.previewForget(item);
 
   await preview.catch(() => {});
 
@@ -94,8 +98,10 @@ test('#memory.previewForget refuses a version the item moved past', async () => 
 
 test('#memory.previewForget refuses an item that does not exist', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
 
-  const preview = ctx.client.memory.previewForget({ itemID: 'no-such-item', version: 1 });
+  const client = buildTestClient(ctx.url, laptop.token);
+  const preview = client.memory.previewForget({ itemID: 'no-such-item', version: 1 });
 
   await preview.catch(() => {});
 
@@ -104,15 +110,18 @@ test('#memory.previewForget refuses an item that does not exist', async () => {
 
 test('#memory.forget forgets the item at the version its preview showed, so every version reads as a gap', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   const item = await ctx.memory.remember({
     text: 'The shed padlock code is 2291',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const preview = await ctx.client.memory.previewForget(item);
+  const preview = await client.memory.previewForget(item);
 
-  const forgotten = await ctx.client.memory.forget({
+  const forgotten = await client.memory.forget({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     itemID: item.itemID,
     version: preview.version,
@@ -126,13 +135,16 @@ test('#memory.forget forgets the item at the version its preview showed, so ever
 
 test('#memory.forget drops the item from the index, so a search no longer finds it', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   const item = await ctx.memory.remember({
     text: 'The shed padlock code is 2291',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  await ctx.client.memory.forget({
+  await client.memory.forget({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     ...item,
   });
@@ -144,13 +156,16 @@ test('#memory.forget drops the item from the index, so a search no longer finds 
 
 test('#memory.forget cleans up the sessions, then records the forget as complete', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   const item = await ctx.memory.remember({
     text: 'The shed padlock code is 2291',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  await ctx.client.memory.forget({
+  await client.memory.forget({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     ...item,
   });
@@ -166,6 +181,9 @@ test('#memory.forget cleans up the sessions, then records the forget as complete
 
 test('#memory.forget completes a forget on the retry after its session cleanup failed', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   const item = await ctx.memory.remember({
     text: 'The shed padlock code is 2291',
@@ -176,11 +194,11 @@ test('#memory.forget completes a forget on the retry after its session cleanup f
     Promise.reject(new Error('the guest did not answer')),
   );
 
-  const failed = await ctx.client.memory
+  const failed = await client.memory
     .forget({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', ...item })
     .catch((error: unknown) => error);
 
-  const retried = await ctx.client.memory.forget({
+  const retried = await client.memory.forget({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     ...item,
   });
@@ -194,13 +212,16 @@ test('#memory.forget completes a forget on the retry after its session cleanup f
 
 test('#memory.forget refuses a forget confirmed after the item changed, and keeps every version readable', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   const item = await ctx.memory.remember({
     text: 'The shed padlock code is 2291',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const preview = await ctx.client.memory.previewForget(item);
+  const preview = await client.memory.previewForget(item);
 
   await ctx.memory.remember({
     text: 'The shed padlock code is 7730',
@@ -208,7 +229,7 @@ test('#memory.forget refuses a forget confirmed after the item changed, and keep
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const forget = ctx.client.memory.forget({
+  const forget = client.memory.forget({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     itemID: item.itemID,
     version: preview.version,
@@ -231,6 +252,9 @@ test('#memory.forget refuses a forget confirmed after the item changed, and keep
 
 test('#memory.forget begins no forget and cleans up no session for a stale confirmation', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   const item = await ctx.memory.remember({
     text: 'The shed padlock code is 2291',
@@ -243,7 +267,7 @@ test('#memory.forget begins no forget and cleans up no session for a stale confi
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const forget = ctx.client.memory.forget({ clientActionID: crypto.randomUUID(), ...item });
+  const forget = client.memory.forget({ clientActionID: crypto.randomUUID(), ...item });
 
   await forget.catch(() => {});
 
@@ -258,6 +282,9 @@ test('#memory.forget begins no forget and cleans up no session for a stale confi
 
 test('#memory.forget keeps the item in the index for a stale confirmation', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   const item = await ctx.memory.remember({
     text: 'The shed padlock code is 2291',
@@ -270,7 +297,7 @@ test('#memory.forget keeps the item in the index for a stale confirmation', asyn
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const forget = ctx.client.memory.forget({ clientActionID: crypto.randomUUID(), ...item });
+  const forget = client.memory.forget({ clientActionID: crypto.randomUUID(), ...item });
 
   await forget.catch(() => {});
 
@@ -281,6 +308,9 @@ test('#memory.forget keeps the item in the index for a stale confirmation', asyn
 
 test('#memory.forget refuses a client action ID that another change used, and forgets nothing', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
 
   const first = await ctx.memory.remember({
     text: 'Rents a flat on Mill Lane',
@@ -292,12 +322,12 @@ test('#memory.forget refuses a client action ID that another change used, and fo
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  await ctx.client.memory.retire({
+  await client.memory.retire({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     ...first,
   });
 
-  const forget = ctx.client.memory.forget({
+  const forget = client.memory.forget({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     ...second,
   });
