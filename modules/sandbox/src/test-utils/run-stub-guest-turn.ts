@@ -1,6 +1,7 @@
 import { once } from 'node:events';
 import type { GuestFrame, HostFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import { P, match } from 'ts-pattern';
 import type { GuestHome } from '../types';
 import type { StubGuestDisk, StubSessionEntry } from './build-stub-guest-disk';
 import { readStubGuestHistory } from './read-stub-guest-history';
@@ -168,6 +169,14 @@ interface InputAnswer {
 
 const overflowText = 'Prompt is too long';
 
+interface AssistantStep {
+  readonly run: StubGuestRun;
+  readonly state: AnswerState;
+  readonly frames: GuestFrame[];
+
+  readonly readUUID: string | null;
+}
+
 async function runInputCall(
   turn: TurnFrame,
   run: StubGuestRun,
@@ -180,71 +189,82 @@ async function runInputCall(
   const frames: GuestFrame[] = [];
 
   for (let replyCount = 1; ; replyCount += 1) {
-    const reply = run.takeReply();
+    const step: AssistantStep = {
+      run,
+      state,
+      frames,
+      readUUID: replyCount === 1 ? input.uuid : null,
+    };
 
-    if ('gate' in reply) {
-      await waitUnlessStopped(reply.gate(), run.signal);
+    const answer = await match(run.takeReply())
+      .with({ modelAuthRefusal: P.string }, (refused): InputAnswer => ({
+        frames,
+        overflow: null,
+        refusal: refused.modelAuthRefusal,
+      }))
+      .with({ failure: P.string }, (failed) => {
+        throw new Error(failed.failure);
+      })
+      .with({ overflow: P.string }, (overflowed): InputAnswer => {
+        const message = {
+          uuid: crypto.randomUUID(),
+          role: 'assistant',
+          text: overflowText,
+          tokens: 0,
+        } as const;
+
+        state.entries.push(message);
+
+        frames.push({
+          type: 'assistant',
+          messageID: message.uuid,
+          text: overflowText,
+          toolUses: [],
+        });
+
+        return { frames, overflow: overflowed.overflow, refusal: null };
+      })
+      .with({ text: P.string }, async (answered): Promise<InputAnswer> => {
+        if (answered.gate !== undefined) {
+          await waitUnlessStopped(answered.gate(), run.signal);
+        }
+
+        const entry = pushAssistantEntry(answered.text, step);
+
+        frames.push({
+          type: 'assistant',
+          messageID: entry.uuid,
+          text: answered.text,
+          toolUses: [],
+        });
+
+        return { frames, overflow: null, refusal: null };
+      })
+      .with({ toolUse: P.select() }, async (toolUse) => {
+        const entry = pushAssistantEntry(JSON.stringify(toolUse), step);
+
+        frames.push({
+          type: 'assistant',
+          messageID: entry.uuid,
+          text: '',
+          toolUses: [
+            { id: `toolu_${crypto.randomUUID().replaceAll('-', '')}`, name: toolUse.name },
+          ],
+        });
+
+        const result = await runStubToolCall(turn, run, toolUse);
+
+        state.entries.push(result);
+
+        state.progress.committed = { sessionID: state.fork.sessionID, messageID: result.uuid };
+
+        return null;
+      })
+      .exhaustive();
+
+    if (answer !== null) {
+      return answer;
     }
-
-    if ('modelAuthRefusal' in reply) {
-      return { frames, overflow: null, refusal: reply.modelAuthRefusal };
-    }
-
-    if ('failure' in reply) {
-      throw new Error(reply.failure);
-    }
-
-    if ('overflow' in reply) {
-      const message = {
-        uuid: crypto.randomUUID(),
-        role: 'assistant',
-        text: overflowText,
-        tokens: 0,
-      } as const;
-
-      state.entries.push(message);
-      frames.push({ type: 'assistant', messageID: message.uuid, text: overflowText, toolUses: [] });
-
-      return { frames, overflow: reply.overflow, refusal: null };
-    }
-
-    const contextSize = state.fork.contextSize;
-
-    state.fork.contextSize = null;
-
-    const entry = buildAssistantEntry(reply, {
-      uuid: crypto.randomUUID(),
-      entries: state.entries,
-      contextSize,
-      countTokens: run.countTokens,
-    });
-
-    state.entries.push(entry);
-
-    if (replyCount === 1) {
-      frames.push({ type: 'read', uuids: [input.uuid] });
-    }
-
-    if ('text' in reply) {
-      frames.push({ type: 'assistant', messageID: entry.uuid, text: reply.text, toolUses: [] });
-
-      return { frames, overflow: null, refusal: null };
-    }
-
-    frames.push({
-      type: 'assistant',
-      messageID: entry.uuid,
-      text: '',
-      toolUses: [
-        { id: `toolu_${crypto.randomUUID().replaceAll('-', '')}`, name: reply.toolUse.name },
-      ],
-    });
-
-    const result = await runStubToolCall(turn, run, reply.toolUse);
-
-    state.entries.push(result);
-
-    state.progress.committed = { sessionID: state.fork.sessionID, messageID: result.uuid };
   }
 }
 
@@ -268,6 +288,27 @@ async function waitUnlessStopped<Value>(call: Promise<Value>, signal: AbortSigna
   }
 }
 
+function pushAssistantEntry(text: string, step: AssistantStep): StubSessionEntry {
+  const contextSize = step.state.fork.contextSize;
+
+  step.state.fork.contextSize = null;
+
+  const entry = buildAssistantEntry(text, {
+    uuid: crypto.randomUUID(),
+    entries: step.state.entries,
+    contextSize,
+    countTokens: step.run.countTokens,
+  });
+
+  step.state.entries.push(entry);
+
+  if (step.readUUID !== null) {
+    step.frames.push({ type: 'read', uuids: [step.readUUID] });
+  }
+
+  return entry;
+}
+
 interface AssistantEntrySpec {
   readonly uuid: string;
 
@@ -277,14 +318,7 @@ interface AssistantEntrySpec {
   readonly countTokens: (text: string) => number;
 }
 
-function buildAssistantEntry(
-  reply: Exclude<
-    StubGuestReply,
-    { overflow: unknown } | { modelAuthRefusal: unknown } | { failure: unknown }
-  >,
-  spec: AssistantEntrySpec,
-): StubSessionEntry {
-  const text = 'text' in reply ? reply.text : JSON.stringify(reply.toolUse);
+function buildAssistantEntry(text: string, spec: AssistantEntrySpec): StubSessionEntry {
   const tokens = spec.countTokens(text);
 
   const gap =
