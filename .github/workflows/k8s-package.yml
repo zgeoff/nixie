@@ -1,0 +1,61 @@
+# Rehearses the release's publish of the Kubernetes component: it packs the package at a rehearsal
+# version, checks the tarball, and runs npm's publish as a dry run. A pull request runs it only when
+# it changes a file the package or the publish reads; every push to main runs it in full.
+name: K8s package
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: k8s-package-${{ github.ref }}
+  cancel-in-progress: true
+
+# an explicit bash runs each step with pipefail, so a failure inside a pipeline fails the step
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  changes:
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@sync-v23
+    with:
+      paths: |
+        .github/workflows/k8s-package.yml
+        .github/scripts/publish-k8s-package.sh
+        .bun-version
+        bun.lock
+        bunfig.toml
+        package.json
+        deploy/pulumi-k8s/**
+
+  rehearse:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: Install
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Pack the component and dry-run its publish
+        run: .github/scripts/publish-k8s-package.sh 0.0.0-rehearsal --dry-run
