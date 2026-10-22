@@ -843,6 +843,10 @@ test("it waits 30 minutes for the StatefulSet's rollout", async () => {
         deployKey: 'an ssh key for tests',
       },
       storageClassName: 'local-retain',
+      web: {
+        image:
+          'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+      },
     },
     { transformations: [transformation] },
   );
