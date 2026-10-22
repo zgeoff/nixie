@@ -66,6 +66,44 @@ test('it adds the item to the pinned core when you approve its pin', async () =>
   ]);
 });
 
+test('it applies one of two approvals of the same pin that arrive together, and records one pin', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Takes the early ferry on Mondays',
+    provenance: buildMockProvenance(),
+  });
+
+  await memory.store.writes.pin({ target: item, caller: buildMockWriteCaller() });
+
+  const [proposal] = await memory.store.proposals.listPending();
+
+  invariant(proposal);
+
+  const answer = {
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'identity-1',
+  };
+
+  const results = await Promise.allSettled([
+    memory.store.proposals.approve(answer),
+    memory.store.proposals.approve(answer),
+  ]);
+
+  const records = await readRecords(memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.approval_recorded', 'memory.pinned'],
+  });
+
+  expect(results.map((result) => result.status)).toIncludeSameMembers(['fulfilled', 'rejected']);
+
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual([
+    'memory.approval_recorded',
+    'memory.pinned',
+  ]);
+});
+
 test('it refuses to approve a pin that takes the pinned core past its budget, and pins nothing', async () => {
   const memory = await startTestMemory();
 
