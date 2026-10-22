@@ -122,6 +122,8 @@ test('it stops waking on commits once stopped', async () => {
     onError: () => {},
   });
 
+  onTestFinished(() => runners.stop(0));
+
   await waitForCondition(() => ctx.clock.countSleepers() === 4);
 
   await runners.stop(0);
