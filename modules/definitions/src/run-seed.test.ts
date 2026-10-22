@@ -393,6 +393,38 @@ test('it seeds again when git-sync moves to a new commit over the same files', a
   expect(result.inForce?.revision).toBe('a3d91f6c0e2b84d7f5c1a9e3b6d0f2c8e4a7b519');
 });
 
+test('it seeds again when the origin changes over the same commit and files', async () => {
+  const ctx = await setupTest();
+
+  const sync = join(ctx.directory, 'sync');
+
+  const worktree = await createStubGitSyncWorktree(sync, {
+    commit: '5be0c4f1a9d27e83b6c0f4a1d9e72b5c8a3f6d10',
+    config: '[remote "origin"]\n\turl = https://git.example.test/harbor-lab/tern-definitions\n',
+  });
+
+  await writeFile(join(worktree, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(worktree, 'persona.md'), '# Persona\n');
+
+  const source = createPathSource({ directory: join(sync, 'current') });
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source, policy });
+
+  await writeFile(
+    join(sync, '.git', 'config'),
+    '[remote "origin"]\n\turl = https://git.example.test/gannet-co/tern-definitions\n',
+  );
+
+  const result = await runSeed({ log: ctx.log, source, policy });
+
+  expect(result.status).toBe('seeded');
+
+  expect(result.inForce?.sourceRepository).toBe(
+    'https://git.example.test/gannet-co/tern-definitions',
+  );
+});
+
 test('it writes nothing when the newest seed already holds the same definitions', async () => {
   const ctx = await setupTest();
 
