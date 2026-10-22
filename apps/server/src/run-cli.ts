@@ -55,7 +55,6 @@ async function runServe(flags: CLIFlags, io: CLIIO): Promise<number> {
     ...(io.createSandboxAdapter === undefined
       ? {}
       : { createSandboxAdapter: io.createSandboxAdapter }),
-    ...(io.taskPollMs === undefined ? {} : { taskPollMs: io.taskPollMs }),
   });
 
   const exitCode = await Promise.race([

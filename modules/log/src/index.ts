@@ -27,6 +27,7 @@ export { startWriter } from './start-writer';
 export type { RecordWake, RecordWakeOptions } from './start-record-wake';
 export { startRecordWake } from './start-record-wake';
 export { subscribeToCommits } from './subscribe-to-commits';
+export { subscribeToRecordCommits } from './subscribe-to-record-commits';
 export type { SubscribeToRecordsOptions } from './subscribe-to-records';
 export { subscribeToRecords } from './subscribe-to-records';
 export { threadsProjection } from './threads-projection';

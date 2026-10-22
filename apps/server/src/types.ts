@@ -53,8 +53,6 @@ export interface CLIIO {
   readonly waitForSignal: () => Promise<string>;
 
   readonly createSandboxAdapter?: (options: SandboxAdapterOptions) => SandboxAdapter;
-
-  readonly taskPollMs?: number;
 }
 
 export interface CLIFlags {

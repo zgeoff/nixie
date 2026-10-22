@@ -36,7 +36,6 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'runners',
     needs: [
-      'inputs',
       'server_parts',
       'conversation_task',
       'conversation_imp',
@@ -53,10 +52,8 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       const conversationStep = reader.get('conversation_imp').runStep;
 
-      await startRunners(
-        parts,
-        (input) => (systemSteps.get(input.taskID) ?? conversationStep)(input),
-        reader.get('inputs').options.taskPollMs,
+      await startRunners(parts, (input) =>
+        (systemSteps.get(input.taskID) ?? conversationStep)(input),
       );
 
       parts.state.update({ areRunnersStarted: true });

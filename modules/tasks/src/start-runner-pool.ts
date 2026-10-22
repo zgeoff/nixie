@@ -76,8 +76,11 @@ async function runRunner<W>(
 ): Promise<void> {
   try {
     while (!state.stopping.aborted) {
+      // A wake that lands during the claim aborts this signal, so the sleep after a miss ends at once.
+      const wake = state.getWakeSignal();
+
       if (!(await runClaim(options, state))) {
-        await clock.sleep(options.pollMs, AbortSignal.any([state.stopping, state.getWakeSignal()]));
+        await clock.sleep(options.pollMs, AbortSignal.any([state.stopping, wake]));
       }
     }
   } catch (error) {

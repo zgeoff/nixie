@@ -7,11 +7,7 @@ import { makeStepErrorLogger } from './make-step-error-logger';
 import { startQueueCheckTask } from './start-queue-check-task';
 import type { ServerParts } from './types';
 
-export async function startRunners(
-  parts: ServerParts,
-  runStep: RunStep,
-  pollMs: number | undefined,
-): Promise<void> {
+export async function startRunners(parts: ServerParts, runStep: RunStep): Promise<void> {
   const onError = (error: unknown) => {
     parts.log('runner.failed', toErrorFields(error));
     parts.onFailure(error);
@@ -30,7 +26,6 @@ export async function startRunners(
     },
     onError,
     size: parts.config.tasks.runners,
-    ...(pollMs === undefined ? {} : { pollMs }),
   });
 
   const actions = startActionRunners(parts.context, {

@@ -4,7 +4,7 @@ import { claimTask } from './claim-task';
 import { createTask } from './create-task';
 import { startTaskRunners } from './start-task-runners';
 import { startTestTasks } from './test-utils/start-test-tasks';
-import type { StepErrored, StepResult, TasksTables } from './types';
+import type { RunStep, StepErrored, StepResult, TasksTables } from './types';
 import { writeStepCommit } from './write-step-commit';
 
 async function setupTest() {
@@ -77,6 +77,57 @@ test('it runs a claimed step and commits its result', async () => {
   });
 
   expect(runners).toBeObject();
+});
+
+test('it runs a task created while every runner sleeps without waiting for the poll', async () => {
+  const ctx = await setupTest();
+
+  const ran = mock<RunStep>(() =>
+    Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
+  );
+
+  const runners = startTaskRunners(ctx.context, {
+    runStep: ran,
+    onStepErrored: () => {},
+    onError: () => {},
+  });
+
+  onTestFinished(() => runners.stop(0));
+
+  await waitForCondition(() => ctx.clock.countSleepers() === 4);
+
+  const createdAt = ctx.clock.now();
+
+  const taskID = await createTask(ctx.context, 'water the ferns');
+
+  await waitForCondition(() => ran.mock.calls.length === 1);
+
+  expect(ran).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ taskID }));
+  expect(ctx.clock.now()).toBe(createdAt);
+});
+
+test('it stops waking on commits once stopped', async () => {
+  const ctx = await setupTest();
+
+  const ran = mock(() => {});
+
+  const runners = startTaskRunners(ctx.context, {
+    runStep: () => {
+      ran();
+
+      return Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] });
+    },
+    onStepErrored: () => {},
+    onError: () => {},
+  });
+
+  await waitForCondition(() => ctx.clock.countSleepers() === 4);
+
+  await runners.stop(0);
+
+  await createTask(ctx.context, 'sweep the porch');
+
+  expect(ran).not.toHaveBeenCalled();
 });
 
 test('it reports a step that throws once its error record commits', async () => {

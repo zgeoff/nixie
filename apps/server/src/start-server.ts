@@ -24,8 +24,6 @@ export interface ServerOptions {
   readonly log: Logger;
 
   readonly createSandboxAdapter?: (options: SandboxAdapterOptions) => SandboxAdapter;
-
-  readonly taskPollMs?: number;
 }
 
 export interface Server {

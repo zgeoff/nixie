@@ -172,9 +172,6 @@ function startNixieRun(start: TestNixieFiles): TestNixie {
 
           return start.guest.adapter;
         },
-
-        // nothing wakes an idle task runner when a message lands, so each turn waits up to one poll
-        taskPollMs: 20,
       });
     } finally {
       state.hasExited = true;
