@@ -72,7 +72,7 @@ test('#memory.export streams one export file of every item, which the schema acc
 
   expect(parsed.data).toMatchObject({
     header: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       exportedAt: '1970-01-01T00:16:40.000Z',
       snapshotHash: 'sha256:test',
     },
@@ -128,7 +128,7 @@ test('#memory.export records the export as a checked action with its time, schem
       identity_id: laptop.caller.identityID,
       result: JSON.stringify({
         exportedAt: 1_000_000,
-        schemaVersion: 3,
+        schemaVersion: 4,
         snapshotHash: 'sha256:test',
       }),
     },
@@ -157,7 +157,7 @@ test('#memory.export streams the file again for a retry with the same client act
     JSON.parse(retried.flatMap((event) => ('chunk' in event ? [event.chunk] : [])).join('')),
   ).toStrictEqual({
     header: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       exportedAt: '1970-01-01T00:16:40.000Z',
       snapshotHash: 'sha256:test',
     },

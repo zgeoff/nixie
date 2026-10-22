@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { memoryExportSchemaVersion } from './memory-export-schema-version';
 
-const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer']);
+const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer', 'lapse']);
 const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
 
 const provenanceSchema = z.strictObject({
@@ -22,6 +22,7 @@ const versionSchema = z.strictObject({
   state: z.enum(['active', 'retired']),
   text: z.string().nullable(),
   evidenceQuote: z.string().nullable(),
+  until: z.iso.datetime().nullable(),
   provenance: provenanceSchema,
 });
 

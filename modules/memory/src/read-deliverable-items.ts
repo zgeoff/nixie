@@ -34,13 +34,22 @@ export async function readDeliverableItems(
   }
 
   const db = query.db ?? parts.context.log.writer.db.$extendTables<MemoryTables>();
+  const now = parts.context.gate.clock.now();
 
-  const rows = await db
+  const storedStates: readonly MemoryState[] = query.states.includes('retired')
+    ? [...query.states, 'active']
+    : query.states;
+
+  const stored = await db
     .selectFrom('memory_items')
     .selectAll()
     .where('item_id', 'in', query.itemIDs)
-    .where('state', 'in', query.states)
+    .where('state', 'in', storedStates)
     .execute();
+
+  const rows = stored
+    .map((row) => toDeliveredRow(row, now))
+    .filter((row) => query.states.includes(row.state));
 
   const keys = await readRecordKeys(
     parts.context.log,
@@ -61,6 +70,12 @@ export async function readDeliverableItems(
   );
 
   return items.filter((item) => item !== null);
+}
+
+function toDeliveredRow(row: MemoryItemRow, now: number): MemoryItemRow {
+  const isLapsed = row.state === 'active' && row.until !== null && row.until <= now;
+
+  return isLapsed ? { ...row, state: 'retired', is_pinned: 0 } : row;
 }
 
 interface ItemToRead {
@@ -99,6 +114,7 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
       isPinned: item.row.is_pinned === 1,
       subject: getRowSubject(item.row),
       ...current,
+      ...(item.row.state === 'retired' ? { state: 'retired' as const } : {}),
       ...(item.includeHistory ? { history: readable } : {}),
     };
   } catch {

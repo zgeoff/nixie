@@ -31,6 +31,7 @@ export interface NewVersion {
   readonly text: VersionText;
   readonly evidence: QuoteEvidence | null;
   readonly intentEvidence: QuoteEvidence | null;
+  readonly until: number | null;
 }
 
 type ReadEarlierVersion = (version: number) => Promise<ReadableVersion>;
@@ -191,6 +192,7 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
     model: provenance.model ?? null,
     noticeKey: written.plan.noticeKey ?? null,
     ...(written.next.change === 'created' ? { shortID: written.shortID } : {}),
+    ...(written.next.until === null ? {} : { until: written.next.until }),
   };
 
   const approval = written.plan.approval;

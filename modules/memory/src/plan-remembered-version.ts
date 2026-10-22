@@ -22,6 +22,7 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
           text,
           evidence,
           intentEvidence: null,
+          until: request.until ?? null,
         }),
       ...pin,
       ...(request.subject === undefined ? {} : { subject: request.subject }),
@@ -40,6 +41,7 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
         text,
         evidence,
         intentEvidence: null,
+        until: request.until === undefined ? before.row.until : request.until,
       };
     },
     ...pin,

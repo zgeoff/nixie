@@ -10,6 +10,7 @@ export function writeUndo(parts: StoreParts, request: UndoRequest): Promise<Vers
       ? {}
       : { writeInTransaction: request.writeInTransaction }),
     readNextVersion: async (readEarlier, current) => {
+      const undone = await readEarlier(current);
       const earlier = await readEarlier(Math.max(current - 1, 1));
 
       return {
@@ -19,6 +20,7 @@ export function writeUndo(parts: StoreParts, request: UndoRequest): Promise<Vers
         evidence: parseEvidence(earlier.row.evidence),
         source: earlier.row.source,
         intentEvidence: parseEvidence(earlier.row.intent_evidence),
+        until: undone.row.origin === 'lapse' ? null : earlier.row.until,
       };
     },
   });

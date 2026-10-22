@@ -55,7 +55,7 @@ test('it reports the subject counts before and after the migration that a copy o
 
   expect(report).toStrictEqual({
     from: 17,
-    to: 22,
+    to: 23,
     before: {
       items: { owner: 2, shared: 0, self: 1 },
       proposals: { owner: 0, shared: 0, self: 0 },
