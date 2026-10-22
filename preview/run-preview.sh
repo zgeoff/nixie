@@ -16,7 +16,8 @@ config=/app/preview/config.yaml
 
 if [ -n "${NIXIE_PREVIEW_MODEL_ROUTE:-}" ]; then
   config=/var/lib/nixie-preview/config.yaml
-  /app/preview/write-route-config.sh "$NIXIE_PREVIEW_MODEL_ROUTE" /app/preview/config.yaml "$config"
+  bun --define NIXIE_TEST_BUILD=true /app/apps/server/src/run-preview-route-config.ts \
+    --route "$NIXIE_PREVIEW_MODEL_ROUTE" --source /app/preview/config.yaml --target "$config"
 fi
 
 exec bun --define NIXIE_TEST_BUILD=true /app/apps/server/src/main.ts "$@" \

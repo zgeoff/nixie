@@ -27,7 +27,8 @@
         "src/run-release-build.ts",
         "src/test-utils/run-stub-sops.ts",
         "src/run-config-schema-check.ts",
-        "src/run-release-manifest.ts"
+        "src/run-release-manifest.ts",
+        "src/run-preview-route-config.ts"
       ]
     },
     // the release workflows run the migration check and the schema report by their paths, so no
