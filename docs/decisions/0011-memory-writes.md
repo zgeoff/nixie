@@ -1,7 +1,7 @@
 # 0011: Which memory writes skip review
 
 - Date: 2026-10-08
-- Updated: 2026-10-20
+- Updated: 2026-10-22
 - Status: decided
 - Design: [memory writes](../design/platform/memory/writes.md)
 - Research:
@@ -37,6 +37,14 @@ with you. No words of yours back it, so every self-note is a proposal, and only 
 writes one. You can pin an active self-note as you pin any other item, and it reaches the
 conversation labelled with the model that wrote it and its date. An allow rule that skips review for
 a self-note must name that kind of item, so a rule on `memory.remember` alone never covers one.
+
+nixie asks to pin an item it already has through `memory.pin`, and the pin is a proposal by default,
+because the pinned core opens every session and you decide what goes in it. An allow rule that names
+`memory.pin` lets a pin apply at once. `memory.remember` takes no pin, so a new fact that nixie
+wants pinned is a memory and then a pin. nixie unpins an item at once through `memory.unpin`, with
+no review and no undo, because the item stays in memory and still comes up when it's relevant; you
+pin it again from the memory view. nixie sees how many items are pinned and how much of the core's
+budget they use, and only the budget refuses a pin.
 
 A photo you send never counts as your words, and neither does text in it. A memory that nixie saves
 from a photo is a proposal by default, whatever quote it gives, and the proposal shows the photo
@@ -125,3 +133,6 @@ you answer when you choose, singly or through the approval digest from
 - 2026-10-18: you can pin an active self-note, as you can pin an item of any subject.
 - 2026-10-20: a memory from a photo is a proposal by default, and only an allow rule that names the
   photo source skips its review.
+- 2026-10-22: nixie pins an existing item through `memory.pin`, a proposal unless an allow rule
+  names the tool, and unpins at once through `memory.unpin`. `memory.remember` takes no pin, and
+  nixie sees the pinned count and the core's tokens against its budget.

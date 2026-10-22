@@ -6,7 +6,8 @@ content gate, and `memory.retire` passes an intent gate. Each gate runs code che
 a message the user typed, then asks a separate checker model whether the message asserts the memory.
 The first check that fails ends the gate, and the write becomes a proposal with that check as its
 review reason. A write that fails a check therefore waits for the user instead of failing, and
-nothing the model writes reaches memory on the model's word alone.
+nothing the model writes reaches memory on the model's word alone. A pin waits for review too, and
+an unpin applies at once, because it adds nothing to memory ([pins](#pins)).
 
 [The memory store](./store.md) covers the items, versions and keys that a write changes. The gates
 follow [0011](../../decisions/0011-memory-writes.md). [The memory writer](./writer.md) covers the
@@ -32,9 +33,8 @@ runs these steps in order:
 A write from a memory writer batch skips the first step: the one message it cites is its evidence,
 and [the memory writer](./writer.md#publishing) covers how its batch publishes it.
 
-A write that pins its item waits for review even when every check passes, because a pinned item
-rides in the system prompt of every turn. A memory text that holds a Unicode format character, such
-as a zero-width space or a bidirectional control, fails before any check runs.
+A memory text that holds a Unicode format character, such as a zero-width space or a bidirectional
+control, fails before any check runs.
 
 A message that backed an item the user later forgot never backs a write again. The forget records
 the sequences of its evidence messages, and a quote found only in those messages becomes a proposal
@@ -105,6 +105,34 @@ The token check never runs on a retirement, because a retirement adds no text. T
 version copies the stored text with that text's source and evidence, and records its own intent
 quote and checks beside them.
 
+## Pins
+
+`memory.pin` asks to add an item the model already has to
+[the pinned core](./context.md#the-pinned-core), by the item and the version the thread read. A pin
+is a proposal of its own with the pinned reason, because the core opens every session and costs
+every turn that reads it, so the user decides what goes in. No quote backs a pin and no checker
+judges one: a pin adds no text, so the gate has nothing of the user's to check. `memory.remember`
+takes no pin, so a new fact that the model wants pinned is a remember and then a pin. The remember
+passes [the content gate](#the-content-gate) like any other, and the pin waits for the user's review
+unless an allow rule names `memory.pin`.
+
+A pin of a retired item, a forgotten one or a moved-on version fails before anything is written. An
+active item past its [end time](./store.md#end-times) counts as retired, so its pin fails the same
+way. A pin of an item already in the core applies at once and writes nothing. An approval pins the
+item through the store, bound to the proposal's version, so an approval fails as stale once the item
+moved on, fails as retired once its end time passed, and fails with `PINNED_CORE_FULL` when the core
+has no room left in its budget. The approval and the pin record commit together, and a rejected or
+lapsed pin leaves the core as it was.
+
+`memory.unpin` takes an item out of the core at once and needs no review, because the item stays in
+memory and recall still finds it. It writes the pin record that the user's own unpin writes, with
+the calling thread, and adds no version, so the store's undo never reaches it and the user pins the
+item again from the memory view. An unpin of an item outside the core fails and writes nothing. The
+next turn's change note names the unpinned item ([the pinned core](./context.md#the-pinned-core)).
+
+The memory writer never pins, and its edit of a pinned item waits for review even when every check
+passes ([publishing](./writer.md#publishing)).
+
 ## Self-notes
 
 A self-note is an item whose subject is self: nixie writes it about itself, in its own voice, such
@@ -125,9 +153,9 @@ Only the conversation creates a self-note, because only a persona thread speaks 
 self-note write from a task or from the memory writer fails before any check runs and writes
 nothing, and so does the memory writer's edit of a self-note. The memory writer's tools take no self
 subject, and the writer [flags a possible self-note](./writer.md#flags-of-possible-self-notes) for
-nixie to write instead. A self-note that asks for a pin waits for review as any self-note does. A
-proposal merges only with a pending proposal of the same subject, and its close match on approval
-looks only at items of its own subject, so an item about the user never revises a self-note.
+nixie to write instead. A self-note takes a pin as any other item does ([pins](#pins)). A proposal
+merges only with a pending proposal of the same subject, and its close match on approval looks only
+at items of its own subject, so an item about the user never revises a self-note.
 
 The conversation's retire of a self-note skips the intent gate and applies at once, with a notice
 entry whose undo brings the note back. A retirement only narrows what the conversation reads, and
@@ -190,43 +218,46 @@ The user's allow rule on a content-gate tool lets a write through that tool skip
 checker. The gate looks up the rule by the tool the write came through, `memory.edit` for a write
 that names an item and `memory.remember` for a new item, so a rule on one tool never covers the
 other. The rule never skips the token check, which then compares against everything the user typed
-in the window. No quote of the user's backs such a write, so its source is outside content. The
-policy engine has no user rules, so the gate finds no allow rule and every write runs the full gate.
+in the window. No quote of the user's backs such a write, so its source is outside content. An allow
+rule that names `memory.pin` lets a pin apply at once with no proposal, and a rule on either content
+tool never covers a pin. The policy engine has no user rules, so the gate finds no allow rule and
+every write runs the full gate.
 
 ## Memory proposals
 
 A write that fails a gate becomes a memory proposal, bound to its exact operation: the text, the
-quote and the target version for a remember, or the intent quote and the target version for a
-retirement. The proposal's text, quote and checker reason are sealed under the item's own key, and a
-proposal for a new item creates that item's key. A forget of the item therefore makes its proposals
-unreadable too. The plain columns hold the review reason, the checks and the provenance, so a count
-of proposals by review reason decrypts nothing. The proposal record and its column keep the reason
-word for word, and every reader shows a reason the release does not know as `other`, because a
-rollback leaves a later release's proposals in the log and the table.
+quote and the target version for a remember, the intent quote and the target version for a
+retirement, or the target version for a pin, whose text is the item's text at that version. The
+proposal's text, quote and checker reason are sealed under the item's own key, and a proposal for a
+new item creates that item's key. A forget of the item therefore makes its proposals unreadable too.
+The plain columns hold the review reason, the checks and the provenance, so a count of proposals by
+review reason decrypts nothing. The proposal record and its column keep the reason word for word,
+and every reader shows a reason the release does not know as `other`, because a rollback leaves a
+later release's proposals in the log and the table.
 
 The user approves, edits or rejects each proposal against the hash of the operation they saw, and a
 hash that no longer matches refuses the answer. An approval applies the bound operation and records
 the approval with the version. An edit approves the user's own text instead, so that version takes
 the user as its origin and cites no evidence. It takes the user as its source too, except for a
-write from a photo ([provenance](#provenance)). A retirement takes no edit. An approval of a
-proposal whose item moved on fails as stale and applies nothing, and the proposal stays pending so
-the client can offer it against the current version. A rejection takes the user's reason when they
-give one. The reason is free text, so it sits in the rejection record's erasable fields under that
-record's own key, and a rejected new item keeps its reason after the rejection deletes the item's
-key.
+write from a photo ([provenance](#provenance)). A retirement takes no edit, and neither does a pin.
+An approval of a proposal whose item moved on fails as stale and applies nothing, and the proposal
+stays pending so the client can offer it against the current version. A rejection takes the user's
+reason when they give one. The reason is free text, so it sits in the rejection record's erasable
+fields under that record's own key, and a rejected new item keeps its reason after the rejection
+deletes the item's key.
 
 A write that proposes the same change as a pending proposal merges into it instead of adding a
 second proposal. The same change means the same operation on the same target, or on a new item for
-both, with the same pin and the same text once case, spacing and a closing full stop are set aside.
-The check runs inside the write's transaction, so two writes of one fact never both miss it. Each
-proposal's text is sealed under its own item's key, so the check opens the text of each pending
-candidate rather than comparing a stored digest, which would outlive a forget. A merge records the
-second proposer against the proposal and adds no proposal against the cap. It moves the proposal's
-lapse to a full lapse window from the merge, so a fact proposed again never lapses sooner than a
-proposal of its own. The listing shows every source that proposed the change, and the second
-proposer's result says that it merged. A conversation whose proposal another source proposed again
-learns of it from an event in [the events block](./writer.md#changes-the-conversation-hears-of). A
-reworded fact stays a proposal of its own: wording that differs is the model's to reconcile.
+both, with the same text once case, spacing and a closing full stop are set aside. The check runs
+inside the write's transaction, so two writes of one fact never both miss it. Each proposal's text
+is sealed under its own item's key, so the check opens the text of each pending candidate rather
+than comparing a stored digest, which would outlive a forget. A merge records the second proposer
+against the proposal and adds no proposal against the cap. It moves the proposal's lapse to a full
+lapse window from the merge, so a fact proposed again never lapses sooner than a proposal of its
+own. The listing shows every source that proposed the change, and the second proposer's result says
+that it merged. A conversation whose proposal another source proposed again learns of it from an
+event in [the events block](./writer.md#changes-the-conversation-hears-of). A reworded fact stays a
+proposal of its own: wording that differs is the model's to reconcile.
 
 An approval of a proposal for a new item first searches the retrieval index with its text. When an
 active item shares enough of the proposal's content words, the approval holds, applies nothing and

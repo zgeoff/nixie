@@ -12,21 +12,24 @@ search of a task's brief on its first turn, and a tool that searches past messag
 
 ## The pinned core
 
-The pinned core is the set of active items the user pinned, such as their name. A new session
-renders it in its first message under a heading for each subject, the user's items first, then the
-shared items, then self-notes, each item with the line that says where it came from and how it came
-up, in pin order within its subject. That message stays in the session's transcript, so a pin never
-changes the system prompt or the cached prefix of the history after it.
+The pinned core is the set of active pinned items, such as the user's name. The user pins and unpins
+from the memory view and the CLI, and the model asks to pin and unpins on its own
+([pins](./writes.md#pins)). A new session renders it in its first message under a heading for each
+subject, the user's items first, then the shared items, then self-notes, each item with the line
+that says where it came from and how it came up, in pin order within its subject. That message stays
+in the session's transcript, so a pin never changes the system prompt or the cached prefix of the
+history after it.
 
 A resumed session holds the core as it stood when the session opened, and the model's own earlier
 turns, which can repeat a value the user since changed. Each turn reads the core again, and the turn
 after it changes puts a change note before the user's message. The note renders each pinned or
 changed item as the opening renders it, with the line that says where the item came from, so a label
 such as unconfirmed reaches the model with the edit. It names each unpinned item by its short ID,
-and states the rule that the note wins over the opening's copy and anything said earlier. A new
-session's first turn gets no note, because it opens with the current core. The turn-ended record
-lists the core's item and version references, and the next turn compares the current core against
-them, so the note survives a restart and needs no state outside the log.
+states the rule that the note wins over the opening's copy and anything said earlier, and ends with
+the core's item count and its tokens against the budget. A new session's first turn gets no note,
+because it opens with the current core. The turn-ended record lists the core's item and version
+references, and the next turn compares the current core against them, so the note survives a restart
+and needs no state outside the log.
 
 The core has a token budget, configurable in the deployment configuration, because it rides in the
 cached prefix of every session and a long core costs every turn that reads it. The store refuses a
@@ -37,6 +40,12 @@ heading with the user's name takes as much of the prefix as a long text. Only th
 differs in that count: every date counts at its widest, with a two-digit day and a year, so the
 count never depends on the day an item was saved. The store counts tokens as a fixed share of
 characters, which needs no tokenizer and errs toward the larger count for English text.
+
+The model sees how full the core is, so it notices before the core grows into a second memory store.
+The session opening's status gives the number of pinned items and the core's tokens against the
+budget, through two entries that the memory package owns
+([status](../core/session-opening.md#status)), and the change note repeats the figures after the
+core changes. The figures inform and block nothing: only the budget refuses a pin.
 
 ## How an item reads
 
