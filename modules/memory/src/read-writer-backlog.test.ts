@@ -4,6 +4,7 @@ import invariant from 'tiny-invariant';
 import { readWriterBacklog } from './read-writer-backlog';
 import { removeMessageKey } from './test-utils/remove-message-key';
 import { startTestMemory } from './test-utils/start-test-memory';
+import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
 async function setupTest() {
   return { memory: await startTestMemory() };
@@ -62,6 +63,25 @@ test('it reads your messages and the replies after the sequence, oldest first', 
       timeZone: null,
     },
   ]);
+});
+
+test('it reads the time zone you sent a message from', async () => {
+  const ctx = await setupTest();
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "I'm off work until Friday",
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+    timeZone: 'Australia/Melbourne',
+  });
+
+  const backlog = await readWriterBacklog(ctx.memory.log, {
+    after: 0,
+    ownerLimit: 10,
+    through: null,
+  });
+
+  expect(backlog).toMatchObject([{ sequence, role: 'owner', timeZone: 'Australia/Melbourne' }]);
 });
 
 test('it never reads a session summary, so a summary never becomes memory', async () => {
