@@ -19,10 +19,6 @@ async function setupTest() {
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  const mods = join(directory, 'mods');
-
-  await cp(join(import.meta.dir, 'mods'), mods, { recursive: true });
-
   const options: Options = {
     cwd: directory,
     model: 'claude-haiku-5-5',
@@ -35,13 +31,17 @@ async function setupTest() {
     env: buildContractEnv(process.env, directory),
   };
 
-  return { mods, options };
+  return { directory, options };
 }
 
 test.skipIf(!isContractRun)(
   'it lets a policy mod deny, rewrite and answer a tool call, and deny one that a rule allowed',
   async () => {
     const ctx = await setupTest();
+
+    const mods = join(ctx.directory, 'mods');
+
+    await cp(join(import.meta.dir, 'mods'), mods, { recursive: true });
 
     const run = await runContractQuery({
       prompt:
@@ -52,7 +52,7 @@ test.skipIf(!isContractRun)(
         'Then reply DONE.',
       options: {
         ...ctx.options,
-        plugins: [{ type: 'local', path: join(ctx.mods, 'nixie-policy') }],
+        plugins: [{ type: 'local', path: join(mods, 'nixie-policy') }],
       },
     });
 
@@ -117,13 +117,17 @@ test.skipIf(!isContractRun)(
   async () => {
     const ctx = await setupTest();
 
+    const mods = join(ctx.directory, 'mods');
+
+    await cp(join(import.meta.dir, 'mods'), mods, { recursive: true });
+
     const run = await runContractQuery({
       prompt:
         'Run this shell command with the Bash tool, and do not retry or change it: ' +
         '`echo first MARK_DENY`. Then reply DONE.',
       options: {
         ...ctx.options,
-        plugins: [{ type: 'local', path: join(ctx.mods, 'nixie-throw-load') }],
+        plugins: [{ type: 'local', path: join(mods, 'nixie-throw-load') }],
       },
     });
 
@@ -152,13 +156,17 @@ test.skipIf(!isContractRun)(
   async () => {
     const ctx = await setupTest();
 
+    const mods = join(ctx.directory, 'mods');
+
+    await cp(join(import.meta.dir, 'mods'), mods, { recursive: true });
+
     const run = await runContractQuery({
       prompt:
         'Run this shell command with the Bash tool, and do not retry or change it: ' +
         '`echo first MARK_NONE`. Then reply DONE.',
       options: {
         ...ctx.options,
-        plugins: [{ type: 'local', path: join(ctx.mods, 'nixie-throw-hook-catch') }],
+        plugins: [{ type: 'local', path: join(mods, 'nixie-throw-hook-catch') }],
       },
     });
 
@@ -183,6 +191,10 @@ test.skipIf(!isContractRun)(
   async () => {
     const ctx = await setupTest();
 
+    const mods = join(ctx.directory, 'mods');
+
+    await cp(join(import.meta.dir, 'mods'), mods, { recursive: true });
+
     const run = await runContractQuery({
       prompt:
         'Run these two shell commands with the Bash tool, one tool call each, one after the other, ' +
@@ -190,7 +202,7 @@ test.skipIf(!isContractRun)(
         'Then reply DONE.',
       options: {
         ...ctx.options,
-        plugins: [{ type: 'local', path: join(ctx.mods, 'nixie-busy-loop') }],
+        plugins: [{ type: 'local', path: join(mods, 'nixie-busy-loop') }],
       },
     });
 

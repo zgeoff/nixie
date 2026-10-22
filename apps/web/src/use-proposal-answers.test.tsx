@@ -7,12 +7,8 @@ import { createDeviceSession } from './test-utils/create-device-session';
 import { renderHook } from './test-utils/render-hook';
 import { useProposalAnswers } from './use-proposal-answers';
 
-async function setupTest() {
-  await createDeviceSession();
-}
-
 test('it keeps the outcome of an answer that changed nothing, with the text of its proposal', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const proposal = await store.memoryProposals.create({
     lapseAt: new Date(Date.now() - 1000),
@@ -57,7 +53,7 @@ test('it keeps the outcome of an answer that changed nothing, with the text of i
 });
 
 test('it sends the answers of a failed call again once you retry', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const proposal = await store.memoryProposals.create({ text: 'Keeps bees on the roof' });
 
@@ -109,7 +105,7 @@ test('it sends the answers of a failed call again once you retry', async () => {
 });
 
 test('it sends more answers than one call takes over several calls, and approves each', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const proposals = await Promise.all(
     Array.from({ length: 51 }, () => store.memoryProposals.create({})),

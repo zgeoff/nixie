@@ -62,7 +62,7 @@ test('it serves the memory store the test sets', async () => {
   expect(core).toStrictEqual({ items: [], tokens: 0, budget: 750 });
 });
 
-test('it starts with the conversation task and the test clock', async () => {
+test('it starts with no task and the test clock', async () => {
   const ctx = await startTestAPI();
 
   const tasks = await ctx.writer.db
@@ -71,7 +71,7 @@ test('it starts with the conversation task and the test clock', async () => {
     .select('task_id')
     .execute();
 
-  expect(tasks).toStrictEqual([{ task_id: 'conversation' }]);
+  expect(tasks).toStrictEqual([]);
   expect(ctx.clock.now()).toBe(1_000_000);
 });
 

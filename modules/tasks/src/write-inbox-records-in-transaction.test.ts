@@ -10,13 +10,13 @@ async function setupTest() {
 
   const db = tasks.writer.db.$extendTables<TasksTables>();
 
-  await createConversationTask(tasks.context);
-
   return { ...tasks, db };
 }
 
 test('it wakes a waiting task once the caller commits its transaction', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writeInboxRecordsInTransaction(tx, ctx.context, [
@@ -39,6 +39,8 @@ test('it wakes a waiting task once the caller commits its transaction', async ()
 
 test('it writes no message when the caller rolls its transaction back', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const write = withWriteTransaction(ctx.writer, async (tx) => {
     await writeInboxRecordsInTransaction(tx, ctx.context, [

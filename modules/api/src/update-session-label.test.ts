@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { createConversationTask } from '@heynixie/tasks';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 import type { APITables } from './types';
@@ -13,6 +14,9 @@ function setupTest() {
 
 test('it puts a renamed label on the next message, and leaves the message before it as it was', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const browser = await createDeviceSession(ctx.context, 'Browser');
 
   await writeOwnerMessage(ctx.context, browser.caller, {

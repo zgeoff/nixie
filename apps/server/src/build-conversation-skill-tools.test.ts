@@ -29,8 +29,6 @@ async function setupTest() {
 
   const root = join(dataDir, 'definitions');
 
-  await mkdir(join(root, 'skills', 'tide-tables'), { recursive: true });
-
   const context = await createServerContext(log.writer, log.deploymentKey, () => null);
 
   const parts: SeedParts = {
@@ -57,6 +55,7 @@ async function setupTest() {
 test("it reads a skill on the conversation's list for the conversation", async () => {
   const ctx = await setupTest();
 
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
@@ -89,6 +88,7 @@ test("it reads a skill on the conversation's list for the conversation", async (
 test('it refuses a skill to a run on another thread of the endpoint', async () => {
   const ctx = await setupTest();
 
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
@@ -124,6 +124,7 @@ test('it refuses a skill to a run on another thread of the endpoint', async () =
 test('it reads the new text of a skill after a reload that seeds the changed file', async () => {
   const ctx = await setupTest();
 
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 

@@ -10,14 +10,12 @@ import { render } from '../test-utils/render';
 import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { Conversation } from './conversation';
 
-async function setupTest() {
-  await createDeviceSession();
-
+function setupTest() {
   return { user: userEvent.setup() };
 }
 
 test('it shows the conversation the API holds', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({ kind: 'owner_message', message: { text: 'Is it raining?' } });
   await store.records.create({ kind: 'assistant_message', message: { text: 'Not yet.' } });
@@ -30,7 +28,7 @@ test('it shows the conversation the API holds', async () => {
 });
 
 test('it folds the records of a step into one line between the messages', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({ kind: 'owner_message', message: { text: 'Rain?' } });
 
@@ -69,7 +67,9 @@ test('it folds the records of a step into one line between the messages', async 
 });
 
 test('it sends a message with a span for each way its text arrived', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const rendered = render(<Conversation thread="conversation" />);
 
@@ -96,7 +96,7 @@ test('it sends a message with a span for each way its text arrived', async () =>
 });
 
 test('it shows a reply that arrives on the live stream', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   const rendered = render(<Conversation thread="conversation" />);
 
@@ -109,7 +109,9 @@ test('it shows a reply that arrives on the live stream', async () => {
 });
 
 test('it shows a spinner while a reply is pending and removes it when the reply arrives', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const rendered = render(<Conversation thread="conversation" />);
 
@@ -127,7 +129,7 @@ test('it shows a spinner while a reply is pending and removes it when the reply 
 });
 
 test('it drops the messages from before a reset that arrives on the live stream and marks the reset', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   setupBrowserTimeZone('Europe/Lisbon');
 
@@ -155,7 +157,9 @@ test('it drops the messages from before a reset that arrives on the live stream 
 });
 
 test('it drops a message this tab sent before a reset and stops working', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(
     http.post('*/rpc/conversation/send', async () => {
@@ -181,7 +185,9 @@ test('it drops a message this tab sent before a reset and stops working', async 
 });
 
 test('it keeps a message this tab sends after a reset while its clock runs behind the server', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const rendered = render(<Conversation thread="conversation" />);
 
@@ -207,7 +213,7 @@ test('it keeps a message this tab sends after a reset while its clock runs behin
 });
 
 test('it says live updates are unavailable while the live stream keeps failing', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
 
@@ -219,7 +225,7 @@ test('it says live updates are unavailable while the live stream keeps failing',
 }, 10_000);
 
 test('it clears the failure notice once a turn succeeds', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({ kind: 'owner_message', message: { text: 'Is it raining?' } });
 
@@ -250,7 +256,7 @@ test('it clears the failure notice once a turn succeeds', async () => {
 });
 
 test('it drops the failure notice of a step a reset removed while the read after the reset fails', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({ kind: 'owner_message', message: { text: 'Is the gate shut?' } });
 
@@ -279,7 +285,7 @@ test('it drops the failure notice of a step a reset removed while the read after
 });
 
 test('it shows the failure notice of a step that fails after a reset', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.records.create({ kind: 'owner_message', message: { text: 'Is the gate shut?' } });
 
@@ -310,7 +316,9 @@ test('it shows the failure notice of a step that fails after a reset', async () 
 });
 
 test('it keeps a failed forget and its retry once the forget start drops the text', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const message = await store.records.create({
     kind: 'owner_message',
@@ -344,7 +352,9 @@ test('it keeps a failed forget and its retry once the forget start drops the tex
 });
 
 test('it finishes a failed forget when you confirm it again', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const message = await store.records.create({
     kind: 'owner_message',
@@ -374,7 +384,9 @@ test('it finishes a failed forget when you confirm it again', async () => {
 });
 
 test('it never shows the text of a message you sent and then forgot', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const rendered = render(<Conversation thread="conversation" />);
 
@@ -394,7 +406,9 @@ test('it never shows the text of a message you sent and then forgot', async () =
 });
 
 test('it shows an unsent message as not sent', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => HttpResponse.error()));
 
@@ -411,7 +425,9 @@ test('it shows an unsent message as not sent', async () => {
 });
 
 test('it retries an unsent message with its first client message ID', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const attempted = mock<(body: unknown) => void>();
 
@@ -456,7 +472,9 @@ test('it retries an unsent message with its first client message ID', async () =
 });
 
 test('it sends an unsent message again after the page reloads, with its first ID', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => HttpResponse.error(), { once: true }));
 
@@ -483,7 +501,7 @@ test('it sends an unsent message again after the page reloads, with its first ID
 });
 
 test('it sends stored messages in the order you sent them', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   globalThis.localStorage.setItem(
     'nixie.outbox',
@@ -529,7 +547,9 @@ test('it sends stored messages in the order you sent them', async () => {
 });
 
 test('it sends a stored message written under 2 minutes ago, and holds an older one until you send it', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
   const halfAMinuteAgo = new Date(Date.now() - 30 * 1000).toISOString();
@@ -584,7 +604,7 @@ test('it sends a stored message written under 2 minutes ago, and holds an older 
 });
 
 test('it holds a stored message from before the outbox kept when you wrote it', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   globalThis.localStorage.setItem(
     'nixie.outbox',
@@ -609,7 +629,9 @@ test('it holds a stored message from before the outbox kept when you wrote it', 
 });
 
 test('it removes a held message you discard from the page and device storage', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 

@@ -8,14 +8,15 @@ import { startTestNixie } from './start-test-nixie';
 async function setupTest() {
   const nixie = await startTestNixie();
 
-  return { nixie, ...(await createTestClient(nixie)) };
+  return { nixie };
 }
 
 test('it finds the key, the match and the session copy of an item a turn recalled', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx.nixie);
 
   // BM25 ranks nothing in an index of 1 or 2 items, so per-turn retrieval needs 3 to place one.
-  const [item] = await createApprovedItems(ctx.nixie, ctx.client, [
+  const [item] = await createApprovedItems(ctx.nixie, api.client, [
     'The spare key sits under the blue flowerpot',
     'Allergic to hazelnuts',
     'Prefers window seats on trains',
@@ -23,9 +24,9 @@ test('it finds the key, the match and the session copy of an item a turn recalle
 
   ctx.nixie.model.addReplies({ text: 'Under the flowerpot.' });
 
-  await sendClientMessage(ctx.client, { text: 'Where is the spare key?' }, 'Under the flowerpot.');
+  await sendClientMessage(api.client, { text: 'Where is the spare key?' }, 'Under the flowerpot.');
 
-  const traces = await readItemTraces(ctx.nixie, ctx.client, item);
+  const traces = await readItemTraces(ctx.nixie, api.client, item);
 
   expect(traces).toMatchObject({
     hasKey: true,
@@ -38,8 +39,9 @@ test('it finds the key, the match and the session copy of an item a turn recalle
 
 test('it finds no trace of an item that does not exist', async () => {
   const ctx = await setupTest();
+  const api = await createTestClient(ctx.nixie);
 
-  const traces = await readItemTraces(ctx.nixie, ctx.client, {
+  const traces = await readItemTraces(ctx.nixie, api.client, {
     itemID: 'b3c1f7e2-5a94-4d0e-8f6b-2c7d9e1a4b38',
     text: 'Keeps a kayak in the garage',
   });

@@ -9,16 +9,16 @@ import { render } from '../test-utils/render';
 import { runMemoryForget } from '../test-utils/run-memory-forget';
 import { MemoryView } from './memory-view';
 
-async function setupTest() {
+function setupTest() {
   const user = userEvent.setup();
-
-  await createDeviceSession();
 
   return { user };
 }
 
 test('it shows the item with every version in the confirmation', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({
     shortID: 'k3m9qa',
@@ -46,7 +46,9 @@ test('it shows the item with every version in the confirmation', async () => {
 });
 
 test('it lists what the forget destroys, the messages it came from included', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({
     shortID: 'k3m9qa',
@@ -78,7 +80,9 @@ test('it lists what the forget destroys, the messages it came from included', as
 });
 
 test('it names the disk snapshots the forget cannot reach, and links to the conversation for the messages that stay', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Keeps bees' }] });
 
@@ -103,7 +107,9 @@ test('it names the disk snapshots the forget cannot reach, and links to the conv
 });
 
 test('it forgets an item once the user confirms, which then shows as a dated gap', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Keeps bees' }] });
 
@@ -131,7 +137,9 @@ test('it forgets an item once the user confirms, which then shows as a dated gap
 });
 
 test('it closes the confirmation with the reason when the item changed after it opened', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Keeps bees' }] });
 
@@ -177,7 +185,9 @@ test('it closes the confirmation with the reason when the item changed after it 
 });
 
 test('it shows the reason in place of the preview when the item moved on before the confirmation opened', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Keeps bees' }] });
 
@@ -223,7 +233,9 @@ test('it shows the reason in place of the preview when the item moved on before 
 });
 
 test('it keeps the confirmation open to retry once the forget start commits and its cleanup fails', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({
     failsForgetCleanup: true,
@@ -245,7 +257,9 @@ test('it keeps the confirmation open to retry once the forget start commits and 
 });
 
 test('it offers to finish a forget whose cleanup failed once a refresh moves the item to the forgotten list', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({
     failsForgetCleanup: true,
@@ -274,7 +288,9 @@ test('it offers to finish a forget whose cleanup failed once a refresh moves the
 });
 
 test('it completes a forget whose cleanup failed when the user finishes it from the forgotten list', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({
     failsForgetCleanup: true,
@@ -311,7 +327,9 @@ test('it completes a forget whose cleanup failed when the user finishes it from 
 });
 
 test('it forgets the item once a failed confirm goes again', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Keeps bees' }] });
 
@@ -339,7 +357,9 @@ test('it forgets the item once a failed confirm goes again', async () => {
 });
 
 test('it keeps the item when the user keeps it', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Keeps bees' }] });
 
@@ -361,7 +381,7 @@ test('it keeps the item when the user keeps it', async () => {
 });
 
 test('it offers no forget for an item whose forget began elsewhere, even while its text still opens', async () => {
-  await setupTest();
+  await createDeviceSession();
 
   await store.memoryItems.create({
     isShredded: false,

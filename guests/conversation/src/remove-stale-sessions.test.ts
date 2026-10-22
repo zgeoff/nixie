@@ -9,23 +9,22 @@ async function setupTest() {
 
   onTestFinished(() => rm(configDir, { recursive: true, force: true }));
 
-  const projectDir = join(configDir, 'projects', '-home-nixie-conversation');
-
-  await mkdir(projectDir, { recursive: true });
-
-  return { configDir, projectDir };
+  return { configDir };
 }
 
 test('it removes every session but the one the turn resumes, with its side files', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.projectDir, 'aaaa.jsonl'), '{}\n');
-  await writeFile(join(ctx.projectDir, 'bbbb.jsonl'), '{}\n');
-  await mkdir(join(ctx.projectDir, 'aaaa'));
-  await mkdir(join(ctx.projectDir, 'bbbb'));
+  const projectDir = join(ctx.configDir, 'projects', '-home-nixie-conversation');
+
+  await mkdir(projectDir, { recursive: true });
+  await writeFile(join(projectDir, 'aaaa.jsonl'), '{}\n');
+  await writeFile(join(projectDir, 'bbbb.jsonl'), '{}\n');
+  await mkdir(join(projectDir, 'aaaa'));
+  await mkdir(join(projectDir, 'bbbb'));
   await removeStaleSessions(ctx.configDir, 'bbbb');
 
-  const left = await readdir(ctx.projectDir);
+  const left = await readdir(projectDir);
 
   expect(left).toIncludeSameMembers(['bbbb', 'bbbb.jsonl']);
 });
@@ -33,10 +32,13 @@ test('it removes every session but the one the turn resumes, with its side files
 test('it removes every session when the turn starts a fresh one', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.projectDir, 'aaaa.jsonl'), '{}\n');
+  const projectDir = join(ctx.configDir, 'projects', '-home-nixie-conversation');
+
+  await mkdir(projectDir, { recursive: true });
+  await writeFile(join(projectDir, 'aaaa.jsonl'), '{}\n');
   await removeStaleSessions(ctx.configDir, null);
 
-  const left = await readdir(ctx.projectDir);
+  const left = await readdir(projectDir);
 
   expect(left).toStrictEqual([]);
 });
@@ -44,10 +46,13 @@ test('it removes every session when the turn starts a fresh one', async () => {
 test('it removes nothing outside the config folder when no config folder is set', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.projectDir, 'aaaa.jsonl'), '{}\n');
+  const projectDir = join(ctx.configDir, 'projects', '-home-nixie-conversation');
+
+  await mkdir(projectDir, { recursive: true });
+  await writeFile(join(projectDir, 'aaaa.jsonl'), '{}\n');
   await removeStaleSessions(undefined, null);
 
-  const left = await readdir(ctx.projectDir);
+  const left = await readdir(projectDir);
 
   expect(left).toStrictEqual(['aaaa.jsonl']);
 });

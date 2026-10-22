@@ -25,12 +25,16 @@ async function setupTest() {
     readMemory: () => memory.store,
   });
 
-  const configPath = join(directory, 'config.yaml');
+  return { directory, memory, configPath: join(directory, 'config.yaml') };
+}
+
+test('it prints the pending diff, approves one change alone and rejects another', async () => {
+  const ctx = await setupTest();
 
   await writeFile(
-    configPath,
+    ctx.configPath,
     [
-      `server: { data_dir: ${directory} }`,
+      `server: { data_dir: ${ctx.directory} }`,
       'models:',
       '  profiles:',
       '    chat-direct: { base_url: https://api.anthropic.com, credential: deployment:anthropic,',
@@ -40,12 +44,6 @@ async function setupTest() {
       'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
     ].join('\n'),
   );
-
-  return { memory, configPath };
-}
-
-test('it prints the pending diff, approves one change alone and rejects another', async () => {
-  const ctx = await setupTest();
 
   const [stale, trip] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' }),
@@ -80,6 +78,21 @@ test('it prints the pending diff, approves one change alone and rejects another'
 
 test('it prints the comment the conversation left through memory.comment beside its change', async () => {
   const ctx = await setupTest();
+
+  await writeFile(
+    ctx.configPath,
+    [
+      `server: { data_dir: ${ctx.directory} }`,
+      'models:',
+      '  profiles:',
+      '    chat-direct: { base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+    ].join('\n'),
+  );
+
   const joke = await createMemoryItem(ctx.memory.store, { text: 'Names plants after drummers' });
 
   const diff = await createConsolidationDiff(ctx.memory, {
@@ -133,6 +146,20 @@ test('it prints the comment the conversation left through memory.comment beside 
 test('it prints the summary of a conflict beside the changes of its diff', async () => {
   const ctx = await setupTest();
 
+  await writeFile(
+    ctx.configPath,
+    [
+      `server: { data_dir: ${ctx.directory} }`,
+      'models:',
+      '  profiles:',
+      '    chat-direct: { base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+    ].join('\n'),
+  );
+
   const [oat, black, trip] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
@@ -158,6 +185,20 @@ test('it prints the summary of a conflict beside the changes of its diff', async
 
 test('it prints the summary alone when the run proposed no change', async () => {
   const ctx = await setupTest();
+
+  await writeFile(
+    ctx.configPath,
+    [
+      `server: { data_dir: ${ctx.directory} }`,
+      'models:',
+      '  profiles:',
+      '    chat-direct: { base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+    ].join('\n'),
+  );
 
   const [oat, black] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
@@ -185,6 +226,20 @@ test('it prints the summary alone when the run proposed no change', async () => 
 
 test('it approves the whole diff when it names every change', async () => {
   const ctx = await setupTest();
+
+  await writeFile(
+    ctx.configPath,
+    [
+      `server: { data_dir: ${ctx.directory} }`,
+      'models:',
+      '  profiles:',
+      '    chat-direct: { base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+    ].join('\n'),
+  );
 
   const [stale, trip] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' }),

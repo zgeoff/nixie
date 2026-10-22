@@ -11,9 +11,7 @@ import { renderHook } from './test-utils/render-hook';
 import { setupBrowserTimeZone } from './test-utils/setup-browser-time-zone';
 import { useOutbox } from './use-outbox';
 
-async function setupTest() {
-  await createDeviceSession();
-
+function setupTest() {
   const sent = mock<(body: unknown) => void>();
 
   server.use(
@@ -46,7 +44,9 @@ async function setupTest() {
 }
 
 test("it sends a message with the browser's time zone", async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   setupBrowserTimeZone('America/Sao_Paulo');
 
@@ -76,7 +76,9 @@ test("it sends a message with the browser's time zone", async () => {
 });
 
 test('it keeps the time zone a message was written in when its retry sends', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   setupBrowserTimeZone('America/Sao_Paulo');
 
@@ -111,7 +113,9 @@ test('it keeps the time zone a message was written in when its retry sends', asy
 });
 
 test('it drops a forgotten message from memory and device storage', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
 
@@ -141,7 +145,9 @@ test('it drops a forgotten message from memory and device storage', async () => 
 });
 
 test('it drops every message it holds when a reset arrives from memory and device storage', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
 
@@ -186,7 +192,10 @@ test('it drops every message it holds when a reset arrives from memory and devic
 });
 
 test('it keeps a message the API wrote after a reset that arrives late', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
   const reset = await store.records.create({ kind: 'log_reset' });
 
   act(() => {
@@ -213,7 +222,9 @@ test('it keeps a message the API wrote after a reset that arrives late', async (
 });
 
 test('it keeps a message written after a reset arrives while the clock runs behind the server', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
 
@@ -252,7 +263,9 @@ test('it keeps a message written after a reset arrives while the clock runs behi
 });
 
 test('it keeps a forgotten message out of device storage when a failed retry lands in the same render', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error()));
 
@@ -282,7 +295,9 @@ test('it keeps a forgotten message out of device storage when a failed retry lan
 });
 
 test('it keeps a message that another tab left unsent', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   globalThis.localStorage.setItem(
     'nixie.outbox',
@@ -315,7 +330,9 @@ test('it keeps a message that another tab left unsent', async () => {
 });
 
 test('it retries a send the API did not answer after growing pauses, and sends it once the API answers', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   setupBrowserTimeZone('Asia/Tokyo');
 
@@ -360,7 +377,9 @@ test('it retries a send the API did not answer after growing pauses, and sends i
 });
 
 test('it shows when a failed send tries again on its own', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
 
@@ -384,7 +403,9 @@ test('it shows when a failed send tries again on its own', async () => {
 });
 
 test('it retries a waiting send at once when the browser comes back online', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
 
@@ -413,7 +434,9 @@ test('it retries a waiting send at once when the browser comes back online', asy
 });
 
 test('it retries a waiting send at once when the page becomes visible', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
 
@@ -442,7 +465,9 @@ test('it retries a waiting send at once when the page becomes visible', async ()
 });
 
 test('it leaves a send the API refused for you to retry', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(
     http.post('*/rpc/conversation/send', () =>
@@ -478,7 +503,9 @@ test('it leaves a send the API refused for you to retry', async () => {
 });
 
 test('it holds a message that passed 2 minutes old while its send waited, instead of retrying it', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
 
@@ -504,7 +531,9 @@ test('it holds a message that passed 2 minutes old while its send waited, instea
 });
 
 test('it keeps retrying on its own a held message you chose to send', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(
     ...Array.from({ length: 2 }, () =>
@@ -542,7 +571,9 @@ test('it keeps retrying on its own a held message you chose to send', async () =
 });
 
 test('it discards a held message from memory, device storage and its kept images', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
 
@@ -585,7 +616,9 @@ test('it discards a held message from memory, device storage and its kept images
 });
 
 test('it starts no retry for a send that fails after the page leaves the conversation', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
+  await createDeviceSession();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
 

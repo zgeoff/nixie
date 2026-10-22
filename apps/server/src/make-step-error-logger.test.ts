@@ -13,13 +13,13 @@ import { startTestServer } from './test-utils/start-test-server';
 async function setupTest() {
   const server = await startTestServer();
 
-  await createConversationTask(server.context);
-
   return server;
 }
 
 test("it records and logs impd's code and message for a turn whose imp wake impd refuses", async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const url = startStubImpd({
     code: 'RAM_BUDGET_EXCEEDED',
@@ -78,6 +78,8 @@ test("it records and logs impd's code and message for a turn whose imp wake impd
 
 test("it writes no line that quotes a failed turn's message or tool result", async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
 
   const lines: string[] = [];
 

@@ -13,24 +13,34 @@ async function setupTest() {
 
   const keys = new Map(generated.map((key, index) => [itemIDs[index] ?? '', key] as const));
 
-  const sealed = await encodeConsolidationSummary('diff-1', 'Two items about tea conflict.', keys);
-
-  return { keys, sealed };
+  return { keys };
 }
 
 test('it rejects a summary sealed for another run', async () => {
   const ctx = await setupTest();
 
-  expect(decodeConsolidationSummary('diff-2', ctx.sealed, ctx.keys)).rejects.toThrow();
+  const sealed = await encodeConsolidationSummary(
+    'diff-1',
+    'Two items about tea conflict.',
+    ctx.keys,
+  );
+
+  expect(decodeConsolidationSummary('diff-2', sealed, ctx.keys)).rejects.toThrow();
 });
 
 test("it rejects a share opened under another item's key", async () => {
   const ctx = await setupTest();
 
-  const [first, second] = ctx.sealed.shares;
+  const sealed = await encodeConsolidationSummary(
+    'diff-1',
+    'Two items about tea conflict.',
+    ctx.keys,
+  );
+
+  const [first, second] = sealed.shares;
 
   const swapped = {
-    ...ctx.sealed,
+    ...sealed,
     shares: [
       { itemID: 'item-a', sealed: second?.sealed ?? '' },
       { itemID: 'item-b', sealed: first?.sealed ?? '' },
@@ -43,7 +53,13 @@ test("it rejects a share opened under another item's key", async () => {
 test('it rejects a summary with a share left out, because every share builds the key', async () => {
   const ctx = await setupTest();
 
-  const short = { ...ctx.sealed, shares: ctx.sealed.shares.slice(0, 1) };
+  const sealed = await encodeConsolidationSummary(
+    'diff-1',
+    'Two items about tea conflict.',
+    ctx.keys,
+  );
+
+  const short = { ...sealed, shares: sealed.shares.slice(0, 1) };
 
   expect(decodeConsolidationSummary('diff-1', short, ctx.keys)).rejects.toThrow();
 });

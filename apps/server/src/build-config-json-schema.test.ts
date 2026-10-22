@@ -9,12 +9,6 @@ import { buildConfigJSONSchema } from './build-config-json-schema';
 import { deploymentConfigSchema } from './deployment-config-schema';
 
 function setupTest() {
-  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
-
-  onTestFinished(() => {
-    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
-  });
-
   const ajv = new Ajv2020({ allErrors: true, strict: true });
 
   addFormats(ajv);
@@ -36,6 +30,12 @@ test('it builds the same schema from the same configuration', () => {
 });
 
 test('it accepts the example configuration in the Kubernetes reference manifests', async () => {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
   const ctx = setupTest();
 
   const text = await readFile(
@@ -62,6 +62,12 @@ test('it accepts the example configuration in the Kubernetes reference manifests
 });
 
 test('it accepts a configuration with only the required sections', () => {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
   const ctx = setupTest();
 
   ctx.validate({
@@ -85,6 +91,12 @@ test('it accepts a configuration with only the required sections', () => {
 });
 
 test('it refuses an unknown key in a section', () => {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
   const ctx = setupTest();
 
   ctx.validate({
@@ -112,6 +124,12 @@ test('it refuses an unknown key in a section', () => {
 });
 
 test('it refuses a credential that is not a deployment reference', () => {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
   const ctx = setupTest();
 
   ctx.validate({
@@ -137,6 +155,12 @@ test('it refuses a credential that is not a deployment reference', () => {
 });
 
 test('it refuses the test sandbox, which a release build does not hold', () => {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
   const ctx = setupTest();
 
   ctx.validate({
@@ -161,6 +185,12 @@ test('it refuses the test sandbox, which a release build does not hold', () => {
 });
 
 test('it refuses a model URL that is not HTTP', () => {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
   const ctx = setupTest();
 
   ctx.validate({
@@ -532,6 +562,12 @@ test.each([
     false,
   ],
 ])('it gives the same answer as a release build for %s', (_label, config, expected) => {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
   const ctx = setupTest();
   const isSchemaValid = ctx.validate(config);
   const isNixieValid = deploymentConfigSchema.safeParse(config).success;
@@ -541,6 +577,12 @@ test.each([
 });
 
 test('it refuses a time zone alias that a release build reads', () => {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
   const ctx = setupTest();
 
   const config = {
@@ -569,6 +611,12 @@ test('it refuses a time zone alias that a release build reads', () => {
 });
 
 test('it accepts a role that names a missing profile, which a release build refuses', () => {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
   const ctx = setupTest();
 
   const config = {

@@ -15,11 +15,8 @@ async function setupTest() {
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  const files = await writeBootFiles(directory, 'http://127.0.0.1:9', { config: [], secrets: [] });
-
   return {
-    ...files,
-    socketPath: join(files.dataDir, 'run', 'control.sock'),
+    directory,
     io: {
       log: mock(),
       print: mock(),
@@ -30,7 +27,13 @@ async function setupTest() {
 
 test('it refuses a reset without --keep-sessions, and says backups still hold the old data', async () => {
   const ctx = await setupTest();
-  const exitCode = await runCLI(['reset', '--yes', '--config', ctx.configPath], ctx.io);
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const exitCode = await runCLI(['reset', '--yes', '--config', files.configPath], ctx.io);
 
   expect(exitCode).toBe(2);
 
@@ -48,7 +51,13 @@ test('it refuses a reset without --keep-sessions, and says backups still hold th
 
 test('it refuses a reset without --yes, and says backups still hold the old data', async () => {
   const ctx = await setupTest();
-  const exitCode = await runCLI(['reset', '--keep-sessions', '--config', ctx.configPath], ctx.io);
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const exitCode = await runCLI(['reset', '--keep-sessions', '--config', files.configPath], ctx.io);
 
   expect(exitCode).toBe(2);
 
@@ -66,10 +75,16 @@ test('it refuses a reset without --yes, and says backups still hold the old data
 
 test('it prints what the server reset, and that backups still hold the old data', async () => {
   const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
   const api = await startTestAPI();
 
   const socket = await startControlSocket({
-    path: ctx.socketPath,
+    path: join(files.dataDir, 'run', 'control.sock'),
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => null,
@@ -86,7 +101,7 @@ test('it prints what the server reset, and that backups still hold the old data'
   onTestFinished(() => socket.stop());
 
   const exitCode = await runCLI(
-    ['reset', '--keep-sessions', '--yes', '--config', ctx.configPath],
+    ['reset', '--keep-sessions', '--yes', '--config', files.configPath],
     ctx.io,
   );
 
@@ -105,10 +120,16 @@ test('it prints what the server reset, and that backups still hold the old data'
 
 test('it exits 1 when the server fails the reset', async () => {
   const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
   const api = await startTestAPI();
 
   const socket = await startControlSocket({
-    path: ctx.socketPath,
+    path: join(files.dataDir, 'run', 'control.sock'),
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => null,
@@ -120,7 +141,7 @@ test('it exits 1 when the server fails the reset', async () => {
   onTestFinished(() => socket.stop());
 
   const exitCode = await runCLI(
-    ['reset', '--keep-sessions', '--yes', '--config', ctx.configPath],
+    ['reset', '--keep-sessions', '--yes', '--config', files.configPath],
     ctx.io,
   );
 
@@ -135,7 +156,13 @@ test('it exits 1 when the server fails the reset', async () => {
 
 test('it exits 2 on a command nixie does not have, and names the commands it takes', async () => {
   const ctx = await setupTest();
-  const exitCode = await runCLI(['frobnicate', '--config', ctx.configPath], ctx.io);
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const exitCode = await runCLI(['frobnicate', '--config', files.configPath], ctx.io);
 
   expect(exitCode).toBe(2);
 
@@ -146,7 +173,13 @@ test('it exits 2 on a command nixie does not have, and names the commands it tak
 
 test('it exits 1 on a flag nixie does not take, before the command runs', async () => {
   const ctx = await setupTest();
-  const exitCode = await runCLI(['reset', '--frobnicate', '--config', ctx.configPath], ctx.io);
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const exitCode = await runCLI(['reset', '--frobnicate', '--config', files.configPath], ctx.io);
 
   expect(exitCode).toBe(1);
   expect(ctx.io.print).toHaveBeenCalledExactlyOnceWith('nixie: Unknown option: --frobnicate');
@@ -154,7 +187,13 @@ test('it exits 1 on a flag nixie does not take, before the command runs', async 
 
 test('it exits 1 from check-encoder when the encoder folder holds no model', async () => {
   const ctx = await setupTest();
-  const exitCode = await runCLI(['check-encoder', '--encoder', ctx.dataDir], ctx.io);
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const exitCode = await runCLI(['check-encoder', '--encoder', files.dataDir], ctx.io);
 
   expect(exitCode).toBe(1);
 
@@ -166,11 +205,17 @@ test('it exits 1 from check-encoder when the encoder folder holds no model', asy
 
 test('it pins a self-note from memory-pin', async () => {
   const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
   const api = await startTestAPI();
   const memory = await startTestMemory();
 
   const socket = await startControlSocket({
-    path: ctx.socketPath,
+    path: join(files.dataDir, 'run', 'control.sock'),
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => memory.store,
@@ -187,7 +232,7 @@ test('it pins a self-note from memory-pin', async () => {
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const exitCode = await runCLI(['memory-pin', item.itemID, '--config', ctx.configPath], ctx.io);
+  const exitCode = await runCLI(['memory-pin', item.itemID, '--config', files.configPath], ctx.io);
   const core = await memory.store.readPinnedCore();
 
   expect(exitCode).toBe(0);
@@ -196,11 +241,17 @@ test('it pins a self-note from memory-pin', async () => {
 
 test('it prints the subject of a self-note from memory-show', async () => {
   const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
   const api = await startTestAPI();
   const memory = await startTestMemory();
 
   const socket = await startControlSocket({
-    path: ctx.socketPath,
+    path: join(files.dataDir, 'run', 'control.sock'),
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => memory.store,
@@ -217,7 +268,7 @@ test('it prints the subject of a self-note from memory-show', async () => {
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const exitCode = await runCLI(['memory-show', item.itemID, '--config', ctx.configPath], ctx.io);
+  const exitCode = await runCLI(['memory-show', item.itemID, '--config', files.configPath], ctx.io);
 
   expect(exitCode).toBe(0);
 
@@ -230,11 +281,17 @@ test('it prints the subject of a self-note from memory-show', async () => {
 
 test('it prints the count of each subject from memory-subjects', async () => {
   const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
   const api = await startTestAPI();
   const memory = await startTestMemory();
 
   const socket = await startControlSocket({
-    path: ctx.socketPath,
+    path: join(files.dataDir, 'run', 'control.sock'),
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => memory.store,
@@ -251,7 +308,7 @@ test('it prints the count of each subject from memory-subjects', async () => {
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const exitCode = await runCLI(['memory-subjects', '--config', ctx.configPath], ctx.io);
+  const exitCode = await runCLI(['memory-subjects', '--config', files.configPath], ctx.io);
 
   expect(exitCode).toBe(0);
 
@@ -264,15 +321,20 @@ test('it prints the count of each subject from memory-subjects', async () => {
 test('it prints the dry run of the subjects migration on a copy of the database file it names', async () => {
   const ctx = await setupTest();
 
-  const path = join(ctx.dataDir, 'backup.db');
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const path = join(files.dataDir, 'backup.db');
   const db = startDatabase(path);
 
   onTestFinished(() => db.destroy());
 
-  await runMigrations(db, { schema: nixieSchema, copyDir: ctx.dataDir });
+  await runMigrations(db, { schema: nixieSchema, copyDir: files.dataDir });
 
   const exitCode = await runCLI(
-    ['memory-subjects', '--dry-run', '--database', path, '--config', ctx.configPath],
+    ['memory-subjects', '--dry-run', '--database', path, '--config', files.configPath],
     ctx.io,
   );
 
@@ -292,8 +354,13 @@ test('it prints the dry run of the subjects migration on a copy of the database 
 test('it refuses a dry run of memory-subjects that names no database', async () => {
   const ctx = await setupTest();
 
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
   const exitCode = await runCLI(
-    ['memory-subjects', '--dry-run', '--config', ctx.configPath],
+    ['memory-subjects', '--dry-run', '--config', files.configPath],
     ctx.io,
   );
 
