@@ -3,7 +3,8 @@
 # goes through one stage per job, each after the one before succeeds: the sandbox images, the nixie
 # image with their digests, the web image, the migrations and the config schema in the release
 # notes, a pull of each sandbox image with no credentials, the version tag on every image, and the
-# release.json, config.schema.json and definitions-manifest.schema.json assets.
+# counting proxy binary, release.json, config.schema.json and definitions-manifest.schema.json
+# assets.
 #
 # A manual run on a release tag rebuilds that release from its commit. Re-running the failed
 # jobs of a run resumes from the stage that failed with the same digests.
@@ -342,6 +343,19 @@ jobs:
 
       - name: Install
         run: bun install --frozen-lockfile --ignore-scripts
+
+      # a host that runs the counting proxy outside a container pins this binary by its sha256
+      - name: Publish the counting proxy binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          bun build --compile --target=bun-linux-x64 --define NIXIE_TEST_BUILD=false \
+            apps/counting-proxy/src/main.ts --outfile "$RUNNER_TEMP/counting-proxy-linux-x64"
+          gh release upload "$TAG" "$RUNNER_TEMP/counting-proxy-linux-x64" --clobber
+          sha256sum "$RUNNER_TEMP/counting-proxy-linux-x64" | cut -d' ' -f1 \
+            | sed 's/^/counting-proxy-linux-x64 sha256: /' >> "$GITHUB_STEP_SUMMARY"
 
       # a re-run replaces the assets of an earlier attempt, so it publishes the same files
       - name: Publish release.json, the config schema and the definitions manifest schema

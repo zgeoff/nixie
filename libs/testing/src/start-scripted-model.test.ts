@@ -79,6 +79,64 @@ test('it streams the input tokens a scripted reply sets in its message start', a
   expect(text).toInclude('"usage":{"input_tokens":150000,"output_tokens":1}');
 });
 
+test('it reports the whole usage a scripted reply sets, cache writes included', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({
+    text: 'cached',
+    usage: {
+      input_tokens: 40,
+      output_tokens: 12,
+      cache_creation_input_tokens: 3000,
+      cache_read_input_tokens: 800,
+      cache_creation: { ephemeral_5m_input_tokens: 1000, ephemeral_1h_input_tokens: 2000 },
+    },
+  });
+
+  const response = await fetch(`${ctx.model.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  const body: unknown = await response.json();
+
+  expect(body).toMatchObject({
+    usage: {
+      input_tokens: 40,
+      output_tokens: 12,
+      cache_creation_input_tokens: 3000,
+      cache_read_input_tokens: 800,
+      cache_creation: { ephemeral_5m_input_tokens: 1000, ephemeral_1h_input_tokens: 2000 },
+    },
+  });
+});
+
+test('it streams a scripted usage with the input side in its message start and the output in its last delta', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({
+    text: 'cached',
+    usage: {
+      input_tokens: 40,
+      output_tokens: 12,
+      cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 2000 },
+    },
+  });
+
+  const response = await fetch(`${ctx.model.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', stream: true, messages: [] }),
+  });
+
+  const text = await response.text();
+
+  expect(text).toInclude(
+    '"usage":{"input_tokens":40,"output_tokens":1,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":2000}}',
+  );
+
+  expect(text).toInclude('"usage":{"output_tokens":12}');
+});
+
 test('it streams a reply as server-sent events when the request asks', async () => {
   const ctx = setupTest();
 

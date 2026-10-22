@@ -1,5 +1,16 @@
 import { z } from 'zod';
 
+export interface ScriptedUsage {
+  readonly input_tokens: number;
+  readonly output_tokens: number;
+  readonly cache_creation_input_tokens?: number;
+  readonly cache_read_input_tokens?: number;
+  readonly cache_creation?: {
+    readonly ephemeral_5m_input_tokens: number;
+    readonly ephemeral_1h_input_tokens: number;
+  };
+}
+
 type ScriptedMessage = (
   | { readonly text: string }
   | {
@@ -12,6 +23,8 @@ type ScriptedMessage = (
   readonly gate?: Promise<void>;
 
   readonly inputTokens?: number;
+
+  readonly usage?: ScriptedUsage;
 };
 
 interface ScriptedRefusal {
@@ -152,6 +165,7 @@ function renderAuthFailure(message: string): Response {
 function renderStream(reply: ScriptedMessage, model: string): Response {
   const block = buildBlock(reply);
   const isTool = 'toolUse' in reply;
+  const usage = buildUsage(reply);
 
   const events = [
     {
@@ -164,7 +178,7 @@ function renderStream(reply: ScriptedMessage, model: string): Response {
         content: [],
         stop_reason: null,
         stop_sequence: null,
-        usage: { input_tokens: reply.inputTokens ?? 10, output_tokens: 1 },
+        usage: { ...usage, output_tokens: 1 },
       },
     },
     {
@@ -183,7 +197,7 @@ function renderStream(reply: ScriptedMessage, model: string): Response {
     {
       type: 'message_delta',
       delta: { stop_reason: isTool ? 'tool_use' : 'end_turn', stop_sequence: null },
-      usage: { output_tokens: 5 },
+      usage: { output_tokens: usage.output_tokens },
     },
     { type: 'message_stop' },
   ];
@@ -207,6 +221,10 @@ function buildBlock(reply: ScriptedMessage): Readonly<Record<string, unknown>> {
   return { type: 'text', text: reply.text };
 }
 
+function buildUsage(reply: ScriptedMessage): ScriptedUsage {
+  return reply.usage ?? { input_tokens: reply.inputTokens ?? 10, output_tokens: 5 };
+}
+
 function renderWhole(reply: ScriptedMessage, model: string): Response {
   const block = buildBlock(reply);
 
@@ -218,6 +236,6 @@ function renderWhole(reply: ScriptedMessage, model: string): Response {
     content: [block],
     stop_reason: 'toolUse' in reply ? 'tool_use' : 'end_turn',
     stop_sequence: null,
-    usage: { input_tokens: reply.inputTokens ?? 10, output_tokens: 5 },
+    usage: buildUsage(reply),
   });
 }
