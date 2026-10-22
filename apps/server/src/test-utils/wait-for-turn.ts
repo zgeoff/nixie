@@ -8,6 +8,8 @@ const TURN_TIMEOUT_MS = 30_000;
 // requests took a fifth of the turn's time from the guest's start.
 const TURN_INTERVAL_MS = 100;
 
+// GEO-1675 moves the server suites onto the conversation guest stand-in, and removes this wait
+// with the real guest it allows for.
 export function waitForTurn(
   check: () => boolean | Promise<boolean>,
   now?: () => number,
