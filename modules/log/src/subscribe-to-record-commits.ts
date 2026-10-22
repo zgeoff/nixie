@@ -50,7 +50,10 @@ async function readHeadChanges(
 
       const head = await readHeadSequence(writer);
 
-      if (state.last !== null && head > state.last && !state.isStopped) {
+      // A commit that lands during the first read can already sit in its head, so it wakes once.
+      const hasNewRecords = state.last === null ? state.isStale : head > state.last;
+
+      if (hasNewRecords && !state.isStopped) {
         onRecords();
       }
 
