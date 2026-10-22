@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { delay, http } from 'msw';
+import { HttpResponse, delay, http } from 'msw';
 import invariant from 'tiny-invariant';
 import { server } from '../mocks/node';
 import { store } from '../mocks/store';
@@ -166,6 +166,43 @@ test('it follows a notice that loads after the conversation to the end of the vi
   await rendered.findByRole('listitem', { name: 'Remembered 1 thing' });
 
   expect(scroller.scrollTop).toBe(1200);
+});
+
+test('it says so when the notices fail to load, and loads them again when you try again', async () => {
+  const ctx = await setupTest();
+
+  server.use(
+    http.post('*/rpc/memory/listNotices', () => new HttpResponse(null, { status: 503 }), {
+      once: true,
+    }),
+  );
+
+  const message = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'I run on Sundays' },
+  });
+
+  await store.records.create({ kind: 'model.reply', message: { text: 'Noted.' } });
+
+  const runs = await store.memoryItems.create({ versions: [{ text: 'Runs on Sundays' }] });
+
+  await store.memoryNotices.create({
+    entries: [{ itemID: runs.itemID, sequence: message.sequence + 1 }],
+    kind: 'turn',
+    messageSequence: message.sequence,
+    noticeKey: `turn/conversation/${String(message.sequence)}`,
+  });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const failure = await rendered.findByText('Memory notices did not load.');
+
+  await ctx.user.click(within(failure).getByRole('button', { name: 'Try again' }));
+
+  const notice = await rendered.findByRole('listitem', { name: 'Remembered 1 thing' });
+
+  expect(notice).toHaveTextContent('Remembered 1 thing · View');
+  expect(rendered.queryByText('Memory notices did not load.')).toBeNull();
 });
 
 test('it refuses an undo of an item that changed after the notice loaded, and changes nothing', async () => {

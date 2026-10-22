@@ -3,10 +3,14 @@ import type { MemoryNotice } from './types';
 import type { LiveRecord } from './use-live-records';
 import { useNixieClient } from './use-nixie-client';
 
-export function useMemoryNotices(
-  thread: string,
-  records: readonly LiveRecord[],
-): readonly MemoryNotice[] {
+export interface MemoryNotices {
+  readonly notices: readonly MemoryNotice[];
+  readonly isFailed: boolean;
+
+  readonly retry: () => void;
+}
+
+export function useMemoryNotices(thread: string, records: readonly LiveRecord[]): MemoryNotices {
   const nixie = useNixieClient();
   const newest = records.findLast((record) => record.kind.startsWith('memory.'))?.sequence ?? 0;
   const options = nixie.queryUtils.memory.listNotices.queryOptions({ input: { thread } });
@@ -17,5 +21,11 @@ export function useMemoryNotices(
     placeholderData: keepPreviousData,
   });
 
-  return notices.data?.notices ?? [];
+  return {
+    notices: notices.data?.notices ?? [],
+    isFailed: notices.isError,
+    retry: () => {
+      void notices.refetch();
+    },
+  };
 }

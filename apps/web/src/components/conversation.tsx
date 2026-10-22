@@ -69,13 +69,14 @@ export function Conversation(props: ConversationProps): ReactNode {
       {conversation.unavailable ? <LiveUpdatesNotice /> : null}
       <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
       <CompactionFailureNotice records={records} />
+      {notices.isFailed ? <MemoryNoticesFailure onRetry={notices.retry} /> : null}
       <ConversationScroller
-        arrivals={records.length + outbox.entries.length + notices.length}
+        arrivals={records.length + outbox.entries.length + notices.notices.length}
         sends={sends}
       >
         <ConversationList
           entries={outbox.entries}
-          notices={notices}
+          notices={notices.notices}
           onDiscard={outbox.discard}
           onRetry={outbox.retry}
           records={records}
@@ -108,6 +109,21 @@ function LiveUpdatesNotice(): ReactNode {
   return (
     <p className={notice} role="status">
       Live updates unavailable
+    </p>
+  );
+}
+
+interface MemoryNoticesFailureProps {
+  readonly onRetry: () => void;
+}
+
+function MemoryNoticesFailure(props: MemoryNoticesFailureProps): ReactNode {
+  return (
+    <p className={notice} role="status">
+      Memory notices did not load.{' '}
+      <button onClick={props.onRetry} type="button">
+        Try again
+      </button>
     </p>
   );
 }
