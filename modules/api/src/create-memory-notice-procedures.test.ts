@@ -161,6 +161,71 @@ test('#memory.undo refuses an item that changed after the notice, and writes not
   expect(actions).toStrictEqual([]);
 });
 
+test('#memory.undo refuses a caller with no session, and writes nothing', async () => {
+  const ctx = await setupTest();
+
+  await writeOwnerMessages(ctx.context.log, ['I cycle to work every day']);
+
+  const written = await ctx.memory.writes.remember({
+    text: 'Cycles to work',
+    quote: 'I cycle to work',
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(written.status === 'applied');
+
+  const undo = buildTestClient(ctx.url).memory.undo({
+    clientActionID: '0b6f3e2a-71c4-4d8e-9a5b-2f1c8e7d6a43',
+    itemID: written.itemID,
+    version: 1,
+  });
+
+  await undo.catch(() => {});
+
+  const history = await ctx.memory.readHistory(written.itemID);
+
+  const actions = await ctx.db
+    .selectFrom('client_actions')
+    .select('procedure')
+    .where('procedure', '=', 'memory.undo')
+    .execute();
+
+  expect(undo).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(history?.versions).toHaveLength(1);
+  expect(actions).toStrictEqual([]);
+});
+
+test('#memory.keep refuses a caller with no session, and writes nothing', async () => {
+  const ctx = await setupTest();
+
+  await writeOwnerMessages(ctx.context.log, ['I cycle to work every day']);
+
+  const written = await ctx.memory.writes.remember({
+    text: 'Cycles to work',
+    quote: 'I cycle to work',
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(written.status === 'applied');
+
+  const keep = buildTestClient(ctx.url).memory.keep({
+    clientActionID: '0b6f3e2a-71c4-4d8e-9a5b-2f1c8e7d6a43',
+    itemID: written.itemID,
+    version: 1,
+  });
+
+  await keep.catch(() => {});
+
+  const actions = await ctx.db
+    .selectFrom('client_actions')
+    .select('procedure')
+    .where('procedure', '=', 'memory.keep')
+    .execute();
+
+  expect(keep).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(actions).toStrictEqual([]);
+});
+
 test('#memory.undo answers a retry with its first result and undoes once', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
