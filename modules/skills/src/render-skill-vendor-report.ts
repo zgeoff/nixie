@@ -34,7 +34,7 @@ export function renderSkillVendorReport(report: SkillVendorReport): string {
     ...renderReview(report.review),
   ];
 
-  return sections.join('\n\n');
+  return cutReport(sections.join('\n\n'));
 }
 
 interface TokenFinding {
@@ -79,10 +79,16 @@ function renderTokenFinding(finding: TokenFinding): string {
   return `- ${finding.token.kind} ${renderCode(finding.token.raw)} at ${places}`;
 }
 
+const maxCodeCharacters = 300;
+
 // The fence takes one more backtick than the longest run in the text, so no text can close it and
 // add markdown, a link or a mention to the body.
 function renderCode(text: string): string {
-  const flat = text.replaceAll(/[\r\n]+/gu, ' ');
+  const oneLine = text.replaceAll(/[\r\n]+/gu, ' ');
+
+  const flat =
+    oneLine.length > maxCodeCharacters ? `${oneLine.slice(0, maxCodeCharacters)}…` : oneLine;
+
   const longest = Math.max(0, ...[...flat.matchAll(/`+/gu)].map((run) => run[0].length));
   const fence = '`'.repeat(longest + 1);
   const padded = flat.startsWith('`') || flat.endsWith('`') ? ` ${flat} ` : flat;
@@ -96,7 +102,6 @@ function renderCommand(command: ScriptCommand): string {
   return `- ${renderCode(`${command.path}:${String(command.line)}`)} ${label}: ${renderCode(command.text)}`;
 }
 
-// GitHub caps a pull request body at 65,536 characters, so each list stops well short of it.
 const maxListItems = 50;
 
 function renderList(items: readonly string[], empty: string): string {
@@ -174,4 +179,33 @@ function renderReview(review: CheckerAnswer | null): readonly string[] {
     caveat,
     `${verdict} (${renderCode(review.model)}): ${renderCode(review.reason)}`,
   ];
+}
+
+// GitHub refuses a pull request body past 65,536 characters, and the notes above the report take a
+// few hundred.
+const maxReportCharacters = 60_000;
+
+const cutNote =
+  'nixie cut the report here, because it passed the size GitHub allows; read the files.';
+
+// Each line closes its own code spans, so a cut at a line end keeps every value inside its fence.
+function cutReport(text: string): string {
+  if (text.length <= maxReportCharacters) {
+    return text;
+  }
+
+  const kept: string[] = [];
+  let length = cutNote.length + 2;
+
+  for (const line of text.split('\n')) {
+    length += line.length + 1;
+
+    if (length > maxReportCharacters) {
+      break;
+    }
+
+    kept.push(line);
+  }
+
+  return `${kept.join('\n')}\n\n${cutNote}`;
 }

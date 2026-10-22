@@ -107,7 +107,7 @@ test("it reads a skill's page through its own fetch sandbox, which refuses a pri
   const reply = await webFetch.readSkillPage('https://localhost/skills/SKILL.md');
 
   await waitForCondition(async () => {
-    const left = await ctx.recorder.list('process', 'web_fetch');
+    const left = await ctx.recorder.list('process', 'skill_fetch');
 
     return left.length === 0;
   });

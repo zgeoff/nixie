@@ -2,6 +2,7 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { buildTestClock, makeGatedCall, waitForCondition } from '@heynixie/testing';
 import type { FetchRequest } from '@heynixie/wire';
+import invariant from 'tiny-invariant';
 import { startFetchSandbox } from './start-fetch-sandbox';
 import { buildStubSandboxAdapter } from './test-utils/build-stub-sandbox-adapter';
 import { makeStubFetcher } from './test-utils/make-stub-fetcher';
@@ -803,6 +804,58 @@ test('it removes the fetch sandboxes a past process left before it creates one',
   expect(others).toStrictEqual([]);
   expect(adapter.destroyed).toStrictEqual([leftover.id, created]);
   expect(adapter.spawned.map((spawn) => spawn.sandboxID)).toStrictEqual([created]);
+});
+
+test('it never removes a sandbox of another owner, and creates its own under its owner', async () => {
+  const adapter = buildStubSandboxAdapter(
+    makeStubFetcher((request) => ({
+      kind: 'page',
+      url: request.url,
+      status: 200,
+      contentType: 'text/plain',
+      text: 'hello',
+      links: [],
+      isTruncated: false,
+      blocked: null,
+    })),
+  );
+
+  const webFetchSandbox = await adapter.create(
+    buildMockSandboxSpec({
+      kind: 'fetch',
+      image: 'nixie-fetch',
+      owner: 'web_fetch',
+      egress: { kind: 'public' },
+      grants: [],
+      toolRoute: false,
+    }),
+  );
+
+  const fetchSandbox = startFetchSandbox({
+    adapter,
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+    owner: 'skill_fetch',
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  await fetchSandbox.readPage('https://example.com/');
+
+  await waitForCondition(() => adapter.destroyed.length === 1);
+
+  const [, created] = adapter.created;
+
+  const kept = await adapter.list('web_fetch');
+
+  invariant(created);
+
+  expect(created.spec.owner).toBe('skill_fetch');
+  expect(adapter.destroyed).toStrictEqual([created.id]);
+  expect(kept.map((sandbox) => sandbox.id)).toStrictEqual([webFetchSandbox.id]);
 });
 
 test('it runs one fetch at a time', async () => {

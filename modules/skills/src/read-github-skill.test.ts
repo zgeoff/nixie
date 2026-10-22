@@ -260,10 +260,10 @@ test('it refuses a file whose fetched text differs from the bytes at the commit'
 
 test('it refuses when the fetcher fails', async () => {
   const read = await readGitHubSkill(
-    (url) =>
+    () =>
       Promise.resolve({
         kind: 'refused',
-        reason: `the address of ${new URL(url).host} is private`,
+        reason: 'api.github.com resolves to 10.0.0.7, which is not a public address',
       }),
     {
       owner: 'example',
@@ -278,6 +278,6 @@ test('it refuses when the fetcher fails', async () => {
   expect(read).toStrictEqual({
     status: 'refused',
     reason:
-      'https://api.github.com/repos/example/skills/git/commits/3f6c1a528e0b4d7a9c215b7e4f0d9a133f6c1a52: the address of api.github.com is private',
+      'https://api.github.com/repos/example/skills/git/commits/3f6c1a528e0b4d7a9c215b7e4f0d9a133f6c1a52: api.github.com resolves to 10.0.0.7, which is not a public address',
   });
 });

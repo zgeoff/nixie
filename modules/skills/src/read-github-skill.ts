@@ -47,11 +47,11 @@ export async function readGitHubSkill(
   const commit = await readJSON(readPage, `${api}/commits/${source.commit}`, commitSchema);
 
   if (commit.status === 'refused') {
-    return refuseMissing(commit, `${source.repository} has no commit ${source.commit}`);
+    return buildMissingRefusal(commit, `${source.repository} has no commit ${source.commit}`);
   }
 
   if (commit.value.sha !== source.commit) {
-    return refuse(`GitHub answered with commit ${commit.value.sha}, not ${source.commit}`);
+    return buildRefusal(`GitHub answered with commit ${commit.value.sha}, not ${source.commit}`);
   }
 
   let treeSHA = commit.value.tree.sha;
@@ -66,7 +66,7 @@ export async function readGitHubSkill(
     const folder = tree.value.tree.find((entry) => entry.path === part && entry.type === 'tree');
 
     if (folder === undefined) {
-      return refuse(`${source.path} is not a folder at commit ${source.commit}`);
+      return buildRefusal(`${source.path} is not a folder at commit ${source.commit}`);
     }
 
     treeSHA = folder.sha;
@@ -79,14 +79,14 @@ export async function readGitHubSkill(
   }
 
   if (folder.value.truncated) {
-    return refuse(`${source.path} holds more files than GitHub lists in one answer`);
+    return buildRefusal(`${source.path} holds more files than GitHub lists in one answer`);
   }
 
   const blobs = folder.value.tree.filter((entry) => entry.type !== 'tree');
   const problem = findBlobProblem(blobs, limits);
 
   if (problem !== null) {
-    return refuse(problem);
+    return buildRefusal(problem);
   }
 
   const files: { readonly path: string; readonly text: string }[] = [];
@@ -152,7 +152,7 @@ function parseJSON(text: string): unknown {
 type Refusal = Extract<GitHubSkillRead, { readonly status: 'refused' }>;
 
 // GitHub answers 422 for a SHA it cannot resolve and 404 for a missing object.
-function refuseMissing(
+function buildMissingRefusal(
   read: Extract<JSONRead<unknown>, { readonly status: 'refused' }>,
   reason: string,
 ): Refusal {
@@ -161,7 +161,7 @@ function refuseMissing(
   return { status: 'refused', reason: isMissing ? reason : read.reason };
 }
 
-function refuse(reason: string): Refusal {
+function buildRefusal(reason: string): Refusal {
   return { status: 'refused', reason };
 }
 
@@ -206,11 +206,11 @@ async function readBlobText(
   const reply = await readPage(url);
 
   if (reply.kind !== 'page') {
-    return refuse(`${blob.path}: ${reply.reason}`);
+    return buildRefusal(`${blob.path}: ${reply.reason}`);
   }
 
   if (reply.status !== 200 || reply.text === null || reply.isTruncated) {
-    return refuse(
+    return buildRefusal(
       `${blob.path} answered with status ${String(reply.status)} and no complete text, so it may not be a text file`,
     );
   }
@@ -218,7 +218,7 @@ async function readBlobText(
   const bytes = new TextEncoder().encode(reply.text);
 
   if (buildBlobHash(bytes, source.commit.length) !== blob.sha) {
-    return refuse(
+    return buildRefusal(
       `the text nixie read for ${blob.path} differs from the file at the commit, so the file is not plain UTF-8 text`,
     );
   }

@@ -148,13 +148,17 @@ refuses to replace a skill of the user's own, one with no lock entry.
 
 The pull request body holds a review report that code builds from the files:
 
-- each destination-like token, by the token check that memory writes use, with the file and line of
-  each place it appears
+- each destination-like token, by the token check that memory writes use, with the file and line
+  where it appears
 - each line that installs a package or reaches the network, such as `pip install` or `curl`
 - the skill's `allowed-tools` and `compatibility` fields, which nixie never grants
 - the commit's signature, when the publisher signed it, as GitHub verified it or with the reason it
   failed
 - the paths the copy left out
+
+The report keeps under the size GitHub allows for a pull request body: it shortens a long value,
+caps each list and counts what it leaves out, and cuts at a line end with a note when it still runs
+over.
 
 A call may ask for an advisory review. The checker model reads the files as data and returns a
 verdict and a reason, which the report shows under its own heading. Nothing in the report approves

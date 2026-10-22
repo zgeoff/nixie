@@ -62,6 +62,9 @@ test.each([
   ['a parent part', 'skills/../secrets'],
   ['a dot part', 'skills/./pdf-forms'],
   ['an empty part', 'skills//pdf-forms'],
+  ['a backtick', 'skills/pdf`forms'],
+  ['a line break', 'skills/pdf\nforms'],
+  ['a path past 300 characters', `skills/${'a'.repeat(300)}`],
 ])('it refuses %s as the path', (_label, path) => {
   expect(
     parseSkillVendorInput({

@@ -55,6 +55,7 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
   const skillSandbox = startFetchSandbox({
     ...sandbox,
     limits: { ...config.limits, bodyBytes: skillFetchBytes, textBytes: skillFetchBytes },
+    owner: 'skill_fetch',
   });
 
   return {

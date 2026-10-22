@@ -19,13 +19,13 @@ export function parseSkillVendorInput(input: JSONObject): SkillVendorInput {
   const commit = input['commit'];
 
   if (typeof repository !== 'string' || typeof path !== 'string' || typeof commit !== 'string') {
-    return refuse('give the repository, the path and the commit, each as a string');
+    return buildRefusal('give the repository, the path and the commit, each as a string');
   }
 
   const repo = parseRepository(repository);
 
   if (repo === null) {
-    return refuse(
+    return buildRefusal(
       `${repository} is not a GitHub repository URL; give one such as https://github.com/example/skills`,
     );
   }
@@ -33,13 +33,13 @@ export function parseSkillVendorInput(input: JSONObject): SkillVendorInput {
   const folder = parseFolderPath(path);
 
   if (folder === null) {
-    return refuse(
+    return buildRefusal(
       `${path} is not a folder path inside the repository; give the skill's folder, such as skills/pdf-forms, with no . or .. parts`,
     );
   }
 
   if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u.test(commit)) {
-    return refuse(
+    return buildRefusal(
       `${commit} is not a full commit SHA. Give all 40 lowercase hex characters of the commit, never a branch, a tag or a short SHA, because only a full SHA pins a version that cannot move.`,
     );
   }
@@ -56,7 +56,7 @@ export function parseSkillVendorInput(input: JSONObject): SkillVendorInput {
   };
 }
 
-function refuse(reason: string): SkillVendorInput {
+function buildRefusal(reason: string): SkillVendorInput {
   return { status: 'refused', reason };
 }
 
@@ -95,8 +95,11 @@ function parseFolderPath(text: string): string | null {
   const trimmed = text.trim().replaceAll(/^\/+|\/+$/gu, '');
   const parts = trimmed.split('/');
 
+  // The pull request quotes the path in a code span, so a backtick or a line break would end it.
   const isPlain =
     trimmed !== '' &&
+    trimmed.length <= 300 &&
+    !/[`\p{Cc}]/u.test(trimmed) &&
     parts.every((part) => part !== '' && part !== '.' && part !== '..' && !part.includes('\\'));
 
   return isPlain ? trimmed : null;

@@ -174,6 +174,67 @@ test('it fences text holding backticks so the text cannot close its code span', 
   );
 });
 
+test('it cuts a value past 300 characters', () => {
+  const report = renderSkillVendorReport({
+    files: new Map([['SKILL.md', '# Tides\n']]),
+    frontmatter: {
+      name: 'tide-tables',
+      description: 'Reads a tide table.',
+      license: null,
+      compatibility: null,
+      allowedTools: 'a'.repeat(70_000),
+      metadata: {},
+    },
+    signature: { status: 'unsigned' },
+    skipped: [],
+    review: null,
+  });
+
+  expect(report).toInclude(
+    `- \`allowed-tools\`: \`${'a'.repeat(300)}…\`. nixie never grants these`,
+  );
+});
+
+test('it cuts the report at a line end before 60,000 characters and says so', () => {
+  const script = Array.from(
+    { length: 400 },
+    (_, index) => `curl https://h${String(index)}.example.net/${'p'.repeat(250)}`,
+  ).join('\n');
+
+  const report = renderSkillVendorReport({
+    files: new Map([
+      [`a/${'d'.repeat(280)}.sh`, script],
+      [`b/${'d'.repeat(280)}.sh`, script],
+      [`c/${'d'.repeat(280)}.sh`, script],
+    ]),
+    frontmatter: {
+      name: 'tide-tables',
+      description: 'Reads a tide table.',
+      license: null,
+      compatibility: null,
+      allowedTools: null,
+      metadata: {},
+    },
+    signature: { status: 'unsigned' },
+    skipped: Array.from(
+      { length: 200 },
+      (_, index) => `.cache/${String(index)}/${'q'.repeat(280)}`,
+    ),
+    review: {
+      verdict: 'unsure',
+      reason: 'r'.repeat(299),
+      model: 'review-model',
+      failure: null,
+    },
+  });
+
+  expect(report.length).toBeLessThanOrEqual(60_000);
+
+  expect(report).toEndWith(
+    '\n\nnixie cut the report here, because it passed the size GitHub allows; read the files.',
+  );
+});
+
 test('it lists at most 50 findings in a section and counts the rest', () => {
   const script = Array.from(
     { length: 53 },

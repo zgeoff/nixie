@@ -15,6 +15,10 @@ export interface FetchSandboxOptions {
   readonly deniedRanges: readonly string[];
   readonly sandboxLimits: SandboxLimits;
 
+  // a second fetch sandbox in one process takes an owner of its own, because each one's sweep
+  // removes every sandbox of its owner, which would end the other's fetch
+  readonly owner?: string;
+
   readonly replyGraceMs?: number;
 
   readonly sandboxCallTimeoutMs?: number;
@@ -113,7 +117,7 @@ async function createFetchSandbox(
   late: AbortSignal,
 ): Promise<Sandbox> {
   if (state.needsSweep) {
-    const leftovers = await options.adapter.list(fetchSandboxOwner);
+    const leftovers = await options.adapter.list(options.owner ?? fetchSandboxOwner);
 
     late.throwIfAborted();
 
@@ -129,7 +133,7 @@ async function createFetchSandbox(
       buildSandboxSpec({
         kind: 'fetch',
         image: options.image,
-        owner: fetchSandboxOwner,
+        owner: options.owner ?? fetchSandboxOwner,
         limits: options.sandboxLimits,
       }),
     );
