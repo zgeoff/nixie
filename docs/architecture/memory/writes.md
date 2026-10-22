@@ -246,6 +246,15 @@ deletion left behind.
 ## Notices
 
 Each applied write and each proposal adds an entry to its group's notice: one conversation turn,
-keyed by the user's newest message in the thread, or one task run. The client reads a thread's
-notices and groups each one's entries under the reply, and each entry binds to the version it wrote,
-so the store's undo for that version applies to it.
+keyed by the user's newest message in the thread, one writer batch, or one task run. The API lists a
+thread's notices with each entry's current item, and the client shows a turn's notice under the
+turn's last reply and any other notice after the newest record its writes followed. A notice shows
+its counts on one muted line and opens to its entries, and each entry links to its item in the
+memory view, or to the proposals page for a proposal.
+
+An entry whose item still stands at the version it wrote offers undo, keep and retire, each one tap
+and each a [checked action](../channels/api.md#checked-actions) bound to that version. An item that
+changed after the notice therefore refuses the change as stale, and nothing commits. Undo writes the
+store's undo version, and retire writes a retirement. Keep writes no version: its client action
+result is the record that the user kept that version, and the API reads it back to mark the entry
+kept. An entry whose item moved past its version shows the item as undone, retired or changed.
