@@ -1,4 +1,3 @@
-import type { GitHubDefinitionsOptions } from '@heynixie/definitions-github';
 import type { Writer } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
@@ -7,6 +6,7 @@ import type { DeploymentConfig } from './deployment-config-schema';
 import type { SandboxImages } from './load-sandbox-manifest';
 import type { Secrets } from './load-secrets';
 import { loadServerInputs } from './load-server-inputs';
+import type { DefinitionsExportSettings } from './resolve-definitions-export';
 import type { SandboxSettings } from './resolve-sandbox-settings';
 import { startServerWork } from './start-server-work';
 import type { Cleanup, ServerParts } from './types';
@@ -43,7 +43,7 @@ export interface ServerPartsOptions extends ServerOptions {
 
   readonly sandbox: SandboxSettings;
 
-  readonly definitionsExport: GitHubDefinitionsOptions | null;
+  readonly definitionsExport: DefinitionsExportSettings | null;
   readonly writer: Writer;
   readonly cleanup: Cleanup;
 

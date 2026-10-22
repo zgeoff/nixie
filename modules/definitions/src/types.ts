@@ -202,9 +202,18 @@ export interface DefinitionsRepo {
 export interface DefinitionsChange {
   readonly branch: string;
   readonly title: string;
+  readonly message: string;
   readonly body: string;
 
   readonly files: ReadonlyMap<string, string | null>;
+}
+
+export interface SkillExportText {
+  readonly title: string | null;
+  readonly message: string | null;
+
+  readonly agentName: string | null;
+  readonly ownerName: string | null;
 }
 
 export interface PullRequestRef {

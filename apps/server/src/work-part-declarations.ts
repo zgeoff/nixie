@@ -1,6 +1,4 @@
 import { createFirstEnrolmentCode } from '@heynixie/api';
-import { startSkillExportSweep } from '@heynixie/definitions';
-import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-github';
 import { toErrorFields } from '@heynixie/logger';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
 import { startSkillLapseSweep } from '@heynixie/skills';
@@ -10,6 +8,7 @@ import { runDefinitionsSeed } from './run-definitions-seed';
 import type { ServerPartValues } from './server-part-values';
 import { startRunners } from './start-runners';
 import { startSeedPoll } from './start-seed-poll';
+import { startSkillExports } from './start-skill-exports';
 import type { AnyPartDeclaration } from './types';
 import { writeStartRecord } from './write-start-record';
 
@@ -87,25 +86,15 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'skill_exports',
     needs: ['inputs', 'server_parts', 'start_record'],
-    start: async (reader) => {
+    start: (reader) => {
       const parts = reader.get('server_parts');
-      const settings = reader.get('inputs').options.definitionsExport;
 
-      if (settings === null) {
-        return null;
-      }
-
-      const sweep = startSkillExportSweep({
+      return startSkillExports({
         log: parts.context.log,
-        repo: buildGitHubDefinitionsRepo(settings),
-        onError: (error) => {
-          parts.log('skills.export_failed', toErrorFields(error), 'error');
-        },
+        settings: reader.get('inputs').options.definitionsExport,
+        cleanup: parts.cleanup,
+        logEvent: parts.log,
       });
-
-      await parts.cleanup.defer(() => sweep.stop());
-
-      return sweep;
     },
   },
   {

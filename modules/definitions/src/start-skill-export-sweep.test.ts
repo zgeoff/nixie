@@ -42,7 +42,12 @@ async function setupTest() {
 test('it exports a skill approved after it started once woken', async () => {
   const ctx = await setupTest();
 
-  const sweep = startSkillExportSweep({ log: ctx.log, repo: ctx.repo, onError: () => {} });
+  const sweep = startSkillExportSweep({
+    log: ctx.log,
+    repo: ctx.repo,
+    text: { title: 'skills: {operation} {skill}', message: null, agentName: null, ownerName: null },
+    onError: () => {},
+  });
 
   onTestFinished(() => sweep.stop());
 
@@ -67,8 +72,8 @@ test('it exports a skill approved after it started once woken', async () => {
 
   await sweep.stop();
 
-  expect(ctx.repo.readPullRequests().map((request) => request.change.branch)).toStrictEqual([
-    'nixie/skill/tide-tables',
+  expect(ctx.repo.readPullRequests()).toMatchObject([
+    { change: { branch: 'nixie/skill/tide-tables', title: 'skills: add tide-tables' } },
   ]);
 });
 
@@ -83,6 +88,7 @@ test('it passes a failed run to onError, and runs again each interval', async ()
   const sweep = startSkillExportSweep({
     log: ctx.log,
     repo: ctx.repo,
+    text: { title: null, message: null, agentName: null, ownerName: null },
     intervalMs: 3_600_000,
     clock,
     onError,

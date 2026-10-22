@@ -26,7 +26,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
 
   const config = { ...loaded, owner: resolveOwnerConfig(loaded.owner, secrets.settings) };
   const sandbox = resolveSandboxSettings(loaded, secrets.impdToken);
-  const definitionsExport = resolveDefinitionsExport(loaded, secrets.definitionsExportToken);
+  const definitionsExport = resolveDefinitionsExport(config, secrets.definitionsExportToken);
 
   const images = await loadSandboxManifest(options.manifestPath);
 

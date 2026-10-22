@@ -93,6 +93,7 @@ test('it exports an approved skill as a pull request that carries its files', as
       change: {
         branch: 'nixie/skill/tide-tables',
         title: 'Add the tide-tables skill that nixie wrote',
+        message: 'Add the tide-tables skill that nixie wrote',
         body: expect.toInclude('approval `5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31`'),
         files: new Map([
           [
@@ -100,6 +101,56 @@ test('it exports an approved skill as a pull request that carries its files', as
             '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n',
           ],
         ]),
+      },
+    },
+  ]);
+});
+
+test('it exports a skill with the configured title and message', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  await runWrittenSkillSeed({ log: ctx.log, policy });
+
+  await runSkillExports({
+    log: ctx.log,
+    repo: ctx.repo,
+    text: {
+      title: 'skills: {operation} {skill}',
+      message: '{agent} wrote it for {owner}, proposal {proposal}.',
+      agentName: 'Wren',
+      ownerName: 'Morgan',
+    },
+    onError: () => {},
+  });
+
+  expect(ctx.repo.readPullRequests()).toMatchObject([
+    {
+      change: {
+        title: 'skills: add tide-tables',
+        message: 'skills: add tide-tables\n\nWren wrote it for Morgan, proposal k3vq8m2xpa.',
+        body: 'Wren wrote it for Morgan, proposal k3vq8m2xpa.',
       },
     },
   ]);
@@ -508,6 +559,7 @@ test('it closes the pull request of a retired export that stopped before it reco
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'first\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
     },
@@ -583,6 +635,7 @@ test("it never closes a pull request that another approval's export holds", asyn
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'second\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides by port\n']]),
     },
@@ -759,6 +812,7 @@ test('it closes the pull request of an adopted skill whose export stopped midway
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'first\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
     },
@@ -992,6 +1046,7 @@ test('it closes the open pull request an adopted export recorded, when its expor
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'first\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
     },
@@ -1093,6 +1148,7 @@ test('it never closes the pull request of a later approval in force over an adop
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'later\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides by port\n']]),
     },

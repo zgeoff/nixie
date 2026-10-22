@@ -184,6 +184,15 @@ repo, and the token lives in the secrets file under `definitions_export_token`. 
 names the repo without the token stops nixie at start. Without the repo, a written skill stays in
 force over the definitions until the user copies it into them.
 
+Two optional templates under `definitions.export` set the export's text: `title` for the commit
+subject and the pull request's title, and `message` for the commit body and the pull request's body.
+The export fills each `{name}` placeholder with its value: `{skill}`, `{operation}` (`add` or
+`update`), `{agent}` and `{owner}` (the configured names of the agent and the user), and
+`{approval}` and `{proposal}` (their IDs). The message template takes `{notes}` too, which holds the
+notes that the export writes without a template. nixie refuses a configuration whose template holds
+any other placeholder, and names that placeholder. Without a message template, the commit holds the
+title alone and the pull request's body holds the notes.
+
 ## The snapshot hash
 
 The snapshot hash is the hash of one canonical form of the definitions in force. The persona enters

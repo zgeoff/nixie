@@ -4,8 +4,11 @@ import { createActor, toPromise } from 'xstate';
 import type { SkillExportOptions } from './run-skill-exports';
 import { runSkillExports } from './run-skill-exports';
 import { skillExportSweepMachine } from './skill-export-sweep-machine';
+import type { SkillExportText } from './types';
 
 export interface SkillExportSweepOptions extends SkillExportOptions {
+  readonly text: SkillExportText;
+
   readonly intervalMs?: number;
 
   readonly clock?: Clock;

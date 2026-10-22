@@ -12,6 +12,7 @@ import type {
   DefinitionsRepo,
   DefinitionsTables,
   PullRequestRef,
+  SkillExportText,
   WrittenSkillState,
 } from './types';
 import { writeSkillExportState } from './write-skill-export-state';
@@ -19,6 +20,7 @@ import { writeSkillExportState } from './write-skill-export-state';
 export interface SkillExportOptions {
   readonly log: Log;
   readonly repo: DefinitionsRepo;
+  readonly text?: SkillExportText;
 
   readonly onError: (error: unknown) => void;
 }
@@ -260,6 +262,7 @@ async function writeSkillExport(
     approvalID: row.approval_id,
     proposalID: row.proposal_id,
     version,
+    text: options.text ?? { title: null, message: null, agentName: null, ownerName: null },
     beneath,
     isBeneathVendored,
     existing,

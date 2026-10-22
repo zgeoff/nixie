@@ -28,6 +28,7 @@ const commits = new Collection({
     sha: z.string().default(() => faker.git.commitSha()),
     tree: z.string().default(() => faker.git.commitSha()),
     parents: parentsSchema.default([]),
+    message: z.string().default(() => faker.git.commitMessage()),
   }),
 });
 

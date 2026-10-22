@@ -1,15 +1,17 @@
 import { z } from 'zod';
 import { definitionsFormats } from './definitions-formats';
 import { manifestSkillsSchema } from './manifest-skills-schema';
+import { renderTemplate } from './render-template';
 import { skillsLockPath } from './skills-lock-path';
 import { skillsLockSchema } from './skills-lock-schema';
 import { toSkillExportBranch } from './to-skill-export-branch';
-import type { DefinitionsChange, SkillVersion } from './types';
+import type { DefinitionsChange, SkillExportText, SkillVersion } from './types';
 
 export interface SkillExport {
   readonly approvalID: string;
   readonly proposalID: string;
   readonly version: SkillVersion;
+  readonly text: SkillExportText;
 
   readonly beneath: SkillVersion | null;
   readonly isBeneathVendored: boolean;
@@ -60,13 +62,39 @@ export function buildSkillExportChange(skillExport: SkillExport): DefinitionsCha
     );
   }
 
+  const values = {
+    skill: name,
+    operation: skillExport.beneath === null ? 'add' : 'update',
+    agent: skillExport.text.agentName ?? 'nixie',
+    owner: skillExport.text.ownerName ?? 'the owner',
+    approval: skillExport.approvalID,
+    proposal: skillExport.proposalID,
+  };
+
+  const title =
+    skillExport.text.title === null
+      ? buildDefaultTitle(name, skillExport.beneath)
+      : renderTemplate(skillExport.text.title, values);
+
+  const notesText = notes.join('\n\n');
+
+  if (skillExport.text.message === null) {
+    return {
+      branch: toSkillExportBranch(name),
+      title,
+      message: title,
+      body: `${notesText}\n`,
+      files,
+    };
+  }
+
+  const message = renderTemplate(skillExport.text.message, { ...values, notes: notesText });
+
   return {
     branch: toSkillExportBranch(name),
-    title:
-      skillExport.beneath === null
-        ? `Add the ${name} skill that nixie wrote`
-        : `Update the ${name} skill to the version nixie wrote`,
-    body: `${notes.join('\n\n')}\n`,
+    title,
+    message: `${title}\n\n${message}`,
+    body: message,
     files,
   };
 }
@@ -129,4 +157,10 @@ function isUnlisted(manifest: string | null, name: string): boolean {
   const parsed = manifestSkillsSchema.safeParse(parseYAML(manifest));
 
   return parsed.success && parsed.data.skills !== undefined && !parsed.data.skills.includes(name);
+}
+
+function buildDefaultTitle(name: string, beneath: SkillVersion | null): string {
+  return beneath === null
+    ? `Add the ${name} skill that nixie wrote`
+    : `Update the ${name} skill to the version nixie wrote`;
 }

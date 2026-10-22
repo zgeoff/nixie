@@ -401,6 +401,37 @@ test('it refuses an unknown key inside a module’s section', async () => {
   );
 });
 
+test('it refuses an export title template that holds an unknown placeholder, and names it', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct:',
+      '      base_url: https://api.anthropic.com',
+      '      credential: deployment:anthropic',
+      '      auth_header: x-api-key',
+      '      model: claude-test-1',
+      '      effort: medium',
+      '  roles:',
+      '    conversation: chat-direct',
+      'imp:',
+      '  url: http://127.0.0.1:7070',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
+      '  export:',
+      '    repository: harbour/definitions',
+      "    title: 'skills: {verb} {skill}'",
+    ].join('\n'),
+  );
+
+  expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(
+    `nixie refuses the deployment configuration in ${ctx.path}:\ndefinitions.export.title: unknown placeholder {verb}; use {skill}, {operation}, {agent}, {owner}, {approval}, {proposal}`,
+  );
+});
+
 test('it refuses a file that is not YAML', async () => {
   const ctx = await setupTest();
 
