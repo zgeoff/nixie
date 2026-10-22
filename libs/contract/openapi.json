@@ -5870,8 +5870,7 @@
                               "owner",
                               "conversation",
                               "task",
-                              "memory_writer",
-                              "lapse"
+                              "memory_writer"
                             ],
                             "type": "string"
                           },
@@ -5925,8 +5924,7 @@
                                     "owner",
                                     "conversation",
                                     "task",
-                                    "memory_writer",
-                                    "lapse"
+                                    "memory_writer"
                                   ],
                                   "type": "string"
                                 },

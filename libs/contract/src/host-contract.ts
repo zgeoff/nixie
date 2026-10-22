@@ -9,7 +9,8 @@ const versionTargetSchema = z.strictObject({
 });
 
 const itemTextSchema = z.string().max(2000).regex(/\S/u);
-const memoryOriginSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer', 'lapse']);
+const proposalOriginSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer']);
+const memoryOriginSchema = z.enum([...proposalOriginSchema.options, 'lapse']);
 const contentSourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
 
 const reviewReasonSchema = z.enum([
@@ -31,7 +32,7 @@ const reviewReasonSchema = z.enum([
 ]);
 
 const proposalSourceSchema = z.object({
-  origin: memoryOriginSchema,
+  origin: proposalOriginSchema,
   thread: z.string().nullable(),
   proposedAt: z.date(),
 });
@@ -47,7 +48,7 @@ const pendingProposalSchema = z.object({
   kind: z.enum(['fact', 'self']),
   reason: reviewReasonSchema,
   actionHash: z.string(),
-  origin: memoryOriginSchema,
+  origin: proposalOriginSchema,
   source: contentSourceSchema,
   createdAt: z.date(),
   lapseAt: z.date(),

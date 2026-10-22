@@ -16,7 +16,8 @@ const memoryChange = memoryView.errors(reusedIDErrors).errors({
 
 const itemIDSchema = z.string().min(1).max(200);
 const itemTextSchema = z.string().max(2000).regex(/\S/u);
-const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer', 'lapse']);
+const proposalOriginSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer']);
+const originSchema = z.enum([...proposalOriginSchema.options, 'lapse']);
 const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
 const subjectSchema = z.enum(['owner', 'self', 'shared']);
 const kindSchema = z.enum(['fact', 'self']);
@@ -92,7 +93,7 @@ const reviewReasonSchema = z.enum([
 ]);
 
 const proposalSourceSchema = z.object({
-  origin: originSchema,
+  origin: proposalOriginSchema,
   proposedAt: z.date(),
   thread: z.string().nullable(),
 });
@@ -114,7 +115,7 @@ const memoryProposalSchema = z.object({
   kind: kindSchema,
   lapseAt: z.date(),
   operation: z.enum(['remember', 'retire']),
-  origin: originSchema,
+  origin: proposalOriginSchema,
   proposalID: z.string(),
   quote: z.string().nullable(),
   reason: reviewReasonSchema,
