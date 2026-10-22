@@ -89,7 +89,8 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     needs: ['inputs', 'server_parts', 'start_record'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
-      const settings = reader.get('inputs').options.definitionsExport;
+      const options = reader.get('inputs').options;
+      const settings = options.definitionsExport;
 
       if (settings === null) {
         return null;
@@ -98,6 +99,12 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const sweep = startSkillExportSweep({
         log: parts.context.log,
         repo: buildGitHubDefinitionsRepo(settings),
+        text: {
+          title: options.config.definitions.export?.title ?? null,
+          message: options.config.definitions.export?.message ?? null,
+          agentName: options.config.agent.names[0] ?? null,
+          ownerName: options.config.owner.name,
+        },
         onError: (error) => {
           parts.log('skills.export_failed', toErrorFields(error), 'error');
         },

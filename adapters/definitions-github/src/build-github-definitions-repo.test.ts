@@ -202,6 +202,7 @@ test('it opens a pull request from a branch that holds the change on the pinned 
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Update the tide-tables skill to the version nixie wrote',
+      message: 'Update the tide-tables skill to the version nixie wrote\n\nMerge it.\n',
       body: 'Merge it.\n',
       files: new Map([
         ['skills/tide-tables/SKILL.md', '# Tides\n'],
@@ -232,6 +233,16 @@ test('it opens a pull request from a branch that holds the change on the pinned 
       state: 'open',
     },
   ]);
+
+  const head = githubStore.refs.findFirst((query) =>
+    query.where({ repository: 'harbour/definitions', branch: 'nixie/skill/tide-tables' }),
+  );
+
+  invariant(head);
+
+  expect(githubStore.commits.findFirst((query) => query.where({ sha: head.sha }))?.message).toBe(
+    'Update the tide-tables skill to the version nixie wrote\n\nMerge it.\n',
+  );
 });
 
 test('it rebuilds the branch on a later revision and updates the open pull request', async () => {
@@ -250,6 +261,7 @@ test('it rebuilds the branch on a later revision and updates the open pull reque
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'First.\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
     },
@@ -268,7 +280,8 @@ test('it rebuilds the branch on a later revision and updates the open pull reque
   const pullRequest = await repo.writePullRequest(
     {
       branch: 'nixie/skill/tide-tables',
-      title: 'Add the tide-tables skill that nixie wrote',
+      title: 'skills: update tide-tables',
+      message: 'skills: update tide-tables\n\nSecond.\n',
       body: 'Second.\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides by port\n']]),
     },
@@ -282,7 +295,19 @@ test('it rebuilds the branch on a later revision and updates the open pull reque
     'skills/tide-tables/SKILL.md': '# Tides by port\n',
   });
 
-  expect(githubStore.pulls.all().map((pull) => pull.body)).toStrictEqual(['Second.\n']);
+  expect(githubStore.pulls.all()).toMatchObject([
+    { title: 'skills: update tide-tables', body: 'Second.\n' },
+  ]);
+
+  const head = githubStore.refs.findFirst((query) =>
+    query.where({ repository: 'harbour/definitions', branch: 'nixie/skill/tide-tables' }),
+  );
+
+  invariant(head);
+
+  expect(githubStore.commits.findFirst((query) => query.where({ sha: head.sha }))?.message).toBe(
+    'skills: update tide-tables\n\nSecond.\n',
+  );
 });
 
 test('it closes a pull request', async () => {
@@ -301,6 +326,7 @@ test('it closes a pull request', async () => {
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'First.\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
     },
@@ -328,6 +354,7 @@ test("it reads a branch's open pull request", async () => {
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'First.\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
     },
@@ -355,6 +382,7 @@ test('it reads no open pull request for a branch whose pull request closed', asy
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'First.\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
     },

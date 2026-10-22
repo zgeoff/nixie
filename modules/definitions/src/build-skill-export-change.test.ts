@@ -14,6 +14,7 @@ test('it carries a new skill in its folder, and notes a conversation list that l
   const change = buildSkillExportChange({
     approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
     proposalID: 'k3vq8m2xpa',
+    text: { title: null, message: null, agentName: null, ownerName: null },
     version,
     beneath: null,
     isBeneathVendored: false,
@@ -25,6 +26,7 @@ test('it carries a new skill in its folder, and notes a conversation list that l
   expect(change).toStrictEqual({
     branch: 'nixie/skill/tide-tables',
     title: 'Add the tide-tables skill that nixie wrote',
+    message: 'Add the tide-tables skill that nixie wrote',
     body: expect.toBeString(),
     files: new Map([
       [
@@ -55,6 +57,7 @@ test('it leaves out the list note when nixie.yaml lists no skills', () => {
   const change = buildSkillExportChange({
     approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
     proposalID: 'k3vq8m2xpa',
+    text: { title: null, message: null, agentName: null, ownerName: null },
     version,
     beneath: null,
     isBeneathVendored: false,
@@ -76,6 +79,7 @@ test('it warns that a merge alone leaves the skill unapplied when nixie.yaml hol
   const change = buildSkillExportChange({
     approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
     proposalID: 'k3vq8m2xpa',
+    text: { title: null, message: null, agentName: null, ownerName: null },
     version,
     beneath: null,
     isBeneathVendored: false,
@@ -118,6 +122,7 @@ test('it replaces a vendored skill: it removes the files the new version lacks a
   const change = buildSkillExportChange({
     approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
     proposalID: 'k3vq8m2xpa',
+    text: { title: null, message: null, agentName: null, ownerName: null },
     version,
     beneath,
     isBeneathVendored: true,
@@ -129,6 +134,7 @@ test('it replaces a vendored skill: it removes the files the new version lacks a
   expect(change).toStrictEqual({
     branch: 'nixie/skill/tide-tables',
     title: 'Update the tide-tables skill to the version nixie wrote',
+    message: 'Update the tide-tables skill to the version nixie wrote',
     body: expect.toInclude('removes the lock entry of the vendored `tide-tables` skill'),
     files: new Map([
       [
@@ -159,6 +165,7 @@ test('it removes each file the folder on the base branch holds and the version l
   const change = buildSkillExportChange({
     approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
     proposalID: 'k3vq8m2xpa',
+    text: { title: null, message: null, agentName: null, ownerName: null },
     version,
     beneath,
     isBeneathVendored: false,
@@ -189,6 +196,7 @@ test('it refuses a lock file on the base branch that is not valid', () => {
     buildSkillExportChange({
       approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
       proposalID: 'k3vq8m2xpa',
+      text: { title: null, message: null, agentName: null, ownerName: null },
       version,
       beneath: version,
       isBeneathVendored: true,
@@ -200,4 +208,141 @@ test('it refuses a lock file on the base branch that is not valid', () => {
     Error,
     'skills/skills.lock.json on the base branch is not a valid lock file',
   );
+});
+
+test('it fills the configured title and message for a new skill', () => {
+  const version = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in version);
+
+  const change = buildSkillExportChange({
+    approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+    proposalID: 'k3vq8m2xpa',
+    text: {
+      title: 'skills: {operation} {skill}',
+      message:
+        'Written by {agent} for {owner}.\nApproval {approval}, proposal {proposal}.\n\n{notes}\n',
+      agentName: 'Wren',
+      ownerName: 'Morgan',
+    },
+    version,
+    beneath: null,
+    isBeneathVendored: false,
+    existing: [],
+    lock: null,
+    manifest: 'format: 2\n',
+  });
+
+  expect(change.title).toBe('skills: add tide-tables');
+
+  expect(change.body).toMatchInlineSnapshot(`
+    "Written by Wren for Morgan.
+    Approval 5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31, proposal k3vq8m2xpa.
+
+    nixie wrote this version of the \`tide-tables\` skill, and an approval put it in force: approval \`5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31\`, proposal \`k3vq8m2xpa\`.
+
+    Merge this pull request to make the skill yours: the next seed after the merge marks it as yours. A change to the skill on the base branch before the merge shows as a conflict, and \`nixie skill resolve\` keeps one side.
+    "
+  `);
+
+  expect(change.message).toBe(`skills: add tide-tables\n\n${change.body}`);
+});
+
+test('it fills the configured title and message for a skill it updates', () => {
+  const beneath = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  const version = checkSkillFiles('tide-tables', [
+    {
+      path: 'SKILL.md',
+      text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\nBy port.\n',
+    },
+  ]);
+
+  invariant('skillHash' in beneath);
+  invariant('skillHash' in version);
+
+  const change = buildSkillExportChange({
+    approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+    proposalID: 'k3vq8m2xpa',
+    text: {
+      title: 'skills: {operation} {skill} by {agent}',
+      message: '{owner} approved {approval}.',
+      agentName: 'Wren',
+      ownerName: 'Morgan',
+    },
+    version,
+    beneath,
+    isBeneathVendored: false,
+    existing: ['SKILL.md'],
+    lock: null,
+    manifest: null,
+  });
+
+  expect(change).toStrictEqual({
+    branch: 'nixie/skill/tide-tables',
+    title: 'skills: update tide-tables by Wren',
+    message:
+      'skills: update tide-tables by Wren\n\nMorgan approved 5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31.',
+    body: 'Morgan approved 5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31.',
+    files: new Map([
+      [
+        'skills/tide-tables/SKILL.md',
+        '---\nname: tide-tables\ndescription: Reads a tide table.\n---\nBy port.\n',
+      ],
+    ]),
+  });
+});
+
+test('it names nixie and the owner when the configuration names neither', () => {
+  const version = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in version);
+
+  const change = buildSkillExportChange({
+    approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+    proposalID: 'k3vq8m2xpa',
+    text: {
+      title: '{agent} wrote {skill} for {owner}',
+      message: null,
+      agentName: null,
+      ownerName: null,
+    },
+    version,
+    beneath: null,
+    isBeneathVendored: false,
+    existing: [],
+    lock: null,
+    manifest: null,
+  });
+
+  expect(change.title).toBe('nixie wrote tide-tables for the owner');
+});
+
+test('it keeps the notes as the body when only the title is configured', () => {
+  const version = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in version);
+
+  const change = buildSkillExportChange({
+    approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+    proposalID: 'k3vq8m2xpa',
+    text: { title: 'skills: {operation} {skill}', message: null, agentName: null, ownerName: null },
+    version,
+    beneath: null,
+    isBeneathVendored: false,
+    existing: [],
+    lock: null,
+    manifest: null,
+  });
+
+  expect(change.message).toBe('skills: add tide-tables');
+  expect(change.body).toStartWith('nixie wrote this version of the `tide-tables` skill');
 });

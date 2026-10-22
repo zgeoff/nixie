@@ -46,6 +46,7 @@ export type {
   PolicyRule,
   PullRequestRef,
   SizeLimits,
+  SkillExportText,
   SkillFrontmatter,
   SkillOrigin,
   SkillRef,

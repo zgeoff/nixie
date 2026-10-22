@@ -17,5 +17,10 @@ export function resolveDefinitionsExport(
     );
   }
 
-  return { ...exportConfig, token };
+  return {
+    repository: exportConfig.repository,
+    base: exportConfig.base,
+    apiURL: exportConfig.apiURL,
+    token,
+  };
 }

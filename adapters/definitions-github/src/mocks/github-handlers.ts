@@ -264,6 +264,7 @@ async function answerCommit(call: MockCall): Promise<Response> {
     sha: faker.git.commitSha(),
     tree: request.tree,
     parents: request.parents,
+    message: request.message,
   });
 
   return answerJSON(githubContract.createCommit, { sha: commit.sha }, 201);

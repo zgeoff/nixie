@@ -92,6 +92,7 @@ test('it opens one pull request per branch, and a later change replaces its chan
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'first\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
     },
@@ -102,6 +103,7 @@ test('it opens one pull request per branch, and a later change replaces its chan
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'second\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides by port\n']]),
     },
@@ -120,6 +122,7 @@ test('it opens one pull request per branch, and a later change replaces its chan
       change: {
         branch: 'nixie/skill/tide-tables',
         title: 'Add the tide-tables skill that nixie wrote',
+        message: 'Add the tide-tables skill that nixie wrote',
         body: 'second\n',
         files: new Map([['skills/tide-tables/SKILL.md', '# Tides by port\n']]),
       },
@@ -133,6 +136,7 @@ test('it opens a new pull request on a branch whose pull request closed', async 
   const change = {
     branch: 'nixie/skill/tide-tables',
     title: 'Add the tide-tables skill that nixie wrote',
+    message: 'Add the tide-tables skill that nixie wrote',
     body: 'first\n',
     files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
   };
@@ -160,6 +164,7 @@ test('it writes a merged change into the base branch, removing each file it remo
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Update the tide-tables skill to the version nixie wrote',
+      message: 'Update the tide-tables skill to the version nixie wrote',
       body: 'body\n',
       files: new Map([
         ['skills/tide-tables/SKILL.md', '# Tides\n'],
@@ -187,6 +192,7 @@ test("it reads a branch's open pull request, and null once it closes", async () 
     {
       branch: 'nixie/skill/tide-tables',
       title: 'Add the tide-tables skill that nixie wrote',
+      message: 'Add the tide-tables skill that nixie wrote',
       body: 'first\n',
       files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
     },
@@ -209,6 +215,7 @@ test('it opens the pull request and rejects the write when its answer is lost, a
   const change = {
     branch: 'nixie/skill/tide-tables',
     title: 'Add the tide-tables skill that nixie wrote',
+    message: 'Add the tide-tables skill that nixie wrote',
     body: 'first\n',
     files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
   };
@@ -233,6 +240,7 @@ test('it opens the pull request before a delayed answer, which comes once its wo
   const change = {
     branch: 'nixie/skill/tide-tables',
     title: 'Add the tide-tables skill that nixie wrote',
+    message: 'Add the tide-tables skill that nixie wrote',
     body: 'first\n',
     files: new Map([['skills/tide-tables/SKILL.md', '# Tides\n']]),
   };

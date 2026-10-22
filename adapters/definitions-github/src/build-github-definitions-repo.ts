@@ -166,7 +166,7 @@ async function writeChangeCommit(
 
   const commit = await send(githubContract.createCommit, {
     params: {},
-    body: { message: change.title, tree: tree.sha, parents: [parent.sha] },
+    body: { message: change.message, tree: tree.sha, parents: [parent.sha] },
   });
 
   return commit.sha;
