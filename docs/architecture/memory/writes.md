@@ -115,11 +115,13 @@ judges one: a pin adds no text, so the gate has nothing of the user's to check. 
 takes no pin, so a new fact that the model wants pinned is a remember and then a pin, and the user
 reviews each one.
 
-A pin of a retired item, a forgotten one or a moved-on version fails before anything is written. A
-pin of an item already in the core applies at once and writes nothing. An approval pins the item
-through the store, bound to the proposal's version, so an approval fails as stale once the item
-moved on, and fails with `PINNED_CORE_FULL` when the core has no room left in its budget. The
-approval and the pin record commit together, and a rejected or lapsed pin leaves the core as it was.
+A pin of a retired item, a forgotten one or a moved-on version fails before anything is written. An
+active item past its [end time](./store.md#end-times) counts as retired, so its pin fails the same
+way. A pin of an item already in the core applies at once and writes nothing. An approval pins the
+item through the store, bound to the proposal's version, so an approval fails as stale once the item
+moved on, fails as retired once its end time passed, and fails with `PINNED_CORE_FULL` when the core
+has no room left in its budget. The approval and the pin record commit together, and a rejected or
+lapsed pin leaves the core as it was.
 
 `memory.unpin` takes an item out of the core at once and needs no review, because the item stays in
 memory and recall still finds it. It writes the pin record that the user's own unpin writes, with
