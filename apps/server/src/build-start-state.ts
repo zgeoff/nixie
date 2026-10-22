@@ -5,7 +5,7 @@ interface StartReports {
 
   readonly definitions: PartReport;
 
-  readonly areImagesAdded: boolean;
+  readonly images: PartReport;
 
   readonly conversation: PartReport;
 
@@ -24,7 +24,7 @@ export function buildStartState(database: PartReport): StartState {
     reports: {
       database,
       definitions: { isReady: false, reason: 'no seed has applied yet' },
-      areImagesAdded: false,
+      images: { isReady: false, reason: 'the images in the sandbox manifest are not all added' },
       conversation: { isReady: false, reason: 'the conversation imp has not started' },
       turns: { isReady: true, reason: null },
       areRunnersStarted: false,

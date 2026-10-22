@@ -25,7 +25,7 @@ function buildDependencyParts(
 ): HealthChecks['dependencies'] {
   return {
     imp_host: () =>
-      Promise.resolve(buildImpHostReport(refresh.read('imp_runtime'), state.read().areImagesAdded)),
+      Promise.resolve(buildImpHostReport(refresh.read('imp_runtime'), state.read().images)),
     conversation_imp: () => {
       const reports = state.read();
 
@@ -40,12 +40,6 @@ function buildDependencyParts(
   };
 }
 
-function buildImpHostReport(runtime: PartReport, areImagesAdded: boolean): PartReport {
-  if (!runtime.isReady) {
-    return runtime;
-  }
-
-  return areImagesAdded
-    ? { isReady: true, reason: null }
-    : { isReady: false, reason: 'the images in the sandbox manifest are not all added' };
+function buildImpHostReport(runtime: PartReport, images: PartReport): PartReport {
+  return runtime.isReady ? images : runtime;
 }

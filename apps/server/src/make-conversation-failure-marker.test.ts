@@ -118,7 +118,7 @@ test('it keeps readiness at 200 and shows the failing turns in its advisory part
 
   ctx.state.update({
     definitions: { isReady: true, reason: null },
-    areImagesAdded: true,
+    images: { isReady: true, reason: null },
     conversation: { isReady: true, reason: null },
     areRunnersStarted: true,
   });
@@ -167,7 +167,7 @@ test('it reports the conversation turns as not ready on readiness after one turn
 
   ctx.state.update({
     definitions: { isReady: true, reason: null },
-    areImagesAdded: true,
+    images: { isReady: true, reason: null },
     conversation: { isReady: true, reason: null },
     areRunnersStarted: true,
   });

@@ -8,10 +8,18 @@ type ImageParts = Pick<ServerParts, 'images' | 'log' | 'state'> & {
 export async function registerSandboxImages(parts: ImageParts): Promise<void> {
   // The sandbox runtime pulls one image at a time, so the images are added one after another.
   for (const image of Object.values(parts.images)) {
-    await parts.tools.adapter.addImage(image);
+    try {
+      await parts.tools.adapter.addImage(image);
+    } catch (error) {
+      parts.state.update({
+        images: { isReady: false, reason: `impd did not add the image ${image.name}` },
+      });
+
+      throw error;
+    }
 
     parts.log('image.added', { name: image.name });
   }
 
-  parts.state.update({ areImagesAdded: true });
+  parts.state.update({ images: { isReady: true, reason: null } });
 }
