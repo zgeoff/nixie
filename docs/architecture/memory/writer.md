@@ -93,8 +93,8 @@ active item while the list fits its budget, else the items a keyword recall over
 Neither the list nor a recall shows a self-note, and the pending proposals leave out a self-note's,
 because a self-note is the assistant's own to write. A rule tells the writer to stage nothing for a
 fact that a pending proposal already holds, even in other words, because the gate merges only a
-proposal of the same text. One exception: a batch that moves or drops a proposal's end time stages
-the fact again with the new end time, which the gate keeps as a proposal of its own.
+proposal of the same text. One exception: a batch that adds, moves or drops a proposal's end time
+stages the fact again with the new end time, which the gate keeps as a proposal of its own.
 
 The session's tools are recall, remember, edit, retire and flag-self-note. Remember only creates an
 item, and edit is the one tool that changes an item's text, as in the conversation. Remember and
