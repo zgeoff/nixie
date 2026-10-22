@@ -9,19 +9,21 @@ export interface RetiredForgetInput {
   readonly targets: readonly { readonly itemID: string; readonly version: number }[];
 }
 
+export type RetiredForgetOutcome =
+  | { readonly kind: 'applied' | 'refused'; readonly notice: string }
+  | { readonly kind: 'failed' };
+
 export interface RetiredForget {
   readonly send: (input: RetiredForgetInput) => void;
-
-  readonly isPending: boolean;
-
-  readonly hasFailed: boolean;
 
   readonly unfinished: RetiredForgetInput | null;
 }
 
 const mutationKey = ['memory-forget-retired'];
 
-export function useRetiredForget(onSettled: (notice: string) => void): RetiredForget {
+export function useRetiredForget(
+  onSettled: (outcome: RetiredForgetOutcome) => void,
+): RetiredForget {
   const nixie = useNixieClient();
   const queryClient = useQueryClient();
 
@@ -31,14 +33,7 @@ export function useRetiredForget(onSettled: (notice: string) => void): RetiredFo
     mutationFn: (input: RetiredForgetInput) =>
       nixie.client.memory.forgetRetired({ ...input, targets: [...input.targets] }),
     onSettled: async (status, error) => {
-      const notice =
-        status === undefined
-          ? findRefusalNotice(error)
-          : `Deleted ${formatItemCount(status.deleted.length)} for good.`;
-
-      if (notice !== null) {
-        onSettled(notice);
-      }
+      onSettled(buildOutcome(status, error));
 
       await queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() });
     },
@@ -50,10 +45,24 @@ export function useRetiredForget(onSettled: (notice: string) => void): RetiredFo
     send: (input) => {
       mutation.mutate(input);
     },
-    isPending: mutation.isPending,
-    hasFailed: isUnfinished(mutation),
     unfinished: findUnfinishedInput(calls.at(-1)),
   };
+}
+
+function buildOutcome(
+  status: { readonly deleted: readonly string[] } | undefined,
+  error: unknown,
+): RetiredForgetOutcome {
+  if (status !== undefined) {
+    return {
+      kind: 'applied',
+      notice: `Deleted ${formatItemCount(status.deleted.length)} for good.`,
+    };
+  }
+
+  const notice = findRefusalNotice(error);
+
+  return notice === null ? { kind: 'failed' } : { kind: 'refused', notice };
 }
 
 const refusalNotices: Readonly<Record<string, string>> = {
@@ -75,12 +84,13 @@ function findRefusalNotice(error: unknown): string | null {
 
 type CallState = Pick<MutationState, 'status' | 'variables' | 'error'>;
 
-function isUnfinished(state: CallState): boolean {
-  return state.status === 'error' && findRefusalNotice(state.error) === null;
-}
-
 function findUnfinishedInput(state: CallState | undefined): RetiredForgetInput | null {
-  if (state === undefined || !isUnfinished(state) || !isRetiredForgetInput(state.variables)) {
+  if (
+    state === undefined ||
+    state.status !== 'error' ||
+    findRefusalNotice(state.error) !== null ||
+    !isRetiredForgetInput(state.variables)
+  ) {
     return null;
   }
 

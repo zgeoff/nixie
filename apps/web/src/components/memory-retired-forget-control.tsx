@@ -1,16 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useReducer } from 'react';
+import type { EventFrom, SnapshotFrom } from 'xstate';
+import { initialTransition, transition } from 'xstate';
 import { formatItemCount } from '../format-item-count';
+import { retiredForgetMachine } from '../retired-forget-machine';
 import { css } from '../styled-system/css';
 import type { RetiredForgetItem } from '../types';
 import { useNixieClient } from '../use-nixie-client';
-import type { RetiredForgetInput } from '../use-retired-forget';
+import type { RetiredForgetInput, RetiredForgetOutcome } from '../use-retired-forget';
 import { useRetiredForget } from '../use-retired-forget';
 
 export interface MemoryRetiredForgetControlProps {
   readonly onSettled: (notice: string) => void;
 }
+
+type ForgetSnapshot = SnapshotFrom<typeof retiredForgetMachine>;
+
+type ForgetEvent = EventFrom<typeof retiredForgetMachine>;
 
 const confirmation = css({
   borderWidth: '1px',
@@ -23,62 +30,80 @@ const confirmation = css({
 });
 
 export function MemoryRetiredForgetControl(props: MemoryRetiredForgetControlProps): ReactNode {
-  const [isOpen, setIsOpen] = useState(false);
-  const forget = useRetiredForget(props.onSettled);
-
-  if (isOpen) {
-    return (
-      <RetiredForgetConfirmation
-        onClose={(notice) => {
-          setIsOpen(false);
-
-          if (notice !== null) {
-            props.onSettled(notice);
-          }
-        }}
-      />
-    );
-  }
-
   // The query client keeps every bulk call apart from this control, so a run whose cleanup failed
   // still offers its finish after the page is left and opened again.
-  if (forget.unfinished !== null) {
-    const input = forget.unfinished;
+  const forget = useRetiredForget((outcome) => {
+    handleOutcome(outcome);
+  });
 
+  const [snapshot, send] = useReducer(
+    (current: ForgetSnapshot, event: ForgetEvent) => {
+      const [next] = transition(retiredForgetMachine, current, event);
+
+      return next;
+    },
+    forget.unfinished,
+    (unfinished) => {
+      const [initial] = initialTransition(retiredForgetMachine, { unfinished });
+
+      return initial;
+    },
+  );
+
+  const handleOutcome = (outcome: RetiredForgetOutcome): void => {
+    send({ type: outcome.kind });
+
+    if (outcome.kind !== 'failed') {
+      props.onSettled(outcome.notice);
+    }
+  };
+
+  const sent = snapshot.context.sent;
+
+  if (snapshot.matches('confirming')) {
+    return <RetiredForgetConfirmation onEvent={send} onSend={forget.send} snapshot={snapshot} />;
+  }
+
+  if (snapshot.matches('idle') || snapshot.matches('done') || sent === null) {
     return (
-      <div aria-label="Finish the deletion" className={confirmation} role="group">
-        <ForgetProgress targets={input.targets} />
-        <button
-          disabled={forget.isPending}
-          onClick={() => {
-            forget.send(input);
-          }}
-          type="button"
-        >
-          Finish the deletion
-        </button>
-      </div>
+      <button
+        onClick={() => {
+          send({ type: 'open' });
+        }}
+        type="button"
+      >
+        Delete retired items
+      </button>
     );
   }
 
   return (
-    <button
-      onClick={() => {
-        setIsOpen(true);
-      }}
-      type="button"
-    >
-      Delete retired items
-    </button>
+    <div aria-label="Finish the deletion" className={confirmation} role="group">
+      {snapshot.matches('failed') ? <ForgetProgress targets={sent.targets} /> : null}
+      <button
+        disabled={snapshot.matches('sent')}
+        onClick={() => {
+          send({ type: 'retry' });
+
+          forget.send(sent);
+        }}
+        type="button"
+      >
+        Finish the deletion
+      </button>
+    </div>
   );
 }
 
 interface RetiredForgetConfirmationProps {
-  readonly onClose: (notice: string | null) => void;
+  readonly snapshot: ForgetSnapshot;
+  readonly onEvent: (event: ForgetEvent) => void;
+  readonly onSend: (input: RetiredForgetInput) => void;
 }
 
 function RetiredForgetConfirmation(props: RetiredForgetConfirmationProps): ReactNode {
   const nixie = useNixieClient();
+  const onEvent = props.onEvent;
 
   // A closed confirmation drops its preview, so the next one reads the retired items again.
   const preview = useQuery({
@@ -88,16 +113,26 @@ function RetiredForgetConfirmation(props: RetiredForgetConfirmationProps): React
     staleTime: Number.POSITIVE_INFINITY,
   });
 
+  const previewed = preview.data;
+
+  useEffect(() => {
+    if (previewed !== undefined) {
+      onEvent({ type: 'preview.read', items: previewed.items });
+    }
+  }, [previewed, onEvent]);
+
+  const items = props.snapshot.context.items;
+
   return (
     <div aria-label="Delete retired items" className={confirmation} role="group">
       {preview.isPending ? <p>Reading the retired items…</p> : null}
-      {preview.data === undefined && preview.isError ? (
+      {previewed === undefined && preview.isError ? (
         <p role="alert">The retired items did not load. Try again.</p>
       ) : null}
-      {preview.data === undefined ? (
+      {items === null || previewed === undefined ? (
         <button
           onClick={() => {
-            props.onClose(null);
+            onEvent({ type: 'cancel' });
           }}
           type="button"
         >
@@ -105,9 +140,11 @@ function RetiredForgetConfirmation(props: RetiredForgetConfirmationProps): React
         </button>
       ) : (
         <RetiredForgetForm
-          hasMore={preview.data.hasMore}
-          items={preview.data.items}
-          onClose={props.onClose}
+          hasMore={previewed.hasMore}
+          items={items}
+          onEvent={onEvent}
+          onSend={props.onSend}
+          selected={props.snapshot.context.selected}
         />
       )}
     </div>
@@ -116,31 +153,22 @@ function RetiredForgetConfirmation(props: RetiredForgetConfirmationProps): React
 
 interface RetiredForgetFormProps {
   readonly items: readonly RetiredForgetItem[];
+  readonly selected: ReadonlySet<string>;
   readonly hasMore: boolean;
-  readonly onClose: (notice: string | null) => void;
+  readonly onEvent: (event: ForgetEvent) => void;
+  readonly onSend: (input: RetiredForgetInput) => void;
 }
 
 const itemList = css({ display: 'flex', flexDirection: 'column', gap: '1' });
 
 function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
-  // The confirmation binds to the set the preview first showed, and a refetch after a failed run
-  // must not swap that set for the items still retired.
-  const [items] = useState(props.items);
-
-  const [selected, setSelected] = useState<ReadonlySet<string>>(
-    () => new Set(items.map((item) => item.itemID)),
-  );
-
-  const [sent, setSent] = useState<RetiredForgetInput | null>(null);
-  const forget = useRetiredForget(props.onClose);
-
-  if (items.length === 0) {
+  if (props.items.length === 0) {
     return (
       <>
         <p>No retired item to delete.</p>
         <button
           onClick={() => {
-            props.onClose(null);
+            props.onEvent({ type: 'cancel' });
           }}
           type="button"
         >
@@ -149,8 +177,6 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
       </>
     );
   }
-
-  const isLocked = sent !== null;
 
   return (
     <>
@@ -168,14 +194,17 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
         </p>
       ) : null}
       <ul aria-label="Retired items to delete" className={itemList}>
-        {items.map((item) => (
+        {props.items.map((item) => (
           <li key={item.itemID}>
             <label>
               <input
-                checked={selected.has(item.itemID)}
-                disabled={isLocked}
+                checked={props.selected.has(item.itemID)}
                 onChange={(event) => {
-                  setSelected(toggleItem(selected, item.itemID, event.target.checked));
+                  props.onEvent({
+                    type: 'toggle',
+                    itemID: item.itemID,
+                    isChecked: event.target.checked,
+                  });
                 }}
                 type="checkbox"
               />{' '}
@@ -184,75 +213,59 @@ function RetiredForgetForm(props: RetiredForgetFormProps): ReactNode {
           </li>
         ))}
       </ul>
-      {forget.hasFailed && sent !== null ? <ForgetProgress targets={sent.targets} /> : null}
       <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
-        {isLocked ? null : (
-          <>
-            <button
-              onClick={() => {
-                setSelected(new Set(items.map((item) => item.itemID)));
-              }}
-              type="button"
-            >
-              Select all
-            </button>
-            <button
-              onClick={() => {
-                setSelected(new Set());
-              }}
-              type="button"
-            >
-              Select none
-            </button>
-          </>
-        )}
         <button
-          disabled={selected.size === 0 || forget.isPending}
           onClick={() => {
-            const input = sent ?? {
-              clientActionID: crypto.randomUUID(),
-              targets: items
-                .filter((item) => selected.has(item.itemID))
-                .map((item) => ({ itemID: item.itemID, version: item.version })),
-            };
-
-            setSent(input);
-
-            forget.send(input);
+            props.onEvent({ type: 'select.all' });
           }}
           type="button"
         >
-          {isLocked ? 'Finish the deletion' : `Delete ${formatItemCount(selected.size)} for good`}
+          Select all
         </button>
-        {isLocked ? null : (
-          <button
-            onClick={() => {
-              props.onClose(null);
-            }}
-            type="button"
-          >
-            Keep them
-          </button>
-        )}
+        <button
+          onClick={() => {
+            props.onEvent({ type: 'select.none' });
+          }}
+          type="button"
+        >
+          Select none
+        </button>
+        <button
+          disabled={props.selected.size === 0}
+          onClick={() => {
+            const clientActionID = crypto.randomUUID();
+
+            props.onEvent({ type: 'send', clientActionID });
+            props.onSend(buildInput(clientActionID, props.items, props.selected));
+          }}
+          type="button"
+        >
+          Delete {formatItemCount(props.selected.size)} for good
+        </button>
+        <button
+          onClick={() => {
+            props.onEvent({ type: 'cancel' });
+          }}
+          type="button"
+        >
+          Keep them
+        </button>
       </div>
     </>
   );
 }
 
-function toggleItem(
+function buildInput(
+  clientActionID: string,
+  items: readonly RetiredForgetItem[],
   selected: ReadonlySet<string>,
-  itemID: string,
-  isChecked: boolean,
-): ReadonlySet<string> {
-  const next = new Set(selected);
-
-  if (isChecked) {
-    next.add(itemID);
-  } else {
-    next.delete(itemID);
-  }
-
-  return next;
+): RetiredForgetInput {
+  return {
+    clientActionID,
+    targets: items
+      .filter((item) => selected.has(item.itemID))
+      .map((item) => ({ itemID: item.itemID, version: item.version })),
+  };
 }
 
 interface ForgetProgressProps {
