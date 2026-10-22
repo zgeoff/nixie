@@ -296,6 +296,85 @@ test("it applies a write the checker confirms with both the writer's and the che
   ]);
 });
 
+test('it shows the checker the end time of a staged fact in your zone, and saves the fact with it', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
+
+  const ctx = await setupTest({ gate: { check } });
+  const lease = await claimWriterLease(ctx.parts.context);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.writer_started',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'memory-writer',
+      payload: { startSequence: 0, at: 1_000_000 },
+    },
+  ]);
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "I'm in Lisbon until Friday.",
+    spans: [{ start: 0, end: 27, source: 'typed' }],
+    timeZone: 'Europe/London',
+  });
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.batch_planned',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'memory-writer',
+      payload: { start: 0, end: sequence, mode: 'live', at: 1_000_000 },
+    },
+  ]);
+
+  await runWriterBatch(
+    {
+      ...ctx.parts,
+      ...createStubWriterSession({
+        op: 'remember',
+        subject: 'owner',
+        text: 'Is in Lisbon until Friday',
+        quote: "I'm in Lisbon until Friday",
+        sourceSequence: sequence,
+        itemID: null,
+        until: Date.parse('2099-07-10T22:59:59Z'),
+      }),
+    },
+    { input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+  );
+
+  const recalled = await ctx.memory.store.recall({ query: 'Lisbon' });
+
+  const [item] = recalled.items;
+
+  invariant(item);
+
+  const row = await ctx.memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('until')
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(check).toHaveBeenCalledExactlyOnceWith({
+    prompt: expect.toBeString(),
+    input: expect.toEndWith(
+      '<end_time>Fri 10 Jul 2099, 23:59, Europe/London (UTC+01:00)</end_time>',
+    ),
+  });
+
+  expect(row.until).toBe(Date.parse('2099-07-10T22:59:59Z'));
+});
+
 test('it publishes an edit that clears the end time of an item and keeps its text', async () => {
   const ctx = await setupTest({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
