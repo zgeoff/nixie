@@ -1,6 +1,6 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
-import type { Generated } from 'kysely';
+import type { Generated, Kysely, Transaction } from 'kysely';
 
 export interface DefinitionsSource {
   readonly id: string;
@@ -212,6 +212,57 @@ export interface DefinitionsChange {
 
   readonly files: ReadonlyMap<string, string | null>;
 }
+
+export interface DefinitionsChangeKind {
+  readonly readDue: (db: Kysely<unknown>) => Promise<readonly DueDefinitionsExport[]>;
+
+  readonly readClosing: (
+    db: Kysely<unknown>,
+    approvalID: string | null,
+  ) => Promise<readonly ClosingDefinitionsExport[]>;
+
+  readonly probeInForce: (db: Kysely<unknown>, approvalID: string) => Promise<boolean>;
+
+  readonly probePullRequestHeld: (
+    db: Kysely<unknown>,
+    pullRequestNumber: number,
+    approvalID: string,
+  ) => Promise<boolean>;
+
+  readonly writeState: (tx: Transaction<unknown>, move: DefinitionsExportMove) => Promise<void>;
+}
+
+export interface DueDefinitionsExport {
+  readonly approvalID: string;
+  readonly branch: string;
+  readonly baseHash: string | null;
+
+  readonly readChange: (repo: DefinitionsRepo, revision: string) => Promise<DefinitionsChange>;
+}
+
+export interface ClosingDefinitionsExport {
+  readonly approvalID: string;
+  readonly branch: string;
+
+  readonly recordedPullRequest: number | null;
+  readonly isBranchRead: boolean;
+}
+
+export type DefinitionsExportMove =
+  | { readonly approvalID: string; readonly to: 'exporting'; readonly at: number }
+  | {
+      readonly approvalID: string;
+      readonly to: 'opened';
+      readonly baseHash: string | null;
+      readonly pullRequest: PullRequestRef;
+      readonly at: number;
+    }
+  | {
+      readonly approvalID: string;
+      readonly to: 'closed';
+      readonly pullRequest: PullRequestRef | null;
+      readonly at: number;
+    };
 
 export interface SkillExportText {
   readonly title: string | null;

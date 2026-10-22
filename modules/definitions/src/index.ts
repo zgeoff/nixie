@@ -29,6 +29,15 @@ export { runWrittenSkillSeed } from './run-written-skill-seed';
 export type { WrittenSkillEntry } from './read-written-skills';
 export { readWrittenSkills } from './read-written-skills';
 export { readSkillExportURLs } from './read-skill-export-urls';
+export type { DefinitionsExportOptions, DefinitionsExportResult } from './run-definitions-exports';
+export { runDefinitionsExports } from './run-definitions-exports';
+
+export type {
+  DefinitionsExportSweep,
+  DefinitionsExportSweepOptions,
+} from './start-definitions-export-sweep';
+
+export { startDefinitionsExportSweep } from './start-definitions-export-sweep';
 export type { SkillExportOptions, SkillExportResult } from './run-skill-exports';
 export { runSkillExports } from './run-skill-exports';
 export type { SkillExportSweep, SkillExportSweepOptions } from './start-skill-export-sweep';
@@ -41,7 +50,10 @@ export { WrittenSkillStateError } from './written-skill-state-error';
 export { SnapshotError } from './snapshot-error';
 
 export type {
+  ClosingDefinitionsExport,
   DefinitionsChange,
+  DefinitionsChangeKind,
+  DefinitionsExportMove,
   DefinitionsInForce,
   DefinitionsRepo,
   DefinitionsSkillOrigin,
@@ -60,6 +72,7 @@ export type {
   Snapshot,
   SnapshotPolicy,
   SourceKind,
+  DueDefinitionsExport,
   ToolDeclaration,
   WrittenSkillState,
 } from './types';
