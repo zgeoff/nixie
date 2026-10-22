@@ -770,6 +770,30 @@ test('it keeps the end time of an item that an edit without an end time rewrites
   expect(version.until).toBe(Date.parse('2026-10-25T23:59:59Z'));
 });
 
+test('it keeps the end time of an item on the proposal of an edit without an end time', async () => {
+  const memory = await startTestMemory({
+    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-25T23:59:59Z'),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.writes.remember({
+    text: 'Is in Porto this week',
+    target: item,
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(pending).toMatchObject([
+    { itemID: item.itemID, targetVersion: 1, until: Date.parse('2026-10-25T23:59:59Z') },
+  ]);
+});
+
 test('it clears the end time of an item that an edit with a null end time rewrites', async () => {
   const memory = await startTestMemory({
     gate: {
