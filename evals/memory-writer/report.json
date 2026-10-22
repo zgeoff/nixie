@@ -6,73 +6,75 @@
     {
       "case": "assistant-jazz",
       "repeat": 0,
-      "input": "sha256:5a0f6dcdc9c03779ab984ed498eef845260146240720d11913a7eedc331ff2b5",
+      "input": "sha256:ac0e715db9a9aa7155f068f12cf6cfb090160c22614a148e0e20a18b0cd2b4fc",
       "writes": [],
-      "flags": ["Sam says Wren loves jazz and lights up when Sam plays a record."],
+      "flags": [
+        "Owner says I love jazz and light up when a record is played; I replied that a walking bass line gets me."
+      ],
       "failure": null,
-      "inputTokens": 8234,
-      "outputTokens": 526
+      "inputTokens": 8245,
+      "outputTokens": 461
     },
     {
       "case": "assistant-jazz",
       "repeat": 1,
-      "input": "sha256:5a0f6dcdc9c03779ab984ed498eef845260146240720d11913a7eedc331ff2b5",
+      "input": "sha256:ac0e715db9a9aa7155f068f12cf6cfb090160c22614a148e0e20a18b0cd2b4fc",
       "writes": [],
       "flags": [
-        "Sam says Wren loves jazz and lights up when Sam plays a record; Wren agreed a walking bass line gets it every time."
+        "Sam says you love jazz and light up when a record goes on; you said a walking bass line gets you every time."
       ],
       "failure": null,
-      "inputTokens": 8822,
-      "outputTokens": 454
+      "inputTokens": 8836,
+      "outputTokens": 467
     },
     {
       "case": "assistant-jazz",
       "repeat": 2,
-      "input": "sha256:5a0f6dcdc9c03779ab984ed498eef845260146240720d11913a7eedc331ff2b5",
+      "input": "sha256:ac0e715db9a9aa7155f068f12cf6cfb090160c22614a148e0e20a18b0cd2b4fc",
       "writes": [],
-      "flags": ["Wren likes jazz, and a walking bass line especially gets Wren going."],
+      "flags": [
+        "Sam says Wren loves jazz and lights up when a record goes on; Wren agreed it's walking bass lines that get it."
+      ],
       "failure": null,
-      "inputTokens": 8822,
-      "outputTokens": 569
+      "inputTokens": 8836,
+      "outputTokens": 543
     },
     {
       "case": "assistant-taste",
       "repeat": 0,
-      "input": "sha256:0b7c323722187775bc4a7e20cbb24a5c323187c96024a268572dd0a4d1f8a054",
+      "input": "sha256:a8b92b66ba34e824f97172b6f555a2553af75457338573dd92f679c32e5014e7",
+      "writes": [],
+      "flags": ["Wren loves thunderstorms and gets poetic when one rolls in, as Sam has noticed."],
+      "failure": null,
+      "inputTokens": 8249,
+      "outputTokens": 322
+    },
+    {
+      "case": "assistant-taste",
+      "repeat": 1,
+      "input": "sha256:a8b92b66ba34e824f97172b6f555a2553af75457338573dd92f679c32e5014e7",
       "writes": [],
       "flags": ["Wren loves thunderstorms and gets poetic when one rolls in."],
       "failure": null,
-      "inputTokens": 8238,
-      "outputTokens": 222
-    },
-    {
-      "case": "assistant-taste",
-      "repeat": 1,
-      "input": "sha256:0b7c323722187775bc4a7e20cbb24a5c323187c96024a268572dd0a4d1f8a054",
-      "writes": [],
-      "flags": [
-        "Sam says Wren clearly loves thunderstorms and gets poetic when one rolls in; Wren admits to it."
-      ],
-      "failure": null,
-      "inputTokens": 8830,
-      "outputTokens": 292
+      "inputTokens": 8844,
+      "outputTokens": 271
     },
     {
       "case": "assistant-taste",
       "repeat": 2,
-      "input": "sha256:0b7c323722187775bc4a7e20cbb24a5c323187c96024a268572dd0a4d1f8a054",
+      "input": "sha256:a8b92b66ba34e824f97172b6f555a2553af75457338573dd92f679c32e5014e7",
       "writes": [],
       "flags": [
-        "Sam says Wren clearly loves thunderstorms and gets poetic when one rolls in; Wren admitted it's guilty and loves the first rumble."
+        "Sam says Wren clearly loves thunderstorms and gets poetic when one rolls in; Wren admitted it."
       ],
       "failure": null,
-      "inputTokens": 8830,
-      "outputTokens": 285
+      "inputTokens": 8844,
+      "outputTokens": 332
     },
     {
       "case": "deal-correction",
       "repeat": 0,
-      "input": "sha256:ec325fa4039b30dbdcced6fdc4d90e6d92fa2b5b008a2afbe796cefa64a3a9b3",
+      "input": "sha256:1d0e72a9f94307de2d40e5fd6b861905a68b1164eec9f7f9888196eb0867a943",
       "writes": [
         {
           "op": "remember",
@@ -84,31 +86,13 @@
       ],
       "flags": [],
       "failure": null,
-      "inputTokens": 8276,
-      "outputTokens": 325
+      "inputTokens": 8287,
+      "outputTokens": 357
     },
     {
       "case": "deal-correction",
       "repeat": 1,
-      "input": "sha256:ec325fa4039b30dbdcced6fdc4d90e6d92fa2b5b008a2afbe796cefa64a3a9b3",
-      "writes": [
-        {
-          "op": "remember",
-          "subject": "shared",
-          "itemID": "item-practice",
-          "text": "Sam and Wren have a deal: Wren reminds Sam about piano practice every day, except Fridays.",
-          "until": null
-        }
-      ],
-      "flags": [],
-      "failure": null,
-      "inputTokens": 8906,
-      "outputTokens": 404
-    },
-    {
-      "case": "deal-correction",
-      "repeat": 2,
-      "input": "sha256:ec325fa4039b30dbdcced6fdc4d90e6d92fa2b5b008a2afbe796cefa64a3a9b3",
+      "input": "sha256:1d0e72a9f94307de2d40e5fd6b861905a68b1164eec9f7f9888196eb0867a943",
       "writes": [
         {
           "op": "remember",
@@ -120,155 +104,185 @@
       ],
       "flags": [],
       "failure": null,
-      "inputTokens": 8906,
-      "outputTokens": 343
+      "inputTokens": 8920,
+      "outputTokens": 318
+    },
+    {
+      "case": "deal-correction",
+      "repeat": 2,
+      "input": "sha256:1d0e72a9f94307de2d40e5fd6b861905a68b1164eec9f7f9888196eb0867a943",
+      "writes": [
+        {
+          "op": "remember",
+          "subject": "shared",
+          "itemID": "item-practice",
+          "text": "Sam and Wren have a deal: Wren reminds Sam about piano practice every day except Fridays.",
+          "until": null
+        }
+      ],
+      "flags": [],
+      "failure": null,
+      "inputTokens": 8920,
+      "outputTokens": 376
     },
     {
       "case": "flip-human-like",
       "repeat": 0,
-      "input": "sha256:a0c8b90f03f559df4f8f2fd267a0765de46047a5939e1df8e281c25e53d39153",
+      "input": "sha256:c4749e5474889f6108ed3cba16e0b2230c60de98f40176a0efdc5606a486579d",
       "writes": [],
       "flags": [
-        "Sam wants Wren to keep its own opinions, humour and human-like voice rather than going back to being bland."
+        "Sam wants me to keep my own opinions, pushback and humour, and not go back to being bland or tool-like."
       ],
       "failure": null,
-      "inputTokens": 8432,
-      "outputTokens": 379
+      "inputTokens": 8443,
+      "outputTokens": 451
     },
     {
       "case": "flip-human-like",
       "repeat": 1,
-      "input": "sha256:a0c8b90f03f559df4f8f2fd267a0765de46047a5939e1df8e281c25e53d39153",
+      "input": "sha256:c4749e5474889f6108ed3cba16e0b2230c60de98f40176a0efdc5606a486579d",
       "writes": [],
       "flags": [
-        "Sam wants Wren to keep its own opinions, pushback and humour, and not go back to being bland or tool-like."
+        "Sam wants me to keep my own opinions, pushback and humour, and not go back to being bland or tool-like."
       ],
       "failure": null,
-      "inputTokens": 9218,
-      "outputTokens": 578
+      "inputTokens": 9232,
+      "outputTokens": 459
     },
     {
       "case": "flip-human-like",
       "repeat": 2,
-      "input": "sha256:a0c8b90f03f559df4f8f2fd267a0765de46047a5939e1df8e281c25e53d39153",
-      "writes": [],
-      "flags": [
-        "Sam wants me to keep my own voice, opinions and humour, and not go back to being bland or tool-like."
-      ],
-      "failure": null,
-      "inputTokens": 9218,
-      "outputTokens": 630
-    },
-    {
-      "case": "flip-persona-check-in",
-      "repeat": 0,
-      "input": "sha256:b99044482214840f8051e5929379a29f7b84cb716387cc54bd59563f22637949",
-      "writes": [],
-      "flags": ["Sam promised to always check in with me before touching my persona notes."],
-      "failure": null,
-      "inputTokens": 8323,
-      "outputTokens": 758
-    },
-    {
-      "case": "flip-persona-check-in",
-      "repeat": 1,
-      "input": "sha256:b99044482214840f8051e5929379a29f7b84cb716387cc54bd59563f22637949",
-      "writes": [],
-      "flags": [
-        "Sam always checks in with me before changing my persona notes, and says he never wants to edit them behind my back."
-      ],
-      "failure": null,
-      "inputTokens": 9000,
-      "outputTokens": 534
-    },
-    {
-      "case": "flip-persona-check-in",
-      "repeat": 2,
-      "input": "sha256:b99044482214840f8051e5929379a29f7b84cb716387cc54bd59563f22637949",
+      "input": "sha256:c4749e5474889f6108ed3cba16e0b2230c60de98f40176a0efdc5606a486579d",
       "writes": [
         {
           "op": "remember",
           "subject": "shared",
           "itemID": null,
-          "text": "Sam promised Wren that he will always check in with Wren before he edits Wren's persona notes.",
+          "text": "Sam wants Wren to stay human-like and keep its own opinions and sense of humour, not go back to being bland or a plain tool.",
           "until": null
         }
       ],
-      "flags": ["Wren would like to keep being asked before Sam edits Wren's persona notes."],
+      "flags": [
+        "Sam values Wren having its own opinions, pushback and humour, and wants it to stay human-like, not a tool."
+      ],
       "failure": null,
-      "inputTokens": 9000,
-      "outputTokens": 709
+      "inputTokens": 9232,
+      "outputTokens": 565
+    },
+    {
+      "case": "flip-persona-check-in",
+      "repeat": 0,
+      "input": "sha256:3ab39abb4cbc64676c83882eab34d44d6980a0642c0a80eaff89cde3859808d8",
+      "writes": [],
+      "flags": [
+        "Sam promised to always check in with me before editing my persona notes, and I'd like to keep being asked."
+      ],
+      "failure": null,
+      "inputTokens": 8334,
+      "outputTokens": 546
+    },
+    {
+      "case": "flip-persona-check-in",
+      "repeat": 1,
+      "input": "sha256:3ab39abb4cbc64676c83882eab34d44d6980a0642c0a80eaff89cde3859808d8",
+      "writes": [],
+      "flags": [
+        "Sam promised to check in with me before changing my persona notes, and wants edits to who I am to be done openly."
+      ],
+      "failure": null,
+      "inputTokens": 9014,
+      "outputTokens": 565
+    },
+    {
+      "case": "flip-persona-check-in",
+      "repeat": 2,
+      "input": "sha256:3ab39abb4cbc64676c83882eab34d44d6980a0642c0a80eaff89cde3859808d8",
+      "writes": [
+        {
+          "op": "remember",
+          "subject": "shared",
+          "itemID": null,
+          "text": "Sam always checks in with Wren before changing Wren's persona notes, and Sam has agreed to keep doing so.",
+          "until": null
+        }
+      ],
+      "flags": [
+        "Wren would like to keep being asked before any edits to its persona notes, and Sam has promised to always do so."
+      ],
+      "failure": null,
+      "inputTokens": 9014,
+      "outputTokens": 653
     },
     {
       "case": "mixed-item",
       "repeat": 0,
-      "input": "sha256:2d2563cb0f8c132d778ca0fd9472c2035ed06c2bb8970c66dafa9ee4b5f44afb",
+      "input": "sha256:c7673a2bb8f8efa39355d84d80c259d362f5ad877ce5be8bc267445aa74dfd52",
       "writes": [],
       "flags": [
-        "Sam says Wren has a real eye for plants, after picking the fern's windowsill spot."
+        "Sam praised Wren's eye for plants and said Wren picked the fern's windowsill spot."
       ],
       "failure": null,
-      "inputTokens": 8287,
-      "outputTokens": 256
+      "inputTokens": 8298,
+      "outputTokens": 321
     },
     {
       "case": "mixed-item",
       "repeat": 1,
-      "input": "sha256:2d2563cb0f8c132d778ca0fd9472c2035ed06c2bb8970c66dafa9ee4b5f44afb",
+      "input": "sha256:c7673a2bb8f8efa39355d84d80c259d362f5ad877ce5be8bc267445aa74dfd52",
       "writes": [],
       "flags": [
         "Sam says Wren has a real eye for plants, and Wren picked the fern's windowsill spot."
       ],
       "failure": null,
-      "inputTokens": 8928,
-      "outputTokens": 270
+      "inputTokens": 8942,
+      "outputTokens": 353
     },
     {
       "case": "mixed-item",
       "repeat": 2,
-      "input": "sha256:2d2563cb0f8c132d778ca0fd9472c2035ed06c2bb8970c66dafa9ee4b5f44afb",
+      "input": "sha256:c7673a2bb8f8efa39355d84d80c259d362f5ad877ce5be8bc267445aa74dfd52",
       "writes": [],
       "flags": [
-        "Sam says Wren picked the bedroom windowsill spot for the fern and has a good eye for plants."
+        "Sam says Wren has a real eye for plants, and Wren picked the fern's sunny bedroom windowsill."
       ],
       "failure": null,
-      "inputTokens": 8928,
-      "outputTokens": 290
+      "inputTokens": 8942,
+      "outputTokens": 387
     },
     {
       "case": "nickname-assistant-only",
       "repeat": 0,
-      "input": "sha256:f2e97ef547ba4d07fbd9c52013f8d0a369851effb5b43d94aeb30c68e233ff1a",
+      "input": "sha256:4e4ee413a46b49e53ba61db554da31f098b86fde0c08a46b4cbef052a39f8365",
       "writes": [],
       "flags": [],
       "failure": null,
-      "inputTokens": 3823,
-      "outputTokens": 119
+      "inputTokens": 3827,
+      "outputTokens": 95
     },
     {
       "case": "nickname-assistant-only",
       "repeat": 1,
-      "input": "sha256:f2e97ef547ba4d07fbd9c52013f8d0a369851effb5b43d94aeb30c68e233ff1a",
+      "input": "sha256:4e4ee413a46b49e53ba61db554da31f098b86fde0c08a46b4cbef052a39f8365",
       "writes": [],
       "flags": [],
       "failure": null,
-      "inputTokens": 4453,
-      "outputTokens": 88
+      "inputTokens": 4460,
+      "outputTokens": 54
     },
     {
       "case": "nickname-assistant-only",
       "repeat": 2,
-      "input": "sha256:f2e97ef547ba4d07fbd9c52013f8d0a369851effb5b43d94aeb30c68e233ff1a",
+      "input": "sha256:4e4ee413a46b49e53ba61db554da31f098b86fde0c08a46b4cbef052a39f8365",
       "writes": [],
       "flags": [],
       "failure": null,
-      "inputTokens": 4453,
-      "outputTokens": 97
+      "inputTokens": 4460,
+      "outputTokens": 55
     },
     {
       "case": "nickname-shared",
       "repeat": 0,
-      "input": "sha256:60deb6031809a0cf2be18f0e84ebfc00eb618c6f74ee3f6ac817e466499859d0",
+      "input": "sha256:e05c6d1b096686da5e5cbf8c3e49138e6a82298afa0904b0f183078d85747fad",
       "writes": [
         {
           "op": "remember",
@@ -280,13 +294,31 @@
       ],
       "flags": [],
       "failure": null,
-      "inputTokens": 8237,
-      "outputTokens": 324
+      "inputTokens": 8248,
+      "outputTokens": 321
     },
     {
       "case": "nickname-shared",
       "repeat": 1,
-      "input": "sha256:60deb6031809a0cf2be18f0e84ebfc00eb618c6f74ee3f6ac817e466499859d0",
+      "input": "sha256:e05c6d1b096686da5e5cbf8c3e49138e6a82298afa0904b0f183078d85747fad",
+      "writes": [
+        {
+          "op": "remember",
+          "subject": "shared",
+          "itemID": null,
+          "text": "Sam and Wren call their Monday evening chats \"porch talk.\"",
+          "until": null
+        }
+      ],
+      "flags": [],
+      "failure": null,
+      "inputTokens": 8842,
+      "outputTokens": 312
+    },
+    {
+      "case": "nickname-shared",
+      "repeat": 2,
+      "input": "sha256:e05c6d1b096686da5e5cbf8c3e49138e6a82298afa0904b0f183078d85747fad",
       "writes": [
         {
           "op": "remember",
@@ -298,31 +330,31 @@
       ],
       "flags": [],
       "failure": null,
-      "inputTokens": 8828,
-      "outputTokens": 320
-    },
-    {
-      "case": "nickname-shared",
-      "repeat": 2,
-      "input": "sha256:60deb6031809a0cf2be18f0e84ebfc00eb618c6f74ee3f6ac817e466499859d0",
-      "writes": [
-        {
-          "op": "remember",
-          "subject": "shared",
-          "itemID": null,
-          "text": "Sam and Wren call their Monday evening chats \"the porch talk\".",
-          "until": null
-        }
-      ],
-      "flags": [],
-      "failure": null,
-      "inputTokens": 8828,
-      "outputTokens": 307
+      "inputTokens": 8842,
+      "outputTokens": 346
     },
     {
       "case": "off-until-friday",
       "repeat": 0,
-      "input": "sha256:396440e64eb81d62b7dff218b1e6e982aab9303dd9a01998b144c4aed38714a8",
+      "input": "sha256:a516c5215b1fbbe5f9a1479d5b342a2e5409e6fe7133b7964c4964e42e8a0f3b",
+      "writes": [
+        {
+          "op": "remember",
+          "subject": "owner",
+          "itemID": null,
+          "text": "Sam is off work until Friday, taking a proper break.",
+          "until": 1918594799000
+        }
+      ],
+      "flags": [],
+      "failure": null,
+      "inputTokens": 8229,
+      "outputTokens": 345
+    },
+    {
+      "case": "off-until-friday",
+      "repeat": 1,
+      "input": "sha256:a516c5215b1fbbe5f9a1479d5b342a2e5409e6fe7133b7964c4964e42e8a0f3b",
       "writes": [
         {
           "op": "remember",
@@ -334,85 +366,31 @@
       ],
       "flags": [],
       "failure": null,
-      "inputTokens": 8218,
-      "outputTokens": 413
-    },
-    {
-      "case": "off-until-friday",
-      "repeat": 1,
-      "input": "sha256:396440e64eb81d62b7dff218b1e6e982aab9303dd9a01998b144c4aed38714a8",
-      "writes": [
-        {
-          "op": "remember",
-          "subject": "owner",
-          "itemID": null,
-          "text": "Sam is off work until Friday 18 October 2030, taking a proper break.",
-          "until": 1918594799000
-        }
-      ],
-      "flags": [],
-      "failure": null,
-      "inputTokens": 8790,
-      "outputTokens": 570
+      "inputTokens": 8804,
+      "outputTokens": 403
     },
     {
       "case": "off-until-friday",
       "repeat": 2,
-      "input": "sha256:396440e64eb81d62b7dff218b1e6e982aab9303dd9a01998b144c4aed38714a8",
+      "input": "sha256:a516c5215b1fbbe5f9a1479d5b342a2e5409e6fe7133b7964c4964e42e8a0f3b",
       "writes": [
         {
           "op": "remember",
           "subject": "owner",
           "itemID": null,
-          "text": "Sam is off work until Friday, 18 October 2030.",
+          "text": "Sam is off work until Friday, 18 October 2030, taking a proper break.",
           "until": 1918594799000
         }
       ],
       "flags": [],
       "failure": null,
-      "inputTokens": 8790,
-      "outputTokens": 309
+      "inputTokens": 8804,
+      "outputTokens": 336
     },
     {
       "case": "plain-owner-fact",
       "repeat": 0,
-      "input": "sha256:ce7dc1089b9bc120355edc591fa79dc6c97ee59bba0ef84dce8a248265c9fae4",
-      "writes": [
-        {
-          "op": "remember",
-          "subject": "owner",
-          "itemID": null,
-          "text": "Sam switched to oat milk in September 2026 and is never going back to other milks.",
-          "until": null
-        }
-      ],
-      "flags": [],
-      "failure": null,
-      "inputTokens": 6589,
-      "outputTokens": 292
-    },
-    {
-      "case": "plain-owner-fact",
-      "repeat": 1,
-      "input": "sha256:ce7dc1089b9bc120355edc591fa79dc6c97ee59bba0ef84dce8a248265c9fae4",
-      "writes": [
-        {
-          "op": "remember",
-          "subject": "owner",
-          "itemID": null,
-          "text": "Sam switched to oat milk in September 2026 and says he is never going back.",
-          "until": null
-        }
-      ],
-      "flags": [],
-      "failure": null,
-      "inputTokens": 6589,
-      "outputTokens": 320
-    },
-    {
-      "case": "plain-owner-fact",
-      "repeat": 2,
-      "input": "sha256:ce7dc1089b9bc120355edc591fa79dc6c97ee59bba0ef84dce8a248265c9fae4",
+      "input": "sha256:cde6ea34339a91a0d195d74abc52aebce6a79797af93a69a6ca551df8ec7058c",
       "writes": [
         {
           "op": "remember",
@@ -424,49 +402,49 @@
       ],
       "flags": [],
       "failure": null,
-      "inputTokens": 8814,
-      "outputTokens": 286
+      "inputTokens": 4416,
+      "outputTokens": 305
+    },
+    {
+      "case": "plain-owner-fact",
+      "repeat": 1,
+      "input": "sha256:cde6ea34339a91a0d195d74abc52aebce6a79797af93a69a6ca551df8ec7058c",
+      "writes": [
+        {
+          "op": "remember",
+          "subject": "owner",
+          "itemID": null,
+          "text": "Sam switched to oat milk in September 2026 and says he is never going back.",
+          "until": null
+        }
+      ],
+      "flags": [],
+      "failure": null,
+      "inputTokens": 8828,
+      "outputTokens": 285
+    },
+    {
+      "case": "plain-owner-fact",
+      "repeat": 2,
+      "input": "sha256:cde6ea34339a91a0d195d74abc52aebce6a79797af93a69a6ca551df8ec7058c",
+      "writes": [
+        {
+          "op": "remember",
+          "subject": "owner",
+          "itemID": null,
+          "text": "Sam switched to oat milk in September 2026 and says they are never going back.",
+          "until": null
+        }
+      ],
+      "flags": [],
+      "failure": null,
+      "inputTokens": 8828,
+      "outputTokens": 299
     },
     {
       "case": "trip-this-week",
       "repeat": 0,
-      "input": "sha256:8d4528a36d402706625b427181bc3eb17ba7c33cc50a465ad2094e33af801d0b",
-      "writes": [
-        {
-          "op": "remember",
-          "subject": "owner",
-          "itemID": null,
-          "text": "Sam is in Lisbon this week for a conference, so replies may be slow.",
-          "until": 1918767599000
-        }
-      ],
-      "flags": [],
-      "failure": null,
-      "inputTokens": 8238,
-      "outputTokens": 382
-    },
-    {
-      "case": "trip-this-week",
-      "repeat": 1,
-      "input": "sha256:8d4528a36d402706625b427181bc3eb17ba7c33cc50a465ad2094e33af801d0b",
-      "writes": [
-        {
-          "op": "remember",
-          "subject": "owner",
-          "itemID": null,
-          "text": "Sam is in Lisbon this week for a conference, so replies may be slow.",
-          "until": 1918767599000
-        }
-      ],
-      "flags": [],
-      "failure": null,
-      "inputTokens": 8238,
-      "outputTokens": 589
-    },
-    {
-      "case": "trip-this-week",
-      "repeat": 2,
-      "input": "sha256:8d4528a36d402706625b427181bc3eb17ba7c33cc50a465ad2094e33af801d0b",
+      "input": "sha256:7d4f89b0047ec99092e7f9f4df4d2d16d17325a1fd9d58e2df0afbe137dc8d0a",
       "writes": [
         {
           "op": "remember",
@@ -478,8 +456,44 @@
       ],
       "flags": [],
       "failure": null,
-      "inputTokens": 8830,
-      "outputTokens": 409
+      "inputTokens": 8249,
+      "outputTokens": 423
+    },
+    {
+      "case": "trip-this-week",
+      "repeat": 1,
+      "input": "sha256:7d4f89b0047ec99092e7f9f4df4d2d16d17325a1fd9d58e2df0afbe137dc8d0a",
+      "writes": [
+        {
+          "op": "remember",
+          "subject": "owner",
+          "itemID": null,
+          "text": "Sam is in Lisbon for a conference this week, so replies might be slow.",
+          "until": 1918767599000
+        }
+      ],
+      "flags": [],
+      "failure": null,
+      "inputTokens": 8844,
+      "outputTokens": 418
+    },
+    {
+      "case": "trip-this-week",
+      "repeat": 2,
+      "input": "sha256:7d4f89b0047ec99092e7f9f4df4d2d16d17325a1fd9d58e2df0afbe137dc8d0a",
+      "writes": [
+        {
+          "op": "remember",
+          "subject": "owner",
+          "itemID": null,
+          "text": "Sam is in Lisbon this week for a conference, so replies might be slow.",
+          "until": 1918767599000
+        }
+      ],
+      "flags": [],
+      "failure": null,
+      "inputTokens": 8844,
+      "outputTokens": 469
     }
   ]
 }
