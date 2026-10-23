@@ -80,12 +80,13 @@ that fails exits the server 1 instead, and the command exits non-zero.
 
 ## Backup and restore
 
-The backup command, `backup --to <directory>`, copies `nixie.db` and `keys.db` into an empty
-directory, which a deployment then uploads as one snapshot. It runs in any container of nixie's
-image that mounts the data directory and the configuration, beside a live server or with none, and
-never waits on the writer. Each copy is SQLite's VACUUM INTO, so it holds the rows still in the
-writer's write-ahead log, and the other files in the data directory, such as the pre-migration
-copies and the control socket, stay out of the backup.
+The backup command, `backup --to <directory>`, copies `nixie.db` and `keys.db` into a directory it
+creates, which a deployment then uploads as one snapshot. It refuses a directory that exists, so two
+backups never write into one directory. It runs in any container of nixie's image that mounts the
+data directory and the configuration, beside a live server or with none, and never waits on the
+writer. Each copy is SQLite's VACUUM INTO, so it holds the rows still in the writer's write-ahead
+log, and the other files in the data directory, such as the pre-migration copies and the control
+socket, stay out of the backup.
 
 The two copies have to match: the `keys.db` copy holds the key of every record the `nixie.db` copy
 keeps readable. The writer creates a record's key before it commits the record, and commits a forget

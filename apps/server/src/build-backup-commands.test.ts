@@ -170,6 +170,6 @@ test('it refuses a backup that names no directory', async () => {
   expect(exitCode).toBe(2);
 
   expect(ctx.io.print).toHaveBeenCalledExactlyOnceWith(
-    'nixie backup takes --to <directory>, an empty directory to copy the data into',
+    'nixie backup takes --to <directory>, a new directory to copy the data into',
   );
 });

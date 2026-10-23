@@ -16,7 +16,7 @@ export function buildBackupCommands(): readonly (readonly [string, Command])[] {
 
 async function runBackup(flags: CLIFlags, io: CLIIO): Promise<number> {
   if (flags.to === undefined || flags.to === '') {
-    io.print('nixie backup takes --to <directory>, an empty directory to copy the data into');
+    io.print('nixie backup takes --to <directory>, a new directory to copy the data into');
 
     return 2;
   }

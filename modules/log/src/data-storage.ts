@@ -12,7 +12,7 @@ export interface DataStorage {
 export interface DataFileSystem {
   readonly probeFile: (path: string) => Promise<boolean>;
   readonly createDirectories: (path: string) => Promise<void>;
-  readonly readDirectory: (path: string) => Promise<readonly string[]>;
+  readonly createDirectory: (path: string) => Promise<boolean>;
   readonly copyFile: (from: string, to: string) => Promise<void>;
   readonly renameFile: (from: string, to: string) => Promise<void>;
   readonly removeFile: (path: string) => Promise<void>;

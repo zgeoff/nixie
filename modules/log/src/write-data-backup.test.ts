@@ -167,7 +167,7 @@ test('it refuses a data directory without keys.db, and copies nothing', async ()
   expect(existsSync(ctx.directory)).toBeFalse();
 });
 
-test('it refuses a directory that is not empty, and leaves its files alone', async () => {
+test('it refuses a directory that exists, and leaves its files alone', async () => {
   const ctx = await setupTest();
 
   await sql`create table items (id text primary key)`.execute(ctx.log);
@@ -189,10 +189,46 @@ test('it refuses a directory that is not empty, and leaves its files alone', asy
 
   expect(backup).rejects.toThrowWithMessage(
     Error,
-    `nixie backs up only into an empty directory, and ${ctx.directory} is not empty`,
+    `nixie backs up only into a directory it creates, and ${ctx.directory} exists`,
   );
 
   expect(earlier).toBe('an earlier copy');
+});
+
+test('it lets one of two backups into the same directory copy, and refuses the other before it copies', async () => {
+  const ctx = await setupTest();
+
+  await sql`create table items (id text primary key)`.execute(ctx.log);
+  await sql`create table record_keys (key_id text primary key)`.execute(ctx.keys);
+
+  const results = await Promise.allSettled([
+    writeDataBackup({
+      storage: localDataStorage,
+      dataDir: ctx.dataDir,
+      directory: ctx.directory,
+      onCopied: () => {},
+    }),
+    writeDataBackup({
+      storage: localDataStorage,
+      dataDir: ctx.dataDir,
+      directory: ctx.directory,
+      onCopied: () => {},
+    }),
+  ]);
+
+  const files = await readdir(ctx.directory);
+
+  expect(results).toIncludeSameMembers([
+    { status: 'fulfilled', value: { files: ['nixie.db', 'keys.db'], attempts: 1 } },
+    {
+      status: 'rejected',
+      reason: new Error(
+        `nixie backs up only into a directory it creates, and ${ctx.directory} exists`,
+      ),
+    },
+  ]);
+
+  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db']);
 });
 
 test('it refuses a backup while a restore replaces the databases, and copies nothing', async () => {

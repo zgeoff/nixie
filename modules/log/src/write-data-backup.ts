@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { readQueryRows } from '@heynixie/db';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
@@ -36,7 +36,7 @@ export async function writeDataBackup(options: DataBackupOptions): Promise<DataB
 
   try {
     await requireFinishedRestore(options);
-    await createEmptyDirectory(options);
+    await createBackupDirectory(options);
 
     await options.storage.files.createDirectories(getCopyingPath(options.directory));
 
@@ -66,14 +66,15 @@ async function requireFinishedRestore(options: DataBackupOptions): Promise<void>
   }
 }
 
-async function createEmptyDirectory(options: DataBackupOptions): Promise<void> {
-  await options.storage.files.createDirectories(options.directory);
+// Creating the directory claims it, so a second backup into the same path stops before it copies.
+async function createBackupDirectory(options: DataBackupOptions): Promise<void> {
+  await options.storage.files.createDirectories(dirname(options.directory));
 
-  const entries = await options.storage.files.readDirectory(options.directory);
+  const created = await options.storage.files.createDirectory(options.directory);
 
-  if (entries.length > 0) {
+  if (!created) {
     throw new Error(
-      `nixie backs up only into an empty directory, and ${options.directory} is not empty`,
+      `nixie backs up only into a directory it creates, and ${options.directory} exists`,
     );
   }
 }
