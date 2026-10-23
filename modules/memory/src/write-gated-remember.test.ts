@@ -54,10 +54,59 @@ test('it applies a backed write with your words as its source, each verdict and 
     checks: JSON.stringify({
       quote: 'pass',
       tokens: 'pass',
-      checker: { verdict: 'asserted', model: 'claude-sonnet-5-5', failure: null },
+      checker: {
+        verdict: 'asserted',
+        model: 'claude-sonnet-5-5',
+        failure: null,
+        snapshotHash: 'sha256:test',
+      },
     }),
     model: 'claude-opus-5-5',
   });
+});
+
+test('it records the snapshot whose checker prompt passed a write, apart from the snapshot in force at the write', async () => {
+  const memory = await startTestMemory({
+    definitions: () => ({ snapshotHash: 'sha256:seeded-during-check' }),
+    gate: {
+      check: () => Promise.resolve(buildMockCheckerAnswer({ model: 'claude-sonnet-5-5' })),
+      getPromptsInForce: () => ({ snapshotHash: 'sha256:checked', prompts: {} }),
+    },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I sail on Sundays',
+    spans: [{ start: 0, end: 17, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Sails on Sundays',
+    quote: 'I sail on Sundays',
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(outcome.status === 'applied');
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .select('checks')
+    .where('item_id', '=', outcome.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row.checks).toBe(
+    JSON.stringify({
+      quote: 'pass',
+      tokens: 'pass',
+      checker: {
+        verdict: 'asserted',
+        model: 'claude-sonnet-5-5',
+        failure: null,
+        snapshotHash: 'sha256:checked',
+      },
+    }),
+  );
 });
 
 test('it proposes a write that cites no quote', async () => {
@@ -287,8 +336,11 @@ test('it gives the checker the content checker prompt override in force', async 
   const memory = await startTestMemory({
     gate: {
       check,
-      getPrompts: () => ({
-        'content-checker': { parts: {}, template: 'Judge what {{ owner.name }} asserted.' },
+      getPromptsInForce: () => ({
+        snapshotHash: 'sha256:test',
+        prompts: {
+          'content-checker': { parts: {}, template: 'Judge what {{ owner.name }} asserted.' },
+        },
       }),
     },
   });

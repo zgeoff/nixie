@@ -65,8 +65,11 @@ test('it gives the checker the retirement checker prompt override in force', asy
   const memory = await startTestMemory({
     gate: {
       check,
-      getPrompts: () => ({
-        'retirement-checker': { parts: { instruction: 'Judge the request.' }, template: null },
+      getPromptsInForce: () => ({
+        snapshotHash: 'sha256:test',
+        prompts: {
+          'retirement-checker': { parts: { instruction: 'Judge the request.' }, template: null },
+        },
       }),
     },
   });

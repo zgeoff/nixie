@@ -32,7 +32,11 @@ export async function startMemory(
       limits: parts.config.memory.limits,
       ownerName: parts.config.owner.name,
       ownerPronouns: parts.config.owner.pronouns,
-      getPrompts: () => parts.inForce.read()?.prompts ?? {},
+      getPromptsInForce: () => {
+        const inForce = parts.inForce.read();
+
+        return { snapshotHash: inForce?.snapshotHash ?? '', prompts: inForce?.prompts ?? {} };
+      },
     },
   });
 

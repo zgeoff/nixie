@@ -48,7 +48,7 @@ export async function startTestSessions(
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,
       limits: defaultGateLimits,
-      getPrompts: () => ({}),
+      getPromptsInForce: () => ({ snapshotHash: 'sha256:test', prompts: {} }),
     },
   });
 

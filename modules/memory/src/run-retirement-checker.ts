@@ -4,6 +4,7 @@ import type { ContentGateResult } from './gate-types';
 import { pickCheckerReviewReason } from './pick-checker-review-reason';
 import { renderCheckerInput } from './render-checker-input';
 import type { FoundEvidence } from './run-memory-checker';
+import { toCheckerJSON } from './to-checker-json';
 import type { MemoryContext } from './types';
 
 export async function runRetirementChecker(
@@ -11,8 +12,10 @@ export async function runRetirementChecker(
   itemText: string,
   found: FoundEvidence,
 ): Promise<ContentGateResult> {
+  const inForce = context.gate.getPromptsInForce();
+
   const answer = await context.gate.check({
-    prompt: renderPrompt('retirement-checker', {}, context.gate.getPrompts()),
+    prompt: renderPrompt('retirement-checker', {}, inForce.prompts),
     input: renderCheckerInput(
       found.message,
       found.evidence,
@@ -28,7 +31,7 @@ export async function runRetirementChecker(
   const checks = {
     read: 'pass',
     quote: 'pass',
-    checker: { verdict: answer.verdict, model: answer.model, failure: answer.failure },
+    checker: toCheckerJSON(answer, inForce.snapshotHash),
   };
 
   if (answer.verdict === 'asserted') {

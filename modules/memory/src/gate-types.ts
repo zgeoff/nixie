@@ -25,7 +25,12 @@ export interface GateContext {
   readonly limits: GateLimits;
   readonly ownerName: string | null;
   readonly ownerPronouns: OwnerPronouns;
-  readonly getPrompts: () => PromptOverrides;
+  readonly getPromptsInForce: () => PromptsInForce;
+}
+
+export interface PromptsInForce {
+  readonly snapshotHash: string;
+  readonly prompts: PromptOverrides;
 }
 
 export interface OwnerPronouns {

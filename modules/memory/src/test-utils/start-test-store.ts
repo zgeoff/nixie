@@ -48,7 +48,8 @@ export async function startTestStore(
       limits: options.gate?.limits ?? defaultGateLimits,
       ownerName: options.gate?.ownerName ?? null,
       ownerPronouns: options.gate?.ownerPronouns ?? defaultOwnerPronouns,
-      getPrompts: options.gate?.getPrompts ?? (() => ({})),
+      getPromptsInForce:
+        options.gate?.getPromptsInForce ?? (() => ({ snapshotHash: 'sha256:test', prompts: {} })),
     },
   });
 
