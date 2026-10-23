@@ -10,6 +10,7 @@ export interface OutsideVersion {
   readonly origin: MemoryOrigin;
   readonly sequence: number;
   readonly recorded_at: number;
+  readonly until: number | null;
 }
 
 export interface OutsideVersions {
@@ -47,6 +48,7 @@ function readVersionRows(
       'memory_versions.origin',
       'memory_versions.sequence',
       'memory_versions.recorded_at',
+      'memory_versions.until',
     ])
     .where('memory_versions.sequence', '>', range.after)
     .where('memory_versions.sequence', '<=', range.through)

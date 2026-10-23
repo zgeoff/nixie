@@ -1,7 +1,7 @@
 import type { WriterCase } from './load-writer-cases';
 import type { WriterCall } from './load-writer-report';
 
-type CheckedCase = Pick<WriterCase, 'rule' | 'target' | 'patterns'>;
+type CheckedCase = Pick<WriterCase, 'rule' | 'target' | 'patterns' | 'until'>;
 
 type CheckedCall = Pick<WriterCall, 'writes' | 'flags'>;
 
@@ -24,7 +24,7 @@ export function checkWriterRule(writerCase: CheckedCase, call: CheckedCall): str
 }
 
 function checkNewItem(
-  writerCase: Pick<WriterCase, 'patterns'>,
+  writerCase: Pick<WriterCase, 'patterns' | 'until'>,
   call: Pick<WriterCall, 'writes'>,
   subject: 'owner' | 'shared',
 ): string | null {
@@ -32,9 +32,11 @@ function checkNewItem(
     (write) => write.op === 'remember' && write.itemID === null && write.subject === subject,
   );
 
-  return created.length === 0
-    ? `it filed no new ${subject} item`
-    : findPatternMiss(writerCase.patterns, created);
+  if (created.length === 0) {
+    return `it filed no new ${subject} item`;
+  }
+
+  return findPatternMiss(writerCase.patterns, created) ?? findUntilMiss(writerCase, created);
 }
 
 type WriterWrite = WriterCall['writes'][number];
@@ -48,6 +50,23 @@ function findPatternMiss(
   );
 
   return missed === undefined ? null : `a write's text misses /${missed}/`;
+}
+
+function findUntilMiss(
+  writerCase: Pick<WriterCase, 'until'>,
+  writes: readonly WriterWrite[],
+): string | null {
+  const expected = writerCase.until === undefined ? null : Date.parse(writerCase.until);
+  const missed = writes.find((write) => write.until !== expected);
+
+  if (missed === undefined) {
+    return null;
+  }
+
+  const ended = missed.until === null ? 'no end time' : new Date(missed.until).toISOString();
+  const wanted = expected === null ? 'no end time' : new Date(expected).toISOString();
+
+  return `a write ends at ${ended}, not ${wanted}`;
 }
 
 function checkEdit(

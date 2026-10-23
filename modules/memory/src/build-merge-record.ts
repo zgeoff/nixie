@@ -1,4 +1,5 @@
 import type { RecordInput } from '@heynixie/log';
+import { buildProposalLapseTime } from './build-proposal-lapse-time';
 import type { MemoryProposalRow } from './gate-types';
 import type { StoreParts } from './types';
 import type { ProposalPlan } from './write-memory-proposal';
@@ -26,7 +27,11 @@ export function buildMergeRecord(
       taskID: plan.caller.taskID,
       model: plan.caller.model,
       noticeKey: plan.group.noticeKey,
-      lapseAt: parts.context.gate.clock.now() + parts.context.gate.limits.proposalLapseMs,
+      lapseAt: buildProposalLapseTime(
+        parts.context.gate.clock.now(),
+        parts.context.gate.limits,
+        plan.until,
+      ),
     },
   };
 }

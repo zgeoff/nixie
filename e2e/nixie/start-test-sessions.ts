@@ -43,6 +43,7 @@ export async function startTestSessions(
           failure: 'error',
         }),
       clock: context.clock,
+      defaultZone: 'UTC',
       findAllowRule: findNoAllowRule,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,

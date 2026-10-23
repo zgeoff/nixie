@@ -32,6 +32,7 @@ export function toMockMemoryItem(item: StoredMemoryItem): MemoryItem {
     ...(isGone
       ? { status: 'shredded' as const }
       : { status: 'readable' as const, text: current.text }),
+    until: item.until,
     version: item.versions.length,
   };
 }

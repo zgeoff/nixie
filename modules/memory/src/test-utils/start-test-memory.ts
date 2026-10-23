@@ -2,6 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Clock } from '@heynixie/clock';
 import type { Log, Writer } from '@heynixie/log';
 import type { GateContext } from '../gate-types';
 import type { StartedMemoryStore } from '../start-memory-store';
@@ -23,6 +24,8 @@ export interface TestMemoryOptions {
   readonly definitions?: MemoryContext['definitions'];
 
   readonly gate?: Partial<GateContext>;
+
+  readonly logClock?: Clock;
 
   readonly semanticSearch?: SemanticSearch;
 

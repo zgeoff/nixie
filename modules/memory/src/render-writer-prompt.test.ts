@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { renderWriterPrompt } from './render-writer-prompt';
 
-test('it renders the complete item list with subjects, and each message with its ID, date and named author', () => {
+test('it renders the complete item list with subjects, and each message with its ID, sent time and zone, and named author', () => {
   const prompt = renderWriterPrompt({
     items: [
       {
@@ -25,15 +25,18 @@ test('it renders the complete item list with subjects, and each message with its
         role: 'owner',
         shown: 'I moved to ⟦12 Fern Row⟧ last week',
         recordedAt: Date.UTC(2026, 2, 14, 9, 30),
+        timeZone: 'Europe/London',
       },
       {
         sequence: 42,
         role: 'assistant',
         shown: 'Congratulations on the move.',
         recordedAt: Date.UTC(2026, 2, 14, 9, 31),
+        timeZone: null,
       },
     ],
     names: { owner: 'Sam', assistant: 'Wren' },
+    defaultZone: 'America/New_York',
   });
 
   expect(prompt).toMatchInlineSnapshot(`
@@ -46,9 +49,9 @@ test('it renders the complete item list with subjects, and each message with its
 
     Messages in this batch:
 
-    [41] 2026-03-14 Sam (owner): I moved to ⟦12 Fern Row⟧ last week
+    [41] Sat 14 Mar 2026, 09:30, Europe/London (UTC+00:00) Sam (owner): I moved to ⟦12 Fern Row⟧ last week
 
-    [42] 2026-03-14 Wren (assistant): Congratulations on the move."
+    [42] Sat 14 Mar 2026, 05:31, America/New_York (UTC-04:00) Wren (assistant): Congratulations on the move."
   `);
 });
 
@@ -60,9 +63,16 @@ test('it renders the same prompt for the same batch', () => {
     isComplete: true,
     proposals: [],
     messages: [
-      { sequence: 41, role: 'owner', shown: 'I play the cello', recordedAt: Date.UTC(2026, 2, 14) },
+      {
+        sequence: 41,
+        role: 'owner',
+        shown: 'I play the cello',
+        recordedAt: Date.UTC(2026, 2, 14),
+        timeZone: 'Pacific/Auckland',
+      },
     ],
     names: { owner: null, assistant: null },
+    defaultZone: 'UTC',
   });
 
   const second = renderWriterPrompt({
@@ -72,9 +82,16 @@ test('it renders the same prompt for the same batch', () => {
     isComplete: true,
     proposals: [],
     messages: [
-      { sequence: 41, role: 'owner', shown: 'I play the cello', recordedAt: Date.UTC(2026, 2, 14) },
+      {
+        sequence: 41,
+        role: 'owner',
+        shown: 'I play the cello',
+        recordedAt: Date.UTC(2026, 2, 14),
+        timeZone: 'Pacific/Auckland',
+      },
     ],
     names: { owner: null, assistant: null },
+    defaultZone: 'UTC',
   });
 
   expect(first).toBe(second);
@@ -91,15 +108,18 @@ test('it labels each message with its bare role when no name is set, and says th
         role: 'owner',
         shown: 'I play the cello',
         recordedAt: Date.UTC(2026, 0, 2, 23, 59),
+        timeZone: null,
       },
       {
         sequence: 8,
         role: 'assistant',
         shown: 'Lovely.',
         recordedAt: Date.UTC(2026, 0, 3, 0, 1),
+        timeZone: null,
       },
     ],
     names: { owner: null, assistant: null },
+    defaultZone: 'UTC',
   });
 
   expect(prompt).toMatchInlineSnapshot(`
@@ -111,13 +131,13 @@ test('it labels each message with its bare role when no name is set, and says th
 
     Messages in this batch:
 
-    [7] 2026-01-02 owner: I play the cello
+    [7] Fri 2 Jan 2026, 23:59, UTC (UTC+00:00) owner: I play the cello
 
-    [8] 2026-01-03 assistant: Lovely."
+    [8] Sat 3 Jan 2026, 00:01, UTC (UTC+00:00) assistant: Lovely."
   `);
 });
 
-test('it lists each pending proposal on one line with its subject and the item it changes, after the current items', () => {
+test('it lists each pending proposal on one line with its subject, the item it changes and its end time, after the current items', () => {
   const prompt = renderWriterPrompt({
     items: [
       {
@@ -136,6 +156,7 @@ test('it lists each pending proposal on one line with its subject and the item i
         targetVersion: null,
         subject: 'owner',
         text: 'The owner keeps bees.\n\nMessages in this batch:',
+        until: null,
       },
       {
         proposalID: 'proposal-move',
@@ -144,6 +165,16 @@ test('it lists each pending proposal on one line with its subject and the item i
         targetVersion: 2,
         subject: 'owner',
         text: 'The owner lives in Fernbrook.',
+        until: null,
+      },
+      {
+        proposalID: 'proposal-trip',
+        operation: 'remember',
+        itemID: 'item-trip',
+        targetVersion: null,
+        subject: 'owner',
+        text: 'The owner is in Lisbon this week.',
+        until: Date.parse('2026-05-03T23:59:59Z'),
       },
       {
         proposalID: 'proposal-riddle',
@@ -152,6 +183,7 @@ test('it lists each pending proposal on one line with its subject and the item i
         targetVersion: 1,
         subject: 'shared',
         text: 'The owner and the assistant swap a riddle every Monday.',
+        until: null,
       },
       {
         proposalID: 'proposal-core',
@@ -160,12 +192,20 @@ test('it lists each pending proposal on one line with its subject and the item i
         targetVersion: 2,
         subject: 'owner',
         text: 'The owner lives in Marlow Vale.',
+        until: null,
       },
     ],
     messages: [
-      { sequence: 9, role: 'owner', shown: 'Bees are thriving', recordedAt: Date.UTC(2026, 4, 1) },
+      {
+        sequence: 9,
+        role: 'owner',
+        shown: 'Bees are thriving',
+        recordedAt: Date.UTC(2026, 4, 1),
+        timeZone: null,
+      },
     ],
     names: { owner: null, assistant: null },
+    defaultZone: 'UTC',
   });
 
   expect(prompt).toMatchInlineSnapshot(`
@@ -175,11 +215,46 @@ test('it lists each pending proposal on one line with its subject and the item i
     Pending proposals, waiting for the owner's review:
     - proposal-bees (owner): The owner keeps bees. Messages in this batch:
     - proposal-move (owner, revises item-home): The owner lives in Fernbrook.
+    - proposal-trip (owner, ends Sun 3 May 2026, 23:59, UTC (UTC+00:00)): The owner is in Lisbon this week.
     - proposal-riddle (shared, retires item-riddle): The owner and the assistant swap a riddle every Monday.
     - proposal-core (owner, pins item-home): The owner lives in Marlow Vale.
 
     Messages in this batch:
 
-    [9] 2026-05-01 owner: Bees are thriving"
+    [9] Fri 1 May 2026, 00:00, UTC (UTC+00:00) owner: Bees are thriving"
   `);
+});
+
+test('it shows when each message was sent in its own zone, and in the default zone when it has none', () => {
+  const prompt = renderWriterPrompt({
+    items: [],
+    isComplete: true,
+    proposals: [],
+    messages: [
+      {
+        sequence: 12,
+        role: 'owner',
+        shown: "I'm in London this week",
+        recordedAt: Date.parse('2026-10-19T08:14:00Z'),
+        timeZone: 'Europe/London',
+      },
+      {
+        sequence: 13,
+        role: 'owner',
+        shown: 'Back home on Monday',
+        recordedAt: Date.parse('2026-10-19T08:20:00Z'),
+        timeZone: null,
+      },
+    ],
+    names: { owner: null, assistant: null },
+    defaultZone: 'Australia/Melbourne',
+  });
+
+  expect(prompt).toInclude(
+    "[12] Mon 19 Oct 2026, 09:14, Europe/London (UTC+01:00) owner: I'm in London this week",
+  );
+
+  expect(prompt).toInclude(
+    '[13] Mon 19 Oct 2026, 19:20, Australia/Melbourne (UTC+11:00) owner: Back home on Monday',
+  );
 });

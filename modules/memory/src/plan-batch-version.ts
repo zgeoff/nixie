@@ -34,5 +34,6 @@ export function planBatchVersion(
     evidenceQuote: write.quote,
     evidence: verdict.evidence,
     ...(write.target === null ? { subject: write.subject } : { target: write.target }),
+    ...(write.until === undefined ? {} : { until: write.until }),
   });
 }

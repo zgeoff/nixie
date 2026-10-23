@@ -7,6 +7,7 @@ import { server } from '../mocks/node';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
+import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { Conversation } from './conversation';
 
 async function setupTest() {
@@ -351,6 +352,41 @@ test('it links each item to the memory view', async () => {
   expect(within(notice).getByRole('link', { name: 'Open in memory' })).toHaveAttribute(
     'href',
     `/memory?item=${runs.itemID}`,
+  );
+});
+
+test('it shows the end date of an item in the notice, in your time zone', async () => {
+  const ctx = await setupTest();
+
+  setupBrowserTimeZone('Europe/London');
+
+  const message = await store.records.create({
+    kind: 'owner_message',
+    message: { text: "I'm in Lisbon this week" },
+  });
+
+  await store.records.create({ kind: 'model.reply', message: { text: 'Enjoy Lisbon.' } });
+
+  const trip = await store.memoryItems.create({
+    until: new Date('2026-10-25T23:59:59Z'),
+    versions: [{ text: 'Is in Lisbon this week' }],
+  });
+
+  await store.memoryNotices.create({
+    entries: [{ itemID: trip.itemID, sequence: message.sequence + 1 }],
+    kind: 'turn',
+    messageSequence: message.sequence,
+    noticeKey: `turn/conversation/${String(message.sequence)}`,
+  });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const notice = await rendered.findByRole('listitem', { name: 'Remembered 1 thing' });
+
+  await ctx.user.click(within(notice).getByRole('button', { name: 'View' }));
+
+  expect(within(notice).getByRole('listitem', { name: trip.shortID })).toHaveTextContent(
+    'Is in Lisbon this weekLasts until Oct 25, 2026',
   );
 });
 

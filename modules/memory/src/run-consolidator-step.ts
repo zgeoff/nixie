@@ -1,4 +1,5 @@
 import { StaleWriterError } from '@heynixie/log';
+import { renderPrompt } from '@heynixie/prompts';
 import type { StepInput, StepResult } from '@heynixie/tasks';
 import { LeaseLostError } from '@heynixie/tasks';
 import type { StagedChange } from './consolidation-types';
@@ -8,7 +9,6 @@ import type { PlannedSummary } from './plan-diff-record';
 import { planDiffRecord } from './plan-diff-record';
 import { readConsolidationItems } from './read-consolidation-items';
 import { renderConsolidatorPrompt } from './render-consolidator-prompt';
-import { renderConsolidatorSystemPrompt } from './render-consolidator-system-prompt';
 
 export async function runConsolidatorStep(
   parts: ConsolidatorParts,
@@ -110,11 +110,11 @@ async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promis
 
   try {
     await parts.model.runSession({
-      systemPrompt: renderConsolidatorSystemPrompt(
-        parts.getPersona(),
-        parts.config.maxChanges,
-        parts.ownerName,
-      ),
+      systemPrompt: renderPrompt('consolidator', {
+        persona: parts.getPersona(),
+        owner: { name: parts.ownerName },
+        memory: { maxChanges: parts.config.maxChanges },
+      }),
       prompt: renderConsolidatorPrompt(listed),
       signal,
     });

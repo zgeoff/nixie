@@ -25,6 +25,7 @@ async function setupTest() {
     getPersona: () => '',
     ownerName: null,
     assistantName: null,
+    defaultZone: 'UTC',
   };
 
   return { memory, parts };
@@ -112,12 +113,19 @@ test('it shows the writer the image markers of your message on the lines after i
         ],
         recordedAt: 1_000_000,
         arrivedAt: null,
+        timeZone: null,
       },
     ],
     sources: new Map([
       [
         planned.bounds.end,
-        { sequence: planned.bounds.end, text: 'I painted the fence green.', spans: [] },
+        {
+          sequence: planned.bounds.end,
+          text: 'I painted the fence green.',
+          spans: [],
+          sentAt: 1_000_000,
+          timeZone: null,
+        },
       ],
     ]),
   };

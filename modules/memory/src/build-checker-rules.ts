@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
-import { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';
-import { retirementCheckerPrompt } from './retirement-checker-prompt';
+import { renderPrompt } from '@heynixie/prompts';
 
 export interface CheckerRule {
   readonly id: string;
@@ -11,9 +10,12 @@ export function buildCheckerRules(ownerName: string | null): readonly CheckerRul
   return [
     {
       id: 'memory.content-checker',
-      prompt: buildPromptHash(renderMemoryCheckerPrompt(ownerName)),
+      prompt: buildPromptHash(renderPrompt('content-checker', { owner: { name: ownerName } })),
     },
-    { id: 'memory.retirement-checker', prompt: buildPromptHash(retirementCheckerPrompt) },
+    {
+      id: 'memory.retirement-checker',
+      prompt: buildPromptHash(renderPrompt('retirement-checker', {})),
+    },
   ];
 }
 

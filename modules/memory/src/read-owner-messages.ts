@@ -1,5 +1,6 @@
 import type { Log, LogTables } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { ownerMessageCodec } from '@heynixie/tasks';
 import { z } from 'zod';
 import type { OwnerMessage } from './gate-types';
 
@@ -30,15 +31,21 @@ export async function readOwnerMessages(
     rows.map(async (row) => {
       const [entry] = await readRecords(log, { afterSequence: row.sequence - 1, limit: 1 });
 
-      const erasable = entry?.record.erasable;
+      const record = entry?.record;
 
-      if (erasable?.status !== 'readable') {
+      if (record?.erasable.status !== 'readable') {
         return null;
       }
 
-      const fields = messageFields.parse(erasable.fields);
+      const fields = messageFields.parse(record.erasable.fields);
 
-      return { sequence: row.sequence, text: fields.text, spans: fields.spans };
+      return {
+        sequence: row.sequence,
+        text: fields.text,
+        spans: fields.spans,
+        sentAt: record.recordedAt.getTime(),
+        timeZone: ownerMessageCodec.tryDecodePartial(record.payload)?.timeZone ?? null,
+      };
     }),
   );
 

@@ -10,6 +10,7 @@ interface ShownVersion {
 interface StagingBatch {
   readonly sources: ReadonlyMap<number, SourceMessage>;
   readonly shown: ReadonlyMap<string, ShownVersion>;
+  readonly startedAt: number;
 }
 
 type StageResult =
@@ -32,6 +33,8 @@ type StagedWriteRequest =
       readonly quote: string;
       readonly sourceSequence: number;
       readonly itemID: string | null;
+
+      readonly until?: number | null;
     }
   | {
       readonly op: 'retire';
@@ -51,6 +54,7 @@ export interface WriterStaging {
 
 interface OpenBatch {
   readonly sources: ReadonlyMap<number, SourceMessage>;
+  readonly startedAt: number;
   readonly shown: Map<string, ShownVersion>;
   readonly writes: StagedWrite[];
   readonly flags: StagedFlag[];
@@ -65,6 +69,7 @@ export function createWriterStaging(): WriterStaging {
     open: (batch) => {
       const opened: OpenBatch = {
         sources: batch.sources,
+        startedAt: batch.startedAt,
         shown: new Map(batch.shown),
         writes: [],
         flags: [],
@@ -136,6 +141,13 @@ function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): Planned
     return { reason: buildSourceReason(request.sourceSequence) };
   }
 
+  if (request.op === 'remember' && isUntilPassed(request.until, batch.startedAt)) {
+    return {
+      reason:
+        'that end time passed before this batch ran, so the fact has already lapsed; stage nothing for it',
+    };
+  }
+
   if (request.itemID === null) {
     invariant(request.op === 'remember', 'a retirement staged with no item');
 
@@ -146,6 +158,7 @@ function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): Planned
       quote: request.quote,
       sourceSequence: request.sourceSequence,
       target: null,
+      ...(request.until === undefined ? {} : { until: request.until }),
     };
   }
 
@@ -154,6 +167,10 @@ function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): Planned
 
 function buildSourceReason(sequence: number): string {
   return `sourceID ${String(sequence)} is not one of the owner's messages in this batch`;
+}
+
+function isUntilPassed(until: number | null | undefined, startedAt: number): boolean {
+  return until !== undefined && until !== null && until <= startedAt;
 }
 
 type TargetedRequest = StagedWriteRequest & { readonly itemID: string };
@@ -198,5 +215,6 @@ function buildWriteFields(
         text: request.text,
         quote: request.quote,
         sourceSequence: request.sourceSequence,
+        ...(request.until === undefined ? {} : { until: request.until }),
       };
 }

@@ -225,6 +225,53 @@ test('it applies a staged fact that the store gate confirms against the message 
   ]);
 }, 60_000);
 
+test('it answers a staged fact whose end time passed before the batch ran with a tool error, drops it, and publishes the rest of the batch', async () => {
+  const ctx = await setupTest({
+    writerConfig: { batch_messages: 2 },
+    check: () =>
+      Promise.resolve({
+        verdict: 'asserted' as const,
+        reason: 'Stated.',
+        model: 'claude-checker-1',
+        failure: null,
+      }),
+  });
+
+  const [trip, sister] = await writeOwnerMessages(ctx.memory.context.log, [
+    "I'm in Lisbon today",
+    'By the way, my sister Ada lives in Leeds.',
+  ]);
+
+  await ctx.memory.start();
+
+  ctx.memory.model.addReplies(
+    buildRememberReply({
+      text: 'Sam is in Lisbon today.',
+      quote: "I'm in Lisbon today",
+      sourceID: trip,
+      until: '1970-01-01T00:00:00+00:00',
+    }),
+    buildRememberReply({
+      text: 'Your sister Ada lives in Leeds.',
+      quote: 'my sister Ada lives in Leeds',
+      sourceID: sister,
+    }),
+    { text: 'Staged.' },
+  );
+
+  await ctx.memory.run();
+
+  const entries = await readRecords(ctx.memory.context.log, { afterSequence: 0 });
+
+  expect(JSON.stringify(ctx.memory.model.requests.at(-2)?.body)).toInclude(
+    'that end time passed before this batch ran, so the fact has already lapsed; stage nothing for it',
+  );
+
+  expect(entries.filter((entry) => entry.record.kind === 'memory.version_added')).toMatchObject([
+    { record: { payload: { origin: 'memory_writer', evidence: { recordSequence: sister } } } },
+  ]);
+}, 60_000);
+
 test('it publishes a proposal with its batch for a staged fact the checker is unsure of', async () => {
   const ctx = await setupTest({
     check: () =>

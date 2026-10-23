@@ -29,6 +29,7 @@ export async function startWriterTask(
     getPersona: () => parts.inForce.read()?.persona ?? '',
     ownerName: parts.config.owner.name,
     assistantName: parts.config.agent.names[0] ?? null,
+    defaultZone: parts.config.time.default_zone,
     onError: (error) => {
       parts.onFailure(error);
     },

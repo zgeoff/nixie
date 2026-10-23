@@ -19,7 +19,13 @@ test('it returns no writes when an item a write retires moved on since the sessi
       },
     ],
     {
-      findSource: (sequence) => ({ sequence, text: 'I moved out', spans: [] }),
+      findSource: (sequence) => ({
+        sequence,
+        text: 'I moved out',
+        spans: [],
+        sentAt: Date.parse('2026-10-19T09:00:00Z'),
+        timeZone: null,
+      }),
       isShownText: () => false,
       batch: { bounds: { start: 0, end: 4 }, model: 'claude-writer-1' },
     },
@@ -43,7 +49,13 @@ test('it returns no writes when an item a write retires was retired since the se
       },
     ],
     {
-      findSource: (sequence) => ({ sequence, text: 'I moved out', spans: [] }),
+      findSource: (sequence) => ({
+        sequence,
+        text: 'I moved out',
+        spans: [],
+        sentAt: Date.parse('2026-10-19T09:00:00Z'),
+        timeZone: null,
+      }),
       isShownText: () => false,
       batch: { bounds: { start: 0, end: 4 }, model: 'claude-writer-1' },
     },
@@ -67,7 +79,13 @@ test('it returns no writes when an item a write retires was forgotten since the 
       },
     ],
     {
-      findSource: (sequence) => ({ sequence, text: 'I moved out', spans: [] }),
+      findSource: (sequence) => ({
+        sequence,
+        text: 'I moved out',
+        spans: [],
+        sentAt: Date.parse('2026-10-19T09:00:00Z'),
+        timeZone: null,
+      }),
       isShownText: () => false,
       batch: { bounds: { start: 0, end: 4 }, model: 'claude-writer-1' },
     },
@@ -91,7 +109,13 @@ test('it throws any other failure of the gate', async () => {
       },
     ],
     {
-      findSource: (sequence) => ({ sequence, text: 'I moved out', spans: [] }),
+      findSource: (sequence) => ({
+        sequence,
+        text: 'I moved out',
+        spans: [],
+        sentAt: Date.parse('2026-10-19T09:00:00Z'),
+        timeZone: null,
+      }),
       isShownText: () => false,
       batch: { bounds: { start: 0, end: 4 }, model: 'claude-writer-1' },
     },

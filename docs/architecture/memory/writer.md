@@ -85,23 +85,31 @@ conversation saves. The rules keep the user's own distinctive words where those 
 meaning, because a generic paraphrase loses what made the fact worth saving. A correction of a fact
 or a deal edits the item that holds it and never adds a second item.
 
-The prompt holds the batch's records with their sequences, the user's pasted spans marked, a marker
+The prompt holds the batch's records with their sequences and the time each was sent, in the zone
+the user sent it from or the deployment's default zone, the user's pasted spans marked, a marker
 line for each image the user sent and never its bytes, the active items, and the pending proposals
-with the item each one changes, each with its subject. It lists every active item while the list
-fits its budget, else the items a keyword recall over the batch finds. Neither the list nor a recall
-shows a self-note, and the pending proposals leave out a self-note's, because a self-note is the
-assistant's own to write. A rule tells the writer to stage nothing for a fact that a pending
-proposal already holds, even in other words, because the gate merges only a proposal of the same
-text.
+with the item each one changes, each with its subject and any end time it sets. It lists every
+active item while the list fits its budget, else the items a keyword recall over the batch finds.
+Neither the list nor a recall shows a self-note, and the pending proposals leave out a self-note's,
+because a self-note is the assistant's own to write. A rule tells the writer to stage nothing for a
+fact that a pending proposal already holds, even in other words, because the gate merges only a
+proposal of the same text. One exception: a batch that adds, moves or drops a proposal's end time
+stages the fact again with the new end time, which the gate keeps as a proposal of its own.
 
 The session's tools are recall, remember, edit, retire and flag-self-note. Remember only creates an
 item, and edit is the one tool that changes an item's text, as in the conversation. Remember and
 edit take the subject owner or shared, and their input schema refuses self, so only the conversation
 writes a [self-note](./writes.md#self-notes). Recall, remember, edit and retire stage writes instead
-of applying them. Staging refuses a write that cites a record outside the batch, a change to an item
-the session was never shown, a second change to the same item, and an edit that changes its item's
-subject, and the refusal goes back to the model at once. Staging binds each change to the version
-the session was shown, never to a version the model sent.
+of applying them.
+
+Staging refuses a write that cites a record outside the batch, a change to an item the session was
+never shown, a second change to the same item, an edit that changes its item's subject, and a write
+whose [end time](./writes.md#end-times-on-writes) passed before the batch ran, and the refusal goes
+back to the model at once. A fact that ended before the writer reached it therefore never enters
+memory, and the rest of the batch goes on. The prompt tells the writer to stage a fact with a stated
+end even when the end looks past, and to leave that check to staging, because a session's own idea
+of the date can differ from the batch's start. Staging binds each change to the version the session
+was shown, never to a version the model sent.
 
 A batch's staging belongs to the step that opened it. A step that lost its lease and stops late
 closes only its own staging, so it never empties the staging of the step that replaced it.
@@ -122,7 +130,8 @@ whose line a forget erased lists nothing.
 
 The host runs the content gate over each staged write outside the database transaction, because a
 gate check can call a model. A write that repeats the text of an item the session was shown skips
-the gate and writes nothing.
+the gate and writes nothing. One exception: an edit that keeps its item's text and moves or clears
+its end time runs the gate as any edit does.
 
 The batch gate runs the checks that [memory writes](./writes.md) sets out for a single write, one
 staged write at a time, against the one message the write cites. That message is the write's whole
@@ -182,10 +191,12 @@ A conversation turn hears of memory that changed outside it through
 [the events block](../core/conversation-turns.md#the-events-block), where memory registers its kinds
 of event. A memory change is an item that anything but the conversation itself wrote, such as a
 writer batch or an edit in the memory view. Each item lists once, at its latest version in the
-block's range, with its current text. The catch-up's items appear as one event that counts them,
-because the catch-up covers conversation the user already had. A merge names each of the
-conversation's pending proposals that another source proposed again, so the conversation knows its
-proposal merged and still waits. A flag of a possible self-note lists as the note-taker's nudge, as
+block's range, with its current text. An item the lapse sweep retired lists as lapsed, with the end
+time it was set to last until in the block's zone, so the model reads that its time ran out, not
+that someone chose to retire it. The catch-up's items appear as one event that counts them, because
+the catch-up covers conversation the user already had. A merge names each of the conversation's
+pending proposals that another source proposed again, so the conversation knows its proposal merged
+and still waits. A flag of a possible self-note lists as the note-taker's nudge, as
 [flags of possible self-notes](#flags-of-possible-self-notes) sets out.
 
 The block reads a listed item's text through a recall marked as a turn note's, and only after its

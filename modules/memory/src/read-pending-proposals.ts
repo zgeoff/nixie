@@ -66,6 +66,7 @@ export async function readPendingProposals(
         quote: text.quote,
         evidence: parseEvidence(row.evidence),
         image: findProposalImage(row),
+        until: text.until ?? null,
       } satisfies MemoryProposal;
     }),
   );

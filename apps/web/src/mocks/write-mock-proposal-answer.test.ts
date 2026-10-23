@@ -92,6 +92,72 @@ test('it applies a held approval as a revision of the item that matched', async 
   ]);
 });
 
+test('it sets the end time of a new item proposal on the item you approve', async () => {
+  const proposal = await store.memoryProposals.create({
+    text: 'Is in Lisbon this week',
+    until: new Date('2026-10-25T23:59:59Z'),
+  });
+
+  await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+  });
+
+  const item = store.memoryItems.findFirst((query) => query.where({ itemID: proposal.itemID }));
+
+  expect(item?.until).toStrictEqual(new Date('2026-10-25T23:59:59Z'));
+});
+
+test('it clears the end time of an item whose edit proposal has none', async () => {
+  const item = await store.memoryItems.create({
+    until: new Date('2026-10-25T23:59:59Z'),
+    versions: [{ text: 'Is in Lisbon this week' }],
+  });
+
+  const proposal = await store.memoryProposals.create({
+    itemID: item.itemID,
+    targetVersion: 1,
+    text: 'Lives in Lisbon',
+  });
+
+  await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(stored?.until).toBeNull();
+});
+
+test('it keeps the end time of the item you approve a proposal with none as a revision of', async () => {
+  const item = await store.memoryItems.create({
+    until: new Date('2026-10-25T23:59:59Z'),
+    versions: [{ text: 'Is in Lisbon this week' }],
+  });
+
+  const proposal = await store.memoryProposals.create({ text: 'Is in Lisbon until Sunday' });
+
+  await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+    revisionOf: { itemID: item.itemID, version: 1 },
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(stored?.until).toStrictEqual(new Date('2026-10-25T23:59:59Z'));
+});
+
 test('it rejects a proposal with your reason in its rejection record', async () => {
   const proposal = await store.memoryProposals.create({ text: 'Keeps bees on the roof' });
 
