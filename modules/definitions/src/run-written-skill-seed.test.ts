@@ -1,8 +1,9 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
+import { buildCheckerRules } from '@heynixie/memory';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { checkSkillFiles } from './check-skill-files';
@@ -267,11 +268,19 @@ test('it keeps the prompt overrides in force and builds the policy from them whe
   await mkdir(join(ctx.root, 'prompts'));
   await writeFile(join(ctx.root, 'prompts', 'checker-safety.md'), 'Refuse a guessed fact.\n');
 
-  await runSeed({
+  const first = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    buildPolicy: () => ({ rules: [], tools: [] }),
+    buildPolicy: (prompts) => ({
+      rules: buildCheckerRules('Robin', prompts).map((rule) => ({
+        id: rule.id,
+        prompt: rule.prompt,
+      })),
+      tools: [],
+    }),
   });
+
+  invariant(first.inForce);
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -288,13 +297,18 @@ test('it keeps the prompt overrides in force and builds the policy from them whe
     }),
   );
 
-  const buildPolicy = mock(() => ({ rules: [], tools: [] }));
-
-  const result = await runWrittenSkillSeed({ log: ctx.log, buildPolicy });
-
-  expect(buildPolicy).toHaveBeenCalledExactlyOnceWith({
-    'content-checker': { parts: { safety: 'Refuse a guessed fact.' }, template: null },
+  const result = await runWrittenSkillSeed({
+    log: ctx.log,
+    buildPolicy: (prompts) => ({
+      rules: buildCheckerRules('Robin', prompts).map((rule) => ({
+        id: rule.id,
+        prompt: rule.prompt,
+      })),
+      tools: [],
+    }),
   });
+
+  expect(result.inForce?.policyHash).toBe(first.inForce.policyHash);
 
   expect(result.inForce?.prompts).toStrictEqual({
     'content-checker': { parts: { safety: 'Refuse a guessed fact.' }, template: null },

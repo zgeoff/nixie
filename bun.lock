@@ -389,6 +389,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/memory": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "ajv": "catalog:",
       },
