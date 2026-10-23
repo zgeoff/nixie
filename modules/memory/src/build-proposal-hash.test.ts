@@ -45,3 +45,34 @@ test('it hashes a shared proposal apart from the same proposal about the owner',
     buildProposalHash({ ...operation, subject: 'owner' }),
   );
 });
+
+test('it hashes proposals that differ only in their end time apart', () => {
+  const operation = {
+    operation: 'remember',
+    itemID: '8d2e4b71-0c5f-4e9a-b3d6-1f7a9c2e5b80',
+    targetVersion: null,
+    isPinned: false,
+    text: 'Is in Lisbon this week',
+    quote: null,
+    salt: 'c2FsdC1h',
+  } as const;
+
+  expect(buildProposalHash({ ...operation, until: 1200 })).not.toBe(
+    buildProposalHash({ ...operation, until: 1300 }),
+  );
+});
+
+test('it hashes a proposal with a null end time as the release before end times did', () => {
+  expect(
+    buildProposalHash({
+      operation: 'remember',
+      itemID: '8d2e4b71-0c5f-4e9a-b3d6-1f7a9c2e5b80',
+      targetVersion: null,
+      isPinned: false,
+      text: 'I like tidy lists',
+      quote: null,
+      salt: 'c2FsdC1h',
+      until: null,
+    }),
+  ).toBe('sha256:7c029b1a2201850c31f7521a32421298218074a6b0a16220b58f0ffd15140c42');
+});

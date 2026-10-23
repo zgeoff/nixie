@@ -9,6 +9,7 @@ import { ProposalCapError } from './proposal-cap-error';
 import { SelfNoteError } from './self-note-error';
 import { StaleVersionError } from './stale-version-error';
 import type { ItemIDStore } from './types';
+import { UntilPassedError } from './until-passed-error';
 
 export async function runWriteCall(
   memory: Pick<ItemIDStore, 'readShortIDs'> & Pick<ModelWriteStore, 'renderReviewReason'>,
@@ -40,7 +41,8 @@ export async function runWriteCall(
       error instanceof PinnedCoreFullError ||
       error instanceof ProposalCapError ||
       error instanceof SelfNoteError ||
-      error instanceof ImageSourceError
+      error instanceof ImageSourceError ||
+      error instanceof UntilPassedError
     ) {
       return { status: 'error', message: await readShortIDMessage(memory, error.message, itemID) };
     }

@@ -1,5 +1,6 @@
 import type { SourceMessage } from '@heynixie/memory';
-import { renderWriterPrompt, renderWriterSystemPrompt } from '@heynixie/memory';
+import { renderWriterPrompt } from '@heynixie/memory';
+import { renderPrompt } from '@heynixie/prompts';
 import type { WriterCase, WriterCases } from './load-writer-cases';
 
 interface EvalTool {
@@ -25,22 +26,32 @@ export interface WriterEvalInput {
     { readonly version: number; readonly subject: 'owner' | 'shared' }
   >;
 
+  readonly startedAt: number;
+
   readonly hash: string;
 }
 
 export function buildWriterEvalInput(
-  cases: Pick<WriterCases, 'persona' | 'ownerName' | 'assistantName'>,
+  cases: Pick<WriterCases, 'persona' | 'ownerName' | 'assistantName' | 'timeZone'>,
   writerCase: WriterCase,
   tools: readonly WriterToolSpec[],
 ): WriterEvalInput {
   const names = { owner: cases.ownerName, assistant: cases.assistantName };
-  const systemPrompt = renderWriterSystemPrompt(cases.persona, names);
+
+  const systemPrompt = renderPrompt('writer', {
+    persona: cases.persona,
+    owner: { name: cases.ownerName },
+    assistant: { name: cases.assistantName },
+  });
+
+  const sentAt = Date.parse(writerCase.sentAt ?? '2026-10-14T09:00:00Z');
 
   const messages = writerCase.messages.map((message, index) => ({
     sequence: index + 1,
     role: message.role,
     shown: message.text,
-    recordedAt: Date.UTC(2026, 9, 14, 9, index),
+    recordedAt: sentAt + index * 60_000,
+    timeZone: message.role === 'owner' ? cases.timeZone : null,
   }));
 
   const prompt = renderWriterPrompt({
@@ -49,6 +60,7 @@ export function buildWriterEvalInput(
     proposals: [],
     messages,
     names,
+    defaultZone: cases.timeZone,
   });
 
   const evalTools = tools.map((tool) => ({
@@ -63,7 +75,13 @@ export function buildWriterEvalInput(
         ? [
             [
               message.sequence,
-              { sequence: message.sequence, text: message.shown, spans: [] },
+              {
+                sequence: message.sequence,
+                text: message.shown,
+                spans: [],
+                sentAt: message.recordedAt,
+                timeZone: message.timeZone,
+              },
             ] as const,
           ]
         : [],
@@ -78,5 +96,13 @@ export function buildWriterEvalInput(
     .update(JSON.stringify({ systemPrompt, prompt, tools: evalTools }))
     .digest('hex');
 
-  return { systemPrompt, prompt, tools: evalTools, sources, shown, hash: `sha256:${hash}` };
+  return {
+    systemPrompt,
+    prompt,
+    tools: evalTools,
+    sources,
+    shown,
+    startedAt: sentAt + 3_600_000,
+    hash: `sha256:${hash}`,
+  };
 }

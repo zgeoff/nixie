@@ -1,10 +1,11 @@
 # Names in impd
 
 nixie keeps every imp, image and secret it uses in impd under a name it derives, and a deployment
-grants nixie's impd token, adds images and stores secrets by those names. The names follow fixed
-rules, so a deployment's tooling and impd's own docs can rely on the rules here instead of on a copy
-of nixie's code. The rules are a contract: a release that changes one of them is a breaking change
-for every deployment.
+grants nixie's impd token, adds images and stores secrets by those names. Every name nixie derives
+starts with `nixie-`, so a deployment tells nixie's imps, images and secrets apart from those of any
+other work on the same impd by the prefix alone. The names follow fixed rules, so a deployment's
+tooling and impd's own docs can rely on the rules here instead of on a copy of nixie's code. The
+rules are a contract: a release that changes one of them is a breaking change for every deployment.
 
 [Sandboxes](../connectors/sandboxes.md) covers the imp adapter that uses the names,
 [model profiles](../core/model-profiles.md#credentials) covers the credentials behind the model
@@ -44,10 +45,11 @@ release fails its pull check until the package is public
 ## Model secrets
 
 A sandbox reaches its model through a secret that impd's broker injects, named
-`model-<profile>-<16 hex>`. The profile is the model profile's ID, and the hex digits are the first
-16 of the SHA-256 of the profile's auth header (`bearer` or `x-api-key`), the model host and the
-credential, each on its own line. A rotated credential therefore gets a new name, and a sandbox
-granted the old secret keeps working until it is replaced.
+`nixie-model-<19 hex>`. The hex digits are the first 19 of the SHA-256 of the model profile's ID,
+its auth header (`bearer` or `x-api-key`), the model host and the credential, each on its own line.
+The name holds the profile only through the digest, because impd caps a name at 31 characters and a
+profile ID has no cap. A rotated credential therefore gets a new name, and a sandbox granted the old
+secret keeps working until it is replaced.
 
 A token scoped to `nixie-*` cannot store a secret, because a secret is host-wide in impd. The
 deployment stores each model secret under its derived name and lists those names as the secrets

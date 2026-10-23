@@ -3,7 +3,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { runCheckQuery } from '@heynixie/conversation';
-import { renderMemoryCheckerPrompt } from '@heynixie/memory';
+import { renderPrompt } from '@heynixie/prompts';
 import { makeChecker } from '@heynixie/sessions';
 import { buildCheckerEvalInput } from '../test-utils/build-checker-eval-input';
 import type { CheckerSample } from '../test-utils/load-checker-corpus';
@@ -25,7 +25,7 @@ interface PlannedCall {
 const directory = import.meta.dir;
 const name = process.argv[2] ?? 'corpus';
 const ownerName = process.argv[3] === undefined || process.argv[3] === '' ? null : process.argv[3];
-const prompt = renderMemoryCheckerPrompt(ownerName);
+const prompt = renderPrompt('content-checker', { owner: { name: ownerName } });
 
 const corpus = await loadCheckerCorpus(join(directory, `${name}.json`));
 const home = await mkdtemp(join(tmpdir(), 'nixie-checker-eval-'));

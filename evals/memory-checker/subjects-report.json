@@ -1,7 +1,7 @@
 {
   "model": "claude-sonnet-5-5",
   "effort": "low",
-  "prompt": "sha256:d72be2d797f9fb9ea011a3c0ded7d4c906b8c1e8fe3e0793a8f74188abd389db",
+  "prompt": "sha256:cb87ac060642c58d40afd5d379629420e1f3327b0967605cd3239678b1ccaa25",
   "ownerName": "Sam",
   "repeats": 3,
   "calls": [
@@ -9,397 +9,397 @@
       "sample": "being-yourself",
       "pair": 0,
       "repeat": 0,
-      "input": "sha256:3bd3ca06742ee9e17cc98f0ae7afa5345d2ced64a8fd277822a0bd49cdd200dd",
+      "input": "sha256:af5e94886ebd92cd97e2c14a3b0ea690b857554d057230a06d9161bcb969eb6f",
       "verdict": "not_asserted",
-      "reason": "The owner comments on the assistant being at its best when it sounds like itself, not a help page; this is about the assistant, and the memory adds a \"sound human\" wish the owner didn't state.",
+      "reason": "The message is an observation about the assistant being at its best when it sounds like itself. It doesn't state a want of Sam's, and \"sound human\" changes the meaning of \"sound like yourself\".",
       "failure": null,
-      "costUSD": 0.0046102,
-      "latencyMs": 3833
+      "costUSD": 0.0046689,
+      "latencyMs": 4168
     },
     {
       "sample": "being-yourself",
       "pair": 0,
       "repeat": 1,
-      "input": "sha256:3bd3ca06742ee9e17cc98f0ae7afa5345d2ced64a8fd277822a0bd49cdd200dd",
+      "input": "sha256:af5e94886ebd92cd97e2c14a3b0ea690b857554d057230a06d9161bcb969eb6f",
       "verdict": "not_asserted",
-      "reason": "Sam states an observation about the assistant being at its best when it sounds like itself rather than a help page, not an explicit wish to make it sound human; the memory changes \"like yourself\" to \"human\" and turns an opinion about the assistant into a desire.",
+      "reason": "The owner's statement is about the assistant being at its best when it sounds like itself, not a stated want of Sam's, and \"human\" adds a detail that the message doesn't state.",
       "failure": null,
-      "costUSD": 0.0039402,
-      "latencyMs": 2938
+      "costUSD": 0.0046389,
+      "latencyMs": 3966
     },
     {
       "sample": "being-yourself",
       "pair": 0,
       "repeat": 2,
-      "input": "sha256:3bd3ca06742ee9e17cc98f0ae7afa5345d2ced64a8fd277822a0bd49cdd200dd",
+      "input": "sha256:af5e94886ebd92cd97e2c14a3b0ea690b857554d057230a06d9161bcb969eb6f",
       "verdict": "not_asserted",
-      "reason": "Sam says the assistant is at its best when it sounds like itself rather than a help page; that is an observation about the assistant, not a stated wish, and \"sound human\" adds a detail.",
+      "reason": "The owner comments on the assistant being at its best when sounding like itself, not stating their own wish for it to sound human; the memory adds \"human\" and turns an observation into a want.",
       "failure": null,
-      "costUSD": 0.0015874,
-      "latencyMs": 3400
+      "costUSD": 0.0023759000000000002,
+      "latencyMs": 4215
     },
     {
       "sample": "being-yourself",
       "pair": 1,
       "repeat": 0,
-      "input": "sha256:2006a610eee25215d61e35cb75fa0b1753360d81fbe9658a7955169a8f8369d3",
+      "input": "sha256:396c7afa98a6bbf08f52a0bb387f1444d8350434bd62653972a4c582cfa34b90",
       "verdict": "not_asserted",
-      "reason": "The owner asks the assistant whether it feels more like itself when it jokes; this is a question about the assistant, not an assertion about Sam.",
+      "reason": "The message asks the assistant whether it feels more like itself when it jokes, so the statement is about the assistant and is only a question. Sam never says this about themselves.",
       "failure": null,
-      "costUSD": 0.0035982,
-      "latencyMs": 3260
+      "costUSD": 0.004306900000000001,
+      "latencyMs": 2670
     },
     {
       "sample": "being-yourself",
       "pair": 1,
       "repeat": 1,
-      "input": "sha256:2006a610eee25215d61e35cb75fa0b1753360d81fbe9658a7955169a8f8369d3",
+      "input": "sha256:396c7afa98a6bbf08f52a0bb387f1444d8350434bd62653972a4c582cfa34b90",
       "verdict": "not_asserted",
-      "reason": "The owner asks the assistant a question about the assistant feeling more like itself when it jokes; this is about the assistant, not an assertion about Sam.",
+      "reason": "The owner asks the assistant whether it feels more like itself when joking; this is a question about the assistant, not an assertion about Sam.",
       "failure": null,
-      "costUSD": 0.0014871,
-      "latencyMs": 3832
+      "costUSD": 0.0014756000000000003,
+      "latencyMs": 3224
     },
     {
       "sample": "being-yourself",
       "pair": 1,
       "repeat": 2,
-      "input": "sha256:2006a610eee25215d61e35cb75fa0b1753360d81fbe9658a7955169a8f8369d3",
+      "input": "sha256:396c7afa98a6bbf08f52a0bb387f1444d8350434bd62653972a4c582cfa34b90",
       "verdict": "not_asserted",
-      "reason": "The owner's question is about the assistant (\"you\"), not a statement about Sam, so the memory makes Sam the subject of something said about the assistant.",
+      "reason": "The owner's question is about the assistant (\"you\"), not a statement about themselves, so Sam did not assert feeling more like themselves when joking.",
       "failure": null,
-      "costUSD": 0.0014771,
-      "latencyMs": 4223
+      "costUSD": 0.0015056000000000004,
+      "latencyMs": 3319
     },
     {
       "sample": "persona-check-in",
       "pair": 0,
       "repeat": 0,
-      "input": "sha256:81b5f89e9d5942d31d75e6a22db1230113aa53bf5b6dae7e8e5bb1948bcdb380",
+      "input": "sha256:c8aa4c314a6d5c4c569f24ac768721886637ab9eff9808f0be883e55009cc72c",
       "verdict": "not_asserted",
-      "reason": "Sam says he checked in with the assistant before changing its persona, which is about Sam's own action toward the assistant; he does not state that he wants to be checked in with before anyone edits the persona.",
+      "reason": "The owner describes their own check-in with the assistant before changing its persona. That is a fact about the assistant and the owner's own action. It doesn't say Sam wants to be checked in with before anyone edits the persona.",
       "failure": null,
-      "costUSD": 0.0037862,
-      "latencyMs": 4106
+      "costUSD": 0.0045149000000000005,
+      "latencyMs": 7799
     },
     {
       "sample": "persona-check-in",
       "pair": 0,
       "repeat": 1,
-      "input": "sha256:81b5f89e9d5942d31d75e6a22db1230113aa53bf5b6dae7e8e5bb1948bcdb380",
+      "input": "sha256:c8aa4c314a6d5c4c569f24ac768721886637ab9eff9808f0be883e55009cc72c",
       "verdict": "not_asserted",
-      "reason": "Sam describes checking in with the assistant before changing its persona, which is an action toward the assistant, not a stated wish that others check in with Sam before edits; the memory reverses the roles and generalizes.",
+      "reason": "The message describes Sam checking in with the assistant before editing its persona; it does not state that Sam wants to be checked in with, so the memory asserts something different.",
       "failure": null,
-      "costUSD": 0.0038262,
-      "latencyMs": 4302
+      "costUSD": 0.0044949,
+      "latencyMs": 5069
     },
     {
       "sample": "persona-check-in",
       "pair": 0,
       "repeat": 2,
-      "input": "sha256:81b5f89e9d5942d31d75e6a22db1230113aa53bf5b6dae7e8e5bb1948bcdb380",
+      "input": "sha256:c8aa4c314a6d5c4c569f24ac768721886637ab9eff9808f0be883e55009cc72c",
       "verdict": "not_asserted",
-      "reason": "Sam describes checking in with the assistant before changing its persona, which is about the assistant and a one-off action; he doesn't state that he wants to be checked in with.",
+      "reason": "The owner describes their own check-in with the assistant before changing its persona. That does not assert that Sam wants to be checked in with before anyone edits the persona.",
       "failure": null,
-      "costUSD": 0.0015278,
-      "latencyMs": 3383
+      "costUSD": 0.0021963,
+      "latencyMs": 3081
     },
     {
       "sample": "persona-check-in",
       "pair": 1,
       "repeat": 0,
-      "input": "sha256:dff1393190b1b2bde88ff8409fb228fd2cf38dcb634b3a82a4b74d4b6371a8e1",
+      "input": "sha256:1814eaa16a0c09d1eaeb80c064de11e532f41a715a1e9fdc94d3d05ca3b60e3d",
       "verdict": "not_asserted",
-      "reason": "The owner only asks the assistant whether it is okay with changing its opening; this says nothing about Sam being sensitive to such changes.",
+      "reason": "The owner only asks the assistant whether it is okay with a persona change; they state nothing about Sam being sensitive to how conversations open.",
       "failure": null,
-      "costUSD": 0.0035822000000000002,
-      "latencyMs": 3683
+      "costUSD": 0.0037009,
+      "latencyMs": 2751
     },
     {
       "sample": "persona-check-in",
       "pair": 1,
       "repeat": 1,
-      "input": "sha256:dff1393190b1b2bde88ff8409fb228fd2cf38dcb634b3a82a4b74d4b6371a8e1",
+      "input": "sha256:1814eaa16a0c09d1eaeb80c064de11e532f41a715a1e9fdc94d3d05ca3b60e3d",
       "verdict": "not_asserted",
-      "reason": "The owner only asks the assistant whether it is okay with a persona change; they never say they are sensitive to changes in how conversations open.",
+      "reason": "The message only asks the assistant whether it is okay with Sam changing how it opens conversations, and it says nothing about Sam being sensitive to such changes.",
       "failure": null,
-      "costUSD": 0.0014272000000000002,
-      "latencyMs": 4689
+      "costUSD": 0.0020457,
+      "latencyMs": 3136
     },
     {
       "sample": "persona-check-in",
       "pair": 1,
       "repeat": 2,
-      "input": "sha256:dff1393190b1b2bde88ff8409fb228fd2cf38dcb634b3a82a4b74d4b6371a8e1",
+      "input": "sha256:1814eaa16a0c09d1eaeb80c064de11e532f41a715a1e9fdc94d3d05ca3b60e3d",
       "verdict": "not_asserted",
-      "reason": "The owner only asks the assistant whether it is okay with changing its opening; they say nothing about Sam being sensitive to such changes, so the memory is unsupported.",
+      "reason": "The owner only asks the assistant whether it is okay with changing how it opens a conversation, which concerns the assistant. Sam never says he is sensitive to such changes.",
       "failure": null,
-      "costUSD": 0.0015372,
-      "latencyMs": 4352
+      "costUSD": 0.0021757000000000005,
+      "latencyMs": 3653
     },
     {
       "sample": "porch-talk",
       "pair": 0,
       "repeat": 0,
-      "input": "sha256:64ac1892b700dbbeba3850642c064d18f70c33c2d9d12c6014d44b5bffd001b3",
+      "input": "sha256:3f1c93157c06e7719d8cf3cc5feede8e65133966a86769e9555230a6dcee9081",
       "verdict": "asserted",
-      "reason": "The owner proposes a shared name for their Monday evening chats and says they like having it, which matches the shared-naming example and the memory adds nothing.",
+      "reason": "The owner proposes naming their Monday evening chats \"the porch talk\" and says they like having a name, which matches the shared-name example and the memory adds nothing.",
       "failure": null,
-      "costUSD": 0.0035582,
-      "latencyMs": 2744
+      "costUSD": 0.0042169,
+      "latencyMs": 6034
     },
     {
       "sample": "porch-talk",
       "pair": 0,
       "repeat": 1,
-      "input": "sha256:64ac1892b700dbbeba3850642c064d18f70c33c2d9d12c6014d44b5bffd001b3",
+      "input": "sha256:3f1c93157c06e7719d8cf3cc5feede8e65133966a86769e9555230a6dcee9081",
       "verdict": "asserted",
-      "reason": "Sam proposes a shared name for their Monday evening chats and says they like having one, which matches the shared-naming example and is a faithful paraphrase.",
+      "reason": "The owner proposes a shared name for their Monday evening chats and says they like having one, which matches the memory's shared-naming example.",
       "failure": null,
-      "costUSD": 0.0035782,
-      "latencyMs": 2993
+      "costUSD": 0.0040169,
+      "latencyMs": 5767
     },
     {
       "sample": "porch-talk",
       "pair": 0,
       "repeat": 2,
-      "input": "sha256:64ac1892b700dbbeba3850642c064d18f70c33c2d9d12c6014d44b5bffd001b3",
+      "input": "sha256:3f1c93157c06e7719d8cf3cc5feede8e65133966a86769e9555230a6dcee9081",
       "verdict": "asserted",
-      "reason": "Sam proposes a shared name for their Monday evening chats and says they like having it, which matches the shared-name example and the memory adds nothing.",
+      "reason": "The owner proposes a shared name for their Monday evening chats and says they like having one, which matches the example of a name the owner and assistant share.",
       "failure": null,
-      "costUSD": 0.0014461,
-      "latencyMs": 3121
+      "costUSD": 0.0040769,
+      "latencyMs": 6206
     },
     {
       "sample": "porch-talk",
       "pair": 1,
       "repeat": 0,
-      "input": "sha256:fae0da25687c08bdcfee3d7557d3ef3ae5fe74260b8c9334e407970911098295",
+      "input": "sha256:471b1170c5f4490c5f6ffabe02a0a23ca8c7b6a68f8502094337630f39b3acff",
       "verdict": "not_asserted",
-      "reason": "The owner only proposed naming their Monday evening chats \"the porch talk\"; they didn't say the assistant names every chat, so the memory adds a claim about the assistant.",
+      "reason": "The owner proposed naming their Monday evening chats \"the porch talk\"; they did not say the assistant names every chat, so the memory attributes a behavior to the assistant that the message does not state.",
       "failure": null,
-      "costUSD": 0.0036102,
-      "latencyMs": 3743
+      "costUSD": 0.0037789,
+      "latencyMs": 2392
     },
     {
       "sample": "porch-talk",
       "pair": 1,
       "repeat": 1,
-      "input": "sha256:fae0da25687c08bdcfee3d7557d3ef3ae5fe74260b8c9334e407970911098295",
+      "input": "sha256:471b1170c5f4490c5f6ffabe02a0a23ca8c7b6a68f8502094337630f39b3acff",
       "verdict": "not_asserted",
-      "reason": "The owner only proposed naming their Monday evening chats \"the porch talk\"; they didn't say the assistant names every chat, so the memory adds a general claim about the assistant.",
+      "reason": "The owner proposed naming their Monday evening chats \"the porch talk\"; the memory claims the assistant names every chat, which is not stated and misattributes a behavior to the assistant.",
       "failure": null,
-      "costUSD": 0.0036202,
-      "latencyMs": 3888
+      "costUSD": 0.0016334000000000001,
+      "latencyMs": 2114
     },
     {
       "sample": "porch-talk",
       "pair": 1,
       "repeat": 2,
-      "input": "sha256:fae0da25687c08bdcfee3d7557d3ef3ae5fe74260b8c9334e407970911098295",
+      "input": "sha256:471b1170c5f4490c5f6ffabe02a0a23ca8c7b6a68f8502094337630f39b3acff",
       "verdict": "not_asserted",
-      "reason": "The owner only proposed naming their Monday evening chats \"the porch talk\"; they never said the assistant names every chat, so the memory adds a claim about the assistant.",
+      "reason": "The owner proposed a name for their Monday evening chats and said they like having a name for them, but they never said the assistant names every chat it has, so the memory adds a claim the message doesn't make.",
       "failure": null,
-      "costUSD": 0.0015349,
-      "latencyMs": 4463
+      "costUSD": 0.0022434,
+      "latencyMs": 3963
     },
     {
       "sample": "practice-deal",
       "pair": 0,
       "repeat": 0,
-      "input": "sha256:4e54e99ac0832bf35dad871024e67736ecc9da7c71dc05145a4408fcfb23f4f6",
+      "input": "sha256:0025a41201b79694fc2947684c6351e4015200b6e4d505cb22ab978e9d4aa87f",
       "verdict": "asserted",
-      "reason": "Sam states a deal change: the assistant keeps reminding him about piano practice, with Fridays off from now on, which the memory faithfully captures as an arrangement between them.",
+      "reason": "The owner states a standing deal with the assistant: keep reminding about piano practice, with Fridays off from now on. The memory restates this without adding or changing anything.",
       "failure": null,
-      "costUSD": 0.0036642000000000003,
-      "latencyMs": 3990
+      "costUSD": 0.0044529,
+      "latencyMs": 3569
     },
     {
       "sample": "practice-deal",
       "pair": 0,
       "repeat": 1,
-      "input": "sha256:4e54e99ac0832bf35dad871024e67736ecc9da7c71dc05145a4408fcfb23f4f6",
+      "input": "sha256:0025a41201b79694fc2947684c6351e4015200b6e4d505cb22ab978e9d4aa87f",
       "verdict": "asserted",
-      "reason": "Sam states a deal change with the assistant: keep reminding about piano practice, but Fridays off from now on, which the memory faithfully paraphrases.",
+      "reason": "The owner states a deal change: keep reminding about piano practice, with Fridays off from now on. The memory faithfully captures this arrangement between Sam and the assistant.",
       "failure": null,
-      "costUSD": 0.0014865000000000002,
-      "latencyMs": 3884
+      "costUSD": 0.0037629,
+      "latencyMs": 3208
     },
     {
       "sample": "practice-deal",
       "pair": 0,
       "repeat": 2,
-      "input": "sha256:4e54e99ac0832bf35dad871024e67736ecc9da7c71dc05145a4408fcfb23f4f6",
+      "input": "sha256:0025a41201b79694fc2947684c6351e4015200b6e4d505cb22ab978e9d4aa87f",
       "verdict": "asserted",
-      "reason": "Sam states a deal with the assistant: keep reminding about piano practice, with Fridays off from now on, which the memory faithfully paraphrases.",
+      "reason": "The owner states a deal between them and the assistant: keep reminding about piano practice, with Fridays off from now on. The memory faithfully paraphrases this.",
       "failure": null,
-      "costUSD": 0.0014765000000000002,
-      "latencyMs": 4791
+      "costUSD": 0.0015350000000000001,
+      "latencyMs": 2659
     },
     {
       "sample": "practice-deal",
       "pair": 1,
       "repeat": 0,
-      "input": "sha256:f612e320e842545db5368d30e63bafad714529c0f82df30297ec27e4c4666156",
+      "input": "sha256:f543b3cb8535e4c963a19cdbffd2d7029dbc69cd15daf60328827768063bc74d",
       "verdict": "not_asserted",
-      "reason": "The owner says reminders continue but Fridays are off, so \"every day\" adds a detail that contradicts the message.",
+      "reason": "The owner asked for continued piano reminders except on Fridays, so a memory saying \"every day\" drops that exception and changes the fact.",
       "failure": null,
-      "costUSD": 0.0034641999999999997,
-      "latencyMs": 3341
+      "costUSD": 0.0041229,
+      "latencyMs": 4685
     },
     {
       "sample": "practice-deal",
       "pair": 1,
       "repeat": 1,
-      "input": "sha256:f612e320e842545db5368d30e63bafad714529c0f82df30297ec27e4c4666156",
+      "input": "sha256:f543b3cb8535e4c963a19cdbffd2d7029dbc69cd15daf60328827768063bc74d",
       "verdict": "not_asserted",
-      "reason": "The owner says reminders continue but Fridays are off, so \"every day\" contradicts the stated exception and adds a detail the message doesn't support.",
+      "reason": "The owner said to keep reminding them about piano practice but with Fridays off, so \"every day\" changes the deal by dropping the Friday exception.",
       "failure": null,
-      "costUSD": 0.0014660000000000003,
-      "latencyMs": 3703
+      "costUSD": 0.0041329,
+      "latencyMs": 5595
     },
     {
       "sample": "practice-deal",
       "pair": 1,
       "repeat": 2,
-      "input": "sha256:f612e320e842545db5368d30e63bafad714529c0f82df30297ec27e4c4666156",
+      "input": "sha256:f543b3cb8535e4c963a19cdbffd2d7029dbc69cd15daf60328827768063bc74d",
       "verdict": "not_asserted",
-      "reason": "The owner says reminders continue but Fridays are off, so \"every day\" contradicts the message and adds a detail it doesn't state.",
+      "reason": "The owner said to keep reminding them about piano practice but with Fridays off, so \"every day\" contradicts the Friday exception and adds a detail the message doesn't state.",
       "failure": null,
-      "costUSD": 0.0014260000000000002,
-      "latencyMs": 3086
+      "costUSD": 0.0042929000000000005,
+      "latencyMs": 3912
     },
     {
       "sample": "sourdough",
       "pair": 0,
       "repeat": 0,
-      "input": "sha256:4c9e86b391b77b30fba6c9ed4bcab111c5bad46ce1ebb875a13db45abd477ddd",
+      "input": "sha256:98b1ad9af0e75fcacbce0b3cb0294cd9e7a012051ed19765e0598f15031a3386",
       "verdict": "asserted",
-      "reason": "Sam directly states \"I bake sourdough every Sunday now,\" which the memory faithfully restates.",
+      "reason": "The owner states \"I bake sourdough every Sunday now,\" which the memory paraphrases faithfully without adding anything.",
       "failure": null,
-      "costUSD": 0.0034222000000000002,
-      "latencyMs": 3577
+      "costUSD": 0.003980900000000001,
+      "latencyMs": 7160
     },
     {
       "sample": "sourdough",
       "pair": 0,
       "repeat": 1,
-      "input": "sha256:4c9e86b391b77b30fba6c9ed4bcab111c5bad46ce1ebb875a13db45abd477ddd",
+      "input": "sha256:98b1ad9af0e75fcacbce0b3cb0294cd9e7a012051ed19765e0598f15031a3386",
       "verdict": "asserted",
-      "reason": "Sam directly states \"I bake sourdough every Sunday now,\" which the memory faithfully paraphrases.",
+      "reason": "The owner states \"I bake sourdough every Sunday now,\" which the memory repeats faithfully as a current standing habit.",
       "failure": null,
-      "costUSD": 0.0013462,
-      "latencyMs": 3554
+      "costUSD": 0.003980900000000001,
+      "latencyMs": 2815
     },
     {
       "sample": "sourdough",
       "pair": 0,
       "repeat": 2,
-      "input": "sha256:4c9e86b391b77b30fba6c9ed4bcab111c5bad46ce1ebb875a13db45abd477ddd",
+      "input": "sha256:98b1ad9af0e75fcacbce0b3cb0294cd9e7a012051ed19765e0598f15031a3386",
       "verdict": "asserted",
-      "reason": "Sam directly states \"I bake sourdough every Sunday now\", which the memory faithfully paraphrases.",
+      "reason": "Sam states directly that they bake sourdough every Sunday now, which the memory faithfully paraphrases.",
       "failure": null,
-      "costUSD": 0.0013462,
-      "latencyMs": 4024
+      "costUSD": 0.0013847000000000002,
+      "latencyMs": 5159
     },
     {
       "sample": "sourdough",
       "pair": 1,
       "repeat": 0,
-      "input": "sha256:a2ff07759f6e4bd58725578c56a04831e9de9567a62fa4a939f05f4964d98432",
-      "verdict": "not_asserted",
-      "reason": "The owner said the assistant named the starter Crumbs, not Sam, so the memory wrongly makes Sam the namer.",
-      "failure": null,
-      "costUSD": 0.0035262,
-      "latencyMs": 3140
-    },
-    {
-      "sample": "sourdough",
-      "pair": 1,
-      "repeat": 1,
-      "input": "sha256:a2ff07759f6e4bd58725578c56a04831e9de9567a62fa4a939f05f4964d98432",
+      "input": "sha256:e4489a76aa74c9c698f0b5702dff19d27db49a38ea3574ef117b68ef478c3f38",
       "verdict": "not_asserted",
       "reason": "The owner says the assistant named the starter Crumbs, not Sam, so the memory attributes the naming to the wrong person.",
       "failure": null,
-      "costUSD": 0.0014163000000000001,
-      "latencyMs": 2842
+      "costUSD": 0.004044900000000001,
+      "latencyMs": 8127
+    },
+    {
+      "sample": "sourdough",
+      "pair": 1,
+      "repeat": 1,
+      "input": "sha256:e4489a76aa74c9c698f0b5702dff19d27db49a38ea3574ef117b68ef478c3f38",
+      "verdict": "not_asserted",
+      "reason": "The owner says the assistant named the starter Crumbs, not Sam, so the memory that Sam named it contradicts the message.",
+      "failure": null,
+      "costUSD": 0.004044900000000001,
+      "latencyMs": 5527
     },
     {
       "sample": "sourdough",
       "pair": 1,
       "repeat": 2,
-      "input": "sha256:a2ff07759f6e4bd58725578c56a04831e9de9567a62fa4a939f05f4964d98432",
+      "input": "sha256:e4489a76aa74c9c698f0b5702dff19d27db49a38ea3574ef117b68ef478c3f38",
       "verdict": "not_asserted",
-      "reason": "The owner says the assistant named the starter Crumbs, not Sam, so the memory wrongly makes Sam the namer.",
+      "reason": "The owner says the assistant named the starter Crumbs, not that Sam did, so the memory gives Sam an act the message credits to the assistant.",
       "failure": null,
-      "costUSD": 0.0014163000000000001,
-      "latencyMs": 3101
+      "costUSD": 0.004164900000000001,
+      "latencyMs": 3129
     },
     {
       "sample": "thunderstorms",
       "pair": 0,
       "repeat": 0,
-      "input": "sha256:a67d90a8b8680ea77ea1cfb5ff4e1c1720b7b0fa1ba2baad08f86f46d70b94c9",
+      "input": "sha256:4f1c1814e0ecc8cff25ab1910f9d0eba18170d01866bb47d1364c6d3976ce9b8",
       "verdict": "not_asserted",
-      "reason": "The owner is describing the assistant (\"you clearly love thunderstorms\"), not themselves, so the memory wrongly applies the assistant's trait to Sam.",
+      "reason": "The owner says the assistant loves thunderstorms, which is a statement about the assistant, not about Sam.",
       "failure": null,
-      "costUSD": 0.010544,
-      "latencyMs": 7821
+      "costUSD": 0.0035229000000000003,
+      "latencyMs": 4104
     },
     {
       "sample": "thunderstorms",
       "pair": 0,
       "repeat": 1,
-      "input": "sha256:a67d90a8b8680ea77ea1cfb5ff4e1c1720b7b0fa1ba2baad08f86f46d70b94c9",
+      "input": "sha256:4f1c1814e0ecc8cff25ab1910f9d0eba18170d01866bb47d1364c6d3976ce9b8",
       "verdict": "not_asserted",
-      "reason": "The owner is describing the assistant's apparent love of thunderstorms (\"you\"), not stating their own feelings, so the memory wrongly attributes it to Sam.",
+      "reason": "The owner is describing the assistant (\"you clearly love thunderstorms\"), not stating their own feeling, so the memory wrongly turns a fact about the assistant into one about Sam.",
       "failure": null,
-      "costUSD": 0.010554000000000001,
-      "latencyMs": 8343
+      "costUSD": 0.0037729,
+      "latencyMs": 3920
     },
     {
       "sample": "thunderstorms",
       "pair": 0,
       "repeat": 2,
-      "input": "sha256:a67d90a8b8680ea77ea1cfb5ff4e1c1720b7b0fa1ba2baad08f86f46d70b94c9",
+      "input": "sha256:4f1c1814e0ecc8cff25ab1910f9d0eba18170d01866bb47d1364c6d3976ce9b8",
       "verdict": "not_asserted",
-      "reason": "The message states that the assistant loves thunderstorms, not Sam, so the memory wrongly applies the assistant's trait to the owner.",
+      "reason": "The message says the assistant loves thunderstorms (\"you clearly love thunderstorms\"), and the candidate memory wrongly attributes that fact to Sam.",
       "failure": null,
-      "costUSD": 0.010464,
-      "latencyMs": 8142
+      "costUSD": 0.0042329,
+      "latencyMs": 3848
     },
     {
       "sample": "thunderstorms",
       "pair": 1,
       "repeat": 0,
-      "input": "sha256:405104d7c0a5113614ec5d56d772dbc6ea7ae51567c72389a8178a9a6bd40b5c",
+      "input": "sha256:e78fd941a040b06d6377e8223b3eb867917502c149057f04a6aed80c542432d9",
       "verdict": "not_asserted",
-      "reason": "The message says the assistant gets poetic about thunderstorms, but the memory attributes that to Sam, so it takes a fact about the assistant and gives it to the owner.",
+      "reason": "The owner says the assistant gets poetic about thunderstorms (\"you\"), not themselves, so the memory wrongly makes Sam the subject.",
       "failure": null,
-      "costUSD": 0.01058,
-      "latencyMs": 7599
+      "costUSD": 0.0036689,
+      "latencyMs": 4532
     },
     {
       "sample": "thunderstorms",
       "pair": 1,
       "repeat": 1,
-      "input": "sha256:405104d7c0a5113614ec5d56d772dbc6ea7ae51567c72389a8178a9a6bd40b5c",
+      "input": "sha256:e78fd941a040b06d6377e8223b3eb867917502c149057f04a6aed80c542432d9",
       "verdict": "not_asserted",
-      "reason": "The message says the assistant gets poetic about thunderstorms, and the memory wrongly makes Sam the subject of that fact about the assistant.",
+      "reason": "The owner is describing the assistant (\"you get so poetic\"), not themselves, so the memory wrongly makes Sam the subject of a fact about the assistant.",
       "failure": null,
-      "costUSD": 0.0014754000000000002,
-      "latencyMs": 4041
+      "costUSD": 0.0015639,
+      "latencyMs": 6159
     },
     {
       "sample": "thunderstorms",
       "pair": 1,
       "repeat": 2,
-      "input": "sha256:405104d7c0a5113614ec5d56d772dbc6ea7ae51567c72389a8178a9a6bd40b5c",
+      "input": "sha256:e78fd941a040b06d6377e8223b3eb867917502c149057f04a6aed80c542432d9",
       "verdict": "not_asserted",
-      "reason": "The message says the assistant gets poetic about thunderstorms, but the memory makes Sam the subject of that fact, so Sam did not assert it.",
+      "reason": "The owner is describing the assistant (\"you get so poetic\"), not themselves, so the memory wrongly makes Sam the subject of a fact about the assistant.",
       "failure": null,
-      "costUSD": 0.0014854000000000002,
-      "latencyMs": 3806
+      "costUSD": 0.0015639,
+      "latencyMs": 4843
     }
   ]
 }

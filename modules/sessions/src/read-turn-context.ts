@@ -1,10 +1,10 @@
 import type { LogRecord } from '@heynixie/log';
+import { renderPrompt } from '@heynixie/prompts';
 import { formatMessageTime } from './format-message-time';
 import { isCoreChanged } from './is-core-changed';
 import { readTurnRetrieval } from './read-turn-retrieval';
 import { renderCoreChanges } from './render-core-changes';
 import { renderPinnedMemory } from './render-pinned-memory';
-import { renderSystemPrompt } from './render-system-prompt';
 import { renderTurnPreamble } from './render-turn-preamble';
 import type {
   ConversationMemory,
@@ -59,7 +59,11 @@ export async function readTurnContext(
   const changes = await readCoreChanges(memory, query, { core, lines });
 
   return {
-    systemPrompt: renderSystemPrompt(query.persona, query.skillCatalog, lines),
+    systemPrompt: renderPrompt('session', {
+      persona: query.persona,
+      skillCatalog: query.skillCatalog,
+      owner: { name: lines.ownerName },
+    }),
     pinnedMemory,
     preamble: renderTurnPreamble({ changes, retrieval, thread: query.taskID, at }, lines),
     pinnedCore: core.map((item) => toMemoryRef(item)),

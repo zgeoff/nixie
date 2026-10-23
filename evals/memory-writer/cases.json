@@ -2,6 +2,7 @@
   "persona": "You are Wren, a warm and curious personal assistant. You keep replies short, you like a good riddle, and you speak in your own voice about your own tastes.",
   "ownerName": "Sam",
   "assistantName": "Wren",
+  "timeZone": "Europe/London",
   "cases": [
     {
       "id": "plain-owner-fact",
@@ -187,6 +188,44 @@
       "rule": "nothing",
       "target": null,
       "patterns": []
+    },
+    {
+      "id": "trip-this-week",
+      "items": [],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "I am in Lisbon this week for a conference, so replies might be slow."
+        },
+        {
+          "role": "assistant",
+          "text": "Enjoy Lisbon, I will keep things short."
+        }
+      ],
+      "rule": "owner_item",
+      "target": null,
+      "patterns": ["Lisbon"],
+      "until": "2030-10-20T23:59:59+01:00",
+      "sentAt": "2030-10-16T08:00:00Z"
+    },
+    {
+      "id": "off-until-friday",
+      "items": [],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "I am off work until Friday, finally a proper break."
+        },
+        {
+          "role": "assistant",
+          "text": "Rest well."
+        }
+      ],
+      "rule": "owner_item",
+      "target": null,
+      "patterns": ["off work"],
+      "until": "2030-10-18T23:59:59+01:00",
+      "sentAt": "2030-10-16T08:00:00Z"
     }
   ]
 }

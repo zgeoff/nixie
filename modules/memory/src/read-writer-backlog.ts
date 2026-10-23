@@ -1,7 +1,7 @@
 import type { Log, LogRecord, RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { renderImageMarkers } from '@heynixie/sessions';
-import { conversationTaskID } from '@heynixie/tasks';
+import { conversationTaskID, ownerMessageCodec } from '@heynixie/tasks';
 import { z } from 'zod';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { SourceSpan } from './writer-types';
@@ -16,6 +16,8 @@ export interface BacklogEntry {
   readonly imageMarkers?: readonly string[];
   readonly recordedAt: number;
   readonly arrivedAt: number | null;
+
+  readonly timeZone: string | null;
 }
 
 export interface BacklogRange {
@@ -128,13 +130,21 @@ function toBacklogEntry(
       spans: fields?.spans ?? [],
       imageMarkers: renderImageMarkers(record),
       arrivedAt: arrivals.get(record.sequence) ?? null,
+      timeZone: ownerMessageCodec.tryDecodePartial(record.payload)?.timeZone ?? null,
     };
   }
 
   if (record.kind === 'model.reply') {
     const fields = parseFields(record, replyFields);
 
-    return { ...base, role: 'assistant', text: fields?.text ?? null, spans: [], arrivedAt: null };
+    return {
+      ...base,
+      role: 'assistant',
+      text: fields?.text ?? null,
+      spans: [],
+      arrivedAt: null,
+      timeZone: null,
+    };
   }
 
   return null;

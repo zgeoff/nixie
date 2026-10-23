@@ -30,6 +30,7 @@ test('it lists an item at its current version, with the times of its first and l
     status: 'readable',
     subject: 'owner',
     text: 'Plays the cello on Fridays',
+    until: null,
     version: 2,
   });
 });

@@ -57,7 +57,7 @@ async function readVerdicts(
 
   for (const write of writes) {
     const source = lookups.findSource(write.sourceSequence);
-    const isRepeat = write.op === 'remember' && lookups.isShownText(write.text);
+    const isRepeat = isRepeatedText(write, lookups);
 
     if (source !== undefined && !isRepeat) {
       const verdict = await collection.gate.check(write, source, lookups.batch);
@@ -67,4 +67,12 @@ async function readVerdicts(
       }
     }
   }
+}
+
+function isRepeatedText(write: StagedWrite, lookups: GateLookups): boolean {
+  if (write.op !== 'remember' || !lookups.isShownText(write.text)) {
+    return false;
+  }
+
+  return write.target === null || write.until === undefined;
 }

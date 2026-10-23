@@ -15,6 +15,7 @@
     "@heynixie/compaction": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
+    "@heynixie/prompts": "workspace:*",
     "@heynixie/retry": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/tasks": "workspace:*",

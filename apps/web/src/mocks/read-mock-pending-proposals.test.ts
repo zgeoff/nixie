@@ -58,6 +58,7 @@ test('it reads a pending proposal as the API lists it', async () => {
       ],
       targetVersion: null,
       text: 'Keeps bees on the roof',
+      until: null,
     },
   ]);
 });

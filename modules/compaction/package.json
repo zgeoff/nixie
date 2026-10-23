@@ -12,6 +12,7 @@
   "dependencies": {
     "@heynixie/log": "workspace:*",
     "@heynixie/models": "workspace:*",
+    "@heynixie/prompts": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "zod": "catalog:"

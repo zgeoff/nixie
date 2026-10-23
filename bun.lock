@@ -13,7 +13,7 @@
         "@zgeoff/bun-test-react": "0.2.1",
         "@zgeoff/format-codemod": "0.3.1",
         "@zgeoff/oxlint-config": "0.6.3",
-        "@zgeoff/skill-gate": "0.2.4",
+        "@zgeoff/skill-gate": "0.2.6",
         "knip": "6.41.0",
         "lefthook": "2.2.1",
         "oxfmt": "0.72.0",
@@ -209,6 +209,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "@heynixie/sessions": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
@@ -353,6 +354,7 @@
       "dependencies": {
         "@heynixie/log": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "zod": "catalog:",
@@ -425,6 +427,7 @@
         "@heynixie/compaction": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "@heynixie/retry": "workspace:*",
         "@heynixie/sessions": "workspace:*",
         "@heynixie/tasks": "workspace:*",
@@ -484,6 +487,13 @@
         "tiny-invariant": "catalog:",
       },
     },
+    "modules/prompts": {
+      "name": "@heynixie/prompts",
+      "version": "0.0.0",
+      "dependencies": {
+        "tiny-invariant": "catalog:",
+      },
+    },
     "modules/proposals": {
       "name": "@heynixie/proposals",
       "version": "0.0.0",
@@ -528,6 +538,7 @@
         "@heynixie/logger": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/policy": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
@@ -749,7 +760,7 @@
     "@babel/core": "8.0.7",
     "@faker-js/faker": "10.6.0",
     "@huggingface/tokenizers": "0.2.0",
-    "@impz/client": "2.10.3",
+    "@impz/client": "2.10.6",
     "@logtape/logtape": "2.4.1",
     "@modelcontextprotocol/client": "2.3.1",
     "@modelcontextprotocol/server": "2.3.1",
@@ -982,6 +993,8 @@
 
     "@heynixie/policy": ["@heynixie/policy@workspace:modules/policy"],
 
+    "@heynixie/prompts": ["@heynixie/prompts@workspace:modules/prompts"],
+
     "@heynixie/proposals": ["@heynixie/proposals@workspace:modules/proposals"],
 
     "@heynixie/pulumi-k8s": ["@heynixie/pulumi-k8s@workspace:deploy/pulumi-k8s"],
@@ -1114,7 +1127,7 @@
 
     "@img/sharp-win32-x64": ["@img/sharp-win32-x64@0.35.5", "", { "os": "win32", "cpu": "x64" }, "sha512-x76eH0vEiHlcMQu8Y8IenntaACtddpT6W0wmXtWrnKcnKI7ME5DdgqhAD6SEWOEl1v2zDvkZDhFA9KnURwpfqg=="],
 
-    "@impz/client": ["@impz/client@2.10.3", "", { "dependencies": { "@orpc/client": "^1.15.5", "@orpc/contract": "^1.15.5", "p-retry": "^8.0.1", "ts-pattern": "^5.9.0", "zod": "^4.6.7" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-cj9WxqhMjW6ten5x7xhuWA7xe7vHD+nka+8fxuarnZsH6sxVpPAtZcfo/SmZuYA8wzmmsBNT9HbmBcVHytjxyA=="],
+    "@impz/client": ["@impz/client@2.10.6", "", { "dependencies": { "@orpc/client": "^1.15.5", "@orpc/contract": "^1.15.5", "p-retry": "^8.0.1", "ts-pattern": "^5.9.0", "zod": "^4.6.7" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-FvTCA1k6wL90S8xvRjQwFcJl8pzXu3AIOKHYTO/WjRmZZEcvlLWa3iAt7nZcg7AtJ6b6EJTbLnv66Z1vbFUtyA=="],
 
     "@inquirer/ansi": ["@inquirer/ansi@2.0.9", "", {}, "sha512-0Ywt3S8tqM6TWUcsRlBFQ1x+X3/o8kktX0ZiKAnByYb9GFDknnOhse1PVtfiD2BXPI8ar+BWx9PV9R0lQIcygw=="],
 
@@ -1820,7 +1833,7 @@
 
     "@zgeoff/oxlint-config": ["@zgeoff/oxlint-config@0.6.3", "", { "dependencies": { "@stylistic/eslint-plugin": "5.10.0" }, "peerDependencies": { "oxlint": ">=1.78.0" } }, "sha512-EWPa1Sa5FsjINdolCRIXbzdlFur6wFQwSbtjm7wwl+TEyhNFFdOndzhQ/oBTCnGKOxqAXR2KnAgK224R/6JRdw=="],
 
-    "@zgeoff/skill-gate": ["@zgeoff/skill-gate@0.2.4", "", {}, "sha512-uxY6ijM+VIIf4rtdLnxWMIuA2apHPE0ttiqRrkV05VAxEHQ60Fu/vfdGMOUbQVaQ7oQt40oG3m8WfnSs3FOiew=="],
+    "@zgeoff/skill-gate": ["@zgeoff/skill-gate@0.2.6", "", {}, "sha512-9ccggI/DFRZaSO1LBM4kOB1vk1AoutU65x79tBk7j15f+bNxCNxyMG+JPIVtpVHDx7EPlJiMrCX5NuMJBG+6SQ=="],
 
     "@zgeoff/std": ["@zgeoff/std@0.3.0", "", {}, "sha512-I9LBwkMr8uuNCAQ9/tIoObp09b8ixnNDp1f85T9Mm1Ox10nWbVrbiqoWkf+hATCt4iyYxvYIVXl4eUFLwZaU/g=="],
 

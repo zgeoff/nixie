@@ -36,6 +36,17 @@ and [the memory writer](./writer.md#publishing) covers how its batch publishes i
 A memory text that holds a Unicode format character, such as a zero-width space or a bidirectional
 control, fails before any check runs.
 
+### End times on writes
+
+`memory.remember` and `memory.edit` take an optional [end time](./store.md#end-times), an ISO time
+with an offset, when the quoted message says when the fact stops being true. The tool descriptions
+set how a stated time limit resolves: in the zone the user sent the message from, from the time they
+sent it, never from the time of the write. "This week" ends at the end of its Sunday, a named day at
+the end of the next such day, and a vague span such as "for a while" gives no end time. An edit
+without an end time keeps the item's, and an edit with a null end time clears it. The quote must
+back the time limit as well as the fact, so a new or moved end time passes the same gate as new
+text. An end time that has passed fails as a tool error and writes nothing.
+
 A message that backed an item the user later forgot never backs a write again. The forget records
 the sequences of its evidence messages, and a quote found only in those messages becomes a proposal
 with the forgotten-evidence reason. A model that read a forgotten fact earlier in the thread
@@ -67,14 +78,19 @@ destination, whatever the checker answers.
 ### The checker
 
 The checker is one model call with no tools, in its own long-lived sandbox on the conversation
-image, on the checker role's [model profile](../core/model-profiles.md). Its input is the user's one
-message, with the quote marked as evidence and every pasted span marked, then the memory text. The
-evidence mark avoids a quotation word, because the checker read words marked as a quote as someone
-else's speech. The checker sees no other message, no reply and no tool result, so outside content
-reaches it only as a marked span of the user's own message. The checker's prompt names the user the
-way the writer does, so its examples read like the memories it judges. The user writes to the
-assistant, so the prompt reads "you" in the message as the assistant: a memory about the user never
-takes a fact the message states about the assistant, and a shared memory needs the user to state it.
+image, on the checker role's [model profile](../core/model-profiles.md). Its input is the time and
+the zone the user sent their one message in, then the message, with the quote marked as evidence and
+every pasted span marked, then the memory text. The evidence mark avoids a quotation word, because
+the checker read words marked as a quote as someone else's speech. The checker sees no other
+message, no reply and no tool result, so outside content reaches it only as a marked span of the
+user's own message. The checker's prompt names the user the way the writer does, so its examples
+read like the memories it judges. The user writes to the assistant, so the prompt reads "you" in the
+message as the assistant: a memory about the user never takes a fact the message states about the
+assistant, and a shared memory needs the user to state it.
+
+A write with an end time adds that end time to the checker's input, in the message's zone, and the
+checker answers asserted only when the message states both the fact and a time limit that gives that
+end time under the conventions the tool descriptions set.
 
 It answers asserted, not asserted or unsure, with a reason, and only asserted lets a write apply. A
 timeout, an error or an unreadable answer reads as unsure, so the checker fails closed. The answer's
@@ -226,14 +242,14 @@ every write runs the full gate.
 ## Memory proposals
 
 A write that fails a gate becomes a memory proposal, bound to its exact operation: the text, the
-quote and the target version for a remember, the intent quote and the target version for a
-retirement, or the target version for a pin, whose text is the item's text at that version. The
-proposal's text, quote and checker reason are sealed under the item's own key, and a proposal for a
-new item creates that item's key. A forget of the item therefore makes its proposals unreadable too.
-The plain columns hold the review reason, the checks and the provenance, so a count of proposals by
-review reason decrypts nothing. The proposal record and its column keep the reason word for word,
-and every reader shows a reason the release does not know as `other`, because a rollback leaves a
-later release's proposals in the log and the table.
+quote, the end time and the target version for a remember, the intent quote and the target version
+for a retirement, or the target version for a pin, whose text is the item's text at that version.
+The proposal's text, quote and checker reason are sealed under the item's own key, and a proposal
+for a new item creates that item's key. A forget of the item therefore makes its proposals
+unreadable too. The plain columns hold the review reason, the checks and the provenance, so a count
+of proposals by review reason decrypts nothing. The proposal record and its column keep the reason
+word for word, and every reader shows a reason the release does not know as `other`, because a
+rollback leaves a later release's proposals in the log and the table.
 
 The user approves, edits or rejects each proposal against the hash of the operation they saw, and a
 hash that no longer matches refuses the answer. An approval applies the bound operation and records
@@ -248,16 +264,16 @@ deletes the item's key.
 
 A write that proposes the same change as a pending proposal merges into it instead of adding a
 second proposal. The same change means the same operation on the same target, or on a new item for
-both, with the same text once case, spacing and a closing full stop are set aside. The check runs
-inside the write's transaction, so two writes of one fact never both miss it. Each proposal's text
-is sealed under its own item's key, so the check opens the text of each pending candidate rather
-than comparing a stored digest, which would outlive a forget. A merge records the second proposer
-against the proposal and adds no proposal against the cap. It moves the proposal's lapse to a full
-lapse window from the merge, so a fact proposed again never lapses sooner than a proposal of its
-own. The listing shows every source that proposed the change, and the second proposer's result says
-that it merged. A conversation whose proposal another source proposed again learns of it from an
-event in [the events block](./writer.md#changes-the-conversation-hears-of). A reworded fact stays a
-proposal of its own: wording that differs is the model's to reconcile.
+both, with the same end time and the same text once case, spacing and a closing full stop are set
+aside. The check runs inside the write's transaction, so two writes of one fact never both miss it.
+Each proposal's text is sealed under its own item's key, so the check opens the text of each pending
+candidate rather than comparing a stored digest, which would outlive a forget. A merge records the
+second proposer against the proposal and adds no proposal against the cap. It moves the proposal's
+lapse to a full lapse window from the merge, so a fact proposed again never lapses sooner than a
+proposal of its own. The listing shows every source that proposed the change, and the second
+proposer's result says that it merged. A conversation whose proposal another source proposed again
+learns of it from an event in [the events block](./writer.md#changes-the-conversation-hears-of). A
+reworded fact stays a proposal of its own: wording that differs is the model's to reconcile.
 
 An approval of a proposal for a new item first searches the retrieval index with its text. When an
 active item shares enough of the proposal's content words, the approval holds, applies nothing and
@@ -266,7 +282,8 @@ answers again: as a revision of that item, which writes the proposal's text as i
 drops the proposal's own key, or as a new item anyway. How much wording counts as close is a
 configurable share.
 
-A proposal lapses after a configurable time, and a server sweep lapses each overdue proposal. A
+A proposal lapses after a configurable time, or at its end time when that comes first, so an
+approval never applies a fact that has already ended. A server sweep lapses each overdue proposal. A
 conversation turn, a task run or a writer batch makes at most a configurable number of proposals,
 and the next one refuses, so an injected instruction cannot flood the user's review. A lapsed or
 rejected proposal for a new item deletes that item's key, because the proposal held its only
@@ -283,7 +300,7 @@ which holds a count and no entries. The API lists a thread's notices of both kin
 current item, and the client shows a turn's notice under the turn's last reply and any other notice
 after the newest record its writes followed. A notice shows its counts on one muted line and opens
 to its entries, and each entry links to its item in the memory view, or to the proposals page for a
-proposal.
+proposal. An entry whose item has an end time shows the date the fact lasts until.
 
 An entry whose item still stands at the version it wrote offers undo, keep and retire, each one tap
 and each a [checked action](../channels/api.md#checked-actions) bound to that version. An item that
