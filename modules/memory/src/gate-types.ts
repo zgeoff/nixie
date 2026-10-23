@@ -28,7 +28,7 @@ export interface GateContext {
   readonly getPromptsInForce: () => PromptsInForce;
 }
 
-export interface PromptsInForce {
+interface PromptsInForce {
   readonly snapshotHash: string;
   readonly prompts: PromptOverrides;
 }
