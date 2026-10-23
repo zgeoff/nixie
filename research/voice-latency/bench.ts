@@ -2,9 +2,9 @@
 // speech-to-text candidate, Haiku 5.5 on one live `stream` process, and one text-to-speech
 // candidate that speaks each sentence as it arrives. Appends one JSON line per turn.
 // Usage: bench.ts --out <file> --stt <name> --tts <name> [--rounds 2] [--barge-ins 3]
-//   [--silence-ms 500] [--barge-in-after-ms 1500] [--control]
+//   [--silence-ms 500] [--barge-in-after-ms 1500] [--control] [--warm-long]
 // --control sends each line's text with no speech stages running, to time the turn alone on the
-// same host.
+// same host. --warm-long speaks one long sentence before the first turn, as well as a short one.
 import { once } from 'node:events';
 import { appendFileSync, mkdirSync, mkdtempSync } from 'node:fs';
 import { loadavg, tmpdir } from 'node:os';
@@ -36,6 +36,14 @@ const ttsName = (readFlag('--tts') ?? 'piper') as TextToSpeechName;
 // The barge-in starts this long after nixie's first audio starts to play.
 const bargeInAfterMs = Number(readFlag('--barge-in-after-ms') ?? 1500);
 const control = process.argv.includes('--control');
+const warmLong = process.argv.includes('--warm-long');
+// A sentence longer than any reply sentence. Piper ran up to 14 times slower than usual on the
+// first sentence longer than any it had spoken before in the process.
+const longWarmUp = [
+  'Before a long walk, pack water, a warm layer, a rain jacket, a map, a torch, spare batteries,',
+  'a small first aid kit, sun cream, snacks for the afternoon, and a charged phone,',
+  'then tell a friend where you plan to go and when you expect to be back home again.',
+].join(' ');
 
 function readFlag(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -227,6 +235,9 @@ const stream: Stream = { closed: false, events: new EventTarget(), queue: [] };
 const session = query({ options: buildOptions(), prompt: sendQueued(stream) });
 const messages = session[Symbol.asyncIterator]();
 await tts.speak('Hello.');
+if (warmLong) {
+  await tts.speak(longWarmUp);
+}
 
 interface TurnResult extends ResultFields {
   costUSD: number;
@@ -274,6 +285,7 @@ function writeRow(row: Record<string, unknown>): void {
       load1: loadavg()[0],
       model,
       silenceMs,
+      warmLong,
       stt: control ? 'control' : sttName,
       tts: control ? 'none' : ttsName,
       ...row,

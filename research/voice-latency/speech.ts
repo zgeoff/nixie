@@ -206,6 +206,7 @@ export function createVad(silenceMs: number): {
   isSpeaking: () => boolean;
   clearSegments: () => void;
   hasSegment: () => boolean;
+  readSegments: () => { end: number; start: number }[];
   reset: () => void;
 } {
   const vad = new sherpa.Vad(
@@ -234,6 +235,16 @@ export function createVad(silenceMs: number): {
     },
     hasSegment: () => !vad.isEmpty(),
     isSpeaking: () => vad.isDetected(),
+    // Each closed segment as sample offsets since the last reset.
+    readSegments: () => {
+      const segments: { end: number; start: number }[] = [];
+      while (!vad.isEmpty()) {
+        const segment: { samples: Float32Array; start: number } = vad.front(false);
+        segments.push({ end: segment.start + segment.samples.length, start: segment.start });
+        vad.pop();
+      }
+      return segments;
+    },
     reset: () => {
       vad.reset();
     },
