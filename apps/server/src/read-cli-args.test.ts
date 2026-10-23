@@ -205,6 +205,48 @@ test.each([
     },
   ],
   [
+    'backup',
+    ['backup', '--to', '/backup/nixie'],
+    {
+      kind: 'command',
+      command: 'backup',
+      flags: {
+        config: '/etc/nixie/config.yaml',
+        manifest: '/app/sandbox-manifest.json',
+        encoder: '/app/encoder',
+        sops: '/usr/local/bin/sops',
+        live: false,
+        'as-new': false,
+        'keep-sessions': false,
+        yes: false,
+        'dry-run': false,
+        to: '/backup/nixie',
+      },
+      args: [],
+    },
+  ],
+  [
+    'restore',
+    ['restore', '--from', '/backup/nixie', '--yes'],
+    {
+      kind: 'command',
+      command: 'restore',
+      flags: {
+        config: '/etc/nixie/config.yaml',
+        manifest: '/app/sandbox-manifest.json',
+        encoder: '/app/encoder',
+        sops: '/usr/local/bin/sops',
+        live: false,
+        'as-new': false,
+        'keep-sessions': false,
+        yes: true,
+        'dry-run': false,
+        from: '/backup/nixie',
+      },
+      args: [],
+    },
+  ],
+  [
     'memory-pending',
     ['memory-pending', '--config', '/srv/nixie.yaml'],
     {
@@ -497,6 +539,8 @@ test.each([
     'memory-diff-approve',
     'memory-diff-reject',
     'memory-subjects',
+    'backup',
+    'restore',
   ]);
 
   expect(parsed).toStrictEqual(expected);

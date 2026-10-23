@@ -118,7 +118,8 @@ below, and planned work lives in Linear.
 - [Deployment configuration](architecture/deployment/configuration.md) — the YAML file, what it
   holds, its schema and credential references, and how it is mounted
 - [Host commands](architecture/deployment/host-commands.md) — the nixie command on the image's PATH,
-  the commands a deployment runs, the control socket, sessions, the reset and memory
+  the commands a deployment runs, the control socket, sessions, the reset, backup and restore, and
+  memory
 - [Names in impd](architecture/deployment/impd-names.md) — the names of nixie's imps, sandbox images
   and model secrets, the token's pattern, and why the sandbox images stay public
 - [The release pipeline](architecture/deployment/release-pipeline.md) — versions, the release

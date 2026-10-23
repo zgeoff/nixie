@@ -32,6 +32,8 @@ const CLI_OPTIONS = {
   yes: { type: 'boolean', default: false },
   'dry-run': { type: 'boolean', default: false },
   database: { type: 'string' },
+  to: { type: 'string' },
+  from: { type: 'string' },
 } as const;
 
 interface CLIParams {
