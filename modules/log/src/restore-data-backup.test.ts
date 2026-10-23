@@ -36,6 +36,8 @@ test('it replaces nixie.db and keys.db with the backup copies, and removes their
 
   onTestFinished(() => backupLog.destroy());
 
+  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
+  await sql`create table records (record_id text primary key)`.execute(backupLog);
   await sql`create table items (id text primary key)`.execute(backupLog);
   await sql`insert into items values ('k1')`.execute(backupLog);
   await backupLog.destroy();
@@ -110,6 +112,8 @@ test('it leaves its restore marker when it stops between the two databases', asy
 
   onTestFinished(() => backupLog.destroy());
 
+  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
+  await sql`create table records (record_id text primary key)`.execute(backupLog);
   await sql`create table items (id text primary key)`.execute(backupLog);
   await backupLog.destroy();
 
@@ -172,6 +176,8 @@ test('it refuses a backup that stopped mid-retry with a new nixie.db beside an o
 
   onTestFinished(() => backupLog.destroy());
 
+  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
+  await sql`create table records (record_id text primary key)`.execute(backupLog);
   await sql`create table items (id text primary key)`.execute(backupLog);
   await sql`insert into items values ('k1'), ('k2')`.execute(backupLog);
   await backupLog.destroy();
@@ -228,6 +234,73 @@ test('it refuses a backup without keys.db', async () => {
   expect(keys).toBe('the old keys');
 });
 
+test('it refuses a backup whose keys.db is an empty file, before it replaces anything', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dataDir, 'nixie.db'), 'the live log');
+  await writeFile(join(ctx.dataDir, 'keys.db'), 'the live keys');
+  await writeFile(join(ctx.directory, 'keys.db'), '');
+
+  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
+
+  onTestFinished(() => backupLog.destroy());
+
+  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
+  await sql`create table records (record_id text primary key)`.execute(backupLog);
+  await backupLog.destroy();
+
+  const restore = restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
+
+  await restore.catch(() => {});
+
+  const log = await Bun.file(join(ctx.dataDir, 'nixie.db')).text();
+  const keys = await Bun.file(join(ctx.dataDir, 'keys.db')).text();
+
+  expect(restore).rejects.toThrowWithMessage(
+    Error,
+    `the keys.db in ${ctx.directory} holds no record_keys table, so it is not a nixie backup`,
+  );
+
+  expect(log).toBe('the live log');
+  expect(keys).toBe('the live keys');
+});
+
+test('it refuses a backup whose nixie.db holds no event log, before it replaces anything', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dataDir, 'nixie.db'), 'the live log');
+  await writeFile(join(ctx.dataDir, 'keys.db'), 'the live keys');
+  await writeFile(join(ctx.directory, 'nixie.db'), '');
+
+  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
+
+  onTestFinished(() => backupKeys.destroy());
+
+  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
+  await backupKeys.destroy();
+
+  const restore = restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
+
+  await restore.catch(() => {});
+
+  const log = await Bun.file(join(ctx.dataDir, 'nixie.db')).text();
+
+  expect(restore).rejects.toThrowWithMessage(
+    Error,
+    `the nixie.db in ${ctx.directory} holds no schema_version or records table, so it is not a nixie backup`,
+  );
+
+  expect(log).toBe('the live log');
+});
+
 test('it refuses a backup whose nixie.db is not a database, before it replaces anything', async () => {
   const ctx = await setupTest();
 
@@ -271,6 +344,8 @@ test('it removes its staged copies and keeps the old databases when it cannot st
 
   onTestFinished(() => backupLog.destroy());
 
+  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
+  await sql`create table records (record_id text primary key)`.execute(backupLog);
   await sql`create table items (id text primary key)`.execute(backupLog);
   await backupLog.destroy();
 
@@ -311,6 +386,8 @@ test('it keeps the old databases when the data volume is full', async () => {
 
   onTestFinished(() => backupLog.destroy());
 
+  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
+  await sql`create table records (record_id text primary key)`.execute(backupLog);
   await sql`create table items (id text primary key)`.execute(backupLog);
   await backupLog.destroy();
 
@@ -364,6 +441,8 @@ test('it finishes the restore again after one that stopped between the two datab
 
   onTestFinished(() => backupLog.destroy());
 
+  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
+  await sql`create table records (record_id text primary key)`.execute(backupLog);
   await sql`create table items (id text primary key)`.execute(backupLog);
   await backupLog.destroy();
 
@@ -403,6 +482,8 @@ test('it replaces neither database when its restore marker cannot reach the disk
 
   onTestFinished(() => backupLog.destroy());
 
+  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
+  await sql`create table records (record_id text primary key)`.execute(backupLog);
   await sql`create table items (id text primary key)`.execute(backupLog);
   await backupLog.destroy();
 

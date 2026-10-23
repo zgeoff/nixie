@@ -79,6 +79,14 @@ async function requireIntactDatabase(options: DataRestoreOptions, file: DataFile
       `the ${file} in ${options.directory} fails its integrity check: ${problems.join('; ')}`,
     );
   }
+
+  const missing = await readMissingTables(options.storage, join(options.directory, file), file);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `the ${file} in ${options.directory} holds no ${missing.join(' or ')} table, so it is not a nixie backup`,
+    );
+  }
 }
 
 const integritySchema = z.object({ integrity_check: z.string() });
@@ -99,6 +107,37 @@ async function readIntegrityProblems(
     }
 
     return [error.message];
+  } finally {
+    await db.destroy();
+  }
+}
+
+// An empty or truncated file passes the integrity check as an empty database, and a server that
+// starts on an empty keys.db creates its table again, which loses the key of every restored record.
+const requiredTables: Readonly<Record<DataFile, readonly string[]>> = {
+  'nixie.db': ['schema_version', 'records'],
+  'keys.db': ['record_keys'],
+};
+
+const tableSchema = z.object({ name: z.string() });
+
+async function readMissingTables(
+  storage: DataStorage,
+  path: string,
+  file: DataFile,
+): Promise<readonly string[]> {
+  const db = storage.startDatabase(path, { readonly: true });
+
+  try {
+    const rows = await readQueryRows(
+      sql`select name from sqlite_schema where type = 'table'`,
+      db,
+      tableSchema,
+    );
+
+    const tables = new Set(rows.map((row) => row.name));
+
+    return requiredTables[file].filter((table) => !tables.has(table));
   } finally {
     await db.destroy();
   }

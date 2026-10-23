@@ -101,11 +101,12 @@ or lacks either database, so it never takes a pair from a backup that stopped pa
 
 The restore command, `restore --from <directory> --yes`, replaces both databases with the copies in
 a directory the backup command wrote. It takes the writer lock first, so it refuses while a server
-runs and no server starts until it ends. It runs SQLite's integrity check on each copy and stages
-both in the data directory before it replaces either, so a failed check, a full volume or an I/O
-error stops it before it changes a database. It then removes each database's write-ahead log files,
-which belong to the database it replaced. It refuses to run without `--yes`, because the data
-written since the backup is lost.
+runs and no server starts until it ends. It runs SQLite's integrity check on each copy, refuses a
+copy that lacks its database's own tables, because an empty file passes that check, and stages both
+in the data directory before it replaces either, so a failed check, a full volume or an I/O error
+stops it before it changes a database. It then removes each database's write-ahead log files, which
+belong to the database it replaced. It refuses to run without `--yes`, because the data written
+since the backup is lost.
 
 The two databases move one at a time, so a restore that stops between them leaves a pair from two
 backups. The restore writes a marker into the data directory before the first database moves and
