@@ -29,14 +29,14 @@ and then by part. A part's value is the path of a file in the definitions, and t
 holds a template inline. The seed reads each part file, drops its final line breaks, and refuses the
 definitions when any of these is true:
 
-- The map names a prompt or a part that nixie does not have.
+- The map holds a prompt or a part that nixie does not have.
 - A part's file is missing from the definitions or is not UTF-8 text.
 - A part or a template reads a path that its prompt does not accept. A part also may not read itself
   or a later part.
 
-The error names the file at fault, so the seed never renders a missing value as empty text. The
-seed's unapplied list holds each file under `prompts/` that the map does not read. Format 2
-definitions load with no overrides, and the seed lists their `prompts:` files as unapplied.
+The error holds the path of the file at fault, and the seed never renders a missing value as empty
+text. The seed's unapplied list holds each file under `prompts/` that the map does not read. Format
+2 definitions load with no overrides, and the seed lists their `prompts:` files as unapplied.
 
 The seed stores the override text in the definitions snapshot, so a changed part file changes the
 snapshot hash. An absent or empty map adds nothing to the snapshot, so definitions without overrides

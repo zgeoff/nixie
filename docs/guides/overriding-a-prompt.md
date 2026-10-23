@@ -34,10 +34,10 @@ covers how nixie renders a prompt and what the seed checks.
    ```
 
 4. Merge the change and let nixie seed the definitions. Expect a `definitions.seeded` line with
-   `status` `seeded` in the operator log. A `status` of `refused` carries an error that names the
-   file and the fault.
+   `status` `seeded` in the operator log. A `status` of `refused` carries an error that holds the
+   file's path and the fault.
 5. When an override replaces a `safety` part or leaves `{{ parts.safety }}` out of a template,
-   expect a `prompts.safety_missing` line in the operator log that names each such prompt. That line
+   expect a `prompts.safety_missing` line in the operator log that lists each such prompt. That line
    is the one sign that a prompt runs without its built-in safety rules.
 
 ## Parts and paths
@@ -63,10 +63,10 @@ Each path holds one value:
 | `owner.name`                | Your configured name, or "the owner"                           |
 | `owner.nameAtSentenceStart` | The same name with a capital first letter                      |
 | `owner.label`               | The author label on your messages, such as `Avery (owner)`     |
-| `owner.mention`             | How a memory names you, such as `the owner "Avery"`            |
+| `owner.mention`             | The words a memory uses for you, such as `the owner "Avery"`   |
 | `assistant.name`            | The assistant's configured name, or "the assistant"            |
 | `assistant.label`           | The author label on the assistant's messages                   |
-| `assistant.mention`         | How a shared memory names the assistant                        |
+| `assistant.mention`         | The words a shared memory uses for the assistant               |
 | `memory.maxChanges`         | The most changes one consolidation may propose                 |
 | `summary.words`             | The word target of a compaction summary                        |
 
