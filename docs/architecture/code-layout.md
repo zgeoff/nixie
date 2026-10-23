@@ -33,24 +33,29 @@ libs/       shared code that belongs to no domain
 - **A guest** holds the code a sandbox image runs. It depends only on `libs/wire`, and speaks to
   nixie through those wire formats over the sandbox's route back to nixie.
 
-The workspace globs cover those 5 folders, the root `e2e/` and `evals/` packages, and the spikes in
-`research/`. The spikes join the workspace so that CI typechecks them, and they stand outside the
-package rules here: a spike pins the exact versions it ran against, imports product files by path
-with a `@boundaries-ignore` comment, and has no tests that CI runs. A spike whose pins conflict with
-the workspace stays out of it and installs on its own, as do the Agent SDK spikes under
-`docs/design/`.
+The workspace globs cover those 5 folders, the Pulumi component, the root `e2e/` and `evals/`
+packages, and the spikes in `research/`. The spikes join the workspace so that CI typechecks them,
+and they stand outside the package rules here: a spike pins the exact versions it ran against,
+imports product files by path with a `@boundaries-ignore` comment, and has no tests that CI runs. A
+spike whose pins conflict with the workspace stays out of it and installs on its own, as do the
+Agent SDK spikes under `docs/design/`.
 
-`deploy/` sits outside the workspace and holds the deployment artifacts nixie ships: the Compose
-recipe in `deploy/compose/` and the [reference Kubernetes manifests](deployment/kubernetes.md) in
-`deploy/kubernetes/`. `preview/` holds the image recipe for the test build of one pull request.
+`deploy/` holds the deployment artifacts nixie ships: the Compose recipe in `deploy/compose/`, the
+[reference Kubernetes manifests](deployment/kubernetes.md) in `deploy/kubernetes/`, and the
+[Pulumi component for Kubernetes](deployment/kubernetes.md#the-pulumi-component) in
+`deploy/pulumi-k8s/`. The component is the one workspace package under `deploy/`, because it has
+tests and a typecheck, and the rest of `deploy/` sits outside the workspace. `preview/` holds the
+image recipe for the test build of one pull request.
 
 ## Packages
 
-Every package name is `@heynixie/` plus its folder name, and every package is private. A library
-package is consumed as source: its `exports` map points at `./src/index.ts`, and nothing builds it
-before use. A package whose helpers other packages' tests use exports them as a second entry,
-`./test-utils`. A package that nothing imports, such as `apps/web`, the fetch guest or the root
-suites, has no `exports` map. An `exports` map refuses every subpath it does not list, and
+Every package name is `@heynixie/` plus its folder name, and every package but the Pulumi component
+is private. A deployment's own Pulumi program installs the component, so its package declares the
+Pulumi SDKs as peer dependencies with a range, and the catalog pins the versions its tests run
+against. A library package is consumed as source: its `exports` map points at `./src/index.ts`, and
+nothing builds it before use. A package whose helpers other packages' tests use exports them as a
+second entry, `./test-utils`. A package that nothing imports, such as `apps/web`, the fetch guest or
+the root suites, has no `exports` map. An `exports` map refuses every subpath it does not list, and
 `turbo boundaries` refuses a relative path into another package, so no package imports another
 package's internal files.
 
@@ -81,6 +86,7 @@ outside the importer's package, and a cycle between packages.
 | `adapter` | `adapters/*`                         | modules, libs                    |
 | `guest`   | `guests/*`                           | libs without `server-only`       |
 | `lib`     | `libs/*`                             | libs                             |
+| `deploy`  | `deploy/pulumi-k8s`                  | no workspace package             |
 | `e2e`     | `e2e/`                               | the app, modules, adapters, libs |
 | `eval`    | `evals/`                             | modules, guests, libs            |
 

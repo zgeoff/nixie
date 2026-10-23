@@ -4,7 +4,7 @@
 # image with their digests, the web image, the migrations and the config schema in the release
 # notes, a pull of each sandbox image with no credentials, the version tag on every image, and the
 # counting proxy binary, release.json, config.schema.json and definitions-manifest.schema.json
-# assets.
+# assets, and last the Kubernetes component on npm at the release's version.
 #
 # A manual run on a release tag rebuilds that release from its commit. Re-running the failed
 # jobs of a run resumes from the stage that failed with the same digests.
@@ -386,3 +386,38 @@ jobs:
             cat "$RUNNER_TEMP/release.json"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # after the assets, so the component of a version reaches npm only once every image of that
+  # version carries its tag
+  k8s-package:
+    needs: [resolve, assets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout the release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      # npm's trusted publishing needs npm 11.5.1 or later, which Node 24 bundles
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: Install
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Publish the Kubernetes component
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: .github/scripts/publish-k8s-package.sh "$VERSION"
