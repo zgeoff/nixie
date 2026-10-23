@@ -140,6 +140,8 @@ below, and planned work lives in Linear.
   one turn and read the records it wrote, then reset the preview
 - [Run the memory checker eval](runbooks/memory-checker-eval.md) — score a set through the
   production checker and check its report
+- [Run the Agent SDK contract suite](runbooks/sdk-contract-suite.md) — run the probes against the
+  model, and act on one that fails
 - [Run the imp isolation tests](runbooks/imp-isolation-tests.md) — what a conversation imp and a
   public imp reach, on a host with impd
 - [The Agent SDK contract suite](../evals/sdk-contract/README.md) — the SDK behaviours nixie relies
