@@ -1,4 +1,4 @@
-import type { ModelPrices } from './types';
+import type { ModelPrices, PriceRates } from './types';
 
 export interface CallUsage {
   readonly input_tokens: number;
@@ -21,12 +21,25 @@ export function buildCallCost(usage: CallUsage, prices: ModelPrices): number {
     cacheWrites5m + (usage.cache_creation?.ephemeral_1h_input_tokens ?? 0),
   );
 
+  const cacheReads = usage.cache_read_input_tokens ?? 0;
+  const rates = pickCallRates(prices, usage.input_tokens + cacheWrites + cacheReads);
+
   return (
-    (usage.input_tokens * prices.input +
-      cacheWrites5m * prices.cacheWrite +
-      (cacheWrites - cacheWrites5m) * prices.cacheWrite1h +
-      (usage.cache_read_input_tokens ?? 0) * prices.cachedInput +
-      usage.output_tokens * prices.output) /
+    (usage.input_tokens * rates.input +
+      cacheWrites5m * rates.cacheWrite +
+      (cacheWrites - cacheWrites5m) * rates.cacheWrite1h +
+      cacheReads * rates.cachedInput +
+      usage.output_tokens * rates.output) /
     1_000_000
   );
+}
+
+// A provider that prices by prompt length charges the whole call, output included, at the long
+// prompt's rates once the prompt passes the boundary, so no part of the call keeps the base rates.
+function pickCallRates(prices: ModelPrices, promptTokens: number): PriceRates {
+  if (prices.longPrompt !== undefined && promptTokens > prices.longPrompt.overTokens) {
+    return prices.longPrompt;
+  }
+
+  return prices;
 }

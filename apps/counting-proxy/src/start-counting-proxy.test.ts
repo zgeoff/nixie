@@ -57,6 +57,76 @@ test('it serves its routes from a config file and writes each count to its store
   expect(stored).toBe('{"dollars":0.0026,"tokens":1000}');
 });
 
+test('it refuses every request once long prompts priced at their long-prompt rates reach the dollar limit', async () => {
+  const ctx = await setupTest();
+
+  // at the base rates two of these replies would count $0.0210 and leave the limit unreached
+  ctx.model.addReplies(
+    { text: 'first', usage: { input_tokens: 100_001, output_tokens: 1000 } },
+    { text: 'second', usage: { input_tokens: 100_001, output_tokens: 1000 } },
+    { text: 'third', usage: { input_tokens: 100_001, output_tokens: 1000 } },
+  );
+
+  await writeFile(
+    join(ctx.directory, 'proxy.yaml'),
+    [
+      'listen: { port: 0 }',
+      `store: ${join(ctx.directory, 'counter.json')}`,
+      'limits: { dollars: 0.1 }',
+      'routes:',
+      '  preview:',
+      `    upstream: ${ctx.model.url}`,
+      '    model: claude-haiku-5-5',
+      '    prices:',
+      '      input: 0.1',
+      '      cache_write: 0.125',
+      '      cache_write_1h: 0.2',
+      '      cached_input: 0.01',
+      '      output: 0.5',
+      '      long_prompt:',
+      '        over_tokens: 100000',
+      '        input: 0.5',
+      '        cache_write: 0.625',
+      '        cache_write_1h: 1',
+      '        cached_input: 0.05',
+      '        output: 2.5',
+    ].join('\n'),
+  );
+
+  const proxy = await startCountingProxy({
+    configPath: join(ctx.directory, 'proxy.yaml'),
+    log: ctx.log,
+    waitForDrainDeadline: () => Promise.resolve(),
+  });
+
+  onTestFinished(() => proxy.stop());
+
+  const sendRequest = () =>
+    fetch(`${proxy.url}/preview/v1/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ model: 'claude-haiku-5-5', messages: [] }),
+    });
+
+  const first = await sendRequest();
+
+  await first.text();
+
+  const second = await sendRequest();
+
+  await second.text();
+
+  const refused = await sendRequest();
+  const body: unknown = await refused.json();
+
+  expect(refused.status).toBe(403);
+
+  expect(body).toMatchObject({
+    error: { message: expect.toInclude('($0.1050 of $0.1)') },
+  });
+
+  expect(ctx.model.requests).toHaveLength(2);
+});
+
 test('it refuses to start from a config with no limit', async () => {
   const ctx = await setupTest();
 

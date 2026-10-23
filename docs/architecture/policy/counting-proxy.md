@@ -43,9 +43,11 @@ credential: a credential broker in front of it, or the deployment itself, suppli
 The count is two totals, dollars and tokens, kept in a counter store on the host's disk. The proxy
 reads both from the store before it admits a request, and adds a reply's price and tokens once the
 reply ends. The models module's call pricing sets the price, the same pricing that the deployment's
-own records use, so a cache write for the long lifetime takes the profile's price for that lifetime.
-The tokens are the input, the cache writes, the cache reads and the output. Where a reply's cache
-write total and its split by cache lifetime disagree, the larger figure counts for both.
+own records use, so a cache write for the long lifetime takes the profile's price for that lifetime,
+and a reply to a long prompt takes the profile's
+[long-prompt prices](../core/model-profiles.md#prices-and-the-provider-pin) when it has them. The
+tokens are the input, the cache writes, the cache reads and the output. Where a reply's cache write
+total and its split by cache lifetime disagree, the larger figure counts for both.
 
 A whole reply carries its usage in its body. A streamed reply carries the input side in its first
 event and the running output count in each later delta, and the proxy reads the events as they pass
