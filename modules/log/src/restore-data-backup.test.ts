@@ -313,3 +313,42 @@ test('it keeps the old databases when the data volume is full', async () => {
   expect(log).toBe('the old log');
   expect(keys).toBe('the old keys');
 });
+
+test('it finishes the restore again after one that stopped between the two databases, and removes its marker', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dataDir, 'restore-incomplete'), '');
+  await writeFile(join(ctx.dataDir, 'keys.db'), 'the old keys');
+
+  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
+
+  onTestFinished(() => backupLog.destroy());
+
+  await sql`create table items (id text primary key)`.execute(backupLog);
+  await backupLog.destroy();
+
+  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
+
+  onTestFinished(() => backupKeys.destroy());
+
+  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
+  await sql`insert into record_keys values ('k1')`.execute(backupKeys);
+  await backupKeys.destroy();
+
+  await restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
+
+  const files = await readdir(ctx.dataDir);
+
+  const keys = startDatabase(join(ctx.dataDir, 'keys.db'), { readonly: true });
+
+  onTestFinished(() => keys.destroy());
+
+  const recordKeys = await sql`select key_id from record_keys`.execute(keys);
+
+  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'backup.lock']);
+  expect(recordKeys.rows).toStrictEqual([{ key_id: 'k1' }]);
+});

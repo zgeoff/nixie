@@ -8,7 +8,7 @@ import { claimBackupLock } from './claim-backup-lock';
 import type { DataFile } from './data-files';
 import { dataFiles } from './data-files';
 import type { DataStorage } from './data-storage';
-import { getRestoreMarkerPath } from './get-restore-marker-path';
+import { readRestoreState } from './read-restore-state';
 import { requireDataFiles } from './require-data-files';
 
 export interface DataBackupOptions {
@@ -57,9 +57,9 @@ export async function writeDataBackup(options: DataBackupOptions): Promise<DataB
 }
 
 async function requireFinishedRestore(options: DataBackupOptions): Promise<void> {
-  const restoring = await options.storage.files.probeFile(getRestoreMarkerPath(options.dataDir));
+  const state = await readRestoreState(options.storage.files, options.dataDir);
 
-  if (restoring) {
+  if (state === 'replacing') {
     throw new Error(
       `a restore of the data directory ${options.dataDir} stopped before it finished, so nixie backs up nothing`,
     );

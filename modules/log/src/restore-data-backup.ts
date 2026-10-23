@@ -7,8 +7,8 @@ import { claimWriterLock } from './claim-writer-lock';
 import type { DataFile } from './data-files';
 import { dataFiles } from './data-files';
 import type { DataStorage } from './data-storage';
-import { getRestoreMarkerPath } from './get-restore-marker-path';
 import { requireDataFiles } from './require-data-files';
+import { writeRestoreState } from './write-restore-state';
 
 export interface DataRestoreOptions {
   readonly storage: DataStorage;
@@ -117,10 +117,8 @@ async function writeStagedFiles(options: DataRestoreOptions): Promise<void> {
 // beside a restored database would replay the old database's commits onto it.
 async function replaceDataFiles(options: DataRestoreOptions): Promise<void> {
   const files = options.storage.files;
-  const marker = getRestoreMarkerPath(options.dataDir);
 
-  await files.writeFile(marker, '');
-  await files.writeToDisk(options.dataDir);
+  await writeRestoreState(files, options.dataDir, 'replacing');
 
   for (const file of dataFiles) {
     const path = join(options.dataDir, file);
@@ -131,6 +129,6 @@ async function replaceDataFiles(options: DataRestoreOptions): Promise<void> {
   }
 
   await files.writeToDisk(options.dataDir);
-  await files.removeFile(marker);
-  await files.writeToDisk(options.dataDir);
+
+  await writeRestoreState(files, options.dataDir, 'none');
 }

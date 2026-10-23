@@ -1,4 +1,4 @@
-import { existsSync, statfsSync } from 'node:fs';
+import { statfsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
@@ -6,7 +6,8 @@ import type { BuildSchema } from '@heynixie/db';
 import { nixieSchema, runMigrations, startDatabase } from '@heynixie/db';
 import { claimWriterEpoch } from './claim-writer-epoch';
 import { claimWriterLock } from './claim-writer-lock';
-import { getRestoreMarkerPath } from './get-restore-marker-path';
+import { localDataStorage } from './local-data-storage';
+import { readRestoreState } from './read-restore-state';
 import { requireLocalFilesystem } from './require-local-filesystem';
 import { requireWriterEpoch } from './require-writer-epoch';
 import { startKeyStore } from './start-key-store';
@@ -27,7 +28,9 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
 
   const lock = claimWriterLock(options.dataDir);
 
-  if (existsSync(getRestoreMarkerPath(options.dataDir))) {
+  const restore = await readRestoreState(localDataStorage.files, options.dataDir);
+
+  if (restore === 'replacing') {
     lock.release();
 
     throw new Error(
