@@ -326,6 +326,24 @@ test('it reads a part override from its file and a template inline under format 
   });
 });
 
+test('it drops the final Windows line breaks of a part file', () => {
+  const files = new Map([
+    [
+      'nixie.yaml',
+      new TextEncoder().encode('format: 3\nprompts:\n  writer:\n    safety: prompts/writer.md\n'),
+    ],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['prompts/writer.md', new TextEncoder().encode('Quote every fact.\r\nKeep it short.\r\n\r\n')],
+  ]);
+
+  expect(
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] })
+      .prompts,
+  ).toStrictEqual({
+    writer: { parts: { safety: 'Quote every fact.\r\nKeep it short.' }, template: null },
+  });
+});
+
 test('it reads no override under format 3 when the manifest has no prompts map', () => {
   const files = new Map([
     ['nixie.yaml', new TextEncoder().encode('format: 3\n')],

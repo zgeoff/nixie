@@ -86,5 +86,5 @@ export function parsePromptOverrides(
 // An editor ends a file, and a YAML block scalar ends its text, with a line break that the
 // prompt's own layout never wants.
 function trimLineBreaks(text: string): string {
-  return text.replace(/\n+$/u, '');
+  return text.replace(/(?:\r\n|\r|\n)+$/u, '');
 }
