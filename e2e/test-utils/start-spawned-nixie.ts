@@ -107,10 +107,6 @@ export interface SpawnedNixieOptions {
 
   readonly extraConfig?: readonly string[];
 
-  readonly extraSecrets?: readonly string[];
-
-  readonly extraDefinitions?: readonly string[];
-
   readonly logLevel?: LogLevel;
 
   readonly release?: string;
@@ -218,8 +214,8 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
       '  enabled: false',
       ...(options.extraConfig ?? []),
     ],
-    secrets: options.extraSecrets ?? [],
-    definitions: options.extraDefinitions ?? [],
+    secrets: [],
+    definitions: [],
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
     ...(isWriterOn
       ? {
