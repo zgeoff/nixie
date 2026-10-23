@@ -54,11 +54,17 @@ const defaultBusyTimeoutMs = 5000;
 // busy_timeout comes first, so the statements after it wait for another connection's lock. FULL
 // fsyncs every commit, so a claimed outside action survives a power loss.
 function startConnection(path: string, options: DatabaseOptions): Database {
-  const database = new Database(path, { create: true, strict: true });
+  const readonly = options.readonly === true;
+
+  const database = new Database(path, { readonly, create: !readonly, strict: true });
 
   const busyTimeoutMs = options.busyTimeoutMs ?? defaultBusyTimeoutMs;
 
   database.run(`pragma busy_timeout = ${String(busyTimeoutMs)}`);
+
+  if (readonly) {
+    return database;
+  }
 
   updateJournalMode(database, Date.now() + busyTimeoutMs);
 

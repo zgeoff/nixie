@@ -2,11 +2,11 @@
 
 A host command is one of nixie's commands that an operator or a deployment's scripts run inside
 nixie's container, beside the running server: it issues an enrolment code, reports health, lists the
-sandbox images, answers a memory or skill proposal, or resets the event log. The image puts a
-`nixie` command on the PATH, so a script runs `nixie enrol-code` and never names the bundle's file
-or any other path in the image. The commands are the whole interface a deployment has into the
-container, so nixie may move its files, its database and its data directory between releases without
-breaking a deployment that calls only the commands.
+sandbox images, answers a memory or skill proposal, resets the event log, or backs up and restores
+nixie's data. The image puts a `nixie` command on the PATH, so a script runs `nixie enrol-code` and
+never names the bundle's file or any other path in the image. The commands are the whole interface a
+deployment has into the container, so nixie may move its files, its database and its data directory
+between releases without breaking a deployment that calls only the commands.
 
 [The server](server.md) covers the process the commands talk to, [Kubernetes](kubernetes.md) covers
 the pod a deployment runs them in, and [names in impd](impd-names.md) covers the names that the
@@ -28,25 +28,32 @@ log line, so a deployment's check reads the report and not the log.
 | `nixie sandbox-manifest`        | each sandbox kind with its image's ref and the name nixie gives it    | the server would accept the manifest |
 | `nixie reset --keep-sessions …` | the sequence the reset removed up to, and the device sessions it kept | the server finished the reset        |
 | `nixie sessions`                | the live device sessions, as JSON                                     | the server answered                  |
+| `nixie backup --to <directory>` | each database it copied, then the directory and the number of copies  | both copies match                    |
+| `nixie restore --from … --yes`  | the databases it restored and the directory they came from            | both databases were replaced         |
 
 The health report is the body of the server's own health endpoint, with each part's readiness and
 its reason, so a deployment's check names the part that is not ready without its own copy of the
 port or the path. The sandbox manifest comes from the same loader the server starts with, so a
 manifest that the server refuses fails the command too, and the names it prints are the names the
-server asks impd for. The reset needs `--yes` as well, as [the reset](#the-reset) describes.
+server asks impd for. The reset needs `--yes` as well, as [the reset](#the-reset) describes, and so
+does the restore, as [backup and restore](#backup-and-restore) describes.
 
-A deployment never deletes a file in the data directory, because the reset is the one way to empty
-nixie's data. The reset destroys every sandbox before it removes anything, so the conversation's
-transcript on the sandbox disk goes with the log, and a deleted database file would leave it behind.
+A deployment never reads, writes or deletes a file in the data directory. The backup and restore
+commands are the one way to copy nixie's data out and back, and the reset is the one way to empty
+it. The reset destroys every sandbox before it removes anything, so the conversation's transcript on
+the sandbox disk goes with the log, and a deleted database file would leave it behind.
 
 ## The control socket
 
 Only the writer may write, so a host command never opens the database. It asks the running server
 over a Unix control socket in the data directory, in a folder only nixie's user may enter. Starting
 the server removes a stale socket file first, because the writer lock proves that no other server
-runs. The health and sandbox-manifest commands are the exceptions: the health command reads the
-server's health endpoint on the address the configuration names, and the sandbox-manifest command
-reads the manifest in the image.
+runs. Four commands are the exceptions:
+
+- The health command reads the server's health endpoint on the address the configuration names.
+- The sandbox-manifest command reads the manifest in the image.
+- The backup command reads both databases through read-only connections, which never write.
+- The restore command takes the writer lock itself, so it runs only while no server does.
 
 The socket serves the host contract, a typed oRPC contract of its own beside the one
 [the API](../channels/api.md) serves. Each host command calls one of its procedures through an RPC
@@ -70,6 +77,30 @@ to run without both flags, because only a restore from a backup undoes a reset, 
 backups from before the reset still hold the old data. The server answers once the reset finishes,
 then stops and exits 0, so the container runtime starts it again through the normal start. A reset
 that fails exits the server 1 instead, and the command exits non-zero.
+
+## Backup and restore
+
+The backup command, `backup --to <directory>`, copies `nixie.db` and `keys.db` into an empty
+directory, which a deployment then uploads as one snapshot. It runs in any container of nixie's
+image that mounts the data directory and the configuration, beside a live server or with none, and
+never waits on the writer. Each copy is SQLite's VACUUM INTO, so it holds the rows still in the
+writer's write-ahead log, and the other files in the data directory, such as the pre-migration
+copies and the control socket, stay out of the backup.
+
+The two copies have to match: the `keys.db` copy holds the key of every record the `nixie.db` copy
+keeps readable. The writer creates a record's key before it commits the record, and commits a forget
+before it removes the key, so the command copies `nixie.db` first and `keys.db` after it. When
+another connection commits to `keys.db` between the start of the first copy and the end of the
+second, the pair could hold a record whose key the second copy lost, so the command copies both
+again. After a fixed number of attempts that each meet a commit, it gives up and exits non-zero.
+
+The restore command, `restore --from <directory> --yes`, replaces both databases with the copies in
+a directory the backup command wrote. It takes the writer lock first, so it refuses while a server
+runs and no server starts until it ends. It runs SQLite's integrity check on each copy and stages
+both in the data directory before it replaces either, so a failed check, a full volume or an I/O
+error stops it before it changes a database. It then removes each database's write-ahead log files,
+which belong to the database it replaced. It refuses to run without `--yes`, because the data
+written since the backup is lost.
 
 ## Memory
 

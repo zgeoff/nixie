@@ -1,5 +1,6 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
+import { buildBackupCommands } from './build-backup-commands';
 import { buildResetCommands } from './build-reset-commands';
 import { buildSubjectCommands } from './build-subject-commands';
 import { checkEncoder } from './check-encoder';
@@ -23,6 +24,7 @@ const commands = new Map<string, Command>([
   ...createConsolidationCommands(),
   ...buildSubjectCommands(),
   ...createSkillCommands(),
+  ...buildBackupCommands(),
 ]);
 
 export async function runCLI(argv: readonly string[], io: CLIIO): Promise<number> {
