@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
-import { startTestNixie } from './start-test-nixie';
+import { startSpawnedNixie } from './start-spawned-nixie';
 import { writeSeedMessages } from './write-seed-messages';
 
 async function setupTest() {
-  return { nixie: await startTestNixie() };
+  return { nixie: await startSpawnedNixie() };
 }
 
 test('it records the messages where nixie reads them once it starts', async () => {
@@ -27,4 +27,4 @@ test('it lets go of the data directory, so nixie can take it', async () => {
   await first.ready;
 
   expect(ctx.nixie.harness.now()).toBe(1_000_000);
-}, 60_000);
+});

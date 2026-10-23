@@ -8,6 +8,20 @@ test('it claims the queued work in order, then finds none', async () => {
   expect(claims).toStrictEqual(['a', 'b', null]);
 });
 
+test('it holds the next claim until released, then finds none while work waits', async () => {
+  const work = buildStubPoolWork(['a']);
+  const miss = work.holdNextMiss();
+  const held = work.claim();
+
+  await miss.started;
+
+  miss.release();
+
+  const claims = [await held, await work.claim()];
+
+  expect(claims).toStrictEqual([null, 'a']);
+});
+
 test('it holds a run in flight until released', () => {
   const work = buildStubPoolWork([]);
 

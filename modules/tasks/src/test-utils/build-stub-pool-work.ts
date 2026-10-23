@@ -1,3 +1,9 @@
+interface HeldMiss {
+  readonly started: Promise<void>;
+
+  readonly release: () => void;
+}
+
 export interface StubPoolWork {
   readonly queue: string[];
 
@@ -9,6 +15,13 @@ export interface StubPoolWork {
   readonly run: (item: string) => Promise<void>;
 
   readonly releaseAll: () => void;
+
+  readonly holdNextMiss: () => HeldMiss;
+}
+
+interface PendingMiss {
+  readonly gate: Promise<void>;
+  readonly start: () => void;
 }
 
 export function buildStubPoolWork(work: readonly string[]): StubPoolWork {
@@ -18,13 +31,28 @@ export function buildStubPoolWork(work: readonly string[]): StubPoolWork {
 
   const finished: string[] = [];
   const peak = { running: 0 };
+  const pending: { miss: PendingMiss | null } = { miss: null };
 
   return {
     queue,
     running,
     finished,
     peak,
-    claim: () => Promise.resolve(queue.shift() ?? null),
+    claim: async () => {
+      const miss = pending.miss;
+
+      if (miss === null) {
+        return queue.shift() ?? null;
+      }
+
+      pending.miss = null;
+
+      miss.start();
+
+      await miss.gate;
+
+      return null;
+    },
     run: async (item) => {
       const held = Promise.withResolvers<void>();
 
@@ -41,6 +69,14 @@ export function buildStubPoolWork(work: readonly string[]): StubPoolWork {
       for (const release of running.values()) {
         release();
       }
+    },
+    holdNextMiss: () => {
+      const gate = Promise.withResolvers<void>();
+      const started = Promise.withResolvers<void>();
+
+      pending.miss = { gate: gate.promise, start: started.resolve };
+
+      return { started: started.promise, release: gate.resolve };
     },
   };
 }

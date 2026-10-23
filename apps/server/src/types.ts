@@ -3,9 +3,12 @@ import type { DefinitionsInForce, DefinitionsSource, SnapshotPolicy } from '@hey
 import type { Logger } from '@heynixie/logger';
 import type { Encoder } from '@heynixie/memory';
 import type { ModelSecrets } from '@heynixie/models';
+import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { StartState } from './build-start-state';
+import type { SandboxAdapterOptions } from './create-sandbox-adapter';
 import type { DeploymentConfig } from './deployment-config-schema';
+import type { CrashHarness } from './join-crash-harness';
 import type { SandboxImages } from './load-sandbox-manifest';
 import type { Tools } from './tools';
 
@@ -49,6 +52,10 @@ export interface CLIIO {
   readonly print: (text: string) => void;
 
   readonly waitForSignal: () => Promise<string>;
+
+  readonly createSandboxAdapter?: (options: SandboxAdapterOptions) => SandboxAdapter;
+
+  readonly harness?: CrashHarness;
 }
 
 export interface CLIFlags {

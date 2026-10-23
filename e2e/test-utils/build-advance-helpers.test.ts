@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { buildAdvanceHelpers } from './build-advance-helpers';
-import { startTestNixie } from './start-test-nixie';
+import { startSpawnedNixie } from './start-spawned-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   return { nixie };
 }
@@ -38,7 +38,7 @@ test('#advanceUntilRecord advances the clock until the record that a later advan
     dueAt: 4_600_000,
     firedAt: 4_600_000,
   });
-}, 60_000);
+});
 
 test('#advanceUntilRecord throws after its last advance when no record matches', async () => {
   const ctx = await setupTest();
@@ -80,7 +80,7 @@ test('#advanceUntilArrival advances the clock until nixie arrives at the fault p
   });
 
   expect(arrival).toMatchObject({ point: 'timer.fire.before', work: { id: taskID } });
-}, 60_000);
+});
 
 test('#advanceUntilArrival throws after its last advance when nixie never arrives', async () => {
   const ctx = await setupTest();
@@ -103,4 +103,4 @@ test('#advanceUntilArrival throws after its last advance when nixie never arrive
     Error,
     'nothing arrived after the last advance of 1000 ms',
   );
-}, 60_000);
+});

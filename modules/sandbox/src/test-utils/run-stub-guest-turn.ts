@@ -8,14 +8,15 @@ import { readStubGuestHistory } from './read-stub-guest-history';
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 
 export type StubGuestReply =
-  | { readonly text: string }
+  | { readonly text: string; readonly gate?: Promise<void> }
   | {
       readonly toolUse: {
         readonly name: string;
         readonly input: Readonly<Record<string, unknown>>;
       };
     }
-  | { readonly overflow: 'blocking_limit' | 'prompt_too_long' };
+  | { readonly overflow: 'blocking_limit' | 'prompt_too_long' }
+  | { readonly modelAuthRefusal: string };
 
 export interface StubGuestToolCall {
   readonly sandboxID: string;
@@ -110,6 +111,10 @@ async function runInputs(
 
     frames.push(...answer.frames);
 
+    if (answer.refusal !== null) {
+      return [...frames, { type: 'failed', reason: 'model_auth', detail: answer.refusal }];
+    }
+
     if (answer.overflow !== null) {
       run.disk.writeSession(run.home, fork.sessionID, entries);
 
@@ -156,6 +161,8 @@ interface InputAnswer {
   readonly frames: readonly GuestFrame[];
 
   readonly overflow: 'blocking_limit' | 'prompt_too_long' | null;
+
+  readonly refusal: string | null;
 }
 
 const overflowText = 'Prompt is too long';
@@ -174,6 +181,14 @@ async function runInputCall(
   for (let replyCount = 1; ; replyCount += 1) {
     const reply = run.takeReply();
 
+    if ('gate' in reply) {
+      await waitUnlessStopped(reply.gate, run.signal);
+    }
+
+    if ('modelAuthRefusal' in reply) {
+      return { frames, overflow: null, refusal: reply.modelAuthRefusal };
+    }
+
     if ('overflow' in reply) {
       const message = {
         uuid: crypto.randomUUID(),
@@ -185,7 +200,7 @@ async function runInputCall(
       state.entries.push(message);
       frames.push({ type: 'assistant', messageID: message.uuid, text: overflowText, toolUses: [] });
 
-      return { frames, overflow: reply.overflow };
+      return { frames, overflow: reply.overflow, refusal: null };
     }
 
     const contextSize = state.fork.contextSize;
@@ -208,7 +223,7 @@ async function runInputCall(
     if ('text' in reply) {
       frames.push({ type: 'assistant', messageID: entry.uuid, text: reply.text, toolUses: [] });
 
-      return { frames, overflow: null };
+      return { frames, overflow: null, refusal: null };
     }
 
     frames.push({
@@ -228,6 +243,26 @@ async function runInputCall(
   }
 }
 
+async function waitUnlessStopped<Value>(call: Promise<Value>, signal: AbortSignal): Promise<Value> {
+  signal.throwIfAborted();
+
+  const settled = new AbortController();
+
+  const waitForStop = async (): Promise<never> => {
+    await once(signal, 'abort', { signal: settled.signal });
+
+    signal.throwIfAborted();
+
+    invariant(false, 'the abort event fires only on an aborted signal');
+  };
+
+  try {
+    return await Promise.race([call, waitForStop()]);
+  } finally {
+    settled.abort();
+  }
+}
+
 interface AssistantEntrySpec {
   readonly uuid: string;
 
@@ -238,7 +273,7 @@ interface AssistantEntrySpec {
 }
 
 function buildAssistantEntry(
-  reply: Exclude<StubGuestReply, { overflow: unknown }>,
+  reply: Exclude<StubGuestReply, { overflow: unknown } | { modelAuthRefusal: unknown }>,
   spec: AssistantEntrySpec,
 ): StubSessionEntry {
   const text = 'text' in reply ? reply.text : JSON.stringify(reply.toolUse);
@@ -282,7 +317,7 @@ async function runStubToolCall(
     input: toolUse.input,
   });
 
-  const result = await waitForToolResult(call, run.signal);
+  const result = await waitUnlessStopped(call, run.signal);
 
   return {
     uuid: crypto.randomUUID(),
@@ -290,26 +325,6 @@ async function runStubToolCall(
     text: result,
     tokens: run.countTokens(result),
   };
-}
-
-async function waitForToolResult(call: Promise<string>, signal: AbortSignal): Promise<string> {
-  signal.throwIfAborted();
-
-  const settled = new AbortController();
-
-  const waitForStop = async (): Promise<never> => {
-    await once(signal, 'abort', { signal: settled.signal });
-
-    signal.throwIfAborted();
-
-    invariant(false, 'the abort event fires only on an aborted signal');
-  };
-
-  try {
-    return await Promise.race([call, waitForStop()]);
-  } finally {
-    settled.abort();
-  }
 }
 
 interface OverflowState {

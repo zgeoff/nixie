@@ -3,22 +3,18 @@ import type { ContractClient } from '@heynixie/contract';
 import type { LogRecord } from '@heynixie/log';
 import type { HostCommandRun } from './run-host-command';
 import { runHostCommand } from './run-host-command';
-import type { TestNixie } from './start-test-nixie';
+import type { InProcessNixie } from './start-in-process-nixie';
 
 export interface TestReset {
   readonly command: HostCommandRun;
   readonly serverExit: number;
-
   readonly lastSequence: number;
-
-  readonly again: TestNixie;
-
+  readonly again: InProcessNixie;
   readonly connect: (token?: string) => ContractClient;
-
   readonly stop: () => Promise<{ readonly exitCode: number; readonly records: LogRecord[] }>;
 }
 
-export async function runTestReset(nixie: TestNixie): Promise<TestReset> {
+export async function runTestReset(nixie: InProcessNixie): Promise<TestReset> {
   const command = await runHostCommand(nixie.configPath, ['reset', '--keep-sessions', '--yes']);
   const finished = await nixie.waitForLogEvent('reset.finished');
   const serverExit = await nixie.exited;
@@ -39,7 +35,7 @@ export async function runTestReset(nixie: TestNixie): Promise<TestReset> {
     again,
     connect: (token) => buildTestClient(url, token),
     stop: () => {
-      again.sendSignal('SIGTERM');
+      again.signalStop();
 
       return again.waitForExit();
     },

@@ -26,6 +26,23 @@ test('it starts each nixie on the clock time the test has reached', async () => 
   expect(now).toBe(1_005_000);
 });
 
+test('it starts each nixie with the arguments the harness is given', async () => {
+  const harness = startCrashHarness({
+    entry: join(import.meta.dir, 'test-utils/run-stub-nixie.ts'),
+    args: ['serve', '--config', 'nixie.yaml'],
+    env: {},
+    startMs: 1_000_000,
+  });
+
+  const nixie = harness.start();
+
+  await nixie.ready;
+
+  const args = await nixie.request('readArgs', null);
+
+  expect(args).toStrictEqual(['serve', '--config', 'nixie.yaml']);
+});
+
 test('it advances the clock in every nixie still running', async () => {
   const ctx = setupTest();
   const first = ctx.harness.start();

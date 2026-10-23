@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { runHostCommand } from './run-host-command';
 import { runTestReset } from './run-test-reset';
-import { startTestNixie } from './start-test-nixie';
+import { startInProcessNixie } from './start-in-process-nixie';
 
 test('it resets nixie and starts it again on the same data directory', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   await nixie.waitForLogEvent('ready');
 
@@ -14,10 +14,10 @@ test('it resets nixie and starts it again on the same data directory', async () 
   expect(reset.serverExit).toBe(0);
   expect(reset.lastSequence).toBeGreaterThan(0);
   expect(reset.again.dataDir).toBe(nixie.dataDir);
-}, 60_000);
+});
 
 test('it connects a signed-out client to the server started again', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   await nixie.waitForLogEvent('ready');
 
@@ -32,10 +32,10 @@ test('it connects a signed-out client to the server started again', async () => 
   });
 
   expect(enrolled.token).toBeString();
-}, 60_000);
+});
 
 test('it stops the server started again and reads its records', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   await nixie.waitForLogEvent('ready');
 
@@ -48,4 +48,4 @@ test('it stops the server started again and reads its records', async () => {
     sequence: reset.lastSequence + 1,
     kind: 'definitions_seeded',
   });
-}, 60_000);
+});

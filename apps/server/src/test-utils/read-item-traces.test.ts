@@ -3,10 +3,10 @@ import { createApprovedItems } from './create-approved-items';
 import { createTestClient } from './create-test-client';
 import { readItemTraces } from './read-item-traces';
 import { sendClientMessage } from './send-client-message';
-import { startTestNixie } from './start-test-nixie';
+import { startInProcessNixie } from './start-in-process-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   return { nixie };
 }
@@ -22,7 +22,7 @@ test('it finds the key, the match and the session copy of an item a turn recalle
     'Prefers window seats on trains',
   ]);
 
-  ctx.nixie.model.addReplies({ text: 'Under the flowerpot.' });
+  ctx.nixie.guest.addReplies({ text: 'Under the flowerpot.' });
 
   await sendClientMessage(api.client, { text: 'Where is the spare key?' }, 'Under the flowerpot.');
 
@@ -35,7 +35,7 @@ test('it finds the key, the match and the session copy of an item a turn recalle
       paths.some((path) => path.includes('/.claude/')),
     ),
   });
-}, 60_000);
+});
 
 test('it finds no trace of an item that does not exist', async () => {
   const ctx = await setupTest();
@@ -47,4 +47,4 @@ test('it finds no trace of an item that does not exist', async () => {
   });
 
   expect(traces).toStrictEqual({ hasKey: false, isMatched: false, sessionFiles: [] });
-}, 60_000);
+});

@@ -2,12 +2,12 @@ import { expect, test } from 'bun:test';
 import { z } from 'zod';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
-import { startTestNixie } from './test-utils/start-test-nixie';
-import { waitForTurn } from './test-utils/wait-for-turn';
+import { sendClientMessage } from './test-utils/send-client-message';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 test('it logs a skill export that fails at the error level', async () => {
   // nothing listens on the discard port, so the export's first request fails
-  const nixie = await startTestNixie({
+  const nixie = await startInProcessNixie({
     extraDefinitions: [
       'export: { repository: harbour/definitions, api_url: "https://127.0.0.1:9" }',
     ],
@@ -16,10 +16,10 @@ test('it logs a skill export that fails at the error level', async () => {
 
   const clients = await createTestClient(nixie);
 
-  nixie.model.addReplies(
+  nixie.guest.addReplies(
     {
       toolUse: {
-        name: 'mcp__nixie__skill_write',
+        name: 'skill_write',
         input: {
           name: 'tide-tables',
           files: [
@@ -34,18 +34,11 @@ test('it logs a skill export that fails at the error level', async () => {
     { text: 'Proposed.' },
   );
 
-  await clients.client.conversation.send({
-    clientMessageId: crypto.randomUUID(),
-    spans: [],
-    text: 'Write a skill for reading tide tables.',
-    thread: 'conversation',
-  });
-
-  await waitForTurn(async () => {
-    const page = await clients.client.conversation.read({ thread: 'conversation' });
-
-    return page.records.some((record) => record.message?.text === 'Proposed.');
-  });
+  await sendClientMessage(
+    clients.client,
+    { text: 'Write a skill for reading tide tables.' },
+    'Proposed.',
+  );
 
   const listed = await runHostCommand(nixie.configPath, ['skill-pending']);
 
@@ -58,4 +51,4 @@ test('it logs a skill export that fails at the error level', async () => {
   const failed = await nixie.waitForLogEvent('skills.export_failed');
 
   expect(failed).toMatchObject({ level: 'error' });
-}, 60_000);
+});

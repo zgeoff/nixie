@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { runOracle } from '../test-utils/run-oracle';
-import { startTestNixie } from '../test-utils/start-test-nixie';
+import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   return { nixie };
 }
@@ -63,7 +63,7 @@ test('it fires a timer that fell due while nixie was down once, into the task in
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it leaves the timer unfired when nixie dies before the fire commits, and fires it once on the next restart', async () => {
   const ctx = await setupTest();
@@ -115,4 +115,4 @@ test('it leaves the timer unfired when nixie dies before the fire commits, and f
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});

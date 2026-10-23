@@ -3,10 +3,10 @@ import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import type { TasksTables } from '@heynixie/tasks';
 import { runOracle } from './run-oracle';
-import { startTestNixie } from './start-test-nixie';
+import { startSpawnedNixie } from './start-spawned-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   return { nixie };
 }
@@ -36,7 +36,7 @@ test('it finds nothing wrong in a log that nixie wrote', async () => {
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 60_000);
+});
 
 test('it reports a projection table whose rows a fold of the log does not rebuild', async () => {
   const ctx = await setupTest();
@@ -56,12 +56,17 @@ test('it reports a projection table whose rows a fold of the log does not rebuil
 
   onTestFinished(() => db.destroy());
 
-  await db.$extendTables<TasksTables>().updateTable('tasks').set({ step_errors: 7 }).execute();
+  await db
+    .$extendTables<TasksTables>()
+    .updateTable('tasks')
+    .set({ step_errors: 7 })
+    .where('task_id', '=', taskID)
+    .execute();
 
   const oracle = await runOracle(ctx.nixie);
 
   expect(oracle.projectionDrift).toStrictEqual(['tasks']);
-}, 60_000);
+});
 
 test('it reports a provider call that no attempt of an action made', async () => {
   const ctx = await setupTest();
@@ -88,7 +93,7 @@ test('it reports a provider call that no attempt of an action made', async () =>
   const oracle = await runOracle(ctx.nixie);
 
   expect(oracle.strayCalls).toStrictEqual(['action-nobody-queued']);
-}, 60_000);
+});
 
 test('it reports a provider call without an idempotency key', async () => {
   const ctx = await setupTest();
@@ -111,7 +116,7 @@ test('it reports a provider call without an idempotency key', async () => {
   const oracle = await runOracle(ctx.nixie);
 
   expect(oracle.strayCalls).toStrictEqual([null]);
-}, 60_000);
+});
 
 test('it reports a lease that is still held once recovery ran', async () => {
   const ctx = await setupTest();
@@ -141,4 +146,4 @@ test('it reports a lease that is still held once recovery ran', async () => {
   const oracle = await runOracle(ctx.nixie);
 
   expect(oracle.heldLeases).toStrictEqual([`1:task:${taskID}`]);
-}, 60_000);
+});
