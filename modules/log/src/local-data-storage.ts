@@ -13,10 +13,10 @@ export const localDataStorage: DataStorage = {
       await mkdir(path, { recursive: true, mode: 0o700 });
     },
     createDirectory,
-    copyFile: (from, to) => copyFile(from, to),
-    renameFile: (from, to) => rename(from, to),
+    copyFile,
+    renameFile: rename,
     removeFile: (path) => rm(path, { force: true, recursive: true }),
-    writeFile: (path, text) => writeFile(path, text),
+    writeFile,
     writeToDisk,
   },
 };
