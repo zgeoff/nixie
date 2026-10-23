@@ -1,5 +1,6 @@
 export { buildTestConversationTools } from './build-test-conversation-tools';
 export { createTestClient } from './create-test-client';
+export type { NixieOperationArgs } from '../build-nixie-operation-schemas';
 export { readDataFiles } from './read-data-files';
 export { readTestRecords } from './read-test-records';
 export { runHostCommand } from './run-host-command';

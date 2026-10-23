@@ -6,7 +6,7 @@ import { startDatabase } from '@heynixie/db';
 import type { LogRecord } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
 import type { LogLevel } from '@heynixie/logger';
-import type { BootFiles } from '@heynixie/server/test-utils';
+import type { BootFiles, NixieOperationArgs } from '@heynixie/server/test-utils';
 import { readDataFiles, readTestRecords, writeBootFiles } from '@heynixie/server/test-utils';
 import type {
   AdvanceOptions,
@@ -39,7 +39,14 @@ interface SpawnedNixieExit {
   readonly records: readonly LogRecord[];
 }
 
-interface SpawnedNixieProcess extends NixieProcess {
+type SpawnedOperationArgs = NixieOperationArgs & { readonly arm: FaultPointArm };
+
+interface SpawnedNixieProcess extends Omit<NixieProcess, 'request'> {
+  readonly request: <Name extends keyof SpawnedOperationArgs>(
+    operation: Name,
+    args: SpawnedOperationArgs[Name],
+  ) => Promise<unknown>;
+
   readonly readOutput: () => string;
 
   readonly waitForLogEvent: (event: string) => Promise<LogLine>;
@@ -77,7 +84,7 @@ export interface SpawnedNixie extends BootFiles {
   ) => Promise<TestRecord>;
 
   readonly advanceUntilArrival: (
-    nixie: NixieProcess,
+    nixie: Pick<NixieProcess, 'waitForArrival'>,
     point: string,
     options: AdvanceSteps,
   ) => Promise<FaultPointArrival>;
@@ -358,6 +365,7 @@ function trackSpawnedNixieProcess(nixie: NixieProcess, files: BootFiles): Spawne
 
   return {
     ...nixie,
+    request: (operation, args) => nixie.request(operation, args),
     readOutput,
     waitForLogEvent,
     sendStopSignal: async () => {
