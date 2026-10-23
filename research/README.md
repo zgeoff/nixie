@@ -28,6 +28,7 @@ lists the variable.
 | [memory-retrieval](memory-retrieval/)                 | keyword search, BM25 and local embeddings over synthetic memory, and where they part               |
 | [model-eval](model-eval/)                             | persona, invented memory, tool honesty, cost and latency per model                                 |
 | [paste-spans](paste-spans/)                           | which spans of a message you pasted, kept right through edits                                      |
+| [pinned-core-scale](pinned-core-scale/)               | whether the model follows the pinned-core change note with a full core and in a days-long session  |
 | [policy-rules](policy-rules/)                         | one decision per call whatever the rule order, a stable snapshot hash, and prompts by cause        |
 | [replica-encryption](replica-encryption/)             | Litestream through a host crypt gateway, process outages, and a restore without the database       |
 | [start-session-forwarding](start-session-forwarding/) | a separate Start server that forwards the device session to the API and holds none itself          |
