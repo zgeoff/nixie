@@ -46,9 +46,27 @@ test.each([
   await first.waitForArrival(point);
   await first.kill();
 
+  const recordsBeforeRestart = await ctx.nixie.readRecords();
+
+  const lastSequence = Math.max(...recordsBeforeRestart.map((record) => record.sequence));
   const second = ctx.nixie.harness.start();
 
   await second.ready;
+
+  await ctx.nixie.advanceUntilRecord(
+    12_000,
+    5,
+    (record) =>
+      record.sequence > lastSequence &&
+      record.kind === 'task.step_started' &&
+      record.payload['taskID'] === 'memory-writer',
+  );
+
+  // The checker's deadline runs on the test clock, so an advance while its call is in flight times it out.
+  await ctx.nixie.waitForRecord(
+    (record) =>
+      record.kind === 'memory.batch_published' && record.payload['catchUpEnded'] === false,
+  );
 
   await ctx.nixie.advanceUntilRecord(
     12_000,
