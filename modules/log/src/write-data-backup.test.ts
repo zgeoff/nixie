@@ -140,7 +140,7 @@ test('it fails the backup when nixie writes keys.db during each of 5 copies, and
   const files = await readdir(ctx.directory);
 
   expect(backup).rejects.toThrowWithMessage(Error, 'nixie wrote keys.db during each of 5 copies');
-  expect(files).toStrictEqual(['.copying']);
+  expect(files).toIncludeSameMembers(['.copying', 'backup-incomplete']);
 });
 
 test('it refuses a data directory without keys.db, and copies nothing', async () => {
@@ -255,6 +255,34 @@ test('it refuses a backup while a restore replaces the databases, and copies not
 
   expect(backup).toStrictEqual({ refused: 'restore-running' });
   expect(existsSync(ctx.directory)).toBeFalse();
+});
+
+test('it leaves its directory marked unfinished when it stops before the checked pair is in place', async () => {
+  const ctx = await setupTest();
+
+  await sql`create table items (id text primary key)`.execute(ctx.log);
+  await sql`create table record_keys (key_id text primary key)`.execute(ctx.keys);
+
+  const backup = writeDataBackup({
+    storage: {
+      ...localDataStorage,
+      files: {
+        ...localDataStorage.files,
+        renameFile: () =>
+          Promise.reject(Object.assign(new Error('EIO: i/o error, rename'), { code: 'EIO' })),
+      },
+    },
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+    onCopied: () => {},
+  });
+
+  await backup.catch(() => {});
+
+  const files = await readdir(ctx.directory);
+
+  expect(backup).rejects.toThrowWithMessage(Error, 'EIO: i/o error, rename');
+  expect(files).toIncludeSameMembers(['.copying', 'backup-incomplete']);
 });
 
 test('it refuses a data directory whose restore stopped before it finished, and copies nothing', async () => {

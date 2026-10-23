@@ -8,6 +8,7 @@ import type { DataFile } from './data-files';
 import { dataFiles } from './data-files';
 import type { DataRefusal } from './data-refusal';
 import type { DataStorage } from './data-storage';
+import { getBackupMarkerPath } from './get-backup-marker-path';
 import { requireDataFiles } from './require-data-files';
 import { writeRestoreState } from './write-restore-state';
 
@@ -42,6 +43,8 @@ export async function restoreDataBackup(
         `the backup in ${options.directory}`,
       );
 
+      await requireFinishedBackup(options);
+
       for (const file of dataFiles) {
         await requireIntactDatabase(options, file);
       }
@@ -55,6 +58,16 @@ export async function restoreDataBackup(
     }
   } finally {
     writerLock.release();
+  }
+}
+
+async function requireFinishedBackup(options: DataRestoreOptions): Promise<void> {
+  const unfinished = await options.storage.files.probeFile(getBackupMarkerPath(options.directory));
+
+  if (unfinished) {
+    throw new Error(
+      `the backup in ${options.directory} stopped before it finished, so nixie restores nothing`,
+    );
   }
 }
 

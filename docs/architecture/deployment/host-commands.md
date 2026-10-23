@@ -95,8 +95,9 @@ another connection commits to `keys.db` between the start of the first copy and 
 second, the pair could hold a record whose key the second copy lost, so the command copies both
 again. After a fixed number of attempts that each meet a commit, it gives up and exits non-zero.
 Each attempt writes into a hidden folder inside the directory, and the pair moves into place only
-once it passes the check. A backup that stops part way therefore leaves no pair, and the restore
-command refuses a directory without both databases.
+once it passes the check. The backup writes a marker into the directory before its first copy and
+removes it once the pair is in place. The restore command refuses a directory that holds the marker
+or lacks either database, so it never takes a pair from a backup that stopped part way.
 
 The restore command, `restore --from <directory> --yes`, replaces both databases with the copies in
 a directory the backup command wrote. It takes the writer lock first, so it refuses while a server

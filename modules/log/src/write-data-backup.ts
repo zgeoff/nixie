@@ -9,6 +9,7 @@ import type { DataFile } from './data-files';
 import { dataFiles } from './data-files';
 import type { DataRefusal } from './data-refusal';
 import type { DataStorage } from './data-storage';
+import { getBackupMarkerPath } from './get-backup-marker-path';
 import { readRestoreState } from './read-restore-state';
 import { requireDataFiles } from './require-data-files';
 
@@ -44,6 +45,7 @@ export async function writeDataBackup(
   try {
     await requireFinishedRestore(options);
     await createBackupDirectory(options);
+    await writeBackupMarker(options);
 
     await options.storage.files.createDirectories(getCopyingPath(options.directory));
 
@@ -86,8 +88,14 @@ async function createBackupDirectory(options: DataBackupOptions): Promise<void> 
   }
 }
 
-// A restore takes a backup only when it holds both databases, so copies that wait here until they
-// pass the check never reach a restore as a pair, even when the backup stops between two attempts.
+// The marker reaches the disk before the first copy and leaves only once the checked pair is in
+// place, and a restore refuses a directory that holds it, so a backup that stops at any point
+// leaves nothing a restore takes.
+async function writeBackupMarker(options: DataBackupOptions): Promise<void> {
+  await options.storage.files.writeFile(getBackupMarkerPath(options.directory), '');
+  await options.storage.files.writeDirectoryToDisk(options.directory);
+}
+
 function getCopyingPath(directory: string): string {
   return join(directory, '.copying');
 }
@@ -151,6 +159,8 @@ async function publishCopies(options: DataBackupOptions): Promise<void> {
     await files.renameFile(join(copying, file), join(options.directory, file));
   }
 
-  await files.writeDirectoryToDisk(options.directory);
   await files.removeFile(copying);
+  await files.writeDirectoryToDisk(options.directory);
+  await files.removeFile(getBackupMarkerPath(options.directory));
+  await files.writeDirectoryToDisk(options.directory);
 }

@@ -161,6 +161,49 @@ test('it refuses a restore while a server holds the writer lock, and leaves the 
   expect(log).toBe('the live log');
 });
 
+test('it refuses a backup that stopped mid-retry with a new nixie.db beside an old keys.db, and leaves the data directory alone', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dataDir, 'nixie.db'), 'the live log');
+  await writeFile(join(ctx.dataDir, 'keys.db'), 'the live keys');
+  await writeFile(join(ctx.directory, 'backup-incomplete'), '');
+
+  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
+
+  onTestFinished(() => backupLog.destroy());
+
+  await sql`create table items (id text primary key)`.execute(backupLog);
+  await sql`insert into items values ('k1'), ('k2')`.execute(backupLog);
+  await backupLog.destroy();
+
+  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
+
+  onTestFinished(() => backupKeys.destroy());
+
+  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
+  await sql`insert into record_keys values ('k1')`.execute(backupKeys);
+  await backupKeys.destroy();
+
+  const restore = restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
+
+  await restore.catch(() => {});
+
+  const log = await Bun.file(join(ctx.dataDir, 'nixie.db')).text();
+  const keys = await Bun.file(join(ctx.dataDir, 'keys.db')).text();
+
+  expect(restore).rejects.toThrowWithMessage(
+    Error,
+    `the backup in ${ctx.directory} stopped before it finished, so nixie restores nothing`,
+  );
+
+  expect(log).toBe('the live log');
+  expect(keys).toBe('the live keys');
+});
+
 test('it refuses a backup without keys.db', async () => {
   const ctx = await setupTest();
 
