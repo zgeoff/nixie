@@ -78,9 +78,15 @@ async function runRunner<W>(
     while (!state.stopping.aborted) {
       // A wake that lands during the claim aborts this signal, so the sleep after a miss ends at once.
       const wake = state.getWakeSignal();
+      const claimedAt = clock.now();
 
+      // A claim reads the time when it starts, so the poll counts from there: work that fell due
+      // while a slow claim waited on the database is claimed at once, not a full poll later.
       if (!(await runClaim(options, state))) {
-        await clock.sleep(options.pollMs, AbortSignal.any([state.stopping, wake]));
+        await clock.sleep(
+          options.pollMs - (clock.now() - claimedAt),
+          AbortSignal.any([state.stopping, wake]),
+        );
       }
     }
   } catch (error) {

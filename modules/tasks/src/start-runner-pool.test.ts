@@ -122,6 +122,36 @@ test('it claims again at once when a wake lands during a claim that found nothin
   expect(ctx.clock.now()).toBe(0);
 });
 
+test('it claims again at once when the poll interval passed during a claim that found nothing', async () => {
+  const ctx = setupTest();
+  const work = buildStubPoolWork([]);
+  const miss = work.holdNextMiss();
+
+  const pool = startRunnerPool(ctx.clock, {
+    size: 1,
+    pollMs: 1000,
+    claim: work.claim,
+    run: work.run,
+    onError: () => {},
+  });
+
+  onTestFinished(async () => {
+    work.releaseAll();
+
+    await pool.stop(0);
+  });
+
+  await miss.started;
+
+  work.queue.push('a');
+  ctx.clock.advance(1000);
+  miss.release();
+
+  await waitForCondition(() => work.running.has('a'));
+
+  expect(ctx.clock.now()).toBe(1000);
+});
+
 test('it claims nothing after a stop, and waits for the work in flight', async () => {
   const ctx = setupTest();
   const work = buildStubPoolWork(['a', 'b']);
