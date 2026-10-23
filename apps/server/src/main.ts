@@ -1,6 +1,12 @@
 import { makeLogger, startLineLog } from '@heynixie/logger';
 import { runCLI } from './run-cli';
 
+// The release bundle defines NIXIE_TEST_BUILD as false, so the bundler drops the harness and its
+// import.
+const harness = NIXIE_TEST_BUILD
+  ? await import('./join-crash-harness').then((joined) => joined.joinCrashHarness(process.env))
+  : null;
+
 const received = Promise.withResolvers<string>();
 
 process.once('SIGTERM', () => {
@@ -23,6 +29,8 @@ const exitCode = await runCLI(process.argv.slice(2), {
     process.stdout.write(`${text}\n`);
   },
   waitForSignal: () => received.promise,
+  ...(harness === null ? {} : { harness }),
 });
 
+harness?.stopDescendants();
 process.exit(exitCode);

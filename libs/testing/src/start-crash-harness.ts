@@ -5,6 +5,8 @@ import type { FaultPointArm } from './types';
 
 export interface CrashHarnessOptions {
   readonly entry: string;
+
+  readonly args?: readonly string[];
   readonly env: Readonly<Record<string, string>>;
 
   readonly startMs: number;
@@ -47,6 +49,7 @@ export function startCrashHarness(options: CrashHarnessOptions): CrashHarness {
     start: (faultPoints = []) => {
       const nixie = startNixieProcess({
         entry: options.entry,
+        ...(options.args === undefined ? {} : { args: options.args }),
         env: options.env,
         clockMs: clock.now,
         faultPoints,

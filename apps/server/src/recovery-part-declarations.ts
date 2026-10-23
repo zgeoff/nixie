@@ -14,8 +14,16 @@ export const recoveryPartDeclarations: readonly AnyPartDeclaration<ServerPartVal
   },
   {
     name: 'recovery',
-    needs: ['server_parts', 'first_seed'],
-    start: makeRetriedStart('recovery', runRecoverySteps),
+    needs: ['inputs', 'server_parts', 'first_seed'],
+    start: makeRetriedStart('recovery', async (parts, reader) => {
+      await runRecoverySteps(parts);
+
+      if (NIXIE_TEST_BUILD) {
+        await reader
+          .get('inputs')
+          .options.harness?.link.waitAtFaultPoint('test.recovered', { kind: 'recovery', id: null });
+      }
+    }),
   },
   {
     name: 'add_images',

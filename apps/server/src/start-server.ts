@@ -1,8 +1,12 @@
+import type { Clock } from '@heynixie/clock';
 import type { Writer } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
+import type { SandboxAdapter } from '@heynixie/sandbox';
 import { buildCleanup } from './build-cleanup';
+import type { SandboxAdapterOptions } from './create-sandbox-adapter';
 import type { DeploymentConfig } from './deployment-config-schema';
+import type { CrashHarness } from './join-crash-harness';
 import type { SandboxImages } from './load-sandbox-manifest';
 import type { Secrets } from './load-secrets';
 import { loadServerInputs } from './load-server-inputs';
@@ -20,6 +24,10 @@ export interface ServerOptions {
 
   readonly encoderDir?: string;
   readonly log: Logger;
+
+  readonly createSandboxAdapter?: (options: SandboxAdapterOptions) => SandboxAdapter;
+
+  readonly harness?: CrashHarness;
 }
 
 export interface Server {
@@ -61,7 +69,11 @@ export async function startServer(options: ServerOptions): Promise<Server> {
   }
 
   try {
-    const writer = await startLoggedWriter(inputs.config.server.dataDir, inputs.log, cleanup);
+    const writer = await startLoggedWriter(inputs.config.server.dataDir, {
+      log: inputs.log,
+      cleanup,
+      ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
+    });
 
     return await startServerWork({ ...options, ...inputs, writer, cleanup });
   } catch (error) {
@@ -71,12 +83,22 @@ export async function startServer(options: ServerOptions): Promise<Server> {
   }
 }
 
-async function startLoggedWriter(dataDir: string, log: Logger, cleanup: Cleanup): Promise<Writer> {
-  const writer = await startWriter({ dataDir });
+interface LoggedWriterOptions {
+  readonly log: Logger;
+  readonly cleanup: Cleanup;
 
-  await cleanup.defer(() => writer.stop());
+  readonly clock?: Clock;
+}
 
-  log('writer.started', {
+async function startLoggedWriter(dataDir: string, options: LoggedWriterOptions): Promise<Writer> {
+  const writer = await startWriter({
+    dataDir,
+    ...(options.clock === undefined ? {} : { clock: options.clock }),
+  });
+
+  await options.cleanup.defer(() => writer.stop());
+
+  options.log('writer.started', {
     epoch: writer.epoch,
     schemaFrom: writer.migration.from,
     schemaTo: writer.migration.to,

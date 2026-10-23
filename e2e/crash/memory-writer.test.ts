@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { runOracle } from '../test-utils/run-oracle';
-import { startTestNixie } from '../test-utils/start-test-nixie';
+import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
 import { writeSeedMessages } from '../test-utils/write-seed-messages';
 
 async function setupTest() {
-  const nixie = await startTestNixie({ memoryWriter: true });
+  const nixie = await startSpawnedNixie({ memoryWriter: true });
 
   return { nixie };
 }
@@ -16,73 +16,73 @@ test.each([
   ['writer.publish.inside'],
   ['writer.publish.before'],
   ['writer.publish.after'],
-])(
-  'it publishes the catch-up batch once when nixie dies at %s',
-  async (point) => {
-    const ctx = await setupTest();
-    const [sequence] = await writeSeedMessages(ctx.nixie, ['I live at 4 Elm Row.']);
+])('it publishes the catch-up batch once when nixie dies at %s', async (point) => {
+  const ctx = await setupTest();
+  const [sequence] = await writeSeedMessages(ctx.nixie, ['I live at 4 Elm Row.']);
 
-    const remember = {
-      toolUse: {
-        name: 'mcp__nixie__memory_remember',
-        input: {
-          subject: 'owner',
-          text: 'You live at 4 Elm Row.',
-          quote: '4 Elm Row',
-          sourceID: sequence,
-        },
+  const remember = {
+    toolUse: {
+      name: 'mcp__nixie__memory_remember',
+      input: {
+        subject: 'owner',
+        text: 'You live at 4 Elm Row.',
+        quote: '4 Elm Row',
+        sourceID: sequence,
       },
-    };
+    },
+  };
 
-    ctx.nixie.writerModel.addReplies(remember, { text: 'Staged.' }, remember, { text: 'Staged.' });
+  ctx.nixie.writerModel.addReplies(remember, { text: 'Staged.' }, remember, { text: 'Staged.' });
 
-    const first = ctx.nixie.harness.start([{ point }]);
+  ctx.nixie.checkerModel.addReplies(
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },
+  );
 
-    await first.ready;
+  const first = ctx.nixie.harness.start([{ point }]);
 
-    await first.waitForArrival(point);
-    await first.kill();
+  await first.ready;
 
-    const second = ctx.nixie.harness.start();
+  await first.waitForArrival(point);
+  await first.kill();
 
-    await second.ready;
+  const second = ctx.nixie.harness.start();
 
-    await ctx.nixie.advanceUntilRecord(
-      12_000,
-      5,
-      (record) =>
-        record.kind === 'memory.batch_published' && record.payload['catchUpEnded'] === true,
-    );
+  await second.ready;
 
-    await second.kill();
+  await ctx.nixie.advanceUntilRecord(
+    12_000,
+    5,
+    (record) => record.kind === 'memory.batch_published' && record.payload['catchUpEnded'] === true,
+  );
 
-    const records = await ctx.nixie.readRecords();
-    const items = await ctx.nixie.readRows('memory_items');
-    const oracle = await runOracle(ctx.nixie);
+  await second.kill();
 
-    expect(
-      records
-        .filter((record) => record.kind === 'memory.batch_published')
-        .map((record) => [record.payload['mode'], record.payload['applied']]),
-    ).toStrictEqual([
-      ['catch_up', [{ itemID: items[0]?.['item_id'], version: 1 }]],
-      ['catch_up', []],
-    ]);
+  const records = await ctx.nixie.readRecords();
+  const items = await ctx.nixie.readRows('memory_items');
+  const oracle = await runOracle(ctx.nixie);
 
-    expect(items).toMatchObject([{ state: 'active', version: 1 }]);
+  expect(
+    records
+      .filter((record) => record.kind === 'memory.batch_published')
+      .map((record) => [record.payload['mode'], record.payload['applied']]),
+  ).toStrictEqual([
+    ['catch_up', [{ itemID: items[0]?.['item_id'], version: 1 }]],
+    ['catch_up', []],
+  ]);
 
-    expect(oracle).toStrictEqual({
-      repeatedStepKeys: [],
-      repeatedActions: [],
-      strayCalls: [],
-      heldLeases: [],
-      unreadyTasks: [],
-      changedEndStates: [],
-      projectionDrift: [],
-    });
-  },
-  120_000,
-);
+  expect(items).toMatchObject([{ state: 'active', version: 1 }]);
+
+  expect(oracle).toStrictEqual({
+    repeatedStepKeys: [],
+    repeatedActions: [],
+    strayCalls: [],
+    heldLeases: [],
+    unreadyTasks: [],
+    changedEndStates: [],
+    projectionDrift: [],
+  });
+});
 
 test.each([
   ['writer.batch.planned'],
@@ -91,86 +91,87 @@ test.each([
   ['writer.publish.inside'],
   ['writer.publish.before'],
   ['writer.publish.after'],
-])(
-  'it publishes the live batch once when nixie dies at %s',
-  async (point) => {
-    const ctx = await setupTest();
+])('it publishes the live batch once when nixie dies at %s', async (point) => {
+  const ctx = await setupTest();
 
-    const first = ctx.nixie.harness.start();
+  const first = ctx.nixie.harness.start();
 
-    await first.ready;
+  await first.ready;
 
-    await ctx.nixie.waitForRecord(
-      (record) => record.kind === 'task.step_committed' && record.stepKey === 'memory-writer:1',
-    );
+  await ctx.nixie.waitForRecord(
+    (record) => record.kind === 'task.step_committed' && record.stepKey === 'memory-writer:1',
+  );
 
-    await first.kill();
+  await first.kill();
 
-    const second = ctx.nixie.harness.start([{ point }]);
+  const second = ctx.nixie.harness.start([{ point }]);
 
-    await second.ready;
+  await second.ready;
 
-    ctx.nixie.model.addReplies({ text: 'Noted.' });
+  ctx.nixie.model.addReplies({ text: 'Noted.' });
 
-    const sequence = await second.request('sendMessage', {
-      thread: 'conversation',
-      text: 'I live at 4 Elm Row.',
-    });
+  const sequence = await second.request('sendMessage', {
+    thread: 'conversation',
+    text: 'I live at 4 Elm Row.',
+  });
 
-    const remember = {
-      toolUse: {
-        name: 'mcp__nixie__memory_remember',
-        input: {
-          subject: 'owner',
-          text: 'You live at 4 Elm Row.',
-          quote: '4 Elm Row',
-          sourceID: sequence,
-        },
+  const remember = {
+    toolUse: {
+      name: 'mcp__nixie__memory_remember',
+      input: {
+        subject: 'owner',
+        text: 'You live at 4 Elm Row.',
+        quote: '4 Elm Row',
+        sourceID: sequence,
       },
-    };
+    },
+  };
 
-    ctx.nixie.writerModel.addReplies(remember, { text: 'Staged.' }, remember, { text: 'Staged.' });
+  ctx.nixie.writerModel.addReplies(remember, { text: 'Staged.' }, remember, { text: 'Staged.' });
 
-    await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
+  ctx.nixie.checkerModel.addReplies(
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },
+  );
 
-    // The guest works on real time, so one 5-minute advance reaches the idle trigger before the
-    // session's lease on the clock runs out.
-    await ctx.nixie.advanceUntilArrival(second, point, { stepMs: 300_000, maxSteps: 1 });
-    await second.kill();
+  await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
 
-    const third = ctx.nixie.harness.start();
+  // The guest works on real time, so one 5-minute advance reaches the idle trigger before the
+  // session's lease on the clock runs out.
+  await ctx.nixie.advanceUntilArrival(second, point, { stepMs: 300_000, maxSteps: 1 });
+  await second.kill();
 
-    await third.ready;
+  const third = ctx.nixie.harness.start();
 
-    await ctx.nixie.waitForRecord(
-      (record) => record.kind === 'memory.batch_published' && record.payload['mode'] === 'live',
-    );
+  await third.ready;
 
-    await third.kill();
+  await ctx.nixie.waitForRecord(
+    (record) => record.kind === 'memory.batch_published' && record.payload['mode'] === 'live',
+  );
 
-    const records = await ctx.nixie.readRecords();
-    const items = await ctx.nixie.readRows('memory_items');
-    const oracle = await runOracle(ctx.nixie);
+  await third.kill();
 
-    expect(
-      records
-        .filter(
-          (record) => record.kind === 'memory.batch_published' && record.payload['mode'] === 'live',
-        )
-        .map((record) => record.payload['applied']),
-    ).toStrictEqual([[{ itemID: items[0]?.['item_id'], version: 1 }]]);
+  const records = await ctx.nixie.readRecords();
+  const items = await ctx.nixie.readRows('memory_items');
+  const oracle = await runOracle(ctx.nixie);
 
-    expect(items).toMatchObject([{ state: 'active', version: 1 }]);
+  expect(
+    records
+      .filter(
+        (record) => record.kind === 'memory.batch_published' && record.payload['mode'] === 'live',
+      )
+      .map((record) => record.payload['applied']),
+  ).toStrictEqual([[{ itemID: items[0]?.['item_id'], version: 1 }]]);
 
-    expect(oracle).toStrictEqual({
-      repeatedStepKeys: [],
-      repeatedActions: [],
-      strayCalls: [],
-      heldLeases: [],
-      unreadyTasks: [],
-      changedEndStates: [],
-      projectionDrift: [],
-    });
-  },
-  120_000,
-);
+  expect(items).toMatchObject([{ state: 'active', version: 1 }]);
+
+  expect(oracle).toStrictEqual({
+    repeatedStepKeys: [],
+    repeatedActions: [],
+    strayCalls: [],
+    heldLeases: [],
+    unreadyTasks: [],
+    changedEndStates: [],
+    projectionDrift: [],
+  });
+});

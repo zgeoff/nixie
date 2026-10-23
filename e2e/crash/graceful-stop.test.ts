@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { waitForCondition } from '@heynixie/testing';
 import { runOracle } from '../test-utils/run-oracle';
-import { startTestNixie } from '../test-utils/start-test-nixie';
+import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   return { nixie };
 }
@@ -42,7 +42,7 @@ test('it commits a step that finishes inside the grace window once, and claims n
 
   expect(
     records
-      .filter((record) => record.kind === 'task.step_committed')
+      .filter((record) => record.kind === 'task.step_committed' && record.thread === 'conversation')
       .map((record) => record.stepKey),
   ).toStrictEqual(['conversation:1']);
 
@@ -59,7 +59,7 @@ test('it commits a step that finishes inside the grace window once, and claims n
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it stops with a step still running at the deadline, which the restart recovers as after a crash', async () => {
   const ctx = await setupTest();
@@ -103,13 +103,15 @@ test('it stops with a step still running at the deadline, which the restart reco
 
   expect(
     records
-      .filter((record) =>
-        [
-          'task.step_started',
-          'task.lease_expired',
-          'task.step_interrupted',
-          'task.step_committed',
-        ].includes(record.kind),
+      .filter(
+        (record) =>
+          record.thread === 'conversation' &&
+          [
+            'task.step_started',
+            'task.lease_expired',
+            'task.step_interrupted',
+            'task.step_committed',
+          ].includes(record.kind),
       )
       .map((record) => record.kind),
   ).toStrictEqual([
@@ -131,4 +133,4 @@ test('it stops with a step still running at the deadline, which the restart reco
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});

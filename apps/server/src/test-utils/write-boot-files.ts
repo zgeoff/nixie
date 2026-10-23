@@ -21,6 +21,8 @@ export interface BootFileExtras {
   readonly logLevel?: LogLevel;
 
   readonly sandboxAdapter?: 'imp' | 'test';
+
+  readonly roleModelURLs?: Readonly<Partial<Record<'memory-writer' | 'checker', string>>>;
 }
 
 export async function writeBootFiles(
@@ -38,7 +40,7 @@ export async function writeBootFiles(
   await writeStubSops(join(directory, 'sops'));
 
   await writeConfig(directory, [
-    ...buildConfigLines(directory, modelURL, extras.logLevel),
+    ...buildConfigLines(directory, modelURL, extras),
     ...(extras.definitions ?? []).map((line) => `  ${line}`),
     'sandbox:',
     `  adapter: ${extras.sandboxAdapter ?? 'test'}`,
@@ -99,15 +101,17 @@ async function writeConfig(directory: string, lines: readonly string[]): Promise
 function buildConfigLines(
   directory: string,
   modelURL: string,
-  logLevel: LogLevel | undefined,
+  extras: BootFileExtras,
 ): readonly string[] {
+  const roleModels = Object.entries(extras.roleModelURLs ?? {});
+
   return [
     'server:',
     `  data_dir: ${join(directory, 'data')}`,
     '  hostname: 127.0.0.1',
     '  port: 0',
     `  secrets_file: ${join(directory, 'secrets.yaml')}`,
-    ...(logLevel === undefined ? [] : [`  log_level: ${logLevel}`]),
+    ...(extras.logLevel === undefined ? [] : [`  log_level: ${extras.logLevel}`]),
     'models:',
     '  profiles:',
     '    scripted:',
@@ -116,8 +120,17 @@ function buildConfigLines(
     '      auth_header: x-api-key',
     '      model: claude-test-1',
     '      effort: low',
+    ...roleModels.flatMap(([role, url]) => [
+      `    scripted-${role}:`,
+      `      base_url: ${url}`,
+      '      credential: deployment:scripted',
+      '      auth_header: x-api-key',
+      '      model: claude-test-1',
+      '      effort: low',
+    ]),
     '  roles:',
     '    conversation: scripted',
+    ...roleModels.map(([role]) => `    ${role}: scripted-${role}`),
     'imp:',
     '  url: http://127.0.0.1:7070',
     'definitions:',

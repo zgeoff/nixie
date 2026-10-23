@@ -1,10 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { createTestClient } from './test-utils/create-test-client';
 import { readStepEvents } from './test-utils/read-step-events';
-import { startTestNixie } from './test-utils/start-test-nixie';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   const stopping = new AbortController();
 
@@ -25,8 +25,8 @@ test('it streams a tool call and its result within a second of nixie recording t
     { signal: ctx.signal },
   );
 
-  ctx.model.addReplies(
-    { toolUse: { name: 'mcp__nixie__time_now', input: {} } },
+  ctx.guest.addReplies(
+    { toolUse: { name: 'time.now', input: {} } },
     { text: 'It is ten to six in Oslo.' },
   );
 
@@ -44,4 +44,4 @@ test('it streams a tool call and its result within a second of nixie recording t
     { kind: 'tool_called', lagMs: expect.toBeWithin(0, 1000) },
     { kind: 'tool_result', lagMs: expect.toBeWithin(0, 1000) },
   ]);
-}, 60_000);
+});

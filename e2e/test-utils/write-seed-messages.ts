@@ -1,10 +1,10 @@
 import { writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
-import { startTestLog } from '../nixie/start-test-log';
-import type { TestNixie } from './start-test-nixie';
+import type { SpawnedNixie } from './start-spawned-nixie';
+import { startTestLog } from './start-test-log';
 
 export async function writeSeedMessages(
-  nixie: Pick<TestNixie, 'dataDir' | 'deploymentKey'>,
+  nixie: Pick<SpawnedNixie, 'dataDir' | 'deploymentKey'>,
   texts: readonly string[],
 ): Promise<readonly number[]> {
   const testLog = await startTestLog({
@@ -20,7 +20,7 @@ export async function writeSeedMessages(
         kind: 'owner_message',
         definitions: { snapshotHash: 'sha256:test' },
         thread: 'conversation',
-        erasable: { text },
+        erasable: { text, spans: [{ start: 0, end: text.length, source: 'typed' }] },
       })),
     );
 

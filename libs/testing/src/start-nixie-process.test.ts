@@ -67,6 +67,40 @@ test('it starts nixie on the clock time it is given', async () => {
   expect(now).toBe(1_000_000);
 });
 
+test('it starts nixie with the arguments it is given', async () => {
+  const ctx = setupTest();
+
+  const nixie = startNixieProcess({
+    entry: ctx.entry,
+    args: ['serve', '--config', 'nixie.yaml'],
+    env: {},
+    clockMs: 0,
+  });
+
+  onTestFinished(() => nixie.kill());
+
+  await nixie.ready;
+
+  const args = await nixie.request('readArgs', null);
+
+  expect(args).toStrictEqual(['serve', '--config', 'nixie.yaml']);
+});
+
+test('it collects what nixie writes to stdout', async () => {
+  const ctx = setupTest();
+  const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 0 });
+
+  onTestFinished(() => nixie.kill());
+
+  await nixie.ready;
+
+  await nixie.request('print', 'the stub is listening');
+
+  await waitForCondition(() => nixie.readStdout().includes('the stub is listening'));
+
+  expect(nixie.readStdout()).toBe('the stub is listening\n');
+});
+
 test('it reports an arrival at an armed fault point and lets the runner go on release', async () => {
   const ctx = setupTest();
 

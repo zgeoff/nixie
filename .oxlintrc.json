@@ -97,7 +97,7 @@
     },
     {
       // the rule knows only the browser suffix, so it looks for a module named after the
-      // .sdk suffix that puts an Agent SDK suite in its own lane
+      // .sdk suffix that puts a suite in its own lane
       "files": ["**/*.sdk.test.ts"],
       "rules": {
         "zgeoff/test-beside-module": "off"

@@ -75,7 +75,7 @@ test('it prints the pending diff, approves one change alone and rejects another'
     { changeID: second.changeID },
     null,
   ]);
-}, 60_000);
+});
 
 test('it prints the comment the conversation left through memory.comment beside its change', async () => {
   const ctx = await setupTest();
@@ -142,7 +142,7 @@ test('it prints the comment the conversation left through memory.comment beside 
       },
     ],
   });
-}, 60_000);
+});
 
 test('it prints the summary of a conflict beside the changes of its diff', async () => {
   const ctx = await setupTest();
@@ -182,7 +182,7 @@ test('it prints the summary of a conflict beside the changes of its diff', async
     changes: [{ changeID: diff.changes[0]?.changeID }],
     summary: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
   });
-}, 60_000);
+});
 
 test('it prints the summary alone when the run proposed no change', async () => {
   const ctx = await setupTest();
@@ -223,7 +223,7 @@ test('it prints the summary alone when the run proposed no change', async () => 
     changes: [],
     summary: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
   });
-}, 60_000);
+});
 
 test('it approves the whole diff when it names every change', async () => {
   const ctx = await setupTest();
@@ -262,7 +262,7 @@ test('it approves the whole diff when it names every change', async () => {
   expect(JSON.parse(run.stdout)).toMatchObject({
     outcomes: [{ status: 'applied' }, { status: 'applied' }],
   });
-}, 60_000);
+});
 
 test.each([
   [['memory-diff-approve'], 'nixie memory-diff-approve takes one or more <changeID>=<actionHash>'],

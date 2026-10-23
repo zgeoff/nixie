@@ -16,7 +16,7 @@ test('it exits 0 and writes the server and its SQLite worker', async () => {
 
   const build = Bun.spawnSync([
     process.execPath,
-    join(import.meta.dir, 'run-release-build.ts'),
+    join(import.meta.dir, '../apps/server/src/run-release-build.ts'),
     ctx.outdir,
   ]);
 
@@ -25,4 +25,4 @@ test('it exits 0 and writes the server and its SQLite worker', async () => {
   expect(build.stdout.toString()).toBe(
     'the release bundle holds main.js, sqlite-worker.js, with no test-build ID\n',
   );
-}, 60_000);
+});
