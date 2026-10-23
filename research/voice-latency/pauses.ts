@@ -5,20 +5,13 @@
 import { appendFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { callerDir, lines } from './caller.ts';
+import { classifyUtterance } from './classify-utterance.ts';
 import { realSpeechDir } from './real-speech.ts';
-import { createVad, sampleRate } from './speech.ts';
+import { createVad } from './speech.ts';
 
 const out = readFlag('--out') ?? 'results/pauses.jsonl';
 const set = readFlag('--set') ?? 'real';
 const pauses = (readFlag('--pauses') ?? '300,400,500').split(',').map(Number);
-// The detector needs silence after the last word to close the final segment.
-const tailSamples = sampleRate * 1.5;
-const windowSamples = 512;
-
-function readFlag(name: string): string | undefined {
-  const index = process.argv.indexOf(name);
-  return index === -1 ? undefined : process.argv[index + 1];
-}
 
 mkdirSync(dirname(out), { recursive: true });
 const dir = set === 'caller' ? callerDir : realSpeechDir;
@@ -33,32 +26,18 @@ for (const silenceMs of pauses) {
   for (let index = 0; index < count; index++) {
     const meta = (await Bun.file(join(dir, `${index}.json`)).json()) as { text: string };
     const speech = new Float32Array(await Bun.file(join(dir, `${index}.f32`)).arrayBuffer());
-    const audio = new Float32Array(speech.length + tailSamples);
-    audio.set(speech);
-    vad.reset();
-    for (let offset = 0; offset < audio.length; offset += windowSamples) {
-      vad.accept(audio.subarray(offset, offset + windowSamples));
-    }
-    const segments = vad.readSegments();
-    const gapsMs = segments
-      .slice(1)
-      .map((segment, at) => ((segment.start - (segments[at]?.end ?? 0)) * 1000) / sampleRate);
-    const first = segments[0];
-    const last = segments.at(-1);
-    if (first && last && segments.length > 1) {
+    const utterance = classifyUtterance(vad, speech);
+    if (utterance.cutOff) {
       cutBy.get(silenceMs)?.add(index);
-      // How much of the utterance, from its first speech to its last, came before the turn ended.
-      heardShares.get(silenceMs)?.push((first.end - first.start) / (last.end - first.start));
+    }
+    if (utterance.heardShare !== undefined) {
+      heardShares.get(silenceMs)?.push(utterance.heardShare);
     }
     appendFileSync(
       out,
       `${JSON.stringify({
-        cutOff: segments.length > 1,
-        firstEndMs: first ? (first.end * 1000) / sampleRate : undefined,
-        gapsMs: gapsMs.map(Math.round),
+        ...utterance,
         index,
-        lastEndMs: last ? (last.end * 1000) / sampleRate : undefined,
-        segments: segments.length,
         set,
         silenceMs,
         text: meta.text,

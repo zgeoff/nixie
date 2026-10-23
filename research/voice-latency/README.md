@@ -99,7 +99,8 @@ bun report.ts results/stages.jsonl results/calls.jsonl
 
 `--silence-ms` sets the pause that ends a turn, and `--barge-in-after-ms` sets when the barge-in
 starts. `--warm-long` speaks one long sentence before the first turn. `bun test` checks how the
-report counts a failed turn. Git ignores `models/` and `results/`.
+report counts a failed turn, and how the pause test classifies a recorded sentence from the models
+that `models.sh` downloads. Git ignores `models/` and `results/`.
 
 The pause test fetches real utterances from the AMI meeting corpus and plays them through the
 detector at each pause:
