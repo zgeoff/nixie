@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -253,6 +253,52 @@ test('it marks an approval whose files your definitions already hold as yours, w
   expect(states.rows).toStrictEqual([
     { state: 'adopted', definitions_hash: skill.skillHash, definitions_origin: 'definitions' },
   ]);
+});
+
+test('it keeps the prompt overrides in force and builds the policy from them when it adds a written skill', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    join(ctx.root, 'nixie.yaml'),
+    'format: 3\nprompts:\n  content-checker:\n    safety: prompts/checker-safety.md\n',
+  );
+
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'prompts'));
+  await writeFile(join(ctx.root, 'prompts', 'checker-safety.md'), 'Refuse a guessed fact.\n');
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const skill = checkSkillFiles('tide-tables', [
+    { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
+  ]);
+
+  invariant('skillHash' in skill);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeWrittenSkill(tx, {
+      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
+      proposalID: 'k3vq8m2xpa',
+      skill,
+      approvedAt: 1,
+    }),
+  );
+
+  const buildPolicy = mock(() => ({ rules: [], tools: [] }));
+
+  const result = await runWrittenSkillSeed({ log: ctx.log, buildPolicy });
+
+  expect(buildPolicy).toHaveBeenCalledExactlyOnceWith({
+    'content-checker': { parts: { safety: 'Refuse a guessed fact.' }, template: null },
+  });
+
+  expect(result.inForce?.prompts).toStrictEqual({
+    'content-checker': { parts: { safety: 'Refuse a guessed fact.' }, template: null },
+  });
 });
 
 test('it refuses before the first seed', async () => {
