@@ -84,7 +84,8 @@ HTTP 403 with the text `the client header is missing`. The commands below use `c
    - `owner_message`, whose text is the message you sent.
    - `task.step_started`, as the conversation's step takes the message.
    - `model.reply`, one for each model message with text. The last one holds nixie's reply.
-   - `model.turn_ended`, with the turn's usage and context.
+   - `model.turn_ended`, whose `context` holds the context size and window when the turn reported
+     them.
    - `task.step_committed`.
 
    The records between them include the memory recall and a `tool_called` and `tool_result` pair for
