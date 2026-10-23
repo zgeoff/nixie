@@ -22,6 +22,8 @@ export interface WriterParts {
   readonly ownerName: string | null;
 
   readonly assistantName: string | null;
+
+  readonly defaultZone: string;
 }
 
 export interface WriterStepState {

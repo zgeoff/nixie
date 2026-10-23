@@ -17,6 +17,7 @@ test('it builds a readable retired item at version 2 that destroys nothing beyon
     status: 'readable',
     subject: 'owner',
     text: expect.toBeString(),
+    until: null,
     version: 2,
   });
 });

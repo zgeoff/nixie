@@ -10,6 +10,8 @@ export interface BatchMessage {
 
   readonly shown: string;
   readonly recordedAt: number;
+
+  readonly timeZone: string | null;
 }
 
 export interface SourceSpan {
@@ -22,6 +24,9 @@ export interface SourceMessage {
   readonly sequence: number;
   readonly text: string;
   readonly spans: readonly SourceSpan[];
+  readonly sentAt: number;
+
+  readonly timeZone: string | null;
 }
 
 export type WriterSubject = Exclude<MemorySubject, 'self'>;
@@ -34,6 +39,8 @@ export type StagedWrite =
       readonly quote: string;
       readonly sourceSequence: number;
       readonly target: VersionRef | null;
+
+      readonly until?: number | null;
     }
   | {
       readonly op: 'retire';

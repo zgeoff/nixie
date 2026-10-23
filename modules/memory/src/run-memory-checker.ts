@@ -1,11 +1,11 @@
 import type { JSONObject } from '@heynixie/log';
+import { renderPrompt } from '@heynixie/prompts';
 import type { CheckerAnswer } from '@heynixie/sessions';
 import { buildGateReview } from './build-gate-review';
 import type { ContentGateRequest, ContentGateResult } from './gate-types';
 import { pickCheckerReviewReason } from './pick-checker-review-reason';
 import type { QuoteEvidenceResult } from './read-quote-evidence';
 import { renderCheckerInput } from './render-checker-input';
-import { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';
 import type { MemoryContext } from './types';
 
 export type FoundEvidence = Extract<QuoteEvidenceResult, { readonly status: 'found' }>;
@@ -16,11 +16,13 @@ export async function runMemoryChecker(
   found: FoundEvidence,
 ): Promise<ContentGateResult> {
   const answer = await context.gate.check({
-    prompt: renderMemoryCheckerPrompt(context.gate.ownerName),
-    input: renderCheckerInput(found.message, found.evidence, {
-      kind: 'candidate_memory',
-      text: request.text,
-    }),
+    prompt: renderPrompt('content-checker', { owner: { name: context.gate.ownerName } }),
+    input: renderCheckerInput(
+      found.message,
+      found.evidence,
+      { kind: 'candidate_memory', text: request.text, until: request.until },
+      context.gate.defaultZone,
+    ),
   });
 
   const checks = { quote: 'pass', tokens: 'pass', checker: toCheckerJSON(answer) };

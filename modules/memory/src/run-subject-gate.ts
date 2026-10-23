@@ -11,6 +11,8 @@ import type { MemorySubject, MemoryTables, StoreParts } from './types';
 export interface SubjectGateResult {
   readonly gate: ContentGateResult;
   readonly subject: MemorySubject;
+
+  readonly until: number | null;
 }
 
 export async function runSubjectGate(
@@ -38,6 +40,7 @@ export async function runSubjectGate(
   return {
     gate: image === undefined ? gate : { ...gate, checks: { ...gate.checks, image: { ...image } } },
     subject,
+    until: request.until === undefined ? (item?.until ?? null) : request.until,
   };
 }
 
@@ -58,6 +61,7 @@ function runGateOfSubject(
     eventID: request.eventID ?? null,
     isPinned: false,
     thread: request.caller.thread,
+    until: request.until ?? null,
   };
 
   if (request.image !== undefined) {

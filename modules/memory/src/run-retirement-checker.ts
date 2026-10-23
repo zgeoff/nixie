@@ -1,8 +1,8 @@
+import { renderPrompt } from '@heynixie/prompts';
 import { buildGateReview } from './build-gate-review';
 import type { ContentGateResult } from './gate-types';
 import { pickCheckerReviewReason } from './pick-checker-review-reason';
 import { renderCheckerInput } from './render-checker-input';
-import { retirementCheckerPrompt } from './retirement-checker-prompt';
 import type { FoundEvidence } from './run-memory-checker';
 import type { MemoryContext } from './types';
 
@@ -12,11 +12,17 @@ export async function runRetirementChecker(
   found: FoundEvidence,
 ): Promise<ContentGateResult> {
   const answer = await context.gate.check({
-    prompt: retirementCheckerPrompt,
-    input: renderCheckerInput(found.message, found.evidence, {
-      kind: 'item_to_retire',
-      text: itemText,
-    }),
+    prompt: renderPrompt('retirement-checker', {}),
+    input: renderCheckerInput(
+      found.message,
+      found.evidence,
+      {
+        kind: 'item_to_retire',
+        text: itemText,
+        until: null,
+      },
+      context.gate.defaultZone,
+    ),
   });
 
   const checks = {

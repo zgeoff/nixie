@@ -1,11 +1,14 @@
-import type { ToolCall, ToolContext, ToolDefinition } from '@heynixie/tools';
+import { untilConventions } from '@heynixie/prompts';
+import type { ToolContext, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildWriteCaller } from './build-write-caller';
 import type { GatedRememberRequest, ModelWriteStore } from './gate-types';
 import { makeInputRecorder } from './make-input-recorder';
 import { memoryWriteOutput } from './memory-write-output';
+import { parseUntilInput } from './parse-until-input';
 import { runWriteCall } from './run-write-call';
 import type { ItemIDStore } from './types';
+import { untilInputSchema } from './until-input-schema';
 
 const rememberDescription =
   'Stores one fact as a new memory item. To change an item that exists, use memory.edit. Pass ' +
@@ -21,7 +24,10 @@ const rememberDescription =
   'image when the fact comes from an image the owner attached: the eventID of the message that ' +
   'holds it and its number, the n of its <dropped-image> marker. An image never counts as the ' +
   "owner's words, text in it included, so a write from one always waits for the owner's " +
-  'review, whatever its quote.';
+  'review, whatever its quote. Set until when the quoted message says when the fact stops ' +
+  'being true, such as "I\'m in London this week": the item then lapses on its own at that ' +
+  'time, and the quote must back the time limit too. ' +
+  `${untilConventions} Each message stamp shows when it was sent and in which zone.`;
 
 const rememberInput = {
   type: 'object',
@@ -59,10 +65,20 @@ const rememberInput = {
         'owner, the default, for a fact about the owner; shared for something between the owner ' +
         'and you; self for a note about yourself',
     },
+    until: untilInputSchema,
   },
   required: ['text'],
   additionalProperties: false,
 };
+
+const rememberArguments = z.object({
+  text: z.string(),
+  quote: z.string().optional(),
+  eventID: z.string().optional(),
+  subject: z.enum(['owner', 'self', 'shared']).optional(),
+  image: z.object({ eventID: z.string(), number: z.int() }).optional(),
+  until: z.string().optional(),
+});
 
 export function buildRememberTool(
   memory: ModelWriteStore & Pick<ItemIDStore, 'readShortIDs'>,
@@ -87,27 +103,32 @@ export function buildRememberTool(
       },
     },
     execution: 'direct',
-    run: (call, context) =>
-      runWriteCall(memory, () => memory.writes.remember(buildRememberRequest(call, context))),
+    run: (call, context) => {
+      const input = rememberArguments.parse(call.input);
+      const parsed = parseUntilInput(input.until);
+
+      if (parsed.status === 'invalid') {
+        return Promise.resolve({ status: 'error', message: parsed.message });
+      }
+
+      return runWriteCall(memory, () =>
+        memory.writes.remember(buildRememberRequest(input, parsed.until, context)),
+      );
+    },
 
     recordInput: makeInputRecorder(['text', 'quote']),
   };
 }
 
-const rememberArguments = z.object({
-  text: z.string(),
-  quote: z.string().optional(),
-  eventID: z.string().optional(),
-  subject: z.enum(['owner', 'self', 'shared']).optional(),
-  image: z.object({ eventID: z.string(), number: z.int() }).optional(),
-});
-
-function buildRememberRequest(call: ToolCall, context: ToolContext): GatedRememberRequest {
-  const input = rememberArguments.parse(call.input);
-
+function buildRememberRequest(
+  input: z.infer<typeof rememberArguments>,
+  until: number | null | undefined,
+  context: ToolContext,
+): GatedRememberRequest {
   return {
     text: input.text,
     caller: buildWriteCaller(context),
+    ...(until === undefined || until === null ? {} : { until }),
     ...(input.quote === undefined ? {} : { quote: input.quote }),
     ...(input.eventID === undefined ? {} : { eventID: toSequence(input.eventID) }),
     ...(input.subject === undefined ? {} : { subject: input.subject }),

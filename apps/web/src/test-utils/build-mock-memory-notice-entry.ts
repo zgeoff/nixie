@@ -37,6 +37,7 @@ export function buildMockMemoryNoticeEntry(overrides: EntryOverrides = {}): Memo
             status: 'readable',
             subject: 'owner',
             text: faker.lorem.sentence(),
+            until: null,
             version: 1,
             ...overrides.item,
           },

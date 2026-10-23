@@ -54,5 +54,7 @@ function toOwnerMessage(source: SourceMessage): OwnerMessage {
       end: span.end,
       source: spanSources.find((known) => known === span.source) ?? 'unknown',
     })),
+    sentAt: source.sentAt,
+    timeZone: source.timeZone,
   };
 }

@@ -9,6 +9,8 @@ export interface ContentGateRequest {
   readonly eventID: number | null;
   readonly isPinned: boolean;
   readonly thread: string;
+
+  readonly until: number | null;
 }
 
 export type ContentGateResult =

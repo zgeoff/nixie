@@ -7,6 +7,7 @@ import { writeMockForget } from '../mocks/write-mock-forget';
 import { writeMockMemoryChange } from '../mocks/write-mock-memory-change';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
+import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { MemoryProposals } from './memory-proposals';
 import { RecordItem } from './record-item';
 
@@ -45,6 +46,25 @@ test('it lists a pending proposal with why it waits for review, its quote inside
   expect(card).toHaveTextContent(
     '“I will take up the oboe” from your message “I think I will take up the oboe”',
   );
+});
+
+test('it shows the end date that a proposal sets on its item, in your time zone', async () => {
+  await createDeviceSession();
+
+  setupBrowserTimeZone('Europe/London');
+
+  await store.memoryProposals.create({
+    origin: 'memory_writer',
+    reason: 'checker_not_asserted',
+    text: 'Is in Lisbon this week',
+    until: new Date('2026-10-25T23:59:59Z'),
+  });
+
+  const rendered = render(<MemoryProposals />);
+
+  const card = await rendered.findByRole('listitem', { name: 'Is in Lisbon this week' });
+
+  expect(card).toHaveTextContent('Lasts until Oct 25, 2026');
 });
 
 test('it marks a self-note proposal with a self-note badge and why it waits for review', async () => {

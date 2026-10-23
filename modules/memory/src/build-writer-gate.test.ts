@@ -39,6 +39,8 @@ test('it applies a staged memory with the message it cites as its evidence, outs
       sequence,
       text: 'By the way, I take my coffee black',
       spans: [{ start: 0, end: 34, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -92,6 +94,8 @@ test('it drops a staged edit of a self-note, though the checker would assert it'
       sequence,
       text: 'You like short answers in the evening too',
       spans: [{ start: 0, end: 41, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -124,6 +128,8 @@ test('it gives the checker the message a staged memory cites, with its quote mar
       sequence,
       text: 'By the way, I take my coffee black',
       spans: [{ start: 0, end: 34, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -131,6 +137,7 @@ test('it gives the checker the message a staged memory cites, with its quote mar
   expect(check).toHaveBeenCalledExactlyOnceWith({
     prompt: expect.toBeString(),
     input:
+      '<sent>Mon 19 Oct 2026, 09:00, UTC (UTC+00:00)</sent>\n\n' +
       '<owner_message>\nBy the way, «evidence»I take my coffee black«/evidence»\n</owner_message>\n\n' +
       '<candidate_memory>\nTakes coffee black\n</candidate_memory>',
   });
@@ -166,6 +173,8 @@ test('it proposes a staged memory whose quote lies in a pasted span, with the ba
         { start: 0, end: 14, source: 'typed' },
         { start: 14, end: 54, source: 'pasted' },
       ],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 3, end: sequence }, model: 'claude-writer-1' },
   );
@@ -214,6 +223,8 @@ test('it proposes a staged memory with a destination its quote lacks', async () 
       sequence,
       text: 'My new email is on the card',
       spans: [{ start: 0, end: 27, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -245,6 +256,8 @@ test('it proposes a staged memory the checker does not assert', async () => {
       sequence,
       text: 'Maybe I am the king of Leeds',
       spans: [{ start: 0, end: 28, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -288,7 +301,13 @@ test('it proposes a staged memory whose message backed a forgotten item', async 
       sourceSequence: sequence,
       target: null,
     },
-    { sequence, text: 'I take my coffee black', spans: [{ start: 0, end: 22, source: 'typed' }] },
+    {
+      sequence,
+      text: 'I take my coffee black',
+      spans: [{ start: 0, end: 22, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
+    },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
 
@@ -320,6 +339,8 @@ test('it applies a staged retirement the checker confirms against the item text'
       sequence,
       text: 'I moved out of Elm Street last week',
       spans: [{ start: 0, end: 35, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -339,6 +360,7 @@ test('it applies a staged retirement the checker confirms against the item text'
   expect(check).toHaveBeenCalledExactlyOnceWith({
     prompt: expect.toStartWith('You check one request to retire'),
     input:
+      '<sent>Mon 19 Oct 2026, 09:00, UTC (UTC+00:00)</sent>\n\n' +
       '<owner_message>\n«evidence»I moved out of Elm Street«/evidence» last week\n</owner_message>\n\n' +
       '<item_to_retire>\nLives on Elm Street\n</item_to_retire>',
   });
@@ -370,6 +392,8 @@ test('it refuses a staged retirement of an item that moved on since the session 
       sequence,
       text: 'I moved out of Elm Street last week',
       spans: [{ start: 0, end: 35, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -414,6 +438,8 @@ test('it refuses a staged edit of an item that moved on since the session read i
       sequence,
       text: 'I moved to 9 Pine Road last week',
       spans: [{ start: 0, end: 32, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -457,6 +483,8 @@ test('it refuses a staged edit with an invisible character of an item that moved
       sequence,
       text: 'I moved to 9 Pine Road last week',
       spans: [{ start: 0, end: 32, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -488,6 +516,8 @@ test('it removes the key of a new item whose proposal never published', async ()
       sequence,
       text: 'Maybe I am the king of Leeds',
       spans: [{ start: 0, end: 28, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -532,6 +562,8 @@ test('it never removes the key of a proposal that published', async () => {
       sequence,
       text: 'Maybe I am the king of Leeds',
       spans: [{ start: 0, end: 28, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -586,6 +618,8 @@ test('it proposes an edit of a pinned item that every check passes, because the 
       sequence,
       text: 'Call me Samantha from now on',
       spans: [{ start: 0, end: 28, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );
@@ -619,6 +653,8 @@ test('it removes the key of a new item whose proposal record could not be built'
       sequence,
       text: 'Maybe I am the king of Leeds',
       spans: [{ start: 0, end: 28, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
     },
     { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
   );

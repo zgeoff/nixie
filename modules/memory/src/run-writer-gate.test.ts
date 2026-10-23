@@ -37,7 +37,13 @@ test('it releases the verdicts it gathered when a later check throws', async () 
       },
     ],
     {
-      findSource: (sequence) => ({ sequence, text: 'I live in Oslo and I play cello', spans: [] }),
+      findSource: (sequence) => ({
+        sequence,
+        text: 'I live in Oslo and I play cello',
+        spans: [],
+        sentAt: Date.parse('2026-10-19T09:00:00Z'),
+        timeZone: null,
+      }),
       isShownText: () => false,
       batch: { bounds: { start: 0, end: 5 }, model: 'claude-writer-1' },
     },
@@ -65,7 +71,13 @@ test('it skips a write that repeats the text of an item the session was shown', 
       },
     ],
     {
-      findSource: (sequence) => ({ sequence, text: 'I live in Oslo', spans: [] }),
+      findSource: (sequence) => ({
+        sequence,
+        text: 'I live in Oslo',
+        spans: [],
+        sentAt: Date.parse('2026-10-19T09:00:00Z'),
+        timeZone: null,
+      }),
       isShownText: (text) => text === 'Lives in Oslo',
       batch: { bounds: { start: 0, end: 4 }, model: 'claude-writer-1' },
     },
@@ -74,6 +86,47 @@ test('it skips a write that repeats the text of an item the session was shown', 
   expect(gated).toStrictEqual([]);
   expect(check).not.toHaveBeenCalled();
 });
+
+test.each([
+  ['a new end time', Date.parse('2026-10-25T23:59:59Z')],
+  ['a cleared end time', null],
+])(
+  'it gates an edit that keeps the text of an item the session was shown and sets %s',
+  async (_, until) => {
+    const verdict: GateVerdict = {
+      outcome: 'propose',
+      reason: 'checker_unsure',
+      records: [],
+      plan: null,
+    };
+
+    const check = mock(() => Promise.resolve(verdict));
+
+    const write = {
+      op: 'remember' as const,
+      subject: 'owner' as const,
+      text: 'Works from the Lisbon office',
+      quote: 'I work from the Lisbon office',
+      sourceSequence: 4,
+      target: { itemID: 'item-1', version: 1 },
+      until,
+    };
+
+    const gated = await runWriterGate({ check, release: () => Promise.resolve() }, [write], {
+      findSource: (sequence) => ({
+        sequence,
+        text: 'I work from the Lisbon office',
+        spans: [],
+        sentAt: Date.parse('2026-10-19T09:00:00Z'),
+        timeZone: null,
+      }),
+      isShownText: (text) => text === 'Works from the Lisbon office',
+      batch: { bounds: { start: 0, end: 4 }, model: 'claude-writer-1' },
+    });
+
+    expect(gated).toStrictEqual([{ write, verdict }]);
+  },
+);
 
 test('it leaves out a write that the gate drops', async () => {
   const check = mock(() => Promise.resolve(null));
@@ -91,7 +144,13 @@ test('it leaves out a write that the gate drops', async () => {
       },
     ],
     {
-      findSource: (sequence) => ({ sequence, text: 'You like short answers', spans: [] }),
+      findSource: (sequence) => ({
+        sequence,
+        text: 'You like short answers',
+        spans: [],
+        sentAt: Date.parse('2026-10-19T09:00:00Z'),
+        timeZone: null,
+      }),
       isShownText: () => false,
       batch: { bounds: { start: 0, end: 4 }, model: 'claude-writer-1' },
     },

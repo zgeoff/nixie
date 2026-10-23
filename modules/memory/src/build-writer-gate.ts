@@ -32,7 +32,12 @@ export function buildWriterGate(parts: StoreParts): WriterGate {
 
       const proposal = await createBatchProposal(
         parts,
-        { write, review: gate, text: checked.text },
+        {
+          write,
+          review: gate,
+          text: checked.text,
+          ...(checked.until === undefined ? {} : { until: checked.until }),
+        },
         batch,
       );
 
