@@ -1,4 +1,9 @@
-import { WriterLockHeldError, restoreDataBackup, writeDataBackup } from '@heynixie/log';
+import {
+  WriterLockHeldError,
+  localDataStorage,
+  restoreDataBackup,
+  writeDataBackup,
+} from '@heynixie/log';
 import { loadDeploymentConfig } from './load-deployment-config';
 import type { CLIFlags, CLIIO, Command } from './types';
 
@@ -19,6 +24,7 @@ async function runBackup(flags: CLIFlags, io: CLIIO): Promise<number> {
   const config = await loadDeploymentConfig(flags.config);
 
   const backup = await writeDataBackup({
+    storage: localDataStorage,
     dataDir: config.server.dataDir,
     directory: flags.to,
     onCopied: (file) => {
@@ -53,6 +59,7 @@ async function runRestore(flags: CLIFlags, io: CLIIO): Promise<number> {
 
   try {
     const restore = await restoreDataBackup({
+      storage: localDataStorage,
       dataDir: config.server.dataDir,
       directory: flags.from,
     });

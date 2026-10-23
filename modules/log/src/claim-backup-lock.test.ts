@@ -3,6 +3,7 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claimBackupLock } from './claim-backup-lock';
+import { localDataStorage } from './local-data-storage';
 
 async function setupTest() {
   const dataDir = await mkdtemp(join(tmpdir(), 'nixie-backup-lock-'));
@@ -14,14 +15,13 @@ async function setupTest() {
 
 test('it lets two backups share the lock, through a lock file in the data directory', async () => {
   const ctx = await setupTest();
-
-  const first = claimBackupLock(ctx.dataDir, 'shared');
+  const first = await claimBackupLock(localDataStorage, ctx.dataDir, 'shared');
 
   onTestFinished(() => {
     first.release();
   });
 
-  const second = claimBackupLock(ctx.dataDir, 'shared');
+  const second = await claimBackupLock(localDataStorage, ctx.dataDir, 'shared');
 
   onTestFinished(() => {
     second.release();
@@ -34,14 +34,13 @@ test('it lets two backups share the lock, through a lock file in the data direct
 
 test('it refuses a restore while a backup holds the lock', async () => {
   const ctx = await setupTest();
-
-  const backup = claimBackupLock(ctx.dataDir, 'shared');
+  const backup = await claimBackupLock(localDataStorage, ctx.dataDir, 'shared');
 
   onTestFinished(() => {
     backup.release();
   });
 
-  expect(() => claimBackupLock(ctx.dataDir, 'exclusive')).toThrowWithMessage(
+  expect(claimBackupLock(localDataStorage, ctx.dataDir, 'exclusive')).rejects.toThrowWithMessage(
     Error,
     `a backup runs on the data directory ${ctx.dataDir}, so nixie restores nothing`,
   );
@@ -49,14 +48,13 @@ test('it refuses a restore while a backup holds the lock', async () => {
 
 test('it refuses a backup while a restore holds the lock', async () => {
   const ctx = await setupTest();
-
-  const restore = claimBackupLock(ctx.dataDir, 'exclusive');
+  const restore = await claimBackupLock(localDataStorage, ctx.dataDir, 'exclusive');
 
   onTestFinished(() => {
     restore.release();
   });
 
-  expect(() => claimBackupLock(ctx.dataDir, 'shared')).toThrowWithMessage(
+  expect(claimBackupLock(localDataStorage, ctx.dataDir, 'shared')).rejects.toThrowWithMessage(
     Error,
     `a restore runs on the data directory ${ctx.dataDir}, so nixie backs up nothing`,
   );

@@ -1,16 +1,17 @@
-import { copyFile, open, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { DatabaseError, readQueryRows, startDatabase } from '@heynixie/db';
+import { DatabaseError, readQueryRows } from '@heynixie/db';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { claimBackupLock } from './claim-backup-lock';
 import { claimWriterLock } from './claim-writer-lock';
 import type { DataFile } from './data-files';
 import { dataFiles } from './data-files';
+import type { DataStorage } from './data-storage';
 import { getRestoreMarkerPath } from './get-restore-marker-path';
 import { requireDataFiles } from './require-data-files';
 
 export interface DataRestoreOptions {
+  readonly storage: DataStorage;
   readonly dataDir: string;
   readonly directory: string;
 }
@@ -22,20 +23,24 @@ export interface DataRestore {
 // The writer lock refuses the restore while a server runs on the data directory, and keeps a
 // server from starting until the restore ends.
 export async function restoreDataBackup(options: DataRestoreOptions): Promise<DataRestore> {
-  const writerLock = claimWriterLock(options.dataDir);
+  const writerLock = claimWriterLock(options.dataDir, options.storage.claimFileLock);
 
   try {
-    const backupLock = claimBackupLock(options.dataDir, 'exclusive');
+    const backupLock = await claimBackupLock(options.storage, options.dataDir, 'exclusive');
 
     try {
-      await requireDataFiles(options.directory, `the backup in ${options.directory}`);
+      await requireDataFiles(
+        options.storage.files,
+        options.directory,
+        `the backup in ${options.directory}`,
+      );
 
       for (const file of dataFiles) {
-        await requireIntactDatabase(options.directory, file);
+        await requireIntactDatabase(options, file);
       }
 
       await writeStagedFiles(options);
-      await replaceDataFiles(options.dataDir);
+      await replaceDataFiles(options);
 
       return { files: dataFiles };
     } finally {
@@ -46,20 +51,23 @@ export async function restoreDataBackup(options: DataRestoreOptions): Promise<Da
   }
 }
 
-async function requireIntactDatabase(directory: string, file: DataFile): Promise<void> {
-  const problems = await readIntegrityProblems(join(directory, file));
+async function requireIntactDatabase(options: DataRestoreOptions, file: DataFile): Promise<void> {
+  const problems = await readIntegrityProblems(options.storage, join(options.directory, file));
 
   if (problems.length > 0) {
     throw new Error(
-      `the ${file} in ${directory} fails its integrity check: ${problems.join('; ')}`,
+      `the ${file} in ${options.directory} fails its integrity check: ${problems.join('; ')}`,
     );
   }
 }
 
 const integritySchema = z.object({ integrity_check: z.string() });
 
-async function readIntegrityProblems(path: string): Promise<readonly string[]> {
-  const db = startDatabase(path, { readonly: true });
+async function readIntegrityProblems(
+  storage: DataStorage,
+  path: string,
+): Promise<readonly string[]> {
+  const db = storage.startDatabase(path, { readonly: true });
 
   try {
     const rows = await readQueryRows(sql`pragma integrity_check`, db, integritySchema);
@@ -81,52 +89,43 @@ const stagedSuffix = '.restoring';
 // Both copies land on the data directory's own filesystem before either replaces its database, so
 // a full volume or an I/O error stops the restore before it removes anything.
 async function writeStagedFiles(options: DataRestoreOptions): Promise<void> {
+  const files = options.storage.files;
+
   try {
     for (const file of dataFiles) {
       const staged = join(options.dataDir, `${file}${stagedSuffix}`);
 
-      await copyFile(join(options.directory, file), staged);
-      await writePathToDisk(staged);
+      await files.copyFile(join(options.directory, file), staged);
+      await files.writeToDisk(staged);
     }
   } catch (error) {
     await Promise.all(
-      dataFiles.map((file) =>
-        rm(join(options.dataDir, `${file}${stagedSuffix}`), { force: true, recursive: true }),
-      ),
+      dataFiles.map((file) => files.removeFile(join(options.dataDir, `${file}${stagedSuffix}`))),
     );
 
     throw new Error(`nixie cannot stage the backup in ${options.dataDir}`, { cause: error });
   }
 }
 
-async function writePathToDisk(path: string): Promise<void> {
-  const handle = await open(path, 'r');
-
-  try {
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
-}
-
 // The marker reaches the disk before the first database moves and leaves only after the last, so a
 // restore that stops between the two leaves a pair the server refuses to start on. A WAL file left
 // beside a restored database would replay the old database's commits onto it.
-async function replaceDataFiles(dataDir: string): Promise<void> {
-  const marker = getRestoreMarkerPath(dataDir);
+async function replaceDataFiles(options: DataRestoreOptions): Promise<void> {
+  const files = options.storage.files;
+  const marker = getRestoreMarkerPath(options.dataDir);
 
-  await writeFile(marker, '');
-  await writePathToDisk(dataDir);
+  await files.writeFile(marker, '');
+  await files.writeToDisk(options.dataDir);
 
   for (const file of dataFiles) {
-    const path = join(dataDir, file);
+    const path = join(options.dataDir, file);
 
-    await rm(`${path}-wal`, { force: true });
-    await rm(`${path}-shm`, { force: true });
-    await rename(`${path}${stagedSuffix}`, path);
+    await files.removeFile(`${path}-wal`);
+    await files.removeFile(`${path}-shm`);
+    await files.renameFile(`${path}${stagedSuffix}`, path);
   }
 
-  await writePathToDisk(dataDir);
-  await rm(marker);
-  await writePathToDisk(dataDir);
+  await files.writeToDisk(options.dataDir);
+  await files.removeFile(marker);
+  await files.writeToDisk(options.dataDir);
 }

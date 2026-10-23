@@ -6,6 +6,7 @@ import { startDatabase } from '@heynixie/db';
 import { sql } from 'kysely';
 import { claimBackupLock } from './claim-backup-lock';
 import { claimWriterLock } from './claim-writer-lock';
+import { localDataStorage } from './local-data-storage';
 import { restoreDataBackup } from './restore-data-backup';
 
 async function setupTest() {
@@ -46,7 +47,12 @@ test('it replaces nixie.db and keys.db with the backup copies, and removes their
   await sql`insert into record_keys values ('k1')`.execute(backupKeys);
   await backupKeys.destroy();
 
-  const restored = await restoreDataBackup({ dataDir: ctx.dataDir, directory: ctx.directory });
+  const restored = await restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
+
   const files = await readdir(ctx.dataDir);
 
   const log = startDatabase(join(ctx.dataDir, 'nixie.db'), { readonly: true });
@@ -73,13 +79,17 @@ test('it refuses a restore while a backup reads the data directory, and leaves i
   await writeFile(join(ctx.directory, 'nixie.db'), 'a backup log');
   await writeFile(join(ctx.directory, 'keys.db'), 'backup keys');
 
-  const backup = claimBackupLock(ctx.dataDir, 'shared');
+  const backup = await claimBackupLock(localDataStorage, ctx.dataDir, 'shared');
 
   onTestFinished(() => {
     backup.release();
   });
 
-  const restore = restoreDataBackup({ dataDir: ctx.dataDir, directory: ctx.directory });
+  const restore = restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
 
   await restore.catch(() => {});
 
@@ -113,7 +123,11 @@ test('it leaves its restore marker when it stops between the two databases', asy
   await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
   await backupKeys.destroy();
 
-  const restore = restoreDataBackup({ dataDir: ctx.dataDir, directory: ctx.directory });
+  const restore = restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
 
   await restore.catch(() => {});
 
@@ -136,7 +150,11 @@ test('it refuses a restore while a server holds the writer lock, and leaves the 
     lock.release();
   });
 
-  const restore = restoreDataBackup({ dataDir: ctx.dataDir, directory: ctx.directory });
+  const restore = restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
 
   await restore.catch(() => {});
 
@@ -152,7 +170,11 @@ test('it refuses a backup without keys.db', async () => {
   await writeFile(join(ctx.dataDir, 'keys.db'), 'the old keys');
   await writeFile(join(ctx.directory, 'nixie.db'), 'a backup log');
 
-  const restore = restoreDataBackup({ dataDir: ctx.dataDir, directory: ctx.directory });
+  const restore = restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
 
   await restore.catch(() => {});
 
@@ -179,7 +201,11 @@ test('it refuses a backup whose nixie.db is not a database, before it replaces a
   await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
   await backupKeys.destroy();
 
-  const restore = restoreDataBackup({ dataDir: ctx.dataDir, directory: ctx.directory });
+  const restore = restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
 
   await restore.catch(() => {});
 
@@ -215,7 +241,11 @@ test('it removes its staged copies and keeps the old databases when it cannot st
   await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
   await backupKeys.destroy();
 
-  const restore = restoreDataBackup({ dataDir: ctx.dataDir, directory: ctx.directory });
+  const restore = restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
 
   await restore.catch(() => {});
 
@@ -229,4 +259,53 @@ test('it removes its staged copies and keeps the old databases when it cannot st
 
   expect(files).toIncludeSameMembers(['nixie.db', 'backup.lock']);
   expect(log).toBe('the old log');
+});
+
+test('it keeps the old databases when the data volume is full', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dataDir, 'nixie.db'), 'the old log');
+  await writeFile(join(ctx.dataDir, 'keys.db'), 'the old keys');
+
+  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
+
+  onTestFinished(() => backupLog.destroy());
+
+  await sql`create table items (id text primary key)`.execute(backupLog);
+  await backupLog.destroy();
+
+  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
+
+  onTestFinished(() => backupKeys.destroy());
+
+  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
+  await backupKeys.destroy();
+
+  const restore = restoreDataBackup({
+    storage: {
+      ...localDataStorage,
+      files: {
+        ...localDataStorage.files,
+        copyFile: () =>
+          Promise.reject(
+            Object.assign(new Error('ENOSPC: no space left on device, copyfile'), {
+              code: 'ENOSPC',
+            }),
+          ),
+      },
+    },
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
+
+  await restore.catch(() => {});
+
+  const files = await readdir(ctx.dataDir);
+  const log = await Bun.file(join(ctx.dataDir, 'nixie.db')).text();
+  const keys = await Bun.file(join(ctx.dataDir, 'keys.db')).text();
+
+  expect(restore).rejects.toMatchObject({ cause: { code: 'ENOSPC' } });
+  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'backup.lock']);
+  expect(log).toBe('the old log');
+  expect(keys).toBe('the old keys');
 });

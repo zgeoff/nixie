@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { localDataStorage } from './local-data-storage';
 import { requireDataFiles } from './require-data-files';
 
 async function setupTest() {
@@ -18,7 +19,7 @@ test('it accepts a directory that holds nixie.db and keys.db', async () => {
   await writeFile(join(ctx.directory, 'nixie.db'), '');
   await writeFile(join(ctx.directory, 'keys.db'), '');
 
-  await expect(requireDataFiles(ctx.directory, 'the backup')).toResolve();
+  await expect(requireDataFiles(localDataStorage.files, ctx.directory, 'the backup')).toResolve();
 });
 
 test('it names the first data file the directory lacks', async () => {
@@ -26,8 +27,7 @@ test('it names the first data file the directory lacks', async () => {
 
   await writeFile(join(ctx.directory, 'keys.db'), '');
 
-  expect(requireDataFiles(ctx.directory, 'the backup')).rejects.toThrowWithMessage(
-    Error,
-    'the backup holds no nixie.db',
-  );
+  expect(
+    requireDataFiles(localDataStorage.files, ctx.directory, 'the backup'),
+  ).rejects.toThrowWithMessage(Error, 'the backup holds no nixie.db');
 });

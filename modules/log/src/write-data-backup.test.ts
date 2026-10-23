@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import { sql } from 'kysely';
 import { claimBackupLock } from './claim-backup-lock';
+import { localDataStorage } from './local-data-storage';
 import { writeDataBackup } from './write-data-backup';
 
 async function setupTest() {
@@ -46,6 +47,7 @@ test('it copies nixie.db and keys.db alone, with the rows still in a live writer
   const onCopied = mock<(file: string) => void>();
 
   const backup = await writeDataBackup({
+    storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
     onCopied,
@@ -84,6 +86,7 @@ test('it copies again when nixie forgets an item and removes its key between the
 
   // A delete that finds no row commits nothing, so only the first call changes keys.db.
   const backup = await writeDataBackup({
+    storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
     onCopied: async () => {
@@ -123,6 +126,7 @@ test('it fails the backup when nixie writes keys.db during each of 5 copies', as
   );
 
   const backup = writeDataBackup({
+    storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
     onCopied: async () => {
@@ -144,6 +148,7 @@ test('it refuses a data directory without keys.db, and copies nothing', async ()
   await rm(join(ctx.dataDir, 'keys.db'), { force: true });
 
   const backup = writeDataBackup({
+    storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
     onCopied: () => {},
@@ -169,6 +174,7 @@ test('it refuses a directory that is not empty, and leaves its files alone', asy
   await writeFile(join(ctx.directory, 'nixie.db'), 'an earlier copy');
 
   const backup = writeDataBackup({
+    storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
     onCopied: () => {},
@@ -192,13 +198,14 @@ test('it refuses a backup while a restore replaces the databases, and copies not
   await sql`create table items (id text primary key)`.execute(ctx.log);
   await sql`create table record_keys (key_id text primary key)`.execute(ctx.keys);
 
-  const restore = claimBackupLock(ctx.dataDir, 'exclusive');
+  const restore = await claimBackupLock(localDataStorage, ctx.dataDir, 'exclusive');
 
   onTestFinished(() => {
     restore.release();
   });
 
   const backup = writeDataBackup({
+    storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
     onCopied: () => {},
@@ -223,6 +230,7 @@ test('it refuses a data directory whose restore stopped before it finished, and 
   await writeFile(join(ctx.dataDir, 'restore-incomplete'), '');
 
   const backup = writeDataBackup({
+    storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
     onCopied: () => {},

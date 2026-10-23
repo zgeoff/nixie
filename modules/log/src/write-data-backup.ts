@@ -1,6 +1,5 @@
-import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createDatabaseCopy, readQueryRows, startDatabase } from '@heynixie/db';
+import { readQueryRows } from '@heynixie/db';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -8,10 +7,12 @@ import { z } from 'zod';
 import { claimBackupLock } from './claim-backup-lock';
 import type { DataFile } from './data-files';
 import { dataFiles } from './data-files';
+import type { DataStorage } from './data-storage';
 import { getRestoreMarkerPath } from './get-restore-marker-path';
 import { requireDataFiles } from './require-data-files';
 
 export interface DataBackupOptions {
+  readonly storage: DataStorage;
   readonly dataDir: string;
   readonly directory: string;
   readonly onCopied: (file: DataFile) => Promise<void> | void;
@@ -25,13 +26,17 @@ export interface DataBackup {
 const maxAttempts = 5;
 
 export async function writeDataBackup(options: DataBackupOptions): Promise<DataBackup> {
-  await requireDataFiles(options.dataDir, `the data directory ${options.dataDir}`);
+  await requireDataFiles(
+    options.storage.files,
+    options.dataDir,
+    `the data directory ${options.dataDir}`,
+  );
 
-  const lock = claimBackupLock(options.dataDir, 'shared');
+  const lock = await claimBackupLock(options.storage, options.dataDir, 'shared');
 
   try {
-    await requireFinishedRestore(options.dataDir);
-    await createEmptyDirectory(options.directory);
+    await requireFinishedRestore(options);
+    await createEmptyDirectory(options);
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const consistent = await writeCopies(options);
@@ -47,23 +52,25 @@ export async function writeDataBackup(options: DataBackupOptions): Promise<DataB
   }
 }
 
-async function requireFinishedRestore(dataDir: string): Promise<void> {
-  const restoring = await Bun.file(getRestoreMarkerPath(dataDir)).exists();
+async function requireFinishedRestore(options: DataBackupOptions): Promise<void> {
+  const restoring = await options.storage.files.probeFile(getRestoreMarkerPath(options.dataDir));
 
   if (restoring) {
     throw new Error(
-      `a restore of the data directory ${dataDir} stopped before it finished, so nixie backs up nothing`,
+      `a restore of the data directory ${options.dataDir} stopped before it finished, so nixie backs up nothing`,
     );
   }
 }
 
-async function createEmptyDirectory(directory: string): Promise<void> {
-  await mkdir(directory, { recursive: true, mode: 0o700 });
+async function createEmptyDirectory(options: DataBackupOptions): Promise<void> {
+  await options.storage.files.createDirectories(options.directory);
 
-  const entries = await readdir(directory);
+  const entries = await options.storage.files.readDirectory(options.directory);
 
   if (entries.length > 0) {
-    throw new Error(`nixie backs up only into an empty directory, and ${directory} is not empty`);
+    throw new Error(
+      `nixie backs up only into an empty directory, and ${options.directory} is not empty`,
+    );
   }
 }
 
@@ -71,7 +78,7 @@ async function createEmptyDirectory(directory: string): Promise<void> {
 // removes the key. So a keys.db copy taken after the nixie.db copy, with no commit to keys.db from
 // before the one to after the other, holds the key of every record the nixie.db copy keeps.
 async function writeCopies(options: DataBackupOptions): Promise<boolean> {
-  const keys = startDatabase(join(options.dataDir, 'keys.db'), { readonly: true });
+  const keys = options.storage.startDatabase(join(options.dataDir, 'keys.db'), { readonly: true });
 
   try {
     const before = await readDataVersion(keys);
@@ -79,8 +86,7 @@ async function writeCopies(options: DataBackupOptions): Promise<boolean> {
     await writeLogCopy(options);
 
     await options.onCopied('nixie.db');
-
-    await createDatabaseCopy(keys, join(options.directory, 'keys.db'));
+    await options.storage.writeDatabaseCopy(keys, join(options.directory, 'keys.db'));
 
     const after = await readDataVersion(keys);
 
@@ -103,10 +109,10 @@ async function readDataVersion(db: Kysely<unknown>): Promise<number> {
 }
 
 async function writeLogCopy(options: DataBackupOptions): Promise<void> {
-  const db = startDatabase(join(options.dataDir, 'nixie.db'), { readonly: true });
+  const db = options.storage.startDatabase(join(options.dataDir, 'nixie.db'), { readonly: true });
 
   try {
-    await createDatabaseCopy(db, join(options.directory, 'nixie.db'));
+    await options.storage.writeDatabaseCopy(db, join(options.directory, 'nixie.db'));
   } finally {
     await db.destroy();
   }

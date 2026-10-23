@@ -6,6 +6,8 @@ import type { WriterLock } from './types';
 
 export type FileLockMode = 'shared' | 'exclusive';
 
+export type ClaimFileLock = (path: string, mode: FileLockMode) => WriterLock | null;
+
 const LOCK_SH = 1;
 const LOCK_EX = 2;
 const LOCK_NB = 4;
