@@ -16,7 +16,7 @@ test('it exits 0 and writes the server and its SQLite worker', async () => {
 
   const build = Bun.spawnSync([
     process.execPath,
-    join(import.meta.dir, 'run-release-build.ts'),
+    join(import.meta.dir, '../apps/server/src/run-release-build.ts'),
     ctx.outdir,
   ]);
 
