@@ -1,29 +1,55 @@
 import { expect, test } from 'bun:test';
-import { renderConsolidatorSystemPrompt } from './render-consolidator-system-prompt';
+import { renderPrompt } from './render-prompt';
 
 test('it puts the persona before the rules', () => {
-  expect(renderConsolidatorSystemPrompt('  You are Nix.  ', 30, null)).toStartWith(
-    'You are Nix.\n\nYou tidy',
-  );
+  expect(
+    renderPrompt('consolidator', {
+      persona: '  You are Nix.  ',
+      owner: { name: null },
+      memory: { maxChanges: 30 },
+    }),
+  ).toStartWith('You are Nix.\n\nYou tidy');
 });
 
 test('it gives the rules alone when no persona is in force', () => {
-  expect(renderConsolidatorSystemPrompt('', 30, null)).toStartWith('You tidy the long-term memory');
+  expect(
+    renderPrompt('consolidator', {
+      persona: '',
+      owner: { name: null },
+      memory: { maxChanges: 30 },
+    }),
+  ).toStartWith('You tidy the long-term memory');
 });
 
 test('it tells the model never to forget and to call memory.consolidate once', () => {
-  const prompt = renderConsolidatorSystemPrompt('', 30, null);
+  const prompt = renderPrompt('consolidator', {
+    persona: '',
+    owner: { name: null },
+    memory: { maxChanges: 30 },
+  });
 
   expect(prompt).toInclude('Never forget an item.');
   expect(prompt).toInclude('Call memory.consolidate once with the whole diff');
 });
 
 test('it tells the model the cap on changes it is given', () => {
-  expect(renderConsolidatorSystemPrompt('', 5, null)).toInclude('propose at most 5 changes.');
+  expect(
+    renderPrompt('consolidator', {
+      persona: '',
+      owner: { name: null },
+      memory: { maxChanges: 5 },
+    }),
+  ).toInclude('propose at most 5 changes.');
 });
 
 test('it calls the owner by the configured name in every rule', () => {
-  expect(renderConsolidatorSystemPrompt('', 30, 'Marisol')).toMatchInlineSnapshot(`
+  expect(
+    renderPrompt('consolidator', {
+      persona: '',
+      owner: { name: 'Marisol' },
+      memory: { maxChanges: 30 },
+    }),
+  ).toMatchInlineSnapshot(`
     "You tidy the long-term memory of one person's personal assistant. You read Marisol's current memory items and propose one diff of changes, which Marisol reviews before anything changes.
 
     Rules:
@@ -46,7 +72,13 @@ test('it calls the owner by the configured name in every rule', () => {
 });
 
 test('it calls the owner "the owner" and drops the name rule when no name is configured', () => {
-  expect(renderConsolidatorSystemPrompt('', 30, null)).toMatchInlineSnapshot(`
+  expect(
+    renderPrompt('consolidator', {
+      persona: '',
+      owner: { name: null },
+      memory: { maxChanges: 30 },
+    }),
+  ).toMatchInlineSnapshot(`
     "You tidy the long-term memory of one person's personal assistant. You read the owner's current memory items and propose one diff of changes, which the owner reviews before anything changes.
 
     Rules:

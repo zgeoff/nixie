@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
-import { startScriptedModel } from '@heynixie/testing';
+import { startScriptedModel, waitForCondition } from '@heynixie/testing';
 import { createCounterStore } from './create-counter-store';
 import { makeProxyHandler } from './make-proxy-handler';
 
@@ -481,6 +481,7 @@ test('it refuses every later request once a count fails to write, even after the
 
   const pending = sendRequest();
 
+  await waitForCondition(() => ctx.model.requests.length === 1);
   await rm(ctx.directory, { recursive: true, force: true });
 
   gate.resolve(undefined);

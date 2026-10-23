@@ -1,3 +1,4 @@
+import { renderPrompt } from '@heynixie/prompts';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { StagingHandle } from './create-writer-staging';
 import { memoryWriterTaskID } from './memory-writer-task-id';
@@ -6,7 +7,6 @@ import type { WriterBatch } from './read-writer-batch';
 import { renderShownText } from './render-shown-text';
 import type { SpeakerNames } from './render-writer-prompt';
 import { renderWriterPrompt } from './render-writer-prompt';
-import { renderWriterSystemPrompt } from './render-writer-system-prompt';
 import type { WriterParts } from './writer-parts';
 import { writerSubjects } from './writer-subjects';
 import type { BatchMessage, StagedFlag, StagedWrite, WriterUsage } from './writer-types';
@@ -106,7 +106,11 @@ async function runSession(
 ): Promise<Pick<WriterExtraction, 'writes' | 'flags' | 'usage'>> {
   try {
     const usage = await parts.model.runSession({
-      systemPrompt: renderWriterSystemPrompt(parts.getPersona(), buildSpeakerNames(parts)),
+      systemPrompt: renderPrompt('writer', {
+        persona: parts.getPersona(),
+        owner: { name: parts.ownerName },
+        assistant: { name: parts.assistantName },
+      }),
       prompt: session.prompt,
       signal: session.signal,
     });

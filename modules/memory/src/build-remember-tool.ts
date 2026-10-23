@@ -1,3 +1,4 @@
+import { untilConventions } from '@heynixie/prompts';
 import type { ToolContext, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildWriteCaller } from './build-write-caller';
@@ -7,7 +8,6 @@ import { memoryWriteOutput } from './memory-write-output';
 import { parseUntilInput } from './parse-until-input';
 import { runWriteCall } from './run-write-call';
 import type { ItemIDStore } from './types';
-import { untilConventions } from './until-conventions';
 import { untilInputSchema } from './until-input-schema';
 
 const rememberDescription =

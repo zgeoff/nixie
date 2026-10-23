@@ -1,9 +1,9 @@
+import { untilConventions } from '@heynixie/prompts';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
 import type { WriterStaging } from './create-writer-staging';
 import { parseUntilInput } from './parse-until-input';
 import type { MemoryStore } from './types';
-import { untilConventions } from './until-conventions';
 import { untilInputSchema } from './until-input-schema';
 import { writerSubjects } from './writer-subjects';
 

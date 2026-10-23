@@ -1,3 +1,4 @@
+import { untilConventions } from '@heynixie/prompts';
 import type { ToolCall, ToolContext, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildWriteCaller } from './build-write-caller';
@@ -8,7 +9,6 @@ import { parseUntilInput } from './parse-until-input';
 import { readItemIDs } from './read-item-ids';
 import { runWriteCall } from './run-write-call';
 import type { ItemIDStore } from './types';
-import { untilConventions } from './until-conventions';
 import { untilInputSchema } from './until-input-schema';
 
 const editDescription =

@@ -1,5 +1,6 @@
 import type { SourceMessage } from '@heynixie/memory';
-import { renderWriterPrompt, renderWriterSystemPrompt } from '@heynixie/memory';
+import { renderWriterPrompt } from '@heynixie/memory';
+import { renderPrompt } from '@heynixie/prompts';
 import type { WriterCase, WriterCases } from './load-writer-cases';
 
 interface EvalTool {
@@ -36,7 +37,13 @@ export function buildWriterEvalInput(
   tools: readonly WriterToolSpec[],
 ): WriterEvalInput {
   const names = { owner: cases.ownerName, assistant: cases.assistantName };
-  const systemPrompt = renderWriterSystemPrompt(cases.persona, names);
+
+  const systemPrompt = renderPrompt('writer', {
+    persona: cases.persona,
+    owner: { name: cases.ownerName },
+    assistant: { name: cases.assistantName },
+  });
+
   const sentAt = Date.parse(writerCase.sentAt ?? '2026-10-14T09:00:00Z');
 
   const messages = writerCase.messages.map((message, index) => ({

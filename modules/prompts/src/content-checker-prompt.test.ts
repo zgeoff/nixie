@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
-import { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';
+import { renderPrompt } from './render-prompt';
 
 test('it names the owner by the configured name, in the rules and in every example memory', () => {
-  expect(renderMemoryCheckerPrompt('Avery')).toMatchInlineSnapshot(`
+  expect(renderPrompt('content-checker', { owner: { name: 'Avery' } })).toMatchInlineSnapshot(`
     "You check one candidate memory for a personal assistant. You see one message that the owner wrote and a candidate memory that another model wants to save from it. Decide whether the owner, in their own voice, asserted the candidate memory as true. The owner's name is Avery, and a memory names them Avery.
 
     Answer \`asserted\` only when the message states the memory as a fact that the owner holds now, word for word or as a faithful paraphrase that adds nothing and changes nothing. A negative fact counts: "I'm not on social media" asserts "Avery is not on social media".
@@ -40,11 +40,13 @@ test('it names the owner by the configured name, in the rules and in every examp
 });
 
 test('it renders the same prompt for the same name', () => {
-  expect(renderMemoryCheckerPrompt('Avery')).toBe(renderMemoryCheckerPrompt('Avery'));
+  expect(renderPrompt('content-checker', { owner: { name: 'Avery' } })).toBe(
+    renderPrompt('content-checker', { owner: { name: 'Avery' } }),
+  );
 });
 
 test('it words every example memory about "the owner" when no name is set', () => {
-  expect(renderMemoryCheckerPrompt(null)).toMatchInlineSnapshot(`
+  expect(renderPrompt('content-checker', { owner: { name: null } })).toMatchInlineSnapshot(`
     "You check one candidate memory for a personal assistant. You see one message that the owner wrote and a candidate memory that another model wants to save from it. Decide whether the owner, in their own voice, asserted the candidate memory as true.
 
     Answer \`asserted\` only when the message states the memory as a fact that the owner holds now, word for word or as a faithful paraphrase that adds nothing and changes nothing. A negative fact counts: "I'm not on social media" asserts "The owner is not on social media".
