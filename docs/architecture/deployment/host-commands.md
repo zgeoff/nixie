@@ -93,6 +93,9 @@ before it removes the key, so the command copies `nixie.db` first and `keys.db` 
 another connection commits to `keys.db` between the start of the first copy and the end of the
 second, the pair could hold a record whose key the second copy lost, so the command copies both
 again. After a fixed number of attempts that each meet a commit, it gives up and exits non-zero.
+Each attempt writes into a hidden folder inside the directory, and the pair moves into place only
+once it passes the check. A backup that stops part way therefore leaves no pair, and the restore
+command refuses a directory without both databases.
 
 The restore command, `restore --from <directory> --yes`, replaces both databases with the copies in
 a directory the backup command wrote. It takes the writer lock first, so it refuses while a server

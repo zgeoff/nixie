@@ -38,10 +38,14 @@ export async function writeDataBackup(options: DataBackupOptions): Promise<DataB
     await requireFinishedRestore(options);
     await createEmptyDirectory(options);
 
+    await options.storage.files.createDirectories(getCopyingPath(options.directory));
+
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const consistent = await writeCopies(options);
 
       if (consistent) {
+        await publishCopies(options);
+
         return { files: dataFiles, attempts: attempt };
       }
     }
@@ -74,6 +78,12 @@ async function createEmptyDirectory(options: DataBackupOptions): Promise<void> {
   }
 }
 
+// A restore takes a backup only when it holds both databases, so copies that wait here until they
+// pass the check never reach a restore as a pair, even when the backup stops between two attempts.
+function getCopyingPath(directory: string): string {
+  return join(directory, '.copying');
+}
+
 // The writer creates a record key before the record that uses it, and commits a forget before it
 // removes the key. So a keys.db copy taken after the nixie.db copy, with no commit to keys.db from
 // before the one to after the other, holds the key of every record the nixie.db copy keeps.
@@ -86,7 +96,11 @@ async function writeCopies(options: DataBackupOptions): Promise<boolean> {
     await writeLogCopy(options);
 
     await options.onCopied('nixie.db');
-    await options.storage.writeDatabaseCopy(keys, join(options.directory, 'keys.db'));
+
+    await options.storage.writeDatabaseCopy(
+      keys,
+      join(getCopyingPath(options.directory), 'keys.db'),
+    );
 
     const after = await readDataVersion(keys);
 
@@ -112,8 +126,23 @@ async function writeLogCopy(options: DataBackupOptions): Promise<void> {
   const db = options.storage.startDatabase(join(options.dataDir, 'nixie.db'), { readonly: true });
 
   try {
-    await options.storage.writeDatabaseCopy(db, join(options.directory, 'nixie.db'));
+    await options.storage.writeDatabaseCopy(
+      db,
+      join(getCopyingPath(options.directory), 'nixie.db'),
+    );
   } finally {
     await db.destroy();
   }
+}
+
+async function publishCopies(options: DataBackupOptions): Promise<void> {
+  const files = options.storage.files;
+  const copying = getCopyingPath(options.directory);
+
+  for (const file of dataFiles) {
+    await files.renameFile(join(copying, file), join(options.directory, file));
+  }
+
+  await files.writeToDisk(options.directory);
+  await files.removeFile(copying);
 }

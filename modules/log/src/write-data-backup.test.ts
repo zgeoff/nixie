@@ -116,7 +116,7 @@ test('it copies again when nixie forgets an item and removes its key between the
   expect(recordKeys.rows).toStrictEqual([{ key_id: 'k2' }]);
 });
 
-test('it fails the backup when nixie writes keys.db during each of 5 copies', async () => {
+test('it fails the backup when nixie writes keys.db during each of 5 copies, and leaves no pair a restore takes', async () => {
   const ctx = await setupTest();
 
   await sql`create table items (id text primary key)`.execute(ctx.log);
@@ -136,7 +136,10 @@ test('it fails the backup when nixie writes keys.db during each of 5 copies', as
 
   await backup.catch(() => {});
 
+  const files = await readdir(ctx.directory);
+
   expect(backup).rejects.toThrowWithMessage(Error, 'nixie wrote keys.db during each of 5 copies');
+  expect(files).toStrictEqual(['.copying']);
 });
 
 test('it refuses a data directory without keys.db, and copies nothing', async () => {
