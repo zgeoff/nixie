@@ -105,7 +105,7 @@ async function readFeatures(
 
   const check = await client.checkServer(options);
 
-  if (!check.compatible) {
+  if (!check.compatible && !isImpdMajorPastClient(check.serverVersion)) {
     throw new Error(`impd ${check.serverVersion} does not speak imp client ${check.clientVersion}`);
   }
 
@@ -114,6 +114,16 @@ async function readFeatures(
     isEgressEnforced: check.info.egress?.isEnforced === true,
     hasBackupOptOut: check.info.features?.backupOptOut === true,
   };
+}
+
+// impd 3 drops only the IMP_BUILD_ISOLATION setting, which nixie never sets, so imp client 2
+// speaks it too. Client 3 accepts impd 3 by its own rule, so a move to client 3 empties this set.
+const IMPD_MAJORS_PAST_CLIENT: ReadonlySet<number> = new Set([3]);
+
+function isImpdMajorPastClient(version: string): boolean {
+  const major = /^(?<major>\d+)\.\d+\.\d+/u.exec(version)?.groups?.['major'];
+
+  return major !== undefined && IMPD_MAJORS_PAST_CLIENT.has(Number(major));
 }
 
 // impd's refusal, such as RAM_BUDGET_EXCEEDED, arrives as an ORPCError whose name is plain Error,
