@@ -49,6 +49,7 @@ export function startTestMemoryWriter(
     gate: buildStubGate(),
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
+    getPrompts: () => ({}),
     ownerName: null,
     assistantName: null,
     defaultZone: 'UTC',

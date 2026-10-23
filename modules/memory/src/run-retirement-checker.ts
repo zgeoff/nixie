@@ -12,7 +12,7 @@ export async function runRetirementChecker(
   found: FoundEvidence,
 ): Promise<ContentGateResult> {
   const answer = await context.gate.check({
-    prompt: renderPrompt('retirement-checker', {}),
+    prompt: renderPrompt('retirement-checker', {}, context.gate.getPrompts()),
     input: renderCheckerInput(
       found.message,
       found.evidence,

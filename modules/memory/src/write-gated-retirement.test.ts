@@ -59,6 +59,43 @@ test('it retires an item you asked to retire, with your intent quote and the che
   });
 });
 
+test('it gives the checker the retirement checker prompt override in force', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
+
+  const memory = await startTestMemory({
+    gate: {
+      check,
+      getPrompts: () => ({
+        'retirement-checker': { parts: { instruction: 'Judge the request.' }, template: null },
+      }),
+    },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Rents a plot at the allotment',
+    provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I gave up the allotment plot',
+    spans: [{ start: 0, end: 28, source: 'typed' }],
+  });
+
+  await memory.store.recall({ query: 'allotment', thread: 'conversation' });
+
+  await memory.store.writes.retire({
+    target: item,
+    intentQuote: 'I gave up the allotment plot',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(check).toHaveBeenCalledExactlyOnceWith({
+    prompt: expect.toStartWith('Judge the request.\n\nThe input marks 2 kinds of span.'),
+    input: expect.toEndWith('<item_to_retire>\nRents a plot at the allotment\n</item_to_retire>'),
+  });
+});
+
 test("it retires the conversation's self-note at once, with a notice entry an undo binds to", async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
 

@@ -1,6 +1,7 @@
 import type { CompactionSettings } from '@heynixie/compaction';
 import type { ContentSource, RecordInput } from '@heynixie/log';
 import type { ResolvedProfile } from '@heynixie/models';
+import type { PromptOverrides } from '@heynixie/prompts';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { StepInput, TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
@@ -125,6 +126,7 @@ export type SessionCleanupCause = { readonly itemID: string } | { readonly recor
 
 export interface SessionDefinitions {
   readonly persona: string;
+  readonly prompts: PromptOverrides;
   readonly personaHash: string;
   readonly policyHash: string;
 }

@@ -26,7 +26,12 @@ async function setupTest() {
       tools: server.endpoint,
       toolNames: [],
       image,
-      getDefinitions: () => ({ persona: 'You are nixie.', personaHash: 'p', policyHash: 'q' }),
+      getDefinitions: () => ({
+        persona: 'You are nixie.',
+        prompts: {},
+        personaHash: 'p',
+        policyHash: 'q',
+      }),
       readTurnNote: makeTurnNoteReader(
         {
           log: server.context.log,

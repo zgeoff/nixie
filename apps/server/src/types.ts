@@ -1,9 +1,10 @@
 import type { APIContext } from '@heynixie/api';
-import type { DefinitionsInForce, DefinitionsSource, SnapshotPolicy } from '@heynixie/definitions';
+import type { DefinitionsInForce, DefinitionsSource } from '@heynixie/definitions';
 import type { Logger } from '@heynixie/logger';
 import type { Encoder } from '@heynixie/memory';
 import type { ModelSecrets } from '@heynixie/models';
 import type { TasksContext } from '@heynixie/tasks';
+import type { SeedInputs } from './build-seed-inputs';
 import type { StartState } from './build-start-state';
 import type { DeploymentConfig } from './deployment-config-schema';
 import type { SandboxImages } from './load-sandbox-manifest';
@@ -34,7 +35,7 @@ export interface ServerParts {
   readonly apiContext: APIContext;
   readonly tools: Tools;
   readonly source: DefinitionsSource;
-  readonly policy: SnapshotPolicy;
+  readonly buildPolicy: SeedInputs['buildPolicy'];
   readonly inForce: InForce;
   readonly modelSecrets: ModelSecrets;
 

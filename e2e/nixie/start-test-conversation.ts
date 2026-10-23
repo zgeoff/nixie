@@ -39,6 +39,7 @@ export function startTestConversation(
     image: 'nixie-conversation-test',
     getDefinitions: () => ({
       persona: 'You are nixie.',
+      prompts: {},
       personaHash: 'sha256:persona-test',
       policyHash: 'sha256:policy-test',
     }),

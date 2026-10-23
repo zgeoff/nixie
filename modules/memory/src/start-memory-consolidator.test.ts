@@ -25,6 +25,7 @@ async function setupTest() {
     },
     config: consolidationConfigSchema.parse({}),
     getPersona: () => '',
+    getPrompts: () => ({}),
     ownerName: null,
     onError: () => {},
   };

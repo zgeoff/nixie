@@ -67,7 +67,7 @@ test('it exports a skill with the configured templates, the first agent name and
   await runSeed({
     log: ctx.log,
     source: createPathSource({ directory: join(ctx.directory, 'definitions') }),
-    policy,
+    buildPolicy: () => policy,
   });
 
   const skill = checkSkillFiles('tide-tables', [
@@ -85,7 +85,7 @@ test('it exports a skill with the configured templates, the first agent name and
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
   await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
   const inputs = await loadServerInputs({

@@ -57,7 +57,7 @@ test('it exports a second change kind beside skills through the same pull reques
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('moon-phases', [
     { path: 'SKILL.md', text: '---\nname: moon-phases\ndescription: Names a moon phase.\n---\n' },
@@ -74,7 +74,7 @@ test('it exports a second change kind beside skills through the same pull reques
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   const writeState = mock<DefinitionsChangeKind['writeState']>(() => Promise.resolve());
 
@@ -280,7 +280,7 @@ test('it exports a good skill and reports the error of a skill whose stored file
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const broken = checkSkillFiles('star-charts', [
     { path: 'SKILL.md', text: '---\nname: star-charts\ndescription: Reads a star chart.\n---\n' },
@@ -309,7 +309,7 @@ test('it exports a good skill and reports the error of a skill whose stored file
     });
   });
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await sql`update skill_versions set files = '42' where name = 'star-charts'`.execute(
     ctx.writer.db,

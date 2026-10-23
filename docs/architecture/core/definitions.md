@@ -75,18 +75,20 @@ would give the commit a second hash.
 The manifest holds the definitions format version. A release reads its own format and the one before
 it, and refuses any other, because an image upgrade and a definitions change land in separate repos,
 in either order. The persona must be UTF-8 text and not blank. From format 2, the seed applies each
-skill under `skills/`, and format 1 leaves those files unapplied, because a format 1 repo was
-written before the seed checked a skill. The seed applies no other file, and lists each one in its
-record as unapplied. Each unapplied YAML or JSON file must still parse, so a broken rule file fails
-the snapshot before rules ever apply, and the error lists each file with its fault.
+skill under `skills/`. From format 3, it applies the prompt overrides that the manifest's `prompts:`
+map names, as [prompts](prompts.md#overrides-from-the-definitions) describes, and format 2 leaves
+that map and its files unapplied. The seed applies no other file, and lists each one in its record
+as unapplied. Each unapplied YAML or JSON file must still parse, so a broken rule file fails the
+snapshot before rules ever apply, and the error lists each file with its fault.
 
 nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the
 `definitions-manifest.schema.json` asset, so a definitions repo checks its manifest against the
 formats a release reads without a copy of nixie. The seed parses the manifest with the same schema
 that the published one comes from, and a test fails when the committed file differs from it. After a
 change to the manifest's rules, `bun run --cwd modules/definitions manifest-schema` rewrites the
-committed file. The published schema covers the manifest alone, so only the seed checks the persona,
-the other files and that each listed skill exists.
+committed file. The published schema covers the manifest alone, including the prompts and parts that
+a `prompts:` map may name, so only the seed checks the persona, the other files, that each listed
+skill exists and that each prompt override reads only the paths its prompt accepts.
 
 ## Skills
 

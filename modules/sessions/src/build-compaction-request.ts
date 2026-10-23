@@ -27,12 +27,17 @@ export function buildCompactionRequest(
     contextSize: cause.contextSize,
     failures: step.marks.compactionFailures,
     signal: step.signal,
-    systemPrompt: renderPrompt('session', {
-      persona: step.definitions.persona,
-      skillCatalog: step.skillCatalog,
-      owner: { name: ownerName },
-    }),
+    systemPrompt: renderPrompt(
+      'session',
+      {
+        persona: step.definitions.persona,
+        skillCatalog: step.skillCatalog,
+        owner: { name: ownerName },
+      },
+      step.definitions.prompts,
+    ),
     at: formatMessageTime(now, null, { defaultZone: run.defaultZone, now }),
     ownerName,
+    prompts: step.definitions.prompts,
   };
 }

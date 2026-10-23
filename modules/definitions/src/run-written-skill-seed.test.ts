@@ -55,7 +55,7 @@ test('it puts an approved skill in force at once, on the revision in force', asy
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -73,7 +73,7 @@ test('it puts an approved skill in force at once, on the revision in force', asy
     }),
   );
 
-  const result = await runWrittenSkillSeed({ log: ctx.log, policy });
+  const result = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -105,7 +105,7 @@ test('it gives a retired written skill back to the version beneath it, in its li
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -121,7 +121,7 @@ test('it gives a retired written skill back to the version beneath it, in its li
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writeWrittenSkillState(tx, {
@@ -131,7 +131,7 @@ test('it gives a retired written skill back to the version beneath it, in its li
     }),
   );
 
-  const result = await runWrittenSkillSeed({ log: ctx.log, policy });
+  const result = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -151,7 +151,7 @@ test('it names the newest approval when a later approval brings back an earlier 
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const first = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -178,7 +178,7 @@ test('it names the newest approval when a later approval brings back an earlier 
       writeWrittenSkill(tx, { approvalID, proposalID, skill, approvedAt: 1 }),
     );
 
-    await runWrittenSkillSeed({ log: ctx.log, policy });
+    await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
   }
 
   const inForce = await readDefinitionsInForce(ctx.writer.db);
@@ -199,8 +199,8 @@ test('it writes nothing when the written skills already stand in force', async (
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
-  const result = await runWrittenSkillSeed({ log: ctx.log, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const result = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   invariant(first.inForce);
 
@@ -219,7 +219,7 @@ test('it marks an approval whose files your definitions already hold as yours, w
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
 
@@ -234,7 +234,7 @@ test('it marks an approval whose files your definitions already hold as yours, w
     }),
   );
 
-  const result = await runWrittenSkillSeed({ log: ctx.log, policy });
+  const result = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   const states = await sql`select state, definitions_hash, definitions_origin
     from written_skills`.execute(ctx.writer.db);
@@ -257,7 +257,11 @@ test('it marks an approval whose files your definitions already hold as yours, w
 
 test('it refuses before the first seed', async () => {
   const ctx = await setupTest();
-  const result = await runWrittenSkillSeed({ log: ctx.log, policy: { rules: [], tools: [] } });
+
+  const result = await runWrittenSkillSeed({
+    log: ctx.log,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   expect(result).toMatchObject({
     status: 'refused',

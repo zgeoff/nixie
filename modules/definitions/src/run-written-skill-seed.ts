@@ -1,5 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
+import type { PromptOverrides } from '@heynixie/prompts';
 import type { Transaction } from 'kysely';
 import { z } from 'zod';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
@@ -14,7 +15,7 @@ import { writeSeed } from './write-seed';
 
 export interface WrittenSkillSeedOptions {
   readonly log: Log;
-  readonly policy: SnapshotPolicy;
+  readonly buildPolicy: (prompts: PromptOverrides) => SnapshotPolicy;
 }
 
 export function runWrittenSkillSeed(options: WrittenSkillSeedOptions): Promise<SeedResult> {
@@ -35,7 +36,8 @@ export function runWrittenSkillSeed(options: WrittenSkillSeedOptions): Promise<S
 
     const built = buildDefinitionsSnapshot({
       persona: inForce.persona,
-      policy: options.policy,
+      policy: options.buildPolicy(inForce.prompts),
+      prompts: inForce.prompts,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
     });

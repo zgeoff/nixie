@@ -14,6 +14,7 @@ test('it reads the persona, its hash and the policy hash from the definitions in
       snapshotHash: 'sha256:snapshot',
       personaVersion: 'sha256:persona-wren',
       persona: 'You are Wren, a calm helper.',
+      prompts: {},
       policyHash: 'sha256:policy-read-only',
       recordSequence: 3,
       skills: [],
@@ -21,6 +22,7 @@ test('it reads the persona, its hash and the policy hash from the definitions in
     }),
   ).toStrictEqual({
     persona: 'You are Wren, a calm helper.',
+    prompts: {},
     personaHash: 'sha256:persona-wren',
     policyHash: 'sha256:policy-read-only',
   });
@@ -29,6 +31,7 @@ test('it reads the persona, its hash and the policy hash from the definitions in
 test('it reads empty definitions before the first seed', () => {
   expect(toSessionDefinitions(null)).toStrictEqual({
     persona: '',
+    prompts: {},
     personaHash: '',
     policyHash: '',
   });

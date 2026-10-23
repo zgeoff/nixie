@@ -1,3 +1,4 @@
+import type { PromptOverrides } from '@heynixie/prompts';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ConsolidationConfig } from './consolidation-config-schema';
 import type { MemoryConsolidations } from './consolidation-types';
@@ -16,6 +17,7 @@ export interface ConsolidatorParts {
   readonly config: ConsolidationConfig;
 
   readonly getPersona: () => string;
+  readonly getPrompts: () => PromptOverrides;
 
   readonly ownerName: string | null;
 

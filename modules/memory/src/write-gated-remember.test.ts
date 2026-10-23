@@ -281,6 +281,36 @@ test('it gives the checker your one message with when and where you sent it, and
   });
 });
 
+test('it gives the checker the content checker prompt override in force', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
+  const memory = await startTestMemory({
+    gate: {
+      check,
+      getPrompts: () => ({
+        'content-checker': { parts: {}, template: 'Judge what {{ owner.name }} asserted.' },
+      }),
+    },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I keep two hens',
+    spans: [{ start: 0, end: 15, source: 'typed' }],
+  });
+
+  await memory.store.writes.remember({
+    text: 'Keeps two hens',
+    quote: 'I keep two hens',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(check).toHaveBeenCalledExactlyOnceWith({
+    prompt: 'Judge what the owner asserted.',
+    input: expect.toEndWith('<candidate_memory>\nKeeps two hens\n</candidate_memory>'),
+  });
+});
+
 test('it proposes a write that cites the evidence message of an item you forgot', async () => {
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },

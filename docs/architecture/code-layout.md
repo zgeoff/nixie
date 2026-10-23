@@ -126,6 +126,7 @@ Each module package covers one area of the architecture, and its doc covers the 
 | `sessions`    | The [conversation's turns](core/conversation-turns.md), [session opening](core/session-opening.md) and each system task's own session      |
 | `compaction`  | The [compactor](core/compaction.md) and its summary records                                                                                |
 | `definitions` | [The definitions](core/definitions.md) and the path source                                                                                 |
+| `prompts`     | The built-in [prompts](core/prompts.md), their parts and templates, and the render that applies the overrides                              |
 | `policy`      | [The decision point](policy/decision-point.md) and its fixed rules                                                                         |
 | `api`         | [The API](channels/api.md): the oRPC router, device sessions and the live stream                                                           |
 | `sandbox`     | The [sandbox adapter](connectors/sandboxes.md) interface, sandboxes by kind and the sandbox double                                         |

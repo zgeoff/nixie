@@ -1,4 +1,5 @@
 import type { LogRecord } from '@heynixie/log';
+import type { PromptOverrides } from '@heynixie/prompts';
 import { renderPrompt } from '@heynixie/prompts';
 import { formatMessageTime } from './format-message-time';
 import { isCoreChanged } from './is-core-changed';
@@ -18,6 +19,7 @@ export interface TurnContextQuery {
   readonly taskID: string;
 
   readonly persona: string;
+  readonly prompts: PromptOverrides;
   readonly skillCatalog: string | null;
 
   readonly batch: readonly LogRecord[];
@@ -59,11 +61,15 @@ export async function readTurnContext(
   const changes = await readCoreChanges(memory, query, { core, lines });
 
   return {
-    systemPrompt: renderPrompt('session', {
-      persona: query.persona,
-      skillCatalog: query.skillCatalog,
-      owner: { name: lines.ownerName },
-    }),
+    systemPrompt: renderPrompt(
+      'session',
+      {
+        persona: query.persona,
+        skillCatalog: query.skillCatalog,
+        owner: { name: lines.ownerName },
+      },
+      query.prompts,
+    ),
     pinnedMemory,
     preamble: renderTurnPreamble({ changes, retrieval, thread: query.taskID, at }, lines),
     pinnedCore: core.map((item) => toMemoryRef(item)),

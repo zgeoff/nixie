@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import type { PromptOverrides } from '@heynixie/prompts';
 import { claimTask, tasksProjections, writeStepCommit } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -24,7 +25,11 @@ async function setupTest() {
     clock,
     errors,
 
-    runStep: async (session: StubConsolidatorSession, config: ConsolidationConfigInput = {}) => {
+    runStep: async (
+      session: StubConsolidatorSession,
+      config: ConsolidationConfigInput = {},
+      prompts: PromptOverrides = {},
+    ) => {
       const consolidator = await startMemoryConsolidator({
         context,
         store: memory.store,
@@ -32,6 +37,7 @@ async function setupTest() {
         model: session.model,
         config: consolidationConfigSchema.parse(config),
         getPersona: () => 'You are Nix, a warm and brief assistant.',
+        getPrompts: () => prompts,
         ownerName: null,
         onError: (error) => {
           errors.push(error);
@@ -133,6 +139,25 @@ test('it shows the session the persona, the rules and every active item, and no 
     ),
     signal: expect.toSatisfy((signal: unknown) => signal instanceof AbortSignal),
   });
+});
+
+test('it shows the session the consolidator prompt override in force', async () => {
+  const ctx = await setupTest();
+
+  await createMemoryItem(ctx.memory.store, { text: 'Keeps bees on the roof' });
+  await createMemoryItem(ctx.memory.store, { text: 'Sings in a choir' });
+
+  const session = createStubConsolidatorSession([]);
+
+  await ctx.runStep(
+    session,
+    {},
+    { consolidator: { parts: {}, template: 'Propose at most {{ memory.maxChanges }} changes.' } },
+  );
+
+  expect(session.model.runSession).toHaveBeenCalledWith(
+    expect.objectContaining({ systemPrompt: 'Propose at most 30 changes.' }),
+  );
 });
 
 test('it keeps the summary of a conflict it left alone, sealed under the key of every item the session was shown', async () => {

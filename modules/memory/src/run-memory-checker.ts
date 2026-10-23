@@ -16,7 +16,11 @@ export async function runMemoryChecker(
   found: FoundEvidence,
 ): Promise<ContentGateResult> {
   const answer = await context.gate.check({
-    prompt: renderPrompt('content-checker', { owner: { name: context.gate.ownerName } }),
+    prompt: renderPrompt(
+      'content-checker',
+      { owner: { name: context.gate.ownerName } },
+      context.gate.getPrompts(),
+    ),
     input: renderCheckerInput(
       found.message,
       found.evidence,

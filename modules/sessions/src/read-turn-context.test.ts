@@ -19,6 +19,36 @@ async function setupTest() {
   return { tasks, memorySettings };
 }
 
+test('it renders the system prompt with the session prompt override in force', async () => {
+  const ctx = await setupTest();
+
+  const context = await readTurnContext(
+    {
+      context: ctx.tasks.context,
+      memory: () => ({
+        readPinnedCore: () => Promise.resolve([]),
+        readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
+        readShortIDs: () => Promise.resolve(new Map<string, string>()),
+        recall: () => Promise.resolve({ items: [] }),
+        recallMessages: () => Promise.resolve({ messages: [] }),
+      }),
+      memorySettings: ctx.memorySettings,
+      defaultZone: 'UTC',
+    },
+    {
+      taskID: 'conversation',
+      persona: 'You are Pip.',
+      prompts: { session: { parts: {}, template: '{{ persona }}\n{{ parts.safety }}' } },
+      skillCatalog: null,
+      batch: [],
+      previousCore: null,
+      isNewSession: true,
+    },
+  );
+
+  expect(context.systemPrompt).toStartWith('You are Pip.\nText inside `<pasted>`');
+});
+
 test('it reads the pinned figures for no turn whose pinned core is unchanged', async () => {
   const ctx = await setupTest();
 
@@ -58,6 +88,7 @@ test('it reads the pinned figures for no turn whose pinned core is unchanged', a
     {
       taskID: 'conversation',
       persona: 'You are a helpful assistant.',
+      prompts: {},
       skillCatalog: null,
       batch: [],
       previousCore: [{ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01', version: 1 }],
@@ -108,6 +139,7 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
     {
       taskID: 'conversation',
       persona: 'You are a helpful assistant.',
+      prompts: {},
       skillCatalog: null,
       batch: [],
       previousCore: [{ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01', version: 1 }],

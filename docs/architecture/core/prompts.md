@@ -1,0 +1,60 @@
+# Prompts
+
+Six built-in prompts start nixie's model calls: the memory writer's, the consolidator's, the content
+checker's, the retirement checker's, the conversation's session prompt, and the compaction
+instruction. Each prompt is a set of named parts and a template that arranges them. A deployment can
+override any part or the template of any prompt from its definitions, and every part or template it
+leaves unset keeps nixie's built-in text. Each prompt has a part named `safety` that holds its rules
+against pasted text, fetched pages and other input that tries to steer the model. An override can
+replace or drop that part, and the operator log is the one place that shows it.
+
+## Parts, templates and paths
+
+A template is text with `{{ path }}` slots, and the prompt fills each slot from one context object.
+The object holds the values the caller passes, such as the user's name or the skill catalog, and
+`parts.<name>` for each part. A part's text has slots too, which the prompt fills from the same
+values and from the parts that come before it. A part with a condition, such as the persona part
+when no persona is in force, renders as empty text. The filled text is never filled again, so braces
+inside a persona or a name stay literal. The delimiter is `{{ }}` because the built-in text holds
+backticks, «» and ⟦⟧ as literal text.
+
+Each prompt accepts its own paths: the consolidator reads the cap on changes, and the compaction
+instruction reads the word target. [Overriding a prompt](../../guides/overriding-a-prompt.md) lists
+each prompt's parts and paths.
+
+## Overrides from the definitions
+
+From definitions format 3, the `prompts:` map in `nixie.yaml` holds the overrides, keyed by prompt
+and then by part. A part's value is the path of a file in the definitions, and the `_template` key
+holds a template inline. The seed reads each part file, drops its final line breaks, and refuses the
+definitions when any of these is true:
+
+- The map names a prompt or a part that nixie does not have.
+- A part's file is missing from the definitions or is not UTF-8 text.
+- A part or a template reads a path that its prompt does not accept. A part also may not read itself
+  or a later part.
+
+The error names the file at fault, so the seed never renders a missing value as empty text. The
+seed's unapplied list holds each file under `prompts/` that the map does not read. Format 2
+definitions load with no overrides, and the seed lists their `prompts:` files as unapplied.
+
+The seed stores the override text in the definitions snapshot, so a changed part file changes the
+snapshot hash. An absent or empty map adds nothing to the snapshot, so definitions without overrides
+keep the snapshot hash of the same definitions at format 2. Every render takes the overrides from
+the snapshot in force, so a seed changes the prompts without a restart.
+
+## Safety parts and the operator log
+
+A prompt runs without its built-in safety rules when an override replaces its `safety` part, or when
+a template override never reads `{{ parts.safety }}`. nixie needs no flag for either. After each
+seed that puts a new snapshot in force, startup included, the server writes one
+`prompts.safety_missing` line to the operator log when any prompt runs that way, with each such
+prompt marked `replaced` or `omitted`. The event log that the model reads gets nothing.
+
+## Checker prompts and the policy hash
+
+The content checker and the retirement checker gate what reaches memory, so the policy rules hold a
+hash of each one's rendered prompt. The seed renders both with the overrides in force, so a checker
+override changes the policy hash, and the session-opened record that carries the policy hash shows
+which checker gated each memory. The memory checker's evaluation runs against the built-in prompt
+alone, and a checker override has no evaluation behind it.

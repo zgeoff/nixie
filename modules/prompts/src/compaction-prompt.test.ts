@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { renderPrompt } from './render-prompt';
 
 test('it names the owner in every thread to carry forward and gives the word target', () => {
-  expect(renderPrompt('compaction', { owner: { name: 'robin' }, summary: { words: 1400 } }))
+  expect(renderPrompt('compaction', { owner: { name: 'robin' }, summary: { words: 1400 } }, {}))
     .toMatchInlineSnapshot(`
     "nixie is closing this session now. The next session opens with your persona, your pinned memory, a status readout and the summary you write now, and with no turn of this session. The memory store and the event log keep everything, and each event ID you cite stays readable there.
 
@@ -26,7 +26,7 @@ test('it names the owner in every thread to carry forward and gives the word tar
 });
 
 test('it calls the owner the owner, with a capital at the start of a line, when no name is set', () => {
-  expect(renderPrompt('compaction', { owner: { name: null }, summary: { words: 1400 } }))
+  expect(renderPrompt('compaction', { owner: { name: null }, summary: { words: 1400 } }, {}))
     .toMatchInlineSnapshot(`
     "nixie is closing this session now. The next session opens with your persona, your pinned memory, a status readout and the summary you write now, and with no turn of this session. The memory store and the event log keep everything, and each event ID you cite stays readable there.
 

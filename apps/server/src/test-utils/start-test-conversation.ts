@@ -55,6 +55,7 @@ export async function startTestConversation(
     image: 'nixie-conversation-0123456789ab',
     getDefinitions: () => ({
       persona: 'You are nixie.',
+      prompts: {},
       personaHash: 'sha256:persona-test',
       policyHash: 'sha256:policy-test',
     }),

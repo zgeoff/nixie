@@ -1,5 +1,6 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
+import type { PromptOverrides } from '@heynixie/prompts';
 import type { Generated, Kysely, Transaction } from 'kysely';
 
 export interface DefinitionsSource {
@@ -44,6 +45,7 @@ export interface DefinitionsSnapshot {
   readonly policyHash: string;
 
   readonly persona: string;
+  readonly prompts: PromptOverrides;
 
   readonly form: string;
 }
@@ -80,6 +82,7 @@ export interface ParsedDefinitions {
   readonly skills: readonly ParsedSkill[];
 
   readonly conversationSkills: readonly string[];
+  readonly prompts: PromptOverrides;
   readonly unapplied: readonly string[];
 }
 
@@ -100,6 +103,7 @@ export interface DefinitionsInForce {
   readonly snapshotHash: string;
   readonly personaVersion: string;
   readonly persona: string;
+  readonly prompts: PromptOverrides;
 
   readonly policyHash: string;
   readonly recordSequence: number;

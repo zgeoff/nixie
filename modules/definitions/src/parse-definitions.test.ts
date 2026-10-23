@@ -4,7 +4,7 @@ import { parseDefinitions } from './parse-definitions';
 
 test('it reads the format version and the persona, and lists every other file unapplied', () => {
   const files = new Map([
-    ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+    ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
     ['rules/mail.yaml', new TextEncoder().encode('id: mail\noutcome: deny\n')],
     ['jobs/morning.json', new TextEncoder().encode('{"id":"morning"}')],
@@ -14,10 +14,11 @@ test('it reads the format version and the persona, and lists every other file un
   expect(
     parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toStrictEqual({
-    formatVersion: 1,
+    formatVersion: 2,
     persona: '# Persona\n',
     skills: [],
     conversationSkills: [],
+    prompts: {},
     unapplied: ['jobs/morning.json', 'notes.md', 'rules/mail.yaml'],
   });
 });
@@ -31,7 +32,8 @@ test('it refuses definitions without a manifest', () => {
 });
 
 test.each([
-  ['format 3, which a newer release writes', 'format: 3\n'],
+  ['format 4, which a newer release writes', 'format: 4\n'],
+  ['format 1, which two releases back wrote', 'format: 1\n'],
   ['format 0', 'format: 0\n'],
 ])('it refuses a manifest with %s', (_label, manifest) => {
   const files = new Map([
@@ -43,7 +45,7 @@ test.each([
     parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(
     Error,
-    /^nixie\.yaml: format \d is not one this release reads, which is 1 or 2$/u,
+    /^nixie\.yaml: format \d is not one this release reads, which is 2 or 3$/u,
   );
 });
 
@@ -63,7 +65,7 @@ test.each([
 });
 
 test('it refuses definitions without a persona', () => {
-  const files = new Map([['nixie.yaml', new TextEncoder().encode('format: 1\n')]]);
+  const files = new Map([['nixie.yaml', new TextEncoder().encode('format: 2\n')]]);
 
   expect(() =>
     parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
@@ -72,7 +74,7 @@ test('it refuses definitions without a persona', () => {
 
 test('it refuses an empty persona', () => {
   const files = new Map([
-    ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+    ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
     ['persona.md', new TextEncoder().encode(' \n\n')],
   ]);
 
@@ -83,7 +85,7 @@ test('it refuses an empty persona', () => {
 
 test('it refuses a persona that is not UTF-8 text', () => {
   const files = new Map([
-    ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+    ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
     ['persona.md', Uint8Array.from([0xff, 0xfe, 0x00])],
   ]);
 
@@ -94,7 +96,7 @@ test('it refuses a persona that is not UTF-8 text', () => {
 
 test('it refuses an unapplied YAML file that fails to parse', () => {
   const files = new Map([
-    ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+    ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
     ['rules/mail.yaml', new TextEncoder().encode('id: [mail\n')],
   ]);
@@ -106,7 +108,7 @@ test('it refuses an unapplied YAML file that fails to parse', () => {
 
 test('it refuses an unapplied JSON file that fails to parse', () => {
   const files = new Map([
-    ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+    ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
     ['jobs/morning.json', new TextEncoder().encode('{"id":')],
   ]);
@@ -116,27 +118,31 @@ test('it refuses an unapplied JSON file that fails to parse', () => {
   ).toThrowWithMessage(Error, /^jobs\/morning\.json: JSON Parse error/u);
 });
 
-test('it lists a skill script as unapplied under format 1', () => {
+test('it ignores the prompts map under format 2 and lists its part files as unapplied', () => {
   const files = new Map([
-    ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+    [
+      'nixie.yaml',
+      new TextEncoder().encode('format: 2\nprompts:\n  writer:\n    safety: prompts/writer.md\n'),
+    ],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
-    ['skills/pdf-forms/scripts/fill.py', new TextEncoder().encode('print("fill")\n')],
+    ['prompts/writer.md', new TextEncoder().encode('Quote every fact.\n')],
   ]);
 
   expect(
     parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toStrictEqual({
-    formatVersion: 1,
+    formatVersion: 2,
     persona: '# Persona\n',
     skills: [],
     conversationSkills: [],
-    unapplied: ['skills/pdf-forms/scripts/fill.py'],
+    prompts: {},
+    unapplied: ['prompts/writer.md'],
   });
 });
 
 test('it refuses a skill file that is not UTF-8 text', () => {
   const files = new Map([
-    ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+    ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
     ['skills/pdf-forms/form.pdf', Uint8Array.from([0x25, 0x50, 0xff, 0xfe])],
   ]);
@@ -187,6 +193,7 @@ test('it reads each skill under format 2, and lists none of its files as unappli
       },
     ],
     conversationSkills: ['tide-tables'],
+    prompts: {},
     unapplied: [],
   });
 });
@@ -283,4 +290,117 @@ test('it refuses a skill under format 2 whose SKILL.md fails a seed check', () =
     Error,
     'skills/tide-tables/SKILL.md: the file does not open with YAML frontmatter between --- lines',
   );
+});
+
+test('it reads a part override from its file and a template inline under format 3, and lists only the unread prompt files as unapplied', () => {
+  const manifest = [
+    'format: 3',
+    'prompts:',
+    '  writer:',
+    '    safety: prompts/writer-safety.md',
+    '  compaction:',
+    '    _template: |',
+    '      {{ parts.instruction }}',
+    '',
+  ].join('\n');
+
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode(manifest)],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['prompts/writer-safety.md', new TextEncoder().encode('Quote {{ owner.name }} exactly.\n')],
+    ['prompts/draft.md', new TextEncoder().encode('Not used yet.\n')],
+  ]);
+
+  expect(
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+  ).toStrictEqual({
+    formatVersion: 3,
+    persona: '# Persona\n',
+    skills: [],
+    conversationSkills: [],
+    prompts: {
+      writer: { parts: { safety: 'Quote {{ owner.name }} exactly.' }, template: null },
+      compaction: { parts: {}, template: '{{ parts.instruction }}' },
+    },
+    unapplied: ['prompts/draft.md'],
+  });
+});
+
+test('it reads no override under format 3 when the manifest has no prompts map', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 3\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+  ]);
+
+  expect(
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] })
+      .prompts,
+  ).toStrictEqual({});
+});
+
+test.each([
+  [
+    'an unknown prompt',
+    'format: 3\nprompts:\n  greeter:\n    safety: prompts/greeter.md\n',
+    [],
+    'nixie.yaml: prompts: no prompt is named greeter; the prompts are writer, consolidator, content-checker, retirement-checker, session, compaction',
+  ],
+  [
+    'an unknown part',
+    'format: 3\nprompts:\n  writer:\n    tone: prompts/tone.md\n',
+    [],
+    'nixie.yaml: prompts.writer: the prompt has no part tone; its parts are persona, instruction, safety',
+  ],
+  [
+    'a part that is not a file path',
+    'format: 3\nprompts:\n  writer:\n    safety: 5\n',
+    [],
+    'nixie.yaml: prompts.writer.safety must be the path of a file',
+  ],
+  [
+    'a part file that the definitions do not hold',
+    'format: 3\nprompts:\n  writer:\n    safety: prompts/missing.md\n',
+    [],
+    'nixie.yaml: prompts.writer.safety: the definitions hold no file prompts/missing.md',
+  ],
+  [
+    'a part file that reads a path the prompt does not have',
+    'format: 3\nprompts:\n  session:\n    safety: prompts/session.md\n',
+    [{ path: 'prompts/session.md', text: 'Answer {{ assistant.name }} kindly.\n' }],
+    'prompts/session.md: the safety part of the session prompt reads {{ assistant.name }}, which it does not accept; it accepts persona, skillCatalog, owner.name, parts.skillCatalog, parts.instruction',
+  ],
+  [
+    'a template that reads a path the prompt does not have',
+    'format: 3\nprompts:\n  retirement-checker:\n    _template: "{{ parts.safety }} {{ owner.name }}"\n',
+    [],
+    'nixie.yaml: the template of the retirement-checker prompt reads {{ owner.name }}, which it does not accept; it accepts parts.instruction, parts.safety',
+  ],
+])('it refuses a prompts map with %s', (_label, manifest, extraFiles, message) => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode(manifest)],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ...extraFiles.map((file): [string, Uint8Array] => [
+      file.path,
+      new TextEncoder().encode(file.text),
+    ]),
+  ]);
+
+  expect(() =>
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+  ).toThrowWithMessage(Error, message);
+});
+
+test('it refuses a part file that is not UTF-8 text', () => {
+  const files = new Map([
+    [
+      'nixie.yaml',
+      new TextEncoder().encode('format: 3\nprompts:\n  writer:\n    safety: prompts/writer.md\n'),
+    ],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['prompts/writer.md', Uint8Array.from([0x51, 0xff, 0xfe])],
+  ]);
+
+  expect(() =>
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+  ).toThrowWithMessage(Error, 'prompts/writer.md: the file is not UTF-8 text');
 });

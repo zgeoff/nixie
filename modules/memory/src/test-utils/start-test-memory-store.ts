@@ -39,6 +39,7 @@ export async function startTestMemoryStore(
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,
+      getPrompts: () => ({}),
     },
   });
 

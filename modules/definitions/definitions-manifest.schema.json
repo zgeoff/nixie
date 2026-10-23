@@ -1,19 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "anyOf": [
-    {
-      "type": "object",
-      "properties": {
-        "format": {
-          "type": "number",
-          "const": 1
-        }
-      },
-      "required": [
-        "format"
-      ],
-      "additionalProperties": {}
-    },
+  "oneOf": [
     {
       "type": "object",
       "properties": {
@@ -32,8 +19,138 @@
         "format"
       ],
       "additionalProperties": {}
+    },
+    {
+      "type": "object",
+      "properties": {
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "format": {
+          "type": "number",
+          "const": 3
+        },
+        "prompts": {
+          "type": "object",
+          "properties": {
+            "writer": {
+              "type": "object",
+              "properties": {
+                "_template": {
+                  "type": "string"
+                },
+                "persona": {
+                  "type": "string"
+                },
+                "instruction": {
+                  "type": "string"
+                },
+                "safety": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "consolidator": {
+              "type": "object",
+              "properties": {
+                "_template": {
+                  "type": "string"
+                },
+                "persona": {
+                  "type": "string"
+                },
+                "nameRule": {
+                  "type": "string"
+                },
+                "instruction": {
+                  "type": "string"
+                },
+                "safety": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "content-checker": {
+              "type": "object",
+              "properties": {
+                "_template": {
+                  "type": "string"
+                },
+                "nameRule": {
+                  "type": "string"
+                },
+                "instruction": {
+                  "type": "string"
+                },
+                "safety": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "retirement-checker": {
+              "type": "object",
+              "properties": {
+                "_template": {
+                  "type": "string"
+                },
+                "instruction": {
+                  "type": "string"
+                },
+                "safety": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "session": {
+              "type": "object",
+              "properties": {
+                "_template": {
+                  "type": "string"
+                },
+                "skillCatalog": {
+                  "type": "string"
+                },
+                "instruction": {
+                  "type": "string"
+                },
+                "safety": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "compaction": {
+              "type": "object",
+              "properties": {
+                "_template": {
+                  "type": "string"
+                },
+                "instruction": {
+                  "type": "string"
+                },
+                "safety": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "format"
+      ],
+      "additionalProperties": {}
     }
   ],
   "title": "nixie definitions manifest",
-  "description": "The nixie.yaml at the root of the definitions, which holds their format and the conversation's skill list"
+  "description": "The nixie.yaml at the root of the definitions, which holds their format, the conversation's skill list and the prompt overrides"
 }

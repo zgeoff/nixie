@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,6 +13,7 @@ import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
 import { loadSnapshotSkills } from './load-snapshot-skills';
+import { readDefinitionsInForce } from './read-definitions-in-force';
 import { readWrittenSkills } from './read-written-skills';
 import { runSeed } from './run-seed';
 import { createStubGitSyncWorktree } from './test-utils/create-stub-git-sync-worktree';
@@ -58,14 +59,14 @@ async function setupTest(config: { readonly projections?: readonly Projection[] 
 test('it seeds the persona and records the source ID, the revision and the content hash', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [{ id: 'slice1.read-only' }], tools: [] };
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
-  const manifest = new TextEncoder().encode('format: 1\n');
+  const manifest = new TextEncoder().encode('format: 2\n');
   const persona = new TextEncoder().encode('# Persona\n');
 
   const files = new Map([
@@ -77,6 +78,7 @@ test('it seeds the persona and records the source ID, the revision and the conte
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy,
   });
 
@@ -92,7 +94,7 @@ test('it seeds the persona and records the source ID, the revision and the conte
         sourceRepository: null,
         revision: buildContentHash(files),
         contentHash: buildContentHash(files),
-        formatVersion: 1,
+        formatVersion: 2,
         policyHash: built.policyHash,
         unapplied: [],
         skipped: [],
@@ -101,19 +103,81 @@ test('it seeds the persona and records the source ID, the revision and the conte
   });
 });
 
+test('it builds the policy from the prompt overrides it seeds, keeps them in force, and writes no override text to the event log', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    join(ctx.root, 'nixie.yaml'),
+    'format: 3\nprompts:\n  retirement-checker:\n    safety: prompts/retire.md\n',
+  );
+
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'prompts'));
+  await writeFile(join(ctx.root, 'prompts', 'retire.md'), 'Give one plain reason.\n');
+
+  const buildPolicy = mock(() => ({ rules: [], tools: [] }));
+
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy });
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  invariant(result.status === 'seeded');
+
+  const prompts = {
+    'retirement-checker': { parts: { safety: 'Give one plain reason.' }, template: null },
+  };
+
+  expect(buildPolicy).toHaveBeenCalledExactlyOnceWith(prompts);
+  expect(inForce?.prompts).toStrictEqual(prompts);
+  expect(JSON.stringify(result.record.payload)).not.toInclude('Give one plain reason');
+});
+
+test('it changes the snapshot hash when a prompt part file changes', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    join(ctx.root, 'nixie.yaml'),
+    'format: 3\nprompts:\n  writer:\n    instruction: prompts/writer.md\n',
+  );
+
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'prompts'));
+  await writeFile(join(ctx.root, 'prompts', 'writer.md'), 'Keep durable facts.\n');
+
+  const first = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeFile(join(ctx.root, 'prompts', 'writer.md'), 'Keep durable facts only.\n');
+
+  const second = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  expect(second.inForce?.snapshotHash).not.toBe(first.inForce?.snapshotHash);
+});
+
 test('it seeds a plain directory with its content hash as the revision and no repository', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const seeds = await sql`select source_id, source_kind, source_repository, revision, content_hash
     from definition_seeds`.execute(ctx.writer.db);
 
   const contentHash = buildContentHash(
     new Map([
-      ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+      ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
       ['persona.md', new TextEncoder().encode('# Persona\n')],
     ]),
   );
@@ -139,19 +203,23 @@ test('it seeds a git-sync worktree with its commit as the revision and names the
     config: '[remote "origin"]\n\turl = https://git.example.test/harbor-lab/tern-definitions\n',
   });
 
-  await writeFile(join(worktree, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(worktree, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(worktree, 'persona.md'), '# Persona\n');
 
   const source = createPathSource({ directory: join(sync, 'current') });
 
-  const result = await runSeed({ log: ctx.log, source, policy: { rules: [], tools: [] } });
+  const result = await runSeed({
+    log: ctx.log,
+    source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const seeds = await sql`select source_id, source_kind, source_repository, revision, content_hash
     from definition_seeds`.execute(ctx.writer.db);
 
   const contentHash = buildContentHash(
     new Map([
-      ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+      ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
       ['persona.md', new TextEncoder().encode('# Persona\n')],
     ]),
   );
@@ -181,18 +249,19 @@ test('it seeds a git-sync worktree with its commit as the revision and names the
 test('it returns the definitions it put in force', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\r\n\r\nWarm, brief.');
 
   const policy = { rules: [], tools: [] };
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   const snapshot = await ctx.source.snapshot();
 
   const built = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n\nWarm, brief.\n',
+    prompts: {},
     policy,
   });
 
@@ -203,10 +272,11 @@ test('it returns the definitions it put in force', async () => {
     sourceRepository: null,
     revision: snapshot.revision,
     contentHash: snapshot.contentHash,
-    formatVersion: 1,
+    formatVersion: 2,
     snapshotHash: built.snapshotHash,
     personaVersion: built.personaVersion,
     persona: '# Persona\n\nWarm, brief.\n',
+    prompts: {},
     policyHash: built.policyHash,
     recordSequence: 1,
     skills: [],
@@ -217,12 +287,12 @@ test('it returns the definitions it put in force', async () => {
 test('it keeps the snapshot under its hash with the revision as its label', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [], tools: [{ name: 'web_fetch', effects: ['fetch'] }] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const snapshot = await ctx.source.snapshot();
 
@@ -230,6 +300,7 @@ test('it keeps the snapshot under its hash with the revision as its label', asyn
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy,
   });
 
@@ -250,7 +321,7 @@ test('it keeps the snapshot under its hash with the revision as its label', asyn
 test('it lists each policy file it left unapplied and each path the filter skipped', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await mkdir(join(ctx.root, 'rules'));
   await writeFile(join(ctx.root, 'rules', 'mail.yaml'), 'id: mail\noutcome: deny\n');
@@ -260,7 +331,7 @@ test('it lists each policy file it left unapplied and each path the filter skipp
   const result = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   expect(result).toMatchObject({
@@ -274,16 +345,16 @@ test('it lists each policy file it left unapplied and each path the filter skipp
 test('it keeps the last seed when a later snapshot fails to parse', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: [1\n');
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const seeds = await sql`select seed, record_sequence from definition_seeds`.execute(
     ctx.writer.db,
@@ -301,14 +372,14 @@ test('it keeps the last seed when a later snapshot fails to parse', async () => 
 test('it writes no record for a snapshot it refuses', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   await writeFile(join(ctx.root, 'persona.md'), '');
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const records = await sql`select sequence, kind from records`.execute(ctx.writer.db);
 
@@ -318,18 +389,18 @@ test('it writes no record for a snapshot it refuses', async () => {
 test('it keeps the last seed when the source refuses the snapshot', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   await writeFile(join(ctx.directory, 'secret.md'), 'outside\n');
   await mkdir(join(ctx.root, 'rules'));
   await symlink(join(ctx.directory, 'secret.md'), join(ctx.root, 'rules', 'escape.md'));
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   expect(result).toMatchObject({
     status: 'refused',
@@ -341,13 +412,13 @@ test('it keeps the last seed when the source refuses the snapshot', async () => 
 test('it refuses a first snapshot that fails to parse and leaves no seed', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const result = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const seeds = await sql`select seed from definition_seeds`.execute(ctx.writer.db);
@@ -371,23 +442,23 @@ test('it seeds again when git-sync moves to a new commit over the same files', a
     config: '[remote "origin"]\n\turl = https://git.example.test/harbor-lab/tern-definitions\n',
   });
 
-  await writeFile(join(first, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(first, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(first, 'persona.md'), '# Persona\n');
 
   const source = createPathSource({ directory: join(sync, 'current') });
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source, policy });
+  await runSeed({ log: ctx.log, source, buildPolicy: () => policy });
 
   const second = await createStubGitSyncWorktree(sync, {
     commit: 'a3d91f6c0e2b84d7f5c1a9e3b6d0f2c8e4a7b519',
     config: '[remote "origin"]\n\turl = https://git.example.test/harbor-lab/tern-definitions\n',
   });
 
-  await writeFile(join(second, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(second, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(second, 'persona.md'), '# Persona\n');
 
-  const result = await runSeed({ log: ctx.log, source, policy });
+  const result = await runSeed({ log: ctx.log, source, buildPolicy: () => policy });
 
   expect(result.status).toBe('seeded');
   expect(result.inForce?.revision).toBe('a3d91f6c0e2b84d7f5c1a9e3b6d0f2c8e4a7b519');
@@ -403,20 +474,20 @@ test('it seeds again when the origin changes over the same commit and files', as
     config: '[remote "origin"]\n\turl = https://git.example.test/harbor-lab/tern-definitions\n',
   });
 
-  await writeFile(join(worktree, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(worktree, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(worktree, 'persona.md'), '# Persona\n');
 
   const source = createPathSource({ directory: join(sync, 'current') });
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source, policy });
+  await runSeed({ log: ctx.log, source, buildPolicy: () => policy });
 
   await writeFile(
     join(sync, '.git', 'config'),
     '[remote "origin"]\n\turl = https://git.example.test/gannet-co/tern-definitions\n',
   );
 
-  const result = await runSeed({ log: ctx.log, source, policy });
+  const result = await runSeed({ log: ctx.log, source, buildPolicy: () => policy });
 
   expect(result.status).toBe('seeded');
 
@@ -428,13 +499,13 @@ test('it seeds again when the origin changes over the same commit and files', as
 test('it writes nothing when the newest seed already holds the same definitions', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   const records = await sql`select sequence from records`.execute(ctx.writer.db);
 
   expect(result.status).toBe('unchanged');
@@ -445,20 +516,21 @@ test('it writes nothing when the newest seed already holds the same definitions'
 test('it puts an edited persona in force under a new snapshot hash', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   await writeFile(join(ctx.root, 'persona.md'), '# Persona, edited\n');
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const built = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
     persona: '# Persona, edited\n',
+    prompts: {},
     policy,
   });
 
@@ -471,19 +543,20 @@ test('it puts an edited persona in force under a new snapshot hash', async () =>
 test('it seeds again when a release changes a tool declaration over the same files', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const before = { rules: [], tools: [{ name: 'web_fetch', effects: ['fetch'] }] };
   const after = { rules: [], tools: [{ name: 'web_fetch', effects: ['fetch', 'send'] }] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy: before });
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy: after });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => before });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => after });
 
   const built = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy: after,
   });
 
@@ -502,10 +575,14 @@ test('it rolls the whole seed back when its record fails to write', async () => 
 
   const ctx = await setupTest({ projections: [failingFold] });
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  const seed = runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+  const seed = runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   await seed.catch(() => {});
 
@@ -532,7 +609,7 @@ test('it seeds each skill under format 2 and names the added skills in its recor
   const result = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const skillHash = buildContentHash(new Map([['SKILL.md', new TextEncoder().encode(skill)]]));
@@ -576,7 +653,7 @@ test('it names the skills a later seed changes and removes in its record', async
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   await writeFile(
     join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
@@ -584,7 +661,7 @@ test('it names the skills a later seed changes and removes in its record', async
   );
 
   await rm(join(ctx.root, 'skills', 'bird-log'), { recursive: true });
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const records = await readQueryRows(
     sql`select payload from records order by sequence`,
@@ -617,7 +694,7 @@ test("it stores a skill's frontmatter fields with its version", async () => {
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   invariant(seeded.inForce !== null);
@@ -650,14 +727,14 @@ test('it keeps the skill version of an earlier snapshot after a seed changes the
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   await writeFile(
     join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
     '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides, by port\n',
   );
 
-  const second = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const second = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   invariant(first.inForce !== null && second.inForce !== null);
 
@@ -691,11 +768,11 @@ test('it shares an unchanged skill version between the snapshots of a persona ch
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona, edited\n');
 
-  const second = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const second = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   invariant(first.inForce !== null && second.inForce !== null);
 
@@ -732,7 +809,7 @@ test('it refuses a skill file that opens with a byte order mark', async () => {
   const result = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   expect(result).toMatchObject({
@@ -764,14 +841,14 @@ test('it refuses a skill that holds a bidirectional control character, and keeps
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   await writeFile(
     join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
     `---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\nRead ${String.fromCodePoint(0x20_2e)}it.\n`,
   );
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   expect(result).toMatchObject({
     status: 'refused',
@@ -808,7 +885,7 @@ test('it refuses a skill whose script holds a bidirectional control character, n
   const result = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   expect(result).toMatchObject({
@@ -846,7 +923,7 @@ test('it refuses a skill that holds a binary file', async () => {
   const result = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   expect(result).toMatchObject({
@@ -876,7 +953,7 @@ test('it refuses a skill whose name differs from its folder name', async () => {
   const result = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   expect(result).toMatchObject({
@@ -924,7 +1001,7 @@ test('it refuses a vendored skill whose files differ from its lock entry', async
   const result = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   expect(result).toMatchObject({
@@ -950,7 +1027,7 @@ test('it lays a skill that nixie wrote over the definitions and names its approv
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -969,7 +1046,7 @@ test('it lays a skill that nixie wrote over the definitions and names its approv
 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm.\n');
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -1001,7 +1078,7 @@ test('it marks a skill that nixie wrote as yours over the same definitions, once
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
 
@@ -1016,7 +1093,7 @@ test('it marks a skill that nixie wrote as yours over the same definitions, once
     }),
   );
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   const written = await readWrittenSkills(ctx.writer.db);
 
   expect(result).toMatchObject({
@@ -1043,7 +1120,7 @@ test('it marks a skill that nixie wrote as yours once the definitions hold its v
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
 
@@ -1061,7 +1138,7 @@ test('it marks a skill that nixie wrote as yours once the definitions hold its v
   await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   const states = await sql`select state from written_skills`.execute(ctx.writer.db);
 
   expect(result).toMatchObject({
@@ -1082,51 +1159,6 @@ test('it marks a skill that nixie wrote as yours once the definitions hold its v
   expect(states.rows).toStrictEqual([{ state: 'adopted' }]);
 });
 
-test('it keeps a skill that nixie wrote in force under format 1, though the definitions hold its version', async () => {
-  const ctx = await setupTest();
-
-  const text = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
-
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  const policy = { rules: [], tools: [] };
-
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
-
-  const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
-
-  invariant('skillHash' in skill);
-
-  await withWriteTransaction(ctx.writer, (tx) =>
-    writeWrittenSkill(tx, {
-      approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
-      proposalID: 'k3vq8m2xpa',
-      skill,
-      approvedAt: 1,
-    }),
-  );
-
-  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
-  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
-
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
-  const states = await sql`select state from written_skills`.execute(ctx.writer.db);
-
-  expect(result).toMatchObject({
-    status: 'seeded',
-    inForce: { skills: [{ name: 'tide-tables', skillHash: skill.skillHash, origin: 'nixie' }] },
-    record: {
-      payload: {
-        unapplied: ['skills/tide-tables/SKILL.md'],
-        adoptedSkills: [],
-      },
-    },
-  });
-
-  expect(states.rows).toStrictEqual([{ state: 'in_force' }]);
-});
-
 test('it keeps a skill that nixie wrote in force over a definitions change, beside the version beneath it', async () => {
   const ctx = await setupTest();
 
@@ -1141,7 +1173,7 @@ test('it keeps a skill that nixie wrote in force over a definitions change, besi
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [
     {
@@ -1166,7 +1198,7 @@ test('it keeps a skill that nixie wrote in force over a definitions change, besi
 
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), edited);
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   const written = await readWrittenSkills(ctx.writer.db);
 
   const editedFiles = new Map([['SKILL.md', new TextEncoder().encode(edited)]]);
@@ -1193,7 +1225,7 @@ test('it records the version an adopted skill became and leaves the exports of i
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const first = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}Draft.\n` }]);
   const second = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
@@ -1237,7 +1269,7 @@ test('it records the version an adopted skill became and leaves the exports of i
 
   await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const written = await sql`select approval_id, state, definitions_hash, definitions_origin
     from written_skills order by approved_at`.execute(ctx.writer.db);
@@ -1278,7 +1310,7 @@ test('it fills in the version of an adopted skill that lacks it, though the seed
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
 
@@ -1300,7 +1332,7 @@ test('it fills in the version of an adopted skill that lacks it, though the seed
     });
   });
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const written = await sql`select state, definitions_hash, definitions_origin
     from written_skills`.execute(ctx.writer.db);
@@ -1322,7 +1354,7 @@ test('it adopts a skill whose export is in flight and leaves that export to fini
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
 
@@ -1345,7 +1377,7 @@ test('it adopts a skill whose export is in flight and leaves that export to fini
 
   await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const written = await sql`select state, definitions_hash, definitions_origin
     from written_skills`.execute(ctx.writer.db);

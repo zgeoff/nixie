@@ -1,9 +1,14 @@
+import { getPromptParts, promptIDs } from '@heynixie/prompts';
+import type { z } from 'zod';
 import { definitionsFormats } from './definitions-formats';
 import type { ParseProblem } from './definitions-parse-error';
 import { DefinitionsParseError } from './definitions-parse-error';
 import { manifestPath } from './manifest-path';
+import { manifestPromptsSchema } from './manifest-prompts-schema';
 import { manifestSchema } from './manifest-schema';
 import { parseConversationSkills } from './parse-conversation-skills';
+import type { ManifestPrompts } from './parse-prompt-overrides';
+import { parsePromptOverrides } from './parse-prompt-overrides';
 import { parseSkills } from './parse-skills';
 import type { ParsedDefinitions, Snapshot } from './types';
 
@@ -11,7 +16,8 @@ const personaPath = 'persona.md';
 
 export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
   const texts = decodeFiles(snapshot.files);
-  const formatVersion = parseManifest(texts.get(manifestPath));
+  const manifest = parseManifest(texts.get(manifestPath));
+  const formatVersion = manifest.format;
   const persona = parsePersona(texts.get(personaPath));
   const hasSkills = formatVersion >= definitionsFormats.skills;
   const skills = hasSkills ? parseSkills(snapshot, texts) : [];
@@ -20,14 +26,24 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
     ? parseConversationSkills(texts.get(manifestPath) ?? '', skills)
     : [];
 
+  const overrides = parsePromptOverrides(manifest.prompts, texts);
+
   const unapplied = [...texts.keys()]
     .filter((path) => path !== manifestPath && path !== personaPath)
     .filter((path) => !hasSkills || !path.startsWith('skills/'))
+    .filter((path) => !overrides.partFiles.has(path))
     .toSorted();
 
   requireParsable(unapplied.map((path) => [path, texts.get(path) ?? '']));
 
-  return { formatVersion, persona, skills, conversationSkills, unapplied };
+  return {
+    formatVersion,
+    persona,
+    skills,
+    conversationSkills,
+    prompts: overrides.prompts,
+    unapplied,
+  };
 }
 
 function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
@@ -52,7 +68,12 @@ function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
   return new Map(decoded.map((file) => [file.path, file.text ?? '']));
 }
 
-function parseManifest(text: string | undefined): number {
+interface Manifest {
+  readonly format: number;
+  readonly prompts: ManifestPrompts | undefined;
+}
+
+function parseManifest(text: string | undefined): Manifest {
   if (text === undefined) {
     throw new DefinitionsParseError([
       { path: manifestPath, reason: 'the definitions have no manifest' },
@@ -63,10 +84,17 @@ function parseManifest(text: string | undefined): number {
   const result = manifestSchema.safeParse(manifest);
 
   if (result.success) {
-    return result.data.format;
+    const hasPrompts = result.data.format >= definitionsFormats.prompts;
+
+    return {
+      format: result.data.format,
+      prompts: hasPrompts
+        ? manifestPromptsSchema.optional().parse(findManifestField(manifest, 'prompts'))
+        : undefined,
+    };
   }
 
-  const format = getFormat(manifest);
+  const format = findManifestField(manifest, 'format');
 
   if (typeof format !== 'number' || !Number.isInteger(format)) {
     throw new DefinitionsParseError([
@@ -81,9 +109,9 @@ function parseManifest(text: string | undefined): number {
     throw new DefinitionsParseError([{ path: manifestPath, reason }]);
   }
 
-  throw new DefinitionsParseError([
-    { path: manifestPath, reason: 'skills must be a list of skill names' },
-  ]);
+  const reasons = new Set(result.error.issues.flatMap((issue) => formatManifestIssue(issue)));
+
+  throw new DefinitionsParseError([...reasons].map((reason) => ({ path: manifestPath, reason })));
 }
 
 function parseYAML(path: string, text: string): unknown {
@@ -98,10 +126,46 @@ function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function getFormat(manifest: unknown): unknown {
-  return manifest !== null && typeof manifest === 'object' && 'format' in manifest
-    ? manifest.format
+function findManifestField(manifest: unknown, field: string): unknown {
+  return manifest !== null && typeof manifest === 'object' && field in manifest
+    ? Object.getOwnPropertyDescriptor(manifest, field)?.value
     : undefined;
+}
+
+function formatManifestIssue(issue: z.core.$ZodIssue): readonly string[] {
+  const [field, id, key] = issue.path.map(String);
+
+  if (field !== 'prompts') {
+    return ['skills must be a list of skill names'];
+  }
+
+  if (issue.code === 'unrecognized_keys' && id === undefined) {
+    return issue.keys.map(
+      (name) => `prompts: no prompt is named ${name}; the prompts are ${promptIDs.join(', ')}`,
+    );
+  }
+
+  const promptID = promptIDs.find((candidate) => candidate === id);
+
+  if (promptID === undefined) {
+    return ['prompts must map each prompt to its overrides'];
+  }
+
+  if (issue.code === 'unrecognized_keys') {
+    const parts = getPromptParts(promptID).join(', ');
+
+    return issue.keys.map(
+      (name) => `prompts.${promptID}: the prompt has no part ${name}; its parts are ${parts}`,
+    );
+  }
+
+  if (key === undefined) {
+    return [`prompts.${promptID} must map each part to a file`];
+  }
+
+  return key === '_template'
+    ? [`prompts.${promptID}._template must be text`]
+    : [`prompts.${promptID}.${key} must be the path of a file`];
 }
 
 function parsePersona(text: string | undefined): string {

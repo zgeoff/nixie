@@ -140,6 +140,7 @@ function buildClosedGate(clock: TestClock): GateContext {
     limits: defaultGateLimits,
     ownerName: null,
     ownerPronouns: defaultOwnerPronouns,
+    getPrompts: () => ({}),
   };
 }
 
@@ -182,6 +183,7 @@ async function startTestWriterRunner(
     gate: wiring.options.check === undefined ? buildStubGate() : wiring.store.writes.batch,
     config: writerConfigSchema.parse({ batch_messages: 1, ...wiring.options.writerConfig }),
     getPersona: () => '',
+    getPrompts: () => ({}),
     ownerName: null,
     assistantName: null,
     defaultZone: 'UTC',

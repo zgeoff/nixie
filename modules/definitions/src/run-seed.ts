@@ -1,5 +1,6 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
+import type { PromptOverrides } from '@heynixie/prompts';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { buildSkillOverlay } from './build-skill-overlay';
 import { parseDefinitions } from './parse-definitions';
@@ -20,7 +21,7 @@ export interface SeedOptions {
   readonly log: Log;
   readonly source: DefinitionsSource;
 
-  readonly policy: SnapshotPolicy;
+  readonly buildPolicy: (prompts: PromptOverrides) => SnapshotPolicy;
 }
 
 export type SeedResult =
@@ -57,7 +58,8 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
 
     const built = buildDefinitionsSnapshot({
       persona: read.parsed.persona,
-      policy: options.policy,
+      policy: options.buildPolicy(read.parsed.prompts),
+      prompts: read.parsed.prompts,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
     });

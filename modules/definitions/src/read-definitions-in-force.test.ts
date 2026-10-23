@@ -47,15 +47,15 @@ test('it finds nothing before the first seed', async () => {
 test('it finds the definitions the newest seed put in force', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   await writeFile(join(ctx.root, 'persona.md'), '# Persona, edited\n');
 
-  const newest = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const newest = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   const inForce = await readDefinitionsInForce(ctx.writer.db);
 
   expect(inForce).toStrictEqual(newest.inForce);
@@ -64,9 +64,14 @@ test('it finds the definitions the newest seed put in force', async () => {
 test('it finds the persona text the newest seed holds', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nWarm,  \nbrief.\n\n');
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const inForce = await readDefinitionsInForce(ctx.writer.db);
 

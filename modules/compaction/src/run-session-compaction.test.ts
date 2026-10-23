@@ -50,6 +50,7 @@ test('it summarizes a task session and returns the summary record through its la
       systemPrompt: 'You sort the receipts of a trip.',
       at: 'Tue 14 Oct, 22:50, Sydney',
       ownerName: 'Robin',
+      prompts: {},
     },
   );
 
@@ -110,6 +111,7 @@ test('it sends the summary call the task profile, the system prompt and an instr
       systemPrompt: 'You sort the receipts of a trip.',
       at: 'Tue 14 Oct, 22:50, Sydney',
       ownerName: 'Robin',
+      prompts: {},
     },
   );
 
@@ -175,6 +177,7 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
       systemPrompt: 'You sort the receipts of a trip.',
       at: 'Tue 14 Oct, 22:50, Sydney',
       ownerName: null,
+      prompts: {},
     },
   );
 
@@ -227,6 +230,7 @@ test('it returns a failure record with the count in a row when the summary call 
       systemPrompt: 'You sort the receipts of a trip.',
       at: 'Tue 14 Oct, 22:50, Sydney',
       ownerName: null,
+      prompts: {},
     },
   );
 
@@ -283,6 +287,7 @@ test('it throws the abort reason instead of a failure record when the signal abo
       systemPrompt: 'You sort the receipts of a trip.',
       at: 'Tue 14 Oct, 22:50, Sydney',
       ownerName: null,
+      prompts: {},
     },
   );
 
