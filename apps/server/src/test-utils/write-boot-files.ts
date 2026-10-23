@@ -122,7 +122,7 @@ function buildConfigLines(
     '      effort: low',
     ...roleModels.flatMap(([role, url]) => [
       `    scripted-${role}:`,
-      `      base_url: ${String(url)}`,
+      `      base_url: ${url}`,
       '      credential: deployment:scripted',
       '      auth_header: x-api-key',
       '      model: claude-test-1',
