@@ -10,6 +10,7 @@ import { RPCLink } from '@orpc/client/fetch';
 import invariant from 'tiny-invariant';
 import { runCLI } from './run-cli';
 import { createTestClient } from './test-utils/create-test-client';
+import { runHostCommand } from './test-utils/run-host-command';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startTestNixie } from './test-utils/start-test-nixie';
 import { writeBootFiles } from './test-utils/write-boot-files';
@@ -57,7 +58,7 @@ test('it backs up the data of a running server into the directory it names, and 
   expect(copies).toIncludeSameMembers(['nixie.db', 'keys.db']);
 });
 
-test('it restores the backup of a running server into an empty data directory, and the restarted server reads its messages with the deployment key', async () => {
+test('it backs up a running server and restores it into an empty data directory through the nixie executable, and the restarted server reads its messages with the deployment key', async () => {
   const ctx = await setupTest();
   const nixie = await startTestNixie();
   const api = await createTestClient(nixie);
@@ -68,7 +69,7 @@ test('it restores the backup of a running server into an empty data directory, a
 
   const target = join(ctx.directory, 'backup');
 
-  await runCLI(['backup', '--to', target, '--config', nixie.configPath], ctx.io);
+  const backup = await runHostCommand(nixie.configPath, ['backup', '--to', target]);
 
   nixie.sendSignal('SIGTERM');
 
@@ -77,12 +78,7 @@ test('it restores the backup of a running server into an empty data directory, a
   await rm(nixie.dataDir, { recursive: true, force: true });
   await mkdir(nixie.dataDir);
 
-  ctx.io.print.mockClear();
-
-  const exitCode = await runCLI(
-    ['restore', '--from', target, '--yes', '--config', nixie.configPath],
-    ctx.io,
-  );
+  const restore = await runHostCommand(nixie.configPath, ['restore', '--from', target, '--yes']);
 
   const restarted = nixie.startAgain();
 
@@ -99,11 +95,11 @@ test('it restores the backup of a running server into an empty data directory, a
 
   const page = await client.conversation.read({ thread: 'conversation' });
 
-  expect(exitCode).toBe(0);
-
-  expect(ctx.io.print).toHaveBeenCalledExactlyOnceWith(
-    `nixie restored nixie.db and keys.db from ${target}`,
-  );
+  expect(backup.exitCode).toBe(0);
+  expect(backup.stdout).toStartWith('copied nixie.db\ncopied keys.db\n');
+  expect(backup.stdout).toInclude(`nixie backed up nixie.db and keys.db into ${target} in `);
+  expect(restore.exitCode).toBe(0);
+  expect(restore.stdout).toInclude(`nixie restored nixie.db and keys.db from ${target}\n`);
 
   expect(page.records.map((record) => record.message?.text)).toIncludeAllMembers([
     'Plum-message-7QK2',
