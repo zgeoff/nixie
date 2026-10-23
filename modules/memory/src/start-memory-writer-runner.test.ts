@@ -12,7 +12,7 @@ import { writeOwnerMessages } from './test-utils/write-owner-messages';
 async function setupTest(options: TestMemoryWriterOptions = {}) {
   const host = await startTestSessionHost({ projections: memoryProjections });
 
-  return { memory: await startTestMemoryWriter(host, options) };
+  return { host, memory: await startTestMemoryWriter(host, options) };
 }
 
 test('it ends a catch-up over a changed address with one active item that holds the new address', async () => {
@@ -252,7 +252,7 @@ test('it answers a staged fact whose end time passed before the batch ran with a
 
   await ctx.memory.start();
 
-  ctx.memory.model.addReplies(
+  ctx.memory.guest.addReplies(
     buildRememberReply({
       text: 'Sam is in Lisbon today.',
       quote: "I'm in Lisbon today",
@@ -271,14 +271,14 @@ test('it answers a staged fact whose end time passed before the batch ran with a
 
   const entries = await readRecords(ctx.memory.context.log, { afterSequence: 0 });
 
-  expect(JSON.stringify(ctx.memory.model.requests.at(-2)?.body)).toInclude(
+  expect(ctx.host.toolResults.at(0)?.result).toInclude(
     'that end time passed before this batch ran, so the fact has already lapsed; stage nothing for it',
   );
 
   expect(entries.filter((entry) => entry.record.kind === 'memory.version_added')).toMatchObject([
     { record: { payload: { origin: 'memory_writer', evidence: { recordSequence: sister } } } },
   ]);
-}, 60_000);
+});
 
 test('it publishes a proposal with its batch for a staged fact the checker is unsure of', async () => {
   const ctx = await setupTest({
