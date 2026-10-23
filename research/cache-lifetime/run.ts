@@ -90,7 +90,7 @@ interface TurnResult {
 async function runConversation(): Promise<readonly TurnResult[]> {
   const home = await mkdtemp(join(tmpdir(), 'cache-lifetime-'));
   // a run's own nonce ends the system prompt, so no run reads a cache entry another run wrote
-  const systemPrompt = `${renderPrompt('session', { persona: fixtures.persona, skillCatalog: null, owner: { name: lines.ownerName } })}\n\nRun ${crypto.randomUUID()}.`;
+  const systemPrompt = `${renderPrompt('session', { persona: fixtures.persona, skillCatalog: null, owner: { name: lines.ownerName } }, {})}\n\nRun ${crypto.randomUUID()}.`;
   const at = formatMessageTime(lines.now, null, lines);
 
   // a new session opens with the pinned core in its first message, as the session opening renders it
