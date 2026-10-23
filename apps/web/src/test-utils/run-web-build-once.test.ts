@@ -1,20 +1,21 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runWebBuildOnce } from './run-web-build-once';
 
 test('it builds the web server entry once and shares it', async () => {
   const paths = await Promise.all([runWebBuildOnce(), runWebBuildOnce()]);
+  const built = await Bun.file(paths[0]).exists();
 
-  expect(paths).toStrictEqual([
-    join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
-    join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
-  ]);
-
-  const built = await Bun.file(
-    join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
-  ).exists();
-
+  expect(paths[1]).toBe(paths[0]);
+  expect(paths[0]).toEndWith('/server/server.js');
   expect(built).toBeTrue();
+}, 120_000);
+
+test('it builds into a temporary directory of its own, so parallel test processes never share a build', async () => {
+  const path = await runWebBuildOnce();
+
+  expect(path).toStartWith(`${tmpdir()}/nixie-web-build-`);
 }, 120_000);
 
 // This cap still refuses Node's wasm trap handler reservation, and a lower one leaves some Node
