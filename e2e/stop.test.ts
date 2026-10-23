@@ -1,10 +1,14 @@
 import { expect, test } from 'bun:test';
-import { createTestClient, spawnTestNixie } from '@heynixie/server/test-utils';
+import { createTestClient } from '@heynixie/server/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 test('it stops claiming steps on SIGTERM, lets the turn in flight commit and exits 0', async () => {
-  const nixie = await spawnTestNixie();
-  const api = await createTestClient(nixie);
+  const nixie = await startSpawnedNixie();
+
+  const server = nixie.harness.start();
+
+  const api = await createTestClient(server);
 
   const gate = Promise.withResolvers<void>();
 
@@ -23,13 +27,13 @@ test('it stops claiming steps on SIGTERM, lets the turn in flight commit and exi
     { timeoutMs: 25_000, intervalMs: 100 },
   );
 
-  await nixie.sendStopSignal();
+  await server.sendStopSignal();
 
   gate.resolve();
 
-  const run = await nixie.waitForExit();
+  const run = await server.waitForExit();
 
-  expect(run.exitCode).toBe(0);
+  expect(run.exit).toStrictEqual({ code: 0, signal: null });
 
   expect(run.records).toIncludeAllPartialMembers([
     { kind: 'model.reply', erasable: { status: 'readable', fields: { text: 'Held-reply' } } },

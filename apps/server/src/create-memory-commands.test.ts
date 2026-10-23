@@ -8,10 +8,10 @@ import { readItemTraces } from './test-utils/read-item-traces';
 import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
 import { sendClientMessage } from './test-utils/send-client-message';
-import { startTestNixie } from './test-utils/start-test-nixie';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   return nixie;
 }

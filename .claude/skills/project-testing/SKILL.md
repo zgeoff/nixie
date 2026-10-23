@@ -69,18 +69,24 @@ such socket. Chrome stops under a `ulimit -v` cap, because it reserves more addr
 uses, so the browser suites skip there.
 
 Two kinds of suite run in a lane of their own: the guest suites that start the real Agent SDK, the
-`*.sdk.test.ts` files, and the suites that spawn nixie or a build of it as a child process, the
-`*.process.test.ts` files. A cold start of the SDK's CLI or of nixie on a small host outlasts Bun's
-default test limit, so `bun run test` leaves these suites out of the parallel run and runs them
-after it, one file at a time, under one raised limit for the whole lane. The pre-push test job
-splits its run the same way. A test in the lane sets no limit of its own.
+`*.sdk.test.ts` files, and every suite under `e2e/`, which runs the whole program. A cold start of
+the SDK's CLI or of nixie on a small host outlasts Bun's default test limit, so `bun run test`
+leaves these suites out of the parallel run and runs them after it, one file at a time, under one
+raised limit for the whole lane. The pre-push test job splits its run the same way. A test in the
+lane sets no limit of its own, and a suite that spawns nixie or a build of it lives under `e2e/`.
 
-The crash suites in `e2e/crash/` run in the process lane. They spawn the test build of nixie from
-[`e2e/nixie/main.ts`](../../../e2e/nixie/main.ts) as a child process and drive it through
+[`startSpawnedNixie`](../../../e2e/test-utils/start-spawned-nixie.ts) in `e2e/` spawns the test
+build of the server's `serve` command as a child process and joins it to
 [`startCrashHarness`](../../../libs/testing/src/start-crash-harness.ts), which holds it at fault
-points, kills it, and restarts it. The poisoned page journey in `e2e/` runs in process on the
-server's test harnesses instead, because the fetcher cannot reach a local page: it replays a
-recorded fetcher reply through a turn, then a writer batch.
+points, kills it, and restarts it. In a test build, the server waits at each fault point the test
+arms, runs on the harness clock, and adds a test connector with its send tool. Each start of nixie
+checks its action queue with an action on the `queue-check` thread, and that action reaches every
+action fault point. A crash suite therefore arms an action fault point only after the harness's
+queue-check wait returns, and keeps its assertions to the records of its own thread.
+
+The poisoned page journey in `e2e/` runs in process on the server's test harnesses instead, because
+the fetcher cannot reach a local page: it replays a recorded fetcher reply through a turn, then a
+writer batch.
 
 ## Preloads
 
@@ -127,12 +133,15 @@ its certificate names and response handler, so a test calls it in its body.
 `setupTest()` may wrap it.
 
 A server suite runs nixie in the test process through
-[`startTestNixie`](../../../apps/server/src/test-utils/start-test-nixie.ts), with the stub guest
-from
+[`startInProcessNixie`](../../../apps/server/src/test-utils/start-in-process-nixie.ts), with the
+stub guest from
 [`buildStubGuestSandboxes`](../../../modules/sandbox/src/test-utils/build-stub-guest-sandboxes.ts)
 in place of the sandbox adapter, so a turn starts no guest and no Agent SDK. A test that checks what
 the model sees asserts on the turn frames the stub guest received. The stub never imitates the SDK's
-request to the model, because a copy of the SDK's logic drifts from it unseen. Only a suite in the
-process lane spawns nixie, through
-[`spawnTestNixie`](../../../apps/server/src/test-utils/spawn-test-nixie.ts), and runs the real
-guest.
+request to the model, because a copy of the SDK's logic drifts from it unseen.
+
+The two nixie harnesses stay apart because each checks what the other cannot reach. The in-process
+harness hands a test the stub guest's frames, which a child process keeps to itself. The spawned
+harness puts a process boundary around nixie, so a suite can kill it, signal it, read its exit code
+and start it again on the same data directory. A suite that needs the real guest, a crash or a
+signal runs under `e2e/` on `startSpawnedNixie`, and every other server suite runs in process.

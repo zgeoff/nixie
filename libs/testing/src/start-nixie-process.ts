@@ -7,6 +7,8 @@ import type { FaultPointArm, FaultPointWork, NixieMessage } from './types';
 
 export interface NixieProcessOptions {
   readonly entry: string;
+
+  readonly args?: readonly string[];
   readonly env: Readonly<Record<string, string>>;
 
   readonly clockMs: number;
@@ -31,6 +33,8 @@ export interface NixieProcess {
   readonly ready: Promise<void>;
   readonly exited: Promise<NixieExit>;
 
+  readonly readStdout: () => string;
+
   readonly readStderr: () => string;
 
   readonly waitForArrival: (point: string, workID?: string) => Promise<FaultPointArrival>;
@@ -45,9 +49,10 @@ export interface NixieProcess {
 export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
   const channel = createNixieChannel();
   const child = startChild(options, channel.receive);
+  const stdout = startTextReader(child.stdout);
   const stderr = startTextReader(child.stderr);
 
-  const exited = waitForExit(child, stderr.done, (exit) => {
+  const exited = waitForExit(child, Promise.all([stdout.done, stderr.done]), (exit) => {
     channel.close(new Error(`nixie exited with ${formatExit(exit)}: ${stderr.read()}`));
   });
 
@@ -55,6 +60,7 @@ export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
     pid: child.pid,
     ready: channel.ready,
     exited,
+    readStdout: stdout.read,
     readStderr: stderr.read,
     waitForArrival: channel.waitForArrival,
     release: (arrival) => {
@@ -86,7 +92,9 @@ export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
 const defineTestBuildPath = join(import.meta.dir, 'define-test-build.ts');
 
 function startChild(options: NixieProcessOptions, receive: (message: NixieMessage) => void) {
-  return Bun.spawn([process.execPath, '--preload', defineTestBuildPath, options.entry], {
+  const command = [process.execPath, '--preload', defineTestBuildPath, options.entry];
+
+  return Bun.spawn([...command, ...(options.args ?? [])], {
     env: {
       ...process.env,
       ...options.env,
@@ -94,7 +102,7 @@ function startChild(options: NixieProcessOptions, receive: (message: NixieMessag
       [harnessEnv.faultPoints]: JSON.stringify(options.faultPoints ?? []),
     },
     stdin: 'ignore',
-    stdout: 'ignore',
+    stdout: 'pipe',
     stderr: 'pipe',
     serialization: 'json',
     ipc: receive,
@@ -125,13 +133,13 @@ type NixieChild = ReturnType<typeof startChild>;
 
 type OnExit = (exit: NixieExit) => void;
 
-// Bun can report the exit before the last of stderr is read, so the wait covers both.
+// Bun can report the exit before the last of the output is read, so the wait covers both.
 async function waitForExit(
   child: NixieChild,
-  stderrDone: Promise<void>,
+  outputDone: Promise<unknown>,
   onExit: OnExit,
 ): Promise<NixieExit> {
-  await Promise.all([child.exited, stderrDone]);
+  await Promise.all([child.exited, outputDone]);
 
   // Bun reports a signal with no name, such as a real-time one, as its number.
   const signal = child.signalCode === null ? null : String(child.signalCode);

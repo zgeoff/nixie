@@ -9,11 +9,11 @@ import { createServerContext } from './create-server-context';
 import { refreshDefinitions } from './refresh-definitions';
 import type { SeedPollParts } from './start-seed-poll';
 import { startSeedPoll } from './start-seed-poll';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 import { startTestLog } from './test-utils/start-test-log';
-import { startTestNixie } from './test-utils/start-test-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   return nixie;
 }

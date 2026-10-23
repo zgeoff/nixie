@@ -3,11 +3,11 @@ import { z } from 'zod';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { sendClientMessage } from './test-utils/send-client-message';
-import { startTestNixie } from './test-utils/start-test-nixie';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 test('it logs a skill export that fails at the error level', async () => {
   // nothing listens on the discard port, so the export's first request fails
-  const nixie = await startTestNixie({
+  const nixie = await startInProcessNixie({
     extraDefinitions: [
       'export: { repository: harbour/definitions, api_url: "https://127.0.0.1:9" }',
     ],

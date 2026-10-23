@@ -35,6 +35,7 @@
     "@heynixie/sessions": "workspace:*",
     "@heynixie/skills": "workspace:*",
     "@heynixie/tasks": "workspace:*",
+    "@heynixie/testing": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "@orpc/client": "catalog:",
@@ -47,7 +48,6 @@
   },
   "devDependencies": {
     "@faker-js/faker": "catalog:",
-    "@heynixie/testing": "workspace:*",
     "@modelcontextprotocol/client": "catalog:",
     "ajv": "catalog:",
     "ajv-formats": "3.0.1",

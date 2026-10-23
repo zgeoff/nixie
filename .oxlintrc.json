@@ -97,8 +97,8 @@
     },
     {
       // the rule knows only the browser suffix, so it looks for a module named after the
-      // .sdk or .process suffix that puts a suite in its own lane
-      "files": ["**/*.sdk.test.ts", "**/*.process.test.ts"],
+      // .sdk suffix that puts a suite in its own lane
+      "files": ["**/*.sdk.test.ts"],
       "rules": {
         "zgeoff/test-beside-module": "off"
       }

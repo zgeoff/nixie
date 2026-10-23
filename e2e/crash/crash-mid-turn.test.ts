@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { runOracle } from '../test-utils/run-oracle';
-import { startTestNixie } from '../test-utils/start-test-nixie';
+import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   return { nixie };
 }
@@ -12,13 +12,13 @@ async function setupTest() {
 test('it sends once when nixie dies after the action queued, before any attempt', async () => {
   const ctx = await setupTest();
 
-  const first = ctx.nixie.harness.start([
-    { point: 'queue.commit.after' },
-
-    { point: 'claim.after', kind: 'action' },
-  ]);
+  const first = ctx.nixie.harness.start();
 
   await first.ready;
+
+  await ctx.nixie.waitForQueueCheck();
+  await first.request('arm', { point: 'queue.commit.after' });
+  await first.request('arm', { point: 'claim.after', kind: 'action' });
 
   ctx.nixie.model.addReplies({ text: 'Hi.' });
   void first.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
@@ -47,13 +47,16 @@ test('it sends once when nixie dies after the action queued, before any attempt'
 
   await second.ready;
 
-  const outcome = await ctx.nixie.waitForRecord((record) => record.kind === 'action.outcome');
+  const outcome = await ctx.nixie.waitForRecord(
+    (record) => record.kind === 'action.outcome' && record.thread === 'conversation',
+  );
 
   await ctx.nixie.advanceUntilRecord(10_000, 3, (record) => record.stepKey === 'conversation:2');
   await second.kill();
 
-  const records = await ctx.nixie.readRecords();
+  const allRecords = await ctx.nixie.readRecords();
 
+  const records = allRecords.filter((record) => record.thread !== 'queue-check');
   const queued = records.filter((record) => record.kind === 'action.queued');
   const actionID = String(queued[0]?.payload['actionID']);
 
@@ -95,9 +98,12 @@ test('it sends once when nixie dies after the action queued, before any attempt'
 test('it leaves the action unknown and calls no provider when nixie dies after the attempt record', async () => {
   const ctx = await setupTest();
 
-  const first = ctx.nixie.harness.start([{ point: 'attempt.record.after' }]);
+  const first = ctx.nixie.harness.start();
 
   await first.ready;
+
+  await ctx.nixie.waitForQueueCheck();
+  await first.request('arm', { point: 'attempt.record.after' });
 
   ctx.nixie.model.addReplies({ text: 'Hi.' });
   void first.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
@@ -127,8 +133,9 @@ test('it leaves the action unknown and calls no provider when nixie dies after t
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:2');
   await second.kill();
 
-  const records = await ctx.nixie.readRecords();
+  const allRecords = await ctx.nixie.readRecords();
 
+  const records = allRecords.filter((record) => record.thread !== 'queue-check');
   const queued = records.filter((record) => record.kind === 'action.queued');
   const actionID = String(queued[0]?.payload['actionID']);
 
@@ -170,9 +177,12 @@ test('it leaves the action unknown and calls no provider when nixie dies after t
 test('it leaves the action unknown and calls the provider once when nixie dies before the result commits', async () => {
   const ctx = await setupTest();
 
-  const first = ctx.nixie.harness.start([{ point: 'attempt.result.before' }]);
+  const first = ctx.nixie.harness.start();
 
   await first.ready;
+
+  await ctx.nixie.waitForQueueCheck();
+  await first.request('arm', { point: 'attempt.result.before' });
 
   ctx.nixie.model.addReplies({ text: 'Hi.' });
   void first.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
@@ -203,8 +213,9 @@ test('it leaves the action unknown and calls the provider once when nixie dies b
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:2');
   await second.kill();
 
-  const records = await ctx.nixie.readRecords();
+  const allRecords = await ctx.nixie.readRecords();
 
+  const records = allRecords.filter((record) => record.thread !== 'queue-check');
   const queued = records.filter((record) => record.kind === 'action.queued');
   const actionID = String(queued[0]?.payload['actionID']);
 
@@ -272,7 +283,10 @@ test('it returns the done action to the rerun and sends once when nixie dies bef
   ctx.nixie.provider.addReplies({ kind: 'success', result: { delivered: true } });
   void first.request('sendMessage', { thread: 'conversation', text: 'Send the summary.' });
 
-  await ctx.nixie.waitForRecord((record) => record.kind === 'action.outcome');
+  await ctx.nixie.waitForRecord(
+    (record) => record.kind === 'action.outcome' && record.thread === 'conversation',
+  );
+
   await ctx.nixie.advanceUntilArrival(first, 'step.commit.before', { stepMs: 10_000, maxSteps: 3 });
   await first.kill();
 
@@ -290,8 +304,9 @@ test('it returns the done action to the rerun and sends once when nixie dies bef
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:2');
   await second.kill();
 
-  const records = await ctx.nixie.readRecords();
+  const allRecords = await ctx.nixie.readRecords();
 
+  const records = allRecords.filter((record) => record.thread !== 'queue-check');
   const queued = records.filter((record) => record.kind === 'action.queued');
   const actionID = String(queued[0]?.payload['actionID']);
 

@@ -13,8 +13,8 @@ import { createApprovedItems } from './test-utils/create-approved-items';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { sendClientMessage } from './test-utils/send-client-message';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 import { startTestLog } from './test-utils/start-test-log';
-import { startTestNixie } from './test-utils/start-test-nixie';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -103,7 +103,7 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
 });
 
 test("it unpins an item through memory.unpin at once, and the next turn's change note names it with the core's count and tokens", async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
   const api = await createTestClient(nixie);
   const [item] = await createApprovedItems(nixie, api.client, ['Runs a book club on Tuesdays']);
 

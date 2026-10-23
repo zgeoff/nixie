@@ -1,6 +1,6 @@
 import type { ContractClient } from '@heynixie/contract';
 import type { ApprovedItem } from './create-approved-items';
-import type { TestNixie } from './start-test-nixie';
+import type { InProcessNixie } from './start-in-process-nixie';
 
 export interface ItemTraces {
   readonly hasKey: boolean;
@@ -11,7 +11,7 @@ export interface ItemTraces {
 }
 
 export async function readItemTraces(
-  nixie: Pick<TestNixie, 'guest' | 'readDataFiles'>,
+  nixie: Pick<InProcessNixie, 'guest' | 'readDataFiles'>,
   client: Pick<ContractClient, 'memory'>,
   item: ApprovedItem,
 ): Promise<ItemTraces> {

@@ -41,7 +41,7 @@ async function setupTest() {
   };
 
   const log = mock(() => {});
-  const actions = buildActions(context, log);
+  const actions = buildActions(context, { log, testProviderURL: null });
 
   return {
     context,

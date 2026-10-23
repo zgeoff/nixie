@@ -1,10 +1,14 @@
 import { expect, test } from 'bun:test';
-import { createTestClient, spawnTestNixie } from '@heynixie/server/test-utils';
+import { createTestClient } from '@heynixie/server/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 test('it answers a message through the real guest and keeps its text out of the data files and the output', async () => {
-  const nixie = await spawnTestNixie();
-  const api = await createTestClient(nixie);
+  const nixie = await startSpawnedNixie();
+
+  const server = nixie.harness.start();
+
+  const api = await createTestClient(server);
 
   nixie.model.addReplies({ text: 'Quince-reply-4ZT9' });
 
@@ -25,25 +29,28 @@ test('it answers a message through the real guest and keeps its text out of the 
     { timeoutMs: 25_000, intervalMs: 100 },
   );
 
-  nixie.sendSignal('SIGTERM');
+  server.signal('SIGTERM');
 
-  const run = await nixie.waitForExit();
+  const run = await server.waitForExit();
   const files = await nixie.readDataFiles();
 
-  expect(run.exitCode).toBe(0);
+  expect(run.exit).toStrictEqual({ code: 0, signal: null });
   expect(files.map((file) => file.name)).toIncludeAllMembers(['nixie.db', 'keys.db']);
 
   expect(
     files.filter((file) => /Plum-message-7QK2|Quince-reply-4ZT9/u.test(file.text)),
   ).toStrictEqual([]);
 
-  expect(nixie.readOutput()).not.toMatch(/Plum-message-7QK2|Quince-reply-4ZT9/u);
-  expect(nixie.readOutput()).toInclude('"event":"stopped"');
+  expect(server.readOutput()).not.toMatch(/Plum-message-7QK2|Quince-reply-4ZT9/u);
+  expect(server.readOutput()).toInclude('"event":"stopped"');
 });
 
 test('it completes a turn that calls a tool from the test sandbox the configuration selects', async () => {
-  const nixie = await spawnTestNixie();
-  const api = await createTestClient(nixie);
+  const nixie = await startSpawnedNixie();
+
+  const server = nixie.harness.start();
+
+  const api = await createTestClient(server);
 
   nixie.model.addReplies(
     { toolUse: { name: 'mcp__nixie__time_now', input: {} } },
@@ -85,11 +92,14 @@ test('it completes a turn that calls a tool from the test sandbox the configurat
 });
 
 test('it refuses to start on a key no module reads, and exits 1', async () => {
-  const nixie = await spawnTestNixie({ extraConfig: ['tasks:', '  runner: 5'] });
-  const exitCode = await nixie.exited;
-  const failure = await nixie.waitForLogEvent('command.failed');
+  const nixie = await startSpawnedNixie({ extraConfig: ['tasks:', '  runner: 5'] });
 
-  expect(exitCode).toBe(1);
+  const server = nixie.harness.start();
+
+  const exit = await server.exited;
+  const failure = await server.waitForLogEvent('command.failed');
+
+  expect(exit).toStrictEqual({ code: 1, signal: null });
 
   expect(failure).toMatchObject({
     command: 'serve',

@@ -57,6 +57,7 @@ async function runServe(flags: CLIFlags, io: CLIIO): Promise<number> {
     ...(io.createSandboxAdapter === undefined
       ? {}
       : { createSandboxAdapter: io.createSandboxAdapter }),
+    ...(io.harness === undefined ? {} : { harness: io.harness }),
   });
 
   const exitCode = await Promise.race([

@@ -32,7 +32,7 @@ async function setupTest(config: SetupConfig) {
 
   onTestFinished(() => endpoint.stop());
 
-  return { endpoint, log: testLog.log };
+  return { endpoint, log: testLog.log, dataDir: testLog.dataDir };
 }
 
 test("it lists only the run's tools, each with its name, description and input schema alone", async () => {
@@ -410,6 +410,51 @@ test('it refuses a second endpoint for a run that has one', async () => {
   ).rejects.toThrowWithMessage(Error, 'the run run-1 already has a tool endpoint');
 });
 
+test("it leaves a later writer's socket for the same run in place when its run stops", async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
+  const registry = buildToolRegistry([buildMockToolDefinition({ name: 'notes_read' })]);
+
+  const other = await startToolEndpoint({
+    socketDir: join(ctx.dataDir, 'tools'),
+    registry,
+    decide: makeDecisionPoint({
+      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+    }),
+    log: { ...ctx.log, writer: { ...ctx.log.writer, epoch: ctx.log.writer.epoch + 1 } },
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+
+    queue: { enqueue: mock(), waitForOutcome: mock() },
+  });
+
+  onTestFinished(() => other.stop());
+
+  const stale = await ctx.endpoint.startRun({
+    runID: 'conversation',
+    thread: 'conversation',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const live = await other.startRun({
+    runID: 'conversation',
+    thread: 'conversation',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  await stale.stop();
+
+  const response = await Bun.fetch('http://localhost/mcp', {
+    method: 'POST',
+    unix: live.socketPath,
+    headers: { authorization: `Bearer ${live.token}`, 'content-type': 'application/json' },
+    body: '{}',
+  });
+
+  expect(response.status).toBe(400);
+});
+
 test('it gives a sandbox the socket of the run that owns it', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
@@ -421,6 +466,37 @@ test('it gives a sandbox the socket of the run that owns it', async () => {
   });
 
   expect(ctx.endpoint.getToolTarget({ id: 'nixie-0123', owner: 'run-1' })).toStrictEqual(
+    run.target,
+  );
+});
+
+test('it gives a sandbox the socket of a run that another endpoint of the same writer owns', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
+  const registry = buildToolRegistry([buildMockToolDefinition({ name: 'notes_read' })]);
+
+  const other = await startToolEndpoint({
+    socketDir: join(ctx.dataDir, 'tools'),
+    registry,
+    decide: makeDecisionPoint({
+      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+    }),
+    log: ctx.log,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+
+    queue: { enqueue: mock(), waitForOutcome: mock() },
+  });
+
+  onTestFinished(() => other.stop());
+
+  const run = await other.startRun({
+    runID: 'memory-writer',
+    thread: 'memory-writer',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  expect(ctx.endpoint.getToolTarget({ id: 'nixie-0123', owner: 'memory-writer' })).toStrictEqual(
     run.target,
   );
 });
