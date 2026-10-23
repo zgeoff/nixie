@@ -9,14 +9,17 @@ import { buildTestClock } from '@heynixie/testing';
 import { buildActions } from './build-actions';
 
 async function setupTest() {
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
   const dataDir = await mkdtemp(`${tmpdir()}/nixie-actions-`);
+
+  stack.defer(() => rm(dataDir, { recursive: true, force: true }));
+
   const writer = await startWriter({ dataDir });
 
-  onTestFinished(async () => {
-    await writer.stop();
-
-    await rm(dataDir, { recursive: true, force: true });
-  });
+  stack.defer(() => writer.stop());
 
   const context: TasksContext = {
     log: {
