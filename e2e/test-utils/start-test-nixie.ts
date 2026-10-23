@@ -1,32 +1,70 @@
 import { onTestFinished } from 'bun:test';
-import { randomBytes } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
+import type { LogRecord } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
+import type { LogLevel } from '@heynixie/logger';
+import type { BootFiles } from '@heynixie/server/test-utils';
+import { readDataFiles, readTestRecords, writeBootFiles } from '@heynixie/server/test-utils';
 import type {
+  AdvanceOptions,
   CrashHarness,
+  FaultPointArm,
   FaultPointArrival,
+  NixieExit,
   NixieProcess,
   ProviderDouble,
   ScriptedModel,
 } from '@heynixie/testing';
-import { startCrashHarness, startProviderDouble, startScriptedModel } from '@heynixie/testing';
+import {
+  startCrashHarness,
+  startNixieProcess,
+  startProviderDouble,
+  startScriptedModel,
+  waitForCondition,
+} from '@heynixie/testing';
+import { z } from 'zod';
 import { buildAdvanceHelpers } from './build-advance-helpers';
 import type { AdvanceSteps, MatchRecord, RecoveredState, TestRecord, TestRow } from './types';
 import { waitForMatch } from './wait-for-match';
 
 export type { RecoveredState } from './types';
 
-export interface TestNixie {
-  readonly dataDir: string;
+type LogLine = Readonly<Record<string, unknown>>;
 
-  readonly deploymentKey: string;
-  readonly harness: CrashHarness;
+interface TestNixieExit {
+  readonly exit: NixieExit;
+  readonly records: readonly LogRecord[];
+}
+
+interface TestNixieProcess extends NixieProcess {
+  readonly readOutput: () => string;
+
+  readonly waitForLogEvent: (event: string) => Promise<LogLine>;
+
+  readonly sendStopSignal: () => Promise<void>;
+
+  readonly waitForExit: () => Promise<TestNixieExit>;
+}
+
+interface TestNixieHarness {
+  readonly now: () => number;
+
+  readonly start: (faultPoints?: readonly FaultPointArm[]) => TestNixieProcess;
+
+  readonly advance: (durationMs: number, options?: AdvanceOptions) => Promise<void>;
+}
+
+export interface TestNixie extends BootFiles {
+  readonly directory: string;
+  readonly harness: TestNixieHarness;
   readonly model: ScriptedModel;
 
   readonly writerModel: ScriptedModel;
+
+  readonly checkerModel: ScriptedModel;
   readonly provider: ProviderDouble;
   readonly readRecords: () => Promise<readonly TestRecord[]>;
 
@@ -46,53 +84,98 @@ export interface TestNixie {
 
   readonly readRows: (table: string) => Promise<readonly TestRow[]>;
 
+  readonly waitForQueueCheck: () => Promise<void>;
+
   readonly readRecoveredStates: () => readonly RecoveredState[];
+
+  readonly readDataFiles: () => Promise<
+    readonly { readonly name: string; readonly text: string }[]
+  >;
+
+  readonly readSandboxIDs: () => Promise<readonly string[]>;
 }
 
 export interface TestNixieOptions {
   readonly memoryWriter?: boolean;
+
+  readonly extraConfig?: readonly string[];
+
+  readonly extraSecrets?: readonly string[];
+
+  readonly extraDefinitions?: readonly string[];
+
+  readonly logLevel?: LogLevel;
+
+  readonly release?: string;
 }
 
 // A turn runs the real SDK in a guest process, which takes a few seconds on a slow host.
 const recordTimeoutMs = 30_000;
+const startMs = 1_000_000;
+const serverEntry = join(import.meta.dir, '../../apps/server/src/main.ts');
+
+interface Launch {
+  readonly entry: string;
+  readonly args: readonly string[];
+  readonly env: Readonly<Record<string, string>>;
+  readonly files: BootFiles;
+}
 
 export async function startTestNixie(options: TestNixieOptions = {}): Promise<TestNixie> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-crash-'));
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-e2e-'));
 
-  stack.defer(() => rm(dataDir, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
   const doubles = startDoubles(stack);
-  const deploymentKey = randomBytes(32).toString('base64');
 
-  const crashHarness = startNixieHarness(stack, {
-    NIXIE_DATA_DIR: dataDir,
-    NIXIE_TEST_DEPLOYMENT_KEY: deploymentKey,
-    NIXIE_TEST_MODEL_URL: doubles.model.url,
-    NIXIE_TEST_PROVIDER_URL: doubles.provider.url,
-    ...(options.memoryWriter === true
-      ? { NIXIE_TEST_WRITER_MODEL_URL: doubles.writerModel.url }
-      : {}),
-  });
+  const files = await writeBootFiles(
+    directory,
+    doubles.model.url,
+    buildBootExtras(options, doubles),
+  );
 
-  const reader = startLogReader(dataDir, stack);
-  const recovery = startRecoveryReads(crashHarness, reader.readRows);
+  const reader = startLogReader(files.dataDir, stack);
+
+  const launch: Launch = {
+    entry: options.release ?? serverEntry,
+    args: buildServeArgs(files),
+    env: { NIXIE_TEST_PROVIDER_URL: doubles.provider.url },
+    files,
+  };
+
+  const crashHarness = startCrashHarness({ ...launch, startMs });
+
+  // AsyncDisposableStack disposes in reverse, so every nixie dies before its directory goes.
+  stack.defer(() => crashHarness.stop());
+
+  const recovery = startRecoveryReads(crashHarness, launch, reader.readRows);
+
+  const harness: TestNixieHarness = {
+    now: crashHarness.now,
+    start: options.release === undefined ? recovery.start : () => startRelease(launch, stack),
+    advance: crashHarness.advance,
+  };
 
   return {
-    dataDir,
-    deploymentKey,
-    ...recovery,
+    ...files,
+    directory,
+    harness,
     ...doubles,
     ...reader,
+    readRecoveredStates: recovery.readRecoveredStates,
     waitForRecord: (matches) => waitForMatch(reader.readRecords, matches, recordTimeoutMs),
-    ...buildAdvanceHelpers(recovery.harness, reader.readRecords),
+    waitForQueueCheck: () => waitForQueueCheck(reader.readRecords),
+    ...buildAdvanceHelpers(harness, reader.readRecords),
+    readDataFiles: () => readDataFiles(files.dataDir),
+    readSandboxIDs: () => readdir(join(files.dataDir, 'sandboxes')),
   };
 }
 
-type TestDoubles = Pick<TestNixie, 'model' | 'provider' | 'writerModel'>;
+type TestDoubles = Pick<TestNixie, 'model' | 'provider' | 'writerModel' | 'checkerModel'>;
 
 function startDoubles(stack: AsyncDisposableStack): TestDoubles {
   const model = startScriptedModel();
@@ -103,26 +186,44 @@ function startDoubles(stack: AsyncDisposableStack): TestDoubles {
 
   stack.defer(() => writerModel.stop());
 
+  const checkerModel = startScriptedModel();
+
+  stack.defer(() => checkerModel.stop());
+
   const provider = startProviderDouble();
 
   stack.defer(() => provider.stop());
 
-  return { model, writerModel, provider };
+  return { model, writerModel, checkerModel, provider };
 }
 
-type NixieEnv = Readonly<Record<string, string>>;
+// The memory writer and the consolidator ask the model on their own schedule, so a test that does
+// not ask for them keeps them off and its scripted replies for the turns it drives. The writer's
+// gate asks the checker in the middle of a batch, so the checker gets its own model as well.
+function buildBootExtras(options: TestNixieOptions, doubles: TestDoubles) {
+  const isWriterOn = options.memoryWriter === true;
 
-function startNixieHarness(stack: AsyncDisposableStack, env: NixieEnv): CrashHarness {
-  const harness = startCrashHarness({
-    entry: join(import.meta.dir, '../nixie/main.ts'),
-    startMs: 1_000_000,
-    env,
-  });
-
-  // AsyncDisposableStack disposes in reverse, so every nixie dies before its data directory goes.
-  stack.defer(() => harness.stop());
-
-  return harness;
+  return {
+    config: [
+      'memory_writer:',
+      `  enabled: ${String(isWriterOn)}`,
+      'memory_consolidation:',
+      '  enabled: false',
+      ...(options.extraConfig ?? []),
+    ],
+    secrets: options.extraSecrets ?? [],
+    definitions: options.extraDefinitions ?? [],
+    ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
+    ...(isWriterOn
+      ? {
+          roleModelURLs: {
+            'memory-writer': doubles.writerModel.url,
+            checker: doubles.checkerModel.url,
+          },
+        }
+      : {}),
+    ...(options.release === undefined ? {} : { sandboxAdapter: 'imp' as const }),
+  };
 }
 
 type LogReader = Pick<TestNixie, 'readRecords' | 'readRows'>;
@@ -175,24 +276,37 @@ function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader
   };
 }
 
+function buildServeArgs(files: BootFiles): readonly string[] {
+  return [
+    'serve',
+    '--config',
+    files.configPath,
+    '--manifest',
+    files.manifestPath,
+    '--sops',
+    files.sopsPath,
+
+    '--encoder',
+    '',
+  ];
+}
+
 function startRecoveryReads(
   crashHarness: CrashHarness,
+  launch: Launch,
   readRows: TestNixie['readRows'],
-): Pick<TestNixie, 'harness' | 'readRecoveredStates'> {
+): Pick<TestNixieHarness, 'start'> & Pick<TestNixie, 'readRecoveredStates'> {
   const states: RecoveredState[] = [];
 
   return {
-    harness: {
-      ...crashHarness,
-      start: (faultPoints = []) => {
-        const nixie = crashHarness.start([...faultPoints, { point: 'test.recovered' }]);
+    start: (faultPoints = []) => {
+      const nixie = crashHarness.start([...faultPoints, { point: 'test.recovered' }]);
 
-        void readRecoveredState(nixie, readRows, (state) => {
-          states.push(state);
-        });
+      void readRecoveredState(nixie, readRows, (state) => {
+        states.push(state);
+      });
 
-        return nixie;
-      },
+      return trackTestNixieProcess(nixie, launch.files);
     },
     readRecoveredStates: () => states,
   };
@@ -212,4 +326,104 @@ async function readRecoveredState(
   onState({ leases: await readRows('leases'), tasks: await readRows('tasks') });
 
   nixie.release(arrival);
+}
+
+function trackTestNixieProcess(nixie: NixieProcess, files: BootFiles): TestNixieProcess {
+  const state = { hasExited: false };
+
+  void (async () => {
+    await nixie.exited;
+
+    state.hasExited = true;
+  })();
+
+  const readOutput = () => `${nixie.readStdout()}${nixie.readStderr()}`;
+
+  const waitForLogEvent = async (event: string): Promise<LogLine> => {
+    const readEventLine = () =>
+      parseLogLines(nixie.readStdout()).find((line) => line['event'] === event);
+
+    await waitForCondition(() => readEventLine() !== undefined || state.hasExited, {
+      timeoutMs: recordTimeoutMs,
+    });
+
+    const line = readEventLine();
+
+    if (line === undefined) {
+      throw new Error(`nixie exited without the log event ${event}:\n${readOutput()}`);
+    }
+
+    return line;
+  };
+
+  return {
+    ...nixie,
+    readOutput,
+    waitForLogEvent,
+    sendStopSignal: async () => {
+      nixie.signal('SIGTERM');
+
+      await waitForLogEvent('stopping');
+    },
+    waitForExit: async () => {
+      const exit = await nixie.exited;
+      const records = await readTestRecords(files.dataDir, files.deploymentKey);
+
+      return { exit, records };
+    },
+  };
+}
+
+const logLineSchema = z.record(z.string(), z.unknown()).readonly();
+
+function parseLogLines(text: string): readonly LogLine[] {
+  return text
+    .split('\n')
+    .filter((line) => line.startsWith('{'))
+    .map((line) => logLineSchema.parse(JSON.parse(line)));
+}
+
+// A release bundle leaves the harness link out, so it never sends ready over IPC, and its ready
+// log line stands in.
+function startRelease(launch: Launch, stack: AsyncDisposableStack): TestNixieProcess {
+  const nixie = startNixieProcess({ ...launch, clockMs: startMs });
+
+  stack.defer(async () => {
+    await nixie.kill();
+  });
+
+  const started = trackTestNixieProcess(nixie, launch.files);
+
+  const ready = (async () => {
+    await started.waitForLogEvent('ready');
+  })();
+
+  // A test that never waits for ready, such as one that stops a release before it gets there,
+  // leaves the rejection unobserved.
+  void Promise.allSettled([ready]);
+
+  return { ...started, ready };
+}
+
+// Each start of nixie checks its action queue with an action of its own, which reaches every
+// action fault point, so a test arms those points once this check is done.
+async function waitForQueueCheck(readRecords: TestNixie['readRecords']): Promise<void> {
+  await waitForCondition(
+    async () => {
+      const records = await readRecords();
+
+      const started = records.findLast((record) => record.kind === 'server.started');
+
+      return (
+        started !== undefined &&
+        records.some(
+          (record) =>
+            record.sequence > started.sequence &&
+            record.kind === 'action.outcome' &&
+            record.thread === 'queue-check',
+        )
+      );
+    },
+    { timeoutMs: recordTimeoutMs },
+  );
 }

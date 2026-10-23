@@ -45,9 +45,14 @@ test('it refuses a second process while the first holds the writer lock, and let
   const oracle = await runOracle(ctx.nixie);
 
   expect(refusedExit.code).not.toBe(0);
-  expect(refused.readStderr()).toInclude('writer lock held by another process');
+  expect(refused.readOutput()).toInclude('writer lock held by another process');
   expect(epochAfterRefusal).toStrictEqual(epochBefore);
-  expect(recordsAfterRefusal).toStrictEqual(recordsBefore);
+
+  // Process A's queue-check task goes on writing on its own thread meanwhile.
+  expect(recordsAfterRefusal.filter((record) => record.thread !== 'queue-check')).toStrictEqual(
+    recordsBefore.filter((record) => record.thread !== 'queue-check'),
+  );
+
   expect(epochAfterB).toStrictEqual([{ id: 1, epoch: 2 }]);
 
   expect(oracle).toStrictEqual({
@@ -87,7 +92,7 @@ test('it refuses a second process while the first is frozen, and the first resum
   const oracle = await runOracle(ctx.nixie);
 
   expect(refusedExit.code).not.toBe(0);
-  expect(refused.readStderr()).toInclude('writer lock held by another process');
+  expect(refused.readOutput()).toInclude('writer lock held by another process');
   expect(epochAfterRefusal).toStrictEqual(epochBefore);
 
   expect(oracle).toStrictEqual({

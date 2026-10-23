@@ -13,15 +13,21 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
         kind: 'owner_message',
         definitions: context.definitions(),
         thread: message.thread,
-        erasable: { text: message.text },
+        erasable: {
+          text: message.text,
+          spans: [{ start: 0, end: message.text.length, source: 'typed' }],
+        },
       },
     ]);
 
     return record?.sequence ?? null;
   });
 
-  link.registerOperation('createTask', z.object({ brief: z.string() }), (task) =>
-    createTask(context, task.brief),
+  // A test that names the task can arm a fault point for it before the task exists.
+  link.registerOperation(
+    'createTask',
+    z.object({ brief: z.string(), taskID: z.string().exactOptional() }),
+    (task) => createTask(context, task.brief, task.taskID),
   );
 
   link.registerOperation('finishTask', z.object({ taskID: z.string() }), async (task) => {

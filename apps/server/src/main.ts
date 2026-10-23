@@ -32,4 +32,5 @@ const exitCode = await runCLI(process.argv.slice(2), {
   ...(harness === null ? {} : { harness }),
 });
 
+harness?.stopDescendants();
 process.exit(exitCode);

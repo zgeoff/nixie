@@ -11,9 +11,12 @@ async function setupTest() {
 test('it resumes the retry schedule across a restart and fails the action on the fifth refusal', async () => {
   const ctx = await setupTest();
 
-  const first = ctx.nixie.harness.start([{ point: 'attempt.result.after', kind: 'action' }]);
+  const first = ctx.nixie.harness.start();
 
   await first.ready;
+
+  await ctx.nixie.waitForQueueCheck();
+  await first.request('arm', { point: 'attempt.result.after', kind: 'action' });
 
   ctx.nixie.model.addReplies(
     { toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } } },
@@ -33,7 +36,11 @@ test('it resumes the retry schedule across a restart and fails the action on the
   await ctx.nixie.advanceUntilRecord(10_000, 2, (record) => record.stepKey === 'conversation:1');
   await first.kill();
 
-  const actionsAfterKill = await ctx.nixie.readRows('actions');
+  const allActionsAfterKill = await ctx.nixie.readRows('actions');
+
+  const actionsAfterKill = allActionsAfterKill.filter(
+    (action) => action['task_id'] === 'conversation',
+  );
 
   ctx.nixie.model.addReplies({ text: 'The send failed.' });
 
@@ -47,7 +54,9 @@ test('it resumes the retry schedule across a restart and fails the action on the
   for (const attempt of [2, 3, 4, 5]) {
     const rows = await ctx.nixie.readRows('actions');
 
-    const dueAt = Number(rows[0]?.['next_attempt_at']);
+    const dueAt = Number(
+      rows.find((row) => row['task_id'] === 'conversation')?.['next_attempt_at'],
+    );
 
     await ctx.nixie.harness.advance(dueAt - 1 - ctx.nixie.harness.now(), { settle: true });
 
@@ -60,6 +69,7 @@ test('it resumes the retry schedule across a restart and fails the action on the
     await ctx.nixie.waitForRecord(
       (record) =>
         ['action.retry_scheduled', 'action.outcome'].includes(record.kind) &&
+        record.thread === 'conversation' &&
         record.payload['attempt'] === attempt,
     );
   }
@@ -67,8 +77,9 @@ test('it resumes the retry schedule across a restart and fails the action on the
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:2');
   await second.kill();
 
-  const records = await ctx.nixie.readRecords();
+  const allRecords = await ctx.nixie.readRecords();
 
+  const records = allRecords.filter((record) => record.thread !== 'queue-check');
   const queued = records.find((record) => record.kind === 'action.queued');
   const actionID = String(queued?.payload['actionID']);
   const retries = records.filter((record) => record.kind === 'action.retry_scheduled');
@@ -125,6 +136,8 @@ test('it marks a retry unknown when nixie dies after its attempt record, and nev
 
   await first.ready;
 
+  await ctx.nixie.waitForQueueCheck();
+
   ctx.nixie.model.addReplies(
     { toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } } },
     { text: 'Queued.' },
@@ -149,8 +162,9 @@ test('it marks a retry unknown when nixie dies after its attempt record, and nev
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:2');
   await second.kill();
 
-  const records = await ctx.nixie.readRecords();
+  const allRecords = await ctx.nixie.readRecords();
 
+  const records = allRecords.filter((record) => record.thread !== 'queue-check');
   const queued = records.find((record) => record.kind === 'action.queued');
   const actionID = String(queued?.payload['actionID']);
 

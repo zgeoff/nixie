@@ -13,7 +13,9 @@ async function setupTest() {
 test('it lets runner B take an expired lease at the next generation, and commits the step once', async () => {
   const ctx = await setupTest();
 
-  const nixie = ctx.nixie.harness.start([{ point: 'claim.after', kind: 'task' }]);
+  const nixie = ctx.nixie.harness.start([
+    { point: 'claim.after', kind: 'task', workID: 'conversation' },
+  ]);
 
   await nixie.ready;
 
@@ -41,13 +43,13 @@ test('it lets runner B take an expired lease at the next generation, and commits
 
   expect(
     records
-      .filter((record) => record.kind === 'task.step_started')
+      .filter((record) => record.kind === 'task.step_started' && record.thread === 'conversation')
       .map((record) => record.payload['generation']),
   ).toStrictEqual([1, 2]);
 
   expect(
     records
-      .filter((record) => record.kind === 'task.step_committed')
+      .filter((record) => record.kind === 'task.step_committed' && record.thread === 'conversation')
       .map((record) => record.stepKey),
   ).toStrictEqual(['conversation:1']);
 
@@ -103,18 +105,23 @@ test('it lets runner B claim only once the renewed lease expires, never before',
   const records = await ctx.nixie.readRecords();
   const oracle = await runOracle(ctx.nixie);
 
-  expect(beforeExpiry.filter((record) => record.kind === 'task.step_started')).toHaveLength(1);
+  expect(
+    beforeExpiry.filter(
+      (record) => record.kind === 'task.step_started' && record.thread === 'conversation',
+    ),
+  ).toHaveLength(1);
+
   expect(exit).toStrictEqual({ code: 0, signal: null });
 
   expect(
     records
-      .filter((record) => record.kind === 'task.step_started')
+      .filter((record) => record.kind === 'task.step_started' && record.thread === 'conversation')
       .map((record) => record.payload['generation']),
   ).toStrictEqual([1, 2]);
 
   expect(
     records
-      .filter((record) => record.kind === 'task.step_committed')
+      .filter((record) => record.kind === 'task.step_committed' && record.thread === 'conversation')
       .map((record) => record.stepKey),
   ).toStrictEqual(['conversation:1']);
 
@@ -170,7 +177,9 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
 
   sendReply.resolve();
 
-  await ctx.nixie.waitForRecord((record) => record.kind === 'tool_result');
+  await ctx.nixie.waitForRecord(
+    (record) => record.kind === 'tool_result' && record.thread === 'conversation',
+  );
 
   await waitForCondition(
     () =>
@@ -200,12 +209,15 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
 
   expect(
     records
-      .filter((record) => record.kind === 'tool_result')
+      .filter((record) => record.kind === 'tool_result' && record.thread === 'conversation')
       .map((record) => record.payload['outcome']),
   ).toStrictEqual(['error']);
 
-  expect(records.filter((record) => record.kind === 'action.queued')).toStrictEqual([]);
-  expect(actions).toStrictEqual([]);
+  expect(
+    records.filter((record) => record.kind === 'action.queued' && record.thread === 'conversation'),
+  ).toStrictEqual([]);
+
+  expect(actions.filter((action) => action['task_id'] === 'conversation')).toStrictEqual([]);
   expect(ctx.nixie.provider.calls).toStrictEqual([]);
 
   expect(JSON.stringify(followUp.body.messages)).toInclude(
@@ -214,7 +226,7 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
 
   expect(
     records
-      .filter((record) => record.kind === 'task.step_committed')
+      .filter((record) => record.kind === 'task.step_committed' && record.thread === 'conversation')
       .map((record) => record.stepKey),
   ).toStrictEqual(['conversation:1']);
 
@@ -277,7 +289,11 @@ test('it expires the lease of a killed nixie on restart, runs the task once, and
 
   expect(
     records
-      .filter((record) => record.kind === 'task.step_committed')
+      .filter(
+        (record) =>
+          record.kind === 'task.step_committed' &&
+          (record.thread === finishedID || record.thread === 'conversation'),
+      )
       .map((record) => record.stepKey),
   ).toStrictEqual([`${finishedID}:1`, `${finishedID}:2`, 'conversation:1']);
 

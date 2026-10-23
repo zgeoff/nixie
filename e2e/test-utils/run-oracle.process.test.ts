@@ -56,7 +56,12 @@ test('it reports a projection table whose rows a fold of the log does not rebuil
 
   onTestFinished(() => db.destroy());
 
-  await db.$extendTables<TasksTables>().updateTable('tasks').set({ step_errors: 7 }).execute();
+  await db
+    .$extendTables<TasksTables>()
+    .updateTable('tasks')
+    .set({ step_errors: 7 })
+    .where('task_id', '=', taskID)
+    .execute();
 
   const oracle = await runOracle(ctx.nixie);
 

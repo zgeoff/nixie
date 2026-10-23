@@ -14,7 +14,7 @@ export interface AdvanceWaits {
 const defaultAdvanceWaits: AdvanceWaits = { advanceWaitMs: 1000, lastAdvanceWaitMs: 30_000 };
 
 export function buildAdvanceHelpers(
-  harness: CrashHarness,
+  harness: Pick<CrashHarness, 'advance'>,
   readRecords: TestNixie['readRecords'],
   waits: AdvanceWaits = defaultAdvanceWaits,
 ): Pick<TestNixie, 'advanceUntilArrival' | 'advanceUntilRecord'> {
@@ -46,7 +46,7 @@ export function buildAdvanceHelpers(
 }
 
 interface Advances<T> {
-  readonly harness: CrashHarness;
+  readonly harness: Pick<CrashHarness, 'advance'>;
   readonly stepMs: number;
   readonly waits: AdvanceWaits;
 

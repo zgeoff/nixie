@@ -8,8 +8,6 @@
   // the package, so knip sees neither
   "ignoreDependencies": ["@stylistic/eslint-plugin", "@zgeoff/skill-gate"],
   "workspaces": {
-    // a crash test spawns the test build of nixie by its path, so no import reaches it
-    "e2e": { "entry": ["nixie/main.ts"] },
     // a test spawns the stub program as its own process, so no import reaches it
     "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
     "libs/testing": { "entry": ["src/test-utils/run-stub-*.ts"] },

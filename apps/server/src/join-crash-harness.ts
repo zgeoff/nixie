@@ -1,11 +1,13 @@
 import { setFaultPointHandler } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
-import { startHarnessLink } from '@heynixie/testing';
+import { readDescendants, startHarnessLink, stopProcesses } from '@heynixie/testing';
 
 export interface CrashHarness {
   readonly link: HarnessLink;
 
   readonly providerURL: string;
+
+  readonly stopDescendants: () => void;
 }
 
 export function joinCrashHarness(
@@ -26,5 +28,14 @@ export function joinCrashHarness(
 
   setFaultPointHandler((id, work) => link.waitAtFaultPoint(id, work));
 
-  return { link, providerURL };
+  return {
+    link,
+    providerURL,
+
+    // A guest leads its own process group, so it outlives a nixie that exits. A host that loses
+    // nixie loses its sandboxes too, so nixie stops every process it started before it exits.
+    stopDescendants: () => {
+      stopProcesses(readDescendants(process.pid));
+    },
+  };
 }

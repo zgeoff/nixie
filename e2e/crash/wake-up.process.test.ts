@@ -49,7 +49,7 @@ test('it wakes the conversation for a message written just before nixie died, an
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(tasksAfterRecovery).toMatchObject([{ task_id: 'conversation', state: 'ready' }]);
+  expect(tasksAfterRecovery).toPartiallyContain({ task_id: 'conversation', state: 'ready' });
   expect(committed.payload['readCursor']).toBe(messages[1]?.sequence);
   expect(JSON.stringify(lastRequest?.body?.messages).split('Are you there?')).toHaveLength(2);
 
@@ -139,7 +139,10 @@ test('it wakes the conversation for an action outcome written just before nixie 
 
   void first.request('sendMessage', { thread: 'conversation', text: 'Send the summary.' });
 
-  await ctx.nixie.waitForRecord((record) => record.kind === 'action.attempt_started');
+  await ctx.nixie.waitForRecord(
+    (record) => record.kind === 'action.attempt_started' && record.thread === 'conversation',
+  );
+
   await ctx.nixie.advanceUntilRecord(10_000, 2, (record) => record.stepKey === 'conversation:1');
   await first.request('arm', { point: 'inbox.write.after', workID: 'conversation' });
 
@@ -163,7 +166,9 @@ test('it wakes the conversation for an action outcome written just before nixie 
 
   const records = await ctx.nixie.readRecords();
 
-  const outcome = records.find((record) => record.kind === 'action.outcome');
+  const outcome = records.find(
+    (record) => record.kind === 'action.outcome' && record.thread === 'conversation',
+  );
 
   const lastRequest = ctx.nixie.model.requests.findLast(
     (request) => request.path === '/v1/messages',
@@ -171,7 +176,7 @@ test('it wakes the conversation for an action outcome written just before nixie 
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(tasksAfterRecovery).toMatchObject([{ task_id: 'conversation', state: 'ready' }]);
+  expect(tasksAfterRecovery).toPartiallyContain({ task_id: 'conversation', state: 'ready' });
   expect(outcome?.payload['status']).toBe('done');
   expect(committed.payload['readCursor']).toBe(outcome?.sequence);
   expect(JSON.stringify(lastRequest?.body?.messages).split('An action settled')).toHaveLength(2);
@@ -190,13 +195,15 @@ test('it wakes the conversation for an action outcome written just before nixie 
 test('it reaches a task with input that arrives while its step runs, before the step registers its wait', async () => {
   const ctx = await setupTest();
 
-  const nixie = ctx.nixie.harness.start([{ point: 'step.commit.before', kind: 'task' }]);
+  const taskID = 'wait-for-a-message';
+
+  const nixie = ctx.nixie.harness.start([
+    { point: 'step.commit.before', kind: 'task', workID: taskID },
+  ]);
 
   await nixie.ready;
 
-  const created = await nixie.request('createTask', { brief: 'Wait for a message.' });
-
-  const taskID = String(created);
+  await nixie.request('createTask', { brief: 'Wait for a message.', taskID });
 
   const step = await nixie.waitForArrival('step.commit.before', taskID);
   const sequence = await nixie.request('sendMessage', { thread: taskID, text: 'One more thing.' });

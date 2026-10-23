@@ -42,7 +42,7 @@ test('it commits a step that finishes inside the grace window once, and claims n
 
   expect(
     records
-      .filter((record) => record.kind === 'task.step_committed')
+      .filter((record) => record.kind === 'task.step_committed' && record.thread === 'conversation')
       .map((record) => record.stepKey),
   ).toStrictEqual(['conversation:1']);
 
@@ -103,13 +103,15 @@ test('it stops with a step still running at the deadline, which the restart reco
 
   expect(
     records
-      .filter((record) =>
-        [
-          'task.step_started',
-          'task.lease_expired',
-          'task.step_interrupted',
-          'task.step_committed',
-        ].includes(record.kind),
+      .filter(
+        (record) =>
+          record.thread === 'conversation' &&
+          [
+            'task.step_started',
+            'task.lease_expired',
+            'task.step_interrupted',
+            'task.step_committed',
+          ].includes(record.kind),
       )
       .map((record) => record.kind),
   ).toStrictEqual([

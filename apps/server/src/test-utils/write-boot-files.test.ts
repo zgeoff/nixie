@@ -36,6 +36,26 @@ test('it writes a configuration that loads, with the scripted model as the conve
   expect(config.models.profiles['scripted']?.baseURL).toBe('http://127.0.0.1:4010');
 });
 
+test('it gives each role the model it names', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    roleModelURLs: { 'memory-writer': 'http://127.0.0.1:4020', checker: 'http://127.0.0.1:4030' },
+  });
+
+  const config = await loadDeploymentConfig(files.configPath);
+
+  expect(config.models.roles).toMatchObject({
+    'memory-writer': 'scripted-memory-writer',
+    checker: 'scripted-checker',
+  });
+
+  expect(config.models.profiles['scripted-memory-writer']?.baseURL).toBe('http://127.0.0.1:4020');
+  expect(config.models.profiles['scripted-checker']?.baseURL).toBe('http://127.0.0.1:4030');
+});
+
 test('it writes secrets that its sops stand-in decrypts, with the key it returns', async () => {
   const ctx = await setupTest();
 

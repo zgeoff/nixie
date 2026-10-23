@@ -39,26 +39,28 @@ test('it stops the stale writer at its first write, and the new writer expires i
 
   const records = await ctx.nixie.readRecords();
 
-  const startedByA = records.find(
+  const conversation = records.filter((record) => record.thread === 'conversation');
+
+  const startedByA = conversation.find(
     (record) => record.kind === 'task.step_started' && record.payload['generation'] === 1,
   );
 
-  const expiredByB = records.find((record) => record.kind === 'task.lease_expired');
+  const expiredByB = conversation.find((record) => record.kind === 'task.lease_expired');
 
   const oracle = await runOracle(ctx.nixie);
 
   expect(exitA.code).not.toBe(0);
-  expect(processA.readStderr()).toInclude('stale writer: writer epoch 1 is stale');
+  expect(processA.readOutput()).toInclude('"error":"StaleWriterError"');
   expect(Number(startedByA?.sequence)).toBeLessThan(Number(expiredByB?.sequence));
 
   expect(
-    records
+    conversation
       .filter((record) => record.kind === 'task.step_started')
       .map((record) => record.payload['generation']),
   ).toStrictEqual([1, 2]);
 
   expect(
-    records
+    conversation
       .filter((record) => record.kind === 'task.step_committed')
       .map((record) => record.stepKey),
   ).toStrictEqual(['conversation:1']);

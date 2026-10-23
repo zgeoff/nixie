@@ -34,6 +34,11 @@ test.each([
 
   ctx.nixie.writerModel.addReplies(remember, { text: 'Staged.' }, remember, { text: 'Staged.' });
 
+  ctx.nixie.checkerModel.addReplies(
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },
+  );
+
   const first = ctx.nixie.harness.start([{ point }]);
 
   await first.ready;
@@ -123,6 +128,11 @@ test.each([
   };
 
   ctx.nixie.writerModel.addReplies(remember, { text: 'Staged.' }, remember, { text: 'Staged.' });
+
+  ctx.nixie.checkerModel.addReplies(
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },
+  );
 
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
 

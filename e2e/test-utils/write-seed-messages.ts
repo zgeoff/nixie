@@ -1,6 +1,6 @@
 import { writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
-import { startTestLog } from '../nixie/start-test-log';
+import { startTestLog } from './start-test-log';
 import type { TestNixie } from './start-test-nixie';
 
 export async function writeSeedMessages(
@@ -20,7 +20,7 @@ export async function writeSeedMessages(
         kind: 'owner_message',
         definitions: { snapshotHash: 'sha256:test' },
         thread: 'conversation',
-        erasable: { text },
+        erasable: { text, spans: [{ start: 0, end: text.length, source: 'typed' }] },
       })),
     );
 

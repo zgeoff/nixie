@@ -4,7 +4,7 @@ import { runProjectionRebuild } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { runRecovery } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
-import { startTestLog } from '../nixie/start-test-log';
+import { startTestLog } from './start-test-log';
 import type { RecoveredState, TestNixie } from './start-test-nixie';
 
 interface OracleReport {
