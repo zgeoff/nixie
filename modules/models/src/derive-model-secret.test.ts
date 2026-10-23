@@ -23,7 +23,7 @@ test('it derives the frozen secret for a profile host and header, named by the p
     {
       "header": "bearer",
       "host": "gateway.example",
-      "name": "model-chat-db9f864fa9852890",
+      "name": "nixie-model-chat-db9f864fa9852890",
       "value": "not-a-real-token",
     }
   `);

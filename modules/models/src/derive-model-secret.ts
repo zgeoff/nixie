@@ -13,7 +13,7 @@ export function deriveModelSecret(resolved: ResolvedProfile): SecretSpec {
     .slice(0, 16);
 
   return {
-    name: `model-${resolved.profile.id}-${digest}`,
+    name: `nixie-model-${resolved.profile.id}-${digest}`,
     value: resolved.credential,
     host,
     header: resolved.profile.authHeader,
