@@ -2,8 +2,15 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createRecordKey, readRecordKeys, startWriter } from '@heynixie/log';
+import type { ContractClient } from '@heynixie/contract';
+import { clientHeaderName } from '@heynixie/contract';
+import { startWriter } from '@heynixie/log';
+import { createORPCClient } from '@orpc/client';
+import { RPCLink } from '@orpc/client/fetch';
 import { runCLI } from './run-cli';
+import { createTestClient } from './test-utils/create-test-client';
+import { sendClientMessage } from './test-utils/send-client-message';
+import { startTestNixie } from './test-utils/start-test-nixie';
 import { writeBootFiles } from './test-utils/write-boot-files';
 
 async function setupTest() {
@@ -49,51 +56,47 @@ test('it backs up the data of a running server into the directory it names, and 
   expect(copies).toIncludeSameMembers(['nixie.db', 'keys.db']);
 });
 
-test('it restores a backup that a new server then starts on, with the records of the backup', async () => {
+test('it restores the backup of a running server into an empty data directory, and the restarted server reads its messages with the deployment key', async () => {
   const ctx = await setupTest();
+  const nixie = await startTestNixie();
+  const api = await createTestClient(nixie);
 
-  await mkdir(join(ctx.directory, 'source'));
-  await mkdir(join(ctx.directory, 'restored'));
+  nixie.model.addReplies({ text: 'Quince-reply-4ZT9' });
 
-  const source = await writeBootFiles(join(ctx.directory, 'source'), 'http://127.0.0.1:9', {
-    config: [],
-    secrets: [],
-  });
-
-  const writer = await startWriter({ dataDir: source.dataDir });
-
-  onTestFinished(() => writer.stop());
-
-  const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
-    'wrapKey',
-    'unwrapKey',
-  ]);
-
-  const recordKey = await createRecordKey({ deploymentKey, writer });
+  await sendClientMessage(api.client, { text: 'Plum-message-7QK2' }, 'Quince-reply-4ZT9');
 
   const target = join(ctx.directory, 'backup');
 
-  await runCLI(['backup', '--to', target, '--config', source.configPath], ctx.io);
+  await runCLI(['backup', '--to', target, '--config', nixie.configPath], ctx.io);
 
-  await writer.stop();
+  nixie.sendSignal('SIGTERM');
 
-  const restored = await writeBootFiles(join(ctx.directory, 'restored'), 'http://127.0.0.1:9', {
-    config: [],
-    secrets: [],
-  });
+  await nixie.waitForExit();
+
+  await rm(nixie.dataDir, { recursive: true, force: true });
+  await mkdir(nixie.dataDir);
 
   ctx.io.print.mockClear();
 
   const exitCode = await runCLI(
-    ['restore', '--from', target, '--yes', '--config', restored.configPath],
+    ['restore', '--from', target, '--yes', '--config', nixie.configPath],
     ctx.io,
   );
 
-  const restarted = await startWriter({ dataDir: restored.dataDir });
+  const restarted = nixie.startAgain();
 
-  onTestFinished(() => restarted.stop());
+  const listening = await restarted.waitForLogEvent('http.listening');
 
-  const keys = await readRecordKeys({ deploymentKey, writer: restarted }, [recordKey.keyID]);
+  await restarted.waitForLogEvent('ready');
+
+  const client = createORPCClient<ContractClient>(
+    new RPCLink({
+      url: `http://127.0.0.1:${String(listening['port'])}/rpc`,
+      headers: { [clientHeaderName]: 'test', authorization: `Bearer ${api.token}` },
+    }),
+  );
+
+  const page = await client.conversation.read({ thread: 'conversation' });
 
   expect(exitCode).toBe(0);
 
@@ -101,8 +104,11 @@ test('it restores a backup that a new server then starts on, with the records of
     `nixie restored nixie.db and keys.db from ${target}`,
   );
 
-  expect(keys).toStrictEqual(new Map([[recordKey.keyID, expect.any(CryptoKey)]]));
-});
+  expect(page.records.map((record) => record.message?.text)).toIncludeAllMembers([
+    'Plum-message-7QK2',
+    'Quince-reply-4ZT9',
+  ]);
+}, 60_000);
 
 test('it refuses a restore while a server runs on the data directory', async () => {
   const ctx = await setupTest();
