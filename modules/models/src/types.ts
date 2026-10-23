@@ -19,7 +19,7 @@ export interface PriceRates {
   readonly output: number;
 }
 
-export interface LongPromptPrices extends PriceRates {
+interface LongPromptPrices extends PriceRates {
   readonly overTokens: number;
 }
 
