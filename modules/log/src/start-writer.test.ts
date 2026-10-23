@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { Migration } from '@heynixie/db';
 import { sql } from 'kysely';
 import { claimWriterLock } from './claim-writer-lock';
+import { localDataStorage } from './local-data-storage';
 import { startWriter } from './start-writer';
 
 async function setupTest() {
@@ -229,6 +230,31 @@ test('it refuses to start on a data directory whose restore stopped before it fi
   );
 
   expect(names).toStrictEqual(['restore-incomplete']);
+});
+
+test('it releases the lock when it cannot read whether a restore stopped', async () => {
+  const ctx = await setupTest();
+
+  const start = startWriter({
+    dataDir: ctx.dataDir,
+    files: {
+      ...localDataStorage.files,
+      probeFile: () =>
+        Promise.reject(
+          Object.assign(new Error('EACCES: permission denied, stat'), { code: 'EACCES' }),
+        ),
+    },
+  });
+
+  await start.catch(() => {});
+
+  const lock = claimWriterLock(ctx.dataDir);
+
+  onTestFinished(() => {
+    lock.release();
+  });
+
+  expect(start).rejects.toThrowWithMessage(Error, 'EACCES: permission denied, stat');
 });
 
 test('it opens the key store as keys.db beside nixie.db, with secure delete on', async () => {
