@@ -68,13 +68,22 @@ with the certificate in a TLS Secret that the deployment provides.
 A deployment that runs Pulumi takes nixie's pod from the Pulumi component in `deploy/pulumi-k8s/`
 instead of a copy of the manifests. The component registers nixie's StatefulSet, its Service, the
 configuration ConfigMap, the Secret of the secrets file and its age key, and the Secret of the
-definitions deploy key. Its pod differs from the manifests' pod in one way: a git-sync container
-beside nixie keeps the definitions checked out from a repo on GitHub, which the deployment names
-with its ref and its read-only deploy key.
+definitions deploy key. It registers the web server's Deployment and Service beside them, and the
+web Deployment rolls out after the StatefulSet, so a first deploy starts the API before the client
+that calls it. Its pod differs from the manifests' pod in one way: a git-sync container beside nixie
+keeps the definitions checked out from a repo on GitHub, which the deployment names with its ref and
+its read-only deploy key.
 
-The deployment passes the namespace, the image, the configuration text, the encrypted secrets file,
-the age key and the volume's storage class. The namespace, its network policies and the ingress stay
-in the deployment's own program, because each depends on the cluster and the host name.
+A deployment that sets a backup gets a CronJob that mounts nixie's data volume and runs the
+deployment's backup script in the deployment's image, with the backup repository and its credentials
+from a Secret. The job runs as nixie's user, so a restore leaves files nixie can open. The script's
+ConfigMap and the Secret take fixed names, because a restore Job outside the component mounts them
+by name.
+
+The deployment passes the namespace, the images, the configuration text, the encrypted secrets file,
+the age key, the volume's storage class and the backup's schedule. The namespace, its network
+policies, the image pull Secret and the ingress stay in the deployment's own program, because each
+depends on the cluster, the registry or the host name.
 
 Each resource the component registers keeps a fixed Pulumi name, and an alias to the stack as its
 parent. A stack that registered the same resources at its top level therefore moves onto the
