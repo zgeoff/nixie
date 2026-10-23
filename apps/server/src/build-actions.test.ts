@@ -1,40 +1,11 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { actionsProjection } from '@heynixie/actions';
-import { logProjections, startWriter } from '@heynixie/log';
-import type { TasksContext } from '@heynixie/tasks';
-import { tasksProjections } from '@heynixie/tasks';
-import { buildTestClock } from '@heynixie/testing';
+import { expect, mock, test } from 'bun:test';
+import { startTestActions } from '@heynixie/actions/test-utils';
 import { buildActions } from './build-actions';
 
 async function setupTest() {
-  const stack = new AsyncDisposableStack();
+  const actions = await startTestActions();
 
-  onTestFinished(() => stack.disposeAsync());
-
-  const dataDir = await mkdtemp(`${tmpdir()}/nixie-actions-`);
-
-  stack.defer(() => rm(dataDir, { recursive: true, force: true }));
-
-  const writer = await startWriter({ dataDir });
-
-  stack.defer(() => writer.stop());
-
-  const context: TasksContext = {
-    log: {
-      writer,
-      deploymentKey: await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
-        'wrapKey',
-        'unwrapKey',
-      ]),
-      projections: [...logProjections, ...tasksProjections, actionsProjection],
-    },
-    clock: buildTestClock(1_000_000),
-    definitions: () => ({ snapshotHash: 'sha256:test' }),
-  };
-
-  return { context };
+  return { context: actions.context };
 }
 
 test('it gives the test send tool a connector when the test build names a provider', async () => {
