@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -55,7 +55,21 @@ test('it reports the imp runtime ready once impd answers again after a call that
     toolTarget: () => ({ path: '/nonexistent/tools.sock' }),
   });
 
-  const refresh = startReadinessRefresh(adapter, ctx.dataDir, ctx.clock);
+  const settled = mock();
+
+  const refresh = startReadinessRefresh(
+    {
+      checkRuntime: async (signal) => {
+        const report = await adapter.checkRuntime(signal);
+
+        settled();
+
+        return report;
+      },
+    },
+    ctx.dataDir,
+    ctx.clock,
+  );
 
   onTestFinished(() => refresh.stop());
 
@@ -71,6 +85,9 @@ test('it reports the imp runtime ready once impd answers again after a call that
     Promise.resolve(Response.json({ json: { version: '2.0.0', features: {}, egress: {} } })),
   );
 
+  // The refresh skips a part whose check is still running, and a loaded runner can settle the
+  // aborted call after the next round starts, so the clock moves on only once it has settled.
+  await waitForCondition(() => settled.mock.calls.length === 1);
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
   ctx.clock.advance(5000);
