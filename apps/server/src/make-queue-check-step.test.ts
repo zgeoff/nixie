@@ -45,7 +45,7 @@ async function setupTest() {
   };
 
   const log = mock(() => {});
-  const actions = buildActions(context, log);
+  const actions = buildActions(context, { log, testProviderURL: null });
 
   const runStep = actions.trackSteps(
     makeQueueCheckStep({ context, queue: actions.queue, tool: actions.logConnector.tool }),

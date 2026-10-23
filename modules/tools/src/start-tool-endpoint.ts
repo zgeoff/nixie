@@ -19,27 +19,32 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
 
   const runs = new Map<string, RunEndpoint>();
 
-  const getSocketPath = (runID: string) => join(options.socketDir, buildSocketName(runID));
+  // Bun's server stop unlinks its socket path even after another process bound that path, so a
+  // stale nixie that stops would remove the new one's socket. The writer epoch keeps each process's
+  // names apart, and the endpoints of one process agree on a run's name.
+  const getSocketPath = (runID: string) =>
+    join(options.socketDir, buildSocketName(`${String(options.log.writer.epoch)}:${runID}`));
 
   return {
-    startRun: async (run) => {
-      if (runs.has(run.runID)) {
-        throw new Error(`the run ${run.runID} already has a tool endpoint`);
-      }
+    startRun: (run) =>
+      Promise.try(() => {
+        if (runs.has(run.runID)) {
+          throw new Error(`the run ${run.runID} already has a tool endpoint`);
+        }
 
-      const endpoint = await startRunEndpoint({
-        run,
-        socketPath: getSocketPath(run.runID),
-        options: callOptions,
-        onStop: () => {
-          runs.delete(run.runID);
-        },
-      });
+        const endpoint = startRunEndpoint({
+          run,
+          socketPath: getSocketPath(run.runID),
+          options: callOptions,
+          onStop: () => {
+            runs.delete(run.runID);
+          },
+        });
 
-      runs.set(run.runID, endpoint);
+        runs.set(run.runID, endpoint);
 
-      return endpoint;
-    },
+        return endpoint;
+      }),
 
     getToolTarget: (sandbox) => ({ path: getSocketPath(sandbox.owner) }),
     stop: async () => {
@@ -48,9 +53,9 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
   };
 }
 
-// A Unix socket path has a length limit, so the name is a fixed-length hash of the run ID.
-function buildSocketName(runID: string): string {
-  return `${createHash('sha256').update(runID).digest('hex').slice(0, 32)}.sock`;
+// A Unix socket path has a length limit, so the name is a fixed-length hash.
+function buildSocketName(key: string): string {
+  return `${createHash('sha256').update(key).digest('hex').slice(0, 32)}.sock`;
 }
 
 interface RunEndpointSpec {
@@ -62,10 +67,7 @@ interface RunEndpointSpec {
 
 type McpHandler = ReturnType<typeof createMcpHandler>;
 
-async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
-  // a socket file left by a process that crashed would refuse the listen
-  await rm(spec.socketPath, { force: true });
-
+function startRunEndpoint(spec: RunEndpointSpec): RunEndpoint {
   const token = randomBytes(32).toString('base64url');
   const state = { isRevoked: false };
 

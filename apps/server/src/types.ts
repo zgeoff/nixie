@@ -8,6 +8,7 @@ import type { TasksContext } from '@heynixie/tasks';
 import type { StartState } from './build-start-state';
 import type { SandboxAdapterOptions } from './create-sandbox-adapter';
 import type { DeploymentConfig } from './deployment-config-schema';
+import type { CrashHarness } from './join-crash-harness';
 import type { SandboxImages } from './load-sandbox-manifest';
 import type { Tools } from './tools';
 
@@ -53,6 +54,8 @@ export interface CLIIO {
   readonly waitForSignal: () => Promise<string>;
 
   readonly createSandboxAdapter?: (options: SandboxAdapterOptions) => SandboxAdapter;
+
+  readonly harness?: CrashHarness;
 }
 
 export interface CLIFlags {

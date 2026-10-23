@@ -2,10 +2,10 @@ import { expect, test } from 'bun:test';
 import { createApprovedItems } from './create-approved-items';
 import { createTestClient } from './create-test-client';
 import { runHostCommand } from './run-host-command';
-import { startTestNixie } from './start-test-nixie';
+import { startInProcessNixie } from './start-in-process-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   return { nixie };
 }

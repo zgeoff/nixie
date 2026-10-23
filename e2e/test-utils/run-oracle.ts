@@ -4,8 +4,8 @@ import { runProjectionRebuild } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { runRecovery } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
-import { startTestLog } from '../nixie/start-test-log';
-import type { RecoveredState, TestNixie } from './start-test-nixie';
+import type { RecoveredState, SpawnedNixie } from './start-spawned-nixie';
+import { startTestLog } from './start-test-log';
 
 interface OracleReport {
   readonly repeatedStepKeys: readonly string[];
@@ -23,7 +23,7 @@ interface OracleReport {
   readonly projectionDrift: readonly string[];
 }
 
-export async function runOracle(nixie: TestNixie): Promise<OracleReport> {
+export async function runOracle(nixie: SpawnedNixie): Promise<OracleReport> {
   const testLog = await startTestLog({
     dataDir: nixie.dataDir,
     deploymentKey: nixie.deploymentKey,
@@ -56,7 +56,10 @@ export async function runOracle(nixie: TestNixie): Promise<OracleReport> {
 
 type RecoveryChecks = Pick<OracleReport, 'changedEndStates' | 'heldLeases' | 'unreadyTasks'>;
 
-async function runRecoveryChecks(context: TasksContext, nixie: TestNixie): Promise<RecoveryChecks> {
+async function runRecoveryChecks(
+  context: TasksContext,
+  nixie: SpawnedNixie,
+): Promise<RecoveryChecks> {
   const recovered = nixie.readRecoveredStates();
 
   const before = await nixie.readRows('tasks');
@@ -134,8 +137,8 @@ function collectRepeats<T>(items: readonly T[], getKey: (item: T) => unknown): r
 }
 
 function collectStrayCalls(
-  nixie: TestNixie,
-  records: Awaited<ReturnType<TestNixie['readRecords']>>,
+  nixie: SpawnedNixie,
+  records: Awaited<ReturnType<SpawnedNixie['readRecords']>>,
 ): readonly (string | null)[] {
   const attempts = new Map<unknown, number>();
 

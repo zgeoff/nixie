@@ -2,8 +2,8 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawnTestNixie } from './test-utils/spawn-test-nixie';
-import { writeReleaseBundle } from './write-release-bundle';
+import { writeReleaseBundle } from '@heynixie/server/test-utils';
+import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-release-'));
@@ -18,11 +18,13 @@ test('it builds a release bundle that answers live, and degraded while impd does
 
   await writeReleaseBundle(ctx.outdir);
 
-  const nixie = await spawnTestNixie({ entry: join(ctx.outdir, 'main.js') });
+  const nixie = await startSpawnedNixie({ release: join(ctx.outdir, 'main.js') });
+
+  const release = nixie.harness.start();
 
   const [listening] = await Promise.all([
-    nixie.waitForLogEvent('http.listening'),
-    nixie.waitForLogEvent('start.retry'),
+    release.waitForLogEvent('http.listening'),
+    release.waitForLogEvent('start.retry'),
   ]);
 
   const [live, ready] = await Promise.all([
@@ -44,11 +46,13 @@ test('it builds a release bundle that exits 0 on SIGTERM', async () => {
 
   await writeReleaseBundle(ctx.outdir);
 
-  const nixie = await spawnTestNixie({ entry: join(ctx.outdir, 'main.js') });
+  const nixie = await startSpawnedNixie({ release: join(ctx.outdir, 'main.js') });
 
-  await nixie.waitForLogEvent('http.listening');
+  const release = nixie.harness.start();
 
-  nixie.sendSignal('SIGTERM');
+  await release.waitForLogEvent('http.listening');
 
-  expect(nixie.exited).resolves.toBe(0);
+  release.signal('SIGTERM');
+
+  expect(release.exited).resolves.toStrictEqual({ code: 0, signal: null });
 });

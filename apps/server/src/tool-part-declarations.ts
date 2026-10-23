@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-github';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildActions } from './build-actions';
+import { buildTestSendTool } from './build-test-send-tool';
 import { createSandboxAdapter } from './create-sandbox-adapter';
 import { refreshDefinitions } from './refresh-definitions';
 import type { ServerPartValues } from './server-part-values';
@@ -59,7 +60,12 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     needs: ['inputs', 'context'],
     start: (parts) =>
       Promise.resolve(
-        buildActions(parts.get('context').apiContext, parts.get('inputs').options.log),
+        buildActions(parts.get('context').apiContext, {
+          log: parts.get('inputs').options.log,
+          testProviderURL: NIXIE_TEST_BUILD
+            ? (parts.get('inputs').options.harness?.providerURL ?? null)
+            : null,
+        }),
       ),
   },
   {
@@ -79,6 +85,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         },
         {
           webFetch: parts.get('web_fetch').tool,
+          testTools: NIXIE_TEST_BUILD && options.harness !== undefined ? [buildTestSendTool()] : [],
           queue: parts.get('actions').queue,
           readStore: () => parts.find('memory'),
           readInForce: () => inForce.read(),

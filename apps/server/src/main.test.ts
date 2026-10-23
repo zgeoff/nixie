@@ -6,10 +6,10 @@ import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { runTestReset } from './test-utils/run-test-reset';
 import { sendClientMessage } from './test-utils/send-client-message';
-import { startTestNixie } from './test-utils/start-test-nixie';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   return nixie;
 }
@@ -113,7 +113,7 @@ test('it offers the memory tools, web fetch, the time tool and the log reader to
 });
 
 test('it calls the owner by the name the secrets file holds, which the configuration names by reference', async () => {
-  const nixie = await startTestNixie({
+  const nixie = await startInProcessNixie({
     extraConfig: ['owner:', '  name: deployment:owner_name'],
     extraSecrets: ['settings:', '  owner_name: Wren Halloway'],
   });
@@ -681,7 +681,7 @@ test('it starts the memory consolidator when the configuration leaves out its en
 });
 
 test('it never starts the memory writer the configuration turns off, and a turn files nothing for it', async () => {
-  const nixie = await startTestNixie({
+  const nixie = await startInProcessNixie({
     extraConfig: ['memory_writer: { enabled: false, batch_messages: 1 }'],
   });
 
@@ -706,7 +706,9 @@ test('it never starts the memory writer the configuration turns off, and a turn 
 });
 
 test('it never runs the memory consolidator the configuration turns off', async () => {
-  const nixie = await startTestNixie({ extraConfig: ['memory_consolidation: { enabled: false }'] });
+  const nixie = await startInProcessNixie({
+    extraConfig: ['memory_consolidation: { enabled: false }'],
+  });
 
   await nixie.waitForLogEvent('memory_consolidator.off');
   await nixie.waitForLogEvent('ready');
@@ -723,7 +725,7 @@ test('it never runs the memory consolidator the configuration turns off', async 
 });
 
 test('it reports the memory writer and consolidator the configuration turns off as off to a device', async () => {
-  const nixie = await startTestNixie({
+  const nixie = await startInProcessNixie({
     extraConfig: ['memory_writer: { enabled: false }', 'memory_consolidation: { enabled: false }'],
   });
 
@@ -736,7 +738,7 @@ test('it reports the memory writer and consolidator the configuration turns off 
 });
 
 test('it queues one action for the log-only connector at start, which the action runners log', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   await nixie.waitForLogEvent('action.logged');
 
@@ -952,7 +954,7 @@ test('it shows the conversation your reason for a proposal you rejected in the w
 });
 
 test('it logs no info event, its stop included, at the warn level the configuration sets', async () => {
-  const nixie = await startTestNixie({ logLevel: 'warn' });
+  const nixie = await startInProcessNixie({ logLevel: 'warn' });
 
   await waitForCondition(async () => {
     const files = await nixie.readDataFiles();
@@ -972,7 +974,7 @@ test('it logs no info event, its stop included, at the warn level the configurat
 });
 
 test('it logs its info events, its stop included, at the default level', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   await nixie.waitForLogEvent('ready');
 
@@ -985,7 +987,7 @@ test('it logs its info events, its stop included, at the default level', async (
 });
 
 test('it refuses to start on a key no module reads, and exits 1', async () => {
-  const nixie = await startTestNixie({ extraConfig: ['tasks:', '  runner: 5'] });
+  const nixie = await startInProcessNixie({ extraConfig: ['tasks:', '  runner: 5'] });
   const exitCode = await nixie.exited;
   const failure = await nixie.waitForLogEvent('command.failed');
 
@@ -998,7 +1000,7 @@ test('it refuses to start on a key no module reads, and exits 1', async () => {
 });
 
 test('it refuses to start when a pronoun names a settings entry the secrets file lacks, and exits 1', async () => {
-  const nixie = await startTestNixie({
+  const nixie = await startInProcessNixie({
     extraConfig: ['owner:', '  pronouns: { they: deployment:owner_they, their: their }'],
     extraSecrets: ['settings:', '  owner_name: Wren Halloway'],
   });

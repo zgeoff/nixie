@@ -1,16 +1,19 @@
 import { expect, test } from 'bun:test';
-import { createTestClient, runHostCommand, spawnTestNixie } from '@heynixie/server/test-utils';
+import { createTestClient, runHostCommand } from '@heynixie/server/test-utils';
+import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 test('it resets the running server through the reset command, which exits 0 with the server, and starts again', async () => {
-  const nixie = await spawnTestNixie();
+  const nixie = await startSpawnedNixie();
 
-  await createTestClient(nixie);
+  const server = nixie.harness.start();
+
+  await createTestClient(server);
 
   const command = await runHostCommand(nixie.configPath, ['reset', '--keep-sessions', '--yes']);
-  const finished = await nixie.waitForLogEvent('reset.finished');
-  const serverExit = await nixie.exited;
+  const finished = await server.waitForLogEvent('reset.finished');
+  const serverExit = await server.exited;
 
-  const again = nixie.startAgain();
+  const again = nixie.harness.start();
 
   const ready = await again.waitForLogEvent('ready');
 
@@ -21,6 +24,6 @@ test('it resets the running server through the reset command, which exits 0 with
   );
 
   expect(finished['lastSequence']).toBeNumber();
-  expect(serverExit).toBe(0);
+  expect(serverExit).toStrictEqual({ code: 0, signal: null });
   expect(ready).toMatchObject({ event: 'ready' });
 });

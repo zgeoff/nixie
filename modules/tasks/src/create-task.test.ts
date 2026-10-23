@@ -45,6 +45,20 @@ test('it creates a ready task with its brief in the erasable fields', async () =
   ]);
 });
 
+test('it creates the task under the ID it is given', async () => {
+  const ctx = await setupTest();
+  const taskID = await createTask(ctx.context, 'water the ferns', 'water-the-ferns');
+
+  const task = await ctx.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select('task_id')
+    .executeTakeFirstOrThrow();
+
+  expect(taskID).toBe('water-the-ferns');
+  expect(task.task_id).toBe('water-the-ferns');
+});
+
 test('it gives each task a random ID', async () => {
   const ctx = await setupTest();
   const first = await createTask(ctx.context, 'first');

@@ -35,5 +35,11 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
 export const testBuildIDs: readonly string[] = [
   ...new Set(Object.values(faultPointTexts)),
   'test.allow-send',
+  'test.recovered',
+  'nixie runs without the crash harness IPC channel',
+  'NIXIE_TEST_PROVIDER_URL',
+  'test.inbox_read',
+  'test.send runs as an action',
+  'releaseWriterLock',
   'the tool relay has no TCP address',
 ];
