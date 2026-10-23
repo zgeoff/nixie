@@ -151,6 +151,6 @@ async function publishCopies(options: DataBackupOptions): Promise<void> {
     await files.renameFile(join(copying, file), join(options.directory, file));
   }
 
-  await files.writeToDisk(options.directory);
+  await files.writeDirectoryToDisk(options.directory);
   await files.removeFile(copying);
 }

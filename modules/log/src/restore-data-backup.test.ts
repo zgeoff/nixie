@@ -349,3 +349,46 @@ test('it finishes the restore again after one that stopped between the two datab
   expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'backup.lock']);
   expect(recordKeys.rows).toStrictEqual([{ key_id: 'k1' }]);
 });
+
+test('it replaces neither database when its restore marker cannot reach the disk', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dataDir, 'nixie.db'), 'the old log');
+  await writeFile(join(ctx.dataDir, 'keys.db'), 'the old keys');
+
+  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
+
+  onTestFinished(() => backupLog.destroy());
+
+  await sql`create table items (id text primary key)`.execute(backupLog);
+  await backupLog.destroy();
+
+  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
+
+  onTestFinished(() => backupKeys.destroy());
+
+  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
+  await backupKeys.destroy();
+
+  const restore = restoreDataBackup({
+    storage: {
+      ...localDataStorage,
+      files: {
+        ...localDataStorage.files,
+        writeDirectoryToDisk: () =>
+          Promise.reject(Object.assign(new Error('EIO: i/o error, fsync'), { code: 'EIO' })),
+      },
+    },
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+  });
+
+  await restore.catch(() => {});
+
+  const log = await Bun.file(join(ctx.dataDir, 'nixie.db')).text();
+  const keys = await Bun.file(join(ctx.dataDir, 'keys.db')).text();
+
+  expect(restore).rejects.toThrowWithMessage(Error, 'EIO: i/o error, fsync');
+  expect(log).toBe('the old log');
+  expect(keys).toBe('the old keys');
+});

@@ -103,7 +103,7 @@ async function writeStagedFiles(options: DataRestoreOptions): Promise<void> {
       const staged = join(options.dataDir, `${file}${stagedSuffix}`);
 
       await files.copyFile(join(options.directory, file), staged);
-      await files.writeToDisk(staged);
+      await files.writeFileToDisk(staged);
     }
   } catch (error) {
     await Promise.all(
@@ -135,7 +135,7 @@ async function replaceDataFiles(options: DataRestoreOptions): Promise<void> {
     await files.renameFile(`${path}${stagedSuffix}`, path);
   }
 
-  await files.writeToDisk(options.dataDir);
+  await files.writeDirectoryToDisk(options.dataDir);
 
   await writeRestoreState(files, options.dataDir, 'none');
 }

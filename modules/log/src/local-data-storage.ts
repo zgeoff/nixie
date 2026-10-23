@@ -17,7 +17,8 @@ export const localDataStorage: DataStorage = {
     renameFile: rename,
     removeFile: (path) => rm(path, { force: true, recursive: true }),
     writeFile,
-    writeToDisk,
+    writeFileToDisk: writeToDisk,
+    writeDirectoryToDisk: writeToDisk,
   },
 };
 

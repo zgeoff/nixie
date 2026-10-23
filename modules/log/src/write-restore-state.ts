@@ -27,5 +27,5 @@ export async function writeRestoreState(
   );
 
   await markerWrites[next](files, getRestoreMarkerPath(dataDir));
-  await files.writeToDisk(dataDir);
+  await files.writeDirectoryToDisk(dataDir);
 }

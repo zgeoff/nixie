@@ -17,5 +17,6 @@ export interface DataFileSystem {
   readonly renameFile: (from: string, to: string) => Promise<void>;
   readonly removeFile: (path: string) => Promise<void>;
   readonly writeFile: (path: string, text: string) => Promise<void>;
-  readonly writeToDisk: (path: string) => Promise<void>;
+  readonly writeFileToDisk: (path: string) => Promise<void>;
+  readonly writeDirectoryToDisk: (path: string) => Promise<void>;
 }
