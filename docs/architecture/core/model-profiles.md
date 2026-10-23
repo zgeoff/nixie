@@ -85,6 +85,16 @@ The schema reads each profile's prices, per million tokens of input, a cache wri
 two prompt cache lifetimes, cached input and output, and refuses a price table that leaves one out.
 The call cost prices one response's usage with the table. It splits the cache writes by the lifetime
 the response reports, and prices every write the response does not report under the shorter lifetime
-at the longer lifetime's price, so a missing count never lowers a charge. No built part calls the
-call cost or reads the provider pin. The [models design](../../design/platform/core/models.md#cost)
-sets out how the counting proxy prices each response with the table.
+at the longer lifetime's price, so a missing count never lowers a charge.
+
+A price table can hold a second set of the same five prices for a long prompt, with the prompt
+length that set starts above. A model such as Claude Haiku 5.5 charges more for every token of a
+request whose prompt passes that length, output included, so the call cost prices the whole response
+with the long-prompt set once its prompt passes the length. The prompt length counts the input, the
+cache writes and the cache reads, the same tokens the provider counts. A table with no long-prompt
+set prices every response with its base set.
+
+The [counting proxy](../policy/counting-proxy.md#the-count) is the one built part that calls the
+call cost, and no built part reads the provider pin. The
+[models design](../../design/platform/core/models.md#cost) sets out how the counting proxy prices
+each response with the table.

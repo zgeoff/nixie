@@ -1,0 +1,32 @@
+{
+  "name": "@heynixie/pulumi-k8s",
+  "version": "0.0.0",
+  "description": "A Pulumi component that runs nixie on Kubernetes",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zgeoff/nixie.git",
+    "directory": "deploy/pulumi-k8s"
+  },
+  "files": [
+    "src",
+    "!src/**/*.test.ts",
+    "!src/test-utils"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --noEmit"
+  },
+  "devDependencies": {
+    "@pulumi/kubernetes": "catalog:",
+    "@pulumi/pulumi": "catalog:"
+  },
+  "peerDependencies": {
+    "@pulumi/kubernetes": ">=4.34.2 <5",
+    "@pulumi/pulumi": ">=3.268.0 <4"
+  }
+}

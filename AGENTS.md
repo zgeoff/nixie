@@ -18,8 +18,9 @@ The rules a task needs are not repeated here. Load the skill for the work before
 ## Repo structure
 
 nixie is one Bun workspace, which the [code layout](docs/architecture/code-layout.md) describes.
-Every package is private and takes the name `@heynixie/<folder>`. A package that others import is
-consumed as source through an `exports` map that points at `src/index.ts`.
+Every package takes the name `@heynixie/<folder>`, and every package but the Pulumi component in
+`deploy/pulumi-k8s/` is private. A package that others import is consumed as source through an
+`exports` map that points at `src/index.ts`.
 
 ```text
 apps/              deployables
@@ -33,6 +34,7 @@ evals/             checks committed evaluation reports against the code
 research/<name>/   spikes: a Bun package each, indexed in research/README.md; CI typechecks
                    them and never runs them, and product code never imports them
 deploy/            Compose recipe and reference Kubernetes manifests (outside the workspace)
+  pulumi-k8s/      the Pulumi component for Kubernetes, the one workspace package here
 preview/           throwaway test build of one pull request
 docs/
   architecture/    what is built
@@ -55,6 +57,8 @@ Dependencies:
 - The root `package.json` declares only tooling.
 - Pin exact versions, with no `^` or `~` ranges. `bun add` saves exact versions, so the rule covers
   hand-written edits.
+- One exception: the Pulumi component declares the Pulumi SDKs as peer dependencies with a `>=x <y`
+  range, because the deployment's own program supplies them.
 
 Boundaries:
 

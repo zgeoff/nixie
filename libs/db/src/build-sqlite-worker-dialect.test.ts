@@ -70,6 +70,49 @@ test('it leaves secure delete off unless the caller asks for it', async () => {
   expect(secure.rows).toStrictEqual([{ secure_delete: 1 }]);
 });
 
+test('it reads a database that the caller opens read-only, and refuses a write to it', async () => {
+  const ctx = await setupTest();
+
+  await sql`create table notes (title text not null)`.execute(ctx.db);
+  await sql`insert into notes (title) values ('kept')`.execute(ctx.db);
+
+  const reader = new Kysely<unknown>({
+    dialect: buildSqliteWorkerDialect(ctx.path, { readonly: true }),
+  });
+
+  ctx.stack.defer(() => reader.destroy());
+
+  const rows = await sql`select title from notes`.execute(reader);
+
+  const insert = sql`insert into notes (title) values ('refused')`.execute(reader);
+
+  await insert.catch(() => {});
+
+  expect(rows.rows).toStrictEqual([{ title: 'kept' }]);
+  expect(insert).rejects.toMatchObject({ name: 'DatabaseError', code: 'SQLITE_READONLY' });
+});
+
+test('it refuses a missing database that the caller opens read-only, and creates no file', async () => {
+  const ctx = await setupTest();
+
+  const missing = `${ctx.path}-missing`;
+
+  const reader = new Kysely<unknown>({
+    dialect: buildSqliteWorkerDialect(missing, { readonly: true }),
+  });
+
+  ctx.stack.defer(() => reader.destroy());
+
+  const select = sql`select 1`.execute(reader);
+
+  await select.catch(() => {});
+
+  const created = await Bun.file(missing).exists();
+
+  expect(select).rejects.toMatchObject({ name: 'DatabaseError', code: 'SQLITE_CANTOPEN' });
+  expect(created).toBeFalse();
+});
+
 test('it reports the inserted row ID and the affected row count', async () => {
   const ctx = await setupTest();
 

@@ -1648,7 +1648,7 @@ test('it stores the profile credential and grants it to the conversation sandbox
 
   expect(ctx.sandboxes.secrets).toStrictEqual([
     {
-      name: expect.toSatisfy((name: string) => /^model-chat-direct-[\da-f]{16}$/u.test(name)),
+      name: expect.toSatisfy((name: string) => /^nixie-model-[\da-f]{19}$/u.test(name)),
       value: 'not-a-real-key',
       host: 'api.anthropic.com',
       header: 'x-api-key',
