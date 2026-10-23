@@ -52,6 +52,7 @@ flowchart LR
   notes --> pulls[check pulls]
   pulls --> tag[tag]
   tag --> assets[assets]
+  assets --> k8s[Kubernetes component]
 ```
 
 1. **Sandbox images.** The conversation and fetch images build in parallel, and each pushes by
@@ -69,6 +70,9 @@ flowchart LR
    `definitions-manifest.schema.json` to the GitHub release, then builds and uploads `release.json`,
    replacing the assets of an earlier attempt. `release.json` goes last, so a reader that finds it
    finds the schema it points to.
+8. **Kubernetes component.** The workflow publishes the
+   [Pulumi component](kubernetes.md#the-pulumi-component) to npm at the release's version, with
+   npm's provenance, and skips a version that npm holds already.
 
 The nixie image needs the sandbox digests, so the sandbox images go first. A failed nixie build
 stops the release before a web image exists that calls an API no image serves. The tag stage comes
@@ -136,6 +140,20 @@ assets stage does, and checks that each image it names resolves its tag to its d
 upload script against a stand-in for the GitHub CLI, which proves the schema goes up before
 `release.json` and that a failed schema upload stops the run before `release.json` goes out. A
 broken Dockerfile or release script therefore fails the pull request, never a release.
+
+The workspace keeps the component's package at version 0.0.0, so a release pull request changes no
+version that the lockfile records. The workspace consumes the package as TypeScript source, and Node
+refuses TypeScript inside `node_modules`, so the publish builds an ES module and its declarations
+and points the package's exports at them. It writes the release's version into the package for the
+pack, and Bun packs it, because Bun turns each `catalog:` version into the version it pins. npm then
+publishes the tarball through trusted publishing, which ties the package to the release workflow by
+the workflow's own token, so the repo holds no npm token. The K8s package workflow rehearses the
+publish on each push to main, and on each pull request that changes a file the package or the
+publish reads: it packs the component, checks that the tarball holds no workspace version and no
+TypeScript source, imports the installed tarball in Node, typechecks a program that imports it under
+TypeScript's strictest module resolution, and runs npm's publish as a dry run. It then runs the
+release path against a stand-in for npm, which proves that a version npm holds publishes nothing and
+an absent one publishes with provenance.
 
 ## Attestations
 

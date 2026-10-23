@@ -1,4 +1,4 @@
-import type { input } from '@pulumi/kubernetes/types';
+import type { types } from '@pulumi/kubernetes';
 import type { Input } from '@pulumi/pulumi';
 
 export const nixieLabels = { app: 'nixie' };
@@ -14,7 +14,7 @@ export interface NixieSpecInputs {
   readonly storageClassName: Input<string>;
 }
 
-export function buildNixieSpec(inputs: NixieSpecInputs): input.apps.v1.StatefulSetSpec {
+export function buildNixieSpec(inputs: NixieSpecInputs): types.input.apps.v1.StatefulSetSpec {
   return {
     // SQLite takes one writer
     replicas: 1,
@@ -71,7 +71,7 @@ export function buildNixieSpec(inputs: NixieSpecInputs): input.apps.v1.StatefulS
   };
 }
 
-const lockedDown: input.core.v1.SecurityContext = {
+const lockedDown: types.input.core.v1.SecurityContext = {
   allowPrivilegeEscalation: false,
   readOnlyRootFilesystem: true,
   capabilities: { drop: ['ALL'] },
@@ -83,7 +83,7 @@ export const nixieAgeKeyKey = 'age-key.txt';
 export const nixieConfigKey = 'config.yaml';
 const definitionsRoot = '/etc/nixie/definitions';
 
-function buildNixieContainer(image: Input<string>): input.core.v1.Container {
+function buildNixieContainer(image: Input<string>): types.input.core.v1.Container {
   return {
     name: 'nixie',
     image,
@@ -146,7 +146,10 @@ export const definitionsKnownHostsKey = 'known_hosts';
 const gitSyncImage =
   'registry.k8s.io/git-sync/git-sync:v4.7.1@sha256:c5e1976da735bf0b53979f079a07475d77174c51863cd084e928ff6074480717';
 
-function buildGitSyncContainer(repository: string, ref: Input<string>): input.core.v1.Container {
+function buildGitSyncContainer(
+  repository: string,
+  ref: Input<string>,
+): types.input.core.v1.Container {
   return {
     name: 'git-sync',
     image: gitSyncImage,
