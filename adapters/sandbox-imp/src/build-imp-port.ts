@@ -117,7 +117,7 @@ async function readFeatures(
 }
 
 // impd 3 drops only the IMP_BUILD_ISOLATION setting, which nixie never sets, so imp client 2
-// speaks it too. Client 3 accepts impd 3 by its own rule, so a move to client 3 empties this set.
+// speaks it too.
 const IMPD_MAJORS_PAST_CLIENT: ReadonlySet<number> = new Set([3]);
 
 function isImpdMajorPastClient(version: string): boolean {
