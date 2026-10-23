@@ -53,22 +53,27 @@ HTTP 403 with the text `the client header is missing`. The commands below use `c
    the whole text, and its end counts UTF-16 code units. `jq`'s `length` counts code points, which
    match for text with no emoji or other character outside the Basic Multilingual Plane.
 
-5. Read the thread's newest page, and repeat the read until the turn ends:
+5. Read the thread's newest page into a file:
 
    ```bash
    jq -n '{json: {thread: "conversation", limit: 200}}' |
      curl -s -X POST "$origin/rpc/conversation/read" \
        -H 'content-type: application/json' -H 'x-nixie-client: checker' \
        -H "authorization: Bearer $token" -d @- > page.json
+   ```
+
+6. Check whether the turn has ended:
+
+   ```bash
    jq --argjson sent "$sent" '.json.lastStepEnd | select(.sequence > $sent) | {kind, task}' page.json
    ```
 
-   The turn has ended when the `jq` command prints a record. `lastStepEnd` holds the thread's newest
-   record that ended a step, and the turn's step ends after its message. Expect
-   `task.step_committed`. A `task.step_errored` record means the turn failed: its `task.error` holds
-   the reason, and its `task.retryAt` holds the time the step runs again.
+   The turn has ended when the command prints a record. If it prints nothing, repeat step 5.
+   `lastStepEnd` holds the thread's newest record that ended a step, and the turn's step ends after
+   its message. Expect `task.step_committed`. A `task.step_errored` record means the turn failed:
+   its `task.error` holds the reason, and its `task.retryAt` holds the time the step runs again.
 
-6. List the turn's records:
+7. List the turn's records:
 
    ```bash
    jq -c --argjson sent "$sent" \
@@ -93,8 +98,8 @@ with `afterSequence`. The API answers it with a live event stream, which the
 
 ## Start the next check from an empty log
 
-> **CAUTION:** A reset removes every record, every memory, the conversation and every sandbox of the
-> preview. Only a restore from a backup undoes it.
+A reset removes every record, every memory, the conversation and every sandbox of the preview, and
+keeps the device sessions signed in.
 
 1. Reset the preview from the `preview` folder, and keep the enrolled devices:
 
