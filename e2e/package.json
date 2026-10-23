@@ -17,6 +17,7 @@
     "@heynixie/server": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/testing": "workspace:*",
+    "@heynixie/web": "workspace:*",
     "tiny-invariant": "catalog:",
     "zod": "catalog:"
   }

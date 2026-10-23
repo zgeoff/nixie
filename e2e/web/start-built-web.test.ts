@@ -1,6 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { startBuiltWeb } from './start-built-web';
-import { startStubAPI } from './start-stub-api';
+import { startBuiltWeb, startStubAPI } from '@heynixie/web/test-utils';
 
 test('it serves the built web client against the given API', async () => {
   const api = startStubAPI();

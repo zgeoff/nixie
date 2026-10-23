@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { readMemoryTmpdir } from './read-memory-tmpdir';
+import { readMemoryTmpdir } from '@heynixie/testing';
 
 // A fresh process reads the host's own mounts, so each case runs only on a host whose /dev/shm
 // matches it, and Bun 1.4's skipIf takes a boolean at collection time.
@@ -24,7 +24,7 @@ test.skipIf(!hasMemoryTmpdir)(
       [
         process.execPath,
         '--preload',
-        join(import.meta.dir, 'set-test-tmpdir.ts'),
+        join(import.meta.dir, '../libs/testing/src/set-test-tmpdir.ts'),
         '-e',
         "const os = require('node:os'); const fs = require('node:fs'); const path = require('node:path'); const made = fs.mkdtempSync(path.join(os.tmpdir(), 'harbour-')); fs.rmSync(made, { recursive: true }); console.log(JSON.stringify({ tmpdir: os.tmpdir(), made }));",
       ],
@@ -53,7 +53,7 @@ test.skipIf(!hasMemoryTmpdir)(
     );
 
     const child = Bun.spawn([process.execPath, 'test', probe], {
-      cwd: join(import.meta.dir, '../../..'),
+      cwd: join(import.meta.dir, '..'),
       env: { ...process.env, TMPDIR: ctx.original },
       stdout: 'pipe',
       stderr: 'pipe',
@@ -74,7 +74,7 @@ test.skipIf(hasMemoryTmpdir)(
       [
         process.execPath,
         '--preload',
-        join(import.meta.dir, 'set-test-tmpdir.ts'),
+        join(import.meta.dir, '../libs/testing/src/set-test-tmpdir.ts'),
         '-e',
         "const os = require('node:os'); const fs = require('node:fs'); const path = require('node:path'); const made = fs.mkdtempSync(path.join(os.tmpdir(), 'harbour-')); fs.rmSync(made, { recursive: true }); console.log(JSON.stringify({ tmpdir: os.tmpdir(), made }));",
       ],

@@ -69,11 +69,13 @@ such socket. Chrome stops under a `ulimit -v` cap, because it reserves more addr
 uses, so the browser suites skip there.
 
 Two kinds of suite run in a lane of their own: the guest suites that start the real Agent SDK, the
-`*.sdk.test.ts` files, and every suite under `e2e/`, which runs the whole program. A cold start of
-the SDK's CLI or of nixie on a small host outlasts Bun's default test limit, so `bun run test`
-leaves these suites out of the parallel run and runs them after it, one file at a time, under one
-raised limit for the whole lane. The pre-push test job splits its run the same way. A test in the
-lane sets no limit of its own, and a suite that spawns nixie or a build of it lives under `e2e/`.
+`*.sdk.test.ts` files, and every suite under `e2e/`, which runs the whole program or a build of it.
+A cold start of the SDK's CLI, of nixie or of the web client's Vite build on a small host outlasts
+Bun's default test limit, so `bun run test` leaves these suites out of the parallel run and runs
+them after it, one file at a time, under one raised limit for the whole lane. The pre-push test job
+splits its run the same way. A test in the lane sets no limit of its own, and a suite that spawns
+nixie, the web client or a build of either lives under `e2e/`. The web package exports the helpers
+those suites share from its test utils.
 
 [`startSpawnedNixie`](../../../e2e/test-utils/start-spawned-nixie.ts) in `e2e/` spawns the test
 build of the server's `serve` command as a child process and joins it to

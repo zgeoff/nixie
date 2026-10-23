@@ -33,4 +33,5 @@ export { startProviderDouble } from './start-provider-double';
 export type { FaultPointArm, FaultPointWork, HarnessMessage, NixieMessage } from './types';
 export { probeProcessGone } from './probe-process-gone';
 export { readDescendants } from './read-descendants';
+export { readMemoryTmpdir } from './read-memory-tmpdir';
 export { stopProcesses } from './stop-processes';

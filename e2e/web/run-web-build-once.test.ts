@@ -1,17 +1,17 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
-import { runWebBuildOnce } from './run-web-build-once';
+import { runWebBuildOnce } from '@heynixie/web/test-utils';
 
 test('it builds the web server entry once and shares it', async () => {
   const paths = await Promise.all([runWebBuildOnce(), runWebBuildOnce()]);
 
   expect(paths).toStrictEqual([
-    join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
-    join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
+    join(import.meta.dir, '..', '..', 'apps', 'web', 'dist', 'server', 'server.js'),
+    join(import.meta.dir, '..', '..', 'apps', 'web', 'dist', 'server', 'server.js'),
   ]);
 
   const built = await Bun.file(
-    join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
+    join(import.meta.dir, '..', '..', 'apps', 'web', 'dist', 'server', 'server.js'),
   ).exists();
 
   expect(built).toBeTrue();
@@ -27,7 +27,7 @@ test('it builds the web server entry under an address-space cap', async () => {
       '-c',
       'ulimit -v 12000000 && exec "$0" test --timeout=120000 "$1" -t "$2"',
       process.execPath,
-      join(import.meta.dir, 'run-web-build-once.process.test.ts'),
+      join(import.meta.dir, 'run-web-build-once.test.ts'),
       'it builds the web server entry once and shares it',
     ],
     { cwd: import.meta.dir, stderr: 'pipe', stdout: 'ignore' },
