@@ -2,12 +2,12 @@ import { closeSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
-import { z } from 'zod';
+import { buildNixieOperationSchemas } from './build-nixie-operation-schemas';
 
 export function registerHarnessOperations(link: HarnessLink, context: TasksContext): void {
-  const messageSchema = z.object({ thread: z.string(), text: z.string() });
+  const schemas = buildNixieOperationSchemas();
 
-  link.registerOperation('sendMessage', messageSchema, async (message) => {
+  link.registerOperation('sendMessage', schemas.sendMessage, async (message) => {
     const [record] = await writeInboxRecords(context, [
       {
         kind: 'owner_message',
@@ -23,14 +23,11 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
     return record?.sequence ?? null;
   });
 
-  // A test that names the task can arm a fault point for it before the task exists.
-  link.registerOperation(
-    'createTask',
-    z.object({ brief: z.string(), taskID: z.string().exactOptional() }),
-    (task) => createTask(context, task.brief, task.taskID),
+  link.registerOperation('createTask', schemas.createTask, (task) =>
+    createTask(context, task.brief, task.taskID),
   );
 
-  link.registerOperation('finishTask', z.object({ taskID: z.string() }), async (task) => {
+  link.registerOperation('finishTask', schemas.finishTask, async (task) => {
     const [record] = await writeInboxRecords(context, [
       {
         kind: 'owner_message',
@@ -43,7 +40,7 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
     return record?.sequence ?? null;
   });
 
-  link.registerOperation('releaseWriterLock', z.null(), () => {
+  link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {
     removeLockDescriptor(context.log.writer.dataDir);
 
     return null;
