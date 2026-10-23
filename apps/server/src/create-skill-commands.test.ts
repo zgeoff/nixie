@@ -2,13 +2,13 @@ import { expect, mock, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { checkSkillFiles } from '@heynixie/definitions';
+import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { runCLI } from './run-cli';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { startTestNixie } from './test-utils/start-test-nixie';
-import { waitForTurn } from './test-utils/wait-for-turn';
 
 async function setupTest() {
   const nixie = await startTestNixie();
@@ -20,10 +20,10 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
-  ctx.model.addReplies(
+  ctx.guest.addReplies(
     {
       toolUse: {
-        name: 'mcp__nixie__skill_write',
+        name: 'skill_write',
         input: {
           name: 'tide-tables',
           files: [
@@ -46,7 +46,7 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
     thread: 'conversation',
   });
 
-  await waitForTurn(async () => {
+  await waitForCondition(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
@@ -76,7 +76,7 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
     thread: 'conversation',
   });
 
-  await waitForTurn(async () => {
+  await waitForCondition(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Understood.');
@@ -100,10 +100,14 @@ test('it lists a skill proposal, rejects it with your reason, and the next turn 
 
   expect(JSON.parse(after.stdout)).toStrictEqual([]);
 
-  expect(JSON.stringify(ctx.model.requests.map((request) => request.body?.messages))).toInclude(
-    `rejected your skill proposal ${proposalID} (tide-tables). Reason: \\"the tide tables come from a feed\\".`,
-  );
-}, 60_000);
+  expect(ctx.guest.turns.at(-1)?.input).toMatchObject([
+    {
+      text: expect.toInclude(
+        `rejected your skill proposal ${proposalID} (tide-tables). Reason: "the tide tables come from a feed".`,
+      ),
+    },
+  ]);
+});
 
 test('it lists a new version beside the version in force with the untyped token, and an approval puts it in force', async () => {
   const ctx = await setupTest();
@@ -120,11 +124,11 @@ test('it lists a new version beside the version in force with the untyped token,
   await mkdir(join(definitions, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(definitions, 'skills', 'tide-tables', 'SKILL.md'), inForceText);
 
-  ctx.model.addReplies(
-    { toolUse: { name: 'mcp__nixie__skill_reload_all', input: {} } },
+  ctx.guest.addReplies(
+    { toolUse: { name: 'skill_reload_all', input: {} } },
     {
       toolUse: {
-        name: 'mcp__nixie__skill_write',
+        name: 'skill_write',
         input: { name: 'tide-tables', files: [{ path: 'SKILL.md', text: proposedText }] },
       },
     },
@@ -138,7 +142,7 @@ test('it lists a new version beside the version in force with the untyped token,
     thread: 'conversation',
   });
 
-  await waitForTurn(async () => {
+  await waitForCondition(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
@@ -160,7 +164,7 @@ test('it lists a new version beside the version in force with the untyped token,
   const after = await runHostCommand(ctx.configPath, ['skill-pending']);
   const written = await runHostCommand(ctx.configPath, ['skill-written']);
 
-  ctx.sendSignal('SIGTERM');
+  ctx.signalStop();
 
   const run = await ctx.waitForExit();
 
@@ -199,7 +203,7 @@ test('it lists a new version beside the version in force with the untyped token,
       skillChanges: { added: [], changed: ['tide-tables'], removed: [] },
     },
   });
-}, 60_000);
+});
 
 test('it approves your edited files in place of the proposal, and puts them in force', async () => {
   const ctx = await setupTest();
@@ -221,10 +225,10 @@ test('it approves your edited files in place of the proposal, and puts them in f
 
   await writeFile(join(definitions, 'nixie.yaml'), 'format: 2\n');
 
-  ctx.model.addReplies(
+  ctx.guest.addReplies(
     {
       toolUse: {
-        name: 'mcp__nixie__skill_write',
+        name: 'skill_write',
         input: { name: 'tide-tables', files: [{ path: 'SKILL.md', text: proposedText }] },
       },
     },
@@ -238,7 +242,7 @@ test('it approves your edited files in place of the proposal, and puts them in f
     thread: 'conversation',
   });
 
-  await waitForTurn(async () => {
+  await waitForCondition(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
@@ -259,7 +263,7 @@ test('it approves your edited files in place of the proposal, and puts them in f
     JSON.stringify(editedFiles),
   ]);
 
-  ctx.sendSignal('SIGTERM');
+  ctx.signalStop();
 
   const run = await ctx.waitForExit();
 
@@ -278,7 +282,7 @@ test('it approves your edited files in place of the proposal, and puts them in f
   expect(seeds.at(-1)).toMatchObject({
     payload: { skills: [{ name: 'tide-tables', skillHash: edited.skillHash, origin: 'nixie' }] },
   });
-}, 60_000);
+});
 
 test("it resolves a conflict by keeping nixie's version, which stays in force with no conflict", async () => {
   const ctx = await setupTest();
@@ -292,16 +296,16 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
   await mkdir(join(definitions, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(definitions, 'skills', 'tide-tables', 'SKILL.md'), inForceText);
 
-  ctx.model.addReplies(
-    { toolUse: { name: 'mcp__nixie__skill_reload_all', input: {} } },
+  ctx.guest.addReplies(
+    { toolUse: { name: 'skill_reload_all', input: {} } },
     {
       toolUse: {
-        name: 'mcp__nixie__skill_write',
+        name: 'skill_write',
         input: { name: 'tide-tables', files: [{ path: 'SKILL.md', text: proposedText }] },
       },
     },
     { text: 'Proposed.' },
-    { toolUse: { name: 'mcp__nixie__skill_reload_all', input: {} } },
+    { toolUse: { name: 'skill_reload_all', input: {} } },
     { text: 'Reloaded.' },
   );
 
@@ -312,7 +316,7 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
     thread: 'conversation',
   });
 
-  await waitForTurn(async () => {
+  await waitForCondition(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
@@ -347,7 +351,7 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
     thread: 'conversation',
   });
 
-  await waitForTurn(async () => {
+  await waitForCondition(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Reloaded.');
@@ -369,12 +373,13 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
   expect(resolved).toStrictEqual({
     exitCode: 0,
     stdout: `${JSON.stringify({ approvalID, keep: 'nixie' })}\n`,
+    logged: [],
   });
 
   expect(JSON.parse(written.stdout)).toMatchObject([
     { approvalID, name: 'tide-tables', skillHash, isConflict: false },
   ]);
-}, 60_000);
+});
 
 test("it resolves a skill nixie wrote by keeping the definitions' version, which goes back in force", async () => {
   const ctx = await setupTest();
@@ -390,11 +395,11 @@ test("it resolves a skill nixie wrote by keeping the definitions' version, which
   await mkdir(join(definitions, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(definitions, 'skills', 'tide-tables', 'SKILL.md'), inForceText);
 
-  ctx.model.addReplies(
-    { toolUse: { name: 'mcp__nixie__skill_reload_all', input: {} } },
+  ctx.guest.addReplies(
+    { toolUse: { name: 'skill_reload_all', input: {} } },
     {
       toolUse: {
-        name: 'mcp__nixie__skill_write',
+        name: 'skill_write',
         input: {
           name: 'tide-tables',
           files: [{ path: 'SKILL.md', text: `${inForceText}By port.\n` }],
@@ -411,7 +416,7 @@ test("it resolves a skill nixie wrote by keeping the definitions' version, which
     thread: 'conversation',
   });
 
-  await waitForTurn(async () => {
+  await waitForCondition(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Proposed.');
@@ -443,7 +448,7 @@ test("it resolves a skill nixie wrote by keeping the definitions' version, which
 
   const written = await runHostCommand(ctx.configPath, ['skill-written']);
 
-  ctx.sendSignal('SIGTERM');
+  ctx.signalStop();
 
   const run = await ctx.waitForExit();
 
@@ -452,6 +457,7 @@ test("it resolves a skill nixie wrote by keeping the definitions' version, which
   expect(resolved).toStrictEqual({
     exitCode: 0,
     stdout: `${JSON.stringify({ approvalID, keep: 'definitions' })}\n`,
+    logged: [],
   });
 
   expect(JSON.parse(written.stdout)).toStrictEqual([]);
@@ -461,7 +467,7 @@ test("it resolves a skill nixie wrote by keeping the definitions' version, which
       skills: [{ name: 'tide-tables', skillHash: inForce.skillHash, origin: 'definitions' }],
     },
   });
-}, 60_000);
+});
 
 test('it refuses an approval with no --hash, and reaches no server', async () => {
   const io = { log: mock(), print: mock(), waitForSignal: mock() };

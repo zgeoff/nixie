@@ -27,4 +27,4 @@ test('it lets go of the data directory, so nixie can take it', async () => {
   await first.ready;
 
   expect(ctx.nixie.harness.now()).toBe(1_000_000);
-}, 60_000);
+});

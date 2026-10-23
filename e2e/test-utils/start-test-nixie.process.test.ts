@@ -10,7 +10,7 @@ test('it starts nixie on the crash harness clock at 1,000,000 ms', async () => {
   await first.ready;
 
   expect(nixie.harness.now()).toBe(1_000_000);
-}, 60_000);
+});
 
 test('it reads back the records that nixie writes', async () => {
   const nixie = await startTestNixie();
@@ -26,7 +26,7 @@ test('it reads back the records that nixie writes', async () => {
   const record = await nixie.waitForRecord((candidate) => candidate.stepKey === `${taskID}:1`);
 
   expect(record).toMatchObject({ thread: taskID, stepKey: `${taskID}:1` });
-}, 60_000);
+});
 
 test('it keeps the leases and the tasks that each start recovered', async () => {
   const nixie = await startTestNixie();
@@ -53,7 +53,7 @@ test('it keeps the leases and the tasks that each start recovered', async () => 
       tasks: [{ task_id: 'conversation' }, { task_id: taskID, state: 'ready' }],
     },
   ]);
-}, 60_000);
+});
 
 test('it removes its data directory once the test finishes', async () => {
   const nixie = await startTestNixie();
@@ -65,4 +65,4 @@ test('it removes its data directory once the test finishes', async () => {
   onTestFinished(() => {
     expect(existsSync(nixie.dataDir)).toBeFalse();
   });
-}, 60_000);
+});

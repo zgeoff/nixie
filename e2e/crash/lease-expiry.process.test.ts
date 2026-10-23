@@ -62,7 +62,7 @@ test('it lets runner B take an expired lease at the next generation, and commits
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it lets runner B claim only once the renewed lease expires, never before', async () => {
   const ctx = await setupTest();
@@ -127,7 +127,7 @@ test('it lets runner B claim only once the renewed lease expires, never before',
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test("it refuses a call from runner A's guest once runner B holds the claim, and queues no action", async () => {
   const ctx = await setupTest();
@@ -227,7 +227,7 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it expires the lease of a killed nixie on restart, runs the task once, and leaves a finished task done', async () => {
   const ctx = await setupTest();
@@ -293,4 +293,4 @@ test('it expires the lease of a killed nixie on restart, runs the task once, and
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});

@@ -112,9 +112,9 @@ test("it unpins an item through memory.unpin at once, and the next turn's change
   const shown = await api.client.memory.readItem({ itemID: item.itemID });
   const pinned = await api.client.memory.readPinnedCore();
 
-  nixie.model.addReplies(
+  nixie.guest.addReplies(
     { text: 'Morning.' },
-    { toolUse: { name: 'mcp__nixie__memory_unpin', input: { itemID: shown.shortID } } },
+    { toolUse: { name: 'memory.unpin', input: { itemID: shown.shortID } } },
     { text: 'Unpinned it.' },
     { text: 'Sure.' },
   );
@@ -131,24 +131,34 @@ test("it unpins an item through memory.unpin at once, and the next turn's change
 
   const core = await api.client.memory.readPinnedCore();
 
-  const [opening] = nixie.model.requests;
-  const afterPin = nixie.model.requests.at(-4);
-  const afterUnpin = nixie.model.requests.at(-1);
+  const [opening, afterPin, , afterUnpin] = nixie.guest.turns;
 
   expect(core.items).toStrictEqual([]);
 
-  expect(JSON.stringify(opening?.body?.messages)).toInclude(
-    String.raw`- Pinned memory: 0 items\n- Pinned memory tokens: 0 of ${String(pinned.budget)}`,
-  );
+  expect(opening?.input).toMatchObject([
+    {
+      text: expect.toInclude(
+        `- Pinned memory: 0 items\n- Pinned memory tokens: 0 of ${String(pinned.budget)}`,
+      ),
+    },
+  ]);
 
-  expect(JSON.stringify(afterPin?.body?.messages)).toInclude(
-    `Pinned memory now: 1 item, ${String(pinned.tokens)} of ${String(pinned.budget)} tokens.`,
-  );
+  expect(afterPin?.input).toMatchObject([
+    {
+      text: expect.toInclude(
+        `Pinned memory now: 1 item, ${String(pinned.tokens)} of ${String(pinned.budget)} tokens.`,
+      ),
+    },
+  ]);
 
-  expect(JSON.stringify(afterUnpin?.body?.messages)).toInclude(
-    String.raw`- Unpinned [${shown.shortID}]\nPinned memory now: 0 items, 0 of ${String(pinned.budget)} tokens.`,
-  );
-}, 90_000);
+  expect(afterUnpin?.input).toMatchObject([
+    {
+      text: expect.toInclude(
+        `- Unpinned [${shown.shortID}]\nPinned memory now: 0 items, 0 of ${String(pinned.budget)} tokens.`,
+      ),
+    },
+  ]);
+});
 
 test('it fails a memory call that runs before the memory store starts', async () => {
   const ctx = await setupTest();

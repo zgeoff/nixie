@@ -12,12 +12,12 @@ export interface ApprovedItem {
 }
 
 export async function createApprovedItems(
-  nixie: Pick<TestNixie, 'model' | 'configPath'>,
+  nixie: Pick<TestNixie, 'guest' | 'configPath'>,
   client: Pick<ContractClient, 'conversation'>,
   texts: readonly [string, ...string[]],
 ): Promise<readonly [ApprovedItem, ...ApprovedItem[]]> {
-  nixie.model.addReplies(
-    ...texts.map((text) => ({ toolUse: { name: 'mcp__nixie__memory_remember', input: { text } } })),
+  nixie.guest.addReplies(
+    ...texts.map((text) => ({ toolUse: { name: 'memory.remember', input: { text } } })),
     { text: 'Noted them down.' },
   );
 

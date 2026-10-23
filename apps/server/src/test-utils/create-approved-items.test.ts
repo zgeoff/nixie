@@ -30,4 +30,4 @@ test('it approves each text the turn proposed as an active item of yours, in the
     state: 'active',
     versions: [{ version: 1, origin: 'conversation', text: 'Allergic to hazelnuts' }],
   });
-}, 60_000);
+});

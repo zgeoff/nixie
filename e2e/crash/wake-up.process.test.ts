@@ -62,7 +62,7 @@ test('it wakes the conversation for a message written just before nixie died, an
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it wakes a task for a timer that fired just before nixie died, and reads it once', async () => {
   const ctx = await setupTest();
@@ -116,7 +116,7 @@ test('it wakes a task for a timer that fired just before nixie died, and reads i
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it wakes the conversation for an action outcome written just before nixie died, and reads it once', async () => {
   const ctx = await setupTest();
@@ -185,7 +185,7 @@ test('it wakes the conversation for an action outcome written just before nixie 
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it reaches a task with input that arrives while its step runs, before the step registers its wait', async () => {
   const ctx = await setupTest();
@@ -229,4 +229,4 @@ test('it reaches a task with input that arrives while its step runs, before the 
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});

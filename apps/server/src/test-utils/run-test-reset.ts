@@ -8,13 +8,9 @@ import type { TestNixie } from './start-test-nixie';
 export interface TestReset {
   readonly command: HostCommandRun;
   readonly serverExit: number;
-
   readonly lastSequence: number;
-
   readonly again: TestNixie;
-
   readonly connect: (token?: string) => ContractClient;
-
   readonly stop: () => Promise<{ readonly exitCode: number; readonly records: LogRecord[] }>;
 }
 
@@ -39,7 +35,7 @@ export async function runTestReset(nixie: TestNixie): Promise<TestReset> {
     again,
     connect: (token) => buildTestClient(url, token),
     stop: () => {
-      again.sendSignal('SIGTERM');
+      again.signalStop();
 
       return again.waitForExit();
     },

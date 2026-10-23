@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { waitForCondition } from '@heynixie/testing';
 import { z } from 'zod';
 import { runCLI } from './run-cli';
 import { createApprovedItems } from './test-utils/create-approved-items';
@@ -8,7 +9,6 @@ import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startTestNixie } from './test-utils/start-test-nixie';
-import { waitForTurn } from './test-utils/wait-for-turn';
 
 async function setupTest() {
   const nixie = await startTestNixie();
@@ -20,8 +20,8 @@ test('it approves a proposal with your text, then edits, retires, restores and p
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
-  ctx.model.addReplies(
-    { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Likes jaz' } } },
+  ctx.guest.addReplies(
+    { toolUse: { name: 'memory.remember', input: { text: 'Likes jaz' } } },
     { text: 'Noted.' },
   );
 
@@ -32,7 +32,7 @@ test('it approves a proposal with your text, then edits, retires, restores and p
     thread: 'conversation',
   });
 
-  await waitForTurn(async () => {
+  await waitForCondition(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
@@ -71,14 +71,14 @@ test('it approves a proposal with your text, then edits, retires, restores and p
       ],
     },
   ]);
-}, 60_000);
+});
 
 test('it rejects a proposal with your reason, which the next turn reads in its events block', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
-  ctx.model.addReplies(
-    { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Plays the oboe' } } },
+  ctx.guest.addReplies(
+    { toolUse: { name: 'memory.remember', input: { text: 'Plays the oboe' } } },
     { text: 'Noted.' },
     { text: 'Understood.' },
   );
@@ -90,7 +90,7 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
     thread: 'conversation',
   });
 
-  await waitForTurn(async () => {
+  await waitForCondition(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
@@ -118,16 +118,16 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
     thread: 'conversation',
   });
 
-  await waitForTurn(async () => {
+  await waitForCondition(async () => {
     const page = await api.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Understood.');
   });
 
-  expect(JSON.stringify(ctx.model.requests.map((request) => request.body?.messages))).toInclude(
-    String.raw`Reason: \"only tried it once\".`,
-  );
-}, 60_000);
+  expect(ctx.guest.turns.at(-1)?.input).toMatchObject([
+    { text: expect.toInclude('Reason: "only tried it once".') },
+  ]);
+});
 
 test('it forgets an item through the memory view, which leaves no key, match or session copy of it', async () => {
   const ctx = await setupTest();
@@ -140,7 +140,7 @@ test('it forgets an item through the memory view, which leaves no key, match or 
     'Prefers window seats on trains',
   ]);
 
-  ctx.model.addReplies({ text: 'Under the flowerpot.' });
+  ctx.guest.addReplies({ text: 'Under the flowerpot.' });
 
   await sendClientMessage(api.client, { text: 'Where is the spare key?' }, 'Under the flowerpot.');
 
@@ -164,7 +164,7 @@ test('it forgets an item through the memory view, which leaves no key, match or 
   });
 
   expect(after).toStrictEqual({ hasKey: false, isMatched: false, sessionFiles: [] });
-}, 60_000);
+});
 
 test('it runs the turn after a forget through the memory view on a rebuilt session without the item', async () => {
   const ctx = await setupTest();
@@ -176,7 +176,7 @@ test('it runs the turn after a forget through the memory view on a rebuilt sessi
     'Prefers window seats on trains',
   ]);
 
-  ctx.model.addReplies({ text: 'Under the flowerpot.' }, { text: 'You are welcome.' });
+  ctx.guest.addReplies({ text: 'Under the flowerpot.' }, { text: 'You are welcome.' });
 
   await sendClientMessage(api.client, { text: 'Where is the spare key?' }, 'Under the flowerpot.');
 
@@ -184,11 +184,11 @@ test('it runs the turn after a forget through the memory view on a rebuilt sessi
 
   await sendClientMessage(api.client, { text: 'Thanks.' }, 'You are welcome.');
 
-  ctx.sendSignal('SIGTERM');
+  ctx.signalStop();
 
   const run = await ctx.waitForExit();
 
-  expect(JSON.stringify(ctx.model.requests.at(-1)?.body)).toSatisfy(
+  expect(JSON.stringify(ctx.guest.turns.at(-1))).toSatisfy(
     (request: string) => request.includes('Thanks.') && !request.includes('blue flowerpot'),
   );
 
@@ -202,7 +202,7 @@ test('it runs the turn after a forget through the memory view on a rebuilt sessi
     { kind: 'memory.forgotten', payload: { itemID: key.itemID } },
     { kind: 'model.session_opened', payload: { kind: 'rebuild', reason: 'forget' } },
   ]);
-}, 60_000);
+});
 
 test('it forgets an item through memory-forget, which leaves no key, match or session copy of it', async () => {
   const ctx = await setupTest();
@@ -214,7 +214,7 @@ test('it forgets an item through memory-forget, which leaves no key, match or se
     'Prefers window seats on trains',
   ]);
 
-  ctx.model.addReplies({ text: 'It is 6082.' });
+  ctx.guest.addReplies({ text: 'It is 6082.' });
 
   await sendClientMessage(api.client, { text: 'What is the bike lock code?' }, 'It is 6082.');
 
@@ -233,7 +233,7 @@ test('it forgets an item through memory-forget, which leaves no key, match or se
   });
 
   expect(after).toStrictEqual({ hasKey: false, isMatched: false, sessionFiles: [] });
-}, 60_000);
+});
 
 test('it runs the turn after memory-forget on a rebuilt session without the item', async () => {
   const ctx = await setupTest();
@@ -245,17 +245,17 @@ test('it runs the turn after memory-forget on a rebuilt session without the item
     'Prefers window seats on trains',
   ]);
 
-  ctx.model.addReplies({ text: 'It is 6082.' }, { text: 'You are welcome.' });
+  ctx.guest.addReplies({ text: 'It is 6082.' }, { text: 'You are welcome.' });
 
   await sendClientMessage(api.client, { text: 'What is the bike lock code?' }, 'It is 6082.');
   await runHostCommand(ctx.configPath, ['memory-forget', `${lock.itemID}@1`]);
   await sendClientMessage(api.client, { text: 'Thanks.' }, 'You are welcome.');
 
-  ctx.sendSignal('SIGTERM');
+  ctx.signalStop();
 
   const run = await ctx.waitForExit();
 
-  expect(JSON.stringify(ctx.model.requests.at(-1)?.body)).toSatisfy(
+  expect(JSON.stringify(ctx.guest.turns.at(-1))).toSatisfy(
     (request: string) => request.includes('Thanks.') && !request.includes('bike lock code is 6082'),
   );
 
@@ -269,7 +269,7 @@ test('it runs the turn after memory-forget on a rebuilt session without the item
     { kind: 'memory.forgotten', payload: { itemID: lock.itemID } },
     { kind: 'model.session_opened', payload: { kind: 'rebuild', reason: 'forget' } },
   ]);
-}, 60_000);
+});
 
 test.each([
   ['no --hash', ['memory-approve', 'proposal-1']],

@@ -2,7 +2,6 @@ import type { ContractClient } from '@heynixie/contract';
 import { clientHeaderName } from '@heynixie/contract';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
-import type { TestNixie } from './start-test-nixie';
 
 interface TestClient {
   readonly url: string;
@@ -13,9 +12,11 @@ interface TestClient {
   readonly token: string;
 }
 
-export async function createTestClient(
-  nixie: Pick<TestNixie, 'waitForLogEvent'>,
-): Promise<TestClient> {
+interface LogEventSource {
+  readonly waitForLogEvent: (event: string) => Promise<Readonly<Record<string, unknown>>>;
+}
+
+export async function createTestClient(nixie: LogEventSource): Promise<TestClient> {
   const [listening, issued] = await Promise.all([
     nixie.waitForLogEvent('http.listening'),
     nixie.waitForLogEvent('enrolment_code.issued'),

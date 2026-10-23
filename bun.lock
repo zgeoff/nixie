@@ -412,6 +412,7 @@
         "@zgeoff/std": "catalog:",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "xstate": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {

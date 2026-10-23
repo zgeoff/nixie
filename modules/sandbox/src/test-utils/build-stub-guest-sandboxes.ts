@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import type { GuestFrame, HostFrame } from '@heynixie/wire';
+import type { CheckReply, CheckRequest, GuestFrame, HostFrame } from '@heynixie/wire';
 import { createSandboxID } from '../create-sandbox-id';
 import { requireSandboxSpec } from '../require-sandbox-spec';
 import type {
@@ -15,6 +15,7 @@ import { buildStubGuestDisk } from './build-stub-guest-disk';
 import { runStubGuestSummary } from './run-stub-guest-summary';
 import type { StubGuestReply, StubGuestToolCaller } from './run-stub-guest-turn';
 import { runStubGuestTurn } from './run-stub-guest-turn';
+import { startStubCheck } from './start-stub-check';
 import { startStubGuest } from './start-stub-guest';
 
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
@@ -33,6 +34,7 @@ export interface StubGuestSandboxesOptions {
 
 export interface ReceivedFrame {
   readonly sandboxID: string;
+  readonly owner: string;
   readonly frame: HostFrame;
 }
 
@@ -45,9 +47,13 @@ export interface StubGuestSandboxes {
 
   readonly purged: readonly string[];
 
+  readonly checks: readonly CheckRequest[];
+
   readonly readSandboxIDs: () => readonly string[];
 
   readonly addReplies: (...replies: readonly StubGuestReply[]) => void;
+
+  readonly addCheckAnswers: (...outputs: readonly unknown[]) => void;
 
   readonly setContextSize: (tokens: number) => void;
 
@@ -74,7 +80,9 @@ interface StubState {
   readonly turns: TurnFrame[];
   readonly summaries: SummarizeFrame[];
   readonly purged: string[];
+  readonly checks: CheckRequest[];
   readonly replies: StubGuestReply[];
+  readonly checkAnswers: unknown[];
   contextSize: number | null;
 }
 
@@ -86,7 +94,9 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
     turns: [],
     summaries: [],
     purged: [],
+    checks: [],
     replies: [],
+    checkAnswers: [],
     contextSize: null,
   };
 
@@ -117,9 +127,13 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
     turns: state.turns,
     summaries: state.summaries,
     purged: state.purged,
+    checks: state.checks,
     readSandboxIDs: () => [...state.sandboxes.keys()],
     addReplies: (...replies) => {
       state.replies.push(...replies);
+    },
+    addCheckAnswers: (...outputs) => {
+      state.checkAnswers.push(...outputs);
     },
     setContextSize: (tokens) => {
       state.contextSize = tokens;
@@ -178,6 +192,10 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
     spawn: async (command) => {
       await requireAwake();
 
+      if (spec.kind === 'checker') {
+        return startStubCheck((request) => answerCheck(state, request));
+      }
+
       const home = findGuestHome(state.options.hostRoot, id, command.env ?? {});
 
       return startGuest(state, { id, spec, own }, home);
@@ -235,6 +253,22 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
   };
 }
 
+function answerCheck(state: StubState, request: CheckRequest): CheckReply {
+  state.checks.push(request);
+
+  if (state.checkAnswers.length === 0) {
+    return { kind: 'failed', reason: 'the stub check holds no answer' };
+  }
+
+  return {
+    kind: 'answer',
+    output: state.checkAnswers.shift(),
+    costUSD: 0,
+    durationMs: 0,
+    apiMs: 0,
+  };
+}
+
 function findGuestHome(
   hostRoot: string | undefined,
   id: string,
@@ -267,7 +301,7 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: GuestHome | n
 
   return startStubGuest({
     onFrame: (frame) => {
-      state.received.push({ sandboxID: sandbox.id, frame });
+      state.received.push({ sandboxID: sandbox.id, owner: sandbox.spec.owner, frame });
 
       if (frame.type === 'turn') {
         state.turns.push(frame);

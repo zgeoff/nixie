@@ -13,7 +13,7 @@ test('it sends the message with its spans and returns the thread once the reply 
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
-  ctx.model.addReplies({ text: 'Hello back.' });
+  ctx.guest.addReplies({ text: 'Hello back.' });
 
   const records = await sendClientMessage(
     api.client,
@@ -28,26 +28,26 @@ test('it sends the message with its spans and returns the thread once the reply 
     },
     { kind: 'model.reply', message: { text: 'Hello back.' } },
   ]);
-}, 60_000);
+});
 
 test('it sends a message with no spans, which the server labels unknown', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
-  ctx.model.addReplies({ text: 'Hello back.' });
+  ctx.guest.addReplies({ text: 'Hello back.' });
 
   const records = await sendClientMessage(api.client, { text: 'Hello.' }, 'Hello back.');
 
   expect(records.find((record) => record.kind === 'owner_message')?.message?.spans).toStrictEqual([
     { start: 0, end: 6, source: 'unknown' },
   ]);
-}, 60_000);
+});
 
 test('it waits for the model reply when the reply repeats the message', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
-  ctx.model.addReplies({ text: 'Echo.' });
+  ctx.guest.addReplies({ text: 'Echo.' });
 
   const records = await sendClientMessage(api.client, { text: 'Echo.' }, 'Echo.');
 
@@ -55,13 +55,13 @@ test('it waits for the model reply when the reply repeats the message', async ()
     { kind: 'owner_message' },
     { kind: 'model.reply' },
   ]);
-}, 60_000);
+});
 
 test('it waits for a new reply when an earlier turn gave the same one', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
-  ctx.model.addReplies({ text: 'Noted.' }, { text: 'Noted.' });
+  ctx.guest.addReplies({ text: 'Noted.' }, { text: 'Noted.' });
 
   await sendClientMessage(api.client, { text: 'First.' }, 'Noted.');
 
@@ -73,4 +73,4 @@ test('it waits for a new reply when an earlier turn gave the same one', async ()
     { kind: 'owner_message', message: { text: 'Second.' } },
     { kind: 'model.reply', message: { text: 'Noted.' } },
   ]);
-}, 60_000);
+});

@@ -90,7 +90,7 @@ test('it sends once when nixie dies after the action queued, before any attempt'
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it leaves the action unknown and calls no provider when nixie dies after the attempt record', async () => {
   const ctx = await setupTest();
@@ -165,7 +165,7 @@ test('it leaves the action unknown and calls no provider when nixie dies after t
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it leaves the action unknown and calls the provider once when nixie dies before the result commits', async () => {
   const ctx = await setupTest();
@@ -244,7 +244,7 @@ test('it leaves the action unknown and calls the provider once when nixie dies b
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it returns the done action to the rerun and sends once when nixie dies before the step commits', async () => {
   const ctx = await setupTest();
@@ -330,4 +330,4 @@ test('it returns the done action to the rerun and sends once when nixie dies bef
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});

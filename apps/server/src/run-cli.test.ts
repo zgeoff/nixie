@@ -237,7 +237,7 @@ test('it pins a self-note from memory-pin', async () => {
 
   expect(exitCode).toBe(0);
   expect(core).toMatchObject([{ itemID: item.itemID, subject: 'self' }]);
-}, 15_000);
+});
 
 test('it prints the subject of a self-note from memory-show', async () => {
   const ctx = await setupTest();

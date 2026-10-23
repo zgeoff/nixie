@@ -15,7 +15,7 @@ test('it signs a client in as a device named laptop', async () => {
   const listed = await created.client.sessions.list();
 
   expect(listed.sessions).toMatchObject([{ current: true, deviceName: 'laptop' }]);
-}, 60_000);
+});
 
 test('it gives the device token, which signs in another client as the same device', async () => {
   const ctx = await setupTest();
@@ -23,7 +23,7 @@ test('it gives the device token, which signs in another client as the same devic
   const listed = await buildTestClient(created.url, created.token).sessions.list();
 
   expect(listed.sessions).toMatchObject([{ current: true, deviceName: 'laptop' }]);
-}, 60_000);
+});
 
 test('it gives a signed-out client that the API refuses', async () => {
   const ctx = await setupTest();
@@ -34,4 +34,4 @@ test('it gives a signed-out client that the API refuses', async () => {
   await listed.catch(() => {});
 
   expect(listed).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
-}, 60_000);
+});

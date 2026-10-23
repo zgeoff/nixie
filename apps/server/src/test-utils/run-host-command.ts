@@ -1,37 +1,29 @@
-import { onTestFinished } from 'bun:test';
-import { join } from 'node:path';
+import type { LogFields } from '@heynixie/logger';
+import { runCLI } from '../run-cli';
 
 export interface HostCommandRun {
   readonly exitCode: number;
   readonly stdout: string;
+
+  readonly logged: readonly Readonly<Record<string, unknown>>[];
 }
 
 export async function runHostCommand(
   configPath: string,
   args: readonly string[],
 ): Promise<HostCommandRun> {
-  const command = Bun.spawn(
-    [
-      process.execPath,
-      '--define',
-      'NIXIE_TEST_BUILD=true',
-      join(import.meta.dir, '..', 'main.ts'),
-      ...args,
-      '--config',
-      configPath,
-    ],
-    { stdout: 'pipe', stderr: 'pipe' },
-  );
+  const printed: string[] = [];
+  const logged: Readonly<Record<string, unknown>>[] = [];
 
-  onTestFinished(() => {
-    command.kill();
+  const exitCode = await runCLI([...args, '--config', configPath], {
+    log: (event, fields: LogFields = {}) => {
+      logged.push({ ...fields, event });
+    },
+    print: (text) => {
+      printed.push(`${text}\n`);
+    },
+    waitForSignal: () => new Promise(() => {}),
   });
 
-  const [exitCode, stdout] = await Promise.all([
-    command.exited,
-    new Response(command.stdout).text(),
-    new Response(command.stderr).text(),
-  ]);
-
-  return { exitCode, stdout };
+  return { exitCode, stdout: printed.join(''), logged };
 }

@@ -116,7 +116,7 @@ test('it resumes the retry schedule across a restart and fails the action on the
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});
 
 test('it marks a retry unknown when nixie dies after its attempt record, and never sends it again', async () => {
   const ctx = await setupTest();
@@ -179,4 +179,4 @@ test('it marks a retry unknown when nixie dies after its attempt record, and nev
     changedEndStates: [],
     projectionDrift: [],
   });
-}, 120_000);
+});

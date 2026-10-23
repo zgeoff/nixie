@@ -54,6 +54,9 @@ async function runServe(flags: CLIFlags, io: CLIIO): Promise<number> {
     sopsArgv: [flags.sops],
     ...(flags.encoder === '' ? {} : { encoderDir: flags.encoder }),
     log: io.log,
+    ...(io.createSandboxAdapter === undefined
+      ? {}
+      : { createSandboxAdapter: io.createSandboxAdapter }),
   });
 
   const exitCode = await Promise.race([

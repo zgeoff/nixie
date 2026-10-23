@@ -1,3 +1,4 @@
+import { subscribeToRecordCommits } from '@heynixie/log';
 import { claimTask } from './claim-task';
 import { DEFAULT_MAX_STEP_ERRORS } from './default-max-step-errors';
 import { runDueTimers } from './run-due-timers';
@@ -64,12 +65,20 @@ export function startTaskRunners(context: TasksContext, options: TaskRunnersOpti
     onError: options.onError,
   });
 
+  const wake = () => {
+    steps.wake();
+    timers.wake();
+  };
+
+  // A record can make a task claimable, such as a message landing in its inbox, so an idle runner
+  // claims at once instead of after its poll.
+  const unsubscribe = subscribeToRecordCommits(context.log.writer, wake);
+
   return {
-    wake: () => {
-      steps.wake();
-      timers.wake();
-    },
+    wake,
     stop: async (graceMs) => {
+      unsubscribe();
+
       await Promise.all([steps.stop(graceMs), timers.stop(graceMs)]);
     },
   };
