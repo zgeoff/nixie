@@ -8,10 +8,10 @@ import { z } from 'zod';
 import { runCLI } from './run-cli';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
-import { startTestNixie } from './test-utils/start-test-nixie';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   return nixie;
 }

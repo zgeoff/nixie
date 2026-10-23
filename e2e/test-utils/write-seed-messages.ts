@@ -1,10 +1,10 @@
 import { writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
+import type { SpawnedNixie } from './start-spawned-nixie';
 import { startTestLog } from './start-test-log';
-import type { TestNixie } from './start-test-nixie';
 
 export async function writeSeedMessages(
-  nixie: Pick<TestNixie, 'dataDir' | 'deploymentKey'>,
+  nixie: Pick<SpawnedNixie, 'dataDir' | 'deploymentKey'>,
   texts: readonly string[],
 ): Promise<readonly number[]> {
   const testLog = await startTestLog({

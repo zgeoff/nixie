@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { waitForCondition } from '@heynixie/testing';
 import { runOracle } from '../test-utils/run-oracle';
-import { startTestNixie } from '../test-utils/start-test-nixie';
+import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   return { nixie };
 }

@@ -3,10 +3,10 @@ import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import type { TasksTables } from '@heynixie/tasks';
 import { runOracle } from './run-oracle';
-import { startTestNixie } from './start-test-nixie';
+import { startSpawnedNixie } from './start-spawned-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   return { nixie };
 }

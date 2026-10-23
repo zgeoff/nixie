@@ -34,32 +34,32 @@ export type { RecoveredState } from './types';
 
 type LogLine = Readonly<Record<string, unknown>>;
 
-interface TestNixieExit {
+interface SpawnedNixieExit {
   readonly exit: NixieExit;
   readonly records: readonly LogRecord[];
 }
 
-interface TestNixieProcess extends NixieProcess {
+interface SpawnedNixieProcess extends NixieProcess {
   readonly readOutput: () => string;
 
   readonly waitForLogEvent: (event: string) => Promise<LogLine>;
 
   readonly sendStopSignal: () => Promise<void>;
 
-  readonly waitForExit: () => Promise<TestNixieExit>;
+  readonly waitForExit: () => Promise<SpawnedNixieExit>;
 }
 
-interface TestNixieHarness {
+interface SpawnedNixieHarness {
   readonly now: () => number;
 
-  readonly start: (faultPoints?: readonly FaultPointArm[]) => TestNixieProcess;
+  readonly start: (faultPoints?: readonly FaultPointArm[]) => SpawnedNixieProcess;
 
   readonly advance: (durationMs: number, options?: AdvanceOptions) => Promise<void>;
 }
 
-export interface TestNixie extends BootFiles {
+export interface SpawnedNixie extends BootFiles {
   readonly directory: string;
-  readonly harness: TestNixieHarness;
+  readonly harness: SpawnedNixieHarness;
   readonly model: ScriptedModel;
 
   readonly writerModel: ScriptedModel;
@@ -95,7 +95,7 @@ export interface TestNixie extends BootFiles {
   readonly readSandboxIDs: () => Promise<readonly string[]>;
 }
 
-export interface TestNixieOptions {
+export interface SpawnedNixieOptions {
   readonly memoryWriter?: boolean;
 
   readonly extraConfig?: readonly string[];
@@ -121,7 +121,7 @@ interface Launch {
   readonly files: BootFiles;
 }
 
-export async function startTestNixie(options: TestNixieOptions = {}): Promise<TestNixie> {
+export async function startSpawnedNixie(options: SpawnedNixieOptions = {}): Promise<SpawnedNixie> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -154,7 +154,7 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
 
   const recovery = startRecoveryReads(crashHarness, launch, reader.readRows);
 
-  const harness: TestNixieHarness = {
+  const harness: SpawnedNixieHarness = {
     now: crashHarness.now,
     start: options.release === undefined ? recovery.start : () => startRelease(launch, stack),
     advance: crashHarness.advance,
@@ -175,7 +175,7 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
   };
 }
 
-type TestDoubles = Pick<TestNixie, 'model' | 'provider' | 'writerModel' | 'checkerModel'>;
+type TestDoubles = Pick<SpawnedNixie, 'model' | 'provider' | 'writerModel' | 'checkerModel'>;
 
 function startDoubles(stack: AsyncDisposableStack): TestDoubles {
   const model = startScriptedModel();
@@ -200,7 +200,7 @@ function startDoubles(stack: AsyncDisposableStack): TestDoubles {
 // The memory writer and the consolidator ask the model on their own schedule, so a test that does
 // not ask for them keeps them off and its scripted replies for the turns it drives. The writer's
 // gate asks the checker in the middle of a batch, so the checker gets its own model as well.
-function buildBootExtras(options: TestNixieOptions, doubles: TestDoubles) {
+function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
   const isWriterOn = options.memoryWriter === true;
 
   return {
@@ -226,7 +226,7 @@ function buildBootExtras(options: TestNixieOptions, doubles: TestDoubles) {
   };
 }
 
-type LogReader = Pick<TestNixie, 'readRecords' | 'readRows'>;
+type LogReader = Pick<SpawnedNixie, 'readRecords' | 'readRows'>;
 
 type Database = ReturnType<typeof startDatabase>;
 
@@ -294,8 +294,8 @@ function buildServeArgs(files: BootFiles): readonly string[] {
 function startRecoveryReads(
   crashHarness: CrashHarness,
   launch: Launch,
-  readRows: TestNixie['readRows'],
-): Pick<TestNixieHarness, 'start'> & Pick<TestNixie, 'readRecoveredStates'> {
+  readRows: SpawnedNixie['readRows'],
+): Pick<SpawnedNixieHarness, 'start'> & Pick<SpawnedNixie, 'readRecoveredStates'> {
   const states: RecoveredState[] = [];
 
   return {
@@ -306,7 +306,7 @@ function startRecoveryReads(
         states.push(state);
       });
 
-      return trackTestNixieProcess(nixie, launch.files);
+      return trackSpawnedNixieProcess(nixie, launch.files);
     },
     readRecoveredStates: () => states,
   };
@@ -314,7 +314,7 @@ function startRecoveryReads(
 
 async function readRecoveredState(
   nixie: NixieProcess,
-  readRows: TestNixie['readRows'],
+  readRows: SpawnedNixie['readRows'],
   onState: (state: RecoveredState) => void,
 ): Promise<void> {
   const arrival = await nixie.waitForArrival('test.recovered').catch(() => null);
@@ -328,7 +328,7 @@ async function readRecoveredState(
   nixie.release(arrival);
 }
 
-function trackTestNixieProcess(nixie: NixieProcess, files: BootFiles): TestNixieProcess {
+function trackSpawnedNixieProcess(nixie: NixieProcess, files: BootFiles): SpawnedNixieProcess {
   const state = { hasExited: false };
 
   void (async () => {
@@ -385,14 +385,14 @@ function parseLogLines(text: string): readonly LogLine[] {
 
 // A release bundle leaves the harness link out, so it never sends ready over IPC, and its ready
 // log line stands in.
-function startRelease(launch: Launch, stack: AsyncDisposableStack): TestNixieProcess {
+function startRelease(launch: Launch, stack: AsyncDisposableStack): SpawnedNixieProcess {
   const nixie = startNixieProcess({ ...launch, clockMs: startMs });
 
   stack.defer(async () => {
     await nixie.kill();
   });
 
-  const started = trackTestNixieProcess(nixie, launch.files);
+  const started = trackSpawnedNixieProcess(nixie, launch.files);
 
   const ready = (async () => {
     await started.waitForLogEvent('ready');
@@ -407,7 +407,7 @@ function startRelease(launch: Launch, stack: AsyncDisposableStack): TestNixiePro
 
 // Each start of nixie checks its action queue with an action of its own, which reaches every
 // action fault point, so a test arms those points once this check is done.
-async function waitForQueueCheck(readRecords: TestNixie['readRecords']): Promise<void> {
+async function waitForQueueCheck(readRecords: SpawnedNixie['readRecords']): Promise<void> {
   await waitForCondition(
     async () => {
       const records = await readRecords();

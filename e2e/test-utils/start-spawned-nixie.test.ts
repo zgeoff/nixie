@@ -3,10 +3,10 @@ import { existsSync } from 'node:fs';
 import { loadDeploymentConfig } from '@heynixie/server';
 import { createTestClient } from '@heynixie/server/test-utils';
 import { probeProcessGone, readDescendants, waitForCondition } from '@heynixie/testing';
-import { startTestNixie } from './start-test-nixie';
+import { startSpawnedNixie } from './start-spawned-nixie';
 
 test('it starts nixie on the crash harness clock at 1,000,000 ms', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const first = nixie.harness.start();
 
@@ -16,7 +16,7 @@ test('it starts nixie on the crash harness clock at 1,000,000 ms', async () => {
 });
 
 test('it reads back the records that nixie writes', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const first = nixie.harness.start();
 
@@ -32,7 +32,7 @@ test('it reads back the records that nixie writes', async () => {
 });
 
 test('it keeps the leases and the tasks that each start recovered', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const taskID = 'wait-an-hour';
   const first = nixie.harness.start([{ point: 'claim.after', workID: taskID }]);
@@ -62,7 +62,7 @@ test('it keeps the leases and the tasks that each start recovered', async () => 
 });
 
 test('it waits for the queue check of the latest start, not an earlier one', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const first = nixie.harness.start();
 
@@ -95,7 +95,7 @@ test('it waits for the queue check of the latest start, not an earlier one', asy
 });
 
 test('it removes its directory once the test finishes', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const first = nixie.harness.start();
 
@@ -107,7 +107,7 @@ test('it removes its directory once the test finishes', async () => {
 });
 
 test('it reads the records and the exit once nixie exits', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const server = nixie.harness.start();
 
@@ -122,7 +122,7 @@ test('it reads the records and the exit once nixie exits', async () => {
 });
 
 test('it rejects a wait for a log event once nixie exits without it', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const server = nixie.harness.start();
 
@@ -138,7 +138,7 @@ test('it rejects a wait for a log event once nixie exits without it', async () =
 });
 
 test('it returns from the stop signal once nixie logs that its stop began', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const server = nixie.harness.start();
 
@@ -150,7 +150,7 @@ test('it returns from the stop signal once nixie logs that its stop began', asyn
 });
 
 test('it reads nixie.db and keys.db from the data directory', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const server = nixie.harness.start();
 
@@ -162,7 +162,7 @@ test('it reads nixie.db and keys.db from the data directory', async () => {
 });
 
 test('it stops the guest of a turn still running once the test finishes', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const server = nixie.harness.start();
 
@@ -193,7 +193,7 @@ test('it stops the guest of a turn still running once the test finishes', async 
 });
 
 test('it starts nixie again on the same data directory once it exits', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const first = nixie.harness.start();
 
@@ -211,7 +211,7 @@ test('it starts nixie again on the same data directory once it exits', async () 
 });
 
 test('it reads the ID of each sandbox the process double holds', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const server = nixie.harness.start();
 
@@ -233,14 +233,14 @@ test('it reads the ID of each sandbox the process double holds', async () => {
 });
 
 test('it writes the log level it names into the configuration', async () => {
-  const nixie = await startTestNixie({ logLevel: 'warn' });
+  const nixie = await startSpawnedNixie({ logLevel: 'warn' });
   const config = await loadDeploymentConfig(nixie.configPath);
 
   expect(config.server.logLevel).toBe('warn');
 });
 
 test('it gives the memory writer and the checker their own scripted models when asked', async () => {
-  const nixie = await startTestNixie({ memoryWriter: true });
+  const nixie = await startSpawnedNixie({ memoryWriter: true });
   const config = await loadDeploymentConfig(nixie.configPath);
 
   expect(config.memory_writer.isEnabled).toBeTrue();
@@ -249,7 +249,7 @@ test('it gives the memory writer and the checker their own scripted models when 
 });
 
 test('it keeps the memory writer and the consolidator off unless asked', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
   const config = await loadDeploymentConfig(nixie.configPath);
 
   expect(config.memory_writer.isEnabled).toBeFalse();

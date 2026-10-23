@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { createTestClient, runHostCommand } from '@heynixie/server/test-utils';
-import { startTestNixie } from './test-utils/start-test-nixie';
+import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 test('it resets the running server through the reset command, which exits 0 with the server, and starts again', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const server = nixie.harness.start();
 

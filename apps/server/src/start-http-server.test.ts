@@ -1,10 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { createTestClient } from './test-utils/create-test-client';
 import { readStepEvents } from './test-utils/read-step-events';
-import { startTestNixie } from './test-utils/start-test-nixie';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   const stopping = new AbortController();
 

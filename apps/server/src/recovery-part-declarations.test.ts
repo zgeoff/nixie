@@ -3,10 +3,10 @@ import { mkdir, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { waitForCondition } from '@heynixie/testing';
 import { z } from 'zod';
-import { startTestNixie } from './test-utils/start-test-nixie';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 async function setupTest() {
-  const nixie = await startTestNixie();
+  const nixie = await startInProcessNixie();
 
   return nixie;
 }

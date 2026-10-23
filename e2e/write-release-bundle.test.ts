@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeReleaseBundle } from '@heynixie/server/test-utils';
-import { startTestNixie } from './test-utils/start-test-nixie';
+import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-release-'));
@@ -18,7 +18,7 @@ test('it builds a release bundle that answers live, and degraded while impd does
 
   await writeReleaseBundle(ctx.outdir);
 
-  const nixie = await startTestNixie({ release: join(ctx.outdir, 'main.js') });
+  const nixie = await startSpawnedNixie({ release: join(ctx.outdir, 'main.js') });
 
   const release = nixie.harness.start();
 
@@ -46,7 +46,7 @@ test('it builds a release bundle that exits 0 on SIGTERM', async () => {
 
   await writeReleaseBundle(ctx.outdir);
 
-  const nixie = await startTestNixie({ release: join(ctx.outdir, 'main.js') });
+  const nixie = await startSpawnedNixie({ release: join(ctx.outdir, 'main.js') });
 
   const release = nixie.harness.start();
 

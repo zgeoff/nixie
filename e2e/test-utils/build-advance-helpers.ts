@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 import type { CrashHarness, FaultPointArrival } from '@heynixie/testing';
-import type { TestNixie } from './start-test-nixie';
+import type { SpawnedNixie } from './start-spawned-nixie';
 import type { MatchRecord, TestRecord } from './types';
 import { waitForMatch } from './wait-for-match';
 
@@ -15,9 +15,9 @@ const defaultAdvanceWaits: AdvanceWaits = { advanceWaitMs: 1000, lastAdvanceWait
 
 export function buildAdvanceHelpers(
   harness: Pick<CrashHarness, 'advance'>,
-  readRecords: TestNixie['readRecords'],
+  readRecords: SpawnedNixie['readRecords'],
   waits: AdvanceWaits = defaultAdvanceWaits,
-): Pick<TestNixie, 'advanceUntilArrival' | 'advanceUntilRecord'> {
+): Pick<SpawnedNixie, 'advanceUntilArrival' | 'advanceUntilRecord'> {
   return {
     advanceUntilRecord: (stepMs, maxSteps, matches) =>
       runAdvances(
@@ -73,7 +73,7 @@ async function runAdvances<T>(advances: Advances<T>, remaining: number): Promise
 }
 
 async function waitForMatchWithin(
-  readRecords: TestNixie['readRecords'],
+  readRecords: SpawnedNixie['readRecords'],
   matches: MatchRecord,
   timeoutMs: number,
 ): Promise<TestRecord | null> {

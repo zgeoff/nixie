@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { runOracle } from '../test-utils/run-oracle';
-import { startTestNixie } from '../test-utils/start-test-nixie';
+import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
 import { writeSeedMessages } from '../test-utils/write-seed-messages';
 
 async function setupTest() {
-  const nixie = await startTestNixie({ memoryWriter: true });
+  const nixie = await startSpawnedNixie({ memoryWriter: true });
 
   return { nixie };
 }

@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { createTestClient } from '@heynixie/server/test-utils';
 import { waitForCondition } from '@heynixie/testing';
-import { startTestNixie } from './test-utils/start-test-nixie';
+import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 test('it answers a message through the real guest and keeps its text out of the data files and the output', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const server = nixie.harness.start();
 
@@ -46,7 +46,7 @@ test('it answers a message through the real guest and keeps its text out of the 
 });
 
 test('it completes a turn that calls a tool from the test sandbox the configuration selects', async () => {
-  const nixie = await startTestNixie();
+  const nixie = await startSpawnedNixie();
 
   const server = nixie.harness.start();
 
@@ -92,7 +92,7 @@ test('it completes a turn that calls a tool from the test sandbox the configurat
 });
 
 test('it refuses to start on a key no module reads, and exits 1', async () => {
-  const nixie = await startTestNixie({ extraConfig: ['tasks:', '  runner: 5'] });
+  const nixie = await startSpawnedNixie({ extraConfig: ['tasks:', '  runner: 5'] });
 
   const server = nixie.harness.start();
 

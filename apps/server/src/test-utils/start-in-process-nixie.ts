@@ -20,7 +20,7 @@ import { sendTestToolCall } from './send-test-tool-call';
 import type { BootFileExtras, BootFiles } from './write-boot-files';
 import { writeBootFiles } from './write-boot-files';
 
-export interface TestNixieOptions {
+export interface InProcessNixieOptions {
   readonly extraConfig?: readonly string[];
 
   readonly extraSecrets?: readonly string[];
@@ -41,7 +41,7 @@ interface TestToolResult {
   readonly result: string;
 }
 
-export interface TestNixie extends BootFiles {
+export interface InProcessNixie extends BootFiles {
   readonly directory: string;
   readonly model: ScriptedModel;
 
@@ -60,14 +60,16 @@ export interface TestNixie extends BootFiles {
 
   readonly waitForExit: () => Promise<{ readonly exitCode: number; readonly records: LogRecord[] }>;
 
-  readonly startAgain: () => TestNixie;
+  readonly startAgain: () => InProcessNixie;
 
   readonly readDataFiles: () => Promise<
     readonly { readonly name: string; readonly text: string }[]
   >;
 }
 
-export async function startTestNixie(options: TestNixieOptions = {}): Promise<TestNixie> {
+export async function startInProcessNixie(
+  options: InProcessNixieOptions = {},
+): Promise<InProcessNixie> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -141,7 +143,7 @@ function buildRunHost(): RunHost {
   };
 }
 
-interface TestNixieFiles {
+interface InProcessNixieFiles {
   readonly directory: string;
   readonly model: ScriptedModel;
   readonly files: BootFiles;
@@ -152,7 +154,7 @@ interface TestNixieFiles {
   readonly stack: AsyncDisposableStack;
 }
 
-function startNixieRun(start: TestNixieFiles): TestNixie {
+function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
   const events: TestLogEvent[] = [];
   const stopSignal = Promise.withResolvers<string>();
   const state = { hasExited: false };

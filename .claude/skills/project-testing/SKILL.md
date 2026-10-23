@@ -75,8 +75,8 @@ leaves these suites out of the parallel run and runs them after it, one file at 
 raised limit for the whole lane. The pre-push test job splits its run the same way. A test in the
 lane sets no limit of its own, and a suite that spawns nixie or a build of it lives under `e2e/`.
 
-[`startTestNixie`](../../../e2e/test-utils/start-test-nixie.ts) in `e2e/` spawns the test build of
-the server's `serve` command as a child process and joins it to
+[`startSpawnedNixie`](../../../e2e/test-utils/start-spawned-nixie.ts) in `e2e/` spawns the test
+build of the server's `serve` command as a child process and joins it to
 [`startCrashHarness`](../../../libs/testing/src/start-crash-harness.ts), which holds it at fault
 points, kills it, and restarts it. In a test build, the server waits at each fault point the test
 arms, runs on the harness clock, and adds a test connector with its send tool. Each start of nixie
@@ -133,10 +133,15 @@ its certificate names and response handler, so a test calls it in its body.
 `setupTest()` may wrap it.
 
 A server suite runs nixie in the test process through
-[`startTestNixie`](../../../apps/server/src/test-utils/start-test-nixie.ts), with the stub guest
-from
+[`startInProcessNixie`](../../../apps/server/src/test-utils/start-in-process-nixie.ts), with the
+stub guest from
 [`buildStubGuestSandboxes`](../../../modules/sandbox/src/test-utils/build-stub-guest-sandboxes.ts)
 in place of the sandbox adapter, so a turn starts no guest and no Agent SDK. A test that checks what
 the model sees asserts on the turn frames the stub guest received. The stub never imitates the SDK's
-request to the model, because a copy of the SDK's logic drifts from it unseen. Only a suite under
-`e2e/` spawns nixie and runs the real guest, through the e2e harness of the same name.
+request to the model, because a copy of the SDK's logic drifts from it unseen.
+
+The two nixie harnesses stay apart because each checks what the other cannot reach. The in-process
+harness hands a test the stub guest's frames, which a child process keeps to itself. The spawned
+harness puts a process boundary around nixie, so a suite can kill it, signal it, read its exit code
+and start it again on the same data directory. A suite that needs the real guest, a crash or a
+signal runs under `e2e/` on `startSpawnedNixie`, and every other server suite runs in process.
