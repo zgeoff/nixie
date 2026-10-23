@@ -9,6 +9,7 @@
   "dependencies": {
     "@heynixie/actions": "workspace:*",
     "@heynixie/clock": "workspace:*",
+    "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
@@ -17,6 +18,7 @@
     "@heynixie/server": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/testing": "workspace:*",
+    "@orpc/client": "catalog:",
     "tiny-invariant": "catalog:",
     "zod": "catalog:"
   }

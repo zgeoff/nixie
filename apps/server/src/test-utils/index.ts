@@ -4,6 +4,7 @@ export type { NixieOperationArgs } from '../build-nixie-operation-schemas';
 export { readDataFiles } from './read-data-files';
 export { readTestRecords } from './read-test-records';
 export { runHostCommand } from './run-host-command';
+export { sendClientMessage } from './send-client-message';
 export type { BootFileExtras, BootFiles } from './write-boot-files';
 export { writeBootFiles } from './write-boot-files';
 export { startTestConversation } from './start-test-conversation';

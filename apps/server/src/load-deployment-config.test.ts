@@ -308,6 +308,28 @@ test("it loads the preview's configuration on the test sandbox, with its invente
   expect(config.models.profiles['preview']?.authHeader).toBe('bearer');
 });
 
+test("it reads the list prices of the preview's model, with the long-prompt set above 100,000 tokens", async () => {
+  const config = await loadDeploymentConfig(join(import.meta.dir, '../../../preview/config.yaml'));
+
+  expect(config.models.profiles['preview']?.model).toBe('claude-haiku-5-5');
+
+  expect(config.models.profiles['preview']?.prices).toStrictEqual({
+    input: 0.1,
+    cacheWrite: 0.125,
+    cacheWrite1h: 0.2,
+    cachedInput: 0.01,
+    output: 0.5,
+    longPrompt: {
+      overTokens: 100_000,
+      input: 0.5,
+      cacheWrite: 0.625,
+      cacheWrite1h: 1,
+      cachedInput: 0.05,
+      output: 2.5,
+    },
+  });
+});
+
 test('it refuses to start the imp adapter with the imp section unset', async () => {
   const ctx = await setupTest();
 

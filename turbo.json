@@ -39,6 +39,11 @@
       "lib": {
         "dependencies": { "allow": ["lib"] }
       },
+      // a deployment's own program imports the Kubernetes component, which nothing in the
+      // workspace imports and which imports no workspace package
+      "deploy": {
+        "dependencies": { "allow": [] }
+      },
       // an eval runs production code from any layer against a committed corpus, and nothing
       // depends on it
       "eval": {
