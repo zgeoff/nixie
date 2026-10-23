@@ -5,9 +5,8 @@ import type { TasksContext } from './types';
 export async function createTask(
   context: Pick<TasksContext, 'definitions' | 'log'>,
   brief: string,
+  taskID: string = crypto.randomUUID(),
 ): Promise<string> {
-  const taskID = crypto.randomUUID();
-
   await writeRecords(context.log, [
     {
       kind: 'task.created',
