@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import { sql } from 'kysely';
+import { claimBackupLock } from './claim-backup-lock';
 import { claimWriterLock } from './claim-writer-lock';
 import { restoreDataBackup } from './restore-data-backup';
 
@@ -60,9 +61,66 @@ test('it replaces nixie.db and keys.db with the backup copies, and removes their
   const recordKeys = await sql`select key_id from record_keys`.execute(keys);
 
   expect(restored).toStrictEqual({ files: ['nixie.db', 'keys.db'] });
-  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db']);
+  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'backup.lock']);
   expect(items.rows).toStrictEqual([{ id: 'k1' }]);
   expect(recordKeys.rows).toStrictEqual([{ key_id: 'k1' }]);
+});
+
+test('it refuses a restore while a backup reads the data directory, and leaves it alone', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dataDir, 'nixie.db'), 'the live log');
+  await writeFile(join(ctx.directory, 'nixie.db'), 'a backup log');
+  await writeFile(join(ctx.directory, 'keys.db'), 'backup keys');
+
+  const backup = claimBackupLock(ctx.dataDir, 'shared');
+
+  onTestFinished(() => {
+    backup.release();
+  });
+
+  const restore = restoreDataBackup({ dataDir: ctx.dataDir, directory: ctx.directory });
+
+  await restore.catch(() => {});
+
+  const log = await Bun.file(join(ctx.dataDir, 'nixie.db')).text();
+
+  expect(restore).rejects.toThrowWithMessage(
+    Error,
+    `a backup runs on the data directory ${ctx.dataDir}, so nixie restores nothing`,
+  );
+
+  expect(log).toBe('the live log');
+});
+
+test('it leaves its restore marker when it stops between the two databases', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.dataDir, 'keys.db'));
+  await writeFile(join(ctx.dataDir, 'keys.db', 'in the way'), '');
+
+  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
+
+  onTestFinished(() => backupLog.destroy());
+
+  await sql`create table items (id text primary key)`.execute(backupLog);
+  await backupLog.destroy();
+
+  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
+
+  onTestFinished(() => backupKeys.destroy());
+
+  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
+  await backupKeys.destroy();
+
+  const restore = restoreDataBackup({ dataDir: ctx.dataDir, directory: ctx.directory });
+
+  await restore.catch(() => {});
+
+  const files = await readdir(ctx.dataDir);
+
+  expect(restore).rejects.toMatchObject({ code: 'EISDIR' });
+  expect(files).toIncludeAllMembers(['nixie.db', 'restore-incomplete']);
 });
 
 test('it refuses a restore while a server holds the writer lock, and leaves the data directory alone', async () => {
@@ -133,7 +191,7 @@ test('it refuses a backup whose nixie.db is not a database, before it replaces a
     `the nixie.db in ${ctx.directory} fails its integrity check: file is not a database`,
   );
 
-  expect(files).toStrictEqual(['nixie.db']);
+  expect(files).toIncludeSameMembers(['nixie.db', 'backup.lock']);
   expect(log).toBe('the old log');
 });
 
@@ -169,6 +227,6 @@ test('it removes its staged copies and keeps the old databases when it cannot st
     `nixie cannot stage the backup in ${ctx.dataDir}`,
   );
 
-  expect(files).toStrictEqual(['nixie.db']);
+  expect(files).toIncludeSameMembers(['nixie.db', 'backup.lock']);
   expect(log).toBe('the old log');
 });

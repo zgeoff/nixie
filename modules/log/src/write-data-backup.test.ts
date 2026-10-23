@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import { sql } from 'kysely';
+import { claimBackupLock } from './claim-backup-lock';
 import { writeDataBackup } from './write-data-backup';
 
 async function setupTest() {
@@ -183,4 +184,56 @@ test('it refuses a directory that is not empty, and leaves its files alone', asy
   );
 
   expect(earlier).toBe('an earlier copy');
+});
+
+test('it refuses a backup while a restore replaces the databases, and copies nothing', async () => {
+  const ctx = await setupTest();
+
+  await sql`create table items (id text primary key)`.execute(ctx.log);
+  await sql`create table record_keys (key_id text primary key)`.execute(ctx.keys);
+
+  const restore = claimBackupLock(ctx.dataDir, 'exclusive');
+
+  onTestFinished(() => {
+    restore.release();
+  });
+
+  const backup = writeDataBackup({
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+    onCopied: () => {},
+  });
+
+  await backup.catch(() => {});
+
+  expect(backup).rejects.toThrowWithMessage(
+    Error,
+    `a restore runs on the data directory ${ctx.dataDir}, so nixie backs up nothing`,
+  );
+
+  expect(existsSync(ctx.directory)).toBeFalse();
+});
+
+test('it refuses a data directory whose restore stopped before it finished, and copies nothing', async () => {
+  const ctx = await setupTest();
+
+  await sql`create table items (id text primary key)`.execute(ctx.log);
+  await sql`create table record_keys (key_id text primary key)`.execute(ctx.keys);
+
+  await writeFile(join(ctx.dataDir, 'restore-incomplete'), '');
+
+  const backup = writeDataBackup({
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+    onCopied: () => {},
+  });
+
+  await backup.catch(() => {});
+
+  expect(backup).rejects.toThrowWithMessage(
+    Error,
+    `a restore of the data directory ${ctx.dataDir} stopped before it finished, so nixie backs up nothing`,
+  );
+
+  expect(existsSync(ctx.directory)).toBeFalse();
 });

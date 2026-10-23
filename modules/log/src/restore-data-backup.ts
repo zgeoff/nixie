@@ -1,11 +1,13 @@
-import { copyFile, open, rename, rm } from 'node:fs/promises';
+import { copyFile, open, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseError, readQueryRows, startDatabase } from '@heynixie/db';
 import { sql } from 'kysely';
 import { z } from 'zod';
+import { claimBackupLock } from './claim-backup-lock';
 import { claimWriterLock } from './claim-writer-lock';
 import type { DataFile } from './data-files';
 import { dataFiles } from './data-files';
+import { getRestoreMarkerPath } from './get-restore-marker-path';
 import { requireDataFiles } from './require-data-files';
 
 export interface DataRestoreOptions {
@@ -20,21 +22,27 @@ export interface DataRestore {
 // The writer lock refuses the restore while a server runs on the data directory, and keeps a
 // server from starting until the restore ends.
 export async function restoreDataBackup(options: DataRestoreOptions): Promise<DataRestore> {
-  const lock = claimWriterLock(options.dataDir);
+  const writerLock = claimWriterLock(options.dataDir);
 
   try {
-    await requireDataFiles(options.directory, `the backup in ${options.directory}`);
+    const backupLock = claimBackupLock(options.dataDir, 'exclusive');
 
-    for (const file of dataFiles) {
-      await requireIntactDatabase(options.directory, file);
+    try {
+      await requireDataFiles(options.directory, `the backup in ${options.directory}`);
+
+      for (const file of dataFiles) {
+        await requireIntactDatabase(options.directory, file);
+      }
+
+      await writeStagedFiles(options);
+      await replaceDataFiles(options.dataDir);
+
+      return { files: dataFiles };
+    } finally {
+      backupLock.release();
     }
-
-    await writeStagedFiles(options);
-    await replaceDataFiles(options.dataDir);
-
-    return { files: dataFiles };
   } finally {
-    lock.release();
+    writerLock.release();
   }
 }
 
@@ -101,8 +109,15 @@ async function writePathToDisk(path: string): Promise<void> {
   }
 }
 
-// A WAL file left beside a restored database would replay the old database's commits onto it.
+// The marker reaches the disk before the first database moves and leaves only after the last, so a
+// restore that stops between the two leaves a pair the server refuses to start on. A WAL file left
+// beside a restored database would replay the old database's commits onto it.
 async function replaceDataFiles(dataDir: string): Promise<void> {
+  const marker = getRestoreMarkerPath(dataDir);
+
+  await writeFile(marker, '');
+  await writePathToDisk(dataDir);
+
   for (const file of dataFiles) {
     const path = join(dataDir, file);
 
@@ -111,5 +126,7 @@ async function replaceDataFiles(dataDir: string): Promise<void> {
     await rename(`${path}${stagedSuffix}`, path);
   }
 
+  await writePathToDisk(dataDir);
+  await rm(marker);
   await writePathToDisk(dataDir);
 }

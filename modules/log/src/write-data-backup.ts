@@ -5,8 +5,10 @@ import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { claimBackupLock } from './claim-backup-lock';
 import type { DataFile } from './data-files';
 import { dataFiles } from './data-files';
+import { getRestoreMarkerPath } from './get-restore-marker-path';
 import { requireDataFiles } from './require-data-files';
 
 export interface DataBackupOptions {
@@ -24,17 +26,35 @@ const maxAttempts = 5;
 
 export async function writeDataBackup(options: DataBackupOptions): Promise<DataBackup> {
   await requireDataFiles(options.dataDir, `the data directory ${options.dataDir}`);
-  await createEmptyDirectory(options.directory);
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const consistent = await writeCopies(options);
+  const lock = claimBackupLock(options.dataDir, 'shared');
 
-    if (consistent) {
-      return { files: dataFiles, attempts: attempt };
+  try {
+    await requireFinishedRestore(options.dataDir);
+    await createEmptyDirectory(options.directory);
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const consistent = await writeCopies(options);
+
+      if (consistent) {
+        return { files: dataFiles, attempts: attempt };
+      }
     }
-  }
 
-  throw new Error(`nixie wrote keys.db during each of ${String(maxAttempts)} copies`);
+    throw new Error(`nixie wrote keys.db during each of ${String(maxAttempts)} copies`);
+  } finally {
+    lock.release();
+  }
+}
+
+async function requireFinishedRestore(dataDir: string): Promise<void> {
+  const restoring = await Bun.file(getRestoreMarkerPath(dataDir)).exists();
+
+  if (restoring) {
+    throw new Error(
+      `a restore of the data directory ${dataDir} stopped before it finished, so nixie backs up nothing`,
+    );
+  }
 }
 
 async function createEmptyDirectory(directory: string): Promise<void> {

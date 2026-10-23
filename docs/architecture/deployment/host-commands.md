@@ -102,6 +102,13 @@ error stops it before it changes a database. It then removes each database's wri
 which belong to the database it replaced. It refuses to run without `--yes`, because the data
 written since the backup is lost.
 
+The two databases move one at a time, so a restore that stops between them leaves a pair from two
+backups. The restore writes a marker into the data directory before the first database moves and
+removes it after the last, and a server refuses to start while the marker is there, until a restore
+runs to the end. The backup command refuses the marker too. A lock file in the data directory keeps
+a backup and a restore apart, because the writer lock cannot: backups share the lock, and a restore
+holds it alone, so neither copies a pair that the other is replacing.
+
 ## Memory
 
 The memory host commands list the pending memory proposals and approve or reject one. The server

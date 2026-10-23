@@ -1,4 +1,4 @@
-import { statfsSync } from 'node:fs';
+import { existsSync, statfsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
@@ -6,6 +6,7 @@ import type { BuildSchema } from '@heynixie/db';
 import { nixieSchema, runMigrations, startDatabase } from '@heynixie/db';
 import { claimWriterEpoch } from './claim-writer-epoch';
 import { claimWriterLock } from './claim-writer-lock';
+import { getRestoreMarkerPath } from './get-restore-marker-path';
 import { requireLocalFilesystem } from './require-local-filesystem';
 import { requireWriterEpoch } from './require-writer-epoch';
 import { startKeyStore } from './start-key-store';
@@ -25,6 +26,15 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
   requireLocalFilesystem(options.dataDir, options.readFilesystemType ?? statfsSync);
 
   const lock = claimWriterLock(options.dataDir);
+
+  if (existsSync(getRestoreMarkerPath(options.dataDir))) {
+    lock.release();
+
+    throw new Error(
+      `a restore of the data directory ${options.dataDir} stopped before it finished, so its databases may come from two backups; run nixie restore again`,
+    );
+  }
+
   const db = startDatabase(join(options.dataDir, 'nixie.db'));
 
   try {

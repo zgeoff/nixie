@@ -1,9 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Migration } from '@heynixie/db';
 import { sql } from 'kysely';
+import { claimWriterLock } from './claim-writer-lock';
 import { startWriter } from './start-writer';
 
 async function setupTest() {
@@ -203,6 +204,31 @@ test('it copies the database before the first migration of a release and never t
   const names = await readdir(ctx.dataDir);
 
   expect(names).toIncludeSameMembers(['keys.db', 'nixie-schema-1.db', 'nixie.db']);
+});
+
+test('it refuses to start on a data directory whose restore stopped before it finished, and releases the lock', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dataDir, 'restore-incomplete'), '');
+
+  const start = startWriter({ dataDir: ctx.dataDir });
+
+  await start.catch(() => {});
+
+  const lock = claimWriterLock(ctx.dataDir);
+
+  onTestFinished(() => {
+    lock.release();
+  });
+
+  const names = await readdir(ctx.dataDir);
+
+  expect(start).rejects.toThrowWithMessage(
+    Error,
+    `a restore of the data directory ${ctx.dataDir} stopped before it finished, so its databases may come from two backups; run nixie restore again`,
+  );
+
+  expect(names).toStrictEqual(['restore-incomplete']);
 });
 
 test('it opens the key store as keys.db beside nixie.db, with secure delete on', async () => {
