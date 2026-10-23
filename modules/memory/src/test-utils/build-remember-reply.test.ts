@@ -22,7 +22,7 @@ test('it builds a call with the end time the call names', () => {
     }),
   ).toStrictEqual({
     toolUse: {
-      name: 'mcp__nixie__memory_remember',
+      name: 'memory.remember',
       input: {
         subject: 'owner',
         text: 'Sam is in Lisbon this week.',
