@@ -254,7 +254,7 @@ test('it removes its staged copies and keeps the old databases when it cannot st
 
   expect(restore).rejects.toThrowWithMessage(
     Error,
-    `nixie cannot stage the backup in ${ctx.dataDir}`,
+    `nixie cannot stage the backup in ${ctx.dataDir}: EISDIR: illegal operation on a directory, copyfile '${join(ctx.directory, 'keys.db')}' -> '${join(ctx.dataDir, 'keys.db.restoring')}'`,
   );
 
   expect(files).toIncludeSameMembers(['nixie.db', 'backup.lock']);
@@ -304,7 +304,11 @@ test('it keeps the old databases when the data volume is full', async () => {
   const log = await Bun.file(join(ctx.dataDir, 'nixie.db')).text();
   const keys = await Bun.file(join(ctx.dataDir, 'keys.db')).text();
 
-  expect(restore).rejects.toMatchObject({ cause: { code: 'ENOSPC' } });
+  expect(restore).rejects.toThrowWithMessage(
+    Error,
+    `nixie cannot stage the backup in ${ctx.dataDir}: ENOSPC: no space left on device, copyfile`,
+  );
+
   expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'backup.lock']);
   expect(log).toBe('the old log');
   expect(keys).toBe('the old keys');

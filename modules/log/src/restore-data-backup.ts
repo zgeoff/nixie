@@ -103,7 +103,12 @@ async function writeStagedFiles(options: DataRestoreOptions): Promise<void> {
       dataFiles.map((file) => files.removeFile(join(options.dataDir, `${file}${stagedSuffix}`))),
     );
 
-    throw new Error(`nixie cannot stage the backup in ${options.dataDir}`, { cause: error });
+    // The CLI logs an error's message alone, so the filesystem's reason has to sit in it.
+    const reason = error instanceof Error ? error.message : String(error);
+
+    throw new Error(`nixie cannot stage the backup in ${options.dataDir}: ${reason}`, {
+      cause: error,
+    });
   }
 }
 
