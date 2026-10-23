@@ -21,6 +21,7 @@ export function buildMockRetiredForgetItem(
     status: 'readable',
     subject: 'owner',
     text: faker.lorem.sentence(),
+    until: null,
     version: 2,
     ...overrides,
   };

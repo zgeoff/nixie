@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { match } from 'ts-pattern';
+import { formatMemoryDate } from '../format-memory-date';
 import { formatNoticeSummary } from '../format-notice-summary';
 import type { NoticeEntryStatus } from '../pick-notice-entry-status';
 import { pickNoticeEntryStatus } from '../pick-notice-entry-status';
@@ -95,6 +96,9 @@ function NoticeEntry(props: NoticeEntryProps): ReactNode {
       {item !== null && item.status === 'readable' ? (
         <p className={entryText}>{item.text}</p>
       ) : null}
+      {item === null || item.until === null ? null : (
+        <p>Lasts until {formatMemoryDate(item.until)}</p>
+      )}
       {refusal === null ? null : <p role="alert">{refusal}</p>}
       {status === 'open' && item !== null ? (
         <EntryChanges entry={props.entry} onRefused={setRefusal} version={item.version} />

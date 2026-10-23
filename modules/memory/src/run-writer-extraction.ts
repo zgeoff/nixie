@@ -1,3 +1,4 @@
+import { renderPrompt } from '@heynixie/prompts';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { StagingHandle } from './create-writer-staging';
 import { memoryWriterTaskID } from './memory-writer-task-id';
@@ -6,7 +7,6 @@ import type { WriterBatch } from './read-writer-batch';
 import { renderShownText } from './render-shown-text';
 import type { SpeakerNames } from './render-writer-prompt';
 import { renderWriterPrompt } from './render-writer-prompt';
-import { renderWriterSystemPrompt } from './render-writer-system-prompt';
 import type { WriterParts } from './writer-parts';
 import { writerSubjects } from './writer-subjects';
 import type { BatchMessage, StagedFlag, StagedWrite, WriterUsage } from './writer-types';
@@ -39,6 +39,7 @@ export async function runWriterExtraction(
 
   const staged = parts.staging.open({
     sources: batch.sources,
+    startedAt: parts.context.clock.now(),
     shown: new Map(
       shown.items.map((item) => [item.itemID, { version: item.version, subject: item.subject }]),
     ),
@@ -51,6 +52,7 @@ export async function runWriterExtraction(
     proposals,
     messages: buildBatchMessages(batch),
     names: buildSpeakerNames(parts),
+    defaultZone: parts.defaultZone,
   });
 
   const session = await runSession(parts, { prompt, signal, staged });
@@ -76,7 +78,15 @@ function buildBatchMessages(batch: WriterBatch): readonly BatchMessage[] {
         ? [renderShownText(entry.text, entry.spans), ...(entry.imageMarkers ?? [])].join('\n')
         : entry.text;
 
-    return [{ sequence: entry.sequence, role: entry.role, shown, recordedAt: entry.recordedAt }];
+    return [
+      {
+        sequence: entry.sequence,
+        role: entry.role,
+        shown,
+        recordedAt: entry.recordedAt,
+        timeZone: entry.timeZone,
+      },
+    ];
   });
 }
 
@@ -96,7 +106,11 @@ async function runSession(
 ): Promise<Pick<WriterExtraction, 'writes' | 'flags' | 'usage'>> {
   try {
     const usage = await parts.model.runSession({
-      systemPrompt: renderWriterSystemPrompt(parts.getPersona(), buildSpeakerNames(parts)),
+      systemPrompt: renderPrompt('writer', {
+        persona: parts.getPersona(),
+        owner: { name: parts.ownerName },
+        assistant: { name: parts.assistantName },
+      }),
       prompt: session.prompt,
       signal: session.signal,
     });

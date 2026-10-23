@@ -47,6 +47,8 @@ export type ViewItem = ViewText & {
   readonly changedAt: number;
 
   readonly forgottenAt: number | null;
+
+  readonly until: number | null;
 };
 
 export type ViewListState = 'active' | 'retired' | 'forgotten';

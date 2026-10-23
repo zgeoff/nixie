@@ -1,0 +1,166 @@
+import { dirname, join } from 'node:path';
+import { readQueryRows } from '@heynixie/db';
+import type { Kysely } from 'kysely';
+import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
+import { z } from 'zod';
+import { claimBackupLock } from './claim-backup-lock';
+import type { DataFile } from './data-files';
+import { dataFiles } from './data-files';
+import type { DataRefusal } from './data-refusal';
+import type { DataStorage } from './data-storage';
+import { getBackupMarkerPath } from './get-backup-marker-path';
+import { readRestoreState } from './read-restore-state';
+import { requireDataFiles } from './require-data-files';
+
+export interface DataBackupOptions {
+  readonly storage: DataStorage;
+  readonly dataDir: string;
+  readonly directory: string;
+  readonly onCopied: (file: DataFile) => Promise<void> | void;
+}
+
+export interface DataBackup {
+  readonly files: readonly DataFile[];
+  readonly attempts: number;
+}
+
+const maxAttempts = 5;
+
+export async function writeDataBackup(
+  options: DataBackupOptions,
+): Promise<DataBackup | DataRefusal> {
+  await requireDataFiles(
+    options.storage.files,
+    options.dataDir,
+    `the data directory ${options.dataDir}`,
+  );
+
+  const lock = await claimBackupLock(options.storage, options.dataDir, 'shared');
+
+  if (lock === null) {
+    return { refused: 'restore-running' };
+  }
+
+  try {
+    await requireFinishedRestore(options);
+    await createBackupDirectory(options);
+    await writeBackupMarker(options);
+
+    await options.storage.files.createDirectories(getCopyingPath(options.directory));
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const consistent = await writeCopies(options);
+
+      if (consistent) {
+        await publishCopies(options);
+
+        return { files: dataFiles, attempts: attempt };
+      }
+    }
+
+    throw new Error(`nixie wrote keys.db during each of ${String(maxAttempts)} copies`);
+  } finally {
+    lock.release();
+  }
+}
+
+async function requireFinishedRestore(options: DataBackupOptions): Promise<void> {
+  const state = await readRestoreState(options.storage.files, options.dataDir);
+
+  if (state === 'replacing') {
+    throw new Error(
+      `a restore of the data directory ${options.dataDir} stopped before it finished, so nixie backs up nothing`,
+    );
+  }
+}
+
+// Creating the directory claims it, so a second backup into the same path stops before it copies.
+async function createBackupDirectory(options: DataBackupOptions): Promise<void> {
+  await options.storage.files.createDirectories(dirname(options.directory));
+
+  const created = await options.storage.files.createDirectory(options.directory);
+
+  if (!created) {
+    throw new Error(
+      `nixie backs up only into a directory it creates, and ${options.directory} exists`,
+    );
+  }
+}
+
+// The marker reaches the disk before the first copy and leaves only once the checked pair is in
+// place, and a restore refuses a directory that holds it, so a backup that stops at any point
+// leaves nothing a restore takes.
+async function writeBackupMarker(options: DataBackupOptions): Promise<void> {
+  await options.storage.files.writeFile(getBackupMarkerPath(options.directory), '');
+  await options.storage.files.writeDirectoryToDisk(options.directory);
+}
+
+function getCopyingPath(directory: string): string {
+  return join(directory, '.copying');
+}
+
+// The writer creates a record key before the record that uses it, and commits a forget before it
+// removes the key. So a keys.db copy taken after the nixie.db copy, with no commit to keys.db from
+// before the one to after the other, holds the key of every record the nixie.db copy keeps.
+async function writeCopies(options: DataBackupOptions): Promise<boolean> {
+  const keys = options.storage.startDatabase(join(options.dataDir, 'keys.db'), { readonly: true });
+
+  try {
+    const before = await readDataVersion(keys);
+
+    await writeLogCopy(options);
+
+    await options.onCopied('nixie.db');
+
+    await options.storage.writeDatabaseCopy(
+      keys,
+      join(getCopyingPath(options.directory), 'keys.db'),
+    );
+
+    const after = await readDataVersion(keys);
+
+    await options.onCopied('keys.db');
+
+    return before === after;
+  } finally {
+    await keys.destroy();
+  }
+}
+
+const dataVersionSchema = z.object({ data_version: z.number() });
+
+async function readDataVersion(db: Kysely<unknown>): Promise<number> {
+  const [row] = await readQueryRows(sql`pragma data_version`, db, dataVersionSchema);
+
+  invariant(row, 'SQLite answers pragma data_version with one row');
+
+  return row.data_version;
+}
+
+async function writeLogCopy(options: DataBackupOptions): Promise<void> {
+  const db = options.storage.startDatabase(join(options.dataDir, 'nixie.db'), { readonly: true });
+
+  try {
+    await options.storage.writeDatabaseCopy(
+      db,
+      join(getCopyingPath(options.directory), 'nixie.db'),
+    );
+  } finally {
+    await db.destroy();
+  }
+}
+
+async function publishCopies(options: DataBackupOptions): Promise<void> {
+  const files = options.storage.files;
+  const copying = getCopyingPath(options.directory);
+
+  for (const file of dataFiles) {
+    await files.renameFile(join(copying, file), join(options.directory, file));
+  }
+
+  await files.removeFile(copying);
+  await files.writeDirectoryToDisk(options.directory);
+  await files.removeFile(getBackupMarkerPath(options.directory));
+  await files.writeDirectoryToDisk(options.directory);
+}

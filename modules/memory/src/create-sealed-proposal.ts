@@ -53,6 +53,7 @@ async function sealProposal(
     quote: plan.quote,
     checkerReason: plan.checkerReason,
     salt,
+    ...(plan.until === undefined ? {} : { until: plan.until }),
   });
 
   const actionHash = buildProposalHash({
@@ -64,6 +65,7 @@ async function sealProposal(
     quote: plan.quote,
     salt,
     ...(plan.subject === undefined ? {} : { subject: plan.subject }),
+    ...(plan.until === undefined ? {} : { until: plan.until }),
   });
 
   return { proposalID, itemID, sealed, actionHash };

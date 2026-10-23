@@ -1,0 +1,157 @@
+{
+  "samples": [
+    {
+      "id": "lisbon-week",
+      "message": {
+        "text": "Heads up, I'm in Lisbon this week for work.",
+        "spans": [{ "start": 0, "end": 43, "source": "typed" }],
+        "sentAt": "2026-10-19T08:14:00Z",
+        "timeZone": "Europe/London"
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "matching time limit",
+          "memory": "The owner is in Lisbon this week for work.",
+          "quote": "I'm in Lisbon this week for work",
+          "until": "2026-10-25T23:59:59+00:00"
+        },
+        {
+          "asserted": false,
+          "bucket": "wrong time limit",
+          "memory": "The owner is in Lisbon this week for work.",
+          "quote": "I'm in Lisbon this week for work",
+          "until": "2026-10-23T23:59:59+01:00"
+        }
+      ]
+    },
+    {
+      "id": "off-friday",
+      "message": {
+        "text": "I'm off work until Friday, so no early alarms.",
+        "spans": [{ "start": 0, "end": 46, "source": "typed" }],
+        "sentAt": "2026-10-19T08:14:00Z",
+        "timeZone": "Europe/London"
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "matching time limit",
+          "memory": "The owner is off work until Friday.",
+          "quote": "I'm off work until Friday",
+          "until": "2026-10-23T23:59:59+01:00"
+        },
+        {
+          "asserted": false,
+          "bucket": "wrong time limit",
+          "memory": "The owner is off work until Friday.",
+          "quote": "I'm off work until Friday",
+          "until": "2026-10-30T23:59:59+00:00"
+        }
+      ]
+    },
+    {
+      "id": "moved-lisbon",
+      "message": {
+        "text": "I live in Lisbon now, the move went fine.",
+        "spans": [{ "start": 0, "end": 41, "source": "typed" }],
+        "sentAt": "2026-10-19T08:14:00Z",
+        "timeZone": "Europe/London"
+      },
+      "pairs": [
+        {
+          "asserted": false,
+          "bucket": "no time limit",
+          "memory": "The owner lives in Lisbon.",
+          "quote": "I live in Lisbon now",
+          "until": "2026-10-25T23:59:59+00:00"
+        },
+        {
+          "asserted": true,
+          "bucket": "no time limit and no end time",
+          "memory": "The owner lives in Lisbon.",
+          "quote": "I live in Lisbon now"
+        }
+      ]
+    },
+    {
+      "id": "sister-tonight",
+      "message": {
+        "text": "My sister is staying over tonight.",
+        "spans": [{ "start": 0, "end": 34, "source": "typed" }],
+        "sentAt": "2026-10-19T08:14:00Z",
+        "timeZone": "Europe/London"
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "matching time limit",
+          "memory": "The owner's sister is staying over at the owner's tonight.",
+          "quote": "My sister is staying over tonight",
+          "until": "2026-10-19T23:59:59+01:00"
+        }
+      ]
+    },
+    {
+      "id": "lisbon-while",
+      "message": {
+        "text": "I'm in Lisbon for a while.",
+        "spans": [{ "start": 0, "end": 26, "source": "typed" }],
+        "sentAt": "2026-10-19T08:14:00Z",
+        "timeZone": "Europe/London"
+      },
+      "pairs": [
+        {
+          "asserted": false,
+          "bucket": "vague span",
+          "memory": "The owner is in Lisbon for a while.",
+          "quote": "I'm in Lisbon for a while",
+          "until": "2026-10-25T23:59:59+00:00"
+        }
+      ]
+    },
+    {
+      "id": "parents-weekend",
+      "message": {
+        "text": "I'm at my parents' place for the weekend.",
+        "spans": [{ "start": 0, "end": 41, "source": "typed" }],
+        "sentAt": "2026-10-24T18:00:00Z",
+        "timeZone": "America/New_York"
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "matching time limit in another zone",
+          "memory": "The owner is at their parents' place for the weekend.",
+          "quote": "I'm at my parents' place for the weekend",
+          "until": "2026-10-25T23:59:59-04:00"
+        },
+        {
+          "asserted": false,
+          "bucket": "time limit from the wrong zone",
+          "memory": "The owner is at their parents' place for the weekend.",
+          "quote": "I'm at my parents' place for the weekend",
+          "until": "2026-10-25T23:59:59+00:00"
+        }
+      ]
+    },
+    {
+      "id": "porto-date",
+      "message": {
+        "text": "I'm working from the Porto office until 6 November.",
+        "spans": [{ "start": 0, "end": 51, "source": "typed" }],
+        "sentAt": "2026-10-19T08:14:00Z",
+        "timeZone": "Europe/London"
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "plain date",
+          "memory": "The owner is working from the Porto office until 6 November.",
+          "quote": "I'm working from the Porto office until 6 November",
+          "until": "2026-11-06T23:59:59+00:00"
+        }
+      ]
+    }
+  ]
+}

@@ -6,6 +6,9 @@ import type { BuildSchema } from '@heynixie/db';
 import { nixieSchema, runMigrations, startDatabase } from '@heynixie/db';
 import { claimWriterEpoch } from './claim-writer-epoch';
 import { claimWriterLock } from './claim-writer-lock';
+import type { DataFileSystem } from './data-storage';
+import { localDataStorage } from './local-data-storage';
+import { readRestoreState } from './read-restore-state';
 import { requireLocalFilesystem } from './require-local-filesystem';
 import { requireWriterEpoch } from './require-writer-epoch';
 import { startKeyStore } from './start-key-store';
@@ -15,6 +18,7 @@ export interface StartWriterOptions {
   readonly dataDir: string;
   readonly schema?: BuildSchema;
   readonly readFilesystemType?: ReadFilesystemType;
+  readonly files?: DataFileSystem;
 
   readonly clock?: Clock;
 
@@ -25,6 +29,14 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
   requireLocalFilesystem(options.dataDir, options.readFilesystemType ?? statfsSync);
 
   const lock = claimWriterLock(options.dataDir);
+
+  try {
+    await requireFinishedRestore(options.files ?? localDataStorage.files, options.dataDir);
+  } catch (error) {
+    lock.release();
+    throw error;
+  }
+
   const db = startDatabase(join(options.dataDir, 'nixie.db'));
 
   try {
@@ -52,6 +64,16 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
     await stopWriter([db], lock);
 
     throw error;
+  }
+}
+
+async function requireFinishedRestore(files: DataFileSystem, dataDir: string): Promise<void> {
+  const restore = await readRestoreState(files, dataDir);
+
+  if (restore === 'replacing') {
+    throw new Error(
+      `a restore of the data directory ${dataDir} stopped before it finished, so its databases may come from two backups; run nixie restore again`,
+    );
   }
 }
 

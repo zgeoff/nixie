@@ -12,8 +12,20 @@ test('it stages the write into the open batch, bound to the version shown, and e
   });
 
   const batch = stub.staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'I moved to Oak Lane', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I moved to Oak Lane',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map([['item-1', { version: 2, subject: 'owner' }]]),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   const usage = await stub.model.runSession({
@@ -49,8 +61,20 @@ test('it flags a possible self-note into the open batch, and stages no write', a
   });
 
   const batch = stub.staging.open({
-    sources: new Map([[7, { sequence: 7, text: 'You always pick jazz', spans: [] }]]),
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'You always pick jazz',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
     shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   await stub.model.runSession({
@@ -76,12 +100,25 @@ test('it stages the write again in each later session, bound to the version that
     itemID: 'item-1',
   });
 
-  const sources = new Map([[7, { sequence: 7, text: 'I moved to Oak Lane', spans: [] }]]);
+  const sources = new Map([
+    [
+      7,
+      {
+        sequence: 7,
+        text: 'I moved to Oak Lane',
+        spans: [],
+        sentAt: Date.parse('2026-10-19T09:00:00Z'),
+        timeZone: null,
+      },
+    ],
+  ]);
+
   const signal = new AbortController().signal;
 
   const first = stub.staging.open({
     sources,
     shown: new Map([['item-1', { version: 2, subject: 'owner' }]]),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   await stub.model.runSession({ systemPrompt: '', prompt: '', signal });
@@ -91,6 +128,7 @@ test('it stages the write again in each later session, bound to the version that
   const second = stub.staging.open({
     sources,
     shown: new Map([['item-1', { version: 3, subject: 'owner' }]]),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
   });
 
   await stub.model.runSession({ systemPrompt: '', prompt: '', signal });

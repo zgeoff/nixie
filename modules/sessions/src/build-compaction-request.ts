@@ -1,7 +1,7 @@
 import type { CompactionRequest } from '@heynixie/compaction';
+import { renderPrompt } from '@heynixie/prompts';
 import type { SessionPoint } from '@heynixie/wire';
 import { formatMessageTime } from './format-message-time';
-import { renderSystemPrompt } from './render-system-prompt';
 import type { SessionStep } from './types';
 
 export interface CompactionCause {
@@ -27,7 +27,11 @@ export function buildCompactionRequest(
     contextSize: cause.contextSize,
     failures: step.marks.compactionFailures,
     signal: step.signal,
-    systemPrompt: renderSystemPrompt(step.definitions.persona, step.skillCatalog, { ownerName }),
+    systemPrompt: renderPrompt('session', {
+      persona: step.definitions.persona,
+      skillCatalog: step.skillCatalog,
+      owner: { name: ownerName },
+    }),
     at: formatMessageTime(now, null, { defaultZone: run.defaultZone, now }),
     ownerName,
   };

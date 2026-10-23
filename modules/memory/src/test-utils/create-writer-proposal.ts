@@ -41,6 +41,7 @@ export async function createWriterProposal(
       getPersona: () => '',
       ownerName: null,
       assistantName: null,
+      defaultZone: 'UTC',
       ...createStubWriterSession({
         op: 'remember',
         subject: request.subject ?? 'owner',

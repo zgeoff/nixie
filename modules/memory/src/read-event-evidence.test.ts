@@ -27,6 +27,8 @@ test('it finds a quote you typed in the message the event ID names', async () =>
       sequence,
       text: 'The lighthouse key hangs by the blue door',
       spans: [{ start: 0, end: 41, source: 'typed' }],
+      sentAt: expect.any(Number),
+      timeZone: null,
     },
     evidence: { recordSequence: sequence, start: 15, end: 41 },
   });

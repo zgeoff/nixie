@@ -10,6 +10,8 @@ export interface OwnerMessageRecord {
   readonly spans: readonly MessageSpan[];
 
   readonly images?: readonly string[];
+
+  readonly timeZone?: string;
 }
 
 export async function writeOwnerMessageRecord(
@@ -27,6 +29,7 @@ export async function writeOwnerMessageRecord(
         ...(message.images === undefined || message.images.length === 0
           ? {}
           : { images: message.images.map((mediaType) => ({ mediaType })) }),
+        ...(message.timeZone === undefined ? {} : { timeZone: message.timeZone }),
       },
       erasable: {
         text: message.text,

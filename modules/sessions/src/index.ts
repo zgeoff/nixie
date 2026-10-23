@@ -17,6 +17,7 @@ export type { RetriedTurn } from './build-retried-turn-kind';
 export { buildRetriedTurnKind } from './build-retried-turn-kind';
 export { decodeInboxUUID } from './decode-inbox-uuid';
 export { encodeInboxUUID } from './encode-inbox-uuid';
+export { formatEventTime } from './format-event-time';
 export { formatMessageTime } from './format-message-time';
 export type { CheckerOptions } from './make-checker';
 export { makeChecker } from './make-checker';

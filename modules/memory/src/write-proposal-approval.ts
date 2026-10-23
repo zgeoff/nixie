@@ -1,3 +1,4 @@
+import { waitAtFaultPoint } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 import type { ApprovalResult, ProposalAnswer } from './gate-types';
 import { readOpenProposal } from './read-open-proposal';
@@ -14,6 +15,10 @@ export async function writeProposalApproval(
   answer: ProposalAnswer,
 ): Promise<ApprovalResult> {
   const opened = await readOpenProposal(parts, answer);
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('memory.approval.opened', { kind: 'memory', id: answer.proposalID });
+  }
 
   const row = opened.row;
 

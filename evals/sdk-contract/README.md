@@ -50,7 +50,6 @@ model's prose wherever the SDK exposes the answer.
   catch handler turns a throwing hook into a deny. The mod's command is missing from the session
   when the mod throws as it loads, and leaves it when a hook wedges the hooks worker. No nixie code
   loads a mod, and the probe keeps that option checked.
-
 - `model-grant`: a turn whose only credential is the placeholder that `buildModelGrant` sets, in
   either auth header's variable, gets its answer through the broker, because the broker replaces the
   header on each request it carries.
@@ -61,26 +60,11 @@ before the CLI loads them, because the CLI writes type files into each mod it lo
 
 ## Run it
 
-The probes read the model credential from `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY`, the
-variables the conversation guest reads. Inside a sandbox with a model grant, the variable holds the
-grant's placeholder and the broker adds the real credential on the way out. The local login that the
-memory checker eval uses does not work here, because each probe gives the CLI an empty config
-directory and reads the session transcripts in it. A full run takes about 3 minutes and cost $0.47
-in the SDK's estimate on SDK 0.3.290.
-
-```bash
-NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract
-```
-
-Without `NIXIE_SDK_CONTRACT=1` every probe skips, so a plain `bun test` never calls the model. With
-it and neither variable set, every probe fails.
+The [SDK contract suite runbook](../../docs/runbooks/sdk-contract-suite.md) gives the credential the
+probes read, the command, and what to do when a probe fails on a new SDK version.
 
 ## The check on SDK bumps
 
 The deployment repo's preview service runs the suite in a sandbox on each pull request that changes
-the SDK version, and posts the result as the `sdk-contract` commit status (GEO-1119). No credential
-for the suite lives in this repo or its CI.
-
-A probe that fails on a new SDK version marks a behaviour that changed under nixie. Read the failing
-assertion, find the code or design that relies on it in the table, and change that code before the
-bump lands, or rewrite the probe to the new behaviour once nixie no longer depends on the old one.
+the SDK version, and posts the result as the `sdk-contract` commit status. No credential for the
+suite lives in this repo or its CI.

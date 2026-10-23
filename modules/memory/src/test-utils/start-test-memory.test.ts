@@ -1,6 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
 import { readRecords } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import { buildStubEncoder } from './build-stub-encoder';
 import { startTestMemory } from './start-test-memory';
 
@@ -47,6 +48,23 @@ test('it gives the store the definitions snapshot the test passes', async () => 
   expect(records.map((entry) => entry.record.definitions)).toSatisfyAll(
     (definitions: unknown) =>
       JSON.stringify(definitions) === JSON.stringify({ snapshotHash: 'sha256:other' }),
+  );
+});
+
+test('it stamps each record with the time of the log clock the test passes', async () => {
+  const ctx = await startTestMemory({
+    logClock: buildTestClock(Date.parse('2026-10-19T08:14:00Z')),
+  });
+
+  await ctx.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const records = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(records.map((entry) => entry.record.recordedAt)).toSatisfyAll(
+    (recordedAt: Date) => recordedAt.getTime() === Date.parse('2026-10-19T08:14:00Z'),
   );
 });
 

@@ -1,4 +1,5 @@
 import { match } from 'ts-pattern';
+import { formatZonedTime } from './format-zoned-time';
 import type { MemoryProposal } from './gate-types';
 import type { MemorySubject } from './types';
 import type { BatchMessage } from './writer-types';
@@ -17,7 +18,7 @@ export interface SpeakerNames {
 
 type ShownProposal = Pick<
   MemoryProposal,
-  'proposalID' | 'operation' | 'itemID' | 'targetVersion' | 'subject' | 'text'
+  'proposalID' | 'operation' | 'itemID' | 'targetVersion' | 'subject' | 'text' | 'until'
 >;
 
 export interface WriterPromptInput {
@@ -29,6 +30,8 @@ export interface WriterPromptInput {
   readonly messages: readonly BatchMessage[];
 
   readonly names: SpeakerNames;
+
+  readonly defaultZone: string;
 }
 
 export function renderWriterPrompt(input: WriterPromptInput): string {
@@ -44,20 +47,16 @@ export function renderWriterPrompt(input: WriterPromptInput): string {
   const messages = input.messages
     .map(
       (message) =>
-        `[${String(message.sequence)}] ${formatDate(message.recordedAt)} ${formatSpeaker(input.names, message.role)}: ${message.shown}`,
+        `[${String(message.sequence)}] ${formatZonedTime(message.recordedAt, message.timeZone ?? input.defaultZone)} ${formatSpeaker(input.names, message.role)}: ${message.shown}`,
     )
     .join('\n\n');
 
   const proposals =
     input.proposals.length === 0
       ? '(none)'
-      : input.proposals.map((proposal) => renderProposal(proposal)).join('\n');
+      : input.proposals.map((proposal) => renderProposal(proposal, input.defaultZone)).join('\n');
 
   return `${heading}\n${items}\n\nPending proposals, waiting for the owner's review:\n${proposals}\n\nMessages in this batch:\n\n${messages}`;
-}
-
-function formatDate(at: number): string {
-  return new Date(at).toISOString().slice(0, 10);
 }
 
 function formatSpeaker(names: SpeakerNames, role: BatchMessage['role']): string {
@@ -66,7 +65,7 @@ function formatSpeaker(names: SpeakerNames, role: BatchMessage['role']): string 
   return name === null ? role : `${name} (${role})`;
 }
 
-function renderProposal(proposal: ShownProposal): string {
+function renderProposal(proposal: ShownProposal, zone: string): string {
   const text = proposal.text.replaceAll(/\s+/gu, ' ');
 
   const action = match(proposal.operation)
@@ -75,5 +74,10 @@ function renderProposal(proposal: ShownProposal): string {
     .with('remember', () => (proposal.targetVersion === null ? '' : `, revises ${proposal.itemID}`))
     .exhaustive();
 
-  return `- ${proposal.proposalID} (${proposal.subject}${action}): ${text}`;
+  const ends =
+    proposal.operation === 'remember' && proposal.until !== null
+      ? `, ends ${formatZonedTime(proposal.until, zone)}`
+      : '';
+
+  return `- ${proposal.proposalID} (${proposal.subject}${action}${ends}): ${text}`;
 }

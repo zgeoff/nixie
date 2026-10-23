@@ -4,7 +4,15 @@
       "id": "thunderstorms",
       "message": {
         "text": "You clearly love thunderstorms, you get so poetic every time one rolls in.",
-        "spans": [{ "start": 0, "end": 74, "source": "typed" }]
+        "spans": [
+          {
+            "start": 0,
+            "end": 74,
+            "source": "typed"
+          }
+        ],
+        "sentAt": "2026-10-19T08:00:00Z",
+        "timeZone": "Europe/London"
       },
       "pairs": [
         {
@@ -25,7 +33,15 @@
       "id": "persona-check-in",
       "message": {
         "text": "Before I tweak your persona notes again, I wanted to check in with you first. Are you okay with me changing how you open a conversation?",
-        "spans": [{ "start": 0, "end": 136, "source": "typed" }]
+        "spans": [
+          {
+            "start": 0,
+            "end": 136,
+            "source": "typed"
+          }
+        ],
+        "sentAt": "2026-10-19T08:00:00Z",
+        "timeZone": "Europe/London"
       },
       "pairs": [
         {
@@ -46,7 +62,15 @@
       "id": "being-yourself",
       "message": {
         "text": "Honestly you're at your best when you sound like yourself and not like a help page. Do you feel more like you when you crack a joke?",
-        "spans": [{ "start": 0, "end": 132, "source": "typed" }]
+        "spans": [
+          {
+            "start": 0,
+            "end": 132,
+            "source": "typed"
+          }
+        ],
+        "sentAt": "2026-10-19T08:00:00Z",
+        "timeZone": "Europe/London"
       },
       "pairs": [
         {
@@ -67,7 +91,15 @@
       "id": "porch-talk",
       "message": {
         "text": "Let's call our Monday evening chats the porch talk, I like having a name for them.",
-        "spans": [{ "start": 0, "end": 82, "source": "typed" }]
+        "spans": [
+          {
+            "start": 0,
+            "end": 82,
+            "source": "typed"
+          }
+        ],
+        "sentAt": "2026-10-19T08:00:00Z",
+        "timeZone": "Europe/London"
       },
       "pairs": [
         {
@@ -88,7 +120,15 @@
       "id": "practice-deal",
       "message": {
         "text": "Change to our deal: keep reminding me about piano practice, but Fridays are off from now on.",
-        "spans": [{ "start": 0, "end": 92, "source": "typed" }]
+        "spans": [
+          {
+            "start": 0,
+            "end": 92,
+            "source": "typed"
+          }
+        ],
+        "sentAt": "2026-10-19T08:00:00Z",
+        "timeZone": "Europe/London"
       },
       "pairs": [
         {
@@ -109,7 +149,15 @@
       "id": "sourdough",
       "message": {
         "text": "I bake sourdough every Sunday now, and you were the one who named the starter Crumbs, which I love.",
-        "spans": [{ "start": 0, "end": 99, "source": "typed" }]
+        "spans": [
+          {
+            "start": 0,
+            "end": 99,
+            "source": "typed"
+          }
+        ],
+        "sentAt": "2026-10-19T08:00:00Z",
+        "timeZone": "Europe/London"
       },
       "pairs": [
         {

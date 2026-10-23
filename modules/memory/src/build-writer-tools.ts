@@ -1,7 +1,10 @@
+import { untilConventions } from '@heynixie/prompts';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
 import type { WriterStaging } from './create-writer-staging';
+import { parseUntilInput } from './parse-until-input';
 import type { MemoryStore } from './types';
+import { untilInputSchema } from './until-input-schema';
 import { writerSubjects } from './writer-subjects';
 
 export function buildWriterTools(
@@ -107,6 +110,7 @@ const rememberArguments = z.object({
   text: z.string(),
   quote: z.string(),
   sourceID: z.int(),
+  until: z.string().optional(),
 });
 
 function buildRememberTool(staging: WriterStaging): ToolDefinition {
@@ -115,7 +119,8 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
     description:
       'Stages one durable fact as a new memory item: about the owner (subject owner), or ' +
       'between the owner and the assistant (subject shared). To change a current item, use ' +
-      'memory.edit. quote is the exact words from the owner message whose ID is sourceID.',
+      'memory.edit. quote is the exact words from the owner message whose ID is sourceID. Pass ' +
+      `until only when that message says when the fact stops being true. ${untilConventions}`,
     input: {
       type: 'object',
       properties: {
@@ -123,6 +128,7 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
         text: { type: 'string', minLength: 1, maxLength: 2000 },
         quote: { type: 'string', minLength: 1, maxLength: 2000 },
         sourceID: { type: 'integer', minimum: 1 },
+        until: untilInputSchema,
       },
       required: ['subject', 'text', 'quote', 'sourceID'],
       additionalProperties: false,
@@ -138,6 +144,11 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
     execution: 'direct',
     run: (call) => {
       const input = rememberArguments.parse(call.input);
+      const parsed = parseUntilInput(input.until);
+
+      if (parsed.status === 'invalid') {
+        return Promise.resolve({ status: 'error', message: parsed.message });
+      }
 
       return Promise.resolve(
         toOutcome(
@@ -148,6 +159,7 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
             quote: input.quote,
             sourceSequence: input.sourceID,
             itemID: null,
+            ...(parsed.until === undefined ? {} : { until: parsed.until }),
           }),
         ),
       );
@@ -167,6 +179,7 @@ const editArguments = z.object({
   text: z.string(),
   quote: z.string(),
   sourceID: z.int(),
+  until: z.string().nullable().optional(),
 });
 
 function buildEditTool(staging: WriterStaging): ToolDefinition {
@@ -175,7 +188,8 @@ function buildEditTool(staging: WriterStaging): ToolDefinition {
     description:
       'Stages the new full text of a current item, by its itemID and with its subject, when the ' +
       'owner updates, corrects or contradicts it. quote is the exact words from the owner ' +
-      'message whose ID is sourceID.',
+      'message whose ID is sourceID. The item keeps its end time unless you pass until: a new ' +
+      `end time, or null when the fact no longer ends. ${untilConventions}`,
     input: {
       type: 'object',
       properties: {
@@ -184,6 +198,7 @@ function buildEditTool(staging: WriterStaging): ToolDefinition {
         text: { type: 'string', minLength: 1, maxLength: 2000 },
         quote: { type: 'string', minLength: 1, maxLength: 2000 },
         sourceID: { type: 'integer', minimum: 1 },
+        until: { ...untilInputSchema, type: ['string', 'null'] },
       },
       required: ['itemID', 'subject', 'text', 'quote', 'sourceID'],
       additionalProperties: false,
@@ -199,6 +214,11 @@ function buildEditTool(staging: WriterStaging): ToolDefinition {
     execution: 'direct',
     run: (call) => {
       const input = editArguments.parse(call.input);
+      const parsed = parseUntilInput(input.until);
+
+      if (parsed.status === 'invalid') {
+        return Promise.resolve({ status: 'error', message: parsed.message });
+      }
 
       return Promise.resolve(
         toOutcome(
@@ -209,6 +229,7 @@ function buildEditTool(staging: WriterStaging): ToolDefinition {
             quote: input.quote,
             sourceSequence: input.sourceID,
             itemID: input.itemID,
+            ...(parsed.until === undefined ? {} : { until: parsed.until }),
           }),
         ),
       );

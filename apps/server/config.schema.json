@@ -165,6 +165,45 @@
                   "output": {
                     "type": "number",
                     "minimum": 0
+                  },
+                  "long_prompt": {
+                    "type": "object",
+                    "properties": {
+                      "input": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "cache_write": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "cache_write_1h": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "cached_input": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "output": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "over_tokens": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "input",
+                      "cache_write",
+                      "cache_write_1h",
+                      "cached_input",
+                      "output",
+                      "over_tokens"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [

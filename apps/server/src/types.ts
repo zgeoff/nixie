@@ -76,6 +76,9 @@ export interface CLIFlags {
 
   readonly 'dry-run': boolean;
   readonly database?: string;
+
+  readonly to?: string;
+  readonly from?: string;
 }
 
 export type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => Promise<number>;

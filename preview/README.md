@@ -2,8 +2,7 @@
 
 The files here run a throwaway nixie for one pull request: a test build of the branch's source, the
 web client, and one origin in front of both. Each new Compose project starts with a fresh database
-and a fresh deployment key, and holds invented data only, so a preview never touches a real
-deployment.
+and a fresh deployment key, and holds invented data only.
 
 The preview runs every sandbox in the test sandbox, which runs each guest as a local process beside
 nixie. The test sandbox is not a security boundary: a guest reads whatever nixie's user can and
@@ -39,34 +38,33 @@ must not reach, such as an imp of its own.
    docker compose down --volumes
    ```
 
-`NIXIE_PREVIEW_BIND` and `NIXIE_PREVIEW_PORT` set the address and port the origin listens on. The
-address defaults to `0.0.0.0`, every interface, so a preview environment's proxy reaches the origin
-from outside its host.
+`NIXIE_PREVIEW_BIND` and `NIXIE_PREVIEW_PORT` set the origin's address and port. The address
+defaults to `0.0.0.0`, so a preview environment's proxy reaches the origin from outside its host.
+
+## Check a turn through the API
+
+To confirm a turn from its records, enrol a device with the sign-in code through `sessions/enrol`,
+send one message with `conversation/send`, and read the conversation with `conversation/read`: its
+`owner_message`, each `model.reply`, `model.turn_ended` and the `task.step_*` records of its step.
+The [preview API check](../docs/runbooks/preview-api-check.md) gives each request and a worked turn.
 
 ## Model calls
 
-The preview's model profile names a placeholder credential, and the first start writes it into a
-plain secrets file beside the throwaway key. A model call reaches the model's API only through a
-host credential broker that adds the real credential on the way out, so no key enters the preview.
+The preview's model profile names a placeholder credential. A model call reaches the model's API
+only through a host credential broker that adds the real credential on the way out, so no key enters
+the preview. `compose.yaml` reads the broker from the host's environment: `HTTPS_PROXY` holds its
+proxy, and `SSL_CERT_FILE` the CA bundle that holds the certificate its proxy signs with. An imp
+sets both, so every `docker compose` command there keeps the broker in place. Without them, nixie
+starts and reports ready, and each turn fails at its model call.
 
-`compose.yaml` reads the broker from the host's environment: `HTTPS_PROXY` names the broker's proxy,
-and `SSL_CERT_FILE` the CA bundle that holds the certificate its proxy signs with. An imp sets both,
-so every `docker compose` command there, `docker compose run --rm enrol` too, keeps the broker in
-place. Without them, nixie starts and reports ready, and each turn fails at its model call.
-
-A preview host can cap each preview's model spend with a
-[counting proxy](../docs/architecture/policy/counting-proxy.md) of its own. Its broker then sends
-the model API's host to that proxy, and `PREVIEW_MODEL_ROUTE` in the host's environment names the
-preview's route. The server's preview route step reads `config.yaml` through the deployment schema,
-adds the route to the end of each model profile's base URL in a copy, and refuses a route that is
-not a lowercase slug, so every model call carries the route. Without the variable, nixie runs on
-`config.yaml` as it stands.
+A host that caps each preview's model spend with a
+[counting proxy](../docs/architecture/policy/counting-proxy.md) of its own sends the model API's
+host to that proxy and names the preview's route in `PREVIEW_MODEL_ROUTE`. nixie then runs on a copy
+of `config.yaml` with the route on the end of each model profile's base URL.
 
 ## Files
 
-- `compose.yaml` runs nixie, the `enrol` service, the web client and the Caddy origin, and routes
-  nixie's model calls through a host's broker. CI runs it on each push to main, and on each pull
-  request that changes a file the preview reads.
-- `config.yaml` selects the test sandbox and the preview's model profile.
-- `run-preview.sh` writes the throwaway secrets file on the first start, writes the routed copy of
-  the config when a host names a model route, then runs nixie.
+- `compose.yaml` runs nixie, the `enrol` service, the web client and the Caddy origin.
+- `config.yaml` selects the test sandbox and the preview's model profile, with its model's prices.
+- `run-preview.sh` writes the throwaway secrets file on the first start and the routed copy of the
+  config when a host names a model route, then runs nixie.

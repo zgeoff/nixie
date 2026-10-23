@@ -12,6 +12,28 @@ test('it builds a call of the memory.remember tool with its arguments, about the
   });
 });
 
+test('it builds a call with the end time the call names', () => {
+  expect(
+    buildRememberReply({
+      text: 'Sam is in Lisbon this week.',
+      quote: 'in Lisbon this week',
+      sourceID: 3,
+      until: '2026-10-25T23:59:59+00:00',
+    }),
+  ).toStrictEqual({
+    toolUse: {
+      name: 'mcp__nixie__memory_remember',
+      input: {
+        subject: 'owner',
+        text: 'Sam is in Lisbon this week.',
+        quote: 'in Lisbon this week',
+        sourceID: 3,
+        until: '2026-10-25T23:59:59+00:00',
+      },
+    },
+  });
+});
+
 test('it builds a call with the subject the call names', () => {
   expect(
     buildRememberReply({

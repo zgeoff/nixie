@@ -35,6 +35,7 @@ test('it lists each active item with its text, origin, source and age', async ()
         createdAt: expect.toBeNumber(),
         changedAt: expect.toBeNumber(),
         forgottenAt: null,
+        until: null,
         status: 'readable',
         text: 'Plays the cello on Thursdays',
       },
@@ -126,6 +127,7 @@ test('it lists a forgotten item as a gap with the time its forget completed', as
       createdAt: expect.toBeNumber(),
       changedAt: expect.toBeNumber(),
       forgottenAt: expect.toBeNumber(),
+      until: null,
       status: 'shredded',
     },
   ]);

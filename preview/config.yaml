@@ -17,6 +17,22 @@ models:
       auth_header: bearer
       model: claude-haiku-5-5
       effort: low
+      # Anthropic's list prices for Claude Haiku 5.5, in US dollars per million tokens, from
+      # https://platform.claude.com/docs/en/about-claude/pricing: the base set for a prompt up to
+      # 100,000 tokens and the long-prompt set for a longer one
+      prices:
+        input: 0.1
+        cache_write: 0.125
+        cache_write_1h: 0.2
+        cached_input: 0.01
+        output: 0.5
+        long_prompt:
+          over_tokens: 100000
+          input: 0.5
+          cache_write: 0.625
+          cache_write_1h: 1
+          cached_input: 0.05
+          output: 2.5
   roles:
     conversation: preview
 sandbox:

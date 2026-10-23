@@ -36,6 +36,7 @@ const memoryItemSchema = z.object({
   status: z.enum(['readable', 'shredded', 'unreadable']),
   subject: subjectSchema,
   text: z.string().optional(),
+  until: z.date().nullable(),
   version: z.int().positive(),
 });
 
@@ -124,6 +125,7 @@ const memoryProposalSchema = z.object({
   subject: subjectSchema,
   targetVersion: z.int().positive().nullable(),
   text: z.string(),
+  until: z.date().nullable(),
 });
 
 const proposalAnswerSchema = z.object({
