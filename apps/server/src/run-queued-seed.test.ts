@@ -105,7 +105,7 @@ test('it writes one operator log line at startup that names each prompt with its
   await mkdir(join(ctx.root, 'prompts'));
   await writeFile(join(ctx.root, 'prompts', 'writer-safety.md'), 'Quote the owner.\n');
 
-  const log = mock();
+  const log = mock<SeedParts['log']>(() => {});
 
   const parts: SeedParts = {
     context: ctx.context.apiContext,
@@ -136,7 +136,7 @@ test('it writes the safety line once while the same definitions stay in force', 
 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  const log = mock();
+  const log = mock<SeedParts['log']>(() => {});
 
   const parts: SeedParts = {
     context: ctx.context.apiContext,
@@ -170,7 +170,7 @@ test('it writes no safety line when every prompt keeps its safety part', async (
   await mkdir(join(ctx.root, 'prompts'));
   await writeFile(join(ctx.root, 'prompts', 'writer.md'), 'Keep durable facts.\n');
 
-  const log = mock();
+  const log = mock<SeedParts['log']>(() => {});
 
   const parts: SeedParts = {
     context: ctx.context.apiContext,
