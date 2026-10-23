@@ -136,6 +136,8 @@ below, and planned work lives in Linear.
 
 - [Releasing](runbooks/releasing.md) — the release App, cutting a release, making a sandbox image
   public, checking an attestation and repairing a failed release
+- [Check a turn on a preview through the API](runbooks/preview-api-check.md) — enrol a device, send
+  one turn and read the records it wrote, then reset the preview
 - [Run the imp isolation tests](runbooks/imp-isolation-tests.md) — what a conversation imp and a
   public imp reach, on a host with impd
 - [The Agent SDK contract suite](../evals/sdk-contract/README.md) — the SDK behaviours nixie relies
