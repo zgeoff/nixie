@@ -2,7 +2,7 @@
 // headset microphones) into results/real-speech/, for the pause test in pauses.ts. It keeps
 // utterances of at least 8 words, the length of a spoken request, from pages spread across the split.
 // Usage: real-speech.ts [--pages 40] [--per-page 5]
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { sampleRate } from './speech.ts';
 
@@ -26,7 +26,11 @@ interface AMIRow {
 }
 
 if (import.meta.main) {
-  mkdirSync(realSpeechDir, { recursive: true });
+  // The download fills a staging folder and replaces the corpus only once it completes, so the pause
+  // test never reads utterances left over from an earlier, larger download.
+  const stagingDir = `${realSpeechDir}.partial`;
+  rmSync(stagingDir, { force: true, recursive: true });
+  mkdirSync(stagingDir, { recursive: true });
   let kept = 0;
   for (let page = 0; page < pages; page++) {
     const offset = Math.floor((page * splitRows) / pages);
@@ -42,14 +46,16 @@ if (import.meta.main) {
         throw new Error(`audio ${row.audio_id}: HTTP ${response.status}`);
       }
       const audio = parseWav(new Uint8Array(await response.arrayBuffer()));
-      writeFileSync(join(realSpeechDir, `${kept}.f32`), audio);
+      writeFileSync(join(stagingDir, `${kept}.f32`), audio);
       writeFileSync(
-        join(realSpeechDir, `${kept}.json`),
+        join(stagingDir, `${kept}.json`),
         JSON.stringify({ id: row.audio_id, speaker: row.speaker_id, text: row.text }),
       );
       kept++;
     }
   }
+  rmSync(realSpeechDir, { force: true, recursive: true });
+  renameSync(stagingDir, realSpeechDir);
   console.log(`wrote ${kept} utterances to ${realSpeechDir}`);
 }
 
