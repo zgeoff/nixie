@@ -56,19 +56,24 @@ every path in its row and the parts listed before it.
 
 Each path holds one value:
 
-| Path                        | Value                                                          |
-| --------------------------- | -------------------------------------------------------------- |
-| `persona`                   | The persona in force                                           |
-| `skillCatalog`              | The catalog of skills the conversation may load, or empty text |
-| `owner.name`                | Your configured name, or "the owner"                           |
-| `owner.nameAtSentenceStart` | The same name with a capital first letter                      |
-| `owner.label`               | The author label on your messages, such as `Avery (owner)`     |
-| `owner.mention`             | The words a memory uses for you, such as `the owner "Avery"`   |
-| `assistant.name`            | The assistant's configured name, or "the assistant"            |
-| `assistant.label`           | The author label on the assistant's messages                   |
-| `assistant.mention`         | The words a shared memory uses for the assistant               |
-| `memory.maxChanges`         | The most changes one consolidation may propose                 |
-| `summary.words`             | The word target of a compaction summary                        |
+| Path                        | Value                                                           |
+| --------------------------- | --------------------------------------------------------------- |
+| `persona`                   | The persona in force                                            |
+| `skillCatalog`              | The catalog of skills the conversation may load, or empty text  |
+| `owner.name`                | Your configured name, or "the owner"                            |
+| `owner.nameAtSentenceStart` | Your name at a sentence start, built differently by each prompt |
+| `owner.label`               | The author label on your messages, such as `Avery (owner)`      |
+| `owner.mention`             | The words a memory uses for you, such as `the owner "Avery"`    |
+| `assistant.name`            | The assistant's configured name, or "the assistant"             |
+| `assistant.label`           | The author label on the assistant's messages                    |
+| `assistant.mention`         | The words a shared memory uses for the assistant                |
+| `memory.maxChanges`         | The most changes one consolidation may propose                  |
+| `summary.words`             | The word target of a compaction summary                         |
+
+`owner.nameAtSentenceStart` differs between the two prompts that accept it. The `content-checker`
+prompt keeps your configured name exactly as you wrote it, and falls back to "The owner". The
+`compaction` prompt capitalizes the first letter of your name, so a configured `river` reads as
+`River`.
 
 A part with a condition renders as empty text when its condition fails, whatever its text: `persona`
 when no persona is in force, `nameRule` when no name is configured, and `skillCatalog` when the
