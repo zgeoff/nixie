@@ -65,13 +65,17 @@ test('it applies a backed write with your words as its source, each verdict and 
   });
 });
 
-test('it records the snapshot whose checker prompt passed a write, apart from the snapshot in force at the write', async () => {
+test('it checks a write again under the definitions that a seed puts in force while the checker runs', async () => {
+  const checker = makeGatedCall(() => buildMockCheckerAnswer({ model: 'claude-sonnet-5-5' }));
+  const check = mock(checker.call);
+
+  const inForce = {
+    current: { snapshotHash: 'sha256:before', prompts: {} },
+  };
+
   const memory = await startTestMemory({
-    definitions: () => ({ snapshotHash: 'sha256:seeded-during-check' }),
-    gate: {
-      check: () => Promise.resolve(buildMockCheckerAnswer({ model: 'claude-sonnet-5-5' })),
-      getPromptsInForce: () => ({ snapshotHash: 'sha256:checked', prompts: {} }),
-    },
+    definitions: () => ({ snapshotHash: inForce.current.snapshotHash }),
+    gate: { check, getPromptsInForce: () => inForce.current },
   });
 
   await writeOwnerMessageRecord(memory.log, {
@@ -80,13 +84,31 @@ test('it records the snapshot whose checker prompt passed a write, apart from th
     spans: [{ start: 0, end: 17, source: 'typed' }],
   });
 
-  const outcome = await memory.store.writes.remember({
+  const write = memory.store.writes.remember({
     text: 'Sails on Sundays',
     quote: 'I sail on Sundays',
     caller: buildMockWriteCaller(),
   });
 
+  await checker.started;
+
+  inForce.current = {
+    snapshotHash: 'sha256:after',
+    prompts: { 'content-checker': { parts: {}, template: 'Judge the claim strictly.' } },
+  };
+
+  checker.release();
+
+  const outcome = await write;
+
   invariant(outcome.status === 'applied');
+
+  expect(check).toHaveBeenCalledTimes(2);
+
+  expect(check).toHaveBeenLastCalledWith({
+    prompt: 'Judge the claim strictly.',
+    input: expect.toEndWith('<candidate_memory>\nSails on Sundays\n</candidate_memory>'),
+  });
 
   const row = await memory.writer.db
     .$extendTables<MemoryTables>()
@@ -103,7 +125,7 @@ test('it records the snapshot whose checker prompt passed a write, apart from th
         verdict: 'asserted',
         model: 'claude-sonnet-5-5',
         failure: null,
-        snapshotHash: 'sha256:checked',
+        snapshotHash: 'sha256:after',
       },
     }),
   );

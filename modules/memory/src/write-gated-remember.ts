@@ -3,6 +3,7 @@ import { buildWriteGroup } from './build-write-group';
 import { ForgottenEvidenceError } from './forgotten-evidence-error';
 import type { ContentGateResult, GatedRememberRequest, WriteOutcome } from './gate-types';
 import { readNewestMessage } from './read-newest-message';
+import { requireCheckerSnapshot } from './require-checker-snapshot';
 import { requireLiveEvidence } from './require-live-evidence';
 import { runSubjectGate } from './run-subject-gate';
 import type { MemorySubject, StoreParts } from './types';
@@ -108,9 +109,13 @@ async function applyRemember(
     },
     {
       noticeKey: passed.group.noticeKey,
-      ...(evidence === null
-        ? {}
-        : { requireInTransaction: (db) => requireLiveEvidence(db, evidence.recordSequence) }),
+      requireInTransaction: async (db) => {
+        requireCheckerSnapshot(parts.context, passed.gate.checks);
+
+        if (evidence !== null) {
+          await requireLiveEvidence(db, evidence.recordSequence);
+        }
+      },
     },
   );
 

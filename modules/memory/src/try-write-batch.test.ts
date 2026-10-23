@@ -157,6 +157,75 @@ test('it returns superseded when an item moved on since the session read it', as
   expect(result).toStrictEqual({ status: 'superseded' });
 });
 
+test('it returns superseded when the checker passed a write under definitions that are no longer in force', async () => {
+  const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.parts.context, {
+    kind: 'task',
+    holder: 'runner-1',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve('memory-writer'),
+  });
+
+  invariant(lease);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
+
+  const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
+
+  const result = await tryWriteBatch(ctx.parts, {
+    input,
+    row: await readWriterRow(ctx.memory.log),
+    now: ctx.clock.now(),
+    bounds: planned.bounds,
+    capped: {
+      kind: 'publish',
+      writes: [
+        {
+          write: {
+            op: 'remember',
+            subject: 'owner',
+            text: 'You live at 9 Oak Lane.',
+            quote: '9 Oak Lane',
+            sourceSequence: planned.bounds.end,
+            target: null,
+          },
+          verdict: {
+            outcome: 'apply',
+            source: 'owner',
+            checks: {
+              quote: 'pass',
+              checker: {
+                verdict: 'asserted',
+                model: 'claude-checker-1',
+                failure: null,
+                snapshotHash: 'sha256:earlier',
+              },
+            },
+            evidence: { recordSequence: planned.bounds.end, start: 12, end: 22 },
+            model: 'claude-writer-1',
+          },
+        },
+      ],
+      dropped: 0,
+    },
+    flags: [],
+    usage: null,
+  });
+
+  const after = await readWriterRow(ctx.memory.log);
+
+  expect(result).toStrictEqual({ status: 'superseded' });
+  expect(after.cursor).not.toBe(planned.bounds.end);
+});
+
 test('it returns superseded when an item a proposal names was forgotten since the session read it', async () => {
   const ctx = await setupTest();
 

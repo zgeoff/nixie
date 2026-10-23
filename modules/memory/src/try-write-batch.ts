@@ -2,6 +2,7 @@ import { buildBatchRecords } from './build-batch-records';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { pickBatchMode } from './pick-batch-mode';
 import type { CappedBatch } from './plan-proposal-cap';
+import { StaleCheckerError } from './stale-checker-error';
 import { StaleVersionError } from './stale-version-error';
 import type { PublishResult } from './write-memory-batch';
 import type { WriterParts, WriterStepState } from './writer-parts';
@@ -43,7 +44,11 @@ export async function tryWriteBatch(
         }),
     });
   } catch (error) {
-    if (error instanceof StaleVersionError || error instanceof MemoryItemNotFoundError) {
+    if (
+      error instanceof StaleVersionError ||
+      error instanceof MemoryItemNotFoundError ||
+      error instanceof StaleCheckerError
+    ) {
       return { status: 'superseded' };
     }
 

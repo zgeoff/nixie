@@ -59,6 +59,60 @@ test('it retires an item you asked to retire, with your intent quote and the che
   });
 });
 
+test('it checks a retirement again under the definitions that a seed puts in force while the checker runs', async () => {
+  const checker = makeGatedCall(() => buildMockCheckerAnswer({ verdict: 'asserted' }));
+  const check = mock(checker.call);
+
+  const inForce = {
+    current: { snapshotHash: 'sha256:before', prompts: {} },
+  };
+
+  const memory = await startTestMemory({
+    definitions: () => ({ snapshotHash: inForce.current.snapshotHash }),
+    gate: { check, getPromptsInForce: () => inForce.current },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Rents a plot at the allotment',
+    provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I gave up the allotment plot',
+    spans: [{ start: 0, end: 28, source: 'typed' }],
+  });
+
+  await memory.store.recall({ query: 'allotment', thread: 'conversation' });
+
+  const retirement = memory.store.writes.retire({
+    target: item,
+    intentQuote: 'I gave up the allotment plot',
+    caller: buildMockWriteCaller(),
+  });
+
+  await checker.started;
+
+  inForce.current = {
+    snapshotHash: 'sha256:after',
+    prompts: {
+      'retirement-checker': { parts: {}, template: 'Judge the retirement strictly.' },
+    },
+  };
+
+  checker.release();
+
+  const outcome = await retirement;
+
+  expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+  expect(check).toHaveBeenCalledTimes(2);
+
+  expect(check).toHaveBeenLastCalledWith({
+    prompt: 'Judge the retirement strictly.',
+    input: expect.toEndWith('<item_to_retire>\nRents a plot at the allotment\n</item_to_retire>'),
+  });
+});
+
 test('it gives the checker the retirement checker prompt override in force', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
 
