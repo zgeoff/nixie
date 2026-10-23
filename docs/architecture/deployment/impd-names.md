@@ -45,10 +45,11 @@ release fails its pull check until the package is public
 ## Model secrets
 
 A sandbox reaches its model through a secret that impd's broker injects, named
-`nixie-model-<profile>-<16 hex>`. The profile is the model profile's ID, and the hex digits are the
-first 16 of the SHA-256 of the profile's auth header (`bearer` or `x-api-key`), the model host and
-the credential, each on its own line. A rotated credential therefore gets a new name, and a sandbox
-granted the old secret keeps working until it is replaced.
+`nixie-model-<19 hex>`. The hex digits are the first 19 of the SHA-256 of the model profile's ID,
+its auth header (`bearer` or `x-api-key`), the model host and the credential, each on its own line.
+The name holds the profile only through the digest, because impd caps a name at 31 characters and a
+profile ID has no cap. A rotated credential therefore gets a new name, and a sandbox granted the old
+secret keeps working until it is replaced.
 
 A token scoped to `nixie-*` cannot store a secret, because a secret is host-wide in impd. The
 deployment stores each model secret under its derived name and lists those names as the secrets
