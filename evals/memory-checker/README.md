@@ -12,26 +12,8 @@ written before any model saw a case.
 
 ## Run it
 
-The run calls the production checker with the production prompt, on the input the content gate
-renders for each pair, 3 times each, through the check guest's query and your local Claude Code
-login. It takes a set's name and rewrites that set's report, such as
-[corpus-report.json](corpus-report.json), which `bun test` then checks. An invented owner name after
-the set's name renders the prompt with that name and swaps it into each memory for "the owner", as a
-deployment with that name would see them.
-
-```bash
-env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts held-out-3 Sam
-bun test evals
-```
-
-The suite fails when a report came from another prompt, skipped a pair or rendered a pair's input
-differently from the gate. It fails when a call confirms a memory that any set's message does not
-assert, and when an answered call misses one that a tuning set's message asserts.
-
-On a cloud imp, run the eval this same way, through the imp's Claude Code login. The imp's broker
-forwards a subscription token, which the Messages API takes for Haiku but refuses for Sonnet with a
-429 `rate_limit_error` when the request does not come from Claude Code. A runner that calls the API
-directly from an imp works only with Haiku.
+The [memory checker eval runbook](../../docs/runbooks/memory-checker-eval.md) runs a set through the
+production checker, rewrites its report and checks the reports with `bun test evals`.
 
 ## Results
 
