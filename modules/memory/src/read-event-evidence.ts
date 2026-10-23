@@ -1,5 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { ownerMessageCodec } from '@heynixie/tasks';
 import { z } from 'zod';
 import type { ReviewReason } from './gate-types';
 import type { QuoteEvidenceResult } from './read-quote-evidence';
@@ -53,6 +54,12 @@ async function readEventMessage(
   const fields = messageFields.safeParse(entry.record.erasable.fields);
 
   return fields.success
-    ? { sequence: entry.record.sequence, text: fields.data.text, spans: fields.data.spans ?? [] }
+    ? {
+        sequence: entry.record.sequence,
+        text: fields.data.text,
+        spans: fields.data.spans ?? [],
+        sentAt: entry.record.recordedAt.getTime(),
+        timeZone: ownerMessageCodec.tryDecodePartial(entry.record.payload)?.timeZone ?? null,
+      }
     : 'no_quote';
 }

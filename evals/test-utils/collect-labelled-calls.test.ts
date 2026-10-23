@@ -11,7 +11,8 @@ test('it joins each call to the pair it checked, on the memory named as the repo
 
   const input = new Bun.CryptoHasher('sha256')
     .update(
-      '<owner_message>\n«evidence»do I take my coffee black?«/evidence»\n</owner_message>\n\n' +
+      '<sent>Mon 19 Oct 2026, 09:00, Europe/London (UTC+01:00)</sent>\n\n' +
+        '<owner_message>\n«evidence»do I take my coffee black?«/evidence»\n</owner_message>\n\n' +
         '<candidate_memory>\nSam takes their coffee black.\n</candidate_memory>',
     )
     .digest('hex');
@@ -37,6 +38,8 @@ test('it joins each call to the pair it checked, on the memory named as the repo
             message: {
               text: 'do I take my coffee black?',
               spans: [{ start: 0, end: 26, source: 'typed' }],
+              sentAt: '2026-10-19T08:00:00Z',
+              timeZone: 'Europe/London',
             },
             pairs: [pair],
           },
@@ -92,6 +95,8 @@ test('it refuses a report run before the corpus changed the message of a pair', 
             message: {
               text: 'do I take my coffee black? I forget.',
               spans: [{ start: 0, end: 36, source: 'typed' }],
+              sentAt: '2026-10-19T08:00:00Z',
+              timeZone: 'Europe/London',
             },
             pairs: [
               {

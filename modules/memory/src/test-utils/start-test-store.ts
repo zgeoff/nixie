@@ -16,6 +16,7 @@ export async function startTestStore(
   const writer = await startWriter({
     dataDir: wiring.dataDir,
     keyStoreBusyTimeoutMs: options.keyStoreBusyTimeoutMs,
+    ...(options.logClock === undefined ? {} : { clock: options.logClock }),
   });
 
   wiring.defer(() => writer.stop());
@@ -42,6 +43,7 @@ export async function startTestStore(
             failure: 'error',
           })),
       clock: options.gate?.clock ?? { now: () => Date.now() },
+      defaultZone: options.gate?.defaultZone ?? 'UTC',
       findAllowRule: options.gate?.findAllowRule ?? findNoAllowRule,
       limits: options.gate?.limits ?? defaultGateLimits,
       ownerName: options.gate?.ownerName ?? null,

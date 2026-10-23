@@ -23,7 +23,18 @@ export async function readWriterBatch(
   const sources = new Map<number, SourceMessage>(
     entries.flatMap((entry) =>
       entry.role === 'owner' && entry.text !== null
-        ? [[entry.sequence, { sequence: entry.sequence, text: entry.text, spans: entry.spans }]]
+        ? [
+            [
+              entry.sequence,
+              {
+                sequence: entry.sequence,
+                text: entry.text,
+                spans: entry.spans,
+                sentAt: entry.recordedAt,
+                timeZone: entry.timeZone,
+              },
+            ],
+          ]
         : [],
     ),
   );

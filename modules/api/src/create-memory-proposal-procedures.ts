@@ -93,6 +93,7 @@ function toContractProposal(proposal: ViewProposal) {
     })),
     text: proposal.text,
     quote: proposal.quote,
+    until: proposal.until === null ? null : new Date(proposal.until),
     evidence:
       evidence === null
         ? null

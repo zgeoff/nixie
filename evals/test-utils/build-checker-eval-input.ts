@@ -6,16 +6,29 @@ export function buildCheckerEvalInput(
   pair: CheckerPair,
   ownerName: string | null,
 ): string {
-  const message = { sequence: 0, text: sample.message.text, spans: sample.message.spans };
+  const message = {
+    sequence: 0,
+    text: sample.message.text,
+    spans: sample.message.spans,
+    sentAt: Date.parse(sample.message.sentAt),
+    timeZone: sample.message.timeZone,
+  };
+
   const match = getTypedQuote(message, pair.quote);
 
   if (match.status !== 'typed') {
     throw new Error(`the quote of a ${sample.id} pair fails the quote check: ${match.status}`);
   }
 
-  return renderCheckerInput(message, match, {
-    kind: 'candidate_memory',
-    text:
-      ownerName === null ? pair.memory : pair.memory.replaceAll(/\b[Tt]he owner\b/gu, ownerName),
-  });
+  return renderCheckerInput(
+    message,
+    match,
+    {
+      kind: 'candidate_memory',
+      text:
+        ownerName === null ? pair.memory : pair.memory.replaceAll(/\b[Tt]he owner\b/gu, ownerName),
+      until: pair.until === undefined ? null : Date.parse(pair.until),
+    },
+    sample.message.timeZone,
+  );
 }

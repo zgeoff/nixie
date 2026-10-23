@@ -5,4 +5,5 @@ export const proposalTextSchema = z.strictObject({
   quote: z.string().nullable(),
   checkerReason: z.string().nullable(),
   salt: z.string(),
+  until: z.int().nullable().exactOptional(),
 });

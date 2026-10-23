@@ -14,11 +14,17 @@ const pairSchema = z
     bucket: z.string().min(1),
     memory: z.string().min(1),
     quote: z.string().min(1),
+    until: z.iso.datetime({ offset: true }).exactOptional(),
   })
   .readonly();
 
 const messageSchema = z
-  .strictObject({ text: z.string().min(1), spans: z.array(spanSchema).readonly() })
+  .strictObject({
+    text: z.string().min(1),
+    spans: z.array(spanSchema).readonly(),
+    sentAt: z.iso.datetime({ offset: true }),
+    timeZone: z.string().min(1),
+  })
   .readonly();
 
 const sampleSchema = z

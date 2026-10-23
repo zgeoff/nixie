@@ -1,3 +1,5 @@
+export type { SettleRecorder } from './build-settle-recorder';
+export { buildSettleRecorder } from './build-settle-recorder';
 export type { StubCheck } from './build-stub-check';
 export { buildStubCheck } from './build-stub-check';
 export type { TestClock } from './build-test-clock';

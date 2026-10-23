@@ -6,6 +6,8 @@ export interface DatabaseOptions {
   readonly secureDelete?: boolean;
 
   readonly busyTimeoutMs?: number | undefined;
+
+  readonly readonly?: boolean;
 }
 
 export type WorkerRequest =

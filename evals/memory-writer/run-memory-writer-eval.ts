@@ -75,7 +75,11 @@ async function runCase(run: PlannedRun): Promise<WriterCall> {
     tools.map((tool) => toToolSpec(tool)),
   );
 
-  const staged = staging.open({ sources: input.sources, shown: input.shown });
+  const staged = staging.open({
+    sources: input.sources,
+    shown: input.shown,
+    startedAt: input.startedAt,
+  });
 
   const session = await runSession(input, tools);
 
@@ -90,6 +94,7 @@ async function runCase(run: PlannedRun): Promise<WriterCall> {
       subject: write.op === 'remember' ? write.subject : null,
       itemID: write.target?.itemID ?? null,
       text: write.op === 'remember' ? write.text : null,
+      until: write.op === 'remember' ? (write.until ?? null) : null,
     })),
     flags: staged.readFlags().map((flag) => flag.text),
     failure: session.failure,

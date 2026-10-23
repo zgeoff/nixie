@@ -51,6 +51,7 @@ export function startTestMemoryWriter(
     getPersona: () => '',
     ownerName: null,
     assistantName: null,
+    defaultZone: 'UTC',
     onError: (error) => {
       throw error;
     },

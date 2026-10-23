@@ -1,4 +1,13 @@
 const config = {
+  // commitlint's default parser reads no `!` after the type or scope, so it finds no subject in a
+  // breaking change's header.
+  parserPreset: {
+    parserOpts: {
+      headerPattern: /^(?<type>\w*)(?:\((?<scope>[^()]*)\))?!?: (?<subject>.*)$/u,
+      breakingHeaderPattern: /^(?<type>\w*)(?:\((?<scope>[^()]*)\))?!: (?<subject>.*)$/u,
+      headerCorrespondence: ['type', 'scope', 'subject'],
+    },
+  },
   rules: {
     'body-leading-blank': [2, 'always'],
     'footer-leading-blank': [2, 'always'],

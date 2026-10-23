@@ -89,6 +89,9 @@ function ProposalDetails(props: ProposalDetailsProps): ReactNode {
         {proposal.subject === 'self' ? <SelfNoteBadge /> : null}
         {formatReviewReason(proposal.reason)}
       </p>
+      {proposal.until === null ? null : (
+        <p className={meta}>Lasts until {formatMemoryDate(proposal.until)}</p>
+      )}
       <p className={meta}>
         Proposed {formatMemoryProvenance(proposal.origin, proposal.source)} · lapses{' '}
         {formatMemoryDate(proposal.lapseAt)}

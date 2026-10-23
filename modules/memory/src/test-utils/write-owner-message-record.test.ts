@@ -43,6 +43,21 @@ test('it writes a message of yours with its text and spans in the erasable field
   expect(entry?.record.payload).toStrictEqual({ spans: 'as_sent' });
 });
 
+test('it stores the time zone the message was sent from in the payload', async () => {
+  const ctx = await setupTest();
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "I'm in Lisbon this week",
+    spans: [{ start: 0, end: 23, source: 'typed' }],
+    timeZone: 'Europe/Lisbon',
+  });
+
+  const [entry] = await readRecords(ctx.memory.log, { afterSequence: sequence - 1, limit: 1 });
+
+  expect(entry?.record.payload).toStrictEqual({ spans: 'as_sent', timeZone: 'Europe/Lisbon' });
+});
+
 test('it names the media type of each image in the payload, in the order sent', async () => {
   const ctx = await setupTest();
 

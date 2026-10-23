@@ -27,6 +27,7 @@ async function setupTest() {
           failure: 'error',
         }),
       clock: api.clock,
+      defaultZone: 'UTC',
       findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
