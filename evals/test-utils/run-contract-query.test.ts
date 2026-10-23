@@ -43,7 +43,10 @@ test('it keeps every message the query streamed, through its result', async () =
   const run = await runContractQuery({ prompt: 'Say the reply.', options: ctx.options });
 
   expect(run.thrown).toBeNull();
-  expect(run.messages.at(0)).toMatchObject({ type: 'system', subtype: 'init' });
+
+  // The CLI loads a host's managed policy whatever the options say, so a policy hook can stream
+  // its own system messages before the init.
+  expect(run.messages).toContainEqual(expect.objectContaining({ type: 'system', subtype: 'init' }));
 
   expect(run.messages.at(-1)).toMatchObject({
     type: 'result',
