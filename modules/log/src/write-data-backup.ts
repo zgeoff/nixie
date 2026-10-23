@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { claimBackupLock } from './claim-backup-lock';
 import type { DataFile } from './data-files';
 import { dataFiles } from './data-files';
+import type { DataRefusal } from './data-refusal';
 import type { DataStorage } from './data-storage';
 import { readRestoreState } from './read-restore-state';
 import { requireDataFiles } from './require-data-files';
@@ -25,7 +26,9 @@ export interface DataBackup {
 
 const maxAttempts = 5;
 
-export async function writeDataBackup(options: DataBackupOptions): Promise<DataBackup> {
+export async function writeDataBackup(
+  options: DataBackupOptions,
+): Promise<DataBackup | DataRefusal> {
   await requireDataFiles(
     options.storage.files,
     options.dataDir,
@@ -33,6 +36,10 @@ export async function writeDataBackup(options: DataBackupOptions): Promise<DataB
   );
 
   const lock = await claimBackupLock(options.storage, options.dataDir, 'shared');
+
+  if (lock === null) {
+    return { refused: 'restore-running' };
+  }
 
   try {
     await requireFinishedRestore(options);

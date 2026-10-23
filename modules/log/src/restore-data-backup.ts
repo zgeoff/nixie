@@ -6,6 +6,7 @@ import { claimBackupLock } from './claim-backup-lock';
 import { claimWriterLock } from './claim-writer-lock';
 import type { DataFile } from './data-files';
 import { dataFiles } from './data-files';
+import type { DataRefusal } from './data-refusal';
 import type { DataStorage } from './data-storage';
 import { requireDataFiles } from './require-data-files';
 import { writeRestoreState } from './write-restore-state';
@@ -22,11 +23,17 @@ export interface DataRestore {
 
 // The writer lock refuses the restore while a server runs on the data directory, and keeps a
 // server from starting until the restore ends.
-export async function restoreDataBackup(options: DataRestoreOptions): Promise<DataRestore> {
+export async function restoreDataBackup(
+  options: DataRestoreOptions,
+): Promise<DataRestore | DataRefusal> {
   const writerLock = claimWriterLock(options.dataDir, options.storage.claimFileLock);
 
   try {
     const backupLock = await claimBackupLock(options.storage, options.dataDir, 'exclusive');
+
+    if (backupLock === null) {
+      return { refused: 'backup-running' };
+    }
 
     try {
       await requireDataFiles(

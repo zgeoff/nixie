@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import invariant from 'tiny-invariant';
 import { claimBackupLock } from './claim-backup-lock';
 import { localDataStorage } from './local-data-storage';
 
@@ -18,17 +19,19 @@ test('it lets two backups share the lock, through a lock file in the data direct
   const first = await claimBackupLock(localDataStorage, ctx.dataDir, 'shared');
 
   onTestFinished(() => {
-    first.release();
+    first?.release();
   });
 
   const second = await claimBackupLock(localDataStorage, ctx.dataDir, 'shared');
 
   onTestFinished(() => {
-    second.release();
+    second?.release();
   });
 
   const files = await readdir(ctx.dataDir);
 
+  expect(first).not.toBeNull();
+  expect(second).not.toBeNull();
   expect(files).toStrictEqual(['backup.lock']);
 });
 
@@ -36,26 +39,28 @@ test('it refuses a restore while a backup holds the lock', async () => {
   const ctx = await setupTest();
   const backup = await claimBackupLock(localDataStorage, ctx.dataDir, 'shared');
 
+  invariant(backup);
+
   onTestFinished(() => {
     backup.release();
   });
 
-  expect(claimBackupLock(localDataStorage, ctx.dataDir, 'exclusive')).rejects.toThrowWithMessage(
-    Error,
-    `a backup runs on the data directory ${ctx.dataDir}, so nixie restores nothing`,
-  );
+  const restore = await claimBackupLock(localDataStorage, ctx.dataDir, 'exclusive');
+
+  expect(restore).toBeNull();
 });
 
 test('it refuses a backup while a restore holds the lock', async () => {
   const ctx = await setupTest();
   const restore = await claimBackupLock(localDataStorage, ctx.dataDir, 'exclusive');
 
+  invariant(restore);
+
   onTestFinished(() => {
     restore.release();
   });
 
-  expect(claimBackupLock(localDataStorage, ctx.dataDir, 'shared')).rejects.toThrowWithMessage(
-    Error,
-    `a restore runs on the data directory ${ctx.dataDir}, so nixie backs up nothing`,
-  );
+  const backup = await claimBackupLock(localDataStorage, ctx.dataDir, 'shared');
+
+  expect(backup).toBeNull();
 });

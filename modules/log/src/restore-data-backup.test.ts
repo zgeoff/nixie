@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { claimBackupLock } from './claim-backup-lock';
 import { claimWriterLock } from './claim-writer-lock';
 import { localDataStorage } from './local-data-storage';
@@ -81,25 +82,21 @@ test('it refuses a restore while a backup reads the data directory, and leaves i
 
   const backup = await claimBackupLock(localDataStorage, ctx.dataDir, 'shared');
 
+  invariant(backup);
+
   onTestFinished(() => {
     backup.release();
   });
 
-  const restore = restoreDataBackup({
+  const restore = await restoreDataBackup({
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
   });
 
-  await restore.catch(() => {});
-
   const log = await Bun.file(join(ctx.dataDir, 'nixie.db')).text();
 
-  expect(restore).rejects.toThrowWithMessage(
-    Error,
-    `a backup runs on the data directory ${ctx.dataDir}, so nixie restores nothing`,
-  );
-
+  expect(restore).toStrictEqual({ refused: 'backup-running' });
   expect(log).toBe('the live log');
 });
 

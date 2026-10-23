@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { claimBackupLock } from './claim-backup-lock';
 import { localDataStorage } from './local-data-storage';
 import { writeDataBackup } from './write-data-backup';
@@ -106,7 +107,7 @@ test('it copies again when nixie forgets an item and removes its key between the
   const items = await sql`select id, state from items order by id`.execute(log);
   const recordKeys = await sql`select key_id from record_keys`.execute(keys);
 
-  expect(backup.attempts).toBe(2);
+  expect(backup).toStrictEqual({ files: ['nixie.db', 'keys.db'], attempts: 2 });
 
   expect(items.rows).toStrictEqual([
     { id: 'k1', state: 'forgotten' },
@@ -239,24 +240,20 @@ test('it refuses a backup while a restore replaces the databases, and copies not
 
   const restore = await claimBackupLock(localDataStorage, ctx.dataDir, 'exclusive');
 
+  invariant(restore);
+
   onTestFinished(() => {
     restore.release();
   });
 
-  const backup = writeDataBackup({
+  const backup = await writeDataBackup({
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
     onCopied: () => {},
   });
 
-  await backup.catch(() => {});
-
-  expect(backup).rejects.toThrowWithMessage(
-    Error,
-    `a restore runs on the data directory ${ctx.dataDir}, so nixie backs up nothing`,
-  );
-
+  expect(backup).toStrictEqual({ refused: 'restore-running' });
   expect(existsSync(ctx.directory)).toBeFalse();
 });
 

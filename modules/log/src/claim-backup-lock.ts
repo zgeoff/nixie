@@ -9,21 +9,10 @@ export async function claimBackupLock(
   storage: DataStorage,
   dataDir: string,
   mode: FileLockMode,
-): Promise<WriterLock> {
+): Promise<WriterLock | null> {
   const path = join(dataDir, 'backup.lock');
 
   await storage.files.writeFile(path, '');
 
-  const lock = storage.claimFileLock(path, mode);
-
-  if (lock === null) {
-    const refusal =
-      mode === 'shared'
-        ? `a restore runs on the data directory ${dataDir}, so nixie backs up nothing`
-        : `a backup runs on the data directory ${dataDir}, so nixie restores nothing`;
-
-    throw new Error(refusal);
-  }
-
-  return lock;
+  return storage.claimFileLock(path, mode);
 }

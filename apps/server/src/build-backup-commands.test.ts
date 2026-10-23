@@ -4,9 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ContractClient } from '@heynixie/contract';
 import { clientHeaderName } from '@heynixie/contract';
-import { startWriter } from '@heynixie/log';
+import { claimBackupLock, localDataStorage, startWriter } from '@heynixie/log';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
+import invariant from 'tiny-invariant';
 import { runCLI } from './run-cli';
 import { createTestClient } from './test-utils/create-test-client';
 import { sendClientMessage } from './test-utils/send-client-message';
@@ -109,6 +110,69 @@ test('it restores the backup of a running server into an empty data directory, a
     'Quince-reply-4ZT9',
   ]);
 }, 60_000);
+
+test('it refuses a backup while a restore holds the data directory, and exits 1', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const writer = await startWriter({ dataDir: files.dataDir });
+
+  onTestFinished(() => writer.stop());
+
+  const restore = await claimBackupLock(localDataStorage, files.dataDir, 'exclusive');
+
+  invariant(restore);
+
+  onTestFinished(() => {
+    restore.release();
+  });
+
+  const target = join(ctx.directory, 'backup');
+
+  const exitCode = await runCLI(['backup', '--to', target, '--config', files.configPath], ctx.io);
+
+  expect(exitCode).toBe(1);
+
+  expect(ctx.io.print).toHaveBeenCalledExactlyOnceWith(
+    `a restore runs on the data directory ${files.dataDir}, so nixie backs up nothing`,
+  );
+});
+
+test('it refuses a restore while a backup reads the data directory, and exits 1', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const backup = await claimBackupLock(localDataStorage, files.dataDir, 'shared');
+
+  invariant(backup);
+
+  onTestFinished(() => {
+    backup.release();
+  });
+
+  const target = join(ctx.directory, 'backup');
+
+  await mkdir(target);
+
+  const exitCode = await runCLI(
+    ['restore', '--from', target, '--yes', '--config', files.configPath],
+    ctx.io,
+  );
+
+  expect(exitCode).toBe(1);
+
+  expect(ctx.io.print).toHaveBeenCalledExactlyOnceWith(
+    `a backup runs on the data directory ${files.dataDir}, so nixie restores nothing`,
+  );
+});
 
 test('it refuses a restore while a server runs on the data directory', async () => {
   const ctx = await setupTest();

@@ -32,6 +32,14 @@ async function runBackup(flags: CLIFlags, io: CLIIO): Promise<number> {
     },
   });
 
+  if ('refused' in backup) {
+    io.print(
+      `a restore runs on the data directory ${config.server.dataDir}, so nixie backs up nothing`,
+    );
+
+    return 1;
+  }
+
   io.print(
     `nixie backed up ${backup.files.join(' and ')} into ${flags.to} in ${String(backup.attempts)} ${backup.attempts === 1 ? 'copy' : 'copies'}`,
   );
@@ -63,6 +71,14 @@ async function runRestore(flags: CLIFlags, io: CLIIO): Promise<number> {
       dataDir: config.server.dataDir,
       directory: flags.from,
     });
+
+    if ('refused' in restore) {
+      io.print(
+        `a backup runs on the data directory ${config.server.dataDir}, so nixie restores nothing`,
+      );
+
+      return 1;
+    }
 
     io.print(`nixie restored ${restore.files.join(' and ')} from ${flags.from}`);
 
