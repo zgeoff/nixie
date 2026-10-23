@@ -775,7 +775,7 @@
     "@pandacss/preset-panda": "2.2.0",
     "@paralleldrive/cuid2": "3.3.0",
     "@pulumi/kubernetes": "4.34.2",
-    "@pulumi/pulumi": "3.269.0",
+    "@pulumi/pulumi": "3.270.0",
     "@rolldown/plugin-babel": "0.2.4",
     "@tanstack/query-core": "5.104.2",
     "@tanstack/react-query": "5.104.2",
@@ -1576,7 +1576,7 @@
 
     "@pulumi/kubernetes": ["@pulumi/kubernetes@4.34.2", "", { "dependencies": { "@pulumi/pulumi": "^3.142.0", "glob": "^12.0.0", "shell-quote": "^1.6.1" } }, "sha512-OcIe8OUwivkEngmjinrmke54INbJ0L6u/CWm8mLh6F7pmIDXyHGTM8PzcZsg5QbSm24HnNUHLl2tEUoOBxDo3w=="],
 
-    "@pulumi/pulumi": ["@pulumi/pulumi@3.269.0", "", { "dependencies": { "@grpc/grpc-js": "^1.10.1", "@logdna/tail-file": "^2.0.6", "@npmcli/arborist": "^9.0.0", "@opentelemetry/api": "^1.9", "@opentelemetry/core": "^2.9", "@opentelemetry/exporter-trace-otlp-grpc": "^0.220", "@opentelemetry/exporter-zipkin": "^2.9", "@opentelemetry/instrumentation": "^0.220", "@opentelemetry/instrumentation-grpc": "^0.220", "@opentelemetry/resources": "^2.9", "@opentelemetry/sdk-trace-base": "^2.9", "@opentelemetry/sdk-trace-node": "^2.9", "@opentelemetry/semantic-conventions": "^1.42", "@types/google-protobuf": "^3.15.5", "@types/semver": "^7.5.6", "execa": "^5.1.0", "google-protobuf": "^3.21.4", "ini": "^2.0.0", "js-yaml": "^4.3.2", "minimist": "^1.2.6", "normalize-package-data": "^6.0.0", "require-from-string": "^2.0.1", "semver": "^7.5.2", "source-map-support": "^0.5.6", "upath": "^1.1.0" }, "peerDependencies": { "ts-node": ">= 7.0.1 < 12", "typescript": ">= 3.8.3 < 7" }, "optionalPeers": ["ts-node", "typescript"] }, "sha512-budgf3lN9Iuf+Uu8+evbTw1LiZFa9GKgKdHBQQdDRv2IsD5oG8snyzvyNQp+ziD4B3ukyLaou+nHXsnVuqlT8A=="],
+    "@pulumi/pulumi": ["@pulumi/pulumi@3.270.0", "", { "dependencies": { "@grpc/grpc-js": "^1.10.1", "@logdna/tail-file": "^2.0.6", "@npmcli/arborist": "^9.0.0", "@opentelemetry/api": "^1.9", "@opentelemetry/core": "^2.9", "@opentelemetry/exporter-trace-otlp-grpc": "^0.220", "@opentelemetry/exporter-zipkin": "^2.9", "@opentelemetry/instrumentation": "^0.220", "@opentelemetry/instrumentation-grpc": "^0.220", "@opentelemetry/resources": "^2.9", "@opentelemetry/sdk-trace-base": "^2.9", "@opentelemetry/sdk-trace-node": "^2.9", "@opentelemetry/semantic-conventions": "^1.42", "@types/google-protobuf": "^3.15.5", "@types/semver": "^7.5.6", "execa": "^5.1.0", "google-protobuf": "^3.21.4", "ini": "^2.0.0", "js-yaml": "^4.3.2", "minimist": "^1.2.6", "normalize-package-data": "^6.0.0", "require-from-string": "^2.0.1", "semver": "^7.5.2", "source-map-support": "^0.5.6", "upath": "^1.1.0" }, "peerDependencies": { "ts-node": ">= 7.0.1 < 12", "typescript": ">= 3.8.3 < 7" }, "optionalPeers": ["ts-node", "typescript"] }, "sha512-k2GSGtoP2yrkIe4r+1YvyKL6k7mM6SYnySv6tSzGrv/oTY7WemEmvNEvn7Qd/JbkCMmYeBhWULDS5qB9qpvgkg=="],
 
     "@rolldown/binding-android-arm-eabi": ["@rolldown/binding-android-arm-eabi@1.2.13", "", { "os": "android", "cpu": "arm" }, "sha512-Vu/NICrgdRvUOeaJZIyB2FP63s6fO/4ud5l8dXmxDx9yDyn+mN0y+gsvsVviSli+T361Aqo0h46EuMoobrwawA=="],
 
