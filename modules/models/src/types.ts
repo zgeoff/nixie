@@ -10,13 +10,21 @@ export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 type CacheTTL = '5m' | '1h';
 
-export interface ModelPrices {
+export interface PriceRates {
   readonly input: number;
 
   readonly cacheWrite: number;
   readonly cacheWrite1h: number;
   readonly cachedInput: number;
   readonly output: number;
+}
+
+export interface LongPromptPrices extends PriceRates {
+  readonly overTokens: number;
+}
+
+export interface ModelPrices extends PriceRates {
+  readonly longPrompt?: LongPromptPrices;
 }
 
 export interface ModelProfile {
