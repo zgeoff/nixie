@@ -110,13 +110,14 @@ pre-push:
     # process, as in CI, so a file's own MSW server never meets the web client's; one worker
     # at a time, because the host may have little memory. The ignore patterns repeat
     # bunfig.toml's, because a pattern on the command line replaces that list; the
-    # Agent SDK suites and the whole-program suites in e2e/ run after, with the limit the root
-    # test script gives them
+    # Agent SDK lane and the e2e lane run after, each with the limit its root lane script
+    # gives it
     - name: test
       use_stdin: true
       run: |
         commits=$(.lefthook/pushed-commits.sh) || exit 1
         for commit in $commits; do
-          bun test --parallel=1 --changed="origin/main...$commit" --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.sdk.test.ts' --path-ignore-patterns='e2e/**' || exit 1
-          bun test --parallel=1 --timeout=30000 --changed="origin/main...$commit" .sdk.test.ts e2e/ || exit 1
+          bun test --parallel=1 --changed="origin/main...$commit" --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.agent-sdk.test.ts' --path-ignore-patterns='e2e/**' || exit 1
+          bun test --parallel=1 --changed="origin/main...$commit" .agent-sdk.test.ts || exit 1
+          bun test --parallel=1 --timeout=15000 --changed="origin/main...$commit" e2e/ || exit 1
         done
