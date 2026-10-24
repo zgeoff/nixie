@@ -22,8 +22,8 @@ the keywords a model passes to the recall tool?
 - No method tells a current fact from a superseded one, so the store has to.
 - An in-memory FTS5 index over 20,000 log messages builds in 62 ms and takes 0.85 ms per query.
 
-Retrieve with local embeddings and keyword search together, and let the store mark which fact is
-current.
+Let the store mark which fact is current. Questions that the owner writes decide whether embeddings,
+alone or fused with BM25, earn their place.
 
 ## Run it
 

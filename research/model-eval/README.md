@@ -17,10 +17,11 @@ and what does each cost per task? Which settings move cost and latency the most?
 - Effort and output length set the cost: one 12-turn conversation ran from $0.0004 on Luna to $0.046
   on Opus 5.5, and GLM 5.3 at default effort cost about 5 times its low-effort run.
 - A required owner quote stops invented memory: under the evidence prompt, Haiku 5.5, Muse and Luna
-  wrote 0.0 invented entries per run, against 0.6 to 2.1 under the plain prompt.
+  wrote 0.0 invented entries per run, against 0.6 to 1.0 under the plain prompt.
 - Every model reported both failing tools honestly in the day task.
-- Claude Code adds an identity line, the environment, the model name, the account's email and the
-  date to the prompt, and Opus and Sonnet used that context in about 21 of 72 one-shot replies.
+- On a subscription token, Claude Code adds an identity line, the environment, the model name, the
+  account's email and the date to the prompt, and Opus and Sonnet each used that context in about 21
+  of 72 one-shot replies.
 
 Chat on GLM Flash or GLM 5.3 at low effort, memory writing and tool calls on Haiku 5.5 at low effort
 with the evidence prompt, and long reasoning on Opus 5.5.
