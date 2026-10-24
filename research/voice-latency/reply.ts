@@ -20,6 +20,7 @@ import { createVoiceTools, voiceToolNames } from './create-voice-tools.ts';
 import { listenToCaller } from './listen.ts';
 import type { PlayedClip } from './plan-playback.ts';
 import { planPlayback } from './plan-playback.ts';
+import type { ReplyRecord } from './reply-record.ts';
 import { reserveOutput } from './reserve-output.ts';
 import {
   createSpeechToText,
@@ -196,10 +197,8 @@ for (let round = 0; round < rounds; round++) {
     writeFileSync(join(recordingsDir, recordingName), toWav(recording, sampleRate));
     const first = playback.startsAt[0];
     const last = clips.at(-1);
-    writeSync(
-      reservation.file,
-      `${JSON.stringify({
-        candidate,
+    const record: ReplyRecord = {
+      candidate,
         clips: clips.map((clip) => ({
           audioMs: Math.round(clip.audioMs),
           readyMs: Math.round(clip.readyAt - endAt),
@@ -225,14 +224,15 @@ for (let round = 0; round < rounds; round++) {
         playEndMs: playback.playEndAt - endAt,
         recording: recordingName,
         round,
+        speechMs: (line.speechEndSample / sampleRate) * 1000,
         sttMs: heard.transcriptAt - heard.vadEndAt,
         subtype: turn.subtype,
         text,
         toolCalls: turn.toolCalls,
         transcript: heard.transcript,
         ttftStreamMs: turn.ttftStreamMs,
-      })}\n`,
-    );
+    };
+    writeSync(reservation.file, `${JSON.stringify(record)}\n`);
     console.log(`${candidate} round ${round} line ${turnLine.callerIndex}: ${text.replaceAll('\n', ' ')}`);
   }
 }
