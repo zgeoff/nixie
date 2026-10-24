@@ -105,9 +105,10 @@ pre-push:
     - name: prose
       run: bun run prose
     # the tests each pushed commit's changes select, so a push of one stack layer from
-    # the top layer's worktree runs that layer's tests only. Each test file runs in its own
-    # process, as in CI, so a file's own MSW server never meets the web client's; one worker
-    # at a time, because the host may have little memory. The ignore patterns repeat
+    # the top layer's worktree runs that layer's tests only. One worker runs at a time,
+    # because the host may have little memory, and it shares one global object across files,
+    # as CI does: a fresh global per file stalls a 2 GiB host's worker for seconds at a time
+    # in a long run, which times out tests and hooks that pass alone. The ignore patterns repeat
     # bunfig.toml's, because a pattern on the command line replaces that list; the
     # Agent SDK lane and the e2e lane run after, each with the limit its root lane script
     # gives it
@@ -116,7 +117,7 @@ pre-push:
       run: |
         commits=$(.lefthook/pushed-commits.sh) || exit 1
         for commit in $commits; do
-          bun test --parallel=1 --changed="origin/main...$commit" --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.agent-sdk.test.ts' --path-ignore-patterns='e2e/**' || exit 1
+          bun test --parallel=1 --no-isolate --changed="origin/main...$commit" --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.agent-sdk.test.ts' --path-ignore-patterns='e2e/**' || exit 1
           bun test --parallel=1 --changed="origin/main...$commit" .agent-sdk.test.ts || exit 1
           bun test --parallel=1 --timeout=15000 --changed="origin/main...$commit" e2e/ || exit 1
         done
