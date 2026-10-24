@@ -93,6 +93,8 @@ export interface SpawnedNixie extends BootFiles {
 
   readonly waitForQueueCheck: () => Promise<void>;
 
+  readonly waitForModelCalls: (count: number) => Promise<void>;
+
   readonly readRecoveredStates: () => readonly RecoveredState[];
 
   readonly readDataFiles: () => Promise<
@@ -112,8 +114,9 @@ export interface SpawnedNixieOptions {
   readonly release?: string;
 }
 
-// A turn runs the real SDK in a guest process, which takes a few seconds on a slow host.
-const recordTimeoutMs = 30_000;
+// A turn runs the real SDK in a guest process, which takes a few seconds on a slow host, and each
+// wait ends inside the e2e lane's 15 s limit per test, so a slow turn fails on the wait it missed.
+const recordTimeoutMs = 10_000;
 const startMs = 1_000_000;
 const serverEntry = join(import.meta.dir, '../../apps/server/src/main.ts');
 
@@ -172,6 +175,7 @@ export async function startSpawnedNixie(options: SpawnedNixieOptions = {}): Prom
     readRecoveredStates: recovery.readRecoveredStates,
     waitForRecord: (matches) => waitForMatch(reader.readRecords, matches, recordTimeoutMs),
     waitForQueueCheck: () => waitForQueueCheck(reader.readRecords),
+    waitForModelCalls: (count) => waitForModelCalls(doubles.model, count),
     ...buildAdvanceHelpers(harness, reader.readRecords),
     readDataFiles: () => readDataFiles(files.dataDir),
     readSandboxIDs: () => readdir(join(files.dataDir, 'sandboxes')),
@@ -436,6 +440,13 @@ async function waitForQueueCheck(readRecords: SpawnedNixie['readRecords']): Prom
         )
       );
     },
+    { timeoutMs: recordTimeoutMs },
+  );
+}
+
+async function waitForModelCalls(model: ScriptedModel, count: number): Promise<void> {
+  await waitForCondition(
+    () => model.requests.filter((request) => request.path === '/v1/messages').length >= count,
     { timeoutMs: recordTimeoutMs },
   );
 }
