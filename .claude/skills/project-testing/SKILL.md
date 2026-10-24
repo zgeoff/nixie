@@ -68,8 +68,9 @@ short directory or point `BUN_CHROME_PATH` at Playwright's `chrome-headless-shel
 such socket. Chrome stops under a `ulimit -v` cap, because it reserves more address space than it
 uses, so the browser suites skip there.
 
-Two lanes run suites that need a real system the parallel run cannot host. `bun run test` leaves
-both out of the parallel run and ends with each lane's script, which runs its files one at a time.
+Beside the browser suites, two lanes run suites that need a real system the parallel run cannot
+host. `bun run test` leaves both out of the parallel run and ends with each lane's script, which
+runs its files one at a time.
 
 | Lane      | Files                 | Real system                                                   | Script           | Limit per test     |
 | --------- | --------------------- | ------------------------------------------------------------- | ---------------- | ------------------ |
