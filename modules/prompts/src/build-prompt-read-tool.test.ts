@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { buildPromptReadTool } from './build-prompt-read-tool';
 import { compactionPrompt } from './compaction-prompt';
@@ -12,15 +13,8 @@ test("it returns each part's built-in text and paths, and the default template, 
   const tool = buildPromptReadTool({ readInForce: () => null });
 
   const outcome = await tool.run(
-    { callID: 'call-1', tool: 'prompt_read', input: { id: 'compaction' }, toolUseID: null },
-    {
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        tools: [],
-        model: { model: 'test-model', profile: 'standard' },
-      },
-    },
+    buildMockToolCall({ tool: 'prompt_read', input: { id: 'compaction' } }),
+    buildMockToolContext(),
   );
 
   expect(outcome).toStrictEqual({
@@ -74,15 +68,8 @@ test('it returns the part and the template that the definitions in force overrid
   });
 
   const outcome = await tool.run(
-    { callID: 'call-1', tool: 'prompt_read', input: { id: 'compaction' }, toolUseID: null },
-    {
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        tools: [],
-        model: { model: 'test-model', profile: 'standard' },
-      },
-    },
+    buildMockToolCall({ tool: 'prompt_read', input: { id: 'compaction' } }),
+    buildMockToolContext(),
   );
 
   expect(outcome).toStrictEqual({
@@ -131,15 +118,8 @@ test('it returns no override for a prompt that the definitions in force leave al
   });
 
   const outcome = await tool.run(
-    { callID: 'call-1', tool: 'prompt_read', input: { id: 'compaction' }, toolUseID: null },
-    {
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        tools: [],
-        model: { model: 'test-model', profile: 'standard' },
-      },
-    },
+    buildMockToolCall({ tool: 'prompt_read', input: { id: 'compaction' } }),
+    buildMockToolContext(),
   );
 
   expect(outcome).toStrictEqual({
