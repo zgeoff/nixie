@@ -25,6 +25,7 @@ import { startGptLiveCall } from './start-gpt-live-call.ts';
 import { startGrokCall } from './start-grok-call.ts';
 import { toWav } from './to-wav.ts';
 import type { VoiceCall } from './voice-call.ts';
+import { toRecordingsDir } from './to-recordings-dir.ts';
 import { acknowledgeRules } from './voice-rules.ts';
 
 const { values } = parseArgs({
@@ -42,7 +43,7 @@ const rounds = z.coerce.number().int().positive().parse(values.rounds);
 const limit =
   values.limit === undefined ? Number.POSITIVE_INFINITY : z.coerce.number().int().positive().parse(values.limit);
 const out = values.out ?? `results/reply-${candidate}.jsonl`;
-const recordingsDir = join(dirname(out), 'recordings', candidate);
+const recordingsDir = toRecordingsDir(out);
 const persona = readFileSync(values.persona, 'utf8').trim();
 const key = (await new Response(Bun.stdin.stream()).text()).trim();
 if (key === '') {

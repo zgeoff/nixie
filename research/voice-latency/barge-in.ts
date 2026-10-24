@@ -22,6 +22,7 @@ import { startGptLiveCall } from './start-gpt-live-call.ts';
 import { startGrokCall } from './start-grok-call.ts';
 import { toWav } from './to-wav.ts';
 import type { VoiceCall } from './voice-call.ts';
+import { toRecordingsDir } from './to-recordings-dir.ts';
 import { acknowledgeRules } from './voice-rules.ts';
 
 const { values } = parseArgs({
@@ -36,7 +37,7 @@ const { values } = parseArgs({
 const candidate = z.enum(['gpt-live', 'grok']).parse(values.candidate);
 const rounds = z.coerce.number().int().positive().parse(values.rounds);
 const out = values.out ?? `results/barge-in-${candidate}.jsonl`;
-const recordingsDir = join(dirname(out), 'recordings', `barge-in-${candidate}`);
+const recordingsDir = toRecordingsDir(out);
 const instructions = `${readFileSync(values.persona, 'utf8').trim()}\n\n${acknowledgeRules}`;
 const key = (await new Response(Bun.stdin.stream()).text()).trim();
 if (key === '') {

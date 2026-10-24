@@ -8,6 +8,7 @@ import { parseArgs } from 'node:util';
 import { z } from 'zod';
 import { lines, toolLineStart, toolLines } from './caller.ts';
 import { pickBlindLetters } from './pick-blind-letters.ts';
+import { toRecordingsDir } from './to-recordings-dir.ts';
 
 const { values } = parseArgs({
   options: {
@@ -36,7 +37,7 @@ const callerLines = [
 mkdirSync(join(out, 'blind'), { recursive: true });
 for (const [lineNumber, line] of callerLines.entries()) {
   for (const candidate of candidates) {
-    const source = join(results, 'recordings', candidate, `r${round}-l${line.index}.wav`);
+    const source = join(toRecordingsDir(join(results, `reply-${candidate}.jsonl`)), `r${round}-l${line.index}.wav`);
     const name = `line-${String(lineNumber + 1).padStart(2, '0')}`;
     copyFileSync(source, join(out, 'blind', `${name}-${letters.get(candidate)}.wav`));
     mkdirSync(join(out, 'labelled', candidate), { recursive: true });

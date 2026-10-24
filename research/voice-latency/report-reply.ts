@@ -11,6 +11,7 @@ import { formatReplyReport } from './format-reply-report.ts';
 import { parseWav } from './parse-wav.ts';
 import { replyRecord } from './reply-record.ts';
 import { soundThreshold } from './sound-threshold.ts';
+import { toRecordingsDir } from './to-recordings-dir.ts';
 
 
 const { positionals: files } = parseArgs({ allowPositionals: true, options: {} });
@@ -23,7 +24,7 @@ const turns: HeardTurn[] = (
           .filter(Boolean)
           .map(async (line) => {
             const record = replyRecord.parse(JSON.parse(line));
-            const path = join(dirname(file), 'recordings', record.candidate, record.recording);
+            const path = join(toRecordingsDir(file), record.recording);
             const recording = parseWav(await Bun.file(path).bytes());
             const speechEnd = Math.round((record.speechMs * recording.sampleRate) / 1000);
             const reply = recording.samples.subarray(speechEnd);

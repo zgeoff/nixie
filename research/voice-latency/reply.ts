@@ -35,6 +35,7 @@ import {
 import type { AgentSessionOptions } from './start-agent-session.ts';
 import { startAgentSession } from './start-agent-session.ts';
 import { toWav } from './to-wav.ts';
+import { toRecordingsDir } from './to-recordings-dir.ts';
 import { acknowledgeRules, openerSpokenRules } from './voice-rules.ts';
 
 const { values } = parseArgs({
@@ -58,7 +59,7 @@ const gapToleranceMs = z.coerce.number().nonnegative().parse(values['gap-toleran
 const limit =
   values.limit === undefined ? Number.POSITIVE_INFINITY : z.coerce.number().int().positive().parse(values.limit);
 const out = values.out ?? `results/reply-${candidate}.jsonl`;
-const recordingsDir = join(dirname(out), 'recordings', candidate);
+const recordingsDir = toRecordingsDir(out);
 const persona = readFileSync(values.persona, 'utf8').trim();
 // A clause of fewer words waits for the next break, so Piper never speaks a one-word fragment.
 const minClauseWords = 4;

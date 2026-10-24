@@ -23,6 +23,7 @@ import { toPeakLevel } from './to-peak-level.ts';
 import { toWav } from './to-wav.ts';
 import type { TurnTakingRecord } from './turn-taking-record.ts';
 import type { VoiceCall } from './voice-call.ts';
+import { toRecordingsDir } from './to-recordings-dir.ts';
 import { acknowledgeRules } from './voice-rules.ts';
 
 const { values } = parseArgs({
@@ -42,7 +43,7 @@ const set = z.enum(['ami', 'hvb', 'slurp']).parse(values.set);
 const limit = z.coerce.number().int().positive().parse(values.limit);
 const runName = `${candidate}-${set}${peak === undefined ? '' : `-peak${peak}`}`;
 const out = values.out ?? `results/turn-taking-${runName}.jsonl`;
-const recordingsDir = join(dirname(out), 'recordings', `turn-taking-${runName}`);
+const recordingsDir = toRecordingsDir(out);
 const instructions = `${readFileSync(values.persona, 'utf8').trim()}\n\n${acknowledgeRules}`;
 const key = (await new Response(Bun.stdin.stream()).text()).trim();
 if (key === '') {
