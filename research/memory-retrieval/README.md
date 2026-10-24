@@ -4,7 +4,7 @@ This spike compares keyword search, SQLite FTS5 with BM25 ranking, vectors from 
 embedding model, and BM25 fused with vectors, over 276 synthetic memory items and 75 questions. It
 times the in-memory FTS5 index that the
 [event log design](../../docs/design/platform/core/event-log.md#memory-history-and-export) requires
-for free text that can be shredded. A second run measures the shipped per-turn retrieval on one
+for free text that can be shredded. A second measurement takes the shipped per-turn retrieval to one
 deployment's own conversations and tunes its settings.
 
 ## Question
@@ -24,8 +24,8 @@ item count find more of what a turn needed than the shipped settings?
 - No method tells a current fact from a superseded one, so the store has to.
 - An in-memory FTS5 index over 20,000 log messages builds in 62 ms and takes 0.85 ms per query.
 - On 112 labelled real turns, the shipped hybrid ranking scored recall@5 0.543, recall@10 0.712 and
-  MRR 0.494. No encoder, fusion setting, floor or item count beat it beyond its 95% interval, and
-  BM25 alone scored about 0.1 lower.
+  MRR 0.494. No alternative encoder, fusion setting, floor or item count was shown to be better, and
+  BM25 alone scored about 0.1 lower beyond its 95% interval.
 
 Let the store mark which fact is current. Keep the shipped encoder, fusion, floors and item counts.
 
@@ -48,5 +48,5 @@ a deployment's own turns.
 ## Untested
 
 Keywords from a model that has not seen the items, and labels from the live assistant rather than a
-model given its persona. The [untested list](results.md#untested) and the
+language model given its persona. The [untested list](results.md#untested) and the
 [real-turn list](real-turns.md#untested) give the rest.
