@@ -23,7 +23,7 @@ defaults:
 
 jobs:
   changes:
-    uses: zgeoff/tools/.github/workflows/paths-changed.yml@sync-v23
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@sync-v25
     with:
       paths: |
         .github/workflows/k8s-package.yml
