@@ -21,6 +21,7 @@ test('it claims the first step of a new task for runner-a under a 60 s lease', a
       expiresAt: 1_060_000,
     },
     stepKey: `${claim.lease.workID}:1`,
+    wake: { hop: 0, cause: { kind: 'carried' } },
   });
 });
 

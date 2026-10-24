@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { readOpeningBatch } from './read-opening-batch';
+import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
@@ -33,6 +34,7 @@ test('it opens with the records whose images fit what the session leaves, and co
 
   const opening = await readOpeningBatch(ctx.log, inbox, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
     images: { bytes: 24 * 1024 * 1024 - 12, count: 3 },
   });
 
@@ -67,6 +69,7 @@ test('it opens a new session with every record that fits the whole budget', asyn
 
   const opening = await readOpeningBatch(ctx.log, inbox, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
     images: { bytes: 0, count: 0 },
   });
 
@@ -90,6 +93,7 @@ test('it opens with the records whose images fit the 100 a session holds, howeve
 
   const opening = await readOpeningBatch(ctx.log, inbox, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
     images: { bytes: 776, count: 97 },
   });
 

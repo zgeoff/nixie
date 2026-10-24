@@ -47,6 +47,8 @@ async function setupTest() {
     getPersona: () => '',
     getPrompts: () => ({}),
     ownerName: 'Marisol',
+    defaultZone: 'UTC',
+    messaging: { directory: [], hopLimit: 20, ownerName: 'Marisol' },
     onError: (error) => {
       throw error;
     },
@@ -118,7 +120,7 @@ test('it runs a session over the active items and leaves the diff its model prop
   });
 }, 60_000);
 
-test('it gives the session only recall and consolidate', async () => {
+test('it gives the session only recall, consolidate and the task list and message tools', async () => {
   const ctx = await setupTest();
 
   await Promise.all([
@@ -136,12 +138,12 @@ test('it gives the session only recall and consolidate', async () => {
 
   const tools = ctx.model.requests[0]?.body?.tools?.map((tool) => tool.name);
 
-  expect(tools).toIncludeAllMembers([
+  expect(tools?.filter((name) => name.startsWith('mcp__nixie__'))).toIncludeSameMembers([
     'mcp__nixie__memory_recall',
     'mcp__nixie__memory_consolidate',
+    'mcp__nixie__tasks_list',
+    'mcp__nixie__task_message',
   ]);
-
-  expect(tools?.filter((name) => name.startsWith('mcp__nixie__'))).toHaveLength(2);
 }, 60_000);
 
 test("it shows the session the owner's name and each item's quote under its text", async () => {

@@ -20,6 +20,7 @@ export async function runResumedTurn(
 ): Promise<StepResult> {
   const isFull = await probeSessionImagesFull(step.run, {
     inbox: step.input.inbox,
+    wake: step.input.wake,
     images: step.marks.images,
   });
 

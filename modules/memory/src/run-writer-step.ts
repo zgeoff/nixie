@@ -7,17 +7,27 @@ import { runWriterBatch } from './run-writer-batch';
 import type { WriterParts } from './writer-parts';
 
 export async function runWriterStep(parts: WriterParts, input: StepInput): Promise<StepResult> {
-  const acknowledged = input.inbox.map((record) => record.sequence);
+  const wakes = input.inbox
+    .filter((record) => record.kind !== 'task_message')
+    .map((record) => record.sequence);
+
   const now = parts.context.clock.now();
 
   const row = await readWriterRow(parts.context.log);
 
   if (row.retry_at !== null && now < row.retry_at) {
-    return { next: 'wait', records: [], acknowledged, timers: [{ dueAt: row.retry_at }] };
+    return { next: 'wait', records: [], acknowledged: wakes, timers: [{ dueAt: row.retry_at }] };
   }
 
   try {
-    return { ...(await runWriterBatch(parts, { input, row, now })), records: [], acknowledged };
+    const run = await runWriterBatch(parts, { input, row, now });
+
+    return {
+      next: run.next,
+      timers: run.timers,
+      records: [],
+      acknowledged: run.hasRunSession ? input.inbox.map((record) => record.sequence) : wakes,
+    };
   } catch (error) {
     if (error instanceof LeaseLostError || error instanceof StaleWriterError) {
       throw error;
@@ -25,7 +35,7 @@ export async function runWriterStep(parts: WriterParts, input: StepInput): Promi
 
     return {
       ...buildWriterFailure(parts, { row, now: parts.context.clock.now(), error }),
-      acknowledged,
+      acknowledged: wakes,
     };
   }
 }

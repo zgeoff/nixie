@@ -1,5 +1,5 @@
 import type { PromptOverrides } from '@heynixie/prompts';
-import type { TasksContext } from '@heynixie/tasks';
+import type { TaskMessaging, TasksContext } from '@heynixie/tasks';
 import type { ConsolidationConfig } from './consolidation-config-schema';
 import type { MemoryConsolidations } from './consolidation-types';
 import type { ConsolidationStaging } from './create-consolidation-staging';
@@ -20,6 +20,8 @@ export interface ConsolidatorParts {
   readonly getPrompts: () => PromptOverrides;
 
   readonly ownerName: string | null;
+  readonly defaultZone: string;
+  readonly messaging: TaskMessaging;
 
   readonly onError: (error: unknown) => void;
 }

@@ -7,6 +7,8 @@ import type { CompletedTurn } from './build-step-result';
 import { readLiveInbox } from './read-live-inbox';
 import { readOpeningBatch } from './read-opening-batch';
 import { readRecalledThrough } from './read-recalled-through';
+import { renderHeldMessages } from './render-held-messages';
+import type { TaskMessageView } from './render-task-message';
 import { runGuestTurn } from './run-guest-turn';
 import type { ConversationRun, ImageTally, MessageTimeOptions, TurnNote } from './types';
 
@@ -19,6 +21,7 @@ export interface LiveTurnPlan {
   readonly signal: AbortSignal;
 
   readonly times: MessageTimeOptions;
+  readonly view: TaskMessageView;
 
   readonly images: ImageTally;
 
@@ -55,6 +58,9 @@ async function runTokenTurn(
   const opening = await readOpeningBatch(run.context.log, input.inbox, plan);
 
   const sent = new Set(opening.batch.records.map((record) => record.sequence));
+
+  const held = renderHeldMessages(opening.batch.records, plan.times, plan.view);
+
   const live = new AbortController();
 
   const hasMore = input.inbox.length > opening.batch.records.length;
@@ -69,7 +75,7 @@ async function runTokenTurn(
         tools: { url, token: plan.token },
         resume: plan.resume,
         systemPrompt: plan.systemPrompt,
-        input: buildTurnInput(opening.batch.messages, [...plan.preamble, note?.text ?? null]),
+        input: buildTurnInput(opening.batch.messages, [...plan.preamble, note?.text ?? null, held]),
       },
       messages: hasMore
         ? []
@@ -78,6 +84,7 @@ async function runTokenTurn(
             sent,
             signal: live.signal,
             times: plan.times,
+            view: plan.view,
             images: opening.images,
           }),
       signal: plan.signal,

@@ -35,6 +35,7 @@ async function setupTest() {
     ownerName: null,
     assistantName: null,
     defaultZone: 'UTC',
+    messaging: { directory: [], hopLimit: 20, ownerName: null },
   };
 
   return { memory, clock, parts };
@@ -57,6 +58,7 @@ test('it publishes the batch and advances the cursor with its record', async () 
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -104,6 +106,7 @@ test('it returns superseded when an item moved on since the session read it', as
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -174,6 +177,7 @@ test('it returns superseded when the checker passed a write under definitions th
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -243,6 +247,7 @@ test('it returns superseded when an item a proposal names was forgotten since th
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -310,6 +315,7 @@ test('it rejects a publish whose lease another claim replaced', async () => {
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };

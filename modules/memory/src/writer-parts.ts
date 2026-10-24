@@ -1,5 +1,5 @@
 import type { PromptOverrides } from '@heynixie/prompts';
-import type { StepInput, TasksContext } from '@heynixie/tasks';
+import type { StepInput, TaskMessaging, TasksContext } from '@heynixie/tasks';
 import type { WriterStaging } from './create-writer-staging';
 import type { MemoryProposals } from './gate-types';
 import type { MemoryStore } from './types';
@@ -26,6 +26,8 @@ export interface WriterParts {
   readonly assistantName: string | null;
 
   readonly defaultZone: string;
+
+  readonly messaging: TaskMessaging;
 }
 
 export interface WriterStepState {

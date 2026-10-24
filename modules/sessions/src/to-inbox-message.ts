@@ -4,16 +4,18 @@ import type { InboxImage, InboxMessage } from '@heynixie/wire';
 import { encodeInboxUUID } from './encode-inbox-uuid';
 import { renderImageMarkers } from './render-image-markers';
 import { renderInboxMessage } from './render-inbox-message';
+import type { TaskMessageView } from './render-task-message';
 import type { MessageTimeOptions } from './types';
 
 export function toInboxMessage(
   record: LogRecord,
   times: MessageTimeOptions,
+  view: TaskMessageView,
   attachments: readonly Uint8Array[] = [],
 ): InboxMessage {
   const message = {
     uuid: encodeInboxUUID(record.sequence),
-    text: renderInboxMessage(record, times),
+    text: renderInboxMessage(record, times, view),
   };
 
   const images = buildInboxImages(record, attachments);

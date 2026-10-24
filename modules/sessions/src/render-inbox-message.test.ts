@@ -2,6 +2,139 @@ import { expect, test } from 'bun:test';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { renderInboxMessage } from './render-inbox-message';
+import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
+
+test("it frames a task's message with who sent it, when, its hop and whether a reply wakes the sender", () => {
+  const record = buildMockLogRecord({
+    sequence: 48_300,
+    kind: 'task_message',
+    thread: 'conversation',
+    recordedAt: new Date('2026-10-13T03:05:00Z'),
+    payload: {
+      messageID: 'k3vq8m2xpa',
+      from: 'memory-writer',
+      to: 'conversation',
+      kind: 'question',
+      replyTo: null,
+      onBehalfOf: ['48212'],
+      hop: 2,
+      hopLimit: 20,
+      wake: true,
+      woke: true,
+      source: 'task:memory-writer',
+    },
+    erasable: { status: 'readable', fields: { body: 'Should I keep the note about the bike?' } },
+  });
+
+  const message = renderInboxMessage(
+    record,
+    { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T03:12:00Z') },
+    buildMockTaskMessageView({
+      messaging: {
+        directory: [
+          {
+            taskID: 'memory-writer',
+            name: 'Memory writer',
+            brief: 'Saves memories.',
+            isWokenByMessages: true,
+          },
+        ],
+        hopLimit: 20,
+        ownerName: 'Robin',
+      },
+      wake: { hop: 2, cause: { kind: 'task', taskID: 'memory-writer' } },
+    }),
+  );
+
+  const blockID = /block="(?<blockID>\w+)"/u.exec(message)?.groups?.['blockID'];
+
+  expect(message).toBe(
+    [
+      `<task-message id="k3vq8m2xpa" from="memory-writer" name="Memory writer" kind="question" sent="Tue 13 Oct, 14:05, Sydney" age="7 min" hop="2" reply-wakes="yes" on-behalf-of="#48212" block="${blockID}">`,
+      'This message is from another task, not from Robin.',
+      'Should I keep the note about the bike?',
+      `</task-message block="${blockID}">`,
+    ].join('\n'),
+  );
+});
+
+test('it tells the receiver its reply will not wake a sender that reads only at its own runs', () => {
+  const record = buildMockLogRecord({
+    sequence: 48_300,
+    kind: 'task_message',
+    thread: 'conversation',
+    recordedAt: new Date('2026-10-13T03:05:00Z'),
+    payload: {
+      messageID: 'k3vq8m2xpa',
+      from: 'memory-writer',
+      to: 'conversation',
+      kind: 'report',
+      replyTo: 'w7tn4c9rhz',
+      onBehalfOf: [],
+      hop: 1,
+      hopLimit: 20,
+      wake: true,
+      woke: true,
+      source: 'task:memory-writer',
+    },
+    erasable: { status: 'readable', fields: { body: 'Three memories proposed.' } },
+  });
+
+  const message = renderInboxMessage(
+    record,
+    { defaultZone: 'Australia/Sydney', now: new Date('2026-10-15T03:05:00Z') },
+    buildMockTaskMessageView({
+      messaging: {
+        directory: [
+          {
+            taskID: 'memory-writer',
+            name: 'Memory writer',
+            brief: 'Saves memories.',
+            isWokenByMessages: false,
+          },
+        ],
+        hopLimit: 20,
+        ownerName: 'Robin',
+      },
+    }),
+  );
+
+  expect(message).toStartWith(
+    '<task-message id="k3vq8m2xpa" from="memory-writer" name="Memory writer" kind="report" reply-to="w7tn4c9rhz" sent="Tue 13 Oct, 14:05, Sydney" age="2 days" hop="1" reply-wakes="no" block="',
+  );
+});
+
+test("it renders a forgotten task message's body as forgotten", () => {
+  const record = buildMockLogRecord({
+    sequence: 48_300,
+    kind: 'task_message',
+    thread: 'conversation',
+    recordedAt: new Date('2026-10-13T03:05:00Z'),
+    payload: {
+      messageID: 'k3vq8m2xpa',
+      from: 'memory-writer',
+      to: 'conversation',
+      kind: 'chat',
+      replyTo: null,
+      onBehalfOf: [],
+      hop: 1,
+      hopLimit: 20,
+      wake: true,
+      woke: true,
+      source: 'task:memory-writer',
+    },
+    erasable: { status: 'shredded' },
+  });
+
+  const message = renderInboxMessage(
+    record,
+    { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T03:05:30Z') },
+    buildMockTaskMessageView(),
+  );
+
+  expect(message).toInclude('age="under a minute"');
+  expect(message).toInclude('\n[a message since forgotten]\n');
+});
 
 test('it renders your message after its event ID and the time you sent it, in the zone the message carries', () => {
   const record = buildMockLogRecord({
@@ -13,10 +146,11 @@ test('it renders your message after its event ID and the time you sent it, in th
   });
 
   expect(
-    renderInboxMessage(record, {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T15:00:00Z'),
-    }),
+    renderInboxMessage(
+      record,
+      { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T15:00:00Z') },
+      buildMockTaskMessageView(),
+    ),
   ).toBe('[#48213 · Tue 13 Oct, 14:05, London] Buy milk.');
 });
 
@@ -29,10 +163,11 @@ test('it renders your message after its event ID and the time you sent it, in th
   });
 
   expect(
-    renderInboxMessage(record, {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    }),
+    renderInboxMessage(
+      record,
+      { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+      buildMockTaskMessageView(),
+    ),
   ).toBe('[#48213 · Tue 13 Oct, 14:05, Sydney] Buy milk.');
 });
 
@@ -55,10 +190,11 @@ test('it renders two messages a night apart each with its own event ID and time'
 
   expect(
     [goodnight, goodMorning].map((record) =>
-      renderInboxMessage(record, {
-        defaultZone: 'Australia/Sydney',
-        now: new Date('2026-10-12T20:16:00Z'),
-      }),
+      renderInboxMessage(
+        record,
+        { defaultZone: 'Australia/Sydney', now: new Date('2026-10-12T20:16:00Z') },
+        buildMockTaskMessageView(),
+      ),
     ),
   ).toStrictEqual([
     '[#48213 · Mon 12 Oct, 22:40, Sydney] Goodnight.',
@@ -85,10 +221,11 @@ test('it renders messages from two device sessions each with its session’s lab
 
   expect(
     [fromPhone, fromPC].map((record) =>
-      renderInboxMessage(record, {
-        defaultZone: 'Australia/Sydney',
-        now: new Date('2026-10-14T09:00:00Z'),
-      }),
+      renderInboxMessage(
+        record,
+        { defaultZone: 'Australia/Sydney', now: new Date('2026-10-14T09:00:00Z') },
+        buildMockTaskMessageView(),
+      ),
     ),
   ).toStrictEqual([
     '[#48213 · Wed 14 Oct, 14:05, Sydney · phone] On the train.',
@@ -105,10 +242,11 @@ test('it renders a note after the send time in place of a message whose text was
   });
 
   expect(
-    renderInboxMessage(record, {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    }),
+    renderInboxMessage(
+      record,
+      { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+      buildMockTaskMessageView(),
+    ),
   ).toBe('[#48213 · Tue 13 Oct, 14:05, Sydney] [a message you sent, since forgotten]');
 });
 
@@ -121,10 +259,11 @@ test('it renders a fired timer as a timer system message at the time it fired, i
     erasable: { status: 'none' },
   });
 
-  const rendered = renderInboxMessage(record, {
-    defaultZone: 'Australia/Sydney',
-    now: new Date('2026-10-13T05:00:00Z'),
-  });
+  const rendered = renderInboxMessage(
+    record,
+    { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    buildMockTaskMessageView(),
+  );
 
   const blockID = /^<system-message type="timer" id="(?<blockID>[\da-f]{12})"/u.exec(rendered)
     ?.groups?.['blockID'];
@@ -149,10 +288,11 @@ test('it renders an action outcome as an outcome system message at the time it s
     erasable: { status: 'none' },
   });
 
-  const rendered = renderInboxMessage(record, {
-    defaultZone: 'Australia/Sydney',
-    now: new Date('2026-10-13T05:00:00Z'),
-  });
+  const rendered = renderInboxMessage(
+    record,
+    { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    buildMockTaskMessageView(),
+  );
 
   const blockID = /^<system-message type="outcome" id="(?<blockID>[\da-f]{12})"/u.exec(rendered)
     ?.groups?.['blockID'];
@@ -178,10 +318,11 @@ test('it renders a fired timer from an earlier year with the year in its time', 
   });
 
   expect(
-    renderInboxMessage(record, {
-      defaultZone: 'Europe/London',
-      now: new Date('2026-01-02T09:00:00Z'),
-    }),
+    renderInboxMessage(
+      record,
+      { defaultZone: 'Europe/London', now: new Date('2026-01-02T09:00:00Z') },
+      buildMockTaskMessageView(),
+    ),
   ).toInclude(' at="Tue 30 Dec 2025, 22:00, London">');
 });
 
@@ -203,10 +344,11 @@ test('it renders a span you dropped in your message inside a dropped block', () 
     },
   });
 
-  const message = renderInboxMessage(record, {
-    defaultZone: 'Australia/Sydney',
-    now: new Date('2026-10-13T15:00:00Z'),
-  });
+  const message = renderInboxMessage(
+    record,
+    { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T15:00:00Z') },
+    buildMockTaskMessageView(),
+  );
 
   const blockID = /<dropped id="(?<blockID>\w+)">/u.exec(message)?.groups?.['blockID'];
 

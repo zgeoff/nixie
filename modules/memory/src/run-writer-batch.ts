@@ -6,18 +6,28 @@ import { writeGatedBatch } from './write-gated-batch';
 import type { WriterBatchStep } from './write-gated-batch';
 import type { WriterParts, WriterStepState } from './writer-parts';
 
+export interface WriterBatchRun extends WriterBatchStep {
+  readonly hasRunSession: boolean;
+}
+
 export async function runWriterBatch(
   parts: WriterParts,
   state: WriterStepState,
-): Promise<WriterBatchStep> {
+): Promise<WriterBatchRun> {
   const bounds = await readBatchBounds(parts, state);
 
   if ('wakeAt' in bounds) {
-    return { next: 'wait', timers: bounds.wakeAt === null ? [] : [{ dueAt: bounds.wakeAt }] };
+    return {
+      next: 'wait',
+      timers: bounds.wakeAt === null ? [] : [{ dueAt: bounds.wakeAt }],
+      hasRunSession: false,
+    };
   }
 
   const batch = await readWriterBatch(parts.context.log, bounds);
-  const extracted = await runWriterExtraction(parts, batch, state.input.signal);
+  const extracted = await runWriterExtraction(parts, batch, state.input);
+
+  const hasRunSession = extracted.usage !== null;
 
   const gated = await tryRunWriterGate(parts.gate, extracted.writes, {
     findSource: (sequence) => batch.sources.get(sequence),
@@ -26,14 +36,16 @@ export async function runWriterBatch(
   });
 
   if (gated === null) {
-    return { next: 'continue', timers: [] };
+    return { next: 'continue', timers: [], hasRunSession };
   }
 
-  return writeGatedBatch(parts, {
+  const written = await writeGatedBatch(parts, {
     ...state,
     batch,
     gated,
     flags: extracted.flags,
     usage: extracted.usage,
   });
+
+  return { next: written.next, timers: written.timers, hasRunSession };
 }

@@ -1,7 +1,7 @@
 import type { CompactionSettings } from '@heynixie/compaction';
 import { deriveModelSecret, toTurnProfile } from '@heynixie/models';
 import type { ResolvedProfile } from '@heynixie/models';
-import type { RunStep, TasksContext } from '@heynixie/tasks';
+import type { RunStep, TaskMessaging, TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import { buildDefaultStatus } from './build-default-status';
@@ -42,6 +42,8 @@ export interface ConversationRunnerOptions {
 
   readonly defaultZone?: string;
 
+  readonly messaging?: TaskMessaging;
+
   readonly log: ConversationSandboxSpec['log'];
 }
 
@@ -64,6 +66,7 @@ const defaultMemorySettings: ConversationMemorySettings = {
 };
 
 const defaultCompaction: CompactionSettings = { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 };
+const defaultMessaging: TaskMessaging = { directory: [], hopLimit: 20, ownerName: null };
 
 export async function startConversationRunner(
   options: ConversationRunnerOptions,
@@ -97,6 +100,7 @@ export async function startConversationRunner(
     status: options.status ?? buildDefaultStatus(),
 
     defaultZone: options.defaultZone ?? 'UTC',
+    messaging: options.messaging ?? defaultMessaging,
     session: makeSessionGuard(),
   };
 

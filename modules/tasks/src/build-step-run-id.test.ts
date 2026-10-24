@@ -5,6 +5,7 @@ test('it names a claim by its step key and its lease generation', () => {
   expect(
     buildStepRunID({
       stepKey: 'conversation:4',
+      wake: { hop: 0, cause: { kind: 'owner' } },
       lease: {
         kind: 'task',
         workID: 'conversation',

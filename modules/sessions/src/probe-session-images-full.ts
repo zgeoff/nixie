@@ -7,12 +7,13 @@ import type { ConversationRun, ImageTally } from './types';
 
 export interface SessionImages {
   readonly inbox: StepInput['inbox'];
+  readonly wake: StepInput['wake'];
 
   readonly images: ImageTally;
 }
 
 export async function probeSessionImagesFull(
-  run: Pick<ConversationRun, 'context' | 'defaultZone'>,
+  run: Pick<ConversationRun, 'context' | 'defaultZone' | 'messaging'>,
   session: SessionImages,
 ): Promise<boolean> {
   if (session.images.count === 0) {
@@ -23,6 +24,7 @@ export async function probeSessionImagesFull(
 
   const [first] = await readInboxMessages(run.context.log, session.inbox.slice(0, 1), {
     times,
+    view: { messaging: run.messaging, wake: session.wake },
     imageBudget: { bytes: 0, count: 0 },
   });
 

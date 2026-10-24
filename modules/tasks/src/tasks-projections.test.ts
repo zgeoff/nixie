@@ -3,11 +3,15 @@ import { runProjectionRebuild, writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import type { TasksTables } from './index';
 import {
+  claimTask,
+  createConversationTask,
+  createSystemTask,
   readInbox,
   runDueTimers,
   writeInboxRecords,
   writeStepCommit,
   writeStepError,
+  writeTaskMessage,
 } from './index';
 import { tasksProjections } from './tasks-projections';
 import { createTestClaim } from './test-utils/create-test-claim';
@@ -20,7 +24,11 @@ async function setupTest() {
 }
 
 test('it lists the tasks projection before the timers projection that refers to it', () => {
-  expect(tasksProjections.map((projection) => projection.table)).toStrictEqual(['tasks', 'timers']);
+  expect(tasksProjections.map((projection) => projection.table)).toStrictEqual([
+    'tasks',
+    'timers',
+    'task_messages',
+  ]);
 });
 
 test('it rebuilds the tasks table equal to the live one after a commit and a message', async () => {
@@ -149,5 +157,76 @@ test('it rebuilds the timers table equal to the live one after a timer fires', a
   const rebuilt = await ctx.db.selectFrom('timers').selectAll().execute();
 
   expect(live).toHaveLength(1);
+  expect(rebuilt).toStrictEqual(live);
+});
+
+test('it rebuilds the task messages and their waits equal to the live ones after a reply', async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 20,
+  };
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+
+  const planner = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(planner);
+
+  const question = await writeTaskMessage(ctx.context, messaging, {
+    from: 'planner',
+    to: 'conversation',
+    kind: 'question',
+    body: 'Is Tuesday free?',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  invariant(question.status === 'sent');
+
+  await writeTaskMessage(ctx.context, messaging, {
+    from: 'planner',
+    to: 'conversation',
+    kind: 'request',
+    body: 'Hold Wednesday too.',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  await writeStepCommit(ctx.context, planner, { next: 'wait', records: [], acknowledged: [] });
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await writeTaskMessage(ctx.context, messaging, {
+    from: 'conversation',
+    to: 'planner',
+    kind: 'reply',
+    body: 'Tuesday is free.',
+    replyTo: question.messageID,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  const live = await ctx.db
+    .selectFrom('task_messages')
+    .selectAll()
+    .orderBy('sent_sequence')
+    .execute();
+
+  await runProjectionRebuild(ctx.context.log);
+
+  const rebuilt = await ctx.db
+    .selectFrom('task_messages')
+    .selectAll()
+    .orderBy('sent_sequence')
+    .execute();
+
+  expect(live.map((row) => row.is_waiting)).toStrictEqual([0, 1, 0]);
   expect(rebuilt).toStrictEqual(live);
 });

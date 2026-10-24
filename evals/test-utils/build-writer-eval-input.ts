@@ -65,6 +65,7 @@ export function buildWriterEvalInput(
     messages,
     names,
     defaultZone: cases.timeZone,
+    taskMessages: null,
   });
 
   const evalTools = tools.map((tool) => ({

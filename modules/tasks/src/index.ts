@@ -1,4 +1,14 @@
 export { buildStepRunID } from './build-step-run-id';
+export { buildTaskMessageTool } from './build-task-message-tool';
+export { buildTasksListTool } from './build-tasks-list-tool';
+export { canReplyWake } from './can-reply-wake';
+export { getTaskName } from './get-task-name';
+export { renderExchangeNotice } from './render-exchange-notice';
+export { renderLimitedSummary } from './render-limited-summary';
+export { taskExchangeLimitedCodec } from './task-exchange-limited-codec';
+export { taskMessageCodec } from './task-message-codec';
+export type { TaskMessageOutcome } from './write-task-message';
+export { writeTaskMessage } from './write-task-message';
 export type { ClaimRequest } from './claim-lease';
 export { claimLease } from './claim-lease';
 export type { ClaimTaskOptions } from './claim-task';
@@ -55,11 +65,16 @@ export type {
   StepErrored,
   StepInput,
   StepResult,
+  StepWake,
   TaskClaim,
+  TaskMessageKind,
+  TaskMessaging,
+  TaskProfile,
   TaskRow,
   TaskState,
   TasksContext,
   TasksTables,
+  WakeCause,
 } from './types';
 
 export { waitAtFaultPoint } from './wait-at-fault-point';

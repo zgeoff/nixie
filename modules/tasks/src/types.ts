@@ -24,6 +24,34 @@ export interface Lease {
 export interface TaskClaim {
   readonly lease: Lease;
   readonly stepKey: string;
+  readonly wake: StepWake;
+}
+
+export type TaskMessageKind = 'progress' | 'question' | 'request' | 'report' | 'reply' | 'chat';
+
+export type WakeCause =
+  | { readonly kind: 'owner' }
+  | { readonly kind: 'timer' }
+  | { readonly kind: 'event' }
+  | { readonly kind: 'task'; readonly taskID: string }
+  | { readonly kind: 'carried' };
+
+export interface StepWake {
+  readonly hop: number;
+  readonly cause: WakeCause;
+}
+
+export interface TaskProfile {
+  readonly taskID: string;
+  readonly name: string;
+  readonly brief: string;
+  readonly isWokenByMessages: boolean;
+}
+
+export interface TaskMessaging {
+  readonly directory: readonly TaskProfile[];
+  readonly hopLimit: number;
+  readonly ownerName: string | null;
 }
 
 export interface StepErrored {
@@ -52,6 +80,8 @@ export interface StepInput {
 
   readonly lease: Lease;
   readonly inbox: readonly LogRecord[];
+
+  readonly wake: StepWake;
 
   readonly sessionBoundary: string | null;
 
@@ -116,6 +146,7 @@ interface TaskTable {
   readonly step_errors: number;
   readonly claimable_at: number;
   readonly session_boundary: string | null;
+  readonly step_hop: number;
   readonly created_sequence: number;
   readonly updated_sequence: number;
 }
@@ -140,8 +171,20 @@ interface LeaseTable {
 
 interface InboxRecordTable {
   readonly sequence: number;
+  readonly recorded_at: number;
   readonly thread: string | null;
   readonly kind: RecordKind;
+  readonly payload: string;
+}
+
+interface TaskMessageTable {
+  readonly message_id: string;
+  readonly from_task: string;
+  readonly to_task: string;
+  readonly kind: TaskMessageKind;
+  readonly reply_to: string | null;
+  readonly is_waiting: number;
+  readonly sent_sequence: number;
 }
 
 export type TaskRow = TaskTable;
@@ -153,6 +196,7 @@ export type TasksTables = CheckedTables<
     timers: TimerTable;
     leases: LeaseTable;
     records: InboxRecordTable;
+    task_messages: TaskMessageTable;
   }>,
   'records'
 >;

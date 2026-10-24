@@ -54,6 +54,7 @@ export async function runPlannedTurn(
     preamble: [...(opening?.blocks ?? []), ...turn.context.preamble],
     signal: turn.signal,
     times,
+    view: { messaging: turn.run.messaging, wake: turn.input.wake },
     images: turn.images,
     session: { key: turn.sessionKey, invalidatedThrough: turn.invalidatedThrough },
   });

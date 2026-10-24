@@ -71,6 +71,7 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
         readSkillList: () => [],
       }),
       prompts: [buildPromptReadTool({ readInForce: () => null })],
+      tasks: [],
     },
     {
       readStore: () => null,
@@ -195,6 +196,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
       logRead: ctx.logRead,
       skills: [],
       prompts: [],
+      tasks: [],
     },
     {
       readStore: () => null,
@@ -255,6 +257,7 @@ test('it allows the time tool, the log reader and each memory tool but export, a
         logRead: ctx.logRead,
         skills: [],
         prompts: [],
+        tasks: [],
       },
       {
         readStore: () => null,
@@ -352,6 +355,7 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
       logRead: ctx.logRead,
       skills: [],
       prompts: [],
+      tasks: [],
     },
     {
       readStore: () => null,
@@ -408,6 +412,7 @@ test('it denies a model call to memory.export under the read-only rule, so nothi
         logRead: ctx.logRead,
         skills: [],
         prompts: [],
+        tasks: [],
       },
       {
         readStore: () => null,

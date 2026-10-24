@@ -7,10 +7,12 @@ import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import type { SkillVendorContext } from '@heynixie/skills';
+import { buildTaskMessageTool, buildTasksListTool } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildConversationSkillTools } from './build-conversation-skill-tools';
 import { buildConversationTools } from './build-conversation-tools';
+import { buildTaskMessaging } from './build-task-messaging';
 import type { ServerParts } from './types';
 
 export interface ConversationEndpointTools {
@@ -68,8 +70,15 @@ export async function startConversationEndpoint(
     ? [buildPromptReadTool(promptContext), buildPromptWriteTool(promptContext)]
     : [buildPromptReadTool(promptContext)];
 
+  const messaging = buildTaskMessaging(options.config);
+
+  const tasks = [
+    buildTasksListTool(options.context, messaging),
+    buildTaskMessageTool(options.context, messaging),
+  ];
+
   const definitions = buildConversationTools(
-    { webFetch: tools.webFetch, time, logRead, skills, prompts },
+    { webFetch: tools.webFetch, time, logRead, skills, prompts, tasks },
     {
       readStore: tools.readStore,
       clock: options.context.clock,

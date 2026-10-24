@@ -50,3 +50,44 @@ test('it leaves nothing unread once the step acknowledges every inbox record', a
 
   expect(cursor).toStrictEqual({ readCursor: message.sequence, hasUnread: false });
 });
+
+test('it leaves nothing unread when only a message that did not wake the task stays unread', async () => {
+  const tasks = await startTestTasks();
+  const claim = await createTestClaim(tasks.context, 'tidy the inbox');
+
+  const [, wake] = await writeInboxRecords(tasks.context, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: claim.lease.workID,
+      payload: {
+        messageID: 'k3vq8m2xpa',
+        from: 'conversation',
+        to: claim.lease.workID,
+        kind: 'chat',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: false,
+        source: 'task:conversation',
+      },
+      erasable: { body: 'read this on your next run' },
+    },
+    {
+      kind: 'task.wake',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: claim.lease.workID,
+      payload: { at: 0 },
+    },
+  ]);
+
+  invariant(wake);
+
+  const cursor = await withWriteTransaction(tasks.writer, (tx) =>
+    readStepCursor(tx, claim.lease.workID, [wake.sequence]),
+  );
+
+  expect(cursor).toStrictEqual({ readCursor: 0, hasUnread: false });
+});

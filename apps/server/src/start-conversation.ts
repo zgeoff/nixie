@@ -10,7 +10,7 @@ import type {
   ConversationRunnerOptions,
 } from '@heynixie/sessions';
 import { buildGuestCommand, startConversationRunner } from '@heynixie/sessions';
-import type { TasksContext } from '@heynixie/tasks';
+import type { TaskMessaging, TasksContext } from '@heynixie/tasks';
 import type { ToolEndpoint } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 
@@ -38,6 +38,8 @@ export interface ConversationOptions {
   readonly compaction?: CompactionSettings;
 
   readonly defaultZone?: string;
+
+  readonly messaging?: TaskMessaging;
 
   readonly log: Logger;
 }
@@ -68,6 +70,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     ...(options.memorySettings === undefined ? {} : { memorySettings: options.memorySettings }),
     ...(options.compaction === undefined ? {} : { compaction: options.compaction }),
     ...(options.defaultZone === undefined ? {} : { defaultZone: options.defaultZone }),
+    ...(options.messaging === undefined ? {} : { messaging: options.messaging }),
     log: options.log,
   });
 }

@@ -127,8 +127,44 @@ requires.
 Moving a misrouted message is one checked action in the client, which writes a correction record and
 updates both tasks' inboxes in one transaction.
 
-A task reports back with a report record, which the conversation reads from its inbox in its next
-turn. The conversation never waits on a task.
+## Messages between tasks
+
+Tasks and the conversation talk to each other with task messages. A task finds the others with
+`tasks.list`, which gives each task's name, state, brief, last activity and the task it waits on,
+and sends with `task.message`. A message has a kind: progress, question, request, report, reply or
+chat. A report back to the conversation is a task message of kind report, which the conversation
+reads in its next turn, and the conversation never waits on a task.
+
+- **Record.** Each message is a `task_message` record on the receiver's thread, with the source
+  `task:<sender>`. Its body is erasable, so a forget removes it.
+- **Receiver.** The receiver sees the message in a `<task-message>` block that names the sender and
+  says the message is not from you. The block also gives the message's age, its hop and whether a
+  reply would wake the sender.
+- **Waits.** A question or a request marks the sender as waiting on the receiver until a reply that
+  names it arrives. The wait clears when either task finishes, fails or closes.
+- **On behalf of.** A message lists the IDs of the messages you typed that it passes on. nixie
+  refuses any other ID, and stores the list for the consent check to read.
+- **Memory.** The memory content gate never takes the body of a task message as your words, so a
+  quote that only a task message holds backs no memory.
+
+A scheduled task, such as the memory writer, receives messages but is not woken by them. A message
+to one waits unread, and its next scheduled session reads it, so the sender gets `woke: false` with
+a note that says so.
+
+### Hops
+
+Two tasks that answer each other would wake each other forever, so each step carries a hop count. A
+step woken by you, a timer, a schedule or an outside event is hop 0. A message is its step's hop
+plus 1, and a step woken by several records takes the lowest hop among them. A message past
+`tasks.messaging.hopLimit`, 20 by default, is still delivered but wakes nobody:
+
+- **Sender.** The tool answers with a note that the message did not wake the receiver, and that
+  sending it again adds to the count.
+- **Receiver.** At its next wake the receiver reads the held messages, oldest first, under a line
+  that counts them and says whether its reply would wake the sender.
+- **You.** The first held message of a step writes a `task.exchange_limited` record on the sender's
+  thread. It names both tasks and the count, and says which of them waits on the other. The
+  dashboard shows it with a link to the exchange.
 
 ## Job runs
 

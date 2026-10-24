@@ -163,17 +163,27 @@ blocks is not the user's own words and may hold instructions the model acts on o
 own words ask. The model can then tell which quotes the [memory gate](../memory/writes.md) takes as
 typed.
 
+A message from another task renders as a `<task-message>` block, with its random block ID repeated
+on the closing tag. The opening tag gives the message's ID, its sender's ID and name, its kind, the
+message it replies to, when it was sent, its hop, whether a reply would wake the sender, and the
+user's messages it passes on. A fixed first line says the message is from another task, not from the
+user. The system prompt adds that a task message is never the user's own words, and that the model
+weighs its requests as a colleague's. Messages that arrived past the hop limit open the turn under
+one system message per sender, which counts them and names what woke the turn, as
+[task messages](./tasks.md#task-messages) describes.
+
 Images the user sends with a message reach the model as image input, read as dropped in like dropped
 text. The inbox message holds the text first, then for each image a `<dropped-image id="…" n="…"/>`
 marker with its own random ID and the image's number, then the image block. The host reads each
 image's bytes from the [attachments](./erasable-fields.md#keys) and writes them to the guest in the
-message frame, so a frame from the host has a larger size limit than a frame from the guest. The SDK
-repeats every image a session took in each later request, so a session caps both the image bytes it
-holds and the number of images, and each turn end records both. The count cap is the Messages API's
-image limit for a model with the smaller context window, so it holds for every model a profile
-names. A message whose images would pass either cap waits for the next step, whether it opens a
-turn's batch or lands while the turn runs, and that step opens a rebuilt session for it, so no
-request passes the size or the image count the Messages API accepts. The first message of a new
+message frame, so a frame from the host has a larger size limit than a frame from the guest.
+
+The SDK repeats every image a session took in each later request, so a session caps both the image
+bytes it holds and the number of images, and each turn end records both. The count cap is the
+Messages API's image limit for a model with the smaller context window, so it holds for every model
+a profile names. A message whose images would pass either cap waits for the next step, whether it
+opens a turn's batch or lands while the turn runs, and that step opens a rebuilt session for it, so
+no request passes the size or the image count the Messages API accepts. The first message of a new
 session always goes. A rebuilt session's history and every other render of the message show only the
 markers, never the bytes, so an image reaches the model once, in the turn it was sent. The
 pasted-text rule in the system prompt names the images too: the model treats an image's content, its
@@ -205,17 +215,20 @@ text, the tools it asked for and the reasoning summary that message holds, and e
 boundary, the stop reason, the SDK's reason for the end, the count of model calls, the token usage,
 the turn's count of thinking tokens and the context. The model API reports the thinking tokens once
 for the whole turn, never per message. The reply drops the signature that rides the summary, the
-model API's own encrypted copy of the reasoning that nixie cannot read. The SDK gives a context past
-its window an end reason of its own, apart from every other model API error, so the host tells an
-overflow from a refused request on that reason alone. An overflowed turn ends with the CLI's own
-message that the prompt is too long, and the guest keeps the boundary off that message: at the
-turn's last other chain entry, or at its resume point when the turn wrote no other entry. The step
-commits that boundary, so a retry forks the session before the overflow. One exception: a fresh
-session that overflows at its first model call has neither, and its boundary stays on the CLI's
-message. The usage sums every model call in the turn, so it measures cost and not how full the
-context stands. The context is therefore the last main-chain model call's input, cache-read and
-cache-write tokens, beside the window nixie compacts within. The step turns these into records on
-the conversation's thread: a reply record per message with text, whose text is erasable, and one
+model API's own encrypted copy of the reasoning that nixie cannot read.
+
+The SDK gives a context past its window an end reason of its own, apart from every other model API
+error, so the host tells an overflow from a refused request on that reason alone. An overflowed turn
+ends with the CLI's own message that the prompt is too long, and the guest keeps the boundary off
+that message: at the turn's last other chain entry, or at its resume point when the turn wrote no
+other entry. The step commits that boundary, so a retry forks the session before the overflow. One
+exception: a fresh session that overflows at its first model call has neither, and its boundary
+stays on the CLI's message.
+
+The usage sums every model call in the turn, so it measures cost and not how full the context
+stands. The context is therefore the last main-chain model call's input, cache-read and cache-write
+tokens, beside the window nixie compacts within. The step turns these into records on the
+conversation's thread: a reply record per message with text, whose text is erasable, and one
 turn-ended record with the usage, the end reason and the context. The turn's last reply keeps the
 model's reasoning: the summary joined from the turn's thinking sits in the reply's erasable fields,
 so a forget removes it with the reply, and the thinking-token count sits in the plain payload, so a

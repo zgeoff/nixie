@@ -3,6 +3,7 @@ import { toErrorFields } from '@heynixie/logger';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import { startMemoryConsolidatorRunner } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
+import { buildTaskMessaging } from './build-task-messaging';
 import { runOffTaskStep } from './run-off-task-step';
 import type { ServerParts } from './types';
 
@@ -29,6 +30,8 @@ export async function startConsolidatorTask(
     getPersona: () => parts.inForce.read()?.persona ?? '',
     getPrompts: () => parts.inForce.read()?.prompts ?? {},
     ownerName: parts.config.owner.name,
+    defaultZone: parts.config.time.default_zone,
+    messaging: buildTaskMessaging(parts.config),
 
     onError: (error) => {
       parts.log('memory_consolidator.run_failed', toErrorFields(error));

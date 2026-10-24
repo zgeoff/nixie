@@ -17,6 +17,7 @@ export interface ConversationReaders {
   readonly logRead: ToolDefinition;
   readonly skills: readonly ToolDefinition[];
   readonly prompts: readonly ToolDefinition[];
+  readonly tasks: readonly ToolDefinition[];
 }
 
 export function buildConversationTools(
@@ -39,6 +40,7 @@ export function buildConversationTools(
     readers.logRead,
     ...readers.skills,
     ...readers.prompts,
+    ...readers.tasks,
     ...buildMemoryTools(
       {
         recall: (request) => requireStore().recall(request),

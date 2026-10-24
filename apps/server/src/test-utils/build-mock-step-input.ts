@@ -14,6 +14,7 @@ export function buildMockStepInput(overrides: Partial<StepInput> = {}): StepInpu
       expiresAt: faker.number.int({ min: 1_000_000, max: 2_000_000 }),
     },
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'owner' } },
     sessionBoundary: null,
     signal: new AbortController().signal,
     ...overrides,

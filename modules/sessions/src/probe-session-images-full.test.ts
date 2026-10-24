@@ -6,7 +6,13 @@ import { startTestTasks } from './test-utils/start-test-tasks';
 async function setupTest() {
   const tasks = await startTestTasks();
 
-  return { run: { context: tasks.context, defaultZone: 'Australia/Sydney' } };
+  return {
+    run: {
+      context: tasks.context,
+      defaultZone: 'Australia/Sydney',
+      messaging: { directory: [], hopLimit: 20, ownerName: null },
+    },
+  };
 }
 
 test('it reads the session as full when the first message would take its images past the budget', async () => {
@@ -25,6 +31,7 @@ test('it reads the session as full when the first message would take its images 
 
   const isFull = await probeSessionImagesFull(ctx.run, {
     inbox,
+    wake: { hop: 0, cause: { kind: 'owner' } },
     images: { bytes: 24 * 1024 * 1024 - 4, count: 1 },
   });
 
@@ -47,6 +54,7 @@ test('it reads the session as having room when the first message brings its imag
 
   const isFull = await probeSessionImagesFull(ctx.run, {
     inbox,
+    wake: { hop: 0, cause: { kind: 'owner' } },
     images: { bytes: 24 * 1024 * 1024 - 8, count: 1 },
   });
 
@@ -69,6 +77,7 @@ test('it reads the session as full when the first message would take its images 
 
   const isFull = await probeSessionImagesFull(ctx.run, {
     inbox,
+    wake: { hop: 0, cause: { kind: 'owner' } },
     images: { bytes: 800, count: 100 },
   });
 
@@ -91,6 +100,7 @@ test('it reads the session as having room when the first message brings its imag
 
   const isFull = await probeSessionImagesFull(ctx.run, {
     inbox,
+    wake: { hop: 0, cause: { kind: 'owner' } },
     images: { bytes: 792, count: 99 },
   });
 
@@ -111,6 +121,7 @@ test('it reads a session past its budget as having room for a message with no im
 
   const isFull = await probeSessionImagesFull(ctx.run, {
     inbox,
+    wake: { hop: 0, cause: { kind: 'owner' } },
     images: { bytes: 25 * 1024 * 1024, count: 1 },
   });
 
@@ -131,7 +142,11 @@ test('it reads a session with no images as having room for any message', async (
     },
   ]);
 
-  const isFull = await probeSessionImagesFull(ctx.run, { inbox, images: { bytes: 0, count: 0 } });
+  const isFull = await probeSessionImagesFull(ctx.run, {
+    inbox,
+    wake: { hop: 0, cause: { kind: 'owner' } },
+    images: { bytes: 0, count: 0 },
+  });
 
   expect(isFull).toBeFalse();
 });

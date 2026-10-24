@@ -32,6 +32,8 @@ export interface WriterPromptInput {
   readonly names: SpeakerNames;
 
   readonly defaultZone: string;
+
+  readonly taskMessages: string | null;
 }
 
 export function renderWriterPrompt(input: WriterPromptInput): string {
@@ -56,7 +58,11 @@ export function renderWriterPrompt(input: WriterPromptInput): string {
       ? '(none)'
       : input.proposals.map((proposal) => renderProposal(proposal, input.defaultZone)).join('\n');
 
-  return `${heading}\n${items}\n\nPending proposals, waiting for the owner's review:\n${proposals}\n\nMessages in this batch:\n\n${messages}`;
+  const batch = `${heading}\n${items}\n\nPending proposals, waiting for the owner's review:\n${proposals}\n\nMessages in this batch:\n\n${messages}`;
+
+  return input.taskMessages === null
+    ? batch
+    : `${batch}\n\nMessages to you from other tasks, outside the batch:\n\n${input.taskMessages}`;
 }
 
 function formatSpeaker(names: SpeakerNames, role: BatchMessage['role']): string {

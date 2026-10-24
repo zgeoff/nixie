@@ -9,6 +9,7 @@ test('it builds a default step input', () => {
     'stepKey',
     'lease',
     'inbox',
+    'wake',
     'sessionBoundary',
     'signal',
   ]);
@@ -27,6 +28,7 @@ test('it builds a default step input', () => {
       expiresAt: expect.toBeNumber(),
     },
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'owner' } },
     sessionBoundary: null,
   });
 });

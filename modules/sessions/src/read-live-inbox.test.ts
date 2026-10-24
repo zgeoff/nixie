@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { readLiveInbox } from './read-live-inbox';
+import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
@@ -31,6 +32,7 @@ test('it yields a message that lands during the turn and adds its images to the 
     taskID: 'conversation',
     sent: new Set([0]),
     signal: ctx.signal,
+    view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
   });
@@ -74,6 +76,7 @@ test('it ends the feed at a message whose images would pass the session budget',
     taskID: 'conversation',
     sent: new Set([0]),
     signal: ctx.signal,
+    view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
   });
@@ -115,6 +118,7 @@ test('it ends the feed at a message whose images would pass the session count', 
     taskID: 'conversation',
     sent: new Set([0]),
     signal: ctx.signal,
+    view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
   });
@@ -151,6 +155,7 @@ test('it yields a message with no images past a spent session budget', async () 
     taskID: 'conversation',
     sent: new Set([0]),
     signal: ctx.signal,
+    view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
   });

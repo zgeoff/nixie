@@ -70,6 +70,10 @@ interface SessionResult {
 const [role = '', model = '', effort = 'low'] = process.argv.slice(2);
 const proxy = startCountProxy();
 const lines = { ownerName: fixtures.ownerName, defaultZone: 'Europe/Lisbon', now: new Date(fixtures.day) };
+const view = {
+  messaging: { directory: [], hopLimit: 20, ownerName: fixtures.ownerName },
+  wake: { hop: 0, cause: { kind: 'owner' as const } },
+};
 const dir = import.meta.dir;
 const runners: Record<string, () => Promise<readonly SessionResult[]>> = {
   conversation: runConversation,
@@ -123,7 +127,7 @@ async function runConversation(): Promise<readonly SessionResult[]> {
     const input = [
       {
         uuid: encodeInboxUUID(record.sequence),
-        text: [...preamble, renderInboxMessage(record, times)].join('\n\n'),
+        text: [...preamble, renderInboxMessage(record, times, view)].join('\n\n'),
       },
     ];
     // oxlint-disable-next-line no-await-in-loop -- each turn resumes where the one before ended
@@ -157,7 +161,7 @@ async function runConversation(): Promise<readonly SessionResult[]> {
       input: [
         {
           uuid: encodeInboxUUID(record.sequence),
-          text: renderInboxMessage(record, { ...lines, now: record.recordedAt }),
+          text: renderInboxMessage(record, { ...lines, now: record.recordedAt }, view),
         },
       ],
       resume,
@@ -242,6 +246,7 @@ async function runWriter(): Promise<readonly SessionResult[]> {
       messages: messages.slice(start, start + 4),
       names,
       defaultZone: 'Europe/Lisbon',
+      taskMessages: null,
     });
     // oxlint-disable-next-line no-await-in-loop -- the writer runs one batch at a time
     const result = await runGuestSession(`batch-${start / 4 + 1}`, 'memory-writer', {

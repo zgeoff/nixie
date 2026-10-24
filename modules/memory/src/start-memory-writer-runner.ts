@@ -1,6 +1,8 @@
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { SystemTaskOptions, SystemTaskRunner, ToolSessionOptions } from '@heynixie/sessions';
 import { makeSystemTaskRunner, startToolSession } from '@heynixie/sessions';
+import type { TaskMessaging } from '@heynixie/tasks';
+import { buildTaskMessageTool, buildTasksListTool } from '@heynixie/tasks';
 import { buildWriterTools } from './build-writer-tools';
 import { createWriterStaging } from './create-writer-staging';
 import { memoryWriterTaskID } from './memory-writer-task-id';
@@ -23,6 +25,7 @@ export interface MemoryWriterRunnerOptions extends SystemTaskOptions, ToolSessio
   readonly assistantName: string | null;
 
   readonly defaultZone: string;
+  readonly messaging: TaskMessaging;
   readonly onError: (error: unknown) => void;
 }
 
@@ -36,7 +39,12 @@ export const startMemoryWriterRunner = makeSystemTaskRunner<
   entry: 'main',
   start: async (options, session) => {
     const staging = createWriterStaging();
-    const tools = buildWriterTools(options.store, staging, options.config.topItems);
+
+    const tools = [
+      ...buildWriterTools(options.store, staging, options.config.topItems),
+      buildTasksListTool(options.context, options.messaging),
+      buildTaskMessageTool(options.context, options.messaging),
+    ];
 
     const runner = await startToolSession(options, session, { taskID: memoryWriterTaskID, tools });
 
@@ -57,6 +65,7 @@ export const startMemoryWriterRunner = makeSystemTaskRunner<
       ownerName: options.ownerName,
       assistantName: options.assistantName,
       defaultZone: options.defaultZone,
+      messaging: options.messaging,
       onError: options.onError,
     });
 

@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
+import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import type { PromptOverrides } from '@heynixie/prompts';
+import type { StepInput } from '@heynixie/tasks';
 import { claimTask, tasksProjections, writeStepCommit } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -29,6 +31,7 @@ async function setupTest() {
       session: StubConsolidatorSession,
       config: ConsolidationConfigInput = {},
       prompts: PromptOverrides = {},
+      inbox: StepInput['inbox'] = [],
     ) => {
       const consolidator = await startMemoryConsolidator({
         context,
@@ -39,6 +42,8 @@ async function setupTest() {
         getPersona: () => 'You are Nix, a warm and brief assistant.',
         getPrompts: () => prompts,
         ownerName: null,
+        defaultZone: 'UTC',
+        messaging: { directory: [], hopLimit: 20, ownerName: null },
         onError: (error) => {
           errors.push(error);
         },
@@ -52,7 +57,8 @@ async function setupTest() {
         taskID: claim.lease.workID,
         stepKey: claim.stepKey,
         lease: claim.lease,
-        inbox: [],
+        inbox,
+        wake: { hop: 0, cause: { kind: 'event' } },
         sessionBoundary: null,
         signal: new AbortController().signal,
       });
@@ -110,6 +116,78 @@ test('it proposes a merge of duplicate items and a retirement of a stale one, ea
       lapseAt: Date.parse('2026-10-19T09:00:00Z'),
     },
   ]);
+});
+
+test('it shows a waiting task message to its next session and reads it there', async () => {
+  const ctx = await setupTest();
+
+  await createMemoryItem(ctx.memory.store, { text: 'Keeps bees on the roof' });
+  await createMemoryItem(ctx.memory.store, { text: 'Sings in a choir' });
+
+  const message = buildMockLogRecord({
+    sequence: 900,
+    kind: 'task_message',
+    thread: 'memory-consolidator',
+    payload: {
+      messageID: 'k3vq8m2xpa',
+      from: 'conversation',
+      to: 'memory-consolidator',
+      kind: 'request',
+      replyTo: null,
+      onBehalfOf: [],
+      hop: 1,
+      hopLimit: 20,
+      wake: true,
+      woke: false,
+      source: 'task:conversation',
+    },
+    erasable: { status: 'readable', fields: { body: 'Merge the two choir notes.' } },
+  });
+
+  const session = createStubConsolidatorSession([]);
+
+  const result = await ctx.runStep(session, {}, {}, [message]);
+
+  expect(session.model.runSession).toHaveBeenCalledWith(
+    expect.objectContaining({
+      prompt: expect.stringMatching(
+        /\n\nMessages to you from other tasks:\n\n<task-message id="k3vq8m2xpa" [^>]+>\nThis message is from another task, not from the owner\.\nMerge the two choir notes\.\n<\/task-message block="\w+">$/u,
+      ),
+    }),
+  );
+
+  expect(result.acknowledged).toStrictEqual([900]);
+});
+
+test('it leaves a task message unread when its run opens no session', async () => {
+  const ctx = await setupTest();
+
+  const message = buildMockLogRecord({
+    sequence: 900,
+    kind: 'task_message',
+    thread: 'memory-consolidator',
+    payload: {
+      messageID: 'k3vq8m2xpa',
+      from: 'conversation',
+      to: 'memory-consolidator',
+      kind: 'request',
+      replyTo: null,
+      onBehalfOf: [],
+      hop: 1,
+      hopLimit: 20,
+      wake: true,
+      woke: false,
+      source: 'task:conversation',
+    },
+    erasable: { status: 'readable', fields: { body: 'Merge the two choir notes.' } },
+  });
+
+  const session = createStubConsolidatorSession([]);
+
+  const result = await ctx.runStep(session, {}, {}, [message]);
+
+  expect(session.model.runSession).not.toHaveBeenCalled();
+  expect(result.acknowledged).toStrictEqual([]);
 });
 
 test('it shows the session the persona, the rules and every active item, and no retired one', async () => {
