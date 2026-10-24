@@ -103,8 +103,7 @@ test('it shreds every record of a thread that holds more keys than one delete ta
 
   expect(removed).toBe(501);
   expect(sideTask).toStrictEqual({ status: 'readable', fields: { text: 'water the ferns' } });
-  expect(conversation).toHaveLength(501);
-  expect(conversation).toSatisfyAll((erasable) => erasable?.status === 'shredded');
+  expect(conversation).toStrictEqual(Array.from({ length: 501 }, () => ({ status: 'shredded' })));
 });
 
 test('it removes nothing and answers 0 when the thread holds no sealed record', async () => {
