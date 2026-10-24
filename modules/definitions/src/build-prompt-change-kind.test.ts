@@ -117,7 +117,7 @@ test('it opens a pull request with the part files and the prompts entry, which a
 
   const inForce = await readDefinitionsInForce(ctx.writer.db);
 
-  invariant(approved.approvalID !== null);
+  invariant(approved.status === 'approved');
 
   expect(result).toStrictEqual({ exported: [approved.approvalID], closed: [] });
 
@@ -342,6 +342,8 @@ test('it records the pull request on the thread of the proposal, for the answer 
     kinds: ['prompts.override_exported'],
   });
 
+  invariant(approved.status === 'approved');
+
   expect(records.map((entry) => entry.record)).toMatchObject([
     {
       thread: 'conversation',
@@ -476,7 +478,7 @@ test('it writes a later approval of the same prompt onto its open pull request a
   const exports = await sql`select approval_id, state from prompt_exports
     order by updated_at, approval_id`.execute(ctx.writer.db);
 
-  invariant(first.approvalID !== null && second.approvalID !== null);
+  invariant(first.status === 'approved' && second.status === 'approved');
 
   expect(result).toStrictEqual({ exported: [second.approvalID], closed: [first.approvalID] });
 
