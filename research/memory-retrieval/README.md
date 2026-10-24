@@ -4,13 +4,15 @@ This spike compares keyword search, SQLite FTS5 with BM25 ranking, vectors from 
 embedding model, and BM25 fused with vectors, over 276 synthetic memory items and 75 questions. It
 times the in-memory FTS5 index that the
 [event log design](../../docs/design/platform/core/event-log.md#memory-history-and-export) requires
-for free text that can be shredded.
+for free text that can be shredded. A second measurement takes the shipped per-turn retrieval to one
+deployment's own conversations and tunes its settings.
 
 ## Question
 
 At personal scale, does ranked full-text search beat plain keyword search, and do embeddings add
 enough to earn an index and a model? Does the answer change between the owner's message as typed and
-the keywords a model passes to the recall tool?
+the keywords a model passes to the recall tool? On real turns, does any encoder, ranking, floor or
+item count find more of what a turn needed than the shipped settings?
 
 ## Answer
 
@@ -21,9 +23,11 @@ the keywords a model passes to the recall tool?
   0.76 at recall@5, close to MiniLM vectors on the message at 0.77.
 - No method tells a current fact from a superseded one, so the store has to.
 - An in-memory FTS5 index over 20,000 log messages builds in 62 ms and takes 0.85 ms per query.
+- On 111 labelled real turns, the shipped hybrid ranking scored recall@5 0.539, recall@10 0.709 and
+  MRR 0.509. No alternative encoder, fusion setting, floor or item count was shown to be better, and
+  BM25 alone scored about 0.1 lower beyond its 95% interval.
 
-Let the store mark which fact is current. Questions that the owner writes decide whether embeddings,
-alone or fused with BM25, earn their place.
+Let the store mark which fact is current. Keep the shipped encoder, fusion, floors and item counts.
 
 ## Run it
 
@@ -33,13 +37,16 @@ bun run.ts
 ```
 
 The [setup](results.md#setup) gives the versions, the models, the data and how each method ranks.
+The [real-turn setup](real-turns.md#setup) gives the commands for a deployment's own turns.
 
 ## Results
 
 The [results](results.md) hold the recall table for every method and form, the findings, and the
-cost table.
+cost table. The [real-turn results](real-turns.md) hold the ranking, floor and item-count tables on
+a deployment's own turns.
 
 ## Untested
 
-Questions the owner writes over their own memory, and keywords from a model that has not seen the
-items. The [untested list](results.md#untested) gives the rest.
+Keywords from a model that has not seen the items, and labels from the live assistant rather than a
+language model given its persona. The [untested list](results.md#untested) and the
+[real-turn list](real-turns.md#untested) give the rest.
