@@ -56,13 +56,17 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
 
   const cases: TurnCase[] = [];
   const exchanges: Exchange[] = [];
-  const session: SessionFold = { delivered: new Map(), pending: [], deliveredBefore: new Set() };
+  const session: SessionFold = { delivered: new Map(), pending: [], isCompacted: false };
+  const pinned = new Set<string>();
 
   let batch: string[] = [];
   let open: TurnCase | null = null;
   let isAfterRecallTool = false;
+  let hasReply = false;
 
   for (const record of data.records) {
+    foldPins(pinned, record);
+
     if (record.thread !== conversationThread) {
       continue;
     }
@@ -86,14 +90,18 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
 
       open = null;
       isAfterRecallTool = false;
+      hasReply = false;
 
-      if (batch.length > 0) {
+      // Per-turn retrieval runs only when the batch's joined text holds more than whitespace.
+      const query = batch.join('\n');
+
+      if (query.trim() !== '') {
         open = {
           caseID: '',
           stepSequence: record.sequence,
           recalledSequence: 0,
           recordedAt: Date.parse(record.recordedAt),
-          query: batch.join('\n'),
+          query,
           reply: '',
           earlier: exchanges.slice(-earlierExchanges),
           candidates: [],
@@ -116,17 +124,27 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
       isAfterRecallTool = true;
     }
 
-    if (record.kind === 'memory.recalled' && open.recalledSequence === 0 && !isAfterRecallTool) {
+    // A turn whose session was lost retrieves again for the rebuilt session, and the model sees
+    // only the later retrieval, so a later recall before the first reply replaces an earlier one.
+    if (
+      record.kind === 'memory.recalled' &&
+      record.payload['isTurnNote'] !== true &&
+      !isAfterRecallTool &&
+      !hasReply
+    ) {
       const items = record.payload['items'];
 
+      if (open.recalledSequence === 0) {
+        open.caseID = `t${record.sequence}`;
+        cases.push(open);
+      }
+
       open.recalledSequence = record.sequence;
-      open.caseID = `t${record.sequence}`;
       open.logged = Array.isArray(items) ? items : [];
       open.searchMode = typeof record.payload['searchMode'] === 'string' ? record.payload['searchMode'] : null;
-      open.delivered = [...session.deliveredBefore];
-      open.candidates = collectCandidates(versionsByItem, itemsByID, record.sequence, open.recordedAt);
-      open.ratings = ratings.get(record.sequence) ?? [];
-      cases.push(open);
+      open.delivered = [...session.delivered.keys()];
+      open.candidates = collectCandidates(versionsByItem, itemsByID, pinned, record.sequence, open.recordedAt);
+      open.ratings = [...open.ratings, ...(ratings.get(record.sequence) ?? [])];
     }
 
     // A turn that opens a new session runs its retrieval with nothing delivered yet, and the
@@ -136,6 +154,8 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
     }
 
     if (record.kind === 'model.reply') {
+      hasReply = true;
+
       const text = readErasableText(record);
 
       if (text !== null) {
@@ -149,6 +169,28 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
   }
 
   return cases;
+}
+
+// Follows the pinned column of the memory items projection: a pin record sets or clears it, and
+// a forget clears it.
+function foldPins(pinned: Set<string>, record: PlainRecord): void {
+  const itemID = record.payload['itemID'];
+
+  if (typeof itemID !== 'string') {
+    return;
+  }
+
+  if (record.kind === 'memory.pinned') {
+    if (record.payload['isPinned'] === true) {
+      pinned.add(itemID);
+    } else {
+      pinned.delete(itemID);
+    }
+  }
+
+  if (record.kind === 'memory.forget_started') {
+    pinned.delete(itemID);
+  }
 }
 
 function closeTurn(turn: TurnCase, exchanges: Exchange[]): void {
@@ -190,6 +232,7 @@ function collectRatings(data: PlainExport): Map<number, Rating[]> {
 function collectCandidates(
   versionsByItem: Map<string, PlainVersion[]>,
   itemsByID: Map<string, PlainExport['items'][number]>,
+  pinned: Set<string>,
   sequence: number,
   now: number,
 ): Candidate[] {
@@ -210,7 +253,7 @@ function collectCandidates(
       itemID,
       version: current.version,
       isSelf: (item.subject ?? (item.kind === 'self' ? 'self' : 'owner')) === 'self',
-      isPinned: item.is_pinned === 1 && item.pinned_sequence !== null && item.pinned_sequence < sequence,
+      isPinned: pinned.has(itemID),
       isLapsed: current.until !== null && current.until <= now,
       text: current.text,
     });
@@ -227,61 +270,47 @@ interface PendingRecall {
 interface SessionFold {
   delivered: Map<string, string>;
   pending: PendingRecall[];
-  deliveredBefore: Set<string>;
+  isCompacted: boolean;
 }
 
 // Follows the session-delivery replay in the sessions module: a turn's recalls count as delivered
-// once its turn ends, and a new, rebuilt or compacted session starts the set again.
+// once its turn ends, up to the sequence the turn says it recalled through, and a new, rebuilt,
+// compacted or invalidated session starts the set again.
 function foldSession(session: SessionFold, record: PlainRecord): void {
   const toRefs = (items: unknown): string[] =>
     Array.isArray(items) ? items.map((item) => `${item.itemID}@${item.version}`) : [];
 
-  if (record.kind === 'task.step_started') {
-    session.pending = [];
-    session.deliveredBefore = new Set(session.delivered.keys());
-
-    return;
-  }
+  const through =
+    typeof record.payload['recalledThrough'] === 'number' ? record.payload['recalledThrough'] : Number.MAX_SAFE_INTEGER;
 
   if (record.kind === 'memory.recalled') {
     session.pending.push({ sequence: record.sequence, refs: toRefs(record.payload['items']) });
+  } else if (record.kind === 'model.turn_ended') {
+    const retrieved = session.isCompacted ? [] : toRefs(record.payload['retrieved']);
+    const recalled = session.pending.filter((recall) => recall.sequence <= through).flatMap((recall) => recall.refs);
 
-    return;
-  }
-
-  if (record.kind === 'model.turn_ended') {
-    const through = typeof record.payload['recalledThrough'] === 'number' ? record.payload['recalledThrough'] : Number.MAX_SAFE_INTEGER;
-
-    for (const ref of [
-      ...session.pending.filter((recall) => recall.sequence <= through).flatMap((recall) => recall.refs),
-      ...toRefs(record.payload['retrieved']),
-    ]) {
+    for (const ref of [...recalled, ...retrieved]) {
       session.delivered.set(ref, ref);
     }
 
     session.pending = [];
-
-    return;
-  }
-
-  if (record.kind === 'model.session_opened' || record.kind === 'model.session_rebuilt') {
-    session.delivered = new Map();
-
+  } else if (record.kind === 'task.step_started') {
+    session.pending = [];
+    session.isCompacted = false;
+  } else if (record.kind === 'model.session_opened' || record.kind === 'model.session_rebuilt') {
     const reason = record.payload['reason'];
-    const through = typeof record.payload['recalledThrough'] === 'number' ? record.payload['recalledThrough'] : Number.MAX_SAFE_INTEGER;
+
+    session.delivered = new Map();
 
     if (reason === 'lost' || reason === 'missing') {
       session.pending = session.pending.filter((recall) => recall.sequence > through);
     }
-
-    session.deliveredBefore = new Set();
-
-    return;
-  }
-
-  if (record.kind === 'model.compacted' || record.kind === 'model.session_invalidated') {
+  } else if (record.kind === 'model.compacted') {
+    session.delivered = new Map();
+    session.pending = session.pending.filter((recall) => recall.sequence > through);
+    session.isCompacted = true;
+  } else if (record.kind === 'model.session_invalidated') {
     session.delivered = new Map();
     session.pending = [];
-    session.deliveredBefore = new Set();
   }
 }
