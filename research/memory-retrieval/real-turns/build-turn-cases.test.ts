@@ -109,6 +109,95 @@ test('it rejects a rating whose verdict is a number', () => {
   ).toThrow('record 4 (memory.rated) does not match its schema at ratings.0.verdict');
 });
 
+test('it treats a pinned item that retired and came back as unpinned', () => {
+  const cases = buildTurnCases({
+    records: [
+      {
+        sequence: 1,
+        recordedAt: '2026-03-02T08:00:00Z',
+        kind: 'memory.pinned',
+        thread: null,
+        parent: null,
+        payload: { itemID: 'item-a', isPinned: true },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 2,
+        recordedAt: '2026-03-02T08:10:00Z',
+        kind: 'memory.version_added',
+        thread: null,
+        parent: null,
+        payload: { itemID: 'item-a', version: 2, state: 'retired' },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 3,
+        recordedAt: '2026-03-02T08:20:00Z',
+        kind: 'memory.version_added',
+        thread: null,
+        parent: null,
+        payload: { itemID: 'item-a', version: 3, state: 'active' },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 4,
+        recordedAt: '2026-03-02T09:00:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'when is the dentist?' } },
+      },
+      {
+        sequence: 5,
+        recordedAt: '2026-03-02T09:00:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 6,
+        recordedAt: '2026-03-02T09:00:02Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+    ],
+    items: [
+      {
+        item_id: 'item-a',
+        version: 3,
+        state: 'active',
+        is_pinned: 0,
+        pinned_sequence: null,
+        created_sequence: 1,
+        short_id: 'M1',
+        kind: 'fact',
+        subject: 'owner',
+      },
+    ],
+    versions: [
+      {
+        item_id: 'item-a',
+        version: 3,
+        change: 'restored',
+        state: 'active',
+        sequence: 3,
+        until: null,
+        status: 'readable',
+        text: 'The dentist is on Thursday',
+      },
+    ],
+    notes: [],
+  });
+
+  expect(cases.map((turn) => turn.candidates.map((candidate) => candidate.isPinned))).toStrictEqual([[false]]);
+});
+
 test('it rejects a turn retrieval whose logged items hold a null', () => {
   expect(() =>
     buildTurnCases({

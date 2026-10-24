@@ -185,8 +185,8 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
   return cases;
 }
 
-// Follows the pinned column of the memory items projection: a pin record sets or clears it, and
-// a forget clears it.
+// Follows the pinned column of the memory items projection: a pin record sets or clears it, and a
+// retired version or a forget clears it.
 function foldPins(pinned: Set<string>, record: PlainRecord): void {
   const itemID = record.payload['itemID'];
 
@@ -203,6 +203,10 @@ function foldPins(pinned: Set<string>, record: PlainRecord): void {
   }
 
   if (record.kind === 'memory.forget_started') {
+    pinned.delete(itemID);
+  }
+
+  if (record.kind === 'memory.version_added' && record.payload['state'] === 'retired') {
     pinned.delete(itemID);
   }
 }
