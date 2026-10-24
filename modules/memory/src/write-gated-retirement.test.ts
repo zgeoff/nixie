@@ -1,11 +1,14 @@
 import { expect, mock, test } from 'bun:test';
 import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { readItemKey } from './read-item-key';
+import { readVersion } from './read-version';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
+import type { MemoryTables } from './types';
 
 test('it retires an item you asked to retire, with your intent quote and the checks', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
@@ -199,6 +202,44 @@ test("it retires the conversation's self-note at once, with a notice entry an un
   ]);
 
   expect(check).not.toHaveBeenCalled();
+});
+
+test("it keeps no intent quote on the conversation's retirement of a self-note", async () => {
+  const memory = await startTestMemory();
+
+  const note = await memory.store.remember({
+    text: 'I like opening with a question',
+    subject: 'self',
+    provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Book the dentist for Friday',
+    spans: [{ start: 0, end: 27, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.retire({
+    target: note,
+    intentQuote: 'Book the dentist for Friday',
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(outcome.status === 'applied');
+
+  const key = await readItemKey(memory.log, note.itemID);
+
+  invariant(key);
+
+  const retired = await readVersion(memory.writer.db.$extendTables<MemoryTables>(), key, outcome);
+
+  expect(retired.text).toStrictEqual({
+    text: 'I like opening with a question',
+    evidenceQuote: null,
+    intentQuote: null,
+  });
+
+  expect(retired.row.intent_evidence).toBeNull();
 });
 
 test("it brings back a self-note when you undo the conversation's retirement of it", async () => {
