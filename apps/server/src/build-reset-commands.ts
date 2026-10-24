@@ -15,6 +15,10 @@ const resetWarning = [
 ].join('\n');
 
 async function runReset(flags: CLIFlags, io: CLIIO): Promise<number> {
+  if (flags.only === 'memories') {
+    return runMemoriesReset(flags, io);
+  }
+
   if (!flags['keep-sessions']) {
     io.print(
       `nixie reset runs only with --keep-sessions, which keeps every device that is signed in now signed in.\n${resetWarning}`,
@@ -39,6 +43,30 @@ async function runReset(flags: CLIFlags, io: CLIIO): Promise<number> {
       backupNote,
     ].join('\n'),
   );
+
+  return 0;
+}
+
+const memoriesWarning = [
+  'A reset of the memories forgets every memory item, and keeps every record, the conversation and the device sessions.',
+  'Only a restore from a backup undoes it.',
+  backupNote,
+].join('\n');
+
+async function runMemoriesReset(flags: CLIFlags, io: CLIIO): Promise<number> {
+  if (!flags.yes) {
+    io.print(`${memoriesWarning}\nRun nixie reset --only memories --yes to reset.`);
+
+    return 2;
+  }
+
+  const socketPath = await resolveSocketPath(flags.config);
+
+  const forgotten = await sendHostRequest(socketPath, 'memory reset', (client) =>
+    client.memory.items.forgetAll(),
+  );
+
+  io.print(`nixie forgot ${forgotten.itemIDs.length} memory items.\n${backupNote}`);
 
   return 0;
 }
