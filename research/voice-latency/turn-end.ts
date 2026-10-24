@@ -7,7 +7,7 @@
 //   [--replace]
 // Clef-flash reads CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN, and Jev reads TYPESAFE_API_KEY.
 // A token may be empty where a broker adds it to each request.
-import { appendFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync, readdirSync, rmSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { match } from 'ts-pattern';
@@ -31,13 +31,14 @@ const { values } = parseArgs({
 });
 const set = values.set;
 const out = values.out ?? `results/turn-end-${set}.jsonl`;
-// The runner appends one line per utterance from the first, so a second run into the same file
-// would count each utterance it repeats twice.
-if (existsSync(out) && !values.replace) {
-  console.error(`${out} already holds a run; pass --replace to start it again`);
-  process.exit(1);
+mkdirSync(dirname(out), { recursive: true });
+if (values.replace) {
+  rmSync(out, { force: true });
 }
-rmSync(out, { force: true });
+// The runner writes one line per utterance from the first, so a second run into the same file
+// would count each utterance it repeats twice. Creating the file exclusively reserves it for this
+// run in one step, so two runners never both find it free.
+const outFile = reserveOutput(out);
 const detectors = z.array(z.enum(['smartTurn', 'clef', 'jev'])).parse(values.detectors.split(','));
 const limit =
   values.limit === undefined ? Number.POSITIVE_INFINITY : z.coerce.number().int().positive().parse(values.limit);
@@ -61,7 +62,6 @@ const models = new Map<DetectorName, string>([['smartTurn', 'smart-turn-v3.2-cpu
 // The first feature build and inference run several times slower than the rest.
 await smartTurn.readEndProbability(new Float32Array(sampleRate));
 
-mkdirSync(dirname(out), { recursive: true });
 for (let index = 0; index < count; index++) {
   const meta = z.object({ id: z.string() }).parse(await Bun.file(join(dir, `${index}.json`)).json());
   const speech = new Float32Array(await Bun.file(join(dir, `${index}.f32`)).arrayBuffer());
@@ -75,8 +75,8 @@ for (let index = 0; index < count; index++) {
     readTranscript,
     vad,
   });
-  appendFileSync(
-    out,
+  writeSync(
+    outFile,
     `${JSON.stringify({
       detectors,
       durationMs: Math.round((speech.length * 1000) / sampleRate),
@@ -88,6 +88,19 @@ for (let index = 0; index < count; index++) {
     })}\n`,
   );
   console.log(`${set} ${index + 1}/${count}: ${pauses.length} pauses`);
+}
+closeSync(outFile);
+
+function reserveOutput(path: string): number {
+  try {
+    return openSync(path, 'wx');
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'EEXIST') {
+      console.error(`${path} already holds a run; pass --replace to start it again`);
+      process.exit(1);
+    }
+    throw error;
+  }
 }
 
 async function readTranscript(heard: Float32Array): Promise<string> {
