@@ -100,10 +100,8 @@ writer batch.
 
 ## Preloads
 
-The unit run left isolation for speed. On one 16-core host, the full unit run took 180 s and a 4,941
-MiB peak isolated, and 85 s and a 2,847 MiB peak with `--no-isolate`, both at 4 workers. Each peak
-sums the resident memory of the run's processes. At 1 worker with `--no-isolate` it took 303 s and
-1,609 MiB.
+The unit run leaves isolation off because a fresh global object for each file costs time and memory,
+and the preloads' resets already return shared state to a clean baseline after each test.
 
 A preload's body runs once for each worker. Under `--parallel=N --no-isolate` with N of 2 or more,
 Bun runs a preload's `beforeAll` and `afterAll` around each file, and otherwise once for the run. So
