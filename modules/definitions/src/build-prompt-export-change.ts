@@ -55,7 +55,7 @@ export function buildPromptExportChange(promptExport: PromptExportInput): Defini
 
   const removed = collectUnreadPaths(promptExport.manifest, promptID, [
     ...written.map(([path]) => path),
-    ...Object.values(entry),
+    ...Object.entries(entry).flatMap(([key, path]) => (key === '_template' ? [] : [path])),
   ]);
 
   const files = new Map<string, string | null>([
