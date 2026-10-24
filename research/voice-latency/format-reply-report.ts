@@ -3,7 +3,7 @@ import type { ReplyRecord } from './reply-record.ts';
 // The pass criteria agreed for the spike: the first audio at a median of 1.5 s or less from the
 // end of speech, and a gap mid-reply in fewer than 5% of turns.
 const firstAudioGateMs = 1500;
-const gapShareGate = 0.05;
+const silentShareGate = 0.05;
 // A pause between spoken sentences runs to about half a second, so a silence over this inside a
 // reply is a wait the listener hears, whatever made it.
 const longSilenceMs = 1000;
@@ -27,14 +27,15 @@ export function formatReplyReport(records: HeardTurn[]): string {
     const minutes = turns.reduce((sum, turn) => sum + (turn.speechMs + turn.playEndMs) / 60_000, 0);
     const firstMedian = findPercentile(firstAudio, 0.5);
     const gapShare = played.length === 0 ? 1 : gapped / played.length;
-    const passes = firstMedian !== undefined && firstMedian <= firstAudioGateMs && gapShare < gapShareGate;
+    const silentShare = played.length === 0 ? 1 : silent / played.length;
+    const passes = firstMedian !== undefined && firstMedian <= firstAudioGateMs && silentShare < silentShareGate;
     return [
       candidate,
       String(turns.length),
       formatPercentiles(firstAudio),
       formatPercentiles(fullAudio),
       `${gapped} (${(gapShare * 100).toFixed(1)}%)`,
-      `${silent} (${((played.length === 0 ? 0 : silent / played.length) * 100).toFixed(1)}%)`,
+      `${silent} (${(silentShare * 100).toFixed(1)}%)`,
       `${toolUsed} of ${toolTurns.length}`,
       `$${(costUSD / Math.max(1, turns.length)).toFixed(4)}`,
       `$${(minutes === 0 ? 0 : costUSD / minutes).toFixed(4)}`,

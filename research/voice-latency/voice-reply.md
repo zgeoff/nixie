@@ -23,7 +23,7 @@ Each candidate's full answer audio and its cost per minute sit beside the gates.
 - GPT-Live passes the first-audio gate and fails the silence gate. Every long silence but one falls
   on a line it handed to Claude.
 - Neither pipeline passes with Piper. Haiku 5.5 speaking clause by clause has no silences but
-  reaches first audio at 2.46 s. Sonnet 5.5 behind an opener reaches first audio at 0.97 s, then
+  reaches first audio at 2.51 s. Sonnet 5.5 behind an opener reaches first audio at 1.01 s, then
   goes quiet after the opener on 28% of turns.
 - On real speech, each speech-to-speech API cuts the speaker off more on a different kind of speech,
   and both cut off more than the Jev detector in the [end-of-turn run](turn-end.md).
@@ -86,9 +86,9 @@ sound, read from each turn's recording, so it measures all four candidates alike
 
 | Candidate               | First audio, median / p90 | Full answer audio, median | Replies with a silence over 1 s | Tool called when needed | Cost per minute | Passes |
 | ----------------------- | ------------------------- | ------------------------- | ------------------------------- | ----------------------- | --------------- | ------ |
-| Haiku, clause by clause | 2.46 / 4.74 s             | 3.23 s                    | 0%                              | 9 of 9                  | $0.0006         | no     |
-| Haiku, thinking off     | 2.38 / 4.05 s             | 3.47 s                    | 0%                              | 9 of 9                  | $0.0006         | no     |
-| Sonnet with an opener   | 0.97 / 1.23 s             | 3.58 s                    | 28.2%                           | 9 of 9                  | $0.0073         | no     |
+| Haiku, clause by clause | 2.51 / 4.81 s             | 3.23 s                    | 0%                              | 9 of 9                  | $0.0006         | no     |
+| Haiku, thinking off     | 2.42 / 4.05 s             | 3.47 s                    | 0%                              | 9 of 9                  | $0.0006         | no     |
+| Sonnet with an opener   | 1.01 / 1.28 s             | 3.58 s                    | 28.2%                           | 9 of 9                  | $0.0073         | no     |
 | GPT-Live                | 1.41 / 1.73 s             | not comparable            | 23.1%                           | 9 of 9                  | $0.065          | no     |
 | Grok Voice              | 1.35 / 1.88 s             | 3.44 s                    | 0%                              | 9 of 9                  | $0.033          | yes    |
 

@@ -18,6 +18,7 @@ import { findSoundSpan } from './find-sound-span.ts';
 import { planPlayback } from './plan-playback.ts';
 import type { ReplyRecord } from './reply-record.ts';
 import { reserveOutput } from './reserve-output.ts';
+import { soundThreshold } from './sound-threshold.ts';
 import { sampleRate } from './speech.ts';
 import { startAgentSession } from './start-agent-session.ts';
 import { startGptLiveCall } from './start-gpt-live-call.ts';
@@ -48,8 +49,6 @@ if (key === '') {
   console.error('pass the API key on stdin');
   process.exit(1);
 }
-// Below this level a sample counts as silence; GPT-Live's silent stream peaks near 0.001.
-const soundThreshold = 0.01;
 // The pipelines' tolerance, so a wait for the next chunk counts the same way.
 const gapToleranceMs = 150;
 // GPT-Live sends no event when it stops speaking, so a turn ends after this long with no sound.

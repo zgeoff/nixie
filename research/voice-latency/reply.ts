@@ -21,7 +21,9 @@ import { listenToCaller } from './listen.ts';
 import type { PlayedClip } from './plan-playback.ts';
 import { planPlayback } from './plan-playback.ts';
 import type { ReplyRecord } from './reply-record.ts';
+import { findSoundSpan } from './find-sound-span.ts';
 import { reserveOutput } from './reserve-output.ts';
+import { soundThreshold } from './sound-threshold.ts';
 import {
   createSpeechToText,
   createTextToSpeech,
@@ -203,7 +205,9 @@ for (let round = 0; round < rounds; round++) {
     });
     const recordingName = `r${round}-l${turnLine.callerIndex}.wav`;
     writeFileSync(join(recordingsDir, recordingName), toWav(recording, sampleRate));
-    const first = playback.startsAt[0];
+    // Piper's clips open with a short silence, so first audio is the first audible sample, as the
+    // speech-to-speech runner measures it, and not the first clip's start.
+    const heardSpan = findSoundSpan(recording.subarray(line.speechEndSample), soundThreshold);
     const last = clips.at(-1);
     const record: ReplyRecord = {
       candidate,
@@ -216,7 +220,7 @@ for (let round = 0; round < rounds; round++) {
         })),
         costUSD: turn.costUSD,
         endpointMs: heard.vadEndAt - endAt,
-        firstAudioMs: first === undefined ? undefined : first - endAt,
+        firstAudioMs: heardSpan === undefined ? undefined : (heardSpan.start / sampleRate) * 1000,
         firstTextMs: firstTextAt === undefined ? undefined : firstTextAt - endAt,
         fullAudioMs: last === undefined ? undefined : last.readyAt - endAt,
         fullTextMs: turn.resultAt - endAt,

@@ -10,9 +10,8 @@ import type { HeardTurn } from './format-reply-report.ts';
 import { formatReplyReport } from './format-reply-report.ts';
 import { parseWav } from './parse-wav.ts';
 import { replyRecord } from './reply-record.ts';
+import { soundThreshold } from './sound-threshold.ts';
 
-// The level under which the runners count a sample as silence.
-const soundThreshold = 0.01;
 
 const { positionals: files } = parseArgs({ allowPositionals: true, options: {} });
 const turns: HeardTurn[] = (
@@ -33,6 +32,13 @@ const turns: HeardTurn[] = (
               ? record
               : {
                   ...record,
+                  // First audio comes from the recording for every candidate, so all of them use
+                  // the first audible sample. A reply that began before the end of speech keeps
+                  // its recorded time, which the recording after that point cannot show.
+                  firstAudioMs:
+                    record.firstAudioMs !== undefined && record.firstAudioMs < 0
+                      ? record.firstAudioMs
+                      : (span.start / recording.sampleRate) * 1000,
                   longestSilenceMs: findLongestSilence({
                     end: span.end,
                     sampleRate: recording.sampleRate,

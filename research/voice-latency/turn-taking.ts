@@ -13,6 +13,7 @@ import { buildRecording } from './build-recording.ts';
 import { findSoundSpan } from './find-sound-span.ts';
 import { planPlayback } from './plan-playback.ts';
 import { reserveOutput } from './reserve-output.ts';
+import { soundThreshold } from './sound-threshold.ts';
 import { speechSetDir } from './speech-sets.ts';
 import { speechUtterance } from './speech-utterance.ts';
 import { createVad, sampleRate } from './speech.ts';
@@ -50,8 +51,6 @@ if (key === '') {
 }
 // The end-of-turn spike's pause, so the last speech here is the one its cut-offs counted against.
 const pauseMs = 200;
-// Below this level a sample counts as silence; GPT-Live's silent stream peaks near 0.001.
-const soundThreshold = 0.01;
 // The reply's first seconds show whether it cut the caller off, so the call ends this long after.
 const heardMs = 3000;
 // A candidate that has not spoken this long after the last speech counts as never replying.
@@ -141,9 +140,21 @@ for (let index = 0; index < limit; index++) {
   const replyTrack = buildRecording({ caller: new Float32Array(0), clips: placed, sampleRate, speechEndSample: 0, tailMs: 0 });
   const span = findSoundSpan(replyTrack, soundThreshold);
   const recordingName = `${set}-${index}.wav`;
+  // The recording keeps the whole utterance, which a reply that came early or never may not reach,
+  // so the clips are placed from its end.
+  const speechMs = (speech.length / sampleRate) * 1000;
   writeFileSync(
     join(recordingsDir, recordingName),
-    toWav(buildRecording({ caller: speech, clips: placed, sampleRate, speechEndSample: 0, tailMs: 500 }), sampleRate),
+    toWav(
+      buildRecording({
+        caller: speech,
+        clips: placed.map((clip) => ({ samples: clip.samples, startMs: clip.startMs - speechMs })),
+        sampleRate,
+        speechEndSample: speech.length,
+        tailMs: 500,
+      }),
+      sampleRate,
+    ),
   );
   const record: TurnTakingRecord = {
     candidate,

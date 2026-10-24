@@ -16,6 +16,7 @@ import { findReplyStop } from './find-reply-stop.ts';
 import { findSoundSpan } from './find-sound-span.ts';
 import { planHeardReply } from './plan-heard-reply.ts';
 import { reserveOutput } from './reserve-output.ts';
+import { soundThreshold } from './sound-threshold.ts';
 import { sampleRate } from './speech.ts';
 import { startGptLiveCall } from './start-gpt-live-call.ts';
 import { startGrokCall } from './start-grok-call.ts';
@@ -42,8 +43,6 @@ if (key === '') {
   console.error('pass the API key on stdin');
   process.exit(1);
 }
-// Below this level a sample counts as silence; GPT-Live's silent stream peaks near 0.001.
-const soundThreshold = 0.01;
 // The caller cuts in this far into the reply, once it is well under way.
 const cutInMs = 2000;
 // A reply that has not made a sound this long after the question gives the caller nothing to cut.
@@ -145,7 +144,13 @@ for (let round = 0; round < rounds; round++) {
   const heard = planHeardReply({ received: call.received, sampleRate, stopAt });
   // Every time here counts from the start of the stream, which is sample 0 of the recording.
   const placed = heard.map((clip) => ({ samples: clip.samples, startMs: clip.startAt - streamStartAt }));
-  const replyTrack = buildRecording({ caller: new Float32Array(0), clips: placed, sampleRate, speechEndSample: 0, tailMs: 0 });
+  // The call listened on after the interruption, so the reply track runs through that window: a
+  // reply that stops with nothing after it still shows the silence that marks its stop.
+  const heardTrack = buildRecording({ caller: new Float32Array(0), clips: placed, sampleRate, speechEndSample: 0, tailMs: 0 });
+  const replyTrack = new Float32Array(
+    Math.max(heardTrack.length, cutInWindow === undefined ? 0 : cutInWindow * windowSamples + toSample(afterMs)),
+  );
+  replyTrack.set(heardTrack);
   const callerTrack = new Float32Array(Math.max(question.speechEndSample, replyTrack.length) + toSample(1000));
   callerTrack.set(question.audio.subarray(0, question.speechEndSample));
   if (cutInWindow !== undefined) {

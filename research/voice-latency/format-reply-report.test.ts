@@ -46,3 +46,19 @@ test('it reports timings, gaps, tool calls, cost and the pass criteria per candi
     | sonnet-opener | 3 | 1.00 s / 1.00 s | 2.50 s / 2.50 s | 1 (50.0%) | 1 (50.0%) | 0 of 1 | $0.0033 | $0.0333 | 1 | no |"
   `);
 });
+
+test('it passes a candidate whose short gaps leave no silence over 1 s', () => {
+  const report = formatReplyReport([
+    { ...buildMockReplyRecord({ candidate: 'gpt-live', firstAudioMs: 1200, gaps: 1 }), longestSilenceMs: 400 },
+  ]);
+
+  expect(report).toEndWith('| yes |');
+});
+
+test('it fails a candidate with a silence over 1 s and no gaps', () => {
+  const report = formatReplyReport([
+    { ...buildMockReplyRecord({ candidate: 'gpt-live', firstAudioMs: 1200, gaps: 0 }), longestSilenceMs: 2000 },
+  ]);
+
+  expect(report).toEndWith('| no |');
+});
