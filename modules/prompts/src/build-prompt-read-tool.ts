@@ -83,7 +83,11 @@ export function buildPromptReadTool(context: PromptToolsContext): ToolDefinition
 function buildPromptOutcome(id: PromptID, override: PromptOverride | null): ToolOutcome {
   const entry = promptRegistry[id];
 
-  const parts = Object.entries(entry.parts).map(([name, part]) => ({
+  // The registry's entries differ in context type, so their part maps widen to any without a
+  // shared annotation.
+  const entryParts: Readonly<Record<string, { readonly text: string }>> = entry.parts;
+
+  const parts = Object.entries(entryParts).map(([name, part]) => ({
     name,
     text: part.text,
     paths: collectAcceptedPaths(id, name),
