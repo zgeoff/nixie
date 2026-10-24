@@ -117,7 +117,8 @@ export async function startRanker(encoder: Encoder): Promise<Ranker> {
 
       const excluded = collectExcludedIDs(turn, config.isDeliveredExcluded);
 
-      const rank = async (pool: Candidate[], limit: number) => {
+      // The product passes one limit to both lists and to the fused result.
+      const rank = async (pool: Candidate[], limit: number, listLimit: number) => {
         const poolIDs = new Set(pool.map((candidate) => candidate.itemID));
         const outside = turn.candidates.filter((candidate) => !poolIDs.has(candidate.itemID)).map((candidate) => candidate.itemID);
 
@@ -125,7 +126,7 @@ export async function startRanker(encoder: Encoder): Promise<Ranker> {
           config.mode === 'vector'
             ? []
             : await readKeywordMatches(index, turn.query, {
-                limit: config.listLimit,
+                limit: listLimit,
                 excludedIDs: [...excluded, ...outside],
                 excludedWords,
                 minScore: config.minScore,
@@ -143,18 +144,26 @@ export async function startRanker(encoder: Encoder): Promise<Ranker> {
                 }))
                 .filter((match) => match.similarity >= config.minSimilarity)
                 .toSorted((first, second) => second.similarity - first.similarity)
-                .slice(0, config.listLimit);
+                .slice(0, listLimit);
 
         return buildFusedRanking(keyword, vector, config).slice(0, limit);
       };
 
       if (!config.isSplit) {
-        return { facts: await rank(turn.candidates, config.factLimit), selves: [] };
+        return { facts: await rank(turn.candidates, config.factLimit, config.listLimit), selves: [] };
       }
 
       return {
-        facts: await rank(turn.candidates.filter((candidate) => !candidate.isSelf), config.factLimit),
-        selves: await rank(turn.candidates.filter((candidate) => candidate.isSelf), config.selfLimit),
+        facts: await rank(
+          turn.candidates.filter((candidate) => !candidate.isSelf),
+          config.factLimit,
+          config.listLimit,
+        ),
+        selves: await rank(
+          turn.candidates.filter((candidate) => candidate.isSelf),
+          config.selfLimit,
+          config.selfLimit,
+        ),
       };
     },
     stop: () => index.stop(),
