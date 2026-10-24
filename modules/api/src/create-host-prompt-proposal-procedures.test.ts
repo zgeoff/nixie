@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkPromptProposal } from '@heynixie/definitions';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
+import type { PromptsTables } from '@heynixie/prompts';
 import { promptsOverrideProposedCodec } from '@heynixie/prompts';
 import { buildTestClock } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
@@ -135,6 +136,54 @@ test('#approve records the approval that names you, then wakes the definitions e
   ]);
 
   expect(ctx.wakeExports).toHaveBeenCalledOnce();
+});
+
+test('#approve stores the edited files in place of the proposed ones, and records the edit', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'prompts.override_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: promptsOverrideProposedCodec.encode({
+        proposalID: 'p8w2n4c6ld',
+        promptID: 'compaction',
+        proposalHash: 'hash-c',
+        baseHash: null,
+        entry: { safety: 'prompts/compaction-safety.md' },
+        files: [{ path: 'prompts/compaction-safety.md', text: 'Answer with the summary alone.\n' }],
+        reason: 'The summaries ramble past the word target.',
+        provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  await ctx.client.approve({
+    proposalID: 'p8w2n4c6ld',
+    proposalHash: 'hash-c',
+    files: [{ path: 'prompts/compaction-safety.md', text: 'Answer in one line.\n' }],
+  });
+
+  const approvals = await ctx.log.writer.db
+    .$extendTables<PromptsTables>()
+    .selectFrom('prompt_approvals')
+    .select(['entry', 'files'])
+    .execute();
+
+  const records = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['prompts.override_approved'],
+  });
+
+  expect(approvals).toStrictEqual([
+    {
+      entry: '{"safety":"prompts/compaction-safety.md"}',
+      files: '[{"path":"prompts/compaction-safety.md","text":"Answer in one line.\\n"}]',
+    },
+  ]);
+
+  expect(records.map((entry) => entry.record.payload['isEdited'])).toStrictEqual([true]);
 });
 
 test('#approve refuses an edited entry that fails the definitions checks with its code', async () => {
