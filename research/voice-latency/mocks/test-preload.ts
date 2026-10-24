@@ -1,8 +1,10 @@
-import { afterAll, afterEach } from 'bun:test';
+import { afterAll, afterEach, beforeAll } from 'bun:test';
 import { decisionStore } from './decision-store.ts';
 import { server } from './node.ts';
 
-server.listen({ onUnhandledRequest: 'error' });
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: 'error' });
+});
 
 afterEach(() => {
   server.resetHandlers();
