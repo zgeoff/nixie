@@ -18,7 +18,7 @@ const messageArguments = z.object({
 });
 
 export function buildTaskMessageTool(
-  context: Pick<TasksContext, 'definitions' | 'log'>,
+  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
   messaging: TaskMessaging,
 ): ToolDefinition {
   const owner = messaging.ownerName ?? 'the owner';
@@ -91,6 +91,7 @@ export function buildTaskMessageTool(
         replyTo: input.replyTo ?? null,
         onBehalfOf: input.onBehalfOf ?? [],
         wake: input.wake ?? true,
+        stepRunID: tool.run.stepRunID ?? null,
       });
 
       if (outcome.status === 'refused') {
@@ -140,6 +141,10 @@ function renderRefusal(messaging: TaskMessaging, refusal: TaskMessageRefusal): s
       { reason: 'not_owner_message' },
       (stranger) =>
         `onBehalfOf takes only the event IDs of ${owner}'s own messages, and ${stranger.eventIDs.map((eventID) => `#${eventID}`).join(', ')} ${stranger.eventIDs.length === 1 ? 'is' : 'are'} not`,
+    )
+    .with(
+      { reason: 'stale_step' },
+      () => 'this call comes from a step that no longer holds its task, so nixie sent nothing',
     )
     .exhaustive();
 }

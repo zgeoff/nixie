@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
+import invariant from 'tiny-invariant';
+import { buildStepRunID } from './build-step-run-id';
 import { buildTaskMessageTool } from './build-task-message-tool';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
@@ -18,7 +20,10 @@ test('it sends the message and answers with its ID, its hop and that it woke the
 
   await createSystemTask(ctx.context, 'planner');
   await createConversationTask(ctx.context);
-  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
@@ -34,7 +39,7 @@ test('it sends the message and answers with its ID, its hop and that it woke the
       tool: 'task.message',
       input: { to: 'conversation', kind: 'report', body: 'The week is planned.' },
     }),
-    buildMockToolContext({ run: { thread: 'planner' } }),
+    buildMockToolContext({ run: { thread: 'planner', stepRunID: buildStepRunID(claim) } }),
   );
 
   expect(outcome).toStrictEqual({
@@ -48,7 +53,10 @@ test('it tells the sender, in a note, why a message past the hop limit did not w
 
   await createSystemTask(ctx.context, 'planner');
   await createConversationTask(ctx.context);
-  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
 
   await ctx.db.updateTable('tasks').set({ step_hop: 2 }).where('task_id', '=', 'planner').execute();
 
@@ -66,7 +74,7 @@ test('it tells the sender, in a note, why a message past the hop limit did not w
       tool: 'task.message',
       input: { to: 'conversation', kind: 'chat', body: 'Still planning.' },
     }),
-    buildMockToolContext({ run: { thread: 'planner' } }),
+    buildMockToolContext({ run: { thread: 'planner', stepRunID: buildStepRunID(claim) } }),
   );
 
   expect(outcome).toStrictEqual({
@@ -87,7 +95,10 @@ test("it refuses on-behalf-of IDs that are not the owner's messages, naming them
 
   await createSystemTask(ctx.context, 'planner');
   await createConversationTask(ctx.context);
-  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
@@ -108,7 +119,7 @@ test("it refuses on-behalf-of IDs that are not the owner's messages, naming them
         onBehalfOf: ['#1'],
       },
     }),
-    buildMockToolContext({ run: { thread: 'planner' } }),
+    buildMockToolContext({ run: { thread: 'planner', stepRunID: buildStepRunID(claim) } }),
   );
 
   expect(outcome).toStrictEqual({
@@ -121,7 +132,10 @@ test('it refuses a message to a task the caller cannot message, pointing at task
   const ctx = await setupTest();
 
   await createSystemTask(ctx.context, 'planner');
-  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
@@ -136,11 +150,49 @@ test('it refuses a message to a task the caller cannot message, pointing at task
       tool: 'task.message',
       input: { to: 'gardener', kind: 'chat', body: 'Hello.' },
     }),
-    buildMockToolContext({ run: { thread: 'planner' } }),
+    buildMockToolContext({ run: { thread: 'planner', stepRunID: buildStepRunID(claim) } }),
   );
 
   expect(outcome).toStrictEqual({
     status: 'error',
     message: 'no task you can message has the ID gardener; tasks.list gives the IDs',
   });
+});
+
+test('it refuses a call that comes from no step, and sends nothing', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const tool = buildTaskMessageTool(ctx.context, {
+    directory: [
+      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 20,
+    ownerName: 'Robin',
+  });
+
+  const outcome = await tool.run(
+    buildMockToolCall({
+      tool: 'task.message',
+      input: { to: 'conversation', kind: 'chat', body: 'Hello.' },
+    }),
+    buildMockToolContext({ run: { thread: 'planner' } }),
+  );
+
+  const messages = await ctx.db
+    .selectFrom('records')
+    .select('sequence')
+    .where('kind', '=', 'task_message')
+    .execute();
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'this call comes from a step that no longer holds its task, so nixie sent nothing',
+  });
+
+  expect(messages).toStrictEqual([]);
 });

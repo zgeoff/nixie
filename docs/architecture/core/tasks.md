@@ -97,6 +97,12 @@ read. The message tool refuses a message to the sender itself, to a task outside
 one that has finished, a reply to an unknown message, and an on-behalf-of ID that is not one of the
 user's messages, with the refusal as the tool's answer. The record's body is erasable.
 
+A message write checks the sender's lease in its own transaction, as a step commit does. The tool
+call carries the run ID of the step that made it, and the write refuses the call when the task has
+started another step, its lease has moved to another generation, or the lease has expired. A step
+that lost its task therefore wakes nobody and changes no wait. The memory writer and consolidator
+open each session under a token for the step that runs it, so their calls carry that run ID too.
+
 Each step carries a hop count and the cause that woke it, which the claim works out from the unread
 waking records and stores on the step's start. A step woken by the user, a timer or an outside event
 is hop 0, a step woken by task messages takes the lowest hop among them, and a step with no new

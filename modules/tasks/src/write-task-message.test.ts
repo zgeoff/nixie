@@ -1,12 +1,14 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { buildStepRunID } from './build-step-run-id';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { createSystemTask } from './create-system-task';
 import { makeStubStep } from './test-utils/make-stub-step';
 import { runTaskSteps } from './test-utils/run-task-steps';
 import { startTestTasks } from './test-utils/start-test-tasks';
+import { writeTestTaskMessage } from './test-utils/write-test-task-message';
 import type { TasksTables } from './types';
 import { writeInboxRecords } from './write-inbox-records';
 import { writeStepCommit } from './write-step-commit';
@@ -18,6 +20,87 @@ async function setupTest() {
   return { ...tasks, db: tasks.writer.db.$extendTables<TasksTables>() };
 }
 
+test('it refuses a message from a step whose task another runner reclaimed, and writes nothing', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+
+  const lost = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(lost);
+
+  ctx.clock.advance(60_000);
+
+  const reclaimed = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const outcome = await writeTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'conversation',
+      kind: 'question',
+      body: 'Is Tuesday free?',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+      stepRunID: buildStepRunID(lost),
+    },
+  );
+
+  const messages = await ctx.db.selectFrom('task_messages').select('message_id').execute();
+
+  expect(reclaimed?.lease.workID).toBe('planner');
+  expect(outcome).toStrictEqual({ status: 'refused', refusal: { reason: 'stale_step' } });
+  expect(messages).toStrictEqual([]);
+});
+
+test('it refuses a message from a step whose lease expired, and writes nothing', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  ctx.clock.advance(60_000);
+
+  const outcome = await writeTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'conversation',
+      kind: 'chat',
+      body: 'Still here.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+      stepRunID: buildStepRunID(claim),
+    },
+  );
+
+  const messages = await ctx.db.selectFrom('task_messages').select('message_id').execute();
+
+  expect(outcome).toStrictEqual({ status: 'refused', refusal: { reason: 'stale_step' } });
+  expect(messages).toStrictEqual([]);
+});
+
 test('it delivers a message to the task it names and wakes it', async () => {
   const ctx = await setupTest();
 
@@ -25,7 +108,7 @@ test('it delivers a message to the task it names and wakes it', async () => {
   await createConversationTask(ctx.context);
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  const outcome = await writeTaskMessage(
+  const outcome = await writeTestTaskMessage(
     ctx.context,
     {
       directory: [
@@ -90,7 +173,7 @@ test('it leaves the receiver waiting for its next wake when the sender asks for 
   await createConversationTask(ctx.context);
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  const outcome = await writeTaskMessage(
+  const outcome = await writeTestTaskMessage(
     ctx.context,
     {
       directory: [
@@ -131,7 +214,7 @@ test('it holds a message for a task that runs on its own schedule, with no wake'
   await createConversationTask(ctx.context);
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  const outcome = await writeTaskMessage(
+  const outcome = await writeTestTaskMessage(
     ctx.context,
     {
       directory: [
@@ -167,7 +250,7 @@ test('it refuses a message to the sender itself', async () => {
   await createSystemTask(ctx.context, 'planner');
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  const outcome = await writeTaskMessage(
+  const outcome = await writeTestTaskMessage(
     ctx.context,
     {
       directory: [
@@ -196,7 +279,7 @@ test('it refuses a message to a task the directory does not list', async () => {
   await createSystemTask(ctx.context, 'queue-check');
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  const outcome = await writeTaskMessage(
+  const outcome = await writeTestTaskMessage(
     ctx.context,
     {
       directory: [
@@ -234,7 +317,7 @@ test('it refuses a message to a task that has finished', async () => {
   await writeStepCommit(ctx.context, gardener, { next: 'done', records: [], acknowledged: [] });
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  const outcome = await writeTaskMessage(
+  const outcome = await writeTestTaskMessage(
     ctx.context,
     {
       directory: [
@@ -267,7 +350,7 @@ test('it refuses a reply to a message that was never sent to the sender', async 
   await createConversationTask(ctx.context);
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  const outcome = await writeTaskMessage(
+  const outcome = await writeTestTaskMessage(
     ctx.context,
     {
       directory: [
@@ -300,7 +383,7 @@ test("it refuses on-behalf-of IDs that do not name the owner's messages", async 
   await createConversationTask(ctx.context);
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  const outcome = await writeTaskMessage(
+  const outcome = await writeTestTaskMessage(
     ctx.context,
     {
       directory: [
@@ -346,7 +429,7 @@ test("it stores on-behalf-of IDs that name the owner's messages", async () => {
 
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  await writeTaskMessage(
+  await writeTestTaskMessage(
     ctx.context,
     {
       directory: [
@@ -393,7 +476,7 @@ test('it delivers a message past the hop limit without a wake and tells the owne
     hopLimit: 3,
   };
 
-  const outcome = await writeTaskMessage(ctx.context, messaging, {
+  const outcome = await writeTestTaskMessage(ctx.context, messaging, {
     from: 'planner',
     to: 'conversation',
     kind: 'question',
@@ -403,7 +486,7 @@ test('it delivers a message past the hop limit without a wake and tells the owne
     wake: true,
   });
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'planner',
     to: 'conversation',
     kind: 'chat',
@@ -466,7 +549,7 @@ test('it tells the owner nothing waits when the message past the limit asks noth
 
   await ctx.db.updateTable('tasks').set({ step_hop: 3 }).where('task_id', '=', 'planner').execute();
 
-  await writeTaskMessage(
+  await writeTestTaskMessage(
     ctx.context,
     {
       directory: [
@@ -510,7 +593,7 @@ test('it stops waking a chain of tasks that message each other at the hop limit'
 
   const makeSend = (from: string, to: string) =>
     makeStubStep(() =>
-      writeTaskMessage(ctx.context, messaging, {
+      writeTestTaskMessage(ctx.context, messaging, {
         from,
         to,
         kind: 'chat',
@@ -584,7 +667,7 @@ test('it starts the count again when the owner writes to a task in a held exchan
 
   const makeSend = (from: string, to: string) =>
     makeStubStep(() =>
-      writeTaskMessage(ctx.context, messaging, {
+      writeTestTaskMessage(ctx.context, messaging, {
         from,
         to,
         kind: 'chat',
@@ -659,7 +742,7 @@ test('it starts the count again when a timer wakes a task in a held exchange', a
 
   const makeSend = (from: string, to: string) =>
     makeStubStep(() =>
-      writeTaskMessage(ctx.context, messaging, {
+      writeTestTaskMessage(ctx.context, messaging, {
         from,
         to,
         kind: 'chat',

@@ -5,9 +5,9 @@ import { createConversationTask } from './create-conversation-task';
 import { createSystemTask } from './create-system-task';
 import { readTaskList } from './read-task-list';
 import { startTestTasks } from './test-utils/start-test-tasks';
+import { writeTestTaskMessage } from './test-utils/write-test-task-message';
 import { writeStepCommit } from './write-step-commit';
 import { writeStepError } from './write-step-error';
-import { writeTaskMessage } from './write-task-message';
 
 function setupTest() {
   return startTestTasks();
@@ -86,7 +86,7 @@ test('it shows a task that asked a question as waiting on the task it asked', as
   await createConversationTask(ctx.context);
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'planner',
     to: 'conversation',
     kind: 'question',
@@ -123,7 +123,7 @@ test('it clears the wait when the asked task replies to the question, by its ID'
 
   invariant(planner);
 
-  const question = await writeTaskMessage(ctx.context, messaging, {
+  const question = await writeTestTaskMessage(ctx.context, messaging, {
     from: 'planner',
     to: 'conversation',
     kind: 'question',
@@ -138,7 +138,7 @@ test('it clears the wait when the asked task replies to the question, by its ID'
   await writeStepCommit(ctx.context, planner, { next: 'wait', records: [], acknowledged: [] });
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  const reply = await writeTaskMessage(ctx.context, messaging, {
+  const reply = await writeTestTaskMessage(ctx.context, messaging, {
     from: 'conversation',
     to: 'planner',
     kind: 'reply',
@@ -185,7 +185,7 @@ test('it clears the wait when the task that asked finishes', async () => {
 
   invariant(planner);
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'planner',
     to: 'conversation',
     kind: 'request',
@@ -232,7 +232,7 @@ test('it clears the wait when the asked task stops on its errors', async () => {
 
   invariant(planner);
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'planner',
     to: 'critic',
     kind: 'question',

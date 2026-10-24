@@ -11,11 +11,11 @@ import {
   writeInboxRecords,
   writeStepCommit,
   writeStepError,
-  writeTaskMessage,
 } from './index';
 import { tasksProjections } from './tasks-projections';
 import { createTestClaim } from './test-utils/create-test-claim';
 import { startTestTasks } from './test-utils/start-test-tasks';
+import { writeTestTaskMessage } from './test-utils/write-test-task-message';
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -178,7 +178,7 @@ test('it rebuilds the task messages and their waits equal to the live ones after
 
   invariant(planner);
 
-  const question = await writeTaskMessage(ctx.context, messaging, {
+  const question = await writeTestTaskMessage(ctx.context, messaging, {
     from: 'planner',
     to: 'conversation',
     kind: 'question',
@@ -190,7 +190,7 @@ test('it rebuilds the task messages and their waits equal to the live ones after
 
   invariant(question.status === 'sent');
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'planner',
     to: 'conversation',
     kind: 'request',
@@ -203,7 +203,7 @@ test('it rebuilds the task messages and their waits equal to the live ones after
   await writeStepCommit(ctx.context, planner, { next: 'wait', records: [], acknowledged: [] });
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'conversation',
     to: 'planner',
     kind: 'reply',
@@ -249,7 +249,7 @@ test('it releases only the open waits when a task finishes, and leaves an answer
 
   invariant(planner);
 
-  const question = await writeTaskMessage(ctx.context, messaging, {
+  const question = await writeTestTaskMessage(ctx.context, messaging, {
     from: 'planner',
     to: 'conversation',
     kind: 'question',
@@ -261,7 +261,7 @@ test('it releases only the open waits when a task finishes, and leaves an answer
 
   invariant(question.status === 'sent');
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'planner',
     to: 'conversation',
     kind: 'request',
@@ -277,7 +277,7 @@ test('it releases only the open waits when a task finishes, and leaves an answer
 
   invariant(conversation);
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'conversation',
     to: 'planner',
     kind: 'reply',

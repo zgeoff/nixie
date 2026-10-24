@@ -24,7 +24,8 @@ export type TaskMessageRefusal =
   | { readonly reason: 'unknown_task'; readonly taskID: string }
   | { readonly reason: 'finished'; readonly taskID: string }
   | { readonly reason: 'unknown_reply'; readonly messageID: string }
-  | { readonly reason: 'not_owner_message'; readonly eventIDs: readonly string[] };
+  | { readonly reason: 'not_owner_message'; readonly eventIDs: readonly string[] }
+  | { readonly reason: 'stale_step' };
 
 export type TaskMessageHold = 'none' | 'hop_limit' | 'next_run';
 

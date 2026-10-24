@@ -7,8 +7,8 @@ import {
   createConversationTask,
   createSystemTask,
   writeInboxRecords,
-  writeTaskMessage,
 } from '@heynixie/tasks';
+import { writeTestTaskMessage } from '@heynixie/tasks/test-utils';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
@@ -786,7 +786,7 @@ test("it wakes the conversation for a system task's message and gives the turn t
 
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'memory-writer',
     to: 'conversation',
     kind: 'report',
@@ -834,7 +834,7 @@ test("it passes a held task message that lands during a turn into that turn, fra
   });
 
   const live = buildStubLiveTurnScript(() =>
-    writeTaskMessage(ctx.context, messaging, {
+    writeTestTaskMessage(ctx.context, messaging, {
       from: 'memory-writer',
       to: 'conversation',
       kind: 'question',
@@ -900,7 +900,7 @@ test('it gives the next turn a message sent with no wake, before the message tha
 
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'memory-writer',
     to: 'conversation',
     kind: 'progress',
@@ -944,7 +944,7 @@ test('it tells the conversation its reply will not wake a task once the reply wo
 
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'memory-writer',
     to: 'conversation',
     kind: 'question',
@@ -990,7 +990,7 @@ test('it tells the conversation which messages arrived past the hop limit when t
 
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
 
-  await writeTaskMessage(ctx.context, messaging, {
+  await writeTestTaskMessage(ctx.context, messaging, {
     from: 'memory-writer',
     to: 'conversation',
     kind: 'chat',

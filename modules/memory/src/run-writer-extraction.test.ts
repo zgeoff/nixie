@@ -70,6 +70,15 @@ test('it shows the writer the pending proposals beside the current items, with t
     inbox: [],
     signal: new AbortController().signal,
     wake: { hop: 0, cause: { kind: 'event' } },
+    stepKey: 'memory-writer:1',
+    lease: {
+      kind: 'task',
+      workID: 'memory-writer',
+      holder: 'runner-a',
+      generation: 1,
+      epoch: 1,
+      expiresAt: 1_060_000,
+    },
   });
 
   invariant(held.status === 'proposed');
@@ -140,6 +149,15 @@ test('it shows the writer the image markers of your message on the lines after i
     inbox: [],
     signal: new AbortController().signal,
     wake: { hop: 0, cause: { kind: 'event' } },
+    stepKey: 'memory-writer:1',
+    lease: {
+      kind: 'task',
+      workID: 'memory-writer',
+      holder: 'runner-a',
+      generation: 1,
+      epoch: 1,
+      expiresAt: 1_060_000,
+    },
   });
 
   expect(session.model.runSession).toHaveBeenCalledWith(
@@ -173,6 +191,15 @@ test('it tells the writer to name the owner and the assistant by their configure
       inbox: [],
       signal: new AbortController().signal,
       wake: { hop: 0, cause: { kind: 'event' } },
+      stepKey: 'memory-writer:1',
+      lease: {
+        kind: 'task',
+        workID: 'memory-writer',
+        holder: 'runner-a',
+        generation: 1,
+        epoch: 1,
+        expiresAt: 1_060_000,
+      },
     },
   );
 
@@ -215,6 +242,15 @@ test('it gives the writer the prompt override in force', async () => {
       inbox: [],
       signal: new AbortController().signal,
       wake: { hop: 0, cause: { kind: 'event' } },
+      stepKey: 'memory-writer:1',
+      lease: {
+        kind: 'task',
+        workID: 'memory-writer',
+        holder: 'runner-a',
+        generation: 1,
+        epoch: 1,
+        expiresAt: 1_060_000,
+      },
     },
   );
 
@@ -254,6 +290,15 @@ test('it shows the writer only the pending proposals it may write, and never a s
     inbox: [],
     signal: new AbortController().signal,
     wake: { hop: 0, cause: { kind: 'event' } },
+    stepKey: 'memory-writer:1',
+    lease: {
+      kind: 'task',
+      workID: 'memory-writer',
+      holder: 'runner-a',
+      generation: 1,
+      epoch: 1,
+      expiresAt: 1_060_000,
+    },
   });
 
   invariant(held.status === 'proposed');
@@ -286,6 +331,15 @@ test('it returns the flags the session staged beside its writes', async () => {
     inbox: [],
     signal: new AbortController().signal,
     wake: { hop: 0, cause: { kind: 'event' } },
+    stepKey: 'memory-writer:1',
+    lease: {
+      kind: 'task',
+      workID: 'memory-writer',
+      holder: 'runner-a',
+      generation: 1,
+      epoch: 1,
+      expiresAt: 1_060_000,
+    },
   });
 
   expect(extracted.writes).toStrictEqual([]);

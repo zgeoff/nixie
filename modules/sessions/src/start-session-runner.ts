@@ -3,7 +3,7 @@ import type { ResolvedProfile } from '@heynixie/models';
 import type { GuestCommand, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
-import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
+import type { RunEndpoint, ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { isContextOverflow } from './is-context-overflow';
 import { runGuestTurn } from './run-guest-turn';
@@ -26,6 +26,8 @@ export interface SessionInput {
   readonly systemPrompt: string;
   readonly prompt: string;
   readonly signal: AbortSignal;
+
+  readonly stepRunID: string;
 }
 
 export interface SessionUsage {
@@ -63,7 +65,7 @@ export async function startSessionRunner(options: SessionRunnerOptions): Promise
 
   return {
     model,
-    runSession: (session) => runSession({ ...options, sandbox, token: endpoint.token }, session),
+    runSession: (session) => runSession({ ...options, sandbox, endpoint }, session),
     stop: () => endpoint.stop(),
   };
 }
@@ -94,7 +96,7 @@ async function setupSessionSandbox(
 interface SessionRun extends SessionRunnerOptions {
   readonly sandbox: Sandbox;
 
-  readonly token: string;
+  readonly endpoint: Pick<RunEndpoint, 'startStep'>;
 }
 
 async function runSession(run: SessionRun, session: SessionInput): Promise<SessionUsage> {
@@ -102,6 +104,27 @@ async function runSession(run: SessionRun, session: SessionInput): Promise<Sessi
 
   invariant(route, 'the session sandbox has no tool route');
 
+  // A tool call under the step's token carries the step's run ID, so a write that a step's lease
+  // guards can refuse a call from a step that lost its task.
+  const step = run.endpoint.startStep(session.stepRunID);
+
+  try {
+    return await runStepSession(run, session, { url: route.url, token: step.token });
+  } finally {
+    await step.stop();
+  }
+}
+
+interface SessionTools {
+  readonly url: string;
+  readonly token: string;
+}
+
+async function runStepSession(
+  run: SessionRun,
+  session: SessionInput,
+  tools: SessionTools,
+): Promise<SessionUsage> {
   const profile = run.profile.profile;
 
   const turn = await runGuestTurn({
@@ -120,7 +143,7 @@ async function runSession(run: SessionRun, session: SessionInput): Promise<Sessi
         // read again.
         cacheTTL: '5m',
       },
-      tools: { url: route.url, token: run.token },
+      tools,
       resume: null,
       systemPrompt: session.systemPrompt,
       input: [{ uuid: crypto.randomUUID(), text: session.prompt }],

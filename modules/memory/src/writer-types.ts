@@ -104,6 +104,8 @@ export interface WriterSessionInput {
   readonly systemPrompt: string;
   readonly prompt: string;
   readonly signal: AbortSignal;
+
+  readonly stepRunID: string;
 }
 
 export type BatchMode = 'catch_up' | 'live';

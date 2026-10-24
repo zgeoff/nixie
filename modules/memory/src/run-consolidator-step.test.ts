@@ -216,6 +216,7 @@ test('it shows the session the persona, the rules and every active item, and no 
       ).test(prompt),
     ),
     signal: expect.toSatisfy((signal: unknown) => signal instanceof AbortSignal),
+    stepRunID: 'memory-consolidator:1@1',
   });
 });
 
@@ -373,6 +374,7 @@ test('it runs the session on a list cut at the budget, even when the cut list ho
       ).test(prompt),
     ),
     signal: expect.toSatisfy((signal: unknown) => signal instanceof AbortSignal),
+    stepRunID: 'memory-consolidator:1@1',
   });
 });
 

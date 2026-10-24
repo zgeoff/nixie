@@ -2,7 +2,7 @@ import { StaleWriterError } from '@heynixie/log';
 import { renderPrompt } from '@heynixie/prompts';
 import { renderSessionMessages } from '@heynixie/sessions';
 import type { StepInput, StepResult } from '@heynixie/tasks';
-import { LeaseLostError } from '@heynixie/tasks';
+import { LeaseLostError, buildStepRunID } from '@heynixie/tasks';
 import type { StagedChange } from './consolidation-types';
 import type { ConsolidatorParts } from './consolidator-parts';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
@@ -141,6 +141,7 @@ async function runSession(parts: ConsolidatorParts, input: StepInput): Promise<S
       ),
       prompt: appendTaskMessages(renderConsolidatorPrompt(listed), parts, input),
       signal: input.signal,
+      stepRunID: buildStepRunID(input),
     });
 
     return readSessionDiff(staged, parts.model.model);

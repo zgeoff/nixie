@@ -2,6 +2,8 @@ import { createShortID } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
+import type { StepRunRef } from './parse-step-run-id';
+import { parseStepRunID } from './parse-step-run-id';
 import type {
   TaskMessageFacts,
   TaskMessageHold,
@@ -25,12 +27,22 @@ export type TaskMessageOutcome =
     }
   | { readonly status: 'refused'; readonly refusal: TaskMessageRefusal };
 
+export interface TaskMessageWrite extends TaskMessageRequest {
+  readonly stepRunID: string | null;
+}
+
 export function writeTaskMessage(
-  context: Pick<TasksContext, 'definitions' | 'log'>,
+  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
   messaging: Pick<TaskMessaging, 'directory' | 'hopLimit'>,
-  request: TaskMessageRequest,
+  request: TaskMessageWrite,
 ): Promise<TaskMessageOutcome> {
   return withWriteTransaction(context.log.writer, async (tx) => {
+    const step = request.stepRunID === null ? null : parseStepRunID(request.stepRunID);
+
+    if (step === null || !(await probeStepLease(tx, request.from, step, context.clock.now()))) {
+      return { status: 'refused', refusal: { reason: 'stale_step' } };
+    }
+
     const sender = await readSender(tx, request.from);
     const facts = await readFacts(tx, request, sender.hop);
 
@@ -88,6 +100,30 @@ export function writeTaskMessage(
 
     return { status: 'sent', messageID, hop: plan.hop, woke: plan.woke, hold: plan.hold };
   });
+}
+
+// The write transaction opens with BEGIN IMMEDIATE, so this check holds against every claim until
+// the message commits.
+async function probeStepLease(
+  tx: Transaction<unknown>,
+  taskID: string,
+  step: StepRunRef,
+  now: number,
+): Promise<boolean> {
+  const row = await tx
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .innerJoin('leases', (join) =>
+      join.onRef('leases.work_id', '=', 'tasks.task_id').on('leases.kind', '=', 'task'),
+    )
+    .select('tasks.task_id')
+    .where('tasks.task_id', '=', taskID)
+    .where('tasks.started_step_key', '=', step.stepKey)
+    .where('leases.generation', '=', step.generation)
+    .where('leases.expires_at', '>', now)
+    .executeTakeFirst();
+
+  return row !== undefined;
 }
 
 interface Sender {

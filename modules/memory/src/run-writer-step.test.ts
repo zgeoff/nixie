@@ -130,6 +130,27 @@ test('it runs no session for a task message alone and leaves the message unread 
   expect(result.acknowledged).toStrictEqual([]);
 });
 
+test("it runs the writer's session under the run ID of the step that holds the writer", async () => {
+  const runSession = mock<WriterModel['runSession']>(() =>
+    Promise.resolve({ inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 }),
+  );
+
+  const ctx = await setupTest({ runSession });
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'I keep bees on the roof.' },
+    },
+  ]);
+
+  await ctx.runStep();
+
+  expect(runSession.mock.calls[0]?.[0].stepRunID).toBe('memory-writer:1@1');
+});
+
 test('it shows a waiting task message to its next scheduled session and reads it there', async () => {
   const runSession = mock<WriterModel['runSession']>(() =>
     Promise.resolve({ inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 }),

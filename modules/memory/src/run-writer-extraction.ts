@@ -1,7 +1,7 @@
 import { renderPrompt } from '@heynixie/prompts';
 import { renderSessionMessages } from '@heynixie/sessions';
 import type { StepInput } from '@heynixie/tasks';
-import { waitAtFaultPoint } from '@heynixie/tasks';
+import { buildStepRunID, waitAtFaultPoint } from '@heynixie/tasks';
 import type { StagingHandle } from './create-writer-staging';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import { readShownItems } from './read-shown-items';
@@ -23,7 +23,7 @@ export interface WriterExtraction {
   readonly shownTexts: ReadonlySet<string>;
 }
 
-export type ExtractionStep = Pick<StepInput, 'inbox' | 'signal' | 'wake'>;
+export type ExtractionStep = Pick<StepInput, 'inbox' | 'lease' | 'signal' | 'stepKey' | 'wake'>;
 
 export async function runWriterExtraction(
   parts: WriterParts,
@@ -68,7 +68,12 @@ export async function runWriterExtraction(
     taskMessages,
   });
 
-  const session = await runSession(parts, { prompt, signal: step.signal, staged });
+  const session = await runSession(parts, {
+    prompt,
+    signal: step.signal,
+    stepRunID: buildStepRunID(step),
+    staged,
+  });
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('writer.batch.extracted', { kind: 'task', id: memoryWriterTaskID });
@@ -110,6 +115,7 @@ function buildSpeakerNames(parts: WriterParts): SpeakerNames {
 interface SessionRequest {
   readonly prompt: string;
   readonly signal: AbortSignal;
+  readonly stepRunID: string;
   readonly staged: StagingHandle;
 }
 
@@ -130,6 +136,7 @@ async function runSession(
       ),
       prompt: session.prompt,
       signal: session.signal,
+      stepRunID: session.stepRunID,
     });
 
     return { writes: session.staged.close(), flags: session.staged.readFlags(), usage };
