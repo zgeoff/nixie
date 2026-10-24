@@ -23,8 +23,8 @@ item count find more of what a turn needed than the shipped settings?
   0.76 at recall@5, close to MiniLM vectors on the message at 0.77.
 - No method tells a current fact from a superseded one, so the store has to.
 - An in-memory FTS5 index over 20,000 log messages builds in 62 ms and takes 0.85 ms per query.
-- On 112 labelled real turns, the shipped hybrid ranking scored recall@5 0.543, recall@10 0.712 and
-  MRR 0.506. No alternative encoder, fusion setting, floor or item count was shown to be better, and
+- On 111 labelled real turns, the shipped hybrid ranking scored recall@5 0.539, recall@10 0.709 and
+  MRR 0.509. No alternative encoder, fusion setting, floor or item count was shown to be better, and
   BM25 alone scored about 0.1 lower beyond its 95% interval.
 
 Let the store mark which fact is current. Keep the shipped encoder, fusion, floors and item counts.

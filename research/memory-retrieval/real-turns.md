@@ -28,9 +28,10 @@ into `MODELS_DIR`.
 bun real-turns.ts stats  --plain <plain>
 bun real-turns.ts replay --plain <plain> --names <names>
 bun real-turns.ts sample --plain <plain> --out <sample.jsonl> --size 300
-bun real-turns.ts cases  --plain <plain> --labels <labels.jsonl> --key <sample-key.jsonl> --out <cases.jsonl>
+bun real-turns.ts cases  --plain <plain> --labels <labels.jsonl> --key <sample-key.jsonl> \
+  --sample <sample.jsonl> --out <cases.jsonl>
 bun real-turns.ts score  --plain <plain> --names <names> --labels <labels.jsonl> --key <sample-key.jsonl> \
-  --encoders leaf-ir-q8,arctic-s-q8,bge-small,minilm
+  --sample <sample.jsonl> --encoders leaf-ir-q8,arctic-s-q8,bge-small,minilm
 ```
 
 - [build-turn-cases.ts](real-turns/build-turn-cases.ts) rebuilds each turn, and follows the session
@@ -53,22 +54,23 @@ turns.
 The snapshot held 1,015 conversation turns over 12 days and 99 memory items. Hybrid retrieval ran on
 670 of those turns, and 594 of the 670 returned no item. On 667 of the 670, the session had already
 been given at least one version, which per-turn retrieval leaves out, and that exclusion empties
-most retrievals: on the 300 labelled turns, turning it off raises the items shown from 1.12 a turn
-to 4.37.
+most retrievals: on the 297 scored turns, turning it off raises the items shown from 1.10 a turn to
+4.38.
 
 The ratings could not serve as ground truth: the log held 4 rating records with 8 ratings, all
 noise. Labels came instead from a language model given the deployment's persona and session prompt,
 on a sample of 300 turns: the 213 turns whose retrieval returned an item or was rated, and 87 more
 at random. The labeller saw the turn, the 2 exchanges before it, the reply, and every item that
 per-turn retrieval could return at that moment: each active item that was neither pinned nor lapsed.
-It marked each item that would have helped the reply, and marked at least one item on 112 turns. On
-3 of the 300 turns, the query the harness rebuilds holds an earlier message that no step had read,
-which the sample the labeller saw left out, and their labels stand as the labeller made them.
+It marked each item that would have helped the reply. On 3 of the 300 turns, the query the harness
+rebuilds holds an earlier message that no step had read, which the sample the labeller saw left out.
+The score and cases commands drop each label whose sample message differs from the rebuilt query, so
+the scores cover 297 turns, and 111 of them needed an item.
 
 ## Ranking
 
 Each ranking puts every item per-turn retrieval could return at the turn's moment in one list, with
-no floor, no cut and no session exclusion, and scores it on the 112 turns that needed an item.
+no floor, no cut and no session exclusion, and scores it on the 111 turns that needed an item.
 Recall@k is the share of the needed items in the top k, averaged over turns. Mean reciprocal rank
 (MRR) takes the rank of the first needed item anywhere in that list, so a first needed item at rank
 11 counts 1/11. The last 2 columns give the paired difference from the shipped ranking with its 95%
@@ -76,16 +78,16 @@ bootstrap interval, with no correction for the number of settings compared.
 
 | Setting                       | Recall@3 | Recall@5 | Recall@10 | MRR   | Recall@5 change           | MRR change                |
 | ----------------------------- | -------- | -------- | --------- | ----- | ------------------------- | ------------------------- |
-| Shipped: leaf-ir int8, hybrid | 0.467    | 0.543    | 0.712     | 0.506 | none                      | none                      |
-| leaf-ir int8, vectors only    | 0.426    | 0.520    | 0.712     | 0.464 | -0.023 (-0.104 to 0.060)  | -0.042 (-0.094 to 0.011)  |
-| BM25 only                     | 0.391    | 0.445    | 0.512     | 0.406 | -0.098 (-0.156 to -0.049) | -0.100 (-0.151 to -0.048) |
-| leaf-ir, full width in fp32   | 0.454    | 0.539    | 0.717     | 0.497 | -0.004 (-0.013 to 0)      | -0.009 (-0.029 to 0.009)  |
-| Fusion rank offset 20         | 0.458    | 0.555    | 0.703     | 0.506 | 0.012 (0 to 0.036)        | -0.001 (-0.003 to 0.002)  |
-| Vector list weighted twice    | 0.439    | 0.551    | 0.717     | 0.499 | 0.007 (-0.033 to 0.051)   | -0.007 (-0.030 to 0.014)  |
-| arctic-embed-s int8, hybrid   | 0.485    | 0.524    | 0.712     | 0.505 | -0.019 (-0.071 to 0.031)  | -0.001 (-0.045 to 0.041)  |
-| bge-small fp32, hybrid        | 0.536    | 0.580    | 0.715     | 0.537 | 0.036 (-0.006 to 0.083)   | 0.031 (-0.018 to 0.083)   |
-| bge-small fp32, vectors only  | 0.456    | 0.603    | 0.755     | 0.488 | 0.060 (-0.020 to 0.152)   | -0.019 (-0.095 to 0.060)  |
-| MiniLM fp32, hybrid           | 0.454    | 0.522    | 0.691     | 0.512 | -0.022 (-0.078 to 0.033)  | 0.006 (-0.041 to 0.054)   |
+| Shipped: leaf-ir int8, hybrid | 0.471    | 0.539    | 0.709     | 0.509 | none                      | none                      |
+| leaf-ir int8, vectors only    | 0.420    | 0.516    | 0.709     | 0.466 | -0.023 (-0.106 to 0.062)  | -0.043 (-0.101 to 0.013)  |
+| BM25 only                     | 0.395    | 0.449    | 0.508     | 0.409 | -0.090 (-0.144 to -0.041) | -0.100 (-0.151 to -0.047) |
+| leaf-ir, full width in fp32   | 0.458    | 0.535    | 0.714     | 0.499 | -0.005 (-0.014 to 0)      | -0.009 (-0.030 to 0.010)  |
+| Fusion rank offset 20         | 0.462    | 0.551    | 0.700     | 0.508 | 0.012 (0 to 0.033)        | -0.001 (-0.003 to 0.002)  |
+| Vector list weighted twice    | 0.443    | 0.547    | 0.714     | 0.501 | 0.008 (-0.032 to 0.048)   | -0.007 (-0.030 to 0.015)  |
+| arctic-embed-s int8, hybrid   | 0.480    | 0.520    | 0.709     | 0.507 | -0.020 (-0.072 to 0.032)  | -0.002 (-0.043 to 0.039)  |
+| bge-small fp32, hybrid        | 0.532    | 0.576    | 0.712     | 0.538 | 0.037 (-0.007 to 0.082)   | 0.029 (-0.018 to 0.082)   |
+| bge-small fp32, vectors only  | 0.451    | 0.600    | 0.753     | 0.483 | 0.061 (-0.023 to 0.149)   | -0.026 (-0.104 to 0.054)  |
+| MiniLM fp32, hybrid           | 0.458    | 0.517    | 0.688     | 0.515 | -0.022 (-0.081 to 0.035)  | 0.006 (-0.040 to 0.051)   |
 
 The 3 alternative encoders keep every number of their vectors, because only the shipped model is
 trained to carry its meaning in the first 256.
@@ -97,22 +99,22 @@ self notes, with the session's earlier versions left out. Each floor filters its
 fusion: the BM25 floor the keyword matches and the similarity floor the vector matches. Fusion then
 ranks the union of the two lists, so an item that one floor drops still shows when the other list
 keeps it. That is why a higher similarity floor leaves the items BM25 finds. Fresh recall is the
-share of needed items the session had not been given yet that the turn shows, over the 38 turns that
-had such an item. The shown columns cover the 188 labelled turns that needed no item. Each change
+share of needed items the session had not been given yet that the turn shows, over the 37 turns that
+had such an item. The shown columns cover the 186 scored turns that needed no item. Each change
 column gives the paired difference from the shipped set with its 95% bootstrap interval.
 
 | Setting                                      | Fresh recall | Fresh change              | Shown on a turn that needs none | Shown change           | Such turns shown any | Precision |
 | -------------------------------------------- | ------------ | ------------------------- | ------------------------------- | ---------------------- | -------------------- | --------- |
-| Shipped: 5 items, similarity 0.38, BM25 0.25 | 0.921        | none                      | 0.95                            | none                   | 0.38                 | 0.107     |
-| 3 items                                      | 0.921        | 0 (0 to 0)                | 0.76                            | -0.20 (-0.28 to -0.12) | 0.38                 | 0.134     |
-| 8 items                                      | 0.947        | 0.026 (0 to 0.079)        | 1.13                            | 0.18 (0.09 to 0.28)    | 0.38                 | 0.092     |
-| Similarity 0.34                              | 0.921        | 0 (0 to 0)                | 1.17                            | 0.22 (0.13 to 0.32)    | 0.40                 | 0.091     |
-| Similarity 0.42                              | 0.842        | -0.079 (-0.184 to 0)      | 0.83                            | -0.12 (-0.19 to -0.06) | 0.36                 | 0.109     |
-| BM25 floor 2                                 | 0.868        | -0.053 (-0.132 to 0)      | 0.81                            | -0.14 (-0.23 to -0.06) | 0.33                 | 0.117     |
-| Vectors only, similarity 0.38                | 0.711        | -0.211 (-0.342 to -0.079) | 0.53                            | -0.43 (-0.57 to -0.30) | 0.22                 | 0.137     |
-| Shipped floors, no session exclusion         | 0.737        | -0.184 (-0.316 to -0.079) | 4.18                            | 3.23 (2.94 to 3.54)    | 0.93                 | 0.056     |
+| Shipped: 5 items, similarity 0.38, BM25 0.25 | 0.919        | none                      | 0.96                            | none                   | 0.39                 | 0.107     |
+| 3 items                                      | 0.919        | 0 (0 to 0)                | 0.76                            | -0.20 (-0.29 to -0.12) | 0.39                 | 0.133     |
+| 8 items                                      | 0.946        | 0.027 (0 to 0.081)        | 1.15                            | 0.18 (0.09 to 0.29)    | 0.39                 | 0.092     |
+| Similarity 0.34                              | 0.919        | 0 (0 to 0)                | 1.18                            | 0.22 (0.13 to 0.32)    | 0.41                 | 0.090     |
+| Similarity 0.42                              | 0.838        | -0.081 (-0.189 to 0)      | 0.84                            | -0.12 (-0.19 to -0.07) | 0.36                 | 0.108     |
+| BM25 floor 2                                 | 0.865        | -0.054 (-0.135 to 0)      | 0.82                            | -0.14 (-0.23 to -0.07) | 0.33                 | 0.117     |
+| Vectors only, similarity 0.38                | 0.703        | -0.216 (-0.351 to -0.081) | 0.53                            | -0.43 (-0.58 to -0.30) | 0.23                 | 0.135     |
+| Shipped floors, no session exclusion         | 0.730        | -0.189 (-0.324 to -0.081) | 4.20                            | 3.24 (2.94 to 3.54)    | 0.93                 | 0.056     |
 
-A change of 0 (0 to 0) means the 2 sets showed the same needed items on all 38 turns. That bounds
+A change of 0 (0 to 0) means the 2 sets showed the same needed items on all 37 turns. That bounds
 the loss only near 8%, by the rule of three. The shipped set showed 8 of the 8 items rated noise
 again, and the vectors-only set showed 1 of them, because BM25 matched the rest.
 
@@ -121,7 +123,7 @@ again, and the vectors-only set showed 1 of them, because BM25 matched the rest.
 No alternative was shown to be better, so the shipped settings stay:
 
 - **Encoder:** `MongoDB/mdbr-leaf-ir` int8, its first 256 numbers stored as int8. Full width in fp32
-  scored within 0.01 of it, and bge-small, the best alternative, gained 0.036 recall@5 with an
+  scored within 0.01 of it, and bge-small, the best alternative, gained 0.037 recall@5 with an
   interval that crosses zero.
 - **Ranking:** BM25 and vectors fused by reciprocal rank with offset 60 and equal weight. BM25 alone
   loses about 0.1 of recall@5 and of MRR beyond its interval, and vectors alone score 0.04 lower on
@@ -132,14 +134,14 @@ No alternative was shown to be better, so the shipped settings stay:
   of 2 shows 0.12 to 0.14 fewer and loses 0.05 to 0.08 of fresh recall, with intervals that reach
   zero.
 - **Item count:** `retrieval_items` 5 and `retrieval_self_notes` 2. Within a session, 3 items showed
-  the same needed items on all 38 turns and 0.20 fewer items on turns that need none, which follows
+  the same needed items on all 37 turns and 0.20 fewer items on turns that need none, which follows
   from the 2 slots fewer. On a store with nothing delivered, the ranking table's recall@3 and
-  recall@5 show that ranks 4 and 5 hold 0.076 of the needed items. Only 3 of the 670 hybrid turns
+  recall@5 show that ranks 4 and 5 hold 0.068 of the needed items. Only 3 of the 670 hybrid turns
   started with nothing delivered, and the data cannot separate the 2 counts, so the count stays
   at 5.
 
 Precision stays near 0.11 under every floor: most items a turn is shown are not ones it needed, and
-38% of the turns that need none are shown at least one. No floor separates the two, so a better
+39% of the turns that need none are shown at least one. No floor separates the two, so a better
 precision needs a signal beyond the ranking, such as a reranker or a model's judgement of the top
 results.
 
@@ -148,8 +150,8 @@ results.
 - Labels from the deployment's live assistant. The labeller is a language model given its persona
   and session prompt, and it saw every item per-turn retrieval could return at once, which the live
   turn never does.
-- More than one deployment, and more than the 38 labelled turns whose needed item the session had
-  not been given yet, which bound the floor and item-count comparisons.
+- More than one deployment, and more than the 37 scored turns whose needed item the session had not
+  been given yet, which bound the floor and item-count comparisons.
 - A compaction inside a turn, an unpinned item and a pinned item that retired. The snapshot held
   none, so the replay paths that follow them ran only on the harness's tests.
 - The self-note count and the past messages placed beside the items, which these sets hold at their
