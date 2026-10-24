@@ -2,7 +2,8 @@
 // first makes a sound, against when the utterance's last speech ended, so its cut-offs compare with
 // the end-of-turn detectors' on the same speech. Each utterance writes one JSON line and a recording.
 // Usage: echo <key> | turn-taking.ts --candidate <gpt-live|grok> --set <ami|hvb|slurp> [--limit 100]
-//   [--out <file>] [--persona results/persona.md] [--replace]
+//   [--peak <0..1>] [--out <file>] [--persona results/persona.md] [--replace]
+// --peak scales each utterance to that peak level first, as a client's gain control would.
 import { mkdirSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -17,6 +18,7 @@ import { speechUtterance } from './speech-utterance.ts';
 import { createVad, sampleRate } from './speech.ts';
 import { startGptLiveCall } from './start-gpt-live-call.ts';
 import { startGrokCall } from './start-grok-call.ts';
+import { toPeakLevel } from './to-peak-level.ts';
 import { toWav } from './to-wav.ts';
 import type { TurnTakingRecord } from './turn-taking-record.ts';
 import type { VoiceCall } from './voice-call.ts';
@@ -27,16 +29,19 @@ const { values } = parseArgs({
     candidate: { type: 'string' },
     limit: { default: '100', type: 'string' },
     out: { type: 'string' },
+    peak: { type: 'string' },
     persona: { default: 'results/persona.md', type: 'string' },
     replace: { default: false, type: 'boolean' },
     set: { type: 'string' },
   },
 });
+const peak = values.peak === undefined ? undefined : z.coerce.number().positive().max(1).parse(values.peak);
 const candidate = z.enum(['gpt-live', 'grok']).parse(values.candidate);
 const set = z.enum(['ami', 'hvb', 'slurp']).parse(values.set);
 const limit = z.coerce.number().int().positive().parse(values.limit);
-const out = values.out ?? `results/turn-taking-${candidate}-${set}.jsonl`;
-const recordingsDir = join(dirname(out), 'recordings', `turn-taking-${candidate}`);
+const runName = `${candidate}-${set}${peak === undefined ? '' : `-peak${peak}`}`;
+const out = values.out ?? `results/turn-taking-${runName}.jsonl`;
+const recordingsDir = join(dirname(out), 'recordings', `turn-taking-${runName}`);
 const instructions = `${readFileSync(values.persona, 'utf8').trim()}\n\n${acknowledgeRules}`;
 const key = (await new Response(Bun.stdin.stream()).text()).trim();
 if (key === '') {
@@ -70,7 +75,8 @@ const dir = speechSetDir(set);
 const vad = createVad(pauseMs);
 for (let index = 0; index < limit; index++) {
   const meta = speechUtterance.parse(await Bun.file(join(dir, `${index}.json`)).json());
-  const speech = new Float32Array(await Bun.file(join(dir, `${index}.f32`)).arrayBuffer());
+  const raw = new Float32Array(await Bun.file(join(dir, `${index}.f32`)).arrayBuffer());
+  const speech = peak === undefined ? raw : toPeakLevel(raw, peak);
   vad.reset();
   vad.accept(speech);
   vad.accept(new Float32Array(sampleRate));
