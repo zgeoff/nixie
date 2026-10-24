@@ -149,6 +149,76 @@ test('it never reads an answer on another thread', async () => {
   expect(answers).toStrictEqual([]);
 });
 
+test('it reads the answers through the end of the range and none after it', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'prompts.override_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: promptsOverrideProposedCodec.encode({
+        proposalID: 'k3x9m2p7qa',
+        promptID: 'compaction',
+        proposalHash: 'hash-a',
+        baseHash: null,
+        entry: { _template: '{{ parts.safety }}' },
+        files: [],
+        reason: 'Drop the instruction part.',
+        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+      }),
+    },
+    {
+      kind: 'prompts.override_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: promptsOverrideProposedCodec.encode({
+        proposalID: 'w7tn4c9rhz',
+        promptID: 'writer',
+        proposalHash: 'hash-b',
+        baseHash: null,
+        entry: { _template: '{{ parts.safety }}' },
+        files: [],
+        reason: 'Drop the instruction part.',
+        provenance: { runID: 'run-1', callID: 'call-2', profile: 'standard' },
+      }),
+    },
+    {
+      kind: 'prompts.override_rejected',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: { proposalID: 'k3x9m2p7qa' },
+      erasable: { reason: 'Keep the quote rule.' },
+    },
+    {
+      kind: 'prompts.override_rejected',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: { proposalID: 'w7tn4c9rhz' },
+      erasable: { reason: 'Keep the instruction part.' },
+    },
+  ]);
+
+  const answers = await readPromptProposalAnswers(ctx.log, 'conversation', {
+    after: 0,
+    through: 3,
+  });
+
+  expect(answers).toStrictEqual([
+    {
+      sequence: 3,
+      at: expect.toBeNumber(),
+      detail: {
+        proposalID: 'k3x9m2p7qa',
+        promptID: 'compaction',
+        outcome: 'rejected',
+        isEdited: false,
+        reason: 'Keep the quote rule.',
+      },
+    },
+  ]);
+});
+
 test('it reads every answer in the range, past the size of one page of records', async () => {
   const ctx = await setupTest();
 
