@@ -1,14 +1,16 @@
 // GPT-Live as the voice layer: it owns turn-taking and small talk, and hands each real request to
 // nixie's Claude turn through client delegation, then speaks that turn's answer.
-import { findSoundSpan } from './find-sound-span.ts';
 import { match } from 'ts-pattern';
+import { createActor } from 'xstate';
+import { findSoundSpan } from './find-sound-span.ts';
+import { gptLiveCallMachine } from './gpt-live-call-machine.ts';
 import type { OpenSocket } from './open-vendor-socket.ts';
 import { parseGptLiveEvent } from './parse-gpt-live-event.ts';
 import { toPcmBase64 } from './to-pcm-base64.ts';
 import type { VoiceCall } from './voice-call.ts';
 
 export function startGptLiveCall(connection: {
-  // GPT-Live sends no event when it stops speaking, so the turn ends after this long without sound.
+  // The quiet spell after which the turn ends, because GPT-Live sends no event when it stops.
   quietMs: number;
   instructions: string;
   key: string;
@@ -23,15 +25,25 @@ export function startGptLiveCall(connection: {
   });
   const ready = Promise.withResolvers<void>();
   const ended = Promise.withResolvers<void>();
+  const lifecycle = createActor(gptLiveCallMachine, { input: { quietMs: connection.quietMs } });
+  lifecycle.subscribe((snapshot) => {
+    match(snapshot.value)
+      .with('ended', () => ended.resolve())
+      .with('failed', () => {
+        ready.reject(snapshot.context.error);
+        ended.reject(snapshot.context.error);
+      })
+      .with('opening', 'speaking', 'waiting', () => undefined)
+      .exhaustive();
+  });
+  lifecycle.start();
   let heard = '';
   let said = '';
-  let pending = 0;
-  let lastSoundAt: number | undefined;
   const send = (event: Record<string, unknown>): void => socket.send(JSON.stringify(event));
   const call: VoiceCall = {
     appendAudio: (window) => send({ audio: toPcmBase64(window), type: 'session.input_audio.append' }),
     close: () => {
-      clearInterval(watch);
+      lifecycle.stop();
       socket.close();
     },
     ended: ended.promise,
@@ -42,19 +54,6 @@ export function startGptLiveCall(connection: {
     stopPlaybackAt: [],
     toolCalls: [],
   };
-  // A delegated answer reaches the caller only once GPT-Live speaks it, so the quiet that counts
-  // starts after the last sound that followed the last answer.
-  let lastAnswerAt = 0;
-  const watch = setInterval(() => {
-    if (
-      lastSoundAt !== undefined &&
-      lastSoundAt > lastAnswerAt &&
-      pending === 0 &&
-      performance.now() - lastSoundAt > connection.quietMs
-    ) {
-      ended.resolve();
-    }
-  }, 100);
   socket.addEventListener('open', () => {
     send({
       session: {
@@ -66,39 +65,41 @@ export function startGptLiveCall(connection: {
       type: 'session.start',
     });
   });
-  socket.addEventListener('close', () => ended.reject(new Error('gpt-live: the socket closed before the reply ended')));
-  socket.addEventListener('error', () => {
-    ready.reject(new Error('gpt-live: the socket failed'));
-    ended.reject(new Error('gpt-live: the socket failed'));
-  });
+  socket.addEventListener('close', () =>
+    lifecycle.send({ error: new Error('gpt-live: the socket closed before the reply ended'), type: 'failed' }),
+  );
+  socket.addEventListener('error', () =>
+    lifecycle.send({ error: new Error('gpt-live: the socket failed'), type: 'failed' }),
+  );
   socket.addEventListener('message', (message) => {
     match(parseGptLiveEvent(JSON.parse(String(message.data))))
       .with({ kind: 'audio' }, (event) => {
-        const at = performance.now();
-        call.received.push({ at, samples: event.audio });
+        call.received.push({ at: performance.now(), samples: event.audio });
         if (findSoundSpan(event.audio, connection.soundThreshold) !== undefined) {
-          lastSoundAt = at;
+          lifecycle.send({ type: 'sound' });
         }
       })
       .with({ kind: 'delegation' }, (event) => {
-        pending++;
+        lifecycle.send({ type: 'delegated' });
         call.toolCalls.push('delegation');
-        connection
-          .runDelegation(heard)
-          .then((answer) => {
+        connection.runDelegation(heard).then(
+          (answer) => {
             send({ content: answer, delegation_id: event.delegationID, type: 'session.commentary.append' });
-            lastAnswerAt = performance.now();
-          })
-          .catch((error: unknown) => ended.reject(error))
-          .finally(() => {
-            pending--;
-          });
+            lifecycle.send({ type: 'answered' });
+          },
+          (error: unknown) => lifecycle.send({ error, type: 'failed' }),
+        );
       })
-      .with({ kind: 'error' }, (event) => ended.reject(new Error(`gpt-live: ${event.message}`)))
+      .with({ kind: 'error' }, (event) =>
+        lifecycle.send({ error: new Error(`gpt-live: ${event.message}`), type: 'failed' }),
+      )
       .with({ kind: 'heard' }, (event) => {
         heard += event.text;
       })
-      .with({ kind: 'ready' }, () => ready.resolve())
+      .with({ kind: 'ready' }, () => {
+        ready.resolve();
+        lifecycle.send({ type: 'opened' });
+      })
       .with({ kind: 'said' }, (event) => {
         said += event.text;
       })
