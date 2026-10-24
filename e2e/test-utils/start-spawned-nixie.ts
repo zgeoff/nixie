@@ -114,8 +114,9 @@ export interface SpawnedNixieOptions {
   readonly release?: string;
 }
 
-// A turn runs the real SDK in a guest process, which takes a few seconds on a slow host.
-const recordTimeoutMs = 30_000;
+// A turn runs the real SDK in a guest process, which takes a few seconds on a slow host, and each
+// wait ends inside the e2e lane's 15 s limit per test, so a slow turn fails on the wait it missed.
+const recordTimeoutMs = 10_000;
 const startMs = 1_000_000;
 const serverEntry = join(import.meta.dir, '../../apps/server/src/main.ts');
 
@@ -203,6 +204,8 @@ function startDoubles(stack: AsyncDisposableStack): TestDoubles {
   return { model, writerModel, checkerModel, provider };
 }
 
+const checkerTimeoutMs = 60 * 60 * 1000;
+
 // The memory writer and the consolidator ask the model on their own schedule, so a test that does
 // not ask for them keeps them off and its scripted replies for the turns it drives. The writer's
 // gate asks the checker in the middle of a batch, so the checker gets its own model as well.
@@ -215,6 +218,12 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
       `  enabled: ${String(isWriterOn)}`,
       'memory_consolidation:',
       '  enabled: false',
+
+      // The checker's timeout runs on the harness clock, which a suite advances in steps while the
+      // check starts the real SDK on the wall clock. On a busy host 2 steps outran the default
+      // timeout mid-check, and the writer staged a proposal instead of the active item.
+      'memory:',
+      `  checker_timeout_ms: ${String(checkerTimeoutMs)}`,
       ...(options.extraConfig ?? []),
     ],
     secrets: [],
