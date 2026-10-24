@@ -101,6 +101,29 @@ test('it removes a part file that only the replaced entry read, and notes it', (
   );
 });
 
+test('it keeps a file outside the prompts folder that the replaced entry read', () => {
+  const change = buildPromptExportChange({
+    approvalID: 'approval-a',
+    proposalID: 'k3x9m2p7qa',
+    promptID: 'compaction',
+    entry: { _template: 'Summarize in {{ summary.words }} words.' },
+    files: [],
+    reason: 'One line is enough.',
+    text: { agentName: null, ownerName: null },
+    sizes: new Map(),
+    manifest: 'format: 3\nprompts:\n  compaction:\n    instruction: persona.md\n',
+  });
+
+  expect(change.files).toStrictEqual(
+    new Map([
+      [
+        'nixie.yaml',
+        'format: 3\nprompts:\n  compaction:\n    _template: "Summarize in {{ summary.words }} words."\n',
+      ],
+    ]),
+  );
+});
+
 test('it keeps a part file of the replaced entry that another prompt reads', () => {
   const change = buildPromptExportChange({
     approvalID: 'approval-a',
