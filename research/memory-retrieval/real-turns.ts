@@ -10,6 +10,7 @@
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import type { TurnCase } from './real-turns/build-turn-cases.ts';
+import { buildKeyPath } from './real-turns/build-key-path.ts';
 import { buildTurnCases } from './real-turns/build-turn-cases.ts';
 import type { EncoderName } from './real-turns/load-turn-encoder.ts';
 import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
@@ -313,7 +314,7 @@ async function writeSample(turns: TurnCase[]): Promise<void> {
   const out = resolve(values.out);
 
   await Bun.write(out, `${sample.join('\n')}\n`);
-  await Bun.write(out.replace(/\.jsonl$/u, '-key.jsonl'), `${key.join('\n')}\n`);
+  await Bun.write(buildKeyPath(out), `${key.join('\n')}\n`);
 
   console.log({ turns: chosen.length, kept: kept.length, meanItems: mean(chosen.map((turn) => turn.candidates.length)) });
 }
