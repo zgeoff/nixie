@@ -121,7 +121,7 @@ test('it marks a proposal stale once the override in force for its prompt moves'
   expect(pending.map((entry) => entry.isStale)).toStrictEqual([true]);
 });
 
-test('it leaves out a proposal that an answer closed or that waited past its lapse time', async () => {
+test('it leaves out a proposal that waited past its lapse time', async () => {
   const ctx = await setupTest();
 
   const proposedAt = Date.UTC(2026, 2, 3, 9, 30);
@@ -145,6 +145,26 @@ test('it leaves out a proposal that an answer closed or that waited past its lap
         provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
       }),
     },
+  ]);
+
+  const pending = await readPendingPromptProposals({
+    log: ctx.log,
+    clock: buildTestClock(proposedAt + 14 * 24 * 60 * 60 * 1000),
+    readInForce: () => null,
+  });
+
+  expect(pending).toStrictEqual([]);
+});
+
+test('it leaves out a proposal that a rejection closed before its lapse time', async () => {
+  const ctx = await setupTest();
+
+  const proposedAt = Date.UTC(2026, 2, 3, 9, 30);
+
+  setSystemTime(new Date(proposedAt));
+  onTestFinished(() => setSystemTime());
+
+  await writeRecords(ctx.log, [
     {
       kind: 'prompts.override_proposed',
       definitions: { snapshotHash: 'snapshot-a' },
@@ -170,7 +190,7 @@ test('it leaves out a proposal that an answer closed or that waited past its lap
 
   const pending = await readPendingPromptProposals({
     log: ctx.log,
-    clock: buildTestClock(proposedAt + 14 * 24 * 60 * 60 * 1000),
+    clock: buildTestClock(proposedAt + 60 * 60 * 1000),
     readInForce: () => null,
   });
 
