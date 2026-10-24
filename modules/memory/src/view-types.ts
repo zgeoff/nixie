@@ -59,6 +59,8 @@ export interface ViewPageRequest {
   readonly after?: string;
 
   readonly limit?: number;
+
+  readonly subjects?: readonly MemorySubject[];
 }
 
 export interface ViewPage {
