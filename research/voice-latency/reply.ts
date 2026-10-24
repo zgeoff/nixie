@@ -222,7 +222,9 @@ for (let round = 0; round < rounds; round++) {
     // Piper's clips open with a short silence, so first audio is the first audible sample, as the
     // speech-to-speech runner measures it, and not the first clip's start.
     const heardSpan = findSoundSpan(recording.subarray(line.speechEndSample), soundThreshold);
-    const last = clips.at(-1);
+    // The opener comes ready on its own clock, so the answer's audio is complete at the latest ready
+    // time across all clips, not the last clause's.
+    const allReadyAt = clips.length === 0 ? undefined : Math.max(...clips.map((clip) => clip.readyAt));
     const record: ReplyRecord = {
       candidate,
         clips: clips.map((clip) => ({
@@ -236,7 +238,7 @@ for (let round = 0; round < rounds; round++) {
         endpointMs: heard.vadEndAt - endAt,
         firstAudioMs: heardSpan === undefined ? undefined : (heardSpan.start / sampleRate) * 1000,
         firstTextMs: firstTextAt === undefined ? undefined : firstTextAt - endAt,
-        fullAudioMs: last === undefined ? undefined : last.readyAt - endAt,
+        fullAudioMs: allReadyAt === undefined ? undefined : allReadyAt - endAt,
         fullTextMs: turn.resultAt - endAt,
         gapMs: playback.gapMs,
         gapToleranceMs,
