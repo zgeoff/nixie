@@ -156,6 +156,81 @@ test('it opens a pull request with the part files and the prompts entry, which a
   });
 });
 
+test("it moves a part file that another prompt reads, and the seed after the merge leaves that prompt's text", async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'prompts'));
+
+  await writeFile(
+    join(ctx.root, 'nixie.yaml'),
+    'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n',
+  );
+
+  await writeFile(join(ctx.root, 'prompts', 'shared.md'), 'Write each memory in one sentence.\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'prompts.override_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: promptsOverrideProposedCodec.encode({
+        proposalID: 'k3x9m2p7qa',
+        promptID: 'compaction',
+        proposalHash: 'hash-a',
+        baseHash: null,
+        entry: { instruction: 'prompts/shared.md' },
+        files: [{ path: 'prompts/shared.md', text: 'Summarise the open questions first.\n' }],
+        reason: 'The summaries bury the open questions.',
+        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  await writePromptProposalAnswer(ctx.answerContext, {
+    answer: 'approve',
+    proposalID: 'k3x9m2p7qa',
+    proposalHash: 'hash-a',
+  });
+
+  await runDefinitionsExports({
+    log: ctx.log,
+    repo: ctx.repo,
+    kinds: [buildPromptChangeKind(ctx.log, { agentName: null, ownerName: null })],
+    onError: (error) => {
+      throw error;
+    },
+  });
+
+  const [pullRequest] = ctx.repo.readPullRequests();
+
+  invariant(pullRequest);
+
+  await ctx.repo.mergePullRequest(pullRequest.number);
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  expect(inForce?.prompts).toStrictEqual({
+    writer: { parts: { instruction: 'Write each memory in one sentence.' }, template: null },
+    compaction: {
+      parts: { instruction: 'Summarise the open questions first.' },
+      template: null,
+    },
+  });
+});
+
 test('it exports the edited entry and files that the approval holds', async () => {
   const ctx = await setupTest();
 
