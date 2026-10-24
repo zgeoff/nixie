@@ -216,6 +216,28 @@ export interface NixieTables {
     readonly row_key: string;
     readonly row: string | null;
   };
+  readonly prompt_approvals: {
+    readonly approval_id: string;
+    readonly proposal_id: string;
+    readonly prompt_id: string;
+    readonly thread: string | null;
+    readonly entry: string;
+    readonly files: string;
+    readonly state: string;
+    readonly approved_at: number;
+    readonly updated_at: number;
+  };
+  readonly prompt_export_attempts: {
+    readonly approval_id: string;
+    readonly started_at: number;
+  };
+  readonly prompt_exports: {
+    readonly approval_id: string;
+    readonly state: string;
+    readonly pull_request_number: number;
+    readonly pull_request_url: string;
+    readonly updated_at: number;
+  };
   readonly record_attachments: {
     readonly sequence: number;
     readonly position: number;
