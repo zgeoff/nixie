@@ -76,8 +76,19 @@ function buildEntryText(
   }
 
   const entryEnd = getBlockEnd(lines, entryStart, childIndent);
+  const kept = collectEntryComments(lines.slice(entryStart, entryEnd));
+  const [header = '', ...values] = entryLines;
+  const headerLine = kept.header === null ? header : `${header} ${kept.header}`;
 
-  return [...lines.slice(0, entryStart), ...entryLines, ...lines.slice(entryEnd), ''].join('\n');
+  return [
+    ...lines.slice(0, entryStart),
+    headerLine,
+    ...kept.inner,
+    ...values,
+    ...kept.trailing,
+    ...lines.slice(entryEnd),
+    '',
+  ].join('\n');
 }
 
 function getBlockEnd(lines: readonly string[], start: number, indent: string): number {
@@ -106,6 +117,57 @@ function getLastContent(lines: readonly string[], start: number, end: number): n
   );
 
   return index === -1 ? start : index;
+}
+
+interface EntryComments {
+  readonly header: string | null;
+  readonly inner: readonly string[];
+  readonly trailing: readonly string[];
+}
+
+const headerComment = /:[ \t]*(?<comment>#.*)$/u;
+const blockKeyLine = /^(?<indent>[ \t]*)[^#\s][^:]*:[ \t]*[|>][-+0-9]*[ \t]*(?:#.*)?$/u;
+
+// A line that starts with # inside a literal block is text of the value, not a comment.
+function collectEntryComments(entry: readonly string[]): EntryComments {
+  const [header = '', ...body] = entry;
+  const kinds: ('value' | 'comment' | 'blank')[] = [];
+  let blockIndent: number | null = null;
+
+  for (const line of body) {
+    const indent = (/^[ \t]*/u.exec(line)?.[0] ?? '').length;
+    const isInBlock: boolean = blockIndent !== null && (line.trim() === '' || indent > blockIndent);
+
+    if (!isInBlock) {
+      blockIndent = null;
+    }
+
+    const blockKey: RegExpExecArray | null = isInBlock ? null : blockKeyLine.exec(line);
+
+    if (blockKey !== null) {
+      blockIndent = blockKey.groups?.['indent']?.length ?? 0;
+    }
+
+    const kind = isInBlock ? 'value' : toLineKind(line);
+
+    kinds.push(kind);
+  }
+
+  const lastValue = kinds.lastIndexOf('value');
+
+  return {
+    header: headerComment.exec(header)?.groups?.['comment'] ?? null,
+    inner: body.filter((_, index) => index < lastValue && kinds[index] === 'comment'),
+    trailing: body.slice(lastValue + 1),
+  };
+}
+
+function toLineKind(line: string): 'value' | 'comment' | 'blank' {
+  if (line.trim() === '') {
+    return 'blank';
+  }
+
+  return line.trimStart().startsWith('#') ? 'comment' : 'value';
 }
 
 function requireEdit(

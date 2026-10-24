@@ -91,6 +91,63 @@ test('it replaces the entry of the same prompt and leaves the entries around it'
   `);
 });
 
+test('it keeps the comments on, inside and after an entry it replaces', () => {
+  const manifest = [
+    'format: 3',
+    'prompts:',
+    '  compaction: # tuned for short threads',
+    '    # the instruction stays terse',
+    '    instruction: prompts/compaction-old.md',
+    '    _template: "{{ parts.instruction }}"',
+    '',
+    '  # the session prompt keeps its own safety part',
+    '  session:',
+    '    safety: prompts/session.md',
+    '',
+  ].join('\n');
+
+  expect(
+    buildPromptManifest(manifest, 'compaction', { safety: 'prompts/compaction-safety.md' }).text,
+  ).toBe(
+    [
+      'format: 3',
+      'prompts:',
+      '  compaction: # tuned for short threads',
+      '    # the instruction stays terse',
+      '    safety: "prompts/compaction-safety.md"',
+      '',
+      '  # the session prompt keeps its own safety part',
+      '  session:',
+      '    safety: prompts/session.md',
+      '',
+    ].join('\n'),
+  );
+});
+
+test('it drops a line that starts with # inside the literal block of an entry it replaces', () => {
+  const manifest = [
+    'format: 3',
+    'prompts:',
+    '  compaction:',
+    '    _template: |-',
+    '      # Summary',
+    '      {{ parts.safety }}',
+    '',
+  ].join('\n');
+
+  expect(
+    buildPromptManifest(manifest, 'compaction', { safety: 'prompts/compaction-safety.md' }).text,
+  ).toBe(
+    [
+      'format: 3',
+      'prompts:',
+      '  compaction:',
+      '    safety: "prompts/compaction-safety.md"',
+      '',
+    ].join('\n'),
+  );
+});
+
 test('it writes a template of several lines as a literal block', () => {
   expect(
     buildPromptManifest('format: 3\n', 'session', {
