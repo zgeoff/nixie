@@ -32,10 +32,12 @@ test('it removes the build of a test process that has exited before it builds', 
 
   const buildsBefore = await readdir(buildsDir);
 
+  // the lane's limit stops at this process, so the child run takes it on its own command line
   const child = Bun.spawn(
     [
       process.execPath,
       'test',
+      '--timeout=15000',
       join(import.meta.dir, 'run-web-build-once.test.ts'),
       '-t',
       'it builds the web server entry once and shares it',
