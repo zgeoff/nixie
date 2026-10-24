@@ -101,6 +101,27 @@ test('it removes a part file that only the replaced entry read, and notes it', (
   );
 });
 
+test('it removes a part file that the replaced entry read when the new template text names its path', () => {
+  const change = buildPromptExportChange({
+    approvalID: 'approval-a',
+    proposalID: 'k3x9m2p7qa',
+    promptID: 'compaction',
+    entry: { _template: 'prompts/old.json' },
+    files: [],
+    reason: 'One line is enough.',
+    text: { agentName: null, ownerName: null },
+    sizes: new Map(),
+    manifest: 'format: 3\nprompts:\n  compaction:\n    instruction: prompts/old.json\n',
+  });
+
+  expect(change.files).toStrictEqual(
+    new Map([
+      ['prompts/old.json', null],
+      ['nixie.yaml', 'format: 3\nprompts:\n  compaction:\n    _template: "prompts/old.json"\n'],
+    ]),
+  );
+});
+
 test('it keeps a file outside the prompts folder that the replaced entry read', () => {
   const change = buildPromptExportChange({
     approvalID: 'approval-a',

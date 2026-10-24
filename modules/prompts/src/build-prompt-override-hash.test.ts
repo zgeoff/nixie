@@ -1,6 +1,15 @@
 import { expect, test } from 'bun:test';
 import { buildPromptOverrideHash } from './build-prompt-override-hash';
 
+test('it builds the SHA-256 of the sorted parts and the template as JSON', () => {
+  expect(
+    buildPromptOverrideHash({
+      parts: { safety: 'Answer with the summary alone.', instruction: 'Keep the open questions.' },
+      template: null,
+    }),
+  ).toBe('13f65d55301567028f74e53c515f3515660eb44760d798cc82930be84fe3d191');
+});
+
 test('it builds no hash for a prompt with no override', () => {
   expect(buildPromptOverrideHash(undefined)).toBeNull();
 });
