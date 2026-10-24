@@ -4,8 +4,9 @@ This run measures how often each end-of-turn detector ends a voice turn before t
 finished, and how long it waits after a real end, on 600 real utterances played in real time on the
 deployment host. At the agreed wait settings, no candidate cuts off fewer than 5% of the meeting
 speech. On task calls and home-assistant commands, Clef-flash, Jev and both combined candidates
-pass. Jev passes with the shortest waits: on task calls it cut off 2.5% and waited 838 ms after a
-real end at the median and 1062 ms at the 90th percentile.
+pass. On task calls, Jev cut off 2.5% and waited 838 ms after a real end at the median and 1062 ms
+at the 90th percentile. Of the candidates that pass there, Smart Turn and Jev together waits 36 ms
+less at the median but cuts off 3.6%, and Clef-flash cuts off 0.5% but waits 293 ms more.
 
 The hosted detectors gain little over a longer silence on task calls, because their answer takes 570
 to 810 ms and the turn never ends before the answer arrives. Their gain is on hesitant speech, where
@@ -28,11 +29,13 @@ median and the 90th percentile of the wait reported beside each rate.
 - A replay of the same recordings with a 1600 ms maximum wait brings Jev under 5% on all 3 sets, at
   1350 ms median and 1836 ms p90 on the meeting speech.
 
-Recommendation: Jev alone, with the maximum wait at 1200 ms for task-like speech. Raise the maximum
-wait to about 1600 ms only if the speech nixie hears hesitates like the meetings do, and measure
-that on nixie's own turns first, because the 1600 ms figure comes from tuning on these recordings.
-On hesitant speech, Clef-flash matches Jev's wait at the same cut-off rate. A silence of 700 to 1000
-ms is the near match on task calls with no hosted dependency.
+Recommendation: Jev alone, with the maximum wait at 1200 ms for task-like speech. It sits between
+Clef-flash, which cuts off fewer task calls and waits longer, and the averaged pair, which waits a
+little less and cuts off more, and it passes with room under the 5% line. Raise the maximum wait to
+about 1600 ms only if the speech nixie hears hesitates like the meetings do, and measure that on
+nixie's own turns first, because the 1600 ms figure comes from tuning on these recordings. On
+hesitant speech, Clef-flash matches Jev's wait at the same cut-off rate. A silence of 700 to 1000 ms
+is the near match on task calls with no hosted dependency.
 
 ## Run it
 
