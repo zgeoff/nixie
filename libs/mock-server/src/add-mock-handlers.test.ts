@@ -11,6 +11,7 @@ test('it keeps an added handler through a reset', async () => {
   });
 
   addMockHandlers(http.get('https://harbour.test/tide', () => HttpResponse.text('high')));
+
   mockServer.resetHandlers();
 
   const response = await fetch('https://harbour.test/tide');
