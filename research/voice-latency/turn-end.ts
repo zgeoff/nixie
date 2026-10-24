@@ -3,10 +3,11 @@
 // with the time it arrived, counted from the end of the speech before the pause. The text detectors
 // read a Moonshine transcript of the audio heard so far, and their answer time includes it.
 // report-turn-end.ts replays the candidates over these records.
-// Usage: turn-end.ts --set <name> --out <file> [--detectors smartTurn,clef,jev] [--limit <n>]
+// Usage: turn-end.ts --set <name> [--out <file>] [--detectors smartTurn,clef,jev] [--limit <n>]
+//   [--replace]
 // Clef-flash reads CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN, and Jev reads TYPESAFE_API_KEY.
 // A token may be empty where a broker adds it to each request.
-import { appendFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { match } from 'ts-pattern';
@@ -23,11 +24,19 @@ const { values } = parseArgs({
     detectors: { default: 'smartTurn,clef,jev', type: 'string' },
     limit: { type: 'string' },
     out: { type: 'string' },
+    replace: { default: false, type: 'boolean' },
     set: { default: 'ami', type: 'string' },
   },
 });
 const set = values.set;
 const out = values.out ?? `results/turn-end-${set}.jsonl`;
+// The runner appends one line per utterance from the first, so a second run into the same file
+// would count each utterance it repeats twice.
+if (existsSync(out) && !values.replace) {
+  console.error(`${out} already holds a run; pass --replace to start it again`);
+  process.exit(1);
+}
+rmSync(out, { force: true });
 const detectors = z.array(z.enum(['smartTurn', 'clef', 'jev'])).parse(values.detectors.split(','));
 const limit =
   values.limit === undefined ? Number.POSITIVE_INFINITY : z.coerce.number().int().positive().parse(values.limit);
