@@ -2,6 +2,7 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { systemClock } from '@heynixie/clock';
 import {
   checkPromptProposal,
   checkSkillFiles,
@@ -182,7 +183,7 @@ test("it exports an approved prompt override beside the skills, with the part fi
   await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: { now: () => Date.now() },
+      clock: systemClock,
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal: checkPromptProposal,

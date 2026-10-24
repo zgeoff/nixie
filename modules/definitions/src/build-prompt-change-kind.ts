@@ -6,6 +6,7 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import type { PromptExportText } from './build-prompt-export-change';
 import { buildPromptExportChange } from './build-prompt-export-change';
+import { isDefinitionsPath } from './is-definitions-path';
 import { manifestPath } from './manifest-path';
 import { parseDefinitions } from './parse-definitions';
 import { readDefinitionsInForce } from './read-definitions-in-force';
@@ -100,9 +101,10 @@ async function readChangedSnapshot(
   paths: readonly string[],
   changed: ReadonlyMap<string, string | null>,
 ): Promise<ReadonlyMap<string, Uint8Array>> {
+  // The seed reads only the definitions paths and skips every other file, such as a hidden one.
   const base = await Promise.all(
     paths
-      .filter((path) => !changed.has(path))
+      .filter((path) => isDefinitionsPath(path) && !changed.has(path))
       .map(async (path): Promise<[string, string | null]> => [
         path,
         await repo.readFile(path, revision),
