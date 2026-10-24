@@ -117,17 +117,6 @@ if (picker !== undefined) {
 }
 await tts.speak('Hello.');
 await tts.speak(longWarmUp);
-const session = startAgentSession({
-  allowedTools: voiceToolNames,
-  effort: setup.effort,
-  model: setup.model,
-  systemPrompt: `${persona}\n\n${setup.voiceRules}`,
-  ...(setup.thinking === undefined ? {} : { thinking: setup.thinking }),
-  tools: createVoiceTools(),
-});
-// The first turn starts the process, so its time is per call, not per turn, and goes unrecorded.
-await session.runTurn('Say hello in one short sentence.', () => undefined);
-
 const turnLines = [
   ...lines.map((text, index) => ({ callerIndex: index, needsTool: false, text })),
   ...toolLines.map((text, index) => ({ callerIndex: toolLineStart + index, needsTool: true, text })),
@@ -141,6 +130,18 @@ interface Clip extends PlayedClip {
 }
 
 for (let round = 0; round < rounds; round++) {
+  // Each round is a call of its own. One session across rounds let the model see each question
+  // again and answer from its earlier reply, often by saying so, instead of calling the tool.
+  const session = startAgentSession({
+    allowedTools: voiceToolNames,
+    effort: setup.effort,
+    model: setup.model,
+    systemPrompt: `${persona}\n\n${setup.voiceRules}`,
+    ...(setup.thinking === undefined ? {} : { thinking: setup.thinking }),
+    tools: createVoiceTools(),
+  });
+  // The first turn starts the process, so its time is per call, not per turn, and goes unrecorded.
+  await session.runTurn('Say hello in one short sentence.', () => undefined);
   for (const turnLine of turnLines) {
     const line = await loadCallerLine(turnLine.callerIndex);
     const heard = await listenToCaller(line.audio, line.speechEndSample, stt.start(), vad);
@@ -244,7 +245,7 @@ for (let round = 0; round < rounds; round++) {
     writeSync(reservation.file, `${JSON.stringify(record)}\n`);
     console.log(`${candidate} round ${round} line ${turnLine.callerIndex}: ${text.replaceAll('\n', ' ')}`);
   }
+  session.close();
 }
 
-session.close();
 reservation.release();
