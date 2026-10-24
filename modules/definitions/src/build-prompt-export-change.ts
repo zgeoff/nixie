@@ -216,7 +216,8 @@ function parsePromptsMap(
 }
 
 // A part file that no entry reads stays in the snapshot, and the seed still parses it, so the
-// change removes the files that only the replaced entry read.
+// change removes the files that only the replaced entry read. An entry can also read a file
+// outside the prompts folder, such as the persona, which the rest of the definitions need.
 function collectUnreadPaths(
   manifest: string,
   promptID: PromptID,
@@ -226,7 +227,11 @@ function collectUnreadPaths(
   const readers = collectOtherReaders(manifest, promptID);
 
   return Object.entries(replaced).flatMap(([key, value]) =>
-    key === '_template' || typeof value !== 'string' || readers.has(value) || kept.includes(value)
+    key === '_template' ||
+    typeof value !== 'string' ||
+    !value.startsWith(promptsFolder) ||
+    readers.has(value) ||
+    kept.includes(value)
       ? []
       : [value],
   );
