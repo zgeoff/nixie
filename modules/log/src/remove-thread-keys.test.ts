@@ -112,7 +112,7 @@ test('it leaves no removed key in the key store file or its write-ahead log', as
     .where('sequence', '=', 1)
     .executeTakeFirstOrThrow();
 
-  invariant(row.key_id);
+  invariant(row.key_id !== null);
 
   const keyID = row.key_id;
 
