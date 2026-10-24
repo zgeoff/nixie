@@ -27,6 +27,7 @@ export function MemoryItemList(props: MemoryItemListProps): ReactNode {
     nixie.queryUtils.memory.listItems.infiniteOptions({
       input: (after: string | undefined) => ({
         state: props.state,
+        ...(props.kind === undefined ? {} : { kind: props.kind }),
         ...(after === undefined ? {} : { after }),
       }),
       initialPageParam: undefined,
@@ -43,9 +44,7 @@ export function MemoryItemList(props: MemoryItemListProps): ReactNode {
         hasNextPage={pages.hasNextPage}
         isError={pages.isError}
         isFetchingNextPage={pages.isFetchingNextPage}
-        items={pages.data?.pages.flatMap((page) =>
-          page.items.filter((item) => props.kind === undefined || item.kind === props.kind),
-        )}
+        items={pages.data?.pages.flatMap((page) => page.items)}
         onShowMore={() => {
           void pages.fetchNextPage();
         }}

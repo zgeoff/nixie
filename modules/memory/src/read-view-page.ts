@@ -1,6 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { parseItemCursor } from './parse-item-cursor';
 import { readViewItems } from './read-view-items';
+import { subjectColumn } from './subject-column';
 import type { MemoryState, MemoryTables } from './types';
 import type { ViewListState, ViewPage, ViewPageRequest } from './view-types';
 
@@ -24,8 +25,13 @@ export async function readViewPage(
     .selectFrom('memory_items')
     .select(['item_id', 'created_sequence'])
     .where('state', 'in', statesByList[request.state])
-    .where('created_sequence', '>', parseItemCursor(request.after))
-    .orderBy('created_sequence')
+    .$if(request.after !== undefined, (listed) =>
+      listed.where('created_sequence', '<', parseItemCursor(request.after)),
+    )
+    .$if(request.subjects !== undefined, (listed) =>
+      listed.where(subjectColumn, 'in', request.subjects ?? []),
+    )
+    .orderBy('created_sequence', 'desc')
     .limit(limit + 1)
     .execute();
 

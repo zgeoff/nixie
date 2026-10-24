@@ -30,6 +30,7 @@
   "devDependencies": {
     "@babel/core": "catalog:",
     "@faker-js/faker": "catalog:",
+    "@heynixie/mock-server": "workspace:*",
     "@msw/data": "catalog:",
     "@orpc/server": "catalog:",
     "@pandacss/dev": "catalog:",
