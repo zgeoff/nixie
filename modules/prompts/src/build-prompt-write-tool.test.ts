@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter } from '@heynixie/log';
+import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { buildPromptWriteTool } from './build-prompt-write-tool';
 import type { CheckPromptProposal } from './types';
@@ -38,7 +39,7 @@ test("it records a proposal on the caller's thread and returns its short ID", as
   });
 
   const outcome = await tool.run(
-    {
+    buildMockToolCall({
       callID: 'call-1',
       tool: 'prompt_write',
       input: {
@@ -47,16 +48,8 @@ test("it records a proposal on the caller's thread and returns its short ID", as
         files: [{ path: 'prompts/compaction-safety.md', text: 'Answer with the summary alone.\n' }],
         reason: 'The summaries ramble past the word target.',
       },
-      toolUseID: null,
-    },
-    {
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        tools: [],
-        model: { model: 'test-model', profile: 'standard' },
-      },
-    },
+    }),
+    buildMockToolContext({ run: { runID: 'run-1' } }),
   );
 
   const records = await readRecords(ctx.log, {
@@ -108,7 +101,7 @@ test('it records the hash of the override in force as the base of the proposal',
   });
 
   await tool.run(
-    {
+    buildMockToolCall({
       callID: 'call-1',
       tool: 'prompt_write',
       input: {
@@ -117,16 +110,8 @@ test('it records the hash of the override in force as the base of the proposal',
         files: [{ path: 'prompts/compaction-safety.md', text: 'Answer with the summary alone.\n' }],
         reason: 'The summaries ramble past the word target.',
       },
-      toolUseID: null,
-    },
-    {
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        tools: [],
-        model: { model: 'test-model', profile: 'standard' },
-      },
-    },
+    }),
+    buildMockToolContext({ run: { runID: 'run-1' } }),
   );
 
   const records = await readRecords(ctx.log, {
@@ -154,7 +139,7 @@ test('it passes the entry and the files to the definitions check, and refuses wi
   });
 
   const outcome = await tool.run(
-    {
+    buildMockToolCall({
       callID: 'call-1',
       tool: 'prompt_write',
       input: {
@@ -163,16 +148,8 @@ test('it passes the entry and the files to the definitions check, and refuses wi
         files: [{ path: 'prompts/draft.md', text: 'Be warm.\n' }],
         reason: 'Warmer summaries.',
       },
-      toolUseID: null,
-    },
-    {
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        tools: [],
-        model: { model: 'test-model', profile: 'standard' },
-      },
-    },
+    }),
+    buildMockToolContext({ run: { runID: 'run-1' } }),
   );
 
   const records = await readRecords(ctx.log, {
@@ -205,7 +182,7 @@ test('it refuses a proposal with no reason', async () => {
   });
 
   const outcome = await tool.run(
-    {
+    buildMockToolCall({
       callID: 'call-1',
       tool: 'prompt_write',
       input: {
@@ -214,16 +191,8 @@ test('it refuses a proposal with no reason', async () => {
         files: [],
         reason: '  ',
       },
-      toolUseID: null,
-    },
-    {
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        tools: [],
-        model: { model: 'test-model', profile: 'standard' },
-      },
-    },
+    }),
+    buildMockToolContext({ run: { runID: 'run-1' } }),
   );
 
   expect(outcome).toStrictEqual({
@@ -242,7 +211,7 @@ test('it refuses a proposal before any definitions are in force', async () => {
   });
 
   const outcome = await tool.run(
-    {
+    buildMockToolCall({
       callID: 'call-1',
       tool: 'prompt_write',
       input: {
@@ -251,16 +220,8 @@ test('it refuses a proposal before any definitions are in force', async () => {
         files: [],
         reason: 'Drop the instruction part.',
       },
-      toolUseID: null,
-    },
-    {
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        tools: [],
-        model: { model: 'test-model', profile: 'standard' },
-      },
-    },
+    }),
+    buildMockToolContext({ run: { runID: 'run-1' } }),
   );
 
   expect(outcome).toStrictEqual({ status: 'error', message: 'no definitions are in force yet' });
