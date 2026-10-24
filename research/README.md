@@ -44,5 +44,5 @@ lists the variable.
 | [start-session-forwarding](start-session-forwarding/) | a separate Start server that forwards the device session to the API and holds none itself          |
 | [tools-reverse-forward](tools-reverse-forward/)       | relay overhead, streamed responses, egress isolation and reopening after wake                      |
 | [turn-tokens](turn-tokens/)                           | the tokens of a turn for each model role, and the budget defaults they set                         |
-| [voice-latency](voice-latency/)                       | the time from the end of speech to the reply's first audio and to the full answer                  |
+| [voice-latency](voice-latency/)                       | the time from the end of speech to the first audio and the full answer, and how a voice turn ends  |
 | [worker-cold-start](worker-cold-start/)               | first text on the worker image with the code runtimes in it, and a fresh fetch sandbox per fetch   |

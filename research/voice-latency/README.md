@@ -46,7 +46,10 @@ flags.
 ## Results
 
 The [results](results.md) hold the tables for this run, and the
-[run on the deployment host](deployment-host.md) repeats it on the host nixie deploys to.
+[run on the deployment host](deployment-host.md) repeats it on the host nixie deploys to. The
+[end-of-turn run](turn-end.md) compares silence, Smart Turn, Clef-flash and Jev on 600 real
+utterances: none cuts off fewer than 5% of meeting speech at a 1.2 s maximum wait, and Jev passes on
+task calls and commands with the shortest waits.
 
 ## Untested
 
