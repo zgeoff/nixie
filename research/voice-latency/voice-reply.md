@@ -89,17 +89,18 @@ sound, read from each turn's recording, so it measures all four candidates alike
 
 ## Reply
 
-| Candidate               | First audio, median / p90 | Full answer audio, median | Replies with a silence over 1 s | Tool called when needed | Cost per minute | Passes |
-| ----------------------- | ------------------------- | ------------------------- | ------------------------------- | ----------------------- | --------------- | ------ |
-| Haiku, clause by clause | 2.51 / 4.81 s             | 3.23 s                    | 0%                              | 9 of 9                  | $0.0006         | no     |
-| Haiku, thinking off     | 2.42 / 4.05 s             | 3.47 s                    | 0%                              | 9 of 9                  | $0.0006         | no     |
-| Sonnet with an opener   | 1.01 / 1.28 s             | 3.58 s                    | 28.2%                           | 9 of 9                  | $0.0073         | no     |
-| GPT-Live                | 1.41 / 1.73 s             | not comparable            | 23.1%                           | 9 of 9                  | $0.065          | no     |
-| Grok Voice              | 1.35 / 1.88 s             | 3.44 s                    | 0%                              | 9 of 9                  | $0.033          | yes    |
+| Candidate               | First audio, median / p90 | Full answer audio, median / p90 | Replies with a silence over 1 s | Tool called when needed | Cost per minute | Passes |
+| ----------------------- | ------------------------- | ------------------------------- | ------------------------------- | ----------------------- | --------------- | ------ |
+| Haiku, clause by clause | 2.51 / 4.81 s             | 3.23 / 5.47 s                   | 0%                              | 9 of 9                  | $0.0006         | no     |
+| Haiku, thinking off     | 2.42 / 4.05 s             | 3.47 / 4.89 s                   | 0%                              | 9 of 9                  | $0.0006         | no     |
+| Sonnet with an opener   | 1.01 / 1.28 s             | 3.58 / 4.87 s                   | 28.2%                           | 9 of 9                  | $0.0073         | no     |
+| GPT-Live                | 1.41 / 1.73 s             | 12.50 / 15.99 s, not comparable | 23.1%                           | 9 of 9                  | $0.065          | no     |
+| Grok Voice              | 1.35 / 1.88 s             | 3.44 / 4.09 s                   | 0%                              | 9 of 9                  | $0.033          | yes    |
 
 Full answer audio is the time the last chunk of reply audio was ready. Grok Voice sends audio faster
 than real time, so its figure is readiness, as the pipelines' is. GPT-Live paces its stream in real
-time, so its last chunk arrives as the reply finishes playing, at 12.5 s at the median.
+time, so its last chunk arrives as the reply finishes playing, and its figure measures how long the
+reply runs, not when the answer was ready.
 
 The report also counts a gap: a chunk not ready when the one before it ends. For a pipeline, a gap
 is a clause Piper has not finished, and Sonnet's opener left one on 74% of turns. GPT-Live's gaps,
