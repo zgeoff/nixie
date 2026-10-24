@@ -122,6 +122,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           readInForce: parts.get('context').inForce.read,
           wakeExports: () => parts.find('definitions_exports')?.wake(),
           runReset: parts.get('reset').run,
+          runConversationReset: parts.get('reset').runConversations,
           gate: parts.get('api_gate'),
         },
         options.cleanup,

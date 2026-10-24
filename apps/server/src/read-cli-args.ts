@@ -30,6 +30,7 @@ const CLI_OPTIONS = {
   entry: { type: 'string' },
   keep: { type: 'enum', choices: ['nixie', 'definitions'] },
   'keep-sessions': { type: 'boolean', default: false },
+  only: { type: 'enum', choices: ['memories', 'conversations'] },
   yes: { type: 'boolean', default: false },
   'dry-run': { type: 'boolean', default: false },
   database: { type: 'string' },

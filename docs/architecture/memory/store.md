@@ -238,6 +238,15 @@ item gets its own forgotten record, and its state shows whether its forget is do
 A crash leaves the rest of the set forgetting, and the store's start finishes them as it finishes a
 single forget.
 
+### Forgetting every item
+
+The reset of the memories, a host command, forgets every item that is active or retired, at its
+current version. The store reads the set inside the transaction that marks each item forgetting,
+under the delivery lock, so a write that lands before the reset joins the set and a write that lands
+after it waits for the lock. An item that an earlier forget took stays out of the set. The cleanup
+then runs as it does for a bulk forget of retired items, one item at a time, and a crash leaves the
+rest for the store's start.
+
 ## The model's tools
 
 The model reaches memory through these tools over the same interface:

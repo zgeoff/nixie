@@ -1,7 +1,14 @@
 import { expect, test } from 'bun:test';
-import { runProjectionRebuild } from '@heynixie/log';
+import { runProjectionRebuild, writeRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import type { TasksTables } from './index';
-import { runDueTimers, writeInboxRecords, writeStepCommit, writeStepError } from './index';
+import {
+  readInbox,
+  runDueTimers,
+  writeInboxRecords,
+  writeStepCommit,
+  writeStepError,
+} from './index';
 import { tasksProjections } from './tasks-projections';
 import { createTestClaim } from './test-utils/create-test-claim';
 import { startTestTasks } from './test-utils/start-test-tasks';
@@ -37,6 +44,65 @@ test('it rebuilds the tasks table equal to the live one after a commit and a mes
   const rebuilt = await ctx.db.selectFrom('tasks').selectAll().execute();
 
   expect(live).toHaveLength(1);
+  expect(rebuilt).toStrictEqual(live);
+});
+
+test('it leaves a message from before a reset of the thread unread by the next step', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: claim.lease.workID,
+    },
+  ]);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'log_reset',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: claim.lease.workID,
+      payload: { resetAt: 1_760_000_000_000, lastSequence: 3, mode: 'conversations' },
+    },
+  ]);
+
+  const inbox = await readInbox(ctx.context, claim.lease.workID);
+
+  expect(inbox).toStrictEqual([]);
+});
+
+test('it rebuilds the tasks table equal to the live one after a reset of the thread', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: claim.lease.workID,
+    },
+  ]);
+
+  const [reset] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'log_reset',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: claim.lease.workID,
+      payload: { resetAt: 1_760_000_000_000, lastSequence: 3, mode: 'conversations' },
+    },
+  ]);
+
+  const live = await ctx.db.selectFrom('tasks').selectAll().execute();
+
+  await runProjectionRebuild(ctx.context.log);
+
+  const rebuilt = await ctx.db.selectFrom('tasks').selectAll().execute();
+
+  invariant(reset);
+
+  expect(live.map((row) => row.read_cursor)).toStrictEqual([reset.sequence]);
   expect(rebuilt).toStrictEqual(live);
 });
 

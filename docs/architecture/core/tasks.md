@@ -45,7 +45,9 @@ unread.
 
 A step reports the inbox sequences it read, and its commit moves the read cursor over the contiguous
 run of them, oldest first. A record read past a gap stays unread, so a step that crashed before its
-commit, or skipped a record, sees the rest again.
+commit, or skipped a record, sees the rest again. A `log_reset` record on a task's thread moves the
+read cursor to itself, so a message still unread at a
+[reset of the conversation](./event-log.md#resetting-the-conversation) never starts a turn.
 
 ## Steps
 

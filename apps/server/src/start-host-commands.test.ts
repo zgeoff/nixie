@@ -6,6 +6,7 @@ import { startTestAPI } from '@heynixie/api/test-utils';
 import { buildAPIGate } from './build-api-gate';
 import { buildCleanup } from './build-cleanup';
 import { buildHostClient } from './build-host-client';
+import type { ConversationReset } from './run-conversation-reset';
 import type { ServerReset } from './run-server-reset';
 import { startHostCommands } from './start-host-commands';
 
@@ -22,6 +23,7 @@ async function setupTest() {
   onTestFinished(() => cleanup.stop());
 
   const runReset = mock<() => Promise<ServerReset>>();
+  const runConversationReset = mock<() => Promise<ConversationReset>>();
 
   await startHostCommands(
     {
@@ -32,6 +34,7 @@ async function setupTest() {
       readInForce: () => null,
       wakeExports: () => {},
       runReset,
+      runConversationReset,
       gate,
     },
     cleanup,
@@ -39,8 +42,34 @@ async function setupTest() {
 
   const socketPath = join(dataDir, 'run', 'control.sock');
 
-  return { gate, runReset, socketPath, client: buildHostClient(socketPath) };
+  return {
+    gate,
+    runReset,
+    runConversationReset,
+    socketPath,
+    client: buildHostClient(socketPath),
+  };
 }
+
+test('it runs the reset of the conversations itself once the gate is closed', async () => {
+  const ctx = await setupTest();
+
+  ctx.runConversationReset.mockResolvedValue({
+    resetAt: new Date(2_000_000),
+    lastSequence: 31,
+    shreddedRecords: 9,
+  });
+
+  await ctx.gate.close();
+
+  const reset = await ctx.client.resetConversations();
+
+  expect(reset).toStrictEqual({
+    resetAt: new Date(2_000_000),
+    lastSequence: 31,
+    shreddedRecords: 9,
+  });
+});
 
 test('it answers a host command while the gate is open', async () => {
   const ctx = await setupTest();
