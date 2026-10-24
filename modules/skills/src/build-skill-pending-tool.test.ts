@@ -59,7 +59,7 @@ test('it lists each proposal that skill_write made, oldest first, as a new skill
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   setSystemTime(new Date(proposedAt));

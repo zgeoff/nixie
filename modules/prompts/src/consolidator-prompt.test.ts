@@ -3,30 +3,42 @@ import { renderPrompt } from './render-prompt';
 
 test('it puts the persona before the rules', () => {
   expect(
-    renderPrompt('consolidator', {
-      persona: '  You are Nix.  ',
-      owner: { name: null },
-      memory: { maxChanges: 30 },
-    }),
+    renderPrompt(
+      'consolidator',
+      {
+        persona: '  You are Nix.  ',
+        owner: { name: null },
+        memory: { maxChanges: 30 },
+      },
+      {},
+    ),
   ).toStartWith('You are Nix.\n\nYou tidy');
 });
 
 test('it gives the rules alone when no persona is in force', () => {
   expect(
-    renderPrompt('consolidator', {
-      persona: '',
-      owner: { name: null },
-      memory: { maxChanges: 30 },
-    }),
+    renderPrompt(
+      'consolidator',
+      {
+        persona: '',
+        owner: { name: null },
+        memory: { maxChanges: 30 },
+      },
+      {},
+    ),
   ).toStartWith('You tidy the long-term memory');
 });
 
 test('it tells the model never to forget and to call memory.consolidate once', () => {
-  const prompt = renderPrompt('consolidator', {
-    persona: '',
-    owner: { name: null },
-    memory: { maxChanges: 30 },
-  });
+  const prompt = renderPrompt(
+    'consolidator',
+    {
+      persona: '',
+      owner: { name: null },
+      memory: { maxChanges: 30 },
+    },
+    {},
+  );
 
   expect(prompt).toInclude('Never forget an item.');
   expect(prompt).toInclude('Call memory.consolidate once with the whole diff');
@@ -34,21 +46,29 @@ test('it tells the model never to forget and to call memory.consolidate once', (
 
 test('it tells the model the cap on changes it is given', () => {
   expect(
-    renderPrompt('consolidator', {
-      persona: '',
-      owner: { name: null },
-      memory: { maxChanges: 5 },
-    }),
+    renderPrompt(
+      'consolidator',
+      {
+        persona: '',
+        owner: { name: null },
+        memory: { maxChanges: 5 },
+      },
+      {},
+    ),
   ).toInclude('propose at most 5 changes.');
 });
 
 test('it calls the owner by the configured name in every rule', () => {
   expect(
-    renderPrompt('consolidator', {
-      persona: '',
-      owner: { name: 'Marisol' },
-      memory: { maxChanges: 30 },
-    }),
+    renderPrompt(
+      'consolidator',
+      {
+        persona: '',
+        owner: { name: 'Marisol' },
+        memory: { maxChanges: 30 },
+      },
+      {},
+    ),
   ).toMatchInlineSnapshot(`
     "You tidy the long-term memory of one person's personal assistant. You read Marisol's current memory items and propose one diff of changes, which Marisol reviews before anything changes.
 
@@ -73,11 +93,15 @@ test('it calls the owner by the configured name in every rule', () => {
 
 test('it calls the owner "the owner" and drops the name rule when no name is configured', () => {
   expect(
-    renderPrompt('consolidator', {
-      persona: '',
-      owner: { name: null },
-      memory: { maxChanges: 30 },
-    }),
+    renderPrompt(
+      'consolidator',
+      {
+        persona: '',
+        owner: { name: null },
+        memory: { maxChanges: 30 },
+      },
+      {},
+    ),
   ).toMatchInlineSnapshot(`
     "You tidy the long-term memory of one person's personal assistant. You read the owner's current memory items and propose one diff of changes, which the owner reviews before anything changes.
 

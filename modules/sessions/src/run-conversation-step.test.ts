@@ -37,6 +37,7 @@ async function setupTest() {
         command: { argv: ['bun', '/opt/nixie/conversation/src/main.ts'], env: {} },
         getDefinitions: () => ({
           persona: 'You are nixie.',
+          prompts: {},
           personaHash: 'sha256:persona-test',
           policyHash: 'sha256:policy-test',
         }),

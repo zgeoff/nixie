@@ -1,3 +1,4 @@
+import type { PromptOverrides } from '@heynixie/prompts';
 import type { SystemTaskOptions, SystemTaskRunner, ToolSessionOptions } from '@heynixie/sessions';
 import { makeSystemTaskRunner, startToolSession } from '@heynixie/sessions';
 import { buildWriterTools } from './build-writer-tools';
@@ -15,6 +16,7 @@ export interface MemoryWriterRunnerOptions extends SystemTaskOptions, ToolSessio
   readonly config: WriterConfig;
 
   readonly getPersona: () => string;
+  readonly getPrompts: () => PromptOverrides;
 
   readonly ownerName: string | null;
 
@@ -51,6 +53,7 @@ export const startMemoryWriterRunner = makeSystemTaskRunner<
       gate: options.gate,
       config: options.config,
       getPersona: options.getPersona,
+      getPrompts: options.getPrompts,
       ownerName: options.ownerName,
       assistantName: options.assistantName,
       defaultZone: options.defaultZone,

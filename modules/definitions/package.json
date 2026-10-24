@@ -15,6 +15,7 @@
     "@heynixie/clock": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
+    "@heynixie/prompts": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "ts-pattern": "catalog:",
@@ -22,6 +23,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/memory": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "ajv": "catalog:"
   }

@@ -1,11 +1,28 @@
 import { expect, test } from 'bun:test';
 import { renderCompactionInstruction } from './render-compaction-instruction';
 
+test('it renders the compaction prompt override in force inside the compaction message', () => {
+  const rendered = renderCompactionInstruction({
+    at: 'Tue 14 Oct, 22:50, Sydney',
+    summaryTokens: 2000,
+    ownerName: 'Robin',
+    prompts: {
+      compaction: {
+        parts: {},
+        template: 'Summarise for {{ owner.name }} in {{ summary.words }} words.',
+      },
+    },
+  });
+
+  expect(rendered).toInclude('\nSummarise for Robin in 1400 words.\n</system-message');
+});
+
 test('it renders the instruction as a compaction message with the word target of the cap', () => {
   const rendered = renderCompactionInstruction({
     at: 'Tue 14 Oct, 22:50, Sydney',
     summaryTokens: 2000,
     ownerName: 'Robin',
+    prompts: {},
   });
 
   expect(rendered.replaceAll(/[\da-f]{12}/gu, 'BLOCKID')).toMatchInlineSnapshot(`
@@ -37,6 +54,7 @@ test('it calls the owner the owner when the deployment names no one', () => {
     at: 'Tue 14 Oct, 22:50, Sydney',
     summaryTokens: 2000,
     ownerName: null,
+    prompts: {},
   });
 
   expect(rendered).toSatisfy(
@@ -50,6 +68,7 @@ test('it derives the word target from the token cap', () => {
     at: 'Tue 14 Oct, 22:50, Sydney',
     summaryTokens: 3000,
     ownerName: null,
+    prompts: {},
   });
 
   expect(rendered).toInclude('in about 2100 words');

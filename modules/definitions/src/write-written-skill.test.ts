@@ -59,7 +59,7 @@ test('it stores the skill in force with the definitions version it replaces as i
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
@@ -178,7 +178,7 @@ test("it keeps your definitions' version as the base when a second written versi
 
   const policy = { rules: [], tools: [] };
 
-  const seeded = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const seeded = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const first = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
   const second = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By hour.\n` }]);
@@ -195,7 +195,7 @@ test("it keeps your definitions' version as the base when a second written versi
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writeWrittenSkill(tx, {

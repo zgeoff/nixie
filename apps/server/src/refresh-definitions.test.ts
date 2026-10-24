@@ -41,7 +41,7 @@ test('it seeds a new revision and returns the definitions it put in force', asyn
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
     log: () => {},
@@ -67,7 +67,7 @@ test('it keeps the last good definitions in force when the source refuses a snap
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
     log: () => {},

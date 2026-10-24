@@ -54,10 +54,81 @@ test('it applies a backed write with your words as its source, each verdict and 
     checks: JSON.stringify({
       quote: 'pass',
       tokens: 'pass',
-      checker: { verdict: 'asserted', model: 'claude-sonnet-5-5', failure: null },
+      checker: {
+        verdict: 'asserted',
+        model: 'claude-sonnet-5-5',
+        failure: null,
+        snapshotHash: 'sha256:test',
+      },
     }),
     model: 'claude-opus-5-5',
   });
+});
+
+test('it checks a write again under the definitions that a seed puts in force while the checker runs', async () => {
+  const checker = makeGatedCall(() => buildMockCheckerAnswer({ model: 'claude-sonnet-5-5' }));
+  const check = mock(checker.call);
+
+  const inForce = {
+    current: { snapshotHash: 'sha256:before', prompts: {} },
+  };
+
+  const memory = await startTestMemory({
+    definitions: () => ({ snapshotHash: inForce.current.snapshotHash }),
+    gate: { check, getPromptsInForce: () => inForce.current },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I sail on Sundays',
+    spans: [{ start: 0, end: 17, source: 'typed' }],
+  });
+
+  const write = memory.store.writes.remember({
+    text: 'Sails on Sundays',
+    quote: 'I sail on Sundays',
+    caller: buildMockWriteCaller(),
+  });
+
+  await checker.started;
+
+  inForce.current = {
+    snapshotHash: 'sha256:after',
+    prompts: { 'content-checker': { parts: {}, template: 'Judge the claim strictly.' } },
+  };
+
+  checker.release();
+
+  const outcome = await write;
+
+  invariant(outcome.status === 'applied');
+
+  expect(check).toHaveBeenCalledTimes(2);
+
+  expect(check).toHaveBeenLastCalledWith({
+    prompt: 'Judge the claim strictly.',
+    input: expect.toEndWith('<candidate_memory>\nSails on Sundays\n</candidate_memory>'),
+  });
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .select('checks')
+    .where('item_id', '=', outcome.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row.checks).toBe(
+    JSON.stringify({
+      quote: 'pass',
+      tokens: 'pass',
+      checker: {
+        verdict: 'asserted',
+        model: 'claude-sonnet-5-5',
+        failure: null,
+        snapshotHash: 'sha256:after',
+      },
+    }),
+  );
 });
 
 test('it proposes a write that cites no quote', async () => {
@@ -278,6 +349,39 @@ test('it gives the checker your one message with when and where you sent it, and
       '«evidence»My new number is 0400 000 002«/evidence», the old one is gone: «pasted»see screenshot«/pasted»\n' +
       '</owner_message>\n\n' +
       '<candidate_memory>\nPhone number is 0400 000 002\n</candidate_memory>',
+  });
+});
+
+test('it gives the checker the content checker prompt override in force', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
+  const memory = await startTestMemory({
+    gate: {
+      check,
+      getPromptsInForce: () => ({
+        snapshotHash: 'sha256:test',
+        prompts: {
+          'content-checker': { parts: {}, template: 'Judge what {{ owner.name }} asserted.' },
+        },
+      }),
+    },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I keep two hens',
+    spans: [{ start: 0, end: 15, source: 'typed' }],
+  });
+
+  await memory.store.writes.remember({
+    text: 'Keeps two hens',
+    quote: 'I keep two hens',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(check).toHaveBeenCalledExactlyOnceWith({
+    prompt: 'Judge what the owner asserted.',
+    input: expect.toEndWith('<candidate_memory>\nKeeps two hens\n</candidate_memory>'),
   });
 });
 

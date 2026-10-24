@@ -39,11 +39,11 @@ async function setupTest() {
       await mkdir(dirname(join(root, path)), { recursive: true });
       await writeFile(join(root, path), contents);
     },
-    seed: async (policy: Parameters<typeof runSeed>[0]['policy']) => {
+    seed: async (policy: ReturnType<Parameters<typeof runSeed>[0]['buildPolicy']>) => {
       const result = await runSeed({
         log: { writer, deploymentKey, projections: [] },
         source: createPathSource({ directory: root }),
-        policy,
+        buildPolicy: () => policy,
       });
 
       return buildSeedLogFields(result);
@@ -56,12 +56,12 @@ test('it logs the revision, the content hash and the snapshot hash a seed put in
 
   const policy = { rules: [{ id: 'slice1.read-only' }], tools: [] };
 
-  await ctx.write('nixie.yaml', 'format: 1\n');
+  await ctx.write('nixie.yaml', 'format: 2\n');
   await ctx.write('persona.md', '# Persona\n');
 
   const contentHash = buildContentHash(
     new Map([
-      ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+      ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
       ['persona.md', new TextEncoder().encode('# Persona\n')],
     ]),
   );
@@ -70,6 +70,7 @@ test('it logs the revision, the content hash and the snapshot hash a seed put in
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy,
   });
 
@@ -86,7 +87,7 @@ test('it logs the revision, the content hash and the snapshot hash a seed put in
 test('it logs the same fields for a seed of the same files', async () => {
   const ctx = await setupTest();
 
-  await ctx.write('nixie.yaml', 'format: 1\n');
+  await ctx.write('nixie.yaml', 'format: 2\n');
   await ctx.write('persona.md', '# Persona\n');
 
   const first = await ctx.seed({ rules: [{ id: 'slice1.read-only' }], tools: [] });
@@ -98,7 +99,7 @@ test('it logs the same fields for a seed of the same files', async () => {
 test('it logs a new revision and content hash for a changed file the seed leaves unapplied', async () => {
   const ctx = await setupTest();
 
-  await ctx.write('nixie.yaml', 'format: 1\n');
+  await ctx.write('nixie.yaml', 'format: 2\n');
   await ctx.write('persona.md', '# Persona\n');
   await ctx.write('rules/quiet.yaml', 'id: quiet\n');
 
@@ -120,7 +121,7 @@ test('it logs a new revision and content hash for a changed file the seed leaves
 test('it logs a new snapshot hash for a changed persona', async () => {
   const ctx = await setupTest();
 
-  await ctx.write('nixie.yaml', 'format: 1\n');
+  await ctx.write('nixie.yaml', 'format: 2\n');
   await ctx.write('persona.md', '# Persona\n');
 
   const first = await ctx.seed({ rules: [{ id: 'slice1.read-only' }], tools: [] });
@@ -137,7 +138,7 @@ test('it logs a new snapshot hash for a changed persona', async () => {
 test('it logs the error and the last good seed for a refused seed', async () => {
   const ctx = await setupTest();
 
-  await ctx.write('nixie.yaml', 'format: 1\n');
+  await ctx.write('nixie.yaml', 'format: 2\n');
   await ctx.write('persona.md', '# Persona\n');
 
   const first = await ctx.seed({ rules: [{ id: 'slice1.read-only' }], tools: [] });
@@ -174,7 +175,7 @@ test('it logs the message of a refused seed whose definitions directory is not c
 test('it logs no definitions in force for a refused first seed', async () => {
   const ctx = await setupTest();
 
-  await ctx.write('nixie.yaml', 'format: 1\n');
+  await ctx.write('nixie.yaml', 'format: 2\n');
 
   const fields = await ctx.seed({ rules: [{ id: 'slice1.read-only' }], tools: [] });
 

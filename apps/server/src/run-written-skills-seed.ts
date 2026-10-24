@@ -5,6 +5,6 @@ import { runQueuedSeed } from './run-queued-seed';
 
 export function runWrittenSkillsSeed(parts: SeedParts): Promise<SeedResult> {
   return runQueuedSeed(parts, () =>
-    runWrittenSkillSeed({ log: parts.context.log, policy: parts.policy }),
+    runWrittenSkillSeed({ log: parts.context.log, buildPolicy: parts.buildPolicy }),
   );
 }

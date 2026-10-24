@@ -51,14 +51,14 @@ test('it seeds the definitions in force again as the first record of the new log
   const ctx = await setupTest();
 
   await Promise.all([
-    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n'),
+    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n'),
     writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
   ]);
 
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   await runLogReset(ctx.log, {
@@ -84,14 +84,14 @@ test('it puts the same definitions in force under the new record', async () => {
   const ctx = await setupTest();
 
   await Promise.all([
-    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n'),
+    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n'),
     writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
   ]);
 
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   await runLogReset(ctx.log, {
@@ -126,14 +126,14 @@ test('it keeps the commit and the repository of a git-sync seed through a reset'
   });
 
   await Promise.all([
-    writeFile(join(worktree, 'nixie.yaml'), 'format: 1\n'),
+    writeFile(join(worktree, 'nixie.yaml'), 'format: 2\n'),
     writeFile(join(worktree, 'persona.md'), '# Persona\n\nCalm and short.\n'),
   ]);
 
   const seeded = await runSeed({
     log: ctx.log,
     source: createPathSource({ directory: join(sync, 'current') }),
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   await runLogReset(ctx.log, {
@@ -176,7 +176,7 @@ test('it seeds the skills in force again with their files', async () => {
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   await runLogReset(ctx.log, {
@@ -213,7 +213,7 @@ test("it keeps a skill's frontmatter fields through a reset", async () => {
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   await runLogReset(ctx.log, {
@@ -261,7 +261,11 @@ test("it keeps the conversation's skill list through storage and a reset", async
     ),
   ]);
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const before = await readDefinitionsInForce(ctx.writer.db);
 
@@ -296,7 +300,11 @@ test('it keeps an empty conversation skill list through storage and a reset, bes
     ),
   ]);
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const before = await readDefinitionsInForce(ctx.writer.db);
 
@@ -321,11 +329,15 @@ test('it leaves the next seed of the same definitions unchanged', async () => {
   const ctx = await setupTest();
 
   await Promise.all([
-    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n'),
+    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n'),
     writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
   ]);
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   await runLogReset(ctx.log, {
     keptTables: [],
@@ -340,7 +352,7 @@ test('it leaves the next seed of the same definitions unchanged', async () => {
   const next = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   expect(next.status).toBe('unchanged');
@@ -361,7 +373,7 @@ test('it keeps a skill nixie wrote in force through a reset and the seed after i
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -376,7 +388,7 @@ test('it keeps a skill nixie wrote in force through a reset and the seed after i
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await runLogReset(ctx.log, {
     keptTables: [],
@@ -388,7 +400,7 @@ test('it keeps a skill nixie wrote in force through a reset and the seed after i
     },
   });
 
-  const next = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const next = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   expect(next.status).toBe('unchanged');
 
@@ -412,7 +424,7 @@ test('it keeps a skill nixie wrote through a reset before its seed, and the seed
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -437,7 +449,7 @@ test('it keeps a skill nixie wrote through a reset before its seed, and the seed
     },
   });
 
-  const seeded = await runWrittenSkillSeed({ log: ctx.log, policy });
+  const seeded = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   expect(seeded.inForce?.skills).toStrictEqual([
     { name: 'tide-tables', skillHash: skill.skillHash, origin: 'nixie' },
@@ -459,7 +471,7 @@ test("it puts your definitions' version back after a reset when you retire nixie
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -474,7 +486,7 @@ test("it puts your definitions' version back after a reset when you retire nixie
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await runLogReset(ctx.log, {
     keptTables: [],
@@ -494,7 +506,7 @@ test("it puts your definitions' version back after a reset when you retire nixie
     }),
   );
 
-  const retired = await runWrittenSkillSeed({ log: ctx.log, policy });
+  const retired = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   expect(retired.inForce?.skills).toStrictEqual(first.inForce?.skills);
 });

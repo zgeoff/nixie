@@ -106,11 +106,15 @@ async function runSession(
 ): Promise<Pick<WriterExtraction, 'writes' | 'flags' | 'usage'>> {
   try {
     const usage = await parts.model.runSession({
-      systemPrompt: renderPrompt('writer', {
-        persona: parts.getPersona(),
-        owner: { name: parts.ownerName },
-        assistant: { name: parts.assistantName },
-      }),
+      systemPrompt: renderPrompt(
+        'writer',
+        {
+          persona: parts.getPersona(),
+          owner: { name: parts.ownerName },
+          assistant: { name: parts.assistantName },
+        },
+        parts.getPrompts(),
+      ),
       prompt: session.prompt,
       signal: session.signal,
     });

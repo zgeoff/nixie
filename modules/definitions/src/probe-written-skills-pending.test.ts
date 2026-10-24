@@ -57,7 +57,7 @@ test('it finds an approval pending until a seed puts its skill in force', async 
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -76,7 +76,7 @@ test('it finds an approval pending until a seed puts its skill in force', async 
 
   const before = await probeWrittenSkillsPending(ctx.writer.db);
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   const after = await probeWrittenSkillsPending(ctx.writer.db);
 
@@ -92,7 +92,7 @@ test('it finds a retirement pending while the snapshot in force still holds the 
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -109,7 +109,7 @@ test('it finds a retirement pending while the snapshot in force still holds the 
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writeWrittenSkillState(tx, {

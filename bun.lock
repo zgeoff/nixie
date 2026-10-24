@@ -99,6 +99,7 @@
         "@heynixie/models": "workspace:*",
         "@heynixie/ops": "workspace:*",
         "@heynixie/policy": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "@heynixie/retry": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/sandbox-imp": "workspace:*",
@@ -390,6 +391,7 @@
         "@heynixie/clock": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
         "ts-pattern": "catalog:",
@@ -397,6 +399,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/memory": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "ajv": "catalog:",
       },

@@ -1,3 +1,4 @@
+import type { PromptOverrides } from '@heynixie/prompts';
 import type { SystemTaskOptions, ToolSessionOptions } from '@heynixie/sessions';
 import { makeSystemTaskRunner, startToolSession } from '@heynixie/sessions';
 import { buildConsolidatorTools } from './build-consolidator-tools';
@@ -13,6 +14,7 @@ export interface MemoryConsolidatorRunnerOptions extends SystemTaskOptions, Tool
   readonly config: ConsolidationConfig;
 
   readonly getPersona: () => string;
+  readonly getPrompts: () => PromptOverrides;
 
   readonly ownerName: string | null;
   readonly onError: (error: unknown) => void;
@@ -44,6 +46,7 @@ export const startMemoryConsolidatorRunner = makeSystemTaskRunner<
       },
       config: options.config,
       getPersona: options.getPersona,
+      getPrompts: options.getPrompts,
       ownerName: options.ownerName,
       onError: options.onError,
     });

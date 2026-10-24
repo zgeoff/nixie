@@ -3,11 +3,15 @@ import { renderPrompt } from './render-prompt';
 
 test('it renders the persona, the note-taker line, the rule for pasted and dropped text and images and the position rule for system messages, and nothing about memory', () => {
   expect(
-    renderPrompt('session', {
-      persona: 'You are nixie.',
-      skillCatalog: null,
-      owner: { name: 'Robin' },
-    }),
+    renderPrompt(
+      'session',
+      {
+        persona: 'You are nixie.',
+        skillCatalog: null,
+        owner: { name: 'Robin' },
+      },
+      {},
+    ),
   ).toMatchInlineSnapshot(`
     "You are nixie.
 
@@ -21,11 +25,15 @@ test('it renders the persona, the note-taker line, the rule for pasted and dropp
 
 test('it names the owner as the owner in the note-taker line and the rule for pasted and dropped text when no name is set', () => {
   expect(
-    renderPrompt('session', {
-      persona: 'You are nixie.',
-      skillCatalog: null,
-      owner: { name: null },
-    }),
+    renderPrompt(
+      'session',
+      {
+        persona: 'You are nixie.',
+        skillCatalog: null,
+        owner: { name: null },
+      },
+      {},
+    ),
   ).toMatchInlineSnapshot(`
     "You are nixie.
 
@@ -38,11 +46,15 @@ test('it names the owner as the owner in the note-taker line and the rule for pa
 });
 
 test('it puts the skill catalog right after the persona', () => {
-  const prompt = renderPrompt('session', {
-    persona: 'You are nixie.',
-    skillCatalog: '<skills>\n- tide-tables: Reads a tide table.\n</skills>',
-    owner: { name: 'Robin' },
-  });
+  const prompt = renderPrompt(
+    'session',
+    {
+      persona: 'You are nixie.',
+      skillCatalog: '<skills>\n- tide-tables: Reads a tide table.\n</skills>',
+      owner: { name: 'Robin' },
+    },
+    {},
+  );
 
   expect(prompt).toStartWith(
     'You are nixie.\n\n<skills>\n- tide-tables: Reads a tide table.\n</skills>\n\n"The note-taker"',

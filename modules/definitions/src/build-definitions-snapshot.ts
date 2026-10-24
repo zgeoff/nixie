@@ -1,4 +1,5 @@
 import type { JSONObject } from '@heynixie/log';
+import type { PromptOverrides } from '@heynixie/prompts';
 import { buildSHA256 } from './build-sha256';
 import { normalizeInstructions } from './normalize-instructions';
 import { toCanonicalJSON } from './to-canonical-json';
@@ -9,6 +10,7 @@ type SnapshotSkillInput = SkillRef & { readonly approvalID?: string | null };
 export interface DefinitionsSnapshotInput {
   readonly persona: string;
   readonly policy: SnapshotPolicy;
+  readonly prompts: PromptOverrides;
   readonly skills: readonly SnapshotSkillInput[];
 
   readonly conversationSkills: readonly string[];
@@ -26,6 +28,7 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
   const skills = sortUniqueBy(input.skills.map(buildSkillForm), 'name', (skill) => skill.name);
   const policyHash = buildSHA256(toCanonicalJSON(policy));
   const conversation = { skills: [...new Set(input.conversationSkills)].toSorted() };
+  const prompts = buildPromptsForm(input.prompts);
 
   const form = toCanonicalJSON({
     conversation,
@@ -33,9 +36,17 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     persona: personaVersion,
     policy,
     skills,
+    ...(Object.keys(prompts).length === 0 ? {} : { prompts }),
   });
 
-  return { snapshotHash: buildSHA256(form), personaVersion, policyHash, persona, form };
+  return {
+    snapshotHash: buildSHA256(form),
+    personaVersion,
+    policyHash,
+    persona,
+    prompts: input.prompts,
+    form,
+  };
 }
 
 function sortUniqueBy<T>(
@@ -70,4 +81,12 @@ function buildSkillForm(skill: SnapshotSkillInput): JSONObject & { readonly name
   return skill.approvalID === undefined || skill.approvalID === null
     ? form
     : { ...form, approvalID: skill.approvalID };
+}
+
+function buildPromptsForm(prompts: PromptOverrides): JSONObject {
+  return Object.fromEntries(
+    Object.entries(prompts).flatMap(([id, override]) =>
+      override === undefined ? [] : [[id, { parts: override.parts, template: override.template }]],
+    ),
+  );
 }

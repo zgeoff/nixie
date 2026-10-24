@@ -51,7 +51,7 @@ test('it reads each seeded skill version by its content hash, with its frontmatt
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const skillHash = seeded.inForce?.skills.at(0)?.skillHash ?? '';

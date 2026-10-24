@@ -27,6 +27,7 @@ export async function startConsolidatorTask(
     store,
     config: parts.config.memory_consolidation,
     getPersona: () => parts.inForce.read()?.persona ?? '',
+    getPrompts: () => parts.inForce.read()?.prompts ?? {},
     ownerName: parts.config.owner.name,
 
     onError: (error) => {

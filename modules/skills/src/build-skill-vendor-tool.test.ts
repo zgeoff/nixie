@@ -94,7 +94,7 @@ test('it opens a pull request whose merge the seed accepts as a vendored skill, 
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const recipeHash = await $`bash -c ${String.raw`{ printf 'nixie-definitions-v1\n'

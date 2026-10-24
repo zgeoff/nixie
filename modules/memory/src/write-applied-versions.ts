@@ -2,6 +2,7 @@ import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import { planBatchVersion } from './plan-batch-version';
+import { requireCheckerSnapshot } from './require-checker-snapshot';
 import { requireProposedTargets } from './require-proposed-targets';
 import type { StoreParts } from './types';
 import type { GatedWrite } from './write-memory-batch';
@@ -19,6 +20,8 @@ export async function writeAppliedVersions(
 
   for (const gated of kept) {
     if (gated.verdict.outcome === 'apply') {
+      requireCheckerSnapshot(parts.context, gated.verdict.checks);
+
       const version = await writeVersionInTransaction(
         parts,
         tx,

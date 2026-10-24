@@ -40,7 +40,7 @@ test('it turns the definitions part unready while a refused snapshot is pending,
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
     log: () => {},
@@ -71,7 +71,7 @@ test('it turns the definitions part ready once a seed succeeds', async () => {
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
     log: () => {},

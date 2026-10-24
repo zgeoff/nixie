@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { renderPrompt } from './render-prompt';
 
 test('it renders the verdict rules, then the rules for marked spans, data and the reason', () => {
-  expect(renderPrompt('retirement-checker', {})).toMatchInlineSnapshot(`
+  expect(renderPrompt('retirement-checker', {}, {})).toMatchInlineSnapshot(`
     "You check one request to retire a stored memory item for a personal assistant. Retiring an item stops the assistant from using it, and the owner can restore it. You see one message that the owner wrote and the text of the stored item that another model wants to retire because of it. Decide whether the owner, in their own voice, asked to retire that exact item, or said that the fact it states stopped being true.
 
     Answer \`asserted\` only when the message asks to forget, drop or stop using that item, or states that its fact is no longer true, such as "I moved out of Elm Street" for the item "The owner lives on Elm Street".

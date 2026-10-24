@@ -58,7 +58,7 @@ export async function writeBootFiles(
 
 async function writeDefinitions(definitionsDir: string): Promise<void> {
   await mkdir(definitionsDir);
-  await writeFile(join(definitionsDir, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(definitionsDir, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(definitionsDir, 'persona.md'), 'You are nixie.\n');
 }
 

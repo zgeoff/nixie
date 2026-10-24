@@ -44,7 +44,7 @@ test("it queues an approval's seed behind a definitions seed in flight, and the 
   const plain: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
     log: () => {},
