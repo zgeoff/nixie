@@ -1,6 +1,7 @@
 // Rebuilds each conversation turn from the plain export: the owner's messages that started it, the
 // store as it stood when per-turn retrieval ran, what that retrieval logged, the versions that the
 // session had already delivered, and any rating of it.
+import { z } from 'zod';
 import type { PlainExport, PlainRecord, PlainVersion } from './read-plain-export.ts';
 import { readErasableText } from './read-plain-export.ts';
 
@@ -13,12 +14,25 @@ export interface Candidate {
   text: string;
 }
 
-export interface LoggedItem {
-  itemID: string;
-  version: number;
-  score?: number;
-  similarity?: number;
-}
+// The fields this rebuild reads from the payloads, in the shapes the product's record codecs give.
+const itemRefSchema = z.object({ itemID: z.string(), version: z.int().positive() });
+
+const loggedItemSchema = itemRefSchema.extend({
+  score: z.number().exactOptional(),
+  similarity: z.number().exactOptional(),
+});
+
+export type LoggedItem = z.infer<typeof loggedItemSchema>;
+
+const recalledSchema = z.object({
+  items: z.array(loggedItemSchema),
+  searchMode: z.string().exactOptional(),
+  isTurnNote: z.literal(true).exactOptional(),
+});
+
+// Turn records written before the product logged its retrieved items lack the field, and the
+// session-delivery replay reads a missing field as no items.
+const turnEndedSchema = z.object({ retrieved: z.array(itemRefSchema).exactOptional() });
 
 export interface Rating {
   itemID: string;
@@ -126,22 +140,17 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
 
     // A turn whose session was lost retrieves again for the rebuilt session, and the model sees
     // only the later retrieval, so a later recall before the first reply replaces an earlier one.
-    if (
-      record.kind === 'memory.recalled' &&
-      record.payload['isTurnNote'] !== true &&
-      !isAfterRecallTool &&
-      !hasReply
-    ) {
-      const items = record.payload['items'];
+    const recalled = record.kind === 'memory.recalled' ? parsePayload(recalledSchema, record) : null;
 
+    if (recalled !== null && recalled.isTurnNote !== true && !isAfterRecallTool && !hasReply) {
       if (open.recalledSequence === 0) {
         open.caseID = `t${record.sequence}`;
         cases.push(open);
       }
 
       open.recalledSequence = record.sequence;
-      open.logged = Array.isArray(items) ? items : [];
-      open.searchMode = typeof record.payload['searchMode'] === 'string' ? record.payload['searchMode'] : null;
+      open.logged = recalled.items;
+      open.searchMode = recalled.searchMode ?? null;
       open.delivered = [...session.delivered.keys()];
       open.candidates = collectCandidates(versionsByItem, itemsByID, pinned, record.sequence, open.recordedAt);
       open.ratings = [...open.ratings, ...(ratings.get(record.sequence) ?? [])];
@@ -277,16 +286,16 @@ interface SessionFold {
 // once its turn ends, up to the sequence the turn says it recalled through, and a new, rebuilt,
 // compacted or invalidated session starts the set again.
 function foldSession(session: SessionFold, record: PlainRecord): void {
-  const toRefs = (items: unknown): string[] =>
-    Array.isArray(items) ? items.map((item) => `${item.itemID}@${item.version}`) : [];
+  const toRefs = (items: readonly z.infer<typeof itemRefSchema>[]): string[] =>
+    items.map((item) => `${item.itemID}@${item.version}`);
 
   const through =
     typeof record.payload['recalledThrough'] === 'number' ? record.payload['recalledThrough'] : Number.MAX_SAFE_INTEGER;
 
   if (record.kind === 'memory.recalled') {
-    session.pending.push({ sequence: record.sequence, refs: toRefs(record.payload['items']) });
+    session.pending.push({ sequence: record.sequence, refs: toRefs(parsePayload(recalledSchema, record).items) });
   } else if (record.kind === 'model.turn_ended') {
-    const retrieved = session.isCompacted ? [] : toRefs(record.payload['retrieved']);
+    const retrieved = session.isCompacted ? [] : toRefs(parsePayload(turnEndedSchema, record).retrieved ?? []);
     const recalled = session.pending.filter((recall) => recall.sequence <= through).flatMap((recall) => recall.refs);
 
     for (const ref of [...recalled, ...retrieved]) {
@@ -313,4 +322,18 @@ function foldSession(session: SessionFold, record: PlainRecord): void {
     session.delivered = new Map();
     session.pending = [];
   }
+}
+
+// A payload that fails its schema stops the rebuild with the record's sequence and kind, and with no
+// value from the payload, because the log holds the user's own data.
+function parsePayload<Schema extends z.ZodType>(schema: Schema, record: PlainRecord): z.output<Schema> {
+  const parsed = schema.safeParse(record.payload);
+
+  if (!parsed.success) {
+    const paths = parsed.error.issues.map((issue) => issue.path.join('.') || '(payload)');
+
+    throw new Error(`record ${record.sequence} (${record.kind}) does not match its schema at ${paths.join(', ')}`);
+  }
+
+  return parsed.data;
 }
