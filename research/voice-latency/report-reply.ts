@@ -1,6 +1,6 @@
 // Prints the reply runs as one table per candidate: first audio, full answer audio, gaps, long
-// silences, tool calls and cost, against the spike's pass criteria. Each run's recordings sit in
-// recordings/<candidate>/ beside its file, and the report reads the silences from them.
+// silences, tool calls and cost, against the spike's pass criteria. Each run's recordings sit in a
+// folder named after its output file, and the report reads first audio and silences from them.
 // Usage: report-reply.ts <file.jsonl>...
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
