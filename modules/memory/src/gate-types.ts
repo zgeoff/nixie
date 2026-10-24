@@ -1,5 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import type { ContentSource } from '@heynixie/log';
+import type { PromptOverrides } from '@heynixie/prompts';
 import type { RunCheck } from '@heynixie/sessions';
 import type { Selectable } from 'kysely';
 import type { reviewReasons } from './review-reasons';
@@ -24,6 +25,12 @@ export interface GateContext {
   readonly limits: GateLimits;
   readonly ownerName: string | null;
   readonly ownerPronouns: OwnerPronouns;
+  readonly getPromptsInForce: () => PromptsInForce;
+}
+
+interface PromptsInForce {
+  readonly snapshotHash: string;
+  readonly prompts: PromptOverrides;
 }
 
 export interface OwnerPronouns {

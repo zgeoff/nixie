@@ -50,7 +50,7 @@ test('it loads a skill that nixie wrote with origin nixie, its approval and its 
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -68,7 +68,7 @@ test('it loads a skill that nixie wrote with origin nixie, its approval and its 
     }),
   );
 
-  const seeded = await runWrittenSkillSeed({ log: ctx.log, policy });
+  const seeded = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   invariant(seeded.inForce);
 
@@ -102,7 +102,7 @@ test('it reads each skill of a snapshot with its frontmatter, its files and no a
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   invariant(seeded.inForce);
@@ -143,7 +143,7 @@ test('it refuses a stored skill whose files hold a value that is not text', asyn
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   invariant(seeded.inForce);
@@ -172,7 +172,7 @@ test('it refuses a stored skill whose frontmatter lacks a field', async () => {
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   invariant(seeded.inForce);

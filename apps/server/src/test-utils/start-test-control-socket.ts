@@ -2,6 +2,7 @@ import { onTestFinished } from 'bun:test';
 import type { HostRouterOptions } from '@heynixie/api';
 import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
+import { buildAPIGate } from '../build-api-gate';
 import { startControlSocket } from '../start-control-socket';
 
 export interface TestControlSocketOptions {
@@ -21,6 +22,9 @@ export async function startTestControlSocket(options: TestControlSocketOptions):
 
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no server runs behind the test socket')),
+      runConversationReset: () =>
+        Promise.reject(new Error('no server runs behind the test socket')),
+      gate: buildAPIGate(),
     }),
   });
 

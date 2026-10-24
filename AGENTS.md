@@ -32,7 +32,7 @@ libs/              shared code that belongs to no domain
 e2e/               whole-program suites
 evals/             checks committed evaluation reports against the code
 research/<name>/   spikes: a Bun package each, indexed in research/README.md; CI typechecks
-                   them and never runs them, and product code never imports them
+                   those in the workspace and runs none, and product code never imports them
 deploy/            Compose recipe and reference Kubernetes manifests (outside the workspace)
   pulumi-k8s/      the Pulumi component for Kubernetes, the one workspace package here
 preview/           throwaway test build of one pull request

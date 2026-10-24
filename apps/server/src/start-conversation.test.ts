@@ -56,6 +56,7 @@ async function setupTest(options: TestOptions = {}) {
           config.getDefinitions ??
           (() => ({
             persona: 'You are nixie.',
+            prompts: {},
             personaHash: 'sha256:persona-test',
             policyHash: 'sha256:policy-test',
           })),
@@ -132,6 +133,7 @@ test('it resumes the session after a change to the policy alone, and decides the
       toolNames: ['notes_read'],
       getDefinitions: () => ({
         persona: 'You are nixie.',
+        prompts: {},
         personaHash: 'sha256:persona-test',
         policyHash: notes.getPolicyHash(),
       }),

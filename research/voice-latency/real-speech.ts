@@ -41,7 +41,7 @@ if (import.meta.main) {
       if (!src) {
         continue;
       }
-      const response = await readWithRetry(src);
+      const response = await readWithRetry(src, fetch);
       if (!response.ok) {
         throw new Error(`audio ${row.audio_id}: HTTP ${response.status}`);
       }
@@ -60,7 +60,7 @@ if (import.meta.main) {
 }
 
 async function readRows(offset: number): Promise<AMIRow[]> {
-  const response = await readWithRetry(`${rowsURL}&offset=${offset}&length=100`);
+  const response = await readWithRetry(`${rowsURL}&offset=${offset}&length=100`, fetch);
   if (!response.ok) {
     throw new Error(`rows at ${offset}: HTTP ${response.status}`);
   }
@@ -74,9 +74,9 @@ async function readRows(offset: number): Promise<AMIRow[]> {
 }
 
 // The dataset server answers 429 to a burst of requests, so each request waits and tries again.
-async function readWithRetry(url: string): Promise<Response> {
+export async function readWithRetry(url: string, transport: typeof fetch): Promise<Response> {
   for (let attempt = 1; ; attempt++) {
-    const response = await fetch(url);
+    const response = await transport(url);
     if (response.status !== 429 || attempt === 6) {
       return response;
     }

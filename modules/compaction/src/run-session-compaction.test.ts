@@ -50,6 +50,7 @@ test('it summarizes a task session and returns the summary record through its la
       systemPrompt: 'You sort the receipts of a trip.',
       at: 'Tue 14 Oct, 22:50, Sydney',
       ownerName: 'Robin',
+      prompts: {},
     },
   );
 
@@ -110,6 +111,7 @@ test('it sends the summary call the task profile, the system prompt and an instr
       systemPrompt: 'You sort the receipts of a trip.',
       at: 'Tue 14 Oct, 22:50, Sydney',
       ownerName: 'Robin',
+      prompts: {},
     },
   );
 
@@ -125,6 +127,51 @@ test('it sends the summary call the task profile, the system prompt and an instr
       instruction: expect.toInclude('at="Tue 14 Oct, 22:50, Sydney"'),
     },
   ]);
+});
+
+test('it sends the summary call the compaction template that the definitions override', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.sandboxes.adapter.create(buildMockSandboxSpec({ kind: 'worker' }));
+
+  const run = {
+    context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
+    model: { model: 'claude-test', profile: 'task-direct' },
+    turnProfile: {
+      model: 'claude-test',
+      baseURL: 'https://models.example.test',
+      effort: 'medium',
+      authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
+    },
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+  } as const;
+
+  await runSessionCompaction(
+    { ...run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 } },
+    {
+      taskID: 'task-7',
+      resume: {
+        sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
+        messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
+      },
+      trigger: 'threshold',
+      contextSize: 170_000,
+      failures: 0,
+      signal: new AbortController().signal,
+      systemPrompt: 'You sort the receipts of a trip.',
+      at: 'Tue 14 Oct, 22:50, Sydney',
+      ownerName: 'Robin',
+      prompts: {
+        compaction: { parts: {}, template: 'List the receipts {{ owner.name }} still owes on.' },
+      },
+    },
+  );
+
+  expect(ctx.sandboxes.summaries).toPartiallyContain({
+    instruction: expect.toInclude('List the receipts Robin still owes on.'),
+  });
 });
 
 test('it asks once, on the summary fork, to cut a summary past the cap', async () => {
@@ -175,6 +222,7 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
       systemPrompt: 'You sort the receipts of a trip.',
       at: 'Tue 14 Oct, 22:50, Sydney',
       ownerName: null,
+      prompts: {},
     },
   );
 
@@ -227,6 +275,7 @@ test('it returns a failure record with the count in a row when the summary call 
       systemPrompt: 'You sort the receipts of a trip.',
       at: 'Tue 14 Oct, 22:50, Sydney',
       ownerName: null,
+      prompts: {},
     },
   );
 
@@ -283,6 +332,7 @@ test('it throws the abort reason instead of a failure record when the signal abo
       systemPrompt: 'You sort the receipts of a trip.',
       at: 'Tue 14 Oct, 22:50, Sydney',
       ownerName: null,
+      prompts: {},
     },
   );
 

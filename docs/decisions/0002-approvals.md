@@ -3,7 +3,7 @@
 - Date: 2026-10-07
 - Updated: 2026-10-21
 - Status: decided
-- Research: [defer and hold spike](../design/platform/spikes/sdk-long-hold/),
+- Research: [defer and hold spike](../../research/sdk-long-hold/),
   [engine notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-notes/engines.md)
 
 Every action runs through one of nixie's own tools, and an action that needs your approval becomes a

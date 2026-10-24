@@ -177,6 +177,21 @@ test('it forgets an item for good as your own change', async () => {
   ]);
 });
 
+test('it forgets every item for good as your own change', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Parks on the north side' });
+  const forgotten = await ctx.host.forgetAll();
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
+
+  expect(forgotten).toStrictEqual([item.itemID]);
+
+  expect(records.map((entry) => entry.record)).toMatchObject([
+    { kind: 'memory.version_added' },
+    { kind: 'memory.forget_started', contentSource: null, thread: null },
+    { kind: 'memory.forgotten' },
+  ]);
+});
+
 test('it approves each named change as the host and leaves the rest pending', async () => {
   const ctx = await setupTest();
 

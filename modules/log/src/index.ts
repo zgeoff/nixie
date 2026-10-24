@@ -16,6 +16,7 @@ export { readRecords } from './read-records';
 export { readThreadNewestFirst } from './read-thread-newest-first';
 export { readRecordAttachments } from './read-record-attachments';
 export { removeRecordKey } from './remove-record-key';
+export { removeThreadKeys } from './remove-thread-keys';
 export { claimBackupLock } from './claim-backup-lock';
 export { localDataStorage } from './local-data-storage';
 export type { DataRestore, DataRestoreOptions } from './restore-data-backup';

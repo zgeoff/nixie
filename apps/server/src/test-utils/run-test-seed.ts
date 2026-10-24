@@ -8,12 +8,12 @@ export async function runTestSeed(log: Log, directory: string): Promise<SeedResu
   const root = join(directory, 'definitions');
 
   await mkdir(root);
-  await writeFile(join(root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(root, 'persona.md'), '# Persona\n\nPlain and kind.\n');
 
   return runSeed({
     log,
     source: createPathSource({ directory: root }),
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 }

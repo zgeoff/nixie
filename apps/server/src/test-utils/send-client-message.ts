@@ -1,4 +1,5 @@
 import type { ContractClient, LogRecord } from '@heynixie/contract';
+import type { WaitForConditionOptions } from '@heynixie/testing';
 import { waitForCondition } from '@heynixie/testing';
 
 interface ClientMessage {
@@ -14,6 +15,7 @@ export async function sendClientMessage(
   client: Pick<ContractClient, 'conversation'>,
   message: ClientMessage,
   replyText: string,
+  wait: WaitForConditionOptions = {},
 ): Promise<readonly LogRecord[]> {
   const page: { records: readonly LogRecord[] } = { records: [] };
 
@@ -35,7 +37,7 @@ export async function sendClientMessage(
         record.sequence > sent.sequence &&
         record.message?.text === replyText,
     );
-  });
+  }, wait);
 
   return page.records;
 }

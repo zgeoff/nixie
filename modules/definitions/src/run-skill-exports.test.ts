@@ -58,7 +58,7 @@ test('it exports an approved skill as a pull request that carries its files', as
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -75,7 +75,7 @@ test('it exports an approved skill as a pull request that carries its files', as
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
 
@@ -114,7 +114,7 @@ test('it exports a skill with the configured title and message', async () => {
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -131,7 +131,7 @@ test('it exports a skill with the configured title and message', async () => {
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await runSkillExports({
     log: ctx.log,
@@ -168,7 +168,7 @@ test('it removes a file the base branch gained after the seed, at the revision i
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -210,7 +210,7 @@ test('it marks an exported skill as yours at the seed after you merge its pull r
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -227,12 +227,12 @@ test('it marks an exported skill as yours at the seed after you merge its pull r
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
   await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
 
   await ctx.repo.mergePullRequest(1);
 
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -258,7 +258,7 @@ test('it exports each approval once', async () => {
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -275,7 +275,7 @@ test('it exports each approval once', async () => {
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
   await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
 
   const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
@@ -295,7 +295,7 @@ test("it exports again on the new base when you keep nixie's version over a defi
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -310,10 +310,10 @@ test("it exports again on the new base when you keep nixie's version over a defi
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
   await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), `${text}By tide.\n`);
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writeWrittenSkillBase(tx, { approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', at: 2 }),
@@ -337,7 +337,7 @@ test("it closes the pull request when you keep your definitions' version", async
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -382,7 +382,7 @@ test("it closes a retired approval's pull request before a later approval of the
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const first = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -670,7 +670,7 @@ test("it holds a later approval's export while the retired approval's pull reque
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const first = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -735,7 +735,7 @@ test('it closes the pull request it wrote when a seed adopts the skill while the
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
 
@@ -753,7 +753,7 @@ test('it closes the pull request it wrote when a seed adopts the skill while the
   ctx.repo.delayNextAnswer(async () => {
     await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
     await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
-    await runSeed({ log: ctx.log, source: ctx.source, policy });
+    await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   });
 
   const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
@@ -847,7 +847,7 @@ test('it closes the export of every approval of a skill a seed adopted after its
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const first = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}Draft.\n` }]);
   const second = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
@@ -879,7 +879,7 @@ test('it closes the export of every approval of a skill a seed adopted after its
 
   await ctx.repo.mergePullRequest(1);
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
 
@@ -929,7 +929,7 @@ test('it fills in an adopted skill that lacks its version and closes its opened 
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
 
@@ -959,7 +959,7 @@ test('it fills in an adopted skill that lacks its version and closes its opened 
     });
   });
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
 
   const written = await sql`select state, definitions_hash, definitions_origin
@@ -984,7 +984,7 @@ test('it removes the stale export of a superseded approval once a seed adopts th
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const first = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}Draft.\n` }]);
   const second = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
@@ -1016,7 +1016,7 @@ test('it removes the stale export of a superseded approval once a seed adopts th
 
   await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
   const attempts = await sql`select approval_id from skill_export_attempts`.execute(ctx.writer.db);
@@ -1104,7 +1104,7 @@ test('it never closes the pull request of a later approval in force over an adop
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const adopted = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
   const later = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
@@ -1140,7 +1140,7 @@ test('it never closes the pull request of a later approval in force over an adop
     });
   });
 
-  await runWrittenSkillSeed({ log: ctx.log, policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
 
   const revision = await ctx.repo.readBaseRevision();
 
@@ -1182,7 +1182,12 @@ test('it records a superseded export closed and leaves its pull request to the l
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const first = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -1237,7 +1242,12 @@ test('it never writes the pull request of a skill that left force after the run 
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const knots = checkSkillFiles('anchor-knots', [
     { path: 'SKILL.md', text: '---\nname: anchor-knots\ndescription: Ties an anchor knot.\n---\n' },
@@ -1296,7 +1306,12 @@ test('it closes the pull request it wrote when the skill is retired while the ex
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },

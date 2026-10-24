@@ -13,7 +13,7 @@ shift
 read_tag_digest() {
   local out
   if out=$(docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' 2>&1); then
-    jq -r .digest <<<"$out"
+    jq -r .digest <<< "$out"
   elif [[ $out == *": not found"* ]]; then
     return 0
   else

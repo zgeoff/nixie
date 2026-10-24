@@ -3,8 +3,10 @@ import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, delay, http } from 'msw';
 import invariant from 'tiny-invariant';
+import { MicrophoneContext } from '../microphone-context';
 import { server } from '../mocks/node';
 import { store } from '../mocks/store';
+import { buildStubMicrophone } from '../test-utils/build-stub-microphone';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
@@ -25,6 +27,33 @@ test('it shows the conversation the API holds', async () => {
   const list = await rendered.findByRole('list', { name: 'Conversation' });
 
   expect(list).toHaveTextContent('You Is it raining?Forgetnixie Not yet.');
+});
+
+test('it turns on voice typing from the header, asking for the microphone once and stopping it at once', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const stub = buildStubMicrophone({ permission: 'prompt', answer: 'allow' });
+
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <Conversation thread="conversation" />
+    </MicrophoneContext>,
+  );
+
+  const header = await rendered.findByRole('banner');
+
+  await ctx.user.click(within(header).getByRole('button', { name: 'Turn on voice typing' }));
+
+  const status = await within(header).findByRole('status');
+
+  expect(status).toHaveTextContent('Voice typing on');
+  expect(stub.readRequests()).toStrictEqual([{ audio: true }]);
+
+  expect(stub.readTracks()).toStrictEqual([
+    { kind: 'audio', readyState: 'ended', stop: expect.any(Function) },
+  ]);
 });
 
 test('it folds the records of a step into one line between the messages', async () => {
@@ -378,7 +407,7 @@ test('it keeps a failed forget and its retry once the forget start drops the tex
   await ctx.user.click(rendered.getByRole('button', { name: 'Forget for good' }));
 
   await waitFor(() => {
-    expect(rendered.getByText('Forgotten')).toBeVisible();
+    expect(rendered.queryByText('The shed code is 4417.')).toBeNull();
     expect(rendered.getByText('The forget did not finish. Try again.')).toBeVisible();
   });
 
@@ -434,9 +463,27 @@ test('it never shows the text of a message you sent and then forgot', async () =
     expect(rendered.queryByRole('group', { name: 'Forget this message' })).toBeNull();
   });
 
-  expect(rendered.getByRole('list', { name: 'Conversation' })).toHaveTextContent('You Forgotten');
+  expect(rendered.queryByText('You')).toBeNull();
   expect(rendered.queryByText('The gate code is 2290.')).toBeNull();
   expect(rendered.queryByRole('status')).toBeNull();
+});
+
+test('it shows no placeholder for a message or a reply whose text is shredded', async () => {
+  await createDeviceSession();
+
+  await store.records.create({ kind: 'owner_message' });
+  await store.records.create({ kind: 'model.reply' });
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the ferry on time?' } });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  await rendered.findByText('Is the ferry on time?');
+
+  const items = within(rendered.getByRole('list', { name: 'Conversation' })).getAllByRole(
+    'listitem',
+  );
+
+  expect(items.map((item) => item.textContent)).toStrictEqual(['You Is the ferry on time?Forget']);
 });
 
 test('it shows an unsent message as not sent', async () => {

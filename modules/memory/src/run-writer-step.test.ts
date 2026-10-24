@@ -28,6 +28,7 @@ async function setupTest() {
     },
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
+    getPrompts: () => ({}),
     ownerName: null,
     assistantName: null,
     defaultZone: 'UTC',

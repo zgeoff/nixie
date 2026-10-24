@@ -35,7 +35,7 @@ async function setupTest() {
   const parts: SeedParts = {
     context: context.apiContext,
     source: createPathSource({ directory: root }),
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
     log: () => {},

@@ -50,7 +50,7 @@ run_publish absent
 diff <(printf '%s\n' \
   'view @heynixie/pulumi-k8s@1.2.3 version' \
   'publish heynixie-pulumi-k8s-1.2.3.tgz --access public --provenance') "$work/absent/calls.log"
-[[ $(tar -xzOf "$work/absent/published/heynixie-pulumi-k8s-1.2.3.tgz" package/package.json \
-  | jq -r .version) == 1.2.3 ]]
+[[ $(tar -xzOf "$work/absent/published/heynixie-pulumi-k8s-1.2.3.tgz" package/package.json |
+  jq -r .version) == 1.2.3 ]]
 
 echo "the release path skips a version npm holds, and publishes an absent one with provenance"

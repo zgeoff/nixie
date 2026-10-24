@@ -18,6 +18,7 @@ test('it forgets the message only once you confirm', async () => {
   await createDeviceSession();
 
   const onForgotten = mock<() => void>();
+  const onOpenChange = mock<(isOpen: boolean) => void>();
 
   const stored = await store.records.create({
     kind: 'owner_message',
@@ -25,7 +26,12 @@ test('it forgets the message only once you confirm', async () => {
   });
 
   const rendered = render(
-    <ForgetControl hasText onForgotten={onForgotten} record={toLogRecord(stored)} />,
+    <ForgetControl
+      hasText
+      onForgotten={onForgotten}
+      onOpenChange={onOpenChange}
+      record={toLogRecord(stored)}
+    />,
   );
 
   await ctx.user.click(rendered.getByRole('button', { name: 'Forget' }));
@@ -39,6 +45,7 @@ test('it forgets the message only once you confirm', async () => {
   });
 
   expect(asked?.message?.text).toBe('The shed code is 4417.');
+  expect(onOpenChange.mock.calls).toStrictEqual([[true], [false]]);
 
   expect(store.records.findFirst((query) => query.where({ sequence: stored.sequence }))).toSatisfy(
     (record: unknown) => typeof record === 'object' && record !== null && !('message' in record),
@@ -54,6 +61,7 @@ test('it asks to forget a reply by its name', async () => {
     <ForgetControl
       hasText
       onForgotten={() => {}}
+      onOpenChange={() => {}}
       record={buildMockLogRecord({ kind: 'model.reply', message: { text: 'Noted.' } })}
     />,
   );
@@ -69,6 +77,7 @@ test('it keeps the message when you choose to keep it', async () => {
   await createDeviceSession();
 
   const onForgotten = mock<() => void>();
+  const onOpenChange = mock<(isOpen: boolean) => void>();
 
   const stored = await store.records.create({
     kind: 'owner_message',
@@ -76,7 +85,12 @@ test('it keeps the message when you choose to keep it', async () => {
   });
 
   const rendered = render(
-    <ForgetControl hasText onForgotten={onForgotten} record={toLogRecord(stored)} />,
+    <ForgetControl
+      hasText
+      onForgotten={onForgotten}
+      onOpenChange={onOpenChange}
+      record={toLogRecord(stored)}
+    />,
   );
 
   await ctx.user.click(rendered.getByRole('button', { name: 'Forget' }));
@@ -86,6 +100,7 @@ test('it keeps the message when you choose to keep it', async () => {
 
   expect(rendered.getByRole('button', { name: 'Forget' })).toBeVisible();
   expect(kept?.message?.text).toBe('The shed code is 4417.');
+  expect(onOpenChange.mock.calls).toStrictEqual([[true], [false]]);
   expect(onForgotten).not.toHaveBeenCalled();
 });
 
@@ -94,6 +109,7 @@ test('it shows no control for a message with no text and no forget of its own', 
     <ForgetControl
       hasText={false}
       onForgotten={() => {}}
+      onOpenChange={() => {}}
       record={buildMockLogRecord({ kind: 'owner_message' })}
     />,
   );
@@ -107,11 +123,13 @@ test('it says so when the forget fails', async () => {
   await createDeviceSession();
 
   const onForgotten = mock<() => void>();
+  const onOpenChange = mock<(isOpen: boolean) => void>();
 
   const rendered = render(
     <ForgetControl
       hasText
       onForgotten={onForgotten}
+      onOpenChange={onOpenChange}
       record={buildMockLogRecord({
         kind: 'owner_message',
         message: { text: 'The shed code is 4417.' },
@@ -128,4 +146,5 @@ test('it says so when the forget fails', async () => {
 
   expect(alert).toHaveTextContent('The forget did not finish. Try again.');
   expect(onForgotten).not.toHaveBeenCalled();
+  expect(onOpenChange.mock.calls).toStrictEqual([[true]]);
 });

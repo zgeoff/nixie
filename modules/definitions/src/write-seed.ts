@@ -63,6 +63,7 @@ export async function writeSeed(
     snapshotHash: plan.built.snapshotHash,
     personaVersion: plan.built.personaVersion,
     persona: plan.built.persona,
+    prompts: plan.built.prompts,
     policyHash: plan.built.policyHash,
     recordSequence: record.sequence,
     skills: plan.overlay.skills.map((skill) => toSkillRef(skill)),

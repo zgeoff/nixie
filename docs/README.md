@@ -64,6 +64,9 @@ below, and planned work lives in Linear.
   failure and overflow, the summary record and forgetting
 - [Skills](architecture/core/skills.md) — skill lists, the pin a task keeps, and the catalog in the
   system prompt with its cap
+- [Prompts](architecture/core/prompts.md) — the built-in prompts, their parts and templates,
+  overrides from the definitions, the operator log line for a dropped safety part, and the checker
+  hashes in the policy
 - [Crash tests](architecture/core/crash-tests.md) — the test build, the harness link and its clock,
   the scripted model, the provider double and the oracle
 
@@ -131,6 +134,8 @@ below, and planned work lives in Linear.
 
 - [Vendoring a skill](guides/vendoring-a-skill.md) — copy a published skill into your definitions at
   a pinned commit, compute its content hash and add its lock entry
+- [Overriding a prompt](guides/overriding-a-prompt.md) — replace a part or the template of a
+  built-in prompt from your definitions, and the parts and paths each prompt has
 
 ## Runbooks
 

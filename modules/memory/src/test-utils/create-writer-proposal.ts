@@ -39,6 +39,7 @@ export async function createWriterProposal(
       gate: memory.store.writes.batch,
       config: writerConfigSchema.parse({}),
       getPersona: () => '',
+      getPrompts: () => ({}),
       ownerName: null,
       assistantName: null,
       defaultZone: 'UTC',

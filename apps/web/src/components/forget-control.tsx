@@ -10,6 +10,7 @@ export interface ForgetControlProps {
 
   readonly hasText: boolean;
   readonly onForgotten: () => void;
+  readonly onOpenChange: (isOpen: boolean) => void;
 }
 
 const control = css({ color: 'textMuted', display: 'block', fontSize: 'sm', marginTop: '1' });
@@ -23,6 +24,8 @@ export function ForgetControl(props: ForgetControlProps): ReactNode {
     nixie.queryUtils.conversation.forget.mutationOptions({
       onSuccess: (_result, input) => {
         setActionID(null);
+
+        props.onOpenChange(false);
 
         queryClient.removeQueries({
           queryKey: nixie.queryUtils.conversation.readImage.key({
@@ -47,6 +50,8 @@ export function ForgetControl(props: ForgetControlProps): ReactNode {
         className={control}
         onClick={() => {
           setActionID(crypto.randomUUID());
+
+          props.onOpenChange(true);
         }}
         type="button"
       >
@@ -71,6 +76,7 @@ export function ForgetControl(props: ForgetControlProps): ReactNode {
       onKeep={() => {
         setActionID(null);
 
+        props.onOpenChange(false);
         forget.reset();
       }}
     />

@@ -60,7 +60,7 @@ test('it lists each pending proposal with the version of its skill in force, or 
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const inForceHash = seeded.inForce?.skills[0]?.skillHash ?? '';
@@ -237,7 +237,11 @@ test('it marks a proposal stale once the version in force moves past its base', 
     '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
   );
 
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const pending = await readPendingSkillProposals({
     log: ctx.log,
@@ -252,7 +256,12 @@ test('it marks a proposal stale once an approval of its skill commits, before th
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const approved = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },

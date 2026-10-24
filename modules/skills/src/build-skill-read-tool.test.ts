@@ -56,7 +56,7 @@ test('it returns the instructions without their frontmatter and the list of the 
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillReadTool({
@@ -132,7 +132,7 @@ test('it returns the file at a path inside the skill folder', async () => {
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillReadTool({
@@ -196,7 +196,7 @@ test.each([
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillReadTool({
@@ -240,7 +240,7 @@ test('it refuses a path the skill has no file at', async () => {
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillReadTool({
@@ -295,7 +295,7 @@ test("it refuses a skill that is off the caller's skill list", async () => {
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillReadTool({
@@ -338,7 +338,7 @@ test('it reads the version the task first loaded after a seed changes the skill'
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const firstTool = buildSkillReadTool({
     log: ctx.log,
@@ -365,7 +365,7 @@ test('it reads the version the task first loaded after a seed changes the skill'
     '---\nname: tide-tables\ndescription: Reads a tide table by port.\n---\n# Tides by port\n',
   );
 
-  const second = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const second = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const secondTool = buildSkillReadTool({
     log: ctx.log,

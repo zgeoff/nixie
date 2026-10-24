@@ -51,7 +51,12 @@ test('it applies a staged memory with the message it cites as its evidence, outs
     checks: {
       quote: 'pass',
       tokens: 'pass',
-      checker: { verdict: 'asserted', model: 'claude-checker-1', failure: null },
+      checker: {
+        verdict: 'asserted',
+        model: 'claude-checker-1',
+        failure: null,
+        snapshotHash: 'sha256:test',
+      },
     },
     evidence: { recordSequence: sequence, start: 12, end: 34 },
     model: 'claude-writer-1',
@@ -351,7 +356,12 @@ test('it applies a staged retirement the checker confirms against the item text'
     checks: {
       read: 'pass',
       quote: 'pass',
-      checker: { verdict: 'asserted', model: 'claude-checker-1', failure: null },
+      checker: {
+        verdict: 'asserted',
+        model: 'claude-checker-1',
+        failure: null,
+        snapshotHash: 'sha256:test',
+      },
     },
     evidence: { recordSequence: sequence, start: 0, end: 25 },
     model: 'claude-writer-1',

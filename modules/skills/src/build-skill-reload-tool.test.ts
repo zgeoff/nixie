@@ -59,7 +59,7 @@ test('it reloads the skill its input names, with a result the output schema acce
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const registry = buildToolRegistry([

@@ -39,7 +39,7 @@ test.each([
   const ctx = await setupTest({ name });
 
   const promptHash = new Bun.CryptoHasher('sha256')
-    .update(renderPrompt('content-checker', { owner: { name: ctx.report.ownerName } }))
+    .update(renderPrompt('content-checker', { owner: { name: ctx.report.ownerName } }, {}))
     .digest('hex');
 
   expect(ctx.report.prompt).toBe(`sha256:${promptHash}`);

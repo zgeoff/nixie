@@ -6,6 +6,7 @@ import {
   modelCompactionFailedCodec,
   modelSessionSummarizedCodec,
 } from '@heynixie/models';
+import type { PromptOverrides } from '@heynixie/prompts';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { SessionPoint, TurnProfile } from '@heynixie/wire';
 import { countTextTokens } from './count-text-tokens';
@@ -42,6 +43,7 @@ export interface CompactionRequest {
 
   readonly at: string;
   readonly ownerName: string | null;
+  readonly prompts: PromptOverrides;
 }
 
 export interface CompactionOutcome {
@@ -113,6 +115,7 @@ async function runSummaryCalls(
       at,
       summaryTokens: cap,
       ownerName: request.ownerName,
+      prompts: request.prompts,
     }),
   });
 

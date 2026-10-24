@@ -265,6 +265,13 @@ test('it gives the memory writer and the checker their own scripted models when 
   expect(config.models.profiles['scripted-checker']?.baseURL).toBe(nixie.checkerModel.url);
 });
 
+test('it gives the checker an hour on the harness clock before its timeout', async () => {
+  const nixie = await startSpawnedNixie({ memoryWriter: true });
+  const config = await loadDeploymentConfig(nixie.configPath);
+
+  expect(config.memory.checkerTimeoutMs).toBe(3_600_000);
+});
+
 test('it keeps the memory writer and the consolidator off unless asked', async () => {
   const nixie = await startSpawnedNixie();
   const config = await loadDeploymentConfig(nixie.configPath);

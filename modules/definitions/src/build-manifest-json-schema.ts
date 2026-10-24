@@ -8,6 +8,6 @@ export function buildManifestJSONSchema(): Record<string, unknown> {
     ...schema,
     title: 'nixie definitions manifest',
     description:
-      "The nixie.yaml at the root of the definitions, which holds their format and the conversation's skill list",
+      "The nixie.yaml at the root of the definitions, which holds their format, the conversation's skill list and the prompt overrides",
   };
 }
