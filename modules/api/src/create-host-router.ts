@@ -13,6 +13,9 @@ export function createHostRouter(options: HostRouterOptions) {
 
   return hostImplementer.router({
     reset: hostImplementer.reset.handler(() => options.runReset()),
+    resetConversations: hostImplementer.resetConversations.handler(() =>
+      options.runConversationReset(),
+    ),
     sessions: createHostSessionProcedures(options.context),
     memory: {
       proposals: createHostProposalProcedures(options.readMemory),

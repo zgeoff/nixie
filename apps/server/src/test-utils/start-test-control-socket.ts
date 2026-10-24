@@ -21,6 +21,8 @@ export async function startTestControlSocket(options: TestControlSocketOptions):
 
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no server runs behind the test socket')),
+      runConversationReset: () =>
+        Promise.reject(new Error('no server runs behind the test socket')),
     }),
   });
 

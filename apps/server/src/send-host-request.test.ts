@@ -32,6 +32,7 @@ test('it returns the answer of the procedure it calls on the running server', as
           lastSequence: 412,
           keptSessions: 2,
         }),
+      runConversationReset: mock(),
     }),
   });
 
@@ -56,6 +57,7 @@ test('it rejects with the status and the reason when the server refuses the requ
       readMemory: () => null,
       seedWrittenSkills: () => Promise.resolve(),
       runReset: mock(),
+      runConversationReset: mock(),
     }),
   });
 

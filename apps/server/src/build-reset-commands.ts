@@ -14,9 +14,16 @@ const resetWarning = [
   backupNote,
 ].join('\n');
 
+type FilteredReset = (flags: CLIFlags, io: CLIIO) => Promise<number>;
+
+const filteredResets: Readonly<Record<NonNullable<CLIFlags['only']>, FilteredReset>> = {
+  memories: runMemoriesReset,
+  conversations: runConversationsReset,
+};
+
 async function runReset(flags: CLIFlags, io: CLIIO): Promise<number> {
-  if (flags.only === 'memories') {
-    return runMemoriesReset(flags, io);
+  if (flags.only !== undefined) {
+    return filteredResets[flags.only](flags, io);
   }
 
   if (!flags['keep-sessions']) {
@@ -67,6 +74,36 @@ async function runMemoriesReset(flags: CLIFlags, io: CLIIO): Promise<number> {
   );
 
   io.print(`nixie forgot ${forgotten.itemIDs.length} memory items.\n${backupNote}`);
+
+  return 0;
+}
+
+const conversationsWarning = [
+  'A reset of the conversations forgets every message of the conversation, destroys its sandbox and gives the model a new session, and keeps every record, every memory item and the device sessions.',
+  'Only a restore from a backup undoes it.',
+  backupNote,
+].join('\n');
+
+async function runConversationsReset(flags: CLIFlags, io: CLIIO): Promise<number> {
+  if (!flags.yes) {
+    io.print(`${conversationsWarning}\nRun nixie reset --only conversations --yes to reset.`);
+
+    return 2;
+  }
+
+  const socketPath = await resolveSocketPath(flags.config);
+
+  const reset = await sendHostRequest(socketPath, 'conversation reset', (client) =>
+    client.resetConversations(),
+  );
+
+  io.print(
+    [
+      `nixie shredded ${reset.shreddedRecords} records of the conversation up to sequence ${reset.lastSequence} at ${reset.resetAt.toISOString()}.`,
+      'The server restarts now, and its next turn starts with no history.',
+      backupNote,
+    ].join('\n'),
+  );
 
   return 0;
 }

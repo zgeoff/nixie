@@ -22,6 +22,7 @@ test('it answers a host procedure call with its output, dates included', async (
         lastSequence: 42,
         keptSessions: 2,
       }),
+    runConversationReset: mock(),
   });
 
   const client = createORPCClient<HostContractClient>(
@@ -45,6 +46,7 @@ test('it answers 404 to a request outside the procedures', async () => {
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
     runReset: mock(),
+    runConversationReset: mock(),
   });
 
   const response = await respond(
@@ -62,6 +64,7 @@ test('it answers 500 with the reason when a procedure fails', async () => {
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
     runReset: () => Promise.reject(new Error('the database is locked')),
+    runConversationReset: mock(),
   });
 
   const client = createORPCClient<HostContractClient>(
@@ -87,6 +90,7 @@ test('it answers 503 to a memory procedure before the memory store starts', asyn
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
     runReset: mock(),
+    runConversationReset: mock(),
   });
 
   const client = createORPCClient<HostContractClient>(

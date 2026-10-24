@@ -5,10 +5,11 @@ it is written. The tables the rest of nixie reads, such as the tasks table or th
 projections: each one folds the log a record at a time, inside the transaction that appends the
 record. The log is therefore the source of truth, and dropping every projection and folding the log
 again from the first record gives the same rows. One operation removes records: the
-[reset](#the-reset), which empties the whole log at once. `modules/log` owns the log, under
-[0001](../../decisions/0001-durable-layer.md). [Erasable fields](./erasable-fields.md) covers how a
-record's free text is encrypted and forgotten, and [the database](./database.md) covers the writer
-every append goes through.
+[reset](#the-reset), which empties the whole log at once. A
+[reset of the conversation](#resetting-the-conversation) removes none: it shreds the conversation's
+records. `modules/log` owns the log, under [0001](../../decisions/0001-durable-layer.md).
+[Erasable fields](./erasable-fields.md) covers how a record's free text is encrypted and forgotten,
+and [the database](./database.md) covers the writer every append goes through.
 
 ## What a record holds
 
@@ -139,3 +140,27 @@ that resumes its live stream after the last sequence it saw therefore reads the 
 next. The `log_reset` record holds the reset time, the old last sequence, the mode and the number of
 kept sessions, and no free text, so it gets no key. Because the conversation's thread ID never
 changes, the record folds on that thread before the start creates the conversation task again.
+
+### Resetting the conversation
+
+A reset of the conversation shreds every record on the conversation thread and removes no record, so
+every projection and every other thread stay as they are. The host command sends its own control
+request, and the server runs it on the same stopped path as the full reset:
+
+1. The server ends its start sequence, closes the API and stops its work, as the full reset does.
+2. It destroys the conversation's sandbox, because the agent CLI keeps the session's transcript on
+   that disk. A failed destroy stops the reset before it shreds anything, and the server exits 1.
+3. It writes a `model.session_invalidated` record on the thread, so the next turn opens a new
+   session instead of resuming the old one.
+4. It deletes the key of every record on the thread from the key store and checkpoints it, then
+   deletes the links that the web fetch tool numbered on the thread.
+5. It writes a `log_reset` record on the thread, with the mode `conversations`, the sequence of the
+   invalidation record and the number of records it shredded.
+6. The control request answers, and the server exits 0, so the normal start creates the
+   conversation's sandbox again.
+
+The memory items keep their own keys, so the reset leaves every item readable. The next session
+opens as a rebuild after a forget: every summary on the thread is shredded, and the recent turns
+stop at the newest `log_reset` record, so the model reads no line of the old conversation. A crash
+before the last stage leaves the records shredded with no `log_reset` record, and a second reset
+finishes the work.

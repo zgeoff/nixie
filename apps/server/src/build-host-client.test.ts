@@ -23,6 +23,7 @@ async function setupTest() {
       readMemory: () => null,
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
+      runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
     }),
   });
 

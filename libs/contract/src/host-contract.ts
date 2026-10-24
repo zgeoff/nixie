@@ -228,6 +228,13 @@ export const hostContract = {
       keptSessions: z.int().nonnegative(),
     }),
   ),
+  resetConversations: oc.output(
+    z.object({
+      resetAt: z.date(),
+      lastSequence: z.int().nonnegative(),
+      shreddedRecords: z.int().nonnegative(),
+    }),
+  ),
   sessions: {
     issueCode: oc.output(z.object({ code: z.string(), expiresAt: z.date() })),
     list: oc.output(z.array(hostSessionSchema)),
