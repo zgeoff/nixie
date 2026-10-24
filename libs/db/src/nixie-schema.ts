@@ -8,6 +8,7 @@ import { memoryMigrations } from './memory-migrations';
 import { memoryPinProposalsMigration } from './memory-pin-proposals-migration';
 import { memorySubjectsMigration } from './memory-subjects-migration';
 import { memoryUntilMigration } from './memory-until-migration';
+import { promptApprovalsMigration } from './prompt-approvals-migration';
 import { recordAttachmentsMigration } from './record-attachments-migration';
 import { sandboxesMigration } from './sandboxes-migration';
 import { skillExportAttemptsMigration } from './skill-export-attempts-migration';
@@ -38,6 +39,7 @@ export const nixieSchema: BuildSchema = {
     memoryUntilMigration,
     definitionSeedRepositoryMigration,
     memoryPinProposalsMigration,
+    promptApprovalsMigration,
   ],
   oldestReader: 25,
 };
