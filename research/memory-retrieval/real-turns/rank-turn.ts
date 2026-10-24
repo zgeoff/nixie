@@ -125,7 +125,7 @@ export async function startRanker(encoder: Encoder): Promise<Ranker> {
         const keyword =
           config.mode === 'vector'
             ? []
-            : await readKeywordMatches(index, turn.query, {
+            : await index.readMatches(turn.query, {
                 limit: listLimit,
                 excludedIDs: [...excluded, ...outside],
                 excludedWords,
@@ -183,17 +183,6 @@ function collectExcludedIDs(turn: TurnCase, isDeliveredExcluded: boolean): Set<s
       )
       .map((candidate) => candidate.itemID),
   );
-}
-
-interface KeywordOptions {
-  limit: number;
-  excludedIDs: string[];
-  excludedWords: string[];
-  minScore: number;
-}
-
-function readKeywordMatches(index: MemoryIndex, query: string, options: KeywordOptions) {
-  return index.readMatches(query, options);
 }
 
 const storedRange = 0.3;
