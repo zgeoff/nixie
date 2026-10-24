@@ -8,6 +8,7 @@ export interface TestControlSocketOptions {
   readonly path: string;
 
   readonly readMemory?: HostRouterOptions['readMemory'];
+  readonly runReset?: HostRouterOptions['runReset'];
 }
 
 export async function startTestControlSocket(options: TestControlSocketOptions): Promise<void> {
@@ -22,7 +23,9 @@ export async function startTestControlSocket(options: TestControlSocketOptions):
       seedWrittenSkills: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
-      runReset: () => Promise.reject(new Error('no server runs behind the test socket')),
+      runReset:
+        options.runReset ??
+        (() => Promise.reject(new Error('no server runs behind the test socket'))),
     }),
   });
 

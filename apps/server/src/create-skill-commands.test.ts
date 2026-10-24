@@ -1,5 +1,6 @@
-import { expect, mock, test } from 'bun:test';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkSkillFiles } from '@heynixie/definitions';
 import { waitForCondition } from '@heynixie/testing';
@@ -8,9 +9,11 @@ import { z } from 'zod';
 import { createSkillCommands } from './create-skill-commands';
 import { readCLIArgs } from './read-cli-args';
 import { runCLI } from './run-cli';
+import { buildRecordingHostTransport } from './test-utils/build-recording-host-transport';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
+import { startTestControlSocket } from './test-utils/start-test-control-socket';
 
 async function setupTest() {
   const nixie = await startInProcessNixie();
@@ -528,12 +531,17 @@ test('it refuses a rejection with no --reason, and reaches no server', async () 
 });
 
 test('it sends the pending request to the socket of the config over the host transport it is given', async () => {
-  const host = {
-    resolveSocketPath: mock(() => Promise.resolve('/run/nixie/control.sock')),
-    sendHostRequest: mock().mockResolvedValue([]),
-  };
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-skills-'));
 
-  const commands = new Map(createSkillCommands(host));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
+
+  const socketPath = join(directory, 'control.sock');
+
+  await startTestControlSocket({ path: socketPath });
+
+  const host = buildRecordingHostTransport(socketPath);
+
+  const commands = new Map(createSkillCommands(host.transport));
 
   const parsed = await readCLIArgs(
     ['skill-pending', '--config', '/etc/nixie/config.yaml'],
@@ -551,13 +559,11 @@ test('it sends the pending request to the socket of the config over the host tra
   const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(0);
-  expect(host.resolveSocketPath).toHaveBeenCalledExactlyOnceWith('/etc/nixie/config.yaml');
 
-  expect(host.sendHostRequest).toHaveBeenCalledExactlyOnceWith(
-    '/run/nixie/control.sock',
-    'skill pending',
-    expect.any(Function),
-  );
+  expect(host.record).toStrictEqual({
+    configPaths: ['/etc/nixie/config.yaml'],
+    requests: [{ socketPath, name: 'skill pending' }],
+  });
 
   expect(io.print).toHaveBeenCalledExactlyOnceWith('[]');
 });

@@ -1,15 +1,32 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { startTestMemory } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
 import { createSubjectCommands } from './create-subject-commands';
 import { readCLIArgs } from './read-cli-args';
+import { buildRecordingHostTransport } from './test-utils/build-recording-host-transport';
+import { startTestControlSocket } from './test-utils/start-test-control-socket';
+
+async function setupTest() {
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-subjects-'));
+
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
+
+  const memory = await startTestMemory();
+
+  return { memory, socketPath: join(directory, 'control.sock') };
+}
 
 test('it sends the subjects request to the socket of the config over the host transport it is given', async () => {
-  const host = {
-    resolveSocketPath: mock(() => Promise.resolve('/run/nixie/control.sock')),
-    sendHostRequest: mock().mockResolvedValue({ subjects: 3 }),
-  };
+  const ctx = await setupTest();
 
-  const commands = new Map(createSubjectCommands(host));
+  await startTestControlSocket({ path: ctx.socketPath, readMemory: () => ctx.memory.store });
+
+  const host = buildRecordingHostTransport(ctx.socketPath);
+
+  const commands = new Map(createSubjectCommands(host.transport));
 
   const parsed = await readCLIArgs(
     ['memory-subjects', '--config', '/etc/nixie/config.yaml'],
@@ -27,21 +44,26 @@ test('it sends the subjects request to the socket of the config over the host tr
   const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(0);
-  expect(host.resolveSocketPath).toHaveBeenCalledExactlyOnceWith('/etc/nixie/config.yaml');
 
-  expect(host.sendHostRequest).toHaveBeenCalledExactlyOnceWith(
-    '/run/nixie/control.sock',
-    'memory subjects',
-    expect.any(Function),
+  expect(host.record).toStrictEqual({
+    configPaths: ['/etc/nixie/config.yaml'],
+    requests: [{ socketPath: ctx.socketPath, name: 'memory subjects' }],
+  });
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(
+    JSON.stringify({
+      items: { owner: 0, shared: 0, self: 0 },
+      proposals: { owner: 0, shared: 0, self: 0 },
+    }),
   );
-
-  expect(io.print).toHaveBeenCalledExactlyOnceWith('{"subjects":3}');
 });
 
 test('it runs a dry run with no --database as a refusal, and reaches no server', async () => {
-  const host = { resolveSocketPath: mock(), sendHostRequest: mock() };
+  const ctx = await setupTest();
 
-  const commands = new Map(createSubjectCommands(host));
+  const host = buildRecordingHostTransport(ctx.socketPath);
+
+  const commands = new Map(createSubjectCommands(host.transport));
 
   const parsed = await readCLIArgs(['memory-subjects', '--dry-run'], [...commands.keys()]);
 
@@ -61,6 +83,5 @@ test('it runs a dry run with no --database as a refusal, and reaches no server',
     'nixie memory-subjects --dry-run takes --database <path> of a nixie.db to copy',
   );
 
-  expect(host.resolveSocketPath).not.toHaveBeenCalled();
-  expect(host.sendHostRequest).not.toHaveBeenCalled();
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });

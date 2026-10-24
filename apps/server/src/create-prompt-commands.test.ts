@@ -1,4 +1,7 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   createMockGitHubRepo,
   githubAPIURL,
@@ -11,9 +14,11 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createPromptCommands } from './create-prompt-commands';
 import { readCLIArgs } from './read-cli-args';
+import { buildRecordingHostTransport } from './test-utils/build-recording-host-transport';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
+import { startTestControlSocket } from './test-utils/start-test-control-socket';
 
 test('it lists a prompt proposal, approves it into a pull request, and the next turn names the pull request', async () => {
   await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
@@ -269,12 +274,17 @@ test('it rejects a prompt proposal with its reason, and the proposal leaves the 
 });
 
 test('it sends the pending request to the socket of the config over the host transport it is given', async () => {
-  const host = {
-    resolveSocketPath: mock(() => Promise.resolve('/run/nixie/control.sock')),
-    sendHostRequest: mock().mockResolvedValue([]),
-  };
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-prompts-'));
 
-  const commands = new Map(createPromptCommands(host));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
+
+  const socketPath = join(directory, 'control.sock');
+
+  await startTestControlSocket({ path: socketPath });
+
+  const host = buildRecordingHostTransport(socketPath);
+
+  const commands = new Map(createPromptCommands(host.transport));
 
   const parsed = await readCLIArgs(
     ['prompt-pending', '--config', '/etc/nixie/config.yaml'],
@@ -292,21 +302,19 @@ test('it sends the pending request to the socket of the config over the host tra
   const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(0);
-  expect(host.resolveSocketPath).toHaveBeenCalledExactlyOnceWith('/etc/nixie/config.yaml');
 
-  expect(host.sendHostRequest).toHaveBeenCalledExactlyOnceWith(
-    '/run/nixie/control.sock',
-    'prompt pending',
-    expect.any(Function),
-  );
+  expect(host.record).toStrictEqual({
+    configPaths: ['/etc/nixie/config.yaml'],
+    requests: [{ socketPath, name: 'prompt pending' }],
+  });
 
   expect(io.print).toHaveBeenCalledExactlyOnceWith('[]');
 });
 
 test('it refuses a prompt approval with no --hash, and reaches no server', async () => {
-  const host = { resolveSocketPath: mock(), sendHostRequest: mock() };
+  const host = buildRecordingHostTransport('/run/nixie/control.sock');
 
-  const commands = new Map(createPromptCommands(host));
+  const commands = new Map(createPromptCommands(host.transport));
 
   const parsed = await readCLIArgs(['prompt-approve', 'p8w2n4c6ld'], [...commands.keys()]);
 
@@ -328,14 +336,13 @@ test('it refuses a prompt approval with no --hash, and reaches no server', async
       '--files <JSON list of path and text>',
   );
 
-  expect(host.resolveSocketPath).not.toHaveBeenCalled();
-  expect(host.sendHostRequest).not.toHaveBeenCalled();
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });
 
 test('it refuses an edited entry that is not a JSON map of strings, and reaches no server', async () => {
-  const host = { resolveSocketPath: mock(), sendHostRequest: mock() };
+  const host = buildRecordingHostTransport('/run/nixie/control.sock');
 
-  const commands = new Map(createPromptCommands(host));
+  const commands = new Map(createPromptCommands(host.transport));
 
   const parsed = await readCLIArgs(
     ['prompt-approve', 'p8w2n4c6ld', '--hash', 'hash-a', '--entry', '{"safety":3}'],
@@ -360,14 +367,13 @@ test('it refuses an edited entry that is not a JSON map of strings, and reaches 
       '--files <JSON list of path and text>',
   );
 
-  expect(host.resolveSocketPath).not.toHaveBeenCalled();
-  expect(host.sendHostRequest).not.toHaveBeenCalled();
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });
 
 test('it refuses a prompt rejection with no --reason, and reaches no server', async () => {
-  const host = { resolveSocketPath: mock(), sendHostRequest: mock() };
+  const host = buildRecordingHostTransport('/run/nixie/control.sock');
 
-  const commands = new Map(createPromptCommands(host));
+  const commands = new Map(createPromptCommands(host.transport));
 
   const parsed = await readCLIArgs(
     ['prompt-reject', 'p8w2n4c6ld', '--hash', 'hash-a'],
@@ -390,6 +396,5 @@ test('it refuses a prompt rejection with no --reason, and reaches no server', as
     'nixie prompt-reject takes a proposal ID, --hash <proposal hash> and --reason <why>',
   );
 
-  expect(host.resolveSocketPath).not.toHaveBeenCalled();
-  expect(host.sendHostRequest).not.toHaveBeenCalled();
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });

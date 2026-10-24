@@ -40,6 +40,28 @@ test('it refuses a reset, since no server runs behind the socket', async () => {
   });
 });
 
+test('it answers a reset with the reset it is given', async () => {
+  const ctx = await setupTest();
+
+  await startTestControlSocket({
+    path: ctx.path,
+    runReset: () =>
+      Promise.resolve({
+        lastSequence: 42,
+        resetAt: new Date('2026-03-03T10:00:00Z'),
+        keptSessions: 2,
+      }),
+  });
+
+  const reset = await buildHostClient(ctx.path).reset();
+
+  expect(reset).toStrictEqual({
+    lastSequence: 42,
+    resetAt: new Date('2026-03-03T10:00:00Z'),
+    keptSessions: 2,
+  });
+});
+
 test('it stops the socket when the test finishes', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-control-'));
 

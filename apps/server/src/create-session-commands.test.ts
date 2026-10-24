@@ -1,18 +1,29 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import invariant from 'tiny-invariant';
 import { createSessionCommands } from './create-session-commands';
 import { readCLIArgs } from './read-cli-args';
+import { buildRecordingHostTransport } from './test-utils/build-recording-host-transport';
+import { startTestControlSocket } from './test-utils/start-test-control-socket';
+
+async function setupTest() {
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-sessions-'));
+
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
+
+  return { socketPath: join(directory, 'control.sock') };
+}
 
 test('it prints the enrolment code that the host transport it is given answers with', async () => {
-  const host = {
-    resolveSocketPath: mock(() => Promise.resolve('/run/nixie/control.sock')),
-    sendHostRequest: mock().mockResolvedValue({
-      code: 'K3X9-M2P7',
-      expiresAt: new Date('2026-03-03T10:15:00Z'),
-    }),
-  };
+  const ctx = await setupTest();
 
-  const commands = new Map(createSessionCommands(host));
+  await startTestControlSocket({ path: ctx.socketPath });
+
+  const host = buildRecordingHostTransport(ctx.socketPath);
+
+  const commands = new Map(createSessionCommands(host.transport));
 
   const parsed = await readCLIArgs(
     ['enrol-code', '--config', '/etc/nixie/config.yaml'],
@@ -30,23 +41,23 @@ test('it prints the enrolment code that the host transport it is given answers w
   const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(0);
-  expect(host.resolveSocketPath).toHaveBeenCalledExactlyOnceWith('/etc/nixie/config.yaml');
 
-  expect(host.sendHostRequest).toHaveBeenCalledExactlyOnceWith(
-    '/run/nixie/control.sock',
-    'enrolment code',
-    expect.any(Function),
-  );
+  expect(host.record).toStrictEqual({
+    configPaths: ['/etc/nixie/config.yaml'],
+    requests: [{ socketPath: ctx.socketPath, name: 'enrolment code' }],
+  });
 
   expect(io.print).toHaveBeenCalledExactlyOnceWith(
-    'K3X9-M2P7\nThe code works once, until 2026-03-03T10:15:00.000Z.',
+    expect.stringMatching(/^\S+\nThe code works once, until \d{4}-\d{2}-\d{2}T[\d:.]+Z\.$/u),
   );
 });
 
 test('it refuses a session label with no label, and reaches no server', async () => {
-  const host = { resolveSocketPath: mock(), sendHostRequest: mock() };
+  const ctx = await setupTest();
 
-  const commands = new Map(createSessionCommands(host));
+  const host = buildRecordingHostTransport(ctx.socketPath);
+
+  const commands = new Map(createSessionCommands(host.transport));
 
   const parsed = await readCLIArgs(['session-label', 'session-1'], [...commands.keys()]);
 
@@ -66,6 +77,5 @@ test('it refuses a session label with no label, and reaches no server', async ()
     'nixie session-label takes a session ID and a label',
   );
 
-  expect(host.resolveSocketPath).not.toHaveBeenCalled();
-  expect(host.sendHostRequest).not.toHaveBeenCalled();
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });

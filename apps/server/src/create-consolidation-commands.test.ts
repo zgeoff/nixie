@@ -12,6 +12,7 @@ import invariant from 'tiny-invariant';
 import { createConsolidationCommands } from './create-consolidation-commands';
 import { readCLIArgs } from './read-cli-args';
 import { runCLI } from './run-cli';
+import { buildRecordingHostTransport } from './test-utils/build-recording-host-transport';
 import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
 import { startTestControlSocket } from './test-utils/start-test-control-socket';
@@ -228,12 +229,12 @@ test('it prints the summary alone when the run proposed no change', async () => 
 });
 
 test('it sends the diff request to the socket of the config over the host transport it is given', async () => {
-  const host = {
-    resolveSocketPath: mock(() => Promise.resolve('/run/nixie/control.sock')),
-    sendHostRequest: mock().mockResolvedValue({ changes: [] }),
-  };
+  const ctx = await setupTest();
 
-  const commands = new Map(createConsolidationCommands(host));
+  const socketPath = join(ctx.directory, 'run', 'control.sock');
+  const host = buildRecordingHostTransport(socketPath);
+
+  const commands = new Map(createConsolidationCommands(host.transport));
 
   const parsed = await readCLIArgs(
     ['memory-diff', '--config', '/etc/nixie/config.yaml'],
@@ -251,15 +252,13 @@ test('it sends the diff request to the socket of the config over the host transp
   const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(0);
-  expect(host.resolveSocketPath).toHaveBeenCalledExactlyOnceWith('/etc/nixie/config.yaml');
 
-  expect(host.sendHostRequest).toHaveBeenCalledExactlyOnceWith(
-    '/run/nixie/control.sock',
-    'memory diff',
-    expect.any(Function),
-  );
+  expect(host.record).toStrictEqual({
+    configPaths: ['/etc/nixie/config.yaml'],
+    requests: [{ socketPath, name: 'memory diff' }],
+  });
 
-  expect(io.print).toHaveBeenCalledExactlyOnceWith('{"changes":[]}');
+  expect(io.print).toHaveBeenCalledExactlyOnceWith('null');
 });
 
 test('it approves the whole diff when it names every change', async () => {

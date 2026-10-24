@@ -1,10 +1,15 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { startTestMemory } from '@heynixie/memory/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createMemoryCommands } from './create-memory-commands';
 import { readCLIArgs } from './read-cli-args';
 import { runCLI } from './run-cli';
+import { buildRecordingHostTransport } from './test-utils/build-recording-host-transport';
 import { createApprovedItems } from './test-utils/create-approved-items';
 import { createTestClient } from './test-utils/create-test-client';
 import { readItemTraces } from './test-utils/read-item-traces';
@@ -12,6 +17,7 @@ import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
+import { startTestControlSocket } from './test-utils/start-test-control-socket';
 
 async function setupTest() {
   const nixie = await startInProcessNixie();
@@ -275,12 +281,19 @@ test('it runs the turn after memory-forget on a rebuilt session without the item
 });
 
 test('it sends the pending request to the socket of the config over the host transport it is given', async () => {
-  const host = {
-    resolveSocketPath: mock(() => Promise.resolve('/run/nixie/control.sock')),
-    sendHostRequest: mock().mockResolvedValue([]),
-  };
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-memory-'));
 
-  const commands = new Map(createMemoryCommands(host));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
+
+  const socketPath = join(directory, 'control.sock');
+
+  const memory = await startTestMemory();
+
+  await startTestControlSocket({ path: socketPath, readMemory: () => memory.store });
+
+  const host = buildRecordingHostTransport(socketPath);
+
+  const commands = new Map(createMemoryCommands(host.transport));
 
   const parsed = await readCLIArgs(
     ['memory-pending', '--config', '/etc/nixie/config.yaml'],
@@ -298,13 +311,11 @@ test('it sends the pending request to the socket of the config over the host tra
   const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(0);
-  expect(host.resolveSocketPath).toHaveBeenCalledExactlyOnceWith('/etc/nixie/config.yaml');
 
-  expect(host.sendHostRequest).toHaveBeenCalledExactlyOnceWith(
-    '/run/nixie/control.sock',
-    'memory pending',
-    expect.any(Function),
-  );
+  expect(host.record).toStrictEqual({
+    configPaths: ['/etc/nixie/config.yaml'],
+    requests: [{ socketPath, name: 'memory pending' }],
+  });
 
   expect(io.print).toHaveBeenCalledExactlyOnceWith('[]');
 });
