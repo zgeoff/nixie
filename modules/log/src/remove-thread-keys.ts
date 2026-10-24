@@ -17,17 +17,20 @@ export async function removeThreadKeys(log: Pick<Log, 'writer'>, thread: string)
     .execute();
 
   const keyIDs = rows.flatMap((row) => (row.key_id === null ? [] : [row.key_id]));
+  const removed = { keys: 0 };
 
   // SQLite caps the parameters of one statement, and a long conversation holds more keys than that.
   for (let start = 0; start < keyIDs.length; start += chunkSize) {
-    await log.writer.keys
+    const deleted = await log.writer.keys
       .$extendTables<KeyStoreTables>()
       .deleteFrom('record_keys')
       .where('key_id', 'in', keyIDs.slice(start, start + chunkSize))
-      .execute();
+      .executeTakeFirst();
+
+    removed.keys += Number(deleted.numDeletedRows);
   }
 
   await writeKeyStoreCheckpoint(log, null);
 
-  return keyIDs.length;
+  return removed.keys;
 }

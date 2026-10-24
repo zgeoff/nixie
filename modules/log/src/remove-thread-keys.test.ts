@@ -65,6 +65,34 @@ test('it removes nothing and answers 0 when the thread holds no sealed record', 
   expect(removed).toBe(0);
 });
 
+test('it counts only the keys it removed, and none that an earlier removal took', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:aa11' },
+      thread: 'conversation',
+      erasable: { text: 'the spare key is under the mat' },
+    },
+  ]);
+
+  await removeThreadKeys(ctx.log, 'conversation');
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:aa11' },
+      thread: 'conversation',
+      erasable: { text: 'the boat leaves at nine' },
+    },
+  ]);
+
+  const removed = await removeThreadKeys(ctx.log, 'conversation');
+
+  expect(removed).toBe(1);
+});
+
 test('it leaves no removed key in the key store file or its write-ahead log', async () => {
   const ctx = await setupTest();
 
