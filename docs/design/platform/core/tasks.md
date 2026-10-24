@@ -133,7 +133,9 @@ Tasks and the conversation talk to each other with task messages. A task finds t
 `tasks.list`, which gives each task's name, state, brief, last activity and the task it waits on,
 and sends with `task.message`. A message has a kind: progress, question, request, report, reply or
 chat. A report back to the conversation is a task message of kind report, which the conversation
-reads in its next turn, and the conversation never waits on a task.
+reads in its next turn. The conversation follows the same wait rules as every other task: a question
+or a request it sends marks it as waiting on the receiver. A wait is a mark that `tasks.list` shows,
+never a state, so the conversation keeps answering you while it waits.
 
 - **Record.** Each message is a `task_message` record on the receiver's thread, with the source
   `task:<sender>`. Its body is erasable, so a forget removes it.
