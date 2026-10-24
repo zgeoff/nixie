@@ -74,6 +74,7 @@ test('it keeps the unique caller turns of 6 or more words, up to the count per p
 
   expect(kept).toBe(2);
   expect((await readdir(targetDir)).toSorted()).toStrictEqual(['0.f32', '0.json', '1.f32', '1.json']);
+  expect(await readdir(ctx.dir)).toStrictEqual(['speech-hvb']);
   expect(JSON.parse(await readFile(join(targetDir, '0.json'), 'utf8'))).toStrictEqual({
     id: 'call-a-3',
     text: 'i would like to order a new card',

@@ -6,8 +6,8 @@
 //   words, one recording per command.
 // ffmpeg decodes each recording to 16 kHz mono float samples.
 // Usage: download-speech-set.ts --set hvb|slurp [--pages 40] [--per-page 5]
-import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
@@ -29,9 +29,10 @@ export async function downloadSpeechSet(options: {
   transport: typeof fetch;
 }): Promise<number> {
   const source = pickSource(options.set);
-  const stagingDir = `${options.targetDir}.partial`;
-  rmSync(stagingDir, { force: true, recursive: true });
-  mkdirSync(stagingDir, { recursive: true });
+  // Each download stages into a folder of its own, so two downloads of one set never write into
+  // the same folder, and the target always holds one whole download.
+  mkdirSync(dirname(options.targetDir), { recursive: true });
+  const stagingDir = mkdtempSync(`${options.targetDir}.partial-`);
   const seen = new Set<string>();
   let kept = 0;
   for (let page = 0; page < options.pages; page++) {
