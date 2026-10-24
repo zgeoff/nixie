@@ -13,19 +13,6 @@ import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
-async function setupTest() {
-  const nixie = await startInProcessNixie({
-    extraDefinitions: [
-      'export:',
-      '  repository: harbour/definitions',
-      `  api_url: ${githubAPIURL}`,
-    ],
-    extraSecrets: ['definitions_export_token: token-a'],
-  });
-
-  return nixie;
-}
-
 test('it lists a prompt proposal, approves it into a pull request, and the next turn names the pull request', async () => {
   await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
@@ -36,10 +23,18 @@ test('it lists a prompt proposal, approves it into a pull request, and the next 
     text: 'format: 3\n',
   });
 
-  const ctx = await setupTest();
-  const api = await createTestClient(ctx);
+  const nixie = await startInProcessNixie({
+    extraDefinitions: [
+      'export:',
+      '  repository: harbour/definitions',
+      `  api_url: ${githubAPIURL}`,
+    ],
+    extraSecrets: ['definitions_export_token: token-a'],
+  });
 
-  ctx.guest.addReplies(
+  const api = await createTestClient(nixie);
+
+  nixie.guest.addReplies(
     {
       toolUse: {
         name: 'prompt_write',
@@ -70,13 +65,13 @@ test('it lists a prompt proposal, approves it into a pull request, and the next 
     return page.records.some((record) => record.message?.text === 'Proposed.');
   });
 
-  const listed = await runHostCommand(ctx.configPath, ['prompt-pending']);
+  const listed = await runHostCommand(nixie.configPath, ['prompt-pending']);
 
   const [{ proposalID, proposalHash }] = z
     .tuple([z.object({ proposalID: z.string(), proposalHash: z.string() })])
     .parse(JSON.parse(listed.stdout));
 
-  await runHostCommand(ctx.configPath, ['prompt-approve', proposalID, '--hash', proposalHash]);
+  await runHostCommand(nixie.configPath, ['prompt-approve', proposalID, '--hash', proposalHash]);
   await waitForCondition(() => githubStore.pulls.all().length > 0);
 
   await api.client.conversation.send({
@@ -110,7 +105,7 @@ test('it lists a prompt proposal, approves it into a pull request, and the next 
     'prompts/compaction-safety.md': 'Answer with the summary alone.\n',
   });
 
-  expect(ctx.guest.turns.at(-1)?.input).toMatchObject([
+  expect(nixie.guest.turns.at(-1)?.input).toMatchObject([
     {
       text: expect.toInclude(
         `opened https://github.test/harbour/definitions/pull/1 with your prompt proposal ${proposalID} (compaction). The override applies after that pull request merges and live is promoted in the definitions repo.`,

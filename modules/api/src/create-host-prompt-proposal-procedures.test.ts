@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkPromptProposal } from '@heynixie/definitions';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
-import type { PromptsTables } from '@heynixie/prompts';
+import type { PromptsInForce, PromptsTables } from '@heynixie/prompts';
 import { promptsOverrideProposedCodec } from '@heynixie/prompts';
 import { buildTestClock } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
@@ -32,22 +32,19 @@ async function setupTest() {
   const clock = buildTestClock(Date.UTC(2026, 2, 3, 10, 0));
   const wakeExports = mock(() => {});
 
-  const client = createRouterClient(
-    createHostPromptProposalProcedures({
-      log,
-      clock,
-      definitions: () => ({ snapshotHash: 'snapshot-a' }),
-      readInForce: () => ({
-        snapshotHash: 'snapshot-a',
-        personaVersion: 'persona-a',
-        prompts: { writer: { parts: { safety: 'Quote every fact.' }, template: null } },
+  const createClient = (inForce: PromptsInForce | null) =>
+    createRouterClient(
+      createHostPromptProposalProcedures({
+        log,
+        clock,
+        definitions: () => ({ snapshotHash: 'snapshot-a' }),
+        readInForce: () => inForce,
+        checkProposal: checkPromptProposal,
+        wakeExports,
       }),
-      checkProposal: checkPromptProposal,
-      wakeExports,
-    }),
-  );
+    );
 
-  return { log, client, wakeExports };
+  return { log, createClient, wakeExports };
 }
 
 test('#list lists each pending proposal with its files, its reason, the override in force and the hash an answer binds to', async () => {
@@ -76,7 +73,13 @@ test('#list lists each pending proposal with its files, its reason, the override
     },
   ]);
 
-  const pending = await ctx.client.list();
+  const client = ctx.createClient({
+    snapshotHash: 'snapshot-a',
+    personaVersion: 'persona-a',
+    prompts: { writer: { parts: { safety: 'Quote every fact.' }, template: null } },
+  });
+
+  const pending = await client.list();
 
   expect(pending).toStrictEqual([
     {
@@ -118,7 +121,9 @@ test('#approve records the approval that names you, then wakes the definitions e
     },
   ]);
 
-  const result = await ctx.client.approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' });
+  const result = await ctx
+    .createClient(null)
+    .approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' });
 
   const records = await readRecords(ctx.log, {
     afterSequence: 0,
@@ -159,7 +164,7 @@ test('#approve stores the edited files in place of the proposed ones, and record
     },
   ]);
 
-  await ctx.client.approve({
+  await ctx.createClient(null).approve({
     proposalID: 'p8w2n4c6ld',
     proposalHash: 'hash-c',
     files: [{ path: 'prompts/compaction-safety.md', text: 'Answer in one line.\n' }],
@@ -207,7 +212,8 @@ test('#approve refuses an edited entry that fails the definitions checks with it
     },
   ]);
 
-  const refusal = await ctx.client
+  const refusal = await ctx
+    .createClient(null)
     .approve({
       proposalID: 'p8w2n4c6ld',
       proposalHash: 'hash-c',
@@ -243,12 +249,16 @@ test('#approve refuses a proposal whose base the override in force moved past wi
     },
   ]);
 
-  const refusal = await ctx.client
-    .approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' })
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
+  const client = ctx.createClient({
+    snapshotHash: 'snapshot-a',
+    personaVersion: 'persona-a',
+    prompts: { writer: { parts: { safety: 'Quote every fact.' }, template: null } },
+  });
+
+  const refusal = await client.approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' }).then(
+    () => null,
+    (error: unknown) => error,
+  );
 
   expect(refusal).toMatchObject({ code: 'STALE_BASE', status: 409 });
 });
@@ -274,7 +284,7 @@ test('#reject records the rejection with your reason', async () => {
     },
   ]);
 
-  const result = await ctx.client.reject({
+  const result = await ctx.createClient(null).reject({
     proposalID: 'p8w2n4c6ld',
     proposalHash: 'hash-c',
     reason: 'The writer needs its instruction part.',
@@ -295,7 +305,8 @@ test('#reject records the rejection with your reason', async () => {
 test('#reject answers a proposal that does not exist with its typed code', async () => {
   const ctx = await setupTest();
 
-  const refusal = await ctx.client
+  const refusal = await ctx
+    .createClient(null)
     .reject({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c', reason: 'No.' })
     .then(
       () => null,
@@ -326,7 +337,8 @@ test('#reject refuses an answer under another proposal hash with its code', asyn
     },
   ]);
 
-  const refusal = await ctx.client
+  const refusal = await ctx
+    .createClient(null)
     .reject({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-d', reason: 'No.' })
     .then(
       () => null,
@@ -367,7 +379,8 @@ test('#approve refuses a proposal that a rejection closed with its code', async 
     },
   ]);
 
-  const refusal = await ctx.client
+  const refusal = await ctx
+    .createClient(null)
     .approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' })
     .then(
       () => null,
