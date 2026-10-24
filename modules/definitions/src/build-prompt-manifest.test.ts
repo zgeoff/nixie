@@ -116,6 +116,16 @@ test('it quotes a template that ends in a line break', () => {
   ).toBe('format: 3\nprompts:\n  session:\n    _template: "{{ parts.safety }}\\n"\n');
 });
 
+test('it quotes a template with CRLF line breaks, which a literal block would turn into LF', () => {
+  expect(
+    buildPromptManifest('format: 3\n', 'compaction', {
+      _template: '{{ parts.instruction }}\r\n{{ parts.safety }}',
+    }).text,
+  ).toBe(
+    'format: 3\nprompts:\n  compaction:\n    _template: "{{ parts.instruction }}\\r\\n{{ parts.safety }}"\n',
+  );
+});
+
 test('it keeps the format of a manifest at format 3', () => {
   expect(
     buildPromptManifest('format: 3\n', 'compaction', { _template: '{{ parts.safety }}' })

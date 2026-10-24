@@ -83,7 +83,8 @@ function buildEntryLines(
   const lines = [`${indent}${promptID}:`];
 
   for (const [key, value] of Object.entries(entry)) {
-    if (!value.includes('\n') || /^\s|\n$/u.test(value)) {
+    // A YAML literal block turns each CRLF into LF and cannot hold edge whitespace as written.
+    if (!value.includes('\n') || /^\s|\s$|\r/u.test(value)) {
       lines.push(`${valueIndent}${key}: ${JSON.stringify(value)}`);
       continue;
     }
