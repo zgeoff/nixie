@@ -1,7 +1,7 @@
 // Times one way of speaking nixie's reply, from the end of the caller's speech to the first audio
 // and the full answer, over the caller's lines and the lines that call a stub tool. Each turn writes
 // one JSON line and one recording of the exchange as a listener hears it.
-// Usage: reply.ts --candidate <haiku-clauses|sonnet-opener> [--out <file>] [--rounds 3]
+// Usage: reply.ts --candidate <haiku-clauses|haiku-clauses-thinking-off|sonnet-opener> [--out <file>] [--rounds 3]
 //   [--persona results/persona.md] [--gap-tolerance-ms 150] [--limit <n>] [--replace]
 // The persona is nixie's own, read from the deployment's definitions into a git-ignored file. A
 // broker that adds the Cloudflare key leaves --cloudflare-token empty.
@@ -47,7 +47,9 @@ const { values } = parseArgs({
     rounds: { default: '3', type: 'string' },
   },
 });
-const candidate = z.enum(['haiku-clauses', 'sonnet-opener']).parse(values.candidate);
+const candidate = z
+  .enum(['haiku-clauses', 'haiku-clauses-thinking-off', 'sonnet-opener'])
+  .parse(values.candidate);
 const rounds = z.coerce.number().int().positive().parse(values.rounds);
 const gapToleranceMs = z.coerce.number().nonnegative().parse(values['gap-tolerance-ms']);
 const limit =
@@ -60,12 +62,19 @@ const minClauseWords = 4;
 // The 500 ms pause the earlier runs ended each turn on, so these times compare with theirs.
 const silenceMs = 500;
 
+const acknowledgeRules =
+  'You are on a voice call. Open every reply with a short acknowledgement of two to four words, such as "Sure, let me think." or "Good question.", that never claims an outcome or makes a promise. Then answer in two or three short spoken sentences, with no lists and no markdown.';
 const setup: Pick<AgentSessionOptions, 'effort' | 'model' | 'thinking'> & { voiceRules: string } = match(candidate)
   .with('haiku-clauses', () => ({
     effort: 'low' as const,
     model: 'claude-haiku-5-5',
-    voiceRules:
-      'You are on a voice call. Open every reply with a short acknowledgement of two to four words, such as "Sure, let me think." or "Good question.", that never claims an outcome or makes a promise. Then answer in two or three short spoken sentences, with no lists and no markdown.',
+    voiceRules: acknowledgeRules,
+  }))
+  .with('haiku-clauses-thinking-off', () => ({
+    effort: 'low' as const,
+    model: 'claude-haiku-5-5',
+    thinking: { type: 'disabled' },
+    voiceRules: acknowledgeRules,
   }))
   .with('sonnet-opener', () => ({
     effort: 'low' as const,
