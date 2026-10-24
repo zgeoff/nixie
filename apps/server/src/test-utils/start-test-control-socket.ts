@@ -11,7 +11,9 @@ export interface TestControlSocketOptions {
   readonly runReset?: HostRouterOptions['runReset'];
 }
 
-export async function startTestControlSocket(options: TestControlSocketOptions): Promise<void> {
+type TestAPI = Awaited<ReturnType<typeof startTestAPI>>;
+
+export async function startTestControlSocket(options: TestControlSocketOptions): Promise<TestAPI> {
   const api = await startTestAPI();
 
   const socket = await startControlSocket({
@@ -30,4 +32,6 @@ export async function startTestControlSocket(options: TestControlSocketOptions):
   });
 
   onTestFinished(() => socket.stop());
+
+  return api;
 }
