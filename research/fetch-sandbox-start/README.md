@@ -7,8 +7,8 @@ awake imp. On impd 2.8.3, a plain `imp new` to a first exec takes a median of 1.
 wakes costs 0.56 s, and an exec in an awake imp 0.11 s. The answer is one new sandbox per fetch from
 the fetch image, with no template, fork or pool. The
 [web fetch design](../../docs/design/platform/connectors/web-fetch.md#the-sandboxs-lifetime) makes
-that the default once its cost is measured. Every one of the 22 timed creates exited 0, the 5 from the
-conversation image included.
+that the default once its cost is measured. Every one of the 22 timed creates exited 0, the 5 from
+the conversation image included.
 
 ## Question
 
@@ -22,14 +22,14 @@ conversation image included.
 
 ## Versions
 
-| Component        | Version                                        |
-| ---------------- | ---------------------------------------------- |
-| impd             | 2.8.3, the production host                     |
-| imp CLI          | 0.38.1                                         |
-| Fetch image      | `nixie-fetch-aeb91d2186e6`                     |
-| Conversation     | `nixie-conversation-067a74167117`              |
-| Fetch shape      | 1 vCPU, 512 MiB, 4 GiB disk, `public` egress   |
-| Conversation     | 2 vCPUs, 2 GiB, 4 GiB disk, `box` egress       |
+| Component    | Version                                      |
+| ------------ | -------------------------------------------- |
+| impd         | 2.8.3, the production host                   |
+| imp CLI      | 0.38.1                                       |
+| Fetch image  | `nixie-fetch-aeb91d2186e6`                   |
+| Conversation | `nixie-conversation-067a74167117`            |
+| Fetch shape  | 1 vCPU, 512 MiB, 4 GiB disk, `public` egress |
+| Conversation | 2 vCPUs, 2 GiB, 4 GiB disk, `box` egress     |
 
 ## Setup
 
@@ -46,14 +46,14 @@ for it. It then prepares `geo1337-src`, a fetch imp that it stops and makes the
 and `geo1337-keep`, a fetch imp that it puts to sleep. Each of the 5 runs then times these routes in
 turn, so a drift in host load reaches all of them alike:
 
-| Route      | What it times                                                                 |
-| ---------- | ----------------------------------------------------------------------------- |
-| `new`      | `imp new` from the fetch image, then `imp exec -- true`                       |
-| `template` | `imp new` from `geo1337-tpl`, then `imp exec -- true`                         |
-| `fork`     | `imp fork` of the stopped `geo1337-src`, then `imp exec -- true`              |
-| `wake`     | `imp wake` of the sleeping `geo1337-keep`, then `imp exec -- true`            |
-| `warm`     | a second `imp exec -- true` in `geo1337-keep` while it is awake               |
-| `conv`     | `imp new` from the conversation image, then `imp exec -- true`, for its exit  |
+| Route      | What it times                                                                |
+| ---------- | ---------------------------------------------------------------------------- |
+| `new`      | `imp new` from the fetch image, then `imp exec -- true`                      |
+| `template` | `imp new` from `geo1337-tpl`, then `imp exec -- true`                        |
+| `fork`     | `imp fork` of the stopped `geo1337-src`, then `imp exec -- true`             |
+| `wake`     | `imp wake` of the sleeping `geo1337-keep`, then `imp exec -- true`           |
+| `warm`     | a second `imp exec -- true` in `geo1337-keep` while it is awake              |
+| `conv`     | `imp new` from the conversation image, then `imp exec -- true`, for its exit |
 
 Each create route then removes its imp with `imp rm`, and the `wake` route puts `geo1337-keep` back
 to sleep. Every row records impd's version and the host's awake imp count before the route, from
@@ -74,13 +74,15 @@ has no flag for it. A backup runs apart from a boot.
    ```
 
    Expect exit 0 and one table row per route and run in `<output_file>`, in about 10 minutes.
+
 3. Confirm that nothing remains: `imp ls | grep geo1337-` and `imp template ls | grep geo1337-` each
    print nothing.
 
 ## Answer
 
 Every create, wake and exec exited 0. The host had 8 imps awake before each `warm` route, which
-counts `geo1337-keep` after its wake, and 7 before each of the other routes. Times are in milliseconds.
+counts `geo1337-keep` after its wake, and 7 before each of the other routes. Times are in
+milliseconds.
 
 | Route      | Create median | Wake median | First exec median | Total median | Total range |
 | ---------- | ------------: | ----------: | ----------------: | -----------: | ----------: |
@@ -98,8 +100,8 @@ a median of 619 ms, after the fetch is done.
 ### A fresh sandbox per fetch
 
 A plain `imp new` reaches a first command in about 1.2 s, against the 0.5 to 0.9 s that the
-[worker cold start spike](../worker-cold-start/) estimated from Docker runs, and against 8.0 to
-18.3 s, median 10.9 s, on impd 2.5.3 with 9 imps awake. Both the impd version and the load changed
+[worker cold start spike](../worker-cold-start/) estimated from Docker runs, and against 8.0 to 18.3
+s, median 10.9 s, on impd 2.5.3 with 9 imps awake. Both the impd version and the load changed
 between those runs and these, so this spike cannot split the drop between them.
 
 The first exec of `true` is a floor for a fetch. The fetch adds the start of its fetcher process
@@ -109,30 +111,30 @@ inside the guest and the fetch itself, which this spike does not time.
 
 A template and a fork both start from a copy of a prepared disk, and both land within the spread of
 a plain `imp new`: medians of 1117 and 1041 ms against 1244 ms, with ranges that overlap. The fetch
-image holds the fetcher, so a prepared disk saves nothing that a fetch would otherwise do.
-A template or a fork also adds a source imp or a template that nixie must build per image and
-remove, and a template copies the source's machine identity, which impd resets on the first boot.
+image holds the fetcher, so a prepared disk saves nothing that a fetch would otherwise do. A
+template or a fork also adds a source imp or a template that nixie must build per image and remove,
+and a template copies the source's machine identity, which impd resets on the first boot.
 
 ### A warm pool or a kept sandbox
 
 An exec in an awake imp costs about 0.1 s, so a pool of awake fetch imps cuts the start to that. The
 pool holds RAM for each awake imp, and must create a replacement after each fetch, which costs the
-same 1.2 s of impd's work off the fetch's path. A sandbox kept per conversation wakes in about
-0.56 s, and lets every fetch in that conversation share one boundary: a page that compromises the
-fetcher can see the URLs of later fetches in the same conversation. One sandbox per fetch removes
-that shared boundary for about 0.7 s more than a wake.
+same 1.2 s of impd's work off the fetch's path. A sandbox kept per conversation wakes in about 0.56
+s, and lets every fetch in that conversation share one boundary: a page that compromises the fetcher
+can see the URLs of later fetches in the same conversation. One sandbox per fetch removes that
+shared boundary for about 0.7 s more than a wake.
 
 ### The exit code of `imp new`
 
 All 5 creates from the conversation image exited 0 on impd 2.8.3, and so did the 17 timed creates
-and forks of the fetch shape.
-The exit 1 seen on impd 2.5.3 did not recur, so this spike holds no evidence of its cause. A change
-in impd between 2.5.3 and 2.8.3 is a suspected cause, not a shown one.
+and forks of the fetch shape. The exit 1 seen on impd 2.5.3 did not recur, so this spike holds no
+evidence of its cause. A change in impd between 2.5.3 and 2.8.3 is a suspected cause, not a shown
+one.
 
 nixie never reads that exit code. The imp adapter calls impd's create through the imp client, and on
-any failure of the create or the setup after it, the adapter removes the imp and records the
-sandbox as destroyed. A create that fails while the imp comes up therefore fails one fetch and
-leaves no imp behind.
+any failure of the create or the setup after it, the adapter removes the imp and records the sandbox
+as destroyed. A create that fails while the imp comes up therefore fails one fetch and leaves no imp
+behind.
 
 ## Per run
 
@@ -176,7 +178,7 @@ The script's output, with the warm-up runs `w1` and `w2`.
 ## Not tested
 
 - The start of the fetcher process and a real fetch inside a new sandbox.
-- impd 2.5.3 under the same load, which would split the drop from 10.9 s between the impd version and
-  the host's load.
+- impd 2.5.3 under the same load, which would split the drop from 10.9 s between the impd version
+  and the host's load.
 - More than 8 imps awake, or creates that run at the same time.
 - The imp CLI 2.x, and the backup opt-out that nixie sets.

@@ -11,7 +11,7 @@ voice pipeline around nixie's own turn works with Haiku 5.5 on a process held op
 
 How long does a turn take from the moment nixie sends the prompt to the first streamed text token,
 and to the end of the turn, in the placement from
-[0003](../../../../decisions/0003-sdk-placement.md)? How do a new process per turn, a resumed
+[0003](../../docs/decisions/0003-sdk-placement.md)? How do a new process per turn, a resumed
 session, and a process kept alive between turns compare, and how much do nixie's in-process tools
 add? The voice stack waits on the answer ([GEO-300](https://linear.app/zgeoff/issue/GEO-300)): a
 pipeline of speech-to-text, nixie's own turn and text-to-speech costs about 1.3 to 1.5 s from the
@@ -34,9 +34,8 @@ end of speech to the reply before the model's share.
 neutral working directory per run, and a 1-sentence persona as the whole system prompt. With tools,
 an in-process SDK MCP server offers 3 stub tools, and a chat prompt never calls them. Haiku 5.5 and
 Sonnet 5.5 run at `effort: 'low'`, the chat setting from the
-[model-eval spike](../../../../../research/model-eval/README.md). Haiku 4.5 runs at its default,
-which has extended thinking on. Each run keeps Claude Code's config folder in a temp directory,
-never in `~/.claude`.
+[model-eval spike](../model-eval/README.md). Haiku 4.5 runs at its default, which has extended
+thinking on. Each run keeps Claude Code's config folder in a temp directory, never in `~/.claude`.
 
 [`bench.ts`](bench.ts) starts a turn in 6 ways. The clock starts when nixie hands the SDK the
 prompt.
