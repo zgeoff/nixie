@@ -106,10 +106,13 @@ so in a note. The first such message in a step also writes an exchange notice on
 thread, which names both tasks, the count, and which of them waits on the other, for the user to
 see.
 
-A message that wakes nobody stays unread, and it never counts as unread work for the read cursor's
-step result, so a waiting message does not loop its receiver through empty steps. The receiver reads
-it at its next wake, under a summary line per sender that counts the held messages and says whether
-a reply would wake the sender.
+A message that wakes nobody starts no step, and it never counts as unread work for the read cursor's
+step result, so a waiting message does not loop its receiver through empty steps. A receiver that is
+asleep reads it at its next wake, under a summary line per sender that counts the held messages and
+says whether a reply would wake the sender. A conversation turn that is already running receives it
+at once, as it receives every inbox record that lands during the turn, so the read cursor never
+meets a gap. That turn keeps the hop it was claimed with, so a reply from it wakes the sender only
+when the turn's own hop allows.
 
 A task-messages projection keeps one row per message, and a question or a request marks the sender
 as waiting on the receiver. A reply that names the question clears that wait. A step that commits as
