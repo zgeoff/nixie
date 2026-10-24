@@ -2,74 +2,72 @@
 // memory-items.jsonl, memory-versions.jsonl and rating-notes.jsonl. The files hold the owner's own
 // data, so they stay on the owner's machine and never enter the repo.
 import { join } from 'node:path';
+import { z } from 'zod';
+import { readJSONLines } from './read-json-lines.ts';
 
-export interface PlainRecord {
-  sequence: number;
-  recordedAt: string;
-  kind: string;
-  thread: string | null;
-  parent: number | null;
-  payload: Record<string, unknown>;
-  erasable:
-    | { status: 'none' | 'shredded' | 'unreadable' }
-    | { status: 'readable'; fields: Record<string, unknown> };
-}
+const plainRecordSchema = z.object({
+  sequence: z.int(),
+  recordedAt: z.string(),
+  kind: z.string(),
+  thread: z.string().nullable(),
+  parent: z.int().nullable(),
+  payload: z.record(z.string(), z.unknown()),
+  erasable: z.discriminatedUnion('status', [
+    z.object({ status: z.enum(['none', 'shredded', 'unreadable']) }),
+    z.object({ status: z.literal('readable'), fields: z.record(z.string(), z.unknown()) }),
+  ]),
+});
 
-export interface PlainItem {
-  item_id: string;
-  version: number;
-  state: string;
-  is_pinned: number;
-  pinned_sequence: number | null;
-  created_sequence: number;
-  short_id: string | null;
-  kind: 'fact' | 'self';
-  subject: string | null;
-}
+export type PlainRecord = z.infer<typeof plainRecordSchema>;
 
-export interface PlainVersion {
-  item_id: string;
-  version: number;
-  change: string;
-  state: string;
-  sequence: number;
-  until: number | null;
-  status: string;
-  text?: string;
-}
+const plainItemSchema = z.object({
+  item_id: z.string(),
+  version: z.int(),
+  state: z.string(),
+  is_pinned: z.int(),
+  pinned_sequence: z.int().nullable(),
+  created_sequence: z.int(),
+  short_id: z.string().nullable(),
+  kind: z.enum(['fact', 'self']),
+  subject: z.string().nullable(),
+});
 
-export interface PlainNote {
-  sequence: number;
-  itemID: string;
-  status: string;
-  text?: string;
-}
+const plainVersionSchema = z.object({
+  item_id: z.string(),
+  version: z.int(),
+  change: z.string(),
+  state: z.string(),
+  sequence: z.int(),
+  until: z.number().nullable(),
+  status: z.string(),
+  text: z.string().exactOptional(),
+});
+
+export type PlainVersion = z.infer<typeof plainVersionSchema>;
+
+const plainNoteSchema = z.object({
+  sequence: z.int(),
+  itemID: z.string(),
+  status: z.string(),
+  text: z.string().exactOptional(),
+});
 
 export interface PlainExport {
   records: PlainRecord[];
-  items: PlainItem[];
+  items: z.infer<typeof plainItemSchema>[];
   versions: PlainVersion[];
-  notes: PlainNote[];
+  notes: z.infer<typeof plainNoteSchema>[];
 }
 
 export async function readPlainExport(dir: string): Promise<PlainExport> {
   const [records, items, versions, notes] = await Promise.all([
-    readLines<PlainRecord>(join(dir, 'records.jsonl')),
-    readLines<PlainItem>(join(dir, 'memory-items.jsonl')),
-    readLines<PlainVersion>(join(dir, 'memory-versions.jsonl')),
-    readLines<PlainNote>(join(dir, 'rating-notes.jsonl')),
+    readJSONLines(join(dir, 'records.jsonl'), plainRecordSchema),
+    readJSONLines(join(dir, 'memory-items.jsonl'), plainItemSchema),
+    readJSONLines(join(dir, 'memory-versions.jsonl'), plainVersionSchema),
+    readJSONLines(join(dir, 'rating-notes.jsonl'), plainNoteSchema),
   ]);
 
   return { records, items, versions, notes };
-}
-
-async function readLines<T>(path: string): Promise<T[]> {
-  const text = await Bun.file(path).text();
-
-  return text
-    .split('\n')
-    .filter((line) => line.trim() !== '')
-    .map((line): T => JSON.parse(line));
 }
 
 export function readErasableText(record: PlainRecord): string | null {

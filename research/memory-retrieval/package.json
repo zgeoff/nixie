@@ -8,7 +8,8 @@
     "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
-    "@huggingface/transformers": "4.3.1"
+    "@huggingface/transformers": "4.3.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/bun": "1.4.3"
