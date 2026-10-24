@@ -1,12 +1,11 @@
-import './mocks/run-github-mock';
 import { expect, test } from 'bun:test';
+import { mockServer } from '@heynixie/mock-server';
 import { HttpResponse, http } from 'msw';
 import invariant from 'tiny-invariant';
 import { buildGitHubDefinitionsRepo } from './build-github-definitions-repo';
 import { createMockGitHubRepo } from './mocks/create-mock-github-repo';
 import { githubAPIURL } from './mocks/github-api-url';
 import { githubStore } from './mocks/github-store';
-import { server } from './mocks/node';
 import { readMockFiles } from './mocks/read-mock-files';
 import { writeMockBranchFile } from './mocks/write-mock-branch-file';
 
@@ -465,7 +464,7 @@ test.each([
   ['an answer of the wrong shape', '{}'],
   ['an answer that is not JSON', 'not json'],
 ])('it refuses %s with no status', async (_, answer) => {
-  server.use(http.get(`${githubAPIURL}/*`, () => new HttpResponse(answer)));
+  mockServer.use(http.get(`${githubAPIURL}/*`, () => new HttpResponse(answer)));
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',

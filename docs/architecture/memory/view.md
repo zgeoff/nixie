@@ -11,12 +11,14 @@ does. Each change it makes is the user's own action on the store, bound to the v
 
 ## Lists
 
-The view lists the items of one state a page at a time, in the order they were created, with the
-same cursor a recall's listing uses. Active and retired items list apart. The forgotten list holds
-each item a forget began, so an item whose forget a crash cut short still shows. Each listed item
-carries its current version's text while its key exists, the origin and source of that version, and
-when the item was created and last changed. A forgotten item carries no text and the time its forget
-completed, so it shows as a dated gap.
+The view lists the items of one state a page at a time, newest first, so an item the user approved a
+moment ago heads the first page. A page's cursor holds the creation point of its last item, and the
+next page starts at the item created just before it. A list may ask for facts or for self-notes
+alone, so each pages through its own items. Active and retired items list apart. The forgotten list
+holds each item a forget began, so an item whose forget a crash cut short still shows. Each listed
+item carries its current version's text while its key exists, the origin and source of that version,
+and when the item was created and last changed. A forgotten item carries no text and the time its
+forget completed, so it shows as a dated gap.
 
 ## Search
 
