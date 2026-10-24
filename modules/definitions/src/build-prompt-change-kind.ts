@@ -7,6 +7,7 @@ import { z } from 'zod';
 import type { PromptExportText } from './build-prompt-export-change';
 import { buildPromptExportChange } from './build-prompt-export-change';
 import { manifestPath } from './manifest-path';
+import { parseDefinitions } from './parse-definitions';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import { toPromptExportBranch } from './to-prompt-export-branch';
 import type {
@@ -78,7 +79,43 @@ async function readPromptChange(
 
   const sizes = await repo.readFileSizes(revision);
 
-  return buildPromptExportChange({ ...input, manifest, sizes });
+  const change = buildPromptExportChange({ ...input, manifest, sizes });
+
+  // The seed refuses the whole snapshot when one file fails to parse, so a change that leaves the
+  // definitions unparsable never reaches a pull request.
+  parseDefinitions({
+    contentHash: '',
+    files: await readChangedSnapshot(repo, revision, [...sizes.keys()], change.files),
+    revision,
+    repository: null,
+    skipped: [],
+  });
+
+  return change;
+}
+
+async function readChangedSnapshot(
+  repo: DefinitionsRepo,
+  revision: string,
+  paths: readonly string[],
+  changed: ReadonlyMap<string, string | null>,
+): Promise<ReadonlyMap<string, Uint8Array>> {
+  const base = await Promise.all(
+    paths
+      .filter((path) => !changed.has(path))
+      .map(async (path): Promise<[string, string | null]> => [
+        path,
+        await repo.readFile(path, revision),
+      ]),
+  );
+
+  const encoder = new TextEncoder();
+
+  return new Map(
+    [...base, ...changed].flatMap(([path, text]): [string, Uint8Array][] =>
+      text === null ? [] : [[path, encoder.encode(text)]],
+    ),
+  );
 }
 
 async function readClosingPrompts(

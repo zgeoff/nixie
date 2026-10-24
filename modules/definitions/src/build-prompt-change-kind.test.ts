@@ -10,6 +10,7 @@ import invariant from 'tiny-invariant';
 import { buildPromptChangeKind } from './build-prompt-change-kind';
 import { checkPromptProposal } from './check-prompt-proposal';
 import { createPathSource } from './create-path-source';
+import { DefinitionsParseError } from './definitions-parse-error';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import { runDefinitionsExports } from './run-definitions-exports';
 import { runSeed } from './run-seed';
@@ -673,6 +674,72 @@ test('it passes an export to onError when the files on the base branch leave no 
     new Error(
       'the compaction override takes the definitions to 10485769 bytes, past the 10485760-byte limit the seed keeps to',
     ),
+  ]);
+
+  expect(ctx.repo.readPullRequests()).toStrictEqual([]);
+});
+
+test('it passes an export to onError when the definitions after the change fail to parse', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    join(ctx.root, 'nixie.yaml'),
+    'format: 3\nprompts:\n  compaction:\n    instruction: notes/compaction.json\n',
+  );
+
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'notes'));
+  await writeFile(join(ctx.root, 'notes', 'compaction.json'), 'Keep the open questions.\n');
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'prompts.override_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: promptsOverrideProposedCodec.encode({
+        proposalID: 'k3x9m2p7qa',
+        promptID: 'compaction',
+        proposalHash: 'hash-a',
+        baseHash: null,
+        entry: { _template: '{{ parts.safety }}' },
+        files: [],
+        reason: 'Drop the instruction part.',
+        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  await writePromptProposalAnswer(ctx.answerContext, {
+    answer: 'approve',
+    proposalID: 'k3x9m2p7qa',
+    proposalHash: 'hash-a',
+  });
+
+  const errors: unknown[] = [];
+
+  await runDefinitionsExports({
+    log: ctx.log,
+    repo: ctx.repo,
+    kinds: [buildPromptChangeKind(ctx.log, { agentName: null, ownerName: null })],
+    onError: (error) => {
+      errors.push(error);
+    },
+  });
+
+  const [error] = errors;
+
+  invariant(error instanceof DefinitionsParseError);
+
+  expect(errors).toHaveLength(1);
+
+  expect(error.problems).toStrictEqual([
+    { path: 'notes/compaction.json', reason: expect.any(String) },
   ]);
 
   expect(ctx.repo.readPullRequests()).toStrictEqual([]);
