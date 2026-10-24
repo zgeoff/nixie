@@ -11,7 +11,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
 mkdir -p "$work/bin"
-cat > "$work/bin/gh" <<'STUB'
+cat > "$work/bin/gh" << 'STUB'
 #!/usr/bin/env bash
 # stands in for gh: records the call, fails an upload of FAIL_ON, and keeps each other upload
 printf '%s\n' "$*" >> "$STUB_DIR/calls.log"

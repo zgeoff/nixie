@@ -13,7 +13,10 @@ set -euo pipefail
 : "${CLAUDE_CODE_OAUTH_TOKEN:?set CLAUDE_CODE_OAUTH_TOKEN}" "${SPIKE_WORK:?set SPIKE_WORK}"
 case $IMP_URL in
   http://localhost:*) ;;
-  *) echo "run.sh: IMP_URL must be a local dev instance, not $IMP_URL" >&2; exit 1 ;;
+  *)
+    echo "run.sh: IMP_URL must be a local dev instance, not $IMP_URL" >&2
+    exit 1
+    ;;
 esac
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -25,7 +28,7 @@ secret=nixie-spike-model
 # the Docker bridge gateway: the host as the imps' host container sees it
 mcp_host=172.17.0.1
 mcp_port=8791
-made_secret= made_template= serve_pid=
+made_secret='' made_template='' serve_pid=''
 
 # Every imp name this run can create: bench.ts names its own nixie-spike-c<n> and nixie-spike-e<n>.
 ours=("$golden" "$box")
@@ -35,19 +38,28 @@ for index in $(seq 0 $((samples - 1))); do ours+=("nixie-spike-c$index" "nixie-s
 # removes only what this run made.
 existing=$(impz ls --json | jq -r '.[].name')
 for name in "${ours[@]}"; do
-  if grep -qx "$name" <<< "$existing"; then echo "run.sh: imp $name exists; remove it first" >&2; exit 1; fi
+  if grep -qx "$name" <<< "$existing"; then
+    echo "run.sh: imp $name exists; remove it first" >&2
+    exit 1
+  fi
 done
-if impz image ls | grep -q "^$template "; then echo "run.sh: image $template exists" >&2; exit 1; fi
-if impz secret ls | grep -q "^$secret "; then echo "run.sh: secret $secret exists" >&2; exit 1; fi
+if impz image ls | grep -q "^$template "; then
+  echo "run.sh: image $template exists" >&2
+  exit 1
+fi
+if impz secret ls | grep -q "^$secret "; then
+  echo "run.sh: secret $secret exists" >&2
+  exit 1
+fi
 
 cleanup() {
-  [ -n "$serve_pid" ] && { kill "$serve_pid" 2>/dev/null || true; }
-  existing=$(impz ls --json 2>/dev/null | jq -r '.[].name' || true)
+  [ -n "$serve_pid" ] && { kill "$serve_pid" 2> /dev/null || true; }
+  existing=$(impz ls --json 2> /dev/null | jq -r '.[].name' || true)
   for name in "${ours[@]}"; do
-    if grep -qx "$name" <<< "$existing"; then impz rm "$name" >/dev/null 2>&1 || true; fi
+    if grep -qx "$name" <<< "$existing"; then impz rm "$name" > /dev/null 2>&1 || true; fi
   done
-  [ -n "$made_template" ] && { impz template rm "$template" >/dev/null 2>&1 || true; }
-  [ -n "$made_secret" ] && { impz secret rm "$secret" >/dev/null 2>&1 || true; }
+  [ -n "$made_template" ] && { impz template rm "$template" > /dev/null 2>&1 || true; }
+  [ -n "$made_secret" ] && { impz secret rm "$secret" > /dev/null 2>&1 || true; }
 }
 trap cleanup EXIT
 
@@ -66,7 +78,7 @@ mkdir -p "$SPIKE_WORK/home" "$here/results"
 started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 step "prepare $golden: ca-certificates, Bun, the spike package"
-impz new "$golden" --image ubuntu --memory 2g >/dev/null
+impz new "$golden" --image ubuntu --memory 2g > /dev/null
 in_golden "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates >/dev/null 2>&1"
 impz cp "$(command -v bun)" "$golden:/usr/local/bin/bun"
 stage=$SPIKE_WORK/stage/app
@@ -77,21 +89,24 @@ in_golden "cd /app && start=\$(date +%s%N) && bun install --frozen-lockfile >/de
   && echo \"bun install: \$(( (\$(date +%s%N) - start) / 1000000 )) ms\""
 in_golden "du -sh /usr/local/bin/bun /app/node_modules /app/node_modules/@anthropic-ai/* && df -h / | tail -1"
 impz stop "$golden"
-impz template create "$golden" "$template" >/dev/null
+impz template create "$golden" "$template" > /dev/null
 made_template=1
-impz rm "$golden" >/dev/null
+impz rm "$golden" > /dev/null
 impz image ls
 
 step "the model secret and the host MCP server"
 printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN" | impz secret add "$secret" --kind custom \
-  --hosts api.anthropic.com --header authorization --scheme bearer >/dev/null
+  --hosts api.anthropic.com --header authorization --scheme bearer > /dev/null
 made_secret=1
 mcp_token=$(openssl rand -hex 24)
 NIXIE_MCP_HOST=$mcp_host NIXIE_MCP_PORT=$mcp_port NIXIE_MCP_TOKEN=$mcp_token \
   bun "$here/serve.ts" > "$SPIKE_WORK/serve.log" 2>&1 &
 serve_pid=$!
 until grep -q listening "$SPIKE_WORK/serve.log"; do
-  kill -0 "$serve_pid" 2>/dev/null || { cat "$SPIKE_WORK/serve.log"; exit 1; }
+  kill -0 "$serve_pid" 2> /dev/null || {
+    cat "$SPIKE_WORK/serve.log"
+    exit 1
+  }
   sleep 0.2
 done
 head -1 "$SPIKE_WORK/serve.log"
@@ -104,8 +119,8 @@ step "warm-up creates, so impd has a boot template for this shape; not summarize
 SPIKE_TAG=warmup bench lifecycle 2
 
 step "the long-lived imp $box, granted, with one turn to settle it"
-impz new "$box" --image "$template" --memory 2g --policy box --allow "$mcp_host/32" >/dev/null
-impz grant "$box" "$secret" >/dev/null
+impz new "$box" --image "$template" --memory 2g --policy box --allow "$mcp_host/32" > /dev/null
+impz grant "$box" "$secret" > /dev/null
 impz policy "$box"
 impz exec --require broker "$box" -- sh -c "cd /app && NIXIE_PLACEMENT=imp NIXIE_TOOLS=3 \
   NIXIE_MCP_URL=$NIXIE_MCP_URL NIXIE_MCP_TOKEN=$mcp_token NIXIE_MODEL=$NIXIE_MODEL bun turn.ts"
