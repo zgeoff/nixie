@@ -14,18 +14,21 @@ const forgettableKinds: ReadonlySet<string> = new Set(['owner_message', 'model.r
 
 const speaker = css({ display: 'block', fontWeight: 'semibold' });
 const message = css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' });
-const gap = css({ color: 'textMuted', fontStyle: 'italic' });
 
 export function RecordItem(props: RecordItemProps): ReactNode {
   const [isForgotten, setForgotten] = useState(false);
+  const [isForgetOpen, setForgetOpen] = useState(false);
   const text = isForgotten ? undefined : props.record.message?.text;
   const isYours = props.record.kind === 'owner_message';
   const images = props.record.message?.images?.length ?? 0;
 
+  if (text === undefined && !isForgetOpen) {
+    return null;
+  }
+
   return (
     <li>
       <strong className={speaker}>{isYours ? 'You' : 'nixie'}</strong>{' '}
-      {text === undefined ? <span className={gap}>Forgotten</span> : null}
       {text !== undefined && isYours ? <span className={message}>{text}</span> : null}
       {text !== undefined && isYours && images > 0 ? (
         <MessageImages
@@ -41,6 +44,7 @@ export function RecordItem(props: RecordItemProps): ReactNode {
           onForgotten={() => {
             setForgotten(true);
           }}
+          onOpenChange={setForgetOpen}
           record={props.record}
         />
       ) : null}
