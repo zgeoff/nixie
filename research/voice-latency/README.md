@@ -50,8 +50,11 @@ The [results](results.md) hold the tables for this run, and the
 [end-of-turn run](turn-end.md) compares silence, Smart Turn, Clef-flash and Jev on 600 real
 utterances: none cuts off fewer than 5% of meeting speech at a 1.2 s maximum wait, and Jev passes on
 task calls and commands, between Clef-flash's fewer cut-offs and the averaged pair's shorter waits.
+The [reply run](voice-reply.md) compares two Claude pipelines with Grok Voice and GPT-Live: Grok
+Voice alone passes the first-audio and silence gates, and GPT-Live is the one that hands real
+requests to Claude.
 
 ## Untested
 
-Real microphone audio, the audio path to a device, and a reply that calls a tool. The
-[untested list](results.md#untested) gives the rest.
+Real microphone audio and the audio path to a device. The [untested list](results.md#untested) gives
+the rest, and the [reply run's list](voice-reply.md#untested) gives what it left open.
