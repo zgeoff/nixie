@@ -1,8 +1,8 @@
 {
   "$schema": "./node_modules/knip/schema.json",
-  // repo-sync delivers .claude/ verbatim, spikes run by hand, and the CLI loads the SDK contract
-  // suite's mods by their paths, so no import reaches their files
-  "ignore": [".claude/**", "docs/design/**", "evals/sdk-contract/mods/**"],
+  // repo-sync delivers .claude/ verbatim, and the CLI loads the SDK contract suite's mods by their
+  // paths, so no import reaches their files
+  "ignore": [".claude/**", "evals/sdk-contract/mods/**"],
   "ignoreWorkspaces": ["research/**"],
   // the shared oxlint config loads the plugin, and the synced skill-gate hook in .claude/ imports
   // the package, so knip sees neither

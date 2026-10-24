@@ -216,6 +216,7 @@ export const memoryViewContract = {
     .input(
       z.object({
         after: z.string().max(20).optional(),
+        kind: kindSchema.optional(),
         limit: z.int().min(1).max(100).optional(),
         state: z.enum(['active', 'retired', 'forgotten']),
       }),
