@@ -1,8 +1,8 @@
 import { onTestFinished } from 'bun:test';
-import { rmSync } from 'node:fs';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { removeStaleWebBuilds } from './remove-stale-web-builds';
 
 const builds: { web?: Promise<string> } = {};
 
@@ -16,12 +16,16 @@ const webDir = join(import.meta.dir, '..', '..');
 
 async function runBuild(): Promise<string> {
   // The parallel test run builds once in each worker process, and a build into the shared dist
-  // directory deletes the hashed assets that another worker's server still loads.
-  const outDir = await mkdtemp(join(tmpdir(), 'nixie-web-build-'));
+  // directory deletes the hashed assets that another worker's server still loads. Bun's test
+  // workers end without an exit event, so each build removes the builds of exited processes.
+  const buildsDir = process.env['NIXIE_WEB_BUILDS_DIR'] ?? join(tmpdir(), 'nixie-web-builds');
 
-  process.once('exit', () => {
-    rmSync(outDir, { recursive: true, force: true });
-  });
+  await removeStaleWebBuilds(buildsDir);
+
+  const outDir = join(buildsDir, String(process.pid));
+
+  await rm(outDir, { recursive: true, force: true });
+  await mkdir(outDir, { recursive: true });
 
   // Node's wasm trap handler reserves more address space than a `ulimit -v` cap allows, and Vite
   // loads wasm.
