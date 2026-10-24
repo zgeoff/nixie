@@ -179,6 +179,17 @@ first paint, and a dark page never flashes light. While the choice is the system
 a change to the system setting without a reload. The build runs the React Compiler, so no component
 memoizes by hand.
 
+Voice typing in the message box comes from the device's keyboard, and Chrome on Android lets a
+keyboard's voice input reach a page only when the page's site holds the microphone permission. The
+client records no audio of its own, so a control in the conversation header asks for that permission
+once, when the user taps it. The control opens the microphone, stops every track at once and keeps
+nothing. It shows the permission's state, which it reads from the browser and follows as it changes:
+on, not asked, or blocked with the steps to unblock it. Chrome refuses with the same error when the
+user blocks the prompt and when they only close it, so after a refusal the control reads the
+permission again to tell the two apart. An installed app shares the site's permissions in Chrome, so
+one grant covers the app and the browser tab, and the web server sends no Permissions-Policy header
+that could block the microphone.
+
 ## The outbox
 
 Every message gets its client message ID and its written time when the user sends it, and the outbox
