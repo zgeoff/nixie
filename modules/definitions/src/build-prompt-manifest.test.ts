@@ -116,6 +116,18 @@ test('it quotes a template that ends in a line break', () => {
   ).toBe('format: 3\nprompts:\n  session:\n    _template: "{{ parts.safety }}\\n"\n');
 });
 
+test('it adds the entry inside the prompts map of a manifest with CRLF line endings, and keeps its line endings', () => {
+  expect(
+    buildPromptManifest(
+      'format: 3\r\nprompts:\r\n  writer:\r\n    instruction: prompts/writer.md\r\n',
+      'compaction',
+      { _template: '{{ parts.instruction }}\n{{ parts.safety }}' },
+    ).text,
+  ).toBe(
+    'format: 3\r\nprompts:\r\n  writer:\r\n    instruction: prompts/writer.md\r\n  compaction:\r\n    _template: |-\r\n      {{ parts.instruction }}\r\n      {{ parts.safety }}\r\n',
+  );
+});
+
 test('it quotes a template with CRLF line breaks, which a literal block would turn into LF', () => {
   expect(
     buildPromptManifest('format: 3\n', 'compaction', {

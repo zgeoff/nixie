@@ -13,10 +13,14 @@ const formatLine = /^format:[ \t]*(?<format>\d+)[ \t]*(?<comment>#.*)?$/mu;
 // nixie.yaml is the user's file, so the change edits only the lines of the format and of the one
 // prompt's entry, and keeps every comment and the order of every other key.
 export function buildPromptManifest(
-  manifest: string,
+  original: string,
   promptID: PromptID,
   entry: Readonly<Record<string, string>>,
 ): PromptManifest {
+  // The edit works line by line on LF text and gives a CRLF file its line endings back. A value
+  // with a carriage return is quoted, so no line break of a value reaches the conversion.
+  const isCRLF = original.includes('\r\n');
+  const manifest = isCRLF ? original.replaceAll('\r\n', '\n') : original;
   const format = formatLine.exec(manifest);
   const previousFormat = Number(format?.groups?.['format'] ?? Number.NaN);
 
@@ -34,9 +38,10 @@ export function buildPromptManifest(
             .join(' '),
         );
 
-  const text = buildEntryText(formatted, promptID, entry);
+  const edited = buildEntryText(formatted, promptID, entry);
+  const text = isCRLF ? edited.replaceAll('\n', '\r\n') : edited;
 
-  requireEdit(manifest, text, promptID, entry);
+  requireEdit(original, text, promptID, entry);
 
   return { text, previousFormat };
 }
