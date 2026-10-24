@@ -28,6 +28,17 @@ minimumReleaseAgeExcludes = [
   "@tsrs/linux-arm64-musl",
   "@tsrs/linux-x64-gnu",
   "@tsrs/linux-x64-musl",
+  # body-parser 2.4.0 fixes GHSA-27r3-jxmh-p828 and skips the gate so the audit
+  # passes now; this entry comes out on 2026-10-29, once 2.4.0 is 7 days old
+  "body-parser",
+  # fast-uri 3.1.9 fixes GHSA-w74x-v6f9-j3xg and skips the gate so the audit
+  # passes now; this entry comes out on 2026-10-27, once 3.1.9 is 7 days old
+  "fast-uri",
+  # happy-dom 21.0.4 fixes GHSA-834v-8h66-3h79, and the root overrides force it
+  # under @zgeoff/bun-test-react; these entries come out on 2026-10-28, once
+  # 21.0.4 is 7 days old
+  "happy-dom",
+  "@happy-dom/global-registrator",
 ]
 
 [test]
