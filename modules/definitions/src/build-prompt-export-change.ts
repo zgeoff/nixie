@@ -46,8 +46,19 @@ export function buildPromptExportChange(promptExport: PromptExportInput): Defini
   const agent = promptExport.text.agentName ?? 'nixie';
   const owner = promptExport.text.ownerName ?? 'the owner';
 
+  const written = promptExport.files.map((file): [string, string] => [
+    toExportedPath(file.path),
+    file.text,
+  ]);
+
+  const removed = collectUnreadPaths(promptExport.manifest, promptID, [
+    ...written.map(([path]) => path),
+    ...Object.values(entry),
+  ]);
+
   const files = new Map<string, string | null>([
-    ...promptExport.files.map((file): [string, string] => [toExportedPath(file.path), file.text]),
+    ...removed.map((path): [string, null] => [path, null]),
+    ...written,
     [manifestPath, manifest.text],
   ]);
 
@@ -59,6 +70,12 @@ export function buildPromptExportChange(promptExport: PromptExportInput): Defini
       .join('\n')}`,
     'The override applies after this pull request merges and `live` is promoted.',
   ];
+
+  for (const path of removed) {
+    notes.push(
+      `The \`${promptID}\` entry it replaces read \`${path}\`, and no prompt reads it after the change, so the change removes it.`,
+    );
+  }
 
   for (const [path, move] of moves) {
     const readers = move.readers.map((reader) => `the \`${reader}\` prompt`).join(' and ');
@@ -154,15 +171,11 @@ function collectSharedPaths(
   );
 }
 
-const promptEntrySchema = z.record(z.string(), z.unknown());
-const promptsMapSchema = z.object({ prompts: z.record(z.string(), promptEntrySchema).nullish() });
-
 function collectOtherReaders(
   manifest: string,
   promptID: PromptID,
 ): ReadonlyMap<string, readonly string[]> {
-  const parsed = promptsMapSchema.safeParse(Bun.YAML.parse(manifest));
-  const prompts = parsed.success ? (parsed.data.prompts ?? {}) : {};
+  const prompts = parsePromptsMap(manifest);
 
   const readers = new Map<string, string[]>();
 
@@ -179,4 +192,32 @@ function collectOtherReaders(
   }
 
   return readers;
+}
+
+const promptEntrySchema = z.record(z.string(), z.unknown());
+const promptsMapSchema = z.object({ prompts: z.record(z.string(), promptEntrySchema).nullish() });
+
+function parsePromptsMap(
+  manifest: string,
+): Readonly<Record<string, Readonly<Record<string, unknown>>>> {
+  const parsed = promptsMapSchema.safeParse(Bun.YAML.parse(manifest));
+
+  return parsed.success ? (parsed.data.prompts ?? {}) : {};
+}
+
+// A part file that no entry reads stays in the snapshot, and the seed still parses it, so the
+// change removes the files that only the replaced entry read.
+function collectUnreadPaths(
+  manifest: string,
+  promptID: PromptID,
+  kept: readonly string[],
+): readonly string[] {
+  const replaced = parsePromptsMap(manifest)[promptID] ?? {};
+  const readers = collectOtherReaders(manifest, promptID);
+
+  return Object.entries(replaced).flatMap(([key, value]) =>
+    key === '_template' || typeof value !== 'string' || readers.has(value) || kept.includes(value)
+      ? []
+      : [value],
+  );
 }

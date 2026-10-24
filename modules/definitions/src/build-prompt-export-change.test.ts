@@ -70,6 +70,56 @@ test("it moves a part file that another prompt reads to the prompt's own folder,
   );
 });
 
+test('it removes a part file that only the replaced entry read, and notes it', () => {
+  const change = buildPromptExportChange({
+    approvalID: 'approval-a',
+    proposalID: 'k3x9m2p7qa',
+    promptID: 'compaction',
+    entry: { _template: 'Summarize in {{ summary.words }} words.' },
+    files: [],
+    reason: 'One line is enough.',
+    text: { agentName: null, ownerName: null },
+    manifest: 'format: 3\nprompts:\n  compaction:\n    instruction: prompts/old.json\n',
+  });
+
+  expect(change.files).toStrictEqual(
+    new Map([
+      ['prompts/old.json', null],
+      [
+        'nixie.yaml',
+        'format: 3\nprompts:\n  compaction:\n    _template: "Summarize in {{ summary.words }} words."\n',
+      ],
+    ]),
+  );
+
+  expect(change.body).toInclude(
+    'The `compaction` entry it replaces read `prompts/old.json`, and no prompt reads it after the change, so the change removes it.',
+  );
+});
+
+test('it keeps a part file of the replaced entry that another prompt reads', () => {
+  const change = buildPromptExportChange({
+    approvalID: 'approval-a',
+    proposalID: 'k3x9m2p7qa',
+    promptID: 'compaction',
+    entry: { _template: 'Summarize in {{ summary.words }} words.' },
+    files: [],
+    reason: 'One line is enough.',
+    text: { agentName: null, ownerName: null },
+    manifest:
+      'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n  compaction:\n    instruction: prompts/shared.md\n',
+  });
+
+  expect(change.files).toStrictEqual(
+    new Map([
+      [
+        'nixie.yaml',
+        'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n  compaction:\n    _template: "Summarize in {{ summary.words }} words."\n',
+      ],
+    ]),
+  );
+});
+
 test("it refuses a part file that another prompt reads when that prompt also reads the path in the prompt's own folder", () => {
   expect(() =>
     buildPromptExportChange({
