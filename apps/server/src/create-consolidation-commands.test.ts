@@ -9,7 +9,9 @@ import {
   startTestMemory,
 } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
-import { runCLI } from './run-cli';
+import { createConsolidationCommands } from './create-consolidation-commands';
+import { readCLIArgs } from './read-cli-args';
+import { buildRecordingHostTransport } from './test-utils/build-recording-host-transport';
 import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
 import { startTestControlSocket } from './test-utils/start-test-control-socket';
@@ -225,6 +227,39 @@ test('it prints the summary alone when the run proposed no change', async () => 
   });
 });
 
+test('it sends the diff request to the socket of the config over the host transport it is given', async () => {
+  const ctx = await setupTest();
+
+  const socketPath = join(ctx.directory, 'run', 'control.sock');
+  const host = buildRecordingHostTransport(socketPath);
+
+  const commands = new Map(createConsolidationCommands(host.transport));
+
+  const parsed = await readCLIArgs(
+    ['memory-diff', '--config', '/etc/nixie/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
+
+  expect(exitCode).toBe(0);
+
+  expect(host.record).toStrictEqual({
+    configPaths: ['/etc/nixie/config.yaml'],
+    requests: [{ socketPath, name: 'memory diff' }],
+  });
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith('null');
+});
+
 test('it approves the whole diff when it names every change', async () => {
   const ctx = await setupTest();
 
@@ -278,14 +313,27 @@ test.each([
     ['memory-diff-reject', 'change-1'],
     'nixie memory-diff-reject takes a change ID and --hash <action hash>',
   ],
-])(
-  'it refuses the malformed answer %p before it reads the configuration',
-  async (args, refusal) => {
-    const io = { log: mock(), print: mock(), waitForSignal: mock() };
+])('it refuses the malformed answer %p, and reaches no server', async (args, refusal) => {
+  const host = buildRecordingHostTransport('/run/nixie/control.sock');
 
-    const exitCode = await runCLI([...args, '--config', '/nonexistent/config.yaml'], io);
+  const commands = new Map(createConsolidationCommands(host.transport));
 
-    expect(exitCode).toBe(2);
-    expect(io.print).toHaveBeenCalledExactlyOnceWith(refusal);
-  },
-);
+  const parsed = await readCLIArgs(
+    [...args, '--config', '/nonexistent/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
+
+  expect(exitCode).toBe(2);
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(refusal);
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
+});

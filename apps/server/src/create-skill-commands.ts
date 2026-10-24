@@ -1,22 +1,24 @@
 import { z } from 'zod';
-import { resolveSocketPath } from './resolve-socket-path';
-import { sendHostRequest } from './send-host-request';
-import type { CLIFlags, CLIIO, Command } from './types';
+import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
 
-export function createSkillCommands(): readonly (readonly [string, Command])[] {
+export function createSkillCommands(host: HostTransport): readonly (readonly [string, Command])[] {
   return [
-    ['skill-pending', (flags, io) => runSkillPending(flags.config, io)],
-    ['skill-approve', runSkillApprove],
-    ['skill-reject', runSkillReject],
-    ['skill-written', (flags, io) => runSkillWritten(flags.config, io)],
-    ['skill-resolve', runSkillResolve],
+    ['skill-pending', (flags, io) => runSkillPending(host, flags.config, io)],
+    ['skill-approve', (flags, io, args) => runSkillApprove(host, { flags, io, args })],
+    ['skill-reject', (flags, io, args) => runSkillReject(host, { flags, io, args })],
+    ['skill-written', (flags, io) => runSkillWritten(host, flags.config, io)],
+    ['skill-resolve', (flags, io, args) => runSkillResolve(host, { flags, io, args })],
   ];
 }
 
-async function runSkillPending(configPath: string, io: CLIIO): Promise<number> {
-  const socketPath = await resolveSocketPath(configPath);
+async function runSkillPending(
+  host: HostTransport,
+  configPath: string,
+  io: CLIIO,
+): Promise<number> {
+  const socketPath = await host.resolveSocketPath(configPath);
 
-  const pending = await sendHostRequest(socketPath, 'skill pending', (client) =>
+  const pending = await host.sendHostRequest(socketPath, 'skill pending', (client) =>
     client.skills.proposals.list(),
   );
 
@@ -25,17 +27,19 @@ async function runSkillPending(configPath: string, io: CLIIO): Promise<number> {
   return 0;
 }
 
-async function runSkillApprove(
-  flags: CLIFlags,
-  io: CLIIO,
-  args: readonly string[],
-): Promise<number> {
-  const [proposalID] = args;
-  const skillHash = flags.hash;
-  const files = flags.files === undefined ? undefined : parseFiles(flags.files);
+interface CommandCall {
+  readonly flags: CLIFlags;
+  readonly io: CLIIO;
+  readonly args: readonly string[];
+}
+
+async function runSkillApprove(host: HostTransport, call: CommandCall): Promise<number> {
+  const [proposalID] = call.args;
+  const skillHash = call.flags.hash;
+  const files = call.flags.files === undefined ? undefined : parseFiles(call.flags.files);
 
   if (proposalID === undefined || skillHash === undefined || files === null) {
-    io.print(
+    call.io.print(
       'nixie skill-approve takes a proposal ID, --hash <skill hash> and, for an edit, ' +
         '--files <JSON list of path and text>',
     );
@@ -43,9 +47,9 @@ async function runSkillApprove(
     return 2;
   }
 
-  const socketPath = await resolveSocketPath(flags.config);
+  const socketPath = await host.resolveSocketPath(call.flags.config);
 
-  const answer = await sendHostRequest(socketPath, 'skill approve', (client) =>
+  const answer = await host.sendHostRequest(socketPath, 'skill approve', (client) =>
     client.skills.proposals.approve({
       proposalID,
       skillHash,
@@ -53,7 +57,7 @@ async function runSkillApprove(
     }),
   );
 
-  io.print(JSON.stringify(answer));
+  call.io.print(JSON.stringify(answer));
 
   return 0;
 }
@@ -70,36 +74,36 @@ function parseFiles(text: string): { path: string; text: string }[] | null {
   }
 }
 
-async function runSkillReject(
-  flags: CLIFlags,
-  io: CLIIO,
-  args: readonly string[],
-): Promise<number> {
-  const [proposalID] = args;
-  const skillHash = flags.hash;
-  const reason = flags.reason;
+async function runSkillReject(host: HostTransport, call: CommandCall): Promise<number> {
+  const [proposalID] = call.args;
+  const skillHash = call.flags.hash;
+  const reason = call.flags.reason;
 
   if (proposalID === undefined || skillHash === undefined || reason === undefined) {
-    io.print('nixie skill-reject takes a proposal ID, --hash <skill hash> and --reason <why>');
+    call.io.print('nixie skill-reject takes a proposal ID, --hash <skill hash> and --reason <why>');
 
     return 2;
   }
 
-  const socketPath = await resolveSocketPath(flags.config);
+  const socketPath = await host.resolveSocketPath(call.flags.config);
 
-  const answer = await sendHostRequest(socketPath, 'skill reject', (client) =>
+  const answer = await host.sendHostRequest(socketPath, 'skill reject', (client) =>
     client.skills.proposals.reject({ proposalID, skillHash, reason }),
   );
 
-  io.print(JSON.stringify(answer));
+  call.io.print(JSON.stringify(answer));
 
   return 0;
 }
 
-async function runSkillWritten(configPath: string, io: CLIIO): Promise<number> {
-  const socketPath = await resolveSocketPath(configPath);
+async function runSkillWritten(
+  host: HostTransport,
+  configPath: string,
+  io: CLIIO,
+): Promise<number> {
+  const socketPath = await host.resolveSocketPath(configPath);
 
-  const written = await sendHostRequest(socketPath, 'skill written', (client) =>
+  const written = await host.sendHostRequest(socketPath, 'skill written', (client) =>
     client.skills.written.list(),
   );
 
@@ -108,27 +112,23 @@ async function runSkillWritten(configPath: string, io: CLIIO): Promise<number> {
   return 0;
 }
 
-async function runSkillResolve(
-  flags: CLIFlags,
-  io: CLIIO,
-  args: readonly string[],
-): Promise<number> {
-  const [approvalID, ...extra] = args;
-  const keep = flags.keep;
+async function runSkillResolve(host: HostTransport, call: CommandCall): Promise<number> {
+  const [approvalID, ...extra] = call.args;
+  const keep = call.flags.keep;
 
   if (approvalID === undefined || extra.length > 0 || keep === undefined) {
-    io.print('nixie skill-resolve takes an approval ID and --keep nixie|definitions');
+    call.io.print('nixie skill-resolve takes an approval ID and --keep nixie|definitions');
 
     return 2;
   }
 
-  const socketPath = await resolveSocketPath(flags.config);
+  const socketPath = await host.resolveSocketPath(call.flags.config);
 
-  const resolved = await sendHostRequest(socketPath, 'skill resolve', (client) =>
+  const resolved = await host.sendHostRequest(socketPath, 'skill resolve', (client) =>
     client.skills.written.resolve({ approvalID, keep }),
   );
 
-  io.print(JSON.stringify(resolved));
+  call.io.print(JSON.stringify(resolved));
 
   return 0;
 }

@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createDeviceSession } from '@heynixie/api/test-utils';
 import { startTestMemory } from '@heynixie/memory/test-utils';
 import { buildHostClient } from '../build-host-client';
 import { startTestControlSocket } from './start-test-control-socket';
@@ -38,6 +39,37 @@ test('it refuses a reset, since no server runs behind the socket', async () => {
     status: 500,
     message: 'no server runs behind the test socket',
   });
+});
+
+test('it answers a reset with the reset it is given', async () => {
+  const ctx = await setupTest();
+
+  await startTestControlSocket({
+    path: ctx.path,
+    runReset: () =>
+      Promise.resolve({
+        lastSequence: 42,
+        resetAt: new Date('2026-03-03T10:00:00Z'),
+        keptSessions: 2,
+      }),
+  });
+
+  const reset = await buildHostClient(ctx.path).reset();
+
+  expect(reset).toStrictEqual({
+    lastSequence: 42,
+    resetAt: new Date('2026-03-03T10:00:00Z'),
+    keptSessions: 2,
+  });
+});
+
+test('it returns the API behind the socket, whose sessions the socket lists', async () => {
+  const ctx = await setupTest();
+  const api = await startTestControlSocket({ path: ctx.path });
+  const session = await createDeviceSession(api.context, 'Kitchen tablet');
+  const sessions = await buildHostClient(ctx.path).sessions.list();
+
+  expect(sessions).toPartiallyContain({ sessionID: session.sessionID });
 });
 
 test('it stops the socket when the test finishes', async () => {

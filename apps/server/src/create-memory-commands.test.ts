@@ -1,7 +1,14 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { startTestMemory } from '@heynixie/memory/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
-import { runCLI } from './run-cli';
+import { createMemoryCommands } from './create-memory-commands';
+import { readCLIArgs } from './read-cli-args';
+import { buildRecordingHostTransport } from './test-utils/build-recording-host-transport';
 import { createApprovedItems } from './test-utils/create-approved-items';
 import { createTestClient } from './test-utils/create-test-client';
 import { readItemTraces } from './test-utils/read-item-traces';
@@ -9,6 +16,7 @@ import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
+import { startTestControlSocket } from './test-utils/start-test-control-socket';
 
 async function setupTest() {
   const nixie = await startInProcessNixie();
@@ -271,6 +279,46 @@ test('it runs the turn after memory-forget on a rebuilt session without the item
   ]);
 });
 
+test('it sends the pending request to the socket of the config over the host transport it is given', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-memory-'));
+
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
+
+  const socketPath = join(directory, 'control.sock');
+
+  const memory = await startTestMemory();
+
+  await startTestControlSocket({ path: socketPath, readMemory: () => memory.store });
+
+  const host = buildRecordingHostTransport(socketPath);
+
+  const commands = new Map(createMemoryCommands(host.transport));
+
+  const parsed = await readCLIArgs(
+    ['memory-pending', '--config', '/etc/nixie/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
+
+  expect(exitCode).toBe(0);
+
+  expect(host.record).toStrictEqual({
+    configPaths: ['/etc/nixie/config.yaml'],
+    requests: [{ socketPath, name: 'memory pending' }],
+  });
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith('[]');
+});
+
 test.each([
   ['no --hash', ['memory-approve', 'proposal-1']],
   [
@@ -281,10 +329,25 @@ test.each([
     'a revision target with no version',
     ['memory-approve', 'proposal-1', '--hash', 'sha256:hash', '--revise', 'item-1'],
   ],
-])('it refuses an approval given %s before it reads the configuration', async (_label, args) => {
+])('it refuses an approval given %s, and reaches no server', async (_label, args) => {
+  const host = buildRecordingHostTransport('/run/nixie/control.sock');
+
+  const commands = new Map(createMemoryCommands(host.transport));
+
+  const parsed = await readCLIArgs(
+    [...args, '--config', '/nonexistent/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
   const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  const exitCode = await runCLI([...args, '--config', '/nonexistent/config.yaml'], io);
+  const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(2);
 
@@ -292,6 +355,8 @@ test.each([
     'nixie memory-approve takes a proposal ID and --hash <action hash>, then --text <edited text>, ' +
       'and --revise <itemID>@<version> or --as-new',
   );
+
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });
 
 test.each([
@@ -303,13 +368,29 @@ test.each([
   ],
   [['memory-forget', 'item-1'], 'nixie memory-forget takes <itemID>@<version>'],
 ])(
-  'it refuses %p, whose version target is not a plain decimal, before it reads the configuration',
+  'it refuses %p, whose version target is not a plain decimal, and reaches no server',
   async (args, refusal) => {
+    const host = buildRecordingHostTransport('/run/nixie/control.sock');
+
+    const commands = new Map(createMemoryCommands(host.transport));
+
+    const parsed = await readCLIArgs(
+      [...args, '--config', '/nonexistent/config.yaml'],
+      [...commands.keys()],
+    );
+
+    invariant(parsed.kind === 'command');
+
+    const run = commands.get(parsed.command);
+
+    invariant(run);
+
     const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-    const exitCode = await runCLI([...args, '--config', '/nonexistent/config.yaml'], io);
+    const exitCode = await run(parsed.flags, io, parsed.args);
 
     expect(exitCode).toBe(2);
     expect(io.print).toHaveBeenCalledExactlyOnceWith(refusal);
+    expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
   },
 );

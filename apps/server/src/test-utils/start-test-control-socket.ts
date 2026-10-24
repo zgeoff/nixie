@@ -8,9 +8,12 @@ export interface TestControlSocketOptions {
   readonly path: string;
 
   readonly readMemory?: HostRouterOptions['readMemory'];
+  readonly runReset?: HostRouterOptions['runReset'];
 }
 
-export async function startTestControlSocket(options: TestControlSocketOptions): Promise<void> {
+type TestAPI = Awaited<ReturnType<typeof startTestAPI>>;
+
+export async function startTestControlSocket(options: TestControlSocketOptions): Promise<TestAPI> {
   const api = await startTestAPI();
 
   const socket = await startControlSocket({
@@ -22,9 +25,13 @@ export async function startTestControlSocket(options: TestControlSocketOptions):
       seedWrittenSkills: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
-      runReset: () => Promise.reject(new Error('no server runs behind the test socket')),
+      runReset:
+        options.runReset ??
+        (() => Promise.reject(new Error('no server runs behind the test socket'))),
     }),
   });
 
   onTestFinished(() => socket.stop());
+
+  return api;
 }
