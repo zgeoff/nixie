@@ -1,9 +1,5 @@
 import { canMoveProposal, proposalLapseMs } from '@heynixie/proposals';
-import { PromptProposalClosedError } from './prompt-proposal-closed-error';
-import { PromptProposalHashError } from './prompt-proposal-hash-error';
-import { PromptProposalNotFoundError } from './prompt-proposal-not-found-error';
-import { PromptProposalStaleError } from './prompt-proposal-stale-error';
-import type { PromptProposalAnswer, PromptProposalState } from './types';
+import type { PromptAnswerRefusal, PromptProposalAnswer, PromptProposalState } from './types';
 
 export interface PromptAnswerFacts {
   readonly answer: PromptProposalAnswer;
@@ -12,18 +8,13 @@ export interface PromptAnswerFacts {
   readonly currentHash: string | null;
 }
 
-export type PromptAnswerRefusal =
-  | PromptProposalNotFoundError
-  | PromptProposalClosedError
-  | PromptProposalHashError
-  | PromptProposalStaleError;
-
 export function findPromptAnswerRefusal(facts: PromptAnswerFacts): PromptAnswerRefusal | null {
   const answer = facts.answer;
   const state = facts.state;
+  const proposalID = answer.proposalID;
 
   if (state === undefined) {
-    return new PromptProposalNotFoundError(answer.proposalID);
+    return buildRefusal(proposalID, 'NOT_FOUND', `no prompt proposal ${proposalID} exists`);
   }
 
   const isPastLapse = state.proposedAt + proposalLapseMs <= facts.now;
@@ -31,16 +22,36 @@ export function findPromptAnswerRefusal(facts: PromptAnswerFacts): PromptAnswerR
   const outcome = answer.answer === 'approve' ? 'approved' : 'rejected';
 
   if (!canMoveProposal(status, outcome)) {
-    return new PromptProposalClosedError(answer.proposalID, status);
+    return buildRefusal(
+      proposalID,
+      'PROPOSAL_CLOSED',
+      `prompt proposal ${proposalID} is ${status}, so it takes no answer`,
+    );
   }
 
   if (state.proposal.proposalHash !== answer.proposalHash) {
-    return new PromptProposalHashError(answer.proposalID);
+    return buildRefusal(
+      proposalID,
+      'PROPOSAL_HASH',
+      `the answer to prompt proposal ${proposalID} names another proposal hash`,
+    );
   }
 
   if (answer.answer === 'approve' && facts.currentHash !== state.proposal.baseHash) {
-    return new PromptProposalStaleError(answer.proposalID);
+    return buildRefusal(
+      proposalID,
+      'STALE_BASE',
+      `the override in force moved past the one prompt proposal ${proposalID} replaces`,
+    );
   }
 
   return null;
+}
+
+function buildRefusal(
+  proposalID: string,
+  code: PromptAnswerRefusal['code'],
+  reason: string,
+): PromptAnswerRefusal {
+  return { status: 'refused', proposalID, code, reason, problems: [] };
 }

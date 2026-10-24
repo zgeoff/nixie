@@ -27,6 +27,8 @@ export type {
   PromptOverrides,
   PromptPartFile,
   PromptProposalAnswerEvent,
+  PromptAnswerRefusal,
+  PromptAnswerRefusalCode,
   PromptProposalAnswerResult,
   PromptProposalDraft,
   PromptProposalProblem,

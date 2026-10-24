@@ -129,11 +129,31 @@ export type PromptProposalAnswer =
       readonly reason: string;
     };
 
-export interface PromptProposalAnswerResult {
+export type PromptAnswerRefusalCode =
+  | 'NOT_FOUND'
+  | 'PROPOSAL_CLOSED'
+  | 'PROPOSAL_HASH'
+  | 'STALE_BASE'
+  | 'PROMPT_CHECK';
+
+export interface PromptAnswerRefusal {
+  readonly status: 'refused';
   readonly proposalID: string;
-  readonly approvalID: string | null;
-  readonly proposalHash: string | null;
+  readonly code: PromptAnswerRefusalCode;
+  readonly reason: string;
+
+  readonly problems: readonly PromptProposalProblem[];
 }
+
+export type PromptProposalAnswerResult =
+  | {
+      readonly status: 'approved';
+      readonly proposalID: string;
+      readonly approvalID: string;
+      readonly proposalHash: string;
+    }
+  | { readonly status: 'rejected'; readonly proposalID: string }
+  | PromptAnswerRefusal;
 
 export interface PromptProposalAnswerEvent {
   readonly proposalID: string;
