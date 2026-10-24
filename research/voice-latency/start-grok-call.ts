@@ -27,6 +27,7 @@ export function startGrokCall(connection: {
     ready: ready.promise,
     received: [],
     said: () => said,
+    stopPlaybackAt: [],
     toolCalls: [],
   };
   let heard = '';
@@ -58,6 +59,7 @@ export function startGrokCall(connection: {
   socket.addEventListener('message', (message) => {
     match(parseGrokEvent(JSON.parse(String(message.data))))
       .with({ kind: 'audio' }, (event) => call.received.push({ at: performance.now(), samples: event.audio }))
+      .with({ kind: 'caller-started' }, () => call.stopPlaybackAt.push(performance.now()))
       .with({ kind: 'tool-call' }, (event) => {
         call.toolCalls.push(event.name);
         const stub = Object.entries(stubTools).find(([name]) => name === event.name)?.[1];

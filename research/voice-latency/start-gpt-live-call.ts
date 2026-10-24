@@ -39,6 +39,7 @@ export function startGptLiveCall(connection: {
     ready: ready.promise,
     received: [],
     said: () => said,
+    stopPlaybackAt: [],
     toolCalls: [],
   };
   // A delegated answer reaches the caller only once GPT-Live speaks it, so the quiet that counts

@@ -7,6 +7,7 @@ import { toFloatSamples } from './to-float-samples.ts';
 export type GrokEvent =
   | { audio: Float32Array; kind: 'audio' }
   | { arguments: string; callID: string; kind: 'tool-call'; name: string }
+  | { kind: 'caller-started' }
   | { hasToolCall: boolean; kind: 'response-done' }
   | { kind: 'error'; message: string }
   | { kind: 'heard'; text: string }
@@ -28,6 +29,7 @@ const grokEvent = z.discriminatedUnion('type', [
   }),
   z.object({ error: z.object({ message: z.string() }), type: z.literal('error') }),
   z.object({ transcript: z.string(), type: z.literal('conversation.item.input_audio_transcription.completed') }),
+  z.object({ type: z.literal('input_audio_buffer.speech_started') }),
   z.object({ type: z.literal('session.updated') }),
   z.object({ transcript: z.string(), type: z.literal('response.output_audio_transcript.done') }),
 ]);
@@ -55,6 +57,7 @@ export function parseGrokEvent(raw: unknown): GrokEvent {
       kind: 'heard',
       text: event.transcript,
     }))
+    .with({ type: 'input_audio_buffer.speech_started' }, () => ({ kind: 'caller-started' }))
     .with({ type: 'session.updated' }, () => ({ kind: 'ready' }))
     .with({ type: 'response.output_audio_transcript.done' }, (event) => ({ kind: 'said', text: event.transcript }))
     .exhaustive();

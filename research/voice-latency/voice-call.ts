@@ -14,5 +14,8 @@ export interface VoiceCall {
   ready: Promise<void>;
   received: ReceivedAudio[];
   said: () => string;
+  // When the API told the client to drop the reply audio it holds but has not played. An API that
+  // stops its own stream when the caller speaks sends no such signal.
+  stopPlaybackAt: number[];
   toolCalls: string[];
 }

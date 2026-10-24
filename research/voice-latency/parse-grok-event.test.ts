@@ -72,6 +72,18 @@ test('it reads the finished transcript of the reply', () => {
   ).toStrictEqual({ kind: 'said', text: 'Pack layers and a rain jacket.' });
 });
 
+test('it reads that the caller started to speak', () => {
+  expect(
+    parseGrokEvent({
+      audio_start_ms: 249,
+      event_id: 'event-3',
+      item_id: 'item-1',
+      previous_item_id: null,
+      type: 'input_audio_buffer.speech_started',
+    }),
+  ).toStrictEqual({ kind: 'caller-started' });
+});
+
 test('it reads what the model heard the caller say', () => {
   expect(
     parseGrokEvent({
