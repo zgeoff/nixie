@@ -1,10 +1,12 @@
-import { onTestFinished } from 'bun:test';
+import type { Microphone, MicrophonePermission, MicrophoneStream } from '../microphone-context';
 
 type StubMicrophoneAnswer = 'allow' | 'block' | 'dismiss' | 'missing';
 
 export interface StubMicrophoneOptions {
   readonly permission: PermissionState | 'unsupported';
   readonly answer: StubMicrophoneAnswer;
+
+  readonly hasMediaDevices?: boolean;
 }
 
 interface StubTrack {
@@ -14,23 +16,22 @@ interface StubTrack {
 }
 
 export interface StubMicrophone {
+  readonly microphone: Microphone;
   readonly readRequests: () => readonly MediaStreamConstraints[];
   readonly readTracks: () => readonly StubTrack[];
   readonly setPermission: (state: PermissionState) => void;
 }
 
-interface StubPermissionStatus extends EventTarget {
-  readonly name: 'microphone';
+interface StubPermission extends MicrophonePermission {
   state: PermissionState;
 }
 
-// happy-dom has no navigator.mediaDevices, and its navigator.permissions grants everything, so this
-// stands in for both with the answers Chrome gives: a refusal is a NotAllowedError, and only a
-// block changes the permission. An unsupported permission refuses its query, as older Firefox does.
-export function registerStubMicrophone(options: StubMicrophoneOptions): StubMicrophone {
+// The answers follow Chrome's: a refusal is a NotAllowedError whether the user blocks the prompt or
+// closes it, and only a block changes the permission.
+export function buildStubMicrophone(options: StubMicrophoneOptions): StubMicrophone {
   const requests: MediaStreamConstraints[] = [];
   const tracks: StubTrack[] = [];
-  const statuses: StubPermissionStatus[] = [];
+  const permissions: StubPermission[] = [];
 
   let permission: PermissionState =
     options.permission === 'unsupported' ? 'prompt' : options.permission;
@@ -38,14 +39,14 @@ export function registerStubMicrophone(options: StubMicrophoneOptions): StubMicr
   const setPermission = (state: PermissionState): void => {
     permission = state;
 
-    for (const status of statuses) {
+    for (const status of permissions) {
       status.state = state;
 
       status.dispatchEvent(new Event('change'));
     }
   };
 
-  const answerMediaRequest = (constraints: MediaStreamConstraints): Promise<unknown> => {
+  const openMedia = (constraints: MediaStreamConstraints): Promise<MicrophoneStream> => {
     requests.push(constraints);
 
     if (permission === 'prompt') {
@@ -79,44 +80,24 @@ export function registerStubMicrophone(options: StubMicrophoneOptions): StubMicr
     return Promise.resolve({ getTracks: () => [track] });
   };
 
-  const answerPermissionQuery = (
-    descriptor: PermissionDescriptor,
-  ): Promise<StubPermissionStatus> => {
-    if (descriptor.name !== 'microphone' || options.permission === 'unsupported') {
-      return Promise.reject(
-        new TypeError(`'${descriptor.name}' is not a valid value for enumeration PermissionName.`),
-      );
+  const queryPermission = (): Promise<MicrophonePermission | null> => {
+    if (options.permission === 'unsupported') {
+      return Promise.resolve(null);
     }
 
-    const status: StubPermissionStatus = Object.assign(new EventTarget(), {
-      name: 'microphone' as const,
-      state: permission,
-    });
+    const status: StubPermission = Object.assign(new EventTarget(), { state: permission });
 
-    statuses.push(status);
+    permissions.push(status);
 
     return Promise.resolve(status);
   };
 
-  Object.defineProperty(globalThis.navigator, 'mediaDevices', {
-    configurable: true,
-    value: { getUserMedia: answerMediaRequest },
-  });
-
-  onTestFinished(() => {
-    Reflect.deleteProperty(globalThis.navigator, 'mediaDevices');
-  });
-
-  Object.defineProperty(globalThis.navigator, 'permissions', {
-    configurable: true,
-    value: { query: answerPermissionQuery },
-  });
-
-  onTestFinished(() => {
-    Reflect.deleteProperty(globalThis.navigator, 'permissions');
-  });
-
   return {
+    microphone: {
+      hasMediaDevices: () => options.hasMediaDevices ?? true,
+      queryPermission,
+      openMedia,
+    },
     readRequests: () => requests,
     readTracks: () => tracks,
     setPermission,

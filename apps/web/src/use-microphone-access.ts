@@ -1,7 +1,9 @@
-import { useEffect, useReducer } from 'react';
+import { use, useEffect, useReducer } from 'react';
 import type { EventFrom, SnapshotFrom } from 'xstate';
 import { initialTransition, transition } from 'xstate';
 import { microphoneAccessMachine } from './microphone-access-machine';
+import type { Microphone } from './microphone-context';
+import { MicrophoneContext } from './microphone-context';
 
 type MicrophoneAccessSnapshot = SnapshotFrom<typeof microphoneAccessMachine>;
 
@@ -13,6 +15,8 @@ export interface MicrophoneAccessState {
 }
 
 export function useMicrophoneAccess(): MicrophoneAccessState {
+  const microphone = use(MicrophoneContext);
+
   const [snapshot, send] = useReducer(
     (current: MicrophoneAccessSnapshot, event: MicrophoneAccessEvent) => {
       const [next] = transition(microphoneAccessMachine, current, event);
@@ -30,35 +34,36 @@ export function useMicrophoneAccess(): MicrophoneAccessState {
   useEffect(() => {
     const controller = new AbortController();
 
-    void followMicrophonePermission(send, controller.signal);
+    void followMicrophonePermission(microphone, send, controller.signal);
 
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [microphone]);
 
   return {
     access: snapshot.value,
     request: () => {
       if (snapshot.can({ type: 'request' })) {
         send({ type: 'request' });
-        void runMicrophoneRequest(send);
+        void runMicrophoneRequest(microphone, send);
       }
     },
   };
 }
 
 async function followMicrophonePermission(
+  microphone: Microphone,
   send: (event: MicrophoneAccessEvent) => void,
   signal: AbortSignal,
 ): Promise<void> {
-  if (!('mediaDevices' in globalThis.navigator)) {
+  if (!microphone.hasMediaDevices()) {
     send({ type: 'unavailable' });
 
     return;
   }
 
-  const permission = await readMicrophonePermission();
+  const permission = await microphone.queryPermission();
 
   if (signal.aborted) {
     return;
@@ -75,22 +80,12 @@ async function followMicrophonePermission(
   );
 }
 
-async function readMicrophonePermission(): Promise<PermissionStatus | null> {
-  if (!('permissions' in globalThis.navigator)) {
-    return null;
-  }
-
+async function runMicrophoneRequest(
+  microphone: Microphone,
+  send: (event: MicrophoneAccessEvent) => void,
+): Promise<void> {
   try {
-    return await globalThis.navigator.permissions.query({ name: 'microphone' });
-  } catch {
-    // Some browsers refuse a query for the microphone permission with a TypeError.
-    return null;
-  }
-}
-
-async function runMicrophoneRequest(send: (event: MicrophoneAccessEvent) => void): Promise<void> {
-  try {
-    const stream = await globalThis.navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await microphone.openMedia({ audio: true });
 
     for (const track of stream.getTracks()) {
       track.stop();
@@ -109,7 +104,7 @@ async function runMicrophoneRequest(send: (event: MicrophoneAccessEvent) => void
 
   // Chrome refuses with NotAllowedError both when the user blocks the site and when they only
   // close the prompt, and only the permission tells the two apart.
-  const permission = await readMicrophonePermission();
+  const permission = await microphone.queryPermission();
 
   send({ type: 'request.refused', state: permission?.state ?? null });
 }

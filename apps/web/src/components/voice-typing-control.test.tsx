@@ -1,23 +1,34 @@
 import { expect, test } from 'bun:test';
 import userEvent from '@testing-library/user-event';
-import { registerStubMicrophone } from '../test-utils/register-stub-microphone';
+import { MicrophoneContext } from '../microphone-context';
+import { buildStubMicrophone } from '../test-utils/build-stub-microphone';
 import { render } from '../test-utils/render';
 import { VoiceTypingControl } from './voice-typing-control';
 
 test('it offers to turn on voice typing when the browser has not asked for the microphone', async () => {
-  const microphone = registerStubMicrophone({ permission: 'prompt', answer: 'allow' });
-  const rendered = render(<VoiceTypingControl />);
+  const stub = buildStubMicrophone({ permission: 'prompt', answer: 'allow' });
+
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <VoiceTypingControl />
+    </MicrophoneContext>,
+  );
 
   const button = await rendered.findByRole('button', { name: 'Turn on voice typing' });
 
   expect(button).toBeEnabled();
-  expect(microphone.readRequests()).toStrictEqual([]);
+  expect(stub.readRequests()).toStrictEqual([]);
 });
 
 test('it asks for the microphone once, stops every track at once, and shows voice typing on', async () => {
   const user = userEvent.setup();
-  const microphone = registerStubMicrophone({ permission: 'prompt', answer: 'allow' });
-  const rendered = render(<VoiceTypingControl />);
+  const stub = buildStubMicrophone({ permission: 'prompt', answer: 'allow' });
+
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <VoiceTypingControl />
+    </MicrophoneContext>,
+  );
 
   const button = await rendered.findByRole('button', { name: 'Turn on voice typing' });
 
@@ -26,9 +37,9 @@ test('it asks for the microphone once, stops every track at once, and shows voic
   const status = await rendered.findByRole('status');
 
   expect(status).toHaveTextContent('Voice typing on');
-  expect(microphone.readRequests()).toStrictEqual([{ audio: true }]);
+  expect(stub.readRequests()).toStrictEqual([{ audio: true }]);
 
-  expect(microphone.readTracks()).toStrictEqual([
+  expect(stub.readTracks()).toStrictEqual([
     { kind: 'audio', readyState: 'ended', stop: expect.any(Function) },
   ]);
 
@@ -36,21 +47,29 @@ test('it asks for the microphone once, stops every track at once, and shows voic
 });
 
 test('it shows voice typing on without asking again when the microphone is already allowed', async () => {
-  const microphone = registerStubMicrophone({ permission: 'granted', answer: 'allow' });
-  const rendered = render(<VoiceTypingControl />);
+  const stub = buildStubMicrophone({ permission: 'granted', answer: 'allow' });
+
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <VoiceTypingControl />
+    </MicrophoneContext>,
+  );
 
   const status = await rendered.findByRole('status');
 
   expect(status).toHaveTextContent('Voice typing on');
-  expect(microphone.readRequests()).toStrictEqual([]);
+  expect(stub.readRequests()).toStrictEqual([]);
 });
 
 test('it shows how to unblock the microphone when the user blocks the prompt', async () => {
   const user = userEvent.setup();
+  const stub = buildStubMicrophone({ permission: 'prompt', answer: 'block' });
 
-  registerStubMicrophone({ permission: 'prompt', answer: 'block' });
-
-  const rendered = render(<VoiceTypingControl />);
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <VoiceTypingControl />
+    </MicrophoneContext>,
+  );
 
   const button = await rendered.findByRole('button', { name: 'Turn on voice typing' });
 
@@ -66,22 +85,32 @@ test('it shows how to unblock the microphone when the user blocks the prompt', a
 });
 
 test('it shows how to unblock the microphone without asking when the site is already blocked', async () => {
-  const microphone = registerStubMicrophone({ permission: 'denied', answer: 'allow' });
-  const rendered = render(<VoiceTypingControl />);
+  const stub = buildStubMicrophone({ permission: 'denied', answer: 'allow' });
+
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <VoiceTypingControl />
+    </MicrophoneContext>,
+  );
 
   await rendered.findByText('Voice typing blocked');
 
   expect(rendered.getByText('Set Microphone to Allow.')).toBeInTheDocument();
-  expect(microphone.readRequests()).toStrictEqual([]);
+  expect(stub.readRequests()).toStrictEqual([]);
 });
 
 test('it shows voice typing on once the user allows the microphone in the site settings', async () => {
-  const microphone = registerStubMicrophone({ permission: 'denied', answer: 'allow' });
-  const rendered = render(<VoiceTypingControl />);
+  const stub = buildStubMicrophone({ permission: 'denied', answer: 'allow' });
+
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <VoiceTypingControl />
+    </MicrophoneContext>,
+  );
 
   await rendered.findByText('Voice typing blocked');
 
-  microphone.setPermission('granted');
+  stub.setPermission('granted');
 
   const status = await rendered.findByRole('status');
 
@@ -90,8 +119,13 @@ test('it shows voice typing on once the user allows the microphone in the site s
 
 test('it offers to turn on voice typing again when the user closes the prompt', async () => {
   const user = userEvent.setup();
-  const microphone = registerStubMicrophone({ permission: 'prompt', answer: 'dismiss' });
-  const rendered = render(<VoiceTypingControl />);
+  const stub = buildStubMicrophone({ permission: 'prompt', answer: 'dismiss' });
+
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <VoiceTypingControl />
+    </MicrophoneContext>,
+  );
 
   const button = await rendered.findByRole('button', { name: 'Turn on voice typing' });
 
@@ -100,15 +134,18 @@ test('it offers to turn on voice typing again when the user closes the prompt', 
   const again = await rendered.findByRole('button', { name: 'Turn on voice typing' });
 
   expect(again).toBeEnabled();
-  expect(microphone.readRequests()).toHaveLength(1);
+  expect(stub.readRequests()).toHaveLength(1);
 });
 
 test('it shows how to unblock the microphone after a refusal when the browser cannot query the permission', async () => {
   const user = userEvent.setup();
+  const stub = buildStubMicrophone({ permission: 'unsupported', answer: 'block' });
 
-  registerStubMicrophone({ permission: 'unsupported', answer: 'block' });
-
-  const rendered = render(<VoiceTypingControl />);
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <VoiceTypingControl />
+    </MicrophoneContext>,
+  );
 
   const button = await rendered.findByRole('button', { name: 'Turn on voice typing' });
 
@@ -121,8 +158,13 @@ test('it shows how to unblock the microphone after a refusal when the browser ca
 
 test('it asks again from the blocked state once the user taps Try again', async () => {
   const user = userEvent.setup();
-  const microphone = registerStubMicrophone({ permission: 'unsupported', answer: 'block' });
-  const rendered = render(<VoiceTypingControl />);
+  const stub = buildStubMicrophone({ permission: 'unsupported', answer: 'block' });
+
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <VoiceTypingControl />
+    </MicrophoneContext>,
+  );
 
   const button = await rendered.findByRole('button', { name: 'Turn on voice typing' });
 
@@ -136,15 +178,18 @@ test('it asks again from the blocked state once the user taps Try again', async 
   const blockedAgain = await rendered.findByText('Voice typing blocked');
 
   expect(blockedAgain).toBeInTheDocument();
-  expect(microphone.readRequests()).toHaveLength(2);
+  expect(stub.readRequests()).toHaveLength(2);
 });
 
 test('it reports a microphone that does not start, with a way to try again', async () => {
   const user = userEvent.setup();
+  const stub = buildStubMicrophone({ permission: 'prompt', answer: 'missing' });
 
-  registerStubMicrophone({ permission: 'prompt', answer: 'missing' });
-
-  const rendered = render(<VoiceTypingControl />);
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <VoiceTypingControl />
+    </MicrophoneContext>,
+  );
 
   const button = await rendered.findByRole('button', { name: 'Turn on voice typing' });
 
@@ -156,7 +201,17 @@ test('it reports a microphone that does not start, with a way to try again', asy
 });
 
 test('it says voice typing needs HTTPS when the page has no media devices', async () => {
-  const rendered = render(<VoiceTypingControl />);
+  const stub = buildStubMicrophone({
+    permission: 'prompt',
+    answer: 'allow',
+    hasMediaDevices: false,
+  });
+
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <VoiceTypingControl />
+    </MicrophoneContext>,
+  );
 
   const notice = await rendered.findByText('Voice typing needs nixie over HTTPS.');
 
