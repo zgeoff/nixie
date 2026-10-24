@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { runProjectionRebuild } from '@heynixie/log';
 import { createMemoryItem } from './test-utils/create-memory-item';
+import { createProposal } from './test-utils/create-proposal';
 import { readMemoryRows } from './test-utils/read-memory-rows';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { CleanupSessions, MemoryTables } from './types';
@@ -59,6 +60,22 @@ test('it leaves out an item that an earlier forget took', async () => {
   });
 
   expect(forgotten).toStrictEqual([later.itemID]);
+});
+
+test('it leaves a pending proposal pending and readable', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Plays the cello badly' });
+  const proposal = await createProposal(ctx.memory.store, { text: 'Grows chillies indoors' });
+
+  const forgotten = await ctx.memory.store.forgetAll({
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(forgotten).toStrictEqual([item.itemID]);
+  expect(pending).toStrictEqual([proposal]);
+  expect(pending[0]?.text).toBe('Grows chillies indoors');
 });
 
 test('it forgets nothing and runs no session cleanup when memory holds no item', async () => {
