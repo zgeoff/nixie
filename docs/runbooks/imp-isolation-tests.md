@@ -1,12 +1,12 @@
 # Run the imp isolation tests
 
-The isolation tests in `adapters/sandbox-imp/src/build-imp-port.test.ts` check what a conversation
-imp reaches through the imp adapter on the real impd port. Through the reverse forward it reaches
-the tool endpoint. Through the broker it reaches only the model host. Every direct connection fails:
-the internet, the model host, impd, the gateway, the metadata service and `100.100.100.100`. With
-the host addresses set, a further test checks that a public imp reaches the internet and never a
-host address or impd. The tests skip unless the variables below are set, and they need a host with
-`/dev/kvm` and impd.
+The isolation tests in `adapters/sandbox-imp/src/build-imp-port.imp.test.ts` check what a
+conversation imp reaches through the imp adapter on the real impd port. Through the reverse forward
+it reaches the tool endpoint. Through the broker it reaches only the model host. Every direct
+connection fails: the internet, the model host, impd, the gateway, the metadata service and
+`100.100.100.100`. With the host addresses set, a further test checks that a public imp reaches the
+internet and never a host address or impd. The tests skip unless the variables below are set, and
+they need a host with `/dev/kvm` and impd.
 
 A guest cannot resolve impd's name or the model host's, so a probe of either name fails at the
 lookup whatever the network allows. The machine that runs the tests resolves each name, and the
@@ -24,13 +24,14 @@ own tool route, which must answer, so a guest that reaches nothing at all fails 
    NIXIE_IMP_TEST_TOKEN=<impd_token> \
    NIXIE_IMP_TEST_IMAGE=<image_name> \
    NIXIE_IMP_TEST_HOST_ADDRESSES=<host_addresses> \
-   bun test src/build-imp-port.test.ts
+   bun run test:imp
    ```
 
    Leave out `NIXIE_IMP_TEST_HOST_ADDRESSES` to skip the public egress test. It takes the same list
    that impd reads from `IMP_HOST_ADDRESSES`.
 
-Expect `0 fail`, with no skipped test.
+Expect `0 fail`, with no skipped test. The package's `test:imp` script runs its `*.imp.test.ts`
+files under the imp lane's limit per test.
 
 The package's `bunfig.toml` leaves out the web test preload, whose mock server and DOM take over
 `fetch` and `WebSocket`, so no call would reach impd. Bun reads `bunfig.toml` only from the folder
@@ -46,11 +47,11 @@ it left with impd's API: the imps the run created, each named `nixie-<id>`, and 
 
 ## The fetch sandbox tests
 
-The imp tests in `apps/server/src/start-web-fetch.test.ts` run the fetch sandbox on the fetch image.
-The web fetch tool fetches `https://example.com/`, a fetch sandbox reaches `1.1.1.1` over TCP, and a
-direct TCP connection from a fetch sandbox to impd or to each host address fails. The direct
-connections skip the fetcher's own address check, so only the network layer decides them. The tests
-skip unless the variables below are set.
+The imp tests in `apps/server/src/start-web-fetch.imp.test.ts` run the fetch sandbox on the fetch
+image. The web fetch tool fetches `https://example.com/`, a fetch sandbox reaches `1.1.1.1` over
+TCP, and a direct TCP connection from a fetch sandbox to impd or to each host address fails. The
+direct connections skip the fetcher's own address check, so only the network layer decides them. The
+tests skip unless the variables below are set.
 
 A target with no listener refuses every connection, so a sandbox's failed connection to it shows
 nothing about isolation. The machine that runs the tests therefore connects to each target first.
@@ -77,7 +78,7 @@ failing on it. Run the tests from a machine with IPv6 to prove the IPv6 targets 
    NIXIE_IMP_TEST_TOKEN=<impd_token> \
    NIXIE_IMP_TEST_HOST_ADDRESSES=<host_addresses> \
    NIXIE_IMP_TEST_FETCH_IMAGE=<fetch_image_name> \
-   bun test src/start-web-fetch.test.ts
+   bun run test:imp
    ```
 
    `NIXIE_IMP_TEST_EGRESS_DENY` takes the list that impd reads from `IMP_EGRESS_DENY`. The test

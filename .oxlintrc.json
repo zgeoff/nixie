@@ -22,11 +22,27 @@
     // system each lane runs
     "zgeoff/max-test-timeout": [
       "error",
-      { "lanes": { "browser": 10000, "agent-sdk": 5000, "e2e": 15000, "model-api": 120000 } }
+      {
+        "lanes": {
+          "browser": 10000,
+          "agent-sdk": 5000,
+          "e2e": 15000,
+          "model-api": 120000,
+          "imp": 14000
+        }
+      }
     ],
     "zgeoff/test-beside-module": [
       "error",
-      { "lanes": { "browser": 10000, "agent-sdk": 5000, "e2e": 15000, "model-api": 120000 } }
+      {
+        "lanes": {
+          "browser": 10000,
+          "agent-sdk": 5000,
+          "e2e": 15000,
+          "model-api": 120000,
+          "imp": 14000
+        }
+      }
     ],
     // a library contract fixes each name; the project-code-style skill gives the reasons
     "zgeoff/function-verb": ["error", { "exemptNames": ["executeQuery"] }],
