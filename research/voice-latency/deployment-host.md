@@ -38,7 +38,7 @@ with the times here.
 ## Method
 
 The scripts, the persona, the caller lines and the settings are the spike's, and the
-[spike's setup](README.md#setup) describes them. The run had 3 parts:
+[spike's setup](results.md#setup) describes them. The run had 3 parts:
 
 1. Stage timings: `stages.ts` for `zipformer` at a 500 ms and a 300 ms pause, `moonshine`, and
    `piper`, 3 rounds each.
