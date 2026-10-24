@@ -123,7 +123,8 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
           config.mode === 'vector'
             ? []
             : await index.readMatches(turn.query, {
-                limit: listLimit,
+                // SQLite takes a whole number as its limit, and the store bounds the list anyway.
+                limit: Math.min(listLimit, turn.candidates.length),
                 excludedIDs: [...excluded, ...outside],
                 excludedWords,
                 minScore: config.minScore,

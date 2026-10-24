@@ -23,12 +23,13 @@ export interface Run {
   config: RankConfig;
 }
 
+// A ranking run keeps every item, so a needed item past rank 10 still counts toward MRR.
 const rankingBase: RankConfig = {
   ...SHIPPED,
   minScore: 0,
   minSimilarity: -1,
-  listLimit: 100,
-  factLimit: 10,
+  listLimit: Number.POSITIVE_INFINITY,
+  factLimit: Number.POSITIVE_INFINITY,
   isSplit: false,
   isDeliveredExcluded: false,
 };
