@@ -39,9 +39,11 @@ run did not test.
 
 ## Run it
 
-Run from this directory. The pipeline runner reaches Anthropic through a broker. The
-speech-to-speech runners read their API key on stdin, so the key never reaches the command line or a
-file, and they connect to the vendor directly, because the broker refuses WebSocket upgrades.
+Run from this directory. Every runner reads nixie's persona from `results/persona.md`, which stays
+out of git, so copy the persona that the deployment runs with there first, or pass its path with
+`--persona`. The pipeline runner reaches Anthropic through a broker. The speech-to-speech runners
+read their API key on stdin, so the key never reaches the command line or a file, and they connect
+to the vendor directly, because the broker refuses WebSocket upgrades.
 
 ```bash
 bun install
