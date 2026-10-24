@@ -23,6 +23,14 @@ export const lines = [
 export const bargeIn = 'Hang on, stop there.';
 // A line that draws a long reply, so the barge-in lands while nixie still speaks.
 export const longLine = 'Tell me the story of how bread was first made, in a few sentences.';
+// Each line needs one of the reply runner's stub tools, so a turn holds a tool call.
+export const toolLines = [
+  'What will the weather be like in Lyon tomorrow?',
+  'What is on my calendar for Friday?',
+  'Set a timer for twelve minutes for the pasta.',
+];
+// The tool lines follow the barge-in line and the long line in the caller's files.
+export const toolLineStart = lines.length + 2;
 
 const tailSeconds = 1.5;
 
@@ -35,7 +43,7 @@ export interface CallerLine {
 if (import.meta.main) {
   mkdirSync(callerDir, { recursive: true });
   const voice = createTextToSpeech('caller');
-  const all = [...lines, bargeIn, longLine];
+  const all = [...lines, bargeIn, longLine, ...toolLines];
   for (const [index, text] of all.entries()) {
     const spoken = await voice.speak(text);
     const speech = trimSilence(toSampleRate(spoken.samples, spoken.sampleRate));

@@ -144,6 +144,14 @@ export function mergeSamples(parts: Float32Array[]): Float32Array {
   return merged;
 }
 
+// A sentence longer than any reply sentence. Piper ran up to 14 times slower than usual on the
+// first sentence longer than any it had spoken before in the process, so a runner speaks this first.
+export const longWarmUp = [
+  'Before a long walk, pack water, a warm layer, a rain jacket, a map, a torch, spare batteries,',
+  'a small first aid kit, sun cream, snacks for the afternoon, and a charged phone,',
+  'then tell a friend where you plan to go and when you expect to be back home again.',
+].join(' ');
+
 // Piper's lessac voice and Kokoro's voice 3, in full precision or int8, speak nixie's replies. Piper's ryan voice is the
 // caller, so the caller never shares a voice with nixie.
 export function createTextToSpeech(name: TextToSpeechName | 'caller'): TextToSpeech {
