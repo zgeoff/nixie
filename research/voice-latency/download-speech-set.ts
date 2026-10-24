@@ -99,7 +99,7 @@ for (let page = 0; page < pages; page++) {
     if (!audio.ok) {
       throw new Error(`audio ${utterance.id}: HTTP ${audio.status}`);
     }
-    writeFileSync(join(stagingDir, `${kept}.f32`), await decodeAudio(new Uint8Array(await audio.arrayBuffer())));
+    writeFileSync(join(stagingDir, `${kept}.f32`), await decodeAudio(new Uint8Array(await audio.arrayBuffer()), Bun.spawn));
     writeFileSync(join(stagingDir, `${kept}.json`), JSON.stringify({ id: utterance.id, text: utterance.text }));
     kept++;
   }
@@ -108,8 +108,8 @@ rmSync(targetDir, { force: true, recursive: true });
 renameSync(stagingDir, targetDir);
 console.log(`wrote ${kept} utterances to ${targetDir}`);
 
-async function decodeAudio(encoded: Uint8Array): Promise<Uint8Array> {
-  const ffmpeg = Bun.spawn(
+async function decodeAudio(encoded: Uint8Array, spawn: typeof Bun.spawn): Promise<Uint8Array> {
+  const ffmpeg = spawn(
     ['ffmpeg', '-loglevel', 'error', '-i', 'pipe:0', '-ac', '1', '-ar', String(sampleRate), '-f', 'f32le', 'pipe:1'],
     { stdin: encoded, stdout: 'pipe' },
   );
