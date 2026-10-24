@@ -487,6 +487,90 @@ test('it records the pull request it already opened when an export mark outlives
   ]);
 });
 
+test('it opens one pull request when a retry follows a pull request write whose answer was lost', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'prompts.override_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: promptsOverrideProposedCodec.encode({
+        proposalID: 'k3x9m2p7qa',
+        promptID: 'compaction',
+        proposalHash: 'hash-a',
+        baseHash: null,
+        entry: { _template: '{{ parts.instruction }}\n{{ parts.safety }}' },
+        files: [],
+        reason: 'Keep both parts on their own lines.',
+        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  const approved = await writePromptProposalAnswer(ctx.answerContext, {
+    answer: 'approve',
+    proposalID: 'k3x9m2p7qa',
+    proposalHash: 'hash-a',
+  });
+
+  invariant(approved.status === 'approved');
+
+  const kind = buildPromptChangeKind(ctx.log, { agentName: null, ownerName: null });
+  const errors: unknown[] = [];
+
+  ctx.repo.loseNextAnswer();
+
+  await runDefinitionsExports({
+    log: ctx.log,
+    repo: ctx.repo,
+    kinds: [kind],
+    onError: (error) => {
+      errors.push(error);
+    },
+  });
+
+  const result = await runDefinitionsExports({
+    log: ctx.log,
+    repo: ctx.repo,
+    kinds: [kind],
+    onError: (error) => {
+      throw error;
+    },
+  });
+
+  const exports =
+    await sql`select approval_id, state, pull_request_number from prompt_exports`.execute(
+      ctx.writer.db,
+    );
+
+  const records = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['prompts.override_exported'],
+  });
+
+  expect(errors).toStrictEqual([new Error('the answer to the pull request write was lost')]);
+  expect(result).toStrictEqual({ exported: [approved.approvalID], closed: [] });
+  expect(ctx.repo.readPullRequests().map((request) => request.number)).toStrictEqual([1]);
+
+  expect(exports.rows).toStrictEqual([
+    { approval_id: approved.approvalID, state: 'opened', pull_request_number: 1 },
+  ]);
+
+  expect(records.map((entry) => entry.record.payload['pullRequestURL'])).toStrictEqual([
+    'https://definitions.test/pull/1',
+  ]);
+});
+
 test('it writes a later approval of the same prompt onto its open pull request and closes the export before it', async () => {
   const ctx = await setupTest();
 
