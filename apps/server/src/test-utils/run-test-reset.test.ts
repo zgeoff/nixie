@@ -16,6 +16,18 @@ test('it resets nixie and starts it again on the same data directory', async () 
   expect(reset.again.dataDir).toBe(nixie.dataDir);
 });
 
+test('it runs the reset that its flags name, and starts nixie again', async () => {
+  const nixie = await startInProcessNixie();
+
+  await nixie.waitForLogEvent('ready');
+
+  const reset = await runTestReset(nixie, ['--only', 'conversations', '--yes']);
+
+  expect(reset.command.exitCode).toBe(0);
+  expect(reset.command.stdout).toStartWith('nixie shredded ');
+  expect(reset.serverExit).toBe(0);
+});
+
 test('it connects a signed-out client to the server started again', async () => {
   const nixie = await startInProcessNixie();
 

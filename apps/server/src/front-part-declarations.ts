@@ -120,6 +120,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           seedWrittenSkills: () =>
             runApprovedSkillsSeed(parts.find('server_parts'), parts.find('skill_exports')),
           runReset: parts.get('reset').run,
+          runConversationReset: parts.get('reset').runConversations,
           gate: parts.get('api_gate'),
         },
         options.cleanup,

@@ -1246,3 +1246,68 @@ test('it forgets every memory item through a reset of the memories, and keeps th
     { erasable: { status: 'readable', fields: { text: 'Noted-reply-2HX' } } },
   ]);
 });
+
+test('it shreds the conversation through a reset of the conversations, and keeps every memory item', async () => {
+  const ctx = await setupTest();
+  const api = await createTestClient(ctx);
+
+  ctx.guest.addReplies(
+    {
+      toolUse: {
+        name: 'memory.remember',
+        input: { text: 'Aunt Mira bakes on Sundays', quote: 'my aunt Mira bakes on Sundays' },
+      },
+    },
+    { text: 'Saffron-reply-5JD' },
+    { toolUse: { name: 'memory.recall', input: { query: 'Mira bakes' } } },
+    { text: 'Hello again.' },
+  );
+
+  ctx.guest.addCheckAnswers({ verdict: 'asserted', reason: 'Stated.' });
+
+  await sendClientMessage(
+    api.client,
+    {
+      text: 'Remember that my aunt Mira bakes on Sundays.',
+      spans: [{ start: 0, end: 44, source: 'typed' }],
+    },
+    'Saffron-reply-5JD',
+  );
+
+  const reset = await runTestReset(ctx, ['--only', 'conversations', '--yes']);
+
+  await sendClientMessage(
+    reset.connect(api.token),
+    { text: 'Lantern-message-6HN' },
+    'Hello again.',
+  );
+
+  const run = await reset.stop();
+
+  const recalled = ctx.toolResults.at(-1);
+
+  const turn = ctx.guest.turns.find((received) =>
+    JSON.stringify(received.input).includes('Lantern-message-6HN'),
+  );
+
+  invariant(recalled && turn);
+
+  expect(reset.command.exitCode).toBe(0);
+  expect(reset.serverExit).toBe(0);
+  expect(turn.resume).toBeNull();
+  expect(JSON.stringify(turn.input)).not.toMatch(/aunt Mira|Saffron-reply-5JD|since forgotten/u);
+  expect(recalled.result).toInclude('Aunt Mira bakes on Sundays');
+
+  expect(
+    run.records
+      .filter((record) => record.kind === 'owner_message' || record.kind === 'model.reply')
+      .map((record) => record.erasable),
+  ).toMatchObject([
+    { status: 'shredded' },
+    { status: 'shredded' },
+    { status: 'readable', fields: { text: 'Lantern-message-6HN' } },
+    { status: 'readable', fields: { text: 'Hello again.' } },
+  ]);
+
+  expect(run.records.filter((record) => record.kind === 'memory.forget_started')).toStrictEqual([]);
+});
