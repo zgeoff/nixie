@@ -11,6 +11,7 @@ import { ConversationFailureNotice } from './conversation-failure-notice';
 import { ConversationList } from './conversation-list';
 import { ConversationScroller } from './conversation-scroller';
 import { ThemePicker } from './theme-picker';
+import { VoiceTypingControl } from './voice-typing-control';
 
 export interface ConversationProps {
   readonly thread: string;
@@ -32,7 +33,15 @@ const headerRow = css({
   marginInline: 'auto',
   maxWidth: '3xl',
   paddingInline: '4',
-  '& > label': { marginInlineStart: 'auto' },
+});
+
+const headerControls = css({
+  alignItems: 'baseline',
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '4',
+  justifyContent: 'end',
+  marginInlineStart: 'auto',
 });
 
 const composerBar = css({
@@ -67,7 +76,10 @@ export function Conversation(props: ConversationProps): ReactNode {
       <header className={header}>
         <div className={headerRow}>
           {props.navigation}
-          <ThemePicker />
+          <div className={headerControls}>
+            <VoiceTypingControl />
+            <ThemePicker />
+          </div>
         </div>
       </header>
       {conversation.unavailable ? <LiveUpdatesNotice /> : null}

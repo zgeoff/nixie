@@ -30,10 +30,11 @@ change state; and the live stream of log records.
 - **The live stream.** A conversation read returns a page of records with the log sequence it read
   at. The client follows the log from that sequence, and each streamed event's ID is its record's
   sequence, so a reconnect resumes with no gap and no repeat. A `log_reset` record on the stream
-  means the [reset](../core/event-log.md#the-reset) removed every record before it, so the client
-  drops what it read before that record and reads its queries again. The conversation shows the
-  record as a rule across the feed with the time of the reset in the user's own time zone. The
-  server restarts after a reset, so the client reads them once more when the stream next connects.
+  means the [reset](../core/event-log.md#the-reset) removed every record before it, or a reset of
+  the conversation shredded every record before it on the thread, so the client drops what it read
+  before that record and reads its queries again. The conversation shows the record as a rule across
+  the feed with the time of the reset in the user's own time zone. The server restarts after a
+  reset, so the client reads them once more when the stream next connects.
 
 A client renders a record by its kind, and shows a kind it does not know by its name. Beside its
 kind, a record carries what a client shows of it: a message's text, the task and step of a task
@@ -148,9 +149,11 @@ closes an open value without scrolling back to find the control.
 Each message carries a forget control, which first asks and forgets only on the confirm. A
 confirmation keeps one client action ID, so a confirm that fails and goes again forgets once. A
 forget that fails after its start record dropped the text keeps its control and its error, so the
-user can confirm again and finish the cleanup. A forgotten message keeps its place as a gap with no
-text, and the view drops a message's text when a forget record that names it arrives, so every
-device shows the gap.
+user can confirm again and finish the cleanup. Any other message with no text leaves the view, with
+no placeholder, whether a forget or a
+[reset of the conversation](../core/event-log.md#resetting-the-conversation) shredded it. The view
+drops a message's text when a forget record that names it arrives, so the message leaves the view on
+every device.
 
 A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
 web text, so the renderer never turns raw HTML into markup, shows a link with an unsafe protocol
@@ -178,6 +181,17 @@ cannot read local storage, so a script in the document's head sets the theme on 
 first paint, and a dark page never flashes light. While the choice is the system's, the page follows
 a change to the system setting without a reload. The build runs the React Compiler, so no component
 memoizes by hand.
+
+Voice typing in the message box comes from the device's keyboard, and Chrome on Android lets a
+keyboard's voice input reach a page only when the page's site holds the microphone permission. The
+client records no audio of its own, so a control in the conversation header asks for that permission
+once, when the user taps it. The control opens the microphone, stops every track at once and keeps
+nothing. It shows the permission's state, which it reads from the browser and follows as it changes:
+on, not asked, or blocked with the steps to unblock it. Chrome refuses with the same error when the
+user blocks the prompt and when they only close it, so after a refusal the control reads the
+permission again to tell the two apart. An installed app shares the site's permissions in Chrome, so
+one grant covers the app and the browser tab, and the web server sends no Permissions-Policy header
+that could block the microphone.
 
 ## The outbox
 

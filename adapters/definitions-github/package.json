@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "catalog:",
+    "@heynixie/mock-server": "workspace:*",
     "@msw/data": "catalog:",
     "msw": "catalog:",
     "tiny-invariant": "catalog:"

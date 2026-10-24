@@ -31,6 +31,7 @@ async function setupTest() {
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,
+      getPromptsInForce: () => ({ snapshotHash: 'sha256:test', prompts: {} }),
     },
   });
 
@@ -149,6 +150,58 @@ test('#memory.listItems lists a shared item with its subject and the fact kind',
   const page = await buildTestClient(ctx.url, laptop.token).memory.listItems({ state: 'active' });
 
   expect(page.items).toMatchObject([{ itemID: item.itemID, subject: 'shared', kind: 'fact' }]);
+});
+
+test('#memory.listItems lists only the facts when asked for the fact kind', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const owned = await ctx.memory.remember({
+    text: 'Plays the cello on Thursdays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.remember({
+    text: 'Finds a well-made timetable oddly satisfying',
+    subject: 'self',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const shared = await ctx.memory.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    subject: 'shared',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const page = await buildTestClient(ctx.url, laptop.token).memory.listItems({
+    state: 'active',
+    kind: 'fact',
+  });
+
+  expect(page.items.map((item) => item.itemID)).toStrictEqual([shared.itemID, owned.itemID]);
+});
+
+test('#memory.listItems lists only the self-notes when asked for the self kind', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  await ctx.memory.remember({
+    text: 'Plays the cello on Thursdays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const note = await ctx.memory.remember({
+    text: 'Finds a well-made timetable oddly satisfying',
+    subject: 'self',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const page = await buildTestClient(ctx.url, laptop.token).memory.listItems({
+    state: 'active',
+    kind: 'self',
+  });
+
+  expect(page.items.map((item) => item.itemID)).toStrictEqual([note.itemID]);
 });
 
 test('#memory.findItems finds a self-note with its subject', async () => {

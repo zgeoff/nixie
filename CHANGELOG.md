@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.44.0](https://github.com/zgeoff/nixie/compare/v0.43.0...v0.44.0) (2026-10-24)
+
+
+### Features
+
+* **web:** ask for the microphone once so keyboard voice typing works ([#636](https://github.com/zgeoff/nixie/issues/636)) ([6e0093d](https://github.com/zgeoff/nixie/commit/6e0093d4bb59222f7f1f1417ed8672d9da5ef2a6))
+
+## [0.43.0](https://github.com/zgeoff/nixie/compare/v0.42.0...v0.43.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* this release reads definitions formats 2 and 3, and refuses format 1.
+
+### Features
+
+* override built-in prompts from a prompts map in nixie.yaml ([#595](https://github.com/zgeoff/nixie/issues/595)) ([b638e4f](https://github.com/zgeoff/nixie/commit/b638e4fc302ef6db6eb09fb7a302ff87bf9fa35a))
+* **research:** measure retrieval on a deployment's own turns ([#634](https://github.com/zgeoff/nixie/issues/634)) ([ad0209b](https://github.com/zgeoff/nixie/commit/ad0209b9925580f65a28360b637fbabff6a69702))
+
+
+### Bug Fixes
+
+* **ci:** pass the shell, workflows and test timeouts checks ([#616](https://github.com/zgeoff/nixie/issues/616)) ([f404057](https://github.com/zgeoff/nixie/commit/f4040577c21b8ff409b956915bbf311cf54c3465))
+* **memory:** list memory items newest first, one page per list ([#637](https://github.com/zgeoff/nixie/issues/637)) ([6383697](https://github.com/zgeoff/nixie/commit/6383697adcc875fe7ab9ed701edbde3e9818263c))
+* **sandbox-imp:** accept impd 4 beside impd 2 and 3 ([#609](https://github.com/zgeoff/nixie/issues/609)) ([a76a2c9](https://github.com/zgeoff/nixie/commit/a76a2c9b86186030a308dc39c2fe88b2885d4321))
+
+## [0.42.0](https://github.com/zgeoff/nixie/compare/v0.41.0...v0.42.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* nixie grants model secrets under new names. A deployment stores each secret under its nixie-model- name and adds those names to the token's grantable list before it runs this release. Sandboxes created on the old names keep working until they are replaced.
+
+### Features
+
+* add backup and restore commands, and prefix model secrets ([#589](https://github.com/zgeoff/nixie/issues/589)) ([64915fc](https://github.com/zgeoff/nixie/commit/64915fc8ee641681233b69993335456bc60ecc4f))
+* **deploy:** add a pulumi component for nixie's pod on kubernetes ([#577](https://github.com/zgeoff/nixie/issues/577)) ([1730535](https://github.com/zgeoff/nixie/commit/17305356814c77112f564223dfa6508063b488da))
+* **deploy:** add the web client and the backup to the k8s component ([#578](https://github.com/zgeoff/nixie/issues/578)) ([438d29c](https://github.com/zgeoff/nixie/commit/438d29c2ea9b65b32e0b8c8f5bdd3a46ea34f2a7))
+* **memory:** let the model and the writer set an end time on a memory ([#573](https://github.com/zgeoff/nixie/issues/573)) ([ee03aa9](https://github.com/zgeoff/nixie/commit/ee03aa9f2e48d314704a6b296f155104680ec12d))
+* **memory:** tell the conversation when a memory item lapses ([#585](https://github.com/zgeoff/nixie/issues/585)) ([23aed26](https://github.com/zgeoff/nixie/commit/23aed261ca307c7b8b9a9d84abc065ecf3bd27ea))
+* **preview:** hold the preview model's list prices in its profile ([#590](https://github.com/zgeoff/nixie/issues/590)) ([c2f9751](https://github.com/zgeoff/nixie/commit/c2f9751107984da2e9272230b8927dc2ec6a1e76))
+* **skills:** vendor a published skill by definitions pull request ([#572](https://github.com/zgeoff/nixie/issues/572)) ([2626bc3](https://github.com/zgeoff/nixie/commit/2626bc3eefb17aa3258a61ec7cda28ca27d4a64a))
+
+
+### Bug Fixes
+
+* **counting-proxy:** price a long prompt at its long-prompt rates ([#588](https://github.com/zgeoff/nixie/issues/588)) ([0717fb8](https://github.com/zgeoff/nixie/commit/0717fb83bfdbcb11561ea8e2bcf1461039cb0328))
+* **sandbox-imp:** accept impd 3 while nixie uses imp client 2 ([#598](https://github.com/zgeoff/nixie/issues/598)) ([fd2bd56](https://github.com/zgeoff/nixie/commit/fd2bd56d8bac0c654ed1546d206dd65096ac04ed))
+
 ## [0.41.0](https://github.com/zgeoff/nixie/compare/v0.40.0...v0.41.0) (2026-10-22)
 
 

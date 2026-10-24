@@ -54,7 +54,7 @@ test('it reads each skill of your definitions under a snapshot with its list pla
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: tides }]);
@@ -80,7 +80,12 @@ test("it reads your definitions' version beneath a skill nixie wrote, and leaves
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), tides);
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const beneath = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: tides }]);
 
@@ -110,7 +115,10 @@ test("it reads your definitions' version beneath a skill nixie wrote, and leaves
     });
   });
 
-  const seeded = await runWrittenSkillSeed({ log: ctx.log, policy: { rules: [], tools: [] } });
+  const seeded = await runWrittenSkillSeed({
+    log: ctx.log,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   invariant(seeded.inForce);
 

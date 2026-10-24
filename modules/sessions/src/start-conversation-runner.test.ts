@@ -29,6 +29,7 @@ async function setupTest() {
 
   const testDefinitions = {
     persona: 'You are nixie.',
+    prompts: {},
     personaHash: 'sha256:persona-test',
     policyHash: 'sha256:policy-test',
   };
@@ -1059,6 +1060,7 @@ test('it records the persona and policy hashes in force on the opening of a sess
     toolNames: ['notes_read'],
     getDefinitions: () => ({
       persona: 'You are Wren, a calm helper.',
+      prompts: {},
       personaHash: 'sha256:persona-wren',
       policyHash: 'sha256:policy-read-only',
     }),
@@ -1116,6 +1118,7 @@ test('it opens a new session under the new persona on the turn after the persona
   const definitions = {
     current: {
       persona: 'You are Wren, a calm helper.',
+      prompts: {},
       personaHash: 'sha256:persona-wren',
       policyHash: 'sha256:policy-read-only',
     },
@@ -1132,6 +1135,7 @@ test('it opens a new session under the new persona on the turn after the persona
 
   definitions.current = {
     persona: 'You are Wren, a cheerful helper.',
+    prompts: {},
     personaHash: 'sha256:persona-wren-cheerful',
     policyHash: 'sha256:policy-read-only',
   };
@@ -1167,6 +1171,7 @@ test('it resumes the same session on the turn after a change to the policy alone
   const definitions = {
     current: {
       persona: 'You are Wren, a calm helper.',
+      prompts: {},
       personaHash: 'sha256:persona-wren',
       policyHash: 'sha256:policy-read-only',
     },

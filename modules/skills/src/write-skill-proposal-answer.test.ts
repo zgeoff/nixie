@@ -57,7 +57,7 @@ async function setupTest() {
       clock: buildTestClock(0),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       seedWrittenSkills: async () => {
-        await runWrittenSkillSeed({ log, policy });
+        await runWrittenSkillSeed({ log, buildPolicy: () => policy });
       },
     },
   };
@@ -129,7 +129,7 @@ test('it puts an approved skill in force, so the next task loads it', async () =
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await runSeed({ log: ctx.log, source: ctx.source, policy: ctx.policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
 
   const files = [
     {
@@ -189,7 +189,7 @@ test('it refuses a second approval over the same base as stale before the first 
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await runSeed({ log: ctx.log, source: ctx.source, policy: ctx.policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
 
   const byPort = [
     {
@@ -271,7 +271,7 @@ test("it refuses an approval over a retired version as stale before the retireme
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
-  await runSeed({ log: ctx.log, source: ctx.source, policy: ctx.policy });
+  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
 
   const byPort = [{ path: 'SKILL.md', text: `${text}By port.\n` }];
   const byHour = [{ path: 'SKILL.md', text: `${text}By hour.\n` }];
@@ -290,7 +290,7 @@ test("it refuses an approval over a retired version as stale before the retireme
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy: ctx.policy });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => ctx.policy });
 
   await withWriteTransaction(ctx.log.writer, (tx) =>
     writeWrittenSkillState(tx, {
@@ -690,7 +690,11 @@ test.each([
       '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
     );
 
-    const seeded = await runSeed({ log: ctx.log, source: ctx.source, policy: ctx.policy });
+    const seeded = await runSeed({
+      log: ctx.log,
+      source: ctx.source,
+      buildPolicy: () => ctx.policy,
+    });
 
     const base = seeded.inForce?.skills[0];
 
@@ -718,7 +722,7 @@ test.each([
       '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides, by hour\n',
     );
 
-    await runSeed({ log: ctx.log, source: ctx.source, policy: ctx.policy });
+    await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
 
     const refusal = await writeSkillProposalAnswer(ctx.context, {
       ...answer,

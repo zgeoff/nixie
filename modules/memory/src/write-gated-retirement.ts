@@ -4,6 +4,7 @@ import { ForgottenEvidenceError } from './forgotten-evidence-error';
 import type { ContentGateResult, GatedRetireRequest, WriteOutcome } from './gate-types';
 import { readItemText } from './read-item-text';
 import { readNewestMessage } from './read-newest-message';
+import { requireCheckerSnapshot } from './require-checker-snapshot';
 import { requireLiveEvidence } from './require-live-evidence';
 import { runIntentGate } from './run-intent-gate';
 import type { StoreParts } from './types';
@@ -104,9 +105,13 @@ async function applyRetirement(
     },
     {
       noticeKey: passed.group.noticeKey,
-      ...(evidence === null
-        ? {}
-        : { requireInTransaction: (db) => requireLiveEvidence(db, evidence.recordSequence) }),
+      requireInTransaction: async (db) => {
+        requireCheckerSnapshot(parts.context, passed.gate.checks);
+
+        if (evidence !== null) {
+          await requireLiveEvidence(db, evidence.recordSequence);
+        }
+      },
     },
   );
 

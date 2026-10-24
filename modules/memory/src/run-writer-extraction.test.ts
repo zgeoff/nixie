@@ -23,6 +23,7 @@ async function setupTest() {
     gate: memory.store.writes.batch,
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
+    getPrompts: () => ({}),
     ownerName: null,
     assistantName: null,
     defaultZone: 'UTC',
@@ -169,6 +170,39 @@ test('it tells the writer to name the owner and the assistant by their configure
       ),
       prompt: expect.toInclude('Avery (owner): I play the cello on Sundays.'),
     }),
+  );
+});
+
+test('it gives the writer the prompt override in force', async () => {
+  const ctx = await setupTest();
+  const planned = await writePlannedBatch(ctx.memory.log, ['I swim at dawn.']);
+
+  const session = createStubWriterSession({
+    op: 'remember',
+    subject: 'owner',
+    text: 'Avery swims at dawn.',
+    quote: 'I swim at dawn.',
+    sourceSequence: planned.bounds.end,
+    itemID: null,
+  });
+
+  const batch = await readWriterBatch(ctx.memory.log, planned.bounds);
+
+  await runWriterExtraction(
+    {
+      ...ctx.parts,
+      ...session,
+      ownerName: 'Avery',
+      getPrompts: () => ({
+        writer: { parts: { safety: 'Quote {{ owner.name }} exactly.' }, template: null },
+      }),
+    },
+    batch,
+    new AbortController().signal,
+  );
+
+  expect(session.model.runSession).toHaveBeenCalledWith(
+    expect.objectContaining({ systemPrompt: expect.toEndWith('\nQuote Avery exactly.') }),
   );
 });
 

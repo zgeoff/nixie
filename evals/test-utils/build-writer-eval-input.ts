@@ -38,11 +38,15 @@ export function buildWriterEvalInput(
 ): WriterEvalInput {
   const names = { owner: cases.ownerName, assistant: cases.assistantName };
 
-  const systemPrompt = renderPrompt('writer', {
-    persona: cases.persona,
-    owner: { name: cases.ownerName },
-    assistant: { name: cases.assistantName },
-  });
+  const systemPrompt = renderPrompt(
+    'writer',
+    {
+      persona: cases.persona,
+      owner: { name: cases.ownerName },
+      assistant: { name: cases.assistantName },
+    },
+    {},
+  );
 
   const sentAt = Date.parse(writerCase.sentAt ?? '2026-10-14T09:00:00Z');
 

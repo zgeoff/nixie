@@ -11,6 +11,10 @@ export const tasksProjection: Projection = {
   fold: async (tx, record) => {
     const db = tx.$extendTables<TasksTables>();
 
+    if (record.kind === 'log_reset' && record.thread !== null) {
+      return updateResetCursor(db, record.thread, record.sequence);
+    }
+
     if (isInboxRecord(record) && record.thread !== null) {
       return updateInbox(db, record.thread, record.sequence);
     }
@@ -26,6 +30,21 @@ export const tasksProjection: Projection = {
     return [parsed.taskID];
   },
 };
+
+async function updateResetCursor(
+  db: Transaction<TasksTables>,
+  taskID: string,
+  sequence: number,
+): Promise<readonly string[]> {
+  const row = await db
+    .updateTable('tasks')
+    .set({ read_cursor: sequence, updated_sequence: sequence })
+    .where('task_id', '=', taskID)
+    .returning('task_id')
+    .executeTakeFirst();
+
+  return row === undefined ? [] : [taskID];
+}
 
 async function updateInbox(
   db: Transaction<TasksTables>,

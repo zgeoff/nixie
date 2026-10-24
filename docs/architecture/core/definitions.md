@@ -75,18 +75,20 @@ would give the commit a second hash.
 The manifest holds the definitions format version. A release reads its own format and the one before
 it, and refuses any other, because an image upgrade and a definitions change land in separate repos,
 in either order. The persona must be UTF-8 text and not blank. From format 2, the seed applies each
-skill under `skills/`, and format 1 leaves those files unapplied, because a format 1 repo was
-written before the seed checked a skill. The seed applies no other file, and lists each one in its
-record as unapplied. Each unapplied YAML or JSON file must still parse, so a broken rule file fails
-the snapshot before rules ever apply, and the error lists each file with its fault.
+skill under `skills/`. From format 3, it applies the prompt overrides in the manifest's `prompts:`
+map, as [prompts](prompts.md#overrides-from-the-definitions) describes, and format 2 leaves that map
+and its files unapplied. The seed applies no other file, and lists each one in its record as
+unapplied. Each unapplied YAML or JSON file must still parse, so a broken rule file fails the
+snapshot before rules ever apply, and the error lists each file with its fault.
 
 nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the
 `definitions-manifest.schema.json` asset, so a definitions repo checks its manifest against the
 formats a release reads without a copy of nixie. The seed parses the manifest with the same schema
 that the published one comes from, and a test fails when the committed file differs from it. After a
 change to the manifest's rules, `bun run --cwd modules/definitions manifest-schema` rewrites the
-committed file. The published schema covers the manifest alone, so only the seed checks the persona,
-the other files and that each listed skill exists.
+committed file. The published schema covers the manifest alone, including the prompts and parts that
+a `prompts:` map may name, so only the seed checks the persona, the other files, that each listed
+skill exists and that each prompt override reads only the paths its prompt accepts.
 
 ## Skills
 
@@ -190,7 +192,7 @@ and the export closes its pull request. The export records itself before it writ
 when a run stops before it records the pull request it opened, the close finds that pull request by
 the skill's branch. A new skill joins the conversation's list through the overlay alone, so when
 nixie.yaml lists the conversation's skills, the pull request asks the user to add the skill to that
-list. A seed under format 1 leaves every skill unapplied, so it never adopts a merged skill. When
+list. The seed refuses definitions at format 1, so it never adopts a skill merged into them. When
 nixie.yaml holds format 1, the pull request tells the user to move it to format 2 with the merge.
 
 The export runs only when the configuration names the definitions repo on GitHub. It writes through

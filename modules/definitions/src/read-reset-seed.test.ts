@@ -49,17 +49,18 @@ test('it finds nothing before the first seed', async () => {
 test('it reads the seed in force with its snapshot row and the payload of its record', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n');
 
   const policy = { rules: [{ id: 'slice1.read-only' }], tools: [] };
 
-  const seeded = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const seeded = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const built = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n\nCalm and short.\n',
+    prompts: {},
     policy,
   });
 
@@ -79,7 +80,7 @@ test('it reads the seed in force with its snapshot row and the payload of its re
       sourceRepository: null,
       revision: seeded.inForce.revision,
       contentHash: seeded.inForce.contentHash,
-      formatVersion: 1,
+      formatVersion: 2,
       policyHash: built.policyHash,
       skills: [],
       skillChanges: { added: [], changed: [], removed: [] },

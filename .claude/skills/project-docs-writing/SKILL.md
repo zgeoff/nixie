@@ -21,9 +21,10 @@ place a record holds history.
 ## Spikes and open work
 
 A design's evidence lives in a spike under `research/<name>/`, and the design doc links the spike
-instead of repeating its numbers or its method. A spike is deleted once its finding sits in the
-architecture doc that owns it, and a link that cites a deleted spike points at the commit that last
-held it.
+instead of repeating its numbers or its method. A spike's README is its landing page, and its full
+report is the `results.md` beside it; the [spikes index](../../../research/README.md) gives what
+each one holds. A spike is deleted once its finding sits in the architecture doc that owns it, and a
+link that cites a deleted spike points at the commit that last held it.
 
 Planned work, open choices and later stages live in the nixie Linear project, and a doc links the
 issue instead of restating the question.

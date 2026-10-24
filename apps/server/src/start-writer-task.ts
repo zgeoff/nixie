@@ -27,6 +27,7 @@ export async function startWriterTask(
     gate: store.writes.batch,
     config: parts.config.memory_writer,
     getPersona: () => parts.inForce.read()?.persona ?? '',
+    getPrompts: () => parts.inForce.read()?.prompts ?? {},
     ownerName: parts.config.owner.name,
     assistantName: parts.config.agent.names[0] ?? null,
     defaultZone: parts.config.time.default_zone,

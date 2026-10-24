@@ -1,4 +1,5 @@
 import type { Kysely } from 'kysely';
+import { storedPromptsSchema } from './stored-prompts-schema';
 import type { DefinitionsInForce, DefinitionsTables } from './types';
 
 export async function readDefinitionsInForce(
@@ -26,6 +27,7 @@ export async function readDefinitionsInForce(
       'personas.persona_version',
       'personas.instructions',
       'definition_snapshots.policy_hash',
+      'definition_snapshots.form',
     ])
     .orderBy('definition_seeds.seed', 'desc')
     .limit(1)
@@ -54,6 +56,7 @@ export async function readDefinitionsInForce(
     snapshotHash: row.snapshot_hash,
     personaVersion: row.persona_version,
     persona: row.instructions,
+    prompts: storedPromptsSchema.parse(JSON.parse(row.form)).prompts,
     policyHash: row.policy_hash,
     recordSequence: row.record_sequence,
     skills: skills.map((skill) => ({

@@ -118,6 +118,10 @@ export interface RetiredForgetRequest {
   readonly writeInTransaction?: WriteInTransaction;
 }
 
+export interface AllForgetRequest {
+  readonly provenance: Provenance;
+}
+
 export interface ForgetStatus {
   readonly deleted: readonly string[];
   readonly pending: readonly string[];
@@ -218,6 +222,8 @@ export interface MemoryStore {
   readonly finishForget: (itemID: string) => Promise<void>;
 
   readonly forgetRetired: (request: RetiredForgetRequest) => Promise<void>;
+
+  readonly forgetAll: (request: AllForgetRequest) => Promise<readonly string[]>;
 
   readonly finishForgets: (itemIDs: readonly string[]) => Promise<ForgetStatus>;
   readonly readHistory: (itemID: string) => Promise<ItemHistory | null>;

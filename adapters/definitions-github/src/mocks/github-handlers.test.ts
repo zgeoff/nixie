@@ -1,4 +1,3 @@
-import './run-github-mock';
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';

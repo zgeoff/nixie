@@ -45,3 +45,10 @@ export interface PromptEntry<Context> {
 }
 
 export type PromptValues<Paths extends readonly string[]> = Readonly<Record<Paths[number], string>>;
+
+export interface PromptOverride {
+  readonly parts: Readonly<Record<string, string>>;
+  readonly template: string | null;
+}
+
+export type PromptOverrides = Readonly<Partial<Record<PromptID, PromptOverride>>>;

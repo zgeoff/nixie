@@ -47,7 +47,7 @@ test('it proposes a new skill for review and records its files and the run that 
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const registry = buildToolRegistry([
@@ -145,7 +145,7 @@ test('it records the version in force that a change to a skill would replace', a
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillWriteTool({
@@ -200,7 +200,7 @@ test('it records a destination the owner never typed and the definitions lack', 
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   await writeRecords(ctx.log, [
@@ -269,7 +269,7 @@ test('it records an untyped destination that only a reference file holds', async
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillWriteTool({
@@ -325,7 +325,7 @@ test('it refuses 2 files at one path, and records no proposal', async () => {
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillWriteTool({
@@ -388,7 +388,7 @@ test('it records no untyped token for a destination that the persona holds', asy
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillWriteTool({
@@ -452,7 +452,7 @@ test('it records no untyped token for a destination that a skill in force holds 
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillWriteTool({
@@ -505,7 +505,7 @@ test('it refuses a skill that fails a seed check, and records no proposal', asyn
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillWriteTool({
@@ -564,7 +564,7 @@ test('it refuses a skill with every problem the seed checks find, and records no
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillWriteTool({
@@ -630,7 +630,7 @@ test('it refuses files that match the version in force', async () => {
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillWriteTool({

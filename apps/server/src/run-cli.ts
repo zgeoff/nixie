@@ -11,6 +11,8 @@ import { createSessionCommands } from './create-session-commands';
 import { createSkillCommands } from './create-skill-commands';
 import { readCLIArgs } from './read-cli-args';
 import type { ParsedCLIArgs } from './read-cli-args';
+import { resolveSocketPath } from './resolve-socket-path';
+import { sendHostRequest } from './send-host-request';
 import { startServer } from './start-server';
 import type { CLIFlags, CLIIO, Command } from './types';
 
@@ -19,7 +21,7 @@ const commands = new Map<string, Command>([
   ['check-encoder', (flags, io) => checkEncoder(flags.encoder, io)],
   ...createDeploymentCommands(),
   ...createSessionCommands(),
-  ...buildResetCommands(),
+  ...buildResetCommands({ resolveSocketPath, sendHostRequest }),
   ...createMemoryCommands(),
   ...createConsolidationCommands(),
   ...buildSubjectCommands(),

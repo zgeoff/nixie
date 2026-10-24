@@ -94,8 +94,15 @@ end time under the conventions the tool descriptions set.
 
 It answers asserted, not asserted or unsure, with a reason, and only asserted lets a write apply. A
 timeout, an error or an unreadable answer reads as unsure, so the checker fails closed. The answer's
-verdict, the checker's model ID and any failure join the version's checks. The reason is free text
-that may repeat the memory, so it reaches only the sealed proposal.
+verdict, the checker's model ID, any failure, and the hash of the definitions snapshot whose checker
+prompt ran join the version's checks. The reason is free text that may repeat the memory, so it
+reaches only the sealed proposal.
+
+A seed can put a new snapshot in force while the checker runs, and that snapshot can hold another
+checker prompt. The write transaction refuses a pass whose checker ran under a snapshot that is no
+longer in force, so every applied version carries the verdict of the checker in force at its write.
+A write tool call then runs its gate again under the new snapshot. The memory writer drops the batch
+and gates it again on its next step.
 
 Each checker prompt joins the policy snapshot as the SHA-256 of its text, so a release that changes
 a prompt, or a change to the user's name, changes the snapshot hash that every record carries. The

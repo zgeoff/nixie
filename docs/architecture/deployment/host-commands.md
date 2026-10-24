@@ -20,16 +20,18 @@ refuses, exits non-zero with a `command.failed` log line that holds the reason. 
 is the one exception: a server that answers not ready makes it print the report and exit 1 with no
 log line, so a deployment's check reads the report and not the log.
 
-| Command                         | What it prints                                                        | Exits 0 when                         |
-| ------------------------------- | --------------------------------------------------------------------- | ------------------------------------ |
-| `nixie health`                  | the readiness report of the running server, as JSON                   | every part is ready                  |
-| `nixie health --live`           | the liveness report, as JSON                                          | the process and the database are up  |
-| `nixie enrol-code`              | an enrolment code on its first line, then until when it works         | the server issued a code             |
-| `nixie sandbox-manifest`        | each sandbox kind with its image's ref and the name nixie gives it    | the server would accept the manifest |
-| `nixie reset --keep-sessions …` | the sequence the reset removed up to, and the device sessions it kept | the server finished the reset        |
-| `nixie sessions`                | the live device sessions, as JSON                                     | the server answered                  |
-| `nixie backup --to <directory>` | each database it copied, then the directory and the number of copies  | both copies match                    |
-| `nixie restore --from … --yes`  | the databases it restored and the directory they came from            | both databases were replaced         |
+| Command                              | What it prints                                                        | Exits 0 when                         |
+| ------------------------------------ | --------------------------------------------------------------------- | ------------------------------------ |
+| `nixie health`                       | the readiness report of the running server, as JSON                   | every part is ready                  |
+| `nixie health --live`                | the liveness report, as JSON                                          | the process and the database are up  |
+| `nixie enrol-code`                   | an enrolment code on its first line, then until when it works         | the server issued a code             |
+| `nixie sandbox-manifest`             | each sandbox kind with its image's ref and the name nixie gives it    | the server would accept the manifest |
+| `nixie reset --keep-sessions …`      | the sequence the reset removed up to, and the device sessions it kept | the server finished the reset        |
+| `nixie reset --only memories …`      | the number of memory items it forgot                                  | every forget finished                |
+| `nixie reset --only conversations …` | the number of records it shredded, and the sequence it shredded up to | the server finished the reset        |
+| `nixie sessions`                     | the live device sessions, as JSON                                     | the server answered                  |
+| `nixie backup --to <directory>`      | each database it copied, then the directory and the number of copies  | both copies match                    |
+| `nixie restore --from … --yes`       | the databases it restored and the directory they came from            | both databases were replaced         |
 
 The health report is the body of the server's own health endpoint, with each part's readiness and
 its reason, so a deployment's check names the part that is not ready without its own copy of the
@@ -77,6 +79,16 @@ to run without both flags, because only a restore from a backup undoes a reset, 
 backups from before the reset still hold the old data. The server answers once the reset finishes,
 then stops and exits 0, so the container runtime starts it again through the normal start. A reset
 that fails exits the server 1 instead, and the command exits non-zero.
+
+A reset with `--only memories --yes` forgets every memory item that is active or retired, through
+the [bulk forget of every item](../memory/store.md#forgetting-every-item), and removes no record.
+The server keeps running, so the command goes through the same gate as any other host command. It
+prints the number of items it forgot and the same note on backups as the full reset.
+
+A reset with `--only conversations --yes` asks the server to
+[reset the conversation](../core/event-log.md#resetting-the-conversation), which shreds every record
+on the conversation thread, destroys the conversation's sandbox and removes no record. It passes the
+gate as the full reset does, and the server stops and exits 0 once it answers.
 
 ## Backup and restore
 

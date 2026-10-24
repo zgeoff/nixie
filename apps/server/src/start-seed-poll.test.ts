@@ -74,7 +74,7 @@ test('it reports the definitions ready again once the source returns to its last
   const parts: SeedPollParts = {
     context: { ...context.apiContext, clock },
     source: createPathSource({ directory: root }),
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
     log: () => {},

@@ -11,8 +11,8 @@ on a skill.
 
 ## Before you start
 
-- A checkout of your definitions repo whose `nixie.yaml` holds `format: 2`. Format 1 lists every
-  file under `skills/` as unapplied.
+- A checkout of your definitions repo whose `nixie.yaml` holds `format: 2` or `format: 3`. nixie
+  refuses definitions at format 1.
 - bash with GNU `find` and `sha256sum`, and Perl 5. On macOS, install coreutils, or swap `sha256sum`
   for `shasum -a 256`.
 

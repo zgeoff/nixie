@@ -98,11 +98,11 @@ console.log(`${role} ${model} ${effort}: ${sessions.length} sessions, ${proxy.ca
 // 12 turns on one session, each resuming at the last turn's boundary, as the conversation does
 async function runConversation(): Promise<readonly SessionResult[]> {
   const home = await mkdtemp(join(tmpdir(), 'turn-tokens-'));
-  const systemPrompt = renderPrompt('session', {
-    persona: fixtures.persona,
-    skillCatalog: null,
-    owner: { name: lines.ownerName },
-  });
+  const systemPrompt = renderPrompt(
+    'session',
+    { persona: fixtures.persona, skillCatalog: null, owner: { name: lines.ownerName } },
+    {},
+  );
   const results: SessionResult[] = [];
   let resume: { sessionID: string; messageID: string } | null = null;
 
@@ -171,7 +171,7 @@ async function runConversation(): Promise<readonly SessionResult[]> {
 // the production checker prompt on the eval corpus's first 12 pairs, one fresh query each
 async function runChecker(): Promise<readonly SessionResult[]> {
   const corpus = await loadCheckerCorpus(join(dir, '../../evals/memory-checker/corpus.json'));
-  const prompt = renderPrompt('content-checker', { owner: { name: fixtures.ownerName } });
+  const prompt = renderPrompt('content-checker', { owner: { name: fixtures.ownerName } }, {});
   const pairs = corpus.samples
     .flatMap((sample) => sample.pairs.map((pair) => ({ sample, pair })))
     .slice(0, 12);
@@ -227,11 +227,11 @@ async function runWriter(): Promise<readonly SessionResult[]> {
     text: item.text,
   }));
   const names = { owner: fixtures.ownerName, assistant: null };
-  const systemPrompt = renderPrompt('writer', {
-    persona: fixtures.persona,
-    owner: { name: names.owner },
-    assistant: { name: names.assistant },
-  });
+  const systemPrompt = renderPrompt(
+    'writer',
+    { persona: fixtures.persona, owner: { name: names.owner }, assistant: { name: names.assistant } },
+    {},
+  );
   const results: SessionResult[] = [];
 
   for (let start = 0; start < messages.length; start += 4) {
@@ -264,11 +264,11 @@ async function runConsolidator(): Promise<readonly SessionResult[]> {
   }));
   const result = await runGuestSession('consolidation-1', 'memory-consolidator', {
     home: await mkdtemp(join(tmpdir(), 'turn-tokens-')),
-    systemPrompt: renderPrompt('consolidator', {
-      persona: fixtures.persona,
-      owner: { name: fixtures.ownerName },
-      memory: { maxChanges: 30 },
-    }),
+    systemPrompt: renderPrompt(
+      'consolidator',
+      { persona: fixtures.persona, owner: { name: fixtures.ownerName }, memory: { maxChanges: 30 } },
+      {},
+    ),
     input: [buildPlainMessage(renderConsolidatorPrompt({ items, isComplete: true }))],
     resume: null,
   });
@@ -278,11 +278,11 @@ async function runConsolidator(): Promise<readonly SessionResult[]> {
 
 // simulated: a job run as one fresh session on the conversation's prompt, opening and tools
 async function runTasks(): Promise<readonly SessionResult[]> {
-  const systemPrompt = renderPrompt('session', {
-    persona: fixtures.persona,
-    skillCatalog: null,
-    owner: { name: lines.ownerName },
-  });
+  const systemPrompt = renderPrompt(
+    'session',
+    { persona: fixtures.persona, skillCatalog: null, owner: { name: lines.ownerName } },
+    {},
+  );
   const opening = await renderSessionOpening(lines);
   const results: SessionResult[] = [];
 

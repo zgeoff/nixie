@@ -10,6 +10,7 @@ test('it builds the canonical form and its hashes', () => {
     ],
     conversationSkills: ['tide-tables'],
     persona: '# Persona\n\nWarm, brief.\n',
+    prompts: {},
     policy: {
       rules: [{ id: 'slice1.read-only', outcome: 'allow', effects: ['read', 'fetch', 'note'] }],
       tools: [{ name: 'web_fetch', effects: ['fetch'], destinations: [] }],
@@ -27,6 +28,7 @@ test('it builds the canonical form and its hashes', () => {
     ,
       "personaVersion": "0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575",
       "policyHash": "cc2abb490283d7746537cbf81e684ede5c607ee8885fbf70a0c460926b9955ef",
+      "prompts": {},
       "snapshotHash": "c3235924f2b04882edd289fe4b864d673e6eaed9d62633b5ddb4657be78ce80e",
     }
   `);
@@ -35,6 +37,7 @@ test('it builds the canonical form and its hashes', () => {
 test('it gives the same snapshot for the same definitions', () => {
   const input = {
     persona: '# Persona\n',
+    prompts: {},
     policy: { rules: [{ id: 'slice1.read-only' }], tools: [{ name: 'web_fetch', effects: [] }] },
     skills: [{ name: 'tide-tables', skillHash: 'hash-a', origin: 'definitions' as const }],
     conversationSkills: ['tide-tables'],
@@ -48,6 +51,7 @@ test('it hashes the canonical form for the snapshot and the persona text for its
     skills: [],
     conversationSkills: [],
     persona: '# Persona',
+    prompts: {},
     policy: { rules: [], tools: [] },
   });
 
@@ -67,6 +71,7 @@ test('it gives a persona in NFD the snapshot hash of the same persona in NFC', (
     skills: [],
     conversationSkills: [],
     persona: 'Cafe\u0301 talk\n',
+    prompts: {},
     policy,
   });
 
@@ -74,6 +79,7 @@ test('it gives a persona in NFD the snapshot hash of the same persona in NFC', (
     skills: [],
     conversationSkills: [],
     persona: 'Caf\u00E9 talk\n',
+    prompts: {},
     policy,
   });
 
@@ -87,6 +93,7 @@ test('it gives a persona with CRLF endings the snapshot hash of the same persona
     skills: [],
     conversationSkills: [],
     persona: '# Persona\r\n\r\nWarm.\r\n',
+    prompts: {},
     policy,
   });
 
@@ -94,6 +101,7 @@ test('it gives a persona with CRLF endings the snapshot hash of the same persona
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n\nWarm.\n',
+    prompts: {},
     policy,
   });
 
@@ -107,6 +115,7 @@ test('it gives a persona with no final newline or several the hash of one with o
     skills: [],
     conversationSkills: [],
     persona: '# Persona',
+    prompts: {},
     policy,
   });
 
@@ -114,6 +123,7 @@ test('it gives a persona with no final newline or several the hash of one with o
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n\n\n',
+    prompts: {},
     policy,
   });
 
@@ -121,6 +131,7 @@ test('it gives a persona with no final newline or several the hash of one with o
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy,
   });
 
@@ -135,6 +146,7 @@ test('it keeps trailing spaces, so a markdown line break changes the snapshot ha
     skills: [],
     conversationSkills: [],
     persona: 'Warm,  \nbrief.\n',
+    prompts: {},
     policy,
   });
 
@@ -142,6 +154,7 @@ test('it keeps trailing spaces, so a markdown line break changes the snapshot ha
     skills: [],
     conversationSkills: [],
     persona: 'Warm,\nbrief.\n',
+    prompts: {},
     policy,
   });
 
@@ -154,6 +167,7 @@ test('it gives declarations with keys in any order the same snapshot hash', () =
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy: {
       rules: [{ id: 'slice1.read-only', outcome: 'allow' }],
       tools: [{ name: 'web_fetch', effects: ['fetch'], execution: 'direct' }],
@@ -164,6 +178,7 @@ test('it gives declarations with keys in any order the same snapshot hash', () =
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy: {
       rules: [{ outcome: 'allow', id: 'slice1.read-only' }],
       tools: [{ execution: 'direct', effects: ['fetch'], name: 'web_fetch' }],
@@ -179,6 +194,7 @@ test('it sorts the rules by ID and the tools by name', () => {
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy: {
       rules: [{ id: 'test.allow-send' }, { id: 'slice1.read-only' }],
       tools: [
@@ -201,6 +217,7 @@ test('it sorts each effect list and drops its duplicates', () => {
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy: { rules: [], tools: [{ name: 'mail_send', effects: ['send', 'read', 'send'] }] },
   });
 
@@ -208,6 +225,7 @@ test('it sorts each effect list and drops its duplicates', () => {
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy: { rules: [], tools: [{ name: 'mail_send', effects: ['read', 'send'] }] },
   });
 
@@ -219,6 +237,7 @@ test('it changes the snapshot hash and the policy hash when a tool declaration c
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy: { rules: [], tools: [{ name: 'web_fetch', effects: ['fetch'] }] },
   });
 
@@ -226,6 +245,7 @@ test('it changes the snapshot hash and the policy hash when a tool declaration c
     skills: [],
     conversationSkills: [],
     persona: '# Persona\n',
+    prompts: {},
     policy: { rules: [], tools: [{ name: 'web_fetch', effects: ['fetch', 'send'] }] },
   });
 
@@ -239,6 +259,7 @@ test('it refuses a policy with 2 rules under one ID', () => {
       skills: [],
       conversationSkills: [],
       persona: '# Persona\n',
+      prompts: {},
       policy: { rules: [{ id: 'slice1.read-only' }, { id: 'slice1.read-only' }], tools: [] },
     }),
   ).toThrowWithMessage(Error, 'the policy holds 2 entries with id slice1.read-only');
@@ -250,6 +271,7 @@ test('it refuses a policy with 2 tools under one name', () => {
       skills: [],
       conversationSkills: [],
       persona: '# Persona\n',
+      prompts: {},
       policy: {
         rules: [],
         tools: [

@@ -1,4 +1,3 @@
-import './run-github-mock';
 import { expect, test } from 'bun:test';
 import { createMockGitHubRepo } from './create-mock-github-repo';
 import { githubStore } from './github-store';

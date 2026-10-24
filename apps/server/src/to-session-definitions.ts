@@ -4,6 +4,7 @@ import type { SessionDefinitions } from '@heynixie/sessions';
 export function toSessionDefinitions(inForce: DefinitionsInForce | null): SessionDefinitions {
   return {
     persona: inForce?.persona ?? '',
+    prompts: inForce?.prompts ?? {},
     personaHash: inForce?.personaVersion ?? '',
     policyHash: inForce?.policyHash ?? '',
   };

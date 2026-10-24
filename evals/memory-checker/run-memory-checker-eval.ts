@@ -25,7 +25,7 @@ interface PlannedCall {
 const directory = import.meta.dir;
 const name = process.argv[2] ?? 'corpus';
 const ownerName = process.argv[3] === undefined || process.argv[3] === '' ? null : process.argv[3];
-const prompt = renderPrompt('content-checker', { owner: { name: ownerName } });
+const prompt = renderPrompt('content-checker', { owner: { name: ownerName } }, {});
 
 const corpus = await loadCheckerCorpus(join(directory, `${name}.json`));
 const home = await mkdtemp(join(tmpdir(), 'nixie-checker-eval-'));

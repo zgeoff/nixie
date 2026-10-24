@@ -271,7 +271,7 @@ jobs:
             echo
             echo '## Images'
             echo
-            printf -- '- `%s`\n' "$CONVERSATION" "$FETCH" "$NIXIE" "$WEB"
+            printf -- "- \`%s\`\n" "$CONVERSATION" "$FETCH" "$NIXIE" "$WEB"
           } >> "$body"
           gh release edit "$TAG" --notes-file "$body"
           cat "$body" >> "$GITHUB_STEP_SUMMARY"

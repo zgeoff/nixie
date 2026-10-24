@@ -59,7 +59,7 @@ test("it renders the catalog of the skills on the conversation's list", async ()
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const inForce: DefinitionsInForce | null = seeded.inForce;
@@ -92,7 +92,7 @@ test("it caps the catalog at its share of the profile's context window", async (
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const inForce: DefinitionsInForce | null = seeded.inForce;
@@ -125,7 +125,7 @@ test('it keeps a description that a larger configured share leaves room for', as
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const inForce: DefinitionsInForce | null = seeded.inForce;
@@ -158,7 +158,7 @@ test("it caps the catalog at its share of the CLI's window for a profile with no
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const inForce: DefinitionsInForce | null = seeded.inForce;
@@ -192,7 +192,7 @@ test("it keeps a description that the CLI's million-token window leaves room for
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const inForce: DefinitionsInForce | null = seeded.inForce;
@@ -226,7 +226,7 @@ test("it pins the task to the conversation's list on its first load", async () =
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const inForce: DefinitionsInForce | null = seeded.inForce;

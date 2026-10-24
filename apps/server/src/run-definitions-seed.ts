@@ -8,7 +8,7 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
     const result = await runSeed({
       log: parts.context.log,
       source: parts.source,
-      policy: parts.policy,
+      buildPolicy: parts.buildPolicy,
     });
 
     parts.state.update({

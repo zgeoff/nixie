@@ -60,7 +60,7 @@ test('it reloads every skill on the list, with a result the output schema accept
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const registry = buildToolRegistry([
@@ -128,7 +128,7 @@ test('it moves a pinned skill to the version a later seed put in force', async (
   const first = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tool = buildSkillReloadAllTool({
@@ -139,7 +139,7 @@ test('it moves a pinned skill to the version a later seed put in force', async (
       const seeded = await runSeed({
         log: ctx.log,
         source: ctx.source,
-        policy: { rules: [], tools: [] },
+        buildPolicy: () => ({ rules: [], tools: [] }),
       });
 
       return seeded.inForce;

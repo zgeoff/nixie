@@ -34,6 +34,7 @@ async function setupTest() {
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,
+      getPromptsInForce: () => ({ snapshotHash: 'sha256:test', prompts: {} }),
     },
   });
 

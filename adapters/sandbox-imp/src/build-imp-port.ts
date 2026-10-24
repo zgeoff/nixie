@@ -116,9 +116,10 @@ async function readFeatures(
   };
 }
 
-// imp client 3.0.0 differs from 2.11.0 only in the version it reports, and impd 3 drops only the
-// IMP_BUILD_ISOLATION setting, which nixie never sets, so imp client 3 speaks impd 2 too.
-const EXTRA_IMPD_MAJORS: ReadonlySet<number> = new Set([2]);
+// imp client 4 differs from imp client 3 only in how it builds an image, and nixie adds images by
+// ref, never through a build, so imp client 4 speaks impd 3 too. impd 3 drops only the
+// IMP_BUILD_ISOLATION setting, which nixie never sets, so it speaks impd 2 as well.
+const EXTRA_IMPD_MAJORS: ReadonlySet<number> = new Set([2, 3]);
 
 function isExtraImpdMajor(version: string): boolean {
   const major = /^(?<major>\d+)\.\d+\.\d+/u.exec(version)?.groups?.['major'];

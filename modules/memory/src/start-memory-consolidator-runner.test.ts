@@ -43,6 +43,7 @@ async function setupTest() {
     store,
     config: consolidationConfigSchema.parse({}),
     getPersona: () => '',
+    getPrompts: () => ({}),
     ownerName: 'Marisol',
     onError: (error) => {
       throw error;

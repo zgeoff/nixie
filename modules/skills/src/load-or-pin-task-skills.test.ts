@@ -49,7 +49,7 @@ test('it keeps a task on the skill version it first loaded after a seed changes 
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   await loadOrPinTaskSkills(ctx.log, {
     thread: 'conversation',
@@ -62,7 +62,7 @@ test('it keeps a task on the skill version it first loaded after a seed changes 
     '---\nname: tide-tables\ndescription: Reads a tide table by port.\n---\n# Tides by port\n',
   );
 
-  const second = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const second = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const skills = await loadOrPinTaskSkills(ctx.log, {
     thread: 'conversation',
@@ -96,7 +96,7 @@ test('it pins a task on its first load to the skills on its list, and records th
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
-    policy: { rules: [], tools: [] },
+    buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
   const tideTables = seeded.inForce?.skills.find((skill) => skill.name === 'tide-tables');
@@ -136,7 +136,7 @@ test("it pins a task that first loads after a seed to the new version, apart fro
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
@@ -149,7 +149,7 @@ test("it pins a task that first loads after a seed to the new version, apart fro
     '---\nname: tide-tables\ndescription: Reads a tide table by port.\n---\n# Tides by port\n',
   );
 
-  const second = await runSeed({ log: ctx.log, source: ctx.source, policy });
+  const second = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
   const taskA = await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',

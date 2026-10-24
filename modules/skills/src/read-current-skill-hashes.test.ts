@@ -63,7 +63,12 @@ test("it reads each skill nixie wrote over the snapshot's version, and the rest 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), tides);
   await writeFile(join(ctx.root, 'skills', 'star-chart', 'SKILL.md'), stars);
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const seededStars = checkSkillFiles('star-chart', [{ path: 'SKILL.md', text: stars }]);
 
@@ -102,7 +107,12 @@ test("it reads your definitions' version of a retired skill nixie wrote before t
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), tides);
-  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const definitions = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: tides }]);
 
@@ -122,7 +132,7 @@ test("it reads your definitions' version of a retired skill nixie wrote before t
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, policy: { rules: [], tools: [] } });
+  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => ({ rules: [], tools: [] }) });
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writeWrittenSkillState(tx, {
