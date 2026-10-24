@@ -26,10 +26,15 @@ Route the tools through the reverse forward, with the sandbox adapter reopening 
 
 ## Run it
 
-Start an isolated imp 0.40.2 dev instance first, then run from this directory:
+Start an isolated imp 0.40.2 dev instance first, then run from this directory. The spike refuses to
+start until `IMP_URL`, `SPIKE_DEV_DATA` and `SPIKE_WORK` are set:
 
 ```bash
 bun install --frozen-lockfile
+export IMP_URL=http://localhost:<dev_api_port>
+export IMP_CLI=<release_cli_path>
+export SPIKE_DEV_DATA=<dev_data_directory>
+export SPIKE_WORK=<scratch_directory>
 IMP_TOKEN=$(IMP_DEV_NAME=<dev_container_name> <imp_checkout>/scripts/dev.sh token) bun run spike
 ```
 
