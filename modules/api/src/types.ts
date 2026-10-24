@@ -51,7 +51,7 @@ export interface HostRouterOptions {
   readonly gate: HostCallGate;
 }
 
-export interface HostCallGate {
+interface HostCallGate {
   readonly runCall: <T>(call: () => Promise<T>, onClosed: () => Promise<T>) => Promise<T>;
 }
 
