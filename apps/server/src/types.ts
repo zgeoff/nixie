@@ -1,4 +1,5 @@
 import type { APIContext } from '@heynixie/api';
+import type { HostContractClient } from '@heynixie/contract';
 import type { DefinitionsInForce, DefinitionsSource } from '@heynixie/definitions';
 import type { Logger } from '@heynixie/logger';
 import type { Encoder } from '@heynixie/memory';
@@ -77,6 +78,8 @@ export interface CLIFlags {
 
   readonly files?: string;
 
+  readonly entry?: string;
+
   readonly keep?: 'nixie' | 'definitions';
 
   readonly 'keep-sessions': boolean;
@@ -91,6 +94,16 @@ export interface CLIFlags {
 }
 
 export type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => Promise<number>;
+
+export interface HostTransport {
+  readonly resolveSocketPath: (configPath: string) => Promise<string>;
+
+  readonly sendHostRequest: (
+    socketPath: string,
+    name: string,
+    call: (client: HostContractClient) => Promise<unknown>,
+  ) => Promise<unknown>;
+}
 
 export interface PartReader<Values> {
   readonly get: <Name extends keyof Values>(name: Name) => Values[Name];

@@ -7,6 +7,7 @@ import { checkEncoder } from './check-encoder';
 import { createConsolidationCommands } from './create-consolidation-commands';
 import { createDeploymentCommands } from './create-deployment-commands';
 import { createMemoryCommands } from './create-memory-commands';
+import { createPromptCommands } from './create-prompt-commands';
 import { createSessionCommands } from './create-session-commands';
 import { createSkillCommands } from './create-skill-commands';
 import { readCLIArgs } from './read-cli-args';
@@ -26,6 +27,7 @@ const commands = new Map<string, Command>([
   ...createConsolidationCommands(),
   ...buildSubjectCommands(),
   ...createSkillCommands(),
+  ...createPromptCommands({ resolveSocketPath, sendHostRequest }),
   ...buildBackupCommands(),
 ]);
 

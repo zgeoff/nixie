@@ -218,6 +218,42 @@ const writtenSkillSchema = z.object({
   approvedAt: z.date(),
 });
 
+const promptPartFileSchema = z.object({ path: z.string(), text: z.string() });
+const promptEntrySchema = z.record(z.string(), z.string());
+
+const pendingPromptProposalSchema = z.object({
+  proposalID: z.string(),
+  promptID: z.string(),
+  proposalHash: z.string(),
+
+  baseHash: z.string().nullable(),
+  entry: promptEntrySchema,
+  files: z.array(promptPartFileSchema),
+  reason: z.string(),
+
+  inForce: z.object({ parts: promptEntrySchema, template: z.string().nullable() }).nullable(),
+
+  thread: z.string().nullable(),
+  provenance: z.object({ runID: z.string(), callID: z.string(), profile: z.string() }),
+  createdAt: z.date(),
+  lapseAt: z.date(),
+
+  isStale: z.boolean(),
+});
+
+const promptAnswerSchema = z.strictObject({
+  proposalID: z.string().min(1),
+  proposalHash: z.string().min(1),
+});
+
+const prompts = oc.errors({
+  NOT_FOUND: { message: 'nothing has that ID', status: 404 },
+  PROPOSAL_HASH: { message: 'the proposal hash names another override', status: 409 },
+  PROPOSAL_CLOSED: { message: 'the proposal is answered or lapsed', status: 409 },
+  STALE_BASE: { message: 'the override in force moved past the proposal', status: 409 },
+  PROMPT_CHECK: { message: 'the override fails the definitions checks', status: 400 },
+});
+
 const forgottenItemsSchema = z.object({ itemIDs: z.array(z.string()) });
 
 export const hostContract = {
@@ -319,6 +355,26 @@ export const hostContract = {
           }),
         )
         .output(z.object({ approvalID: z.string(), keep: z.enum(['nixie', 'definitions']) })),
+    },
+  },
+  prompts: {
+    proposals: {
+      list: prompts.output(z.array(pendingPromptProposalSchema)),
+
+      approve: prompts
+        .input(
+          promptAnswerSchema.extend({
+            entry: promptEntrySchema.optional(),
+            files: z.array(promptPartFileSchema).optional(),
+          }),
+        )
+        .output(
+          z.object({ proposalID: z.string(), approvalID: z.string(), proposalHash: z.string() }),
+        ),
+
+      reject: prompts
+        .input(promptAnswerSchema.extend({ reason: z.string().max(500).regex(/\S/u) }))
+        .output(z.object({ proposalID: z.string() })),
     },
   },
 };

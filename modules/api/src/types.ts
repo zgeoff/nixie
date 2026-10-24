@@ -2,6 +2,7 @@ import type { ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { RecordKind } from '@heynixie/log';
 import type { HostMemoryStore, MemoryProposals, MemoryStore } from '@heynixie/memory';
+import type { PromptsInForce } from '@heynixie/prompts';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 
@@ -47,6 +48,9 @@ export interface HostRouterOptions {
   readonly runConversationReset: () => Promise<HostConversationReset>;
 
   readonly seedWrittenSkills: () => Promise<void>;
+
+  readonly readInForce: () => PromptsInForce | null;
+  readonly wakeExports: () => void;
 
   readonly gate: HostCallGate;
 }

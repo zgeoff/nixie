@@ -98,6 +98,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
                   repo: buildGitHubDefinitionsRepo(definitionsExport.repo),
                   readReviewer: () => parts.find('checker')?.check ?? null,
                 },
+          isPromptExported: definitionsExport !== null,
         },
       );
     },

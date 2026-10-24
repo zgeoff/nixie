@@ -23,6 +23,8 @@ async function setupTest() {
       context: api.context,
       readMemory: () => null,
       seedWrittenSkills: () => Promise.resolve(),
+      readInForce: () => null,
+      wakeExports: () => {},
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
       runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
       gate: buildAPIGate(),

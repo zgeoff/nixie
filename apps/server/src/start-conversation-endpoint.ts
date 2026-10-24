@@ -1,10 +1,11 @@
 import { join } from 'node:path';
 import { buildTimeTool, readMessageTimeZone } from '@heynixie/connectors';
 import type { DefinitionsInForce } from '@heynixie/definitions';
+import { checkPromptProposal } from '@heynixie/definitions';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
-import { buildPromptReadTool } from '@heynixie/prompts';
+import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import type { SkillVendorContext } from '@heynixie/skills';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
@@ -24,6 +25,8 @@ export interface ConversationEndpointTools {
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
 
   readonly vendor: SkillVendorContext | null;
+
+  readonly isPromptExported: boolean;
 }
 
 export interface ConversationEndpoint {
@@ -53,7 +56,17 @@ export async function startConversationEndpoint(
     tools.vendor,
   );
 
-  const prompts = [buildPromptReadTool({ readInForce: tools.readInForce })];
+  const promptContext = {
+    log: options.context.log,
+    readInForce: tools.readInForce,
+    checkProposal: checkPromptProposal,
+  };
+
+  // An approved override reaches the definitions only through the export's pull request, so
+  // without the export the model gets no tool to propose one.
+  const prompts = tools.isPromptExported
+    ? [buildPromptReadTool(promptContext), buildPromptWriteTool(promptContext)]
+    : [buildPromptReadTool(promptContext)];
 
   const definitions = buildConversationTools(
     { webFetch: tools.webFetch, time, logRead, skills, prompts },

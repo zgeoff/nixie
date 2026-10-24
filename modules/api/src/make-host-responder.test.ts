@@ -16,6 +16,8 @@ test('it answers a host procedure call with its output, dates included', async (
     context: ctx.context,
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
     runReset: () =>
       Promise.resolve({
         resetAt: new Date('2026-10-11T12:15:00.000Z'),
@@ -46,6 +48,8 @@ test('it answers 404 to a request outside the procedures', async () => {
     context: ctx.context,
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
     runReset: mock(),
     runConversationReset: mock(),
     gate: { runCall: (call) => call() },
@@ -65,6 +69,8 @@ test('it answers 500 with the reason when a procedure fails', async () => {
     context: ctx.context,
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
     runReset: () => Promise.reject(new Error('the database is locked')),
     runConversationReset: mock(),
     gate: { runCall: (call) => call() },
@@ -92,6 +98,8 @@ test('it answers 503 to a memory procedure before the memory store starts', asyn
     context: ctx.context,
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
     runReset: mock(),
     runConversationReset: mock(),
     gate: { runCall: (call) => call() },
@@ -108,13 +116,15 @@ test('it answers 503 to a memory procedure before the memory store starts', asyn
   expect(listed).rejects.toMatchObject({ code: 'MEMORY_NOT_STARTED', status: 503 });
 });
 
-test('it refuses a session, memory or skill procedure with 503 while the gate is closed', async () => {
+test('it refuses a session, memory, skill or prompt procedure with 503 while the gate is closed', async () => {
   const ctx = await setupTest();
 
   const respond = makeHostResponder({
     context: ctx.context,
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
     runReset: mock(),
     runConversationReset: mock(),
     gate: { runCall: (_call, onClosed) => onClosed() },
@@ -124,7 +134,12 @@ test('it refuses a session, memory or skill procedure with 503 while the gate is
     new RPCLink({ url: 'http://localhost/rpc', fetch: respond }),
   );
 
-  const calls = [client.sessions.list(), client.memory.subjects(), client.skills.written.list()];
+  const calls = [
+    client.sessions.list(),
+    client.memory.subjects(),
+    client.skills.written.list(),
+    client.prompts.proposals.list(),
+  ];
 
   const refusals = await Promise.all(
     calls.map((call) =>
@@ -139,6 +154,7 @@ test('it refuses a session, memory or skill procedure with 503 while the gate is
     { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
     { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
     { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
+    { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
   ]);
 });
 
@@ -149,6 +165,8 @@ test('it runs both resets while the gate is closed', async () => {
     context: ctx.context,
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
     runReset: () =>
       Promise.resolve({
         resetAt: new Date('2026-10-11T12:15:00.000Z'),

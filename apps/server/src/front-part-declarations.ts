@@ -119,6 +119,8 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           readMemory: () => parts.find('memory'),
           seedWrittenSkills: () =>
             runApprovedSkillsSeed(parts.find('server_parts'), parts.find('definitions_exports')),
+          readInForce: parts.get('context').inForce.read,
+          wakeExports: () => parts.find('definitions_exports')?.wake(),
           runReset: parts.get('reset').run,
           runConversationReset: parts.get('reset').runConversations,
           gate: parts.get('api_gate'),

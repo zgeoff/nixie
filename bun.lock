@@ -341,6 +341,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "@heynixie/sessions": "workspace:*",
         "@heynixie/skills": "workspace:*",
         "@heynixie/tasks": "workspace:*",
