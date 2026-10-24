@@ -4,6 +4,7 @@
 import type { TurnCase } from './build-turn-cases.ts';
 import type { EncoderDirs, EncoderName } from './load-turn-encoder.ts';
 import { loadTurnEncoder } from './load-turn-encoder.ts';
+import { makeRandom } from './make-random.ts';
 import type { RankConfig, TurnRanking } from './rank-turn.ts';
 import { SHIPPED, startRanker } from './rank-turn.ts';
 
@@ -179,33 +180,26 @@ export interface PairedDifference {
   high: number;
 }
 
-// A paired bootstrap over the labelled cases: each resample draws cases with replacement and takes
-// the mean difference in recall@5 between a run and the shipped ranking on the same cases.
+// A paired bootstrap over the cases a metric scores: each resample draws cases with replacement
+// and takes the mean difference between a run and the shipped run on the same cases.
 export function buildPairedDifference(
   run: RankedTurn[],
   base: RankedTurn[],
   gold: Map<string, Gold>,
-  metric: 'at5' | 'reciprocal',
+  metric: CaseMetric,
 ): PairedDifference {
   const baseByCase = new Map(base.map((entry) => [entry.caseID, entry]));
 
   const differences = run.flatMap((entry) => {
     const expected = gold.get(entry.caseID);
     const other = baseByCase.get(entry.caseID);
+    const value = expected === undefined ? null : buildCaseMetric(entry, expected, metric);
+    const baseValue = expected === undefined || other === undefined ? null : buildCaseMetric(other, expected, metric);
 
-    if (expected === undefined || expected.relevant.size === 0 || other === undefined) {
-      return [];
-    }
-
-    return [buildCaseMetric(entry, expected, metric) - buildCaseMetric(other, expected, metric)];
+    return value === null || baseValue === null ? [] : [value - baseValue];
   });
 
-  let seed = 1;
-  const random = () => {
-    seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
-
-    return seed / 2_147_483_648;
-  };
+  const random = makeRandom(1);
 
   const means = Array.from({ length: 2000 }, () => {
     let sum = 0;
@@ -224,8 +218,26 @@ export function buildPairedDifference(
   };
 }
 
-function buildCaseMetric(entry: RankedTurn, expected: Gold, metric: 'at5' | 'reciprocal'): number {
+export type CaseMetric = 'at5' | 'reciprocal' | 'fresh' | 'shownOnEmpty';
+
+// Returns null for a case the metric does not score.
+function buildCaseMetric(entry: RankedTurn, expected: Gold, metric: CaseMetric): number | null {
   const list = entry.ranking.facts;
+  const shown = [...entry.ranking.facts, ...entry.ranking.selves];
+
+  if (metric === 'shownOnEmpty') {
+    return expected.isLabelled && expected.relevant.size === 0 ? shown.length : null;
+  }
+
+  if (expected.relevant.size === 0) {
+    return null;
+  }
+
+  if (metric === 'fresh') {
+    const unseen = [...expected.relevant].filter((itemID) => !expected.delivered.has(itemID));
+
+    return unseen.length === 0 ? null : unseen.filter((itemID) => shown.includes(itemID)).length / unseen.length;
+  }
 
   if (metric === 'at5') {
     return list.slice(0, 5).filter((itemID) => expected.relevant.has(itemID)).length / expected.relevant.size;

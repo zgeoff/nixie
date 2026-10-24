@@ -13,6 +13,7 @@ import type { TurnCase } from './real-turns/build-turn-cases.ts';
 import { buildTurnCases } from './real-turns/build-turn-cases.ts';
 import type { EncoderName } from './real-turns/load-turn-encoder.ts';
 import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
+import { makeRandom } from './real-turns/make-random.ts';
 import { readPlainExport } from './real-turns/read-plain-export.ts';
 import { SHIPPED, startRanker } from './real-turns/rank-turn.ts';
 import type { Gold, Label } from './real-turns/score-turns.ts';
@@ -85,7 +86,7 @@ function printStats(turns: TurnCase[]): void {
 async function runReplay(turns: TurnCase[]): Promise<void> {
   const encoder = await loadTurnEncoder('leaf-ir-q8' satisfies EncoderName, encoderDirs);
   const ranker = await startRanker(encoder);
-  const counts = { turns: turns.length, logMatches: 0, logMismatches: 0, harnessMatches: 0, harnessMismatches: 0 };
+  const counts = { turns: turns.length, logMatches: 0, logMismatches: 0, withItems: 0, withItemsMatches: 0, harnessMatches: 0, harnessMismatches: 0 };
   const mismatched: string[] = [];
 
   for (const turn of turns) {
@@ -93,6 +94,11 @@ async function runReplay(turns: TurnCase[]): Promise<void> {
     const harness = await ranker.rankTurn(turn, SHIPPED, excludedWords);
     const replayed = [...product.facts, ...product.selves].toSorted().join(',');
     const logged = turn.logged.map((item) => item.itemID).toSorted().join(',');
+
+    if (turn.logged.length > 0) {
+      counts.withItems += 1;
+      counts.withItemsMatches += replayed === logged ? 1 : 0;
+    }
 
     if (replayed === logged) {
       counts.logMatches += 1;
@@ -138,7 +144,13 @@ async function runScore(turns: TurnCase[]): Promise<void> {
       relevant: new Set((label?.relevant ?? []).map(toItem).filter((itemID) => itemID !== undefined)),
       best: label?.best === null || label?.best === undefined ? null : (toItem(label.best) ?? null),
       noise: new Set(turn.ratings.filter((rating) => rating.verdict !== 'helpful').map((rating) => rating.itemID)),
-      delivered: new Set(turn.delivered.map((ref) => ref.split('@')[0] ?? ref)),
+      // The product leaves out only the version it delivered, so an item counts as delivered only
+      // at the version the turn could retrieve.
+      delivered: new Set(
+        turn.candidates
+          .filter((candidate) => turn.delivered.includes(`${candidate.itemID}@${candidate.version}`))
+          .map((candidate) => candidate.itemID),
+      ),
       isLabelled: label !== undefined,
     });
   }
@@ -174,17 +186,21 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   }
 
   console.log(
-    '\n| Run | Gold cases | Covered recall | Fresh cases | Fresh recall | Empty cases | Shown on empty | Empty with any | Precision | Noise served | Shown per turn |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '\n| Run | Gold cases | Covered recall | Fresh cases | Fresh recall | Empty cases | Shown on empty | Empty with any | Precision | Noise served | Shown per turn | Fresh change | Shown on empty change |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   );
+
+  const servedBase = results.get(runs.find((entry) => entry.name.endsWith('served, similarity 0.38, BM25 0.25'))?.name ?? '') ?? [];
 
   for (const run of runs.filter((entry) => entry.kind === 'served')) {
     const ranked = results.get(run.name) ?? [];
     const score = scoreServed(ranked, gold);
     const shown = mean(ranked.map((entry) => entry.ranking.facts.length + entry.ranking.selves.length));
+    const fresh = buildPairedDifference(ranked, servedBase, gold, 'fresh');
+    const shownOnEmpty = buildPairedDifference(ranked, servedBase, gold, 'shownOnEmpty');
 
-    report[run.name] = { ...score, shownPerTurn: shown };
+    report[run.name] = { ...score, shownPerTurn: shown, freshDifference: fresh, shownOnEmptyDifference: shownOnEmpty };
     console.log(
-      `| ${run.name} | ${score.goldCases} | ${score.coveredRecall} | ${score.freshCases} | ${score.freshRecall} | ${score.emptyCases} | ${score.shownOnEmpty} | ${score.emptyWithAny} | ${score.precision} | ${score.noiseServed} | ${shown} |`,
+      `| ${run.name} | ${score.goldCases} | ${score.coveredRecall} | ${score.freshCases} | ${score.freshRecall} | ${score.emptyCases} | ${score.shownOnEmpty} | ${score.emptyWithAny} | ${score.precision} | ${score.noiseServed} | ${shown} | ${formatDifference(fresh)} | ${formatDifference(shownOnEmpty)} |`,
     );
   }
 
@@ -299,20 +315,6 @@ function collectShown(turn: TurnCase): TurnCase['candidates'] {
 
 function cutText(text: string, limit: number): string {
   return text.length <= limit ? text : `${text.slice(0, limit)} …`;
-}
-
-function makeRandom(seed: number): () => number {
-  let state = seed;
-
-  return () => {
-    state = (state + 0x6d2b79f5) | 0;
-
-    let mixed = Math.imul(state ^ (state >>> 15), 1 | state);
-
-    mixed = (mixed + Math.imul(mixed ^ (mixed >>> 7), 61 | mixed)) ^ mixed;
-
-    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4_294_967_296;
-  };
 }
 
 function shuffle<T>(list: readonly T[], random: () => number): T[] {
