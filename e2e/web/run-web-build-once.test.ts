@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runWebBuildOnce } from '@heynixie/web/test-utils';
@@ -17,14 +17,22 @@ test('it builds into a directory for its own process, so parallel test processes
   const path = await runWebBuildOnce();
 
   expect(path).toBe(join(tmpdir(), 'nixie-web-builds', String(process.pid), 'server', 'server.js'));
-}, 120_000);
+});
 
 test('it removes the build of a test process that has exited before it builds', async () => {
   const buildsDir = await mkdtemp(join(tmpdir(), 'nixie-web-builds-test-'));
 
   onTestFinished(() => rm(buildsDir, { recursive: true, force: true }));
 
-  const first = Bun.spawn(
+  // the directory an exited test process left behind, named for its process ID as a build is
+  const exited = Bun.spawn([process.execPath, '--version'], { stdout: 'ignore' });
+
+  await exited.exited;
+  await mkdir(join(buildsDir, String(exited.pid), 'server'), { recursive: true });
+
+  const buildsBefore = await readdir(buildsDir);
+
+  const child = Bun.spawn(
     [
       process.execPath,
       'test',
@@ -41,51 +49,27 @@ test('it removes the build of a test process that has exited before it builds', 
   );
 
   onTestFinished(() => {
-    first.kill();
+    child.kill();
   });
 
-  const firstExitCode = await first.exited;
-  const firstBuilds = await readdir(buildsDir);
+  const exitCode = await child.exited;
+  const buildsAfter = await readdir(buildsDir);
 
-  const second = Bun.spawn(
-    [
-      process.execPath,
-      'test',
-      join(import.meta.dir, 'run-web-build-once.test.ts'),
-      '-t',
-      'it builds the web server entry once and shares it',
-    ],
-    {
-      cwd: import.meta.dir,
-      env: { ...process.env, NIXIE_WEB_BUILDS_DIR: buildsDir },
-      stderr: 'ignore',
-      stdout: 'ignore',
-    },
-  );
-
-  onTestFinished(() => {
-    second.kill();
-  });
-
-  const secondExitCode = await second.exited;
-  const secondBuilds = await readdir(buildsDir);
-
-  expect(firstExitCode).toBe(0);
-  expect(firstBuilds).toHaveLength(1);
-  expect(secondExitCode).toBe(0);
-  expect(secondBuilds).toHaveLength(1);
-  expect(secondBuilds).not.toContain(firstBuilds[0]);
-}, 120_000);
+  expect(buildsBefore).toStrictEqual([String(exited.pid)]);
+  expect(exitCode).toBe(0);
+  expect(buildsAfter).toHaveLength(1);
+  expect(buildsAfter).not.toContain(String(exited.pid));
+});
 
 // This cap still refuses Node's wasm trap handler reservation, and a lower one leaves some Node
-// releases no room for their own heap. The lane's raised limit stops at this process, so the child
-// run takes the same limit on its own command line.
+// releases no room for their own heap. The lane's limit stops at this process, so the child run
+// takes the same limit on its own command line.
 test('it builds the web server entry under an address-space cap', async () => {
   const child = Bun.spawn(
     [
       'sh',
       '-c',
-      'ulimit -v 12000000 && exec "$0" test --timeout=120000 "$1" -t "$2"',
+      'ulimit -v 12000000 && exec "$0" test --timeout=15000 "$1" -t "$2"',
       process.execPath,
       join(import.meta.dir, 'run-web-build-once.test.ts'),
       'it builds the web server entry once and shares it',
