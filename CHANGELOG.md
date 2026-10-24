@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.45.0](https://github.com/zgeoff/nixie/compare/v0.44.0...v0.45.0) (2026-10-24)
+
+
+### Features
+
+* **memory:** forget every memory item through reset --only memories ([#619](https://github.com/zgeoff/nixie/issues/619)) ([5cc8312](https://github.com/zgeoff/nixie/commit/5cc83129d0c4f0ec4d28449eb323ebdf9f8c03e1))
+* **research:** measure how a voice turn ends on real speech ([#640](https://github.com/zgeoff/nixie/issues/640)) ([85d7ce4](https://github.com/zgeoff/nixie/commit/85d7ce4d10da990779c72b13c1cecad07351a138))
+* **server:** shred the conversation through reset --only conversations ([#620](https://github.com/zgeoff/nixie/issues/620)) ([4cd58b6](https://github.com/zgeoff/nixie/commit/4cd58b6a93827d53c779fd00a8851c87ab1f8da1))
+* **web:** show no placeholder for a message whose text is shredded ([#621](https://github.com/zgeoff/nixie/issues/621)) ([9a4682f](https://github.com/zgeoff/nixie/commit/9a4682f888d7810fb40e783e2310f0dc71e99676))
+
+
+### Bug Fixes
+
+* **research:** keep a pause when its transcript fails ([#646](https://github.com/zgeoff/nixie/issues/646)) ([59f90d4](https://github.com/zgeoff/nixie/commit/59f90d4fe6ffbfe742cc50967efa6c974a880d27))
+
 ## [0.44.0](https://github.com/zgeoff/nixie/compare/v0.43.0...v0.44.0) (2026-10-24)
 
 
