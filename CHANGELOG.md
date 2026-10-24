@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.43.0](https://github.com/zgeoff/nixie/compare/v0.42.0...v0.43.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* this release reads definitions formats 2 and 3, and refuses format 1.
+
+### Features
+
+* override built-in prompts from a prompts map in nixie.yaml ([#595](https://github.com/zgeoff/nixie/issues/595)) ([b638e4f](https://github.com/zgeoff/nixie/commit/b638e4fc302ef6db6eb09fb7a302ff87bf9fa35a))
+* **research:** measure retrieval on a deployment's own turns ([#634](https://github.com/zgeoff/nixie/issues/634)) ([ad0209b](https://github.com/zgeoff/nixie/commit/ad0209b9925580f65a28360b637fbabff6a69702))
+
+
+### Bug Fixes
+
+* **ci:** pass the shell, workflows and test timeouts checks ([#616](https://github.com/zgeoff/nixie/issues/616)) ([f404057](https://github.com/zgeoff/nixie/commit/f4040577c21b8ff409b956915bbf311cf54c3465))
+* **memory:** list memory items newest first, one page per list ([#637](https://github.com/zgeoff/nixie/issues/637)) ([6383697](https://github.com/zgeoff/nixie/commit/6383697adcc875fe7ab9ed701edbde3e9818263c))
+* **sandbox-imp:** accept impd 4 beside impd 2 and 3 ([#609](https://github.com/zgeoff/nixie/issues/609)) ([a76a2c9](https://github.com/zgeoff/nixie/commit/a76a2c9b86186030a308dc39c2fe88b2885d4321))
+
 ## [0.42.0](https://github.com/zgeoff/nixie/compare/v0.41.0...v0.42.0) (2026-10-24)
 
 
