@@ -12,5 +12,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "msw": "2.15.0"
   }
 }
