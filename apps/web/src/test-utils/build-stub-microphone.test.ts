@@ -36,42 +36,45 @@ test('it ends a track once the track stops', async () => {
   ]);
 });
 
-test('it refuses with NotAllowedError and blocks the microphone when the user blocks the prompt', async () => {
-  const stub = buildStubMicrophone({ permission: 'prompt', answer: 'block' });
+test.each([
+  {
+    label: 'a blocked prompt',
+    permission: 'prompt',
+    answer: 'block',
+    error: 'NotAllowedError',
+    after: 'denied',
+  },
+  {
+    label: 'a closed prompt',
+    permission: 'prompt',
+    answer: 'dismiss',
+    error: 'NotAllowedError',
+    after: 'prompt',
+  },
+  {
+    label: 'a device with no microphone',
+    permission: 'prompt',
+    answer: 'missing',
+    error: 'NotFoundError',
+    after: 'prompt',
+  },
+  {
+    label: 'a site already blocked',
+    permission: 'denied',
+    answer: 'allow',
+    error: 'NotAllowedError',
+    after: 'denied',
+  },
+] as const)('it refuses $label with $error and leaves the permission $after', async (row) => {
+  const stub = buildStubMicrophone({ permission: row.permission, answer: row.answer });
   const refusal = stub.microphone.openMedia({ audio: true });
 
-  expect(refusal).rejects.toMatchObject({ name: 'NotAllowedError' });
+  expect(refusal).rejects.toMatchObject({ name: row.error });
 
-  const permission = await stub.microphone.queryPermission();
+  const status = await stub.microphone.queryPermission();
 
-  expect(permission?.state).toBe('denied');
-});
-
-test('it refuses with NotAllowedError and keeps the prompt when the user closes the prompt', async () => {
-  const stub = buildStubMicrophone({ permission: 'prompt', answer: 'dismiss' });
-  const refusal = stub.microphone.openMedia({ audio: true });
-
-  expect(refusal).rejects.toMatchObject({ name: 'NotAllowedError' });
-
-  const permission = await stub.microphone.queryPermission();
-
-  expect(permission?.state).toBe('prompt');
-});
-
-test('it refuses with NotFoundError when the device has no microphone', () => {
-  const stub = buildStubMicrophone({ permission: 'prompt', answer: 'missing' });
-
-  expect(stub.microphone.openMedia({ audio: true })).rejects.toMatchObject({
-    name: 'NotFoundError',
-  });
-});
-
-test('it refuses at once without a prompt when the microphone is blocked', () => {
-  const stub = buildStubMicrophone({ permission: 'denied', answer: 'allow' });
-
-  expect(stub.microphone.openMedia({ audio: true })).rejects.toMatchObject({
-    name: 'NotAllowedError',
-  });
+  expect(status?.state).toBe(row.after);
+  expect(stub.readTracks()).toStrictEqual([]);
 });
 
 test('it reports a change made in the site settings to every permission it gave out', async () => {
