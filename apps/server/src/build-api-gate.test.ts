@@ -46,8 +46,7 @@ test('it closes only once the requests in flight have answered', async () => {
   await call.started;
 
   const closed = gate.close();
-
-  const statusBefore = await Bun.sleep(0).then(() => Bun.peek.status(closed));
+  const statusBefore = Bun.peek.status(closed);
 
   call.release();
 
@@ -77,8 +76,7 @@ test('it closes only once the calls in flight have answered', async () => {
   await call.started;
 
   const closed = gate.close();
-
-  const statusBefore = await Bun.sleep(0).then(() => Bun.peek.status(closed));
+  const statusBefore = Bun.peek.status(closed);
 
   call.release();
 
