@@ -34,9 +34,14 @@ const recalledSchema = z.object({
 // session-delivery replay reads a missing field as no items.
 const turnEndedSchema = z.object({ retrieved: z.array(itemRefSchema).exactOptional() });
 
+const ratedSchema = z.object({
+  recalledSequence: z.int(),
+  ratings: z.array(z.object({ itemID: z.string(), verdict: z.enum(['helpful', 'noise', 'misleading']) })),
+});
+
 export interface Rating {
   itemID: string;
-  verdict: string;
+  verdict: z.infer<typeof ratedSchema>['ratings'][number]['verdict'];
   note: string | null;
 }
 
@@ -215,16 +220,10 @@ function collectRatings(data: PlainExport): Map<number, Rating[]> {
       continue;
     }
 
-    const recalled = record.payload['recalledSequence'];
-    const list = record.payload['ratings'];
+    const parsed = parsePayload(ratedSchema, record);
+    const rated = byRecall.get(parsed.recalledSequence) ?? [];
 
-    if (typeof recalled !== 'number' || !Array.isArray(list)) {
-      continue;
-    }
-
-    const rated = byRecall.get(recalled) ?? [];
-
-    for (const rating of list) {
+    for (const rating of parsed.ratings) {
       rated.push({
         itemID: rating.itemID,
         verdict: rating.verdict,
@@ -232,7 +231,7 @@ function collectRatings(data: PlainExport): Map<number, Rating[]> {
       });
     }
 
-    byRecall.set(recalled, rated);
+    byRecall.set(parsed.recalledSequence, rated);
   }
 
   return byRecall;
