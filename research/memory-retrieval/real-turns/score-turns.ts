@@ -6,15 +6,25 @@ import type { EncoderDirs, EncoderName } from './load-turn-encoder.ts';
 import { loadTurnEncoder } from './load-turn-encoder.ts';
 import { makeRandom } from './make-random.ts';
 import type { RankConfig, TurnRanking } from './rank-turn.ts';
+import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
 import { startMemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
 import { buildRanker, SHIPPED } from './rank-turn.ts';
 
-export interface Label {
-  caseID: string;
-  relevant: string[];
-  best: string | null;
-}
+// A label names items by the references local to its turn, and the sample key maps each reference
+// to the item it stands for.
+export const labelSchema = z.object({
+  caseID: z.string(),
+  relevant: z.array(z.string()),
+  best: z.string().nullable(),
+});
+
+export type Label = z.infer<typeof labelSchema>;
+
+export const sampleKeySchema = z.object({
+  caseID: z.string(),
+  refs: z.record(z.string(), z.string()),
+});
 
 export interface Run {
   name: string;

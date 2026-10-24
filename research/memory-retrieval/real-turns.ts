@@ -18,8 +18,17 @@ import { readPlainExport } from './real-turns/read-plain-export.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { startMemoryIndex } from '../../modules/memory/src/start-memory-index.ts';
 import { buildRanker, SHIPPED } from './real-turns/rank-turn.ts';
-import type { Gold, Label } from './real-turns/score-turns.ts';
-import { buildPairedDifference, buildRuns, runRankings, scoreRanking, scoreServed } from './real-turns/score-turns.ts';
+import { readJSONLines } from './real-turns/read-json-lines.ts';
+import type { Gold } from './real-turns/score-turns.ts';
+import {
+  buildPairedDifference,
+  buildRuns,
+  labelSchema,
+  runRankings,
+  sampleKeySchema,
+  scoreRanking,
+  scoreServed,
+} from './real-turns/score-turns.ts';
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -127,8 +136,8 @@ async function runReplay(turns: TurnCase[]): Promise<void> {
 // Scores every run on the labelled turns, or, with no labels, on the rated turns and the turns whose
 // retrieval returned an item, which shows only the noise ratings and how many items each run shows.
 async function runScore(turns: TurnCase[]): Promise<void> {
-  const labels = values.labels === undefined ? [] : await readJSONLines<Label>(values.labels);
-  const key = values.key === undefined ? [] : await readJSONLines<{ caseID: string; refs: Record<string, string> }>(values.key);
+  const labels = values.labels === undefined ? [] : await readJSONLines(resolve(values.labels), labelSchema);
+  const key = values.key === undefined ? [] : await readJSONLines(resolve(values.key), sampleKeySchema);
   const refsByCase = new Map(key.map((entry) => [entry.caseID, entry.refs]));
   const labelsByCase = new Map(labels.map((label) => [label.caseID, label]));
 
@@ -219,10 +228,8 @@ async function writeTestSet(turns: TurnCase[]): Promise<void> {
     throw new Error('pass --labels <file>, --key <file> and --out <file>');
   }
 
-  const labels = new Map((await readJSONLines<Label>(values.labels)).map((label) => [label.caseID, label]));
-  const keys = new Map(
-    (await readJSONLines<{ caseID: string; refs: Record<string, string> }>(values.key)).map((entry) => [entry.caseID, entry.refs]),
-  );
+  const labels = new Map((await readJSONLines(resolve(values.labels), labelSchema)).map((label) => [label.caseID, label]));
+  const keys = new Map((await readJSONLines(resolve(values.key), sampleKeySchema)).map((entry) => [entry.caseID, entry.refs]));
 
   const lines = turns.flatMap((turn) => {
     const label = labels.get(turn.caseID);
@@ -249,13 +256,6 @@ async function writeTestSet(turns: TurnCase[]): Promise<void> {
   await Bun.write(resolve(values.out), `${lines.join('\n')}\n`);
 
   console.log({ cases: lines.length });
-}
-
-async function readJSONLines<T>(path: string): Promise<T[]> {
-  return (await Bun.file(resolve(path)).text())
-    .split('\n')
-    .filter((line) => line.trim() !== '')
-    .map((line): T => JSON.parse(line));
 }
 
 // Writes the turns a labeller marks, each with every item a turn could retrieve under a reference
