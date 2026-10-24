@@ -28,7 +28,11 @@ export function createHostPromptProposalProcedures(context: HostPromptContext) {
         ...(input.files === undefined ? {} : { files: input.files }),
       });
 
-      invariant(result.approvalID !== null && result.proposalHash !== null);
+      if (result.status === 'refused') {
+        throw options.errors[result.code]({ message: result.reason });
+      }
+
+      invariant(result.status === 'approved', 'an approval answer approves or is refused');
 
       context.wakeExports();
 
@@ -40,9 +44,16 @@ export function createHostPromptProposalProcedures(context: HostPromptContext) {
     }),
 
     reject: proposals.reject.handler(async (options) => {
-      await writePromptProposalAnswer(context, { answer: 'reject', ...options.input });
+      const result = await writePromptProposalAnswer(context, {
+        answer: 'reject',
+        ...options.input,
+      });
 
-      return { proposalID: options.input.proposalID };
+      if (result.status === 'refused') {
+        throw options.errors[result.code]({ message: result.reason });
+      }
+
+      return { proposalID: result.proposalID };
     }),
   };
 }

@@ -255,3 +255,81 @@ test('#reject answers a proposal that does not exist with its typed code', async
 
   expect(refusal).toMatchObject({ code: 'NOT_FOUND', status: 404 });
 });
+
+test('#reject refuses an answer under another proposal hash with its code', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'prompts.override_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: promptsOverrideProposedCodec.encode({
+        proposalID: 'p8w2n4c6ld',
+        promptID: 'writer',
+        proposalHash: 'hash-c',
+        baseHash: null,
+        entry: { _template: '{{ parts.safety }}' },
+        files: [],
+        reason: 'Drop the instruction part.',
+        provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  const refusal = await ctx.client
+    .reject({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-d', reason: 'No.' })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  expect(refusal).toMatchObject({
+    code: 'PROPOSAL_HASH',
+    status: 409,
+    message: 'the answer to prompt proposal p8w2n4c6ld names another proposal hash',
+  });
+});
+
+test('#approve refuses a proposal that a rejection closed with its code', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'prompts.override_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: promptsOverrideProposedCodec.encode({
+        proposalID: 'p8w2n4c6ld',
+        promptID: 'writer',
+        proposalHash: 'hash-c',
+        baseHash: null,
+        entry: { _template: '{{ parts.safety }}' },
+        files: [],
+        reason: 'Drop the instruction part.',
+        provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
+      }),
+    },
+    {
+      kind: 'prompts.override_rejected',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: { proposalID: 'p8w2n4c6ld' },
+    },
+  ]);
+
+  const refusal = await ctx.client
+    .approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  expect(refusal).toMatchObject({
+    code: 'PROPOSAL_CLOSED',
+    status: 409,
+    message: 'prompt proposal p8w2n4c6ld is rejected, so it takes no answer',
+  });
+
+  expect(ctx.wakeExports).not.toHaveBeenCalled();
+});
