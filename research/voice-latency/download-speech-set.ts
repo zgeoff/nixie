@@ -15,53 +15,55 @@ import { readWithRetry } from './real-speech.ts';
 import { speechSetDir } from './speech-sets.ts';
 import { sampleRate } from './speech.ts';
 
-const { values } = parseArgs({
-  options: {
-    pages: { default: '40', type: 'string' },
-    'per-page': { default: '5', type: 'string' },
-    set: { type: 'string' },
-  },
-});
-const set = z.enum(['hvb', 'slurp']).parse(values.set);
-const pages = z.coerce.number().int().positive().parse(values.pages);
-const perPage = z.coerce.number().int().positive().parse(values['per-page']);
+export type SpeechSetName = 'hvb' | 'slurp';
+
+// Keeps up to perPage eligible utterances from each page, never the same utterance twice, and
+// replaces the target folder only once every page is in. Returns the number kept.
+export async function downloadSpeechSet(options: {
+  decode: (encoded: Uint8Array) => Promise<Uint8Array>;
+  pages: number;
+  perPage: number;
+  set: SpeechSetName;
+  targetDir: string;
+  transport: typeof fetch;
+}): Promise<number> {
+  const source = pickSource(options.set);
+  const stagingDir = `${options.targetDir}.partial`;
+  rmSync(stagingDir, { force: true, recursive: true });
+  mkdirSync(stagingDir, { recursive: true });
+  const seen = new Set<string>();
+  let kept = 0;
+  for (let page = 0; page < options.pages; page++) {
+    const offset = Math.floor((page * source.rows) / options.pages);
+    const response = await readWithRetry(`${source.url}&offset=${offset}&length=100`, options.transport);
+    if (!response.ok) {
+      throw new Error(`rows at ${offset}: HTTP ${response.status}`);
+    }
+    const body = z.object({ rows: z.array(z.object({ row: z.unknown() })) }).parse(await response.json());
+    const picked = body.rows
+      .flatMap(({ row }) => source.pick(row) ?? [])
+      .filter((utterance) => !seen.has(utterance.id) && seen.add(utterance.id))
+      .slice(0, options.perPage);
+    for (const utterance of picked) {
+      const audio = await readWithRetry(utterance.src, options.transport);
+      if (!audio.ok) {
+        throw new Error(`audio ${utterance.id}: HTTP ${audio.status}`);
+      }
+      writeFileSync(join(stagingDir, `${kept}.f32`), await options.decode(new Uint8Array(await audio.arrayBuffer())));
+      writeFileSync(join(stagingDir, `${kept}.json`), JSON.stringify({ id: utterance.id, text: utterance.text }));
+      kept++;
+    }
+  }
+  rmSync(options.targetDir, { force: true, recursive: true });
+  renameSync(stagingDir, options.targetDir);
+  return kept;
+}
 
 interface Utterance {
   id: string;
   src: string;
   text: string;
 }
-
-const source = match(set)
-  .with('hvb', () => ({
-    pick: (row: unknown): Utterance | undefined => {
-      const parsed = hvbRow.safeParse(row);
-      return parsed.success && parsed.data.role === 'caller' && countWords(parsed.data.text) >= 6
-        ? {
-            id: `${parsed.data.issue_id}-${parsed.data.utt_index}`,
-            src: parsed.data.audio[0]?.src ?? '',
-            text: parsed.data.text,
-          }
-        : undefined;
-    },
-    rows: 6121,
-    url: 'https://datasets-server.huggingface.co/rows?dataset=asapp/slue-phase-2&config=hvb&split=test',
-  }))
-  .with('slurp', () => ({
-    pick: (row: unknown): Utterance | undefined => {
-      const parsed = slurpRow.safeParse(row);
-      return parsed.success && countWords(parsed.data.transcript) >= 4
-        ? {
-            id: String(parsed.data.id),
-            src: parsed.data.audio[0]?.src ?? '',
-            text: parsed.data.transcript,
-          }
-        : undefined;
-    },
-    rows: 13_078,
-    url: 'https://datasets-server.huggingface.co/rows?dataset=marcel-gohsen/slurp&config=default&split=test',
-  }))
-  .exhaustive();
 
 const audioField = z.array(z.object({ src: z.string() }));
 const hvbRow = z.object({
@@ -73,40 +75,46 @@ const hvbRow = z.object({
 });
 const slurpRow = z.object({ audio: audioField, id: z.number(), transcript: z.string() });
 
+function pickSource(set: SpeechSetName): {
+  pick: (row: unknown) => Utterance | undefined;
+  rows: number;
+  url: string;
+} {
+  return match(set)
+    .with('hvb', () => ({
+      pick: (row: unknown): Utterance | undefined => {
+        const parsed = hvbRow.safeParse(row);
+        return parsed.success && parsed.data.role === 'caller' && countWords(parsed.data.text) >= 6
+          ? {
+              id: `${parsed.data.issue_id}-${parsed.data.utt_index}`,
+              src: parsed.data.audio[0]?.src ?? '',
+              text: parsed.data.text,
+            }
+          : undefined;
+      },
+      rows: 6121,
+      url: 'https://datasets-server.huggingface.co/rows?dataset=asapp/slue-phase-2&config=hvb&split=test',
+    }))
+    .with('slurp', () => ({
+      pick: (row: unknown): Utterance | undefined => {
+        const parsed = slurpRow.safeParse(row);
+        return parsed.success && countWords(parsed.data.transcript) >= 4
+          ? {
+              id: String(parsed.data.id),
+              src: parsed.data.audio[0]?.src ?? '',
+              text: parsed.data.transcript,
+            }
+          : undefined;
+      },
+      rows: 13_078,
+      url: 'https://datasets-server.huggingface.co/rows?dataset=marcel-gohsen/slurp&config=default&split=test',
+    }))
+    .exhaustive();
+}
+
 function countWords(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
 }
-
-const targetDir = speechSetDir(set);
-const stagingDir = `${targetDir}.partial`;
-rmSync(stagingDir, { force: true, recursive: true });
-mkdirSync(stagingDir, { recursive: true });
-const seen = new Set<string>();
-let kept = 0;
-for (let page = 0; page < pages; page++) {
-  const offset = Math.floor((page * source.rows) / pages);
-  const response = await readWithRetry(`${source.url}&offset=${offset}&length=100`);
-  if (!response.ok) {
-    throw new Error(`rows at ${offset}: HTTP ${response.status}`);
-  }
-  const body = z.object({ rows: z.array(z.object({ row: z.unknown() })) }).parse(await response.json());
-  const picked = body.rows
-    .flatMap(({ row }) => source.pick(row) ?? [])
-    .filter((utterance) => !seen.has(utterance.id) && seen.add(utterance.id))
-    .slice(0, perPage);
-  for (const utterance of picked) {
-    const audio = await readWithRetry(utterance.src);
-    if (!audio.ok) {
-      throw new Error(`audio ${utterance.id}: HTTP ${audio.status}`);
-    }
-    writeFileSync(join(stagingDir, `${kept}.f32`), await decodeAudio(new Uint8Array(await audio.arrayBuffer()), Bun.spawn));
-    writeFileSync(join(stagingDir, `${kept}.json`), JSON.stringify({ id: utterance.id, text: utterance.text }));
-    kept++;
-  }
-}
-rmSync(targetDir, { force: true, recursive: true });
-renameSync(stagingDir, targetDir);
-console.log(`wrote ${kept} utterances to ${targetDir}`);
 
 async function decodeAudio(encoded: Uint8Array, spawn: typeof Bun.spawn): Promise<Uint8Array> {
   const ffmpeg = spawn(
@@ -118,4 +126,25 @@ async function decodeAudio(encoded: Uint8Array, spawn: typeof Bun.spawn): Promis
     throw new Error('ffmpeg could not decode a recording');
   }
   return decoded;
+}
+
+if (import.meta.main) {
+  const { values } = parseArgs({
+    options: {
+      pages: { default: '40', type: 'string' },
+      'per-page': { default: '5', type: 'string' },
+      set: { type: 'string' },
+    },
+  });
+  const set = z.enum(['hvb', 'slurp']).parse(values.set);
+  const targetDir = speechSetDir(set);
+  const kept = await downloadSpeechSet({
+    decode: (encoded) => decodeAudio(encoded, Bun.spawn),
+    pages: z.coerce.number().int().positive().parse(values.pages),
+    perPage: z.coerce.number().int().positive().parse(values['per-page']),
+    set,
+    targetDir,
+    transport: fetch,
+  });
+  console.log(`wrote ${kept} utterances to ${targetDir}`);
 }
