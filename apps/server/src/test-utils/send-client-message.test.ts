@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildTestClock } from '@heynixie/testing';
 import { createTestClient } from './create-test-client';
 import { sendClientMessage } from './send-client-message';
 import { startInProcessNixie } from './start-in-process-nixie';
@@ -57,15 +58,20 @@ test('it waits for the model reply when the reply repeats the message', async ()
   ]);
 });
 
-test('it gives up on the reply after the time it is given', async () => {
+test('it rejects once the clock it is given reaches the timeout before the reply', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
+  const clock = buildTestClock(0);
+
   ctx.guest.addReplies({ text: 'Hello back.' });
 
-  expect(sendClientMessage(api.client, { text: 'Hello.' }, 'Another reply.', 50)).rejects.toThrow(
-    'condition not met within 50 ms',
-  );
+  expect(
+    sendClientMessage(api.client, { text: 'Hello.' }, 'Another reply.', {
+      timeoutMs: 0,
+      now: clock.now,
+    }),
+  ).rejects.toThrowWithMessage(Error, 'condition not met within 0 ms');
 });
 
 test('it waits for a new reply when an earlier turn gave the same one', async () => {

@@ -19,7 +19,9 @@ test('it backs up a running server and restores it into an empty data directory 
 
   // The turn starts the real SDK in a guest process, which outlasts the helper's default wait on
   // a busy host.
-  await sendClientMessage(api.client, { text: 'Plum-message-7QK2' }, 'Quince-reply-4ZT9', 30_000);
+  await sendClientMessage(api.client, { text: 'Plum-message-7QK2' }, 'Quince-reply-4ZT9', {
+    timeoutMs: 30_000,
+  });
 
   const target = join(nixie.directory, 'backup');
 
