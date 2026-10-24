@@ -89,7 +89,10 @@ trained to carry its meaning in the first 256.
 ## Floors and item count
 
 Each served set holds what per-turn retrieval would show a turn: up to the item count of facts and 2
-self notes, above both floors, with the session's earlier versions left out. Fresh recall is the
+self notes, with the session's earlier versions left out. Each floor filters its own list before
+fusion: the BM25 floor the keyword matches and the similarity floor the vector matches. Fusion then
+ranks the union of the two lists, so an item that one floor drops still shows when the other list
+keeps it. That is why a higher similarity floor leaves the items BM25 finds. Fresh recall is the
 share of needed items the session had not been given yet that the turn shows, over the 38 turns that
 had such an item. The shown columns cover the 188 labelled turns that needed no item. Each change
 column gives the paired difference from the shipped set with its 95% bootstrap interval.
