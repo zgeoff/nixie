@@ -1,6 +1,8 @@
 import { normalize } from 'node:path/posix';
 import { z } from 'zod';
+import { buildPromptEntryLines } from './build-prompt-entry-lines';
 import { defaultSizeLimits } from './default-size-limits';
+import { definitionsFormats } from './definitions-formats';
 import type { ParseProblem } from './definitions-parse-error';
 import { DefinitionsParseError } from './definitions-parse-error';
 import { formatManifestIssue } from './format-manifest-issue';
@@ -33,14 +35,20 @@ export function checkPromptProposal(proposal: PromptProposalInput): readonly Par
     return [...reasons].map((reason) => ({ path: manifestPath, reason }));
   }
 
-  const template = proposal.entry['_template'] ?? '';
+  // The entry sits inline in nixie.yaml, so the smallest manifest that holds it must fit the
+  // seed's file size limit. The export checks the whole manifest it writes.
+  const smallest = [
+    `format: ${definitionsFormats.prompts}`,
+    'prompts:',
+    ...buildPromptEntryLines(proposal.id, proposal.entry, '  '),
+    '',
+  ].join('\n');
 
-  // The template sits inline in nixie.yaml, which the seed reads under the same file size limit.
-  if (new TextEncoder().encode(template).byteLength > defaultSizeLimits.maxFileBytes) {
+  if (new TextEncoder().encode(smallest).byteLength > defaultSizeLimits.maxFileBytes) {
     return [
       {
         path: manifestPath,
-        reason: `prompts.${proposal.id}._template is past the ${defaultSizeLimits.maxFileBytes}-byte limit of ${manifestPath}`,
+        reason: `prompts.${proposal.id} takes ${manifestPath} past the ${defaultSizeLimits.maxFileBytes}-byte limit`,
       },
     ];
   }

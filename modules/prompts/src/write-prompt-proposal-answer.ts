@@ -4,7 +4,6 @@ import invariant from 'tiny-invariant';
 import { buildPromptOverrideHash } from './build-prompt-override-hash';
 import { buildPromptProposalHash } from './build-prompt-proposal-hash';
 import { findPromptAnswerRefusal } from './find-prompt-answer-refusal';
-import { PromptProposalCheckError } from './prompt-proposal-check-error';
 import { promptsOverrideApprovedCodec } from './prompts-override-approved-codec';
 import { promptsOverrideRejectedCodec } from './prompts-override-rejected-codec';
 import { readPromptProposals } from './read-prompt-proposals';
@@ -16,6 +15,7 @@ import type {
   PromptProposalState,
   PromptsTables,
 } from './types';
+import { writePromptApprovalState } from './write-prompt-approval-state';
 
 export function writePromptProposalAnswer(
   context: PromptAnswerContext,
@@ -24,7 +24,25 @@ export function writePromptProposalAnswer(
   const log = context.log;
 
   return withWriteTransaction(log.writer, async (tx) => {
-    const state = await readOpenProposal(tx, context, answer);
+    const [state] = await readPromptProposals(tx, [answer.proposalID]);
+
+    const currentHash =
+      state === undefined
+        ? null
+        : buildPromptOverrideHash(context.readInForce()?.prompts[state.proposal.promptID]);
+
+    const refusal = findPromptAnswerRefusal({
+      answer,
+      state,
+      now: context.clock.now(),
+      currentHash,
+    });
+
+    if (refusal !== null) {
+      return refusal;
+    }
+
+    invariant(state, 'a proposal with no refusal exists');
 
     if (answer.answer === 'reject') {
       await writeRecordsInTransaction(tx, log, [
@@ -37,7 +55,7 @@ export function writePromptProposalAnswer(
         },
       ]);
 
-      return { proposalID: answer.proposalID, approvalID: null, proposalHash: null };
+      return { status: 'rejected', proposalID: answer.proposalID };
     }
 
     return writeApproval(tx, context, {
@@ -46,34 +64,6 @@ export function writePromptProposalAnswer(
       files: answer.files ?? state.proposal.files,
     });
   });
-}
-
-async function readOpenProposal(
-  tx: Transaction<unknown>,
-  context: PromptAnswerContext,
-  answer: PromptProposalAnswer,
-): Promise<PromptProposalState> {
-  const [state] = await readPromptProposals(tx, [answer.proposalID]);
-
-  const currentHash =
-    state === undefined
-      ? null
-      : buildPromptOverrideHash(context.readInForce()?.prompts[state.proposal.promptID]);
-
-  const refusal = findPromptAnswerRefusal({
-    answer,
-    state,
-    now: context.clock.now(),
-    currentHash,
-  });
-
-  if (refusal !== null) {
-    throw refusal;
-  }
-
-  invariant(state);
-
-  return state;
 }
 
 interface Approval {
@@ -96,7 +86,15 @@ async function writeApproval(
   });
 
   if (problems.length > 0) {
-    throw new PromptProposalCheckError(proposal.proposalID, problems);
+    const reasons = problems.map((problem) => `${problem.path}: ${problem.reason}`).join('; ');
+
+    return {
+      status: 'refused',
+      proposalID: proposal.proposalID,
+      code: 'PROMPT_CHECK',
+      reason: `the override approved for prompt proposal ${proposal.proposalID} fails the definitions checks: ${reasons}`,
+      problems,
+    };
   }
 
   const proposalHash = buildPromptProposalHash({
@@ -109,12 +107,20 @@ async function writeApproval(
   const approvedAt = context.clock.now();
   const tables = tx.$extendTables<PromptsTables>();
 
-  await tables
-    .updateTable('prompt_approvals')
-    .set({ state: 'superseded', updated_at: approvedAt })
+  const current = await tables
+    .selectFrom('prompt_approvals')
+    .select('approval_id')
     .where('prompt_id', '=', proposal.promptID)
     .where('state', '=', 'current')
     .execute();
+
+  for (const row of current) {
+    await writePromptApprovalState(tx, {
+      approvalID: row.approval_id,
+      to: 'superseded',
+      at: approvedAt,
+    });
+  }
 
   await tables
     .insertInto('prompt_approvals')
@@ -147,5 +153,5 @@ async function writeApproval(
     },
   ]);
 
-  return { proposalID: proposal.proposalID, approvalID, proposalHash };
+  return { status: 'approved', proposalID: proposal.proposalID, approvalID, proposalHash };
 }

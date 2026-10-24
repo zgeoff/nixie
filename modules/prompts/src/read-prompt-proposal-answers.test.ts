@@ -198,3 +198,41 @@ test('it never reads an answer on another thread', async () => {
 
   expect(answers).toStrictEqual([]);
 });
+
+test('it reads every answer in the range, past the size of one page of records', async () => {
+  const ctx = await setupTest();
+
+  const proposals = Array.from({ length: 1001 }, (_, index) => ({
+    kind: 'prompts.override_proposed' as const,
+    definitions: { snapshotHash: 'snapshot-a' },
+    thread: 'conversation',
+    payload: promptsOverrideProposedCodec.encode({
+      proposalID: `proposal-${String(index)}`,
+      promptID: 'compaction',
+      proposalHash: 'hash-a',
+      baseHash: null,
+      entry: { _template: '{{ parts.safety }}' },
+      files: [],
+      reason: 'Drop the instruction part.',
+      provenance: { runID: 'run-1', callID: `call-${String(index)}`, profile: 'standard' },
+    }),
+  }));
+
+  const rejections = proposals.map((_, index) => ({
+    kind: 'prompts.override_rejected' as const,
+    definitions: { snapshotHash: 'snapshot-a' },
+    thread: 'conversation',
+    payload: { proposalID: `proposal-${String(index)}` },
+  }));
+
+  await writeRecords(ctx.log, [...proposals, ...rejections]);
+
+  const answers = await readPromptProposalAnswers(ctx.log, 'conversation', {
+    after: 1001,
+    through: 2002,
+  });
+
+  expect(answers.map((answer) => answer.detail.proposalID)).toStrictEqual(
+    rejections.map((rejection) => rejection.payload.proposalID),
+  );
+});

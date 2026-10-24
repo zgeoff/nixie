@@ -57,6 +57,11 @@ test("it returns each part's built-in text and paths, and the default template, 
 });
 
 test('it returns the part and the template that the definitions in force override', async () => {
+  const instruction = compactionPrompt.parts['instruction'];
+  const safety = compactionPrompt.parts['safety'];
+
+  invariant(instruction && safety);
+
   const tool = buildPromptReadTool({
     readInForce: () => ({
       prompts: {
@@ -80,19 +85,45 @@ test('it returns the part and the template that the definitions in force overrid
     },
   );
 
-  expect(outcome).toMatchObject({
+  expect(outcome).toStrictEqual({
     status: 'ok',
     result: {
+      id: 'compaction',
       parts: [
-        { name: 'instruction', override: null },
-        { name: 'safety', override: 'Answer with the summary alone.' },
+        {
+          name: 'instruction',
+          text: instruction.text,
+          paths: ['owner.name', 'owner.nameAtSentenceStart', 'summary.words'],
+          override: null,
+        },
+        {
+          name: 'safety',
+          text: safety.text,
+          paths: ['owner.name', 'owner.nameAtSentenceStart', 'summary.words', 'parts.instruction'],
+          override: 'Answer with the summary alone.',
+        },
       ],
-      template: { override: '{{ parts.safety }}\n{{ parts.instruction }}' },
+      template: {
+        text: '{{ parts.instruction }}\n{{ parts.safety }}',
+        paths: [
+          'owner.name',
+          'owner.nameAtSentenceStart',
+          'summary.words',
+          'parts.instruction',
+          'parts.safety',
+        ],
+        override: '{{ parts.safety }}\n{{ parts.instruction }}',
+      },
     },
   });
 });
 
 test('it returns no override for a prompt that the definitions in force leave alone', async () => {
+  const instruction = compactionPrompt.parts['instruction'];
+  const safety = compactionPrompt.parts['safety'];
+
+  invariant(instruction && safety);
+
   const tool = buildPromptReadTool({
     readInForce: () => ({
       prompts: { writer: { parts: { safety: 'Quote every fact.' }, template: null } },
@@ -111,13 +142,35 @@ test('it returns no override for a prompt that the definitions in force leave al
     },
   );
 
-  expect(outcome).toMatchObject({
+  expect(outcome).toStrictEqual({
+    status: 'ok',
     result: {
+      id: 'compaction',
       parts: [
-        { name: 'instruction', override: null },
-        { name: 'safety', override: null },
+        {
+          name: 'instruction',
+          text: instruction.text,
+          paths: ['owner.name', 'owner.nameAtSentenceStart', 'summary.words'],
+          override: null,
+        },
+        {
+          name: 'safety',
+          text: safety.text,
+          paths: ['owner.name', 'owner.nameAtSentenceStart', 'summary.words', 'parts.instruction'],
+          override: null,
+        },
       ],
-      template: { override: null },
+      template: {
+        text: '{{ parts.instruction }}\n{{ parts.safety }}',
+        paths: [
+          'owner.name',
+          'owner.nameAtSentenceStart',
+          'summary.words',
+          'parts.instruction',
+          'parts.safety',
+        ],
+        override: null,
+      },
     },
   });
 });
