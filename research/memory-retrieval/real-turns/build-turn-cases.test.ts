@@ -314,6 +314,192 @@ test('it starts a step with no query once a committed step read the message', ()
   expect(cases).toStrictEqual([]);
 });
 
+test('it counts a recall as delivered to the next turn once its turn ends', () => {
+  const cases = buildTurnCases({
+    records: [
+      {
+        sequence: 1,
+        recordedAt: '2026-03-02T09:00:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'when is the dentist?' } },
+      },
+      {
+        sequence: 2,
+        recordedAt: '2026-03-02T09:00:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 3,
+        recordedAt: '2026-03-02T09:00:02Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [{ itemID: 'item-a', version: 1 }], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 4,
+        recordedAt: '2026-03-02T09:00:20Z',
+        kind: 'model.turn_ended',
+        thread: 'conversation',
+        parent: null,
+        payload: { retrieved: [] },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 5,
+        recordedAt: '2026-03-02T09:00:21Z',
+        kind: 'task.step_committed',
+        thread: 'conversation',
+        parent: null,
+        payload: { readCursor: 1 },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 6,
+        recordedAt: '2026-03-02T09:10:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'and the time?' } },
+      },
+      {
+        sequence: 7,
+        recordedAt: '2026-03-02T09:10:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 8,
+        recordedAt: '2026-03-02T09:10:02Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+    ],
+    items: [],
+    versions: [],
+    notes: [],
+  });
+
+  expect(cases.map((turn) => turn.delivered)).toStrictEqual([[], ['item-a@1']]);
+});
+
+test('it delivers only the recalls after a compaction in the same turn', () => {
+  const cases = buildTurnCases({
+    records: [
+      {
+        sequence: 1,
+        recordedAt: '2026-03-02T09:00:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'when is the dentist?' } },
+      },
+      {
+        sequence: 2,
+        recordedAt: '2026-03-02T09:00:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 3,
+        recordedAt: '2026-03-02T09:00:02Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [{ itemID: 'item-a', version: 1 }], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 4,
+        recordedAt: '2026-03-02T09:00:10Z',
+        kind: 'model.compacted',
+        thread: 'conversation',
+        parent: null,
+        payload: { recalledThrough: 3 },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 5,
+        recordedAt: '2026-03-02T09:00:11Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [{ itemID: 'item-b', version: 1 }], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 6,
+        recordedAt: '2026-03-02T09:00:20Z',
+        kind: 'model.turn_ended',
+        thread: 'conversation',
+        parent: null,
+        payload: { retrieved: [{ itemID: 'item-a', version: 1 }] },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 7,
+        recordedAt: '2026-03-02T09:00:21Z',
+        kind: 'task.step_committed',
+        thread: 'conversation',
+        parent: null,
+        payload: { readCursor: 1 },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 8,
+        recordedAt: '2026-03-02T09:10:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'and the time?' } },
+      },
+      {
+        sequence: 9,
+        recordedAt: '2026-03-02T09:10:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 10,
+        recordedAt: '2026-03-02T09:10:02Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+    ],
+    items: [],
+    versions: [],
+    notes: [],
+  });
+
+  expect(cases.at(-1)?.delivered).toStrictEqual(['item-b@1']);
+});
+
 test('it rejects a turn retrieval whose logged items hold a null', () => {
   expect(() =>
     buildTurnCases({
