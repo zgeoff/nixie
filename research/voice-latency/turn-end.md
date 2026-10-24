@@ -4,11 +4,11 @@ This run measures how often each end-of-turn detector ends a voice turn before t
 finished, and how long it waits after a real end, on 600 real utterances played in real time on the
 deployment host. At the agreed wait settings, no candidate cuts off fewer than 5% of the meeting
 speech. On task calls and home-assistant commands, Clef-flash, Jev and both combined candidates
-pass. Jev passes with the shortest waits: on task calls it cut off 2.5% and waited 850 ms after a
-real end at the median and 1082 ms at the 90th percentile.
+pass. Jev passes with the shortest waits: on task calls it cut off 2.5% and waited 838 ms after a
+real end at the median and 1062 ms at the 90th percentile.
 
-The hosted detectors gain little over a longer silence on task calls, because their answer takes 550
-to 850 ms and the turn never ends before the answer arrives. Their gain is on hesitant speech, where
+The hosted detectors gain little over a longer silence on task calls, because their answer takes 570
+to 810 ms and the turn never ends before the answer arrives. Their gain is on hesitant speech, where
 a silence long enough to stop the cut-offs waits over a second every time.
 
 ## Question
@@ -19,19 +19,20 @@ median and the 90th percentile of the wait reported beside each rate.
 
 ## Answer
 
-- Nothing passes on the meeting speech at the agreed settings. Clef-flash comes closest at 7.0%.
+- Nothing passes on the meeting speech at the agreed settings. Clef-flash comes closest at 6.5%.
 - Clef-flash, Jev and both combined candidates pass on the task calls and the home-assistant
   commands. Silence at 500 ms and Smart Turn pass only on the commands.
-- Jev waits 230 to 330 ms less than Clef-flash at the median on every set. Clef-flash cuts off
+- Jev waits 220 to 290 ms less than Clef-flash at the median on every set. Clef-flash cuts off
   fewer: 0.5% against 2.5% on the task calls.
 - Averaging Smart Turn with a text detector cuts off more than the text detector alone on every set.
 - A replay of the same recordings with a 1600 ms maximum wait brings Jev under 5% on all 3 sets, at
-  1362 ms median and 1824 ms p90 on the meeting speech.
+  1350 ms median and 1836 ms p90 on the meeting speech.
 
 Recommendation: Jev alone, with the maximum wait at 1200 ms for task-like speech. Raise the maximum
 wait to about 1600 ms only if the speech nixie hears hesitates like the meetings do, and measure
-that on nixie's own turns first, because the 1600 ms figure comes from tuning on these recordings. A
-silence of 700 to 1000 ms is the near match on task calls with no hosted dependency.
+that on nixie's own turns first, because the 1600 ms figure comes from tuning on these recordings.
+On hesitant speech, Clef-flash matches Jev's wait at the same cut-off rate. A silence of 700 to 1000
+ms is the near match on task calls with no hosted dependency.
 
 ## Run it
 
@@ -86,11 +87,12 @@ the turn inside its own hosted speech-to-text, is not in the run.
 
 ### Method
 
-[`turn-end.ts`](turn-end.ts) plays each utterance in real time, 32 ms at a time, through Silero
-voice activity detection with a 200 ms pause. When Silero closes a segment, the runner asks every
-detector at once and records each answer with the time it arrived, counted from the end of the
-speech before the pause. A 2 s tail of faint noise follows each utterance, because Silero holds a
-segment open longer over digital silence than over a microphone's noise floor.
+[`turn-end.ts`](turn-end.ts) plays each utterance in real time through Silero voice activity
+detection with a 200 ms pause, one 32 ms window at a time, each at the moment its last sample ends.
+When Silero closes a segment, the runner asks every detector at once and records each answer with
+the time it arrived, counted from the end of the speech before the pause. A 2 s tail of faint noise
+follows each utterance, because Silero holds a segment open longer over digital silence than over a
+microphone's noise floor.
 
 [`report-turn-end.ts`](report-turn-end.ts) replays each candidate over those records. At each pause,
 a detector's probability sets the wait: 200 ms when it is sure the turn ended, rising in a straight
@@ -110,8 +112,8 @@ per pause, and its time counts in both text detectors' answer times. The streami
 returned empty text at the pause on most task-call and meeting clips, so it reads nothing here. The
 task calls are 8 kHz telephone audio sampled up to 16 kHz, which is the likely reason.
 
-On a 10-utterance check, Smart Turn answered 283 ms after the end of speech at the median when it
-ran alone, and 334 ms beside Moonshine, because the two share the imp's 4 vCPUs.
+Smart Turn and Moonshine take 2 threads each, so that neither waits on the other for the imp's 4
+vCPUs.
 
 ### Speech
 
@@ -151,21 +153,21 @@ utterances heard whole, and every call answered, so no row has a failure.
 | Silence at 500 ms         | AMI                | 199        | 64 (32.2%) | 668 / 984               |
 | Silence at 500 ms         | Harper Valley Bank | 197        | 15 (7.6%)  | 704 / 750               |
 | Silence at 500 ms         | SLURP              | 200        | 2 (1.0%)   | 500 / 652               |
-| Smart Turn v3.2           | AMI                | 199        | 38 (19.1%) | 731 / 1392              |
-| Smart Turn v3.2           | Harper Valley Bank | 197        | 17 (8.6%)  | 579 / 1247              |
-| Smart Turn v3.2           | SLURP              | 200        | 6 (3.0%)   | 322 / 768               |
-| Clef-flash                | AMI                | 199        | 14 (7.0%)  | 1322 / 1935             |
-| Clef-flash                | Harper Valley Bank | 197        | 1 (0.5%)   | 1154 / 1381             |
-| Clef-flash                | SLURP              | 200        | 0 (0.0%)   | 978 / 1243              |
-| Jev                       | AMI                | 199        | 18 (9.0%)  | 1088 / 1510             |
-| Jev                       | Harper Valley Bank | 197        | 5 (2.5%)   | 850 / 1082              |
-| Jev                       | SLURP              | 200        | 0 (0.0%)   | 650 / 948               |
-| Smart Turn and Clef-flash | AMI                | 199        | 22 (11.1%) | 1172 / 1935             |
-| Smart Turn and Clef-flash | Harper Valley Bank | 197        | 2 (1.0%)   | 983 / 1286              |
-| Smart Turn and Clef-flash | SLURP              | 200        | 1 (0.5%)   | 767 / 1152              |
-| Smart Turn and Jev        | AMI                | 199        | 28 (14.1%) | 983 / 1436              |
-| Smart Turn and Jev        | Harper Valley Bank | 197        | 7 (3.6%)   | 827 / 1054              |
-| Smart Turn and Jev        | SLURP              | 200        | 2 (1.0%)   | 588 / 796               |
+| Smart Turn v3.2           | AMI                | 199        | 37 (18.6%) | 730 / 1410              |
+| Smart Turn v3.2           | Harper Valley Bank | 197        | 17 (8.6%)  | 561 / 1238              |
+| Smart Turn v3.2           | SLURP              | 200        | 7 (3.5%)   | 339 / 768               |
+| Clef-flash                | AMI                | 199        | 13 (6.5%)  | 1286 / 1692             |
+| Clef-flash                | Harper Valley Bank | 197        | 1 (0.5%)   | 1131 / 1376             |
+| Clef-flash                | SLURP              | 200        | 0 (0.0%)   | 875 / 1185              |
+| Jev                       | AMI                | 199        | 15 (7.5%)  | 1060 / 1486             |
+| Jev                       | Harper Valley Bank | 197        | 5 (2.5%)   | 838 / 1062              |
+| Jev                       | SLURP              | 200        | 0 (0.0%)   | 652 / 940               |
+| Smart Turn and Clef-flash | AMI                | 199        | 25 (12.6%) | 1102 / 1566             |
+| Smart Turn and Clef-flash | Harper Valley Bank | 197        | 3 (1.5%)   | 968 / 1250              |
+| Smart Turn and Clef-flash | SLURP              | 200        | 2 (1.0%)   | 763 / 1021              |
+| Smart Turn and Jev        | AMI                | 199        | 27 (13.6%) | 958 / 1446              |
+| Smart Turn and Jev        | Harper Valley Bank | 197        | 7 (3.6%)   | 802 / 1035              |
+| Smart Turn and Jev        | SLURP              | 200        | 2 (1.0%)   | 593 / 801               |
 
 Silence at 500 ms cut off 32.2% of the meeting speech, in line with the 30.5% that the
 [pause test on the deployment host](deployment-host.md) found on the same corpus.
@@ -175,14 +177,14 @@ Silence at 500 ms cut off 32.2% of the meeting speech, in line with the 30.5% th
 Each time runs from the end of the speech before a pause to the detector's answer, over the 870
 pauses of the run. Silero closes a segment 200 ms after the speech ends, so no answer comes sooner.
 
-| Detector   | AMI, median / p90 (ms) | Harper Valley Bank | SLURP      |
-| ---------- | ---------------------- | ------------------ | ---------- |
-| Smart Turn | 316 / 435              | 323 / 383          | 302 / 342  |
-| Clef-flash | 844 / 1276             | 755 / 1028         | 711 / 1019 |
-| Jev        | 668 / 918              | 586 / 724          | 548 / 642  |
+| Detector   | AMI, median / p90 (ms) | Harper Valley Bank | SLURP     |
+| ---------- | ---------------------- | ------------------ | --------- |
+| Smart Turn | 320 / 363              | 327 / 356          | 325 / 346 |
+| Clef-flash | 813 / 1057             | 722 / 894          | 702 / 884 |
+| Jev        | 630 / 803              | 579 / 684          | 570 / 651 |
 
-Jev answers about 170 ms sooner than Clef-flash at the median, and that gap sets most of the
-difference in their waits.
+Jev answers 130 to 180 ms sooner than Clef-flash at the median, and that gap sets most of the
+difference in their waits at the agreed settings.
 
 ### Longer silences and maximum waits
 
@@ -193,19 +195,20 @@ independent test. A maximum wait chosen on these rows fits these recordings.
 | ------------------ | ------------ | ----------- | ----------- | -------------------------- | ----------------------- | ------------- | ----------- |
 | Silence at 700 ms  | none         | 23.6%       | 868 / 1172  | 2.5%                       | 904 / 952               | 1.0%          | 700 / 852   |
 | Silence at 1000 ms | none         | 9.0%        | 1182 / 1530 | 0.5%                       | 1204 / 1252             | 0.0%          | 1000 / 1152 |
-| Clef-flash         | 1600 ms      | 2.0%        | 1652 / 2174 | 0.0%                       | 1410 / 1748             | 0.0%          | 1138 / 1549 |
-| Jev                | 1600 ms      | 2.5%        | 1362 / 1824 | 0.5%                       | 917 / 1314              | 0.0%          | 718 / 1222  |
-| Jev                | 2000 ms      | 2.0%        | 1602 / 2206 | 0.5%                       | 1010 / 1570             | 0.0%          | 787 / 1514  |
+| Clef-flash         | 1600 ms      | 1.5%        | 1623 / 1985 | 0.0%                       | 1410 / 1747             | 0.0%          | 996 / 1547  |
+| Jev                | 1600 ms      | 2.5%        | 1350 / 1836 | 0.5%                       | 914 / 1289              | 0.0%          | 731 / 1208  |
+| Jev                | 2000 ms      | 2.0%        | 1622 / 2210 | 0.5%                       | 992 / 1534              | 0.0%          | 776 / 1496  |
 
 Each wait is the median and the 90th percentile in milliseconds. On the task calls, silence at 700
-ms matches Jev's cut-off rate at the agreed settings with a 54 ms longer median wait. On the
-meetings, at the same 2.0% cut-off rate, Jev with a 2000 ms maximum wait waits 50 ms less than
-Clef-flash with a 1600 ms maximum wait at the median.
+ms matches Jev's cut-off rate at the agreed settings with a 66 ms longer median wait, and Jev at
+1600 ms matches Clef-flash's 0.5% at the agreed settings with a 217 ms shorter one. On the meetings,
+Jev at 2000 ms and Clef-flash at 1600 ms cut off 2.0% and 1.5% with the same median wait, so on
+hesitant speech Jev's faster answer buys no shorter wait.
 
 ### Cost
 
-The run made 870 calls to each hosted detector, with no failure. Clef-flash took about 222 input
-tokens a call and Jev about 352, and neither bills output. At the published rates of $0.038 and
+The run made 870 calls to each hosted detector, with no failure. Clef-flash took about 224 input
+tokens a call and Jev about 354, and neither bills output. At the published rates of $0.038 and
 $0.042 per million input tokens, each detector costs under $0.02 per 1,000 pauses, so cost does not
 separate them.
 
