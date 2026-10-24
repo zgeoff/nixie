@@ -75,6 +75,50 @@ test('it takes the lowest hop of the records that woke the step', () => {
   ).toStrictEqual({ hop: 0, cause: { kind: 'owner' } });
 });
 
+test('it takes the lower hop and its sender of two task messages that woke the step', () => {
+  expect(
+    buildStepWake(
+      [
+        {
+          kind: 'task_message',
+          thread: 'conversation',
+          payload: {
+            messageID: 'k3vq8m2xpa',
+            from: 'critic',
+            to: 'conversation',
+            kind: 'chat',
+            replyTo: null,
+            onBehalfOf: [],
+            hop: 5,
+            hopLimit: 20,
+            wake: true,
+            woke: true,
+            source: 'task:critic',
+          },
+        },
+        {
+          kind: 'task_message',
+          thread: 'conversation',
+          payload: {
+            messageID: 'w7tn4c9rhz',
+            from: 'planner',
+            to: 'conversation',
+            kind: 'chat',
+            replyTo: null,
+            onBehalfOf: [],
+            hop: 2,
+            hopLimit: 20,
+            wake: true,
+            woke: true,
+            source: 'task:planner',
+          },
+        },
+      ],
+      0,
+    ),
+  ).toStrictEqual({ hop: 2, cause: { kind: 'task', taskID: 'planner' } });
+});
+
 test('it leaves out a message that did not wake the task', () => {
   expect(
     buildStepWake(
