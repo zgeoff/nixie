@@ -7,13 +7,13 @@ import { join } from 'node:path';
 import type {
   McpSdkServerConfigWithInstance,
   Options,
-  SDKMessage,
   SDKUserMessage,
   ThinkingConfig,
 } from '@anthropic-ai/claude-agent-sdk';
 import type { query } from '@anthropic-ai/claude-agent-sdk';
+import { match } from 'ts-pattern';
 import type { ResultFields } from './build-result-fields.ts';
-import { buildResultFields } from './build-result-fields.ts';
+import { parseSessionMessage } from './parse-session-message.ts';
 
 export interface AgentTurn extends ResultFields {
   costUSD: number;
@@ -55,24 +55,27 @@ export function startAgentSession(options: AgentSessionOptions): {
         if (next.done) {
           throw new Error('the session ended mid-turn');
         }
-        const message: SDKMessage = next.value;
         const at = performance.now();
-        if (message.type === 'stream_event' && message.parent_tool_use_id === null) {
-          const { event } = message;
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            onText(event.delta.text, at);
-          }
-        } else if (message.type === 'assistant') {
-          for (const block of message.message.content) {
-            if (block.type === 'tool_use') {
-              toolCalls.push(block.name);
-            }
-          }
-        } else if (message.type === 'result') {
-          // total_cost_usd counts the whole session, so each turn keeps the difference.
-          const costUSD = message.total_cost_usd - sessionCostUSD;
-          sessionCostUSD = message.total_cost_usd;
-          return { ...buildResultFields(message), costUSD, resultAt: at, toolCalls };
+        const turn = match(parseSessionMessage(next.value))
+          .returnType<AgentTurn | undefined>()
+          .with({ kind: 'text' }, (message) => {
+            onText(message.text, at);
+            return undefined;
+          })
+          .with({ kind: 'tool-calls' }, (message) => {
+            toolCalls.push(...message.names);
+            return undefined;
+          })
+          .with({ kind: 'result' }, (message) => {
+            // The SDK's cost counts the whole session, so each turn keeps the difference.
+            const costUSD = message.totalCostUSD - sessionCostUSD;
+            sessionCostUSD = message.totalCostUSD;
+            return { ...message.fields, costUSD, resultAt: at, toolCalls };
+          })
+          .with({ kind: 'ignored' }, () => undefined)
+          .exhaustive();
+        if (turn !== undefined) {
+          return turn;
         }
       }
     },
