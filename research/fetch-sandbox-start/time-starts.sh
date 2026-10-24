@@ -52,12 +52,12 @@ cleanup() {
   names=$(list_names)
 
   for name in "${!LIVE[@]}"; do
-    grep -qxF "$name" <<<"$names" || continue
-    timeout "$CALL_LIMIT" "$IMP" rm "$name" >/dev/null 2>&1 || log "cleanup: could not remove $name"
+    grep -qxF "$name" <<< "$names" || continue
+    timeout "$CALL_LIMIT" "$IMP" rm "$name" > /dev/null 2>&1 || log "cleanup: could not remove $name"
   done
 
   if [[ $HAS_TEMPLATE == 1 ]]; then
-    timeout "$CALL_LIMIT" "$IMP" template rm "$TEMPLATE" >/dev/null 2>&1 ||
+    timeout "$CALL_LIMIT" "$IMP" template rm "$TEMPLATE" > /dev/null 2>&1 ||
       log "cleanup: could not remove template $TEMPLATE"
   fi
 
@@ -72,7 +72,7 @@ run_call() {
 
   start=$(now_ms)
   CALL_EXIT=0
-  err=$(timeout "$CALL_LIMIT" "$IMP" "$@" 2>&1 >/dev/null) || CALL_EXIT=$?
+  err=$(timeout "$CALL_LIMIT" "$IMP" "$@" 2>&1 > /dev/null) || CALL_EXIT=$?
   CALL_MS=$(($(now_ms) - start))
   CALL_ERR=$(printf '%s\n' "$err" | head -n 1 | tr '|' '/' | cut -c 1-160)
 
@@ -87,19 +87,19 @@ run_call() {
 # line and an `imps  <n> (<m> awake)` line; `imp ls` and `imp template ls` print a table whose
 # first column is the name and, for imps, whose second is the state.
 read_impd_version() {
-  { "$IMP" info 2>/dev/null || true; } | awk '$1 == "version" { print $2; exit }'
+  { "$IMP" info 2> /dev/null || true; } | awk '$1 == "version" { print $2; exit }'
 }
 
 read_awake_count() {
-  { "$IMP" info 2>/dev/null || true; } | sed -nE 's/^imps[[:space:]].*\(([0-9]+) awake\).*/\1/p' | head -n 1
+  { "$IMP" info 2> /dev/null || true; } | sed -nE 's/^imps[[:space:]].*\(([0-9]+) awake\).*/\1/p' | head -n 1
 }
 
 list_names() {
-  { "$IMP" ls 2>/dev/null || true; } | awk 'NR > 1 { print $1 }'
+  { "$IMP" ls 2> /dev/null || true; } | awk 'NR > 1 { print $1 }'
 }
 
 read_state() {
-  { "$IMP" ls 2>/dev/null || true; } | awk -v name="$1" 'NR > 1 && $1 == name { print $2; exit }'
+  { "$IMP" ls 2> /dev/null || true; } | awk -v name="$1" 'NR > 1 && $1 == name { print $2; exit }'
 }
 
 # waits for the imp to reach running; sets WAIT_MS and WAIT_STATE
@@ -219,12 +219,12 @@ refuse_existing() {
   imps=$("$IMP" ls | awk 'NR > 1 { print $1 }')
   templates=$("$IMP" template ls | awk 'NR > 1 { print $1 }')
 
-  if grep -q "^${PREFIX}" <<<"$imps"; then
+  if grep -q "^${PREFIX}" <<< "$imps"; then
     log "an imp named ${PREFIX}* exists; remove it first"
     exit 1
   fi
 
-  if grep -qxF "$TEMPLATE" <<<"$templates"; then
+  if grep -qxF "$TEMPLATE" <<< "$templates"; then
     log "the template $TEMPLATE exists; remove it first"
     exit 1
   fi
