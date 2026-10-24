@@ -50,12 +50,15 @@ test('it reads a fresh page without the forgotten text when you come back', asyn
     thread: 'conversation',
   });
 
+  await store.records.create({ kind: 'model.reply', message: { text: 'Noted, and forgotten.' } });
+
   rendered.rerender(<MemoryView />);
   rendered.rerender(<Conversation thread="conversation" />);
 
-  const list = await rendered.findByRole('list', { name: 'Conversation' });
+  const reply = await rendered.findByText('Noted, and forgotten.');
 
-  expect(list).toHaveTextContent(/^You Forgotten/u);
+  expect(reply).toBeVisible();
+  expect(rendered.getByRole('list', { name: 'Conversation' })).toHaveTextContent(/^nixie Noted/u);
 });
 
 // A hidden Activity stops the view's effects and keeps the view, as React's StrictMode does once

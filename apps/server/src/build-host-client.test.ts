@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
+import { buildAPIGate } from './build-api-gate';
 import { buildHostClient } from './build-host-client';
 import { startControlSocket } from './start-control-socket';
 
@@ -23,6 +24,8 @@ async function setupTest() {
       readMemory: () => null,
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
+      runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 

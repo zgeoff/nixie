@@ -44,8 +44,15 @@ export interface HostRouterOptions {
   readonly readMemory: ReadHostMemory;
 
   readonly runReset: () => Promise<HostReset>;
+  readonly runConversationReset: () => Promise<HostConversationReset>;
 
   readonly seedWrittenSkills: () => Promise<void>;
+
+  readonly gate: HostCallGate;
+}
+
+interface HostCallGate {
+  readonly runCall: <T>(call: () => Promise<T>, onClosed: () => Promise<T>) => Promise<T>;
 }
 
 export type ReadHostMemory = () => HostMemoryStore | null;
@@ -72,6 +79,12 @@ interface HostReset {
   readonly resetAt: Date;
   readonly lastSequence: number;
   readonly keptSessions: number;
+}
+
+interface HostConversationReset {
+  readonly resetAt: Date;
+  readonly lastSequence: number;
+  readonly shreddedRecords: number;
 }
 
 export interface APIRequestContext extends ResponseHeadersPluginContext {

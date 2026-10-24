@@ -6,6 +6,7 @@ import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
 import { nixieSchema, runMigrations, startDatabase } from '@heynixie/db';
 import { startTestMemory } from '@heynixie/memory/test-utils';
+import { buildAPIGate } from './build-api-gate';
 import { runCLI } from './run-cli';
 import { startControlSocket } from './start-control-socket';
 import { writeBootFiles } from './test-utils/write-boot-files';
@@ -95,6 +96,8 @@ test('it prints what the server reset, and that backups still hold the old data'
           lastSequence: 412,
           keptSessions: 2,
         }),
+      runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 
@@ -135,6 +138,8 @@ test('it exits 1 when the server fails the reset', async () => {
       readMemory: () => null,
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('the runtime refused the destroy')),
+      runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 
@@ -152,6 +157,168 @@ test('it exits 1 when the server fails the reset', async () => {
     error: 'Error',
     message: 'nixie answered the reset request with 500: the runtime refused the destroy',
   });
+});
+
+test('it refuses a reset of the memories without --yes, and says what it keeps', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const exitCode = await runCLI(
+    ['reset', '--only', 'memories', '--config', files.configPath],
+    ctx.io,
+  );
+
+  expect(exitCode).toBe(2);
+
+  expect(ctx.io.print.mock.calls).toStrictEqual([
+    [
+      [
+        'A reset of the memories forgets every memory item, and keeps every record, the conversation and the device sessions.',
+        'Only a restore from a backup undoes it.',
+        'Backups from before the reset still hold the old data until they age out.',
+        'Run nixie reset --only memories --yes to reset.',
+      ].join('\n'),
+    ],
+  ]);
+});
+
+test('it refuses a reset of the conversations without --yes, and says what it keeps', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const exitCode = await runCLI(
+    ['reset', '--only', 'conversations', '--config', files.configPath],
+    ctx.io,
+  );
+
+  expect(exitCode).toBe(2);
+
+  expect(ctx.io.print.mock.calls).toStrictEqual([
+    [
+      [
+        'A reset of the conversations forgets every message of the conversation, destroys its sandbox and gives the model a new session, and keeps every record, every memory item and the device sessions.',
+        'Only a restore from a backup undoes it.',
+        'Backups from before the reset still hold the old data until they age out.',
+        'Run nixie reset --only conversations --yes to reset.',
+      ].join('\n'),
+    ],
+  ]);
+});
+
+test('it prints what a reset of the conversations shredded, and that the server restarts', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const api = await startTestAPI();
+
+  const socket = await startControlSocket({
+    path: join(files.dataDir, 'run', 'control.sock'),
+    respond: makeHostResponder({
+      context: api.context,
+      readMemory: () => null,
+      seedWrittenSkills: () => Promise.resolve(),
+      runReset: () => Promise.reject(new Error('no full reset runs in this test')),
+      runConversationReset: () =>
+        Promise.resolve({
+          resetAt: new Date('2026-10-20T07:45:00.000Z'),
+          lastSequence: 88,
+          shreddedRecords: 14,
+        }),
+      gate: buildAPIGate(),
+    }),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const exitCode = await runCLI(
+    ['reset', '--only', 'conversations', '--yes', '--config', files.configPath],
+    ctx.io,
+  );
+
+  expect(exitCode).toBe(0);
+
+  expect(ctx.io.print.mock.calls).toStrictEqual([
+    [
+      [
+        'nixie shredded 14 records of the conversation up to sequence 88 at 2026-10-20T07:45:00.000Z.',
+        'The server restarts now, and its next turn starts with no history.',
+        'Backups from before the reset still hold the old data until they age out.',
+      ].join('\n'),
+    ],
+  ]);
+});
+
+test('it forgets every memory item through a reset of the memories, and prints how many', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const api = await startTestAPI();
+  const memory = await startTestMemory();
+
+  const socket = await startControlSocket({
+    path: join(files.dataDir, 'run', 'control.sock'),
+    respond: makeHostResponder({
+      context: api.context,
+      readMemory: () => memory.store,
+      seedWrittenSkills: () => Promise.resolve(),
+      runReset: () => Promise.reject(new Error('no full reset runs in this test')),
+      runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
+    }),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const items = await Promise.all(
+    ['Sings in a choir', 'Grows chillies on the balcony'].map((text) =>
+      memory.store.remember({
+        text,
+        provenance: {
+          origin: 'owner',
+          source: 'owner',
+          taskID: null,
+          proposalID: null,
+          checks: null,
+        },
+      }),
+    ),
+  );
+
+  const exitCode = await runCLI(
+    ['reset', '--only', 'memories', '--yes', '--config', files.configPath],
+    ctx.io,
+  );
+
+  const histories = await Promise.all(items.map((item) => memory.store.readHistory(item.itemID)));
+
+  expect(exitCode).toBe(0);
+
+  expect(ctx.io.print.mock.calls).toStrictEqual([
+    [
+      [
+        'nixie forgot 2 memory items.',
+        'Backups from before the reset still hold the old data until they age out.',
+      ].join('\n'),
+    ],
+  ]);
+
+  expect(histories.map((history) => history?.state)).toStrictEqual(['forgotten', 'forgotten']);
 });
 
 test('it exits 2 on a command nixie does not have, and names the commands it takes', async () => {
@@ -221,6 +388,8 @@ test('it pins a self-note from memory-pin', async () => {
       readMemory: () => memory.store,
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
+      runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 
@@ -257,6 +426,8 @@ test('it prints the subject of a self-note from memory-show', async () => {
       readMemory: () => memory.store,
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
+      runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 
@@ -297,6 +468,8 @@ test('it prints the count of each subject from memory-subjects', async () => {
       readMemory: () => memory.store,
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
+      runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 

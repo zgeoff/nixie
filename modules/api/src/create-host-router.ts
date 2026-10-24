@@ -1,3 +1,4 @@
+import { ORPCError, os } from '@orpc/server';
 import { createHostConsolidationProcedures } from './create-host-consolidation-procedures';
 import { createHostItemProcedures } from './create-host-item-procedures';
 import { createHostProposalProcedures } from './create-host-proposal-procedures';
@@ -11,18 +12,30 @@ import type { HostRouterOptions } from './types';
 export function createHostRouter(options: HostRouterOptions) {
   const skillContext = { ...options.context, seedWrittenSkills: options.seedWrittenSkills };
 
+  const gated = os.middleware((middleware) =>
+    options.gate.runCall(
+      () => Promise.resolve(middleware.next()),
+      () => Promise.reject(new ORPCError('SERVICE_UNAVAILABLE', { message: 'nixie is resetting' })),
+    ),
+  );
+
   return hostImplementer.router({
     reset: hostImplementer.reset.handler(() => options.runReset()),
-    sessions: createHostSessionProcedures(options.context),
-    memory: {
+    resetConversations: hostImplementer.resetConversations.handler(() =>
+      options.runConversationReset(),
+    ),
+    sessions: hostImplementer.sessions
+      .use(gated)
+      .router(createHostSessionProcedures(options.context)),
+    memory: hostImplementer.memory.use(gated).router({
       proposals: createHostProposalProcedures(options.readMemory),
       items: createHostItemProcedures(options.readMemory),
       consolidation: createHostConsolidationProcedures(options.readMemory),
       subjects: createHostSubjectsProcedure(options.readMemory),
-    },
-    skills: {
+    }),
+    skills: hostImplementer.skills.use(gated).router({
       proposals: createHostSkillProposalProcedures(skillContext),
       written: createHostWrittenSkillProcedures(skillContext),
-    },
+    }),
   });
 }

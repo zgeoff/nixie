@@ -58,6 +58,12 @@ export function createHostItemProcedures(readMemory: ReadHostMemory) {
       return { itemID: options.input.itemID };
     }),
 
+    forgetAll: items.forgetAll.handler(async (options) => {
+      const memory = requireHostMemory(readMemory, options.errors.MEMORY_NOT_STARTED);
+
+      return { itemIDs: [...(await memory.forgetAll())] };
+    }),
+
     pin: items.pin.handler(async (options) => {
       const memory = requireHostMemory(readMemory, options.errors.MEMORY_NOT_STARTED);
 
