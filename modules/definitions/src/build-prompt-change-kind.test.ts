@@ -684,12 +684,12 @@ test('it passes an export to onError when the definitions after the change fail 
 
   await writeFile(
     join(ctx.root, 'nixie.yaml'),
-    'format: 3\nprompts:\n  compaction:\n    instruction: notes/compaction.json\n',
+    'format: 3\nprompts:\n  compaction:\n    instruction: rules/compaction.json\n',
   );
 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await mkdir(join(ctx.root, 'notes'));
-  await writeFile(join(ctx.root, 'notes', 'compaction.json'), 'Keep the open questions.\n');
+  await mkdir(join(ctx.root, 'rules'));
+  await writeFile(join(ctx.root, 'rules', 'compaction.json'), 'Keep the open questions.\n');
 
   await runSeed({
     log: ctx.log,
@@ -739,8 +739,66 @@ test('it passes an export to onError when the definitions after the change fail 
   expect(errors).toHaveLength(1);
 
   expect(error.problems).toStrictEqual([
-    { path: 'notes/compaction.json', reason: expect.any(String) },
+    { path: 'rules/compaction.json', reason: expect.any(String) },
   ]);
 
   expect(ctx.repo.readPullRequests()).toStrictEqual([]);
+});
+
+test('it opens a pull request beside a file that the seed skips, such as a hidden file in the skills folder', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills'));
+  await writeFile(join(ctx.root, 'skills', '.gitkeep'), '');
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'prompts.override_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: promptsOverrideProposedCodec.encode({
+        proposalID: 'k3x9m2p7qa',
+        promptID: 'compaction',
+        proposalHash: 'hash-a',
+        baseHash: null,
+        entry: { safety: 'prompts/compaction-safety.md' },
+        files: [{ path: 'prompts/compaction-safety.md', text: 'Answer with the summary alone.\n' }],
+        reason: 'The summaries ramble past the word target.',
+        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  await writePromptProposalAnswer(ctx.answerContext, {
+    answer: 'approve',
+    proposalID: 'k3x9m2p7qa',
+    proposalHash: 'hash-a',
+  });
+
+  await runDefinitionsExports({
+    log: ctx.log,
+    repo: ctx.repo,
+    kinds: [buildPromptChangeKind(ctx.log, { agentName: null, ownerName: null })],
+    onError: (error) => {
+      throw error;
+    },
+  });
+
+  expect(ctx.repo.readPullRequests().map((request) => request.change.files)).toStrictEqual([
+    new Map([
+      ['prompts/compaction-safety.md', 'Answer with the summary alone.\n'],
+      [
+        'nixie.yaml',
+        'format: 3\nprompts:\n  compaction:\n    safety: "prompts/compaction-safety.md"\n',
+      ],
+    ]),
+  ]);
 });
