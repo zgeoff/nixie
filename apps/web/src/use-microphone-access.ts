@@ -1,55 +1,59 @@
-import { useEffect, useState } from 'react';
-import { match } from 'ts-pattern';
+import { useEffect, useReducer } from 'react';
+import type { EventFrom, SnapshotFrom } from 'xstate';
+import { initialTransition, transition } from 'xstate';
+import { microphoneAccessMachine } from './microphone-access-machine';
 
-type MicrophoneAccess =
-  | 'checking'
-  | 'not-asked'
-  | 'asking'
-  | 'on'
-  | 'blocked'
-  | 'failed'
-  | 'unavailable';
+type MicrophoneAccessSnapshot = SnapshotFrom<typeof microphoneAccessMachine>;
+
+type MicrophoneAccessEvent = EventFrom<typeof microphoneAccessMachine>;
 
 export interface MicrophoneAccessState {
-  readonly access: MicrophoneAccess;
+  readonly access: MicrophoneAccessSnapshot['value'];
   readonly request: () => void;
 }
 
 export function useMicrophoneAccess(): MicrophoneAccessState {
-  const [access, setAccess] = useState<MicrophoneAccess>('checking');
+  const [snapshot, send] = useReducer(
+    (current: MicrophoneAccessSnapshot, event: MicrophoneAccessEvent) => {
+      const [next] = transition(microphoneAccessMachine, current, event);
+
+      return next;
+    },
+    undefined,
+    () => {
+      const [initial] = initialTransition(microphoneAccessMachine);
+
+      return initial;
+    },
+  );
 
   useEffect(() => {
     const controller = new AbortController();
 
-    void followMicrophonePermission(setAccess, controller.signal);
+    void followMicrophonePermission(send, controller.signal);
 
     return () => {
       controller.abort();
     };
   }, []);
 
-  const requestAccess = async (): Promise<void> => {
-    setAccess('asking');
-
-    const answered = await runMicrophoneRequest();
-
-    setAccess(answered);
-  };
-
   return {
-    access,
+    access: snapshot.value,
     request: () => {
-      void requestAccess();
+      if (snapshot.can({ type: 'request' })) {
+        send({ type: 'request' });
+        void runMicrophoneRequest(send);
+      }
     },
   };
 }
 
 async function followMicrophonePermission(
-  onAccess: (access: MicrophoneAccess) => void,
+  send: (event: MicrophoneAccessEvent) => void,
   signal: AbortSignal,
 ): Promise<void> {
   if (!('mediaDevices' in globalThis.navigator)) {
-    onAccess('unavailable');
+    send({ type: 'unavailable' });
 
     return;
   }
@@ -60,18 +64,12 @@ async function followMicrophonePermission(
     return;
   }
 
-  if (permission === null) {
-    onAccess('not-asked');
+  send({ type: 'permission.read', state: permission?.state ?? null });
 
-    return;
-  }
-
-  onAccess(toMicrophoneAccess(permission.state));
-
-  permission.addEventListener(
+  permission?.addEventListener(
     'change',
     () => {
-      onAccess(toMicrophoneAccess(permission.state));
+      send({ type: 'permission.changed', state: permission.state });
     },
     { signal },
   );
@@ -90,16 +88,7 @@ async function readMicrophonePermission(): Promise<PermissionStatus | null> {
   }
 }
 
-function toMicrophoneAccess(state: PermissionState): MicrophoneAccess {
-  return match(state)
-    .returnType<MicrophoneAccess>()
-    .with('granted', () => 'on')
-    .with('denied', () => 'blocked')
-    .with('prompt', () => 'not-asked')
-    .exhaustive();
-}
-
-async function runMicrophoneRequest(): Promise<MicrophoneAccess> {
+async function runMicrophoneRequest(send: (event: MicrophoneAccessEvent) => void): Promise<void> {
   try {
     const stream = await globalThis.navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -107,10 +96,14 @@ async function runMicrophoneRequest(): Promise<MicrophoneAccess> {
       track.stop();
     }
 
-    return 'on';
+    send({ type: 'request.granted' });
+
+    return;
   } catch (error) {
     if (!(error instanceof DOMException) || error.name !== 'NotAllowedError') {
-      return 'failed';
+      send({ type: 'request.failed' });
+
+      return;
     }
   }
 
@@ -118,5 +111,5 @@ async function runMicrophoneRequest(): Promise<MicrophoneAccess> {
   // close the prompt, and only the permission tells the two apart.
   const permission = await readMicrophonePermission();
 
-  return permission === null ? 'blocked' : toMicrophoneAccess(permission.state);
+  send({ type: 'request.refused', state: permission?.state ?? null });
 }
