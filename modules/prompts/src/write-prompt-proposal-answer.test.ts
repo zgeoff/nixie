@@ -657,6 +657,65 @@ test('it refuses an approval once the override in force moved past the base of t
   });
 });
 
+test('it records a rejection of a proposal whose base the override in force moved past', async () => {
+  const ctx = await setupTest();
+
+  const proposalHash = buildPromptProposalHash({
+    promptID: 'compaction',
+    entry: { _template: '{{ parts.safety }}' },
+    files: [],
+  });
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'prompts.override_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: promptsOverrideProposedCodec.encode({
+        proposalID: 'k3x9m2p7qa',
+        promptID: 'compaction',
+        proposalHash,
+        baseHash: null,
+        entry: { _template: '{{ parts.safety }}' },
+        files: [],
+        reason: 'Drop the instruction part.',
+        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+      }),
+    },
+  ]);
+
+  const result = await writePromptProposalAnswer(
+    {
+      log: ctx.log,
+      clock: buildTestClock(1000),
+      definitions: () => ({ snapshotHash: 'snapshot-b' }),
+      readInForce: () => ({
+        snapshotHash: 'snapshot-b',
+        personaVersion: 'persona-a',
+        prompts: { compaction: { parts: { safety: 'Answer in one line.' }, template: null } },
+      }),
+      checkProposal: () => [],
+    },
+    {
+      answer: 'reject',
+      proposalID: 'k3x9m2p7qa',
+      proposalHash,
+      reason: 'The override in force already covers it.',
+    },
+  );
+
+  const records = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['prompts.override_rejected'],
+  });
+
+  expect(result).toStrictEqual({ status: 'rejected', proposalID: 'k3x9m2p7qa' });
+
+  expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
+    { status: 'readable', fields: { reason: 'The override in force already covers it.' } },
+  ]);
+});
+
 test('it approves a proposal whose base is the override in force', async () => {
   const ctx = await setupTest();
 
