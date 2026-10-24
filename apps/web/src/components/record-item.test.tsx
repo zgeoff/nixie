@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { store } from '../mocks/store';
 import { toLogRecord } from '../mocks/to-log-record';
@@ -65,11 +66,10 @@ test('it shows an image the API no longer holds as unavailable', async () => {
   expect(gap).toBeInTheDocument();
 });
 
-test('it shows a forgotten message as a gap with no control', () => {
+test('it shows nothing for a message whose text is shredded', () => {
   const rendered = render(<RecordItem record={buildMockLogRecord({ kind: 'owner_message' })} />);
 
-  expect(rendered.getByRole('listitem')).toHaveTextContent('You Forgotten');
-  expect(rendered.queryByRole('button')).toBeNull();
+  expect(rendered.container).toBeEmptyDOMElement();
 });
 
 test('it offers no forget for a message of a kind the API cannot forget', () => {
@@ -82,7 +82,7 @@ test('it offers no forget for a message of a kind the API cannot forget', () => 
   expect(rendered.queryByRole('button')).toBeNull();
 });
 
-test('it shows the gap as soon as your forget succeeds', async () => {
+test('it takes the message out of the view as soon as your forget succeeds', async () => {
   const user = userEvent.setup();
 
   await createDeviceSession();
@@ -97,8 +97,7 @@ test('it shows the gap as soon as your forget succeeds', async () => {
   await user.click(rendered.getByRole('button', { name: 'Forget' }));
   await user.click(rendered.getByRole('button', { name: 'Forget for good' }));
 
-  const gap = await rendered.findByText('Forgotten');
-
-  expect(gap).toBeVisible();
-  expect(rendered.getByRole('listitem')).not.toHaveTextContent('4417');
+  await waitFor(() => {
+    expect(rendered.container).toBeEmptyDOMElement();
+  });
 });

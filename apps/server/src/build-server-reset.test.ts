@@ -66,9 +66,84 @@ test('it logs the reset and resolves done once the reset finishes', async () => 
   expect(Bun.peek.status(reset.done)).toBe('fulfilled');
 
   expect(log.mock.calls).toStrictEqual([
-    ['reset.started'],
-    ['reset.finished', { lastSequence: 1, keptSessions: 0 }],
+    ['reset.started', { mode: 'full' }],
+    ['reset.finished', { mode: 'full', lastSequence: 1, keptSessions: 0 }],
   ]);
+});
+
+test('it logs a reset of the conversations and resolves done once it finishes', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const log = mock<Parameters<typeof buildServerReset>[0]['log']>();
+
+  const reset = buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log,
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  });
+
+  await reset.runConversations();
+
+  expect(Bun.peek.status(reset.done)).toBe('fulfilled');
+
+  expect(log.mock.calls).toStrictEqual([
+    ['reset.started', { mode: 'conversations' }],
+    ['reset.finished', { mode: 'conversations', lastSequence: 2, shreddedRecords: 0 }],
+  ]);
+});
+
+test('it refuses a full reset while a reset of the conversations runs', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const reset = buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  });
+
+  const conversations = reset.runConversations();
+  const full = reset.run();
+
+  await Promise.allSettled([conversations, full]);
+
+  expect(full).rejects.toThrowWithMessage(Error, 'a reset of the conversations runs already');
+  expect(conversations).resolves.toMatchObject({ shreddedRecords: 0 });
+});
+
+test('it refuses a reset of the conversations while a full reset runs', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const reset = buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  });
+
+  const full = reset.run();
+  const conversations = reset.runConversations();
+
+  await Promise.allSettled([full, conversations]);
+
+  expect(conversations).rejects.toThrowWithMessage(Error, 'a full reset runs already');
+  expect(full).resolves.toMatchObject({ keptSessions: 0 });
 });
 
 test('it answers a request that arrives while a reset runs with that reset', async () => {
@@ -144,8 +219,8 @@ test('it logs a failed reset with the error', async () => {
   await Promise.allSettled([run]);
 
   expect(log.mock.calls).toStrictEqual([
-    ['reset.started'],
-    ['reset.failed', { error: 'AggregateError', message: 'a part failed to stop' }],
+    ['reset.started', { mode: 'full' }],
+    ['reset.failed', { mode: 'full', error: 'AggregateError', message: 'a part failed to stop' }],
   ]);
 });
 

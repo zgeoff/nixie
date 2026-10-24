@@ -7,7 +7,7 @@
 //   [--replace]
 // Clef-flash reads CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN, and Jev reads TYPESAFE_API_KEY.
 // A token may be empty where a broker adds it to each request.
-import { closeSync, mkdirSync, openSync, readdirSync, rmSync, writeSync } from 'node:fs';
+import { mkdirSync, readdirSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { match } from 'ts-pattern';
@@ -16,6 +16,7 @@ import { createDecisionModel } from './create-decision-model.ts';
 import { createSmartTurn } from './create-smart-turn.ts';
 import type { DetectorName } from './find-turn-end.ts';
 import { playUtterance } from './play-utterance.ts';
+import { reserveOutput } from './reserve-output.ts';
 import { speechSetDir } from './speech-sets.ts';
 import { speechUtterance } from './speech-utterance.ts';
 import { createSpeechToText, createVad, sampleRate } from './speech.ts';
@@ -34,13 +35,18 @@ const { values } = parseArgs({
 const set = values.set;
 const out = values.out ?? `results/turn-end-${set}.jsonl`;
 mkdirSync(dirname(out), { recursive: true });
-if (values.replace) {
-  rmSync(out, { force: true });
-}
 // The runner writes one line per utterance from the first, so a second run into the same file
-// would count each utterance it repeats twice. Creating the file exclusively reserves it for this
-// run in one step, so two runners never both find it free.
-const outFile = reserveOutput(out);
+// would count each utterance it repeats twice.
+const reservation = reserveOutput(out, values.replace);
+if ('refused' in reservation) {
+  console.error(
+    match(reservation.refused)
+      .with('exists', () => `${out} already holds a run; pass --replace to start it again`)
+      .with('held', () => `another run holds ${out}; if none is running, remove ${out}.lock`)
+      .exhaustive(),
+  );
+  process.exit(1);
+}
 const detectors = z.array(z.enum(['smartTurn', 'clef', 'jev'])).parse(values.detectors.split(','));
 const limit =
   values.limit === undefined ? Number.POSITIVE_INFINITY : z.coerce.number().int().positive().parse(values.limit);
@@ -86,22 +92,10 @@ for (let index = 0; index < count; index++) {
     pauses,
     set,
   };
-  writeSync(outFile, `${JSON.stringify(record)}\n`);
+  writeSync(reservation.file, `${JSON.stringify(record)}\n`);
   console.log(`${set} ${index + 1}/${count}: ${pauses.length} pauses`);
 }
-closeSync(outFile);
-
-function reserveOutput(path: string): number {
-  try {
-    return openSync(path, 'wx');
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'EEXIST') {
-      console.error(`${path} already holds a run; pass --replace to start it again`);
-      process.exit(1);
-    }
-    throw error;
-  }
-}
+reservation.release();
 
 async function readTranscript(heard: Float32Array): Promise<string> {
   const recognizer = moonshine.start();
