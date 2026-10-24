@@ -26,6 +26,7 @@ import { startGrokCall } from './start-grok-call.ts';
 import { toWav } from './to-wav.ts';
 import type { VoiceCall } from './voice-call.ts';
 import { toRecordingsDir } from './to-recordings-dir.ts';
+import { waitForReady } from './wait-for-ready.ts';
 import { acknowledgeRules } from './voice-rules.ts';
 
 const { values } = parseArgs({
@@ -133,7 +134,11 @@ for (let round = 0; round < rounds; round++) {
         failure = String(error);
       },
     );
-    await Promise.race([call.ready, Bun.sleep(10_000)]);
+    const notReady = await waitForReady(call.ready, 10_000);
+    if (notReady !== undefined) {
+      failure ??= notReady;
+      ended = true;
+    }
     const streamStartAt = performance.now();
     const speechEndWindow = Math.ceil(line.speechEndSample / windowSamples) - 1;
     const speechEndAt = streamStartAt + speechEndWindow * windowMs;

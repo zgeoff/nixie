@@ -24,6 +24,7 @@ import { toWav } from './to-wav.ts';
 import type { TurnTakingRecord } from './turn-taking-record.ts';
 import type { VoiceCall } from './voice-call.ts';
 import { toRecordingsDir } from './to-recordings-dir.ts';
+import { waitForReady } from './wait-for-ready.ts';
 import { acknowledgeRules } from './voice-rules.ts';
 
 const { values } = parseArgs({
@@ -99,7 +100,7 @@ for (let index = 0; index < limit; index++) {
   call.ended.catch((reason: unknown) => {
     error = String(reason);
   });
-  await Promise.race([call.ready, Bun.sleep(10_000)]);
+  error ??= await waitForReady(call.ready, 10_000);
   const streamStartAt = performance.now();
   const silence = new Float32Array(windowSamples);
   let firstSoundAt: number | undefined;

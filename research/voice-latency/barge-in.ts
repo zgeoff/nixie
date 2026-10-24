@@ -23,6 +23,7 @@ import { startGrokCall } from './start-grok-call.ts';
 import { toWav } from './to-wav.ts';
 import type { VoiceCall } from './voice-call.ts';
 import { toRecordingsDir } from './to-recordings-dir.ts';
+import { waitForReady } from './wait-for-ready.ts';
 import { acknowledgeRules } from './voice-rules.ts';
 
 const { values } = parseArgs({
@@ -94,7 +95,7 @@ for (let round = 0; round < rounds; round++) {
   call.ended.catch((reason: unknown) => {
     error = String(reason);
   });
-  await Promise.race([call.ready, Bun.sleep(10_000)]);
+  error ??= await waitForReady(call.ready, 10_000);
   const streamStartAt = performance.now();
   const questionEndMs = (question.speechEndSample / sampleRate) * 1000;
   const silence = new Float32Array(windowSamples);
