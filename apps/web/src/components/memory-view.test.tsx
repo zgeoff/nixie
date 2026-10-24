@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { within } from '@testing-library/react';
+import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -131,13 +131,57 @@ test('it lists self-notes apart from facts', async () => {
   expect(within(active).getAllByRole('listitem')).toHaveLength(1);
 });
 
-test('it reads the next page from the self-notes when the first page holds only facts', async () => {
-  const user = userEvent.setup();
-
+test('it lists a newly approved shared item first in Active, ahead of 50 older facts', async () => {
   await createDeviceSession();
 
   await Promise.all(
     Array.from({ length: 50 }, (_, index) =>
+      store.memoryItems.create({ versions: [{ text: `Owns bicycle number ${index}` }] }),
+    ),
+  );
+
+  await store.memoryItems.create({
+    subject: 'shared',
+    shortID: 'k3m9qa',
+    versions: [{ origin: 'memory_writer', text: 'Calls the kettle Captain Steam' }],
+  });
+
+  const rendered = render(<MemoryView />);
+  const active = rendered.getByRole('region', { name: 'Active' });
+
+  await within(active).findByRole('listitem', { name: 'k3m9qa' });
+
+  expect(within(active).getAllByRole('listitem').at(0)).toHaveAccessibleName('k3m9qa');
+});
+
+test('it lists a self-note on the first page when 50 newer facts follow it', async () => {
+  await createDeviceSession();
+
+  await store.memoryItems.create({
+    subject: 'self',
+    shortID: 'p7x2rd',
+    versions: [{ origin: 'conversation', text: 'Enjoys hearing about bicycles' }],
+  });
+
+  await Promise.all(
+    Array.from({ length: 50 }, (_, index) =>
+      store.memoryItems.create({ versions: [{ text: `Owns bicycle number ${index}` }] }),
+    ),
+  );
+
+  const rendered = render(<MemoryView />);
+  const selfNotes = rendered.getByRole('region', { name: 'Self-notes' });
+
+  const note = await within(selfNotes).findByRole('listitem', { name: 'p7x2rd' });
+
+  expect(note).toBeInTheDocument();
+});
+
+test('it shows Show more only under the list that has another page', async () => {
+  await createDeviceSession();
+
+  await Promise.all(
+    Array.from({ length: 51 }, (_, index) =>
       store.memoryItems.create({ versions: [{ text: `Owns bicycle number ${index}` }] }),
     ),
   );
@@ -149,15 +193,49 @@ test('it reads the next page from the self-notes when the first page holds only 
   });
 
   const rendered = render(<MemoryView />);
+  const active = rendered.getByRole('region', { name: 'Active' });
   const selfNotes = rendered.getByRole('region', { name: 'Self-notes' });
 
-  const showMore = await within(selfNotes).findByRole('button', { name: 'Show more' });
+  await within(selfNotes).findByRole('listitem', { name: 'p7x2rd' });
+
+  const showMore = await within(active).findByRole('button', { name: 'Show more' });
+
+  expect(rendered.getAllByRole('button', { name: 'Show more' })).toStrictEqual([showMore]);
+});
+
+test('it loads the next page of Active into Active only', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  await Promise.all(
+    Array.from({ length: 51 }, (_, index) =>
+      store.memoryItems.create({ versions: [{ text: `Owns bicycle number ${index}` }] }),
+    ),
+  );
+
+  await store.memoryItems.create({
+    subject: 'self',
+    shortID: 'p7x2rd',
+    versions: [{ origin: 'conversation', text: 'Enjoys hearing about bicycles' }],
+  });
+
+  const rendered = render(<MemoryView />);
+  const active = rendered.getByRole('region', { name: 'Active' });
+  const selfNotes = rendered.getByRole('region', { name: 'Self-notes' });
+
+  await within(selfNotes).findByRole('listitem', { name: 'p7x2rd' });
+
+  const showMore = await within(active).findByRole('button', { name: 'Show more' });
 
   await user.click(showMore);
 
-  const note = await within(selfNotes).findByRole('listitem', { name: 'p7x2rd' });
+  await waitFor(() => {
+    expect(within(active).queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
 
-  expect(note).toBeInTheDocument();
+  expect(within(active).getAllByRole('listitem')).toHaveLength(51);
+  expect(within(selfNotes).getAllByRole('listitem')).toHaveLength(1);
 });
 
 test('it finds self-notes apart from facts', async () => {

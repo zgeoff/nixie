@@ -67,6 +67,6 @@ choices:
 - The definitions format version rises, because the filter admits scripts under `skills/`.
 - The snapshot hash covers every skill.
 - Every model loop turns off the SDK's prompt dispatch and bundled skills, because the
-  [skills spike](../design/platform/spikes/sdk-skills/README.md) found that a prompt starting with
-  `/` otherwise runs a bundled skill or a built-in command.
+  [skills spike](../../research/sdk-skills/README.md) found that a prompt starting with `/`
+  otherwise runs a bundled skill or a built-in command.
 - A script uses only what the code image holds, because a code run has no network.

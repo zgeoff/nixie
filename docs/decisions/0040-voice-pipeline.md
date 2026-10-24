@@ -3,7 +3,7 @@
 - Date: 2026-10-11
 - Status: decided
 - Design: [client](../design/platform/channels/client.md)
-- Research: [first-token spike](../design/platform/spikes/sdk-first-token/)
+- Research: [first-token spike](../../research/sdk-first-token/)
 
 nixie runs a voice call as a pipeline: speech-to-text, nixie's own turn, and text-to-speech. The
 turn runs on one Agent SDK process that stays open for the whole call. Each turn opens with a short

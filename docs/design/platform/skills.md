@@ -145,10 +145,10 @@ carries your definitions.
 
 Every model loop sets `skills: []`, `verbatimPrompts: true` and the setting
 `disableBundledSkills: true`, beside `settingSources: []` and `tools: []`. **Why:** the
-[skills spike](spikes/sdk-skills/README.md) found that, even with `skills: []`, a prompt starting
-with `/` runs one of the CLI's bundled skills or built-in commands, such as `/clear`, before nixie's
-policy sees it. `verbatimPrompts` delivers every prompt as written, and `disableBundledSkills`
-removes the bundled skills from the session.
+[skills spike](../../../research/sdk-skills/README.md) found that, even with `skills: []`, a prompt
+starting with `/` runs one of the CLI's bundled skills or built-in commands, such as `/clear`,
+before nixie's policy sees it. `verbatimPrompts` delivers every prompt as written, and
+`disableBundledSkills` removes the bundled skills from the session.
 
 ## The catalog
 

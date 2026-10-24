@@ -133,15 +133,15 @@ test('it lists a forgotten item as a gap with the time its forget completed', as
   ]);
 });
 
-test('it pages items in the order they were created', async () => {
+test('it pages active items newest first', async () => {
   const ctx = await setupTest();
 
-  const first = await ctx.memory.store.remember({
+  const older = await ctx.memory.store.remember({
     text: 'Plays the cello on Thursdays',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const second = await ctx.memory.store.remember({
+  const newer = await ctx.memory.store.remember({
     text: 'Rents a flat on Mill Lane',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
@@ -154,8 +154,106 @@ test('it pages items in the order they were created', async () => {
     ...(opening.next === null ? {} : { after: opening.next }),
   });
 
-  expect(opening.items.map((item) => item.itemID)).toStrictEqual([first.itemID]);
-  expect(following).toMatchObject({ items: [{ itemID: second.itemID }], next: null });
+  expect(opening.items.map((item) => item.itemID)).toStrictEqual([newer.itemID]);
+  expect(following).toMatchObject({ items: [{ itemID: older.itemID }], next: null });
+});
+
+test('it pages retired items newest first', async () => {
+  const ctx = await setupTest();
+
+  const older = await ctx.memory.store.remember({
+    text: 'Plays the cello on Thursdays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const newer = await ctx.memory.store.remember({
+    text: 'Rents a flat on Mill Lane',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.retire({
+    target: newer,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.retire({
+    target: older,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const opening = await ctx.memory.store.view.readPage({ state: 'retired', limit: 1 });
+
+  const following = await ctx.memory.store.view.readPage({
+    state: 'retired',
+    limit: 1,
+    ...(opening.next === null ? {} : { after: opening.next }),
+  });
+
+  expect(opening.items.map((item) => item.itemID)).toStrictEqual([newer.itemID]);
+  expect(following).toMatchObject({ items: [{ itemID: older.itemID }], next: null });
+});
+
+test('it pages forgotten items newest first', async () => {
+  const ctx = await setupTest();
+
+  const older = await ctx.memory.store.remember({
+    text: 'Owes the neighbour twenty pounds',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const newer = await ctx.memory.store.remember({
+    text: 'Keeps a spare key under the mat',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.forget({
+    target: newer,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.forget({
+    target: older,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const opening = await ctx.memory.store.view.readPage({ state: 'forgotten', limit: 1 });
+
+  const following = await ctx.memory.store.view.readPage({
+    state: 'forgotten',
+    limit: 1,
+    ...(opening.next === null ? {} : { after: opening.next }),
+  });
+
+  expect(opening.items.map((item) => item.itemID)).toStrictEqual([newer.itemID]);
+  expect(following).toMatchObject({ items: [{ itemID: older.itemID }], next: null });
+});
+
+test('it lists only the items of the subjects a page asks for', async () => {
+  const ctx = await setupTest();
+
+  const owned = await ctx.memory.store.remember({
+    text: 'Plays the cello on Thursdays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Finds a well-made timetable oddly satisfying',
+    subject: 'self',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const shared = await ctx.memory.store.remember({
+    text: 'Calls the kettle Captain Steam',
+    subject: 'shared',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const page = await ctx.memory.store.view.readPage({
+    state: 'active',
+    subjects: ['owner', 'shared'],
+  });
+
+  expect(page.items.map((item) => item.itemID)).toStrictEqual([shared.itemID, owned.itemID]);
 });
 
 test('it rejects a cursor that no page returned', async () => {
