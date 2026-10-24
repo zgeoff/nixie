@@ -23,16 +23,25 @@ async function setupTest() {
 
   stack.defer(() => db.destroy());
 
-  await runMigrations(db, { schema: nixieSchema, copyDir: directory });
+  await runMigrations(db, {
+    schema: {
+      migrations: nixieSchema.migrations.slice(
+        0,
+        nixieSchema.migrations.indexOf(taskMessagesMigration),
+      ),
+      oldestReader: 0,
+    },
+    copyDir: directory,
+  });
 
-  return { db };
+  return { db, directory };
 }
 
 test('it moves the schema to version 27', () => {
   expect(nixieSchema.migrations.indexOf(taskMessagesMigration) + 1).toBe(27);
 });
 
-test('it gives a task created before the migration a step hop of 0', async () => {
+test('it keeps each task of a database it upgrades, with a step hop of 0', async () => {
   const ctx = await setupTest();
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
@@ -40,15 +49,35 @@ test('it gives a task created before the migration a step hop of 0', async () =>
 
   await sql`insert into tasks (task_id, is_conversation, state, read_cursor, last_inbox_sequence,
     committed_steps, step_errors, claimable_at, created_sequence, updated_sequence)
-    values ('memory-writer', 0, 'ready', 0, 0, 0, 0, 0, 1, 1)`.execute(ctx.db);
+    values ('memory-writer', 0, 'waiting', 1, 1, 4, 0, 0, 1, 1)`.execute(ctx.db);
 
-  const row = await sql`select step_hop from tasks`.execute(ctx.db);
+  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
 
-  expect(row.rows).toStrictEqual([{ step_hop: 0 }]);
+  const rows = await sql`select task_id, is_conversation, state, read_cursor, last_inbox_sequence,
+    committed_steps, step_errors, claimable_at, created_sequence, updated_sequence, step_hop
+    from tasks`.execute(ctx.db);
+
+  expect(rows.rows).toStrictEqual([
+    {
+      task_id: 'memory-writer',
+      is_conversation: 0,
+      state: 'waiting',
+      read_cursor: 1,
+      last_inbox_sequence: 1,
+      committed_steps: 4,
+      step_errors: 0,
+      claimable_at: 0,
+      created_sequence: 1,
+      updated_sequence: 1,
+      step_hop: 0,
+    },
+  ]);
 });
 
 test('it refuses a task message of a kind the tool does not send', async () => {
   const ctx = await setupTest();
+
+  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'task_message', 'snapshot-a', '{}')`.execute(ctx.db);
