@@ -41,7 +41,7 @@ export function findTurnEnd(
     if (failed !== undefined && 'error' in failed) {
       return { error: failed.error };
     }
-    const settled = answers.filter((answer) => !('error' in answer));
+    const settled = answers.flatMap((answer) => ('error' in answer ? [] : [answer]));
     const waitMs =
       settled.length === 0
         ? settings.silenceMs
