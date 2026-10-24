@@ -40,6 +40,41 @@ covers how nixie renders a prompt and what the seed checks.
    expect a `prompts.safety_missing` line in the operator log that lists each such prompt. That line
    is the one sign that a prompt runs without its built-in safety rules.
 
+## Answering an override that nixie proposes
+
+When the definitions export is configured, nixie can propose an override itself. Answer each
+proposal from the host where nixie runs:
+
+1. List the proposals that wait for your answer:
+
+   ```bash
+   nixie prompt-pending
+   ```
+
+   Expect a JSON list. Each entry holds the proposal's `proposalID`, its `proposalHash`, the `entry`
+   and `files` it proposes, its `reason`, and `inForce`, the override in force for that prompt. An
+   entry with `isStale` set was proposed against an override that has changed since.
+
+2. Approve a proposal as it stands:
+
+   ```bash
+   nixie prompt-approve <proposal_id> --hash <proposal_hash>
+   ```
+
+   To approve your own version instead, add `--entry` with the prompt's entry as a JSON map and
+   `--files` with the part files as a JSON list of `path` and `text`. Expect the approval's IDs
+   back. nixie then opens a pull request to your definitions repo, and the override applies once you
+   merge it and promote `live`.
+
+3. Or reject it with a reason that nixie reads:
+
+   ```bash
+   nixie prompt-reject <proposal_id> --hash <proposal_hash> --reason "<why>"
+   ```
+
+An answer that fails prints the status and the reason: a hash that does not match, a proposal
+already answered or lapsed, a stale proposal, or an edit that fails the checks in [Steps](#steps).
+
 ## Parts and paths
 
 A template reads `parts.<name>` for each part of its prompt, and every path in its row. A part reads

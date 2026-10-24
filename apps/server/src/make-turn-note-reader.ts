@@ -17,6 +17,7 @@ import {
 } from '@heynixie/sessions';
 import { buildSkillProposalAnswerKind, buildSkillReloadKind } from '@heynixie/skills';
 import { conversationTaskID } from '@heynixie/tasks';
+import { buildPromptProposalAnswerKind } from './build-prompt-proposal-answer-kind';
 import { buildRestartKind } from './build-restart-kind';
 import { readTurnNotes } from './read-turn-notes';
 
@@ -53,6 +54,7 @@ export function makeTurnNoteReader(
     buildCompactionHeadsUpKind(options.log, options.compaction),
     buildSkillReloadKind(options.log, conversationTaskID),
     buildSkillProposalAnswerKind(options.log, conversationTaskID),
+    buildPromptProposalAnswerKind(options.log, conversationTaskID),
   ]);
 
   return (request) => readTurnNotes({ ...options, events }, request);

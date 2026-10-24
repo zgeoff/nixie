@@ -29,6 +29,8 @@ async function setupTest() {
       apiContext: api.context,
       readMemory: () => null,
       seedWrittenSkills: () => Promise.resolve(),
+      readInForce: () => null,
+      wakeExports: () => {},
       runReset,
       gate,
     },
