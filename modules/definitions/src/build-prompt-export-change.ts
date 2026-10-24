@@ -131,6 +131,8 @@ function collectSharedPaths(
 ): ReadonlyMap<string, SharedPath> {
   const readers = collectOtherReaders(manifest, promptID);
 
+  const proposed = new Set(files.map((file) => file.path));
+
   return new Map(
     files.flatMap((file) => {
       const fileReaders = readers.get(file.path);
@@ -141,9 +143,9 @@ function collectSharedPaths(
 
       const to = `${promptsFolder}${promptID}/${file.path.slice(promptsFolder.length)}`;
 
-      if (readers.has(to)) {
+      if (readers.has(to) || proposed.has(to)) {
         throw new Error(
-          `the ${promptID} override writes ${file.path}, which another prompt reads, and the path it would move to, ${to}, is read by another prompt too`,
+          `the ${promptID} override writes ${file.path}, which another prompt reads, and the path it would move to, ${to}, is taken`,
         );
       }
 

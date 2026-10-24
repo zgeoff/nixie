@@ -85,7 +85,28 @@ test("it refuses a part file that another prompt reads when that prompt also rea
     }),
   ).toThrowWithMessage(
     Error,
-    'the compaction override writes prompts/shared.md, which another prompt reads, and the path it would move to, prompts/compaction/shared.md, is read by another prompt too',
+    'the compaction override writes prompts/shared.md, which another prompt reads, and the path it would move to, prompts/compaction/shared.md, is taken',
+  );
+});
+
+test("it refuses a part file that another prompt reads when the proposal holds a file at the path in the prompt's own folder", () => {
+  expect(() =>
+    buildPromptExportChange({
+      approvalID: 'approval-a',
+      proposalID: 'k3x9m2p7qa',
+      promptID: 'compaction',
+      entry: { instruction: 'prompts/shared.md', safety: 'prompts/compaction/shared.md' },
+      files: [
+        { path: 'prompts/shared.md', text: 'Keep it short.\n' },
+        { path: 'prompts/compaction/shared.md', text: 'Quote nothing.\n' },
+      ],
+      reason: 'Shorter summaries.',
+      text: { agentName: null, ownerName: null },
+      manifest: 'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n',
+    }),
+  ).toThrowWithMessage(
+    Error,
+    'the compaction override writes prompts/shared.md, which another prompt reads, and the path it would move to, prompts/compaction/shared.md, is taken',
   );
 });
 
