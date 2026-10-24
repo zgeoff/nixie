@@ -79,11 +79,12 @@ runs its files one at a time.
 | Agent SDK | `*.agent-sdk.test.ts` | The Agent SDK's CLI as a subprocess, against a scripted model | `test:agent-sdk` | 5 s, Bun's default |
 | e2e       | every suite in `e2e/` | The built nixie or web client, driven from outside            | `test:e2e`       | 15 s               |
 
-An Agent SDK suite never calls the live model; the SDK contract suite in `evals/` does. A test in a
-lane sets no limit of its own, and a slow test gets a fix, never a raised lane limit. CI's test
-timeouts check lets only a lane script raise the limit. The pre-push test job splits its run the
-same way. A suite that spawns nixie, the web client or a build of either lives under `e2e/`. The web
-package exports the helpers those suites share from its test utils.
+An Agent SDK suite, in a guest or in `evals/test-utils`, never calls the live model; the SDK
+contract suite in `evals/sdk-contract` does. A test in a lane sets no limit of its own, and a slow
+test gets a fix, never a raised lane limit. CI's test timeouts check lets only a lane script raise
+the limit. The pre-push test job splits its run the same way. A suite that spawns nixie, the web
+client or a build of either lives under `e2e/`. The web package exports the helpers those suites
+share from its test utils.
 
 [`startSpawnedNixie`](../../../e2e/test-utils/start-spawned-nixie.ts) in `e2e/` spawns the test
 build of the server's `serve` command as a child process and joins it to

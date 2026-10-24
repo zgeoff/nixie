@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { waitForCondition } from '@heynixie/testing';
 import { runOracle } from '../test-utils/run-oracle';
 import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
 
@@ -20,10 +19,7 @@ test('it stops the stale writer at its first write, and the new writer expires i
   ctx.nixie.model.addReplies({ text: 'Late.', gate: lateReply.promise }, { text: 'Hi.' });
   void processA.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
 
-  await waitForCondition(() =>
-    ctx.nixie.model.requests.some((request) => request.path === '/v1/messages'),
-  );
-
+  await ctx.nixie.waitForModelCalls(1);
   await processA.request('releaseWriterLock', null);
 
   const processB = ctx.nixie.harness.start();

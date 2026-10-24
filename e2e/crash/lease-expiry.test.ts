@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { runOracle } from '../test-utils/run-oracle';
 import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
@@ -77,10 +76,7 @@ test('it lets runner B claim only once the renewed lease expires, never before',
   ctx.nixie.model.addReplies({ text: 'Late.', gate: lateReply.promise }, { text: 'Hi.' });
   void nixie.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
 
-  await waitForCondition(() =>
-    ctx.nixie.model.requests.some((request) => request.path === '/v1/messages'),
-  );
-
+  await ctx.nixie.waitForModelCalls(1);
   await ctx.nixie.harness.advance(20_000);
 
   const renewal = await nixie.waitForArrival('renew.after', 'conversation');
@@ -156,10 +152,7 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
 
   void nixie.request('sendMessage', { thread: 'conversation', text: 'Send the summary.' });
 
-  await waitForCondition(() =>
-    ctx.nixie.model.requests.some((request) => request.path === '/v1/messages'),
-  );
-
+  await ctx.nixie.waitForModelCalls(1);
   await ctx.nixie.harness.advance(20_000);
 
   const renewal = await nixie.waitForArrival('renew.after', 'conversation');
@@ -170,10 +163,7 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
     (record) => record.kind === 'task.step_started' && record.payload['generation'] === 2,
   );
 
-  await waitForCondition(
-    () =>
-      ctx.nixie.model.requests.filter((request) => request.path === '/v1/messages').length === 2,
-  );
+  await ctx.nixie.waitForModelCalls(2);
 
   sendReply.resolve();
 
@@ -181,10 +171,7 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
     (record) => record.kind === 'tool_result' && record.thread === 'conversation',
   );
 
-  await waitForCondition(
-    () =>
-      ctx.nixie.model.requests.filter((request) => request.path === '/v1/messages').length === 3,
-  );
+  await ctx.nixie.waitForModelCalls(3);
 
   nixie.release(renewal);
   takeoverReply.resolve();
