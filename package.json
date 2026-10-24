@@ -64,7 +64,7 @@
       "entities": "8.1.0",
       "fake-indexeddb": "6.2.5",
       "gunshi": "1.0.0-rc.1",
-      "happy-dom": "20.14.5",
+      "happy-dom": "21.0.4",
       "kysely": "0.29.6",
       "msw": "2.15.0",
       "onnxruntime-node": "1.30.0",
@@ -114,6 +114,10 @@
     "tsrs": "0.18.0-ts7.1.0-dev.20260929",
     "turbo": "2.11.7",
     "typescript": "7.0.2"
+  },
+  "overrides": {
+    "@happy-dom/global-registrator": "21.0.4",
+    "happy-dom": "21.0.4"
   },
   "engines": {
     "node": ">=24"
