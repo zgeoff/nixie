@@ -6,6 +6,7 @@ import type { EncoderDirs, EncoderName } from './load-turn-encoder.ts';
 import { loadTurnEncoder } from './load-turn-encoder.ts';
 import { makeRandom } from './make-random.ts';
 import type { RankConfig, TurnRanking } from './rank-turn.ts';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
 import { startMemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
@@ -31,6 +32,7 @@ export interface Run {
   encoder: EncoderName;
   kind: 'ranking' | 'served';
   config: RankConfig;
+  isShipped: boolean;
 }
 
 // A ranking run keeps every item, so a needed item past rank 10 still counts toward MRR.
@@ -44,77 +46,75 @@ const rankingBase: RankConfig = {
   isDeliveredExcluded: false,
 };
 
+// The shipped encoder always runs, because every comparison is against its shipped runs, and the
+// fusion, width, floor and item-count runs sweep it alone.
 export function buildRuns(encoders: EncoderName[]): Run[] {
   const runs: Run[] = [];
+  const shipped: EncoderName = 'leaf-ir-q8';
 
   // Only the shipped model is trained so that its first numbers carry the meaning, so the others
   // keep every number.
-  for (const encoder of encoders) {
-    const config = encoder === 'leaf-ir-q8' ? rankingBase : { ...rankingBase, width: null };
+  for (const encoder of new Set([shipped, ...encoders])) {
+    const config = encoder === shipped ? rankingBase : { ...rankingBase, width: null };
 
     runs.push(
-      { name: `${encoder} hybrid`, encoder, kind: 'ranking', config },
-      { name: `${encoder} vectors`, encoder, kind: 'ranking', config: { ...config, mode: 'vector' } },
+      { name: `${encoder} hybrid`, encoder, kind: 'ranking', config, isShipped: encoder === shipped },
+      { name: `${encoder} vectors`, encoder, kind: 'ranking', config: { ...config, mode: 'vector' }, isShipped: false },
     );
   }
 
-  const shipped = encoders.includes('leaf-ir-q8') ? 'leaf-ir-q8' : encoders[0];
-
-  if (shipped === undefined) {
-    return runs;
-  }
-
-  runs.push(
-    { name: 'BM25', encoder: shipped, kind: 'ranking', config: { ...rankingBase, mode: 'keyword' } },
-    { name: `${shipped} hybrid, full width`, encoder: shipped, kind: 'ranking', config: { ...rankingBase, width: null, isInt8: false } },
-    { name: `${shipped} hybrid, k 20`, encoder: shipped, kind: 'ranking', config: { ...rankingBase, fusionK: 20 } },
-    { name: `${shipped} hybrid, vectors x2`, encoder: shipped, kind: 'ranking', config: { ...rankingBase, vectorWeight: 2 } },
-  );
-
-  runs.push({
-    name: `${shipped} served, shipped floors, nothing delivered`,
+  const sweep = (name: string, kind: Run['kind'], config: RankConfig): Run => ({
+    name: `${shipped} ${name}`,
     encoder: shipped,
-    kind: 'served',
-    config: { ...SHIPPED, isDeliveredExcluded: false },
+    kind,
+    config,
+    isShipped: false,
   });
 
+  runs.push(
+    { ...sweep('', 'ranking', { ...rankingBase, mode: 'keyword' }), name: 'BM25' },
+    sweep('hybrid, full width', 'ranking', { ...rankingBase, width: null, isInt8: false }),
+    sweep('hybrid, k 20', 'ranking', { ...rankingBase, fusionK: 20 }),
+    sweep('hybrid, vectors x2', 'ranking', { ...rankingBase, vectorWeight: 2 }),
+    sweep('served, shipped floors, nothing delivered', 'served', { ...SHIPPED, isDeliveredExcluded: false }),
+  );
+
   for (const limit of [3, 4]) {
-    runs.push({
-      name: `${shipped} served, shipped floors, nothing delivered, ${limit} items`,
-      encoder: shipped,
-      kind: 'served',
-      config: { ...SHIPPED, isDeliveredExcluded: false, factLimit: limit, listLimit: limit },
-    });
+    runs.push(
+      sweep(`served, shipped floors, nothing delivered, ${limit} items`, 'served', {
+        ...SHIPPED,
+        isDeliveredExcluded: false,
+        factLimit: limit,
+        listLimit: limit,
+      }),
+    );
   }
 
   for (const limit of [3, 4, 8]) {
-    runs.push({
-      name: `${shipped} served, shipped floors, ${limit} items`,
-      encoder: shipped,
-      kind: 'served',
-      config: { ...SHIPPED, factLimit: limit, listLimit: limit },
-    });
+    runs.push(sweep(`served, shipped floors, ${limit} items`, 'served', { ...SHIPPED, factLimit: limit, listLimit: limit }));
   }
 
   for (const minSimilarity of [0.3, 0.34, 0.38, 0.42, 0.46]) {
     for (const minScore of [0.25, 1, 2]) {
       runs.push({
-        name: `${shipped} served, similarity ${minSimilarity}, BM25 ${minScore}`,
-        encoder: shipped,
-        kind: 'served',
-        config: { ...SHIPPED, minSimilarity, minScore },
+        ...sweep(`served, similarity ${minSimilarity}, BM25 ${minScore}`, 'served', { ...SHIPPED, minSimilarity, minScore }),
+        isShipped: minSimilarity === SHIPPED.minSimilarity && minScore === SHIPPED.minScore,
       });
     }
 
-    runs.push({
-      name: `${shipped} served vectors, similarity ${minSimilarity}`,
-      encoder: shipped,
-      kind: 'served',
-      config: { ...SHIPPED, mode: 'vector', minSimilarity },
-    });
+    runs.push(sweep(`served vectors, similarity ${minSimilarity}`, 'served', { ...SHIPPED, mode: 'vector', minSimilarity }));
   }
 
   return runs;
+}
+
+// Each comparison is against the shipped run of its kind, whatever order the encoders came in.
+export function getShippedRun(runs: Run[], kind: Run['kind']): Run {
+  const shipped = runs.find((run) => run.isShipped && run.kind === kind);
+
+  invariant(shipped !== undefined, `the runs hold no shipped ${kind} run`);
+
+  return shipped;
 }
 
 export interface RankedTurn {

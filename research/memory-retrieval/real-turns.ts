@@ -24,6 +24,7 @@ import type { Gold } from './real-turns/score-turns.ts';
 import {
   buildPairedDifference,
   buildRuns,
+  getShippedRun,
   labelSchema,
   runRankings,
   sampleKeySchema,
@@ -187,7 +188,7 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     '\n| Run | Cases | Recall@3 | Recall@5 | Recall@10 | MRR | Best@5 | Recall@5 vs shipped | MRR vs shipped |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   );
 
-  const base = results.get(runs[0]?.name ?? '') ?? [];
+  const base = results.get(getShippedRun(runs, 'ranking').name) ?? [];
   const formatDifference = (difference: { mean: number; low: number; high: number }) =>
     `${difference.mean} (${difference.low} to ${difference.high})`;
 
@@ -207,7 +208,7 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     '\n| Run | Gold cases | Covered recall | Fresh cases | Fresh recall | Empty cases | Shown on empty | Empty with any | Precision | Noise served | Shown per turn | Fresh change | Shown on empty change |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   );
 
-  const servedBase = results.get(runs.find((entry) => entry.name.endsWith('served, similarity 0.38, BM25 0.25'))?.name ?? '') ?? [];
+  const servedBase = results.get(getShippedRun(runs, 'served').name) ?? [];
 
   for (const run of runs.filter((entry) => entry.kind === 'served')) {
     const ranked = results.get(run.name) ?? [];
