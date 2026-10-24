@@ -6,7 +6,7 @@ candidate answered 13 caller lines for 3 rounds in an imp on the deployment host
 speech-to-speech APIs also took 300 real utterances and 10 interruptions each. Grok Voice is the one
 candidate that passes both gates: its first audio came 1.35 s after the end of speech at the median,
 and no reply held a silence over 1 s. GPT-Live reached first audio at 1.41 s but went quiet for 1.7
-to 3.8 s on every request it handed to Claude, so it fails the silence gate on the tool lines.
+to 3.8 s on 8 of the 9 requests it handed to Claude, so it fails the silence gate on the tool lines.
 
 A listening pass ruled Piper's voice out, so the pipeline results measure Claude behind a voice
 nixie will not ship. The same pass heard Grok Voice and GPT-Live as equal.
@@ -33,9 +33,9 @@ Each candidate's full answer audio and its cost per minute sit beside the gates.
 Recommendation: Grok Voice, if Grok may phrase nixie's answers. It leads on speed, the user's first
 priority, and it was the simpler API to build against. Choose GPT-Live instead if Claude must write
 what nixie says on real requests: its client delegation hands each one to nixie's Claude turn, and
-the cost is a wait of 1.7 to 3.8 s after its spoken filler. Both load nixie's persona in the session
-instructions. A pipeline stays open only with a streaming cloud voice in place of Piper, which this
-run did not test.
+the cost is a wait of 1.7 to 3.8 s after its spoken filler, which 8 of the 9 delegated requests
+held. Both load nixie's persona in the session instructions. A pipeline stays open only with a
+streaming cloud voice in place of Piper, which this run did not test.
 
 ## Run it
 
@@ -117,8 +117,9 @@ delegated.
 Grok Voice called each stub tool as a function call and spoke the answer with no long silence.
 GPT-Live answered all ten plain lines itself and delegated each tool line to Sonnet 5.5, which
 called the stub tool. GPT-Live then spoke a filler such as "Sure, one moment" and waited for
-Sonnet's answer: 8 of its 9 long silences are those waits. It spoke Sonnet's answer close to word
-for word, and once added a date that Sonnet's answer did not hold.
+Sonnet's answer. 8 of the 9 delegated requests held a wait over 1 s, and those waits are 8 of its 9
+long silences. It spoke Sonnet's answer close to word for word, and once added a date that Sonnet's
+answer did not hold.
 
 ## Turn-taking on real speech
 
