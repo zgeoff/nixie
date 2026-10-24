@@ -57,6 +57,17 @@ test('it waits for the model reply when the reply repeats the message', async ()
   ]);
 });
 
+test('it gives up on the reply after the time it is given', async () => {
+  const ctx = await setupTest();
+  const api = await createTestClient(ctx);
+
+  ctx.guest.addReplies({ text: 'Hello back.' });
+
+  expect(sendClientMessage(api.client, { text: 'Hello.' }, 'Another reply.', 50)).rejects.toThrow(
+    'condition not met within 50 ms',
+  );
+});
+
 test('it waits for a new reply when an earlier turn gave the same one', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);

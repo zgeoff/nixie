@@ -14,8 +14,10 @@ export async function sendClientMessage(
   client: Pick<ContractClient, 'conversation'>,
   message: ClientMessage,
   replyText: string,
+  timeoutMs?: number,
 ): Promise<readonly LogRecord[]> {
   const page: { records: readonly LogRecord[] } = { records: [] };
+  const waitOptions = timeoutMs === undefined ? {} : { timeoutMs };
 
   const sent = await client.conversation.send({
     clientMessageId: crypto.randomUUID(),
@@ -35,7 +37,7 @@ export async function sendClientMessage(
         record.sequence > sent.sequence &&
         record.message?.text === replyText,
     );
-  });
+  }, waitOptions);
 
   return page.records;
 }
