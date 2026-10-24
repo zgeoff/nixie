@@ -12,6 +12,11 @@ token took 1.11 s at the median on this host, nearly twice what the
 [first-token spike](../../docs/design/platform/spikes/sdk-first-token/README.md) measured on another
 host.
 
+The [run on the deployment host](deployment-host.md) repeats the spike on the host nixie deploys to.
+There the full answer's audio was ready at 2.85 s at the median and the model's share took 1.17 s,
+so the pipeline misses the gate on the deployed path too. That run adds a test of a shorter pause on
+real speech.
+
 ## Question
 
 How long does a spoken turn take from the end of the caller's speech to the first audio and to the
@@ -93,7 +98,18 @@ bun report.ts results/stages.jsonl results/calls.jsonl
 ```
 
 `--silence-ms` sets the pause that ends a turn, and `--barge-in-after-ms` sets when the barge-in
-starts. `bun test` checks how the report counts a failed turn. Git ignores `models/` and `results/`.
+starts. `--warm-long` speaks one long sentence before the first turn. `bun test` checks how the
+report counts a failed turn, and how the pause test classifies a recorded sentence from the models
+that `models.sh` downloads. Git ignores `models/` and `results/`.
+
+The pause test fetches real utterances from the AMI meeting corpus and plays them through the
+detector at each pause:
+
+```bash
+bun real-speech.ts
+bun pauses.ts --out results/pauses-real.jsonl --set real --pauses 300,400,500,700
+bun pauses.ts --out results/pauses-caller.jsonl --set caller --pauses 300,500
+```
 
 ## Results
 
@@ -204,19 +220,18 @@ that runs 12 to 21 s, and the session still holds the whole reply as said.
   `whisper` made no word errors and is the slowest.
 - `piper` is the only voice tested that keeps ahead of playback on 2 vCPUs. Kokoro needs a faster
   host or a GPU before it can speak the first phrase in time.
-- A 300 ms pause, instead of 500 ms, ends the turn 192 ms sooner at the median. The spike did not
-  test how often a shorter pause cuts a caller off mid-sentence.
+- A 300 ms pause, instead of 500 ms, ends the turn 192 ms sooner at the median. On real speech, the
+  [run on the deployment host](deployment-host.md#a-shorter-pause-on-real-speech) found that it cuts
+  off 45% of utterances against 30.5% at 500 ms.
 - Barge-in by voice activity detection stops playback 288 ms after the caller starts. The session
   then holds the full reply, though the caller heard only part of it.
 
 ## Recommendation
 
-Keep the pipeline with `zipformer`, `piper` and Silero, and hold the swap to speech-to-speech until
-the run repeats on the host nixie deploys to. The gate misses on the model's share, which differs
-between hosts and between runs, and a speech-to-speech model replaces the model as well as the
-speech stages. If the full answer still misses there, 3 changes cut the pipeline's own time:
+Keep the pipeline with `zipformer`, `piper` and Silero. The gate misses on the model's share, and
+the [run on the deployment host](deployment-host.md#recommendation) gives the recommendation on the
+swap to speech-to-speech from that host's numbers. 2 changes cut the pipeline's own time:
 
-- A 300 ms pause saves 192 ms, measured in this spike.
 - Synthesizing the next sentence while one plays, or speaking at each clause, shortens the 0.60 s
   tail after the full text. This spike did not build either.
 - A small acknowledgement model, the fallback in 0040, makes the first audio independent of the
@@ -228,5 +243,5 @@ speech stages. If the full answer still misses there, 3 changes cut the pipeline
   playback reaches the detector and would trigger a barge-in.
 - The audio path to and from a device. The times here end when the audio is ready on the host.
 - A reply that calls a tool, which adds model rounds before the answer.
-- How each voice sounds, and how often a 300 ms pause cuts a caller off.
+- How each voice sounds.
 - Hosted speech services. The host candidates kept the speech on the host, as 0040 wants.
