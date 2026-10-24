@@ -14,11 +14,11 @@ export const taskMessagesMigration: Migration = {
         'progress', 'question', 'request', 'report', 'reply', 'chat'
       )),
       reply_to text,
-      is_waiting integer not null check (is_waiting in (0, 1)),
+      wait_state text not null check (wait_state in ('none', 'open', 'answered', 'released')),
       sent_sequence integer not null references records (sequence)
     ) strict`.execute(tx);
 
     await sql`create index if not exists task_messages_waiting
-      on task_messages (from_task, sent_sequence) where is_waiting = 1`.execute(tx);
+      on task_messages (from_task, sent_sequence) where wait_state = 'open'`.execute(tx);
   },
 };

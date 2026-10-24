@@ -182,7 +182,7 @@ async function readOpenWait(
     .$extendTables<TasksTables>()
     .selectFrom('task_messages')
     .select(['from_task', 'to_task'])
-    .where('is_waiting', '=', 1)
+    .where('wait_state', '=', 'open')
     .where((eb) =>
       eb.or([
         eb.and([eb('from_task', '=', first), eb('to_task', '=', second)]),

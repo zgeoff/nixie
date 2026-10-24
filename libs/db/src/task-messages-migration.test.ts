@@ -83,8 +83,8 @@ test('it refuses a task message of a kind the tool does not send', async () => {
     values (1, 1767225600000, 'task_message', 'snapshot-a', '{}')`.execute(ctx.db);
 
   const refused = await sql`insert into task_messages (message_id, from_task, to_task, kind,
-    reply_to, is_waiting, sent_sequence)
-    values ('k3vq8m2xpa', 'memory-writer', 'conversation', 'shout', null, 0, 1)`
+    reply_to, wait_state, sent_sequence)
+    values ('k3vq8m2xpa', 'memory-writer', 'conversation', 'shout', null, 'none', 1)`
     .execute(ctx.db)
     .then(
       () => null,

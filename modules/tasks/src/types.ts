@@ -29,6 +29,8 @@ export interface TaskClaim {
 
 export type TaskMessageKind = 'progress' | 'question' | 'request' | 'report' | 'reply' | 'chat';
 
+export type TaskWaitState = 'none' | 'open' | 'answered' | 'released';
+
 export type WakeCause =
   | { readonly kind: 'owner' }
   | { readonly kind: 'timer' }
@@ -183,7 +185,7 @@ interface TaskMessageTable {
   readonly to_task: string;
   readonly kind: TaskMessageKind;
   readonly reply_to: string | null;
-  readonly is_waiting: number;
+  readonly wait_state: TaskWaitState;
   readonly sent_sequence: number;
 }
 

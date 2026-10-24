@@ -227,6 +227,93 @@ test('it rebuilds the task messages and their waits equal to the live ones after
     .orderBy('sent_sequence')
     .execute();
 
-  expect(live.map((row) => row.is_waiting)).toStrictEqual([0, 1, 0]);
+  expect(live.map((row) => row.wait_state)).toStrictEqual(['answered', 'open', 'none']);
   expect(rebuilt).toStrictEqual(live);
+});
+
+test('it releases only the open waits when a task finishes, and leaves an answered question answered', async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 20,
+  };
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+
+  const planner = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(planner);
+
+  const question = await writeTaskMessage(ctx.context, messaging, {
+    from: 'planner',
+    to: 'conversation',
+    kind: 'question',
+    body: 'Is Tuesday free?',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  invariant(question.status === 'sent');
+
+  await writeTaskMessage(ctx.context, messaging, {
+    from: 'planner',
+    to: 'conversation',
+    kind: 'request',
+    body: 'Hold Wednesday too.',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  await writeStepCommit(ctx.context, planner, { next: 'wait', records: [], acknowledged: [] });
+
+  const conversation = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(conversation);
+
+  await writeTaskMessage(ctx.context, messaging, {
+    from: 'conversation',
+    to: 'planner',
+    kind: 'reply',
+    body: 'Tuesday is free.',
+    replyTo: question.messageID,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  await writeStepCommit(ctx.context, conversation, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+  });
+
+  const woken = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(woken?.lease.workID === 'planner');
+
+  const inbox = await readInbox(ctx.context, 'planner');
+
+  await writeStepCommit(ctx.context, woken, {
+    next: 'done',
+    records: [],
+    acknowledged: inbox.map((record) => record.sequence),
+  });
+
+  const rows = await ctx.db
+    .selectFrom('task_messages')
+    .select(['kind', 'wait_state'])
+    .orderBy('sent_sequence')
+    .execute();
+
+  expect(rows).toStrictEqual([
+    { kind: 'question', wait_state: 'answered' },
+    { kind: 'request', wait_state: 'released' },
+    { kind: 'reply', wait_state: 'none' },
+  ]);
 });

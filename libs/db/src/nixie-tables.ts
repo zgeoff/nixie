@@ -309,7 +309,7 @@ export interface NixieTables {
     readonly to_task: string;
     readonly kind: string;
     readonly reply_to: string | null;
-    readonly is_waiting: number;
+    readonly wait_state: string;
     readonly sent_sequence: number;
   };
   readonly tasks: {

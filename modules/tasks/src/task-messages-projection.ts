@@ -1,5 +1,6 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import { collectTaskWaitSources } from './collect-task-wait-sources';
 import { parseTaskRecord } from './parse-task-record';
 import { taskMessageCodec } from './task-message-codec';
 import type { TasksTables } from './types';
@@ -20,7 +21,7 @@ export const taskMessagesProjection: Projection = {
       (parsed?.kind === 'task.step_committed' && parsed.nextState === 'done') ||
       (parsed?.kind === 'task.step_errored' && parsed.nextState === 'failed');
 
-    return finished ? clearWaits(db, parsed.taskID) : Promise.resolve([]);
+    return finished ? releaseWaits(db, parsed.taskID) : Promise.resolve([]);
   },
 };
 
@@ -40,7 +41,7 @@ async function insertMessage(
       to_task: message.to,
       kind: message.kind,
       reply_to: message.replyTo,
-      is_waiting: waitingKinds.has(message.kind) ? 1 : 0,
+      wait_state: waitingKinds.has(message.kind) ? 'open' : 'none',
       sent_sequence: record.sequence,
     })
     .execute();
@@ -51,28 +52,28 @@ async function insertMessage(
 
   const answered = await db
     .updateTable('task_messages')
-    .set({ is_waiting: 0 })
+    .set({ wait_state: 'answered' })
     .where('message_id', '=', message.replyTo)
     .where('from_task', '=', message.to)
     .where('to_task', '=', message.from)
-    .where('is_waiting', '=', 1)
+    .where('wait_state', 'in', collectTaskWaitSources('answered'))
     .returning('message_id')
     .execute();
 
   return [message.messageID, ...answered.map((row) => row.message_id)];
 }
 
-async function clearWaits(
+async function releaseWaits(
   db: Transaction<TasksTables>,
   taskID: string,
 ): Promise<readonly string[]> {
-  const cleared = await db
+  const released = await db
     .updateTable('task_messages')
-    .set({ is_waiting: 0 })
-    .where('is_waiting', '=', 1)
+    .set({ wait_state: 'released' })
+    .where('wait_state', 'in', collectTaskWaitSources('released'))
     .where((eb) => eb.or([eb('from_task', '=', taskID), eb('to_task', '=', taskID)]))
     .returning('message_id')
     .execute();
 
-  return cleared.map((row) => row.message_id);
+  return released.map((row) => row.message_id);
 }

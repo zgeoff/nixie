@@ -55,7 +55,7 @@ export async function readTaskList(
   const waits = await db
     .selectFrom('task_messages')
     .select(['from_task', 'to_task'])
-    .where('is_waiting', '=', 1)
+    .where('wait_state', '=', 'open')
     .orderBy('sent_sequence')
     .execute();
 
