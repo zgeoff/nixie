@@ -1270,6 +1270,7 @@ test('it resumes the session for a photo while the images it holds leave room', 
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
     toolNames: ['notes_read'],
+    imageBudget: { bytes: 2048, count: 100 },
   });
 
   ctx.sandboxes.setGuestScript((turn) => [
@@ -1293,7 +1294,7 @@ test('it resumes the session for a photo while the images it holds leave room', 
     thread: 'conversation',
     payload: { images: [{ mediaType: 'image/jpeg' }] },
     erasable: { text: 'The garden bed.' },
-    attachments: [new Uint8Array(5 * 1024 * 1024).fill(7)],
+    attachments: [new Uint8Array(600).fill(7)],
   };
 
   await writeInboxRecords(ctx.context, [photo]);
@@ -1307,7 +1308,7 @@ test('it resumes the session for a photo while the images it holds leave room', 
   expect(ctx.sandboxes.turns.at(-1)?.resume?.sessionID).toBe(
     '5e2a9c71-4b0d-4f6e-8a3b-2d7c1e9f0a11',
   );
-}, 60_000);
+});
 
 test('it records the persona and policy hashes in force on the opening of a session', async () => {
   const ctx = await setupTest();
