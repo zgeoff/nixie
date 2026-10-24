@@ -202,7 +202,7 @@ test('it approves a prompt proposal with the edits that --entry and --files give
   });
 });
 
-test('it rejects a prompt proposal with its reason, and the proposal leaves the pending list', async () => {
+test('it rejects a prompt proposal with its reason, which the model reads, and the proposal leaves the pending list', async () => {
   await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
   const nixie = await startInProcessNixie({
@@ -263,9 +263,32 @@ test('it rejects a prompt proposal with its reason, and the proposal leaves the 
 
   const pending = await runHostCommand(nixie.configPath, ['prompt-pending']);
 
+  nixie.guest.addReplies({ text: 'Noted.' });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Any news on that?',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(async () => {
+    const page = await api.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Noted.');
+  });
+
   expect(rejected.exitCode).toBe(0);
   expect(JSON.parse(rejected.stdout)).toStrictEqual({ proposalID });
   expect(JSON.parse(pending.stdout)).toStrictEqual([]);
+
+  expect(nixie.guest.turns.at(-1)?.input).toMatchObject([
+    {
+      text: expect.toInclude(
+        `rejected your prompt proposal ${proposalID} (compaction). Reason: "Keep the built-in safety part.".`,
+      ),
+    },
+  ]);
 });
 
 test('it sends the pending request to the socket of the config over the host transport it is given', async () => {
