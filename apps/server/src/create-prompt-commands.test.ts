@@ -7,8 +7,10 @@ import {
   writeMockBranchFile,
 } from '@heynixie/definitions-github/mocks';
 import { waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
-import { runCLI } from './run-cli';
+import { createPromptCommands } from './create-prompt-commands';
+import { readCLIArgs } from './read-cli-args';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
@@ -114,13 +116,57 @@ test('it lists a prompt proposal, approves it into a pull request, and the next 
   ]);
 });
 
-test('it refuses a prompt approval with no --hash, and reaches no server', async () => {
+test('it sends the pending request to the socket of the config over the host transport it is given', async () => {
+  const host = {
+    resolveSocketPath: mock(() => Promise.resolve('/run/nixie/control.sock')),
+    sendHostRequest: mock(() => Promise.resolve([])),
+  };
+
+  const commands = new Map(createPromptCommands(host));
+
+  const parsed = await readCLIArgs(
+    ['prompt-pending', '--config', '/etc/nixie/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
   const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  const exitCode = await runCLI(
-    ['prompt-approve', 'p8w2n4c6ld', '--config', '/nonexistent/config.yaml'],
-    io,
+  const exitCode = await run(parsed.flags, io, parsed.args);
+
+  expect(exitCode).toBe(0);
+  expect(host.resolveSocketPath).toHaveBeenCalledExactlyOnceWith('/etc/nixie/config.yaml');
+
+  expect(host.sendHostRequest).toHaveBeenCalledExactlyOnceWith(
+    '/run/nixie/control.sock',
+    'prompt pending',
+    expect.any(Function),
   );
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith('[]');
+});
+
+test('it refuses a prompt approval with no --hash, and reaches no server', async () => {
+  const host = { resolveSocketPath: mock(), sendHostRequest: mock() };
+
+  const commands = new Map(createPromptCommands(host));
+
+  const parsed = await readCLIArgs(['prompt-approve', 'p8w2n4c6ld'], [...commands.keys()]);
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(2);
 
@@ -129,24 +175,30 @@ test('it refuses a prompt approval with no --hash, and reaches no server', async
       '--entry <JSON map of part to file path, and _template> and ' +
       '--files <JSON list of path and text>',
   );
+
+  expect(host.resolveSocketPath).not.toHaveBeenCalled();
+  expect(host.sendHostRequest).not.toHaveBeenCalled();
 });
 
 test('it refuses an edited entry that is not a JSON map of strings, and reaches no server', async () => {
+  const host = { resolveSocketPath: mock(), sendHostRequest: mock() };
+
+  const commands = new Map(createPromptCommands(host));
+
+  const parsed = await readCLIArgs(
+    ['prompt-approve', 'p8w2n4c6ld', '--hash', 'hash-a', '--entry', '{"safety":3}'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
   const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  const exitCode = await runCLI(
-    [
-      'prompt-approve',
-      'p8w2n4c6ld',
-      '--hash',
-      'hash-a',
-      '--entry',
-      '{"safety":3}',
-      '--config',
-      '/nonexistent/config.yaml',
-    ],
-    io,
-  );
+  const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(2);
 
@@ -155,19 +207,37 @@ test('it refuses an edited entry that is not a JSON map of strings, and reaches 
       '--entry <JSON map of part to file path, and _template> and ' +
       '--files <JSON list of path and text>',
   );
+
+  expect(host.resolveSocketPath).not.toHaveBeenCalled();
+  expect(host.sendHostRequest).not.toHaveBeenCalled();
 });
 
 test('it refuses a prompt rejection with no --reason, and reaches no server', async () => {
+  const host = { resolveSocketPath: mock(), sendHostRequest: mock() };
+
+  const commands = new Map(createPromptCommands(host));
+
+  const parsed = await readCLIArgs(
+    ['prompt-reject', 'p8w2n4c6ld', '--hash', 'hash-a'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
   const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  const exitCode = await runCLI(
-    ['prompt-reject', 'p8w2n4c6ld', '--hash', 'hash-a', '--config', '/nonexistent/config.yaml'],
-    io,
-  );
+  const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(2);
 
   expect(io.print).toHaveBeenCalledExactlyOnceWith(
     'nixie prompt-reject takes a proposal ID, --hash <proposal hash> and --reason <why>',
   );
+
+  expect(host.resolveSocketPath).not.toHaveBeenCalled();
+  expect(host.sendHostRequest).not.toHaveBeenCalled();
 });
