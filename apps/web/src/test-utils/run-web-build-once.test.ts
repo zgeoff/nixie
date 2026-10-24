@@ -1,20 +1,80 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runWebBuildOnce } from './run-web-build-once';
 
 test('it builds the web server entry once and shares it', async () => {
   const paths = await Promise.all([runWebBuildOnce(), runWebBuildOnce()]);
+  const built = await Bun.file(paths[0]).exists();
 
-  expect(paths).toStrictEqual([
-    join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
-    join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
-  ]);
-
-  const built = await Bun.file(
-    join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
-  ).exists();
-
+  expect(paths[1]).toBe(paths[0]);
+  expect(paths[0]).toEndWith('/server/server.js');
   expect(built).toBeTrue();
+}, 120_000);
+
+test('it builds into a directory for its own process, so parallel test processes never share a build', async () => {
+  const path = await runWebBuildOnce();
+
+  expect(path).toBe(join(tmpdir(), 'nixie-web-builds', String(process.pid), 'server', 'server.js'));
+}, 120_000);
+
+test('it removes the build of a test process that has exited before it builds', async () => {
+  const buildsDir = await mkdtemp(join(tmpdir(), 'nixie-web-builds-test-'));
+
+  onTestFinished(() => rm(buildsDir, { recursive: true, force: true }));
+
+  const first = Bun.spawn(
+    [
+      process.execPath,
+      'test',
+      join(import.meta.dir, 'run-web-build-once.test.ts'),
+      '-t',
+      'it builds the web server entry once and shares it',
+    ],
+    {
+      cwd: import.meta.dir,
+      env: { ...process.env, NIXIE_WEB_BUILDS_DIR: buildsDir },
+      stderr: 'ignore',
+      stdout: 'ignore',
+    },
+  );
+
+  onTestFinished(() => {
+    first.kill();
+  });
+
+  const firstExitCode = await first.exited;
+  const firstBuilds = await readdir(buildsDir);
+
+  const second = Bun.spawn(
+    [
+      process.execPath,
+      'test',
+      join(import.meta.dir, 'run-web-build-once.test.ts'),
+      '-t',
+      'it builds the web server entry once and shares it',
+    ],
+    {
+      cwd: import.meta.dir,
+      env: { ...process.env, NIXIE_WEB_BUILDS_DIR: buildsDir },
+      stderr: 'ignore',
+      stdout: 'ignore',
+    },
+  );
+
+  onTestFinished(() => {
+    second.kill();
+  });
+
+  const secondExitCode = await second.exited;
+  const secondBuilds = await readdir(buildsDir);
+
+  expect(firstExitCode).toBe(0);
+  expect(firstBuilds).toHaveLength(1);
+  expect(secondExitCode).toBe(0);
+  expect(secondBuilds).toHaveLength(1);
+  expect(secondBuilds).not.toContain(firstBuilds[0]);
 }, 120_000);
 
 // This cap still refuses Node's wasm trap handler reservation, and a lower one leaves some Node
