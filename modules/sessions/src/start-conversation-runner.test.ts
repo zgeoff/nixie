@@ -13,6 +13,7 @@ import { sql } from 'kysely';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
 import { startConversationRunner } from './start-conversation-runner';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
+import { buildStubTurnScript } from './test-utils/build-stub-turn-script';
 import { readRecordsByKind } from './test-utils/read-records-by-kind';
 import { runNextStep } from './test-utils/run-next-step';
 import { startTestTasks } from './test-utils/start-test-tasks';
@@ -781,17 +782,7 @@ test("it wakes the conversation for a system task's message and gives the turn t
     messaging,
   });
 
-  ctx.sandboxes.setGuestScript((turn) => [
-    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
-    {
-      type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
-      subtype: 'success',
-      stopReason: 'end_turn',
-      turns: 1,
-      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    },
-  ]);
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
 
   await writeTaskMessage(ctx.context, messaging, {
     from: 'memory-writer',
@@ -833,17 +824,7 @@ test('it gives the next turn a message sent with no wake, before the message tha
     messaging,
   });
 
-  ctx.sandboxes.setGuestScript((turn) => [
-    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
-    {
-      type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
-      subtype: 'success',
-      stopReason: 'end_turn',
-      turns: 1,
-      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    },
-  ]);
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
 
   await writeTaskMessage(ctx.context, messaging, {
     from: 'memory-writer',
@@ -887,17 +868,7 @@ test('it tells the conversation its reply will not wake a task once the reply wo
     messaging,
   });
 
-  ctx.sandboxes.setGuestScript((turn) => [
-    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
-    {
-      type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
-      subtype: 'success',
-      stopReason: 'end_turn',
-      turns: 1,
-      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    },
-  ]);
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
 
   await writeTaskMessage(ctx.context, messaging, {
     from: 'memory-writer',
@@ -943,17 +914,7 @@ test('it tells the conversation which messages arrived past the hop limit when t
     messaging,
   });
 
-  ctx.sandboxes.setGuestScript((turn) => [
-    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
-    {
-      type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
-      subtype: 'success',
-      stopReason: 'end_turn',
-      turns: 1,
-      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    },
-  ]);
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
 
   await writeTaskMessage(ctx.context, messaging, {
     from: 'memory-writer',
