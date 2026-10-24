@@ -16,7 +16,7 @@ import { buildKeyPath } from './real-turns/build-key-path.ts';
 import { buildTurnCases } from './real-turns/build-turn-cases.ts';
 import type { EncoderName } from './real-turns/load-turn-encoder.ts';
 import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
-import { makeRandom } from './real-turns/make-random.ts';
+import { buildSample } from './real-turns/build-sample.ts';
 import { parseEncoderNames } from './real-turns/parse-encoder-names.ts';
 import { readPlainExport } from './real-turns/read-plain-export.ts';
 // @boundaries-ignore a spike imports the code it measures
@@ -211,87 +211,24 @@ async function writeTestSet(turns: TurnCase[]): Promise<void> {
   console.log({ cases: lines.length });
 }
 
-// Writes the turns a labeller marks, each with every item a turn could retrieve under a reference
-// local to that turn, in a shuffled order, and a key file that maps each reference to its item.
-// The sample keeps every turn whose retrieval returned an item or was rated, and fills the rest at
-// random from the other turns.
 async function writeSample(turns: TurnCase[]): Promise<void> {
   if (values.out === undefined) {
     throw new Error('pass --out <file> for the sample');
   }
 
-  const random = makeRandom(259);
-  const labelable = turns.filter((turn) => collectShown(turn).length > 0);
-  const kept = labelable.filter((turn) => turn.logged.length > 0 || turn.ratings.length > 0);
-  const rest = shuffle(labelable.filter((turn) => !kept.includes(turn)), random);
-  const size = values.size === undefined ? labelable.length : Number(values.size);
+  const size = values.size === undefined ? null : Number(values.size);
 
-  if (!Number.isInteger(size) || size < 1) {
+  if (size !== null && (!Number.isInteger(size) || size < 1)) {
     throw new Error('pass --size <n>, a whole number of turns of at least 1');
   }
-  const chosen = [...kept, ...rest.slice(0, Math.max(0, size - kept.length))].toSorted(
-    (first, second) => first.recalledSequence - second.recalledSequence,
-  );
 
-  const sample: string[] = [];
-  const key: string[] = [];
-
-  for (const turn of chosen) {
-    const shown = shuffle(collectShown(turn), random);
-
-    sample.push(
-      JSON.stringify({
-        caseID: turn.caseID,
-        earlier: turn.earlier.map((exchange) => ({
-          owner: cutText(exchange.owner, 1200),
-          reply: cutText(exchange.reply, 600),
-        })),
-        message: turn.query,
-        reply: cutText(turn.reply, 1500),
-        items: shown.map((candidate, position) => ({ ref: `M${position + 1}`, text: candidate.text })),
-      }),
-    );
-
-    key.push(
-      JSON.stringify({
-        caseID: turn.caseID,
-        refs: Object.fromEntries(shown.map((candidate, position) => [`M${position + 1}`, candidate.itemID])),
-      }),
-    );
-  }
-
+  const sample = buildSample(turns, size);
   const out = resolve(values.out);
 
-  await Bun.write(out, `${sample.join('\n')}\n`);
-  await Bun.write(buildKeyPath(out), `${key.join('\n')}\n`);
+  await Bun.write(out, `${sample.turns.map((turn) => JSON.stringify(turn)).join('\n')}\n`);
+  await Bun.write(buildKeyPath(out), `${sample.keys.map((key) => JSON.stringify(key)).join('\n')}\n`);
 
-  console.log({ turns: chosen.length, kept: kept.length, meanItems: mean(chosen.map((turn) => turn.candidates.length)) });
-}
-
-// A pinned item is in every turn's context already, and a lapsed one is out of retrieval's reach.
-function collectShown(turn: TurnCase): TurnCase['candidates'] {
-  return turn.candidates.filter((candidate) => !candidate.isPinned && !candidate.isLapsed);
-}
-
-function cutText(text: string, limit: number): string {
-  return text.length <= limit ? text : `${text.slice(0, limit)} …`;
-}
-
-function shuffle<T>(list: readonly T[], random: () => number): T[] {
-  const copy = [...list];
-
-  for (let index = copy.length - 1; index > 0; index -= 1) {
-    const other = Math.floor(random() * (index + 1));
-    const held = copy[index];
-    const swapped = copy[other];
-
-    if (held !== undefined && swapped !== undefined) {
-      copy[index] = swapped;
-      copy[other] = held;
-    }
-  }
-
-  return copy;
+  console.log({ turns: sample.turns.length, kept: sample.kept });
 }
 
 function mean(numbers: number[]): number {
