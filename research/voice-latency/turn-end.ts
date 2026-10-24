@@ -17,6 +17,7 @@ import { createSmartTurn } from './create-smart-turn.ts';
 import type { DetectorName } from './find-turn-end.ts';
 import { playUtterance } from './play-utterance.ts';
 import { speechSetDir } from './speech-sets.ts';
+import { speechUtterance } from './speech-utterance.ts';
 import { createSpeechToText, createVad, sampleRate } from './speech.ts';
 import { toPlainTranscript } from './to-plain-transcript.ts';
 import type { TurnEndRecord } from './turn-end-record.ts';
@@ -64,7 +65,7 @@ const models = new Map<DetectorName, string>([['smartTurn', 'smart-turn-v3.2-cpu
 await smartTurn.readEndProbability(new Float32Array(sampleRate));
 
 for (let index = 0; index < count; index++) {
-  const meta = z.object({ id: z.string() }).parse(await Bun.file(join(dir, `${index}.json`)).json());
+  const meta = speechUtterance.parse(await Bun.file(join(dir, `${index}.json`)).json());
   const speech = new Float32Array(await Bun.file(join(dir, `${index}.f32`)).arrayBuffer());
   const pauses = await playUtterance(speech, {
     askDetector,

@@ -13,6 +13,7 @@ import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { readWithRetry } from './real-speech.ts';
 import { speechSetDir } from './speech-sets.ts';
+import type { SpeechUtterance } from './speech-utterance.ts';
 import { sampleRate } from './speech.ts';
 
 export type SpeechSetName = 'hvb' | 'slurp';
@@ -50,7 +51,8 @@ export async function downloadSpeechSet(options: {
         throw new Error(`audio ${utterance.id}: HTTP ${audio.status}`);
       }
       writeFileSync(join(stagingDir, `${kept}.f32`), await options.decode(new Uint8Array(await audio.arrayBuffer())));
-      writeFileSync(join(stagingDir, `${kept}.json`), JSON.stringify({ id: utterance.id, text: utterance.text }));
+      const meta: SpeechUtterance = { id: utterance.id, text: utterance.text };
+      writeFileSync(join(stagingDir, `${kept}.json`), JSON.stringify(meta));
       kept++;
     }
   }
