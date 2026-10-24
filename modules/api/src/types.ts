@@ -47,6 +47,12 @@ export interface HostRouterOptions {
   readonly runConversationReset: () => Promise<HostConversationReset>;
 
   readonly seedWrittenSkills: () => Promise<void>;
+
+  readonly gate: HostCallGate;
+}
+
+export interface HostCallGate {
+  readonly runCall: <T>(call: () => Promise<T>, onClosed: () => Promise<T>) => Promise<T>;
 }
 
 export type ReadHostMemory = () => HostMemoryStore | null;

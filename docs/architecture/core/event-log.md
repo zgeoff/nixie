@@ -109,9 +109,10 @@ reset in 7 stages:
 
 1. The server ends its start sequence, answers every new API call and host command with 503, and
    waits for the calls in flight to answer, so no call commits a write that the reset then deletes.
-   The reset's own control request is the one exception, because the reset waits for every call in
-   flight and would otherwise wait for itself. It then stops the parts the start sequence started:
-   the runner pools stop claiming and give the work in flight the normal stop grace.
+   The host router refuses each host procedure this way except the two resets, because a reset waits
+   for every call in flight and would otherwise wait for itself. It then stops the parts the start
+   sequence started: the runner pools stop claiming and give the work in flight the normal stop
+   grace.
 2. It destroys every sandbox in the sandboxes projection through its adapter, by the path recovery
    uses. A failed destroy stops the reset before it removes anything, and the server exits 1.
 3. It deletes every key from the key store and checkpoints it, so neither the file nor its WAL holds

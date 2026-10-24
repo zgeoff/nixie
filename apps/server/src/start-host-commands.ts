@@ -18,7 +18,7 @@ export interface HostCommandsOptions {
   readonly runReset: () => Promise<ServerReset>;
   readonly runConversationReset: () => Promise<ConversationReset>;
 
-  readonly gate: Pick<APIGate, 'run'>;
+  readonly gate: Pick<APIGate, 'runCall'>;
 }
 
 export async function startHostCommands(
@@ -31,20 +31,13 @@ export async function startHostCommands(
     seedWrittenSkills: options.seedWrittenSkills,
     runReset: options.runReset,
     runConversationReset: options.runConversationReset,
+    gate: options.gate,
   });
 
   const control = await startControlSocket({
     path: join(options.dataDir, 'run', 'control.sock'),
-    respond: (request) =>
-      isResetCall(request) ? respond(request) : options.gate.run(request, respond),
+    respond,
   });
 
   await cleanup.defer(() => control.stop());
-}
-
-const resetPaths: ReadonlySet<string> = new Set(['/rpc/reset', '/rpc/resetConversations']);
-
-function isResetCall(request: Request): boolean {
-  // oRPC drops a trailing slash before it finds the procedure, so /rpc/reset/ is the reset too.
-  return resetPaths.has(new URL(request.url).pathname.replace(/\/$/u, ''));
 }

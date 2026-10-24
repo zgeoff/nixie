@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
+import { buildAPIGate } from './build-api-gate';
 import { sendHostRequest } from './send-host-request';
 import { startControlSocket } from './start-control-socket';
 
@@ -33,6 +34,7 @@ test('it returns the answer of the procedure it calls on the running server', as
           keptSessions: 2,
         }),
       runConversationReset: mock(),
+      gate: buildAPIGate(),
     }),
   });
 
@@ -58,6 +60,7 @@ test('it rejects with the status and the reason when the server refuses the requ
       seedWrittenSkills: () => Promise.resolve(),
       runReset: mock(),
       runConversationReset: mock(),
+      gate: buildAPIGate(),
     }),
   });
 
