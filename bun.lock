@@ -493,7 +493,9 @@
       "name": "@heynixie/prompts",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/tools": "workspace:*",
         "tiny-invariant": "catalog:",
+        "zod": "catalog:",
       },
     },
     "modules/proposals": {

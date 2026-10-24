@@ -1,6 +1,5 @@
-import invariant from 'tiny-invariant';
+import { collectAcceptedPaths } from './collect-accepted-paths';
 import { collectTemplatePaths } from './collect-template-paths';
-import { promptRegistry } from './prompt-registry';
 import type { PromptID, PromptOverride } from './types';
 
 export interface PromptOverrideProblem {
@@ -12,15 +11,8 @@ export function checkPromptOverride(
   id: PromptID,
   override: PromptOverride,
 ): readonly PromptOverrideProblem[] {
-  const entry = promptRegistry[id];
-  const partNames = Object.keys(entry.parts);
-
   const partProblems = Object.entries(override.parts).flatMap(([part, text]) => {
-    const index = partNames.indexOf(part);
-
-    invariant(index !== -1, `the ${id} prompt has no part ${part}`);
-
-    const accepted = [...entry.paths, ...partNames.slice(0, index).map((name) => `parts.${name}`)];
+    const accepted = collectAcceptedPaths(id, part);
 
     return collectUnknownPaths(text, accepted).map((path) => ({
       part,
@@ -28,7 +20,7 @@ export function checkPromptOverride(
     }));
   });
 
-  const accepted = [...entry.paths, ...partNames.map((name) => `parts.${name}`)];
+  const accepted = collectAcceptedPaths(id, null);
 
   const templateProblems =
     override.template === null

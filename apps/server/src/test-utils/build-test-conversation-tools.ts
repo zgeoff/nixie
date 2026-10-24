@@ -30,6 +30,7 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
           }),
           logRead: buildLogReadTool(context.log),
           skills: [],
+          prompts: [],
         },
         {
           readStore: () => stores.current,

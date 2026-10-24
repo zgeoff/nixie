@@ -43,6 +43,15 @@ snapshot hash. An absent or empty map adds nothing to the snapshot, so definitio
 keep the snapshot hash of the same definitions at format 2. Every render takes the overrides from
 the snapshot in force, so a seed changes the prompts without a restart.
 
+## Reading a prompt from the conversation
+
+The conversation's tool endpoint serves `prompt_read`, which returns one prompt in the shape an
+override starts from: each part's built-in text, the default template, the paths that each part and
+the template accept, and the text that the definitions in force put in place of each. A part accepts
+the prompt's own paths and each part before it, and the template accepts every part, the rule the
+seed checks an override against. The result counts as the user's data, because nixie ships the
+built-in text and the user's definitions hold every override.
+
 ## Safety parts and the operator log
 
 A prompt runs without its built-in safety rules when an override replaces its `safety` part, or when

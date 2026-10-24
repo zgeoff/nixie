@@ -10,6 +10,8 @@
     "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
-    "tiny-invariant": "catalog:"
+    "@heynixie/tools": "workspace:*",
+    "tiny-invariant": "catalog:",
+    "zod": "catalog:"
   }
 }
