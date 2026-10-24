@@ -73,7 +73,7 @@ into a blind set, with each candidate behind a letter and the answer key in a fi
 | Candidate               | Hears the caller                                   | Writes the answer                                                           | Speaks it                   |
 | ----------------------- | -------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------- |
 | Haiku, clause by clause | Local Zipformer, after a 500 ms pause              | Haiku 5.5 at low effort, opening with its own acknowledgement               | Piper, one clause at a time |
-| Sonnet with an opener   | Local Zipformer, after a 500 ms pause              | Sonnet 5.5 at low effort, after Clef-flash picks an opener from a fixed set | Piper, the opener first     |
+| Sonnet with an opener   | Local Zipformer, after a 500 ms pause              | Sonnet 5.5 at low effort, while Clef-flash picks an opener from a fixed set | Piper, the opener first     |
 | GPT-Live                | GPT-Live, which detects the end of the turn itself | GPT-Live for small talk; Sonnet 5.5 for each request it delegates           | GPT-Live, voice `marin`     |
 | Grok Voice              | Grok Voice 3.0, with its server voice detection    | Grok Voice, with the stub tools as function tools                           | Grok Voice, voice `eve`     |
 
