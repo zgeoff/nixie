@@ -70,7 +70,7 @@
       "gunshi": "1.0.0-rc.1",
       "happy-dom": "21.0.4",
       "kysely": "0.29.6",
-      "msw": "2.15.0",
+      "msw": "3.0.3",
       "onnxruntime-node": "1.30.0",
       "react": "19.3.0",
       "react-dom": "19.3.0",
