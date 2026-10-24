@@ -42,7 +42,7 @@ export async function readRecentTurns(
   return kept.toReversed();
 }
 
-const historyKinds = ['owner_message', 'model.reply'] as const;
+const historyKinds = ['owner_message', 'model.reply', 'log_reset'] as const;
 
 async function* readTurnsNewestFirst(
   context: Pick<TasksContext, 'log'>,
@@ -51,7 +51,7 @@ async function* readTurnsNewestFirst(
   const unanswered: LogRecord[] = [];
 
   for await (const record of readThreadNewestFirst(context, query.taskID, historyKinds)) {
-    if (record.sequence <= (query.afterSequence ?? 0)) {
+    if (record.sequence <= (query.afterSequence ?? 0) || record.kind === 'log_reset') {
       break;
     }
 

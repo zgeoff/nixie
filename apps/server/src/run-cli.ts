@@ -22,7 +22,7 @@ const commands = new Map<string, Command>([
   ['check-encoder', (flags, io) => checkEncoder(flags.encoder, io)],
   ...createDeploymentCommands(),
   ...createSessionCommands(),
-  ...buildResetCommands(),
+  ...buildResetCommands({ resolveSocketPath, sendHostRequest }),
   ...createMemoryCommands(),
   ...createConsolidationCommands(),
   ...buildSubjectCommands(),
