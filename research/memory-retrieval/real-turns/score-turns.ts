@@ -3,14 +3,13 @@
 // the set a turn would be shown under each floor, the share of labelled items it covers and the
 // items it shows on turns that need none.
 import type { TurnCase } from './build-turn-cases.ts';
-import type { EncoderDirs, EncoderName } from './load-turn-encoder.ts';
-import { loadTurnEncoder } from './load-turn-encoder.ts';
-import { makeRandom } from './make-random.ts';
-import type { RankConfig, TurnRanking } from './rank-turn.ts';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
-import { startMemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
+import type { MemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
+import type { EncoderName, TurnEncoder } from './load-turn-encoder.ts';
+import { makeRandom } from './make-random.ts';
+import type { RankConfig, TurnRanking } from './rank-turn.ts';
 import { buildRanker, SHIPPED } from './rank-turn.ts';
 
 // A label names items by the references local to its turn, and the sample key maps each reference
@@ -123,17 +122,23 @@ export interface RankedTurn {
   ranking: TurnRanking;
 }
 
+export interface RankingResources {
+  loadEncoder: (name: EncoderName) => Promise<TurnEncoder>;
+  startIndex: () => Promise<MemoryIndex>;
+}
+
+// Each encoder gets its own index for its runs, and both stop before the next encoder loads.
 export async function runRankings(
   turns: TurnCase[],
   runs: Run[],
-  dirs: EncoderDirs,
+  resources: RankingResources,
   excludedWords: string[],
 ): Promise<Map<string, RankedTurn[]>> {
   const results = new Map<string, RankedTurn[]>(runs.map((run) => [run.name, []]));
 
   for (const encoderName of [...new Set(runs.map((run) => run.encoder))]) {
-    const encoder = await loadTurnEncoder(encoderName, dirs);
-    const index = await startMemoryIndex();
+    const encoder = await resources.loadEncoder(encoderName);
+    const index = await resources.startIndex();
     const ranker = buildRanker(encoder, index);
     const own = runs.filter((run) => run.encoder === encoderName);
 

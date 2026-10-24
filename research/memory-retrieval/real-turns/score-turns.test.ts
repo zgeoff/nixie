@@ -1,13 +1,63 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
+// @boundaries-ignore a spike imports the code it measures
+import { startMemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
 import {
   buildPairedDifference,
   buildRuns,
   getShippedRun,
   labelSchema,
+  runRankings,
   sampleKeySchema,
   scoreRanking,
   scoreServed,
 } from './score-turns.ts';
+
+test('#runRankings ranks each turn under each run and stops every encoder and index it opened', async () => {
+  const stopEncoder = mock(async () => {});
+  const stopIndex = mock(async () => {});
+  const loadEncoder = mock(async (_: string) => ({
+    encode: async (texts: readonly string[]) => texts.map(() => new Float32Array([1, 0])),
+    stop: stopEncoder,
+  }));
+  const index = await startMemoryIndex();
+  const startIndex = mock(async () => ({ ...index, stop: stopIndex }));
+
+  const results = await runRankings(
+    [
+      {
+        caseID: 't1',
+        stepSequence: 1,
+        recalledSequence: 2,
+        recordedAt: 0,
+        query: 'garden tomatoes',
+        reply: '',
+        earlier: [],
+        candidates: [
+          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, text: 'The garden grows tomatoes' },
+        ],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    buildRuns(['leaf-ir-q8', 'minilm']).filter((run) => run.name === 'leaf-ir-q8 hybrid' || run.name === 'minilm hybrid'),
+    { loadEncoder, startIndex },
+    [],
+  );
+
+  await index.stop();
+
+  expect(results).toStrictEqual(
+    new Map([
+      ['leaf-ir-q8 hybrid', [{ caseID: 't1', ranking: { facts: ['item-a'], selves: [] } }]],
+      ['minilm hybrid', [{ caseID: 't1', ranking: { facts: ['item-a'], selves: [] } }]],
+    ]),
+  );
+  expect(loadEncoder.mock.calls).toStrictEqual([['leaf-ir-q8'], ['minilm']]);
+  expect(stopEncoder).toHaveBeenCalledTimes(2);
+  expect(stopIndex).toHaveBeenCalledTimes(2);
+});
 
 test('#scoreRanking gives recall at each depth and the reciprocal rank of the first needed item', () => {
   expect(

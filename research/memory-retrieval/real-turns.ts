@@ -148,7 +148,12 @@ async function runScore(turns: TurnCase[]): Promise<void> {
 
   const chosen = pickScoredTurns(turns, labels);
   const runs = buildRuns(encoders.names);
-  const results = await runRankings(chosen, runs, encoderDirs, excludedWords);
+  const results = await runRankings(
+    chosen,
+    runs,
+    { loadEncoder: (name) => loadTurnEncoder(name, encoderDirs), startIndex: startMemoryIndex },
+    excludedWords,
+  );
   const scored = buildScoreReport(runs, results, gold);
 
   console.log(`turns ${chosen.length}, labelled ${labels.length}\n`);
