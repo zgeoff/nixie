@@ -21,8 +21,8 @@ imp to the first text of a worker turn?
 - imp's broker injects the model token through a `custom` secret, so the guest never holds it.
 - The prepared image holds 533 MB of `node_modules` and lists at 778 MiB.
 
-Run each worker in its own imp from a minimal prepared image, and warm the page cache before a cold
-start matters.
+Run each worker in its own imp from a minimal prepared image. Warming the page cache might remove
+most of the cold-start cost, and the spike left it untested.
 
 ## Run it
 

@@ -20,8 +20,8 @@ by itself?
   proxy still stopped the tool, because the owner's declaration names `to`.
 - In `auto` mode the v2 client negotiated `2026-07-28` with a v2 server and `2025-11-25` with a v1
   server; the default `legacy` mode never probes.
-- The v2 client rejects `structuredContent` that breaks the output schema by default, against its
-  latest listing rather than the pin.
+- The v2 client rejects `structuredContent` that breaks the output schema by default, and its
+  package types say it checks against its latest listing rather than the pin.
 
 Check declared destination paths against the schema on every listing, set `auto` mode, and validate
 results against the pinned schema in the proxy.

@@ -12,7 +12,8 @@ host, inside a container image built with `bun build`, from weights pinned into 
 ## Answer
 
 - `mdbr-leaf-ir` int8 on `onnxruntime-node` ties `snowflake-arctic-embed-s` for the best recall of
-  the small models: 0.82 of 75 typed questions and 0.88 as keywords at recall@5.
+  the small models on typed questions, 0.82 of 75 at recall@5, and scores 0.88 as keywords against
+  arctic-s's 0.90.
 - leaf-ir took 0.9 ms a query and 183 MB at peak in a 2-CPU container, with 23 MB of weights and 46
   MB of runtime.
 - Cut to 256 numbers in int8, a leaf-ir vector takes 256 bytes, 5 MB for 20,000 items, with no loss

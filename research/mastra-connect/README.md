@@ -15,14 +15,14 @@ and handle errors and rate limits, and which of its choices would improve nixie'
 
 - Connect's open client relies on a closed platform that holds the connections, runs the OAuth apps,
   stores the credentials and proxies every tool call, so it has no self-hosted form.
-- Its tools come from Nango's integration templates (23 providers, almost 900 tools) and declare no
-  effects.
+- Its tools come from Nango's integration templates, 23 providers and almost 900 tools by the
+  announcement's count, and declare no effects.
 - A refused refresh drops a provider's tools with no word to the model, as nixie's `needs_consent`
   does.
 - With 2 or more connections, each tool of a provider gains a required `connection_name` argument
   whose values select exactly one account.
-- A tool retries only a network error or a 5xx, and never repeats a write without an
-  `Idempotency-Key`; the client has no 429 or `Retry-After` handling.
+- A tool retries only a network error or a 5xx, on `GET`, `HEAD`, `PUT` and `DELETE`, and on a
+  `POST` or `PATCH` only with an `Idempotency-Key`; the client has no 429 or `Retry-After` handling.
 
 Adapt 5 ideas into the connector designs: the connection argument, a connection status the model can
 see, what a failed read returns, headers the connector sets, and a failed listing on the MCP proxy.
