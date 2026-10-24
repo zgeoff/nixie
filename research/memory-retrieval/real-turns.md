@@ -58,9 +58,9 @@ to 4.37.
 The ratings could not serve as ground truth: the log held 4 rating records with 8 ratings, all
 noise. Labels came instead from a language model given the deployment's persona and session prompt,
 on a sample of 300 turns: the 213 turns whose retrieval returned an item or was rated, and 87 more
-at random. The labeller saw the turn, the 2 exchanges before it, the reply, and every item the store
-held at that moment, and marked each item that would have helped the reply. It marked at least one
-item on 112 turns.
+at random. The labeller saw the turn, the 2 exchanges before it, the reply, and every item that
+per-turn retrieval could return at that moment: each active item that was neither pinned nor lapsed.
+It marked each item that would have helped the reply, and marked at least one item on 112 turns.
 
 ## Ranking
 
@@ -139,7 +139,8 @@ results.
 ## Untested
 
 - Labels from the deployment's live assistant. The labeller is a language model given its persona
-  and session prompt, and it saw every item at once, which the live turn never does.
+  and session prompt, and it saw every item per-turn retrieval could return at once, which the live
+  turn never does.
 - More than one deployment, and more than the 38 labelled turns whose needed item the session had
   not been given yet, which bound the floor and item-count comparisons.
 - A compaction, a rebuilt session or an unpinned item. The snapshot held none, so the replay paths
