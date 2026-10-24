@@ -50,8 +50,9 @@ const smartTurn = await createSmartTurn();
 const clef = createDecisionModel('clef', {
   accountID: process.env.CLOUDFLARE_ACCOUNT_ID ?? '',
   token: process.env.CLOUDFLARE_API_TOKEN ?? '',
+  transport: fetch,
 });
-const jev = createDecisionModel('jev', { token: process.env.TYPESAFE_API_KEY ?? '' });
+const jev = createDecisionModel('jev', { token: process.env.TYPESAFE_API_KEY ?? '', transport: fetch });
 // The streaming Zipformer's text at the pause came back empty on most telephone and meeting clips,
 // where Moonshine read them well, so the text detectors read Moonshine.
 const moonshine = createSpeechToText('moonshine');

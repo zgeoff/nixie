@@ -14,7 +14,7 @@ const clefSchema = z.object({ result: answerSchema, success: z.literal(true) });
 
 export function createDecisionModel(
   name: DecisionModelName,
-  connection: { accountID?: string; token: string },
+  connection: { accountID?: string; token: string; transport: typeof fetch },
 ): {
   readEndProbability: (
     transcript: string,
@@ -29,7 +29,7 @@ export function createDecisionModel(
       : { model: 'jev-latest', url: 'https://api.typesafe.ai/v1/systemone' };
   return {
     readEndProbability: async (transcript) => {
-      const response = await fetch(request.url, {
+      const response = await connection.transport(request.url, {
         body: JSON.stringify(buildTurnEndRequest(request.model, transcript)),
         // A broker that holds the key adds the header itself, so an empty token sends none.
         headers: {
