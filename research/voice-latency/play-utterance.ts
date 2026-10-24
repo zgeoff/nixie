@@ -79,7 +79,7 @@ export async function playUtterance(
     }
   }
   const settled = await Promise.all(asks);
-  const heardTranscripts = await Promise.all(transcripts);
+  const heardTranscripts = await Promise.all(transcripts.map((transcript) => transcript.catch(() => '')));
   const pauses = segments.map((segment, pauseIndex) => {
     const answers: Partial<Record<DetectorName, RecordedAnswer>> = {};
     const next = segments[pauseIndex + 1];

@@ -76,6 +76,28 @@ test('it records a failed answer as its error', async () => {
   ]);
 });
 
+test('it keeps the pause and its answers when the transcript fails', async () => {
+  const pauses = await playUtterance(new Float32Array(16_000), {
+    askDetector: () => Promise.resolve({ probability: 0.9 }),
+    clock: buildStepClock(),
+    detectors: ['smartTurn', 'jev'],
+    readTranscript: () => Promise.reject(new Error('moonshine could not decode')),
+    vad: buildStubVad([{ closesAfterSamples: 11_200, end: 8000, start: 3200 }]),
+  });
+
+  expect(pauses).toStrictEqual([
+    {
+      answers: {
+        jev: { answeredAfterMs: 204, probability: 0.9 },
+        smartTurn: { answeredAfterMs: 204, probability: 0.9 },
+      },
+      resumeMs: undefined,
+      speechEndMs: 500,
+      transcript: '',
+    },
+  ]);
+});
+
 test('it reads no transcript when only the audio detector runs', async () => {
   const readTranscript = mock(() => Promise.resolve('book a table'));
 
