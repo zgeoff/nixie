@@ -1,15 +1,21 @@
 # Spikes
 
 A spike is a throwaway experiment that answers one research question for a design. Each folder here
-holds one spike as its own Bun package, pinned to the exact versions it ran against. Its README
-gives the question, how to run it, the output it produced and what it left untested. CI runs no
-spike and no spike test, and product code never imports from a spike.
+holds one spike, and a spike with code is its own Bun package, pinned to the exact versions it ran
+against. CI runs no spike and no spike test, and product code never imports from a spike.
+
+A spike's README is its landing page: the question, the answer with its headline numbers, the
+command that runs the spike, and what it left untested. The full report sits in `results.md` beside
+the README, with the versions, the setup, every table, the reasons and the whole untested list. A
+separate run, such as the voice-latency run on the deployment host, gets its own report beside
+`results.md`. A reading spike with no code has no command to run. No other file in a spike is named
+`README.md`, because the README line limit would then apply to it.
 
 The root workspace installs the spikes, and CI typechecks each spike in it, so a spike that a later
 design reruns still compiles. A spike whose pins the root install refuses, because a pin has an open
 advisory or is younger than the minimum release age, stays out of the workspace and installs on its
-own. The Agent SDK spikes (`sdk-*`) stay out of the workspace too. The root package.json names each
-such spike in the workspace globs, and CI typechecks none of them.
+own. The Agent SDK spikes (`sdk-*`) stay out of the workspace too. The workspace globs in the root
+package.json exclude each such spike by name, and CI typechecks none of them.
 
 Spikes that call the model read a token from the repo's `.env`, which git ignores; `.env.example`
 lists the variable.
