@@ -475,12 +475,24 @@ test("it resolves a skill nixie wrote by keeping the definitions' version, which
 });
 
 test('it refuses an approval with no --hash, and reaches no server', async () => {
+  const host = buildRecordingHostTransport('/run/nixie/control.sock');
+
+  const commands = new Map(createSkillCommands(host.transport));
+
+  const parsed = await readCLIArgs(
+    ['skill-approve', 'k3x9m2p7qa', '--config', '/nonexistent/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
   const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  const exitCode = await runCLI(
-    ['skill-approve', 'k3x9m2p7qa', '--config', '/nonexistent/config.yaml'],
-    io,
-  );
+  const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(2);
 
@@ -488,12 +500,16 @@ test('it refuses an approval with no --hash, and reaches no server', async () =>
     'nixie skill-approve takes a proposal ID, --hash <skill hash> and, for an edit, ' +
       '--files <JSON list of path and text>',
   );
+
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });
 
 test('it refuses edited files that are not a JSON list of path and text, and reaches no server', async () => {
-  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+  const host = buildRecordingHostTransport('/run/nixie/control.sock');
 
-  const exitCode = await runCLI(
+  const commands = new Map(createSkillCommands(host.transport));
+
+  const parsed = await readCLIArgs(
     [
       'skill-approve',
       'k3x9m2p7qa',
@@ -504,8 +520,18 @@ test('it refuses edited files that are not a JSON list of path and text, and rea
       '--config',
       '/nonexistent/config.yaml',
     ],
-    io,
+    [...commands.keys()],
   );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(2);
 
@@ -513,21 +539,37 @@ test('it refuses edited files that are not a JSON list of path and text, and rea
     'nixie skill-approve takes a proposal ID, --hash <skill hash> and, for an edit, ' +
       '--files <JSON list of path and text>',
   );
+
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });
 
 test('it refuses a rejection with no --reason, and reaches no server', async () => {
+  const host = buildRecordingHostTransport('/run/nixie/control.sock');
+
+  const commands = new Map(createSkillCommands(host.transport));
+
+  const parsed = await readCLIArgs(
+    ['skill-reject', 'k3x9m2p7qa', '--hash', 'hash-b', '--config', '/nonexistent/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
   const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  const exitCode = await runCLI(
-    ['skill-reject', 'k3x9m2p7qa', '--hash', 'hash-b', '--config', '/nonexistent/config.yaml'],
-    io,
-  );
+  const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(2);
 
   expect(io.print).toHaveBeenCalledExactlyOnceWith(
     'nixie skill-reject takes a proposal ID, --hash <skill hash> and --reason <why>',
   );
+
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });
 
 test('it sends the pending request to the socket of the config over the host transport it is given', async () => {
@@ -568,7 +610,7 @@ test('it sends the pending request to the socket of the config over the host tra
   expect(io.print).toHaveBeenCalledExactlyOnceWith('[]');
 });
 
-test('it refuses a resolve that keeps neither side, and reaches no server', async () => {
+test('it refuses a resolve that keeps neither side while it reads the arguments', async () => {
   const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
   const exitCode = await runCLI(
@@ -591,9 +633,11 @@ test('it refuses a resolve that keeps neither side, and reaches no server', asyn
 });
 
 test('it refuses a resolve given a second word, and reaches no server', async () => {
-  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+  const host = buildRecordingHostTransport('/run/nixie/control.sock');
 
-  const exitCode = await runCLI(
+  const commands = new Map(createSkillCommands(host.transport));
+
+  const parsed = await readCLIArgs(
     [
       'skill-resolve',
       '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
@@ -603,12 +647,24 @@ test('it refuses a resolve given a second word, and reaches no server', async ()
       '--config',
       '/nonexistent/config.yaml',
     ],
-    io,
+    [...commands.keys()],
   );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(2);
 
   expect(io.print).toHaveBeenCalledExactlyOnceWith(
     'nixie skill-resolve takes an approval ID and --keep nixie|definitions',
   );
+
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });

@@ -8,7 +8,6 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createMemoryCommands } from './create-memory-commands';
 import { readCLIArgs } from './read-cli-args';
-import { runCLI } from './run-cli';
 import { buildRecordingHostTransport } from './test-utils/build-recording-host-transport';
 import { createApprovedItems } from './test-utils/create-approved-items';
 import { createTestClient } from './test-utils/create-test-client';
@@ -330,10 +329,25 @@ test.each([
     'a revision target with no version',
     ['memory-approve', 'proposal-1', '--hash', 'sha256:hash', '--revise', 'item-1'],
   ],
-])('it refuses an approval given %s before it reads the configuration', async (_label, args) => {
+])('it refuses an approval given %s, and reaches no server', async (_label, args) => {
+  const host = buildRecordingHostTransport('/run/nixie/control.sock');
+
+  const commands = new Map(createMemoryCommands(host.transport));
+
+  const parsed = await readCLIArgs(
+    [...args, '--config', '/nonexistent/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
   const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-  const exitCode = await runCLI([...args, '--config', '/nonexistent/config.yaml'], io);
+  const exitCode = await run(parsed.flags, io, parsed.args);
 
   expect(exitCode).toBe(2);
 
@@ -341,6 +355,8 @@ test.each([
     'nixie memory-approve takes a proposal ID and --hash <action hash>, then --text <edited text>, ' +
       'and --revise <itemID>@<version> or --as-new',
   );
+
+  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });
 
 test.each([
@@ -352,13 +368,29 @@ test.each([
   ],
   [['memory-forget', 'item-1'], 'nixie memory-forget takes <itemID>@<version>'],
 ])(
-  'it refuses %p, whose version target is not a plain decimal, before it reads the configuration',
+  'it refuses %p, whose version target is not a plain decimal, and reaches no server',
   async (args, refusal) => {
+    const host = buildRecordingHostTransport('/run/nixie/control.sock');
+
+    const commands = new Map(createMemoryCommands(host.transport));
+
+    const parsed = await readCLIArgs(
+      [...args, '--config', '/nonexistent/config.yaml'],
+      [...commands.keys()],
+    );
+
+    invariant(parsed.kind === 'command');
+
+    const run = commands.get(parsed.command);
+
+    invariant(run);
+
     const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
-    const exitCode = await runCLI([...args, '--config', '/nonexistent/config.yaml'], io);
+    const exitCode = await run(parsed.flags, io, parsed.args);
 
     expect(exitCode).toBe(2);
     expect(io.print).toHaveBeenCalledExactlyOnceWith(refusal);
+    expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
   },
 );
