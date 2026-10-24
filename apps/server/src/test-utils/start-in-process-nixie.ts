@@ -10,13 +10,12 @@ import type { ReceivedFrame, StubGuestSandboxes } from '@heynixie/sandbox/test-u
 import { buildStubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { ScriptedModel } from '@heynixie/testing';
 import { startScriptedModel, waitForCondition } from '@heynixie/testing';
+import { readTestToolNames, sendTestToolCall } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import type { SandboxAdapterOptions } from '../create-sandbox-adapter';
 import { runCLI } from '../run-cli';
 import { readDataFiles } from './read-data-files';
 import { readTestRecords } from './read-test-records';
-import { readTestToolNames } from './read-test-tool-names';
-import { sendTestToolCall } from './send-test-tool-call';
 import type { BootFileExtras, BootFiles } from './write-boot-files';
 import { writeBootFiles } from './write-boot-files';
 

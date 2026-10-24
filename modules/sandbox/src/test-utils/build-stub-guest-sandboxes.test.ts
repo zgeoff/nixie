@@ -215,6 +215,19 @@ test('it fails a turn whose reply is a refused credential as a model auth failur
   ]);
 });
 
+test('it fails a turn whose reply is a failed model call as an error, with no answer', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies({ failure: 'the model API answered 529 overloaded' });
+
+  const run = await runGuestFrame(sandbox, buildMockTurnFrame());
+
+  expect(run.frames).toStrictEqual([
+    { type: 'failed', reason: 'error', detail: 'Error: the model API answered 529 overloaded' },
+  ]);
+});
+
 test('it calls the tool a reply asks for and replies after it, in the same turn', async () => {
   const calls: unknown[] = [];
 
@@ -914,7 +927,7 @@ test('it holds a gated reply until its gate opens, then answers with it', async 
 
   const gate = Promise.withResolvers<void>();
 
-  ctx.stub.addReplies({ text: 'The ferry is late.', gate: gate.promise });
+  ctx.stub.addReplies({ text: 'The ferry is late.', gate: () => gate.promise });
 
   const stream = await sandbox.spawn({
     argv: ['guest'],
@@ -935,11 +948,41 @@ test('it holds a gated reply until its gate opens, then answers with it', async 
   ]);
 });
 
+test('it opens the gate of a reply only once the turn reaches it, after the tool call before it', async () => {
+  const order: string[] = [];
+
+  const ctx = await setupTest({
+    callTool: () => {
+      order.push('tool call');
+
+      return Promise.resolve('Buy oat milk.');
+    },
+  });
+
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies(
+    { toolUse: { name: 'mcp__nixie__notes_read', input: {} } },
+    {
+      text: 'It says oat milk.',
+      gate: () => {
+        order.push('gate');
+
+        return Promise.resolve();
+      },
+    },
+  );
+
+  await runGuestFrame(sandbox, buildMockTurnFrame({ tools: { token: 'step-token' } }));
+
+  expect(order).toStrictEqual(['tool call', 'gate']);
+});
+
 test('it ends a turn the host stopped while a gated reply waits, with no frame', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
 
-  ctx.stub.addReplies({ text: 'Never sent.', gate: new Promise(() => {}) });
+  ctx.stub.addReplies({ text: 'Never sent.', gate: () => new Promise(() => {}) });
 
   const stream = await sandbox.spawn({
     argv: ['guest'],

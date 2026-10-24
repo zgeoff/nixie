@@ -1,4 +1,4 @@
-import type { ScriptedReply } from '@heynixie/testing';
+import type { StubGuestReply } from '@heynixie/sandbox/test-utils';
 
 export interface RememberCall {
   readonly subject?: 'owner' | 'shared';
@@ -10,8 +10,8 @@ export interface RememberCall {
   readonly until?: string;
 }
 
-export function buildRememberReply(call: RememberCall): ScriptedReply {
+export function buildRememberReply(call: RememberCall): StubGuestReply {
   return {
-    toolUse: { name: 'mcp__nixie__memory_remember', input: { subject: 'owner', ...call } },
+    toolUse: { name: 'memory.remember', input: { subject: 'owner', ...call } },
   };
 }
