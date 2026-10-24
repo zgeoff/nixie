@@ -57,6 +57,37 @@ test('it closes only once the requests in flight have answered', async () => {
   expect(Bun.peek.status(closed)).toBe('fulfilled');
 });
 
+test('it answers a call through its closed answer once the gate closes, and never runs the call', async () => {
+  const gate = buildAPIGate();
+  const call = mock(() => Promise.resolve('listed'));
+
+  await gate.close();
+
+  const answer = await gate.runCall(call, () => Promise.resolve('refused'));
+
+  expect(answer).toBe('refused');
+  expect(call).not.toHaveBeenCalled();
+});
+
+test('it closes only once the calls in flight have answered', async () => {
+  const gate = buildAPIGate();
+  const call = makeGatedCall(() => 'listed');
+  const inFlight = gate.runCall(call.call, () => Promise.resolve('refused'));
+
+  await call.started;
+
+  const closed = gate.close();
+
+  const statusBefore = await Bun.sleep(0).then(() => Bun.peek.status(closed));
+
+  call.release();
+
+  await Promise.all([inFlight, closed]);
+
+  expect(statusBefore).toBe('pending');
+  expect(Bun.peek.status(closed)).toBe('fulfilled');
+});
+
 test('it closes while a health check is still in flight', async () => {
   const gate = buildAPIGate();
   const check = makeGatedCall(() => new Response('ready'));

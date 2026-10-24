@@ -1,9 +1,11 @@
 import { expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { readRecords } from './read-records';
 import { removeThreadKeys } from './remove-thread-keys';
+import { StaleWriterError } from './stale-writer-error';
 import { startTestLog } from './test-utils/start-test-log';
 import type { LogTables } from './types';
 import { writeRecords } from './write-records';
@@ -46,6 +48,63 @@ test('it shreds every record on the thread and leaves the records of other threa
     ['side-task', { status: 'readable', fields: { text: 'water the ferns' } }],
     ['conversation', { status: 'shredded' }],
   ]);
+});
+
+test('it refuses a stale writer and leaves every record on the thread readable', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:aa11' },
+      thread: 'conversation',
+      erasable: { text: 'the spare key is under the mat' },
+    },
+  ]);
+
+  await sql`update writer_epoch set epoch = epoch + 1`.execute(ctx.writer.db);
+
+  const refusal = await removeThreadKeys(ctx.log, 'conversation').then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  const read = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(refusal).toBeInstanceOf(StaleWriterError);
+
+  expect(read.map((entry) => entry.record.erasable)).toStrictEqual([
+    { status: 'readable', fields: { text: 'the spare key is under the mat' } },
+  ]);
+});
+
+test('it shreds every record of a thread that holds more keys than one delete takes', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:aa11' },
+      thread: 'side-task',
+      erasable: { text: 'water the ferns' },
+    },
+    ...Array.from({ length: 501 }, () => ({
+      kind: 'owner_message' as const,
+      definitions: { snapshotHash: 'sha256:aa11' },
+      thread: 'conversation',
+      erasable: { text: 'the boat leaves at nine' },
+    })),
+  ]);
+
+  const removed = await removeThreadKeys(ctx.log, 'conversation');
+  const read = await readRecords(ctx.log, { afterSequence: 0, limit: 1000 });
+
+  const [sideTask, ...conversation] = read.map((entry) => entry.record.erasable);
+
+  expect(removed).toBe(501);
+  expect(sideTask).toStrictEqual({ status: 'readable', fields: { text: 'water the ferns' } });
+  expect(conversation).toHaveLength(501);
+  expect(conversation).toSatisfyAll((erasable) => erasable?.status === 'shredded');
 });
 
 test('it removes nothing and answers 0 when the thread holds no sealed record', async () => {

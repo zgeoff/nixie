@@ -6,6 +6,7 @@ import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
 import { nixieSchema, runMigrations, startDatabase } from '@heynixie/db';
 import { startTestMemory } from '@heynixie/memory/test-utils';
+import { buildAPIGate } from './build-api-gate';
 import { runCLI } from './run-cli';
 import { startControlSocket } from './start-control-socket';
 import { writeBootFiles } from './test-utils/write-boot-files';
@@ -96,6 +97,7 @@ test('it prints what the server reset, and that backups still hold the old data'
           keptSessions: 2,
         }),
       runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 
@@ -137,6 +139,7 @@ test('it exits 1 when the server fails the reset', async () => {
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('the runtime refused the destroy')),
       runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 
@@ -233,6 +236,7 @@ test('it prints what a reset of the conversations shredded, and that the server 
           lastSequence: 88,
           shreddedRecords: 14,
         }),
+      gate: buildAPIGate(),
     }),
   });
 
@@ -275,6 +279,7 @@ test('it forgets every memory item through a reset of the memories, and prints h
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no full reset runs in this test')),
       runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 
@@ -384,6 +389,7 @@ test('it pins a self-note from memory-pin', async () => {
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
       runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 
@@ -421,6 +427,7 @@ test('it prints the subject of a self-note from memory-show', async () => {
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
       runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 
@@ -462,6 +469,7 @@ test('it prints the count of each subject from memory-subjects', async () => {
       seedWrittenSkills: () => Promise.resolve(),
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
       runConversationReset: () => Promise.reject(new Error('no reset runs in this test')),
+      gate: buildAPIGate(),
     }),
   });
 
