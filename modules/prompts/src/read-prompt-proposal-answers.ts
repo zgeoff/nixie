@@ -1,5 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { promptProposalOutcomes } from './prompt-proposal-outcomes';
 import { promptsOverrideApprovedCodec } from './prompts-override-approved-codec';
@@ -41,7 +42,9 @@ export async function readPromptProposalAnswers(
     const promptID = promptIDs.get(proposalID);
     const outcome = promptProposalOutcomes.get(record.kind);
 
-    if (promptID === undefined || outcome === undefined) {
+    invariant(outcome, 'the answer read takes only the kinds that map to an outcome');
+
+    if (promptID === undefined) {
       return [];
     }
 
