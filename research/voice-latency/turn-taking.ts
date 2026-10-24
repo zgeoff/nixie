@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { buildRecording } from './build-recording.ts';
 import { findSoundSpan } from './find-sound-span.ts';
 import { planPlayback } from './plan-playback.ts';
+import { openVendorSocket } from './open-vendor-socket.ts';
 import { reserveOutput } from './reserve-output.ts';
 import { soundThreshold } from './sound-threshold.ts';
 import { speechSetDir } from './speech-sets.ts';
@@ -86,10 +87,11 @@ for (let index = 0; index < limit; index++) {
   const lastSpeechMs = (lastSpeechSample / sampleRate) * 1000;
   const call: VoiceCall =
     candidate === 'grok'
-      ? startGrokCall({ instructions, key, sampleRate, voice: 'eve' })
+      ? startGrokCall({ instructions, key, openSocket: openVendorSocket, sampleRate, voice: 'eve' })
       : startGptLiveCall({
           instructions,
           key,
+          openSocket: openVendorSocket,
           quietMs: 2500,
           runDelegation: () => Promise.resolve('That lookup is not available right now.'),
           sampleRate,

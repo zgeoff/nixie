@@ -1,6 +1,7 @@
 // Grok Voice as nixie on its own: its own turn detection, nixie's persona, and the stub tools as
 // function tools that this call answers with their fixed results.
 import { match } from 'ts-pattern';
+import type { OpenSocket } from './open-vendor-socket.ts';
 import { parseGrokEvent } from './parse-grok-event.ts';
 import { stubTools } from './stub-tool-answers.ts';
 import { toPcmBase64 } from './to-pcm-base64.ts';
@@ -9,11 +10,12 @@ import type { VoiceCall } from './voice-call.ts';
 export function startGrokCall(connection: {
   instructions: string;
   key: string;
+  openSocket: OpenSocket;
   sampleRate: number;
   voice: string;
 }): VoiceCall {
-  const socket = new WebSocket('wss://api.x.ai/v1/realtime?model=grok-voice-latest', {
-    headers: { authorization: `Bearer ${connection.key}` },
+  const socket = connection.openSocket('wss://api.x.ai/v1/realtime?model=grok-voice-latest', {
+    authorization: `Bearer ${connection.key}`,
   });
   const ready = Promise.withResolvers<void>();
   const ended = Promise.withResolvers<void>();

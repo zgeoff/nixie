@@ -15,6 +15,7 @@ import { lines, loadCallerLine } from './caller.ts';
 import { findReplyStop } from './find-reply-stop.ts';
 import { findSoundSpan } from './find-sound-span.ts';
 import { planHeardReply } from './plan-heard-reply.ts';
+import { openVendorSocket } from './open-vendor-socket.ts';
 import { reserveOutput } from './reserve-output.ts';
 import { soundThreshold } from './sound-threshold.ts';
 import { sampleRate } from './speech.ts';
@@ -80,10 +81,11 @@ const toSample = (ms: number): number => Math.round((ms * sampleRate) / 1000);
 for (let round = 0; round < rounds; round++) {
   const call: VoiceCall =
     candidate === 'grok'
-      ? startGrokCall({ instructions, key, sampleRate, voice: 'eve' })
+      ? startGrokCall({ instructions, key, openSocket: openVendorSocket, sampleRate, voice: 'eve' })
       : startGptLiveCall({
           instructions,
           key,
+          openSocket: openVendorSocket,
           quietMs: 2500,
           runDelegation: () => Promise.resolve('That lookup is not available right now.'),
           sampleRate,

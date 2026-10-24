@@ -18,6 +18,7 @@ import { createVoiceTools, voiceToolNames } from './create-voice-tools.ts';
 import { findSoundSpan } from './find-sound-span.ts';
 import { planPlayback } from './plan-playback.ts';
 import type { ReplyRecord } from './reply-record.ts';
+import { openVendorSocket } from './open-vendor-socket.ts';
 import { reserveOutput } from './reserve-output.ts';
 import { soundThreshold } from './sound-threshold.ts';
 import { sampleRate } from './speech.ts';
@@ -104,10 +105,11 @@ for (let round = 0; round < rounds; round++) {
     let backendCostUSD = 0;
     const call: VoiceCall =
       backend === undefined
-        ? startGrokCall({ instructions, key, sampleRate, voice: 'eve' })
+        ? startGrokCall({ instructions, key, openSocket: openVendorSocket, sampleRate, voice: 'eve' })
         : startGptLiveCall({
             instructions,
             key,
+            openSocket: openVendorSocket,
             quietMs,
             runDelegation: async (heard) => {
               let answer = '';

@@ -2,6 +2,7 @@
 // nixie's Claude turn through client delegation, then speaks that turn's answer.
 import { findSoundSpan } from './find-sound-span.ts';
 import { match } from 'ts-pattern';
+import type { OpenSocket } from './open-vendor-socket.ts';
 import { parseGptLiveEvent } from './parse-gpt-live-event.ts';
 import { toPcmBase64 } from './to-pcm-base64.ts';
 import type { VoiceCall } from './voice-call.ts';
@@ -11,13 +12,14 @@ export function startGptLiveCall(connection: {
   quietMs: number;
   instructions: string;
   key: string;
+  openSocket: OpenSocket;
   runDelegation: (heard: string) => Promise<string>;
   sampleRate: number;
   soundThreshold: number;
   voice: string;
 }): VoiceCall {
-  const socket = new WebSocket('wss://api.openai.com/v1/live/sessions', {
-    headers: { authorization: `Bearer ${connection.key}` },
+  const socket = connection.openSocket('wss://api.openai.com/v1/live/sessions', {
+    authorization: `Bearer ${connection.key}`,
   });
   const ready = Promise.withResolvers<void>();
   const ended = Promise.withResolvers<void>();
