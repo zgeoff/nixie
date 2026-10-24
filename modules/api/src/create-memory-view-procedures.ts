@@ -1,5 +1,5 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import type { ViewPageRequest } from '@heynixie/memory';
+import type { MemorySubject, ViewPageRequest } from '@heynixie/memory';
 import { InvalidCursorError } from '@heynixie/memory';
 import { apiImplementer } from './api-implementer';
 import { requireCaller } from './require-caller';
@@ -79,13 +79,20 @@ export function createMemoryViewProcedures(context: APIContext, readMemory: Read
 interface PageInput {
   readonly state: ViewPageRequest['state'];
   readonly after?: string | undefined;
+  readonly kind?: 'fact' | 'self' | undefined;
   readonly limit?: number | undefined;
 }
+
+const subjectsByKind: Readonly<Record<'fact' | 'self', readonly MemorySubject[]>> = {
+  fact: ['owner', 'shared'],
+  self: ['self'],
+};
 
 function toPageRequest(input: PageInput): ViewPageRequest {
   return {
     state: input.state,
     ...(input.after === undefined ? {} : { after: input.after }),
+    ...(input.kind === undefined ? {} : { subjects: subjectsByKind[input.kind] }),
     ...(input.limit === undefined ? {} : { limit: input.limit }),
   };
 }

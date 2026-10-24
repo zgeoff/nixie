@@ -6,11 +6,11 @@ pre-commit:
   piped: true
   jobs:
     - name: oxlint --fix
-      glob: '*.{js,mjs,cjs,ts,mts,cts}'
+      glob: '*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}'
       run: node_modules/.bin/oxlint --fix --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
     - name: oxfmt
-      glob: '*.{js,mjs,cjs,ts,mts,cts,json,jsonc,md,yml,yaml}'
+      glob: '*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,json,jsonc,md,yml,yaml}'
       run: node_modules/.bin/oxfmt --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
     # the exclude mirrors .formatignore: the tool exits 2 when every file
