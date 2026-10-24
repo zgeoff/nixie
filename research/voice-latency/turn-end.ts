@@ -89,7 +89,8 @@ async function playUtterance(speech: Float32Array): Promise<(Pause & { transcrip
   const transcripts: Promise<string>[] = [];
   const startedAt = performance.now();
   for (let offset = 0, frame = 0; offset < audio.length; offset += windowSamples, frame++) {
-    await Bun.sleep(Math.max(0, startedAt + frame * windowMs - performance.now()));
+    // A microphone hands over a window only once its last sample is spoken.
+    await Bun.sleep(Math.max(0, startedAt + (frame + 1) * windowMs - performance.now()));
     vad.accept(audio.subarray(offset, offset + windowSamples));
     for (const segment of vad.readSegments()) {
       const pauseIndex = segments.length;
