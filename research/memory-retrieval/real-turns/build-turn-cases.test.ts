@@ -198,6 +198,122 @@ test('it treats a pinned item that retired and came back as unpinned', () => {
   expect(cases.map((turn) => turn.candidates.map((candidate) => candidate.isPinned))).toStrictEqual([[false]]);
 });
 
+test('it carries a message that no committed step read into the next step', () => {
+  const cases = buildTurnCases({
+    records: [
+      {
+        sequence: 1,
+        recordedAt: '2026-03-02T09:00:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'when is the dentist?' } },
+      },
+      {
+        sequence: 2,
+        recordedAt: '2026-03-02T09:00:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 3,
+        recordedAt: '2026-03-02T09:00:30Z',
+        kind: 'task.step_committed',
+        thread: 'conversation',
+        parent: null,
+        payload: { readCursor: 0 },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 4,
+        recordedAt: '2026-03-02T09:00:31Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 5,
+        recordedAt: '2026-03-02T09:00:32Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+    ],
+    items: [],
+    versions: [],
+    notes: [],
+  });
+
+  expect(cases.map((turn) => ({ caseID: turn.caseID, query: turn.query }))).toStrictEqual([
+    { caseID: 't5', query: 'when is the dentist?' },
+  ]);
+});
+
+test('it starts a step with no query once a committed step read the message', () => {
+  const cases = buildTurnCases({
+    records: [
+      {
+        sequence: 1,
+        recordedAt: '2026-03-02T09:00:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'when is the dentist?' } },
+      },
+      {
+        sequence: 2,
+        recordedAt: '2026-03-02T09:00:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 3,
+        recordedAt: '2026-03-02T09:00:30Z',
+        kind: 'task.step_committed',
+        thread: 'conversation',
+        parent: null,
+        payload: { readCursor: 1 },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 4,
+        recordedAt: '2026-03-02T09:00:31Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 5,
+        recordedAt: '2026-03-02T09:00:32Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+    ],
+    items: [],
+    versions: [],
+    notes: [],
+  });
+
+  expect(cases).toStrictEqual([]);
+});
+
 test('it rejects a turn retrieval whose logged items hold a null', () => {
   expect(() =>
     buildTurnCases({

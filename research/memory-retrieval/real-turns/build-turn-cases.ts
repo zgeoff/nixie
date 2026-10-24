@@ -68,6 +68,13 @@ export interface TurnCase {
 const conversationThread = 'conversation';
 const earlierExchanges = 2;
 
+// The record kinds the tasks module counts as a task's inbox, and the most records of it that the
+// sessions module puts in one turn's batch.
+const inboxKinds = new Set(['owner_message', 'timer.fired', 'action.outcome', 'task.wake']);
+const inboxBatchLimit = 64;
+
+const stepCommittedSchema = z.object({ readCursor: z.int() });
+
 export function buildTurnCases(data: PlainExport): TurnCase[] {
   const versionsByItem = Map.groupBy(data.versions, (version) => version.item_id);
   const itemsByID = new Map(data.items.map((item) => [item.item_id, item]));
@@ -78,7 +85,7 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
   const session: SessionFold = { delivered: new Map(), pending: [], isCompacted: false };
   const pinned = new Set<string>();
 
-  let batch: string[] = [];
+  let inbox: PlainRecord[] = [];
   let open: TurnCase | null = null;
   let isAfterRecallTool = false;
   let hasReply = false;
@@ -92,12 +99,18 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
 
     foldSession(session, record);
 
-    if (record.kind === 'owner_message') {
-      const text = readErasableText(record);
+    if (inboxKinds.has(record.kind)) {
+      inbox.push(record);
 
-      if (text !== null) {
-        batch.push(text);
-      }
+      continue;
+    }
+
+    // A step reads the inbox past the cursor its last committed step left, so a message that no
+    // step acknowledged, as after a compaction, joins the next step's batch.
+    if (record.kind === 'task.step_committed') {
+      const { readCursor } = parsePayload(stepCommittedSchema, record);
+
+      inbox = inbox.filter((entry) => entry.sequence > readCursor);
 
       continue;
     }
@@ -112,7 +125,14 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
       hasReply = false;
 
       // Per-turn retrieval runs only when the batch's joined text holds more than whitespace.
-      const query = batch.join('\n');
+      const query = inbox
+        .slice(0, inboxBatchLimit)
+        .flatMap((entry) => {
+          const text = entry.kind === 'owner_message' ? readErasableText(entry) : null;
+
+          return text === null ? [] : [text];
+        })
+        .join('\n');
 
       if (query.trim() !== '') {
         open = {
@@ -131,7 +151,6 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
         };
       }
 
-      batch = [];
       continue;
     }
 
