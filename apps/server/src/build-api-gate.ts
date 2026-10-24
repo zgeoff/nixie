@@ -4,6 +4,8 @@ export interface APIGate {
     next: (request: Request) => Promise<Response>,
   ) => Promise<Response>;
 
+  readonly runCall: <T>(call: () => Promise<T>, onClosed: () => Promise<T>) => Promise<T>;
+
   readonly close: () => Promise<void>;
 }
 
@@ -16,18 +18,21 @@ interface APICalls {
 export function buildAPIGate(): APIGate {
   const calls: APICalls = { isClosed: false, inFlight: 0, waiters: [] };
 
+  const runCall = <T>(call: () => Promise<T>, onClosed: () => Promise<T>): Promise<T> =>
+    calls.isClosed ? onClosed() : runCounted(calls, call);
+
   return {
     run: (request, next) => {
       if (!new URL(request.url).pathname.startsWith('/rpc')) {
         return next(request);
       }
 
-      if (calls.isClosed) {
-        return Promise.resolve(new Response('nixie is resetting', { status: 503 }));
-      }
-
-      return runCounted(calls, () => next(request));
+      return runCall(
+        () => next(request),
+        () => Promise.resolve(new Response('nixie is resetting', { status: 503 })),
+      );
     },
+    runCall,
     close: async () => {
       calls.isClosed = true;
 
@@ -42,7 +47,7 @@ export function buildAPIGate(): APIGate {
   };
 }
 
-async function runCounted(calls: APICalls, call: () => Promise<Response>): Promise<Response> {
+async function runCounted<T>(calls: APICalls, call: () => Promise<T>): Promise<T> {
   calls.inFlight += 1;
 
   try {

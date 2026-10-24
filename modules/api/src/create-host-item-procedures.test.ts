@@ -132,6 +132,24 @@ test('#restore refuses an item that is not retired with WRONG_STATE', async () =
   expect(restored).rejects.toMatchObject({ code: 'WRONG_STATE', status: 409 });
 });
 
+test('#forgetAll answers with every item it forgot', async () => {
+  const ctx = await setupTest();
+  const first = await createMemoryItem(ctx.memory.store, { text: 'Cycles to work' });
+  const second = await createMemoryItem(ctx.memory.store, { text: 'Speaks some Welsh' });
+  const forgotten = await ctx.client.forgetAll();
+
+  expect(forgotten).toStrictEqual({ itemIDs: [first.itemID, second.itemID] });
+});
+
+test('#forgetAll refuses with MEMORY_NOT_STARTED before the memory store starts', async () => {
+  const client = createRouterClient(createHostItemProcedures(() => null));
+  const forgotten = client.forgetAll();
+
+  await forgotten.catch(() => {});
+
+  expect(forgotten).rejects.toMatchObject({ code: 'MEMORY_NOT_STARTED' });
+});
+
 test('#pin answers with the pin it set', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Is allergic to peanuts' });

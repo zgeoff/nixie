@@ -6,7 +6,14 @@ import type { ItemHistory } from './view-types';
 
 export type HostMemoryStore = Pick<
   MemoryStore,
-  'remember' | 'retire' | 'restore' | 'pin' | 'forget' | 'readHistory' | 'readSubjectCounts'
+  | 'remember'
+  | 'retire'
+  | 'restore'
+  | 'pin'
+  | 'forget'
+  | 'forgetAll'
+  | 'readHistory'
+  | 'readSubjectCounts'
 > & { readonly proposals: MemoryProposals; readonly consolidations: MemoryConsolidations };
 
 interface HostAnswer {
@@ -43,6 +50,8 @@ export interface HostMemory {
   readonly pin: (itemID: string, isPinned: boolean) => Promise<void>;
 
   readonly forget: (target: VersionRef) => Promise<void>;
+
+  readonly forgetAll: () => Promise<readonly string[]>;
   readonly readDiff: () => Promise<ConsolidationDiff | null>;
   readonly approveChanges: (
     answers: readonly HostChangeAnswer[],
@@ -75,6 +84,7 @@ export function buildHostMemory(store: HostMemoryStore): HostMemory {
     restore: (target) => store.restore({ target, provenance: ownerProvenance }),
     pin: (itemID, isPinned) => store.pin({ itemID, isPinned, provenance: ownerProvenance }),
     forget: (target) => store.forget({ target, provenance: ownerProvenance }),
+    forgetAll: () => store.forgetAll({ provenance: ownerProvenance }),
     readDiff: () => store.consolidations.readPending(),
     approveChanges: (answers) =>
       store.consolidations.approveAll(

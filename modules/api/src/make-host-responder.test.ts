@@ -24,6 +24,8 @@ test('it answers a host procedure call with its output, dates included', async (
         lastSequence: 42,
         keptSessions: 2,
       }),
+    runConversationReset: mock(),
+    gate: { runCall: (call) => call() },
   });
 
   const client = createORPCClient<HostContractClient>(
@@ -49,6 +51,8 @@ test('it answers 404 to a request outside the procedures', async () => {
     readInForce: () => null,
     wakeExports: () => {},
     runReset: mock(),
+    runConversationReset: mock(),
+    gate: { runCall: (call) => call() },
   });
 
   const response = await respond(
@@ -68,6 +72,8 @@ test('it answers 500 with the reason when a procedure fails', async () => {
     readInForce: () => null,
     wakeExports: () => {},
     runReset: () => Promise.reject(new Error('the database is locked')),
+    runConversationReset: mock(),
+    gate: { runCall: (call) => call() },
   });
 
   const client = createORPCClient<HostContractClient>(
@@ -95,6 +101,8 @@ test('it answers 503 to a memory procedure before the memory store starts', asyn
     readInForce: () => null,
     wakeExports: () => {},
     runReset: mock(),
+    runConversationReset: mock(),
+    gate: { runCall: (call) => call() },
   });
 
   const client = createORPCClient<HostContractClient>(
@@ -106,4 +114,92 @@ test('it answers 503 to a memory procedure before the memory store starts', asyn
   await listed.catch(() => {});
 
   expect(listed).rejects.toMatchObject({ code: 'MEMORY_NOT_STARTED', status: 503 });
+});
+
+test('it refuses a session, memory, skill or prompt procedure with 503 while the gate is closed', async () => {
+  const ctx = await setupTest();
+
+  const respond = makeHostResponder({
+    context: ctx.context,
+    readMemory: () => null,
+    seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
+    runReset: mock(),
+    runConversationReset: mock(),
+    gate: { runCall: (_call, onClosed) => onClosed() },
+  });
+
+  const client = createORPCClient<HostContractClient>(
+    new RPCLink({ url: 'http://localhost/rpc', fetch: respond }),
+  );
+
+  const calls = [
+    client.sessions.list(),
+    client.memory.subjects(),
+    client.skills.written.list(),
+    client.prompts.proposals.list(),
+  ];
+
+  const refusals = await Promise.all(
+    calls.map((call) =>
+      call.then(
+        () => null,
+        (error: unknown) => error,
+      ),
+    ),
+  );
+
+  expect(refusals).toMatchObject([
+    { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
+    { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
+    { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
+    { code: 'SERVICE_UNAVAILABLE', status: 503, message: 'nixie is resetting' },
+  ]);
+});
+
+test('it runs both resets while the gate is closed', async () => {
+  const ctx = await setupTest();
+
+  const respond = makeHostResponder({
+    context: ctx.context,
+    readMemory: () => null,
+    seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
+    runReset: () =>
+      Promise.resolve({
+        resetAt: new Date('2026-10-11T12:15:00.000Z'),
+        lastSequence: 42,
+        keptSessions: 2,
+      }),
+    runConversationReset: () =>
+      Promise.resolve({
+        resetAt: new Date('2026-10-11T12:20:00.000Z'),
+        lastSequence: 57,
+        shreddedRecords: 14,
+      }),
+    gate: { runCall: (_call, onClosed) => onClosed() },
+  });
+
+  const client = createORPCClient<HostContractClient>(
+    new RPCLink({ url: 'http://localhost/rpc', fetch: respond }),
+  );
+
+  const [reset, conversationReset] = await Promise.all([
+    client.reset(),
+    client.resetConversations(),
+  ]);
+
+  expect(reset).toStrictEqual({
+    resetAt: new Date('2026-10-11T12:15:00.000Z'),
+    lastSequence: 42,
+    keptSessions: 2,
+  });
+
+  expect(conversationReset).toStrictEqual({
+    resetAt: new Date('2026-10-11T12:20:00.000Z'),
+    lastSequence: 57,
+    shreddedRecords: 14,
+  });
 });
