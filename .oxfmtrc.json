@@ -20,7 +20,7 @@
     "CHANGELOG.md",
     ".release-please-manifest.json",
     // spikes are throwaway code; only their Markdown is formatted
-    "research/**",
+    "research/**/*.*",
     "!research/**/*.md"
   ],
   "proseWrap": "always",
