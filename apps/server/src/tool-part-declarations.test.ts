@@ -16,7 +16,7 @@ test('it offers prompt_read and prompt_write to the conversation guest when the 
 
   const gate = Promise.withResolvers<void>();
 
-  nixie.guest.addReplies({ text: 'Hello.', gate: gate.promise });
+  nixie.guest.addReplies({ text: 'Hello.', gate: () => gate.promise });
 
   await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
@@ -44,7 +44,7 @@ test('it offers prompt_read alone to the conversation guest when no definitions 
 
   const gate = Promise.withResolvers<void>();
 
-  nixie.guest.addReplies({ text: 'Hello.', gate: gate.promise });
+  nixie.guest.addReplies({ text: 'Hello.', gate: () => gate.promise });
 
   await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),

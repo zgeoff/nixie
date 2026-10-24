@@ -77,12 +77,13 @@ runs its files one at a time.
 | Lane      | Files                 | Real system                                                   | Script           | Limit per test     |
 | --------- | --------------------- | ------------------------------------------------------------- | ---------------- | ------------------ |
 | Agent SDK | `*.agent-sdk.test.ts` | The Agent SDK's CLI as a subprocess, against a scripted model | `test:agent-sdk` | 5 s, Bun's default |
-| e2e       | every suite in `e2e/` | The built nixie, driven from outside                          | `test:e2e`       | 15 s               |
+| e2e       | every suite in `e2e/` | The built nixie or web client, driven from outside            | `test:e2e`       | 15 s               |
 
 An Agent SDK suite never calls the live model; the SDK contract suite in `evals/` does. A test in a
 lane sets no limit of its own, and a slow test gets a fix, never a raised lane limit. CI's test
 timeouts check lets only a lane script raise the limit. The pre-push test job splits its run the
-same way. A suite that spawns nixie or a build of it lives under `e2e/`.
+same way. A suite that spawns nixie, the web client or a build of either lives under `e2e/`. The web
+package exports the helpers those suites share from its test utils.
 
 [`startSpawnedNixie`](../../../e2e/test-utils/start-spawned-nixie.ts) in `e2e/` spawns the test
 build of the server's `serve` command as a child process and joins it to
@@ -120,14 +121,17 @@ The root [`bunfig.toml`](../../../bunfig.toml) preloads, in order:
 5. [`restore-native-form-data.ts`](../../../libs/testing/src/restore-native-form-data.ts), which
    puts Bun's own `File` and `FormData` back in place of happy-dom's, because Bun's fetch cannot
    send happy-dom's as a multipart body.
-6. [`start-mock-server.ts`](../../../libs/mock-server/src/start-mock-server.ts), which runs the one
+6. [`restore-native-base64.ts`](../../../libs/testing/src/restore-native-base64.ts), which puts
+   Bun's own `atob` and `btoa` back in place of happy-dom's script versions, because zod's base64
+   check calls `atob` on every image a frame carries.
+7. [`start-mock-server.ts`](../../../libs/mock-server/src/start-mock-server.ts), which runs the one
    MSW server of the process and resets its handlers after each test.
-7. The web client's [`test-preload.ts`](../../../apps/web/src/mocks/test-preload.ts), which seeds
+8. The web client's [`test-preload.ts`](../../../apps/web/src/mocks/test-preload.ts), which seeds
    faker, points happy-dom at the web origin, sets an in-memory IndexedDB from fake-indexeddb, and
    adds the web client's handlers to the MSW server. After each test it resets the mock store, the
    browser cookies, `localStorage`, IndexedDB, the system's light or dark setting and the document's
    theme attribute.
-8. The GitHub mock's
+9. The GitHub mock's
    [`test-preload.ts`](../../../adapters/definitions-github/src/mocks/test-preload.ts), which adds
    the mock GitHub API's handlers and resets its store after each test.
 

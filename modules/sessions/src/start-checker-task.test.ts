@@ -1,17 +1,11 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { modelsConfigSchema } from '@heynixie/models';
-import { buildTestClock, startScriptedModel } from '@heynixie/testing';
+import { buildTestClock } from '@heynixie/testing';
 import { startCheckerTask } from './start-checker-task';
 import { startTestSessionHost } from './test-utils/start-test-session-host';
 
 async function setupTest() {
-  const host = await startTestSessionHost();
-
-  const model = startScriptedModel();
-
-  onTestFinished(() => model.stop());
-
-  return { ...host, model };
+  return { host: await startTestSessionHost() };
 }
 
 test('it runs each check in the check guest on the checker role profile', async () => {
@@ -21,14 +15,14 @@ test('it runs each check in the check guest on the checker role profile', async 
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
-          base_url: ctx.model.url,
+          base_url: 'https://models.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
           model: 'claude-test-1',
           effort: 'low',
         },
         checker: {
-          base_url: ctx.model.url,
+          base_url: 'https://checker.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
           model: 'claude-test-checker',
@@ -38,16 +32,14 @@ test('it runs each check in the check guest on the checker role profile', async 
       roles: { conversation: 'chat-direct', checker: 'checker' },
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
-    sandboxes: ctx.sandboxes,
+    sandboxes: ctx.host.sandboxes,
     image: 'nixie-conversation-0123456789ab',
     timeoutMs: 60_000,
     clock: buildTestClock(1_700_000_000_000),
     log: () => {},
   });
 
-  ctx.model.addReplies({
-    toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } },
-  });
+  ctx.host.guest.addCheckAnswers({ verdict: 'asserted', reason: 'Stated.' });
 
   const answer = await checker.check({
     prompt: 'You check one candidate memory.',
@@ -61,10 +53,16 @@ test('it runs each check in the check guest on the checker role profile', async 
     failure: null,
   });
 
-  expect(ctx.model.requests.filter((request) => request.path === '/v1/messages')).toMatchObject([
+  expect(ctx.host.guest.checks).toStrictEqual([
     {
-      headers: { 'x-api-key': 'nixie-broker-placeholder' },
-      body: { model: 'claude-test-checker' },
+      profile: {
+        model: 'claude-test-checker',
+        baseURL: expect.toStartWith('https://checker.example.test'),
+        effort: 'low',
+        authHeader: 'x-api-key',
+      },
+      systemPrompt: 'You check one candidate memory.',
+      input: '<owner_message>\nI take my coffee black\n</owner_message>',
     },
   ]);
 });
@@ -78,14 +76,14 @@ test('it logs where each check spent its time', async () => {
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
-          base_url: ctx.model.url,
+          base_url: 'https://models.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
           model: 'claude-test-1',
           effort: 'low',
         },
         checker: {
-          base_url: ctx.model.url,
+          base_url: 'https://checker.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
           model: 'claude-test-checker',
@@ -95,16 +93,14 @@ test('it logs where each check spent its time', async () => {
       roles: { conversation: 'chat-direct', checker: 'checker' },
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
-    sandboxes: ctx.sandboxes,
+    sandboxes: ctx.host.sandboxes,
     image: 'nixie-conversation-0123456789ab',
     timeoutMs: 60_000,
     clock: buildTestClock(1_700_000_000_000),
     log,
   });
 
-  ctx.model.addReplies({
-    toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } },
-  });
+  ctx.host.guest.addCheckAnswers({ verdict: 'asserted', reason: 'Stated.' });
 
   await checker.check({
     prompt: 'You check one candidate memory.',

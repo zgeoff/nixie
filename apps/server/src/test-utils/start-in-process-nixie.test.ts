@@ -93,7 +93,7 @@ test('it reads the names of the tools a turn frame offers while its turn runs', 
 
   const gate = Promise.withResolvers<void>();
 
-  nixie.guest.addReplies({ text: 'Low tide is at four.', gate: gate.promise });
+  nixie.guest.addReplies({ text: 'Low tide is at four.', gate: () => gate.promise });
 
   await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
