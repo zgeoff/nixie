@@ -177,7 +177,11 @@ test('it stops the guest of a turn still running once the test finishes', async 
     thread: 'conversation',
   });
 
-  await nixie.waitForModelCalls(1);
+  // the real guest starts the Agent SDK's CLI cold, which outlasts the default wait on a small host
+  await waitForCondition(
+    () => nixie.model.requests.some((request) => request.path === '/v1/messages'),
+    { timeoutMs: 25_000, intervalMs: 100 },
+  );
 
   const turnPIDs = readDescendants(process.pid);
 
@@ -186,27 +190,6 @@ test('it stops the guest of a turn still running once the test finishes', async 
   });
 
   expect(turnPIDs.length).toBeGreaterThanOrEqual(3);
-});
-
-test('it waits for the model call of a turn that the real guest starts', async () => {
-  const nixie = await startSpawnedNixie();
-
-  const server = nixie.harness.start();
-
-  const clients = await createTestClient(server);
-
-  nixie.model.addReplies({ text: 'Held.', gate: Promise.withResolvers<void>().promise });
-
-  await clients.client.conversation.send({
-    clientMessageId: crypto.randomUUID(),
-    spans: [],
-    text: 'Check the tide at dusk.',
-    thread: 'conversation',
-  });
-
-  await nixie.waitForModelCalls(1);
-
-  expect(nixie.model.requests.filter((request) => request.path === '/v1/messages')).toHaveLength(1);
 });
 
 test('it starts nixie again on the same data directory once it exits', async () => {

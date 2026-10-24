@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { waitForCondition } from '@heynixie/testing';
 import { runOracle } from '../test-utils/run-oracle';
 import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
 
@@ -19,7 +20,9 @@ test('it commits a step that finishes inside the grace window once, and claims n
   ctx.nixie.model.addReplies({ text: 'Hi.', gate: reply.promise });
   void nixie.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
 
-  await ctx.nixie.waitForModelCalls(1);
+  await waitForCondition(() =>
+    ctx.nixie.model.requests.some((request) => request.path === '/v1/messages'),
+  );
 
   nixie.signal('SIGTERM');
 
@@ -72,7 +75,9 @@ test('it stops with a step still running at the deadline, which the restart reco
 
   void first.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
 
-  await ctx.nixie.waitForModelCalls(1);
+  await waitForCondition(() =>
+    ctx.nixie.model.requests.some((request) => request.path === '/v1/messages'),
+  );
 
   first.signal('SIGTERM');
 
