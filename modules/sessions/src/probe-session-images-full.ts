@@ -2,7 +2,6 @@ import type { StepInput } from '@heynixie/tasks';
 import { countImages } from './count-images';
 import { isPastImageBudget } from './is-past-image-budget';
 import { readInboxMessages } from './read-inbox-messages';
-import { sessionImageBudget } from './session-image-budget';
 import type { ConversationRun, ImageTally } from './types';
 
 export interface SessionImages {
@@ -13,7 +12,7 @@ export interface SessionImages {
 }
 
 export async function probeSessionImagesFull(
-  run: Pick<ConversationRun, 'context' | 'defaultZone' | 'messaging'>,
+  run: Pick<ConversationRun, 'context' | 'defaultZone' | 'messaging' | 'imageBudget'>,
   session: SessionImages,
 ): Promise<boolean> {
   if (session.images.count === 0) {
@@ -29,6 +28,6 @@ export async function probeSessionImagesFull(
   });
 
   return (
-    first !== undefined && isPastImageBudget(session.images, countImages(first), sessionImageBudget)
+    first !== undefined && isPastImageBudget(session.images, countImages(first), run.imageBudget)
   );
 }

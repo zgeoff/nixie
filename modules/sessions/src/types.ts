@@ -158,6 +158,8 @@ export interface ConversationRun {
 
   readonly messaging: TaskMessaging;
 
+  readonly imageBudget: ImageTally;
+
   readonly session: SessionGuard;
 }
 

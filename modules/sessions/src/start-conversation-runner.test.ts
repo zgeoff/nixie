@@ -30,6 +30,7 @@ interface RunnerConfig {
 
   readonly getDefinitions?: ConversationRunnerOptions['getDefinitions'];
   readonly messaging?: ConversationRunnerOptions['messaging'];
+  readonly imageBudget?: ConversationRunnerOptions['imageBudget'];
 }
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
@@ -86,6 +87,7 @@ async function setupTest() {
         }),
         log: config.log ?? (() => {}),
         ...(config.messaging === undefined ? {} : { messaging: config.messaging }),
+        ...(config.imageBudget === undefined ? {} : { imageBudget: config.imageBudget }),
       }),
     writeMessage,
     runNextStep: (runner: Runner) => runNextStep(tasks.context, runner.runStep),
@@ -1159,6 +1161,7 @@ test('it rebuilds the session when your next images would pass the images the se
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
     toolNames: ['notes_read'],
+    imageBudget: { bytes: 1024, count: 100 },
   });
 
   ctx.sandboxes.setGuestScript((turn) => [
@@ -1182,7 +1185,7 @@ test('it rebuilds the session when your next images would pass the images the se
     thread: 'conversation',
     payload: { images: [{ mediaType: 'image/jpeg' }] },
     erasable: { text: 'The garden bed.' },
-    attachments: [new Uint8Array(10 * 1024 * 1024).fill(7)],
+    attachments: [new Uint8Array(600).fill(7)],
   };
 
   await writeInboxRecords(ctx.context, [photo, photo]);
@@ -1203,7 +1206,7 @@ test('it rebuilds the session when your next images would pass the images the se
       },
     },
   ]);
-}, 60_000);
+});
 
 test('it rebuilds the session when your next images would pass the 100 it can hold, however small', async () => {
   const ctx = await setupTest();

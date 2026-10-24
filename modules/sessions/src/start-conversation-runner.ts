@@ -8,12 +8,14 @@ import { buildDefaultStatus } from './build-default-status';
 import { makeSessionGuard } from './make-session-guard';
 import { runConversationStep } from './run-conversation-step';
 import { runSessionCleanup } from './run-session-cleanup';
+import { sessionImageBudget } from './session-image-budget';
 import type { ConversationSandboxSpec } from './setup-conversation-sandbox';
 import { setupConversationSandbox } from './setup-conversation-sandbox';
 import type {
   ConversationMemory,
   ConversationMemorySettings,
   ConversationRun,
+  ImageTally,
   SessionCleanupCause,
 } from './types';
 
@@ -43,6 +45,8 @@ export interface ConversationRunnerOptions {
   readonly defaultZone?: string;
 
   readonly messaging?: TaskMessaging;
+
+  readonly imageBudget?: ImageTally;
 
   readonly log: ConversationSandboxSpec['log'];
 }
@@ -101,6 +105,7 @@ export async function startConversationRunner(
 
     defaultZone: options.defaultZone ?? 'UTC',
     messaging: options.messaging ?? defaultMessaging,
+    imageBudget: options.imageBudget ?? sessionImageBudget,
     session: makeSessionGuard(),
   };
 

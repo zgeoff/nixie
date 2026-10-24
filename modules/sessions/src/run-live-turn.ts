@@ -55,7 +55,10 @@ async function runTokenTurn(
     readTurnNote(run, plan.resume === null),
   ]);
 
-  const opening = await readOpeningBatch(run.context.log, input.inbox, plan);
+  const opening = await readOpeningBatch(run.context.log, input.inbox, {
+    ...plan,
+    imageBudget: run.imageBudget,
+  });
 
   const sent = new Set(opening.batch.records.map((record) => record.sequence));
 

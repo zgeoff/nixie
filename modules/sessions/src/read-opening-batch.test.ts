@@ -36,6 +36,7 @@ test('it opens with the records whose images fit what the session leaves, and co
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     images: { bytes: 24 * 1024 * 1024 - 12, count: 3 },
+    imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },
   });
 
   expect(opening.batch.records).toStrictEqual(inbox.slice(0, 1));
@@ -71,6 +72,7 @@ test('it opens a new session with every record that fits the whole budget', asyn
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     images: { bytes: 0, count: 0 },
+    imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },
   });
 
   expect(opening.batch.records).toHaveLength(2);
@@ -95,6 +97,7 @@ test('it opens with the records whose images fit the 100 a session holds, howeve
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     images: { bytes: 776, count: 97 },
+    imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },
   });
 
   expect(opening.batch.records).toStrictEqual(inbox.slice(0, 1));
