@@ -154,6 +154,92 @@ test('it exits 1 when the server fails the reset', async () => {
   });
 });
 
+test('it refuses a reset of the memories without --yes, and says what it keeps', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const exitCode = await runCLI(
+    ['reset', '--only', 'memories', '--config', files.configPath],
+    ctx.io,
+  );
+
+  expect(exitCode).toBe(2);
+
+  expect(ctx.io.print.mock.calls).toStrictEqual([
+    [
+      [
+        'A reset of the memories forgets every memory item, and keeps every record, the conversation and the device sessions.',
+        'Only a restore from a backup undoes it.',
+        'Backups from before the reset still hold the old data until they age out.',
+        'Run nixie reset --only memories --yes to reset.',
+      ].join('\n'),
+    ],
+  ]);
+});
+
+test('it forgets every memory item through a reset of the memories, and prints how many', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const api = await startTestAPI();
+  const memory = await startTestMemory();
+
+  const socket = await startControlSocket({
+    path: join(files.dataDir, 'run', 'control.sock'),
+    respond: makeHostResponder({
+      context: api.context,
+      readMemory: () => memory.store,
+      seedWrittenSkills: () => Promise.resolve(),
+      runReset: () => Promise.reject(new Error('no full reset runs in this test')),
+    }),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const items = await Promise.all(
+    ['Sings in a choir', 'Grows chillies on the balcony'].map((text) =>
+      memory.store.remember({
+        text,
+        provenance: {
+          origin: 'owner',
+          source: 'owner',
+          taskID: null,
+          proposalID: null,
+          checks: null,
+        },
+      }),
+    ),
+  );
+
+  const exitCode = await runCLI(
+    ['reset', '--only', 'memories', '--yes', '--config', files.configPath],
+    ctx.io,
+  );
+
+  const histories = await Promise.all(items.map((item) => memory.store.readHistory(item.itemID)));
+
+  expect(exitCode).toBe(0);
+
+  expect(ctx.io.print.mock.calls).toStrictEqual([
+    [
+      [
+        'nixie forgot 2 memory items.',
+        'Backups from before the reset still hold the old data until they age out.',
+      ].join('\n'),
+    ],
+  ]);
+
+  expect(histories.map((history) => history?.state)).toStrictEqual(['forgotten', 'forgotten']);
+});
+
 test('it exits 2 on a command nixie does not have, and names the commands it takes', async () => {
   const ctx = await setupTest();
 

@@ -1189,3 +1189,60 @@ test('it starts the next turn after a reset with no session to resume', async ()
 
   expect(ctx.guest.collectFilesWithText('Kettle-message-3VQ')).toStrictEqual([]);
 });
+
+test('it forgets every memory item through a reset of the memories, and keeps the conversation', async () => {
+  const ctx = await setupTest();
+  const api = await createTestClient(ctx);
+
+  ctx.guest.addReplies(
+    {
+      toolUse: {
+        name: 'memory.remember',
+        input: { text: 'Brother Tomas keeps goats', quote: 'my brother Tomas keeps goats' },
+      },
+    },
+    { text: 'Noted-reply-2HX' },
+  );
+
+  ctx.guest.addCheckAnswers({ verdict: 'asserted', reason: 'Stated.' });
+
+  await sendClientMessage(
+    api.client,
+    {
+      text: 'Remember that my brother Tomas keeps goats.',
+      spans: [{ start: 0, end: 43, source: 'typed' }],
+    },
+    'Noted-reply-2HX',
+  );
+
+  const reset = await runHostCommand(ctx.configPath, ['reset', '--only', 'memories', '--yes']);
+
+  ctx.signalStop();
+
+  const run = await ctx.waitForExit();
+
+  const added = run.records.find((record) => record.kind === 'memory.version_added');
+
+  invariant(added, 'the run added no memory item');
+
+  expect(reset.exitCode).toBe(0);
+  expect(reset.stdout).toStartWith('nixie forgot 1 memory items.\n');
+
+  expect(run.records.filter((record) => record.kind === 'memory.forgotten')).toMatchObject([
+    { payload: { itemID: added.payload['itemID'] } },
+  ]);
+
+  expect(
+    run.records.filter(
+      (record) => record.kind === 'owner_message' || record.kind === 'model.reply',
+    ),
+  ).toMatchObject([
+    {
+      erasable: {
+        status: 'readable',
+        fields: { text: 'Remember that my brother Tomas keeps goats.' },
+      },
+    },
+    { erasable: { status: 'readable', fields: { text: 'Noted-reply-2HX' } } },
+  ]);
+});

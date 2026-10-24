@@ -218,6 +218,8 @@ const writtenSkillSchema = z.object({
   approvedAt: z.date(),
 });
 
+const forgottenItemsSchema = z.object({ itemIDs: z.array(z.string()) });
+
 export const hostContract = {
   reset: oc.output(
     z.object({
@@ -271,6 +273,7 @@ export const hostContract = {
       restore: memory.input(versionTargetSchema).output(versionRefSchema),
 
       forget: memory.input(versionTargetSchema).output(z.object({ itemID: z.string() })),
+      forgetAll: memory.output(forgottenItemsSchema),
       pin: memory
         .input(z.strictObject({ itemID: z.string().min(1), isPinned: z.boolean() }))
         .output(z.object({ itemID: z.string(), isPinned: z.boolean() })),
