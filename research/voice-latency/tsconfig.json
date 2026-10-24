@@ -1,1 +1,6 @@
-{ "extends": "../tsconfig.base.json", "include": ["**/*.ts"] }
+{
+  "extends": "../tsconfig.base.json",
+  // Bun's own WebSocket type takes request headers, and it gives way to the DOM's when DOM loads.
+  "compilerOptions": { "lib": ["ESNext"] },
+  "include": ["**/*.ts"]
+}

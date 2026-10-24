@@ -33,6 +33,7 @@ import {
 import type { AgentSessionOptions } from './start-agent-session.ts';
 import { startAgentSession } from './start-agent-session.ts';
 import { toWav } from './to-wav.ts';
+import { acknowledgeRules, openerSpokenRules } from './voice-rules.ts';
 
 const { values } = parseArgs({
   options: {
@@ -62,8 +63,6 @@ const minClauseWords = 4;
 // The 500 ms pause the earlier runs ended each turn on, so these times compare with theirs.
 const silenceMs = 500;
 
-const acknowledgeRules =
-  'You are on a voice call. Open every reply with a short acknowledgement of two to four words, such as "Sure, let me think." or "Good question.", that never claims an outcome or makes a promise. Then answer in two or three short spoken sentences, with no lists and no markdown.';
 const setup: Pick<AgentSessionOptions, 'effort' | 'model' | 'thinking'> & { voiceRules: string } = match(candidate)
   .with('haiku-clauses', () => ({
     effort: 'low' as const,
@@ -80,8 +79,7 @@ const setup: Pick<AgentSessionOptions, 'effort' | 'model' | 'thinking'> & { voic
     effort: 'low' as const,
     model: 'claude-sonnet-5-5',
     thinking: { display: 'omitted', type: 'adaptive' },
-    voiceRules:
-      'You are on a voice call. A short acknowledgement such as "Sure." has already been spoken, so start straight with the answer, with no greeting or acknowledgement. Answer in two or three short spoken sentences, with no lists and no markdown.',
+    voiceRules: openerSpokenRules,
   }))
   .exhaustive();
 
