@@ -41,16 +41,19 @@ run did not test.
 
 Run from this directory. Every runner reads nixie's persona from `results/persona.md`, which stays
 out of git, so copy the persona that the deployment runs with there first, or pass its path with
-`--persona`. The pipeline runner reaches Anthropic through a broker. The speech-to-speech runners
-read their API key on stdin, so the key never reaches the command line or a file, and they connect
-to the vendor directly, because the broker refuses WebSocket upgrades.
+`--persona`. The pipeline runner reaches Anthropic through a broker. The Sonnet candidate's opener
+picker needs the Cloudflare account ID, and the broker adds the Cloudflare key, so
+`--cloudflare-token` stays empty. The speech-to-speech runners read their API key on stdin, so the
+key never reaches the command line or a file, and they connect to the vendor directly, because the
+broker refuses WebSocket upgrades.
 
 ```bash
 bun install
 ./models.sh
 bun caller.ts
 bun reply.ts --candidate haiku-clauses --out results/reply-haiku-clauses.jsonl
-bun reply.ts --candidate sonnet-opener --out results/reply-sonnet-opener.jsonl
+bun reply.ts --candidate sonnet-opener --out results/reply-sonnet-opener.jsonl \
+  --cloudflare-account "$(op read 'op://nixie/voice-cloudflare/account-id')"
 op read 'op://nixie/voice-xai/credential' | bun speech-to-speech.ts --candidate grok
 op read 'op://nixie/voice-openai/credential' | bun speech-to-speech.ts --candidate gpt-live
 bun report-reply.ts results/reply-*.jsonl
