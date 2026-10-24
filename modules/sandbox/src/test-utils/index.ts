@@ -11,6 +11,8 @@ export type {
 export { buildStubGuestSandboxes } from './build-stub-guest-sandboxes';
 export type { StubSandboxes } from './build-stub-sandboxes';
 export { buildStubSandboxes } from './build-stub-sandboxes';
+export type { GuestFrameRun } from './run-guest-frame';
+export { runGuestFrame } from './run-guest-frame';
 export type { TestRecorder } from './setup-test-recorder';
 export { setupTestRecorder } from './setup-test-recorder';
 export type { StubGuestScript } from './start-stub-guest';

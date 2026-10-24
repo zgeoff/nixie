@@ -196,6 +196,7 @@
         "@heynixie/server": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/testing": "workspace:*",
+        "@heynixie/web": "workspace:*",
         "@orpc/client": "catalog:",
         "tiny-invariant": "catalog:",
         "zod": "catalog:",
@@ -452,6 +453,7 @@
         "@heynixie/actions": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/sandbox": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@paralleldrive/cuid2": "catalog:",
         "ts-pattern": "catalog:",
@@ -535,6 +537,7 @@
         "@faker-js/faker": "catalog:",
         "@heynixie/testing": "workspace:*",
         "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
       },
     },
     "modules/sessions": {

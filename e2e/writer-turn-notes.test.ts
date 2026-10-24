@@ -6,10 +6,11 @@ import {
 } from '@heynixie/memory/test-utils';
 import { makeTurnNoteReader } from '@heynixie/server';
 import { startTestConversation, startTestServer } from '@heynixie/server/test-utils';
-import { writeInboxRecords } from '@heynixie/tasks';
+import { conversationTaskID, writeInboxRecords } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
 
 async function setupTest() {
-  const server = await startTestServer();
+  const server = await startTestServer(undefined, { fakeGuest: true });
 
   return { server, memory: await startTestMemoryWriter(server) };
 }
@@ -37,7 +38,8 @@ test('it carries each item of a live batch as an events line on the next convers
     'My pets are Ash, Birch, Cedar, Dune, Elm and Fern.',
   ]);
 
-  ctx.memory.model.addReplies(
+  ctx.server.guest.addReplies(
+    { text: 'Hello.' },
     ...['Ash', 'Birch', 'Cedar', 'Dune', 'Elm', 'Fern'].map((name) =>
       buildRememberReply({
         text: `You have a pet called ${name}.`,
@@ -46,10 +48,7 @@ test('it carries each item of a live batch as an events line on the next convers
       }),
     ),
     { text: 'Staged.' },
-    { text: 'Nothing to remember.' },
   );
-
-  conversation.model.addReplies({ text: 'Hello.' });
 
   await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
 
@@ -62,12 +61,20 @@ test('it carries each item of a live batch as an events line on the next convers
     },
   ]);
 
+  ctx.server.guest.addReplies({ text: 'Hello again.' }, { text: 'Nothing to remember.' });
+
   await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
 
-  expect(JSON.stringify(conversation.model.requests.at(-1)?.body?.messages)).toMatch(
-    /(?<listed>- \w{3} \d{1,2} \w{3}, \d{2}:\d{2}, UTC · Remembered \[[^\]]+\]: \\"You have a pet called \w+\.\\"\\n){6}<\/system-message id=\\"[\da-f]{12}\\">\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\./u,
+  const turn = ctx.server.guest.received.findLast(
+    (received) => received.owner === conversationTaskID && received.frame.type === 'turn',
   );
-}, 60_000);
+
+  invariant(turn?.frame.type === 'turn');
+
+  expect(turn.frame.input.map((message) => message.text).join('\n')).toMatch(
+    /(?<listed>- \w{3} \d{1,2} \w{3}, \d{2}:\d{2}, UTC · Remembered \[[^\]]+\]: "You have a pet called \w+\."\n){6}<\/system-message id="[\da-f]{12}">\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\./u,
+  );
+});
 
 test('it carries a flagged self-note as an events line on the next turn, and files no item', async () => {
   const ctx = await setupTest();
@@ -92,18 +99,16 @@ test('it carries a flagged self-note as an events line on the next turn, and fil
     'You always pick the jazz station, you love it.',
   ]);
 
-  ctx.memory.model.addReplies(
+  ctx.server.guest.addReplies(
+    { text: 'Hello.' },
     {
       toolUse: {
-        name: 'mcp__nixie__memory_flag-self-note',
+        name: 'memory.flag-self-note',
         input: { text: 'The assistant loves the jazz station.', sourceID: sequence },
       },
     },
     { text: 'Flagged.' },
-    { text: 'Nothing to remember.' },
   );
-
-  conversation.model.addReplies({ text: 'Hello.' });
 
   await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
 
@@ -116,13 +121,21 @@ test('it carries a flagged self-note as an events line on the next turn, and fil
     },
   ]);
 
+  ctx.server.guest.addReplies({ text: 'Hello again.' }, { text: 'Nothing to remember.' });
+
   await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
 
   const items = await ctx.memory.listItems();
 
-  expect(JSON.stringify(conversation.model.requests.at(-1)?.body?.messages)).toInclude(
-    `Your note-taker's nudge, not a note: possible self-note: \\"The assistant loves the jazz station.\\", event #${String(sequence)}. If it rings true, write the self-note yourself, in your own voice. If not, let it go.`,
+  const turn = ctx.server.guest.received.findLast(
+    (received) => received.owner === conversationTaskID && received.frame.type === 'turn',
+  );
+
+  invariant(turn?.frame.type === 'turn');
+
+  expect(turn.frame.input.map((message) => message.text).join('\n')).toInclude(
+    `Your note-taker's nudge, not a note: possible self-note: "The assistant loves the jazz station.", event #${String(sequence)}. If it rings true, write the self-note yourself, in your own voice. If not, let it go.`,
   );
 
   expect(items).toStrictEqual([]);
-}, 60_000);
+});

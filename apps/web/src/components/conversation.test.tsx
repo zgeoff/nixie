@@ -7,13 +7,14 @@ import { MicrophoneContext } from '../microphone-context';
 import { server } from '../mocks/node';
 import { store } from '../mocks/store';
 import { buildStubMicrophone } from '../test-utils/build-stub-microphone';
+import { buildStubTimer } from '../test-utils/build-stub-timer';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { Conversation } from './conversation';
 
 function setupTest() {
-  return { user: userEvent.setup() };
+  return { user: userEvent.setup(), timer: buildStubTimer() };
 }
 
 test('it shows the conversation the API holds', async () => {
@@ -276,16 +277,21 @@ test('it keeps a message this tab sends after a reset while its clock runs behin
 });
 
 test('it says live updates are unavailable while the live stream keeps failing', async () => {
+  const ctx = setupTest();
+
   await createDeviceSession();
 
   server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
 
-  const rendered = render(<Conversation thread="conversation" />);
+  const rendered = render(<Conversation thread="conversation" startTimer={ctx.timer.startTimer} />);
 
-  const notice = await rendered.findByRole('status', {}, { timeout: 8000 });
+  await ctx.timer.advanceToNext();
+  await ctx.timer.advanceToNext();
+
+  const notice = await rendered.findByRole('status');
 
   expect(notice).toHaveTextContent('Live updates unavailable');
-}, 10_000);
+});
 
 test('it clears the failure notice once a turn succeeds', async () => {
   await createDeviceSession();

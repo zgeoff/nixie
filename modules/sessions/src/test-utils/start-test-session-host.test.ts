@@ -1,11 +1,17 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
 import { threadsProjection } from '@heynixie/log';
-import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
+import { makeDecisionPoint } from '@heynixie/policy';
+import { buildMockSandboxSpec, runGuestFrame } from '@heynixie/sandbox/test-utils';
+import { waitForCondition } from '@heynixie/testing';
+import type { ToolOutcome } from '@heynixie/tools';
+import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import { buildMockToolDefinition } from '@heynixie/tools/test-utils';
+import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
 import { startTestSessionHost } from './start-test-session-host';
 
-test('it starts a log with the tasks and sandboxes projections, and the process double', async () => {
+test('it starts a log with the tasks and sandboxes projections, and the stub guest', async () => {
   const host = await startTestSessionHost();
 
   expect(host.context.log.projections.map((projection) => projection.table)).toStrictEqual([
@@ -15,7 +21,7 @@ test('it starts a log with the tasks and sandboxes projections, and the process 
     'sandboxes',
   ]);
 
-  expect(host.sandboxes).toMatchObject({ id: 'process', boundary: 'process' });
+  expect(host.sandboxes).toBe(host.guest.adapter);
 });
 
 test('it folds the projections it is given after its own', async () => {
@@ -32,14 +38,12 @@ test('it folds the projections it is given after its own', async () => {
   ]);
 });
 
-test('it records each sandbox the process double creates in the log', async () => {
+test('it records each sandbox the stub guest creates in the log', async () => {
   const host = await startTestSessionHost();
 
   const sandbox = await host.sandboxes.create(
     buildMockSandboxSpec({ kind: 'worker', image: 'worker', owner: 'task-1' }),
   );
-
-  host.defer(() => sandbox.destroy());
 
   const rows = await host.context.log.writer.db
     .$extendTables<{ sandboxes: { sandbox_id: string; owner: string } }>()
@@ -50,32 +54,106 @@ test('it records each sandbox the process double creates in the log', async () =
   expect(rows).toStrictEqual([{ sandbox_id: sandbox.id, owner: 'task-1' }]);
 });
 
-test('it destroys each sandbox it created when the test finishes, so its tool relay closes', async () => {
+test("it sends a tool call of the stub guest's turn to the run endpoint of the sandbox's owner", async () => {
   const host = await startTestSessionHost();
 
-  const sandbox = await host.sandboxes.create(
-    buildMockSandboxSpec({ kind: 'worker', image: 'worker', owner: 'task-1' }),
+  const runTool = mock(() =>
+    Promise.resolve<ToolOutcome>({ status: 'ok', result: { text: 'Buy oat milk.' } }),
   );
 
-  const route = await sandbox.toolRoute();
+  const registry = buildToolRegistry([
+    buildMockToolDefinition({ name: 'notes_read', run: runTool }),
+  ]);
 
-  invariant(route);
-
-  const port = Number(new URL(route.url).port);
-
-  onTestFinished(async () => {
-    await expect(
-      Bun.connect({ hostname: '127.0.0.1', port, socket: { data: () => {} } }),
-    ).toReject();
+  const endpoint = await startToolEndpoint({
+    socketDir: host.socketDir,
+    registry,
+    decide: makeDecisionPoint({
+      findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
+    }),
+    log: host.context.log,
+    definitions: host.context.definitions,
+    queue: { enqueue: mock(), waitForOutcome: mock() },
   });
 
-  const socket = await Bun.connect({ hostname: '127.0.0.1', port, socket: { data: () => {} } });
+  onTestFinished(() => endpoint.stop());
 
-  const connectedPort = socket.remotePort;
+  const run = await endpoint.startRun({
+    runID: 'task-1',
+    thread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'claude-test-1', profile: 'chat-direct' },
+  });
 
-  socket.end();
+  const sandbox = await host.sandboxes.create(
+    buildMockSandboxSpec({ kind: 'conversation', owner: 'task-1' }),
+  );
 
-  expect(connectedPort).toBe(port);
+  host.guest.addReplies(
+    { toolUse: { name: 'mcp__nixie__notes_read', input: { query: 'milk' } } },
+    { text: 'It says oat milk.' },
+  );
+
+  await runGuestFrame(sandbox, buildMockTurnFrame({ tools: { token: run.token } }));
+
+  expect(runTool).toHaveBeenCalledOnce();
+
+  expect(host.toolResults).toStrictEqual([
+    { name: 'notes_read', result: expect.toInclude('Buy oat milk.') },
+  ]);
+});
+
+test('it reads the names of the tools a turn of the stub guest is offered', async () => {
+  const host = await startTestSessionHost();
+
+  const registry = buildToolRegistry([
+    buildMockToolDefinition({ name: 'notes_read' }),
+    buildMockToolDefinition({ name: 'notes_search' }),
+  ]);
+
+  const endpoint = await startToolEndpoint({
+    socketDir: host.socketDir,
+    registry,
+    decide: makeDecisionPoint({
+      findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
+    }),
+    log: host.context.log,
+    definitions: host.context.definitions,
+    queue: { enqueue: mock(), waitForOutcome: mock() },
+  });
+
+  onTestFinished(() => endpoint.stop());
+
+  const run = await endpoint.startRun({
+    runID: 'task-1',
+    thread: 'task-1',
+    tools: ['notes_search'],
+    model: { model: 'claude-test-1', profile: 'chat-direct' },
+  });
+
+  const sandbox = await host.sandboxes.create(
+    buildMockSandboxSpec({ kind: 'conversation', owner: 'task-1' }),
+  );
+
+  const gate = Promise.withResolvers<void>();
+
+  host.guest.addReplies({ text: 'Found it.', gate: () => gate.promise });
+
+  const turn = runGuestFrame(sandbox, buildMockTurnFrame({ tools: { token: run.token } }));
+
+  await waitForCondition(() => host.guest.received.length === 1);
+
+  const [received] = host.guest.received;
+
+  invariant(received);
+
+  const names = await host.readToolNames(received);
+
+  gate.resolve();
+
+  await turn;
+
+  expect(names).toStrictEqual(['notes_search']);
 });
 
 test('it stops a deferred part while the log is still open', async () => {

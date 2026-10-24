@@ -2,23 +2,35 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { countTextTokens } from '@heynixie/compaction';
 import type { Log, Projection } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import type { SandboxAdapter } from '@heynixie/sandbox';
-import {
-  buildSandboxRecorder,
-  createProcessSandboxAdapter,
-  sandboxesProjection,
-} from '@heynixie/sandbox';
+import { buildSandboxRecorder, sandboxesProjection } from '@heynixie/sandbox';
+import type { ReceivedFrame, StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
+import { buildStubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import { readTestToolNames, sendTestToolCall } from '@heynixie/tools/test-utils';
+import invariant from 'tiny-invariant';
+
+interface TestToolResult {
+  readonly name: string;
+
+  readonly result: string;
+}
 
 export interface TestSessionHost {
   readonly dataDir: string;
   readonly context: TasksContext;
 
   readonly sandboxes: SandboxAdapter;
+  readonly guest: StubGuestSandboxes;
+
+  readonly toolResults: readonly TestToolResult[];
+
+  readonly readToolNames: (received: ReceivedFrame) => Promise<readonly string[]>;
 
   readonly socketDir: string;
 
@@ -85,44 +97,42 @@ export async function startTestSessionHost(
 
   stack.defer(() => endpoint.stop());
 
-  const adapter = createProcessSandboxAdapter({
+  const toolResults: TestToolResult[] = [];
+
+  const guest = buildStubGuestSandboxes({
     recorder: buildSandboxRecorder({ log, definitions: context.definitions }),
-    rootDir: join(dataDir, 'sandboxes'),
-    toolTarget: endpoint.getToolTarget,
-    hostEnv: {},
+    callTool: async (call) => {
+      const result = await sendTestToolCall({
+        target: endpoint.getToolTarget({ id: call.sandboxID, owner: call.owner }),
+        token: call.token,
+        name: call.name,
+        input: call.input,
+      });
+
+      toolResults.push({ name: call.name, result });
+
+      return result;
+    },
+    countTokens: countTextTokens,
   });
-
-  const createdIDs = new Set<string>();
-
-  stack.defer(() => removeSandboxes(adapter, createdIDs));
 
   return {
     dataDir,
     context,
-    sandboxes: {
-      ...adapter,
-      create: async (spec) => {
-        const sandbox = await adapter.create(spec);
+    sandboxes: guest.adapter,
+    guest,
+    toolResults,
+    readToolNames: (received) => {
+      invariant(received.frame.type === 'turn', 'only a turn frame carries a tool route');
 
-        createdIDs.add(sandbox.id);
-
-        return sandbox;
-      },
+      return readTestToolNames({
+        target: endpoint.getToolTarget({ id: received.sandboxID, owner: received.owner }),
+        token: received.frame.tools.token,
+      });
     },
     socketDir,
     defer: (stop) => {
       stack.defer(stop);
     },
   };
-}
-
-async function removeSandboxes(
-  adapter: SandboxAdapter,
-  createdIDs: ReadonlySet<string>,
-): Promise<void> {
-  const sandboxes = await Promise.all([...createdIDs].map((id) => adapter.read(id)));
-
-  const live = sandboxes.filter((sandbox) => sandbox !== null);
-
-  await Promise.all(live.map((sandbox) => sandbox.destroy()));
 }

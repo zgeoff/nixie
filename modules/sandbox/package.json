@@ -21,6 +21,7 @@
   "devDependencies": {
     "@faker-js/faker": "catalog:",
     "@heynixie/testing": "workspace:*",
-    "tiny-invariant": "catalog:"
+    "tiny-invariant": "catalog:",
+    "ts-pattern": "catalog:"
   }
 }
