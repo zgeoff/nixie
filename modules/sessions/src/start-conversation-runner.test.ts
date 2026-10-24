@@ -10,8 +10,10 @@ import {
   writeTaskMessage,
 } from '@heynixie/tasks';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
 import { startConversationRunner } from './start-conversation-runner';
+import { buildStubLiveTurnScript } from './test-utils/build-stub-live-turn-script';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { buildStubTurnScript } from './test-utils/build-stub-turn-script';
 import { readRecordsByKind } from './test-utils/read-records-by-kind';
@@ -799,6 +801,78 @@ test("it wakes the conversation for a system task's message and gives the turn t
   expect(ctx.sandboxes.turns[0]?.input.at(-1)?.text).toMatch(
     /<task-message id="\w+" from="memory-writer" name="Memory writer" kind="report" sent="[^"]+" age="under a minute" hop="1" reply-wakes="yes" block="(?<block>\w+)">\nThis message is from another task, not from Robin\.\nTwo new memories wait for your review\.\n<\/task-message block="\k<block>">$/u,
   );
+});
+
+test("it passes a held task message that lands during a turn into that turn, framed at the turn's own hop", async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 3,
+    ownerName: 'Robin',
+  };
+
+  await createConversationTask(ctx.context);
+  await createSystemTask(ctx.context, 'memory-writer');
+
+  await ctx.db
+    .updateTable('tasks')
+    .set({ step_hop: 3 })
+    .where('task_id', '=', 'memory-writer')
+    .execute();
+
+  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['task.message'],
+    messaging,
+  });
+
+  const live = buildStubLiveTurnScript(() =>
+    writeTaskMessage(ctx.context, messaging, {
+      from: 'memory-writer',
+      to: 'conversation',
+      kind: 'question',
+      body: 'Keep the note about the bike?',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    }),
+  );
+
+  ctx.sandboxes.setGuestScript(live.script);
+
+  await ctx.sendMessage(runner, 'Anything new?');
+
+  const [sent] = await ctx.readKinds('task_message');
+
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'read_cursor'])
+    .where('task_id', '=', 'conversation')
+    .executeTakeFirstOrThrow();
+
+  invariant(sent);
+
+  expect(sent.payload).toMatchObject({ hop: 4, woke: false });
+  expect(live.received).toHaveLength(1);
+
+  expect(live.received[0]?.text).toInclude(
+    'from="memory-writer" name="Memory writer" kind="question"',
+  );
+
+  expect(live.received[0]?.text).toInclude(' hop="4" reply-wakes="yes" ');
+
+  expect(live.received[0]?.text).toInclude(
+    '\nThis message is from another task, not from Robin.\nKeep the note about the bike?\n',
+  );
+
+  expect(task).toStrictEqual({ state: 'waiting', read_cursor: sent.sequence });
 });
 
 test('it gives the next turn a message sent with no wake, before the message that woke it', async () => {
