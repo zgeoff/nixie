@@ -112,6 +112,9 @@ for (let round = 0; round < rounds; round++) {
                 answer += delta;
               });
               backendCostUSD += turn.costUSD;
+              if (turn.isError) {
+                throw new Error(`the Claude turn failed: ${turn.subtype}`);
+              }
               return answer;
             },
             sampleRate,
