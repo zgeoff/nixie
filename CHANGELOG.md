@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.46.0](https://github.com/zgeoff/nixie/compare/v0.45.0...v0.46.0) (2026-10-24)
+
+
+### Features
+
+* **definitions:** export an approved prompt override as a pull request ([#632](https://github.com/zgeoff/nixie/issues/632)) ([b799dbf](https://github.com/zgeoff/nixie/commit/b799dbfe151cf1a160759fdce789d829374eef52))
+* **prompts:** let the owner answer the model's prompt proposals ([#633](https://github.com/zgeoff/nixie/issues/633)) ([f1ac59d](https://github.com/zgeoff/nixie/commit/f1ac59dac146a99153846036a814ca84c7ae1740))
+* **prompts:** record prompt proposals and their answers ([#624](https://github.com/zgeoff/nixie/issues/624)) ([c9de885](https://github.com/zgeoff/nixie/commit/c9de8853f031de1fffab1b214d25286b274bbade))
+
 ## [0.45.0](https://github.com/zgeoff/nixie/compare/v0.44.0...v0.45.0) (2026-10-24)
 
 
