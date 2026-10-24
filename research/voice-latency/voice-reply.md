@@ -175,6 +175,9 @@ One round of each of the four candidates went into a listening set, as 13 lines 
 user heard Grok Voice and GPT-Live as equal and ruled Piper out as nixie's voice. The candidates'
 letters were known when they listened, so the result is a labelled judgement, not a blind ranking.
 
+The blind ranking is the user's to make. A second set from another round, with new letters, waits in
+the git-ignored results, and the user records its ranking on the spike's issue.
+
 ## Untested
 
 - Real microphone audio, and the audio path to a device.
