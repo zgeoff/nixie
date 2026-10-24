@@ -103,6 +103,53 @@ test('it opens a rebuild with no summary with the pinned memory, the status and 
   });
 });
 
+test("it replays a task's message and the reply to it in a rebuilt session's recent turns, with the message's ID", async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'k3vq8m2xpa',
+        from: 'planner',
+        to: 'conversation',
+        kind: 'question',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        source: 'task:planner',
+      },
+      erasable: { body: 'Which day suits the dentist?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Thursday.' },
+    },
+  ]);
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'conversation',
+    start: { kind: 'rebuild', reason: 'lost', lostSessionID: 'a-lost-session' },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    model: 'claude-test-1',
+    status: [buildStartStatus()],
+  });
+
+  expect(opening.blocks.at(2)).toMatch(
+    /\] task planner:\n<task-message id="k3vq8m2xpa" from="planner" kind="question" block="\w+">\nThis message is from another task, not from the owner\.\nWhich day suits the dentist\?\n<\/task-message block="\w+">\n\[[^\]]+\] nixie: Thursday\.\n<\/system-message/u,
+  );
+});
+
 test('it opens a rebuild after a forget erased the summary with the status that says so, and the turns back to the budget', async () => {
   const ctx = await setupTest();
 

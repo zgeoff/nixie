@@ -58,6 +58,61 @@ test('it reads the messages and replies before the first inbox record, oldest fi
   expect(records.map((turn) => turn.record.sequence)).toStrictEqual([1, 2]);
 });
 
+test("it reads a task's message as a turn, and pairs the reply after it with that message", async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'k3vq8m2xpa',
+        from: 'planner',
+        to: 'conversation',
+        kind: 'question',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        source: 'task:planner',
+      },
+      erasable: { body: 'Which day suits the dentist?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Thursday.' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Hi.' },
+    },
+  ]);
+
+  const records = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 3,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+  });
+
+  expect(
+    records.map((turn) => ({
+      sequence: turn.record.sequence,
+      answered: turn.answered?.sequence ?? null,
+    })),
+  ).toStrictEqual([
+    { sequence: 1, answered: null },
+    { sequence: 2, answered: 1 },
+  ]);
+});
+
 test('it keeps a reply that committed after a message still pending, paired with the message before that one', async () => {
   const ctx = await setupTest();
 
