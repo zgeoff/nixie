@@ -5,8 +5,9 @@ import { join } from 'node:path';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { buildSkillChangeKind } from './build-skill-change-kind';
 import { checkSkillFiles } from './check-skill-files';
-import { startSkillExportSweep } from './start-skill-export-sweep';
+import { startDefinitionsExportSweep } from './start-definitions-export-sweep';
 import { buildStubDefinitionsRepo } from './test-utils/build-stub-definitions-repo';
 import { writeWrittenSkill } from './write-written-skill';
 
@@ -42,10 +43,17 @@ async function setupTest() {
 test('it exports a skill approved after it started once woken', async () => {
   const ctx = await setupTest();
 
-  const sweep = startSkillExportSweep({
+  const sweep = startDefinitionsExportSweep({
     log: ctx.log,
     repo: ctx.repo,
-    text: { title: 'skills: {operation} {skill}', message: null, agentName: null, ownerName: null },
+    kinds: [
+      buildSkillChangeKind({
+        title: 'skills: {operation} {skill}',
+        message: null,
+        agentName: null,
+        ownerName: null,
+      }),
+    ],
     onError: () => {},
   });
 
@@ -85,10 +93,10 @@ test('it passes a failed run to onError, and runs again each interval', async ()
 
   await ctx.writer.stop();
 
-  const sweep = startSkillExportSweep({
+  const sweep = startDefinitionsExportSweep({
     log: ctx.log,
     repo: ctx.repo,
-    text: { title: null, message: null, agentName: null, ownerName: null },
+    kinds: [buildSkillChangeKind({ title: null, message: null, agentName: null, ownerName: null })],
     intervalMs: 3_600_000,
     clock,
     onError,

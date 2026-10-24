@@ -95,8 +95,9 @@ test('it reads each answer on the thread with its prompt, its edits and the reas
       detail: {
         proposalID: 'k3x9m2p7qa',
         promptID: 'compaction',
-        outcome: 'approved',
+        step: 'approved',
         isEdited: true,
+        pullRequestURL: null,
         reason: null,
       },
     },
@@ -106,10 +107,59 @@ test('it reads each answer on the thread with its prompt, its edits and the reas
       detail: {
         proposalID: 'w7tn4c9rhz',
         promptID: 'writer',
-        outcome: 'rejected',
+        step: 'rejected',
         isEdited: false,
+        pullRequestURL: null,
         reason: 'Keep the quote rule.',
       },
+    },
+  ]);
+});
+
+test('it reads the export of an approved proposal with its pull request', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'prompts.override_proposed',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: promptsOverrideProposedCodec.encode({
+        proposalID: 'k3x9m2p7qa',
+        promptID: 'compaction',
+        proposalHash: 'hash-a',
+        baseHash: null,
+        entry: { _template: '{{ parts.safety }}' },
+        files: [],
+        reason: 'Drop the instruction part.',
+        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+      }),
+    },
+    {
+      kind: 'prompts.override_exported',
+      definitions: { snapshotHash: 'snapshot-a' },
+      thread: 'conversation',
+      payload: {
+        proposalID: 'k3x9m2p7qa',
+        approvalID: 'approval-a',
+        pullRequestURL: 'https://definitions.test/pull/4',
+      },
+    },
+  ]);
+
+  const answers = await readPromptProposalAnswers(ctx.log, 'conversation', {
+    after: 0,
+    through: 2,
+  });
+
+  expect(answers.map((answer) => answer.detail)).toStrictEqual([
+    {
+      proposalID: 'k3x9m2p7qa',
+      promptID: 'compaction',
+      step: 'exported',
+      isEdited: false,
+      pullRequestURL: 'https://definitions.test/pull/4',
+      reason: null,
     },
   ]);
 });

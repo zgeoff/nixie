@@ -1,5 +1,9 @@
-import type { SkillExportSweep } from '@heynixie/definitions';
-import { startSkillExportSweep } from '@heynixie/definitions';
+import type { DefinitionsExportSweep } from '@heynixie/definitions';
+import {
+  buildPromptChangeKind,
+  buildSkillChangeKind,
+  startDefinitionsExportSweep,
+} from '@heynixie/definitions';
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-github';
 import type { Log } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
@@ -7,7 +11,7 @@ import { toErrorFields } from '@heynixie/logger';
 import type { DefinitionsExportSettings } from './resolve-definitions-export';
 import type { Cleanup } from './types';
 
-export interface SkillExportsOptions {
+export interface DefinitionsExportsOptions {
   readonly log: Log;
   readonly settings: DefinitionsExportSettings | null;
   readonly cleanup: Cleanup;
@@ -15,19 +19,21 @@ export interface SkillExportsOptions {
   readonly logEvent: Logger;
 }
 
-export async function startSkillExports(
-  options: SkillExportsOptions,
-): Promise<SkillExportSweep | null> {
+export async function startDefinitionsExports(
+  options: DefinitionsExportsOptions,
+): Promise<DefinitionsExportSweep | null> {
   if (options.settings === null) {
     return null;
   }
 
-  const sweep = startSkillExportSweep({
+  const text = options.settings.text;
+
+  const sweep = startDefinitionsExportSweep({
     log: options.log,
     repo: buildGitHubDefinitionsRepo(options.settings.repo),
-    text: options.settings.text,
+    kinds: [buildSkillChangeKind(text), buildPromptChangeKind(options.log, text)],
     onError: (error) => {
-      options.logEvent('skills.export_failed', toErrorFields(error), 'error');
+      options.logEvent('definitions.export_failed', toErrorFields(error), 'error');
     },
   });
 

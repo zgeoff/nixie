@@ -135,12 +135,16 @@ export interface PromptProposalAnswerResult {
   readonly proposalHash: string | null;
 }
 
+export type PromptProposalStep = ProposalOutcome | 'exported';
+
 export interface PromptProposalAnswerEvent {
   readonly proposalID: string;
   readonly promptID: PromptID;
-  readonly outcome: ProposalOutcome;
+  readonly step: PromptProposalStep;
 
   readonly isEdited: boolean;
+
+  readonly pullRequestURL: string | null;
 
   readonly reason: string | null;
 }

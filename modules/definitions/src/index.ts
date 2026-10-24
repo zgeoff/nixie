@@ -6,6 +6,9 @@ export type { SkillDocument } from './parse-skill-frontmatter';
 export { parseSkillFrontmatter } from './parse-skill-frontmatter';
 export { skillsLockPath } from './skills-lock-path';
 export type { DefinitionsSnapshotInput } from './build-definitions-snapshot';
+export { buildPromptChangeKind } from './build-prompt-change-kind';
+export type { PromptExportText } from './build-prompt-export-change';
+export { buildSkillChangeKind } from './build-skill-change-kind';
 export type { PromptPartFile, PromptProposalInput } from './check-prompt-proposal';
 export { checkPromptProposal } from './check-prompt-proposal';
 export { checkSkillFiles } from './check-skill-files';
@@ -42,8 +45,6 @@ export type {
 export { startDefinitionsExportSweep } from './start-definitions-export-sweep';
 export type { SkillExportOptions, SkillExportResult } from './run-skill-exports';
 export { runSkillExports } from './run-skill-exports';
-export type { SkillExportSweep, SkillExportSweepOptions } from './start-skill-export-sweep';
-export { startSkillExportSweep } from './start-skill-export-sweep';
 export type { WrittenSkillInput } from './write-written-skill';
 export { writeWrittenSkill } from './write-written-skill';
 export { writeWrittenSkillBase } from './write-written-skill-base';

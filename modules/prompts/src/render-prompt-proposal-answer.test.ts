@@ -7,8 +7,9 @@ test('it tells the model an approval opens a pull request, and the override appl
       {
         proposalID: 'k3x9m2p7qa',
         promptID: 'compaction',
-        outcome: 'approved',
+        step: 'approved',
         isEdited: false,
+        pullRequestURL: null,
         reason: null,
       },
       { ownerName: 'Robin' },
@@ -18,14 +19,33 @@ test('it tells the model an approval opens a pull request, and the override appl
   );
 });
 
+test('it names the pull request an export opened, and says the override applies once it merges and live is promoted', () => {
+  expect(
+    renderPromptProposalAnswer(
+      {
+        proposalID: 'k3x9m2p7qa',
+        promptID: 'compaction',
+        step: 'exported',
+        isEdited: false,
+        pullRequestURL: 'https://definitions.test/pull/4',
+        reason: null,
+      },
+      { ownerName: 'Robin' },
+    ),
+  ).toBe(
+    'nixie opened https://definitions.test/pull/4 with your prompt proposal k3x9m2p7qa (compaction). The override applies after that pull request merges and live is promoted in the definitions repo.',
+  );
+});
+
 test('it names an approval with edits', () => {
   expect(
     renderPromptProposalAnswer(
       {
         proposalID: 'k3x9m2p7qa',
         promptID: 'compaction',
-        outcome: 'approved',
+        step: 'approved',
         isEdited: true,
+        pullRequestURL: null,
         reason: null,
       },
       { ownerName: null },
@@ -39,8 +59,9 @@ test('it gives the reason for a rejection', () => {
       {
         proposalID: 'k3x9m2p7qa',
         promptID: 'writer',
-        outcome: 'rejected',
+        step: 'rejected',
         isEdited: false,
+        pullRequestURL: null,
         reason: 'Keep the quote rule.',
       },
       { ownerName: 'Robin' },
@@ -56,8 +77,9 @@ test('it names a rejection without a reason it can read', () => {
       {
         proposalID: 'k3x9m2p7qa',
         promptID: 'writer',
-        outcome: 'rejected',
+        step: 'rejected',
         isEdited: false,
+        pullRequestURL: null,
         reason: null,
       },
       { ownerName: 'Robin' },
@@ -71,8 +93,9 @@ test('it tells the model a proposal lapsed after 14 days with no answer', () => 
       {
         proposalID: 'k3x9m2p7qa',
         promptID: 'session',
-        outcome: 'lapsed',
+        step: 'lapsed',
         isEdited: false,
+        pullRequestURL: null,
         reason: null,
       },
       { ownerName: 'Robin' },

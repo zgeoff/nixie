@@ -1,10 +1,11 @@
-import type { Log } from '@heynixie/log';
+import type { Log, RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { z } from 'zod';
 import { promptProposalOutcomes } from './prompt-proposal-outcomes';
 import { promptsOverrideApprovedCodec } from './prompts-override-approved-codec';
+import { promptsOverrideExportedCodec } from './prompts-override-exported-codec';
 import { readPromptProposals } from './read-prompt-proposals';
-import type { PromptProposalAnswerEvent } from './types';
+import type { PromptProposalAnswerEvent, PromptProposalStep } from './types';
 
 export interface PromptAnswerRange {
   readonly after: number;
@@ -20,6 +21,11 @@ export interface NotedPromptAnswer {
 const readLimit = 1000;
 const closingPayload = z.object({ proposalID: z.string() });
 
+const answerSteps: ReadonlyMap<RecordKind, PromptProposalStep> = new Map([
+  ...promptProposalOutcomes,
+  ['prompts.override_exported', 'exported'],
+]);
+
 export async function readPromptProposalAnswers(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   thread: string,
@@ -29,7 +35,7 @@ export async function readPromptProposalAnswers(
     afterSequence: range.after,
     beforeSequence: range.through + 1,
     thread,
-    kinds: [...promptProposalOutcomes.keys()],
+    kinds: [...answerSteps.keys()],
     limit: readLimit,
   });
 
@@ -46,9 +52,9 @@ export async function readPromptProposalAnswers(
     const record = entry.record;
     const proposalID = closingPayload.parse(record.payload).proposalID;
     const promptID = promptIDs.get(proposalID);
-    const outcome = promptProposalOutcomes.get(record.kind);
+    const step = answerSteps.get(record.kind);
 
-    if (promptID === undefined || outcome === undefined) {
+    if (promptID === undefined || step === undefined) {
       return [];
     }
 
@@ -60,6 +66,11 @@ export async function readPromptProposalAnswers(
         ? promptsOverrideApprovedCodec.decode(record.payload)
         : null;
 
+    const exported =
+      record.kind === 'prompts.override_exported'
+        ? promptsOverrideExportedCodec.decode(record.payload)
+        : null;
+
     return [
       {
         sequence: record.sequence,
@@ -67,8 +78,9 @@ export async function readPromptProposalAnswers(
         detail: {
           proposalID,
           promptID,
-          outcome,
+          step,
           isEdited: approval?.isEdited ?? false,
+          pullRequestURL: exported?.pullRequestURL ?? null,
           reason: typeof reason === 'string' ? reason : null,
         },
       },

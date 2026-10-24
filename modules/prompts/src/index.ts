@@ -11,6 +11,8 @@ export { promptsOverrideProposedCodec } from './prompts-override-proposed-codec'
 export type { NotedPromptAnswer, PromptAnswerRange } from './read-prompt-proposal-answers';
 export { readPromptProposalAnswers } from './read-prompt-proposal-answers';
 export { readPendingPromptProposals } from './read-pending-prompt-proposals';
+export type { PromptApproval } from './read-prompt-approval';
+export { readPromptApproval } from './read-prompt-approval';
 export { renderPrompt } from './render-prompt';
 export { renderPromptProposalAnswer } from './render-prompt-proposal-answer';
 export type { PromptLapseSweepOptions } from './start-prompt-lapse-sweep';
@@ -36,4 +38,6 @@ export type {
 } from './types';
 
 export { untilConventions } from './until-conventions';
+export type { PromptExport } from './write-prompt-export-record';
+export { writePromptExportRecord } from './write-prompt-export-record';
 export { writePromptProposalAnswer } from './write-prompt-proposal-answer';

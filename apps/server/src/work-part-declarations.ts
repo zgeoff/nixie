@@ -9,9 +9,9 @@ import { registerHarnessOperations } from './register-harness-operations';
 import { runDefinitionsSeed } from './run-definitions-seed';
 import { runTestTaskStep } from './run-test-task-step';
 import type { ServerPartValues } from './server-part-values';
+import { startDefinitionsExports } from './start-definitions-exports';
 import { startRunners } from './start-runners';
 import { startSeedPoll } from './start-seed-poll';
-import { startSkillExports } from './start-skill-exports';
 import type { AnyPartDeclaration } from './types';
 import { writeStartRecord } from './write-start-record';
 
@@ -96,12 +96,12 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     },
   },
   {
-    name: 'skill_exports',
+    name: 'definitions_exports',
     needs: ['inputs', 'server_parts', 'start_record'],
     start: (reader) => {
       const parts = reader.get('server_parts');
 
-      return startSkillExports({
+      return startDefinitionsExports({
         log: parts.context.log,
         settings: reader.get('inputs').options.definitionsExport,
         cleanup: parts.cleanup,

@@ -108,7 +108,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'host_commands',
     needs: ['inputs', 'context', 'reset', 'api_gate'],
-    uses: ['memory', 'server_parts', 'skill_exports'],
+    uses: ['memory', 'server_parts', 'definitions_exports'],
     start: (parts) => {
       const options = parts.get('inputs').options;
 
@@ -118,7 +118,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           apiContext: parts.get('context').apiContext,
           readMemory: () => parts.find('memory'),
           seedWrittenSkills: () =>
-            runApprovedSkillsSeed(parts.find('server_parts'), parts.find('skill_exports')),
+            runApprovedSkillsSeed(parts.find('server_parts'), parts.find('definitions_exports')),
           runReset: parts.get('reset').run,
           gate: parts.get('api_gate'),
         },
