@@ -436,7 +436,10 @@ test('it delivers a message past the hop limit without a wake and tells the owne
   });
 
   expect(
-    notices.map((notice) => ({ thread: notice.thread, payload: JSON.parse(notice.payload) })),
+    notices.map((notice): { readonly thread: string | null; readonly payload: unknown } => ({
+      thread: notice.thread,
+      payload: JSON.parse(notice.payload),
+    })),
   ).toStrictEqual([
     {
       thread: 'planner',
@@ -523,7 +526,9 @@ test('it stops waking a chain of tasks that message each other at the hop limit'
 
   await runTaskSteps(ctx.context, {
     steps: { planner: settle, critic: settle },
-    advance: (durationMs) => ctx.clock.advance(durationMs),
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
     maxSteps: 10,
   });
 
@@ -538,7 +543,9 @@ test('it stops waking a chain of tasks that message each other at the hop limit'
 
   const steps = await runTaskSteps(ctx.context, {
     steps: { planner: makeSend('planner', 'critic'), critic: makeSend('critic', 'planner') },
-    advance: (durationMs) => ctx.clock.advance(durationMs),
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
     maxSteps: 10,
   });
 
@@ -593,7 +600,9 @@ test('it starts the count again when the owner writes to a task in a held exchan
 
   await runTaskSteps(ctx.context, {
     steps: { planner: makeSend('planner', 'conversation'), conversation: settle },
-    advance: (durationMs) => ctx.clock.advance(durationMs),
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
     maxSteps: 10,
   });
 
@@ -612,7 +621,9 @@ test('it starts the count again when the owner writes to a task in a held exchan
       planner: makeSend('planner', 'conversation'),
       conversation: makeSend('conversation', 'planner'),
     },
-    advance: (durationMs) => ctx.clock.advance(durationMs),
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
     maxSteps: 10,
   });
 
@@ -664,7 +675,9 @@ test('it starts the count again when a timer wakes a task in a held exchange', a
 
   await runTaskSteps(ctx.context, {
     steps: { planner: makeSend('planner', 'critic'), critic: settle },
-    advance: (durationMs) => ctx.clock.advance(durationMs),
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
     maxSteps: 10,
   });
 
@@ -679,7 +692,9 @@ test('it starts the count again when a timer wakes a task in a held exchange', a
 
   await runTaskSteps(ctx.context, {
     steps: { planner: makeSend('planner', 'critic'), critic: makeSend('critic', 'planner') },
-    advance: (durationMs) => ctx.clock.advance(durationMs),
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
     maxSteps: 10,
   });
 
