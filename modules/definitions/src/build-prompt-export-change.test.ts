@@ -43,6 +43,52 @@ test('it builds a change with no safety note when the override keeps the built-i
   });
 });
 
+test("it moves a part file that another prompt reads to the prompt's own folder, and leaves that prompt's file", () => {
+  const change = buildPromptExportChange({
+    approvalID: 'approval-a',
+    proposalID: 'k3x9m2p7qa',
+    promptID: 'compaction',
+    entry: { instruction: 'prompts/shared.md' },
+    files: [{ path: 'prompts/shared.md', text: 'Keep it to {{ summary.words }} words.\n' }],
+    reason: 'Shorter summaries.',
+    text: { agentName: null, ownerName: null },
+    manifest: 'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n',
+  });
+
+  expect(change.files).toStrictEqual(
+    new Map([
+      ['prompts/compaction/shared.md', 'Keep it to {{ summary.words }} words.\n'],
+      [
+        'nixie.yaml',
+        'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n  compaction:\n    instruction: "prompts/compaction/shared.md"\n',
+      ],
+    ]),
+  );
+
+  expect(change.body).toInclude(
+    'The proposal names `prompts/shared.md`, which the `writer` prompt reads too, so the change writes the part to `prompts/compaction/shared.md`.',
+  );
+});
+
+test("it refuses a part file that another prompt reads when that prompt also reads the path in the prompt's own folder", () => {
+  expect(() =>
+    buildPromptExportChange({
+      approvalID: 'approval-a',
+      proposalID: 'k3x9m2p7qa',
+      promptID: 'compaction',
+      entry: { instruction: 'prompts/shared.md' },
+      files: [{ path: 'prompts/shared.md', text: 'Keep it short.\n' }],
+      reason: 'Shorter summaries.',
+      text: { agentName: null, ownerName: null },
+      manifest:
+        'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n    safety: prompts/compaction/shared.md\n',
+    }),
+  ).toThrowWithMessage(
+    Error,
+    'the compaction override writes prompts/shared.md, which another prompt reads, and the path it would move to, prompts/compaction/shared.md, is read by another prompt too',
+  );
+});
+
 test("it notes a template that never reads the prompt's safety part", () => {
   const change = buildPromptExportChange({
     approvalID: 'approval-a',

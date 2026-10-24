@@ -1,6 +1,7 @@
 import type { PromptID, PromptPartFile } from '@heynixie/prompts';
 import { collectPromptsWithoutSafety } from '@heynixie/prompts';
 import { match } from 'ts-pattern';
+import { z } from 'zod';
 import { buildPromptManifest } from './build-prompt-manifest';
 import { definitionsFormats } from './definitions-formats';
 import { manifestPath } from './manifest-path';
@@ -23,12 +24,22 @@ export interface PromptExportInput {
 
 export function buildPromptExportChange(promptExport: PromptExportInput): DefinitionsChange {
   const promptID = promptExport.promptID;
-  const manifest = buildPromptManifest(promptExport.manifest, promptID, promptExport.entry);
+  const moves = collectSharedPaths(promptExport.manifest, promptID, promptExport.files);
+  const toExportedPath = (path: string) => moves.get(path)?.to ?? path;
+
+  const entry = Object.fromEntries(
+    Object.entries(promptExport.entry).map(([key, value]) => [
+      key,
+      key === '_template' ? value : toExportedPath(value),
+    ]),
+  );
+
+  const manifest = buildPromptManifest(promptExport.manifest, promptID, entry);
   const agent = promptExport.text.agentName ?? 'nixie';
   const owner = promptExport.text.ownerName ?? 'the owner';
 
   const files = new Map<string, string | null>([
-    ...promptExport.files.map((file): [string, string] => [file.path, file.text]),
+    ...promptExport.files.map((file): [string, string] => [toExportedPath(file.path), file.text]),
     [manifestPath, manifest.text],
   ]);
 
@@ -40,6 +51,14 @@ export function buildPromptExportChange(promptExport: PromptExportInput): Defini
       .join('\n')}`,
     'The override applies after this pull request merges and `live` is promoted.',
   ];
+
+  for (const [path, move] of moves) {
+    const readers = move.readers.map((reader) => `the \`${reader}\` prompt`).join(' and ');
+
+    notes.push(
+      `The proposal names \`${path}\`, which ${readers} reads too, so the change writes the part to \`${move.to}\`.`,
+    );
+  }
 
   if (manifest.previousFormat < definitionsFormats.prompts) {
     notes.push(
@@ -85,4 +104,69 @@ export function buildPromptExportChange(promptExport: PromptExportInput): Defini
     body: `${notes.join('\n\n')}\n`,
     files,
   };
+}
+
+interface SharedPath {
+  readonly to: string;
+
+  readonly readers: readonly string[];
+}
+
+const promptsFolder = 'prompts/';
+
+// An approval covers one prompt, so a part file that another prompt's entry reads moves to the
+// prompt's own folder instead of changing the text of that other prompt.
+function collectSharedPaths(
+  manifest: string,
+  promptID: PromptID,
+  files: readonly PromptPartFile[],
+): ReadonlyMap<string, SharedPath> {
+  const readers = collectOtherReaders(manifest, promptID);
+
+  return new Map(
+    files.flatMap((file) => {
+      const fileReaders = readers.get(file.path);
+
+      if (fileReaders === undefined) {
+        return [];
+      }
+
+      const to = `${promptsFolder}${promptID}/${file.path.slice(promptsFolder.length)}`;
+
+      if (readers.has(to)) {
+        throw new Error(
+          `the ${promptID} override writes ${file.path}, which another prompt reads, and the path it would move to, ${to}, is read by another prompt too`,
+        );
+      }
+
+      return [[file.path, { to, readers: fileReaders }]];
+    }),
+  );
+}
+
+const promptEntrySchema = z.record(z.string(), z.unknown());
+const promptsMapSchema = z.object({ prompts: z.record(z.string(), promptEntrySchema).nullish() });
+
+function collectOtherReaders(
+  manifest: string,
+  promptID: PromptID,
+): ReadonlyMap<string, readonly string[]> {
+  const parsed = promptsMapSchema.safeParse(Bun.YAML.parse(manifest));
+  const prompts = parsed.success ? (parsed.data.prompts ?? {}) : {};
+
+  const readers = new Map<string, string[]>();
+
+  for (const [reader, entry] of Object.entries(prompts)) {
+    if (reader === promptID) {
+      continue;
+    }
+
+    for (const [key, value] of Object.entries(entry)) {
+      if (key !== '_template' && typeof value === 'string') {
+        readers.set(value, [...(readers.get(value) ?? []), reader]);
+      }
+    }
+  }
+
+  return readers;
 }
