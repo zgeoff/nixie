@@ -1,6 +1,7 @@
 import type { LogTables } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { promptProposalOutcomes } from './prompt-proposal-outcomes';
 import { promptProposalSchema } from './prompt-proposal-schema';
 import type { PromptProposalState } from './types';
@@ -43,7 +44,13 @@ export async function readPromptProposals(
     .execute();
 
   const closed = new Map(
-    closing.map((row) => [row.proposal_id, promptProposalOutcomes.get(row.kind) ?? null]),
+    closing.map((row) => {
+      const outcome = promptProposalOutcomes.get(row.kind);
+
+      invariant(outcome, 'the closing read takes only the kinds that map to an outcome');
+
+      return [row.proposal_id, outcome];
+    }),
   );
 
   return proposed.map((row) => ({
