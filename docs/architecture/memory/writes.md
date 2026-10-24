@@ -181,9 +181,10 @@ merges only with a pending proposal of the same subject, and its close match on 
 at items of its own subject, so an item about the user never revises a self-note.
 
 The conversation's retire of a self-note skips the intent gate and applies at once, with a notice
-entry whose undo brings the note back. A retirement only narrows what the conversation reads, and
-the note was nixie's own. A task's retire of a self-note runs the intent gate as any retirement
-does.
+entry whose undo brings the note back. The retire needs no quote, and its version records no intent
+quote even when the call passes one, because no words of the user's back it. A retirement only
+narrows what the conversation reads, and the note was nixie's own. A task's retire of a self-note
+runs the intent gate as any retirement does.
 
 ## Writes from a photo
 
