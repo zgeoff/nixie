@@ -38,6 +38,60 @@ test('it restarts the quiet spell on each sound', () => {
   expect(ctx.call.getSnapshot().value).toBe('speaking');
 });
 
+test('it stays open through the quiet spell while a delegated request is pending', () => {
+  const ctx = setupTest();
+  ctx.call.send({ type: 'opened' });
+  ctx.call.send({ type: 'sound' });
+  ctx.call.send({ type: 'delegated' });
+
+  ctx.clock.increment(5000);
+
+  expect(ctx.call.getSnapshot().value).toBe('speaking');
+});
+
+test('it waits for the delegated answer to be spoken after it arrives', () => {
+  const ctx = setupTest();
+  ctx.call.send({ type: 'opened' });
+  ctx.call.send({ type: 'sound' });
+  ctx.call.send({ type: 'delegated' });
+  ctx.clock.increment(5000);
+  ctx.call.send({ type: 'answered' });
+
+  ctx.clock.increment(5000);
+
+  expect(ctx.call.getSnapshot().value).toBe('waiting');
+});
+
+test('it ends the turn after the quiet spell that follows the spoken answer', () => {
+  const ctx = setupTest();
+  ctx.call.send({ type: 'opened' });
+  ctx.call.send({ type: 'sound' });
+  ctx.call.send({ type: 'delegated' });
+  ctx.clock.increment(5000);
+  ctx.call.send({ type: 'answered' });
+  ctx.call.send({ type: 'sound' });
+  ctx.clock.increment(2000);
+  const beforeQuiet = ctx.call.getSnapshot().value;
+
+  ctx.clock.increment(500);
+
+  expect(beforeQuiet).toBe('speaking');
+  expect(ctx.call.getSnapshot().value).toBe('ended');
+});
+
+test('it keeps the turn open until every one of two delegated requests is answered', () => {
+  const ctx = setupTest();
+  ctx.call.send({ type: 'opened' });
+  ctx.call.send({ type: 'delegated' });
+  ctx.call.send({ type: 'delegated' });
+  ctx.call.send({ type: 'answered' });
+  ctx.call.send({ type: 'sound' });
+
+  ctx.clock.increment(5000);
+
+  expect(ctx.call.getSnapshot().value).toBe('speaking');
+});
+
 test('it never ends a call that has opened with no sound', () => {
   const ctx = setupTest();
   ctx.call.send({ type: 'opened' });
