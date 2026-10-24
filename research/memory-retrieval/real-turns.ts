@@ -14,6 +14,7 @@ import { buildTurnCases } from './real-turns/build-turn-cases.ts';
 import type { EncoderName } from './real-turns/load-turn-encoder.ts';
 import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
 import { makeRandom } from './real-turns/make-random.ts';
+import { parseEncoderNames } from './real-turns/parse-encoder-names.ts';
 import { readPlainExport } from './real-turns/read-plain-export.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { startMemoryIndex } from '../../modules/memory/src/start-memory-index.ts';
@@ -171,8 +172,13 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     labels.length > 0 ? labelsByCase.has(turn.caseID) : turn.logged.length > 0 || turn.ratings.length > 0,
   );
 
-  const encoders = (values.encoders ?? 'leaf-ir-q8').split(',').filter((name): name is EncoderName => name in ENCODERS);
-  const runs = buildRuns(encoders);
+  const encoders = parseEncoderNames(values.encoders ?? 'leaf-ir-q8');
+
+  if ('unknown' in encoders) {
+    throw new Error(`unknown encoders ${encoders.unknown.join(', ')}; pass any of ${Object.keys(ENCODERS).join(', ')}`);
+  }
+
+  const runs = buildRuns(encoders.names);
   const results = await runRankings(chosen, runs, encoderDirs, excludedWords);
   const report: Record<string, unknown> = { turns: chosen.length, labelled: labels.length };
 
