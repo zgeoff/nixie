@@ -1,7 +1,8 @@
 // Plays each utterance of a speech set in real time, 32 ms at a time, through Silero voice activity
-// detection and the streaming Zipformer. At each pause of 200 ms or more it asks every detector at
-// once and records each answer with the time it arrived, counted from the end of the speech before
-// the pause. report-turn-end.ts replays the candidates over these records.
+// detection. At each pause of 200 ms or more it asks every detector at once and records each answer
+// with the time it arrived, counted from the end of the speech before the pause. The text detectors
+// read a Moonshine transcript of the audio heard so far, and their answer time includes it.
+// report-turn-end.ts replays the candidates over these records.
 // Usage: turn-end.ts --set <name> --out <file> [--detectors smartTurn,clef,jev] [--limit <n>]
 // Clef-flash reads CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN, and Jev reads TYPESAFE_API_KEY.
 // A token may be empty where a broker adds it to each request.
@@ -13,7 +14,8 @@ import { createDecisionModel } from './create-decision-model.ts';
 import { createSmartTurn } from './create-smart-turn.ts';
 import type { Answer, DetectorName, Pause } from './find-turn-end.ts';
 import { speechSetDir } from './speech-sets.ts';
-import { createStreamingRecognizer, createVad, sampleRate } from './speech.ts';
+import { createSpeechToText, createVad, sampleRate } from './speech.ts';
+import { toPlainTranscript } from './to-plain-transcript.ts';
 
 const set = readFlag('--set') ?? 'ami';
 const out = readFlag('--out') ?? `results/turn-end-${set}.jsonl`;
@@ -40,7 +42,9 @@ const clef = createDecisionModel('clef', {
   token: process.env.CLOUDFLARE_API_TOKEN ?? '',
 });
 const jev = createDecisionModel('jev', { token: process.env.TYPESAFE_API_KEY ?? '' });
-const recognizer = createStreamingRecognizer();
+// The streaming Zipformer's text at the pause came back empty on most telephone and meeting clips,
+// where Moonshine read them well, so the text detectors read Moonshine.
+const moonshine = createSpeechToText('moonshine');
 const vad = createVad(pauseMs);
 const dir = speechSetDir(set);
 const count = Math.min(limit, readdirSync(dir).filter((name) => name.endsWith('.json')).length);
@@ -80,48 +84,53 @@ async function playUtterance(speech: Float32Array): Promise<(Pause & { transcrip
     audio[index] = (seed / 1_073_741_823.5 - 1) * 0.002;
   }
   vad.reset();
-  const stream = recognizer.start();
   const segments: { end: number; start: number }[] = [];
-  const asks: Promise<[number, DetectorName, Answer]>[] = [];
-  const transcripts: string[] = [];
+  const asks: Promise<[number, DetectorName, RecordedAnswer]>[] = [];
+  const transcripts: Promise<string>[] = [];
   const startedAt = performance.now();
   for (let offset = 0, frame = 0; offset < audio.length; offset += windowSamples, frame++) {
     await Bun.sleep(Math.max(0, startedAt + frame * windowMs - performance.now()));
-    const window = audio.subarray(offset, offset + windowSamples);
-    vad.accept(window);
-    stream.accept(window);
+    vad.accept(audio.subarray(offset, offset + windowSamples));
     for (const segment of vad.readSegments()) {
       const pauseIndex = segments.length;
       const speechEndMs = (segment.end * 1000) / sampleRate;
       const heard = audio.slice(0, offset + windowSamples);
-      const transcript = stream.readPartial();
+      const transcript = detectors.some((detector) => detector !== 'smartTurn')
+        ? readTranscript(heard)
+        : Promise.resolve('');
       segments.push(segment);
       transcripts.push(transcript);
       for (const detector of detectors) {
         asks.push(
           askDetector(detector, heard, transcript).then(
-            (probability): [number, DetectorName, Answer] => [
+            ({ probability, usage }): [number, DetectorName, RecordedAnswer] => [
               pauseIndex,
               detector,
-              { answeredAfterMs: Math.round(performance.now() - startedAt - speechEndMs), probability },
+              {
+                answeredAfterMs: Math.round(performance.now() - startedAt - speechEndMs),
+                probability,
+                ...(usage === undefined ? {} : { usage }),
+              },
             ],
-            (error: unknown): [number, DetectorName, Answer] => [pauseIndex, detector, { error: String(error) }],
+            (error: unknown): [number, DetectorName, RecordedAnswer] => [pauseIndex, detector, { error: String(error) }],
           ),
         );
       }
     }
   }
+  const settled = await Promise.all(asks);
+  const heardTranscripts = await Promise.all(transcripts);
   const pauses = segments.map((segment, pauseIndex) => {
-    const answers: Partial<Record<DetectorName, Answer>> = {};
+    const answers: Partial<Record<DetectorName, RecordedAnswer>> = {};
     const next = segments[pauseIndex + 1];
     return {
       answers,
       resumeMs: next === undefined ? undefined : (next.start * 1000) / sampleRate,
       speechEndMs: (segment.end * 1000) / sampleRate,
-      transcript: transcripts[pauseIndex] ?? '',
+      transcript: heardTranscripts[pauseIndex] ?? '',
     };
   });
-  for (const [pauseIndex, detector, answer] of await Promise.all(asks)) {
+  for (const [pauseIndex, detector, answer] of settled) {
     const pause = pauses[pauseIndex];
     if (pause !== undefined) {
       pause.answers[detector] = answer;
@@ -130,13 +139,25 @@ async function playUtterance(speech: Float32Array): Promise<(Pause & { transcrip
   return pauses;
 }
 
-function askDetector(detector: DetectorName, heard: Float32Array, transcript: string): Promise<number> {
+type RecordedAnswer = Answer | (Answer & { usage: Record<string, unknown> });
+
+async function readTranscript(heard: Float32Array): Promise<string> {
+  const recognizer = moonshine.start();
+  recognizer.accept(heard);
+  return toPlainTranscript(await recognizer.finish());
+}
+
+function askDetector(
+  detector: DetectorName,
+  heard: Float32Array,
+  transcript: Promise<string>,
+): Promise<{ probability: number; usage?: Record<string, unknown> | undefined }> {
   return match(detector)
-    .with('smartTurn', () => smartTurn.readEndProbability(heard))
+    .with('smartTurn', async () => ({ probability: await smartTurn.readEndProbability(heard) }))
     .with('clef', 'jev', async (name) => {
-      const answer = await (name === 'clef' ? clef : jev).readEndProbability(transcript);
+      const answer = await (name === 'clef' ? clef : jev).readEndProbability(await transcript);
       models.set(name, answer.model);
-      return answer.probability;
+      return { probability: answer.probability, usage: answer.usage };
     })
     .exhaustive();
 }

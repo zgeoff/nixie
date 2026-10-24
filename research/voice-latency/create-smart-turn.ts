@@ -3,7 +3,7 @@
 import { join } from 'node:path';
 import { InferenceSession, Tensor } from 'onnxruntime-node';
 import { buildLogMel, melBins, melFrames } from './build-log-mel.ts';
-import { modelsDir } from './speech.ts';
+import { modelsDir, threads } from './speech.ts';
 
 export const smartTurnModel = join(modelsDir, 'smart-turn-v3.2-cpu.onnx');
 
@@ -12,6 +12,8 @@ export async function createSmartTurn(): Promise<{ readEndProbability: (audio: F
     executionMode: 'sequential',
     graphOptimizationLevel: 'all',
     interOpNumThreads: 1,
+    // onnxruntime takes every core by default, and then contends with speech-to-text at each pause.
+    intraOpNumThreads: threads,
   });
   return {
     readEndProbability: async (audio) => {
