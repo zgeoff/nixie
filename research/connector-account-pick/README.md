@@ -15,7 +15,9 @@ accuracy should later evals require of this case?
 
 - Haiku, Sonnet and Opus passed the right short ID on the first call in all 351 named runs, which
   bounds the miss rate at about 0.9% at 95%.
-- In all 65 runs whose message named no account, the model made no call and asked.
+- In all 65 ask runs, whose message gave no hint of an account, the model made no call and asked. On
+  the implied cases, where the content points at one account, Opus picked the right account each
+  time, and Haiku and Sonnet mostly asked.
 - The label drives the pick: with no label in the schema, Haiku asked in 132 of 135 named runs.
 - The case needs its own harness, because the model eval's runner runs fixed tasks on a fixed tool
   list.
