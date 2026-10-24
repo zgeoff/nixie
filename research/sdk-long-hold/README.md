@@ -2,8 +2,8 @@
 
 This spike compares two ways to pause a tool call in an Agent SDK session until the owner decides: a
 mod's `tool.call` hook that waits inside the running process, and a `PreToolUse` hook that returns
-`defer`, which ends the process and resumes the session later. Its findings back the approvals in
-decision [0002](../../docs/decisions/0002-approvals.md).
+`defer`, which ends the process and resumes the session later. Decision
+[0002](../../docs/decisions/0002-approvals.md) rejects both for approvals on these findings.
 
 ## Question
 
@@ -24,7 +24,8 @@ of tool calls?
 - `defer` does not refuse a parallel batch in this build: both calls defer, the result names only
   the last one, and the other call's `tool_use` never gets a result.
 
-Hold a call across a process end with `defer`, and defer only a single tool call.
+Use neither for approvals: a mod hold dies with its process, and `defer` blocks the session and
+loses calls in a parallel batch.
 
 ## Run it
 
