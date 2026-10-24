@@ -16,6 +16,7 @@ import type {
   PromptProposalState,
   PromptsTables,
 } from './types';
+import { writePromptApprovalState } from './write-prompt-approval-state';
 
 export function writePromptProposalAnswer(
   context: PromptAnswerContext,
@@ -109,12 +110,20 @@ async function writeApproval(
   const approvedAt = context.clock.now();
   const tables = tx.$extendTables<PromptsTables>();
 
-  await tables
-    .updateTable('prompt_approvals')
-    .set({ state: 'superseded', updated_at: approvedAt })
+  const current = await tables
+    .selectFrom('prompt_approvals')
+    .select('approval_id')
     .where('prompt_id', '=', proposal.promptID)
     .where('state', '=', 'current')
     .execute();
+
+  for (const row of current) {
+    await writePromptApprovalState(tx, {
+      approvalID: row.approval_id,
+      to: 'superseded',
+      at: approvedAt,
+    });
+  }
 
   await tables
     .insertInto('prompt_approvals')
