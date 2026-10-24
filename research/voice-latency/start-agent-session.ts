@@ -8,10 +8,15 @@ import type {
   SDKUserMessage,
   ThinkingConfig,
 } from '@anthropic-ai/claude-agent-sdk';
-import type { query } from '@anthropic-ai/claude-agent-sdk';
 import { match } from 'ts-pattern';
 import type { ResultFields } from './build-result-fields.ts';
 import { parseSessionMessage } from './parse-session-message.ts';
+
+// The part of the SDK's query function that the session uses.
+export type AgentQuery = (params: {
+  options: Options;
+  prompt: AsyncIterable<SDKUserMessage>;
+}) => AsyncIterable<unknown> & { close: () => void };
 
 export interface AgentTurn extends ResultFields {
   costUSD: number;
@@ -25,7 +30,7 @@ export interface AgentSessionOptions {
   env: Record<string, string>;
   model: string;
   // The Agent SDK's entry point, which starts the CLI process the session talks to.
-  query: typeof query;
+  query: AgentQuery;
   // An empty folder for the CLI to run and keep its config in, so no file of the caller's reaches it.
   scratchDir: string;
   systemPrompt: string;
