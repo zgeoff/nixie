@@ -8,8 +8,6 @@ import { mergeRankings } from '../../../modules/memory/src/merge-rankings.ts';
 // @boundaries-ignore a spike imports the code it measures
 import type { MemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { startMemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
-// @boundaries-ignore a spike imports the code it measures
 import { startVectorIndex } from '../../../modules/memory/src/start-vector-index.ts';
 // @boundaries-ignore a spike imports the code it measures
 import type { Encoder } from '../../../modules/memory/src/types.ts';
@@ -53,11 +51,10 @@ export interface TurnRanking {
 export interface Ranker {
   readonly rankWithProduct: (turn: TurnCase, excludedWords: string[]) => Promise<TurnRanking>;
   readonly rankTurn: (turn: TurnCase, config: RankConfig, excludedWords: string[]) => Promise<TurnRanking>;
-  readonly stop: () => Promise<void>;
 }
 
-export async function startRanker(encoder: Encoder): Promise<Ranker> {
-  const index = await startMemoryIndex();
+// The index holds one turn's store at a time, and the ranker reloads it when the turn changes.
+export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
   const loaded = { turn: '' };
 
   const loadIndex = async (turn: TurnCase) => {
@@ -166,7 +163,6 @@ export async function startRanker(encoder: Encoder): Promise<Ranker> {
         ),
       };
     },
-    stop: () => index.stop(),
   };
 }
 

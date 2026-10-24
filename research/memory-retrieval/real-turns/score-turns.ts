@@ -6,7 +6,9 @@ import type { EncoderDirs, EncoderName } from './load-turn-encoder.ts';
 import { loadTurnEncoder } from './load-turn-encoder.ts';
 import { makeRandom } from './make-random.ts';
 import type { RankConfig, TurnRanking } from './rank-turn.ts';
-import { SHIPPED, startRanker } from './rank-turn.ts';
+// @boundaries-ignore a spike imports the code it measures
+import { startMemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
+import { buildRanker, SHIPPED } from './rank-turn.ts';
 
 export interface Label {
   caseID: string;
@@ -119,7 +121,8 @@ export async function runRankings(
 
   for (const encoderName of [...new Set(runs.map((run) => run.encoder))]) {
     const encoder = await loadTurnEncoder(encoderName, dirs);
-    const ranker = await startRanker(encoder);
+    const index = await startMemoryIndex();
+    const ranker = buildRanker(encoder, index);
     const own = runs.filter((run) => run.encoder === encoderName);
 
     for (const turn of turns) {
@@ -130,7 +133,7 @@ export async function runRankings(
       }
     }
 
-    await ranker.stop();
+    await index.stop();
     await encoder.stop();
   }
 

@@ -15,7 +15,9 @@ import type { EncoderName } from './real-turns/load-turn-encoder.ts';
 import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
 import { makeRandom } from './real-turns/make-random.ts';
 import { readPlainExport } from './real-turns/read-plain-export.ts';
-import { SHIPPED, startRanker } from './real-turns/rank-turn.ts';
+// @boundaries-ignore a spike imports the code it measures
+import { startMemoryIndex } from '../../modules/memory/src/start-memory-index.ts';
+import { buildRanker, SHIPPED } from './real-turns/rank-turn.ts';
 import type { Gold, Label } from './real-turns/score-turns.ts';
 import { buildPairedDifference, buildRuns, runRankings, scoreRanking, scoreServed } from './real-turns/score-turns.ts';
 
@@ -85,7 +87,8 @@ function printStats(turns: TurnCase[]): void {
 
 async function runReplay(turns: TurnCase[]): Promise<void> {
   const encoder = await loadTurnEncoder('leaf-ir-q8' satisfies EncoderName, encoderDirs);
-  const ranker = await startRanker(encoder);
+  const index = await startMemoryIndex();
+  const ranker = buildRanker(encoder, index);
   const counts = { turns: turns.length, logMatches: 0, logMismatches: 0, withItems: 0, withItemsMatches: 0, harnessMatches: 0, harnessMismatches: 0 };
   const mismatched: string[] = [];
 
@@ -117,7 +120,7 @@ async function runReplay(turns: TurnCase[]): Promise<void> {
   console.log(counts);
   console.log(`mismatched cases: ${mismatched.join(' ')}`);
 
-  await ranker.stop();
+  await index.stop();
   await encoder.stop();
 }
 
