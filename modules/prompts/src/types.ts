@@ -1,3 +1,8 @@
+import type { CheckedTables } from '@heynixie/db';
+import type { Log } from '@heynixie/log';
+import type { ProposalContext, ProposalOutcome } from '@heynixie/proposals';
+import type { promptsOverrideProposedCodec } from './prompts-override-proposed-codec';
+
 interface PromptOwner {
   readonly name: string | null;
 }
@@ -53,6 +58,107 @@ export interface PromptOverride {
 
 export type PromptOverrides = Readonly<Partial<Record<PromptID, PromptOverride>>>;
 
-export interface PromptToolsContext {
-  readonly readInForce: () => { readonly prompts: PromptOverrides } | null;
+export interface PromptsInForce {
+  readonly snapshotHash: string;
+  readonly personaVersion: string;
+  readonly prompts: PromptOverrides;
 }
+
+export interface PromptPartFile {
+  readonly path: string;
+  readonly text: string;
+}
+
+export interface PromptProposalDraft {
+  readonly id: string;
+  readonly entry: Readonly<Record<string, string>>;
+  readonly files: readonly PromptPartFile[];
+}
+
+export interface PromptProposalProblem {
+  readonly path: string;
+  readonly reason: string;
+}
+
+// modules/definitions owns the rules of the definitions parse and imports this module, so the
+// server passes its check in.
+export type CheckPromptProposal = (draft: PromptProposalDraft) => readonly PromptProposalProblem[];
+
+export interface PromptToolsContext {
+  readonly log: Log;
+  readonly readInForce: () => PromptsInForce | null;
+  readonly checkProposal: CheckPromptProposal;
+}
+
+export interface PromptAnswerContext extends ProposalContext {
+  readonly readInForce: () => PromptsInForce | null;
+  readonly checkProposal: CheckPromptProposal;
+}
+
+type PromptProposal = ReturnType<typeof promptsOverrideProposedCodec.decode>;
+
+export interface PromptProposalState {
+  readonly proposal: PromptProposal;
+  readonly thread: string | null;
+  readonly proposedAt: number;
+  readonly outcome: ProposalOutcome | null;
+}
+
+export interface PendingPromptProposal {
+  readonly proposal: PromptProposal;
+  readonly thread: string | null;
+  readonly proposedAt: number;
+  readonly lapseAt: number;
+
+  readonly isStale: boolean;
+  readonly inForce: PromptOverride | null;
+}
+
+export type PromptProposalAnswer =
+  | {
+      readonly answer: 'approve';
+      readonly proposalID: string;
+      readonly proposalHash: string;
+      readonly entry?: Readonly<Record<string, string>>;
+      readonly files?: readonly PromptPartFile[];
+    }
+  | {
+      readonly answer: 'reject';
+      readonly proposalID: string;
+      readonly proposalHash: string;
+      readonly reason: string;
+    };
+
+export interface PromptProposalAnswerResult {
+  readonly proposalID: string;
+  readonly approvalID: string | null;
+  readonly proposalHash: string | null;
+}
+
+export interface PromptProposalAnswerEvent {
+  readonly proposalID: string;
+  readonly promptID: PromptID;
+  readonly outcome: ProposalOutcome;
+
+  readonly isEdited: boolean;
+
+  readonly reason: string | null;
+}
+
+export type PromptApprovalState = 'current' | 'superseded';
+
+interface PromptApprovalRow {
+  readonly approval_id: string;
+  readonly proposal_id: string;
+  readonly prompt_id: string;
+  readonly thread: string | null;
+  readonly entry: string;
+  readonly files: string;
+  readonly state: PromptApprovalState;
+  readonly approved_at: number;
+  readonly updated_at: number;
+}
+
+// Kysely's table map needs an index signature, which an interface lacks, so the tables are mapped
+// types.
+export type PromptsTables = CheckedTables<Readonly<{ prompt_approvals: PromptApprovalRow }>>;

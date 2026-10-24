@@ -502,9 +502,18 @@
       "name": "@heynixie/prompts",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/proposals": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
       },
     },
     "modules/proposals": {

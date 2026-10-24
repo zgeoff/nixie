@@ -3,11 +3,15 @@ import { z } from 'zod';
 import { collectAcceptedPaths } from './collect-accepted-paths';
 import { promptIDs } from './prompt-ids';
 import { promptRegistry } from './prompt-registry';
-import type { PromptID, PromptOverride, PromptToolsContext } from './types';
+import type { PromptID, PromptOverride, PromptsInForce } from './types';
 
 const readArguments = z.object({ id: z.enum(promptIDs) });
 
-export function buildPromptReadTool(context: PromptToolsContext): ToolDefinition {
+export interface PromptReadContext {
+  readonly readInForce: () => Pick<PromptsInForce, 'prompts'> | null;
+}
+
+export function buildPromptReadTool(context: PromptReadContext): ToolDefinition {
   return {
     name: 'prompt_read',
     description:
