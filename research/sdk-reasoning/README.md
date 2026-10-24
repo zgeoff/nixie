@@ -14,7 +14,7 @@ record that summary as an erasable field of the reply, beside a plain count of t
 What does the Agent SDK return of the model's reasoning for each model profile in use: full
 reasoning, a summary, a redacted block or nothing? What would recording it cost per turn in storage,
 and should the event log record it as an erasable field or leave it out? A moment's span holds what
-the event log holds ([moments](../../memory/moments.md)), so the model's reasoning is part of a
+the event log holds ([moments](../../docs/design/platform/memory/moments.md)), so the model's reasoning is part of a
 moment only when the log records it ([GEO-381](https://linear.app/zgeoff/issue/GEO-381)).
 
 ## Versions
@@ -46,7 +46,7 @@ timetable question that needs a few steps of working, under 3 thinking settings:
 - `omitted`: adaptive thinking with the SDK's `omitted` display.
 
 [`start-capture-proxy.ts`](start-capture-proxy.ts) sits between the CLI and the model API, as the
-counting proxy does in [token use per turn](../../../../../research/turn-tokens/README.md). It keeps
+counting proxy does in [token use per turn](../turn-tokens/README.md). It keeps
 the thinking setting each request sent and rebuilds each response's content blocks from the stream.
 `run.ts` also keeps the content blocks of every assistant message the SDK yielded, the SDK's
 thinking-token progress messages, and the blocks of the session transcript the CLI wrote. Each run
@@ -117,9 +117,9 @@ systems flag the reasoning, and an invented timetable question gives them nothin
 
 The summary came to 0.8 to 1.3 bytes per thinking token, and thinking made up 60 to 85% of a turn's
 output tokens. The Opus conversation turns in
-[token use per turn](../../../../../research/turn-tokens/README.md) averaged 409 output tokens, so a
+[token use per turn](../turn-tokens/README.md) averaged 409 output tokens, so a
 summary of about 300 thinking tokens takes about 250 bytes, close to the size of a short reply. The
-[erasable fields](../../../../architecture/core/erasable-fields.md) of a record are one JSON object
+[erasable fields](../../docs/architecture/core/erasable-fields.md) of a record are one JSON object
 under one key and one IV, so a summary in the reply's erasable fields adds its own bytes and a field
 name, and no key. At 50 conversation turns a day, the summaries add about 12 KB a day and 5 MB a
 year. A turn that thinks for 5,000 tokens adds 4 to 7 KB.

@@ -21,7 +21,6 @@ pre-commit:
         - '.claude/hooks/skill-gate/**'
         - 'apps/web/src/routeTree.gen.ts'
         - 'apps/web/src/styled-system/**'
-        - 'docs/design/**/spikes/**'
         - 'research/**'
         - '**/dist/**'
         - '**/coverage/**'

@@ -29,7 +29,7 @@ type declarations and a `tsconfig.json` into each mod directory when it loads th
 bun install
 # The model token, from the vault. Run `unset CLAUDE_CODE_OAUTH_TOKEN` when you finish.
 export CLAUDE_CODE_OAUTH_TOKEN=$(
-  OP_SERVICE_ACCOUNT_TOKEN=$(jq -r .env.OP_SERVICE_ACCOUNT_TOKEN ../../../../../.claude/settings.local.json) \
+  OP_SERVICE_ACCOUNT_TOKEN=$(jq -r .env.OP_SERVICE_ACCOUNT_TOKEN ../../.claude/settings.local.json) \
     op --cache=false read 'op://nixie/claude-code-oauth-token/credential'
 )
 # A hold on a timer of the hook's own, without and with .catch

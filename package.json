@@ -21,6 +21,10 @@
       "research/*",
       "!research/encoder",
       "!research/fetch-headless",
+      "!research/sdk-first-token",
+      "!research/sdk-long-hold",
+      "!research/sdk-reasoning",
+      "!research/sdk-skills",
       "!research/voice-latency"
     ],
     "catalog": {

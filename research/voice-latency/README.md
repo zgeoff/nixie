@@ -9,7 +9,7 @@ the median, and the full answer's audio was ready at 2.86 s. The pipeline meets 
 the first audio, and misses it to the full answer. The speech stages are not the cause: they took
 0.56 s before the turn started and 0.09 s for the opening phrase. The model's own time to its first
 token took 1.11 s at the median on this host, nearly twice what the
-[first-token spike](../../docs/design/platform/spikes/sdk-first-token/README.md) measured on another
+[first-token spike](../sdk-first-token/README.md) measured on another
 host.
 
 The [run on the deployment host](deployment-host.md) repeats the spike on the host nixie deploys to.
