@@ -33,6 +33,18 @@ export function checkPromptProposal(proposal: PromptProposalInput): readonly Par
     return [...reasons].map((reason) => ({ path: manifestPath, reason }));
   }
 
+  const template = proposal.entry['_template'] ?? '';
+
+  // The template sits inline in nixie.yaml, which the seed reads under the same file size limit.
+  if (new TextEncoder().encode(template).byteLength > defaultSizeLimits.maxFileBytes) {
+    return [
+      {
+        path: manifestPath,
+        reason: `prompts.${proposal.id}._template is past the ${defaultSizeLimits.maxFileBytes}-byte limit of ${manifestPath}`,
+      },
+    ];
+  }
+
   const fileProblems = collectFileProblems(proposal);
 
   if (fileProblems.length > 0) {

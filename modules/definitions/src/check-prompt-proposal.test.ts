@@ -170,6 +170,21 @@ test('it refuses a part file past the size limit of a definitions file', () => {
   ]);
 });
 
+test('it refuses a template past the size limit of nixie.yaml, which holds it inline', () => {
+  expect(
+    checkPromptProposal({
+      id: 'compaction',
+      entry: { _template: `{{ parts.safety }}${'a'.repeat(1024 * 1024)}` },
+      files: [],
+    }),
+  ).toStrictEqual([
+    {
+      path: 'nixie.yaml',
+      reason: 'prompts.compaction._template is past the 1048576-byte limit of nixie.yaml',
+    },
+  ]);
+});
+
 test('it refuses an entry that overrides nothing', () => {
   expect(checkPromptProposal({ id: 'compaction', entry: {}, files: [] })).toStrictEqual([
     { path: 'nixie.yaml', reason: 'prompts.compaction overrides no part and no template' },
