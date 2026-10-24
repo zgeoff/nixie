@@ -63,7 +63,7 @@ async function readDuePrompts(
   }));
 }
 
-type PromptChangeInput = Omit<Parameters<typeof buildPromptExportChange>[0], 'manifest'>;
+type PromptChangeInput = Omit<Parameters<typeof buildPromptExportChange>[0], 'manifest' | 'sizes'>;
 
 async function readPromptChange(
   repo: DefinitionsRepo,
@@ -76,7 +76,9 @@ async function readPromptChange(
     throw new Error(`the definitions repo holds no ${manifestPath} to add the prompt override to`);
   }
 
-  return buildPromptExportChange({ ...input, manifest });
+  const sizes = await repo.readFileSizes(revision);
+
+  return buildPromptExportChange({ ...input, manifest, sizes });
 }
 
 async function readClosingPrompts(

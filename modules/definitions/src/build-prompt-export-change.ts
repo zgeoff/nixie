@@ -3,6 +3,7 @@ import { collectPromptsWithoutSafety } from '@heynixie/prompts';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildPromptManifest } from './build-prompt-manifest';
+import { buildSnapshotBytes } from './build-snapshot-bytes';
 import { defaultSizeLimits } from './default-size-limits';
 import { definitionsFormats } from './definitions-formats';
 import { manifestPath } from './manifest-path';
@@ -21,6 +22,7 @@ export interface PromptExportInput {
   readonly text: PromptExportText;
 
   readonly manifest: string;
+  readonly sizes: ReadonlyMap<string, number>;
 }
 
 export function buildPromptExportChange(promptExport: PromptExportInput): DefinitionsChange {
@@ -61,6 +63,14 @@ export function buildPromptExportChange(promptExport: PromptExportInput): Defini
     ...written,
     [manifestPath, manifest.text],
   ]);
+
+  const total = buildSnapshotBytes(promptExport.sizes, files);
+
+  if (total > defaultSizeLimits.maxTotalBytes) {
+    throw new Error(
+      `the ${promptID} override takes the definitions to ${String(total)} bytes, past the ${String(defaultSizeLimits.maxTotalBytes)}-byte limit the seed keeps to`,
+    );
+  }
 
   const notes = [
     `${agent} proposed this override of the \`${promptID}\` prompt, and ${owner} approved it: approval \`${promptExport.approvalID}\`, proposal \`${promptExport.proposalID}\`.`,

@@ -10,6 +10,7 @@ test('it builds the same change from the same approval', () => {
     files: [{ path: 'prompts/writer-instruction.md', text: 'Write in short sentences.\n' }],
     reason: 'Shorter memories.',
     text: { agentName: null, ownerName: null },
+    sizes: new Map(),
     manifest: 'format: 3\n',
   };
 
@@ -25,6 +26,7 @@ test('it builds a change with no safety note when the override keeps the built-i
     files: [{ path: 'prompts/writer-instruction.md', text: 'Write in short sentences.\n' }],
     reason: 'Shorter memories.\nOne idea per item.',
     text: { agentName: null, ownerName: null },
+    sizes: new Map(),
     manifest: 'format: 3\n',
   });
 
@@ -52,6 +54,7 @@ test("it moves a part file that another prompt reads to the prompt's own folder,
     files: [{ path: 'prompts/shared.md', text: 'Keep it to {{ summary.words }} words.\n' }],
     reason: 'Shorter summaries.',
     text: { agentName: null, ownerName: null },
+    sizes: new Map(),
     manifest: 'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n',
   });
 
@@ -79,6 +82,7 @@ test('it removes a part file that only the replaced entry read, and notes it', (
     files: [],
     reason: 'One line is enough.',
     text: { agentName: null, ownerName: null },
+    sizes: new Map(),
     manifest: 'format: 3\nprompts:\n  compaction:\n    instruction: prompts/old.json\n',
   });
 
@@ -106,6 +110,7 @@ test('it keeps a part file of the replaced entry that another prompt reads', () 
     files: [],
     reason: 'One line is enough.',
     text: { agentName: null, ownerName: null },
+    sizes: new Map(),
     manifest:
       'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n  compaction:\n    instruction: prompts/shared.md\n',
   });
@@ -130,6 +135,7 @@ test("it refuses a part file that another prompt reads when that prompt also rea
       files: [{ path: 'prompts/shared.md', text: 'Keep it short.\n' }],
       reason: 'Shorter summaries.',
       text: { agentName: null, ownerName: null },
+      sizes: new Map(),
       manifest:
         'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n    safety: prompts/compaction/shared.md\n',
     }),
@@ -152,6 +158,7 @@ test("it refuses a part file that another prompt reads when the proposal holds a
       ],
       reason: 'Shorter summaries.',
       text: { agentName: null, ownerName: null },
+      sizes: new Map(),
       manifest: 'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n',
     }),
   ).toThrowWithMessage(
@@ -170,12 +177,54 @@ test('it refuses an override that takes nixie.yaml past the size limit of a defi
       files: [],
       reason: 'A longer template.',
       text: { agentName: null, ownerName: null },
+      sizes: new Map(),
       manifest: `format: 3\n# ${'b'.repeat(200)}\n`,
     }),
   ).toThrowWithMessage(
     Error,
     'the compaction override takes nixie.yaml past the 1048576-byte limit of a definitions file',
   );
+});
+
+test('it refuses an override that takes the definitions past the total size limit of the seed', () => {
+  expect(() =>
+    buildPromptExportChange({
+      approvalID: 'approval-a',
+      proposalID: 'k3x9m2p7qa',
+      promptID: 'compaction',
+      entry: { safety: 'prompts/compaction-safety.md' },
+      files: [{ path: 'prompts/compaction-safety.md', text: 'a'.repeat(100_000) }],
+      reason: 'A longer safety part.',
+      text: { agentName: null, ownerName: null },
+      sizes: new Map([
+        ['nixie.yaml', 10],
+        ['prompts/bulk.md', 10_400_000],
+      ]),
+      manifest: 'format: 3\n',
+    }),
+  ).toThrowWithMessage(
+    Error,
+    'the compaction override takes the definitions to 10500076 bytes, past the 10485760-byte limit the seed keeps to',
+  );
+});
+
+test('it leaves the bytes of a part file it removes out of the total size', () => {
+  const change = buildPromptExportChange({
+    approvalID: 'approval-a',
+    proposalID: 'k3x9m2p7qa',
+    promptID: 'compaction',
+    entry: { safety: 'prompts/compaction-safety.md' },
+    files: [{ path: 'prompts/compaction-safety.md', text: 'a'.repeat(100_000) }],
+    reason: 'A shorter safety part.',
+    text: { agentName: null, ownerName: null },
+    sizes: new Map([
+      ['nixie.yaml', 60],
+      ['prompts/old.md', 10_400_000],
+    ]),
+    manifest: 'format: 3\nprompts:\n  compaction:\n    safety: prompts/old.md\n',
+  });
+
+  expect(change.files.get('prompts/old.md')).toBeNull();
 });
 
 test("it notes a template that never reads the prompt's safety part", () => {
@@ -187,6 +236,7 @@ test("it notes a template that never reads the prompt's safety part", () => {
     files: [],
     reason: 'Drop the safety part.',
     text: { agentName: null, ownerName: null },
+    sizes: new Map(),
     manifest: 'format: 3\n',
   });
 
