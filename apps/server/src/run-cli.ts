@@ -1,33 +1,35 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import { buildBackupCommands } from './build-backup-commands';
-import { buildResetCommands } from './build-reset-commands';
-import { buildSubjectCommands } from './build-subject-commands';
 import { checkEncoder } from './check-encoder';
 import { createConsolidationCommands } from './create-consolidation-commands';
 import { createDeploymentCommands } from './create-deployment-commands';
 import { createMemoryCommands } from './create-memory-commands';
 import { createPromptCommands } from './create-prompt-commands';
+import { createResetCommands } from './create-reset-commands';
 import { createSessionCommands } from './create-session-commands';
 import { createSkillCommands } from './create-skill-commands';
+import { createSubjectCommands } from './create-subject-commands';
 import { readCLIArgs } from './read-cli-args';
 import type { ParsedCLIArgs } from './read-cli-args';
 import { resolveSocketPath } from './resolve-socket-path';
 import { sendHostRequest } from './send-host-request';
 import { startServer } from './start-server';
-import type { CLIFlags, CLIIO, Command } from './types';
+import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
+
+const host: HostTransport = { resolveSocketPath, sendHostRequest };
 
 const commands = new Map<string, Command>([
   ['serve', (flags, io) => runServe(flags, io)],
   ['check-encoder', (flags, io) => checkEncoder(flags.encoder, io)],
   ...createDeploymentCommands(),
-  ...createSessionCommands(),
-  ...buildResetCommands({ resolveSocketPath, sendHostRequest }),
-  ...createMemoryCommands(),
-  ...createConsolidationCommands(),
-  ...buildSubjectCommands(),
-  ...createSkillCommands(),
-  ...createPromptCommands({ resolveSocketPath, sendHostRequest }),
+  ...createSessionCommands(host),
+  ...createResetCommands(host),
+  ...createMemoryCommands(host),
+  ...createConsolidationCommands(host),
+  ...createSubjectCommands(host),
+  ...createSkillCommands(host),
+  ...createPromptCommands(host),
   ...buildBackupCommands(),
 ]);
 

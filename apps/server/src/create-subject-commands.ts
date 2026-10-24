@@ -1,20 +1,20 @@
 import { runSubjectMigrationDryRun } from '@heynixie/db';
-import { resolveSocketPath } from './resolve-socket-path';
-import { sendHostRequest } from './send-host-request';
-import type { CLIFlags, CLIIO, Command } from './types';
+import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
 
-export function buildSubjectCommands(): readonly (readonly [string, Command])[] {
-  return [['memory-subjects', runMemorySubjects]];
+export function createSubjectCommands(
+  host: HostTransport,
+): readonly (readonly [string, Command])[] {
+  return [['memory-subjects', (flags, io) => runMemorySubjects(host, flags, io)]];
 }
 
-async function runMemorySubjects(flags: CLIFlags, io: CLIIO): Promise<number> {
+async function runMemorySubjects(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
   if (flags['dry-run']) {
     return runDryRun(flags.database, io);
   }
 
-  const socketPath = await resolveSocketPath(flags.config);
+  const socketPath = await host.resolveSocketPath(flags.config);
 
-  const counts = await sendHostRequest(socketPath, 'memory subjects', (client) =>
+  const counts = await host.sendHostRequest(socketPath, 'memory subjects', (client) =>
     client.memory.subjects(),
   );
 

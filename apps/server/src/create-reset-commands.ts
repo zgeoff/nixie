@@ -1,24 +1,7 @@
-import type { HostContractClient } from '@heynixie/contract';
-import type { CLIFlags, CLIIO, Command } from './types';
+import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
 
-export interface ResetCommandParts {
-  readonly resolveSocketPath: (configPath: string) => Promise<string>;
-
-  readonly sendHostRequest: <T>(
-    socketPath: string,
-    name: string,
-    call: (client: HostContractClient) => Promise<T>,
-  ) => Promise<T>;
-}
-
-export function buildResetCommands(
-  parts: ResetCommandParts,
-): readonly (readonly [string, Command])[] {
-  return [['reset', makeResetCommand(parts)]];
-}
-
-function makeResetCommand(parts: ResetCommandParts): Command {
-  return (flags, io) => runReset(parts, flags, io);
+export function createResetCommands(host: HostTransport): readonly (readonly [string, Command])[] {
+  return [['reset', (flags, io) => runReset(host, flags, io)]];
 }
 
 const backupNote = 'Backups from before the reset still hold the old data until they age out.';
@@ -29,16 +12,16 @@ const resetWarning = [
   backupNote,
 ].join('\n');
 
-type FilteredReset = (parts: ResetCommandParts, flags: CLIFlags, io: CLIIO) => Promise<number>;
+type FilteredReset = (host: HostTransport, flags: CLIFlags, io: CLIIO) => Promise<number>;
 
 const filteredResets: Readonly<Record<NonNullable<CLIFlags['only']>, FilteredReset>> = {
   memories: runMemoriesReset,
   conversations: runConversationsReset,
 };
 
-async function runReset(parts: ResetCommandParts, flags: CLIFlags, io: CLIIO): Promise<number> {
+async function runReset(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
   if (flags.only !== undefined) {
-    return filteredResets[flags.only](parts, flags, io);
+    return filteredResets[flags.only](host, flags, io);
   }
 
   if (!flags['keep-sessions']) {
@@ -55,8 +38,8 @@ async function runReset(parts: ResetCommandParts, flags: CLIFlags, io: CLIIO): P
     return 2;
   }
 
-  const socketPath = await parts.resolveSocketPath(flags.config);
-  const reset = await parts.sendHostRequest(socketPath, 'reset', (client) => client.reset());
+  const socketPath = await host.resolveSocketPath(flags.config);
+  const reset = await host.sendHostRequest(socketPath, 'reset', (client) => client.reset());
 
   io.print(
     [
@@ -75,20 +58,16 @@ const memoriesWarning = [
   backupNote,
 ].join('\n');
 
-async function runMemoriesReset(
-  parts: ResetCommandParts,
-  flags: CLIFlags,
-  io: CLIIO,
-): Promise<number> {
+async function runMemoriesReset(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
   if (!flags.yes) {
     io.print(`${memoriesWarning}\nRun nixie reset --only memories --yes to reset.`);
 
     return 2;
   }
 
-  const socketPath = await parts.resolveSocketPath(flags.config);
+  const socketPath = await host.resolveSocketPath(flags.config);
 
-  const forgotten = await parts.sendHostRequest(socketPath, 'memory reset', (client) =>
+  const forgotten = await host.sendHostRequest(socketPath, 'memory reset', (client) =>
     client.memory.items.forgetAll(),
   );
 
@@ -104,7 +83,7 @@ const conversationsWarning = [
 ].join('\n');
 
 async function runConversationsReset(
-  parts: ResetCommandParts,
+  host: HostTransport,
   flags: CLIFlags,
   io: CLIIO,
 ): Promise<number> {
@@ -114,9 +93,9 @@ async function runConversationsReset(
     return 2;
   }
 
-  const socketPath = await parts.resolveSocketPath(flags.config);
+  const socketPath = await host.resolveSocketPath(flags.config);
 
-  const reset = await parts.sendHostRequest(socketPath, 'conversation reset', (client) =>
+  const reset = await host.sendHostRequest(socketPath, 'conversation reset', (client) =>
     client.resetConversations(),
   );
 

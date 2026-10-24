@@ -98,11 +98,11 @@ export type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => P
 export interface HostTransport {
   readonly resolveSocketPath: (configPath: string) => Promise<string>;
 
-  readonly sendHostRequest: (
+  readonly sendHostRequest: <Answer>(
     socketPath: string,
     name: string,
-    call: (client: HostContractClient) => Promise<unknown>,
-  ) => Promise<unknown>;
+    call: (client: HostContractClient) => Promise<Answer>,
+  ) => Promise<Answer>;
 }
 
 export interface PartReader<Values> {
