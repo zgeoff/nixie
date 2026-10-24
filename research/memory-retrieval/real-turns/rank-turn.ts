@@ -1,11 +1,17 @@
 // Ranks the store as it stood at one turn for that turn's message. `rankWithProduct` runs nixie's own
 // index, vector index and fusion with the shipped settings, to check the rebuilt turns against what
 // the log recorded. `rankTurn` runs the same steps with each setting open, for the sweeps.
+// @boundaries-ignore a spike imports the code it measures
 import { buildVectorQuery } from '../../../modules/memory/src/build-vector-query.ts';
+// @boundaries-ignore a spike imports the code it measures
 import { mergeRankings } from '../../../modules/memory/src/merge-rankings.ts';
+// @boundaries-ignore a spike imports the code it measures
 import type { MemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
+// @boundaries-ignore a spike imports the code it measures
 import { startMemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
+// @boundaries-ignore a spike imports the code it measures
 import { startVectorIndex } from '../../../modules/memory/src/start-vector-index.ts';
+// @boundaries-ignore a spike imports the code it measures
 import type { Encoder } from '../../../modules/memory/src/types.ts';
 import type { Candidate, TurnCase } from './build-turn-cases.ts';
 

@@ -1,7 +1,9 @@
 // Loads one encoder for the real-turn runs and caches each vector, so the store as it stood at each
 // turn can be rebuilt from vectors already made. `leaf-ir-q8` is the encoder nixie ships, run by the
 // product adapter on the pinned model files; the rest run on transformers.js.
+// @boundaries-ignore a spike imports the code it measures
 import { startONNXEncoder } from '../../../adapters/encoder-onnx/src/start-onnx-encoder.ts';
+// @boundaries-ignore a spike imports the code it measures
 import type { Encoder } from '../../../modules/memory/src/types.ts';
 
 const bgeQuery = 'Represent this sentence for searching relevant passages: ';

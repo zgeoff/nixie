@@ -5,6 +5,7 @@
 //   bun real-turns.ts stats  --plain <dir>
 //   bun real-turns.ts replay --plain <dir> [--names <file>]
 //   bun real-turns.ts sample --plain <dir> --out <file> [--size <n>]
+//   bun real-turns.ts cases  --plain <dir> --labels <file> --key <file> --out <file>
 //   bun real-turns.ts score  --plain <dir> [--labels <file> --key <file>] [--names <file>] [--encoders <a,b>] [--out <file>]
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -53,6 +54,8 @@ if (command === 'stats') {
   await writeSample(cases);
 } else if (command === 'score') {
   await runScore(cases);
+} else if (command === 'cases') {
+  await writeTestSet(cases);
 } else {
   throw new Error(`unknown command ${command ?? '(none)'}`);
 }
@@ -188,6 +191,45 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   if (values.out !== undefined) {
     await Bun.write(resolve(values.out), `${JSON.stringify(report, null, 2)}\n`);
   }
+}
+
+// Writes the test set: each labelled turn with its message, what its retrieval logged, its ratings,
+// and the items the labels name.
+async function writeTestSet(turns: TurnCase[]): Promise<void> {
+  if (values.labels === undefined || values.key === undefined || values.out === undefined) {
+    throw new Error('pass --labels <file>, --key <file> and --out <file>');
+  }
+
+  const labels = new Map((await readJSONLines<Label>(values.labels)).map((label) => [label.caseID, label]));
+  const keys = new Map(
+    (await readJSONLines<{ caseID: string; refs: Record<string, string> }>(values.key)).map((entry) => [entry.caseID, entry.refs]),
+  );
+
+  const lines = turns.flatMap((turn) => {
+    const label = labels.get(turn.caseID);
+    const refs = keys.get(turn.caseID) ?? {};
+
+    if (label === undefined) {
+      return [];
+    }
+
+    return [
+      JSON.stringify({
+        caseID: turn.caseID,
+        message: turn.query,
+        retrieved: turn.logged,
+        searchMode: turn.searchMode,
+        delivered: turn.delivered,
+        ratings: turn.ratings,
+        needed: label.relevant.map((ref) => refs[ref]).filter((itemID) => itemID !== undefined),
+        best: label.best === null ? null : (refs[label.best] ?? null),
+      }),
+    ];
+  });
+
+  await Bun.write(resolve(values.out), `${lines.join('\n')}\n`);
+
+  console.log({ cases: lines.length });
 }
 
 async function readJSONLines<T>(path: string): Promise<T[]> {
