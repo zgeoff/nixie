@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { runProjectionRebuild, writeRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import type { TasksTables } from './index';
 import {
   readInbox,
@@ -84,7 +85,7 @@ test('it rebuilds the tasks table equal to the live one after a reset of the thr
     },
   ]);
 
-  await writeRecords(ctx.context.log, [
+  const [reset] = await writeRecords(ctx.context.log, [
     {
       kind: 'log_reset',
       definitions: { snapshotHash: 'sha256:test' },
@@ -99,7 +100,9 @@ test('it rebuilds the tasks table equal to the live one after a reset of the thr
 
   const rebuilt = await ctx.db.selectFrom('tasks').selectAll().execute();
 
-  expect(live).toHaveLength(1);
+  invariant(reset);
+
+  expect(live.map((row) => row.read_cursor)).toStrictEqual([reset.sequence]);
   expect(rebuilt).toStrictEqual(live);
 });
 
