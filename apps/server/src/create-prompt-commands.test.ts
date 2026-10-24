@@ -25,6 +25,13 @@ test('it lists a prompt proposal, approves it into a pull request, and the next 
     text: 'format: 3\n',
   });
 
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'persona.md',
+    text: '# Persona\n',
+  });
+
   const nixie = await startInProcessNixie({
     extraDefinitions: [
       'export:',
@@ -104,6 +111,7 @@ test('it lists a prompt proposal, approves it into a pull request, and the next 
   expect(readMockFiles('harbour/definitions', 'nixie/prompt/compaction')).toStrictEqual({
     'nixie.yaml':
       'format: 3\nprompts:\n  compaction:\n    safety: "prompts/compaction-safety.md"\n',
+    'persona.md': '# Persona\n',
     'prompts/compaction-safety.md': 'Answer with the summary alone.\n',
   });
 
@@ -124,6 +132,13 @@ test('it approves a prompt proposal with the edits that --entry and --files give
     branch: 'main',
     path: 'nixie.yaml',
     text: 'format: 3\n',
+  });
+
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'persona.md',
+    text: '# Persona\n',
   });
 
   const nixie = await startInProcessNixie({
@@ -198,6 +213,7 @@ test('it approves a prompt proposal with the edits that --entry and --files give
 
   expect(readMockFiles('harbour/definitions', 'nixie/prompt/compaction')).toStrictEqual({
     'nixie.yaml': 'format: 3\nprompts:\n  compaction:\n    safety: "prompts/compaction-short.md"\n',
+    'persona.md': '# Persona\n',
     'prompts/compaction-short.md': 'Answer in one line.\n',
   });
 });
