@@ -1,7 +1,7 @@
 import { sendHostRequest } from '../send-host-request';
 import type { HostTransport } from '../types';
 
-export interface HostTransportRecord {
+interface HostTransportRecord {
   readonly configPaths: readonly string[];
   readonly requests: readonly { readonly socketPath: string; readonly name: string }[];
 }
