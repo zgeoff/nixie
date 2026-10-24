@@ -168,7 +168,9 @@ async function runScore(turns: TurnCase[]): Promise<void> {
 
 function getGold(built: BuiltGold): Map<string, Gold> {
   if ('unknownRefs' in built) {
-    throw new Error(`labels name references the key lacks: ${built.unknownRefs.join(' ')}`);
+    throw new Error(
+      `labels name ${built.absentCases.length} cases the export lacks (${built.absentCases.join(' ')}) and ${built.unknownRefs.length} references the key lacks (${built.unknownRefs.join(' ')})`,
+    );
   }
 
   return built.gold;

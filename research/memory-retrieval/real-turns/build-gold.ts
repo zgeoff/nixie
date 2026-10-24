@@ -6,10 +6,11 @@ export interface SampleKey {
   refs: Record<string, string>;
 }
 
-export type BuiltGold = { gold: Map<string, Gold> } | { unknownRefs: string[] };
+export type BuiltGold = { gold: Map<string, Gold> } | { unknownRefs: string[]; absentCases: string[] };
 
-// Turns each label's references into item IDs through the sample key, and returns every reference
-// the key lacks, as caseID/ref, instead of dropping it.
+// Turns each label's references into item IDs through the sample key. It returns every reference
+// the key lacks, as caseID/ref, and every labelled case the rebuilt turns lack, instead of
+// dropping them.
 export function buildGold(turns: TurnCase[], labels: Label[], keys: SampleKey[]): BuiltGold {
   const labelsByCase = new Map(labels.map((label) => [label.caseID, label]));
   const refsByCase = new Map(keys.map((entry) => [entry.caseID, entry.refs]));
@@ -47,5 +48,7 @@ export function buildGold(turns: TurnCase[], labels: Label[], keys: SampleKey[])
     });
   }
 
-  return unknownRefs.length > 0 ? { unknownRefs } : { gold };
+  const absentCases = labels.filter((label) => !gold.has(label.caseID)).map((label) => label.caseID);
+
+  return unknownRefs.length > 0 || absentCases.length > 0 ? { unknownRefs, absentCases } : { gold };
 }

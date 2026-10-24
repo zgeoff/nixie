@@ -64,5 +64,33 @@ test('it returns each label reference the key lacks', () => {
     [{ caseID: 't7', refs: { M1: 'item-a' } }],
   );
 
-  expect(built).toStrictEqual({ unknownRefs: ['t7/M4', 't7/M5'] });
+  expect(built).toStrictEqual({ unknownRefs: ['t7/M4', 't7/M5'], absentCases: [] });
+});
+
+test('it returns each labelled case the rebuilt turns lack', () => {
+  const built = buildGold(
+    [
+      {
+        caseID: 't7',
+        stepSequence: 5,
+        recalledSequence: 7,
+        recordedAt: 0,
+        query: 'what should I pack?',
+        reply: '',
+        earlier: [],
+        candidates: [],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    [
+      { caseID: 't7', relevant: [], best: null },
+      { caseID: 't70', relevant: [], best: null },
+    ],
+    [{ caseID: 't7', refs: {} }],
+  );
+
+  expect(built).toStrictEqual({ unknownRefs: [], absentCases: ['t70'] });
 });
