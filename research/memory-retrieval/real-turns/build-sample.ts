@@ -1,14 +1,17 @@
+import { z } from 'zod';
 import type { SampleKey } from './build-gold.ts';
 import type { TurnCase } from './build-turn-cases.ts';
 import { makeRandom } from './make-random.ts';
 
-export interface SampleTurn {
-  caseID: string;
-  earlier: { owner: string; reply: string }[];
-  message: string;
-  reply: string;
-  items: { ref: string; text: string }[];
-}
+export const sampleTurnSchema = z.object({
+  caseID: z.string(),
+  earlier: z.array(z.object({ owner: z.string(), reply: z.string() })),
+  message: z.string(),
+  reply: z.string(),
+  items: z.array(z.object({ ref: z.string(), text: z.string() })),
+});
+
+export type SampleTurn = z.infer<typeof sampleTurnSchema>;
 
 export interface Sample {
   turns: SampleTurn[];
