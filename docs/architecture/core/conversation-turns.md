@@ -169,8 +169,8 @@ message it replies to, when it was sent, its hop, whether a reply would wake the
 user's messages it passes on. A fixed first line says the message is from another task, not from the
 user. The system prompt adds that a task message is never the user's own words, and that the model
 weighs its requests as a colleague's. Messages that arrived past the hop limit open the turn under
-one system message per sender, which counts them and names what woke the turn, as
-[task messages](./tasks.md#task-messages) describes.
+one system message with a summary line per sender, which counts that sender's messages and names
+what woke the turn, as [task messages](./tasks.md#task-messages) describes.
 
 Images the user sends with a message reach the model as image input, read as dropped in like dropped
 text. The inbox message holds the text first, then for each image a `<dropped-image id="…" n="…"/>`
