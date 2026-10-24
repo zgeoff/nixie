@@ -21,13 +21,13 @@ speech?
 
 ## Host and model path
 
-| Component        | Version                                                                 |
-| ---------------- | ----------------------------------------------------------------------- |
+| Component        | Version                                                                  |
+| ---------------- | ------------------------------------------------------------------------ |
 | Host             | an imp on the deployment host, with 2 AMD EPYC vCPUs and 2 GiB of memory |
-| Claude Agent SDK | 0.3.300, with Claude Code 2.1.300                                       |
-| sherpa-onnx      | `sherpa-onnx-node` 1.13.8                                               |
-| Bun              | 1.4.3                                                                   |
-| Model            | `claude-haiku-5-5` at `effort: 'low'`                                   |
+| Claude Agent SDK | 0.3.300, with Claude Code 2.1.300                                        |
+| sherpa-onnx      | `sherpa-onnx-node` 1.13.8                                                |
+| Bun              | 1.4.3                                                                    |
+| Model            | `claude-haiku-5-5` at `effort: 'low'`                                    |
 
 Every number comes from scripts that ran inside an imp on the deployment host, so the model requests
 took the deployed network path. The model calls ran through the Agent SDK on the subscription
@@ -38,7 +38,7 @@ with the times here.
 ## Method
 
 The scripts, the persona, the caller lines and the settings are the spike's, and the
-[spike's setup](README.md#setup) describes them. The run had 3 parts:
+[spike's setup](results.md#setup) describes them. The run had 3 parts:
 
 1. Stage timings: `stages.ts` for `zipformer` at a 500 ms and a 300 ms pause, `moonshine`, and
    `piper`, 3 rounds each.
@@ -48,9 +48,9 @@ The scripts, the persona, the caller lines and the settings are the spike's, and
 3. Paired calls: 3 calls at a 500 ms pause alternating with 3 calls at a 300 ms pause, all with
    `--warm-long`, which speaks one long sentence before the first turn.
 
-The run left out `whisper` and both Kokoro voices, which the spike ruled out on speed on the
-same CPU class. The 306 timed turns cost $0.0275 by the SDK's own count, and every turn's result had
-the subtype `success` with the `is_error` flag unset.
+The run left out `whisper` and both Kokoro voices, which the spike ruled out on speed on the same
+CPU class. The 306 timed turns cost $0.0275 by the SDK's own count, and every turn's result had the
+subtype `success` with the `is_error` flag unset.
 
 The pause test, [`pauses.ts`](pauses.ts), plays whole utterances through Silero at each pause
 setting, offline, and counts an utterance as cut off when the detector closes a segment before its
@@ -83,12 +83,12 @@ The speech stages run at the test VM's speed: each median sits within 6 ms of th
 Each time counts from the end of speech. The full answer's audio is ready when the last sentence is
 synthesized.
 
-| Recognizer, voice and pause   | Turns | Prompt sent | First text  | First audio | Full text   | Full audio  |
-| ----------------------------- | ----- | ----------- | ----------- | ----------- | ----------- | ----------- |
-| `zipformer`, `piper`, 500 ms  | 150   | 574 / 628   | 1781 / 2182 | 1933 / 2414 | 2289 / 2684 | 2854 / 3524 |
-| `zipformer`, `piper`, 300 ms  | 50    | 366 / 421   | 1523 / 1944 | 1638 / 2317 | 2039 / 2545 | 2551 / 3648 |
-| `moonshine`, `piper`, 500 ms  | 40    | 750 / 815   | 2008 / 2212 | 2116 / 2397 | 2546 / 2777 | 3185 / 3770 |
-| Control, no speech            | 30    | 0 / 0       | 1059 / 1355 | -           | 1658 / 1834 | -           |
+| Recognizer, voice and pause  | Turns | Prompt sent | First text  | First audio | Full text   | Full audio  |
+| ---------------------------- | ----- | ----------- | ----------- | ----------- | ----------- | ----------- |
+| `zipformer`, `piper`, 500 ms | 150   | 574 / 628   | 1781 / 2182 | 1933 / 2414 | 2289 / 2684 | 2854 / 3524 |
+| `zipformer`, `piper`, 300 ms | 50    | 366 / 421   | 1523 / 1944 | 1638 / 2317 | 2039 / 2545 | 2551 / 3648 |
+| `moonshine`, `piper`, 500 ms | 40    | 750 / 815   | 2008 / 2212 | 2116 / 2397 | 2546 / 2777 | 3185 / 3770 |
+| Control, no speech           | 30    | 0 / 0       | 1059 / 1355 | -           | 1658 / 1834 | -           |
 
 The 500 ms row pools the 120 turns of part 2 with the 30 of part 3. Of the 9 calls at a 500 ms
 pause, 2 met the gate at their own median, at 2.48 s and 2.49 s, and the other 7 ran from 2.69 s to
@@ -123,9 +123,9 @@ percentile more than the median.
 
 The stall reproduces in a Piper process with no model and no other load. There, the same sentence
 ran at 0.40 or 0.76 when its length changed from the sentence before and the process grew, with no
-major page faults, no CPU steal and 800 MB of memory free. The spike's
-`--warm-long` flag speaks a long sentence first, and it did not remove the stall. The cause lies
-inside Piper's ONNX runtime, and this run did not pin it down.
+major page faults, no CPU steal and 800 MB of memory free. The spike's `--warm-long` flag speaks a
+long sentence first, and it did not remove the stall. The cause lies inside Piper's ONNX runtime,
+and this run did not pin it down.
 
 ### Barge-in
 
@@ -163,8 +163,9 @@ talking to nixie may hesitate less, and the run did not measure speech of that k
   path does not close the gap to the first-token spike's 0.60 s, which ran on an API key.
 - A 300 ms pause saves 208 ms and still misses the gate, at 2.55 s. On real conversational speech it
   cuts off 45% of utterances against 30.5% at 500 ms, so its saving costs more than it gains.
-- A 500 ms pause cuts off 30.5% of the real utterances, and a 700 ms pause 19.5%. An end of turn from
-  voice activity detection alone ends a fifth or more of real turns early at every pause tested.
+- A 500 ms pause cuts off 30.5% of the real utterances, and a 700 ms pause 19.5%. An end of turn
+  from voice activity detection alone ends a fifth or more of real turns early at every pause
+  tested.
 - The pipeline spends 0.61 s after the full text on synthesis, more than the gate's 0.35 s miss, and
   Piper stalls on some long sentences for up to 14 s.
 
@@ -172,10 +173,10 @@ talking to nixie may hesitate less, and the run did not measure speech of that k
 
 The rule in 0040 triggers, and the owner decides whether to apply it now. Hold the swap to
 speech-to-speech until the pipeline's own synthesis tail is cut and measured. The miss is 0.35 s,
-the pipeline's synthesis after the full text takes 0.61 s, and the first audio meets the
-gate by 0.57 s. Synthesizing at each clause, with the next clause synthesized while one plays, bounds
-the sentence length that triggers the Piper stall and moves most of the tail before the full text.
-If the full answer's audio still misses with that change, apply the swap. A speech-to-speech model
+the pipeline's synthesis after the full text takes 0.61 s, and the first audio meets the gate by
+0.57 s. Synthesizing at each clause, with the next clause synthesized while one plays, bounds the
+sentence length that triggers the Piper stall and moves most of the tail before the full text. If
+the full answer's audio still misses with that change, apply the swap. A speech-to-speech model
 replaces nixie's turn as well as the speech stages, which costs the one runtime, one persona and one
 route that 0040 keeps.
 

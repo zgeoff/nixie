@@ -1,16 +1,13 @@
 import { onTestFinished } from 'bun:test';
 
-// Bun reads the time zone that the browser reports from TZ.
+// Bun reads the time zone that the browser reports from TZ. With TZ unset, `bun test` runs in UTC,
+// but a deleted TZ falls back to the host's own zone, so the cleanup sets the zone back by name.
 export function setupBrowserTimeZone(zone: string): void {
-  const previous = process.env.TZ;
+  const previous = new Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   process.env.TZ = zone;
 
   onTestFinished(() => {
-    if (previous === undefined) {
-      delete process.env.TZ;
-    } else {
-      process.env.TZ = previous;
-    }
+    process.env.TZ = previous;
   });
 }
