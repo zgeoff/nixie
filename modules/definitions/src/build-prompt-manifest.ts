@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { PromptID } from '@heynixie/prompts';
+import { buildPromptEntryLines } from './build-prompt-entry-lines';
 import { definitionsFormats } from './definitions-formats';
 
 export interface PromptManifest {
@@ -57,12 +58,12 @@ function buildEntryText(
   const start = lines.findIndex((line) => promptsLine.test(line));
 
   if (start === -1) {
-    return [...lines, 'prompts:', ...buildEntryLines(promptID, entry, '  '), ''].join('\n');
+    return [...lines, 'prompts:', ...buildPromptEntryLines(promptID, entry, '  '), ''].join('\n');
   }
 
   const end = getBlockEnd(lines, start, '');
   const childIndent = findIndent(lines.slice(start + 1, end)) ?? '  ';
-  const entryLines = buildEntryLines(promptID, entry, childIndent);
+  const entryLines = buildPromptEntryLines(promptID, entry, childIndent);
 
   const entryStart = lines.findIndex(
     (line, index) => index > start && index < end && line.startsWith(`${childIndent}${promptID}:`),
@@ -77,33 +78,6 @@ function buildEntryText(
   const entryEnd = getBlockEnd(lines, entryStart, childIndent);
 
   return [...lines.slice(0, entryStart), ...entryLines, ...lines.slice(entryEnd), ''].join('\n');
-}
-
-function buildEntryLines(
-  promptID: PromptID,
-  entry: Readonly<Record<string, string>>,
-  indent: string,
-): readonly string[] {
-  const valueIndent = `${indent}  `;
-  const lines = [`${indent}${promptID}:`];
-
-  for (const [key, value] of Object.entries(entry)) {
-    // A YAML literal block turns each CRLF into LF and cannot hold edge whitespace as written.
-    if (!value.includes('\n') || /^\s|\s$|\r/u.test(value)) {
-      lines.push(`${valueIndent}${key}: ${JSON.stringify(value)}`);
-      continue;
-    }
-
-    lines.push(`${valueIndent}${key}: |-`);
-
-    for (const line of value.split('\n')) {
-      const indented = line === '' ? '' : `${valueIndent}  ${line}`;
-
-      lines.push(indented);
-    }
-  }
-
-  return lines;
 }
 
 function getBlockEnd(lines: readonly string[], start: number, indent: string): number {
