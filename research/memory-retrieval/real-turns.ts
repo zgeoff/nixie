@@ -5,18 +5,19 @@
 //   bun real-turns.ts stats  --plain <dir>
 //   bun real-turns.ts replay --plain <dir> [--names <file>]
 //   bun real-turns.ts sample --plain <dir> --out <file> [--size <n>]
-//   bun real-turns.ts cases  --plain <dir> --labels <file> --key <file> --out <file>
-//   bun real-turns.ts score  --plain <dir> [--labels <file> --key <file>] [--names <file>] [--encoders <a,b>] [--out <file>]
+//   bun real-turns.ts cases  --plain <dir> --labels <file> --key <file> --sample <file> --out <file>
+//   bun real-turns.ts score  --plain <dir> [--labels <file> --key <file> --sample <file>] [--names <file>] [--encoders <a,b>] [--out <file>]
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import type { TurnCase } from './real-turns/build-turn-cases.ts';
-import type { BuiltGold } from './real-turns/build-gold.ts';
+import type { BuiltGold, SampleKey } from './real-turns/build-gold.ts';
 import { buildGold } from './real-turns/build-gold.ts';
 import { buildKeyPath } from './real-turns/build-key-path.ts';
 import { buildTurnCases } from './real-turns/build-turn-cases.ts';
 import type { EncoderName } from './real-turns/load-turn-encoder.ts';
 import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
-import { buildSample } from './real-turns/build-sample.ts';
+import { buildSample, sampleTurnSchema } from './real-turns/build-sample.ts';
+import { pickCurrentLabels } from './real-turns/pick-current-labels.ts';
 import { parseEncoderNames } from './real-turns/parse-encoder-names.ts';
 import { readPlainExport } from './real-turns/read-plain-export.ts';
 // @boundaries-ignore a spike imports the code it measures
@@ -25,7 +26,7 @@ import { buildRanker, SHIPPED } from './real-turns/rank-turn.ts';
 import { readJSONLines } from './real-turns/read-json-lines.ts';
 import { buildScoreReport } from './real-turns/build-score-report.ts';
 import { pickScoredTurns } from './real-turns/pick-scored-turns.ts';
-import type { Gold } from './real-turns/score-turns.ts';
+import type { Gold, Label } from './real-turns/score-turns.ts';
 import { buildRuns, labelSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
 
 const { positionals, values } = parseArgs({
@@ -36,6 +37,7 @@ const { positionals, values } = parseArgs({
     out: { type: 'string' },
     labels: { type: 'string' },
     key: { type: 'string' },
+    sample: { type: 'string' },
     size: { type: 'string' },
     encoders: { type: 'string' },
   },
@@ -132,13 +134,7 @@ async function runReplay(turns: TurnCase[]): Promise<void> {
 }
 
 async function runScore(turns: TurnCase[]): Promise<void> {
-  const labels = values.labels === undefined ? [] : await readJSONLines(resolve(values.labels), labelSchema);
-  const keys = values.key === undefined ? [] : await readJSONLines(resolve(values.key), sampleKeySchema);
-
-  if (labels.length > 0 && keys.length === 0) {
-    throw new Error('pass --key <file>, the key file written beside the labelled sample');
-  }
-
+  const { labels, keys } = values.labels === undefined ? { labels: [], keys: [] } : await readLabels(turns);
   const gold = getGold(buildGold(turns, labels, keys));
   const encoders = parseEncoderNames(values.encoders ?? 'leaf-ir-q8');
 
@@ -166,6 +162,26 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   }
 }
 
+// Reads the labels with the key and the sample they were made from, and drops each label whose
+// rebuilt query differs from the message the labeller saw.
+async function readLabels(turns: TurnCase[]): Promise<{ labels: Label[]; keys: SampleKey[] }> {
+  if (values.labels === undefined || values.key === undefined || values.sample === undefined) {
+    throw new Error('pass --labels <file> with --key <file> and --sample <file>, the sample the labels were made from');
+  }
+
+  const [labels, keys, samples] = await Promise.all([
+    readJSONLines(resolve(values.labels), labelSchema),
+    readJSONLines(resolve(values.key), sampleKeySchema),
+    readJSONLines(resolve(values.sample), sampleTurnSchema),
+  ]);
+
+  const current = pickCurrentLabels(turns, labels, samples);
+
+  console.log({ labels: labels.length, staleLabels: current.stale.length });
+
+  return { labels: current.labels, keys };
+}
+
 function getGold(built: BuiltGold): Map<string, Gold> {
   if ('unknownRefs' in built) {
     throw new Error(
@@ -179,12 +195,11 @@ function getGold(built: BuiltGold): Map<string, Gold> {
 // Writes the test set: each labelled turn with its message, what its retrieval logged, its ratings,
 // and the items the labels name.
 async function writeTestSet(turns: TurnCase[]): Promise<void> {
-  if (values.labels === undefined || values.key === undefined || values.out === undefined) {
-    throw new Error('pass --labels <file>, --key <file> and --out <file>');
+  if (values.out === undefined) {
+    throw new Error('pass --out <file> for the test set');
   }
 
-  const labels = await readJSONLines(resolve(values.labels), labelSchema);
-  const keys = await readJSONLines(resolve(values.key), sampleKeySchema);
+  const { labels, keys } = await readLabels(turns);
   const gold = getGold(buildGold(turns, labels, keys));
 
   const lines = turns.flatMap((turn) => {
