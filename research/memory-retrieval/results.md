@@ -93,8 +93,9 @@ second, so rebuilding it at start is no obstacle at personal scale.
 ## Untested
 
 - **Questions the owner writes.** Every item and question here is synthetic, written by one author
-  who saw the items, so the type mix and the scores carry that bias. The owner-written questions
-  over the owner's own memory remain to run, and they decide whether embeddings earn their place.
+  who saw the items, so the type mix and the scores carry that bias. The
+  [real-turn run](real-turns.md) measures retrieval on the owner's own turns instead of written
+  questions.
 - Keywords written by a model that has not seen the items.
 - Retrieval over the event log's past conversation, beyond build and query time on synthetic text.
 - A cross-encoder or a model reranking the top results.

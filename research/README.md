@@ -32,7 +32,7 @@ lists the variable.
 | [imp-worker-start](imp-worker-start/)                 | imp create and wake, and the SDK's first token inside an imp against the host                      |
 | [mastra-connect](mastra-connect/)                     | a reading spike on Mastra Connect's connector model, with the ideas worth adapting                 |
 | [mcp-proxy-pin](mcp-proxy-pin/)                       | hash pinning, effect declarations and output checks on the v2 MCP packages                         |
-| [memory-retrieval](memory-retrieval/)                 | keyword search, BM25 and local embeddings over synthetic memory, and where they part               |
+| [memory-retrieval](memory-retrieval/)                 | keyword search, BM25 and local embeddings, on synthetic memory and on one deployment's own turns   |
 | [model-eval](model-eval/)                             | persona, invented memory, tool honesty, cost and latency per model                                 |
 | [paste-spans](paste-spans/)                           | which spans of a message you pasted, kept right through edits                                      |
 | [policy-rules](policy-rules/)                         | one decision per call whatever the rule order, a stable snapshot hash, and prompts by cause        |
