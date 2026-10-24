@@ -1,8 +1,6 @@
 // One live Agent SDK process for a whole call: each turn sends the caller's words on a prompt queue
 // that stays open, and streams the reply's text as it arrives.
 import { once } from 'node:events';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type {
   McpSdkServerConfigWithInstance,
@@ -24,12 +22,16 @@ export interface AgentTurn extends ResultFields {
 export interface AgentSessionOptions {
   allowedTools: string[];
   effort: 'low' | 'medium';
+  env: Record<string, string>;
   model: string;
   // The Agent SDK's entry point, which starts the CLI process the session talks to.
   query: typeof query;
+  // An empty folder for the CLI to run and keep its config in, so no file of the caller's reaches it.
+  scratchDir: string;
   systemPrompt: string;
   thinking?: ThinkingConfig;
   tools?: McpSdkServerConfigWithInstance;
+  writeLog: (line: string) => void;
 }
 
 export function startAgentSession(options: AgentSessionOptions): {
@@ -100,15 +102,14 @@ async function* sendQueued(stream: Stream): AsyncGenerator<SDKUserMessage> {
 }
 
 function buildOptions(options: AgentSessionOptions): Options {
-  const scratch = mkdtempSync(join(tmpdir(), 'voice-reply-'));
   return {
     allowedTools: options.allowedTools,
-    cwd: scratch,
+    cwd: options.scratchDir,
     effort: options.effort,
     env: {
-      ...pickEnv(),
+      ...options.env,
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
-      CLAUDE_CONFIG_DIR: join(scratch, 'config'),
+      CLAUDE_CONFIG_DIR: join(options.scratchDir, 'config'),
     },
     includePartialMessages: true,
     // A tool turn takes a call and an answer; the cap only stops a runaway loop.
@@ -119,32 +120,11 @@ function buildOptions(options: AgentSessionOptions): Options {
     permissionPrompts: 'none',
     settingSources: [],
     stderr: (data) => {
-      process.stderr.write(`[stderr] ${data}`);
+      options.writeLog(`[stderr] ${data}`);
     },
     strictMcpConfig: true,
     systemPrompt: { prompt: options.systemPrompt, snapshot: false, type: 'custom' },
     ...(options.thinking === undefined ? {} : { thinking: options.thinking }),
     tools: [],
   };
-}
-
-// The credential and the network settings the CLI needs, and nothing else from this shell.
-function pickEnv(): Record<string, string> {
-  const keys = [
-    'ANTHROPIC_API_KEY',
-    'CLAUDE_CODE_OAUTH_TOKEN',
-    'HOME',
-    'HTTPS_PROXY',
-    'NODE_EXTRA_CA_CERTS',
-    'NODE_USE_ENV_PROXY',
-    'NO_PROXY',
-    'PATH',
-    'SSL_CERT_FILE',
-    'https_proxy',
-    'no_proxy',
-  ];
-  return Object.fromEntries(keys.flatMap((key) => {
-    const value = process.env[key];
-    return value === undefined ? [] : [[key, value]];
-  }));
 }

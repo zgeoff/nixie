@@ -5,8 +5,8 @@
 //   [--persona results/persona.md] [--limit <n>] [--replace]
 // The key comes on stdin, so it never reaches the command line or a file. GPT-Live hands real
 // requests to nixie's Claude turn, which runs on the broker's credential like the pipelines.
-import { mkdirSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
-import { loadavg } from 'node:os';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
+import { loadavg, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { query } from '@anthropic-ai/claude-agent-sdk';
@@ -19,6 +19,7 @@ import { findSoundSpan } from './find-sound-span.ts';
 import { planPlayback } from './plan-playback.ts';
 import type { ReplyRecord } from './reply-record.ts';
 import { openVendorSocket } from './open-vendor-socket.ts';
+import { pickAgentEnv } from './pick-agent-env.ts';
 import { reserveOutput } from './reserve-output.ts';
 import { soundThreshold } from './sound-threshold.ts';
 import { sampleRate } from './speech.ts';
@@ -93,11 +94,14 @@ for (let round = 0; round < rounds; round++) {
       ? startAgentSession({
           allowedTools: voiceToolNames,
           effort: 'low',
+          env: pickAgentEnv(process.env),
           model: 'claude-sonnet-5-5',
           query,
+          scratchDir: mkdtempSync(join(tmpdir(), 'voice-reply-')),
           systemPrompt: `${persona}\n\nYou answer for a voice assistant, which speaks your reply. Answer in one or two short spoken sentences, with no lists and no markdown.`,
           thinking: { display: 'omitted', type: 'adaptive' },
           tools: createVoiceTools(),
+          writeLog: (line) => process.stderr.write(line),
         })
       : undefined;
   for (const turnLine of turnLines) {

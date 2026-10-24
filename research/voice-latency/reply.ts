@@ -5,8 +5,8 @@
 //   [--persona results/persona.md] [--gap-tolerance-ms 150] [--limit <n>] [--replace]
 // The persona is nixie's own, read from the deployment's definitions into a git-ignored file. A
 // broker that adds the Cloudflare key leaves --cloudflare-token empty.
-import { mkdirSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
-import { loadavg } from 'node:os';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
+import { loadavg, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { query } from '@anthropic-ai/claude-agent-sdk';
@@ -19,6 +19,7 @@ import type { OpenerName } from './create-opener-picker.ts';
 import { createOpenerPicker, openerName, openers } from './create-opener-picker.ts';
 import { createVoiceTools, voiceToolNames } from './create-voice-tools.ts';
 import { listenToCaller } from './listen.ts';
+import { pickAgentEnv } from './pick-agent-env.ts';
 import type { PlayedClip } from './plan-playback.ts';
 import { planPlayback } from './plan-playback.ts';
 import type { ReplyRecord } from './reply-record.ts';
@@ -137,11 +138,14 @@ for (let round = 0; round < rounds; round++) {
   const session = startAgentSession({
     allowedTools: voiceToolNames,
     effort: setup.effort,
+    env: pickAgentEnv(process.env),
     model: setup.model,
     query,
+    scratchDir: mkdtempSync(join(tmpdir(), 'voice-reply-')),
     systemPrompt: `${persona}\n\n${setup.voiceRules}`,
     ...(setup.thinking === undefined ? {} : { thinking: setup.thinking }),
     tools: createVoiceTools(),
+    writeLog: (line) => process.stderr.write(line),
   });
   // The first turn starts the process, so its time is per call, not per turn, and goes unrecorded.
   await session.runTurn('Say hello in one short sentence.', () => undefined);
