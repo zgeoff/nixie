@@ -17,7 +17,6 @@ export interface NotedPromptAnswer {
   readonly detail: PromptProposalAnswerEvent;
 }
 
-const readLimit = 1000;
 const closingPayload = z.object({ proposalID: z.string() });
 
 export async function readPromptProposalAnswers(
@@ -25,13 +24,7 @@ export async function readPromptProposalAnswers(
   thread: string,
   range: PromptAnswerRange,
 ): Promise<readonly NotedPromptAnswer[]> {
-  const records = await readRecords(log, {
-    afterSequence: range.after,
-    beforeSequence: range.through + 1,
-    thread,
-    kinds: [...promptProposalOutcomes.keys()],
-    limit: readLimit,
-  });
+  const records = await readAnswerRecords(log, thread, range);
 
   const proposals = await readPromptProposals(
     log.writer.db,
@@ -74,4 +67,35 @@ export async function readPromptProposalAnswers(
       },
     ];
   });
+}
+
+type AnswerRecords = Awaited<ReturnType<typeof readRecords>>;
+
+const readLimit = 1000;
+
+async function readAnswerRecords(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  thread: string,
+  range: PromptAnswerRange,
+): Promise<AnswerRecords> {
+  const page = await readRecords(log, {
+    afterSequence: range.after,
+    beforeSequence: range.through + 1,
+    thread,
+    kinds: [...promptProposalOutcomes.keys()],
+    limit: readLimit,
+  });
+
+  const last = page.at(-1);
+
+  if (page.length < readLimit || last === undefined) {
+    return page;
+  }
+
+  const rest = await readAnswerRecords(log, thread, {
+    after: last.record.sequence,
+    through: range.through,
+  });
+
+  return [...page, ...rest];
 }
