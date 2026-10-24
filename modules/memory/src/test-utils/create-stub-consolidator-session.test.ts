@@ -27,6 +27,7 @@ test('it stages the diff into the open run, bound to the versions shown, and end
     systemPrompt: '',
     prompt: '',
     signal: new AbortController().signal,
+    stepRunID: 'memory-consolidator:1@1',
   });
 
   expect(run.close()).toStrictEqual([
@@ -93,6 +94,7 @@ test('it stages the summary it is given beside an empty diff', async () => {
     systemPrompt: '',
     prompt: '',
     signal: new AbortController().signal,
+    stepRunID: 'memory-consolidator:1@1',
   });
 
   expect(run.readSummary()).toBe('Two items about tea conflict.');

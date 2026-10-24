@@ -32,6 +32,7 @@ test('it stages the write into the open batch, bound to the version shown, and e
     systemPrompt: '',
     prompt: '',
     signal: new AbortController().signal,
+    stepRunID: 'memory-writer:1@1',
   });
 
   expect(batch.close()).toStrictEqual([
@@ -81,6 +82,7 @@ test('it flags a possible self-note into the open batch, and stages no write', a
     systemPrompt: '',
     prompt: '',
     signal: new AbortController().signal,
+    stepRunID: 'memory-writer:1@1',
   });
 
   expect(batch.readFlags()).toStrictEqual([
