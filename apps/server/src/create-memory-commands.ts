@@ -1,27 +1,32 @@
 import type { HostContractInputs } from '@heynixie/contract';
-import { resolveSocketPath } from './resolve-socket-path';
-import { sendHostRequest } from './send-host-request';
-import type { CLIFlags, CLIIO, Command } from './types';
+import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
 
-export function createMemoryCommands(): readonly (readonly [string, Command])[] {
+export function createMemoryCommands(host: HostTransport): readonly (readonly [string, Command])[] {
   return [
-    ['memory-pending', (flags, io) => runMemoryPending(flags.config, io)],
-    ['memory-approve', makeMemoryAnswer('approve')],
-    ['memory-reject', makeMemoryAnswer('reject')],
-    ['memory-show', (flags, io, args) => runMemoryShow(flags.config, io, args)],
-    ['memory-edit', runMemoryEdit],
-    ['memory-retire', makeMemoryVersionChange('retire')],
-    ['memory-restore', makeMemoryVersionChange('restore')],
-    ['memory-forget', makeMemoryVersionChange('forget')],
-    ['memory-pin', makeMemoryPin(true)],
-    ['memory-unpin', makeMemoryPin(false)],
+    ['memory-pending', (flags, io) => runMemoryPending(host, flags.config, io)],
+    ['memory-approve', makeMemoryAnswer(host, 'approve')],
+    ['memory-reject', makeMemoryAnswer(host, 'reject')],
+    [
+      'memory-show',
+      (flags, io, args) => runMemoryShow(host, { configPath: flags.config, io, args }),
+    ],
+    ['memory-edit', (flags, io, args) => runMemoryEdit(host, { flags, io, args })],
+    ['memory-retire', makeMemoryVersionChange(host, 'retire')],
+    ['memory-restore', makeMemoryVersionChange(host, 'restore')],
+    ['memory-forget', makeMemoryVersionChange(host, 'forget')],
+    ['memory-pin', makeMemoryPin(host, true)],
+    ['memory-unpin', makeMemoryPin(host, false)],
   ];
 }
 
-async function runMemoryPending(configPath: string, io: CLIIO): Promise<number> {
-  const socketPath = await resolveSocketPath(configPath);
+async function runMemoryPending(
+  host: HostTransport,
+  configPath: string,
+  io: CLIIO,
+): Promise<number> {
+  const socketPath = await host.resolveSocketPath(configPath);
 
-  const pending = await sendHostRequest(socketPath, 'memory pending', (client) =>
+  const pending = await host.sendHostRequest(socketPath, 'memory pending', (client) =>
     client.memory.proposals.list(),
   );
 
@@ -30,7 +35,7 @@ async function runMemoryPending(configPath: string, io: CLIIO): Promise<number> 
   return 0;
 }
 
-function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
+function makeMemoryAnswer(host: HostTransport, command: 'approve' | 'reject'): Command {
   return async (flags, io, args) => {
     const request = buildAnswerRequest(command, args[0], flags);
 
@@ -45,9 +50,9 @@ function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
       return 2;
     }
 
-    const socketPath = await resolveSocketPath(flags.config);
+    const socketPath = await host.resolveSocketPath(flags.config);
 
-    const answer = await sendHostRequest<unknown>(socketPath, `memory ${command}`, (client) =>
+    const answer = await host.sendHostRequest<unknown>(socketPath, `memory ${command}`, (client) =>
       request.command === 'reject'
         ? client.memory.proposals.reject(request.answer)
         : client.memory.proposals.approve(request.answer),
@@ -116,54 +121,64 @@ function parseVersionTarget(flag: string): { itemID: string; version: number } |
     : { itemID: flag.slice(0, at), version: Number(version) };
 }
 
-async function runMemoryShow(
-  configPath: string,
-  io: CLIIO,
-  args: readonly string[],
-): Promise<number> {
-  const [itemID] = args;
+interface MemoryShowCall {
+  readonly configPath: string;
+  readonly io: CLIIO;
+  readonly args: readonly string[];
+}
+
+async function runMemoryShow(host: HostTransport, call: MemoryShowCall): Promise<number> {
+  const [itemID] = call.args;
 
   if (itemID === undefined) {
-    io.print('nixie memory-show takes an item ID');
+    call.io.print('nixie memory-show takes an item ID');
 
     return 2;
   }
 
-  const socketPath = await resolveSocketPath(configPath);
+  const socketPath = await host.resolveSocketPath(call.configPath);
 
-  const history = await sendHostRequest(socketPath, 'memory show', (client) =>
+  const history = await host.sendHostRequest(socketPath, 'memory show', (client) =>
     client.memory.items.read({ itemID }),
   );
 
-  io.print(JSON.stringify(history));
+  call.io.print(JSON.stringify(history));
 
   return 0;
 }
 
-async function runMemoryEdit(flags: CLIFlags, io: CLIIO, args: readonly string[]): Promise<number> {
-  const [flag] = args;
-  const target = flag === undefined ? null : parseVersionTarget(flag);
+interface MemoryEditCall {
+  readonly flags: CLIFlags;
+  readonly io: CLIIO;
+  readonly args: readonly string[];
+}
 
-  if (target === null || flags.text === undefined) {
-    io.print('nixie memory-edit takes <itemID>@<version> and --text <new text>');
+async function runMemoryEdit(host: HostTransport, call: MemoryEditCall): Promise<number> {
+  const [flag] = call.args;
+  const target = flag === undefined ? null : parseVersionTarget(flag);
+  const text = call.flags.text;
+
+  if (target === null || text === undefined) {
+    call.io.print('nixie memory-edit takes <itemID>@<version> and --text <new text>');
 
     return 2;
   }
 
-  const socketPath = await resolveSocketPath(flags.config);
+  const socketPath = await host.resolveSocketPath(call.flags.config);
 
-  const text = flags.text;
-
-  const ref = await sendHostRequest(socketPath, 'memory edit', (client) =>
+  const ref = await host.sendHostRequest(socketPath, 'memory edit', (client) =>
     client.memory.items.edit({ ...target, text }),
   );
 
-  io.print(JSON.stringify(ref));
+  call.io.print(JSON.stringify(ref));
 
   return 0;
 }
 
-function makeMemoryVersionChange(command: 'retire' | 'restore' | 'forget'): Command {
+function makeMemoryVersionChange(
+  host: HostTransport,
+  command: 'retire' | 'restore' | 'forget',
+): Command {
   return async (flags, io, args) => {
     const [flag] = args;
     const target = flag === undefined ? null : parseVersionTarget(flag);
@@ -174,9 +189,9 @@ function makeMemoryVersionChange(command: 'retire' | 'restore' | 'forget'): Comm
       return 2;
     }
 
-    const socketPath = await resolveSocketPath(flags.config);
+    const socketPath = await host.resolveSocketPath(flags.config);
 
-    const ref = await sendHostRequest(socketPath, `memory ${command}`, (client) =>
+    const ref = await host.sendHostRequest(socketPath, `memory ${command}`, (client) =>
       client.memory.items[command](target),
     );
 
@@ -186,7 +201,7 @@ function makeMemoryVersionChange(command: 'retire' | 'restore' | 'forget'): Comm
   };
 }
 
-function makeMemoryPin(isPinned: boolean): Command {
+function makeMemoryPin(host: HostTransport, isPinned: boolean): Command {
   return async (flags, io, args) => {
     const [itemID] = args;
 
@@ -196,9 +211,9 @@ function makeMemoryPin(isPinned: boolean): Command {
       return 2;
     }
 
-    const socketPath = await resolveSocketPath(flags.config);
+    const socketPath = await host.resolveSocketPath(flags.config);
 
-    const pinned = await sendHostRequest(socketPath, 'memory pin', (client) =>
+    const pinned = await host.sendHostRequest(socketPath, 'memory pin', (client) =>
       client.memory.items.pin({ itemID, isPinned }),
     );
 

@@ -5,6 +5,8 @@ import { checkSkillFiles } from '@heynixie/definitions';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { createSkillCommands } from './create-skill-commands';
+import { readCLIArgs } from './read-cli-args';
 import { runCLI } from './run-cli';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
@@ -523,6 +525,41 @@ test('it refuses a rejection with no --reason, and reaches no server', async () 
   expect(io.print).toHaveBeenCalledExactlyOnceWith(
     'nixie skill-reject takes a proposal ID, --hash <skill hash> and --reason <why>',
   );
+});
+
+test('it sends the pending request to the socket of the config over the host transport it is given', async () => {
+  const host = {
+    resolveSocketPath: mock(() => Promise.resolve('/run/nixie/control.sock')),
+    sendHostRequest: mock().mockResolvedValue([]),
+  };
+
+  const commands = new Map(createSkillCommands(host));
+
+  const parsed = await readCLIArgs(
+    ['skill-pending', '--config', '/etc/nixie/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
+
+  expect(exitCode).toBe(0);
+  expect(host.resolveSocketPath).toHaveBeenCalledExactlyOnceWith('/etc/nixie/config.yaml');
+
+  expect(host.sendHostRequest).toHaveBeenCalledExactlyOnceWith(
+    '/run/nixie/control.sock',
+    'skill pending',
+    expect.any(Function),
+  );
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith('[]');
 });
 
 test('it refuses a resolve that keeps neither side, and reaches no server', async () => {

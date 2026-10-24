@@ -1,6 +1,9 @@
 import { expect, mock, test } from 'bun:test';
 import { waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { createMemoryCommands } from './create-memory-commands';
+import { readCLIArgs } from './read-cli-args';
 import { runCLI } from './run-cli';
 import { createApprovedItems } from './test-utils/create-approved-items';
 import { createTestClient } from './test-utils/create-test-client';
@@ -269,6 +272,41 @@ test('it runs the turn after memory-forget on a rebuilt session without the item
     { kind: 'memory.forgotten', payload: { itemID: lock.itemID } },
     { kind: 'model.session_opened', payload: { kind: 'rebuild', reason: 'forget' } },
   ]);
+});
+
+test('it sends the pending request to the socket of the config over the host transport it is given', async () => {
+  const host = {
+    resolveSocketPath: mock(() => Promise.resolve('/run/nixie/control.sock')),
+    sendHostRequest: mock().mockResolvedValue([]),
+  };
+
+  const commands = new Map(createMemoryCommands(host));
+
+  const parsed = await readCLIArgs(
+    ['memory-pending', '--config', '/etc/nixie/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
+
+  expect(exitCode).toBe(0);
+  expect(host.resolveSocketPath).toHaveBeenCalledExactlyOnceWith('/etc/nixie/config.yaml');
+
+  expect(host.sendHostRequest).toHaveBeenCalledExactlyOnceWith(
+    '/run/nixie/control.sock',
+    'memory pending',
+    expect.any(Function),
+  );
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith('[]');
 });
 
 test.each([

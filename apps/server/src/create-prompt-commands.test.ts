@@ -119,7 +119,7 @@ test('it lists a prompt proposal, approves it into a pull request, and the next 
 test('it sends the pending request to the socket of the config over the host transport it is given', async () => {
   const host = {
     resolveSocketPath: mock(() => Promise.resolve('/run/nixie/control.sock')),
-    sendHostRequest: mock(() => Promise.resolve([])),
+    sendHostRequest: mock().mockResolvedValue([]),
   };
 
   const commands = new Map(createPromptCommands(host));

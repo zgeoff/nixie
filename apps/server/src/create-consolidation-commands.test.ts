@@ -9,6 +9,8 @@ import {
   startTestMemory,
 } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
+import { createConsolidationCommands } from './create-consolidation-commands';
+import { readCLIArgs } from './read-cli-args';
 import { runCLI } from './run-cli';
 import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
@@ -223,6 +225,41 @@ test('it prints the summary alone when the run proposed no change', async () => 
     changes: [],
     summary: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
   });
+});
+
+test('it sends the diff request to the socket of the config over the host transport it is given', async () => {
+  const host = {
+    resolveSocketPath: mock(() => Promise.resolve('/run/nixie/control.sock')),
+    sendHostRequest: mock().mockResolvedValue({ changes: [] }),
+  };
+
+  const commands = new Map(createConsolidationCommands(host));
+
+  const parsed = await readCLIArgs(
+    ['memory-diff', '--config', '/etc/nixie/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
+
+  expect(exitCode).toBe(0);
+  expect(host.resolveSocketPath).toHaveBeenCalledExactlyOnceWith('/etc/nixie/config.yaml');
+
+  expect(host.sendHostRequest).toHaveBeenCalledExactlyOnceWith(
+    '/run/nixie/control.sock',
+    'memory diff',
+    expect.any(Function),
+  );
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith('{"changes":[]}');
 });
 
 test('it approves the whole diff when it names every change', async () => {

@@ -1,9 +1,7 @@
-import { resolveSocketPath } from './resolve-socket-path';
-import { sendHostRequest } from './send-host-request';
-import type { CLIFlags, CLIIO, Command } from './types';
+import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
 
-export function buildResetCommands(): readonly (readonly [string, Command])[] {
-  return [['reset', runReset]];
+export function createResetCommands(host: HostTransport): readonly (readonly [string, Command])[] {
+  return [['reset', (flags, io) => runReset(host, flags, io)]];
 }
 
 const backupNote = 'Backups from before the reset still hold the old data until they age out.';
@@ -14,7 +12,7 @@ const resetWarning = [
   backupNote,
 ].join('\n');
 
-async function runReset(flags: CLIFlags, io: CLIIO): Promise<number> {
+async function runReset(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
   if (!flags['keep-sessions']) {
     io.print(
       `nixie reset runs only with --keep-sessions, which keeps every device that is signed in now signed in.\n${resetWarning}`,
@@ -29,8 +27,8 @@ async function runReset(flags: CLIFlags, io: CLIIO): Promise<number> {
     return 2;
   }
 
-  const socketPath = await resolveSocketPath(flags.config);
-  const reset = await sendHostRequest(socketPath, 'reset', (client) => client.reset());
+  const socketPath = await host.resolveSocketPath(flags.config);
+  const reset = await host.sendHostRequest(socketPath, 'reset', (client) => client.reset());
 
   io.print(
     [
