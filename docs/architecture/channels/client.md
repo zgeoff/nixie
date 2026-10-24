@@ -30,10 +30,11 @@ change state; and the live stream of log records.
 - **The live stream.** A conversation read returns a page of records with the log sequence it read
   at. The client follows the log from that sequence, and each streamed event's ID is its record's
   sequence, so a reconnect resumes with no gap and no repeat. A `log_reset` record on the stream
-  means the [reset](../core/event-log.md#the-reset) removed every record before it, so the client
-  drops what it read before that record and reads its queries again. The conversation shows the
-  record as a rule across the feed with the time of the reset in the user's own time zone. The
-  server restarts after a reset, so the client reads them once more when the stream next connects.
+  means the [reset](../core/event-log.md#the-reset) removed every record before it, or a reset of
+  the conversation shredded every record before it on the thread, so the client drops what it read
+  before that record and reads its queries again. The conversation shows the record as a rule across
+  the feed with the time of the reset in the user's own time zone. The server restarts after a
+  reset, so the client reads them once more when the stream next connects.
 
 A client renders a record by its kind, and shows a kind it does not know by its name. Beside its
 kind, a record carries what a client shows of it: a message's text, the task and step of a task
@@ -148,9 +149,11 @@ closes an open value without scrolling back to find the control.
 Each message carries a forget control, which first asks and forgets only on the confirm. A
 confirmation keeps one client action ID, so a confirm that fails and goes again forgets once. A
 forget that fails after its start record dropped the text keeps its control and its error, so the
-user can confirm again and finish the cleanup. A forgotten message keeps its place as a gap with no
-text, and the view drops a message's text when a forget record that names it arrives, so every
-device shows the gap.
+user can confirm again and finish the cleanup. Any other message with no text leaves the view, with
+no placeholder, whether a forget or a
+[reset of the conversation](../core/event-log.md#resetting-the-conversation) shredded it. The view
+drops a message's text when a forget record that names it arrives, so the message leaves the view on
+every device.
 
 A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
 web text, so the renderer never turns raw HTML into markup, shows a link with an unsafe protocol

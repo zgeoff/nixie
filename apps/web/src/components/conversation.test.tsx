@@ -378,7 +378,7 @@ test('it keeps a failed forget and its retry once the forget start drops the tex
   await ctx.user.click(rendered.getByRole('button', { name: 'Forget for good' }));
 
   await waitFor(() => {
-    expect(rendered.getByText('Forgotten')).toBeVisible();
+    expect(rendered.queryByText('The shed code is 4417.')).toBeNull();
     expect(rendered.getByText('The forget did not finish. Try again.')).toBeVisible();
   });
 
@@ -434,9 +434,27 @@ test('it never shows the text of a message you sent and then forgot', async () =
     expect(rendered.queryByRole('group', { name: 'Forget this message' })).toBeNull();
   });
 
-  expect(rendered.getByRole('list', { name: 'Conversation' })).toHaveTextContent('You Forgotten');
+  expect(rendered.queryByText('You')).toBeNull();
   expect(rendered.queryByText('The gate code is 2290.')).toBeNull();
   expect(rendered.queryByRole('status')).toBeNull();
+});
+
+test('it shows no placeholder for a message or a reply whose text is shredded', async () => {
+  await createDeviceSession();
+
+  await store.records.create({ kind: 'owner_message' });
+  await store.records.create({ kind: 'model.reply' });
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the ferry on time?' } });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  await rendered.findByText('Is the ferry on time?');
+
+  const items = within(rendered.getByRole('list', { name: 'Conversation' })).getAllByRole(
+    'listitem',
+  );
+
+  expect(items.map((item) => item.textContent)).toStrictEqual(['You Is the ferry on time?Forget']);
 });
 
 test('it shows an unsent message as not sent', async () => {
