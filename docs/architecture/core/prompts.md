@@ -52,6 +52,39 @@ the prompt's own paths and each part before it, and the template accepts every p
 seed checks an override against. The result counts as the user's data, because nixie ships the
 built-in text and the user's definitions hold every override.
 
+## Overrides that the model proposes
+
+When the definitions export is configured, the conversation's tool endpoint also serves
+`prompt_write`, which proposes an override of one prompt: its entry in the `prompts:` map, the part
+files the entry reads, and a reason for the user. Without the export, an approved override has no
+way into the definitions, so the model gets no tool to propose one. A proposal goes through the same
+checks as the seed's parse of the `prompts:` map, plus the rules for the files themselves: each sits
+under `prompts/`, the entry reads it, and it fits the seed's file size limit. A proposal that fails
+any check returns every problem to the model and records nothing. A proposal that passes becomes a
+record on the caller's thread with a short ID, and a proposal may replace or drop the `safety` part.
+
+The prompts module runs the definitions parse as a check that its caller passes in, because the
+definitions module already imports the prompts module and the reverse import would form a cycle. The
+server passes the definitions module's prompt check to the tool and to the host procedures, and it
+builds the event kind that turns each answer into a turn note for the same reason.
+
+The user answers through the prompt host commands, which list each pending proposal beside the
+override in force and the proposal hash that an answer names. The server refuses an answer under
+another hash, to a proposal that an answer or a lapse closed, and an approval of a proposal whose
+base, the override in force when the model proposed, has moved. An approval may carry the user's
+edits to the entry and the files, and the server runs the same checks on the approved version as on
+the proposal. A proposal with no answer lapses after the shared proposal lapse period, and the lapse
+sweep closes it.
+
+An approval leaves the prompt as it is in force and records the approved version as the prompt's
+current approval, superseding the one before. The [definitions export](./definitions.md) then opens
+a pull request on the prompt's branch with the part files and the prompt's entry in `nixie.yaml`,
+and moves `nixie.yaml` to format 3 when the base branch holds an older format. The pull request's
+body holds the reason and a note when the override replaces or drops the `safety` part. The override
+goes into force with the seed after the pull request merges and `live` is promoted. Each answer and
+each opened pull request reaches the model as a turn note on the proposal's thread, and the note for
+an opened pull request holds its URL.
+
 ## Safety parts and the operator log
 
 A prompt runs without its built-in safety rules when an override replaces its `safety` part, or when

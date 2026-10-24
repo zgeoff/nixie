@@ -89,6 +89,8 @@ test('it prints what the server reset, and that backups still hold the old data'
       context: api.context,
       readMemory: () => null,
       seedWrittenSkills: () => Promise.resolve(),
+      readInForce: () => null,
+      wakeExports: () => {},
       runReset: () =>
         Promise.resolve({
           resetAt: new Date('2026-10-14T09:30:00.000Z'),
@@ -134,6 +136,8 @@ test('it exits 1 when the server fails the reset', async () => {
       context: api.context,
       readMemory: () => null,
       seedWrittenSkills: () => Promise.resolve(),
+      readInForce: () => null,
+      wakeExports: () => {},
       runReset: () => Promise.reject(new Error('the runtime refused the destroy')),
     }),
   });
@@ -220,6 +224,8 @@ test('it pins a self-note from memory-pin', async () => {
       context: api.context,
       readMemory: () => memory.store,
       seedWrittenSkills: () => Promise.resolve(),
+      readInForce: () => null,
+      wakeExports: () => {},
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
     }),
   });
@@ -256,6 +262,8 @@ test('it prints the subject of a self-note from memory-show', async () => {
       context: api.context,
       readMemory: () => memory.store,
       seedWrittenSkills: () => Promise.resolve(),
+      readInForce: () => null,
+      wakeExports: () => {},
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
     }),
   });
@@ -296,6 +304,8 @@ test('it prints the count of each subject from memory-subjects', async () => {
       context: api.context,
       readMemory: () => memory.store,
       seedWrittenSkills: () => Promise.resolve(),
+      readInForce: () => null,
+      wakeExports: () => {},
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
     }),
   });

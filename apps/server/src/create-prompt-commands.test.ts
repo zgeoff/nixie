@@ -1,0 +1,178 @@
+import { expect, mock, test } from 'bun:test';
+import {
+  createMockGitHubRepo,
+  githubAPIURL,
+  githubStore,
+  readMockFiles,
+  writeMockBranchFile,
+} from '@heynixie/definitions-github/mocks';
+import { waitForCondition } from '@heynixie/testing';
+import { z } from 'zod';
+import { runCLI } from './run-cli';
+import { createTestClient } from './test-utils/create-test-client';
+import { runHostCommand } from './test-utils/run-host-command';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
+
+async function setupTest() {
+  const nixie = await startInProcessNixie({
+    extraDefinitions: [
+      'export:',
+      '  repository: harbour/definitions',
+      `  api_url: ${githubAPIURL}`,
+    ],
+    extraSecrets: ['definitions_export_token: token-a'],
+  });
+
+  return nixie;
+}
+
+test('it lists a prompt proposal, approves it into a pull request, and the next turn names the pull request', async () => {
+  await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
+
+  await writeMockBranchFile({
+    repository: 'harbour/definitions',
+    branch: 'main',
+    path: 'nixie.yaml',
+    text: 'format: 3\n',
+  });
+
+  const ctx = await setupTest();
+  const api = await createTestClient(ctx);
+
+  ctx.guest.addReplies(
+    {
+      toolUse: {
+        name: 'prompt_write',
+        input: {
+          id: 'compaction',
+          entry: { safety: 'prompts/compaction-safety.md' },
+          files: [
+            { path: 'prompts/compaction-safety.md', text: 'Answer with the summary alone.\n' },
+          ],
+          reason: 'The summaries ramble past the word target.',
+        },
+      },
+    },
+    { text: 'Proposed.' },
+    { text: 'Noted.' },
+  );
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Make the summaries shorter.',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(async () => {
+    const page = await api.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Proposed.');
+  });
+
+  const listed = await runHostCommand(ctx.configPath, ['prompt-pending']);
+
+  const [{ proposalID, proposalHash }] = z
+    .tuple([z.object({ proposalID: z.string(), proposalHash: z.string() })])
+    .parse(JSON.parse(listed.stdout));
+
+  await runHostCommand(ctx.configPath, ['prompt-approve', proposalID, '--hash', proposalHash]);
+  await waitForCondition(() => githubStore.pulls.all().length > 0);
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Any news on that?',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(async () => {
+    const page = await api.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Noted.');
+  });
+
+  expect(JSON.parse(listed.stdout)).toMatchObject([
+    {
+      proposalID,
+      promptID: 'compaction',
+      entry: { safety: 'prompts/compaction-safety.md' },
+      files: [{ path: 'prompts/compaction-safety.md', text: 'Answer with the summary alone.\n' }],
+      reason: 'The summaries ramble past the word target.',
+      inForce: null,
+      isStale: false,
+    },
+  ]);
+
+  expect(readMockFiles('harbour/definitions', 'nixie/prompt/compaction')).toStrictEqual({
+    'nixie.yaml':
+      'format: 3\nprompts:\n  compaction:\n    safety: "prompts/compaction-safety.md"\n',
+    'prompts/compaction-safety.md': 'Answer with the summary alone.\n',
+  });
+
+  expect(ctx.guest.turns.at(-1)?.input).toMatchObject([
+    {
+      text: expect.toInclude(
+        `opened https://github.test/harbour/definitions/pull/1 with your prompt proposal ${proposalID} (compaction). The override applies after that pull request merges and live is promoted in the definitions repo.`,
+      ),
+    },
+  ]);
+});
+
+test('it refuses a prompt approval with no --hash, and reaches no server', async () => {
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await runCLI(
+    ['prompt-approve', 'p8w2n4c6ld', '--config', '/nonexistent/config.yaml'],
+    io,
+  );
+
+  expect(exitCode).toBe(2);
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(
+    'nixie prompt-approve takes a proposal ID, --hash <proposal hash> and, for an edit, ' +
+      '--entry <JSON map of part to file path, and _template> and ' +
+      '--files <JSON list of path and text>',
+  );
+});
+
+test('it refuses an edited entry that is not a JSON map of strings, and reaches no server', async () => {
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await runCLI(
+    [
+      'prompt-approve',
+      'p8w2n4c6ld',
+      '--hash',
+      'hash-a',
+      '--entry',
+      '{"safety":3}',
+      '--config',
+      '/nonexistent/config.yaml',
+    ],
+    io,
+  );
+
+  expect(exitCode).toBe(2);
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(
+    'nixie prompt-approve takes a proposal ID, --hash <proposal hash> and, for an edit, ' +
+      '--entry <JSON map of part to file path, and _template> and ' +
+      '--files <JSON list of path and text>',
+  );
+});
+
+test('it refuses a prompt rejection with no --reason, and reaches no server', async () => {
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await runCLI(
+    ['prompt-reject', 'p8w2n4c6ld', '--hash', 'hash-a', '--config', '/nonexistent/config.yaml'],
+    io,
+  );
+
+  expect(exitCode).toBe(2);
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(
+    'nixie prompt-reject takes a proposal ID, --hash <proposal hash> and --reason <why>',
+  );
+});

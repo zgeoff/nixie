@@ -77,6 +77,8 @@ export interface CLIFlags {
 
   readonly files?: string;
 
+  readonly entry?: string;
+
   readonly keep?: 'nixie' | 'definitions';
 
   readonly 'keep-sessions': boolean;

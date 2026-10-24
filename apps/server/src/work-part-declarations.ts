@@ -1,6 +1,7 @@
 import { createFirstEnrolmentCode } from '@heynixie/api';
 import { toErrorFields } from '@heynixie/logger';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
+import { startPromptLapseSweep } from '@heynixie/prompts';
 import { startSkillLapseSweep } from '@heynixie/skills';
 import type { RunStep } from '@heynixie/tasks';
 import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
@@ -89,6 +90,23 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         context: parts.context,
         onError: (error) => {
           parts.log('skills.lapse_failed', toErrorFields(error));
+        },
+      });
+
+      await parts.cleanup.defer(() => sweep.stop());
+    },
+  },
+  {
+    name: 'prompt_lapse_sweep',
+    needs: ['server_parts', 'start_record'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+
+      const sweep = startPromptLapseSweep({
+        context: parts.context,
+        clock: parts.context.clock,
+        onError: (error) => {
+          parts.log('prompts.lapse_failed', toErrorFields(error));
         },
       });
 

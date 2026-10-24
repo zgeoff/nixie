@@ -40,6 +40,7 @@ export interface ServerPartValues {
   readonly runners: void;
   readonly seed_poll: void;
   readonly skill_lapse_sweep: void;
+  readonly prompt_lapse_sweep: void;
 
   readonly definitions_exports: DefinitionsExportSweep | null;
   readonly ready: void;

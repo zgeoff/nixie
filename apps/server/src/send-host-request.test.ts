@@ -26,6 +26,8 @@ test('it returns the answer of the procedure it calls on the running server', as
       context: ctx.api.context,
       readMemory: () => null,
       seedWrittenSkills: () => Promise.resolve(),
+      readInForce: () => null,
+      wakeExports: () => {},
       runReset: () =>
         Promise.resolve({
           resetAt: new Date('2026-10-14T09:30:00.000Z'),
@@ -55,6 +57,8 @@ test('it rejects with the status and the reason when the server refuses the requ
       context: ctx.api.context,
       readMemory: () => null,
       seedWrittenSkills: () => Promise.resolve(),
+      readInForce: () => null,
+      wakeExports: () => {},
       runReset: mock(),
     }),
   });

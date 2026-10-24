@@ -16,6 +16,8 @@ test('it answers a host procedure call with its output, dates included', async (
     context: ctx.context,
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
     runReset: () =>
       Promise.resolve({
         resetAt: new Date('2026-10-11T12:15:00.000Z'),
@@ -44,6 +46,8 @@ test('it answers 404 to a request outside the procedures', async () => {
     context: ctx.context,
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
     runReset: mock(),
   });
 
@@ -61,6 +65,8 @@ test('it answers 500 with the reason when a procedure fails', async () => {
     context: ctx.context,
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
     runReset: () => Promise.reject(new Error('the database is locked')),
   });
 
@@ -86,6 +92,8 @@ test('it answers 503 to a memory procedure before the memory store starts', asyn
     context: ctx.context,
     readMemory: () => null,
     seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
     runReset: mock(),
   });
 

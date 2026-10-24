@@ -20,6 +20,8 @@ export async function startTestControlSocket(options: TestControlSocketOptions):
       readMemory: options.readMemory ?? (() => null),
 
       seedWrittenSkills: () => Promise.resolve(),
+      readInForce: () => null,
+      wakeExports: () => {},
       runReset: () => Promise.reject(new Error('no server runs behind the test socket')),
     }),
   });
