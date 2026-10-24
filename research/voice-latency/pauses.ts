@@ -4,14 +4,23 @@
 // Usage: pauses.ts --out <file> [--set real|caller] [--pauses 300,400,500]
 import { appendFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { parseArgs } from 'node:util';
+import { z } from 'zod';
 import { callerDir, lines } from './caller.ts';
 import { classifyUtterance } from './classify-utterance.ts';
 import { realSpeechDir } from './real-speech.ts';
 import { createVad } from './speech.ts';
 
-const out = readFlag('--out') ?? 'results/pauses.jsonl';
-const set = readFlag('--set') ?? 'real';
-const pauses = (readFlag('--pauses') ?? '300,400,500').split(',').map(Number);
+const { values } = parseArgs({
+  options: {
+    out: { default: 'results/pauses.jsonl', type: 'string' },
+    pauses: { default: '300,400,500', type: 'string' },
+    set: { default: 'real', type: 'string' },
+  },
+});
+const out = values.out;
+const set = z.enum(['caller', 'real']).parse(values.set);
+const pauses = z.array(z.coerce.number().int().positive()).parse(values.pauses.split(','));
 
 mkdirSync(dirname(out), { recursive: true });
 const dir = set === 'caller' ? callerDir : realSpeechDir;
