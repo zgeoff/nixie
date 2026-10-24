@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Options, SDKMessage, ThinkingConfig } from '@anthropic-ai/claude-agent-sdk';
 import { createSdkMcpServer, query } from '@anthropic-ai/claude-agent-sdk';
-import { buildQueryOptions, type TurnFrame } from '../../../../../guests/conversation/src/build-query-options';
+import { buildQueryOptions, type TurnFrame } from '../../guests/conversation/src/build-query-options';
 import { startCaptureProxy } from './start-capture-proxy';
 
 type Effort = TurnFrame['profile']['effort'];
