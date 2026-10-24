@@ -9,6 +9,7 @@ import { mkdirSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildRecording } from './build-recording.ts';
@@ -137,6 +138,7 @@ for (let round = 0; round < rounds; round++) {
     allowedTools: voiceToolNames,
     effort: setup.effort,
     model: setup.model,
+    query,
     systemPrompt: `${persona}\n\n${setup.voiceRules}`,
     ...(setup.thinking === undefined ? {} : { thinking: setup.thinking }),
     tools: createVoiceTools(),

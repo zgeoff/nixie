@@ -11,7 +11,7 @@ import type {
   SDKUserMessage,
   ThinkingConfig,
 } from '@anthropic-ai/claude-agent-sdk';
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import type { query } from '@anthropic-ai/claude-agent-sdk';
 import type { ResultFields } from './build-result-fields.ts';
 import { buildResultFields } from './build-result-fields.ts';
 
@@ -25,6 +25,8 @@ export interface AgentSessionOptions {
   allowedTools: string[];
   effort: 'low' | 'medium';
   model: string;
+  // The Agent SDK's entry point, which starts the CLI process the session talks to.
+  query: typeof query;
   systemPrompt: string;
   thinking?: ThinkingConfig;
   tools?: McpSdkServerConfigWithInstance;
@@ -35,7 +37,7 @@ export function startAgentSession(options: AgentSessionOptions): {
   runTurn: (prompt: string, onText: (delta: string, at: number) => void) => Promise<AgentTurn>;
 } {
   const stream: Stream = { closed: false, events: new EventTarget(), queue: [] };
-  const session = query({ options: buildOptions(options), prompt: sendQueued(stream) });
+  const session = options.query({ options: buildOptions(options), prompt: sendQueued(stream) });
   const messages = session[Symbol.asyncIterator]();
   let sessionCostUSD = 0;
   return {
