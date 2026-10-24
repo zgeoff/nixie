@@ -48,7 +48,7 @@ test('it logs a skill export that fails at the error level', async () => {
 
   await runHostCommand(nixie.configPath, ['skill-approve', proposalID, '--hash', skillHash]);
 
-  const failed = await nixie.waitForLogEvent('skills.export_failed');
+  const failed = await nixie.waitForLogEvent('definitions.export_failed');
 
   expect(failed).toMatchObject({ level: 'error' });
 });
