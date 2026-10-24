@@ -15,7 +15,7 @@ export function startGptLiveCall(connection: {
   sampleRate: number;
   soundThreshold: number;
   voice: string;
-}): VoiceCall & { delegations: () => number } {
+}): VoiceCall {
   const socket = new WebSocket('wss://api.openai.com/v1/live/sessions', {
     headers: { authorization: `Bearer ${connection.key}` },
   });
@@ -23,17 +23,15 @@ export function startGptLiveCall(connection: {
   const ended = Promise.withResolvers<void>();
   let heard = '';
   let said = '';
-  let delegations = 0;
   let pending = 0;
   let lastSoundAt: number | undefined;
   const send = (event: Record<string, unknown>): void => socket.send(JSON.stringify(event));
-  const call: VoiceCall & { delegations: () => number } = {
+  const call: VoiceCall = {
     appendAudio: (window) => send({ audio: toPcmBase64(window), type: 'session.input_audio.append' }),
     close: () => {
       clearInterval(watch);
       socket.close();
     },
-    delegations: () => delegations,
     ended: ended.promise,
     heard: () => heard,
     ready: ready.promise,
@@ -81,7 +79,6 @@ export function startGptLiveCall(connection: {
         }
       })
       .with({ kind: 'delegation' }, (event) => {
-        delegations++;
         pending++;
         call.toolCalls.push('delegation');
         connection
