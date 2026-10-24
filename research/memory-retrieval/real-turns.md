@@ -64,24 +64,25 @@ It marked each item that would have helped the reply, and marked at least one it
 
 ## Ranking
 
-Each ranking puts every unpinned item in the store at the turn's moment in one list, with no floor
-and no session exclusion, and scores it on the 112 turns that needed an item. Recall@k is the share
-of the needed items in the top k, averaged over turns. The last 2 columns give the paired difference
-from the shipped ranking with its 95% bootstrap interval, with no correction for the number of
-settings compared.
+Each ranking puts every item per-turn retrieval could return at the turn's moment in one list, with
+no floor, no cut and no session exclusion, and scores it on the 112 turns that needed an item.
+Recall@k is the share of the needed items in the top k, averaged over turns. Mean reciprocal rank
+(MRR) takes the rank of the first needed item anywhere in that list, so a first needed item at rank
+11 counts 1/11. The last 2 columns give the paired difference from the shipped ranking with its 95%
+bootstrap interval, with no correction for the number of settings compared.
 
 | Setting                       | Recall@3 | Recall@5 | Recall@10 | MRR   | Recall@5 change           | MRR change                |
 | ----------------------------- | -------- | -------- | --------- | ----- | ------------------------- | ------------------------- |
-| Shipped: leaf-ir int8, hybrid | 0.476    | 0.543    | 0.712     | 0.494 | none                      | none                      |
-| leaf-ir int8, vectors only    | 0.426    | 0.520    | 0.712     | 0.453 | -0.023 (-0.104 to 0.060)  | -0.041 (-0.095 to 0.014)  |
-| BM25 only                     | 0.391    | 0.445    | 0.512     | 0.401 | -0.098 (-0.156 to -0.049) | -0.093 (-0.145 to -0.039) |
-| leaf-ir, full width in fp32   | 0.463    | 0.539    | 0.717     | 0.484 | -0.004 (-0.013 to 0)      | -0.010 (-0.030 to 0.010)  |
-| Fusion rank offset 20         | 0.467    | 0.555    | 0.703     | 0.493 | 0.012 (0 to 0.036)        | -0.001 (-0.004 to 0.002)  |
-| Vector list weighted twice    | 0.448    | 0.551    | 0.717     | 0.487 | 0.007 (-0.033 to 0.051)   | -0.007 (-0.031 to 0.014)  |
-| arctic-embed-s int8, hybrid   | 0.476    | 0.515    | 0.712     | 0.491 | -0.028 (-0.085 to 0.025)  | -0.003 (-0.047 to 0.041)  |
-| bge-small fp32, hybrid        | 0.536    | 0.580    | 0.715     | 0.523 | 0.036 (-0.006 to 0.083)   | 0.029 (-0.022 to 0.081)   |
-| bge-small fp32, vectors only  | 0.456    | 0.603    | 0.755     | 0.477 | 0.060 (-0.020 to 0.152)   | -0.017 (-0.095 to 0.063)  |
-| MiniLM fp32, hybrid           | 0.454    | 0.513    | 0.691     | 0.496 | -0.031 (-0.091 to 0.027)  | 0.002 (-0.045 to 0.052)   |
+| Shipped: leaf-ir int8, hybrid | 0.467    | 0.543    | 0.712     | 0.506 | none                      | none                      |
+| leaf-ir int8, vectors only    | 0.426    | 0.520    | 0.712     | 0.464 | -0.023 (-0.104 to 0.060)  | -0.042 (-0.094 to 0.011)  |
+| BM25 only                     | 0.391    | 0.445    | 0.512     | 0.406 | -0.098 (-0.156 to -0.049) | -0.100 (-0.151 to -0.048) |
+| leaf-ir, full width in fp32   | 0.454    | 0.539    | 0.717     | 0.497 | -0.004 (-0.013 to 0)      | -0.009 (-0.029 to 0.009)  |
+| Fusion rank offset 20         | 0.458    | 0.555    | 0.703     | 0.506 | 0.012 (0 to 0.036)        | -0.001 (-0.003 to 0.002)  |
+| Vector list weighted twice    | 0.439    | 0.551    | 0.717     | 0.499 | 0.007 (-0.033 to 0.051)   | -0.007 (-0.030 to 0.014)  |
+| arctic-embed-s int8, hybrid   | 0.485    | 0.524    | 0.712     | 0.505 | -0.019 (-0.071 to 0.031)  | -0.001 (-0.045 to 0.041)  |
+| bge-small fp32, hybrid        | 0.536    | 0.580    | 0.715     | 0.537 | 0.036 (-0.006 to 0.083)   | 0.031 (-0.018 to 0.083)   |
+| bge-small fp32, vectors only  | 0.456    | 0.603    | 0.755     | 0.488 | 0.060 (-0.020 to 0.152)   | -0.019 (-0.095 to 0.060)  |
+| MiniLM fp32, hybrid           | 0.454    | 0.522    | 0.691     | 0.512 | -0.022 (-0.078 to 0.033)  | 0.006 (-0.041 to 0.054)   |
 
 The 3 alternative encoders keep every number of their vectors, because only the shipped model is
 trained to carry its meaning in the first 256.
@@ -130,7 +131,7 @@ No alternative was shown to be better, so the shipped settings stay:
 - **Item count:** `retrieval_items` 5 and `retrieval_self_notes` 2. Within a session, 3 items showed
   the same needed items on all 38 turns and 0.20 fewer items on turns that need none, which follows
   from the 2 slots fewer. On a store with nothing delivered, the ranking table's recall@3 and
-  recall@5 show that ranks 4 and 5 hold 0.067 of the needed items. Only 3 of the 669 hybrid turns
+  recall@5 show that ranks 4 and 5 hold 0.076 of the needed items. Only 3 of the 669 hybrid turns
   started with nothing delivered, and the data cannot separate the 2 counts, so the count stays
   at 5.
 
