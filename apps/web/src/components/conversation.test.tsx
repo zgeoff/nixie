@@ -3,8 +3,10 @@ import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, delay, http } from 'msw';
 import invariant from 'tiny-invariant';
+import { MicrophoneContext } from '../microphone-context';
 import { server } from '../mocks/node';
 import { store } from '../mocks/store';
+import { buildStubMicrophone } from '../test-utils/build-stub-microphone';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
@@ -25,6 +27,33 @@ test('it shows the conversation the API holds', async () => {
   const list = await rendered.findByRole('list', { name: 'Conversation' });
 
   expect(list).toHaveTextContent('You Is it raining?Forgetnixie Not yet.');
+});
+
+test('it turns on voice typing from the header, asking for the microphone once and stopping it at once', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const stub = buildStubMicrophone({ permission: 'prompt', answer: 'allow' });
+
+  const rendered = render(
+    <MicrophoneContext value={stub.microphone}>
+      <Conversation thread="conversation" />
+    </MicrophoneContext>,
+  );
+
+  const header = await rendered.findByRole('banner');
+
+  await ctx.user.click(within(header).getByRole('button', { name: 'Turn on voice typing' }));
+
+  const status = await within(header).findByRole('status');
+
+  expect(status).toHaveTextContent('Voice typing on');
+  expect(stub.readRequests()).toStrictEqual([{ audio: true }]);
+
+  expect(stub.readTracks()).toStrictEqual([
+    { kind: 'audio', readyState: 'ended', stop: expect.any(Function) },
+  ]);
 });
 
 test('it folds the records of a step into one line between the messages', async () => {
