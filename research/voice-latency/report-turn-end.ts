@@ -6,6 +6,7 @@ import { parseArgs } from 'node:util';
 import { z } from 'zod';
 import { defaultTurnEndSettings, findTurnEnd } from './find-turn-end.ts';
 import type { DetectorName } from './find-turn-end.ts';
+import { turnEndRecord } from './turn-end-record.ts';
 
 const { positionals: files, values } = parseArgs({
   allowPositionals: true,
@@ -22,26 +23,11 @@ const settings = {
   silenceMs: milliseconds.parse(values.silence),
 };
 
-const detectorName = z.enum(['smartTurn', 'clef', 'jev']);
-const answer = z.union([z.object({ answeredAfterMs: z.number(), probability: z.number() }), z.object({ error: z.string() })]);
-const record = z.object({
-  detectors: z.array(detectorName),
-  durationMs: z.number(),
-  pauses: z.array(
-    z.object({
-      answers: z.partialRecord(detectorName, answer),
-      resumeMs: z.number().optional(),
-      speechEndMs: z.number(),
-    }),
-  ),
-  set: z.string(),
-});
-
 const records = (
   await Promise.all(files.map(async (file) => (await Bun.file(file).text()).split('\n').filter(Boolean)))
 )
   .flat()
-  .map((line) => record.parse(JSON.parse(line)));
+  .map((line) => turnEndRecord.parse(JSON.parse(line)));
 const sets = [...new Set(records.map((entry) => entry.set))];
 const candidates: { detectors: DetectorName[]; name: string }[] = [
   { detectors: [], name: `Silence, ${settings.silenceMs} ms` },
@@ -74,7 +60,7 @@ for (const candidate of candidates) {
 
 console.log('\n| Detector | Speech | Pauses | Answer after the end of speech, median / p90 |');
 console.log('| --- | --- | --- | --- |');
-for (const detector of detectorName.options) {
+for (const detector of turnEndRecord.shape.detectors.element.options) {
   for (const set of sets) {
     const times = records
       .filter((entry) => entry.set === set)

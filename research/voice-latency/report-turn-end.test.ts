@@ -20,6 +20,9 @@ test('it reports cut-offs, waits of whole turns, failures and answer times per c
       {
         detectors: ['smartTurn', 'clef', 'jev'],
         durationMs: 2000,
+        id: 'call-1',
+        index: 0,
+        models: { clef: 'clef-flash', jev: 'jev-1.14.0', smartTurn: 'smart-turn-v3.2-cpu' },
         pauses: [
           {
             answers: {
@@ -28,6 +31,7 @@ test('it reports cut-offs, waits of whole turns, failures and answer times per c
               smartTurn: { answeredAfterMs: 300, probability: 1 },
             },
             speechEndMs: 2000,
+            transcript: 'what time does the branch open',
           },
         ],
         set: 'hvb',
@@ -35,6 +39,9 @@ test('it reports cut-offs, waits of whole turns, failures and answer times per c
       {
         detectors: ['smartTurn', 'clef', 'jev'],
         durationMs: 1500,
+        id: 'call-2',
+        index: 1,
+        models: { clef: 'clef-flash', jev: 'jev-1.14.0', smartTurn: 'smart-turn-v3.2-cpu' },
         pauses: [
           {
             answers: {
@@ -43,6 +50,7 @@ test('it reports cut-offs, waits of whole turns, failures and answer times per c
               smartTurn: { answeredAfterMs: 300, probability: 0.5 },
             },
             speechEndMs: 1500,
+            transcript: 'i would like to',
           },
         ],
         set: 'hvb',
@@ -50,6 +58,9 @@ test('it reports cut-offs, waits of whole turns, failures and answer times per c
       {
         detectors: ['smartTurn', 'clef', 'jev'],
         durationMs: 3000,
+        id: 'call-3',
+        index: 2,
+        models: { clef: 'clef-flash', jev: 'jev-1.14.0', smartTurn: 'smart-turn-v3.2-cpu' },
         pauses: [
           {
             answers: {
@@ -59,6 +70,7 @@ test('it reports cut-offs, waits of whole turns, failures and answer times per c
             },
             resumeMs: 1800,
             speechEndMs: 1000,
+            transcript: 'my card',
           },
           {
             answers: {
@@ -67,6 +79,7 @@ test('it reports cut-offs, waits of whole turns, failures and answer times per c
               smartTurn: { answeredAfterMs: 300, probability: 1 },
             },
             speechEndMs: 3000,
+            transcript: 'my card was declined at the shop',
           },
         ],
         set: 'hvb',
@@ -74,6 +87,9 @@ test('it reports cut-offs, waits of whole turns, failures and answer times per c
       {
         detectors: ['smartTurn', 'clef', 'jev'],
         durationMs: 2500,
+        id: 'call-4',
+        index: 3,
+        models: { clef: 'clef-flash', jev: 'jev-1.14.0', smartTurn: 'smart-turn-v3.2-cpu' },
         pauses: [
           {
             answers: {
@@ -82,6 +98,7 @@ test('it reports cut-offs, waits of whole turns, failures and answer times per c
               smartTurn: { answeredAfterMs: 300, probability: 1 },
             },
             speechEndMs: 2500,
+            transcript: 'please close my savings account',
           },
         ],
         set: 'hvb',

@@ -19,6 +19,7 @@ import { playUtterance } from './play-utterance.ts';
 import { speechSetDir } from './speech-sets.ts';
 import { createSpeechToText, createVad, sampleRate } from './speech.ts';
 import { toPlainTranscript } from './to-plain-transcript.ts';
+import type { TurnEndRecord } from './turn-end-record.ts';
 
 const { values } = parseArgs({
   options: {
@@ -75,18 +76,16 @@ for (let index = 0; index < count; index++) {
     readTranscript,
     vad,
   });
-  writeSync(
-    outFile,
-    `${JSON.stringify({
-      detectors,
-      durationMs: Math.round((speech.length * 1000) / sampleRate),
-      id: meta.id,
-      index,
-      models: Object.fromEntries(models),
-      pauses,
-      set,
-    })}\n`,
-  );
+  const record: TurnEndRecord = {
+    detectors,
+    durationMs: Math.round((speech.length * 1000) / sampleRate),
+    id: meta.id,
+    index,
+    models: Object.fromEntries(models),
+    pauses,
+    set,
+  };
+  writeSync(outFile, `${JSON.stringify(record)}\n`);
   console.log(`${set} ${index + 1}/${count}: ${pauses.length} pauses`);
 }
 closeSync(outFile);
