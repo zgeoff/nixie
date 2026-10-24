@@ -64,6 +64,24 @@ export function buildRuns(encoders: EncoderName[]): Run[] {
     config: { ...SHIPPED, isDeliveredExcluded: false },
   });
 
+  for (const limit of [3, 4]) {
+    runs.push({
+      name: `${shipped} served, shipped floors, nothing delivered, ${limit} items`,
+      encoder: shipped,
+      kind: 'served',
+      config: { ...SHIPPED, isDeliveredExcluded: false, factLimit: limit, listLimit: limit },
+    });
+  }
+
+  for (const limit of [3, 4, 8]) {
+    runs.push({
+      name: `${shipped} served, shipped floors, ${limit} items`,
+      encoder: shipped,
+      kind: 'served',
+      config: { ...SHIPPED, factLimit: limit, listLimit: limit },
+    });
+  }
+
   for (const minSimilarity of [0.3, 0.34, 0.38, 0.42, 0.46]) {
     for (const minScore of [0.25, 1, 2]) {
       runs.push({
@@ -120,6 +138,7 @@ export async function runRankings(
 
 export interface RankingScore {
   cases: number;
+  recallAt3: number;
   recallAt5: number;
   recallAt10: number;
   mrr: number;
@@ -136,6 +155,7 @@ export function scoreRanking(ranked: RankedTurn[], gold: Map<string, Gold>): Ran
     const first = list.findIndex((itemID) => relevant.has(itemID));
 
     return {
+      at3: list.slice(0, 3).filter((itemID) => relevant.has(itemID)).length / relevant.size,
       at5: list.slice(0, 5).filter((itemID) => relevant.has(itemID)).length / relevant.size,
       at10: list.slice(0, 10).filter((itemID) => relevant.has(itemID)).length / relevant.size,
       reciprocal: first === -1 ? 0 : 1 / (first + 1),
@@ -145,6 +165,7 @@ export function scoreRanking(ranked: RankedTurn[], gold: Map<string, Gold>): Ran
 
   return {
     cases: scored.length,
+    recallAt3: round(average(perCase.map((value) => value.at3))),
     recallAt5: round(average(perCase.map((value) => value.at5))),
     recallAt10: round(average(perCase.map((value) => value.at10))),
     mrr: round(average(perCase.map((value) => value.reciprocal))),
@@ -152,9 +173,74 @@ export function scoreRanking(ranked: RankedTurn[], gold: Map<string, Gold>): Ran
   };
 }
 
+export interface PairedDifference {
+  mean: number;
+  low: number;
+  high: number;
+}
+
+// A paired bootstrap over the labelled cases: each resample draws cases with replacement and takes
+// the mean difference in recall@5 between a run and the shipped ranking on the same cases.
+export function buildPairedDifference(
+  run: RankedTurn[],
+  base: RankedTurn[],
+  gold: Map<string, Gold>,
+  metric: 'at5' | 'reciprocal',
+): PairedDifference {
+  const baseByCase = new Map(base.map((entry) => [entry.caseID, entry]));
+
+  const differences = run.flatMap((entry) => {
+    const expected = gold.get(entry.caseID);
+    const other = baseByCase.get(entry.caseID);
+
+    if (expected === undefined || expected.relevant.size === 0 || other === undefined) {
+      return [];
+    }
+
+    return [buildCaseMetric(entry, expected, metric) - buildCaseMetric(other, expected, metric)];
+  });
+
+  let seed = 1;
+  const random = () => {
+    seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+
+    return seed / 2_147_483_648;
+  };
+
+  const means = Array.from({ length: 2000 }, () => {
+    let sum = 0;
+
+    for (let draw = 0; draw < differences.length; draw += 1) {
+      sum += differences[Math.floor(random() * differences.length)] ?? 0;
+    }
+
+    return differences.length === 0 ? 0 : sum / differences.length;
+  }).toSorted((first, second) => first - second);
+
+  return {
+    mean: round(average(differences)),
+    low: round(means[Math.floor(means.length * 0.025)] ?? 0),
+    high: round(means[Math.floor(means.length * 0.975)] ?? 0),
+  };
+}
+
+function buildCaseMetric(entry: RankedTurn, expected: Gold, metric: 'at5' | 'reciprocal'): number {
+  const list = entry.ranking.facts;
+
+  if (metric === 'at5') {
+    return list.slice(0, 5).filter((itemID) => expected.relevant.has(itemID)).length / expected.relevant.size;
+  }
+
+  const first = list.findIndex((itemID) => expected.relevant.has(itemID));
+
+  return first === -1 ? 0 : 1 / (first + 1);
+}
+
 export interface ServedScore {
   goldCases: number;
   coveredRecall: number;
+  freshCases: number;
+  freshRecall: number;
   emptyCases: number;
   shownOnEmpty: number;
   emptyWithAny: number;
@@ -185,6 +271,15 @@ export function scoreServed(ranked: RankedTurn[], gold: Map<string, Gold>): Serv
     return [...relevant].filter((itemID) => reached.has(itemID)).length / relevant.size;
   });
 
+  // A needed item the session had not been given yet is one only this turn's retrieval can bring.
+  const fresh = withGold.flatMap((entry) => {
+    const expected = gold.get(entry.caseID);
+    const unseen = [...(expected?.relevant ?? [])].filter((itemID) => !expected?.delivered.has(itemID));
+    const reached = new Set(shown(entry));
+
+    return unseen.length === 0 ? [] : [unseen.filter((itemID) => reached.has(itemID)).length / unseen.length];
+  });
+
   const served = labelled.flatMap((entry) => shown(entry).map((itemID) => gold.get(entry.caseID)?.relevant.has(itemID) === true));
 
   const noise = ranked.flatMap((entry) => shown(entry).filter((itemID) => gold.get(entry.caseID)?.noise.has(itemID) === true));
@@ -192,6 +287,8 @@ export function scoreServed(ranked: RankedTurn[], gold: Map<string, Gold>): Serv
   return {
     goldCases: withGold.length,
     coveredRecall: round(average(covered)),
+    freshCases: fresh.length,
+    freshRecall: round(average(fresh)),
     emptyCases: empty.length,
     shownOnEmpty: round(average(empty.map((entry) => shown(entry).length))),
     emptyWithAny: round(average(empty.map((entry) => (shown(entry).length > 0 ? 1 : 0)))),

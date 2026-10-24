@@ -15,7 +15,7 @@ import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
 import { readPlainExport } from './real-turns/read-plain-export.ts';
 import { SHIPPED, startRanker } from './real-turns/rank-turn.ts';
 import type { Gold, Label } from './real-turns/score-turns.ts';
-import { buildRuns, runRankings, scoreRanking, scoreServed } from './real-turns/score-turns.ts';
+import { buildPairedDifference, buildRuns, runRankings, scoreRanking, scoreServed } from './real-turns/score-turns.ts';
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -150,17 +150,28 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   const report: Record<string, unknown> = { turns: chosen.length, labelled: labels.length };
 
   console.log(`turns ${chosen.length}, labelled ${labels.length}`);
-  console.log('\n| Run | Cases | Recall@5 | Recall@10 | MRR | Best@5 |\n| --- | --- | --- | --- | --- | --- |');
+  console.log(
+    '\n| Run | Cases | Recall@3 | Recall@5 | Recall@10 | MRR | Best@5 | Recall@5 vs shipped | MRR vs shipped |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  );
+
+  const base = results.get(runs[0]?.name ?? '') ?? [];
+  const formatDifference = (difference: { mean: number; low: number; high: number }) =>
+    `${difference.mean} (${difference.low} to ${difference.high})`;
 
   for (const run of runs.filter((entry) => entry.kind === 'ranking')) {
-    const score = scoreRanking(results.get(run.name) ?? [], gold);
+    const ranked = results.get(run.name) ?? [];
+    const score = scoreRanking(ranked, gold);
+    const at5 = buildPairedDifference(ranked, base, gold, 'at5');
+    const reciprocal = buildPairedDifference(ranked, base, gold, 'reciprocal');
 
-    report[run.name] = score;
-    console.log(`| ${run.name} | ${score.cases} | ${score.recallAt5} | ${score.recallAt10} | ${score.mrr} | ${score.bestAt5} |`);
+    report[run.name] = { ...score, recallAt5Difference: at5, mrrDifference: reciprocal };
+    console.log(
+      `| ${run.name} | ${score.cases} | ${score.recallAt3} | ${score.recallAt5} | ${score.recallAt10} | ${score.mrr} | ${score.bestAt5} | ${formatDifference(at5)} | ${formatDifference(reciprocal)} |`,
+    );
   }
 
   console.log(
-    '\n| Run | Gold cases | Covered recall | Empty cases | Shown on empty | Empty with any | Precision | Noise served | Shown per turn |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '\n| Run | Gold cases | Covered recall | Fresh cases | Fresh recall | Empty cases | Shown on empty | Empty with any | Precision | Noise served | Shown per turn |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   );
 
   for (const run of runs.filter((entry) => entry.kind === 'served')) {
@@ -170,7 +181,7 @@ async function runScore(turns: TurnCase[]): Promise<void> {
 
     report[run.name] = { ...score, shownPerTurn: shown };
     console.log(
-      `| ${run.name} | ${score.goldCases} | ${score.coveredRecall} | ${score.emptyCases} | ${score.shownOnEmpty} | ${score.emptyWithAny} | ${score.precision} | ${score.noiseServed} | ${shown} |`,
+      `| ${run.name} | ${score.goldCases} | ${score.coveredRecall} | ${score.freshCases} | ${score.freshRecall} | ${score.emptyCases} | ${score.shownOnEmpty} | ${score.emptyWithAny} | ${score.precision} | ${score.noiseServed} | ${shown} |`,
     );
   }
 
