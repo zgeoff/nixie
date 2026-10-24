@@ -78,7 +78,11 @@ async function loadTransformersEncoder(spec: TransformersModel, modelsDir: strin
           pooling: spec.pooling,
         });
 
-        vectors.push(Float32Array.from(output.data as ArrayLike<number>));
+        if (!(output.data instanceof Float32Array)) {
+          throw new TypeError(`${spec.model} returned ${output.type} vectors, not float32`);
+        }
+
+        vectors.push(Float32Array.from(output.data));
       }
 
       return vectors;
