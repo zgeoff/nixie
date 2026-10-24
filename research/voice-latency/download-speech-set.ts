@@ -8,20 +8,23 @@
 // Usage: download-speech-set.ts --set hvb|slurp [--pages 40] [--per-page 5]
 import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { parseArgs } from 'node:util';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { readWithRetry } from './real-speech.ts';
 import { speechSetDir } from './speech-sets.ts';
 import { sampleRate } from './speech.ts';
 
-const set = z.enum(['hvb', 'slurp']).parse(readFlag('--set'));
-const pages = Number(readFlag('--pages') ?? 40);
-const perPage = Number(readFlag('--per-page') ?? 5);
-
-function readFlag(name: string): string | undefined {
-  const index = process.argv.indexOf(name);
-  return index === -1 ? undefined : process.argv[index + 1];
-}
+const { values } = parseArgs({
+  options: {
+    pages: { default: '40', type: 'string' },
+    'per-page': { default: '5', type: 'string' },
+    set: { type: 'string' },
+  },
+});
+const set = z.enum(['hvb', 'slurp']).parse(values.set);
+const pages = z.coerce.number().int().positive().parse(values.pages);
+const perPage = z.coerce.number().int().positive().parse(values['per-page']);
 
 interface Utterance {
   id: string;

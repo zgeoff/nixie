@@ -2,21 +2,25 @@
 // candidate and speech set the share of utterances cut off and the wait after the last speech of
 // those heard whole, then each detector's answer time.
 // Usage: report-turn-end.ts <file.jsonl>... [--min-wait 200] [--max-wait 1200] [--silence 500]
+import { parseArgs } from 'node:util';
 import { z } from 'zod';
 import { defaultTurnEndSettings, findTurnEnd } from './find-turn-end.ts';
 import type { DetectorName } from './find-turn-end.ts';
 
+const { positionals: files, values } = parseArgs({
+  allowPositionals: true,
+  options: {
+    'max-wait': { default: String(defaultTurnEndSettings.maxWaitMs), type: 'string' },
+    'min-wait': { default: String(defaultTurnEndSettings.minWaitMs), type: 'string' },
+    silence: { default: String(defaultTurnEndSettings.silenceMs), type: 'string' },
+  },
+});
+const milliseconds = z.coerce.number().int().nonnegative();
 const settings = {
-  maxWaitMs: Number(readFlag('--max-wait') ?? defaultTurnEndSettings.maxWaitMs),
-  minWaitMs: Number(readFlag('--min-wait') ?? defaultTurnEndSettings.minWaitMs),
-  silenceMs: Number(readFlag('--silence') ?? defaultTurnEndSettings.silenceMs),
+  maxWaitMs: milliseconds.parse(values['max-wait']),
+  minWaitMs: milliseconds.parse(values['min-wait']),
+  silenceMs: milliseconds.parse(values.silence),
 };
-const files = process.argv.slice(2).filter((arg, index, args) => !arg.startsWith('--') && !args[index - 1]?.startsWith('--'));
-
-function readFlag(name: string): string | undefined {
-  const index = process.argv.indexOf(name);
-  return index === -1 ? undefined : process.argv[index + 1];
-}
 
 const detectorName = z.enum(['smartTurn', 'clef', 'jev']);
 const answer = z.union([z.object({ answeredAfterMs: z.number(), probability: z.number() }), z.object({ error: z.string() })]);

@@ -8,6 +8,7 @@
 // A token may be empty where a broker adds it to each request.
 import { appendFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { parseArgs } from 'node:util';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { createDecisionModel } from './create-decision-model.ts';
@@ -17,24 +18,24 @@ import { speechSetDir } from './speech-sets.ts';
 import { createSpeechToText, createVad, sampleRate } from './speech.ts';
 import { toPlainTranscript } from './to-plain-transcript.ts';
 
-const set = readFlag('--set') ?? 'ami';
-const out = readFlag('--out') ?? `results/turn-end-${set}.jsonl`;
-const detectors = (readFlag('--detectors') ?? 'smartTurn,clef,jev').split(',').filter(isDetectorName);
-const limit = Number(readFlag('--limit') ?? Number.POSITIVE_INFINITY);
+const { values } = parseArgs({
+  options: {
+    detectors: { default: 'smartTurn,clef,jev', type: 'string' },
+    limit: { type: 'string' },
+    out: { type: 'string' },
+    set: { default: 'ami', type: 'string' },
+  },
+});
+const set = values.set;
+const out = values.out ?? `results/turn-end-${set}.jsonl`;
+const detectors = z.array(z.enum(['smartTurn', 'clef', 'jev'])).parse(values.detectors.split(','));
+const limit =
+  values.limit === undefined ? Number.POSITIVE_INFINITY : z.coerce.number().int().positive().parse(values.limit);
 const pauseMs = 200;
 const windowSamples = 512;
 const windowMs = (windowSamples * 1000) / sampleRate;
 // The detectors need silence after the last word to see the final pause and wait it out.
 const tailSamples = sampleRate * 2;
-
-function readFlag(name: string): string | undefined {
-  const index = process.argv.indexOf(name);
-  return index === -1 ? undefined : process.argv[index + 1];
-}
-
-function isDetectorName(value: string): value is DetectorName {
-  return value === 'smartTurn' || value === 'clef' || value === 'jev';
-}
 
 const smartTurn = await createSmartTurn();
 const clef = createDecisionModel('clef', {
