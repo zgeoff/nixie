@@ -220,6 +220,10 @@ async function writeSample(turns: TurnCase[]): Promise<void> {
   const kept = labelable.filter((turn) => turn.logged.length > 0 || turn.ratings.length > 0);
   const rest = shuffle(labelable.filter((turn) => !kept.includes(turn)), random);
   const size = values.size === undefined ? labelable.length : Number(values.size);
+
+  if (!Number.isInteger(size) || size < 1) {
+    throw new Error('pass --size <n>, a whole number of turns of at least 1');
+  }
   const chosen = [...kept, ...rest.slice(0, Math.max(0, size - kept.length))].toSorted(
     (first, second) => first.recalledSequence - second.recalledSequence,
   );
