@@ -154,7 +154,7 @@ jobs:
           {
             echo '| Image | Digest |'
             echo '| ----- | ------ |'
-            printf '| `%s` | `%s` |\n' "${CONVERSATION%@*}" "${CONVERSATION#*@}" "${FETCH%@*}" "${FETCH#*@}" \
+            printf "| \`%s\` | \`%s\` |\n" "${CONVERSATION%@*}" "${CONVERSATION#*@}" "${FETCH%@*}" "${FETCH#*@}" \
               "${WEB%@*}" "${WEB#*@}" "${NIXIE%@*}" "${NIXIE#*@}"
           } >> "$GITHUB_STEP_SUMMARY"
 
