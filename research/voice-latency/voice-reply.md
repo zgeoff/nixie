@@ -41,11 +41,11 @@ run did not test.
 
 Run from this directory. Every runner reads nixie's persona from `results/persona.md`, which stays
 out of git, so copy the persona that the deployment runs with there first, or pass its path with
-`--persona`. The pipeline runner reaches Anthropic through a broker. The Sonnet candidate's opener
-picker needs the Cloudflare account ID, and the broker adds the Cloudflare key, so
-`--cloudflare-token` stays empty. The speech-to-speech runners read their API key on stdin, so the
-key never reaches the command line or a file, and they connect to the vendor directly, because the
-broker refuses WebSocket upgrades.
+`--persona`. The pipeline runner and GPT-Live's delegated Claude turns reach Anthropic through a
+broker. The Sonnet candidate's opener picker needs the Cloudflare account ID, and the broker adds
+the Cloudflare key, so `--cloudflare-token` stays empty. The speech-to-speech runners read their API
+key on stdin, so the key never reaches the command line or a file, and they connect to the vendor
+directly, because the broker refuses WebSocket upgrades.
 
 ```bash
 bun install
@@ -64,8 +64,9 @@ bun report-barge-in.ts results/barge-in-*.jsonl
 ```
 
 The turn-taking runner takes `--set` of `ami`, `hvb` or `slurp`, and `--peak` scales each utterance
-to a fixed peak level first. `build-listening-set.ts` copies one round of recordings into a blind
-set, with each candidate behind a letter and the answer key in a file of its own.
+to a fixed peak level first. It reads the speech sets that the [end-of-turn run](turn-end.md#run-it)
+downloads, so run its download steps first. `build-listening-set.ts` copies one round of recordings
+into a blind set, with each candidate behind a letter and the answer key in a file of its own.
 
 ## Setup
 
