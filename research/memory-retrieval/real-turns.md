@@ -41,16 +41,17 @@ bun real-turns.ts score  --plain <plain> --names <names> --labels <labels.jsonl>
   product adapter and 3 alternatives through transformers.js.
 - [score-turns.ts](real-turns/score-turns.ts) holds the settings it compares and the scores.
 
-Replaying the shipped settings on the rebuilt turns matched the logged retrieval on 662 of 669
-turns: 70 of the 76 that returned an item, and 592 of the 593 that returned none. Of the 7 that
-differ, 3 miss a logged item whose similarity sat within 0.02 of the floor, and 4 replay an item the
-log lacks. The names file for this measurement held only the agent's name. The open-settings path
-matched nixie's own path on all 669 turns.
+Replaying the shipped settings on the rebuilt turns matched the logged retrieval on 664 of 670
+turns: 71 of the 76 that returned an item, and 593 of the 594 that returned none. Of the 6 that
+differ, 2 miss a logged vector match whose similarity sat within 0.02 of the floor, 1 swaps 2
+keyword matches near the item limit, and 3 replay an item the log lacks. The names file for this
+measurement held only the agent's name. The open-settings path matched nixie's own path on all 670
+turns.
 
 ### Data and labels
 
-The snapshot held 1,003 conversation turns over 12 days and 99 memory items. Hybrid retrieval ran on
-669 of those turns, and 593 of the 669 returned no item. On 666 of the 669, the session had already
+The snapshot held 1,015 conversation turns over 12 days and 99 memory items. Hybrid retrieval ran on
+670 of those turns, and 594 of the 670 returned no item. On 667 of the 670, the session had already
 been given at least one version, which per-turn retrieval leaves out, and that exclusion empties
 most retrievals: on the 300 labelled turns, turning it off raises the items shown from 1.12 a turn
 to 4.37.
@@ -60,7 +61,9 @@ noise. Labels came instead from a language model given the deployment's persona 
 on a sample of 300 turns: the 213 turns whose retrieval returned an item or was rated, and 87 more
 at random. The labeller saw the turn, the 2 exchanges before it, the reply, and every item that
 per-turn retrieval could return at that moment: each active item that was neither pinned nor lapsed.
-It marked each item that would have helped the reply, and marked at least one item on 112 turns.
+It marked each item that would have helped the reply, and marked at least one item on 112 turns. On
+3 of the 300 turns, the query the harness rebuilds holds an earlier message that no step had read,
+which the sample the labeller saw left out, and their labels stand as the labeller made them.
 
 ## Ranking
 
@@ -106,8 +109,8 @@ column gives the paired difference from the shipped set with its 95% bootstrap i
 | Similarity 0.34                              | 0.921        | 0 (0 to 0)                | 1.17                            | 0.22 (0.13 to 0.32)    | 0.40                 | 0.091     |
 | Similarity 0.42                              | 0.842        | -0.079 (-0.184 to 0)      | 0.83                            | -0.12 (-0.19 to -0.06) | 0.36                 | 0.109     |
 | BM25 floor 2                                 | 0.868        | -0.053 (-0.132 to 0)      | 0.81                            | -0.14 (-0.23 to -0.06) | 0.33                 | 0.117     |
-| Vectors only, similarity 0.38                | 0.711        | -0.211 (-0.342 to -0.079) | 0.53                            | -0.43 (-0.57 to -0.30) | 0.22                 | 0.135     |
-| Shipped floors, no session exclusion         | 0.737        | -0.184 (-0.316 to -0.079) | 4.18                            | 3.22 (2.94 to 3.54)    | 0.93                 | 0.056     |
+| Vectors only, similarity 0.38                | 0.711        | -0.211 (-0.342 to -0.079) | 0.53                            | -0.43 (-0.57 to -0.30) | 0.22                 | 0.137     |
+| Shipped floors, no session exclusion         | 0.737        | -0.184 (-0.316 to -0.079) | 4.18                            | 3.23 (2.94 to 3.54)    | 0.93                 | 0.056     |
 
 A change of 0 (0 to 0) means the 2 sets showed the same needed items on all 38 turns. That bounds
 the loss only near 8%, by the rule of three. The shipped set showed 8 of the 8 items rated noise
@@ -131,7 +134,7 @@ No alternative was shown to be better, so the shipped settings stay:
 - **Item count:** `retrieval_items` 5 and `retrieval_self_notes` 2. Within a session, 3 items showed
   the same needed items on all 38 turns and 0.20 fewer items on turns that need none, which follows
   from the 2 slots fewer. On a store with nothing delivered, the ranking table's recall@3 and
-  recall@5 show that ranks 4 and 5 hold 0.076 of the needed items. Only 3 of the 669 hybrid turns
+  recall@5 show that ranks 4 and 5 hold 0.076 of the needed items. Only 3 of the 670 hybrid turns
   started with nothing delivered, and the data cannot separate the 2 counts, so the count stays
   at 5.
 
@@ -147,8 +150,8 @@ results.
   turn never does.
 - More than one deployment, and more than the 38 labelled turns whose needed item the session had
   not been given yet, which bound the floor and item-count comparisons.
-- A compaction, a rebuilt session or an unpinned item. The snapshot held none, so the replay paths
-  that follow them ran on no case.
+- A compaction inside a turn, an unpinned item and a pinned item that retired. The snapshot held
+  none, so the replay paths that follow them ran only on the harness's tests.
 - The self-note count and the past messages placed beside the items, which these sets hold at their
   shipped settings.
 - A cross-encoder or a model reranking the top results.

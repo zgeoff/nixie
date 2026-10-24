@@ -1,6 +1,7 @@
 // Scores rankings of the rebuilt turns against labels: recall@5, recall@10 and mean reciprocal rank
-// on one ranking, with no floor or cut, of every item the turn's retrieval could return, and, for the set a turn would be shown under each
-// floor, the share of labelled items it covers and the items it shows on turns that need none.
+// on one ranking, with no floor or cut, of every item the turn's retrieval could return, and, for
+// the set a turn would be shown under each floor, the share of labelled items it covers and the
+// items it shows on turns that need none.
 import type { TurnCase } from './build-turn-cases.ts';
 import type { EncoderDirs, EncoderName } from './load-turn-encoder.ts';
 import { loadTurnEncoder } from './load-turn-encoder.ts';
