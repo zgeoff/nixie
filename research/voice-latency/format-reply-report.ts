@@ -4,9 +4,15 @@ import type { ReplyRecord } from './reply-record.ts';
 // end of speech, and a gap mid-reply in fewer than 5% of turns.
 const firstAudioGateMs = 1500;
 const gapShareGate = 0.05;
+// A pause between spoken sentences runs to about half a second, so a silence over this inside a
+// reply is a wait the listener hears, whatever made it.
+const longSilenceMs = 1000;
+
+// A turn and the longest silence a listener hears inside its reply, read from its recording.
+export type HeardTurn = ReplyRecord & { longestSilenceMs?: number };
 
 // A markdown table with one row per candidate, in the order the candidates first appear.
-export function formatReplyReport(records: ReplyRecord[]): string {
+export function formatReplyReport(records: HeardTurn[]): string {
   const candidates = [...new Set(records.map((record) => record.candidate))];
   const rows = candidates.map((candidate) => {
     const turns = records.filter((record) => record.candidate === candidate);
@@ -14,6 +20,7 @@ export function formatReplyReport(records: ReplyRecord[]): string {
     const firstAudio = played.flatMap((turn) => (turn.firstAudioMs === undefined ? [] : [turn.firstAudioMs]));
     const fullAudio = played.flatMap((turn) => (turn.fullAudioMs === undefined ? [] : [turn.fullAudioMs]));
     const gapped = played.filter((turn) => turn.gaps > 0).length;
+    const silent = played.filter((turn) => (turn.longestSilenceMs ?? 0) > longSilenceMs).length;
     const toolTurns = turns.filter((turn) => turn.needsTool);
     const toolUsed = toolTurns.filter((turn) => turn.toolCalls.length > 0).length;
     const costUSD = turns.reduce((sum, turn) => sum + turn.costUSD, 0);
@@ -27,6 +34,7 @@ export function formatReplyReport(records: ReplyRecord[]): string {
       formatPercentiles(firstAudio),
       formatPercentiles(fullAudio),
       `${gapped} (${(gapShare * 100).toFixed(1)}%)`,
+      `${silent} (${((played.length === 0 ? 0 : silent / played.length) * 100).toFixed(1)}%)`,
       `${toolUsed} of ${toolTurns.length}`,
       `$${(costUSD / Math.max(1, turns.length)).toFixed(4)}`,
       `$${(minutes === 0 ? 0 : costUSD / minutes).toFixed(4)}`,
@@ -35,8 +43,8 @@ export function formatReplyReport(records: ReplyRecord[]): string {
     ];
   });
   return [
-    '| Candidate | Turns | First audio, median / p90 | Full answer audio, median / p90 | Turns with a gap | Tool called when needed | Cost per turn | Cost per minute | Failed | Passes |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| Candidate | Turns | First audio, median / p90 | Full answer audio, median / p90 | Turns with a gap | Replies with a silence over 1 s | Tool called when needed | Cost per turn | Cost per minute | Failed | Passes |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
     ...rows.map((row) => `| ${row.join(' | ')} |`),
   ].join('\n');
 }
