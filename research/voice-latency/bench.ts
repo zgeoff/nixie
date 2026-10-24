@@ -16,8 +16,9 @@ import { buildResultFields } from './build-result-fields.ts';
 import { bargeIn, lines, loadCallerLine, longLine } from './caller.ts';
 import type { Heard } from './listen.ts';
 import { listenToCaller, waitUntil } from './listen.ts';
+import { planPlayback } from './plan-playback.ts';
 import type { SpeechToTextName, TextToSpeech, TextToSpeechName } from './speech.ts';
-import { createSpeechToText, createTextToSpeech, createVad, sampleRate } from './speech.ts';
+import { createSpeechToText, createTextToSpeech, createVad, longWarmUp, sampleRate } from './speech.ts';
 
 // The persona asks for the opening acknowledgement from decision 0040.
 const persona = [
@@ -37,13 +38,6 @@ const ttsName = (readFlag('--tts') ?? 'piper') as TextToSpeechName;
 const bargeInAfterMs = Number(readFlag('--barge-in-after-ms') ?? 1500);
 const control = process.argv.includes('--control');
 const warmLong = process.argv.includes('--warm-long');
-// A sentence longer than any reply sentence. Piper ran up to 14 times slower than usual on the
-// first sentence longer than any it had spoken before in the process.
-const longWarmUp = [
-  'Before a long walk, pack water, a warm layer, a rain jacket, a map, a torch, spare batteries,',
-  'a small first aid kit, sun cream, snacks for the afternoon, and a charged phone,',
-  'then tell a friend where you plan to go and when you expect to be back home again.',
-].join(' ');
 
 function readFlag(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -178,6 +172,9 @@ function startReply(tts: TextToSpeech): {
         ttsMs: spoken.totalMs,
       });
     });
+    // A barge-in trial can stop the speaker without waiting on the queue, so a failed synthesis is
+    // marked handled here; the queue still rejects when the bench waits on it.
+    queue.catch(() => undefined);
   }
   return {
     addText: (delta, at) => {
@@ -201,22 +198,6 @@ function startReply(tts: TextToSpeech): {
       stopped = true;
     },
   };
-}
-
-// Plays the sentences back to back from the first one's ready time, and counts each wait for a
-// sentence that was not ready when the one before it finished.
-function planPlayback(sentences: Sentence[]): { gaps: number; gapMs: number; playEndAt: number } {
-  let playEndAt = 0;
-  let gaps = 0;
-  let gapMs = 0;
-  for (const sentence of sentences) {
-    if (playEndAt > 0 && sentence.readyAt > playEndAt) {
-      gaps++;
-      gapMs += sentence.readyAt - playEndAt;
-    }
-    playEndAt = Math.max(playEndAt, sentence.readyAt) + sentence.audioMs;
-  }
-  return { gapMs, gaps, playEndAt };
 }
 
 mkdirSync(dirname(out), { recursive: true });
@@ -316,7 +297,7 @@ function writeTurnRow(kind: string, round: number, index: number, heard: Heard, 
   const end = heard.speechEndAt;
   const first = reply.sentences[0];
   const last = reply.sentences.at(-1);
-  const playback = planPlayback(reply.sentences);
+  const playback = planPlayback(reply.sentences, 0);
   // A control turn speaks nothing, so its row holds no audio or playback times.
   const audio = control
     ? {}
@@ -420,7 +401,7 @@ for (let trial = 0; trial < bargeIns; trial++) {
   const result = await turn;
   const sentences = await speaker.finish();
   const heardMs = (detectedAt ?? interruptedAt) - playStartAt;
-  const spoken = planPlayback(sentences);
+  const spoken = planPlayback(sentences, 0);
   writeRow({
     bargeInAfterMs,
     costUSD: result.costUSD,
