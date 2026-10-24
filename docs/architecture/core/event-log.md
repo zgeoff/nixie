@@ -155,7 +155,8 @@ request, and the server runs it on the same stopped path as the full reset:
 4. It deletes the key of every record on the thread from the key store and checkpoints it, then
    deletes the links that the web fetch tool numbered on the thread.
 5. It writes a `log_reset` record on the thread, with the mode `conversations`, the sequence of the
-   invalidation record and the number of records it shredded.
+   invalidation record and the number of records it shredded. The tasks projection moves the
+   conversation task's read cursor to this record, so a message still unread drops out of the inbox.
 6. The control request answers, and the server exits 0, so the normal start creates the
    conversation's sandbox again.
 
