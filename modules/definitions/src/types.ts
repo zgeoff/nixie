@@ -176,19 +176,27 @@ export type WrittenSkillState = 'in_force' | 'adopted' | 'superseded' | 'retired
 
 interface SkillExportRow {
   readonly approval_id: string;
-  readonly state: Exclude<SkillExportState, 'exporting'>;
+  readonly state: Exclude<DefinitionsExportState, 'exporting'>;
   readonly base_hash: string | null;
   readonly pull_request_number: number;
   readonly pull_request_url: string;
   readonly updated_at: number;
 }
 
-interface SkillExportAttemptRow {
+interface PromptExportRow {
+  readonly approval_id: string;
+  readonly state: Exclude<DefinitionsExportState, 'exporting'>;
+  readonly pull_request_number: number;
+  readonly pull_request_url: string;
+  readonly updated_at: number;
+}
+
+interface ExportAttemptRow {
   readonly approval_id: string;
   readonly started_at: number;
 }
 
-export type SkillExportState = 'exporting' | 'opened' | 'closed';
+export type DefinitionsExportState = 'exporting' | 'opened' | 'closed';
 
 export interface DefinitionsRepo {
   readonly readBaseRevision: () => Promise<string>;
@@ -296,6 +304,8 @@ export type DefinitionsTables = CheckedTables<
     snapshot_skills: SnapshotSkillRow;
     written_skills: WrittenSkillRow;
     skill_exports: SkillExportRow;
-    skill_export_attempts: SkillExportAttemptRow;
+    skill_export_attempts: ExportAttemptRow;
+    prompt_exports: PromptExportRow;
+    prompt_export_attempts: ExportAttemptRow;
   }>
 >;

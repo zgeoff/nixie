@@ -1,5 +1,5 @@
 import type { CleanupRecordSessions } from '@heynixie/api';
-import type { SeedResult, SkillExportSweep } from '@heynixie/definitions';
+import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { CheckerTask } from '@heynixie/sessions';
 import type { APIGate } from './build-api-gate';
@@ -41,6 +41,6 @@ export interface ServerPartValues {
   readonly seed_poll: void;
   readonly skill_lapse_sweep: void;
 
-  readonly skill_exports: SkillExportSweep | null;
+  readonly definitions_exports: DefinitionsExportSweep | null;
   readonly ready: void;
 }

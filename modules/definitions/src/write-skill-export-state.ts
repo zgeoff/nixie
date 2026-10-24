@@ -1,7 +1,7 @@
 import type { Transaction } from 'kysely';
 import { match } from 'ts-pattern';
-import { canMoveSkillExport } from './can-move-skill-export';
-import type { DefinitionsExportMove, DefinitionsTables, SkillExportState } from './types';
+import { canMoveDefinitionsExport } from './can-move-definitions-export';
+import type { DefinitionsExportMove, DefinitionsExportState, DefinitionsTables } from './types';
 
 export async function writeSkillExportState(
   tx: Transaction<unknown>,
@@ -9,7 +9,7 @@ export async function writeSkillExportState(
 ): Promise<void> {
   const current = await readSkillExportState(tx, move.approvalID);
 
-  if (current !== null && !canMoveSkillExport(current, move.to)) {
+  if (current !== null && !canMoveDefinitionsExport(current, move.to)) {
     throw new Error(
       `the export of approval ${move.approvalID} is ${current}, so it cannot become ${move.to}`,
     );
@@ -25,7 +25,7 @@ export async function writeSkillExportState(
 async function readSkillExportState(
   tx: Transaction<unknown>,
   approvalID: string,
-): Promise<SkillExportState | null> {
+): Promise<DefinitionsExportState | null> {
   const tables = tx.$extendTables<DefinitionsTables>();
 
   const attempt = await tables

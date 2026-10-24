@@ -42,7 +42,9 @@ export const githubHandlers = [
       return notFound();
     }
 
-    const body: unknown = request.method === 'GET' ? null : await request.json();
+    // The root preload runs the web client's MSW server beside this one, and the request reaches
+    // both, so a read of the body itself fails with ERR_BODY_ALREADY_USED.
+    const body: unknown = request.method === 'GET' ? null : await request.clone().json();
 
     const call: MockCall = {
       repository: repo.repository,
