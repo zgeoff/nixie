@@ -47,12 +47,6 @@ export function createSpeechToText(name: SpeechToTextName): SpeechToText {
 
 // A streaming transducer: it decodes while the caller speaks, so little is left at the end.
 function createZipformer(): SpeechToText {
-  const recognizer = createStreamingRecognizer();
-  return { name: 'zipformer', start: recognizer.start };
-}
-
-// The Zipformer recognizer with its transcript readable while the caller still speaks.
-export function createStreamingRecognizer(): { start: () => Recognizer & { readPartial: () => string } } {
   const recognizer = new sherpa.OnlineRecognizer({
     decodingMethod: 'greedy_search',
     featConfig: { featureDim: 80, sampleRate },
@@ -67,6 +61,7 @@ export function createStreamingRecognizer(): { start: () => Recognizer & { readP
     },
   });
   return {
+    name: 'zipformer',
     start: () => {
       const stream = recognizer.createStream();
       function drainReady(): void {
@@ -86,7 +81,6 @@ export function createStreamingRecognizer(): { start: () => Recognizer & { readP
           drainReady();
           return Promise.resolve(recognizer.getResult(stream).text.trim().toLowerCase());
         },
-        readPartial: () => recognizer.getResult(stream).text.trim().toLowerCase(),
       };
     },
   };
