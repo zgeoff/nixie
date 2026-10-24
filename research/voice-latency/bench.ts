@@ -172,6 +172,9 @@ function startReply(tts: TextToSpeech): {
         ttsMs: spoken.totalMs,
       });
     });
+    // A barge-in trial can stop the speaker without waiting on the queue, so a failed synthesis is
+    // marked handled here; the queue still rejects when the bench waits on it.
+    queue.catch(() => undefined);
   }
   return {
     addText: (delta, at) => {

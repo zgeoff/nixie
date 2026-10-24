@@ -154,6 +154,9 @@ for (let round = 0; round < rounds; round++) {
     let pending = '';
     let text = '';
     let firstTextAt: number | undefined;
+    // A failed synthesis or opener pick fails the turn's record. Each failure is caught where its
+    // promise starts, because the runner awaits them only once the Claude turn ends.
+    let failure: string | undefined;
     const speak = (clause: string, textAt: number): void => {
       queue = queue.then(async () => {
         const spoken = await tts.speak(clause);
@@ -166,9 +169,17 @@ for (let round = 0; round < rounds; round++) {
           textAt,
           ttsMs: spoken.totalMs,
         });
+      }).catch((error: unknown) => {
+        failure ??= `the speech failed: ${String(error)}`;
       });
     };
-    const opening = picker?.pickOpener(heard.transcript).then((picked) => ({ ...picked, at: performance.now() }));
+    const opening = picker?.pickOpener(heard.transcript).then(
+      (picked) => ({ ...picked, at: performance.now() }),
+      (error: unknown) => {
+        failure ??= `the opener pick failed: ${String(error)}`;
+        return undefined;
+      },
+    );
     const turn = await session.runTurn(heard.transcript, (delta, at) => {
       firstTextAt ??= at;
       text += delta;
@@ -230,7 +241,7 @@ for (let round = 0; round < rounds; round++) {
         gapMs: playback.gapMs,
         gapToleranceMs,
         gaps: playback.gaps,
-        isError: turn.isError,
+        isError: turn.isError || failure !== undefined,
         line: turnLine.callerIndex,
         load1: loadavg()[0],
         model: setup.model,
@@ -241,7 +252,7 @@ for (let round = 0; round < rounds; round++) {
         round,
         speechMs: (line.speechEndSample / sampleRate) * 1000,
         sttMs: heard.transcriptAt - heard.vadEndAt,
-        subtype: turn.subtype,
+        subtype: failure ?? turn.subtype,
         text,
         toolCalls: turn.toolCalls,
         transcript: heard.transcript,
