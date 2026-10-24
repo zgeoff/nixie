@@ -74,7 +74,7 @@ async function readRows(offset: number): Promise<AMIRow[]> {
 }
 
 // The dataset server answers 429 to a burst of requests, so each request waits and tries again.
-async function readWithRetry(url: string): Promise<Response> {
+export async function readWithRetry(url: string): Promise<Response> {
   for (let attempt = 1; ; attempt++) {
     const response = await fetch(url);
     if (response.status !== 429 || attempt === 6) {
