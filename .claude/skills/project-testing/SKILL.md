@@ -68,14 +68,20 @@ short directory or point `BUN_CHROME_PATH` at Playwright's `chrome-headless-shel
 such socket. Chrome stops under a `ulimit -v` cap, because it reserves more address space than it
 uses, so the browser suites skip there.
 
-Two kinds of suite run in a lane of their own: the guest suites that start the real Agent SDK, the
-`*.sdk.test.ts` files, and every suite under `e2e/`, which runs the whole program. A cold start of
-the SDK's CLI or of nixie on a small host outlasts Bun's default test limit, so `bun run test`
-leaves these suites out of the parallel run and ends with `bun run test:e2e`, which runs them one
-file at a time under one raised limit for the whole lane. CI's test timeouts check lets only a lane
-script, such as `test:e2e`, raise the limit. The pre-push test job splits its run the same way. A
-test in the lane sets no limit of its own, and a suite that spawns nixie or a build of it lives
-under `e2e/`.
+Beside the browser suites, two lanes run suites that need a real system the parallel run cannot
+host. `bun run test` leaves both out of the parallel run and ends with each lane's script, which
+runs its files one at a time.
+
+| Lane      | Files                 | Real system                                                   | Script           | Limit per test     |
+| --------- | --------------------- | ------------------------------------------------------------- | ---------------- | ------------------ |
+| Agent SDK | `*.agent-sdk.test.ts` | The Agent SDK's CLI as a subprocess, against a scripted model | `test:agent-sdk` | 5 s, Bun's default |
+| e2e       | every suite in `e2e/` | The built nixie, driven from outside                          | `test:e2e`       | 15 s               |
+
+An Agent SDK suite never calls the live model; the SDK contract suite in `evals/` does. On CI, the
+slowest Agent SDK test took 1.1 s and the slowest e2e test 9.7 s. A test in a lane sets no limit of
+its own, and a slow test gets a fix, never a raised lane limit. CI's test timeouts check lets only a
+lane script raise the limit. The pre-push test job splits its run the same way. A suite that spawns
+nixie or a build of it lives under `e2e/`.
 
 [`startSpawnedNixie`](../../../e2e/test-utils/start-spawned-nixie.ts) in `e2e/` spawns the test
 build of the server's `serve` command as a child process and joins it to
