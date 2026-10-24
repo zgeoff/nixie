@@ -128,10 +128,12 @@ interface EntryComments {
 const headerComment = /:[ \t]*(?<comment>#.*)$/u;
 const blockKeyLine = /^(?<indent>[ \t]*)[^#\s][^:]*:[ \t]*[|>][-+0-9]*[ \t]*(?:#.*)?$/u;
 
-// A line that starts with # inside a literal block is text of the value, not a comment.
+// A line that starts with # inside a literal block is text of the value, not a comment. A comment at
+// the end of a value line stays as a line of its own, because the value it sat on is replaced.
 function collectEntryComments(entry: readonly string[]): EntryComments {
   const [header = '', ...body] = entry;
   const kinds: ('value' | 'comment' | 'blank')[] = [];
+  const inlineComments: (string | null)[] = [];
   let blockIndent: number | null = null;
 
   for (const line of body) {
@@ -149,15 +151,25 @@ function collectEntryComments(entry: readonly string[]): EntryComments {
     }
 
     const kind = isInBlock ? 'value' : toLineKind(line);
+    const inlineComment = isInBlock || kind !== 'value' ? null : findInlineComment(line);
 
     kinds.push(kind);
+    inlineComments.push(inlineComment);
   }
 
   const lastValue = kinds.lastIndexOf('value');
 
   return {
     header: headerComment.exec(header)?.groups?.['comment'] ?? null,
-    inner: body.filter((_, index) => index < lastValue && kinds[index] === 'comment'),
+    inner: body.slice(0, lastValue + 1).flatMap((line, index) => {
+      if (kinds[index] === 'comment') {
+        return [line];
+      }
+
+      const comment = inlineComments[index] ?? null;
+
+      return comment === null ? [] : [`${/^[ \t]*/u.exec(line)?.[0] ?? ''}${comment}`];
+    }),
     trailing: body.slice(lastValue + 1),
   };
 }
@@ -168,6 +180,19 @@ function toLineKind(line: string): 'value' | 'comment' | 'blank' {
   }
 
   return line.trimStart().startsWith('#') ? 'comment' : 'value';
+}
+
+const keyValueLine = /^[ \t]*[^#\s][^:]*:(?<rest>.*)$/u;
+const doubleQuoted = /^"(?:[^"\\]|\\.)*"/u;
+const singleQuoted = /^'(?:[^']|'')*'/u;
+
+// YAML starts a comment at a # that follows whitespace, outside a quoted scalar.
+function findInlineComment(line: string): string | null {
+  const rest = keyValueLine.exec(line)?.groups?.['rest']?.trimStart() ?? '';
+  const quoted = rest.startsWith('"') ? doubleQuoted : singleQuoted;
+  const afterValue = rest.replace(quoted, '');
+
+  return /(?:^|[ \t])(?<comment>#.*)$/u.exec(afterValue)?.groups?.['comment'] ?? null;
 }
 
 function requireEdit(
