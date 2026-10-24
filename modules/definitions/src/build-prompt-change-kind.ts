@@ -143,9 +143,19 @@ async function writePromptState(
   log: Log,
   move: DefinitionsExportMove,
 ): Promise<void> {
+  const recorded = await tx
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('prompt_exports')
+    .select('pull_request_url')
+    .where('approval_id', '=', move.approvalID)
+    .where('state', '=', 'opened')
+    .executeTakeFirst();
+
   await writePromptExportState(tx, move);
 
-  if (move.to !== 'opened') {
+  // A retry after a lost answer finds the pull request it already opened, and the model has read
+  // that one.
+  if (move.to !== 'opened' || recorded?.pull_request_url === move.pullRequest.url) {
     return;
   }
 
