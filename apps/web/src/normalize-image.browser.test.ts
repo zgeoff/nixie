@@ -85,7 +85,6 @@ test.skipIf(browserSkip.isSkipped)(
       hasTag: false,
     });
   },
-  60_000,
 );
 
 test.skipIf(browserSkip.isSkipped)(
@@ -105,7 +104,6 @@ test.skipIf(browserSkip.isSkipped)(
 
     expect(result).toStrictEqual({ type: 'image/png', width: 800, height: 600 });
   },
-  60_000,
 );
 
 test.skipIf(browserSkip.isSkipped)(
@@ -121,5 +119,4 @@ test.skipIf(browserSkip.isSkipped)(
 
     expect(result).toBe('ImageUnreadableError');
   },
-  60_000,
 );
