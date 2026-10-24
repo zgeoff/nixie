@@ -4,6 +4,7 @@ import { toMockMemoryItem } from './to-mock-memory-item';
 interface PageRequest {
   readonly state: 'active' | 'retired' | 'forgotten';
   readonly after?: string | undefined;
+  readonly kind?: 'fact' | 'self' | undefined;
   readonly limit?: number | undefined;
 }
 
@@ -19,11 +20,14 @@ export function readMockMemoryPage(request: PageRequest) {
 
   const matching = store.memoryItems
     .all()
+    .map((item) => toMockMemoryItem(item))
     .filter((item) => states.includes(item.state))
+    .filter((item) => request.kind === undefined || item.kind === request.kind)
+    .toReversed()
     .slice(start);
 
   return {
-    items: matching.slice(0, limit).map((item) => toMockMemoryItem(item)),
+    items: matching.slice(0, limit),
     next: matching.length > limit ? String(start + limit) : null,
   };
 }

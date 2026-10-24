@@ -78,7 +78,7 @@ test('it refuses to read the features of an impd whose version the client does n
   expect(port.readFeatures()).rejects.toThrow(/^impd 0\.39\.0 does not speak imp client /u);
 });
 
-test('it reads the features of an impd of major 3 with imp client 3', () => {
+test('it reads the features of an impd of major 3 with imp client 4', () => {
   const answerRequest = mock(() =>
     Response.json({
       json: {
@@ -106,7 +106,7 @@ test('it reads the features of an impd of major 3 with imp client 3', () => {
   });
 });
 
-test('it reads the features of an impd of major 4 with imp client 3', () => {
+test('it reads the features of an impd of major 4 with imp client 4', () => {
   const answerRequest = mock(() =>
     Response.json({
       json: {
@@ -134,7 +134,7 @@ test('it reads the features of an impd of major 4 with imp client 3', () => {
   });
 });
 
-test('it refuses to read the features of an impd of major 5 with imp client 3', () => {
+test('it refuses to read the features of an impd of major 5 with imp client 4', () => {
   const answerRequest = mock(() =>
     Response.json({ json: { version: '5.0.0', features: {}, egress: {} } }),
   );
@@ -149,10 +149,10 @@ test('it refuses to read the features of an impd of major 5 with imp client 3', 
 
   const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
 
-  expect(port.readFeatures()).rejects.toThrow(/^impd 5\.0\.0 does not speak imp client 3\./u);
+  expect(port.readFeatures()).rejects.toThrow(/^impd 5\.0\.0 does not speak imp client 4\./u);
 });
 
-test('it refuses to read the features of an impd of major 1 with imp client 3', () => {
+test('it refuses to read the features of an impd of major 1 with imp client 4', () => {
   const answerRequest = mock(() =>
     Response.json({ json: { version: '1.6.0', features: {}, egress: {} } }),
   );
@@ -167,10 +167,10 @@ test('it refuses to read the features of an impd of major 1 with imp client 3', 
 
   const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
 
-  expect(port.readFeatures()).rejects.toThrow(/^impd 1\.6\.0 does not speak imp client 3\./u);
+  expect(port.readFeatures()).rejects.toThrow(/^impd 1\.6\.0 does not speak imp client 4\./u);
 });
 
-test('it reads the features of an impd of major 2 with imp client 3', () => {
+test('it reads the features of an impd of major 2 with imp client 4', () => {
   const answerRequest = mock(() =>
     Response.json({
       json: {
