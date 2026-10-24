@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.0](https://github.com/zgeoff/nixie/compare/v0.43.0...v0.44.0) (2026-10-24)
+
+
+### Features
+
+* **web:** ask for the microphone once so keyboard voice typing works ([#636](https://github.com/zgeoff/nixie/issues/636)) ([6e0093d](https://github.com/zgeoff/nixie/commit/6e0093d4bb59222f7f1f1417ed8672d9da5ef2a6))
+
 ## [0.43.0](https://github.com/zgeoff/nixie/compare/v0.42.0...v0.43.0) (2026-10-24)
 
 
