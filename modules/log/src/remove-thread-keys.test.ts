@@ -78,6 +78,35 @@ test('it refuses a stale writer and leaves every record on the thread readable',
   ]);
 });
 
+test('it shreds every record of a thread that holds more keys than one delete takes', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:aa11' },
+      thread: 'side-task',
+      erasable: { text: 'water the ferns' },
+    },
+    ...Array.from({ length: 501 }, () => ({
+      kind: 'owner_message' as const,
+      definitions: { snapshotHash: 'sha256:aa11' },
+      thread: 'conversation',
+      erasable: { text: 'the boat leaves at nine' },
+    })),
+  ]);
+
+  const removed = await removeThreadKeys(ctx.log, 'conversation');
+  const read = await readRecords(ctx.log, { afterSequence: 0, limit: 1000 });
+
+  const [sideTask, ...conversation] = read.map((entry) => entry.record.erasable);
+
+  expect(removed).toBe(501);
+  expect(sideTask).toStrictEqual({ status: 'readable', fields: { text: 'water the ferns' } });
+  expect(conversation).toHaveLength(501);
+  expect(conversation).toSatisfyAll((erasable) => erasable?.status === 'shredded');
+});
+
 test('it removes nothing and answers 0 when the thread holds no sealed record', async () => {
   const ctx = await setupTest();
 
