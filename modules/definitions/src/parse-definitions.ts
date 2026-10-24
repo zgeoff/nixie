@@ -1,8 +1,7 @@
-import { getPromptParts, promptIDs } from '@heynixie/prompts';
-import type { z } from 'zod';
 import { definitionsFormats } from './definitions-formats';
 import type { ParseProblem } from './definitions-parse-error';
 import { DefinitionsParseError } from './definitions-parse-error';
+import { formatManifestIssue } from './format-manifest-issue';
 import { manifestPath } from './manifest-path';
 import { manifestPromptsSchema } from './manifest-prompts-schema';
 import { manifestSchema } from './manifest-schema';
@@ -130,42 +129,6 @@ function findManifestField(manifest: unknown, field: string): unknown {
   return manifest !== null && typeof manifest === 'object' && field in manifest
     ? Object.getOwnPropertyDescriptor(manifest, field)?.value
     : undefined;
-}
-
-function formatManifestIssue(issue: z.core.$ZodIssue): readonly string[] {
-  const [field, id, key] = issue.path.map(String);
-
-  if (field !== 'prompts') {
-    return ['skills must be a list of skill names'];
-  }
-
-  if (issue.code === 'unrecognized_keys' && id === undefined) {
-    return issue.keys.map(
-      (name) => `prompts: no prompt is named ${name}; the prompts are ${promptIDs.join(', ')}`,
-    );
-  }
-
-  const promptID = promptIDs.find((candidate) => candidate === id);
-
-  if (promptID === undefined) {
-    return ['prompts must map each prompt to its overrides'];
-  }
-
-  if (issue.code === 'unrecognized_keys') {
-    const parts = getPromptParts(promptID).join(', ');
-
-    return issue.keys.map(
-      (name) => `prompts.${promptID}: the prompt has no part ${name}; its parts are ${parts}`,
-    );
-  }
-
-  if (key === undefined) {
-    return [`prompts.${promptID} must map each part to a file`];
-  }
-
-  return key === '_template'
-    ? [`prompts.${promptID}._template must be text`]
-    : [`prompts.${promptID}.${key} must be the path of a file`];
 }
 
 function parsePersona(text: string | undefined): string {

@@ -6,6 +6,8 @@ export type { SkillDocument } from './parse-skill-frontmatter';
 export { parseSkillFrontmatter } from './parse-skill-frontmatter';
 export { skillsLockPath } from './skills-lock-path';
 export type { DefinitionsSnapshotInput } from './build-definitions-snapshot';
+export type { PromptPartFile, PromptProposalInput } from './check-prompt-proposal';
+export { checkPromptProposal } from './check-prompt-proposal';
 export { checkSkillFiles } from './check-skill-files';
 export { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 export type { PathSourceOptions } from './create-path-source';

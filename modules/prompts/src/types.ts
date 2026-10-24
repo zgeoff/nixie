@@ -52,3 +52,7 @@ export interface PromptOverride {
 }
 
 export type PromptOverrides = Readonly<Partial<Record<PromptID, PromptOverride>>>;
+
+export interface PromptToolsContext {
+  readonly readInForce: () => { readonly prompts: PromptOverrides } | null;
+}

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { buildTimeTool } from '@heynixie/connectors';
 import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
+import { buildPromptReadTool } from '@heynixie/prompts';
 import { buildSkillTools } from '@heynixie/skills';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
@@ -32,7 +33,7 @@ async function setupTest() {
   return { log, logRead: buildLogReadTool(log) };
 }
 
-test('it lists the web fetch tool, the time tool, the log reader, the skill tools and the 11 memory tools', async () => {
+test('it lists the web fetch tool, the time tool, the log reader, the skill tools, the prompt reader and the 11 memory tools', async () => {
   const ctx = await setupTest();
 
   const definitions = buildConversationTools(
@@ -69,6 +70,7 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
         refreshDefinitions: () => Promise.resolve(null),
         readSkillList: () => [],
       }),
+      prompts: [buildPromptReadTool({ readInForce: () => null })],
     },
     {
       readStore: () => null,
@@ -88,6 +90,7 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
     'skill_reload_all',
     'skill_write',
     'skill_pending',
+    'prompt_read',
     'memory.recall',
     'memory.rate',
     'memory.pending',
@@ -191,6 +194,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
       }),
       logRead: ctx.logRead,
       skills: [],
+      prompts: [],
     },
     {
       readStore: () => null,
@@ -250,6 +254,7 @@ test('it allows the time tool, the log reader and each memory tool but export, a
         }),
         logRead: ctx.logRead,
         skills: [],
+        prompts: [],
       },
       {
         readStore: () => null,
@@ -346,6 +351,7 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
       }),
       logRead: ctx.logRead,
       skills: [],
+      prompts: [],
     },
     {
       readStore: () => null,
@@ -401,6 +407,7 @@ test('it denies a model call to memory.export under the read-only rule, so nothi
         }),
         logRead: ctx.logRead,
         skills: [],
+        prompts: [],
       },
       {
         readStore: () => null,

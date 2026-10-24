@@ -4,6 +4,7 @@ import type { DefinitionsInForce } from '@heynixie/definitions';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
+import { buildPromptReadTool } from '@heynixie/prompts';
 import type { SkillVendorContext } from '@heynixie/skills';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
@@ -52,8 +53,10 @@ export async function startConversationEndpoint(
     tools.vendor,
   );
 
+  const prompts = [buildPromptReadTool({ readInForce: tools.readInForce })];
+
   const definitions = buildConversationTools(
-    { webFetch: tools.webFetch, time, logRead, skills },
+    { webFetch: tools.webFetch, time, logRead, skills, prompts },
     {
       readStore: tools.readStore,
       clock: options.context.clock,
