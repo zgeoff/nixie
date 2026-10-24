@@ -89,6 +89,24 @@ test("it refuses a part file that another prompt reads when that prompt also rea
   );
 });
 
+test('it refuses an override that takes nixie.yaml past the size limit of a definitions file', () => {
+  expect(() =>
+    buildPromptExportChange({
+      approvalID: 'approval-a',
+      proposalID: 'k3x9m2p7qa',
+      promptID: 'compaction',
+      entry: { _template: `{{ parts.safety }}${'a'.repeat(1024 * 1024 - 100)}` },
+      files: [],
+      reason: 'A longer template.',
+      text: { agentName: null, ownerName: null },
+      manifest: `format: 3\n# ${'b'.repeat(200)}\n`,
+    }),
+  ).toThrowWithMessage(
+    Error,
+    'the compaction override takes nixie.yaml past the 1048576-byte limit of a definitions file',
+  );
+});
+
 test("it notes a template that never reads the prompt's safety part", () => {
   const change = buildPromptExportChange({
     approvalID: 'approval-a',

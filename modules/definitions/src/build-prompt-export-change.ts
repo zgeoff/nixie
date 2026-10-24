@@ -3,6 +3,7 @@ import { collectPromptsWithoutSafety } from '@heynixie/prompts';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { buildPromptManifest } from './build-prompt-manifest';
+import { defaultSizeLimits } from './default-size-limits';
 import { definitionsFormats } from './definitions-formats';
 import { manifestPath } from './manifest-path';
 import { toPromptExportBranch } from './to-prompt-export-branch';
@@ -35,6 +36,13 @@ export function buildPromptExportChange(promptExport: PromptExportInput): Defini
   );
 
   const manifest = buildPromptManifest(promptExport.manifest, promptID, entry);
+
+  if (new TextEncoder().encode(manifest.text).byteLength > defaultSizeLimits.maxFileBytes) {
+    throw new Error(
+      `the ${promptID} override takes ${manifestPath} past the ${defaultSizeLimits.maxFileBytes}-byte limit of a definitions file`,
+    );
+  }
+
   const agent = promptExport.text.agentName ?? 'nixie';
   const owner = promptExport.text.ownerName ?? 'the owner';
 
