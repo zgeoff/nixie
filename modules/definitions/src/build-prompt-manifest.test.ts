@@ -124,6 +124,58 @@ test('it keeps the comments on, inside and after an entry it replaces', () => {
   );
 });
 
+test('it keeps the comment at the end of each value line of an entry it replaces, as a line of its own', () => {
+  const manifest = [
+    'format: 3',
+    'prompts:',
+    '  compaction:',
+    '    instruction: prompts/compaction-old.md # the old wording',
+    "    safety: 'prompts/compaction-safety.md' # keeps the built-in rules",
+    '    _template: |- # reads both parts',
+    '      {{ parts.safety }}',
+    '      {{ parts.instruction }}',
+    '',
+  ].join('\n');
+
+  expect(
+    buildPromptManifest(manifest, 'compaction', { safety: 'prompts/compaction-safety.md' }).text,
+  ).toBe(
+    [
+      'format: 3',
+      'prompts:',
+      '  compaction:',
+      '    # the old wording',
+      '    # keeps the built-in rules',
+      '    # reads both parts',
+      '    safety: "prompts/compaction-safety.md"',
+      '',
+    ].join('\n'),
+  );
+});
+
+test('it keeps no comment from a # inside a quoted value of an entry it replaces', () => {
+  const manifest = [
+    'format: 3',
+    'prompts:',
+    '  compaction:',
+    '    instruction: "prompts/compaction #2.md"',
+    "    safety: 'prompts/compaction ''#3''.md'",
+    '',
+  ].join('\n');
+
+  expect(
+    buildPromptManifest(manifest, 'compaction', { safety: 'prompts/compaction-safety.md' }).text,
+  ).toBe(
+    [
+      'format: 3',
+      'prompts:',
+      '  compaction:',
+      '    safety: "prompts/compaction-safety.md"',
+      '',
+    ].join('\n'),
+  );
+});
+
 test('it drops a line that starts with # inside the literal block of an entry it replaces', () => {
   const manifest = [
     'format: 3',
