@@ -10,6 +10,8 @@
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import type { TurnCase } from './real-turns/build-turn-cases.ts';
+import type { BuiltGold } from './real-turns/build-gold.ts';
+import { buildGold } from './real-turns/build-gold.ts';
 import { buildKeyPath } from './real-turns/build-key-path.ts';
 import { buildTurnCases } from './real-turns/build-turn-cases.ts';
 import type { EncoderName } from './real-turns/load-turn-encoder.ts';
@@ -21,17 +23,10 @@ import { readPlainExport } from './real-turns/read-plain-export.ts';
 import { startMemoryIndex } from '../../modules/memory/src/start-memory-index.ts';
 import { buildRanker, SHIPPED } from './real-turns/rank-turn.ts';
 import { readJSONLines } from './real-turns/read-json-lines.ts';
+import { buildScoreReport } from './real-turns/build-score-report.ts';
+import { pickScoredTurns } from './real-turns/pick-scored-turns.ts';
 import type { Gold } from './real-turns/score-turns.ts';
-import {
-  buildPairedDifference,
-  buildRuns,
-  getShippedRun,
-  labelSchema,
-  runRankings,
-  sampleKeySchema,
-  scoreRanking,
-  scoreServed,
-} from './real-turns/score-turns.ts';
+import { buildRuns, labelSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -136,97 +131,42 @@ async function runReplay(turns: TurnCase[]): Promise<void> {
   await encoder.stop();
 }
 
-// Scores every run on the labelled turns, or, with no labels, on the rated turns and the turns whose
-// retrieval returned an item, which shows only the noise ratings and how many items each run shows.
 async function runScore(turns: TurnCase[]): Promise<void> {
   const labels = values.labels === undefined ? [] : await readJSONLines(resolve(values.labels), labelSchema);
-  const key = values.key === undefined ? [] : await readJSONLines(resolve(values.key), sampleKeySchema);
-  const refsByCase = new Map(key.map((entry) => [entry.caseID, entry.refs]));
-  const labelsByCase = new Map(labels.map((label) => [label.caseID, label]));
+  const keys = values.key === undefined ? [] : await readJSONLines(resolve(values.key), sampleKeySchema);
 
-  if (labels.length > 0 && key.length === 0) {
+  if (labels.length > 0 && keys.length === 0) {
     throw new Error('pass --key <file>, the key file written beside the labelled sample');
   }
 
-  const gold = new Map<string, Gold>();
-
-  for (const turn of turns) {
-    const label = labelsByCase.get(turn.caseID);
-    const refs = refsByCase.get(turn.caseID) ?? {};
-    const toItem = (ref: string) => refs[ref];
-
-    gold.set(turn.caseID, {
-      relevant: new Set((label?.relevant ?? []).map(toItem).filter((itemID) => itemID !== undefined)),
-      best: label?.best === null || label?.best === undefined ? null : (toItem(label.best) ?? null),
-      noise: new Set(turn.ratings.filter((rating) => rating.verdict !== 'helpful').map((rating) => rating.itemID)),
-      // The product leaves out only the version it delivered, so an item counts as delivered only
-      // at the version the turn could retrieve.
-      delivered: new Set(
-        turn.candidates
-          .filter((candidate) => turn.delivered.includes(`${candidate.itemID}@${candidate.version}`))
-          .map((candidate) => candidate.itemID),
-      ),
-      isLabelled: label !== undefined,
-    });
-  }
-
-  const chosen = turns.filter((turn) =>
-    labels.length > 0 ? labelsByCase.has(turn.caseID) : turn.logged.length > 0 || turn.ratings.length > 0,
-  );
-
+  const gold = getGold(buildGold(turns, labels, keys));
   const encoders = parseEncoderNames(values.encoders ?? 'leaf-ir-q8');
 
   if ('unknown' in encoders) {
     throw new Error(`unknown encoders ${encoders.unknown.join(', ')}; pass any of ${Object.keys(ENCODERS).join(', ')}`);
   }
 
+  const chosen = pickScoredTurns(turns, labels);
   const runs = buildRuns(encoders.names);
   const results = await runRankings(chosen, runs, encoderDirs, excludedWords);
-  const report: Record<string, unknown> = { turns: chosen.length, labelled: labels.length };
+  const scored = buildScoreReport(runs, results, gold);
 
-  console.log(`turns ${chosen.length}, labelled ${labels.length}`);
-  console.log(
-    '\n| Run | Cases | Recall@3 | Recall@5 | Recall@10 | MRR | Best@5 | Recall@5 vs shipped | MRR vs shipped |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
-  );
-
-  const base = results.get(getShippedRun(runs, 'ranking').name) ?? [];
-  const formatDifference = (difference: { mean: number; low: number; high: number }) =>
-    `${difference.mean} (${difference.low} to ${difference.high})`;
-
-  for (const run of runs.filter((entry) => entry.kind === 'ranking')) {
-    const ranked = results.get(run.name) ?? [];
-    const score = scoreRanking(ranked, gold);
-    const at5 = buildPairedDifference(ranked, base, gold, 'at5');
-    const reciprocal = buildPairedDifference(ranked, base, gold, 'reciprocal');
-
-    report[run.name] = { ...score, recallAt5Difference: at5, mrrDifference: reciprocal };
-    console.log(
-      `| ${run.name} | ${score.cases} | ${score.recallAt3} | ${score.recallAt5} | ${score.recallAt10} | ${score.mrr} | ${score.bestAt5} | ${formatDifference(at5)} | ${formatDifference(reciprocal)} |`,
-    );
-  }
-
-  console.log(
-    '\n| Run | Gold cases | Covered recall | Fresh cases | Fresh recall | Empty cases | Shown on empty | Empty with any | Precision | Noise served | Shown per turn | Fresh change | Shown on empty change |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
-  );
-
-  const servedBase = results.get(getShippedRun(runs, 'served').name) ?? [];
-
-  for (const run of runs.filter((entry) => entry.kind === 'served')) {
-    const ranked = results.get(run.name) ?? [];
-    const score = scoreServed(ranked, gold);
-    const shown = mean(ranked.map((entry) => entry.ranking.facts.length + entry.ranking.selves.length));
-    const fresh = buildPairedDifference(ranked, servedBase, gold, 'fresh');
-    const shownOnEmpty = buildPairedDifference(ranked, servedBase, gold, 'shownOnEmpty');
-
-    report[run.name] = { ...score, shownPerTurn: shown, freshDifference: fresh, shownOnEmptyDifference: shownOnEmpty };
-    console.log(
-      `| ${run.name} | ${score.goldCases} | ${score.coveredRecall} | ${score.freshCases} | ${score.freshRecall} | ${score.emptyCases} | ${score.shownOnEmpty} | ${score.emptyWithAny} | ${score.precision} | ${score.noiseServed} | ${shown} | ${formatDifference(fresh)} | ${formatDifference(shownOnEmpty)} |`,
-    );
-  }
+  console.log(`turns ${chosen.length}, labelled ${labels.length}\n`);
+  console.log(scored.lines.join('\n'));
 
   if (values.out !== undefined) {
+    const report = { turns: chosen.length, labelled: labels.length, ...scored.report };
+
     await Bun.write(resolve(values.out), `${JSON.stringify(report, null, 2)}\n`);
   }
+}
+
+function getGold(built: BuiltGold): Map<string, Gold> {
+  if ('unknownRefs' in built) {
+    throw new Error(`labels name references the key lacks: ${built.unknownRefs.join(' ')}`);
+  }
+
+  return built.gold;
 }
 
 // Writes the test set: each labelled turn with its message, what its retrieval logged, its ratings,
@@ -236,14 +176,14 @@ async function writeTestSet(turns: TurnCase[]): Promise<void> {
     throw new Error('pass --labels <file>, --key <file> and --out <file>');
   }
 
-  const labels = new Map((await readJSONLines(resolve(values.labels), labelSchema)).map((label) => [label.caseID, label]));
-  const keys = new Map((await readJSONLines(resolve(values.key), sampleKeySchema)).map((entry) => [entry.caseID, entry.refs]));
+  const labels = await readJSONLines(resolve(values.labels), labelSchema);
+  const keys = await readJSONLines(resolve(values.key), sampleKeySchema);
+  const gold = getGold(buildGold(turns, labels, keys));
 
   const lines = turns.flatMap((turn) => {
-    const label = labels.get(turn.caseID);
-    const refs = keys.get(turn.caseID) ?? {};
+    const expected = gold.get(turn.caseID);
 
-    if (label === undefined) {
+    if (expected?.isLabelled !== true) {
       return [];
     }
 
@@ -255,8 +195,8 @@ async function writeTestSet(turns: TurnCase[]): Promise<void> {
         searchMode: turn.searchMode,
         delivered: turn.delivered,
         ratings: turn.ratings,
-        needed: label.relevant.map((ref) => refs[ref]).filter((itemID) => itemID !== undefined),
-        best: label.best === null ? null : (refs[label.best] ?? null),
+        needed: [...expected.relevant],
+        best: expected.best,
       }),
     ];
   });
