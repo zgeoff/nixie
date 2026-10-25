@@ -58,9 +58,9 @@ location, or at `BUN_CHROME_PATH`. GitHub's Ubuntu runners ship Chrome. `bun run
 browser suites out of the parallel run and runs them in one process after it. That process preloads
 [`start-browser.ts`](../../../apps/web/src/test-utils/start-browser.ts), which starts the one Chrome
 the suites share before the first test. A first Chrome start on a fresh CI runner can outlast the
-default test timeout even on an idle CPU, and takes longer still beside the parallel workers, so
-that run's limit per test is 10 s. The parallel run's ignore patterns repeat the root config's,
-because a pattern given on the command line replaces that list.
+default test timeout even on an idle CPU, and takes longer still beside the parallel workers, so its
+script, `test:browser`, sets a limit per test of 10 s. The parallel run's ignore patterns repeat the
+root config's, because a pattern given on the command line replaces that list.
 
 Outside CI, each browser suite skips and prints why when no browser starts, through
 [`checkBrowserSkip`](../../../apps/web/src/test-utils/check-browser-skip.ts), and the preload runs
