@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { readJSONLines } from './read-json-lines.ts';
 
-const plainRecordSchema = z.object({
+export const plainRecordSchema = z.object({
   sequence: z.int(),
   recordedAt: z.string(),
   kind: z.string(),

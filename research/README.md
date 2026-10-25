@@ -24,6 +24,7 @@ lists the variable.
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | [cache-lifetime](cache-lifetime/)                     | which CLI setting writes 1-hour prompt cache entries, and a turn after a pause under each lifetime                       |
 | [connector-account-pick](connector-account-pick/)     | whether the model passes the ID of the connector account that a message names                                            |
+| [consent-checker](consent-checker/)                   | how often the consent checker credits consent wrongly or misses it, on one deployment's own messages                     |
 | [encoder](encoder/)                                   | which small local embedding model to ship, by retrieval quality, CPU time, memory and image size                         |
 | [fetch-headless](fetch-headless/)                     | how far headless Chromium, held to the fetch sandbox's limits, gets on challenge-protected pages                         |
 | [fetch-sandbox-start](fetch-sandbox-start/)           | how a fetch sandbox starts on impd: a new imp, a template, a fork, a wake or a warm imp                                  |
