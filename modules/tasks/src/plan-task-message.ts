@@ -1,3 +1,4 @@
+import { isWaitingKind } from './is-waiting-kind';
 import { toEventID } from './to-event-id';
 import type { TaskMessageKind, TaskMessaging, TaskState } from './types';
 
@@ -35,6 +36,7 @@ export type TaskMessagePlan =
       readonly hop: number;
       readonly woke: boolean;
       readonly hold: TaskMessageHold;
+      readonly opensWait: boolean;
       readonly onBehalfOf: readonly string[];
     }
   | { readonly status: 'refused'; readonly refusal: TaskMessageRefusal };
@@ -61,8 +63,16 @@ export function planTaskMessage(
 
   const hop = facts.senderHop + 1;
   const hold = pickHold(request.wake, hop > messaging.hopLimit, receiver?.isWokenByMessages);
+  const opensWait = isWaitingKind(request.kind) && receiver?.isWokenByMessages === true;
 
-  return { status: 'send', hop, woke: request.wake && hold === 'none', hold, onBehalfOf };
+  return {
+    status: 'send',
+    hop,
+    woke: request.wake && hold === 'none',
+    hold,
+    opensWait,
+    onBehalfOf,
+  };
 }
 
 interface RefusalFacts {

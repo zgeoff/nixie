@@ -15,6 +15,7 @@ export const taskMessageCodec = defineRecordCodec(
     hopLimit: z.int(),
     wake: z.boolean(),
     woke: z.boolean(),
+    opensWait: z.boolean().nullable().default(null),
     source: z.string(),
   }),
 );

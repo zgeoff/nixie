@@ -317,3 +317,40 @@ test('it releases only the open waits when a task finishes, and leaves an answer
     { kind: 'reply', wait_state: 'none' },
   ]);
 });
+
+test('it opens a wait for a question recorded before messages said whether they open one', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'task_message',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: {
+        messageID: 'p7w2x9qkra',
+        from: 'planner',
+        to: 'conversation',
+        kind: 'question',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        source: 'task:planner',
+      },
+      erasable: { body: 'Is Tuesday free?' },
+    },
+  ]);
+
+  const row = await ctx.db
+    .selectFrom('task_messages')
+    .select('wait_state')
+    .where('message_id', '=', 'p7w2x9qkra')
+    .executeTakeFirstOrThrow();
+
+  expect(row.wait_state).toBe('open');
+});

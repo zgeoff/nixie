@@ -1,6 +1,7 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { collectTaskWaitSources } from './collect-task-wait-sources';
+import { isWaitingKind } from './is-waiting-kind';
 import { parseTaskRecord } from './parse-task-record';
 import { taskMessageCodec } from './task-message-codec';
 import type { TasksTables } from './types';
@@ -25,8 +26,6 @@ export const taskMessagesProjection: Projection = {
   },
 };
 
-const waitingKinds: ReadonlySet<string> = new Set(['question', 'request']);
-
 async function insertMessage(
   db: Transaction<TasksTables>,
   record: EnvelopeRecord,
@@ -41,7 +40,7 @@ async function insertMessage(
       to_task: message.to,
       kind: message.kind,
       reply_to: message.replyTo,
-      wait_state: waitingKinds.has(message.kind) ? 'open' : 'none',
+      wait_state: (message.opensWait ?? isWaitingKind(message.kind)) ? 'open' : 'none',
       sent_sequence: record.sequence,
     })
     .execute();
