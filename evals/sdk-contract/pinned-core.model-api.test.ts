@@ -69,7 +69,7 @@ test.skipIf(!isContractRun)(
 
     expect(result.result.trim()).toBe('BANANA');
   },
-  120_000,
+  13_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -101,5 +101,5 @@ test.skipIf(!isContractRun)(
 
     expect(result.result.trim()).toBe('APPLE');
   },
-  120_000,
+  11_000,
 );
