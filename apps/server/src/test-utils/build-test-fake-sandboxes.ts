@@ -4,9 +4,9 @@ import type { ToolTargetResolver } from '@heynixie/sandbox';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import type { StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildStubGuestSandboxes } from '@heynixie/sandbox/test-utils';
+import { sendTestToolCall } from '@heynixie/tools/test-utils';
 import type { TestSandboxes } from './build-retirable-sandboxes';
 import { buildRetirableSandboxes } from './build-retirable-sandboxes';
-import { sendTestToolCall } from './send-test-tool-call';
 
 export interface TestFakeSandboxesOptions {
   readonly log: Log;

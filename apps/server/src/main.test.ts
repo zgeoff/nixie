@@ -82,7 +82,7 @@ test('it offers the memory tools, web fetch, the time tool and the log reader to
 
   const gate = Promise.withResolvers<void>();
 
-  ctx.guest.addReplies({ text: 'Hello.', gate: gate.promise });
+  ctx.guest.addReplies({ text: 'Hello.', gate: () => gate.promise });
 
   await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
@@ -833,7 +833,7 @@ test('it stops claiming steps on a stop signal, lets the turn in flight commit a
 
   const gate = Promise.withResolvers<void>();
 
-  ctx.guest.addReplies({ text: 'Held-reply', gate: gate.promise });
+  ctx.guest.addReplies({ text: 'Held-reply', gate: () => gate.promise });
 
   await api.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
