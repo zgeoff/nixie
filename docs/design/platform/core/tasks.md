@@ -151,7 +151,9 @@ never a state, so the conversation keeps answering you while it waits.
 
 A scheduled task, such as the memory writer, receives messages but is not woken by them. A message
 to one waits unread, and its next scheduled session reads it, so the sender gets `woke: false` with
-a note that says so.
+a note that says so. A scheduled task never finishes, so a wait on one would stay open until a reply
+that may never come. A question or a request to one therefore marks no wait, and its note tells the
+sender that a reply, if any, arrives as a new message.
 
 ### Hops
 

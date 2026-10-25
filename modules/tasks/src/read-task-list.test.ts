@@ -105,6 +105,58 @@ test('it shows a task that asked a question as waiting on the task it asked', as
   expect(tasks).toMatchObject([{ id: 'planner', waitingOn: 'conversation' }]);
 });
 
+test.each(['question', 'request'] as const)(
+  'it shows no wait for a task that sent a %s to the memory writer, which runs on its own schedule',
+  async (kind) => {
+    const ctx = await setupTest();
+
+    const messaging = {
+      directory: [
+        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+        {
+          taskID: 'memory-writer',
+          name: 'Memory writer',
+          brief: 'Saves memory.',
+          isWokenByMessages: false,
+        },
+      ],
+      hopLimit: 20,
+    };
+
+    await createSystemTask(ctx.context, 'planner');
+    await createSystemTask(ctx.context, 'memory-writer');
+    await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+    const outcome = await writeTestTaskMessage(ctx.context, messaging, {
+      from: 'planner',
+      to: 'memory-writer',
+      kind,
+      body: 'Keep the note about the allotment.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    });
+
+    const tasks = await readTaskList(ctx.context, messaging, {
+      callerID: 'memory-writer',
+      state: 'all',
+      limit: 20,
+    });
+
+    expect(outcome).toMatchObject({ status: 'sent', woke: false, hold: 'next_run' });
+
+    expect(tasks).toStrictEqual([
+      {
+        id: 'planner',
+        name: 'Planner',
+        state: 'running',
+        brief: 'Plans the week.',
+        lastActivityAt: expect.toBeValidDate(),
+      },
+    ]);
+  },
+);
+
 test('it clears the wait when the asked task replies to the question, by its ID', async () => {
   const ctx = await setupTest();
 

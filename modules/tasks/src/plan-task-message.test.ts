@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { planTaskMessage } from './plan-task-message';
 
-test('it sends a message one hop past its step and wakes a receiver that wakes for messages', () => {
+test('it sends a question one hop past its step, wakes a receiver that wakes for messages, and opens a wait', () => {
   expect(
     planTaskMessage(
       {
@@ -31,7 +31,14 @@ test('it sends a message one hop past its step and wakes a receiver that wakes f
         hopLimit: 20,
       },
     ),
-  ).toStrictEqual({ status: 'send', hop: 3, woke: true, hold: 'none', onBehalfOf: ['4821'] });
+  ).toStrictEqual({
+    status: 'send',
+    hop: 3,
+    woke: true,
+    hold: 'none',
+    opensWait: true,
+    onBehalfOf: ['4821'],
+  });
 });
 
 test('it holds a message one hop past the limit, and wakes nobody', () => {
@@ -64,7 +71,14 @@ test('it holds a message one hop past the limit, and wakes nobody', () => {
         hopLimit: 3,
       },
     ),
-  ).toStrictEqual({ status: 'send', hop: 4, woke: false, hold: 'hop_limit', onBehalfOf: [] });
+  ).toStrictEqual({
+    status: 'send',
+    hop: 4,
+    woke: false,
+    hold: 'hop_limit',
+    opensWait: false,
+    onBehalfOf: [],
+  });
 });
 
 test('it sends a message that reaches the limit exactly, and wakes the receiver', () => {
@@ -97,10 +111,17 @@ test('it sends a message that reaches the limit exactly, and wakes the receiver'
         hopLimit: 3,
       },
     ),
-  ).toStrictEqual({ status: 'send', hop: 3, woke: true, hold: 'none', onBehalfOf: [] });
+  ).toStrictEqual({
+    status: 'send',
+    hop: 3,
+    woke: true,
+    hold: 'none',
+    opensWait: false,
+    onBehalfOf: [],
+  });
 });
 
-test('it holds a message for a scheduled receiver until its next run', () => {
+test('it holds a request for a scheduled receiver until its next run, and opens no wait', () => {
   expect(
     planTaskMessage(
       {
@@ -130,7 +151,14 @@ test('it holds a message for a scheduled receiver until its next run', () => {
         hopLimit: 20,
       },
     ),
-  ).toStrictEqual({ status: 'send', hop: 1, woke: false, hold: 'next_run', onBehalfOf: [] });
+  ).toStrictEqual({
+    status: 'send',
+    hop: 1,
+    woke: false,
+    hold: 'next_run',
+    opensWait: false,
+    onBehalfOf: [],
+  });
 });
 
 test('it sends a message with no wake as no hold, and wakes nobody', () => {
@@ -163,7 +191,54 @@ test('it sends a message with no wake as no hold, and wakes nobody', () => {
         hopLimit: 20,
       },
     ),
-  ).toStrictEqual({ status: 'send', hop: 1, woke: false, hold: 'none', onBehalfOf: [] });
+  ).toStrictEqual({
+    status: 'send',
+    hop: 1,
+    woke: false,
+    hold: 'none',
+    opensWait: false,
+    onBehalfOf: [],
+  });
+});
+
+test('it opens no wait for a question to a scheduled receiver sent with no wake', () => {
+  expect(
+    planTaskMessage(
+      {
+        from: 'conversation',
+        to: 'memory-writer',
+        kind: 'question',
+        body: 'Did you save the note about the bike?',
+        replyTo: null,
+        onBehalfOf: [],
+        wake: false,
+      },
+      {
+        senderHop: 0,
+        receiverState: 'waiting',
+        isReplyToKnown: false,
+        ownerMessageIDs: new Set(),
+      },
+      {
+        directory: [
+          {
+            taskID: 'memory-writer',
+            name: 'Memory writer',
+            brief: 'Saves.',
+            isWokenByMessages: false,
+          },
+        ],
+        hopLimit: 20,
+      },
+    ),
+  ).toStrictEqual({
+    status: 'send',
+    hop: 1,
+    woke: false,
+    hold: 'none',
+    opensWait: false,
+    onBehalfOf: [],
+  });
 });
 
 test.each([

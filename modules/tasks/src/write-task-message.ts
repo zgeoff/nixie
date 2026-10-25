@@ -73,6 +73,7 @@ export function writeTaskMessage(
           hopLimit: messaging.hopLimit,
           wake: request.wake,
           woke: plan.woke,
+          opensWait: plan.opensWait,
           source: `task:${request.from}`,
         }),
         erasable: { body: request.body },

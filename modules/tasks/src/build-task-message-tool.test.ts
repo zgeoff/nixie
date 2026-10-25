@@ -90,6 +90,51 @@ test('it tells the sender, in a note, why a message past the hop limit did not w
   });
 });
 
+test('it tells the sender of a question to a task on its own schedule that a reply arrives as a new message', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createSystemTask(ctx.context, 'memory-writer');
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  const tool = buildTaskMessageTool(ctx.context, {
+    directory: [
+      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+      {
+        taskID: 'memory-writer',
+        name: 'Memory writer',
+        brief: 'Saves memory.',
+        isWokenByMessages: false,
+      },
+    ],
+    hopLimit: 20,
+    ownerName: 'Robin',
+  });
+
+  const outcome = await tool.run(
+    buildMockToolCall({
+      tool: 'task.message',
+      input: { to: 'memory-writer', kind: 'question', body: 'Did the gym note save?' },
+    }),
+    buildMockToolContext({ run: { thread: 'planner', stepRunID: buildStepRunID(claim) } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      messageID: expect.toBeString(),
+      woke: false,
+      hop: 1,
+      note: expect.stringMatching(
+        /^Delivered to Memory writer as \w+\. .* You do not wait on them for an answer, and a reply, if any, arrives as a new message\. /u,
+      ),
+    },
+  });
+});
+
 test("it refuses on-behalf-of IDs that are not the owner's messages, naming them", async () => {
   const ctx = await setupTest();
 

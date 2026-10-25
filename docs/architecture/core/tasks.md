@@ -122,11 +122,18 @@ turn keeps the hop it was claimed with, so a reply from it wakes the sender only
 hop allows.
 
 A task-messages projection keeps one row per message with its wait state, and one declared table
-holds the moves between wait states. A question or a request opens a wait, so its sender waits on
-the receiver, and any other kind of message has none. A reply that names the question answers that
-wait. A step that commits as done, or a task that fails, releases every open wait that names the
-task. Only an open wait moves, so an answered wait stays answered when its task finishes. The list
-tool reads the newest open wait as the task it waits on.
+holds the moves between wait states. A question or a request to a task that wakes for messages opens
+a wait, so its sender waits on the receiver, and any other message has none. A question or a request
+to the memory writer or consolidator opens no wait, because neither task finishes, so its wait would
+stay open until a reply that may never come. The tool's note tells the sender that a reply, if any,
+arrives as a new message. The message record holds whether the message opens a wait, so a rebuild of
+the projection keeps each wait as it was. A record that lacks that field opens a wait for every
+question and request.
+
+A reply that names the question answers that wait. A step that commits as done, or a task that
+fails, releases every open wait that names the task. Only an open wait moves, so an answered wait
+stays answered when its task finishes. The list tool reads the newest open wait as the task it waits
+on.
 
 [Conversation turns](./conversation-turns.md) covers the block that shows a task message to the
 model, and [memory writes](../memory/writes.md) covers why the content gate never takes its body as
