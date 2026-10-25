@@ -52,8 +52,8 @@ utterances: none cuts off fewer than 5% of meeting speech at a 1.2 s maximum wai
 task calls and commands, between Clef-flash's fewer cut-offs and the averaged pair's shorter waits.
 The [reply run](voice-reply.md) compares two Claude pipelines with Grok Voice and GPT-Live: Grok
 Voice alone passes the first-audio and silence gates, and GPT-Live is the one that hands real
-requests to Claude. Its blind ranking is the user's to make, and the user records it on the spike's
-issue.
+requests to Claude. The user chose GPT-Live with Claude writing the answers, under
+[0040](../../docs/decisions/0040-voice-pipeline.md).
 
 ## Untested
 

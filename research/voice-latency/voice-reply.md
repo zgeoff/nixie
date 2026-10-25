@@ -9,7 +9,9 @@ and no reply held a silence over 1 s. GPT-Live reached first audio at 1.41 s but
 to 3.8 s on 8 of the 9 requests it handed to Claude, so it fails the silence gate on the tool lines.
 
 A listening pass ruled Piper's voice out, so the pipeline results measure Claude behind a voice
-nixie will not ship. The same pass heard Grok Voice and GPT-Live as equal.
+nixie will not ship. The same pass heard Grok Voice and GPT-Live as equal. From these results the
+user chose GPT-Live, with Claude writing the answer to each request, under
+[0040](../../docs/decisions/0040-voice-pipeline.md).
 
 ## Question
 
@@ -176,9 +178,8 @@ GPT-Live "Okay, pausing."
 One round of each of the four candidates went into a listening set, as 13 lines in each voice. The
 user heard Grok Voice and GPT-Live as equal and ruled Piper out as nixie's voice. The candidates'
 letters were known when they listened, so the result is a labelled judgement, not a blind ranking.
-
-The blind ranking is the user's to make. A second set from another round, with new letters, waits in
-the git-ignored results, and the user records its ranking on the spike's issue.
+With the two speech-to-speech voices heard as equal, the user chose between them on the measured
+numbers, and no blind ranking ran.
 
 ## Untested
 

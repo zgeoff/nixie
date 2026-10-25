@@ -54,10 +54,10 @@ adding it later means a redesign.
 | Health checks reported through another channel, safe upgrades with rollback, and backups of personal data                        | Your data stays home; survey | [0020](decisions/0020-deployment.md)                                                                      |     |
 | Trust rules for skills: signed, pinned, scanned, with review of skills that nixie writes itself                                  | Survey                       | [0038](decisions/0038-skills.md)                                                                          |     |
 
-nixie runs voice as a pipeline of speech-to-text, its own turn and text-to-speech, under
-[0040](decisions/0040-voice-pipeline.md), and builds none of those models. nixie owns the voice
-session itself: it reconnects when a provider session ends, keeps a transcript of what you heard,
-and brings in results without interrupting.
+nixie runs voice through GPT-Live, which hears and speaks the call and hands each request to nixie's
+own turn under [0040](decisions/0040-voice-pipeline.md), and nixie builds no speech model. nixie
+owns the voice session itself: it reconnects when a provider session ends, keeps a transcript of
+what you heard, and brings in results without interrupting.
 
 ### Tier 3
 
