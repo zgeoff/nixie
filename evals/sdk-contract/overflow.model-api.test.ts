@@ -85,7 +85,7 @@ test.skipIf(!isContractRun)(
     expect(run.messages).not.toPartiallyContain({ type: 'system', subtype: 'compact_boundary' });
     expect(run.thrown).toBe('Error: Claude Code returned an error result: Prompt is too long');
   },
-  300_000,
+  20_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -136,7 +136,7 @@ test.skipIf(!isContractRun)(
     expect(JSON.stringify(forked)).not.toInclude('Prompt is too long');
     expect(JSON.stringify(forked)).not.toInclude('"type":"tool_use"');
   },
-  300_000,
+  22_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -165,7 +165,7 @@ test.skipIf(!isContractRun)(
       result: 'Prompt is too long',
     });
   },
-  300_000,
+  6000,
 );
 
 test.skipIf(!isContractRun)(
@@ -184,7 +184,7 @@ test.skipIf(!isContractRun)(
       terminal_reason: 'api_error',
     });
   },
-  300_000,
+  5000,
 );
 
 test.skipIf(!isContractRun)(
@@ -206,5 +206,5 @@ test.skipIf(!isContractRun)(
       terminal_reason: 'api_error',
     });
   },
-  300_000,
+  20_000,
 );

@@ -27,11 +27,11 @@ Each line links the section that explains it.
 
 ## Runs
 
-| Run                    | Command                                                         | Needs                                                                                           |
-| ---------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Unit and package tests | `bun run test` at the root                                      | The Bun that `.bun-version` pins; the gated suites below skip                                   |
-| imp isolation          | `bun test src/build-imp-port.test.ts` in `adapters/sandbox-imp` | An impd on a host with `/dev/kvm`, and the `NIXIE_IMP_TEST_*` variables                         |
-| SDK contract           | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract`              | A model credential, or a broker's placeholder, in `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY` |
+| Run                    | Command                                                        | Needs                                                                                           |
+| ---------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Unit and package tests | `bun run test` at the root                                     | The Bun that `.bun-version` pins; the gated suites below skip                                   |
+| imp isolation          | `bun run test:imp` in `adapters/sandbox-imp` and `apps/server` | An impd on a host with `/dev/kvm`, and the `NIXIE_IMP_TEST_*` variables                         |
+| SDK contract           | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract`             | A model credential, or a broker's placeholder, in `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY` |
 
 Some tests pin an error that Bun raises, such as the code of a refused connection, and that error
 can change between Bun releases, so a run on another Bun can fail where CI passes.
@@ -58,9 +58,9 @@ location, or at `BUN_CHROME_PATH`. GitHub's Ubuntu runners ship Chrome. `bun run
 browser suites out of the parallel run and runs them in one process after it. That process preloads
 [`start-browser.ts`](../../../apps/web/src/test-utils/start-browser.ts), which starts the one Chrome
 the suites share before the first test. A first Chrome start on a fresh CI runner can outlast the
-default test timeout even on an idle CPU, and takes longer still beside the parallel workers. The
-parallel run's ignore patterns repeat the root config's, because a pattern given on the command line
-replaces that list.
+default test timeout even on an idle CPU, and takes longer still beside the parallel workers, so its
+script, `test:browser`, sets a limit per test of 10 s. The parallel run's ignore patterns repeat the
+root config's, because a pattern given on the command line replaces that list.
 
 Outside CI, each browser suite skips and prints why when no browser starts, through
 [`checkBrowserSkip`](../../../apps/web/src/test-utils/check-browser-skip.ts), and the preload runs
@@ -70,21 +70,25 @@ short directory or point `BUN_CHROME_PATH` at Playwright's `chrome-headless-shel
 such socket. Chrome stops under a `ulimit -v` cap, because it reserves more address space than it
 uses, so the browser suites skip there.
 
-Beside the browser suites, two lanes run suites that need a real system the parallel run cannot
-host. `bun run test` leaves both out of the parallel run and ends with each lane's script, which
-runs its files one at a time.
+Beside the browser suites, four lanes run suites that need a real system the parallel run cannot
+host. `bun run test` leaves each one out of the parallel run. It ends with the Agent SDK and e2e
+lanes' scripts, which run their files one at a time. The imp and model API lanes run outside CI, as
+[Runs](#runs) gives.
 
 | Lane      | Files                 | Real system                                                   | Script           | Limit per test     |
 | --------- | --------------------- | ------------------------------------------------------------- | ---------------- | ------------------ |
 | Agent SDK | `*.agent-sdk.test.ts` | The Agent SDK's CLI as a subprocess, against a scripted model | `test:agent-sdk` | 5 s, Bun's default |
 | e2e       | every suite in `e2e/` | The built nixie or web client, driven from outside            | `test:e2e`       | 15 s               |
+| imp       | `*.imp.test.ts`       | A real impd on a host with `/dev/kvm`                         | `test:imp`       | 14 s               |
+| model API | `*.model-api.test.ts` | The live model, through the pinned Agent SDK                  | SDK contract run | 120 s              |
 
 An Agent SDK suite, in a guest or in `evals/test-utils`, never calls the live model; the SDK
 contract suite in `evals/sdk-contract` does. A test in a lane sets no limit of its own, and a slow
-test gets a fix, never a raised lane limit. CI's test timeouts check lets only a lane script raise
-the limit. The pre-push test job splits its run the same way. A suite that spawns nixie, the web
-client or a build of either lives under `e2e/`. The web package exports the helpers those suites
-share from its test utils.
+test gets a fix, never a raised lane limit. A model API test is the one exception: a live model's
+time varies by test, so each sets a limit of about twice its measured time, within the lane's. CI's
+test timeouts check lets only a lane script raise the limit. The pre-push test job splits its run
+the same way. A suite that spawns nixie, the web client or a build of either lives under `e2e/`. The
+web package exports the helpers those suites share from its test utils.
 
 [`startSpawnedNixie`](../../../e2e/test-utils/start-spawned-nixie.ts) in `e2e/` spawns the test
 build of the server's `serve` command as a child process and joins it to

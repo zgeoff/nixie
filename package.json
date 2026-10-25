@@ -97,7 +97,8 @@
     "postinstall": "bun run --cwd apps/web codegen",
     "prepare": "command -v git > /dev/null 2>&1 && lefthook install --force || true",
     "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md AGENTS.md ':(glob)docs/**/*.md' ':(glob)research/**/*.md' .claude/skills/project-code-style .claude/skills/project-docs-writing .claude/skills/project-testing && bash .claude/skills/skill-writing/scripts/check-skill.sh",
-    "test": "bun run models && bun test --parallel=${TEST_WORKERS:-4} --no-isolate --randomize --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.browser.test.ts' --path-ignore-patterns='**/*.agent-sdk.test.ts' --path-ignore-patterns='e2e/**' && bun test --preload ./apps/web/src/test-utils/start-browser.ts .browser.test.ts && bun run test:agent-sdk && bun run test:e2e",
+    "test": "bun run models && bun test --parallel=${TEST_WORKERS:-4} --no-isolate --randomize --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.browser.test.ts' --path-ignore-patterns='**/*.agent-sdk.test.ts' --path-ignore-patterns='**/*.model-api.test.ts' --path-ignore-patterns='**/*.imp.test.ts' --path-ignore-patterns='e2e/**' && bun run test:browser && bun run test:agent-sdk && bun run test:e2e",
+    "test:browser": "bun test --timeout=10000 --preload ./apps/web/src/test-utils/start-browser.ts .browser.test.ts",
     "test:agent-sdk": "bun test --parallel=1 .agent-sdk.test.ts",
     "test:e2e": "bun run models && bun test --parallel=1 --timeout=15000 e2e/",
     "typecheck": "tsrs --noEmit && turbo run typecheck"
@@ -110,7 +111,7 @@
     "@zgeoff/bun-test-extended": "0.2.1",
     "@zgeoff/bun-test-react": "0.2.1",
     "@zgeoff/format-codemod": "0.3.2",
-    "@zgeoff/oxlint-config": "0.6.3",
+    "@zgeoff/oxlint-config": "0.7.0",
     "@zgeoff/skill-gate": "0.2.6",
     "knip": "6.41.0",
     "lefthook": "2.2.1",

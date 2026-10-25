@@ -109,7 +109,7 @@ test.skipIf(!isContractRun)(
       tool_name: 'Bash',
     });
   },
-  300_000,
+  32_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -148,7 +148,7 @@ test.skipIf(!isContractRun)(
       },
     ]);
   },
-  300_000,
+  9000,
 );
 
 test.skipIf(!isContractRun)(
@@ -183,7 +183,7 @@ test.skipIf(!isContractRun)(
       },
     ]);
   },
-  300_000,
+  16_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -233,5 +233,5 @@ test.skipIf(!isContractRun)(
       },
     ]);
   },
-  300_000,
+  30_000,
 );

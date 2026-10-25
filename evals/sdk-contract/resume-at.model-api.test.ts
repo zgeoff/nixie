@@ -72,7 +72,7 @@ test.skipIf(!isContractRun)(
     expect(result.session_id).not.toBe(boundary.session_id);
     expect(after).toStrictEqual(before);
   },
-  300_000,
+  20_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -128,7 +128,7 @@ test.skipIf(!isContractRun)(
 
     expect(result.result.trim()).toBe('APPLE');
   },
-  300_000,
+  97_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -185,7 +185,7 @@ test.skipIf(!isContractRun)(
       errors: [expect.stringMatching(/^No message found with message\.uuid of: /u)],
     });
   },
-  300_000,
+  33_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -206,5 +206,5 @@ test.skipIf(!isContractRun)(
       errors: [expect.stringMatching(/^No conversation found with session ID: /u)],
     });
   },
-  300_000,
+  5000,
 );

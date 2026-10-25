@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { gzipSync } from 'node:zlib';
 import { defaultFetchTextBytes } from '@heynixie/wire';
 import { buildReadableText } from './build-readable-text';
@@ -575,10 +575,16 @@ test('it stops at the text limit without splitting a character and marks the res
 });
 
 test('it fails a fetch that passes the time limit', async () => {
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
+
   const site = await startTestSite({
     names: ['site.test'],
     respond: async () => {
-      await Bun.sleep(800);
+      await held.promise;
 
       return new Response('late');
     },
@@ -595,27 +601,50 @@ test('it fails a fetch that passes the time limit', async () => {
 });
 
 test('it returns the page of a slow site that answers within the time limit', async () => {
+  const held = Promise.withResolvers<void>();
+
   const site = await startTestSite({
     names: ['site.test'],
     respond: async () => {
-      await Bun.sleep(800);
+      await held.promise;
 
       return new Response('late');
     },
   });
 
-  const reply = await readPage(`https://site.test:${site.port}/`, {
-    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
-    checkAddress: (address) => address === '127.0.0.1',
+  const options = {
+    checkAddress: (address: string) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
     ca: site.ca,
+  };
+
+  const replying = readPage(`https://site.test:${site.port}/`, {
+    ...options,
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
   });
 
+  // the site answers only once a read with a 300 ms limit has failed on it, so the answer comes
+  // later than that limit
+  const shortReply = await readPage(`https://site.test:${site.port}/`, {
+    ...options,
+    limits: { bodyBytes: 1_000_000, timeoutMs: 300, redirects: 5, textBytes: 1_000_000 },
+  });
+
+  held.resolve();
+
+  const reply = await replying;
+
+  expect(shortReply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
   expect(reply).toMatchObject({ kind: 'page', text: 'late' });
 });
 
 test('it fails a fetch whose compressed body stalls past the time limit', async () => {
   const body = gzipSync('a'.repeat(1000));
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
 
   const site = await startTestSite({
     names: ['site.test'],
@@ -625,7 +654,7 @@ test('it fails a fetch whose compressed body stalls past the time limit', async 
           start: async (controller) => {
             controller.enqueue(body.subarray(0, 10));
 
-            await Bun.sleep(800);
+            await held.promise;
 
             controller.enqueue(body.subarray(10));
             controller.close();
@@ -647,6 +676,7 @@ test('it fails a fetch whose compressed body stalls past the time limit', async 
 
 test('it returns a compressed body that stalls and finishes within the time limit', async () => {
   const body = gzipSync('a'.repeat(1000));
+  const held = Promise.withResolvers<void>();
 
   const site = await startTestSite({
     names: ['site.test'],
@@ -656,7 +686,7 @@ test('it returns a compressed body that stalls and finishes within the time limi
           start: async (controller) => {
             controller.enqueue(body.subarray(0, 10));
 
-            await Bun.sleep(800);
+            await held.promise;
 
             controller.enqueue(body.subarray(10));
             controller.close();
@@ -666,13 +696,29 @@ test('it returns a compressed body that stalls and finishes within the time limi
       ),
   });
 
-  const reply = await readPage(`https://site.test:${site.port}/`, {
-    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
-    checkAddress: (address) => address === '127.0.0.1',
+  const options = {
+    checkAddress: (address: string) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
     ca: site.ca,
+  };
+
+  const replying = readPage(`https://site.test:${site.port}/`, {
+    ...options,
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
   });
 
+  // the body finishes only once a read with a 300 ms limit has failed on it, so it stalls for
+  // longer than that limit
+  const shortReply = await readPage(`https://site.test:${site.port}/`, {
+    ...options,
+    limits: { bodyBytes: 1_000_000, timeoutMs: 300, redirects: 5, textBytes: 1_000_000 },
+  });
+
+  held.resolve();
+
+  const reply = await replying;
+
+  expect(shortReply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
   expect(reply).toMatchObject({ kind: 'page', text: 'a'.repeat(1000) });
 });
 

@@ -80,7 +80,7 @@ test.skipIf(!isContractRun)(
 
     expect(postCompact).toHaveBeenCalledOnce();
   },
-  300_000,
+  29_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -148,5 +148,5 @@ test.skipIf(!isContractRun)(
         result.usage.cache_creation_input_tokens,
     ).toBeGreaterThan(20_000);
   },
-  300_000,
+  20_000,
 );

@@ -7,6 +7,9 @@
   // the shared oxlint config loads the plugin, and the synced skill-gate hook in .claude/ imports
   // the package, so knip sees neither
   "ignoreDependencies": ["@stylistic/eslint-plugin", "@zgeoff/skill-gate"],
+  // knip resolves the root test:browser script's preload from every workspace too, where its
+  // root-relative path misses; from the root it finds the file
+  "ignoreUnresolved": ["./apps/web/src/test-utils/start-browser.ts"],
   "workspaces": {
     // a test spawns the stub program as its own process, so no import reaches it
     "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
@@ -36,10 +39,8 @@
     "guests/conversation": { "entry": ["src/main.ts", "src/check.ts"] },
     // an eval run is a script a contributor runs by its path
     "evals": { "entry": ["*/run-*-eval.ts"] },
-    // TanStack Router loads each route file by its path, Vite loads the PostCSS config by its name,
-    // and the browser lane preloads the browser start by its path, so no import reaches them
-    "apps/web": {
-      "entry": ["src/routes/**/*.tsx", "postcss.config.js", "src/test-utils/start-browser.ts"]
-    }
+    // TanStack Router loads each route file by its path, and Vite loads the PostCSS config by its
+    // name, so no import reaches them
+    "apps/web": { "entry": ["src/routes/**/*.tsx", "postcss.config.js"] }
   }
 }

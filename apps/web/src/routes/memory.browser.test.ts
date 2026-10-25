@@ -60,5 +60,4 @@ test.skipIf(browserSkip.isSkipped)(
       { timeout: 10_000 },
     );
   },
-  120_000,
 );

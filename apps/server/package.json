@@ -8,6 +8,7 @@
     "./test-utils": "./src/test-utils/index.ts"
   },
   "scripts": {
+    "test:imp": "bun test --timeout=14000 .imp.test.ts",
     "typecheck": "tsrs --noEmit",
     "config-schema": "bun --define NIXIE_TEST_BUILD=false src/run-config-json-schema.ts"
   },

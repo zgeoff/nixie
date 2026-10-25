@@ -80,7 +80,7 @@ test.skipIf(!isContractRun)(
       { name: 'note_read', arguments: { noteID: 'n7k2' } },
     ]);
   },
-  300_000,
+  20_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -130,7 +130,7 @@ test.skipIf(!isContractRun)(
       { name: 'note_read', arguments: { name: 'groceries' } },
     ]);
   },
-  300_000,
+  16_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -170,7 +170,7 @@ test.skipIf(!isContractRun)(
       { name: 'note_read', arguments: { name: 'groceries' } },
     ]);
   },
-  300_000,
+  13_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -212,5 +212,5 @@ test.skipIf(!isContractRun)(
       { name: 'note_read', arguments: { noteID: 'n7k2' } },
     ]);
   },
-  300_000,
+  18_000,
 );

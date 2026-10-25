@@ -90,7 +90,6 @@ test.skipIf(browserSkip.isSkipped)(
       { authorization: `Bearer ${session?.token}`, cookie: null, path: '/rpc/conversation/read' },
     ]);
   },
-  120_000,
 );
 
 test.skipIf(browserSkip.isSkipped)(
@@ -135,7 +134,6 @@ test.skipIf(browserSkip.isSkipped)(
       },
     ]);
   },
-  120_000,
 );
 
 test.skipIf(browserSkip.isSkipped)(
@@ -191,7 +189,6 @@ test.skipIf(browserSkip.isSkipped)(
       text: 'Is this the right shade?',
     });
   },
-  120_000,
 );
 
 test.skipIf(browserSkip.isSkipped)(
@@ -216,5 +213,4 @@ test.skipIf(browserSkip.isSkipped)(
       { authorization: null, cookie: null, path: '/rpc/conversation/read' },
     ]);
   },
-  120_000,
 );

@@ -75,9 +75,17 @@ test('it yields the records after the sequence, then a new record on the next co
 test('it yields a new record to a reader in another process on the poll when the commit shows after the WAL settles', async () => {
   const ctx = await setupTest();
 
+  const subscribeToWALChanges = makeWALSubscription(ctx.reader.writer, { pollMs: 1000 });
+  const changes = { count: 0 };
+
   const stream = subscribeToRecords(ctx.reader, {
     afterSequence: 0,
-    subscribeToChanges: makeWALSubscription(ctx.reader.writer, { pollMs: 1000 }),
+    subscribeToChanges: (onChange) =>
+      subscribeToWALChanges(() => {
+        changes.count += 1;
+
+        onChange();
+      }),
     signal: ctx.signal,
   });
 
@@ -88,7 +96,8 @@ test('it yields a new record to a reader in another process on the poll when the
       { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
     ]);
 
-    await Bun.sleep(500);
+    // the WAL write and its three settle checks each signal a change, and none reads the commit
+    await waitForCondition(() => changes.count >= 4);
 
     return Bun.peek.status(waiting);
   });

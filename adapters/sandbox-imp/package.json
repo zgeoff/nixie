@@ -9,6 +9,7 @@
     "./test-utils": "./src/test-utils/index.ts"
   },
   "scripts": {
+    "test:imp": "bun test --timeout=14000 .imp.test.ts",
     "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
