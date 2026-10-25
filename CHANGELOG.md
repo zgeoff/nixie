@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.47.0](https://github.com/zgeoff/nixie/compare/v0.46.0...v0.47.0) (2026-10-25)
+
+
+### Features
+
+* **research:** choose what speaks a voice reply ([#650](https://github.com/zgeoff/nixie/issues/650)) ([ab4b32f](https://github.com/zgeoff/nixie/commit/ab4b32f41badc17d3fc1b45ee884aec133a43eb0))
+* **tasks:** let tasks and the conversation message each other ([#654](https://github.com/zgeoff/nixie/issues/654)) ([68eef7c](https://github.com/zgeoff/nixie/commit/68eef7c8fd3ecd5b9f073f15300df1dad6a22f0b))
+
+
+### Bug Fixes
+
+* **deps:** update tanstack-router monorepo ([#607](https://github.com/zgeoff/nixie/issues/607)) ([b828e6d](https://github.com/zgeoff/nixie/commit/b828e6d3192931772be916bcd18c4ef883f194d2))
+* **memory:** tell the model a self-note retires with no quote ([#653](https://github.com/zgeoff/nixie/issues/653)) ([fbc6efc](https://github.com/zgeoff/nixie/commit/fbc6efc2448dbdf7e27ccd8fae9cfc59e0b37acf))
+* **sandbox-imp:** accept impd 5 beside impd 2, 3 and 4 ([#657](https://github.com/zgeoff/nixie/issues/657)) ([e58bc29](https://github.com/zgeoff/nixie/commit/e58bc29e61f48355d4f3614ee248fe0246b32506))
+
 ## [0.46.0](https://github.com/zgeoff/nixie/compare/v0.45.0...v0.46.0) (2026-10-24)
 
 
