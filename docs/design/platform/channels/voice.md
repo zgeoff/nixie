@@ -3,10 +3,10 @@
 - Decisions: [0040](../../../decisions/0040-voice-pipeline.md),
   [0041](../../../decisions/0041-approvals-during-a-voice-call.md)
 
-A voice call runs as a pipeline under [0040](../../../decisions/0040-voice-pipeline.md):
-speech-to-text, nixie's own turn on one Agent SDK process that stays open for the whole call, and
-text-to-speech of each sentence as it arrives. A proposal made during the call shows its card in the
-call screen under [0041](../../../decisions/0041-approvals-during-a-voice-call.md), and the
+GPT-Live hears and speaks a voice call under [0040](../../../decisions/0040-voice-pipeline.md). It
+answers small talk itself, and it hands each request to nixie's own turn, which runs on one Agent
+SDK process that stays open for the whole call. A proposal made during the call shows its card in
+the call screen under [0041](../../../decisions/0041-approvals-during-a-voice-call.md), and the
 [client](client.md) holds the call screen. Two questions stay open before voice work starts.
 
 ## Open questions

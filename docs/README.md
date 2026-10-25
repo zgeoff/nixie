@@ -326,8 +326,8 @@ Clients, push and voice.
   conversation, approvals and voice, and chat apps carry content-free pushes
 - [0029: Channels and clients](decisions/0029-channels-and-clients.md) — oRPC, Start and Expo,
   device sessions, Defer, two push levels and native Android paste capture
-- [0040: The voice pipeline](decisions/0040-voice-pipeline.md) — speech-to-text, nixie's own turn
-  and text-to-speech, with an opening that never claims an outcome
+- [0040: What speaks a voice call](decisions/0040-voice-pipeline.md) — GPT-Live hears and speaks the
+  call and hands each request to nixie's turn, with a filler that never claims an outcome
 - [0041: Approvals during a voice call](decisions/0041-approvals-during-a-voice-call.md) — the card
   in the call screen, announced by a fixed line, and a spoken "yes" never approves
 
