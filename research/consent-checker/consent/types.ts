@@ -2,7 +2,11 @@ import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
 import { spanSchema } from '../../../libs/contract/src/span-schema.ts';
 
-const consentMessageSchema = z.object({ text: z.string(), spans: z.array(spanSchema) });
+const consentMessageSchema = z.object({
+  sequence: z.int(),
+  text: z.string(),
+  spans: z.array(spanSchema),
+});
 
 export type ConsentMessage = z.infer<typeof consentMessageSchema>;
 
@@ -41,6 +45,40 @@ export const checkRecordSchema = z.object({
 
 export type CheckRecord = z.infer<typeof checkRecordSchema>;
 
-export const labelSchema = z.object({ caseID: z.string(), isAsked: z.boolean() });
+export interface Label {
+  caseID: string;
+  isAsked: boolean;
+}
 
-export type Label = z.infer<typeof labelSchema>;
+const labelVerdictSchema = z.enum(['asked', 'not_asked', 'unsure']);
+
+// What the labeller answers for one turn: a verdict for each call, by the call's number in the
+// labeller's input.
+export const labellerOutputSchema = z.object({
+  calls: z.array(z.object({ call: z.int(), reason: z.string(), label: labelVerdictSchema })),
+});
+
+export const labelRecordSchema = z.object({
+  stepSequence: z.int(),
+  model: z.string(),
+  effort: z.string(),
+  promptSHA256: z.string(),
+  labels: z.array(z.object({ caseID: z.string(), label: labelVerdictSchema, reason: z.string() })),
+  failure: z.string().nullable(),
+  costUSD: z.number(),
+});
+
+export type LabelRecord = z.infer<typeof labelRecordSchema>;
+
+export interface Exchange {
+  role: 'owner' | 'assistant';
+  text: string;
+}
+
+// One labeller call: a turn's messages, the exchanges before it, and each natural pair's call.
+export interface LabelTurn {
+  stepSequence: number;
+  earlier: Exchange[];
+  messages: ConsentMessage[];
+  calls: { caseID: string; tool: string; input: unknown }[];
+}

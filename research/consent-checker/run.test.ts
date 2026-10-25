@@ -43,8 +43,8 @@ test('it writes the cases and prints only their counts', async () => {
 });
 
 test('it refuses an unknown command', () => {
-  const child = Bun.spawnSync(['bun', join(import.meta.dir, 'run.ts'), 'label']);
+  const child = Bun.spawnSync(['bun', join(import.meta.dir, 'run.ts'), 'relabel']);
 
   expect(child.exitCode).toBe(1);
-  expect(child.stderr.toString()).toInclude('unknown command label; pass cases, check or score');
+  expect(child.stderr.toString()).toInclude('unknown command relabel; pass cases, label, check or score');
 });

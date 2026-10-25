@@ -162,7 +162,7 @@ function collectMessages(batch: readonly PlainRecord[], counts: CaseCounts): Con
 
     const fields = ownerFieldsSchema.parse(record.erasable.fields);
 
-    return [{ text: fields.text, spans: fields.spans }];
+    return [{ sequence: record.sequence, text: fields.text, spans: fields.spans }];
   });
 }
 

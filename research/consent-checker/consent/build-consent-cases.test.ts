@@ -41,7 +41,11 @@ test('it pairs each effectful call with the messages of the turn that made it', 
       bucket: 'natural',
       stepSequence: 2,
       messages: [
-        { text: 'save that the kiln is booked', spans: [{ start: 0, end: 28, source: 'typed' }] },
+        {
+          sequence: 1,
+          text: 'save that the kiln is booked',
+          spans: [{ start: 0, end: 28, source: 'typed' }],
+        },
       ],
       call: { sequence: 3, tool: 'memory.remember', input: { text: 'The kiln is booked' } },
     },
