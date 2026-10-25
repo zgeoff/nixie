@@ -39,12 +39,14 @@ export function writeTaskMessage(
   return withWriteTransaction(context.log.writer, async (tx) => {
     const step = request.stepRunID === null ? null : parseStepRunID(request.stepRunID);
 
-    if (step === null || !(await probeStepLease(tx, request.from, step, context.clock.now()))) {
+    const senderHop =
+      step === null ? null : await readLeasedStepHop(tx, request.from, step, context.clock.now());
+
+    if (step === null || senderHop === null) {
       return { status: 'refused', refusal: { reason: 'stale_step' } };
     }
 
-    const sender = await readSender(tx, request.from);
-    const facts = await readFacts(tx, request, sender.hop);
+    const facts = await readFacts(tx, request, senderHop);
 
     const plan = planTaskMessage(request, facts, messaging);
 
@@ -78,7 +80,7 @@ export function writeTaskMessage(
     ]);
 
     const isNoticeDue =
-      plan.hold === 'hop_limit' && !(await probeNotice(tx, request, sender.stepKey));
+      plan.hold === 'hop_limit' && !(await probeNotice(tx, request, step.stepKey));
 
     if (isNoticeDue) {
       await writeRecordsInTransaction(tx, context.log, [
@@ -88,7 +90,7 @@ export function writeTaskMessage(
           thread: request.from,
           payload: taskExchangeLimitedCodec.encode({
             messageID,
-            stepKey: sender.stepKey,
+            stepKey: step.stepKey,
             from: request.from,
             to: request.to,
             hops: plan.hop - 1,
@@ -104,46 +106,26 @@ export function writeTaskMessage(
 
 // The write transaction opens with BEGIN IMMEDIATE, so this check holds against every claim until
 // the message commits.
-async function probeStepLease(
+async function readLeasedStepHop(
   tx: Transaction<unknown>,
   taskID: string,
   step: StepRunRef,
   now: number,
-): Promise<boolean> {
+): Promise<number | null> {
   const row = await tx
     .$extendTables<TasksTables>()
     .selectFrom('tasks')
     .innerJoin('leases', (join) =>
       join.onRef('leases.work_id', '=', 'tasks.task_id').on('leases.kind', '=', 'task'),
     )
-    .select('tasks.task_id')
+    .select('tasks.step_hop')
     .where('tasks.task_id', '=', taskID)
     .where('tasks.started_step_key', '=', step.stepKey)
     .where('leases.generation', '=', step.generation)
     .where('leases.expires_at', '>', now)
     .executeTakeFirst();
 
-  return row !== undefined;
-}
-
-interface Sender {
-  readonly hop: number;
-  readonly stepKey: string;
-}
-
-async function readSender(tx: Transaction<unknown>, taskID: string): Promise<Sender> {
-  const row = await tx
-    .$extendTables<TasksTables>()
-    .selectFrom('tasks')
-    .select(['step_hop', 'started_step_key'])
-    .where('task_id', '=', taskID)
-    .executeTakeFirstOrThrow();
-
-  if (row.started_step_key === null) {
-    throw new Error(`task ${taskID} sent a message outside a step`);
-  }
-
-  return { hop: row.step_hop, stepKey: row.started_step_key };
+  return row?.step_hop ?? null;
 }
 
 async function readFacts(
