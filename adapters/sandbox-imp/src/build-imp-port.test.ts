@@ -77,9 +77,15 @@ test('it reads the features of an impd of major 4 with imp client 4', () => {
   });
 });
 
-test('it refuses to read the features of an impd of major 5 with imp client 4', () => {
+test('it reads the features of an impd of major 5 with imp client 4', () => {
   const answerRequest = mock(() =>
-    Response.json({ json: { version: '5.0.0', features: {}, egress: {} } }),
+    Response.json({
+      json: {
+        version: '5.0.0',
+        features: { publicEgress: true, backupOptOut: true },
+        egress: { isEnforced: true },
+      },
+    }),
   );
 
   const impd = Bun.serve({
@@ -92,7 +98,29 @@ test('it refuses to read the features of an impd of major 5 with imp client 4', 
 
   const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
 
-  expect(port.readFeatures()).rejects.toThrow(/^impd 5\.0\.0 does not speak imp client 4\./u);
+  expect(port.readFeatures()).resolves.toStrictEqual({
+    publicEgress: true,
+    isEgressEnforced: true,
+    hasBackupOptOut: true,
+  });
+});
+
+test('it refuses to read the features of an impd of major 6 with imp client 4', () => {
+  const answerRequest = mock(() =>
+    Response.json({ json: { version: '6.0.0', features: {}, egress: {} } }),
+  );
+
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: answerRequest,
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  expect(port.readFeatures()).rejects.toThrow(/^impd 6\.0\.0 does not speak imp client 4\./u);
 });
 
 test('it refuses to read the features of an impd of major 1 with imp client 4', () => {
@@ -341,4 +369,45 @@ test('it passes on a failed wake that is no impd error, such as impd not answeri
     name: 'TypeError',
     code: 'ECONNREFUSED',
   });
+});
+
+test('it adds a secret as the custom kind with no field beyond its name, value and rules', async () => {
+  const bodies: unknown[] = [];
+
+  const recordBody = mock(async (request: Request) => {
+    const body: unknown = await request.json();
+
+    bodies.push(body);
+
+    return Response.json({ json: null });
+  });
+
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: recordBody,
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  await port.addSecret({
+    name: 'model-key',
+    value: 'sk-not-a-real-key',
+    host: 'api.example.com',
+    header: 'x-api-key',
+    scheme: 'raw',
+  });
+
+  expect(bodies).toStrictEqual([
+    {
+      json: {
+        name: 'model-key',
+        kind: 'custom',
+        value: 'sk-not-a-real-key',
+        rules: [{ host: 'api.example.com', header: 'x-api-key', scheme: 'raw' }],
+      },
+    },
+  ]);
 });
