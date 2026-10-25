@@ -114,11 +114,12 @@ see.
 
 A message that wakes nobody starts no step, and it never counts as unread work for the read cursor's
 step result, so a waiting message does not loop its receiver through empty steps. A receiver that is
-asleep reads it at its next wake, under a summary line per sender that counts the held messages and
-says whether a reply would wake the sender. A conversation turn that is already running receives it
-at once, as it receives every inbox record that lands during the turn, so the read cursor never
-meets a gap. That turn keeps the hop it was claimed with, so a reply from it wakes the sender only
-when the turn's own hop allows.
+asleep reads it at its next wake. The messages that the hop limit held arrive under a summary line
+per sender, which counts them and says whether a reply would wake the sender; a message sent without
+a wake gets no summary line. A conversation turn that is already running receives it at once, as it
+receives every inbox record that lands during the turn, so the read cursor never meets a gap. That
+turn keeps the hop it was claimed with, so a reply from it wakes the sender only when the turn's own
+hop allows.
 
 A task-messages projection keeps one row per message with its wait state, and one declared table
 holds the moves between wait states. A question or a request opens a wait, so its sender waits on
