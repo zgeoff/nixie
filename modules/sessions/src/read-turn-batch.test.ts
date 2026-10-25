@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { readTurnBatch } from './read-turn-batch';
+import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
@@ -24,6 +25,7 @@ test('it takes the oldest 64 records of a longer inbox', async () => {
 
   const batch = await readTurnBatch(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
     imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },
   });
 
@@ -48,6 +50,7 @@ test('it leaves a record for the next turn when its images would pass 24 MiB wit
 
   const batch = await readTurnBatch(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
     imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },
   });
 

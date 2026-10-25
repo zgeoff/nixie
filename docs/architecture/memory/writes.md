@@ -23,7 +23,8 @@ runs these steps in order:
 
 1. **Find the evidence.** The gate reads the user's latest messages in the calling thread, newest
    first, within a configurable window. The newest message that holds the quote as typed text backs
-   the write. A write with no quote becomes a proposal.
+   the write. A write with no quote becomes a proposal. A message from another task is never
+   evidence, so a quote found only in one, or a write that cites one, backs nothing.
    [Reading the log](./context.md#reading-the-log) covers a write that cites an older message.
 2. **The quote check.** The quote lies wholly in text the user typed, outside any quoted block.
 3. **The token check.** Every destination-like token in the memory text appears in the quote.

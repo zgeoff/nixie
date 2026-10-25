@@ -13,6 +13,7 @@ export async function claimTestStep(context: TasksContext): Promise<StepInput> {
     stepKey: claim.stepKey,
     lease: claim.lease,
     inbox: await readInbox(context, claim.lease.workID),
+    wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
   };

@@ -27,6 +27,7 @@ async function setupTest() {
     ownerName: null,
     assistantName: null,
     defaultZone: 'UTC',
+    messaging: { directory: [], hopLimit: 20, ownerName: null },
   };
 
   return { memory, parts };
@@ -65,7 +66,20 @@ test('it shows the writer the pending proposals beside the current items, with t
 
   const batch = await readWriterBatch(ctx.memory.log, planned.bounds);
 
-  await runWriterExtraction({ ...ctx.parts, ...session }, batch, new AbortController().signal);
+  await runWriterExtraction({ ...ctx.parts, ...session }, batch, {
+    inbox: [],
+    signal: new AbortController().signal,
+    wake: { hop: 0, cause: { kind: 'event' } },
+    stepKey: 'memory-writer:1',
+    lease: {
+      kind: 'task',
+      workID: 'memory-writer',
+      holder: 'runner-a',
+      generation: 1,
+      epoch: 1,
+      expiresAt: 1_060_000,
+    },
+  });
 
   invariant(held.status === 'proposed');
 
@@ -131,7 +145,20 @@ test('it shows the writer the image markers of your message on the lines after i
     ]),
   };
 
-  await runWriterExtraction({ ...ctx.parts, ...session }, batch, new AbortController().signal);
+  await runWriterExtraction({ ...ctx.parts, ...session }, batch, {
+    inbox: [],
+    signal: new AbortController().signal,
+    wake: { hop: 0, cause: { kind: 'event' } },
+    stepKey: 'memory-writer:1',
+    lease: {
+      kind: 'task',
+      workID: 'memory-writer',
+      holder: 'runner-a',
+      generation: 1,
+      epoch: 1,
+      expiresAt: 1_060_000,
+    },
+  });
 
   expect(session.model.runSession).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -160,7 +187,20 @@ test('it tells the writer to name the owner and the assistant by their configure
   await runWriterExtraction(
     { ...ctx.parts, ...session, ownerName: 'Avery', assistantName: 'Wren' },
     batch,
-    new AbortController().signal,
+    {
+      inbox: [],
+      signal: new AbortController().signal,
+      wake: { hop: 0, cause: { kind: 'event' } },
+      stepKey: 'memory-writer:1',
+      lease: {
+        kind: 'task',
+        workID: 'memory-writer',
+        holder: 'runner-a',
+        generation: 1,
+        epoch: 1,
+        expiresAt: 1_060_000,
+      },
+    },
   );
 
   expect(session.model.runSession).toHaveBeenCalledWith(
@@ -198,7 +238,20 @@ test('it gives the writer the prompt override in force', async () => {
       }),
     },
     batch,
-    new AbortController().signal,
+    {
+      inbox: [],
+      signal: new AbortController().signal,
+      wake: { hop: 0, cause: { kind: 'event' } },
+      stepKey: 'memory-writer:1',
+      lease: {
+        kind: 'task',
+        workID: 'memory-writer',
+        holder: 'runner-a',
+        generation: 1,
+        epoch: 1,
+        expiresAt: 1_060_000,
+      },
+    },
   );
 
   expect(session.model.runSession).toHaveBeenCalledWith(
@@ -233,7 +286,20 @@ test('it shows the writer only the pending proposals it may write, and never a s
 
   const batch = await readWriterBatch(ctx.memory.log, planned.bounds);
 
-  await runWriterExtraction({ ...ctx.parts, ...session }, batch, new AbortController().signal);
+  await runWriterExtraction({ ...ctx.parts, ...session }, batch, {
+    inbox: [],
+    signal: new AbortController().signal,
+    wake: { hop: 0, cause: { kind: 'event' } },
+    stepKey: 'memory-writer:1',
+    lease: {
+      kind: 'task',
+      workID: 'memory-writer',
+      holder: 'runner-a',
+      generation: 1,
+      epoch: 1,
+      expiresAt: 1_060_000,
+    },
+  });
 
   invariant(held.status === 'proposed');
 
@@ -261,11 +327,20 @@ test('it returns the flags the session staged beside its writes', async () => {
 
   const batch = await readWriterBatch(ctx.memory.log, planned.bounds);
 
-  const extracted = await runWriterExtraction(
-    { ...ctx.parts, ...session },
-    batch,
-    new AbortController().signal,
-  );
+  const extracted = await runWriterExtraction({ ...ctx.parts, ...session }, batch, {
+    inbox: [],
+    signal: new AbortController().signal,
+    wake: { hop: 0, cause: { kind: 'event' } },
+    stepKey: 'memory-writer:1',
+    lease: {
+      kind: 'task',
+      workID: 'memory-writer',
+      holder: 'runner-a',
+      generation: 1,
+      epoch: 1,
+      expiresAt: 1_060_000,
+    },
+  });
 
   expect(extracted.writes).toStrictEqual([]);
 

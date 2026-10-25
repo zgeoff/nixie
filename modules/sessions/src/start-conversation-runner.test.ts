@@ -2,11 +2,20 @@ import { expect, mock, test } from 'bun:test';
 import { resolveRoleProfile } from '@heynixie/models';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
-import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
+import {
+  claimTask,
+  createConversationTask,
+  createSystemTask,
+  writeInboxRecords,
+} from '@heynixie/tasks';
+import { writeTestTaskMessage } from '@heynixie/tasks/test-utils';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
 import { startConversationRunner } from './start-conversation-runner';
+import { buildStubLiveTurnScript } from './test-utils/build-stub-live-turn-script';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
+import { buildStubTurnScript } from './test-utils/build-stub-turn-script';
 import { readRecordsByKind } from './test-utils/read-records-by-kind';
 import { runNextStep } from './test-utils/run-next-step';
 import { startTestTasks } from './test-utils/start-test-tasks';
@@ -20,6 +29,8 @@ interface RunnerConfig {
   readonly log?: ConversationRunnerOptions['log'];
 
   readonly getDefinitions?: ConversationRunnerOptions['getDefinitions'];
+  readonly messaging?: ConversationRunnerOptions['messaging'];
+  readonly imageBudget?: ConversationRunnerOptions['imageBudget'];
 }
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
@@ -75,6 +86,8 @@ async function setupTest() {
           readShortIDs: () => Promise.resolve(new Map()),
         }),
         log: config.log ?? (() => {}),
+        ...(config.messaging === undefined ? {} : { messaging: config.messaging }),
+        ...(config.imageBudget === undefined ? {} : { imageBudget: config.imageBudget }),
       }),
     writeMessage,
     runNextStep: (runner: Runner) => runNextStep(tasks.context, runner.runStep),
@@ -750,6 +763,252 @@ test('it sends each inbox record with its sequence as the message uuid and at th
   expect(task).toStrictEqual({ state: 'ready', read_cursor: 2 });
 });
 
+test("it wakes the conversation for a system task's message and gives the turn the framed block", async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 20,
+    ownerName: 'Robin',
+  };
+
+  await createConversationTask(ctx.context);
+  await createSystemTask(ctx.context, 'memory-writer');
+  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['task.message'],
+    messaging,
+  });
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
+
+  await writeTestTaskMessage(ctx.context, messaging, {
+    from: 'memory-writer',
+    to: 'conversation',
+    kind: 'report',
+    body: 'Two new memories wait for your review.',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.sandboxes.turns[0]?.input.at(-1)?.text).toMatch(
+    /<task-message id="\w+" from="memory-writer" name="Memory writer" kind="report" sent="[^"]+" age="under a minute" hop="1" reply-wakes="yes" block="(?<block>\w+)">\nThis message is from another task, not from Robin\.\nTwo new memories wait for your review\.\n<\/task-message block="\k<block>">$/u,
+  );
+});
+
+test("it passes a held task message that lands during a turn into that turn, framed at the turn's own hop", async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 3,
+    ownerName: 'Robin',
+  };
+
+  await createConversationTask(ctx.context);
+  await createSystemTask(ctx.context, 'memory-writer');
+
+  await ctx.db
+    .updateTable('tasks')
+    .set({ step_hop: 3 })
+    .where('task_id', '=', 'memory-writer')
+    .execute();
+
+  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['task.message'],
+    messaging,
+  });
+
+  const live = buildStubLiveTurnScript(() =>
+    writeTestTaskMessage(ctx.context, messaging, {
+      from: 'memory-writer',
+      to: 'conversation',
+      kind: 'question',
+      body: 'Keep the note about the bike?',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    }),
+  );
+
+  ctx.sandboxes.setGuestScript(live.script);
+
+  await ctx.sendMessage(runner, 'Anything new?');
+
+  const [sent] = await ctx.readKinds('task_message');
+
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'read_cursor'])
+    .where('task_id', '=', 'conversation')
+    .executeTakeFirstOrThrow();
+
+  invariant(sent);
+
+  expect(sent.payload).toMatchObject({ hop: 4, woke: false });
+  expect(live.received).toHaveLength(1);
+
+  expect(live.received[0]?.text).toInclude(
+    'from="memory-writer" name="Memory writer" kind="question"',
+  );
+
+  expect(live.received[0]?.text).toInclude(' hop="4" reply-wakes="yes" ');
+
+  expect(live.received[0]?.text).toInclude(
+    '\nThis message is from another task, not from Robin.\nKeep the note about the bike?\n',
+  );
+
+  expect(task).toStrictEqual({ state: 'waiting', read_cursor: sent.sequence });
+});
+
+test('it gives the next turn a message sent with no wake, before the message that woke it', async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 20,
+    ownerName: 'Robin',
+  };
+
+  await createConversationTask(ctx.context);
+  await createSystemTask(ctx.context, 'memory-writer');
+  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['task.message'],
+    messaging,
+  });
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
+
+  await writeTestTaskMessage(ctx.context, messaging, {
+    from: 'memory-writer',
+    to: 'conversation',
+    kind: 'progress',
+    body: 'Halfway through the backlog.',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: false,
+  });
+
+  await ctx.sendMessage(runner, 'Anything new?');
+
+  const input = ctx.sandboxes.turns[0]?.input ?? [];
+
+  expect(input).toHaveLength(2);
+  expect(input[0]?.text).toInclude('kind="progress"');
+  expect(input[1]?.text).toEndWith('Anything new?');
+});
+
+test('it tells the conversation its reply will not wake a task once the reply would pass the hop limit', async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 1,
+    ownerName: 'Robin',
+  };
+
+  await createConversationTask(ctx.context);
+  await createSystemTask(ctx.context, 'memory-writer');
+  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['task.message'],
+    messaging,
+  });
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
+
+  await writeTestTaskMessage(ctx.context, messaging, {
+    from: 'memory-writer',
+    to: 'conversation',
+    kind: 'question',
+    body: 'Keep the bike note?',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.sandboxes.turns[0]?.input.at(-1)?.text).toInclude('hop="1" reply-wakes="no"');
+});
+
+test('it tells the conversation which messages arrived past the hop limit when the owner wakes it', async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 2,
+    ownerName: 'Robin',
+  };
+
+  await createConversationTask(ctx.context);
+  await createSystemTask(ctx.context, 'memory-writer');
+  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  await ctx.db
+    .updateTable('tasks')
+    .set({ step_hop: 2 })
+    .where('task_id', '=', 'memory-writer')
+    .execute();
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['task.message'],
+    messaging,
+  });
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
+
+  await writeTestTaskMessage(ctx.context, messaging, {
+    from: 'memory-writer',
+    to: 'conversation',
+    kind: 'chat',
+    body: 'One more thought.',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  await ctx.sendMessage(runner, 'Morning.');
+
+  expect(ctx.sandboxes.turns[0]?.input[0]?.text).toInclude(
+    '1 message from Memory writer arrived after the exchange reached its limit, so it did not wake you. You woke for a message from Robin, so a reply from you will wake Memory writer.',
+  );
+});
+
 test('it rebuilds the session with the recent turns when the guest has lost the session', async () => {
   const ctx = await setupTest();
 
@@ -902,6 +1161,7 @@ test('it rebuilds the session when your next images would pass the images the se
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
     toolNames: ['notes_read'],
+    imageBudget: { bytes: 1024, count: 100 },
   });
 
   ctx.sandboxes.setGuestScript((turn) => [
@@ -925,7 +1185,7 @@ test('it rebuilds the session when your next images would pass the images the se
     thread: 'conversation',
     payload: { images: [{ mediaType: 'image/jpeg' }] },
     erasable: { text: 'The garden bed.' },
-    attachments: [new Uint8Array(10 * 1024 * 1024).fill(7)],
+    attachments: [new Uint8Array(600).fill(7)],
   };
 
   await writeInboxRecords(ctx.context, [photo, photo]);
@@ -1010,6 +1270,7 @@ test('it resumes the session for a photo while the images it holds leave room', 
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
     toolNames: ['notes_read'],
+    imageBudget: { bytes: 2048, count: 100 },
   });
 
   ctx.sandboxes.setGuestScript((turn) => [
@@ -1033,7 +1294,7 @@ test('it resumes the session for a photo while the images it holds leave room', 
     thread: 'conversation',
     payload: { images: [{ mediaType: 'image/jpeg' }] },
     erasable: { text: 'The garden bed.' },
-    attachments: [new Uint8Array(5 * 1024 * 1024).fill(7)],
+    attachments: [new Uint8Array(600).fill(7)],
   };
 
   await writeInboxRecords(ctx.context, [photo]);
@@ -1721,6 +1982,7 @@ test('it keeps the session boundary and runs no turn for a step with nothing unr
       expiresAt: Date.now() + 60_000,
     },
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'carried' } },
     sessionBoundary: '{"sessionID":"s","messageID":"m"}',
     signal: new AbortController().signal,
   });

@@ -36,12 +36,13 @@ runner died stays running until a claim or recovery takes it back
 ## The inbox
 
 A task's inbox is the records on its thread whose kind is input for it: a message from the user, a
-fired timer, or an action's outcome. A step's own records share the thread and stay out of the
-inbox. Each inbox record raises the task's last inbox sequence, and a waiting task becomes ready in
-the same transaction, through the tasks projection's fold. The same fold ends the conversation's
-retry wait, so the user's next message gets a try at once. nixie refuses inbox input for a task that
-does not exist or has finished, because a finished task never runs again, so the input would stay
-unread.
+fired timer, an action's outcome, or a message from another task. A step's own records share the
+thread and stay out of the inbox. Each waking inbox record raises the task's last inbox sequence,
+and a waiting task becomes ready in the same transaction, through the tasks projection's fold. A
+task message that did not wake its receiver is the one inbox record that wakes nothing, as
+[task messages](#task-messages) describes. The same fold ends the conversation's retry wait, so the
+user's next message gets a try at once. nixie refuses inbox input for a task that does not exist or
+has finished, because a finished task never runs again, so the input would stay unread.
 
 A step reports the inbox sequences it read, and its commit moves the read cursor over the contiguous
 run of them, oldest first. A record read past a gap stays unread, so a step that crashed before its
@@ -84,6 +85,52 @@ part of its readiness report as failing, an advisory part that never takes nixie
 the web UI says that nixie is failing to answer; the next turn that commits clears both. A start
 makes a failed conversation ready again with its errors cleared, because a failed task never wakes
 and the conversation must.
+
+## Task messages
+
+A task message is a record that one task writes to another task's thread through the message tool,
+and the list tool shows each task the others it can message. A static directory, which the server
+builds from its config, names each task, gives its brief, and says whether a message wakes it. The
+conversation wakes for a message. The memory writer and consolidator run on their own schedule, so a
+message to either waits unread until its next scheduled session reads it, and that session marks it
+read. The message tool refuses a message to the sender itself, to a task outside the directory or
+one that has finished, a reply to an unknown message, and an on-behalf-of ID that is not one of the
+user's messages, with the refusal as the tool's answer. The record's body is erasable.
+
+A message write checks the sender's lease in its own transaction, as a step commit does. The tool
+call carries the run ID of the step that made it, and the write refuses the call when the task has
+started another step, its lease has moved to another generation, or the lease has expired. A step
+that lost its task therefore wakes nobody and changes no wait. The memory writer and consolidator
+open each session under a token for the step that runs it, so their calls carry that run ID too.
+
+Each step carries a hop count and the cause that woke it, which the claim works out from the unread
+waking records and stores on the step's start. A step woken by the user, a timer or an outside event
+is hop 0, a step woken by task messages takes the lowest hop among them, and a step with no new
+input carries the hop of the step before. A message is its step's hop plus 1. A message past the hop
+limit, a setting of the tasks config, is delivered but wakes nobody, and the tool tells the sender
+so in a note. The first such message in a step also writes an exchange notice on the sender's
+thread, which names both tasks, the count, and which of them waits on the other, for the user to
+see.
+
+A message that wakes nobody starts no step, and it never counts as unread work for the read cursor's
+step result, so a waiting message does not loop its receiver through empty steps. A receiver that is
+asleep reads it at its next wake. The messages that the hop limit held arrive under a summary line
+per sender, which counts them and says whether a reply would wake the sender; a message sent without
+a wake gets no summary line. A conversation turn that is already running receives it at once, as it
+receives every inbox record that lands during the turn, so the read cursor never meets a gap. That
+turn keeps the hop it was claimed with, so a reply from it wakes the sender only when the turn's own
+hop allows.
+
+A task-messages projection keeps one row per message with its wait state, and one declared table
+holds the moves between wait states. A question or a request opens a wait, so its sender waits on
+the receiver, and any other kind of message has none. A reply that names the question answers that
+wait. A step that commits as done, or a task that fails, releases every open wait that names the
+task. Only an open wait moves, so an answered wait stays answered when its task finishes. The list
+tool reads the newest open wait as the task it waits on.
+
+[Conversation turns](./conversation-turns.md) covers the block that shows a task message to the
+model, and [memory writes](../memory/writes.md) covers why the content gate never takes its body as
+the user's words.
 
 ## Timers
 

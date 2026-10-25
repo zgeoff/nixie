@@ -45,6 +45,8 @@ async function setupTest() {
     getPersona: () => '',
     getPrompts: () => ({}),
     ownerName: 'Marisol',
+    defaultZone: 'UTC',
+    messaging: { directory: [], hopLimit: 20, ownerName: 'Marisol' },
     onError: (error) => {
       throw error;
     },
@@ -116,7 +118,7 @@ test('it runs a session over the active items and leaves the diff its model prop
   });
 });
 
-test('it gives the session only recall and consolidate', async () => {
+test('it gives the session only recall, consolidate and the task list and message tools', async () => {
   const ctx = await setupTest();
 
   await Promise.all([
@@ -150,7 +152,12 @@ test('it gives the session only recall and consolidate', async () => {
 
   await running;
 
-  expect(names).toIncludeSameMembers(['memory.recall', 'memory.consolidate']);
+  expect(names).toIncludeSameMembers([
+    'memory.recall',
+    'memory.consolidate',
+    'tasks.list',
+    'task.message',
+  ]);
 });
 
 test("it shows the session the owner's name and each item's quote under its text", async () => {

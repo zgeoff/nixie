@@ -18,6 +18,7 @@ test('it starts a log with the tasks and sandboxes projections, and the stub gue
     'threads',
     'tasks',
     'timers',
+    'task_messages',
     'sandboxes',
   ]);
 
@@ -33,6 +34,7 @@ test('it folds the projections it is given after its own', async () => {
     'threads',
     'tasks',
     'timers',
+    'task_messages',
     'sandboxes',
     'notes',
   ]);

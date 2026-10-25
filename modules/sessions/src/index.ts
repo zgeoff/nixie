@@ -32,6 +32,8 @@ export { readEventsNote } from './read-events-note';
 export { readTurnNoteRange } from './read-turn-note-range';
 export { renderImageMarkers } from './render-image-markers';
 export { renderOwnerText } from './render-owner-text';
+export { renderSessionMessages } from './render-session-messages';
+export type { TaskMessageView } from './render-task-message';
 export { renderMemoryItem } from './render-memory-item';
 export type { NextVersion } from './render-memory-line';
 export { renderMemoryLine } from './render-memory-line';

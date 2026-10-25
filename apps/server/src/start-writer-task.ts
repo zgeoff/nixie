@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import { startMemoryWriterRunner } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
+import { buildTaskMessaging } from './build-task-messaging';
 import { runOffTaskStep } from './run-off-task-step';
 import type { ServerParts } from './types';
 
@@ -31,6 +32,7 @@ export async function startWriterTask(
     ownerName: parts.config.owner.name,
     assistantName: parts.config.agent.names[0] ?? null,
     defaultZone: parts.config.time.default_zone,
+    messaging: buildTaskMessaging(parts.config),
     onError: (error) => {
       parts.onFailure(error);
     },

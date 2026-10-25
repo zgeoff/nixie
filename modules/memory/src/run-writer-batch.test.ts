@@ -32,6 +32,7 @@ async function setupTest(options: TestMemoryOptions = {}) {
     ownerName: null,
     assistantName: null,
     defaultZone: 'UTC',
+    messaging: { directory: [], hopLimit: 20, ownerName: null },
   };
 
   return { memory, clock, parts };
@@ -46,6 +47,7 @@ test('it publishes no proposal for an edit whose item moved on after the gate, a
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -91,7 +93,7 @@ test('it publishes no proposal for an edit whose item moved on after the gate, a
     readWriterRow(ctx.memory.log),
   ]);
 
-  expect(result).toStrictEqual({ next: 'continue', timers: [] });
+  expect(result).toStrictEqual({ next: 'continue', timers: [], hasRunSession: true });
   expect(pending).toStrictEqual([]);
   expect(after.cursor).toBe(planned.bounds.start);
 });
@@ -105,6 +107,7 @@ test('it extracts the batch again after a moved-on edit, and proposes the edit a
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -174,6 +177,7 @@ test('it never runs the checker on an edit whose item moved on during extraction
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -216,7 +220,7 @@ test('it never runs the checker on an edit whose item moved on during extraction
 
   const pending = await ctx.memory.store.proposals.listPending();
 
-  expect(result).toStrictEqual({ next: 'continue', timers: [] });
+  expect(result).toStrictEqual({ next: 'continue', timers: [], hasRunSession: true });
   expect(check).not.toHaveBeenCalled();
   expect(pending).toStrictEqual([]);
 });
@@ -236,6 +240,7 @@ test("it applies a write the checker confirms with both the writer's and the che
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -308,6 +313,7 @@ test('it shows the checker the end time of a staged fact in your zone, and saves
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -394,6 +400,7 @@ test('it publishes an edit that clears the end time of an item and keeps its tex
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -457,6 +464,7 @@ test('it publishes a flag as a record in the conversation, and creates no item o
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };

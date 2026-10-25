@@ -7,6 +7,8 @@ export type TasksRecordKind =
   | 'task.step_interrupted'
   | 'task.lease_expired'
   | 'task.wake'
+  | 'task_message'
+  | 'task.exchange_limited'
   | 'timer.fired'
   | 'owner_message'
   | 'action.outcome';

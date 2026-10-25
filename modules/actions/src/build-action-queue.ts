@@ -47,7 +47,7 @@ export function buildActionQueue(context: TasksContext): ActionQueueBridge {
       },
     },
     trackSteps: (runStep) => async (input) => {
-      const step: TaskClaim = { lease: input.lease, stepKey: input.stepKey };
+      const step: TaskClaim = { lease: input.lease, stepKey: input.stepKey, wake: input.wake };
 
       steps.set(input.taskID, step);
 

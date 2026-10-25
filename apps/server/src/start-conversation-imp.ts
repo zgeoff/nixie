@@ -9,6 +9,7 @@ import {
 } from '@heynixie/sessions';
 import type { SessionCleanupCause } from '@heynixie/sessions';
 import type { RunStep } from '@heynixie/tasks';
+import { buildTaskMessaging } from './build-task-messaging';
 import { buildVersionStatus } from './build-version-status';
 import { makeConversationReadinessStep } from './make-conversation-readiness-step';
 import { makeSkillCatalogLoader } from './make-skill-catalog-loader';
@@ -67,6 +68,7 @@ export async function startConversationImp(
     },
     compaction: parts.config.compaction,
     defaultZone: parts.config.time.default_zone,
+    messaging: buildTaskMessaging(parts.config),
     log: parts.log,
   });
 

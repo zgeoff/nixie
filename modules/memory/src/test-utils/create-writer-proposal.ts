@@ -43,6 +43,7 @@ export async function createWriterProposal(
       ownerName: null,
       assistantName: null,
       defaultZone: 'UTC',
+      messaging: { directory: [], hopLimit: 20, ownerName: null },
       ...createStubWriterSession({
         op: 'remember',
         subject: request.subject ?? 'owner',
@@ -58,6 +59,7 @@ export async function createWriterProposal(
         stepKey: 'step-1',
         lease,
         inbox: [],
+        wake: { hop: 0, cause: { kind: 'event' } },
         sessionBoundary: null,
         signal: new AbortController().signal,
       },

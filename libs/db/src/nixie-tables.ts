@@ -303,6 +303,15 @@ export interface NixieTables {
     readonly in_conversation: number;
     readonly approval_id: string | null;
   };
+  readonly task_messages: {
+    readonly message_id: string;
+    readonly from_task: string;
+    readonly to_task: string;
+    readonly kind: string;
+    readonly reply_to: string | null;
+    readonly wait_state: string;
+    readonly sent_sequence: number;
+  };
   readonly tasks: {
     readonly task_id: string;
     readonly is_conversation: number;
@@ -316,6 +325,7 @@ export interface NixieTables {
     readonly session_boundary: string | null;
     readonly created_sequence: number;
     readonly updated_sequence: number;
+    readonly step_hop: number;
   };
   readonly threads: {
     readonly thread: string;

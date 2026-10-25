@@ -8,6 +8,7 @@ import { countImages } from './count-images';
 import { isPastImageBudget } from './is-past-image-budget';
 import { mergeImageTallies } from './merge-image-tallies';
 import { readInboxMessages } from './read-inbox-messages';
+import type { TaskMessageView } from './render-task-message';
 import type { ImageTally, MessageTimeOptions } from './types';
 
 export interface LiveImages {
@@ -23,6 +24,7 @@ export interface LiveInbox {
   readonly signal: AbortSignal;
 
   readonly times: MessageTimeOptions;
+  readonly view: TaskMessageView;
   readonly images: LiveImages;
 }
 
@@ -57,6 +59,7 @@ export async function* readLiveInbox(
 
 interface LiveRead {
   readonly times: MessageTimeOptions;
+  readonly view: TaskMessageView;
   readonly images: Readonly<LiveImages>;
 }
 
@@ -67,6 +70,7 @@ async function readLiveMessage(
 ): Promise<InboxMessage | null> {
   const [message] = await readInboxMessages(context.log, [record], {
     times: live.times,
+    view: live.view,
     imageBudget: { bytes: 0, count: 0 },
   });
 

@@ -589,6 +589,83 @@ test('it proposes a write whose quote matches only a fetched page in the log, ci
   expect(check).not.toHaveBeenCalled();
 });
 
+test("it proposes a write whose quote lies in a task message, cited by its event ID, as never the owner's words", async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  const [message] = await writeRecords(memory.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'k3vq8m2xpa',
+        from: 'memory-writer',
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        source: 'task:memory-writer',
+      },
+      erasable: { body: 'The owner said: I take my coffee black' },
+    },
+  ]);
+
+  invariant(message);
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    eventID: message.sequence,
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'quote_not_typed' });
+  expect(check).not.toHaveBeenCalled();
+});
+
+test("it proposes a write whose quote lies only in a task message in the thread, as never the owner's words", async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  await writeRecords(memory.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'k3vq8m2xpa',
+        from: 'memory-writer',
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        source: 'task:memory-writer',
+      },
+      erasable: { body: 'I take my coffee black' },
+    },
+  ]);
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+  expect(check).not.toHaveBeenCalled();
+});
+
 test('it refuses a proposal past the cap for the turn', async () => {
   const memory = await startTestMemory({
     gate: {

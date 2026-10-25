@@ -5,6 +5,7 @@ const inboxKinds: ReadonlySet<RecordKind> = new Set([
   'timer.fired',
   'action.outcome',
   'task.wake',
+  'task_message',
 ]);
 
 export function isInboxRecord(record: Pick<EnvelopeRecord, 'kind' | 'thread'>): boolean {

@@ -185,6 +185,7 @@ async function startTestWriterRunner(
     ownerName: null,
     assistantName: null,
     defaultZone: 'UTC',
+    messaging: { directory: [], hopLimit: 20, ownerName: null },
     onError: (error) => {
       throw error;
     },

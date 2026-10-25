@@ -27,6 +27,8 @@ async function setupTest() {
     getPersona: () => '',
     getPrompts: () => ({}),
     ownerName: null,
+    defaultZone: 'UTC',
+    messaging: { directory: [], hopLimit: 20, ownerName: null },
     onError: () => {},
   };
 

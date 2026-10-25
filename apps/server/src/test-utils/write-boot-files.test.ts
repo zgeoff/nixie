@@ -98,7 +98,7 @@ test('it appends the extra lines to the configuration', async () => {
 
   const config = await loadDeploymentConfig(files.configPath);
 
-  expect(config.tasks).toStrictEqual({ runners: 5 });
+  expect(config.tasks).toStrictEqual({ runners: 5, messaging: { hopLimit: 20 } });
 });
 
 test('it writes the log level into the server section', async () => {

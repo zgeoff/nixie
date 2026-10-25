@@ -20,5 +20,6 @@ test('it claims the first step of a new task under a 60 s lease', async () => {
       expiresAt: 1_060_000,
     },
     stepKey: `${step.lease.workID}:1`,
+    wake: { hop: 0, cause: { kind: 'carried' } },
   });
 });

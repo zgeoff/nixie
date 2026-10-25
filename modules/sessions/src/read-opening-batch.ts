@@ -5,7 +5,7 @@ import { mergeImageTallies } from './merge-image-tallies';
 import type { LiveImages } from './read-live-inbox';
 import type { TurnBatch } from './read-turn-batch';
 import { readTurnBatch } from './read-turn-batch';
-import { sessionImageBudget } from './session-image-budget';
+import type { TaskMessageView } from './render-task-message';
 import type { ImageTally, MessageTimeOptions } from './types';
 
 export interface OpeningBatch {
@@ -16,8 +16,10 @@ export interface OpeningBatch {
 
 interface OpeningRead {
   readonly times: MessageTimeOptions;
+  readonly view: TaskMessageView;
 
   readonly images: ImageTally;
+  readonly imageBudget: ImageTally;
 }
 
 export async function readOpeningBatch(
@@ -27,9 +29,10 @@ export async function readOpeningBatch(
 ): Promise<OpeningBatch> {
   const batch = await readTurnBatch(log, inbox, {
     times: read.times,
+    view: read.view,
     imageBudget: {
-      bytes: sessionImageBudget.bytes - read.images.bytes,
-      count: sessionImageBudget.count - read.images.count,
+      bytes: read.imageBudget.bytes - read.images.bytes,
+      count: read.imageBudget.count - read.images.count,
     },
   });
 
@@ -38,5 +41,5 @@ export async function readOpeningBatch(
     ...batch.messages.map((message) => countImages(message)),
   );
 
-  return { batch, images: { spent, budget: sessionImageBudget, isCapped: false } };
+  return { batch, images: { spent, budget: read.imageBudget, isCapped: false } };
 }

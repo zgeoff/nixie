@@ -26,6 +26,7 @@ async function setupTest() {
     ownerName: null,
     assistantName: null,
     defaultZone: 'UTC',
+    messaging: { directory: [], hopLimit: 20, ownerName: null },
   };
 
   return { memory, clock, parts };
@@ -40,6 +41,7 @@ test('it merges a conversation write into the pending proposal the writer made o
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -100,6 +102,7 @@ test('it merges a writer proposal into the pending proposal the conversation mad
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -149,6 +152,7 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
     stepKey: 'step-1',
     lease,
     inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
   };

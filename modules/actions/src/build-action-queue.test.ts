@@ -26,6 +26,7 @@ test('it queues a call that a step makes under that step and returns its action 
     stepKey: claim.stepKey,
     lease: claim.lease,
     inbox: [],
+    wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -73,6 +74,7 @@ test('it returns the action a step queued when its rerun makes the same call', a
     stepKey: claim.stepKey,
     lease: claim.lease,
     inbox: [],
+    wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -118,6 +120,7 @@ test('it refuses a call on a thread where no step runs', async () => {
     stepKey: claim.stepKey,
     lease: claim.lease,
     inbox: [],
+    wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -149,6 +152,7 @@ test('it forgets the step once it ends, so a later call queues nothing', async (
     stepKey: claim.stepKey,
     lease: claim.lease,
     inbox: [],
+    wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -186,6 +190,7 @@ test('it refuses a call from a step whose claim a takeover replaced, and queues 
     stepKey: claim.stepKey,
     lease: claim.lease,
     inbox: [],
+    wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -232,6 +237,7 @@ test('it refuses a call that carries no step run ID, and queues nothing', async 
     stepKey: claim.stepKey,
     lease: claim.lease,
     inbox: [],
+    wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -272,6 +278,7 @@ test('it gives no outcome for an action still pending when the wait ends', async
     stepKey: claim.stepKey,
     lease: claim.lease,
     inbox: [],
+    wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
   };
@@ -328,6 +335,7 @@ test.each([
       stepKey: claim.stepKey,
       lease: claim.lease,
       inbox: [],
+      wake: claim.wake,
       sessionBoundary: null,
       signal: new AbortController().signal,
     };

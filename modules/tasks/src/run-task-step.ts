@@ -51,6 +51,7 @@ async function tryCommitStep(
       stepKey: claim.stepKey,
       lease: claim.lease,
       inbox,
+      wake: claim.wake,
       sessionBoundary,
       signal: options.signal,
     });

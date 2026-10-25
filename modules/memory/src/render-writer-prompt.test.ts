@@ -37,6 +37,7 @@ test('it renders the complete item list with subjects, and each message with its
     ],
     names: { owner: 'Sam', assistant: 'Wren' },
     defaultZone: 'America/New_York',
+    taskMessages: null,
   });
 
   expect(prompt).toMatchInlineSnapshot(`
@@ -73,6 +74,7 @@ test('it renders the same prompt for the same batch', () => {
     ],
     names: { owner: null, assistant: null },
     defaultZone: 'UTC',
+    taskMessages: null,
   });
 
   const second = renderWriterPrompt({
@@ -92,6 +94,7 @@ test('it renders the same prompt for the same batch', () => {
     ],
     names: { owner: null, assistant: null },
     defaultZone: 'UTC',
+    taskMessages: null,
   });
 
   expect(first).toBe(second);
@@ -120,6 +123,7 @@ test('it labels each message with its bare role when no name is set, and says th
     ],
     names: { owner: null, assistant: null },
     defaultZone: 'UTC',
+    taskMessages: null,
   });
 
   expect(prompt).toMatchInlineSnapshot(`
@@ -206,6 +210,7 @@ test('it lists each pending proposal on one line with its subject, the item it c
     ],
     names: { owner: null, assistant: null },
     defaultZone: 'UTC',
+    taskMessages: null,
   });
 
   expect(prompt).toMatchInlineSnapshot(`
@@ -248,6 +253,7 @@ test('it shows when each message was sent in its own zone, and in the default zo
     ],
     names: { owner: null, assistant: null },
     defaultZone: 'Australia/Melbourne',
+    taskMessages: null,
   });
 
   expect(prompt).toInclude(
@@ -256,5 +262,29 @@ test('it shows when each message was sent in its own zone, and in the default zo
 
   expect(prompt).toInclude(
     '[13] Mon 19 Oct 2026, 19:20, Australia/Melbourne (UTC+11:00) owner: Back home on Monday',
+  );
+});
+
+test('it ends the prompt with the messages other tasks sent, apart from the batch', () => {
+  const prompt = renderWriterPrompt({
+    items: [],
+    isComplete: true,
+    proposals: [],
+    messages: [
+      {
+        sequence: 12,
+        role: 'owner',
+        shown: 'Bees are thriving',
+        recordedAt: Date.parse('2026-10-19T08:14:00Z'),
+        timeZone: null,
+      },
+    ],
+    names: { owner: null, assistant: null },
+    defaultZone: 'UTC',
+    taskMessages: '<task-message id="k3vq8m2xpa">Skip the bike note.</task-message>',
+  });
+
+  expect(prompt).toEndWith(
+    'owner: Bees are thriving\n\nMessages to you from other tasks, outside the batch:\n\n<task-message id="k3vq8m2xpa">Skip the bike note.</task-message>',
   );
 });

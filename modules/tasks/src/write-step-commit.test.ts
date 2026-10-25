@@ -209,7 +209,7 @@ test('it commits a step key once, and a second commit changes nothing', async ()
 
   const second = writeStepCommit(
     ctx.context,
-    { lease: rerun.lease, stepKey: claim.stepKey },
+    { lease: rerun.lease, stepKey: claim.stepKey, wake: rerun.wake },
     { next: 'done', records: [], acknowledged: [] },
   );
 

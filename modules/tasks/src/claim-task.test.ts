@@ -35,6 +35,7 @@ test('it moves a ready task to running and records the step it starts', async ()
       expiresAt: 1_060_000,
     },
     stepKey: `${taskID}:1`,
+    wake: { hop: 0, cause: { kind: 'carried' } },
   });
 
   expect(task).toStrictEqual({ state: 'running', started_step_key: `${taskID}:1` });

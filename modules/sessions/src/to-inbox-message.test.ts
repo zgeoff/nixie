@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
+import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
 import { toInboxMessage } from './to-inbox-message';
 
 test('it passes each image of your message in base64 after its marker, and leaves the markers out of the text', () => {
@@ -14,6 +15,7 @@ test('it passes each image of your message in base64 after its marker, and leave
   const message = toInboxMessage(
     record,
     { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    buildMockTaskMessageView(),
     [new Uint8Array([0x89, 0x50, 0x4e, 0x47]), new Uint8Array([0xff, 0xd8, 0xff, 0xe0])],
   );
 
@@ -40,10 +42,11 @@ test('it passes a message with no images as its text alone', () => {
   });
 
   expect(
-    toInboxMessage(record, {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    }),
+    toInboxMessage(
+      record,
+      { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+      buildMockTaskMessageView(),
+    ),
   ).toStrictEqual({
     uuid: expect.toBeString(),
     text: '[#48213 · Mon 12 Oct, 21:31, Sydney] Only words.',
@@ -62,6 +65,7 @@ test('it leaves out an image whose bytes did not read', () => {
   const message = toInboxMessage(
     record,
     { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    buildMockTaskMessageView(),
     [],
   );
 

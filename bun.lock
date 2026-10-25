@@ -610,7 +610,9 @@
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/retry": "workspace:*",
+        "@heynixie/tools": "workspace:*",
         "kysely": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {

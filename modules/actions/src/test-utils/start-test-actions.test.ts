@@ -7,7 +7,7 @@ test('it starts a writer whose log folds the tasks and actions projections, on a
 
   const tables = ctx.context.log.projections.map((projection) => projection.table);
 
-  expect(tables).toStrictEqual(['threads', 'tasks', 'timers', 'actions']);
+  expect(tables).toStrictEqual(['threads', 'tasks', 'timers', 'task_messages', 'actions']);
   expect(ctx.context.clock.now()).toBe(1_000_000);
 });
 

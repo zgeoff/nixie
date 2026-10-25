@@ -1,5 +1,7 @@
 import { renderPrompt } from '@heynixie/prompts';
-import { waitAtFaultPoint } from '@heynixie/tasks';
+import { renderSessionMessages } from '@heynixie/sessions';
+import type { StepInput } from '@heynixie/tasks';
+import { buildStepRunID, waitAtFaultPoint } from '@heynixie/tasks';
 import type { StagingHandle } from './create-writer-staging';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import { readShownItems } from './read-shown-items';
@@ -21,10 +23,12 @@ export interface WriterExtraction {
   readonly shownTexts: ReadonlySet<string>;
 }
 
+export type ExtractionStep = Pick<StepInput, 'inbox' | 'lease' | 'signal' | 'stepKey' | 'wake'>;
+
 export async function runWriterExtraction(
   parts: WriterParts,
   batch: WriterBatch,
-  signal: AbortSignal,
+  step: ExtractionStep,
 ): Promise<WriterExtraction> {
   if (batch.sources.size === 0) {
     return { writes: [], flags: [], usage: null, shownTexts: new Set() };
@@ -47,15 +51,29 @@ export async function runWriterExtraction(
 
   const proposals = await parts.store.proposals.listPending({ subjects: writerSubjects });
 
+  const now = new Date(parts.context.clock.now());
+
+  const taskMessages = renderSessionMessages(
+    step.inbox,
+    { defaultZone: parts.defaultZone, now },
+    { messaging: parts.messaging, wake: step.wake },
+  );
+
   const prompt = renderWriterPrompt({
     ...shown,
     proposals,
     messages: buildBatchMessages(batch),
     names: buildSpeakerNames(parts),
     defaultZone: parts.defaultZone,
+    taskMessages,
   });
 
-  const session = await runSession(parts, { prompt, signal, staged });
+  const session = await runSession(parts, {
+    prompt,
+    signal: step.signal,
+    stepRunID: buildStepRunID(step),
+    staged,
+  });
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('writer.batch.extracted', { kind: 'task', id: memoryWriterTaskID });
@@ -97,6 +115,7 @@ function buildSpeakerNames(parts: WriterParts): SpeakerNames {
 interface SessionRequest {
   readonly prompt: string;
   readonly signal: AbortSignal;
+  readonly stepRunID: string;
   readonly staged: StagingHandle;
 }
 
@@ -117,6 +136,7 @@ async function runSession(
       ),
       prompt: session.prompt,
       signal: session.signal,
+      stepRunID: session.stepRunID,
     });
 
     return { writes: session.staged.close(), flags: session.staged.readFlags(), usage };

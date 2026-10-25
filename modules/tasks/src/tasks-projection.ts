@@ -1,6 +1,7 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction, UpdateObject } from 'kysely';
 import { isInboxRecord } from './is-inbox-record';
+import { isWakingRecord } from './is-waking-record';
 import type { TaskRecord } from './parse-task-record';
 import { parseTaskRecord } from './parse-task-record';
 import type { TasksTables } from './types';
@@ -16,7 +17,7 @@ export const tasksProjection: Projection = {
     }
 
     if (isInboxRecord(record) && record.thread !== null) {
-      return updateInbox(db, record.thread, record.sequence);
+      return isWakingRecord(record) ? updateInbox(db, record.thread, record.sequence) : [];
     }
 
     const parsed = parseTaskRecord(record);
@@ -96,6 +97,7 @@ async function applyTaskRecord(
         step_errors: 0,
         claimable_at: 0,
         session_boundary: null,
+        step_hop: 0,
         created_sequence: record.sequence,
         updated_sequence: record.sequence,
       })
@@ -117,7 +119,11 @@ function buildTaskUpdate(
   parsed: Exclude<TaskRowRecord, { readonly kind: 'task.created' }>,
 ): TaskUpdate {
   if (parsed.kind === 'task.step_started') {
-    return { state: 'running', started_step_key: parsed.stepKey };
+    return {
+      state: 'running',
+      started_step_key: parsed.stepKey,
+      ...(parsed.hop === undefined ? {} : { step_hop: parsed.hop }),
+    };
   }
 
   if (parsed.kind === 'task.step_committed') {

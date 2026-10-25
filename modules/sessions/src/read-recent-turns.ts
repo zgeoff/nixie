@@ -42,7 +42,7 @@ export async function readRecentTurns(
   return kept.toReversed();
 }
 
-const historyKinds = ['owner_message', 'model.reply', 'log_reset'] as const;
+const historyKinds = ['owner_message', 'task_message', 'model.reply', 'log_reset'] as const;
 
 async function* readTurnsNewestFirst(
   context: Pick<TasksContext, 'log'>,

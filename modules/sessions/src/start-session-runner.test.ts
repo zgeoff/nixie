@@ -20,6 +20,7 @@ async function setupTest() {
   return {
     sandboxes,
     runs: tools.runs,
+    steps: tools.steps,
     startRunner: (config: RunnerConfig) =>
       startSessionRunner({
         context: tasks.context,
@@ -70,6 +71,7 @@ test('it sums the token counts over every model turn the session ended', async (
     systemPrompt: 'You write memory.',
     prompt: 'Read the batch.',
     signal: new AbortController().signal,
+    stepRunID: 'memory-writer:1@1',
   });
 
   expect(usage).toStrictEqual({
@@ -78,6 +80,28 @@ test('it sums the token counts over every model turn the session ended', async (
     cacheReadTokens: 4,
     cacheWriteTokens: 6,
   });
+});
+
+test("it gives the session's tools a token for the step that runs it, and stops that token when the session ends", async () => {
+  const ctx = await setupTest();
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+  });
+
+  await runner.runSession({
+    systemPrompt: 'You write memory.',
+    prompt: 'Read the batch.',
+    signal: new AbortController().signal,
+    stepRunID: 'memory-writer:3@2',
+  });
+
+  expect(ctx.steps).toStrictEqual([
+    { stepRunID: 'memory-writer:3@2', session: null, token: 'step-token-1', isStopped: true },
+  ]);
+
+  expect(ctx.sandboxes.turns[0]?.tools.token).toBe('step-token-1');
 });
 
 test('it starts each session fresh with the prompt as its one message', async () => {
@@ -92,13 +116,14 @@ test('it starts each session fresh with the prompt as its one message', async ()
     systemPrompt: 'You write memory.',
     prompt: 'Read the batch.',
     signal: new AbortController().signal,
+    stepRunID: 'memory-writer:1@1',
   });
 
   expect(ctx.sandboxes.turns).toMatchObject([
     {
       resume: null,
       systemPrompt: 'You write memory.',
-      tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
+      tools: { url: 'http://127.0.0.1:8901', token: 'step-token-1' },
       input: [{ uuid: expect.toBeString(), text: 'Read the batch.' }],
     },
   ]);
@@ -116,6 +141,7 @@ test('it keeps 5-minute cache entries on a profile that sets a 1-hour lifetime',
     systemPrompt: 'You write memory.',
     prompt: 'Read the batch.',
     signal: new AbortController().signal,
+    stepRunID: 'memory-writer:1@1',
   });
 
   expect(ctx.sandboxes.turns.map((turn) => turn.profile.cacheTTL)).toStrictEqual(['5m']);
@@ -138,6 +164,7 @@ test('it throws when the guest fails the session', async () => {
       systemPrompt: 'You write memory.',
       prompt: 'Read the batch.',
       signal: new AbortController().signal,
+      stepRunID: 'memory-writer:1@1',
     }),
   ).rejects.toThrowWithMessage(
     Error,
@@ -171,6 +198,7 @@ test('it throws when a model turn of the session ended at a model API error', as
       systemPrompt: 'You write memory.',
       prompt: 'Read the batch.',
       signal: new AbortController().signal,
+      stepRunID: 'memory-writer:1@1',
     }),
   ).rejects.toThrowWithMessage(Error, 'the memory-writer session ended at a model API error');
 });
@@ -201,6 +229,7 @@ test('it throws an overflow apart from an API error when the session ends at pro
       systemPrompt: 'You write memory.',
       prompt: 'Read the batch.',
       signal: new AbortController().signal,
+      stepRunID: 'memory-writer:1@1',
     }),
   ).rejects.toThrowWithMessage(Error, "the memory-writer session's context passed its window");
 });
@@ -231,6 +260,7 @@ test('it throws an overflow apart from an API error when the session ends at blo
       systemPrompt: 'You write memory.',
       prompt: 'Read the batch.',
       signal: new AbortController().signal,
+      stepRunID: 'memory-writer:1@1',
     }),
   ).rejects.toThrowWithMessage(Error, "the memory-writer session's context passed its window");
 });

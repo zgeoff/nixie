@@ -60,7 +60,9 @@ The recent turns stop at the newest `log_reset` record on the thread, so a sessi
 [reset of the conversation](./event-log.md#resetting-the-conversation) reads no line of the old
 conversation. They leave out every message from the turn's first inbox record on, so a pending
 message reaches the model once, as a live message. They keep every committed reply, because a turn
-that left messages for the next step commits its reply after them.
+that left messages for the next step commits its reply after them. They hold the messages from other
+tasks beside the user's, each in a `<task-message>` element with its ID, so a rebuilt session can
+still name the message it answers.
 
 ## The note over the recent turns
 

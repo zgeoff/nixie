@@ -14,6 +14,7 @@ export async function createTestStep(context: TasksContext): Promise<StepInput> 
     stepKey: claim.stepKey,
     lease: claim.lease,
     inbox: [],
+    wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
   };

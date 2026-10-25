@@ -1,6 +1,8 @@
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { SystemTaskOptions, ToolSessionOptions } from '@heynixie/sessions';
 import { makeSystemTaskRunner, startToolSession } from '@heynixie/sessions';
+import type { TaskMessaging } from '@heynixie/tasks';
+import { buildTaskMessageTool, buildTasksListTool } from '@heynixie/tasks';
 import { buildConsolidatorTools } from './build-consolidator-tools';
 import type { ConsolidationConfig } from './consolidation-config-schema';
 import { createConsolidationStaging } from './create-consolidation-staging';
@@ -17,6 +19,8 @@ export interface MemoryConsolidatorRunnerOptions extends SystemTaskOptions, Tool
   readonly getPrompts: () => PromptOverrides;
 
   readonly ownerName: string | null;
+  readonly defaultZone: string;
+  readonly messaging: TaskMessaging;
   readonly onError: (error: unknown) => void;
 }
 
@@ -28,7 +32,12 @@ export const startMemoryConsolidatorRunner = makeSystemTaskRunner<
   entry: 'main',
   start: async (options, session) => {
     const staging = createConsolidationStaging();
-    const tools = buildConsolidatorTools(options.store, staging, options.config.topItems);
+
+    const tools = [
+      ...buildConsolidatorTools(options.store, staging, options.config.topItems),
+      buildTasksListTool(options.context, options.messaging),
+      buildTaskMessageTool(options.context, options.messaging),
+    ];
 
     const runner = await startToolSession(options, session, {
       taskID: memoryConsolidatorTaskID,
@@ -48,6 +57,8 @@ export const startMemoryConsolidatorRunner = makeSystemTaskRunner<
       getPersona: options.getPersona,
       getPrompts: options.getPrompts,
       ownerName: options.ownerName,
+      defaultZone: options.defaultZone,
+      messaging: options.messaging,
       onError: options.onError,
     });
   },

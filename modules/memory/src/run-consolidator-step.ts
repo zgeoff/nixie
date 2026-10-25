@@ -1,7 +1,8 @@
 import { StaleWriterError } from '@heynixie/log';
 import { renderPrompt } from '@heynixie/prompts';
+import { renderSessionMessages } from '@heynixie/sessions';
 import type { StepInput, StepResult } from '@heynixie/tasks';
-import { LeaseLostError } from '@heynixie/tasks';
+import { LeaseLostError, buildStepRunID } from '@heynixie/tasks';
 import type { StagedChange } from './consolidation-types';
 import type { ConsolidatorParts } from './consolidator-parts';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
@@ -14,10 +15,19 @@ export async function runConsolidatorStep(
   parts: ConsolidatorParts,
   input: StepInput,
 ): Promise<StepResult> {
-  const acknowledged = input.inbox.map((record) => record.sequence);
+  const wakes = input.inbox
+    .filter((record) => record.kind !== 'task_message')
+    .map((record) => record.sequence);
 
   try {
-    return { ...(await runConsolidation(parts, input.signal)), acknowledged };
+    const run = await runConsolidation(parts, input);
+
+    return {
+      next: run.next,
+      records: run.records,
+      timers: run.timers,
+      acknowledged: run.hasRunSession ? input.inbox.map((record) => record.sequence) : wakes,
+    };
   } catch (error) {
     if (error instanceof LeaseLostError || error instanceof StaleWriterError) {
       throw error;
@@ -28,27 +38,32 @@ export async function runConsolidatorStep(
     return {
       next: 'wait',
       records: [],
-      acknowledged,
+      acknowledged: wakes,
       timers: [{ dueAt: parts.context.clock.now() + parts.config.retryMs }],
     };
   }
 }
 
-type ConsolidationStep = Omit<StepResult, 'acknowledged'>;
+interface ConsolidationStep {
+  readonly next: StepResult['next'];
+  readonly records: StepResult['records'];
+  readonly timers: NonNullable<StepResult['timers']>;
+  readonly hasRunSession: boolean;
+}
 
 async function runConsolidation(
   parts: ConsolidatorParts,
-  signal: AbortSignal,
+  input: StepInput,
 ): Promise<ConsolidationStep> {
   const now = parts.context.clock.now();
 
   const wait = await readWaitTime(parts, now);
 
   if (wait !== null) {
-    return { next: 'wait', records: [], timers: [{ dueAt: wait }] };
+    return { next: 'wait', records: [], timers: [{ dueAt: wait }], hasRunSession: false };
   }
 
-  const diff = await runSession(parts, signal);
+  const diff = await runSession(parts, input);
 
   const records = await planDiffRecord(parts.context.log, {
     ...diff,
@@ -57,7 +72,12 @@ async function runConsolidation(
     definitions: parts.context.definitions(),
   });
 
-  return { next: 'wait', records, timers: [{ dueAt: now + parts.config.periodMs }] };
+  return {
+    next: 'wait',
+    records,
+    timers: [{ dueAt: now + parts.config.periodMs }],
+    hasRunSession: diff.model !== null,
+  };
 }
 
 async function readWaitTime(parts: ConsolidatorParts, now: number): Promise<number | null> {
@@ -81,7 +101,7 @@ interface SessionDiff {
   readonly summary: PlannedSummary | null;
 }
 
-async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promise<SessionDiff> {
+async function runSession(parts: ConsolidatorParts, input: StepInput): Promise<SessionDiff> {
   const listed = await readConsolidationItems(parts.store, {
     listTokens: parts.config.itemListTokens,
     thread: memoryConsolidatorTaskID,
@@ -119,8 +139,9 @@ async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promis
         },
         parts.getPrompts(),
       ),
-      prompt: renderConsolidatorPrompt(listed),
-      signal,
+      prompt: appendTaskMessages(renderConsolidatorPrompt(listed), parts, input),
+      signal: input.signal,
+      stepRunID: buildStepRunID(input),
     });
 
     return readSessionDiff(staged, parts.model.model);
@@ -128,6 +149,18 @@ async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promis
     staged.close();
     throw error;
   }
+}
+
+function appendTaskMessages(prompt: string, parts: ConsolidatorParts, input: StepInput): string {
+  const messages = renderSessionMessages(
+    input.inbox,
+    { defaultZone: parts.defaultZone, now: new Date(parts.context.clock.now()) },
+    { messaging: parts.messaging, wake: input.wake },
+  );
+
+  return messages === null
+    ? prompt
+    : `${prompt}\n\nMessages to you from other tasks:\n\n${messages}`;
 }
 
 function readSessionDiff(

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { readInboxMessages } from './read-inbox-messages';
+import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
@@ -31,6 +32,7 @@ test('it reads each record with the images its attachments hold', async () => {
 
   const messages = await readInboxMessages(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
     imageBudget: { bytes: 1024, count: 100 },
   });
 
@@ -71,6 +73,7 @@ test('it stops before the record whose images would pass the budget', async () =
 
   const messages = await readInboxMessages(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
     imageBudget: { bytes: 12, count: 100 },
   });
 
@@ -103,6 +106,7 @@ test('it stops before the record whose images would pass the count, however few 
 
   const messages = await readInboxMessages(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
     imageBudget: { bytes: 1024, count: 2 },
   });
 
@@ -133,6 +137,7 @@ test('it reads a record with no images past a budget the images before it spent'
 
   const messages = await readInboxMessages(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
     imageBudget: { bytes: 4, count: 100 },
   });
 
@@ -158,6 +163,7 @@ test('it reads the first record whatever its images, so a large message still re
 
   const messages = await readInboxMessages(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
     imageBudget: { bytes: 0, count: 0 },
   });
 
