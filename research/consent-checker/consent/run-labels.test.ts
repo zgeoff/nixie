@@ -1,4 +1,7 @@
+// oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { expect, mock, test } from 'bun:test';
+// @boundaries-ignore a spike imports the code it measures
+import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { runLabels } from './run-labels.ts';
 import type { LabelRecord } from './types.ts';
 
@@ -60,6 +63,65 @@ test('it maps each numbered answer to its pair and marks a pair the answer left 
         ],
         failure: null,
         costUSD: 0.03,
+      },
+    ],
+  ]);
+});
+
+test('it sends the labeller the rendered turn under the run profile and prompt', async () => {
+  const ctx = setupTest();
+
+  const runLabel = mock<(request: CheckRequest) => Promise<CheckReply>>(() =>
+    Promise.resolve({
+      kind: 'failed',
+      reason: 'error_during_execution',
+    }),
+  );
+
+  await runLabels({
+    turns: [
+      {
+        stepSequence: 7,
+        earlier: [
+          { role: 'owner', text: 'when does the plumber come' },
+          { role: 'assistant', text: 'I have no date for the plumber yet.' },
+        ],
+        messages: [{ sequence: 6, text: 'save that the plumber comes Thursday', spans: [] }],
+        calls: [
+          { caseID: '7/8', tool: 'memory.remember', input: { text: 'The plumber comes Thursday' } },
+          { caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } },
+        ],
+      },
+    ],
+    done: [],
+    appendRecord: ctx.appendRecord,
+    profile: {
+      model: 'claude-opus-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'medium',
+      authHeader: 'bearer',
+    },
+    systemPrompt: 'You label tool calls.',
+    promptSHA256: 'hash-l',
+    otherSpentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 1,
+    runLabel,
+  });
+
+  expect(runLabel.mock.calls).toStrictEqual([
+    [
+      {
+        profile: {
+          model: 'claude-opus-5-5',
+          baseURL: 'https://api.anthropic.com',
+          effort: 'medium',
+          authHeader: 'bearer',
+        },
+        systemPrompt: 'You label tool calls.',
+        input:
+          '<earlier>\n<owner>\nwhen does the plumber come\n</owner>\n<assistant>\nI have no date for the plumber yet.\n</assistant>\n</earlier>\n\n<turn>\n<owner_message>\nsave that the plumber comes Thursday\n</owner_message>\n</turn>\n\n<calls>\n<tool_call number="1">\n{\n  "tool": "memory.remember",\n  "input": {\n    "text": "The plumber comes Thursday"\n  }\n}\n</tool_call>\n<tool_call number="2">\n{\n  "tool": "memory.pin",\n  "input": {\n    "id": "M3"\n  }\n}\n</tool_call>\n</calls>',
       },
     ],
   ]);
