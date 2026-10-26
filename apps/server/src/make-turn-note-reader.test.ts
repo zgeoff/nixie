@@ -2,7 +2,8 @@ import { expect, mock, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { startTestMemoryStore } from '@heynixie/memory/test-utils';
 import { recordSkillPin, skillsReloadedCodec } from '@heynixie/skills';
-import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
+import { conversationTaskID, createConversationTask, getTaskName } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
 import { makeTurnNoteReader } from './make-turn-note-reader';
 import { startConversation } from './start-conversation';
 import { buildConversationDriver } from './test-utils/build-conversation-driver';
@@ -39,6 +40,20 @@ async function setupTest() {
           ownerName: null,
           defaultZone: 'UTC',
           compaction: { threshold: 0.8, headsUp: 0.7 },
+          getTaskName: (taskID) =>
+            getTaskName(
+              {
+                directory: [
+                  {
+                    taskID: 'task-reading',
+                    name: 'morning-reading',
+                    brief: 'Reads the morning news.',
+                    isWokenByMessages: false,
+                  },
+                ],
+              },
+              taskID,
+            ),
         },
         () => memory,
       ),
@@ -210,4 +225,79 @@ test('it gives no compaction warning to a rebuilt session after a turn of the ol
   }).send('How many sugars?');
 
   expect(turn.input[0]?.text).not.toInclude('Compaction in about');
+});
+
+test("it notes the moments that another task and the owner kept in the next turn's events, each with the week's count", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  await conversation.send('Is the kettle on?');
+
+  const [wake, message] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'task.wake',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'task-reading',
+      payload: {},
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: conversationTaskID,
+      erasable: { text: 'the plants need water on Friday' },
+    },
+  ]);
+
+  invariant(wake && message);
+
+  const reading = await ctx.memory.moments.keep({
+    caller: { kind: 'model', thread: 'task-reading', model: 'claude-test-4' },
+    thread: 'task-reading',
+    firstSequence: wake.sequence,
+    lastSequence: wake.sequence,
+    title: 'The kettle argument',
+  });
+
+  const own = await ctx.memory.moments.keep({
+    caller: { kind: 'model', thread: conversationTaskID, model: 'claude-test-4' },
+    thread: conversationTaskID,
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The plant rota',
+  });
+
+  const owner = await ctx.memory.moments.keep({
+    caller: { kind: 'owner' },
+    thread: conversationTaskID,
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The watering plan',
+  });
+
+  invariant(reading.status === 'written' && own.status === 'written');
+  invariant(owner.status === 'written');
+
+  const turn = await conversation.send('How many sugars?');
+
+  const text = turn.input[0]?.text ?? '';
+
+  expect(text).toInclude(
+    `· Another of your tasks (morning-reading) kept a moment: "The kettle argument". Moment ${reading.shortID}. Moments kept this week: 1.`,
+  );
+
+  expect(text).toInclude(
+    `· The owner kept a moment: "The watering plan". Moment ${owner.shortID}. Moments kept this week: 3.`,
+  );
+
+  expect(text).not.toInclude('The plant rota');
 });

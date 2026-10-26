@@ -86,14 +86,15 @@ the session opens, and the package that owns the value owns the entry, so a new 
 and no change to the builder. The server builds the registry when the conversation starts, in the
 order the status shows:
 
-| Entry             | Owner                | What it reads                                                  |
-| ----------------- | -------------------- | -------------------------------------------------------------- |
-| The kind of start | the sessions package | the first session, a compaction, or a rebuild and its reason   |
-| The start time    | the sessions package | when the session opened, in the zone of the newest message     |
-| The nixie version | the server           | the release that opened the session                            |
-| The model         | the sessions package | the model of the conversation's profile, so it can name itself |
-| The pinned items  | the memory package   | how many items the pinned core holds                           |
-| The pinned tokens | the memory package   | the pinned core's tokens against its budget                    |
+| Entry              | Owner                | What it reads                                                          |
+| ------------------ | -------------------- | ---------------------------------------------------------------------- |
+| The kind of start  | the sessions package | the first session, a compaction, or a rebuild and its reason           |
+| The start time     | the sessions package | when the session opened, in the zone of the newest message             |
+| The nixie version  | the server           | the release that opened the session                                    |
+| The model          | the sessions package | the model of the conversation's profile, so it can name itself         |
+| The pinned items   | the memory package   | how many items the pinned core holds                                   |
+| The pinned tokens  | the memory package   | the pinned core's tokens against its budget                            |
+| The week's moments | the memory package   | the [moments](../memory/moments.md) kept over the past week, by keeper |
 
 The kind of start says that earlier history is in the event log. After a forget, it says that the
 forget erased the summary of earlier sessions, so the model reads the gap as deliberate. The start

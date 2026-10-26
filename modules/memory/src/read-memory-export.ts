@@ -7,6 +7,7 @@ import { loadWriterModel } from './load-writer-model';
 import type { MemoryExport, MemoryExportItem } from './memory-export-schema';
 import { memoryExportSchemaVersion } from './memory-export-schema-version';
 import { parseChecks } from './parse-checks';
+import { readMomentExport } from './read-moment-export';
 import { readPages } from './read-pages';
 import { readViewText } from './read-view-text';
 import type {
@@ -36,6 +37,14 @@ export async function* readMemoryExport(
 
   for await (const item of readExportItems(context.log)) {
     yield `${separator}${JSON.stringify(item)}`;
+    separator = ',\n';
+  }
+
+  yield '\n],"moments":[';
+  separator = '\n';
+
+  for await (const moment of readMomentExport(context.log)) {
+    yield `${separator}${JSON.stringify(moment)}`;
     separator = ',\n';
   }
 

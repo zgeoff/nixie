@@ -2,9 +2,9 @@ import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { memoryExportSchema } from './memory-export-schema';
 
-test('it accepts the version 4 export file the fixture holds, a self-note and a lapse included', async () => {
+test('it accepts the version 5 export file the fixture holds, a self-note, a lapse and moments included', async () => {
   const fixture: unknown = await Bun.file(
-    join(import.meta.dir, 'fixtures', 'memory-export-v4.json'),
+    join(import.meta.dir, 'fixtures', 'memory-export-v5.json'),
   ).json();
 
   const parsed: unknown = memoryExportSchema.safeParse(fixture).data;
@@ -15,7 +15,7 @@ test('it accepts the version 4 export file the fixture holds, a self-note and a 
 test('it rejects a forgotten item that carries more than its ID and time', () => {
   const result = memoryExportSchema.safeParse({
     header: {
-      schemaVersion: 4,
+      schemaVersion: 5,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },
@@ -26,6 +26,7 @@ test('it rejects a forgotten item that carries more than its ID and time', () =>
         text: 'Keeps a spare key under the blue pot',
       },
     ],
+    moments: [],
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['items', 0] });
@@ -41,6 +42,7 @@ test('it rejects a file of another schema version', () => {
     items: [
       { itemID: 'e2f84d19-5a7c-4b0e-a3d6-9c1f8b2e4a65', forgottenAt: '2026-10-13T18:31:00.000Z' },
     ],
+    moments: [],
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['header', 'schemaVersion'] });
@@ -49,7 +51,7 @@ test('it rejects a file of another schema version', () => {
 test('it rejects a readable item with no version', () => {
   const result = memoryExportSchema.safeParse({
     header: {
-      schemaVersion: 4,
+      schemaVersion: 5,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },
@@ -63,6 +65,7 @@ test('it rejects a readable item with no version', () => {
         versions: [],
       },
     ],
+    moments: [],
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['items', 0, 'versions'] });
@@ -71,7 +74,7 @@ test('it rejects a readable item with no version', () => {
 test('it rejects a readable item with no kind', () => {
   const result = memoryExportSchema.safeParse({
     header: {
-      schemaVersion: 4,
+      schemaVersion: 5,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },
@@ -104,6 +107,7 @@ test('it rejects a readable item with no kind', () => {
         ],
       },
     ],
+    moments: [],
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['items', 0] });

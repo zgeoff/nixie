@@ -1,6 +1,6 @@
 {
   "header": {
-    "schemaVersion": 4,
+    "schemaVersion": 5,
     "exportedAt": "2026-10-14T08:00:00.000Z",
     "snapshotHash": "sha256:4be1c0"
   },
@@ -120,6 +120,70 @@
     {
       "itemID": "e2f84d19-5a7c-4b0e-a3d6-9c1f8b2e4a65",
       "forgottenAt": "2026-10-13T18:31:00.000Z"
+    }
+  ],
+  "moments": [
+    {
+      "momentID": "5d8e2a17-3c4b-4f9a-b1e6-7a2c9d0f4e83",
+      "shortID": "q4n8v2hw6t",
+      "state": "active",
+      "thread": "conversation",
+      "firstSequence": 41,
+      "lastSequence": 44,
+      "keptBy": "model",
+      "keptThread": "conversation",
+      "keptModel": "chat-model-2",
+      "keptAt": "2026-10-12T09:05:00.000Z",
+      "editedAt": "2026-10-13T07:30:00.000Z",
+      "title": "The allotment plot decision",
+      "note": "This is when we chose plot 14 over the bigger one.",
+      "reflections": [
+        {
+          "reflectionID": "r7k2m9xq4p",
+          "model": "chat-model-2",
+          "writtenAt": "2026-10-13T07:30:00.000Z",
+          "text": "Distance to the tap mattered more than the size."
+        }
+      ],
+      "links": ["0b7e3c52-6d1f-4a8e-9c2b-5f4d1e7a3b90"],
+      "records": [
+        {
+          "sequence": 41,
+          "kind": "owner_message",
+          "recordedAt": "2026-10-12T09:00:00.000Z",
+          "source": "owner",
+          "text": "the allotment plot is number 14",
+          "isGap": false
+        },
+        {
+          "sequence": 42,
+          "kind": "tool_called",
+          "recordedAt": "2026-10-12T09:00:01.000Z",
+          "source": "nixie",
+          "text": "{\"input\":{}}",
+          "isGap": false
+        },
+        {
+          "sequence": 43,
+          "kind": "tool_result",
+          "recordedAt": "2026-10-12T09:00:02.000Z",
+          "source": "untrusted",
+          "text": null,
+          "isGap": true
+        },
+        {
+          "sequence": 44,
+          "kind": "model.reply",
+          "recordedAt": "2026-10-12T09:00:03.000Z",
+          "source": "nixie",
+          "text": "Plot 14 it is, next to the tap.",
+          "isGap": false
+        }
+      ]
+    },
+    {
+      "momentID": "9a3f6c21-8e4d-4b7a-a2c5-1d0e7f3b6c94",
+      "destroyedAt": "2026-10-13T18:40:00.000Z"
     }
   ]
 }
