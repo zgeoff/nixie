@@ -14,6 +14,20 @@ test.each([
   ).toStrictEqual(new Error(message));
 });
 
+test('it maps a refused span to its error', () => {
+  expect(
+    toMomentError(new MomentRefusedError('bad_span'), {
+      BAD_SPAN: () => new Error('the span is bad'),
+    }),
+  ).toStrictEqual(new Error('the span is bad'));
+});
+
+test('it passes on a refusal whose procedure declares no error for it', () => {
+  const error = new MomentRefusedError('stale');
+
+  expect(toMomentError(error, { BAD_SPAN: () => new Error('the span is bad') })).toBe(error);
+});
+
 test('it passes on an error that is no refusal', () => {
   const error = new Error('the disk is full');
 

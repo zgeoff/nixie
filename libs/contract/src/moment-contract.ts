@@ -32,7 +32,27 @@ const destroyPreviewSchema = z.object({
   version: z.int().positive(),
 });
 
+const momentKeep = signedIn.errors(reusedIDErrors).errors({
+  MEMORY_NOT_STARTED: { message: 'The memory store has not started yet', status: 503 },
+  BAD_SPAN: {
+    message: 'The span needs a first and a last record on the thread, in order',
+    status: 422,
+  },
+});
+
+const keepSchema = z.object({
+  clientActionID: z.uuid(),
+  firstSequence: z.int().nonnegative(),
+  lastSequence: z.int().nonnegative(),
+  thread: z.string().min(1).max(200),
+  title: z.string().min(1).max(120).regex(/\S/u),
+});
+
 export const momentContract = {
+  keepMoment: momentKeep
+    .input(keepSchema)
+    .output(z.object({ momentID: z.string(), shortID: z.string() })),
+
   previewMomentDestroy: momentView.input(momentTargetSchema).output(destroyPreviewSchema),
 
   destroyMoment: momentView

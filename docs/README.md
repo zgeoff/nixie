@@ -111,6 +111,9 @@ below, and planned work lives in Linear.
   its budget, each version's provenance and evidence, and changes bound to a version
 - [Memory export](architecture/memory/export.md) — every item with its history in one versioned JSON
   file, streamed as a checked action and saved where the user picks, and the denied export tool
+- [Moments](architecture/memory/moments.md) — kept spans of a thread with a title, a note and
+  reflections, the tools that keep and read them a page at a time, the weekly count, and a destroy
+  that shreds only the moment's own text
 - [Memory in context](architecture/memory/context.md) — the pinned core in the system prompt, the
   items each turn retrieves, and the session cleanup a forget runs
 

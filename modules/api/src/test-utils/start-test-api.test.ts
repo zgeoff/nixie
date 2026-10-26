@@ -48,6 +48,7 @@ test('it serves the memory store the test sets', async () => {
       reject: () => Promise.reject(new Error('no answer runs here')),
     },
     moments: {
+      keep: () => Promise.reject(new Error('no change runs here')),
       readDestroyPreview: () => Promise.reject(new Error('no preview runs here')),
       destroy: () => Promise.reject(new Error('no change runs here')),
       finishDestroy: () => Promise.reject(new Error('no change runs here')),

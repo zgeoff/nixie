@@ -75,7 +75,7 @@ export type ViewMemoryStore = Pick<
   | 'finishForgets'
 > & {
   readonly proposals: Pick<MemoryProposals, 'approve' | 'reject'>;
-  readonly moments: Pick<MomentStore, 'readDestroyPreview' | 'destroy' | 'finishDestroy'>;
+  readonly moments: Pick<MomentStore, 'keep' | 'readDestroyPreview' | 'destroy' | 'finishDestroy'>;
 };
 
 export type ReadViewMemory = () => ViewMemoryStore | null;

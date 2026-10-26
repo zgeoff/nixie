@@ -77,6 +77,9 @@ export interface KeepMomentRequest extends MomentSpan {
   readonly caller: MomentCaller;
   readonly thread: string;
   readonly title: string;
+
+  // the client's checked keep makes the IDs first, so its retry answers with the first keep's IDs
+  readonly ids?: { readonly momentID: string; readonly shortID: string };
 }
 
 export type MomentChange =

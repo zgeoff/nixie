@@ -1,5 +1,5 @@
 import type { StartedMemoryStore } from '@heynixie/memory';
-import { buildPinnedCoreStatus } from '@heynixie/memory';
+import { buildMomentStatus, buildPinnedCoreStatus } from '@heynixie/memory';
 import { resolveRoleProfile } from '@heynixie/models';
 import {
   buildModelStatus,
@@ -9,6 +9,7 @@ import {
 } from '@heynixie/sessions';
 import type { SessionCleanupCause } from '@heynixie/sessions';
 import type { RunStep } from '@heynixie/tasks';
+import { getTaskName } from '@heynixie/tasks';
 import { buildTaskMessaging } from './build-task-messaging';
 import { buildVersionStatus } from './build-version-status';
 import { makeConversationReadinessStep } from './make-conversation-readiness-step';
@@ -28,6 +29,8 @@ export async function startConversationImp(
   parts: ServerParts,
   memory: () => StartedMemoryStore,
 ): Promise<ConversationImp> {
+  const messaging = buildTaskMessaging(parts.config);
+
   const conversation = await startConversation({
     context: parts.context,
     models: parts.config.models,
@@ -44,6 +47,7 @@ export async function startConversationImp(
         ownerName: parts.config.owner.name,
         defaultZone: parts.config.time.default_zone,
         compaction: parts.config.compaction,
+        getTaskName: (taskID) => getTaskName(messaging, taskID),
       },
       memory,
     ),
@@ -59,6 +63,7 @@ export async function startConversationImp(
       buildVersionStatus(),
       buildModelStatus(),
       ...buildPinnedCoreStatus(() => memory().readPinnedCoreUse()),
+      buildMomentStatus((at) => memory().moments.readWeekCount(at), parts.config.owner.name),
     ]),
     memory,
     memorySettings: {
@@ -68,7 +73,7 @@ export async function startConversationImp(
     },
     compaction: parts.config.compaction,
     defaultZone: parts.config.time.default_zone,
-    messaging: buildTaskMessaging(parts.config),
+    messaging,
     log: parts.log,
   });
 

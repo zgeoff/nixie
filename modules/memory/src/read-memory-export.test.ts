@@ -1,6 +1,7 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { memoryExportSchema } from './memory-export-schema';
 import type { TestMemoryOptions } from './test-utils/start-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -225,11 +226,12 @@ test("it heads the file with the export time, the schema version and the definit
 
   expect(JSON.parse(text)).toStrictEqual({
     header: {
-      schemaVersion: 4,
+      schemaVersion: 5,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },
     items: [],
+    moments: [],
   });
 });
 
@@ -281,5 +283,147 @@ test('it exports the end time of each version and the lapse that retired it', as
         { version: 2, until: '2026-10-19T22:59:59.000Z', provenance: { origin: 'lapse' } },
       ],
     },
+  ]);
+});
+
+test('it exports a moment with its title, note, reflections and links and its span decrypted, and the file matches the schema', async () => {
+  const ctx = await setupTest();
+
+  const [message, reply] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'owner',
+      erasable: { text: 'the allotment plot is number 14' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Plot 14 it is, next to the tap.' },
+    },
+  ]);
+
+  invariant(message && reply);
+
+  const item = await ctx.memory.store.remember({
+    text: 'Rents allotment plot 14',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'chat-model-2' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: reply.sequence,
+    title: 'The allotment plot decision',
+  });
+
+  invariant(kept.status === 'written');
+
+  const reflected = await ctx.memory.store.moments.edit({
+    caller: { kind: 'model', thread: 'conversation', model: 'chat-model-2' },
+    target: { momentID: kept.shortID, version: 1 },
+    change: { kind: 'reflection', text: 'Distance to the tap mattered more than the size.' },
+  });
+
+  invariant(reflected.status === 'written' && reflected.reflectionID !== undefined);
+
+  await ctx.memory.store.moments.edit({
+    caller: { kind: 'owner' },
+    target: { momentID: kept.momentID, version: 2 },
+    change: { kind: 'note', note: 'This is when we chose plot 14.' },
+  });
+
+  await ctx.memory.store.moments.link({
+    caller: { kind: 'owner' },
+    target: { momentID: kept.momentID, version: 3 },
+    itemID: item.itemID,
+    isLinked: true,
+  });
+
+  const text = await ctx.readExportText(Date.parse('2026-10-14T08:00:00.000Z'));
+
+  expect(memoryExportSchema.safeParse(JSON.parse(text)).data?.moments).toStrictEqual([
+    {
+      momentID: kept.momentID,
+      shortID: kept.shortID,
+      state: 'active',
+      thread: 'conversation',
+      firstSequence: message.sequence,
+      lastSequence: reply.sequence,
+      keptBy: 'model',
+      keptThread: 'conversation',
+      keptModel: 'chat-model-2',
+      keptAt: expect.toBeString(),
+      editedAt: expect.toBeString(),
+      title: 'The allotment plot decision',
+      note: 'This is when we chose plot 14.',
+      reflections: [
+        {
+          reflectionID: reflected.reflectionID,
+          model: 'chat-model-2',
+          writtenAt: expect.toBeString(),
+          text: 'Distance to the tap mattered more than the size.',
+        },
+      ],
+      links: [item.itemID],
+      records: [
+        {
+          sequence: message.sequence,
+          kind: 'owner_message',
+          recordedAt: expect.toBeString(),
+          source: 'owner',
+          payload: null,
+          decision: null,
+          text: 'the allotment plot is number 14',
+          isGap: false,
+        },
+        {
+          sequence: reply.sequence,
+          kind: 'model.reply',
+          recordedAt: expect.toBeString(),
+          source: 'nixie',
+          payload: null,
+          decision: null,
+          text: 'Plot 14 it is, next to the tap.',
+          isGap: false,
+        },
+      ],
+    },
+  ]);
+});
+
+test('it exports a destroyed moment as its ID and the time its destroy completed', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the allotment plot is number 14' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The allotment plot decision',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.store.moments.destroy({ momentID: kept.momentID, version: 1 });
+
+  const text = await ctx.readExportText(Date.parse('2026-10-14T08:00:00.000Z'));
+
+  expect(memoryExportSchema.safeParse(JSON.parse(text)).data?.moments).toStrictEqual([
+    { momentID: kept.momentID, destroyedAt: expect.toBeString() },
   ]);
 });
