@@ -11,13 +11,17 @@ import type {
 } from './moment-types';
 import type { MomentRead, MomentReadRequest } from './read-moment';
 import { readMoment } from './read-moment';
+import type { MomentDestroyPreviewRead } from './read-moment-destroy-preview';
+import { readMomentDestroyPreview } from './read-moment-destroy-preview';
 import type { MomentLink } from './read-moment-links';
 import { readMomentLinks } from './read-moment-links';
 import type { MomentFindQuery, MomentMatchPage } from './read-moment-matches';
 import { readMomentMatches } from './read-moment-matches';
 import type { MomentWeekCount } from './read-week-count';
 import { readWeekCount } from './read-week-count';
+import { runBegunDestroy } from './run-begun-destroy';
 import { runMomentDestroy } from './run-moment-destroy';
+import type { WriteInTransaction } from './types';
 import { writeKeptMoment } from './write-kept-moment';
 import { writeMomentEdit } from './write-moment-edit';
 import { writeMomentLink } from './write-moment-link';
@@ -37,7 +41,12 @@ export interface MomentStore {
   ) => Promise<ReadonlyMap<string, readonly MomentLink[]>>;
 
   // the client's checked destroy, bound to the version its preview showed
-  readonly destroy: (target: MomentTarget) => Promise<MomentDestroy>;
+  readonly readDestroyPreview: (target: MomentTarget) => Promise<MomentDestroyPreviewRead>;
+  readonly destroy: (
+    target: MomentTarget,
+    writeInTransaction?: WriteInTransaction,
+  ) => Promise<MomentDestroy>;
+  readonly finishDestroy: (momentID: string) => Promise<void>;
 }
 
 export function buildMomentStore(context: MomentDestroyContext): MomentStore {
@@ -52,6 +61,8 @@ export function buildMomentStore(context: MomentDestroyContext): MomentStore {
     readMatches: (query) => readMomentMatches(log, query),
     readWeekCount: (at) => readWeekCount(log.writer.db.$extendTables<MomentTables>(), at),
     readLinks: (itemIDs) => readMomentLinks(log, itemIDs),
-    destroy: (target) => runMomentDestroy(context, target),
+    readDestroyPreview: (target) => readMomentDestroyPreview(log, target),
+    destroy: (target, writeInTransaction) => runMomentDestroy(context, target, writeInTransaction),
+    finishDestroy: (momentID) => runBegunDestroy(context, momentID),
   };
 }

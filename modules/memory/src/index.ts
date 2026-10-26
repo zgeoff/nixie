@@ -66,6 +66,8 @@ export { readWriterStatus } from './read-writer-status';
 export { PinnedCoreFullError } from './pinned-core-full-error';
 export { SelfNoteError } from './self-note-error';
 export { StaleVersionError } from './stale-version-error';
+export type { MomentStore } from './build-moment-store';
+export type { MomentDestroyPreview } from './read-moment-destroy-preview';
 export type { StartedMemoryStore } from './start-memory-store';
 export { startMemoryStore } from './start-memory-store';
 export type { MemoryWriter, MemoryWriterOptions } from './start-memory-writer';

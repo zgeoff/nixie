@@ -1,5 +1,10 @@
 import { expect, mock, test } from 'bun:test';
-import { readRecords, runProjectionRebuild, writeRecords } from '@heynixie/log';
+import {
+  readRecords,
+  runProjectionRebuild,
+  writeRecords,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -201,6 +206,46 @@ test('it refuses a destroy bound to a version the moment moved past', async () =
   });
 
   expect(destroyed).toStrictEqual({ status: 'refused', reason: 'stale' });
+});
+
+test("it rolls back the caller's write in the destroy's transaction when it refuses the destroy", async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'only the quiet kettle from now on' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.store.moments.destroy({ momentID: kept.momentID, version: 2 }, async (tx) => {
+    await writeRecordsInTransaction(tx, ctx.memory.log, [
+      {
+        kind: 'task.wake',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'client-action',
+        payload: {},
+      },
+    ]);
+  });
+
+  const wakes = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['task.wake'] });
+
+  expect(wakes).toStrictEqual([]);
 });
 
 test('it finishes a destroy that a crash cut short when the store starts again', async () => {

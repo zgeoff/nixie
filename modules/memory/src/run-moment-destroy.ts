@@ -8,6 +8,7 @@ import type {
 } from './moment-types';
 import { readMomentRow } from './read-moment-row';
 import { runMomentDestroyCleanup } from './run-moment-destroy-cleanup';
+import type { WriteInTransaction } from './types';
 
 // The destroy binds to the version the client's preview showed, so an edit after the preview makes
 // it stale. The record that marks the moment destroying commits first, so no read delivers the
@@ -15,39 +16,60 @@ import { runMomentDestroyCleanup } from './run-moment-destroy-cleanup';
 export async function runMomentDestroy(
   context: MomentDestroyContext,
   target: MomentTarget,
+  writeInTransaction?: WriteInTransaction,
 ): Promise<MomentDestroy> {
-  const begun = await withWriteTransaction(
-    context.log.writer,
-    async (tx): Promise<MomentDestroy> => {
-      const row = await readMomentRow(tx.$extendTables<MomentTables>(), target.momentID);
+  const begun = await withWriteTransaction(context.log.writer, async (tx): Promise<string> => {
+    await writeInTransaction?.(tx);
 
-      if (row === null || (row.state !== 'active' && row.state !== 'retired')) {
-        return { status: 'refused', reason: 'not_found' };
-      }
+    const row = await readMomentRow(tx.$extendTables<MomentTables>(), target.momentID);
 
-      if (row.version !== target.version) {
-        return { status: 'refused', reason: 'stale' };
-      }
+    if (row === null || (row.state !== 'active' && row.state !== 'retired')) {
+      throw new DestroyRefusedError('not_found');
+    }
 
-      await writeRecordsInTransaction(tx, context.log, [
-        {
-          kind: 'moment_destroyed',
-          definitions: context.definitions(),
-          payload: momentDestroyedCodec.encode({
-            momentID: row.moment_id,
-            version: row.version,
-            stage: 'started',
-          }),
-        },
-      ]);
+    if (row.version !== target.version) {
+      throw new DestroyRefusedError('stale');
+    }
 
-      return { status: 'destroyed', momentID: row.moment_id };
-    },
-  );
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: 'moment_destroyed',
+        definitions: context.definitions(),
+        payload: momentDestroyedCodec.encode({
+          momentID: row.moment_id,
+          version: row.version,
+          stage: 'started',
+        }),
+      },
+    ]);
 
-  if (begun.status === 'destroyed') {
-    await runMomentDestroyCleanup(context, begun.momentID);
+    return row.moment_id;
+  }).catch((error: unknown) => {
+    if (error instanceof DestroyRefusedError) {
+      return error;
+    }
+
+    throw error;
+  });
+
+  if (begun instanceof DestroyRefusedError) {
+    return { status: 'refused', reason: begun.reason };
   }
 
-  return begun;
+  await runMomentDestroyCleanup(context, begun);
+
+  return { status: 'destroyed', momentID: begun };
+}
+
+// A refusal throws inside the transaction, so a client action written by the hook rolls back with it.
+class DestroyRefusedError extends Error {
+  override readonly name = 'DestroyRefusedError';
+
+  readonly reason: 'not_found' | 'stale';
+
+  constructor(reason: 'not_found' | 'stale') {
+    super(`the moment destroy is refused as ${reason}`);
+
+    this.reason = reason;
+  }
 }
