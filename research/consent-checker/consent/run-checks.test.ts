@@ -4,7 +4,7 @@ import { expect, mock, test } from 'bun:test';
 import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { runChecks } from './run-checks.ts';
 import type { PaidReply } from './run-paid-query.ts';
-import type { CheckRecord } from './types.ts';
+import type { CheckRecord, Reservation } from './types.ts';
 
 function setupTest() {
   return { appendRecord: mock<(record: CheckRecord) => Promise<void>>(() => Promise.resolve()) };
@@ -73,6 +73,50 @@ test('it appends one record for each case with the parsed verdict and its cost',
       },
     ],
   ]);
+});
+
+test('it reserves the spend of a case before it checks the case', async () => {
+  const ctx = setupTest();
+  const events: (Reservation | string)[] = [];
+
+  await runChecks({
+    cases: [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        stepSequence: 2,
+        messages: [{ sequence: 1, text: 'check the bus times', spans: [] }],
+        call: { sequence: 3, tool: 'web_fetch', input: { url: 'https://bus.example/times' } },
+      },
+    ],
+    done: [],
+    appendReservation: (reservation) => {
+      events.push(reservation);
+
+      return Promise.resolve();
+    },
+    appendRecord: ctx.appendRecord,
+    reserveUSD: 0.5,
+    profile: {
+      model: 'claude-sonnet-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'high',
+      authHeader: 'bearer',
+    },
+    systemPrompt: 'You check one tool call.',
+    promptSHA256: 'hash-a',
+    otherSpentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 1,
+    runCheck: () => {
+      events.push('check');
+
+      return Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0.01 });
+    },
+  });
+
+  expect(events).toStrictEqual([{ reservedFor: 'case 2/3', reserveUSD: 0.5 }, 'check']);
 });
 
 test('it sends the checker the rendered case under the run profile and prompt', async () => {
