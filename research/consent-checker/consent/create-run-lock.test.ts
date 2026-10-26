@@ -22,7 +22,7 @@ test('it refuses a second lock on a run file the first lock holds', async () => 
   );
 
   expect(createRunLock([join(ctx.directory, 'labels.jsonl')], nodeLockFiles)).rejects.toThrow(
-    `${join(ctx.directory, 'labels.jsonl.lock')} exists, so another label or check run holds these files`,
+    `${join(ctx.directory, 'labels.jsonl.lock')} exists, so another command of this spike holds these files`,
   );
 });
 

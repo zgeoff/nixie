@@ -7,9 +7,9 @@ export interface RunLock {
   remove: () => Promise<void>;
 }
 
-// Each run file gets a lock file beside it, made with an exclusive create, so a second label or check
-// run on the same files stops before it reads their spend or their done records. A run that crashes
-// leaves its lock files behind, and the error names them.
+// Each run file gets a lock file beside it, made with an exclusive create, so a second command on the
+// same files stops before it reads or writes them. A command that crashes leaves its lock files
+// behind, and the error names them.
 export async function createRunLock(paths: readonly string[], files: LockFiles): Promise<RunLock> {
   const held: string[] = [];
 
@@ -27,7 +27,7 @@ export async function createRunLock(paths: readonly string[], files: LockFiles):
         await remove();
 
         throw new Error(
-          `${lockPath} exists, so another label or check run holds these files; remove it only when no run is going`,
+          `${lockPath} exists, so another command of this spike holds these files; remove it only when no command is running`,
           { cause: error },
         );
       }

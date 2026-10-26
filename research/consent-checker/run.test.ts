@@ -59,7 +59,7 @@ test('it writes the cases and prints only their counts', async () => {
   ]);
 });
 
-test('it rewrites no cases file while a label or check run holds it', async () => {
+test('it rewrites no cases file while another command holds it', async () => {
   const ctx = await setupTest();
 
   const plainPath = join(ctx.directory, 'records.jsonl');
@@ -74,7 +74,7 @@ test('it rewrites no cases file while a label or check run holds it', async () =
   expect(child.exitCode).toBe(1);
 
   expect(child.stderr.toString()).toInclude(
-    `${outPath}.lock exists, so another label or check run holds these files`,
+    `${outPath}.lock exists, so another command of this spike holds these files`,
   );
 
   const cases = await readFile(outPath, 'utf8');
@@ -173,7 +173,7 @@ test('it scores nothing while another command holds the cases file', async () =>
   expect(child.stdout.toString()).toBe('');
 
   expect(child.stderr.toString()).toInclude(
-    `${casesPath}.lock exists, so another label or check run holds these files`,
+    `${casesPath}.lock exists, so another command of this spike holds these files`,
   );
 });
 
@@ -285,7 +285,7 @@ test('it refuses a check run while another run holds the labels file', async () 
   expect(child.exitCode).toBe(1);
 
   expect(child.stderr.toString()).toInclude(
-    `${labelsPath}.lock exists, so another label or check run holds these files`,
+    `${labelsPath}.lock exists, so another command of this spike holds these files`,
   );
 
   expect(existsSync(`${outPath}.lock`)).toBe(false);
