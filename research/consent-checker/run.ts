@@ -53,6 +53,7 @@ const args = parseArgs({
     persona: { type: 'string' },
     out: { type: 'string' },
     home: { type: 'string' },
+    'base-url': { type: 'string', default: 'https://api.anthropic.com' },
     model: { type: 'string' },
     effort: { type: 'string' },
     budget: { type: 'string', default: '4' },
@@ -253,7 +254,7 @@ async function createModelEnv(): Promise<Record<string, string | undefined>> {
 function buildProfile(defaults: RoleProfile) {
   return {
     model: values.model ?? defaults.model,
-    baseURL: 'https://api.anthropic.com',
+    baseURL: values['base-url'],
     effort: effortSchema.parse(values.effort ?? defaults.effort),
     authHeader: 'bearer' as const,
   };
