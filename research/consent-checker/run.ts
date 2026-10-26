@@ -3,7 +3,7 @@
 // and the commands print counts and rates only. The README gives each command and its flags.
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { appendFile, mkdir, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, truncate, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 // oxlint-disable-next-line zgeoff/import-zones -- the spike runs the check guest's options through the SDK's query, with the labeller's answer shape in place of the verdict
 import { query } from '@anthropic-ai/claude-agent-sdk';
@@ -18,6 +18,7 @@ import { buildLedger } from './consent/build-ledger.ts';
 import { createRunLock } from './consent/create-run-lock.ts';
 import { ledgerKeys } from './consent/ledger-keys.ts';
 import { nodeLockFiles } from './consent/node-lock-files.ts';
+import { pickTailRepair } from './consent/pick-tail-repair.ts';
 import { renderScoreReport } from './consent/render-score-report.ts';
 import type { QueueResult } from './consent/run-budgeted-queue.ts';
 import { runChecks } from './consent/run-checks.ts';
@@ -136,6 +137,8 @@ async function runLabelCommand(): Promise<void> {
 }
 
 async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<void> {
+  await writeTailRepairs([outPath, values.checks]);
+
   const persona = await Bun.file(requireFlag(values.persona, '--persona')).text();
   const template = await Bun.file(new URL('label-prompt.txt', import.meta.url)).text();
 
@@ -186,6 +189,8 @@ async function runCheckCommand(): Promise<void> {
 }
 
 async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<void> {
+  await writeTailRepairs([outPath, values.labels]);
+
   const systemPrompt = await Bun.file(new URL('prompt.txt', import.meta.url)).text();
   const env = await createModelEnv();
 
@@ -234,6 +239,28 @@ function formatFailureStop(result: QueueResult): string {
   }
 
   return `, stopped because a call got no answer from the model API (${result.failureReason ?? 'no reason given'})`;
+}
+
+// A crash part way through an append leaves a torn last line, which the line reader refuses, so each
+// command repairs the appended files it holds before it reads them.
+async function writeTailRepairs(paths: readonly (string | undefined)[]): Promise<void> {
+  for (const path of paths) {
+    if (path === undefined || !existsSync(path)) {
+      continue;
+    }
+
+    const text = await Bun.file(path).text();
+
+    const repair = pickTailRepair(text);
+
+    if (repair.kind === 'add_newline') {
+      await appendFile(path, '\n');
+    } else if (repair.kind === 'cut') {
+      await truncate(path, repair.keptBytes);
+
+      console.log('cut a torn last line from an output file');
+    }
+  }
 }
 
 async function createDirectory(path: string): Promise<void> {
@@ -336,6 +363,8 @@ async function readCheckSpentUSD(path: string | undefined): Promise<number> {
 }
 
 async function printScore(): Promise<void> {
+  await writeTailRepairs([values.labels, values.checks]);
+
   const cases = await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema);
   const labelLines = await readJSONLines(requireFlag(values.labels, '--labels'), labelLineSchema);
   const checkLines = await readJSONLines(requireFlag(values.checks, '--checks'), checkLineSchema);

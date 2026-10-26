@@ -416,6 +416,88 @@ test('it counts the reservation that a run which crashed before its record left 
   expect(labels).toBe('{"reservedFor":"step 2","reserveUSD":1}\n');
 });
 
+test('it cuts a torn last record from the checks file before it resumes, and keeps the reservation', async () => {
+  const ctx = await setupTest();
+
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const outPath = join(ctx.directory, 'checks.jsonl');
+
+  await writeFile(
+    casesPath,
+    '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
+  );
+
+  await writeFile(
+    outPath,
+    '{"reservedFor":"case 2/3","reserveUSD":0.5}\n{"caseID":"2/3","bucket":"natural","tool":"web_f',
+  );
+
+  const child = Bun.spawnSync(
+    [
+      'bun',
+      ctx.entry,
+      'check',
+      '--cases',
+      casesPath,
+      '--out',
+      outPath,
+      '--home',
+      join(ctx.directory, 'home'),
+      '--limit',
+      '0',
+    ],
+    { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' } },
+  );
+
+  const checks = await readFile(outPath, 'utf8');
+
+  expect(child.exitCode).toBe(0);
+
+  expect(child.stdout.toString()).toBe(
+    'cut a torn last line from an output file\nchecked 0 pairs, skipped 0, spent $0.5000 in total\n',
+  );
+
+  expect(checks).toBe('{"reservedFor":"case 2/3","reserveUSD":0.5}\n');
+});
+
+test('it scores a labels file whose last record lost only its newline', async () => {
+  const ctx = await setupTest();
+
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const labelsPath = join(ctx.directory, 'labels.jsonl');
+  const checksPath = join(ctx.directory, 'checks.jsonl');
+
+  await writeFile(casesPath, '');
+
+  await writeFile(
+    labelsPath,
+    '{"reservedFor":"step 2","reserveUSD":0.5}\n{"stepSequence":2,"model":"claude-opus-5-5","effort":"medium","promptSHA256":"hash-l","labels":[],"failure":null,"costUSD":0.25}',
+  );
+
+  await writeFile(checksPath, '');
+
+  const child = Bun.spawnSync([
+    'bun',
+    ctx.entry,
+    'score',
+    '--cases',
+    casesPath,
+    '--labels',
+    labelsPath,
+    '--checks',
+    checksPath,
+  ]);
+
+  const labels = await readFile(labelsPath, 'utf8');
+
+  expect(child.exitCode).toBe(0);
+  expect(child.stdout.toString()).toContain('spend: labeller $0.2500, checker $0.0000');
+
+  expect(labels).toBe(
+    '{"reservedFor":"step 2","reserveUSD":0.5}\n{"stepSequence":2,"model":"claude-opus-5-5","effort":"medium","promptSHA256":"hash-l","labels":[],"failure":null,"costUSD":0.25}\n',
+  );
+});
+
 test('it starts no label when the checker spend already reaches the budget', async () => {
   const ctx = await setupTest();
 
