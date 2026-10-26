@@ -600,6 +600,88 @@ test('#moment.edit moves both edges of the span to the event IDs it was given', 
   expect(row).toStrictEqual({ first_sequence: second, last_sequence: third, version: 2 });
 });
 
+test('#moment.retire retires an active moment when the call passes no restore', async () => {
+  const ctx = await setupTest();
+
+  const message = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'we settle the kettle question today',
+    spans: [],
+  });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message,
+    lastSequence: message,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  const result = await runToolCall(
+    { tool: 'moment.retire', input: { momentID: kept.shortID, version: 1 }, toolUseID: 'toolu_1' },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const row = await ctx.db.selectFrom('moments').select('state').executeTakeFirstOrThrow();
+
+  expect(result.structuredContent).toStrictEqual({
+    momentID: kept.shortID,
+    version: 2,
+    state: 'retired',
+  });
+
+  expect(row.state).toBe('retired');
+});
+
+test('#moment.retire restores a retired moment when the call passes restore: true', async () => {
+  const ctx = await setupTest();
+
+  const message = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'we settle the kettle question today',
+    spans: [],
+  });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message,
+    lastSequence: message,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.store.moments.retire({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    target: { momentID: kept.shortID, version: 1 },
+    isRetired: true,
+  });
+
+  const result = await runToolCall(
+    {
+      tool: 'moment.retire',
+      input: { momentID: kept.shortID, version: 2, restore: true },
+      toolUseID: 'toolu_1',
+    },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const row = await ctx.db.selectFrom('moments').select('state').executeTakeFirstOrThrow();
+
+  expect(result.structuredContent).toStrictEqual({
+    momentID: kept.shortID,
+    version: 3,
+    state: 'active',
+  });
+
+  expect(row.state).toBe('active');
+});
+
 test('#moment.find finds a moment by a word of its reflection', async () => {
   const ctx = await setupTest();
 
