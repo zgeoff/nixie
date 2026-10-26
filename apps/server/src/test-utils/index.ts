@@ -11,4 +11,5 @@ export { startTestConversation } from './start-test-conversation';
 export { startTestServer } from './start-test-server';
 
 // A bundle of the package entry would hold the test-build ID list this check searches for.
+export { testBuildIDs } from '../test-build-ids';
 export { writeReleaseBundle } from '../write-release-bundle';
