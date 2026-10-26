@@ -77,33 +77,6 @@ test('it refuses the test sandbox in a release build', async () => {
   ).toThrowWithMessage(Error, 'a release build holds no test sandbox');
 });
 
-test('it bundles the imp adapter and no part of the process double in a release build', async () => {
-  const build = await Bun.build({
-    entrypoints: [join(import.meta.dir, 'index.ts')],
-    target: 'bun',
-    define: { NIXIE_TEST_BUILD: 'false' },
-  });
-
-  const texts = await Promise.all(build.outputs.map((output) => output.text()));
-
-  const bundle = texts.join('\n');
-
-  expect(bundle).toInclude('public egress without the host addresses in imp.host_addresses');
-  expect(bundle).not.toInclude('the tool relay has no TCP address');
-});
-
-test('it bundles the process double in a test build', async () => {
-  const build = await Bun.build({
-    entrypoints: [join(import.meta.dir, 'index.ts')],
-    target: 'bun',
-    define: { NIXIE_TEST_BUILD: 'true' },
-  });
-
-  const texts = await Promise.all(build.outputs.map((output) => output.text()));
-
-  expect(texts.join('\n')).toInclude('the tool relay has no TCP address');
-});
-
 test("it routes a guest to its run's endpoint in a test build, passing each chunk as it arrives", async () => {
   const ctx = await setupTest();
 

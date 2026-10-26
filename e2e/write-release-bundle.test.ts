@@ -27,6 +27,27 @@ test('it builds a test bundle with every test-build ID the server reaches', asyn
   expect(bundle.testBuildIDs).toStrictEqual(testBuildIDs);
 });
 
+test('it bundles the imp adapter and no part of the process double in a release build', async () => {
+  const ctx = await setupTest();
+
+  await writeReleaseBundle(ctx.outdir);
+
+  const bundle = await Bun.file(join(ctx.outdir, 'main.js')).text();
+
+  expect(bundle).toInclude('public egress without the host addresses in imp.host_addresses');
+  expect(bundle).not.toInclude('the tool relay has no TCP address');
+});
+
+test('it bundles the process double in a test build', async () => {
+  const ctx = await setupTest();
+
+  await writeReleaseBundle(ctx.outdir, true);
+
+  const bundle = await Bun.file(join(ctx.outdir, 'main.js')).text();
+
+  expect(bundle).toInclude('the tool relay has no TCP address');
+});
+
 test('it builds a release bundle that answers live, and degraded while impd does not answer', async () => {
   const ctx = await setupTest();
 
