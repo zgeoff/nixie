@@ -41,6 +41,43 @@ test('it reads every moment once, oldest first, across more than one page', asyn
   expect(moments.map((moment) => ('title' in moment ? moment.title : null))).toStrictEqual(titles);
 });
 
+test('it exports a moment whose destroy started and is not done as its ID alone, with no destroy time', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the plum tree needs netting before the birds find it' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'Netting the plum tree',
+  });
+
+  invariant(kept.status === 'written');
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'moment_destroyed',
+      definitions: { snapshotHash: 'sha256:test' },
+      payload: { momentID: kept.momentID, version: 1, stage: 'started' },
+    },
+  ]);
+
+  const moments = await Array.fromAsync(readMomentExport(ctx.memory.log));
+
+  expect(moments).toStrictEqual([{ momentID: kept.momentID, destroyedAt: null }]);
+});
+
 test("it reads a moment's span with each record's text and source", async () => {
   const ctx = await setupTest();
 
