@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import type { QueueOutput } from './run-budgeted-queue.ts';
 import { runBudgetedQueue } from './run-budgeted-queue.ts';
+import { buildStubHeldRun } from './test-utils/build-stub-held-run.ts';
 
 test('it appends each output and adds its cost to the spend', async () => {
   const appendOutput = mock<(output: QueueOutput) => Promise<void>>(() => Promise.resolve());
@@ -68,13 +69,7 @@ test('it starts no item when the spend before the run already reaches the budget
 });
 
 test('it runs as many items at once as its concurrency and no more', async () => {
-  const gate = Promise.withResolvers<void>();
-
-  const runItem = mock(async (item: string) => {
-    await gate.promise;
-
-    return { item, costUSD: 0.1, failure: null };
-  });
+  const held = buildStubHeldRun((item: string) => ({ item, costUSD: 0.1, failure: null }));
 
   const running = runBudgetedQueue({
     items: ['a', 'b', 'c'],
@@ -83,17 +78,17 @@ test('it runs as many items at once as its concurrency and no more', async () =>
     budgetUSD: 4,
     limit: null,
     concurrency: 2,
-    runItem,
+    runItem: held.run,
   });
 
-  const startedBeforeRelease = runItem.mock.calls.map(([item]) => item);
+  const startedBeforeRelease = [...held.started];
 
-  gate.resolve();
+  held.releaseAll();
 
   await running;
 
   expect(startedBeforeRelease).toStrictEqual(['a', 'b']);
-  expect(runItem).toHaveBeenCalledTimes(3);
+  expect(held.started).toStrictEqual(['a', 'b', 'c']);
 });
 
 test('it starts no more items than the limit', async () => {
