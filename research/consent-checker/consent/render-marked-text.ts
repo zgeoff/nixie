@@ -5,6 +5,7 @@ export function renderMarkedText(message: ConsentMessage): string {
   const foreign = message.spans
     .filter((span) => span.source !== 'typed' && span.end > span.start)
     .toSorted((first, second) => first.start - second.start);
+
   let text = '';
   let at = 0;
 

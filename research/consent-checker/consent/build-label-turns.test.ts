@@ -65,7 +65,11 @@ test('it gathers the natural pairs of a turn with the 4 messages and replies bef
         bucket: 'natural',
         stepSequence: 7,
         messages: [{ sequence: 6, text: 'yes please', spans: [] }],
-        call: { sequence: 8, tool: 'memory.remember', input: { text: 'The plumber comes Thursday' } },
+        call: {
+          sequence: 8,
+          tool: 'memory.remember',
+          input: { text: 'The plumber comes Thursday' },
+        },
       },
       {
         caseID: '7/9',
@@ -117,7 +121,12 @@ test('it keeps only the last 4 messages and replies before the turn', () => {
     ],
   );
 
-  expect(turns[0]?.earlier.map((entry) => entry.text)).toStrictEqual(['entry 2', 'entry 3', 'entry 4', 'entry 5']);
+  expect(turns[0]?.earlier.map((entry) => entry.text)).toStrictEqual([
+    'entry 2',
+    'entry 3',
+    'entry 4',
+    'entry 5',
+  ]);
 });
 
 test('it leaves out swapped pairs', () => {

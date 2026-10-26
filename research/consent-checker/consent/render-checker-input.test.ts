@@ -18,7 +18,11 @@ test('it renders the messages with each pasted span marked, then the call', () =
         },
         { sequence: 2, text: 'thanks', spans: [{ start: 0, end: 6, source: 'typed' }] },
       ],
-      call: { sequence: 3, tool: 'memory.remember', input: { text: 'The address is 12 Quay Lane' } },
+      call: {
+        sequence: 3,
+        tool: 'memory.remember',
+        input: { text: 'The address is 12 Quay Lane' },
+      },
     }),
   ).toMatchInlineSnapshot(`
     "<owner_message>

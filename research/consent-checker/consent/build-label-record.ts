@@ -6,7 +6,11 @@ import { labellerOutputSchema } from './types.ts';
 
 // A failed query or an answer with no output, such as a call the model API refused, gives a record
 // that holds its cost, the reason the query gave and no label, so a rerun labels the turn again.
-export function buildLabelRecord(turn: LabelTurn, reply: CheckReply, source: RecordSource): LabelRecord {
+export function buildLabelRecord(
+  turn: LabelTurn,
+  reply: CheckReply,
+  source: RecordSource,
+): LabelRecord {
   const base = {
     stepSequence: turn.stepSequence,
     model: source.model,
@@ -29,7 +33,11 @@ export function buildLabelRecord(turn: LabelTurn, reply: CheckReply, source: Rec
   if (!parsed.success) {
     return {
       ...base,
-      labels: turn.calls.map((call) => ({ caseID: call.caseID, label: 'unsure', reason: 'the answer was unreadable' })),
+      labels: turn.calls.map((call) => ({
+        caseID: call.caseID,
+        label: 'unsure',
+        reason: 'the answer was unreadable',
+      })),
       failure: 'unreadable',
       costUSD: reply.costUSD,
     };

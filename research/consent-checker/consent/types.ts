@@ -1,3 +1,4 @@
+// oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
 import { spanSchema } from '../../../libs/contract/src/span-schema.ts';
@@ -60,10 +61,20 @@ export interface Label {
 
 const labelVerdictSchema = z.enum(['asked', 'not_asked', 'unsure']);
 
+const labelAnswerSchema = z.object({
+  call: z.int(),
+  reason: z.string(),
+  label: labelVerdictSchema,
+});
+
 // What the labeller answers for one turn: a verdict for each call, by the call's number in the
 // labeller's input.
-export const labellerOutputSchema = z.object({
-  calls: z.array(z.object({ call: z.int(), reason: z.string(), label: labelVerdictSchema })),
+export const labellerOutputSchema = z.object({ calls: z.array(labelAnswerSchema) });
+
+const labelEntrySchema = z.object({
+  caseID: z.string(),
+  label: labelVerdictSchema,
+  reason: z.string(),
 });
 
 export const labelRecordSchema = z.object({
@@ -71,7 +82,7 @@ export const labelRecordSchema = z.object({
   model: z.string(),
   effort: z.string(),
   promptSHA256: z.string(),
-  labels: z.array(z.object({ caseID: z.string(), label: labelVerdictSchema, reason: z.string() })),
+  labels: z.array(labelEntrySchema),
   failure: z.string().nullable(),
   failureReason: z.string().optional(),
   costUSD: z.number(),

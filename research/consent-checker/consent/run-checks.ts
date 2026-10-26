@@ -44,7 +44,9 @@ export async function runChecks(run: CheckRun): Promise<CheckRunResult> {
   const doneIDs = new Set(
     run.done.filter((record) => record.failure !== noOutputFailure).map((record) => record.caseID),
   );
+
   const items = run.cases.filter((consentCase) => !doneIDs.has(consentCase.caseID));
+
   const result = await runBudgetedQueue({
     items,
     appendOutput: run.appendRecord,

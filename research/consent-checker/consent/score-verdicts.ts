@@ -26,13 +26,12 @@ export interface Score {
 
 const buckets: readonly Bucket[] = ['natural', 'swapped'];
 
-// The design counts a refusal, an unsure answer and a failed call alike as no consent. So a miss is
-// any verdict but `asserted` on a call the owner asked for, and a wrong credit is `asserted` on a
-// call the owner did not ask for. The credited share counts `asserted` over every answered check,
-// labelled or not, for pairs with no label such as the swapped ones. A record with no answer
-// measures the model API, so it counts only in the spend.
+// The decision point counts a refusal, an unsure answer and an unreadable answer alike as no
+// consent, so each is a miss. A record with no answer measures the model API, so it counts only in
+// the spend.
 export function scoreVerdicts(records: readonly CheckRecord[], labels: readonly Label[]): Score {
   const isAskedByCase = new Map(labels.map((label) => [label.caseID, label.isAsked]));
+
   const answered = records.filter((record) => record.failure !== noOutputFailure);
 
   return {
@@ -47,12 +46,18 @@ export function scoreVerdicts(records: readonly CheckRecord[], labels: readonly 
         notAsked: notAsked.length,
         unlabelled: inBucket.length - asked.length - notAsked.length,
         failed: inBucket.filter((record) => record.failure !== null).length,
-        missed: buildRate(asked.filter((record) => record.verdict !== 'asserted').length, asked.length),
+        missed: buildRate(
+          asked.filter((record) => record.verdict !== 'asserted').length,
+          asked.length,
+        ),
         wrongCredit: buildRate(
           notAsked.filter((record) => record.verdict === 'asserted').length,
           notAsked.length,
         ),
-        credited: buildRate(inBucket.filter((record) => record.verdict === 'asserted').length, inBucket.length),
+        credited: buildRate(
+          inBucket.filter((record) => record.verdict === 'asserted').length,
+          inBucket.length,
+        ),
       };
     }),
   };
@@ -70,6 +75,7 @@ function buildRate(count: number, of: number): Rate {
   const share = count / of;
   const zSquared = z95 * z95;
   const centre = (share + zSquared / (2 * of)) / (1 + zSquared / of);
+
   const margin =
     (z95 * Math.sqrt((share * (1 - share)) / of + zSquared / (4 * of * of))) / (1 + zSquared / of);
 

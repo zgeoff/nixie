@@ -103,6 +103,7 @@ test('it gives the 95% Wilson interval of a rate', () => {
       { caseID: '2/5', isAsked: true },
     ],
   );
+
   const missed = score.buckets[0]?.missed;
 
   expect(missed?.low).toBeCloseTo(0.2077, 3);

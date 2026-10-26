@@ -5,7 +5,7 @@ export const noOutputFailure = 'no_output';
 // The reason a record with no answer gives when the query returned an answer with nothing in it.
 export const emptyAnswerReason = 'the answer held no output';
 
-interface QueueOutput {
+export interface QueueOutput {
   costUSD: number;
   failure: string | null;
   failureReason?: string;
@@ -36,12 +36,14 @@ export async function runBudgetedQueue<Item, Output extends QueueOutput>(
   queue: BudgetedQueue<Item, Output>,
 ): Promise<QueueResult> {
   const pending = [...queue.items];
+
   const result: QueueResult = {
     ran: 0,
     costUSD: queue.spentUSD,
     isStoppedAtBudget: false,
     isStoppedByFailure: false,
   };
+
   let started = 0;
 
   const workers = Array.from({ length: queue.concurrency }, async () => {
@@ -61,6 +63,7 @@ export async function runBudgetedQueue<Item, Output extends QueueOutput>(
       const output = await queue.runItem(next);
 
       result.costUSD += output.costUSD;
+
       await queue.appendOutput(output);
 
       if (output.failure === noOutputFailure) {

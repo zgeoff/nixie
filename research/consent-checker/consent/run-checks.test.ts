@@ -1,3 +1,4 @@
+// oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { expect, mock, test } from 'bun:test';
 // @boundaries-ignore a spike imports the code it measures
 import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-frame.ts';
@@ -5,7 +6,7 @@ import { runChecks } from './run-checks.ts';
 import type { CheckRecord } from './types.ts';
 
 function setupTest() {
-  return { appendRecord: mock(async (_record: CheckRecord) => {}) };
+  return { appendRecord: mock<(record: CheckRecord) => Promise<void>>(() => Promise.resolve()) };
 }
 
 test('it appends one record for each case with the parsed verdict and its cost', async () => {
@@ -23,20 +24,26 @@ test('it appends one record for each case with the parsed verdict and its cost',
     ],
     done: [],
     appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-sonnet-5-5', baseURL: 'https://api.anthropic.com', effort: 'high', authHeader: 'bearer' },
+    profile: {
+      model: 'claude-sonnet-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'high',
+      authHeader: 'bearer',
+    },
     systemPrompt: 'You check one tool call.',
     promptSHA256: 'hash-a',
     otherSpentUSD: 0,
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runCheck: async () => ({
-      kind: 'answer',
-      output: { reason: 'the owner asked for the bus times', verdict: 'asserted' },
-      costUSD: 0.012,
-      durationMs: 900,
-      apiMs: 800,
-    }),
+    runCheck: () =>
+      Promise.resolve({
+        kind: 'answer',
+        output: { reason: 'the owner asked for the bus times', verdict: 'asserted' },
+        costUSD: 0.012,
+        durationMs: 900,
+        apiMs: 800,
+      }),
   });
 
   expect(result).toStrictEqual({
@@ -46,6 +53,7 @@ test('it appends one record for each case with the parsed verdict and its cost',
     isStoppedAtBudget: false,
     isStoppedByFailure: false,
   });
+
   expect(ctx.appendRecord.mock.calls).toStrictEqual([
     [
       {
@@ -66,8 +74,12 @@ test('it appends one record for each case with the parsed verdict and its cost',
 
 test('it sends the checker the rendered case under the run profile and prompt', async () => {
   const ctx = setupTest();
-  const runCheck = mock(
-    async (_request: CheckRequest): Promise<CheckReply> => ({ kind: 'failed', reason: 'error_during_execution' }),
+
+  const runCheck = mock<(request: CheckRequest) => Promise<CheckReply>>(() =>
+    Promise.resolve({
+      kind: 'failed',
+      reason: 'error_during_execution',
+    }),
   );
 
   await runChecks({
@@ -82,7 +94,12 @@ test('it sends the checker the rendered case under the run profile and prompt', 
     ],
     done: [],
     appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-sonnet-5-5', baseURL: 'https://api.anthropic.com', effort: 'high', authHeader: 'bearer' },
+    profile: {
+      model: 'claude-sonnet-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'high',
+      authHeader: 'bearer',
+    },
     systemPrompt: 'You check one tool call.',
     promptSHA256: 'hash-a',
     otherSpentUSD: 0,
@@ -124,17 +141,30 @@ test('it records a call with no answer with its cost and stops the run', async (
     ],
     done: [],
     appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-sonnet-5-5', baseURL: 'https://api.anthropic.com', effort: 'high', authHeader: 'bearer' },
+    profile: {
+      model: 'claude-sonnet-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'high',
+      authHeader: 'bearer',
+    },
     systemPrompt: 'You check one tool call.',
     promptSHA256: 'hash-a',
     otherSpentUSD: 0,
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runCheck: async () => ({ kind: 'answer', output: undefined, costUSD: 0.75, durationMs: 300, apiMs: 0 }),
+    runCheck: () =>
+      Promise.resolve({
+        kind: 'answer',
+        output: undefined,
+        costUSD: 0.75,
+        durationMs: 300,
+        apiMs: 0,
+      }),
   });
 
   expect(result.isStoppedByFailure).toBe(true);
+
   expect(ctx.appendRecord.mock.calls).toStrictEqual([
     [
       {
@@ -169,17 +199,23 @@ test('it keeps the reason a failed query gave in its record and in the result', 
     ],
     done: [],
     appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-sonnet-5-5', baseURL: 'https://api.anthropic.com', effort: 'high', authHeader: 'bearer' },
+    profile: {
+      model: 'claude-sonnet-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'high',
+      authHeader: 'bearer',
+    },
     systemPrompt: 'You check one tool call.',
     promptSHA256: 'hash-a',
     otherSpentUSD: 0,
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runCheck: async () => ({ kind: 'failed', reason: 'error_max_turns' }),
+    runCheck: () => Promise.resolve({ kind: 'failed', reason: 'error_max_turns' }),
   });
 
   expect(result.failureReason).toBe('error_max_turns');
+
   expect(ctx.appendRecord.mock.calls).toStrictEqual([
     [
       {
@@ -201,8 +237,9 @@ test('it keeps the reason a failed query gave in its record and in the result', 
 
 test('it runs a case again when the file holds only a check with no answer', async () => {
   const ctx = setupTest();
-  const runCheck = mock(
-    async (_request: CheckRequest): Promise<CheckReply> => ({
+
+  const runCheck = mock<(request: CheckRequest) => Promise<CheckReply>>(() =>
+    Promise.resolve({
       kind: 'answer',
       output: { reason: 'the owner asked to pin it', verdict: 'asserted' },
       costUSD: 0.01,
@@ -236,7 +273,12 @@ test('it runs a case again when the file holds only a check with no answer', asy
       },
     ],
     appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-sonnet-5-5', baseURL: 'https://api.anthropic.com', effort: 'high', authHeader: 'bearer' },
+    profile: {
+      model: 'claude-sonnet-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'high',
+      authHeader: 'bearer',
+    },
     systemPrompt: 'You check one tool call.',
     promptSHA256: 'hash-a',
     otherSpentUSD: 0,
@@ -252,8 +294,12 @@ test('it runs a case again when the file holds only a check with no answer', asy
 
 test('it skips the cases the output file already holds and counts their spend', async () => {
   const ctx = setupTest();
-  const runCheck = mock(
-    async (_request: CheckRequest): Promise<CheckReply> => ({ kind: 'failed', reason: 'error_during_execution' }),
+
+  const runCheck = mock<(request: CheckRequest) => Promise<CheckReply>>(() =>
+    Promise.resolve({
+      kind: 'failed',
+      reason: 'error_during_execution',
+    }),
   );
 
   const result = await runChecks({
@@ -281,7 +327,12 @@ test('it skips the cases the output file already holds and counts their spend', 
       },
     ],
     appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-sonnet-5-5', baseURL: 'https://api.anthropic.com', effort: 'high', authHeader: 'bearer' },
+    profile: {
+      model: 'claude-sonnet-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'high',
+      authHeader: 'bearer',
+    },
     systemPrompt: 'You check one tool call.',
     promptSHA256: 'hash-a',
     otherSpentUSD: 1,
@@ -298,6 +349,7 @@ test('it skips the cases the output file already holds and counts their spend', 
     isStoppedAtBudget: false,
     isStoppedByFailure: false,
   });
+
   expect(runCheck).not.toHaveBeenCalled();
 });
 
@@ -320,14 +372,19 @@ test('it refuses an output file that holds a run under another prompt', () => {
         },
       ],
       appendRecord: async () => {},
-      profile: { model: 'claude-sonnet-5-5', baseURL: 'https://api.anthropic.com', effort: 'high', authHeader: 'bearer' },
+      profile: {
+        model: 'claude-sonnet-5-5',
+        baseURL: 'https://api.anthropic.com',
+        effort: 'high',
+        authHeader: 'bearer',
+      },
       systemPrompt: 'You check one tool call.',
       promptSHA256: 'hash-a',
       otherSpentUSD: 0,
       budgetUSD: 4,
       limit: null,
       concurrency: 1,
-      runCheck: async () => ({ kind: 'failed', reason: 'error_during_execution' }),
+      runCheck: () => Promise.resolve({ kind: 'failed', reason: 'error_during_execution' }),
     }),
-  ).rejects.toThrow(/with prompt hash-old$/);
+  ).rejects.toThrow(/with prompt hash-old$/u);
 });

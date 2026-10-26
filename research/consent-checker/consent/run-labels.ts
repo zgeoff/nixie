@@ -42,9 +42,13 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
   }
 
   const doneSteps = new Set(
-    run.done.filter((record) => record.failure !== noOutputFailure).map((record) => record.stepSequence),
+    run.done
+      .filter((record) => record.failure !== noOutputFailure)
+      .map((record) => record.stepSequence),
   );
+
   const items = run.turns.filter((turn) => !doneSteps.has(turn.stepSequence));
+
   const result = await runBudgetedQueue({
     items,
     appendOutput: run.appendRecord,

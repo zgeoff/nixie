@@ -1,20 +1,22 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'consent-run-'));
+  const directory = await mkdtemp(join(tmpdir(), 'consent-run-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { dir, entry: join(import.meta.dir, 'run.ts') };
+  return { directory, entry: join(import.meta.dir, 'run.ts') };
 }
 
 test('it writes the cases and prints only their counts', async () => {
   const ctx = await setupTest();
-  const plainPath = join(ctx.dir, 'records.jsonl');
-  const outPath = join(ctx.dir, 'cases.jsonl');
+
+  const plainPath = join(ctx.directory, 'records.jsonl');
+  const outPath = join(ctx.directory, 'cases.jsonl');
 
   await writeFile(
     plainPath,
@@ -29,13 +31,17 @@ test('it writes the cases and prints only their counts', async () => {
   const child = Bun.spawnSync(['bun', ctx.entry, 'cases', '--plain', plainPath, '--out', outPath]);
 
   expect(child.exitCode).toBe(0);
+
   expect(child.stdout.toString()).toBe(
     'turns 1, natural pairs 1, swapped pairs 0\n' +
       'left out: 0 read-only calls, 0 calls with no owner message, 0 unreadable calls, 0 unreadable messages, 0 messages with unknown spans\n' +
       '  memory.remember: 1\n',
   );
+
+  const cases = await readFile(outPath, 'utf8');
+
   expect(
-    (await readFile(outPath, 'utf8'))
+    cases
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line).caseID),
@@ -44,8 +50,9 @@ test('it writes the cases and prints only their counts', async () => {
 
 test('it rewrites no cases file while a label or check run holds it', async () => {
   const ctx = await setupTest();
-  const plainPath = join(ctx.dir, 'records.jsonl');
-  const outPath = join(ctx.dir, 'cases.jsonl');
+
+  const plainPath = join(ctx.directory, 'records.jsonl');
+  const outPath = join(ctx.directory, 'cases.jsonl');
 
   await writeFile(plainPath, '');
   await writeFile(outPath, 'the cases a run reads\n');
@@ -54,15 +61,22 @@ test('it rewrites no cases file while a label or check run holds it', async () =
   const child = Bun.spawnSync(['bun', ctx.entry, 'cases', '--plain', plainPath, '--out', outPath]);
 
   expect(child.exitCode).toBe(1);
-  expect(child.stderr.toString()).toInclude(`${outPath}.lock exists, so another label or check run holds these files`);
-  expect(await readFile(outPath, 'utf8')).toBe('the cases a run reads\n');
+
+  expect(child.stderr.toString()).toInclude(
+    `${outPath}.lock exists, so another label or check run holds these files`,
+  );
+
+  const cases = await readFile(outPath, 'utf8');
+
+  expect(cases).toBe('the cases a run reads\n');
 });
 
 test('it prints the rates of each bucket and each tool, and the spend of every check', async () => {
   const ctx = await setupTest();
-  const casesPath = join(ctx.dir, 'cases.jsonl');
-  const labelsPath = join(ctx.dir, 'labels.jsonl');
-  const checksPath = join(ctx.dir, 'checks.jsonl');
+
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const labelsPath = join(ctx.directory, 'labels.jsonl');
+  const checksPath = join(ctx.directory, 'checks.jsonl');
 
   await writeFile(
     casesPath,
@@ -72,10 +86,12 @@ test('it prints the rates of each bucket and each tool, and the spend of every c
       '',
     ].join('\n'),
   );
+
   await writeFile(
     labelsPath,
     '{"stepSequence":2,"model":"claude-opus-5-5","effort":"medium","promptSHA256":"hash-l","labels":[{"caseID":"2/3","label":"asked","reason":"the owner asked for the ferry times"}],"failure":null,"costUSD":0.25}\n',
   );
+
   await writeFile(
     checksPath,
     [
@@ -99,6 +115,7 @@ test('it prints the rates of each bucket and each tool, and the spend of every c
   ]);
 
   expect(child.exitCode).toBe(0);
+
   expect(child.stdout.toString()).toMatchInlineSnapshot(`
     "labeller: 0 natural pairs unsure, 0 failed turns
     checks of pairs outside the cases: 1
@@ -119,14 +136,16 @@ test('it prints the rates of each bucket and each tool, and the spend of every c
 
 test('it starts no check when the labeller spend already reaches the budget', async () => {
   const ctx = await setupTest();
-  const casesPath = join(ctx.dir, 'cases.jsonl');
-  const labelsPath = join(ctx.dir, 'labels.jsonl');
-  const outPath = join(ctx.dir, 'checks.jsonl');
+
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const labelsPath = join(ctx.directory, 'labels.jsonl');
+  const outPath = join(ctx.directory, 'checks.jsonl');
 
   await writeFile(
     casesPath,
     '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
   );
+
   await writeFile(
     labelsPath,
     '{"stepSequence":2,"model":"claude-opus-5-5","effort":"medium","promptSHA256":"hash-l","labels":[{"caseID":"2/3","label":"asked","reason":"the owner asked for the ferry times"}],"failure":null,"costUSD":1}\n',
@@ -144,7 +163,7 @@ test('it starts no check when the labeller spend already reaches the budget', as
       '--out',
       outPath,
       '--home',
-      join(ctx.dir, 'home'),
+      join(ctx.directory, 'home'),
       '--budget',
       '1',
     ],
@@ -152,22 +171,26 @@ test('it starts no check when the labeller spend already reaches the budget', as
   );
 
   expect(child.exitCode).toBe(0);
+
   expect(child.stdout.toString()).toBe(
     'checked 0 pairs, skipped 0, spent $1.0000 in total, stopped at the $1 budget\n',
   );
-  expect(await Bun.file(outPath).exists()).toBe(false);
+
+  expect(existsSync(outPath)).toBe(false);
 });
 
 test('it refuses a check run while another run holds the labels file', async () => {
   const ctx = await setupTest();
-  const casesPath = join(ctx.dir, 'cases.jsonl');
-  const labelsPath = join(ctx.dir, 'labels.jsonl');
-  const outPath = join(ctx.dir, 'checks.jsonl');
+
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const labelsPath = join(ctx.directory, 'labels.jsonl');
+  const outPath = join(ctx.directory, 'checks.jsonl');
 
   await writeFile(
     casesPath,
     '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
   );
+
   await writeFile(`${labelsPath}.lock`, '4242\n');
 
   const child = Bun.spawnSync(
@@ -182,24 +205,29 @@ test('it refuses a check run while another run holds the labels file', async () 
       '--out',
       outPath,
       '--home',
-      join(ctx.dir, 'home'),
+      join(ctx.directory, 'home'),
     ],
     { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' } },
   );
 
   expect(child.exitCode).toBe(1);
-  expect(child.stderr.toString()).toInclude(`${labelsPath}.lock exists, so another label or check run holds these files`);
-  expect(await Bun.file(`${outPath}.lock`).exists()).toBe(false);
-  expect(await Bun.file(outPath).exists()).toBe(false);
+
+  expect(child.stderr.toString()).toInclude(
+    `${labelsPath}.lock exists, so another label or check run holds these files`,
+  );
+
+  expect(existsSync(`${outPath}.lock`)).toBe(false);
+  expect(existsSync(outPath)).toBe(false);
 });
 
 test('it starts no label when the checker spend already reaches the budget', async () => {
   const ctx = await setupTest();
-  const plainPath = join(ctx.dir, 'records.jsonl');
-  const casesPath = join(ctx.dir, 'cases.jsonl');
-  const checksPath = join(ctx.dir, 'checks.jsonl');
-  const personaPath = join(ctx.dir, 'persona.md');
-  const outPath = join(ctx.dir, 'labels.jsonl');
+
+  const plainPath = join(ctx.directory, 'records.jsonl');
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const checksPath = join(ctx.directory, 'checks.jsonl');
+  const personaPath = join(ctx.directory, 'persona.md');
+  const outPath = join(ctx.directory, 'labels.jsonl');
 
   await writeFile(
     plainPath,
@@ -210,14 +238,17 @@ test('it starts no label when the checker spend already reaches the budget', asy
       '',
     ].join('\n'),
   );
+
   await writeFile(
     casesPath,
     '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
   );
+
   await writeFile(
     checksPath,
     '{"caseID":"2/3","bucket":"natural","tool":"web_fetch","model":"claude-sonnet-5-5","effort":"high","promptSHA256":"hash-c","verdict":"asserted","reason":"the owner asked","failure":null,"costUSD":1}\n',
   );
+
   await writeFile(personaPath, 'A made-up persona.\n');
 
   const child = Bun.spawnSync(
@@ -236,7 +267,7 @@ test('it starts no label when the checker spend already reaches the budget', asy
       '--out',
       outPath,
       '--home',
-      join(ctx.dir, 'home'),
+      join(ctx.directory, 'home'),
       '--budget',
       '1',
     ],
@@ -244,10 +275,12 @@ test('it starts no label when the checker spend already reaches the budget', asy
   );
 
   expect(child.exitCode).toBe(0);
+
   expect(child.stdout.toString()).toBe(
     'labelled 0 turns, skipped 0, spent $1.0000 in total, stopped at the $1 budget\n',
   );
-  expect(await Bun.file(outPath).exists()).toBe(false);
+
+  expect(existsSync(outPath)).toBe(false);
 });
 
 test.each([
@@ -257,7 +290,12 @@ test.each([
   ['check', '--concurrency', '0', '--concurrency takes a whole number of 1 or more, not 0'],
   ['label', '--concurrency', 'two', '--concurrency takes a whole number of 1 or more, not two'],
 ])('it refuses %s with %s %s before it reads any file', (command, flag, value, message) => {
-  const child = Bun.spawnSync(['bun', join(import.meta.dir, 'run.ts'), command, `${flag}=${value}`]);
+  const child = Bun.spawnSync([
+    'bun',
+    join(import.meta.dir, 'run.ts'),
+    command,
+    `${flag}=${value}`,
+  ]);
 
   expect(child.exitCode).toBe(1);
   expect(child.stderr.toString()).toInclude(message);
@@ -267,5 +305,8 @@ test('it refuses an unknown command', () => {
   const child = Bun.spawnSync(['bun', join(import.meta.dir, 'run.ts'), 'relabel']);
 
   expect(child.exitCode).toBe(1);
-  expect(child.stderr.toString()).toInclude('unknown command relabel; pass cases, label, check or score');
+
+  expect(child.stderr.toString()).toInclude(
+    'unknown command relabel; pass cases, label, check or score',
+  );
 });

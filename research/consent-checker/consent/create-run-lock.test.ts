@@ -5,42 +5,53 @@ import { join } from 'node:path';
 import { createRunLock } from './create-run-lock.ts';
 
 async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'consent-lock-'));
+  const directory = await mkdtemp(join(tmpdir(), 'consent-lock-'));
 
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  return { dir };
+  return { directory };
 }
 
 test('it refuses a second lock on a run file the first lock holds', async () => {
   const ctx = await setupTest();
 
-  await createRunLock([join(ctx.dir, 'checks.jsonl'), join(ctx.dir, 'labels.jsonl')]);
+  await createRunLock([join(ctx.directory, 'checks.jsonl'), join(ctx.directory, 'labels.jsonl')]);
 
-  expect(createRunLock([join(ctx.dir, 'labels.jsonl')])).rejects.toThrow(
-    `${join(ctx.dir, 'labels.jsonl.lock')} exists, so another label or check run holds these files`,
+  expect(createRunLock([join(ctx.directory, 'labels.jsonl')])).rejects.toThrow(
+    `${join(ctx.directory, 'labels.jsonl.lock')} exists, so another label or check run holds these files`,
   );
 });
 
 test('it frees the run files once the lock is removed', async () => {
   const ctx = await setupTest();
-  const first = await createRunLock([join(ctx.dir, 'checks.jsonl'), join(ctx.dir, 'labels.jsonl')]);
+
+  const first = await createRunLock([
+    join(ctx.directory, 'checks.jsonl'),
+    join(ctx.directory, 'labels.jsonl'),
+  ]);
 
   await first.remove();
 
-  expect(await readdir(ctx.dir)).toStrictEqual([]);
+  const entries = await readdir(ctx.directory);
+
+  expect(entries).toStrictEqual([]);
 });
 
 test('it releases the locks it took when a later run file is already held', async () => {
   const ctx = await setupTest();
 
-  await createRunLock([join(ctx.dir, 'labels.jsonl')]);
+  await createRunLock([join(ctx.directory, 'labels.jsonl')]);
 
-  const refusal = await createRunLock([join(ctx.dir, 'checks.jsonl'), join(ctx.dir, 'labels.jsonl')]).then(
+  const refusal = await createRunLock([
+    join(ctx.directory, 'checks.jsonl'),
+    join(ctx.directory, 'labels.jsonl'),
+  ]).then(
     () => null,
     (error: unknown) => error,
   );
 
+  const entries = await readdir(ctx.directory);
+
   expect(refusal).toBeInstanceOf(Error);
-  expect(await readdir(ctx.dir)).toStrictEqual(['labels.jsonl.lock']);
+  expect(entries).toStrictEqual(['labels.jsonl.lock']);
 });

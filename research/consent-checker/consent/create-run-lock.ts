@@ -9,6 +9,7 @@ export interface RunLock {
 // leaves its lock files behind, and the error names them.
 export async function createRunLock(paths: readonly string[]): Promise<RunLock> {
   const held: string[] = [];
+
   const remove = async (): Promise<void> => {
     await Promise.all(held.map((lockPath) => rm(lockPath, { force: true })));
   };
@@ -18,13 +19,17 @@ export async function createRunLock(paths: readonly string[]): Promise<RunLock> 
       const handle = await open(lockPath, 'wx', 0o600);
 
       held.push(lockPath);
+
       await handle.writeFile(`${process.pid}\n`);
       await handle.close();
     } catch (error) {
       await remove();
 
       if (isAlreadyHeld(error)) {
-        throw new Error(`${lockPath} exists, so another label or check run holds these files; remove it only when no run is going`);
+        throw new Error(
+          `${lockPath} exists, so another label or check run holds these files; remove it only when no run is going`,
+          { cause: error },
+        );
       }
 
       throw error;

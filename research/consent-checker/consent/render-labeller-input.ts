@@ -5,9 +5,15 @@ import type { LabelTurn } from './types.ts';
 // and each call by its number from 1.
 export function renderLabellerInput(turn: LabelTurn): string {
   const earlier = turn.earlier.map((entry) =>
-    entry.role === 'owner' ? `<owner>\n${entry.text}\n</owner>` : `<assistant>\n${entry.text}\n</assistant>`,
+    entry.role === 'owner'
+      ? `<owner>\n${entry.text}\n</owner>`
+      : `<assistant>\n${entry.text}\n</assistant>`,
   );
-  const messages = turn.messages.map((message) => `<owner_message>\n${renderMarkedText(message)}\n</owner_message>`);
+
+  const messages = turn.messages.map(
+    (message) => `<owner_message>\n${renderMarkedText(message)}\n</owner_message>`,
+  );
+
   const calls = turn.calls.map(
     (call, index) =>
       `<tool_call number="${index + 1}">\n${JSON.stringify({ tool: call.tool, input: call.input }, null, 2)}\n</tool_call>`,

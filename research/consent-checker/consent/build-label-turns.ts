@@ -1,26 +1,28 @@
+// oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 // @boundaries-ignore the spike reads the export the retrieval spike reads
 import type { PlainRecord } from '../../memory-retrieval/real-turns/read-plain-export.ts';
-// @boundaries-ignore the spike reads the export the retrieval spike reads
-import { readErasableText } from '../../memory-retrieval/real-turns/read-plain-export.ts';
 import type { ConsentCase, Exchange, LabelTurn } from './types.ts';
 
 // The owner's messages and the assistant's replies that a labeller reads before a turn: about the 2
 // exchanges before it.
 const earlierEntries = 4;
 
-// Gathers the natural pairs of each turn into one labeller call. Swapped pairs need no label,
-// because their call came from another turn.
-export function buildLabelTurns(records: readonly PlainRecord[], cases: readonly ConsentCase[]): LabelTurn[] {
+// Gathers the natural pairs of each turn into one labeller call. Swapped pairs take no label.
+export function buildLabelTurns(
+  records: readonly PlainRecord[],
+  cases: readonly ConsentCase[],
+): LabelTurn[] {
   const entries = records.flatMap((record) => {
     if (record.thread !== 'conversation') {
       return [];
     }
 
     const role = pickRole(record.kind);
-    const text = role === null ? null : readErasableText(record);
+    const text = role === null ? null : findRecordText(record);
 
     return role === null || text === null ? [] : [{ sequence: record.sequence, role, text }];
   });
+
   const turns = new Map<number, LabelTurn>();
 
   for (const consentCase of cases) {
@@ -28,12 +30,16 @@ export function buildLabelTurns(records: readonly PlainRecord[], cases: readonly
       continue;
     }
 
-    const call = { caseID: consentCase.caseID, tool: consentCase.call.tool, input: consentCase.call.input };
+    const call = {
+      caseID: consentCase.caseID,
+      tool: consentCase.call.tool,
+      input: consentCase.call.input,
+    };
+
     const turn = turns.get(consentCase.stepSequence);
 
     if (turn !== undefined) {
       turn.calls.push(call);
-
       continue;
     }
 
@@ -44,7 +50,7 @@ export function buildLabelTurns(records: readonly PlainRecord[], cases: readonly
       earlier: entries
         .filter((entry) => entry.sequence < first)
         .slice(-earlierEntries)
-        .map(({ role, text }): Exchange => ({ role, text })),
+        .map((entry): Exchange => ({ role: entry.role, text: entry.text })),
       messages: consentCase.messages,
       calls: [call],
     });
@@ -59,4 +65,14 @@ function pickRole(kind: string): Exchange['role'] | null {
   }
 
   return kind === 'model.reply' ? 'assistant' : null;
+}
+
+function findRecordText(record: PlainRecord): string | null {
+  if (record.erasable.status !== 'readable') {
+    return null;
+  }
+
+  const text = record.erasable.fields['text'];
+
+  return typeof text === 'string' ? text : null;
 }

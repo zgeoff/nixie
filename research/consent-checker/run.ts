@@ -1,28 +1,19 @@
-// Measures the consent checker on a deployment's own messages. Each command reads and writes files
-// outside the repo, because they hold the user's own messages, and prints counts and rates only.
-//
-//   bun run.ts cases --plain <records.jsonl> --out <cases.jsonl>
-//   bun run.ts label --plain <records.jsonl> --cases <cases.jsonl> --persona <persona.md>
-//     --out <labels.jsonl> --home <dir> [--checks <checks.jsonl>] [--limit <n>]
-//   bun run.ts check --cases <cases.jsonl> --out <checks.jsonl> --home <dir>
-//     [--labels <labels.jsonl>] [--limit <n>]
-//   bun run.ts score --cases <cases.jsonl> --labels <labels.jsonl> --checks <checks.jsonl>
-//
-// `label` and `check` take --model, --effort, --budget and --concurrency too. They read the model
-// credential from ANTHROPIC_AUTH_TOKEN and send it as a bearer token, as a deployment's profile
-// does, and one budget covers the spend in both output files when each gets the other's file.
+// oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
+// The files each command reads and writes hold the user's own messages, so they live outside the repo
+// and the commands print counts and rates only. The README gives each command and its flags.
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
+// oxlint-disable-next-line zgeoff/import-zones -- the labeller passes its own answer shape to the check guest's query, which only the SDK's query takes
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
 import { runCheckQuery } from '../../guests/conversation/src/run-check-query.ts';
 // @boundaries-ignore the spike reads the export the retrieval spike reads
-import { plainRecordSchema } from '../memory-retrieval/real-turns/read-plain-export.ts';
-// @boundaries-ignore the spike reads the export the retrieval spike reads
 import { readJSONLines } from '../memory-retrieval/real-turns/read-json-lines.ts';
+// @boundaries-ignore the spike reads the export the retrieval spike reads
+import { plainRecordSchema } from '../memory-retrieval/real-turns/read-plain-export.ts';
 import { buildConsentCases } from './consent/build-consent-cases.ts';
 import { buildLabelTurns } from './consent/build-label-turns.ts';
 import { buildLabels } from './consent/build-labels.ts';
@@ -32,16 +23,26 @@ import { runChecks } from './consent/run-checks.ts';
 import { runLabels } from './consent/run-labels.ts';
 import type { Rate } from './consent/score-verdicts.ts';
 import { scoreVerdicts } from './consent/score-verdicts.ts';
-import { checkRecordSchema, consentCaseSchema, labelRecordSchema, labellerOutputSchema } from './consent/types.ts';
+import {
+  checkRecordSchema,
+  consentCaseSchema,
+  labelRecordSchema,
+  labellerOutputSchema,
+} from './consent/types.ts';
 
 const effortSchema = z.enum(['low', 'medium', 'high', 'xhigh', 'max']);
 
+interface RoleProfile {
+  model: string;
+  effort: string;
+}
+
 // The checker role's profile, and the conversation role's profile for the labeller, in the
 // deployment this spike measures.
-const checkerProfile = { model: 'claude-sonnet-5-5', effort: 'high' };
-const labellerProfile = { model: 'claude-opus-5-5', effort: 'medium' };
+const checkerProfile: RoleProfile = { model: 'claude-sonnet-5-5', effort: 'high' };
+const labellerProfile: RoleProfile = { model: 'claude-opus-5-5', effort: 'medium' };
 
-const { positionals, values } = parseArgs({
+const args = parseArgs({
   allowPositionals: true,
   options: {
     plain: { type: 'string' },
@@ -59,7 +60,8 @@ const { positionals, values } = parseArgs({
   },
 });
 
-const command = positionals[0];
+const values = args.values;
+const [command] = args.positionals;
 
 if (command === 'cases') {
   const outPath = requireFlag(values.out, '--out');
@@ -84,20 +86,32 @@ function requireFlag(value: string | undefined, flag: string): string {
 }
 
 async function writeCases(plainPath: string, outPath: string): Promise<void> {
-  const { cases, counts } = buildConsentCases(await readJSONLines(plainPath, plainRecordSchema));
+  const records = await readJSONLines(plainPath, plainRecordSchema);
 
-  await writeFile(outPath, cases.map((consentCase) => `${JSON.stringify(consentCase)}\n`).join(''), {
-    mode: 0o600,
-  });
+  const built = buildConsentCases(records);
+  const counts = built.counts;
 
-  console.log(`turns ${counts.turns}, natural pairs ${counts.natural}, swapped pairs ${counts.swapped}`);
+  await writeFile(
+    outPath,
+    built.cases.map((consentCase) => `${JSON.stringify(consentCase)}\n`).join(''),
+    {
+      mode: 0o600,
+    },
+  );
+
+  console.log(
+    `turns ${counts.turns}, natural pairs ${counts.natural}, swapped pairs ${counts.swapped}`,
+  );
+
   console.log(
     `left out: ${counts.callsReadOnly} read-only calls, ${counts.callsWithoutMessage} calls with no owner message, ` +
       `${counts.callsUnreadable} unreadable calls, ${counts.messagesUnreadable} unreadable messages, ` +
       `${counts.messagesUnknownSpans} messages with unknown spans`,
   );
 
-  for (const [tool, count] of Object.entries(counts.naturalByTool).toSorted((first, second) => second[1] - first[1])) {
+  for (const [tool, count] of Object.entries(counts.naturalByTool).toSorted(
+    (first, second) => second[1] - first[1],
+  )) {
     console.log(`  ${tool}: ${count}`);
   }
 }
@@ -108,16 +122,21 @@ async function runLabelCommand(): Promise<void> {
   const limits = buildRunLimits();
   const outPath = requireFlag(values.out, '--out');
 
-  await withRunLock([outPath, values.checks, values.cases], () => runLabelsUnderLock(outPath, limits));
+  await withRunLock([outPath, values.checks, values.cases], () =>
+    runLabelsUnderLock(outPath, limits),
+  );
 }
 
 async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<void> {
   const persona = await Bun.file(requireFlag(values.persona, '--persona')).text();
   const template = await Bun.file(new URL('label-prompt.txt', import.meta.url)).text();
+
   const systemPrompt = template.replace('{{persona}}', persona.trim());
+
   const cases = await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema);
   const records = await readJSONLines(requireFlag(values.plain, '--plain'), plainRecordSchema);
   const env = await createModelEnv();
+
   // The CLI's schema validator knows no draft 2020-12 meta-schema, so the key that names it goes.
   const { $schema: _, ...schema } = z.toJSONSchema(labellerOutputSchema);
   const outputFormat = { type: 'json_schema' as const, schema };
@@ -131,6 +150,7 @@ async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<v
     promptSHA256: createHash('sha256').update(systemPrompt).digest('hex'),
     otherSpentUSD: await readSpentUSD(values.checks, checkRecordSchema),
     ...limits,
+
     // The check guest's own query, with the labeller's answer shape in place of the verdict.
     runLabel: (request) =>
       runCheckQuery(request, {
@@ -140,9 +160,9 @@ async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<v
   });
 
   console.log(
-    `labelled ${result.ran} turns, skipped ${result.skipped}, spent $${result.costUSD.toFixed(4)} in total` +
-      (result.isStoppedAtBudget ? `, stopped at the $${values.budget} budget` : '') +
-      formatFailureStop(result),
+    `labelled ${result.ran} turns, skipped ${result.skipped}, spent $${result.costUSD.toFixed(4)} in total${
+      result.isStoppedAtBudget ? `, stopped at the $${values.budget} budget` : ''
+    }${formatFailureStop(result)}`,
   );
 }
 
@@ -150,7 +170,9 @@ async function runCheckCommand(): Promise<void> {
   const limits = buildRunLimits();
   const outPath = requireFlag(values.out, '--out');
 
-  await withRunLock([outPath, values.labels, values.cases], () => runChecksUnderLock(outPath, limits));
+  await withRunLock([outPath, values.labels, values.cases], () =>
+    runChecksUnderLock(outPath, limits),
+  );
 }
 
 async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<void> {
@@ -170,16 +192,19 @@ async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<v
   });
 
   console.log(
-    `checked ${result.ran} pairs, skipped ${result.skipped}, spent $${result.costUSD.toFixed(4)} in total` +
-      (result.isStoppedAtBudget ? `, stopped at the $${values.budget} budget` : '') +
-      formatFailureStop(result),
+    `checked ${result.ran} pairs, skipped ${result.skipped}, spent $${result.costUSD.toFixed(4)} in total${
+      result.isStoppedAtBudget ? `, stopped at the $${values.budget} budget` : ''
+    }${formatFailureStop(result)}`,
   );
 }
 
 // The label and check runs share one budget across both output files, so each holds both files from
 // before it reads their spend and done records until it ends. Each also holds the cases file, which
 // the cases command rewrites whole.
-async function withRunLock(paths: readonly (string | undefined)[], run: () => Promise<void>): Promise<void> {
+async function withRunLock(
+  paths: readonly (string | undefined)[],
+  run: () => Promise<void>,
+): Promise<void> {
   const lock = await createRunLock(paths.filter((path) => path !== undefined));
 
   try {
@@ -215,7 +240,7 @@ async function createModelEnv(): Promise<Record<string, string | undefined>> {
   return { PATH: process.env['PATH'], HOME: home, ANTHROPIC_AUTH_TOKEN: token };
 }
 
-function buildProfile(defaults: { model: string; effort: string }) {
+function buildProfile(defaults: RoleProfile) {
   return {
     model: values.model ?? defaults.model,
     baseURL: 'https://api.anthropic.com',
@@ -227,11 +252,21 @@ function buildProfile(defaults: { model: string; effort: string }) {
 // A flag that reads as no number, such as NaN, would turn the budget check off or start no worker.
 function buildRunLimits() {
   return {
-    budgetUSD: parseFlagNumber('--budget', values.budget, z.coerce.number().nonnegative(), 'a dollar amount of 0 or more'),
+    budgetUSD: parseFlagNumber(
+      '--budget',
+      values.budget,
+      z.coerce.number().nonnegative(),
+      'a dollar amount of 0 or more',
+    ),
     limit:
       values.limit === undefined
         ? null
-        : parseFlagNumber('--limit', values.limit, z.coerce.number().int().nonnegative(), 'a whole number of 0 or more'),
+        : parseFlagNumber(
+            '--limit',
+            values.limit,
+            z.coerce.number().int().nonnegative(),
+            'a whole number of 0 or more',
+          ),
     concurrency: parseFlagNumber(
       '--concurrency',
       values.concurrency,
@@ -271,23 +306,36 @@ async function readSpentUSD(
 
 async function printScore(): Promise<void> {
   const cases = await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema);
-  const labelRecords = await readJSONLines(requireFlag(values.labels, '--labels'), labelRecordSchema);
-  const { labels, unsure } = buildLabels(labelRecords);
+
+  const labelRecords = await readJSONLines(
+    requireFlag(values.labels, '--labels'),
+    labelRecordSchema,
+  );
+
+  const built = buildLabels(labelRecords);
+  const labels = built.labels;
+
   const allChecks = await readJSONLines(requireFlag(values.checks, '--checks'), checkRecordSchema);
+
   const caseIDs = new Set(cases.map((consentCase) => consentCase.caseID));
+
   // A check of a pair that a later build of the cases dropped still counts in the spend.
   const checks = allChecks.filter((record) => caseIDs.has(record.caseID));
   const score = scoreVerdicts(checks, labels);
   const labelSpend = labelRecords.reduce((sum, record) => sum + record.costUSD, 0);
   const checkSpend = allChecks.reduce((sum, record) => sum + record.costUSD, 0);
 
-  console.log(`labeller: ${unsure} natural pairs unsure, ${labelRecords.filter((record) => record.failure !== null).length} failed turns`);
+  console.log(
+    `labeller: ${built.unsure} natural pairs unsure, ${labelRecords.filter((record) => record.failure !== null).length} failed turns`,
+  );
+
   console.log(`checks of pairs outside the cases: ${allChecks.length - checks.length}`);
 
   for (const bucket of score.buckets) {
     console.log(
       `${bucket.bucket}: asked ${bucket.asked}, not asked ${bucket.notAsked}, unlabelled ${bucket.unlabelled}, failed checks ${bucket.failed}`,
     );
+
     console.log(`  miss rate ${formatRate(bucket.missed)}`);
     console.log(`  wrong-credit rate ${formatRate(bucket.wrongCredit)}`);
     console.log(`  credited ${formatRate(bucket.credited)}`);
@@ -302,7 +350,9 @@ async function printScore(): Promise<void> {
     ).buckets;
 
     if (byTool !== undefined) {
-      console.log(`natural ${tool}: miss ${formatRate(byTool.missed)}, wrong credit ${formatRate(byTool.wrongCredit)}`);
+      console.log(
+        `natural ${tool}: miss ${formatRate(byTool.missed)}, wrong credit ${formatRate(byTool.wrongCredit)}`,
+      );
     }
   }
 

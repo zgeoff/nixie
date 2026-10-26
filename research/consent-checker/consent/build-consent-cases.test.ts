@@ -12,7 +12,10 @@ test('it pairs each effectful call with the messages of the turn that made it', 
       payload: { spans: 'as_sent' },
       erasable: {
         status: 'readable',
-        fields: { text: 'save that the kiln is booked', spans: [{ start: 0, end: 28, source: 'typed' }] },
+        fields: {
+          text: 'save that the kiln is booked',
+          spans: [{ start: 0, end: 28, source: 'typed' }],
+        },
       },
     },
     {
@@ -122,7 +125,11 @@ test('it pairs each turn with the first call of the turn half the list away', ()
   expect(
     built.cases
       .filter((consentCase) => consentCase.bucket === 'swapped')
-      .map((consentCase) => [consentCase.caseID, consentCase.messages[0]?.text, consentCase.call.tool]),
+      .map((consentCase) => [
+        consentCase.caseID,
+        consentCase.messages[0]?.text,
+        consentCase.call.tool,
+      ]),
   ).toStrictEqual([
     ['2/x7', 'look up the ferry times', 'memory.retire'],
     ['6/x3', 'forget the old gym hours', 'web_fetch'],
@@ -174,7 +181,10 @@ test('it never swaps in a call from a turn that used one of the same tools', () 
       thread: 'conversation',
       parent: null,
       payload: { spans: 'as_sent' },
-      erasable: { status: 'readable', fields: { text: 'and the ferry times for Sunday', spans: [] } },
+      erasable: {
+        status: 'readable',
+        fields: { text: 'and the ferry times for Sunday', spans: [] },
+      },
     },
     {
       sequence: 6,
@@ -248,9 +258,9 @@ test('it keeps out of a turn a message after the cursor its step committed', () 
     },
   ]);
 
-  expect(built.cases.map((consentCase) => consentCase.messages.map((message) => message.sequence))).toStrictEqual([
-    [1],
-  ]);
+  expect(
+    built.cases.map((consentCase) => consentCase.messages.map((message) => message.sequence)),
+  ).toStrictEqual([[1]]);
 });
 
 test('it attributes a call in a later step of the same turn to the turn that read the message', () => {
@@ -389,7 +399,10 @@ test('it leaves out read-only calls and counts them', () => {
       thread: 'conversation',
       parent: null,
       payload: { spans: 'as_sent' },
-      erasable: { status: 'readable', fields: { text: 'what do you know about my piano lessons?', spans: [] } },
+      erasable: {
+        status: 'readable',
+        fields: { text: 'what do you know about my piano lessons?', spans: [] },
+      },
     },
     {
       sequence: 2,
@@ -424,7 +437,10 @@ test('it leaves out a message whose spans are unknown and counts it', () => {
       thread: 'conversation',
       parent: null,
       payload: { spans: 'unknown' },
-      erasable: { status: 'readable', fields: { text: 'remember the boiler code is 4417', spans: [] } },
+      erasable: {
+        status: 'readable',
+        fields: { text: 'remember the boiler code is 4417', spans: [] },
+      },
     },
     {
       sequence: 2,

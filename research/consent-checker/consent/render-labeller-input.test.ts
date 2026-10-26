@@ -9,7 +9,9 @@ test('it renders the earlier exchanges, the turn and each call by its number', (
         { role: 'owner', text: 'the plumber comes Thursday' },
         { role: 'assistant', text: 'Want me to remember that?' },
       ],
-      messages: [{ sequence: 8, text: 'yes please', spans: [{ start: 0, end: 10, source: 'typed' }] }],
+      messages: [
+        { sequence: 8, text: 'yes please', spans: [{ start: 0, end: 10, source: 'typed' }] },
+      ],
       calls: [
         { caseID: '9/10', tool: 'memory.remember', input: { text: 'The plumber comes Thursday' } },
         { caseID: '9/11', tool: 'memory.pin', input: { id: 'M3' } },

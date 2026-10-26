@@ -3,7 +3,7 @@ import { runLabels } from './run-labels.ts';
 import type { LabelRecord } from './types.ts';
 
 function setupTest() {
-  return { appendRecord: mock(async (_record: LabelRecord) => {}) };
+  return { appendRecord: mock<(record: LabelRecord) => Promise<void>>(() => Promise.resolve()) };
 }
 
 test('it maps each numbered answer to its pair and marks a pair the answer left out as unsure', async () => {
@@ -23,23 +23,30 @@ test('it maps each numbered answer to its pair and marks a pair the answer left 
     ],
     done: [],
     appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-opus-5-5', baseURL: 'https://api.anthropic.com', effort: 'medium', authHeader: 'bearer' },
+    profile: {
+      model: 'claude-opus-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'medium',
+      authHeader: 'bearer',
+    },
     systemPrompt: 'You label tool calls.',
     promptSHA256: 'hash-l',
     otherSpentUSD: 0,
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runLabel: async () => ({
-      kind: 'answer',
-      output: { calls: [{ call: 1, reason: 'the owner asked to save it', label: 'asked' }] },
-      costUSD: 0.03,
-      durationMs: 4000,
-      apiMs: 3800,
-    }),
+    runLabel: () =>
+      Promise.resolve({
+        kind: 'answer',
+        output: { calls: [{ call: 1, reason: 'the owner asked to save it', label: 'asked' }] },
+        costUSD: 0.03,
+        durationMs: 4000,
+        apiMs: 3800,
+      }),
   });
 
   expect(result.ran).toBe(1);
+
   expect(ctx.appendRecord.mock.calls).toStrictEqual([
     [
       {
@@ -72,17 +79,30 @@ test('it records a call with no answer with its cost and no label, and stops the
     ],
     done: [],
     appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-opus-5-5', baseURL: 'https://api.anthropic.com', effort: 'medium', authHeader: 'bearer' },
+    profile: {
+      model: 'claude-opus-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'medium',
+      authHeader: 'bearer',
+    },
     systemPrompt: 'You label tool calls.',
     promptSHA256: 'hash-l',
     otherSpentUSD: 0,
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runLabel: async () => ({ kind: 'answer', output: undefined, costUSD: 0.4, durationMs: 300, apiMs: 0 }),
+    runLabel: () =>
+      Promise.resolve({
+        kind: 'answer',
+        output: undefined,
+        costUSD: 0.4,
+        durationMs: 300,
+        apiMs: 0,
+      }),
   });
 
   expect(result.isStoppedByFailure).toBe(true);
+
   expect(ctx.appendRecord.mock.calls).toStrictEqual([
     [
       {
@@ -113,17 +133,23 @@ test('it keeps the reason a failed query gave in its record and in the result', 
     ],
     done: [],
     appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-opus-5-5', baseURL: 'https://api.anthropic.com', effort: 'medium', authHeader: 'bearer' },
+    profile: {
+      model: 'claude-opus-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'medium',
+      authHeader: 'bearer',
+    },
     systemPrompt: 'You label tool calls.',
     promptSHA256: 'hash-l',
     otherSpentUSD: 0,
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runLabel: async () => ({ kind: 'failed', reason: 'error_max_turns' }),
+    runLabel: () => Promise.resolve({ kind: 'failed', reason: 'error_max_turns' }),
   });
 
   expect(result.failureReason).toBe('error_max_turns');
+
   expect(ctx.appendRecord.mock.calls).toStrictEqual([
     [
       {
@@ -164,20 +190,26 @@ test('it labels a turn again when the file holds only a record with no answer fo
       },
     ],
     appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-opus-5-5', baseURL: 'https://api.anthropic.com', effort: 'medium', authHeader: 'bearer' },
+    profile: {
+      model: 'claude-opus-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'medium',
+      authHeader: 'bearer',
+    },
     systemPrompt: 'You label tool calls.',
     promptSHA256: 'hash-l',
     otherSpentUSD: 0,
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runLabel: async () => ({
-      kind: 'answer',
-      output: { calls: [{ call: 1, reason: 'the owner asked to pin it', label: 'asked' }] },
-      costUSD: 0.25,
-      durationMs: 4000,
-      apiMs: 3800,
-    }),
+    runLabel: () =>
+      Promise.resolve({
+        kind: 'answer',
+        output: { calls: [{ call: 1, reason: 'the owner asked to pin it', label: 'asked' }] },
+        costUSD: 0.25,
+        durationMs: 4000,
+        apiMs: 3800,
+      }),
   });
 
   expect(result).toStrictEqual({
@@ -213,14 +245,19 @@ test('it skips labelled turns and counts their spend with the other calls', asyn
       },
     ],
     appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-opus-5-5', baseURL: 'https://api.anthropic.com', effort: 'medium', authHeader: 'bearer' },
+    profile: {
+      model: 'claude-opus-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'medium',
+      authHeader: 'bearer',
+    },
     systemPrompt: 'You label tool calls.',
     promptSHA256: 'hash-l',
     otherSpentUSD: 0.5,
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runLabel: async () => ({ kind: 'failed', reason: 'error_during_execution' }),
+    runLabel: () => Promise.resolve({ kind: 'failed', reason: 'error_during_execution' }),
   });
 
   expect(result).toStrictEqual({
@@ -248,14 +285,19 @@ test('it refuses an output file that holds a run under another model', () => {
         },
       ],
       appendRecord: async () => {},
-      profile: { model: 'claude-opus-5-5', baseURL: 'https://api.anthropic.com', effort: 'medium', authHeader: 'bearer' },
+      profile: {
+        model: 'claude-opus-5-5',
+        baseURL: 'https://api.anthropic.com',
+        effort: 'medium',
+        authHeader: 'bearer',
+      },
       systemPrompt: 'You label tool calls.',
       promptSHA256: 'hash-l',
       otherSpentUSD: 0,
       budgetUSD: 4,
       limit: null,
       concurrency: 1,
-      runLabel: async () => ({ kind: 'failed', reason: 'error_during_execution' }),
+      runLabel: () => Promise.resolve({ kind: 'failed', reason: 'error_during_execution' }),
     }),
-  ).rejects.toThrow(/holds a run of claude-sonnet-5-5/);
+  ).rejects.toThrow(/holds a run of claude-sonnet-5-5/u);
 });
