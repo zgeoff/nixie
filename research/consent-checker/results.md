@@ -20,16 +20,17 @@ counts and rates only.
   tool output and no earlier turn, as the decision point's consent check sets.
 - The labeller is the same query on Claude Opus 5.5 at medium effort, the conversation role's
   profile, with the instruction in [label-prompt.txt](label-prompt.txt) and the deployment's
-  persona. It saw each turn's messages, the 4 messages and replies before the turn, and every call
-  of the turn, and labelled each call asked, not asked or unsure.
+  persona. It saw each turn's messages, the 4 messages and replies before the turn, and each call of
+  the turn that forms a natural pair, and labelled each of those calls asked, not asked or unsure. A
+  call to a read-only tool or with an unreadable input forms no pair, so the labeller never saw it.
 - Both ran on the deployment's Claude subscription, and the cost is the cost each call reported.
 
 The steps live in these files:
 
 - [build-consent-cases.ts](consent/build-consent-cases.ts) groups the calls into turns and builds
   the natural and swapped pairs.
-- [build-label-turns.ts](consent/build-label-turns.ts) gives the labeller each turn's calls with the
-  exchanges before it, so an answer to the assistant's offer reads as a request.
+- [build-label-turns.ts](consent/build-label-turns.ts) gives the labeller each turn's natural-pair
+  calls with the exchanges before it, so an answer to the assistant's offer reads as a request.
 - [render-checker-input.ts](consent/render-checker-input.ts) marks each span the user did not type
   as pasted, and gives the call as its tool and input.
 - [run-labels.ts](consent/run-labels.ts) and [run-checks.ts](consent/run-checks.ts) run the check
