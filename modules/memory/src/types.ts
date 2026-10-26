@@ -241,13 +241,11 @@ export interface ItemIDStore {
   readonly readShortIDs: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, string>>;
 }
 
-interface ForgottenItem {
-  readonly itemID: string;
-}
+type CleanupCause = { readonly itemID: string } | { readonly momentID: string };
 
-// The cleanup must be safe to run again, because a forget that a crash cut short runs it again on
-// resume.
-export type CleanupSessions = (cause: ForgottenItem) => Promise<void>;
+// The cleanup must be safe to run again, because a forget or a moment destroy that a crash cut
+// short runs it again on resume.
+export type CleanupSessions = (cause: CleanupCause) => Promise<void>;
 
 export type EncodeKind = 'query' | 'document';
 

@@ -2,8 +2,10 @@ import type {
   EditMomentRequest,
   KeepMomentRequest,
   LinkMomentRequest,
-  MomentContext,
+  MomentDestroy,
+  MomentDestroyContext,
   MomentTables,
+  MomentTarget,
   MomentWrite,
   RetireMomentRequest,
 } from './moment-types';
@@ -15,6 +17,7 @@ import type { MomentFindQuery, MomentMatchPage } from './read-moment-matches';
 import { readMomentMatches } from './read-moment-matches';
 import type { MomentWeekCount } from './read-week-count';
 import { readWeekCount } from './read-week-count';
+import { runMomentDestroy } from './run-moment-destroy';
 import { writeKeptMoment } from './write-kept-moment';
 import { writeMomentEdit } from './write-moment-edit';
 import { writeMomentLink } from './write-moment-link';
@@ -32,9 +35,12 @@ export interface MomentStore {
   readonly readLinks: (
     itemIDs: readonly string[],
   ) => Promise<ReadonlyMap<string, readonly MomentLink[]>>;
+
+  // the client's checked destroy, bound to the version its preview showed
+  readonly destroy: (target: MomentTarget) => Promise<MomentDestroy>;
 }
 
-export function buildMomentStore(context: MomentContext): MomentStore {
+export function buildMomentStore(context: MomentDestroyContext): MomentStore {
   const log = context.log;
 
   return {
@@ -46,5 +52,6 @@ export function buildMomentStore(context: MomentContext): MomentStore {
     readMatches: (query) => readMomentMatches(log, query),
     readWeekCount: (at) => readWeekCount(log.writer.db.$extendTables<MomentTables>(), at),
     readLinks: (itemIDs) => readMomentLinks(log, itemIDs),
+    destroy: (target) => runMomentDestroy(context, target),
   };
 }

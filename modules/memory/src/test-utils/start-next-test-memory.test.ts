@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { startNextTestMemory } from './start-next-test-memory';
 import { startTestMemory } from './start-test-memory';
 
@@ -13,15 +13,9 @@ test('it starts the next writer and store on the same data directory', async () 
 test('it passes the session cleanup to the next store', async () => {
   const first = await startTestMemory();
 
-  const cleaned: string[] = [];
+  const cleanupSessions = mock(() => Promise.resolve());
 
-  const next = await startNextTestMemory(first, {
-    cleanupSessions: (cause) => {
-      cleaned.push(cause.itemID);
-
-      return Promise.resolve();
-    },
-  });
+  const next = await startNextTestMemory(first, { cleanupSessions });
 
   const item = await next.store.remember({
     text: 'Lives on Elm Street',
@@ -33,5 +27,5 @@ test('it passes the session cleanup to the next store', async () => {
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  expect(cleaned).toStrictEqual([item.itemID]);
+  expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ itemID: item.itemID });
 });
