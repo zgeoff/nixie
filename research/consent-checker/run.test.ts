@@ -98,6 +98,104 @@ test('it prints the rates of each bucket and each tool, and the spend of every c
   `);
 });
 
+test('it starts no check when the labeller spend already reaches the budget', async () => {
+  const ctx = await setupTest();
+  const casesPath = join(ctx.dir, 'cases.jsonl');
+  const labelsPath = join(ctx.dir, 'labels.jsonl');
+  const outPath = join(ctx.dir, 'checks.jsonl');
+
+  await writeFile(
+    casesPath,
+    '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
+  );
+  await writeFile(
+    labelsPath,
+    '{"stepSequence":2,"model":"claude-opus-5-5","effort":"medium","promptSHA256":"hash-l","labels":[{"caseID":"2/3","label":"asked","reason":"the owner asked for the ferry times"}],"failure":null,"costUSD":1}\n',
+  );
+
+  const child = Bun.spawnSync(
+    [
+      'bun',
+      ctx.entry,
+      'check',
+      '--cases',
+      casesPath,
+      '--labels',
+      labelsPath,
+      '--out',
+      outPath,
+      '--home',
+      join(ctx.dir, 'home'),
+      '--budget',
+      '1',
+    ],
+    { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' } },
+  );
+
+  expect(child.exitCode).toBe(0);
+  expect(child.stdout.toString()).toBe(
+    'checked 0 pairs, skipped 0, spent $1.0000 in total, stopped at the $1 budget\n',
+  );
+  expect(await Bun.file(outPath).exists()).toBe(false);
+});
+
+test('it starts no label when the checker spend already reaches the budget', async () => {
+  const ctx = await setupTest();
+  const plainPath = join(ctx.dir, 'records.jsonl');
+  const casesPath = join(ctx.dir, 'cases.jsonl');
+  const checksPath = join(ctx.dir, 'checks.jsonl');
+  const personaPath = join(ctx.dir, 'persona.md');
+  const outPath = join(ctx.dir, 'labels.jsonl');
+
+  await writeFile(
+    plainPath,
+    [
+      '{"sequence":1,"recordedAt":"2026-03-02T09:00:00Z","kind":"owner_message","thread":"conversation","parent":null,"payload":{"spans":"as_sent"},"erasable":{"status":"readable","fields":{"text":"look up the ferry times","spans":[]}}}',
+      '{"sequence":2,"recordedAt":"2026-03-02T09:00:01Z","kind":"task.step_started","thread":"conversation","parent":null,"payload":{},"erasable":{"status":"none"}}',
+      '{"sequence":3,"recordedAt":"2026-03-02T09:00:02Z","kind":"tool_called","thread":"conversation","parent":null,"payload":{"tool":"web_fetch"},"erasable":{"status":"readable","fields":{"input":{"url":"https://ferry.example/times"}}}}',
+      '',
+    ].join('\n'),
+  );
+  await writeFile(
+    casesPath,
+    '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
+  );
+  await writeFile(
+    checksPath,
+    '{"caseID":"2/3","bucket":"natural","tool":"web_fetch","model":"claude-sonnet-5-5","effort":"high","promptSHA256":"hash-c","verdict":"asserted","reason":"the owner asked","failure":null,"costUSD":1}\n',
+  );
+  await writeFile(personaPath, 'A made-up persona.\n');
+
+  const child = Bun.spawnSync(
+    [
+      'bun',
+      ctx.entry,
+      'label',
+      '--plain',
+      plainPath,
+      '--cases',
+      casesPath,
+      '--checks',
+      checksPath,
+      '--persona',
+      personaPath,
+      '--out',
+      outPath,
+      '--home',
+      join(ctx.dir, 'home'),
+      '--budget',
+      '1',
+    ],
+    { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' } },
+  );
+
+  expect(child.exitCode).toBe(0);
+  expect(child.stdout.toString()).toBe(
+    'labelled 0 turns, skipped 0, spent $1.0000 in total, stopped at the $1 budget\n',
+  );
+  expect(await Bun.file(outPath).exists()).toBe(false);
+});
+
 test.each([
   ['check', '--budget', 'lots', '--budget takes a dollar amount of 0 or more, not lots'],
   ['check', '--budget', '-1', '--budget takes a dollar amount of 0 or more, not -1'],
