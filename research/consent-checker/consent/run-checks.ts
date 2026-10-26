@@ -2,6 +2,7 @@
 import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { buildCheckFingerprint } from './build-check-fingerprint.ts';
 import { buildCheckRecord } from './build-check-record.ts';
+import { buildLedgerWriter } from './build-ledger-writer.ts';
 import { buildLedger } from './build-ledger.ts';
 import { buildQueryBoundUSD } from './build-query-bound.ts';
 import { buildRunReserveUSD } from './build-run-reserve.ts';
@@ -10,15 +11,13 @@ import { renderCheckerInput } from './render-checker-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
 import { runBudgetedQueue } from './run-budgeted-queue.ts';
 import type { PaidReply } from './run-paid-query.ts';
-import type { CheckLine, CheckRecord, ConsentCase, Reservation, Settlement } from './types.ts';
+import type { CheckLine, CheckRecord, ConsentCase } from './types.ts';
 import { noOutputFailure } from './types.ts';
 
 export interface CheckRun {
   cases: readonly ConsentCase[];
   done: readonly CheckLine[];
-  appendReservation: (reservation: Reservation) => Promise<void>;
-  appendSettlement: (settlement: Settlement) => Promise<void>;
-  appendRecord: (record: CheckRecord) => Promise<void>;
+  appendLine: (line: CheckLine) => Promise<void>;
   reserveUSD: number | null;
   profile: CheckRequest['profile'];
   systemPrompt: string;
@@ -73,8 +72,14 @@ export async function runChecks(run: CheckRun): Promise<CheckRunResult> {
     ),
   );
 
+  const writer = buildLedgerWriter<CheckRecord>({
+    open: ledger.open,
+    keyOf: ledgerKeys.check,
+    appendLine: run.appendLine,
+  });
+
   for (const reservation of ledger.open) {
-    await run.appendSettlement({
+    await writer.appendSettlement({
       settledFor: reservation.reservedFor,
       settledUSD: reservation.reserveUSD,
     });
@@ -83,8 +88,8 @@ export async function runChecks(run: CheckRun): Promise<CheckRunResult> {
   const result = await runBudgetedQueue({
     items,
     appendReservation: (consentCase) =>
-      run.appendReservation({ reservedFor: ledgerKeys.check(consentCase), reserveUSD }),
-    appendOutput: run.appendRecord,
+      writer.appendReservation({ reservedFor: ledgerKeys.check(consentCase), reserveUSD }),
+    appendOutput: writer.appendRecord,
     reserveUSD,
     spentUSD: run.otherSpentUSD + ledger.spentUSD,
     budgetUSD: run.budgetUSD,

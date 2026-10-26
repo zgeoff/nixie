@@ -4,10 +4,10 @@ import { expect, mock, test } from 'bun:test';
 import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { runChecks } from './run-checks.ts';
 import type { PaidReply } from './run-paid-query.ts';
-import type { CheckRecord, Reservation } from './types.ts';
+import type { CheckLine } from './types.ts';
 
 function setupTest() {
-  return { appendRecord: mock<(record: CheckRecord) => Promise<void>>(() => Promise.resolve()) };
+  return { appendLine: mock<(line: CheckLine) => Promise<void>>(() => Promise.resolve()) };
 }
 
 test('it appends one record for each case with the parsed verdict and its cost', async () => {
@@ -24,9 +24,7 @@ test('it appends one record for each case with the parsed verdict and its cost',
       },
     ],
     done: [],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-sonnet-5-5',
@@ -58,7 +56,8 @@ test('it appends one record for each case with the parsed verdict and its cost',
     isStoppedByFailure: false,
   });
 
-  expect(ctx.appendRecord.mock.calls).toStrictEqual([
+  expect(ctx.appendLine.mock.calls).toStrictEqual([
+    [{ reservedFor: 'case 2/3', reserveUSD: 1.739436 }],
     [
       {
         caseID: '2/3',
@@ -78,8 +77,7 @@ test('it appends one record for each case with the parsed verdict and its cost',
 });
 
 test('it reserves the spend of a case before it checks the case', async () => {
-  const ctx = setupTest();
-  const events: (Reservation | string)[] = [];
+  const events: (CheckLine | string)[] = [];
 
   await runChecks({
     cases: [
@@ -92,13 +90,11 @@ test('it reserves the spend of a case before it checks the case', async () => {
       },
     ],
     done: [],
-    appendReservation: (reservation) => {
-      events.push(reservation);
+    appendLine: (line) => {
+      events.push(line);
 
       return Promise.resolve();
     },
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
     reserveUSD: 2,
     profile: {
       model: 'claude-sonnet-5-5',
@@ -119,12 +115,28 @@ test('it reserves the spend of a case before it checks the case', async () => {
     },
   });
 
-  expect(events).toStrictEqual([{ reservedFor: 'case 2/3', reserveUSD: 2 }, 'check']);
+  expect(events).toStrictEqual([
+    { reservedFor: 'case 2/3', reserveUSD: 2 },
+    'check',
+    {
+      caseID: '2/3',
+      bucket: 'natural',
+      tool: 'web_fetch',
+      model: 'claude-sonnet-5-5',
+      effort: 'high',
+      promptSHA256: 'hash-a',
+      inputSHA256: '713bb5c50d2578cc730b50816e8bd32d1e6c1ba6d8ddb57a35480e9aa402cb3c',
+      verdict: 'unsure',
+      reason: '',
+      failure: 'no_output',
+      failureReason: 'error_during_execution',
+      costUSD: 0.01,
+    },
+  ]);
 });
 
 test('it reserves the most the call of a case can cost when the run asks for no amount', async () => {
   const ctx = setupTest();
-  const reservations: Reservation[] = [];
 
   await runChecks({
     cases: [
@@ -137,13 +149,7 @@ test('it reserves the most the call of a case can cost when the run asks for no 
       },
     ],
     done: [],
-    appendReservation: (reservation) => {
-      reservations.push(reservation);
-
-      return Promise.resolve();
-    },
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-sonnet-5-5',
@@ -161,7 +167,25 @@ test('it reserves the most the call of a case can cost when the run asks for no 
       Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0.01 }),
   });
 
-  expect(reservations).toStrictEqual([{ reservedFor: 'case 2/3', reserveUSD: 1.739436 }]);
+  expect(ctx.appendLine.mock.calls).toStrictEqual([
+    [{ reservedFor: 'case 2/3', reserveUSD: 1.739436 }],
+    [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        tool: 'web_fetch',
+        model: 'claude-sonnet-5-5',
+        effort: 'high',
+        promptSHA256: 'hash-a',
+        inputSHA256: '713bb5c50d2578cc730b50816e8bd32d1e6c1ba6d8ddb57a35480e9aa402cb3c',
+        verdict: 'unsure',
+        reason: '',
+        failure: 'no_output',
+        failureReason: 'error_during_execution',
+        costUSD: 0.01,
+      },
+    ],
+  ]);
 });
 
 test('it refuses a reservation below the most the call of a case can cost and checks nothing', () => {
@@ -183,9 +207,7 @@ test('it refuses a reservation below the most the call of a case can cost and ch
         },
       ],
       done: [],
-      appendReservation: () => Promise.resolve(),
-      appendSettlement: () => Promise.resolve(),
-      appendRecord: ctx.appendRecord,
+      appendLine: ctx.appendLine,
       reserveUSD: 0.1,
       profile: {
         model: 'claude-sonnet-5-5',
@@ -209,8 +231,7 @@ test('it refuses a reservation below the most the call of a case can cost and ch
 });
 
 test('it settles a reservation a crash left at its reserved amount before it reserves the case again', async () => {
-  const ctx = setupTest();
-  const events: unknown[] = [];
+  const events: (CheckLine | string)[] = [];
 
   await runChecks({
     cases: [
@@ -223,17 +244,11 @@ test('it settles a reservation a crash left at its reserved amount before it res
       },
     ],
     done: [{ reservedFor: 'case 2/3', reserveUSD: 1.75 }],
-    appendReservation: (reservation) => {
-      events.push(reservation);
+    appendLine: (line) => {
+      events.push(line);
 
       return Promise.resolve();
     },
-    appendSettlement: (settlement) => {
-      events.push(settlement);
-
-      return Promise.resolve();
-    },
-    appendRecord: ctx.appendRecord,
     reserveUSD: 2,
     profile: {
       model: 'claude-sonnet-5-5',
@@ -258,6 +273,87 @@ test('it settles a reservation a crash left at its reserved amount before it res
     { settledFor: 'case 2/3', settledUSD: 1.75 },
     { reservedFor: 'case 2/3', reserveUSD: 2 },
     'check',
+    {
+      caseID: '2/3',
+      bucket: 'natural',
+      tool: 'web_fetch',
+      model: 'claude-sonnet-5-5',
+      effort: 'high',
+      promptSHA256: 'hash-a',
+      inputSHA256: '713bb5c50d2578cc730b50816e8bd32d1e6c1ba6d8ddb57a35480e9aa402cb3c',
+      verdict: 'unsure',
+      reason: '',
+      failure: 'no_output',
+      failureReason: 'error_during_execution',
+      costUSD: 0.01,
+    },
+  ]);
+});
+
+test('it refuses to reserve a case whose reservation is still open, and appends no second reservation', () => {
+  const ctx = setupTest();
+
+  const runCheck = mock<(request: CheckRequest) => Promise<PaidReply>>(() =>
+    Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0.01 }),
+  );
+
+  expect(
+    runChecks({
+      cases: [
+        {
+          caseID: '2/3',
+          bucket: 'natural',
+          stepSequence: 2,
+          messages: [{ sequence: 1, text: 'check the bus times', spans: [] }],
+          call: { sequence: 3, tool: 'web_fetch', input: { url: 'https://bus.example/times' } },
+        },
+        {
+          caseID: '2/3',
+          bucket: 'natural',
+          stepSequence: 2,
+          messages: [{ sequence: 1, text: 'check the bus times', spans: [] }],
+          call: { sequence: 3, tool: 'web_fetch', input: { url: 'https://bus.example/times' } },
+        },
+      ],
+      done: [],
+      appendLine: ctx.appendLine,
+      reserveUSD: 2,
+      profile: {
+        model: 'claude-sonnet-5-5',
+        baseURL: 'https://api.anthropic.com',
+        effort: 'high',
+        authHeader: 'bearer',
+      },
+      systemPrompt: 'You check one tool call.',
+      promptSHA256: 'hash-a',
+      otherSpentUSD: 0,
+      budgetUSD: 10,
+      limit: null,
+      concurrency: 2,
+      runCheck,
+    }),
+  ).rejects.toThrow('the reservation for case 2/3 cannot move from reserved to reserved');
+
+  expect(runCheck).toHaveBeenCalledTimes(1);
+
+  expect(ctx.appendLine.mock.calls).toStrictEqual([
+    [{ reservedFor: 'case 2/3', reserveUSD: 2 }],
+    [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        tool: 'web_fetch',
+        model: 'claude-sonnet-5-5',
+        effort: 'high',
+        promptSHA256: 'hash-a',
+        inputSHA256: '713bb5c50d2578cc730b50816e8bd32d1e6c1ba6d8ddb57a35480e9aa402cb3c',
+        verdict: 'unsure',
+        reason: '',
+        failure: 'no_output',
+        failureReason: 'error_during_execution',
+        costUSD: 0.01,
+      },
+    ],
   ]);
 });
 
@@ -283,9 +379,7 @@ test('it sends the checker the rendered case under the run profile and prompt', 
       },
     ],
     done: [],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-sonnet-5-5',
@@ -333,9 +427,7 @@ test('it records a call with no answer with its cost and stops the run', async (
       },
     ],
     done: [],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-sonnet-5-5',
@@ -361,7 +453,8 @@ test('it records a call with no answer with its cost and stops the run', async (
 
   expect(result.isStoppedByFailure).toBe(true);
 
-  expect(ctx.appendRecord.mock.calls).toStrictEqual([
+  expect(ctx.appendLine.mock.calls).toStrictEqual([
+    [{ reservedFor: 'case 2/3', reserveUSD: 1.739172 }],
     [
       {
         caseID: '2/3',
@@ -395,9 +488,7 @@ test('it keeps the reason and the cost a failed query gave in its record and in 
       },
     ],
     done: [],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-sonnet-5-5',
@@ -417,7 +508,8 @@ test('it keeps the reason and the cost a failed query gave in its record and in 
   expect(result.failureReason).toBe('error_max_turns');
   expect(result.costUSD).toBe(0.02);
 
-  expect(ctx.appendRecord.mock.calls).toStrictEqual([
+  expect(ctx.appendLine.mock.calls).toStrictEqual([
+    [{ reservedFor: 'case 2/3', reserveUSD: 1.739172 }],
     [
       {
         caseID: '2/3',
@@ -475,9 +567,7 @@ test('it runs a case again when the file holds only a check with no answer', asy
         costUSD: 0.75,
       },
     ],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-sonnet-5-5',
@@ -522,9 +612,7 @@ test('it runs a case again after a crash and counts both the crashed reservation
       },
     ],
     done: [{ reservedFor: 'case 2/3', reserveUSD: 0.25 }],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-sonnet-5-5',
@@ -581,9 +669,7 @@ test('it skips the cases the output file already holds and counts their spend', 
         costUSD: 0.012,
       },
     ],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-sonnet-5-5',
@@ -649,9 +735,7 @@ test('it checks a case again when its saved verdict judged another input under t
         costUSD: 0.5,
       },
     ],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-sonnet-5-5',
@@ -691,9 +775,7 @@ test('it refuses an output file that holds a run under another prompt', () => {
           costUSD: 0.01,
         },
       ],
-      appendReservation: () => Promise.resolve(),
-      appendSettlement: () => Promise.resolve(),
-      appendRecord: async () => {},
+      appendLine: () => Promise.resolve(),
       reserveUSD: null,
       profile: {
         model: 'claude-sonnet-5-5',

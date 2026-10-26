@@ -2,6 +2,7 @@
 import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { buildLabelFingerprint } from './build-label-fingerprint.ts';
 import { buildLabelRecord } from './build-label-record.ts';
+import { buildLedgerWriter } from './build-ledger-writer.ts';
 import { buildLedger } from './build-ledger.ts';
 import { buildQueryBoundUSD } from './build-query-bound.ts';
 import { buildRunReserveUSD } from './build-run-reserve.ts';
@@ -10,15 +11,13 @@ import { renderLabellerInput } from './render-labeller-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
 import { runBudgetedQueue } from './run-budgeted-queue.ts';
 import type { PaidReply } from './run-paid-query.ts';
-import type { LabelLine, LabelRecord, LabelTurn, Reservation, Settlement } from './types.ts';
+import type { LabelLine, LabelRecord, LabelTurn } from './types.ts';
 import { noOutputFailure } from './types.ts';
 
 export interface LabelRun {
   turns: readonly LabelTurn[];
   done: readonly LabelLine[];
-  appendReservation: (reservation: Reservation) => Promise<void>;
-  appendSettlement: (settlement: Settlement) => Promise<void>;
-  appendRecord: (record: LabelRecord) => Promise<void>;
+  appendLine: (line: LabelLine) => Promise<void>;
   reserveUSD: number | null;
   profile: CheckRequest['profile'];
   systemPrompt: string;
@@ -73,8 +72,14 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
     ),
   );
 
+  const writer = buildLedgerWriter<LabelRecord>({
+    open: ledger.open,
+    keyOf: ledgerKeys.label,
+    appendLine: run.appendLine,
+  });
+
   for (const reservation of ledger.open) {
-    await run.appendSettlement({
+    await writer.appendSettlement({
       settledFor: reservation.reservedFor,
       settledUSD: reservation.reserveUSD,
     });
@@ -83,8 +88,8 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
   const result = await runBudgetedQueue({
     items,
     appendReservation: (turn) =>
-      run.appendReservation({ reservedFor: ledgerKeys.label(turn), reserveUSD }),
-    appendOutput: run.appendRecord,
+      writer.appendReservation({ reservedFor: ledgerKeys.label(turn), reserveUSD }),
+    appendOutput: writer.appendRecord,
     reserveUSD,
     spentUSD: run.otherSpentUSD + ledger.spentUSD,
     budgetUSD: run.budgetUSD,

@@ -4,10 +4,10 @@ import { expect, mock, test } from 'bun:test';
 import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { runLabels } from './run-labels.ts';
 import type { PaidReply } from './run-paid-query.ts';
-import type { LabelRecord, Reservation } from './types.ts';
+import type { LabelLine } from './types.ts';
 
 function setupTest() {
-  return { appendRecord: mock<(record: LabelRecord) => Promise<void>>(() => Promise.resolve()) };
+  return { appendLine: mock<(line: LabelLine) => Promise<void>>(() => Promise.resolve()) };
 }
 
 test('it maps each numbered answer to its pair and marks a pair the answer left out as unsure', async () => {
@@ -26,9 +26,7 @@ test('it maps each numbered answer to its pair and marks a pair the answer left 
       },
     ],
     done: [],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
@@ -54,7 +52,8 @@ test('it maps each numbered answer to its pair and marks a pair the answer left 
 
   expect(result.ran).toBe(1);
 
-  expect(ctx.appendRecord.mock.calls).toStrictEqual([
+  expect(ctx.appendLine.mock.calls).toStrictEqual([
+    [{ reservedFor: 'step 7', reserveUSD: 3.483288 }],
     [
       {
         stepSequence: 7,
@@ -76,10 +75,6 @@ test('it maps each numbered answer to its pair and marks a pair the answer left 
 test('it reserves the spend of a turn before it labels the turn', async () => {
   const ctx = setupTest();
 
-  const appendReservation = mock<(reservation: Reservation) => Promise<void>>(() =>
-    Promise.resolve(),
-  );
-
   await runLabels({
     turns: [
       {
@@ -90,9 +85,7 @@ test('it reserves the spend of a turn before it labels the turn', async () => {
       },
     ],
     done: [],
-    appendReservation,
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: 4,
     profile: {
       model: 'claude-opus-5-5',
@@ -110,15 +103,26 @@ test('it reserves the spend of a turn before it labels the turn', async () => {
       Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0.01 }),
   });
 
-  expect(appendReservation.mock.calls).toStrictEqual([[{ reservedFor: 'step 7', reserveUSD: 4 }]]);
+  expect(ctx.appendLine.mock.calls).toStrictEqual([
+    [{ reservedFor: 'step 7', reserveUSD: 4 }],
+    [
+      {
+        stepSequence: 7,
+        model: 'claude-opus-5-5',
+        effort: 'medium',
+        promptSHA256: 'hash-l',
+        inputSHA256: '58cc29ff2e428550c1280647ca0fce1e5066cfb024fcc08532dd324d95050774',
+        labels: [],
+        failure: 'no_output',
+        failureReason: 'error_during_execution',
+        costUSD: 0.01,
+      },
+    ],
+  ]);
 });
 
 test('it reserves the most the call of a turn can cost when the run asks for no amount', async () => {
   const ctx = setupTest();
-
-  const appendReservation = mock<(reservation: Reservation) => Promise<void>>(() =>
-    Promise.resolve(),
-  );
 
   await runLabels({
     turns: [
@@ -130,9 +134,7 @@ test('it reserves the most the call of a turn can cost when the run asks for no 
       },
     ],
     done: [],
-    appendReservation,
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
@@ -150,8 +152,21 @@ test('it reserves the most the call of a turn can cost when the run asks for no 
       Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0.01 }),
   });
 
-  expect(appendReservation.mock.calls).toStrictEqual([
+  expect(ctx.appendLine.mock.calls).toStrictEqual([
     [{ reservedFor: 'step 7', reserveUSD: 3.47952 }],
+    [
+      {
+        stepSequence: 7,
+        model: 'claude-opus-5-5',
+        effort: 'medium',
+        promptSHA256: 'hash-l',
+        inputSHA256: '58cc29ff2e428550c1280647ca0fce1e5066cfb024fcc08532dd324d95050774',
+        labels: [],
+        failure: 'no_output',
+        failureReason: 'error_during_execution',
+        costUSD: 0.01,
+      },
+    ],
   ]);
 });
 
@@ -173,9 +188,7 @@ test('it refuses a reservation below the most the call of a turn can cost and la
         },
       ],
       done: [],
-      appendReservation: () => Promise.resolve(),
-      appendSettlement: () => Promise.resolve(),
-      appendRecord: ctx.appendRecord,
+      appendLine: ctx.appendLine,
       reserveUSD: 0.1,
       profile: {
         model: 'claude-opus-5-5',
@@ -199,8 +212,7 @@ test('it refuses a reservation below the most the call of a turn can cost and la
 });
 
 test('it settles a reservation a crash left at its reserved amount before it reserves the turn again', async () => {
-  const ctx = setupTest();
-  const events: unknown[] = [];
+  const events: (LabelLine | string)[] = [];
 
   await runLabels({
     turns: [
@@ -212,17 +224,11 @@ test('it settles a reservation a crash left at its reserved amount before it res
       },
     ],
     done: [{ reservedFor: 'step 7', reserveUSD: 3.5 }],
-    appendReservation: (reservation) => {
-      events.push(reservation);
+    appendLine: (line) => {
+      events.push(line);
 
       return Promise.resolve();
     },
-    appendSettlement: (settlement) => {
-      events.push(settlement);
-
-      return Promise.resolve();
-    },
-    appendRecord: ctx.appendRecord,
     reserveUSD: 4,
     profile: {
       model: 'claude-opus-5-5',
@@ -247,6 +253,17 @@ test('it settles a reservation a crash left at its reserved amount before it res
     { settledFor: 'step 7', settledUSD: 3.5 },
     { reservedFor: 'step 7', reserveUSD: 4 },
     'label',
+    {
+      stepSequence: 7,
+      model: 'claude-opus-5-5',
+      effort: 'medium',
+      promptSHA256: 'hash-l',
+      inputSHA256: '58cc29ff2e428550c1280647ca0fce1e5066cfb024fcc08532dd324d95050774',
+      labels: [],
+      failure: 'no_output',
+      failureReason: 'error_during_execution',
+      costUSD: 0.01,
+    },
   ]);
 });
 
@@ -267,9 +284,7 @@ test('it counts the reservation a crashed run left toward the budget', async () 
       },
     ],
     done: [{ reservedFor: 'step 7', reserveUSD: 1 }],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
@@ -295,6 +310,68 @@ test('it counts the reservation a crashed run left toward the budget', async () 
   });
 
   expect(runLabel).not.toHaveBeenCalled();
+});
+
+test('it refuses to reserve a turn whose reservation is still open, and appends no second reservation', () => {
+  const ctx = setupTest();
+
+  const runLabel = mock<(request: CheckRequest) => Promise<PaidReply>>(() =>
+    Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0.01 }),
+  );
+
+  expect(
+    runLabels({
+      turns: [
+        {
+          stepSequence: 7,
+          earlier: [],
+          messages: [{ sequence: 6, text: 'pin it', spans: [] }],
+          calls: [{ caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } }],
+        },
+        {
+          stepSequence: 7,
+          earlier: [],
+          messages: [{ sequence: 6, text: 'pin it', spans: [] }],
+          calls: [{ caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } }],
+        },
+      ],
+      done: [],
+      appendLine: ctx.appendLine,
+      reserveUSD: 4,
+      profile: {
+        model: 'claude-opus-5-5',
+        baseURL: 'https://api.anthropic.com',
+        effort: 'medium',
+        authHeader: 'bearer',
+      },
+      systemPrompt: 'You label tool calls.',
+      promptSHA256: 'hash-l',
+      otherSpentUSD: 0,
+      budgetUSD: 10,
+      limit: null,
+      concurrency: 2,
+      runLabel,
+    }),
+  ).rejects.toThrow('the reservation for step 7 cannot move from reserved to reserved');
+
+  expect(runLabel).toHaveBeenCalledTimes(1);
+
+  expect(ctx.appendLine.mock.calls).toStrictEqual([
+    [{ reservedFor: 'step 7', reserveUSD: 4 }],
+    [
+      {
+        stepSequence: 7,
+        model: 'claude-opus-5-5',
+        effort: 'medium',
+        promptSHA256: 'hash-l',
+        inputSHA256: '58cc29ff2e428550c1280647ca0fce1e5066cfb024fcc08532dd324d95050774',
+        labels: [],
+        failure: 'no_output',
+        failureReason: 'error_during_execution',
+        costUSD: 0.01,
+      },
+    ],
+  ]);
 });
 
 test('it sends the labeller the rendered turn under the run profile and prompt', async () => {
@@ -324,9 +401,7 @@ test('it sends the labeller the rendered turn under the run profile and prompt',
       },
     ],
     done: [],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
@@ -373,9 +448,7 @@ test('it records a call with no answer with its cost and no label, and stops the
       },
     ],
     done: [],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
@@ -401,7 +474,8 @@ test('it records a call with no answer with its cost and no label, and stops the
 
   expect(result.isStoppedByFailure).toBe(true);
 
-  expect(ctx.appendRecord.mock.calls).toStrictEqual([
+  expect(ctx.appendLine.mock.calls).toStrictEqual([
+    [{ reservedFor: 'step 7', reserveUSD: 3.47952 }],
     [
       {
         stepSequence: 7,
@@ -431,9 +505,7 @@ test('it keeps the reason and the cost a failed query gave in its record and in 
       },
     ],
     done: [],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
@@ -453,7 +525,8 @@ test('it keeps the reason and the cost a failed query gave in its record and in 
   expect(result.failureReason).toBe('error_max_turns');
   expect(result.costUSD).toBe(0.02);
 
-  expect(ctx.appendRecord.mock.calls).toStrictEqual([
+  expect(ctx.appendLine.mock.calls).toStrictEqual([
+    [{ reservedFor: 'step 7', reserveUSD: 3.47952 }],
     [
       {
         stepSequence: 7,
@@ -494,9 +567,7 @@ test('it labels a turn again when the file holds only a record with no answer fo
         costUSD: 0.5,
       },
     ],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
@@ -553,9 +624,7 @@ test('it skips labelled turns and counts their spend with the other calls', asyn
         costUSD: 0.03,
       },
     ],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
@@ -616,9 +685,7 @@ test('it labels a turn again when its saved labels judged another input under th
         costUSD: 0.5,
       },
     ],
-    appendReservation: () => Promise.resolve(),
-    appendSettlement: () => Promise.resolve(),
-    appendRecord: ctx.appendRecord,
+    appendLine: ctx.appendLine,
     reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
@@ -655,9 +722,7 @@ test('it refuses an output file that holds a run under another model', () => {
           costUSD: 0.03,
         },
       ],
-      appendReservation: () => Promise.resolve(),
-      appendSettlement: () => Promise.resolve(),
-      appendRecord: async () => {},
+      appendLine: () => Promise.resolve(),
       reserveUSD: null,
       profile: {
         model: 'claude-opus-5-5',
