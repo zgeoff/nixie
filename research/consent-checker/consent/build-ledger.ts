@@ -1,15 +1,16 @@
-import type { Reservation } from './types.ts';
+import type { Reservation, Settlement } from './types.ts';
 
 export interface Ledger<Settled> {
   records: Settled[];
   spentUSD: number;
+  open: Reservation[];
 }
 
-// A call's cost is recorded whether the call succeeds or fails, and its reservation is written before
-// the call, so a crash leaves the reservation as an estimate of the call's unknown cost. A known cost
-// replaces its reservation; an unknown cost or a reservation that nothing settled counts in full.
+// A call's cost is recorded whether the call succeeds or fails, and its reservation, at least the most
+// the call can cost, is written before the call. A known cost replaces its reservation; an unknown
+// cost, a settlement, or a reservation that nothing settled counts the reserved amount.
 export function buildLedger<Settled extends { costUSD: number | null }>(
-  lines: readonly (Reservation | Settled)[],
+  lines: readonly (Reservation | Settlement | Settled)[],
   keyOf: (record: Settled) => string,
 ): Ledger<Settled> {
   const open = new Map<string, number>();
@@ -22,6 +23,13 @@ export function buildLedger<Settled extends { costUSD: number | null }>(
       spentUSD += open.get(line.reservedFor) ?? 0;
 
       open.set(line.reservedFor, line.reserveUSD);
+      continue;
+    }
+
+    if (isSettlement(line)) {
+      open.delete(line.settledFor);
+
+      spentUSD += line.settledUSD;
       continue;
     }
 
@@ -39,9 +47,17 @@ export function buildLedger<Settled extends { costUSD: number | null }>(
     spentUSD += reserveUSD;
   }
 
-  return { records, spentUSD };
+  return {
+    records,
+    spentUSD,
+    open: Array.from(open, ([reservedFor, reserveUSD]) => ({ reservedFor, reserveUSD })),
+  };
 }
 
-function isReservation<Settled>(line: Reservation | Settled): line is Reservation {
+function isReservation<Settled>(line: Reservation | Settlement | Settled): line is Reservation {
   return typeof line === 'object' && line !== null && 'reservedFor' in line;
+}
+
+function isSettlement<Settled>(line: Settlement | Settled): line is Settlement {
+  return typeof line === 'object' && line !== null && 'settledFor' in line;
 }

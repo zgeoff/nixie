@@ -62,15 +62,32 @@ export const checkRecordSchema = z.object({
 
 export type CheckRecord = z.infer<typeof checkRecordSchema>;
 
-// The line a run appends before each paid call, which holds the spend that call may cost.
+// The line a run appends before each paid call, which holds at least the most that call can cost.
 export const reservationSchema = z.object({
   reservedFor: z.string(),
-  reserveUSD: z.number().nonnegative(),
+  reserveUSD: z.number().positive(),
 });
 
 export type Reservation = z.infer<typeof reservationSchema>;
 
-export const checkLineSchema = z.union([reservationSchema, checkRecordSchema]);
+// The line a resumed run appends for a reservation that no record settled, which settles it at its
+// reserved amount before the run reserves the item again.
+export const settlementSchema = z.object({
+  settledFor: z.string(),
+  settledUSD: z.number().positive(),
+});
+
+export type Settlement = z.infer<typeof settlementSchema>;
+
+// The limits each paid query runs under, so a reservation can hold the most the query can cost. The
+// recorded run kept only the cost each query reported, so these are chosen, not measured.
+export const queryLimits = {
+  requestCap: 3,
+  maxOutputTokens: 32_000,
+  overheadBytes: 16_384,
+};
+
+export const checkLineSchema = z.union([reservationSchema, settlementSchema, checkRecordSchema]);
 
 export type CheckLine = z.infer<typeof checkLineSchema>;
 
@@ -111,7 +128,7 @@ export const labelRecordSchema = z.object({
 
 export type LabelRecord = z.infer<typeof labelRecordSchema>;
 
-export const labelLineSchema = z.union([reservationSchema, labelRecordSchema]);
+export const labelLineSchema = z.union([reservationSchema, settlementSchema, labelRecordSchema]);
 
 export type LabelLine = z.infer<typeof labelLineSchema>;
 

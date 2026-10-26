@@ -57,7 +57,7 @@ const args = parseArgs({
     model: { type: 'string' },
     effort: { type: 'string' },
     budget: { type: 'string', default: '4' },
-    reserve: { type: 'string', default: '0.1' },
+    reserve: { type: 'string' },
     limit: { type: 'string' },
     concurrency: { type: 'string', default: '2' },
   },
@@ -156,6 +156,7 @@ async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<v
     turns: buildLabelTurns(records, cases),
     done: existsSync(outPath) ? await readJSONLines(outPath, labelLineSchema) : [],
     appendReservation: makeAppendJSONLine(outPath),
+    appendSettlement: makeAppendJSONLine(outPath),
     appendRecord: makeAppendJSONLine(outPath),
     profile: buildProfile(labellerProfile),
     systemPrompt,
@@ -198,6 +199,7 @@ async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<v
     cases: await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema),
     done: existsSync(outPath) ? await readJSONLines(outPath, checkLineSchema) : [],
     appendReservation: makeAppendJSONLine(outPath),
+    appendSettlement: makeAppendJSONLine(outPath),
     appendRecord: makeAppendJSONLine(outPath),
     profile: buildProfile(checkerProfile),
     systemPrompt,
@@ -303,12 +305,15 @@ function buildRunLimits() {
       z.coerce.number().nonnegative(),
       'a dollar amount of 0 or more',
     ),
-    reserveUSD: parseFlagNumber(
-      '--reserve',
-      values.reserve,
-      z.coerce.number().nonnegative(),
-      'a dollar amount of 0 or more',
-    ),
+    reserveUSD:
+      values.reserve === undefined
+        ? null
+        : parseFlagNumber(
+            '--reserve',
+            values.reserve,
+            z.coerce.number().positive(),
+            'a dollar amount above 0',
+          ),
     limit:
       values.limit === undefined
         ? null

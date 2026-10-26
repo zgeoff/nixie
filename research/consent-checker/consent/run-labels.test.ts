@@ -27,8 +27,9 @@ test('it maps each numbered answer to its pair and marks a pair the answer left 
     ],
     done: [],
     appendReservation: () => Promise.resolve(),
+    appendSettlement: () => Promise.resolve(),
     appendRecord: ctx.appendRecord,
-    reserveUSD: 0,
+    reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
       baseURL: 'https://api.anthropic.com',
@@ -90,8 +91,9 @@ test('it reserves the spend of a turn before it labels the turn', async () => {
     ],
     done: [],
     appendReservation,
+    appendSettlement: () => Promise.resolve(),
     appendRecord: ctx.appendRecord,
-    reserveUSD: 0.1,
+    reserveUSD: 4,
     profile: {
       model: 'claude-opus-5-5',
       baseURL: 'https://api.anthropic.com',
@@ -101,7 +103,47 @@ test('it reserves the spend of a turn before it labels the turn', async () => {
     systemPrompt: 'You label tool calls.',
     promptSHA256: 'hash-l',
     otherSpentUSD: 0,
-    budgetUSD: 4,
+    budgetUSD: 10,
+    limit: null,
+    concurrency: 1,
+    runLabel: () =>
+      Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0.01 }),
+  });
+
+  expect(appendReservation.mock.calls).toStrictEqual([[{ reservedFor: 'step 7', reserveUSD: 4 }]]);
+});
+
+test('it reserves the most the call of a turn can cost when the run asks for no amount', async () => {
+  const ctx = setupTest();
+
+  const appendReservation = mock<(reservation: Reservation) => Promise<void>>(() =>
+    Promise.resolve(),
+  );
+
+  await runLabels({
+    turns: [
+      {
+        stepSequence: 7,
+        earlier: [],
+        messages: [{ sequence: 6, text: 'pin it', spans: [] }],
+        calls: [{ caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } }],
+      },
+    ],
+    done: [],
+    appendReservation,
+    appendSettlement: () => Promise.resolve(),
+    appendRecord: ctx.appendRecord,
+    reserveUSD: null,
+    profile: {
+      model: 'claude-opus-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'medium',
+      authHeader: 'bearer',
+    },
+    systemPrompt: 'You label tool calls.',
+    promptSHA256: 'hash-l',
+    otherSpentUSD: 0,
+    budgetUSD: 10,
     limit: null,
     concurrency: 1,
     runLabel: () =>
@@ -109,7 +151,102 @@ test('it reserves the spend of a turn before it labels the turn', async () => {
   });
 
   expect(appendReservation.mock.calls).toStrictEqual([
-    [{ reservedFor: 'step 7', reserveUSD: 0.1 }],
+    [{ reservedFor: 'step 7', reserveUSD: 3.47952 }],
+  ]);
+});
+
+test('it refuses a reservation below the most the call of a turn can cost and labels nothing', () => {
+  const ctx = setupTest();
+
+  const runLabel = mock<(request: CheckRequest) => Promise<PaidReply>>(() =>
+    Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0.01 }),
+  );
+
+  expect(
+    runLabels({
+      turns: [
+        {
+          stepSequence: 7,
+          earlier: [],
+          messages: [{ sequence: 6, text: 'pin it', spans: [] }],
+          calls: [{ caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } }],
+        },
+      ],
+      done: [],
+      appendReservation: () => Promise.resolve(),
+      appendSettlement: () => Promise.resolve(),
+      appendRecord: ctx.appendRecord,
+      reserveUSD: 0.1,
+      profile: {
+        model: 'claude-opus-5-5',
+        baseURL: 'https://api.anthropic.com',
+        effort: 'medium',
+        authHeader: 'bearer',
+      },
+      systemPrompt: 'You label tool calls.',
+      promptSHA256: 'hash-l',
+      otherSpentUSD: 0,
+      budgetUSD: 10,
+      limit: null,
+      concurrency: 1,
+      runLabel,
+    }),
+  ).rejects.toThrow(
+    'a reservation of $0.1000 is below $3.4795, the most one call of this run can cost',
+  );
+
+  expect(runLabel).not.toHaveBeenCalled();
+});
+
+test('it settles a reservation a crash left at its reserved amount before it reserves the turn again', async () => {
+  const ctx = setupTest();
+  const events: unknown[] = [];
+
+  await runLabels({
+    turns: [
+      {
+        stepSequence: 7,
+        earlier: [],
+        messages: [{ sequence: 6, text: 'pin it', spans: [] }],
+        calls: [{ caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } }],
+      },
+    ],
+    done: [{ reservedFor: 'step 7', reserveUSD: 3.5 }],
+    appendReservation: (reservation) => {
+      events.push(reservation);
+
+      return Promise.resolve();
+    },
+    appendSettlement: (settlement) => {
+      events.push(settlement);
+
+      return Promise.resolve();
+    },
+    appendRecord: ctx.appendRecord,
+    reserveUSD: 4,
+    profile: {
+      model: 'claude-opus-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'medium',
+      authHeader: 'bearer',
+    },
+    systemPrompt: 'You label tool calls.',
+    promptSHA256: 'hash-l',
+    otherSpentUSD: 0,
+    budgetUSD: 10,
+    limit: null,
+    concurrency: 1,
+    runLabel: () => {
+      events.push('label');
+
+      return Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0.01 });
+    },
+  });
+
+  expect(events).toStrictEqual([
+    { settledFor: 'step 7', settledUSD: 3.5 },
+    { reservedFor: 'step 7', reserveUSD: 4 },
+    'label',
   ]);
 });
 
@@ -131,8 +268,9 @@ test('it counts the reservation a crashed run left toward the budget', async () 
     ],
     done: [{ reservedFor: 'step 7', reserveUSD: 1 }],
     appendReservation: () => Promise.resolve(),
+    appendSettlement: () => Promise.resolve(),
     appendRecord: ctx.appendRecord,
-    reserveUSD: 0.1,
+    reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
       baseURL: 'https://api.anthropic.com',
@@ -187,8 +325,9 @@ test('it sends the labeller the rendered turn under the run profile and prompt',
     ],
     done: [],
     appendReservation: () => Promise.resolve(),
+    appendSettlement: () => Promise.resolve(),
     appendRecord: ctx.appendRecord,
-    reserveUSD: 0,
+    reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
       baseURL: 'https://api.anthropic.com',
@@ -235,8 +374,9 @@ test('it records a call with no answer with its cost and no label, and stops the
     ],
     done: [],
     appendReservation: () => Promise.resolve(),
+    appendSettlement: () => Promise.resolve(),
     appendRecord: ctx.appendRecord,
-    reserveUSD: 0,
+    reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
       baseURL: 'https://api.anthropic.com',
@@ -292,8 +432,9 @@ test('it keeps the reason and the cost a failed query gave in its record and in 
     ],
     done: [],
     appendReservation: () => Promise.resolve(),
+    appendSettlement: () => Promise.resolve(),
     appendRecord: ctx.appendRecord,
-    reserveUSD: 0,
+    reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
       baseURL: 'https://api.anthropic.com',
@@ -354,8 +495,9 @@ test('it labels a turn again when the file holds only a record with no answer fo
       },
     ],
     appendReservation: () => Promise.resolve(),
+    appendSettlement: () => Promise.resolve(),
     appendRecord: ctx.appendRecord,
-    reserveUSD: 0,
+    reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
       baseURL: 'https://api.anthropic.com',
@@ -412,8 +554,9 @@ test('it skips labelled turns and counts their spend with the other calls', asyn
       },
     ],
     appendReservation: () => Promise.resolve(),
+    appendSettlement: () => Promise.resolve(),
     appendRecord: ctx.appendRecord,
-    reserveUSD: 0,
+    reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
       baseURL: 'https://api.anthropic.com',
@@ -474,8 +617,9 @@ test('it labels a turn again when its saved labels judged another input under th
       },
     ],
     appendReservation: () => Promise.resolve(),
+    appendSettlement: () => Promise.resolve(),
     appendRecord: ctx.appendRecord,
-    reserveUSD: 0,
+    reserveUSD: null,
     profile: {
       model: 'claude-opus-5-5',
       baseURL: 'https://api.anthropic.com',
@@ -512,8 +656,9 @@ test('it refuses an output file that holds a run under another model', () => {
         },
       ],
       appendReservation: () => Promise.resolve(),
+      appendSettlement: () => Promise.resolve(),
       appendRecord: async () => {},
-      reserveUSD: 0,
+      reserveUSD: null,
       profile: {
         model: 'claude-opus-5-5',
         baseURL: 'https://api.anthropic.com',

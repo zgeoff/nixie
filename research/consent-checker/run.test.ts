@@ -437,7 +437,9 @@ test('it counts the reservation that a run which crashed before its record left 
     'labelled 0 turns, skipped 0, spent $1.0000 in total, stopped at the $1 budget\n',
   );
 
-  expect(labels).toBe('{"reservedFor":"step 2","reserveUSD":1}\n');
+  expect(labels).toBe(
+    '{"reservedFor":"step 2","reserveUSD":1}\n{"settledFor":"step 2","settledUSD":1}\n',
+  );
 });
 
 test('it cuts a torn last record from the checks file before it resumes, and keeps the reservation', async () => {
@@ -481,7 +483,9 @@ test('it cuts a torn last record from the checks file before it resumes, and kee
     'cut a torn last line from an output file\nchecked 0 pairs, skipped 0, spent $0.5000 in total\n',
   );
 
-  expect(checks).toBe('{"reservedFor":"case 2/3","reserveUSD":0.5}\n');
+  expect(checks).toBe(
+    '{"reservedFor":"case 2/3","reserveUSD":0.5}\n{"settledFor":"case 2/3","settledUSD":0.5}\n',
+  );
 });
 
 test('it scores a labels file whose last record lost only its newline', async () => {
@@ -595,6 +599,7 @@ test.each([
   ['check', '--limit', '2.5', '--limit takes a whole number of 0 or more, not 2.5'],
   ['check', '--concurrency', '0', '--concurrency takes a whole number of 1 or more, not 0'],
   ['label', '--concurrency', 'two', '--concurrency takes a whole number of 1 or more, not two'],
+  ['check', '--reserve', '0', '--reserve takes a dollar amount above 0, not 0'],
 ])('it refuses %s with %s %s before it reads any file', (command, flag, value, message) => {
   const child = Bun.spawnSync([
     'bun',
@@ -605,6 +610,45 @@ test.each([
 
   expect(child.exitCode).toBe(1);
   expect(child.stderr.toString()).toInclude(message);
+});
+
+test('it refuses a reservation below the most one check can cost and writes nothing', async () => {
+  const ctx = await setupTest();
+
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const outPath = join(ctx.directory, 'checks.jsonl');
+
+  await writeFile(
+    casesPath,
+    '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
+  );
+
+  const child = Bun.spawnSync(
+    [
+      'bun',
+      ctx.entry,
+      'check',
+      '--cases',
+      casesPath,
+      '--out',
+      outPath,
+      '--home',
+      join(ctx.directory, 'home'),
+      '--reserve',
+      '0.1',
+      '--base-url',
+      'http://127.0.0.1:9',
+    ],
+    { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' } },
+  );
+
+  expect(child.exitCode).toBe(1);
+
+  expect(child.stderr.toString()).toMatch(
+    /a reservation of \$0\.1000 is below \$\d+\.\d{4}, the most one call of this run can cost/u,
+  );
+
+  expect(existsSync(outPath)).toBe(false);
 });
 
 test('it refuses an unknown command', () => {

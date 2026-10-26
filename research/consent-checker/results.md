@@ -44,9 +44,10 @@ The steps live in these files:
 - [run-paid-query.ts](consent/run-paid-query.ts) runs one query and keeps the cost its result
   reports, a failed result included, because the check guest's own loop drops the cost of a failure.
 - [build-ledger.ts](consent/build-ledger.ts) reads a run's spend from its output file. A run appends
-  a reservation before each call, and a reservation that no record settles counts in full. That
-  reservation is an estimate of a cost nobody recorded: a crashed call that cost more than its
-  reservation counts short, and a reservation of 0 counts a crashed call as free.
+  a reservation before each call, and a reservation that no record settles counts in full. Each
+  reservation holds at least the most one call of the run can cost, and a run refuses a `--reserve`
+  below that. A resumed run first settles each reservation that a crash left open at its reserved
+  amount, then runs the call again under a new reservation, so a crashed call counts twice.
 - [build-label-record.ts](consent/build-label-record.ts) and
   [build-check-record.ts](consent/build-check-record.ts) turn each reply into the record a run
   appends.
@@ -145,6 +146,13 @@ call can be the very action the turn asked for, so those 38 pairs count only in 
 | Total    | 577   | $3.6413 |
 
 The checker's 440 calls include the 38 swapped pairs of the earlier build.
+
+Each query runs under two caps that this spike chose rather than measured: 32,000 output tokens for
+each request, and 3 requests for each query, structured-output retries included. The recorded run
+kept only the cost that each result reported, so it holds no token counts to measure them against. A
+check that needs more is cut off and recorded as a failed call, and the recorded run had no failed
+check. Under those caps one call costs at most about $1.74 for a Sonnet 5.5 check and $3.48 for an
+Opus 5.5 label, and a run reserves that much before each call.
 
 ## Untested
 

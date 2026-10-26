@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { buildCheckOptions } from '../../../guests/conversation/src/build-check-options.ts';
 // @boundaries-ignore a spike imports the code it measures
 import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
+import { queryLimits } from './types.ts';
 
 // A failed reply keeps the cost its result reported, and a query that ended with no result has no
 // known cost.
@@ -41,7 +42,19 @@ export async function runPaidQuery(
   request: CheckRequest,
   deps: PaidQueryDependencies,
 ): Promise<PaidReply> {
-  const options = buildCheckOptions(request, deps.env);
+  const checkOptions = buildCheckOptions(request, deps.env);
+
+  // The check guest sets no cap on requests or output, so a reservation could hold no most-it-can-cost
+  // without these. The CLI reads its output cap from the environment, and counts each
+  // structured-output retry as a turn.
+  const options = {
+    ...checkOptions,
+    maxTurns: queryLimits.requestCap,
+    env: {
+      ...checkOptions.env,
+      CLAUDE_CODE_MAX_OUTPUT_TOKENS: String(queryLimits.maxOutputTokens),
+    },
+  };
 
   await deps.createDirectory(options.cwd ?? '');
 

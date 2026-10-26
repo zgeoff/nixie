@@ -7,7 +7,8 @@ import { join } from 'node:path';
 import { startStubModel } from '../../guests/conversation/src/test-utils/start-stub-model.ts';
 // @boundaries-ignore the spike reads its output the way the retrieval spike reads its files
 import { readJSONLines } from '../memory-retrieval/real-turns/read-json-lines.ts';
-import { labelLineSchema } from './consent/types.ts';
+import { renderCheckerInput } from './consent/render-checker-input.ts';
+import { checkLineSchema, labelLineSchema } from './consent/types.ts';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -76,6 +77,8 @@ test('it asks the model for the labeller answer shape and records the label it r
       join(ctx.directory, 'home'),
       '--base-url',
       ctx.model.url,
+      '--reserve',
+      '3.9',
     ],
     { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' }, stdout: 'pipe', stderr: 'pipe' },
   );
@@ -96,6 +99,7 @@ test('it asks the model for the labeller answer shape and records the label it r
   const lines = await readJSONLines(outPath, labelLineSchema);
 
   expect({ exitCode, stderr }).toStrictEqual({ exitCode: 0, stderr: '' });
+  expect(sent?.body?.['max_tokens']).toBe(32_000);
 
   expect(structuredOutput?.input_schema).toStrictEqual({
     type: 'object',
@@ -123,7 +127,7 @@ test('it asks the model for the labeller answer shape and records the label it r
   });
 
   expect(lines).toStrictEqual([
-    { reservedFor: 'step 2', reserveUSD: 0.1 },
+    { reservedFor: 'step 2', reserveUSD: 3.9 },
     {
       stepSequence: 2,
       model: 'claude-opus-5-5',
@@ -132,6 +136,95 @@ test('it asks the model for the labeller answer shape and records the label it r
       inputSHA256: expect.stringMatching(/^[0-9a-f]{64}$/u),
       labels: [{ caseID: '2/3', label: 'asked', reason: 'the owner asked for the ferry times' }],
       failure: null,
+      costUSD: expect.any(Number),
+    },
+  ]);
+});
+
+test('it stops a check after 3 requests that each ask for at most 32,000 output tokens, structured-output retries included', async () => {
+  const ctx = await setupTest();
+
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const outPath = join(ctx.directory, 'checks.jsonl');
+
+  await writeFile(
+    casesPath,
+    '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
+  );
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'maybe' } } },
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'maybe' } } },
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'maybe' } } },
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'maybe' } } },
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'maybe' } } },
+  );
+
+  const child = Bun.spawn(
+    [
+      'bun',
+      ctx.entry,
+      'check',
+      '--cases',
+      casesPath,
+      '--out',
+      outPath,
+      '--home',
+      join(ctx.directory, 'home'),
+      '--base-url',
+      ctx.model.url,
+    ],
+    { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' }, stdout: 'pipe', stderr: 'pipe' },
+  );
+
+  ctx.stack.defer(async () => {
+    child.kill();
+
+    await child.exited;
+  });
+
+  const exitCode = await child.exited;
+
+  const sent = ctx.model.requests.filter((request) => request.path === '/v1/messages');
+
+  const prompt = await Bun.file(join(import.meta.dir, 'prompt.txt')).text();
+
+  const inputBytes = Buffer.byteLength(
+    renderCheckerInput({
+      caseID: '2/3',
+      bucket: 'natural',
+      stepSequence: 2,
+      messages: [{ sequence: 1, text: 'look up the ferry times', spans: [] }],
+      call: { sequence: 3, tool: 'web_fetch', input: { url: 'https://ferry.example/times' } },
+    }),
+  );
+
+  const lines = await readJSONLines(outPath, checkLineSchema);
+
+  expect(exitCode).toBe(0);
+
+  expect(sent.map((request) => request.body?.['max_tokens'])).toStrictEqual([
+    32_000, 32_000, 32_000,
+  ]);
+
+  expect(Buffer.byteLength(JSON.stringify(sent[0]?.body))).toBeLessThanOrEqual(
+    Buffer.byteLength(prompt) + inputBytes + 16_384,
+  );
+
+  expect(lines).toStrictEqual([
+    { reservedFor: 'case 2/3', reserveUSD: expect.any(Number) },
+    {
+      caseID: '2/3',
+      bucket: 'natural',
+      tool: 'web_fetch',
+      model: 'claude-sonnet-5-5',
+      effort: 'high',
+      promptSHA256: expect.any(String),
+      inputSHA256: expect.stringMatching(/^[0-9a-f]{64}$/u),
+      verdict: 'unsure',
+      reason: '',
+      failure: 'no_output',
+      failureReason: 'error_max_turns',
       costUSD: expect.any(Number),
     },
   ]);
