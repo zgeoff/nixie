@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.48.0](https://github.com/zgeoff/nixie/compare/v0.47.0...v0.48.0) (2026-10-26)
+
+
+### Features
+
+* **research:** measure the consent checker on real messages ([#669](https://github.com/zgeoff/nixie/issues/669)) ([8f70a9b](https://github.com/zgeoff/nixie/commit/8f70a9be49a7018099c563aa8c0cb75ec774034d))
+
+
+### Bug Fixes
+
+* **tasks:** open no wait for a question to a task on its own schedule ([#662](https://github.com/zgeoff/nixie/issues/662)) ([ae887e2](https://github.com/zgeoff/nixie/commit/ae887e27a38aa0690032ad74ea6dd3e17851cb22))
+
 ## [0.47.0](https://github.com/zgeoff/nixie/compare/v0.46.0...v0.47.0) (2026-10-25)
 
 
