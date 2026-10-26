@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { systemClock } from '@heynixie/clock';
 import {
   readRecords,
   runProjectionRebuild,
@@ -22,7 +23,7 @@ async function setupTest() {
 
   const registry = buildToolRegistry(
     buildMemoryTools(memory.store, {
-      clock: { now: () => Date.now() },
+      clock: systemClock,
       ownerName: null,
       agentName: null,
       defaultZone: 'UTC',
