@@ -305,6 +305,52 @@ test('it runs a case again when the file holds only a check with no answer', asy
   expect(result.costUSD).toBe(0.76);
 });
 
+test('it runs a case again after a crash and counts both the crashed reservation and the rerun', async () => {
+  const ctx = setupTest();
+
+  const runCheck = mock<(request: CheckRequest) => Promise<PaidReply>>(() =>
+    Promise.resolve({
+      kind: 'answer',
+      output: { reason: 'the owner asked to pin it', verdict: 'asserted' },
+      costUSD: 0.125,
+      durationMs: 900,
+      apiMs: 800,
+    }),
+  );
+
+  const result = await runChecks({
+    cases: [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        stepSequence: 2,
+        messages: [{ sequence: 1, text: 'pin the dentist note', spans: [] }],
+        call: { sequence: 3, tool: 'memory.pin', input: { id: 'M5' } },
+      },
+    ],
+    done: [{ reservedFor: 'case 2/3', reserveUSD: 0.25 }],
+    appendReservation: () => Promise.resolve(),
+    appendRecord: ctx.appendRecord,
+    reserveUSD: 0.5,
+    profile: {
+      model: 'claude-sonnet-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'high',
+      authHeader: 'bearer',
+    },
+    systemPrompt: 'You check one tool call.',
+    promptSHA256: 'hash-a',
+    otherSpentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 1,
+    runCheck,
+  });
+
+  expect(runCheck).toHaveBeenCalledTimes(1);
+  expect(result.costUSD).toBe(0.375);
+});
+
 test('it skips the cases the output file already holds and counts their spend', async () => {
   const ctx = setupTest();
 
