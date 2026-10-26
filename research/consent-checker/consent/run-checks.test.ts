@@ -135,8 +135,22 @@ test('it records a call with no answer with its cost and stops the run', async (
   });
 
   expect(result.isStoppedByFailure).toBe(true);
-  expect(ctx.appendRecord.mock.calls).toMatchObject([
-    [{ failure: 'no_output', failureReason: 'the answer held no output', costUSD: 0.75 }],
+  expect(ctx.appendRecord.mock.calls).toStrictEqual([
+    [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        tool: 'memory.pin',
+        model: 'claude-sonnet-5-5',
+        effort: 'high',
+        promptSHA256: 'hash-a',
+        verdict: 'unsure',
+        reason: '',
+        failure: 'no_output',
+        failureReason: 'the answer held no output',
+        costUSD: 0.75,
+      },
+    ],
   ]);
 });
 
@@ -166,8 +180,22 @@ test('it keeps the reason a failed query gave in its record and in the result', 
   });
 
   expect(result.failureReason).toBe('error_max_turns');
-  expect(ctx.appendRecord.mock.calls).toMatchObject([
-    [{ failure: 'no_output', failureReason: 'error_max_turns', costUSD: 0 }],
+  expect(ctx.appendRecord.mock.calls).toStrictEqual([
+    [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        tool: 'memory.pin',
+        model: 'claude-sonnet-5-5',
+        effort: 'high',
+        promptSHA256: 'hash-a',
+        verdict: 'unsure',
+        reason: '',
+        failure: 'no_output',
+        failureReason: 'error_max_turns',
+        costUSD: 0,
+      },
+    ],
   ]);
 });
 
@@ -247,7 +275,22 @@ test('it records an unreadable answer as unsure', async () => {
     runCheck: async () => ({ kind: 'answer', output: { verdict: 'yes' }, costUSD: 0.01, durationMs: 900, apiMs: 800 }),
   });
 
-  expect(ctx.appendRecord.mock.calls).toMatchObject([[{ verdict: 'unsure', failure: 'unreadable', costUSD: 0.01 }]]);
+  expect(ctx.appendRecord.mock.calls).toStrictEqual([
+    [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        tool: 'memory.pin',
+        model: 'claude-sonnet-5-5',
+        effort: 'high',
+        promptSHA256: 'hash-a',
+        verdict: 'unsure',
+        reason: 'the answer was unreadable',
+        failure: 'unreadable',
+        costUSD: 0.01,
+      },
+    ],
+  ]);
 });
 
 test('it skips the cases the output file already holds and counts their spend', async () => {

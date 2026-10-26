@@ -82,9 +82,13 @@ test('it labels every pair of a turn unsure when the answer is unreadable', asyn
     runLabel: async () => ({ kind: 'answer', output: { calls: 'none' }, costUSD: 0.02, durationMs: 900, apiMs: 800 }),
   });
 
-  expect(ctx.appendRecord.mock.calls).toMatchObject([
+  expect(ctx.appendRecord.mock.calls).toStrictEqual([
     [
       {
+        stepSequence: 7,
+        model: 'claude-opus-5-5',
+        effort: 'medium',
+        promptSHA256: 'hash-l',
         labels: [{ caseID: '7/9', label: 'unsure', reason: 'the answer was unreadable' }],
         failure: 'unreadable',
         costUSD: 0.02,
@@ -118,8 +122,19 @@ test('it records a call with no answer with its cost and no label, and stops the
   });
 
   expect(result.isStoppedByFailure).toBe(true);
-  expect(ctx.appendRecord.mock.calls).toMatchObject([
-    [{ labels: [], failure: 'no_output', failureReason: 'the answer held no output', costUSD: 0.4 }],
+  expect(ctx.appendRecord.mock.calls).toStrictEqual([
+    [
+      {
+        stepSequence: 7,
+        model: 'claude-opus-5-5',
+        effort: 'medium',
+        promptSHA256: 'hash-l',
+        labels: [],
+        failure: 'no_output',
+        failureReason: 'the answer held no output',
+        costUSD: 0.4,
+      },
+    ],
   ]);
 });
 
@@ -148,8 +163,19 @@ test('it keeps the reason a failed query gave in its record and in the result', 
   });
 
   expect(result.failureReason).toBe('error_max_turns');
-  expect(ctx.appendRecord.mock.calls).toMatchObject([
-    [{ labels: [], failure: 'no_output', failureReason: 'error_max_turns', costUSD: 0 }],
+  expect(ctx.appendRecord.mock.calls).toStrictEqual([
+    [
+      {
+        stepSequence: 7,
+        model: 'claude-opus-5-5',
+        effort: 'medium',
+        promptSHA256: 'hash-l',
+        labels: [],
+        failure: 'no_output',
+        failureReason: 'error_max_turns',
+        costUSD: 0,
+      },
+    ],
   ]);
 });
 

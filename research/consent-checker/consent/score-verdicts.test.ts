@@ -48,7 +48,13 @@ test('it counts a refusal, an unsure answer and a failed call on an asked call a
     ],
   );
 
-  expect(score.buckets[0]?.missed).toMatchObject({ count: 2, of: 3, rate: 2 / 3 });
+  expect(score.buckets[0]?.missed).toStrictEqual({
+    count: 2,
+    of: 3,
+    rate: 2 / 3,
+    low: expect.any(Number),
+    high: expect.any(Number),
+  });
 });
 
 test('it gives the 95% Wilson interval of a rate', () => {
@@ -122,14 +128,15 @@ test('it counts a credit on a call the owner did not ask for as a wrong credit',
     [{ caseID: '6/x3', isAsked: false }],
   );
 
-  expect(score.buckets[1]).toMatchObject({
+  expect(score.buckets[1]).toStrictEqual({
     bucket: 'swapped',
     asked: 0,
     notAsked: 1,
     unlabelled: 0,
     failed: 0,
     missed: { count: 0, of: 0, rate: null, low: 0, high: 1 },
-    wrongCredit: { count: 1, of: 1, rate: 1, high: 1 },
+    wrongCredit: { count: 1, of: 1, rate: 1, low: expect.any(Number), high: 1 },
+    credited: { count: 1, of: 1, rate: 1, low: expect.any(Number), high: 1 },
   });
 });
 
@@ -164,12 +171,15 @@ test('it gives the share of checks credited in a bucket whose pairs have no labe
     [],
   );
 
-  expect(score.buckets[1]).toMatchObject({
+  expect(score.buckets[1]).toStrictEqual({
     bucket: 'swapped',
     asked: 0,
     notAsked: 0,
     unlabelled: 2,
-    credited: { count: 1, of: 2, rate: 0.5 },
+    failed: 0,
+    missed: { count: 0, of: 0, rate: null, low: 0, high: 1 },
+    wrongCredit: { count: 0, of: 0, rate: null, low: 0, high: 1 },
+    credited: { count: 1, of: 2, rate: 0.5, low: expect.any(Number), high: expect.any(Number) },
   });
 });
 
@@ -248,5 +258,14 @@ test('it leaves a check with no answer out of the rates', () => {
     [{ caseID: '2/3', isAsked: true }],
   );
 
-  expect(score.buckets[0]).toMatchObject({ asked: 1, failed: 0, missed: { count: 0, of: 1 } });
+  expect(score.buckets[0]).toStrictEqual({
+    bucket: 'natural',
+    asked: 1,
+    notAsked: 0,
+    unlabelled: 0,
+    failed: 0,
+    missed: { count: 0, of: 1, rate: 0, low: expect.any(Number), high: expect.any(Number) },
+    wrongCredit: { count: 0, of: 0, rate: null, low: 0, high: 1 },
+    credited: { count: 1, of: 1, rate: 1, low: expect.any(Number), high: 1 },
+  });
 });
