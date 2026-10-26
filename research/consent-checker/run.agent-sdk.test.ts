@@ -10,15 +10,19 @@ import { readJSONLines } from '../memory-retrieval/real-turns/read-json-lines.ts
 import { labelLineSchema } from './consent/types.ts';
 
 async function setupTest() {
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
   const directory = await mkdtemp(join(tmpdir(), 'consent-run-sdk-'));
 
-  onTestFinished(() => rm(directory, { recursive: true, force: true }));
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
 
   const model = startStubModel();
 
-  onTestFinished(() => model.stop());
+  stack.defer(() => model.stop());
 
-  return { directory, model, entry: join(import.meta.dir, 'run.ts') };
+  return { directory, model, stack, entry: join(import.meta.dir, 'run.ts') };
 }
 
 test('it asks the model for the labeller answer shape and records the label it returns', async () => {
@@ -75,6 +79,12 @@ test('it asks the model for the labeller answer shape and records the label it r
     ],
     { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' }, stdout: 'pipe', stderr: 'pipe' },
   );
+
+  ctx.stack.defer(async () => {
+    child.kill();
+
+    await child.exited;
+  });
 
   const exitCode = await child.exited;
 
