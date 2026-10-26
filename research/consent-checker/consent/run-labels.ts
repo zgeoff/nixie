@@ -9,7 +9,7 @@ import { labellerOutputSchema } from './types.ts';
 export interface LabelRun {
   turns: readonly LabelTurn[];
   done: readonly LabelRecord[];
-  outPath: string;
+  appendRecord: (record: LabelRecord) => Promise<void>;
   profile: CheckRequest['profile'];
   systemPrompt: string;
   promptSHA256: string;
@@ -24,9 +24,9 @@ export interface LabelRunResult extends QueueResult {
   skipped: number;
 }
 
-// Runs the labeller on each turn the output file lacks, appending one record per turn. A rerun
-// skips the turns the file holds an answer for, and refuses a file whose records hold another model, effort or
-// prompt. One budget covers the file's own spend and the spend of the spike's other calls.
+// Runs the labeller on each turn the done records lack, appending one record per turn. A rerun skips
+// the turns the done records hold an answer for, and refuses done records of another model, effort
+// or prompt. One budget covers the done records' spend and the spend of the spike's other calls.
 export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
   const mismatch = run.done.find(
     (record) =>
@@ -37,7 +37,7 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
 
   if (mismatch !== undefined) {
     throw new Error(
-      `${run.outPath} holds a run of ${mismatch.model} at ${mismatch.effort} effort with prompt ${mismatch.promptSHA256}`,
+      `the output file holds a run of ${mismatch.model} at ${mismatch.effort} effort with prompt ${mismatch.promptSHA256}`,
     );
   }
 
@@ -47,7 +47,7 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
   const items = run.turns.filter((turn) => !doneSteps.has(turn.stepSequence));
   const result = await runBudgetedQueue({
     items,
-    outPath: run.outPath,
+    appendOutput: run.appendRecord,
     spentUSD: run.otherSpentUSD + run.done.reduce((sum, record) => sum + record.costUSD, 0),
     budgetUSD: run.budgetUSD,
     limit: run.limit,

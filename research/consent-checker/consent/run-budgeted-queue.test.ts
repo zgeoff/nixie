@@ -1,23 +1,12 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { expect, mock, test } from 'bun:test';
 import { runBudgetedQueue } from './run-budgeted-queue.ts';
 
-async function setupTest() {
-  const dir = await mkdtemp(join(tmpdir(), 'consent-queue-'));
-
-  onTestFinished(() => rm(dir, { recursive: true, force: true }));
-
-  return { outPath: join(dir, 'out.jsonl') };
-}
-
-test('it appends each output as one line and adds its cost to the spend', async () => {
-  const ctx = await setupTest();
+test('it appends each output and adds its cost to the spend', async () => {
+  const appendOutput = mock(async (_output: { item: string; costUSD: number; failure: string | null }) => {});
 
   const result = await runBudgetedQueue({
     items: ['a', 'b'],
-    outPath: ctx.outPath,
+    appendOutput,
     spentUSD: 0.5,
     budgetUSD: 4,
     limit: null,
@@ -26,17 +15,16 @@ test('it appends each output as one line and adds its cost to the spend', async 
   });
 
   expect(result).toStrictEqual({ ran: 2, costUSD: 1, isStoppedAtBudget: false, isStoppedByFailure: false });
-  expect(await readFile(ctx.outPath, 'utf8')).toBe(
-    '{"item":"a","costUSD":0.25,"failure":null}\n{"item":"b","costUSD":0.25,"failure":null}\n',
-  );
+  expect(appendOutput.mock.calls).toStrictEqual([
+    [{ item: 'a', costUSD: 0.25, failure: null }],
+    [{ item: 'b', costUSD: 0.25, failure: null }],
+  ]);
 });
 
 test('it starts no item once the spend reaches the budget', async () => {
-  const ctx = await setupTest();
-
   const result = await runBudgetedQueue({
     items: ['a', 'b'],
-    outPath: ctx.outPath,
+    appendOutput: async () => {},
     spentUSD: 0,
     budgetUSD: 0.5,
     limit: null,
@@ -48,12 +36,11 @@ test('it starts no item once the spend reaches the budget', async () => {
 });
 
 test('it starts no item when the spend before the run already reaches the budget', async () => {
-  const ctx = await setupTest();
   const runItem = mock(async (item: string) => ({ item, costUSD: 0.1, failure: null }));
 
   const result = await runBudgetedQueue({
     items: ['a'],
-    outPath: ctx.outPath,
+    appendOutput: async () => {},
     spentUSD: 4,
     budgetUSD: 4,
     limit: null,
@@ -66,11 +53,9 @@ test('it starts no item when the spend before the run already reaches the budget
 });
 
 test('it starts no more items than the limit', async () => {
-  const ctx = await setupTest();
-
   const result = await runBudgetedQueue({
     items: ['a', 'b', 'c'],
-    outPath: ctx.outPath,
+    appendOutput: async () => {},
     spentUSD: 0,
     budgetUSD: 4,
     limit: 2,
@@ -82,12 +67,12 @@ test('it starts no more items than the limit', async () => {
 });
 
 test('it keeps the cost of an output with no answer and stops the run', async () => {
-  const ctx = await setupTest();
   const runItem = mock(async (item: string) => ({ item, costUSD: 0.75, failure: 'no_output' }));
+  const appendOutput = mock(async (_output: { item: string; costUSD: number; failure: string | null }) => {});
 
   const result = await runBudgetedQueue({
     items: ['a', 'b'],
-    outPath: ctx.outPath,
+    appendOutput,
     spentUSD: 0,
     budgetUSD: 4,
     limit: null,
@@ -97,5 +82,5 @@ test('it keeps the cost of an output with no answer and stops the run', async ()
 
   expect(result).toStrictEqual({ ran: 0, costUSD: 0.75, isStoppedAtBudget: false, isStoppedByFailure: true });
   expect(runItem).toHaveBeenCalledTimes(1);
-  expect(await readFile(ctx.outPath, 'utf8')).toBe('{"item":"a","costUSD":0.75,"failure":"no_output"}\n');
+  expect(appendOutput.mock.calls).toStrictEqual([[{ item: 'a', costUSD: 0.75, failure: 'no_output' }]]);
 });

@@ -13,7 +13,7 @@
 // does, and one budget covers the spend in both output files.
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
@@ -113,7 +113,7 @@ async function runLabelCommand(): Promise<void> {
   const result = await runLabels({
     turns: buildLabelTurns(records, cases),
     done: existsSync(outPath) ? await readJSONLines(outPath, labelRecordSchema) : [],
-    outPath,
+    appendRecord: makeAppendJSONLine(outPath),
     profile: buildProfile(labellerProfile),
     systemPrompt,
     promptSHA256: createHash('sha256').update(systemPrompt).digest('hex'),
@@ -142,7 +142,7 @@ async function runCheckCommand(): Promise<void> {
   const result = await runChecks({
     cases: await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema),
     done: existsSync(outPath) ? await readJSONLines(outPath, checkRecordSchema) : [],
-    outPath,
+    appendRecord: makeAppendJSONLine(outPath),
     profile: buildProfile(checkerProfile),
     systemPrompt,
     promptSHA256: createHash('sha256').update(systemPrompt).digest('hex'),
@@ -156,6 +156,10 @@ async function runCheckCommand(): Promise<void> {
       (result.isStoppedAtBudget ? `, stopped at the $${values.budget} budget` : '') +
       (result.isStoppedByFailure ? ', stopped because a call got no answer from the model API' : ''),
   );
+}
+
+function makeAppendJSONLine(path: string): (value: unknown) => Promise<void> {
+  return (value) => appendFile(path, `${JSON.stringify(value)}\n`, { mode: 0o600 });
 }
 
 async function buildModelEnv(): Promise<Record<string, string | undefined>> {
