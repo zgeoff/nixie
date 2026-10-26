@@ -81,7 +81,8 @@ what nixie itself wrote, and a record whose key is gone shows as a gap. Each pag
 cap and returns a cursor, because a span over a long task holds thousands of records and a moment
 gathers reflections over time. The first page holds the note, the reflections follow under the same
 cursor, and then the records. A single reflection or record larger than a page arrives cut to fit
-it.
+it. Every page repeats the title, so a title long enough to crowd out the rest of the page arrives
+cut as well.
 
 The records of a moment tool call hold references only: moment IDs, versions and event IDs. Each
 call record leaves out the title, the reflection and the search words, and each result record lists
