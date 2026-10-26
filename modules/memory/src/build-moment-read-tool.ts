@@ -2,7 +2,8 @@ import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import type { MomentStore } from './build-moment-store';
-import type { MomentCursor, MomentRead } from './read-moment';
+import type { MomentCursor } from './pick-moment-page';
+import type { MomentRead } from './read-moment';
 import type { MomentSpanEntry } from './read-moment-span-page';
 
 const readArguments = z.object({ momentID: z.string(), after: z.string().optional() });
