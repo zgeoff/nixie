@@ -52,6 +52,32 @@ test('it starts no item when the spend before the run already reaches the budget
   expect(runItem).not.toHaveBeenCalled();
 });
 
+test('it runs as many items at once as its concurrency and no more', async () => {
+  const gate = Promise.withResolvers<void>();
+  const runItem = mock(async (item: string) => {
+    await gate.promise;
+
+    return { item, costUSD: 0.1, failure: null };
+  });
+
+  const running = runBudgetedQueue({
+    items: ['a', 'b', 'c'],
+    appendOutput: async () => {},
+    spentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 2,
+    runItem,
+  });
+  const startedBeforeRelease = runItem.mock.calls.map(([item]) => item);
+
+  gate.resolve();
+  await running;
+
+  expect(startedBeforeRelease).toStrictEqual(['a', 'b']);
+  expect(runItem).toHaveBeenCalledTimes(3);
+});
+
 test('it starts no more items than the limit', async () => {
   const result = await runBudgetedQueue({
     items: ['a', 'b', 'c'],
