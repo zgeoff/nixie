@@ -244,7 +244,7 @@ async function readSpentUSD(
 async function printScore(): Promise<void> {
   const cases = await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema);
   const labelRecords = await readJSONLines(requireFlag(values.labels, '--labels'), labelRecordSchema);
-  const { labels, unsure } = buildLabels(cases, labelRecords);
+  const { labels, unsure } = buildLabels(labelRecords);
   const allChecks = await readJSONLines(requireFlag(values.checks, '--checks'), checkRecordSchema);
   const caseIDs = new Set(cases.map((consentCase) => consentCase.caseID));
   // A check of a pair that a later build of the cases dropped still counts in the spend.
@@ -262,6 +262,7 @@ async function printScore(): Promise<void> {
     );
     console.log(`  miss rate ${formatRate(bucket.missed)}`);
     console.log(`  wrong-credit rate ${formatRate(bucket.wrongCredit)}`);
+    console.log(`  credited ${formatRate(bucket.credited)}`);
   }
 
   const natural = checks.filter((record) => record.bucket === 'natural');
@@ -274,6 +275,19 @@ async function printScore(): Promise<void> {
 
     if (byTool !== undefined) {
       console.log(`natural ${tool}: miss ${formatRate(byTool.missed)}, wrong credit ${formatRate(byTool.wrongCredit)}`);
+    }
+  }
+
+  const swapped = checks.filter((record) => record.bucket === 'swapped');
+
+  for (const tool of [...new Set(swapped.map((record) => record.tool))].toSorted()) {
+    const byTool = scoreVerdicts(
+      swapped.filter((record) => record.tool === tool),
+      labels,
+    ).buckets.find((bucket) => bucket.bucket === 'swapped');
+
+    if (byTool !== undefined) {
+      console.log(`swapped ${tool}: credited ${formatRate(byTool.credited)}`);
     }
   }
 

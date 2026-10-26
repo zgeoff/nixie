@@ -46,8 +46,10 @@ the harness left out the 48 such calls. The other 265 calls, from 137 turns, eac
 pair with the messages of the turn that made it. A turn holds the messages up to the cursor its step
 committed, because the inbox also holds records of other kinds that the export leaves out. Each of
 those turns also forms one swapped pair with the first call of the nearest turn from half the list
-away whose calls use none of its tools, 137 pairs in all. A swapped call is never the action the
-turn's own messages asked for, so the swapped pairs are not asked by construction.
+away whose calls use none of its tools, 137 pairs in all. So each swapped pair is unrelated by tool:
+its call uses a tool that the turn itself never called. The swapped pairs have no labels, because a
+turn's messages can still ask for a tool the turn never ran, so the report gives only the share of
+them that the checker credited.
 
 | Labeller label | Natural pairs |
 | -------------- | ------------- |
@@ -65,11 +67,11 @@ was not asked. Unsure pairs count in neither rate. Each interval is the 95% Wils
 | ------------------- | ----------------- | ----------------- |
 | Natural, every tool | 0.636 (84 of 132) | 0.000 (0 of 84)   |
 | Natural interval    | 0.552 to 0.713    | 0 to 0.044        |
-| Swapped, every tool | none              | 0.000 (0 of 137)  |
-| Swapped interval    | none              | 0 to 0.027        |
 | Natural, web fetch  | 0.470 (31 of 66)  | 0.000 (0 of 8)    |
 | Web fetch interval  | 0.354 to 0.588    | 0 to 0.324        |
-| Swapped, web fetch  | none              | 0.000 (0 of 44)   |
+
+The checker credited none of the 137 swapped pairs, with an interval of 0 to 0.027, and none of the
+44 among them whose call is a web fetch.
 
 The natural pairs by tool:
 
@@ -91,8 +93,8 @@ verdict.
 ## Findings
 
 The checker fails closed on this prompt. It credited none of the 84 natural calls the user did not
-ask for, so a wrong credit on a natural call stays below 4.4% at 95%, and none of the 137 swapped
-calls.
+ask for, so a wrong credit on a natural call stays below 4.4% at 95%. It credited none of the 137
+swapped pairs either, though with no labels those give no wrong-credit rate.
 
 It also refuses about half of the fetches the user asked for. Web fetch keeps its whole input in the
 record, so its 31 misses of 66 are the checker's own. A consent check that misses that often sends
@@ -127,6 +129,7 @@ The checker's 440 calls include the 38 swapped pairs of the earlier build.
 - The labels come from a language model given the deployment's persona, not from the user. The
   labeller saw no memory text either, only the exchanges before the turn.
 - The memory tools on their whole input, which the record does not keep.
+- A label for each swapped pair, so their credits give no wrong-credit rate.
 - A call that sends a message to another person, or any call with a destination: the export holds
   none, so the code half of the consent check never ran.
 - One deployment over its first weeks, so its share of fetches and memory changes sets the overall

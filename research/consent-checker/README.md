@@ -23,6 +23,7 @@ On 402 pairs from 137 turns, the draft checker on Sonnet 5.5 failed closed:
 - Web fetch keeps its whole input in the call record, and there the checker missed 31 of 66 asked
   calls (0.470, interval 0.354 to 0.588) and credited none of 52 calls not asked.
 - It credited none of 137 swapped pairs, each a call from a turn that used none of the turn's tools.
+  The swapped pairs are unrelated by tool and have no labels, so they give no wrong-credit rate.
 - Each memory tool drops its free text from the call record, so the checker judged an item ID with
   no text. Those calls hold most of the misses.
 

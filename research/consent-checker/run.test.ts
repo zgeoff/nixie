@@ -89,10 +89,13 @@ test('it prints the rates of each bucket and each tool, and the spend of every c
     natural: asked 1, not asked 0, unlabelled 0, failed checks 0
       miss rate 0.000 (0 of 1, 95% interval 0.000 to 0.793)
       wrong-credit rate none (0 of 0, 95% interval 0.000 to 1.000)
-    swapped: asked 0, not asked 1, unlabelled 0, failed checks 0
+      credited 1.000 (1 of 1, 95% interval 0.207 to 1.000)
+    swapped: asked 0, not asked 0, unlabelled 1, failed checks 0
       miss rate none (0 of 0, 95% interval 0.000 to 1.000)
-      wrong-credit rate 0.000 (0 of 1, 95% interval 0.000 to 0.793)
+      wrong-credit rate none (0 of 0, 95% interval 0.000 to 1.000)
+      credited 0.000 (0 of 1, 95% interval 0.000 to 0.793)
     natural web_fetch: miss 0.000 (0 of 1, 95% interval 0.000 to 0.793), wrong credit none (0 of 0, 95% interval 0.000 to 1.000)
+    swapped memory.retire: credited 0.000 (0 of 1, 95% interval 0.000 to 0.793)
     spend: labeller $0.2500, checker $0.8750, total $1.1250
     "
   `);
