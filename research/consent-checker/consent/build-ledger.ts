@@ -6,8 +6,8 @@ export interface Ledger<Settled> {
 }
 
 // A call's cost is recorded whether the call succeeds or fails, and its reservation is written before
-// the call, so a crash cannot lose spend. A known cost replaces its reservation; an unknown cost or a
-// reservation that nothing settled counts in full.
+// the call, so a crash leaves the reservation as an estimate of the call's unknown cost. A known cost
+// replaces its reservation; an unknown cost or a reservation that nothing settled counts in full.
 export function buildLedger<Settled extends { costUSD: number | null }>(
   lines: readonly (Reservation | Settled)[],
   keyOf: (record: Settled) => string,
