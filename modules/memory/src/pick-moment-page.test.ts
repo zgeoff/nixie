@@ -12,6 +12,7 @@ test('it reads the span from its start on a first page with no reflections', () 
 
   expect(page).toStrictEqual({
     title: 'The kettle argument',
+    isTitleCut: false,
     isFirstPage: true,
     note: 'Settled for good.',
     isNoteCut: false,
@@ -85,4 +86,31 @@ test('it ends a page at the last reflection that fits, with a cursor on that ref
 
   expect(page.reflections.map((reflection) => reflection.reflectionID)).toStrictEqual(['r1']);
   expect(page.records).toStrictEqual({ kind: 'none', next: { kind: 'reflection', after: 'r1' } });
+});
+
+test('it cuts a title longer than a quarter of the page, and still shows the first reflection whole', () => {
+  const title = 'k'.repeat(24_001);
+
+  const page = pickMomentPage({
+    detail: {
+      title,
+      note: null,
+      reflections: [
+        { reflectionID: 'r1', model: 'claude-test-4', createdAt: 1, writtenAt: 1, text: 'Noise.' },
+      ],
+    },
+    after: null,
+    anchor: null,
+    firstSequence: 12,
+    tokenCap: 6000,
+  });
+
+  expect(page.isTitleCut).toBeTrue();
+
+  expect(page.title).toSatisfy(
+    (cut: string | null) => cut !== null && title.startsWith(cut) && cut.length < 24_001,
+  );
+
+  expect(page.reflections).toMatchObject([{ reflectionID: 'r1', text: 'Noise.', isCut: false }]);
+  expect(page.records).toMatchObject({ kind: 'read', tokenCap: expect.toBeWithin(1500, 6000) });
 });

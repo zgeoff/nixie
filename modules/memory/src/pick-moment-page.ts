@@ -20,6 +20,7 @@ export interface MomentPageInput {
 
 export interface MomentPage {
   readonly title: string | null;
+  readonly isTitleCut: boolean;
   readonly isFirstPage: boolean;
   readonly note: string | null;
   readonly isNoteCut: boolean;
@@ -42,8 +43,14 @@ export function pickMomentPage(input: MomentPageInput): MomentPage {
   const floor = Math.ceil(tokenCap / 4);
   const fullNote = isFirstPage ? detail.note : null;
 
+  // Every page repeats the title, so a title larger than a quarter of the page arrives cut.
+  const title =
+    detail.title === null || measureTitle(detail.title) <= floor
+      ? detail.title
+      : cutTextToFit(detail.title, measureTitle, floor);
+
   const measureHead = (note: string | null) =>
-    countBatchTokens(JSON.stringify({ title: detail.title, note })) + pageOverhead;
+    countBatchTokens(JSON.stringify({ title, note })) + pageOverhead;
 
   // A note larger than the page arrives cut, so the page keeps room for a reflection or a record.
   const note =
@@ -51,7 +58,13 @@ export function pickMomentPage(input: MomentPageInput): MomentPage {
       ? fullNote
       : cutTextToFit(fullNote, measureHead, tokenCap - floor);
 
-  const head = { title: detail.title, isFirstPage, note, isNoteCut: note !== fullNote };
+  const head = {
+    title,
+    isTitleCut: title !== detail.title,
+    isFirstPage,
+    note,
+    isNoteCut: note !== fullNote,
+  };
 
   const shown = pickReflections(detail.reflections, {
     start: getReflectionStart(after, input.anchor, detail.reflections),
@@ -83,6 +96,10 @@ export function pickMomentPage(input: MomentPageInput): MomentPage {
       tokenCap: Math.max(remaining, floor),
     },
   };
+}
+
+function measureTitle(title: string): number {
+  return countBatchTokens(JSON.stringify({ title }));
 }
 
 // The longest start of the text whose measure, as the reader receives it, fits the cap.

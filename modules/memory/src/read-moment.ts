@@ -17,6 +17,7 @@ export interface MomentReadRequest {
 export interface MomentRead {
   readonly row: MomentRow;
   readonly title: string | null;
+  readonly isTitleCut: boolean;
 
   // the note comes on the first page only, so a later page repeats nothing but the title
   readonly isFirstPage: boolean;
