@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createSandboxAdapter } from './create-sandbox-adapter';
+import { readTestBundle } from './test-utils/read-test-bundle';
 import { startTestServer } from './test-utils/start-test-server';
 
 async function setupTest() {
@@ -75,6 +76,22 @@ test('it refuses the test sandbox in a release build', async () => {
       hostEnv: {},
     }),
   ).toThrowWithMessage(Error, 'a release build holds no test sandbox');
+});
+
+test('it bundles the imp adapter and no part of the process double in a release build', async () => {
+  const bundle = await readTestBundle(false);
+
+  expect(bundle.mainText).toInclude(
+    'public egress without the host addresses in imp.host_addresses',
+  );
+
+  expect(bundle.mainText).not.toInclude('the tool relay has no TCP address');
+});
+
+test('it bundles the process double in a test build', async () => {
+  const bundle = await readTestBundle(true);
+
+  expect(bundle.mainText).toInclude('the tool relay has no TCP address');
 });
 
 test("it routes a guest to its run's endpoint in a test build, passing each chunk as it arrives", async () => {

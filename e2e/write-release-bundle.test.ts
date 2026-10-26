@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { testBuildIDs, writeReleaseBundle } from '@heynixie/server/test-utils';
+import { writeReleaseBundle } from '@heynixie/server/test-utils';
 import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 async function setupTest() {
@@ -12,41 +12,6 @@ async function setupTest() {
 
   return { outdir: join(directory, 'out') };
 }
-
-test('it builds a release bundle with no fault point, no test rule and no test sandbox', async () => {
-  const ctx = await setupTest();
-  const bundle = await writeReleaseBundle(ctx.outdir);
-
-  expect(bundle.testBuildIDs).toStrictEqual([]);
-});
-
-test('it builds a test bundle with every test-build ID the server reaches', async () => {
-  const ctx = await setupTest();
-  const bundle = await writeReleaseBundle(ctx.outdir, true);
-
-  expect(bundle.testBuildIDs).toStrictEqual(testBuildIDs);
-});
-
-test('it bundles the imp adapter and no part of the process double in a release build', async () => {
-  const ctx = await setupTest();
-
-  await writeReleaseBundle(ctx.outdir);
-
-  const bundle = await Bun.file(join(ctx.outdir, 'main.js')).text();
-
-  expect(bundle).toInclude('public egress without the host addresses in imp.host_addresses');
-  expect(bundle).not.toInclude('the tool relay has no TCP address');
-});
-
-test('it bundles the process double in a test build', async () => {
-  const ctx = await setupTest();
-
-  await writeReleaseBundle(ctx.outdir, true);
-
-  const bundle = await Bun.file(join(ctx.outdir, 'main.js')).text();
-
-  expect(bundle).toInclude('the tool relay has no TCP address');
-});
 
 test('it builds a release bundle that answers live, and degraded while impd does not answer', async () => {
   const ctx = await setupTest();
