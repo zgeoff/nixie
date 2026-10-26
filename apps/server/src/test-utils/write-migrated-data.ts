@@ -11,6 +11,10 @@ export async function writeMigratedData(dataDir: string): Promise<void> {
   const template = await createRunTemplate({
     name: 'nixie-migrated-data',
     root: repoRoot,
+
+    // a checkout with other database sources would replace a template in a shared folder while a
+    // start in this checkout copies it
+    parentDir: join(repoRoot, 'node_modules', '.cache', 'nixie-run-templates'),
     inputs: ['{libs/db,modules/log}/src/**/*', 'bun.lock'],
     write: async (building) => {
       const writer = await startWriter({ dataDir: building });
