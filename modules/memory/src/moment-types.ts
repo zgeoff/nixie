@@ -3,7 +3,7 @@ import type { MemoryContext } from './types';
 
 export type MomentContext = Pick<MemoryContext, 'log' | 'definitions'>;
 
-type MomentState = 'active' | 'retired' | 'destroying' | 'destroyed';
+export type MomentState = 'active' | 'retired' | 'destroying' | 'destroyed';
 
 interface MomentTable {
   readonly moment_id: string;

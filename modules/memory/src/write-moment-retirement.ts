@@ -1,3 +1,4 @@
+import { canMoveMoment } from './can-move-moment';
 import { momentRetiredCodec } from './moment-retired-codec';
 import type {
   MomentContext,
@@ -23,9 +24,9 @@ function planRetirement(
   state: MomentChangeState,
   isRetired: boolean,
 ): PlannedMomentRecord | MomentRefusal {
-  const fromState = isRetired ? 'active' : 'retired';
+  const toState = isRetired ? 'retired' : 'active';
 
-  if (state.row.state !== fromState) {
+  if (!canMoveMoment(state.row.state, toState)) {
     return 'wrong_state';
   }
 

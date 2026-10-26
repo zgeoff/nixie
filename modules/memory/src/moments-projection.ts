@@ -1,6 +1,8 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
+import { canMoveMoment } from './can-move-moment';
 import type { MomentTables } from './moment-types';
 import type { MomentRecord } from './parse-moment-record';
 import { parseMomentRecord } from './parse-moment-record';
@@ -52,9 +54,24 @@ async function applyMomentRecord(
     return;
   }
 
+  const update = buildMomentUpdate(parsed, record);
+
+  if ('state' in update) {
+    const row = await db
+      .selectFrom('moments')
+      .select('state')
+      .where('moment_id', '=', parsed.momentID)
+      .executeTakeFirstOrThrow();
+
+    invariant(
+      canMoveMoment(row.state, update.state),
+      `a ${parsed.kind} record moves a ${row.state} moment to ${update.state}`,
+    );
+  }
+
   await db
     .updateTable('moments')
-    .set({ updated_sequence: record.sequence, ...buildMomentUpdate(parsed, record) })
+    .set({ updated_sequence: record.sequence, ...update })
     .where('moment_id', '=', parsed.momentID)
     .execute();
 }
