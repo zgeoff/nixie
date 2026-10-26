@@ -78,6 +78,13 @@ stays out of both rates; this run had none. Each interval is the 95% Wilson scor
 The checker credited none of the 137 swapped pairs, with an interval of 0 to 0.027, and none of the
 44 among them whose call is a web fetch.
 
+The run judged one turn on 1 of its 2 messages, because the case builder of that run dropped a
+message that landed after the turn's step started. That turn gave 1 natural pair and 1 swapped pair,
+so each count can move by at most 1. The miss count is 83 to 85 of 131 to 133 asked pairs, the
+natural wrong credits are 0 or 1 of 83 to 85, and the swapped credits are 0 or 1 of 137. The case
+builder in this folder gives the turn both messages, and on the same export it builds every other
+pair unchanged.
+
 The natural pairs by tool:
 
 | Tool              | Asked | Missed | Not asked | Wrongly credited |
