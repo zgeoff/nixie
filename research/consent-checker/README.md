@@ -37,14 +37,18 @@ its memory rates mean anything. The run cost $3.64.
 Run the commands from the spike's directory. `<plain>` is the conversation records of a plain export
 of the data directory, `<persona>` is the deployment's persona, `<cases>`, `<labels>` and `<checks>`
 are files outside the repo, and `<home>` is the model's home directory. `label` and `check` read the
-model credential from `ANTHROPIC_AUTH_TOKEN`, and one spend limit covers both.
+model credential from `ANTHROPIC_AUTH_TOKEN`.
 
 ```bash
 bun run.ts cases --plain <plain> --out <cases>
-bun run.ts label --plain <plain> --cases <cases> --persona <persona> --out <labels> --home <home>
+bun run.ts label --plain <plain> --cases <cases> --persona <persona> --checks <checks> --out <labels> --home <home>
 bun run.ts check --cases <cases> --labels <labels> --out <checks> --home <home>
 bun run.ts score --cases <cases> --labels <labels> --checks <checks>
 ```
+
+One `--budget` in dollars covers both output files when each command gets the other's file, as
+`--checks` and `--labels` above. Each command locks the cases and output files it uses, and stops
+while another run holds one; a crashed run leaves its lock files for you to remove.
 
 The [setup](results.md#setup) gives the models, the data, the pairs and the files behind each step.
 

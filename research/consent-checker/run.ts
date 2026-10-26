@@ -10,7 +10,7 @@
 //
 // `label` and `check` take --model, --effort, --budget and --concurrency too. They read the model
 // credential from ANTHROPIC_AUTH_TOKEN and send it as a bearer token, as a deployment's profile
-// does, and one budget covers the spend in both output files.
+// does, and one budget covers the spend in both output files when each gets the other's file.
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
