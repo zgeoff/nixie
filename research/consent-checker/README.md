@@ -3,8 +3,7 @@
 This spike runs a consent checker over one deployment's own conversation turns. It pairs each tool
 call that needs consent with the messages that started its turn, asks the checker whether those
 messages asked for the call, and scores each verdict against a label for the pair. The checker is
-the check guest that nixie ships, given a draft consent prompt, on the profile that the deployment
-maps to the `checker` role. The
+nixie's check guest with a draft prompt, on the deployment's `checker` profile, and the
 [decision point](../../docs/design/platform/policy/decision-point.md#consent) defines the check.
 
 ## Question
@@ -49,8 +48,6 @@ bun run.ts score --cases <cases> --labels <labels> --checks <checks>
 One `--budget` in dollars covers both output files when each command gets the other's file, as
 `--checks` and `--labels` above. Each command locks the cases and output files it uses, and stops
 while another run holds one; a crashed run leaves its lock files for you to remove.
-
-The [setup](results.md#setup) gives the models, the data, the pairs and the files behind each step.
 
 ## Results
 
