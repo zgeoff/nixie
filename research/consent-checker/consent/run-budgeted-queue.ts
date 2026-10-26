@@ -45,10 +45,15 @@ export async function runBudgetedQueue<Item, Output extends QueueOutput>(
   };
 
   let started = 0;
+  let hasErrored = false;
 
-  const workers = Array.from({ length: queue.concurrency }, async () => {
+  const runWorker = async (): Promise<void> => {
     for (let next = pending.shift(); next !== undefined; next = pending.shift()) {
-      if (result.isStoppedByFailure || (queue.limit !== null && started >= queue.limit)) {
+      if (
+        hasErrored ||
+        result.isStoppedByFailure ||
+        (queue.limit !== null && started >= queue.limit)
+      ) {
         return;
       }
 
@@ -78,9 +83,27 @@ export async function runBudgetedQueue<Item, Output extends QueueOutput>(
 
       result.ran += 1;
     }
-  });
+  };
 
-  await Promise.all(workers);
+  // A worker that throws leaves the others running paid calls, so the run waits for each of them to
+  // append its output before the caller releases the run files.
+  const settled = await Promise.allSettled(
+    Array.from({ length: queue.concurrency }, async () => {
+      try {
+        await runWorker();
+      } catch (error) {
+        hasErrored = true;
+
+        throw error;
+      }
+    }),
+  );
+
+  const rejection = settled.find((outcome) => outcome.status === 'rejected');
+
+  if (rejection !== undefined) {
+    throw rejection.reason;
+  }
 
   return result;
 }

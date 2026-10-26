@@ -1,4 +1,7 @@
+// oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { expect, mock, test } from 'bun:test';
+// @boundaries-ignore a spike imports the repo's condition wait by path
+import { waitForCondition } from '../../../libs/testing/src/wait-for-condition.ts';
 import type { QueueOutput } from './run-budgeted-queue.ts';
 import { runBudgetedQueue } from './run-budgeted-queue.ts';
 import { buildStubHeldRun } from './test-utils/build-stub-held-run.ts';
@@ -89,6 +92,52 @@ test('it runs as many items at once as its concurrency and no more', async () =>
 
   expect(startedBeforeRelease).toStrictEqual(['a', 'b']);
   expect(held.started).toStrictEqual(['a', 'b', 'c']);
+});
+
+test('it lets every running item finish and starts no more before it passes on a failed append', async () => {
+  const failure = new Error('no space left on device');
+  const held = buildStubHeldRun((item: 'one' | 'two' | 'three') => ({
+    item,
+    costUSD: 0.1,
+    failure: null,
+  }));
+
+  const appended: string[] = [];
+
+  const appendAnswers = {
+    one: () => Promise.reject(failure),
+    two: () => Promise.resolve(),
+    three: () => Promise.resolve(),
+  };
+
+  const outcome = Promise.allSettled([
+    runBudgetedQueue({
+      items: ['one', 'two', 'three'],
+      appendOutput: (output) => {
+        appended.push(output.item);
+
+        return appendAnswers[output.item]();
+      },
+      spentUSD: 0,
+      budgetUSD: 4,
+      limit: null,
+      concurrency: 2,
+      runItem: held.run,
+    }),
+  ]);
+
+  held.release('one');
+
+  await waitForCondition(() => appended.includes('one'));
+
+  held.releaseAll();
+
+  const settled = await outcome;
+  const appendedBeforeSettle = [...appended];
+
+  expect(settled).toStrictEqual([{ status: 'rejected', reason: failure }]);
+  expect(appendedBeforeSettle).toStrictEqual(['one', 'two']);
+  expect(held.started).toStrictEqual(['one', 'two']);
 });
 
 test('it starts no more items than the limit', async () => {
