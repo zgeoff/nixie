@@ -451,16 +451,48 @@ test('#memory.destroyMoment refuses a client action ID that another change used,
   expect(read?.title).toBe('The quince tree');
 });
 
-test('#memory.destroyMoment refuses a caller with no session', async () => {
+test.each([
+  ['no session token', undefined],
+  ['a token that no session holds', 'f3a9c1e2b7d84605a1c9e2f3b4d5c6a7'],
+  ['an empty bearer token', ''],
+])('#memory.destroyMoment refuses a caller with %s, and destroys nothing', async (_, token) => {
   const ctx = await setupTest();
 
-  const destroy = buildTestClient(ctx.url).memory.destroyMoment({
+  const [message] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'we planted the quince by the back wall' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The quince tree',
+  });
+
+  invariant(kept.status === 'written');
+
+  const destroy = buildTestClient(ctx.url, token).memory.destroyMoment({
     clientActionID: '7a3e1c52-9d4b-4f0e-b8a6-2c5d9e1f3a74',
-    momentID: 'moment-a',
+    momentID: kept.momentID,
     version: 1,
   });
 
   await destroy.catch(() => {});
 
+  const read = await ctx.memory.moments.read({
+    momentID: kept.momentID,
+    after: null,
+    tokenCap: 1000,
+  });
+
   expect(destroy).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(read?.title).toBe('The quince tree');
 });
