@@ -60,6 +60,7 @@ test('it maps each numbered answer to its pair and marks a pair the answer left 
         model: 'claude-opus-5-5',
         effort: 'medium',
         promptSHA256: 'hash-l',
+        inputSHA256: '3c3867a081e555f572a63aa86b58a9daf1d85d2a28aa9cab83221b4e5caace1b',
         labels: [
           { caseID: '7/8', label: 'asked', reason: 'the owner asked to save it' },
           { caseID: '7/9', label: 'unsure', reason: 'the answer left this call out' },
@@ -267,6 +268,7 @@ test('it records a call with no answer with its cost and no label, and stops the
         model: 'claude-opus-5-5',
         effort: 'medium',
         promptSHA256: 'hash-l',
+        inputSHA256: '58cc29ff2e428550c1280647ca0fce1e5066cfb024fcc08532dd324d95050774',
         labels: [],
         failure: 'no_output',
         failureReason: 'the answer held no output',
@@ -317,6 +319,7 @@ test('it keeps the reason and the cost a failed query gave in its record and in 
         model: 'claude-opus-5-5',
         effort: 'medium',
         promptSHA256: 'hash-l',
+        inputSHA256: '58cc29ff2e428550c1280647ca0fce1e5066cfb024fcc08532dd324d95050774',
         labels: [],
         failure: 'no_output',
         failureReason: 'error_max_turns',
@@ -344,6 +347,7 @@ test('it labels a turn again when the file holds only a record with no answer fo
         model: 'claude-opus-5-5',
         effort: 'medium',
         promptSHA256: 'hash-l',
+        inputSHA256: '58cc29ff2e428550c1280647ca0fce1e5066cfb024fcc08532dd324d95050774',
         labels: [],
         failure: 'no_output',
         costUSD: 0.5,
@@ -401,6 +405,7 @@ test('it skips labelled turns and counts their spend with the other calls', asyn
         model: 'claude-opus-5-5',
         effort: 'medium',
         promptSHA256: 'hash-l',
+        inputSHA256: '58cc29ff2e428550c1280647ca0fce1e5066cfb024fcc08532dd324d95050774',
         labels: [{ caseID: '7/9', label: 'asked', reason: 'the owner asked to pin it' }],
         failure: null,
         costUSD: 0.03,
@@ -434,6 +439,62 @@ test('it skips labelled turns and counts their spend with the other calls', asyn
   });
 });
 
+test('it labels a turn again when its saved labels judged another input under the same step', async () => {
+  const ctx = setupTest();
+
+  const runLabel = mock<(request: CheckRequest) => Promise<PaidReply>>(() =>
+    Promise.resolve({
+      kind: 'answer',
+      output: { calls: [{ call: 1, reason: 'the owner asked to pin it', label: 'asked' }] },
+      costUSD: 0.25,
+      durationMs: 900,
+      apiMs: 800,
+    }),
+  );
+
+  const result = await runLabels({
+    turns: [
+      {
+        stepSequence: 7,
+        earlier: [],
+        messages: [{ sequence: 6, text: 'pin it', spans: [] }],
+        calls: [{ caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } }],
+      },
+    ],
+    done: [
+      {
+        stepSequence: 7,
+        model: 'claude-opus-5-5',
+        effort: 'medium',
+        promptSHA256: 'hash-l',
+        inputSHA256: 'hash-of-an-older-turn',
+        labels: [{ caseID: '7/9', label: 'not_asked', reason: 'the owner asked for nothing' }],
+        failure: null,
+        costUSD: 0.5,
+      },
+    ],
+    appendReservation: () => Promise.resolve(),
+    appendRecord: ctx.appendRecord,
+    reserveUSD: 0,
+    profile: {
+      model: 'claude-opus-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'medium',
+      authHeader: 'bearer',
+    },
+    systemPrompt: 'You label tool calls.',
+    promptSHA256: 'hash-l',
+    otherSpentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 1,
+    runLabel,
+  });
+
+  expect(runLabel).toHaveBeenCalledTimes(1);
+  expect(result.costUSD).toBe(0.75);
+});
+
 test('it refuses an output file that holds a run under another model', () => {
   expect(
     runLabels({
@@ -444,6 +505,7 @@ test('it refuses an output file that holds a run under another model', () => {
           model: 'claude-sonnet-5-5',
           effort: 'medium',
           promptSHA256: 'hash-l',
+          inputSHA256: 'hash-i',
           labels: [],
           failure: null,
           costUSD: 0.03,

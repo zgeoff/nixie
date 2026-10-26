@@ -119,6 +119,7 @@ test('it asks the model for the labeller answer shape and records the label it r
       model: 'claude-opus-5-5',
       effort: 'medium',
       promptSHA256: expect.any(String),
+      inputSHA256: expect.stringMatching(/^[0-9a-f]{64}$/u),
       labels: [{ caseID: '2/3', label: 'asked', reason: 'the owner asked for the ferry times' }],
       failure: null,
       costUSD: expect.any(Number),

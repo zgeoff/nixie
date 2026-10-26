@@ -1,5 +1,6 @@
 // @boundaries-ignore a spike imports the code it measures
 import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
+import { buildLabelFingerprint } from './build-label-fingerprint.ts';
 import { buildLabelRecord } from './build-label-record.ts';
 import { buildLedger } from './build-ledger.ts';
 import { ledgerKeys } from './ledger-keys.ts';
@@ -30,8 +31,9 @@ export interface LabelRunResult extends QueueResult {
   skipped: number;
 }
 
-// A rerun skips the turns the done records hold an answer for, and refuses done records of another
-// model, effort or prompt. One budget covers the done lines' spend and the other calls' spend.
+// A rerun skips the turns the done records hold an answer of the turn's current input for, and
+// refuses done records of another model, effort or prompt. One budget covers the done lines' spend
+// and the other calls' spend.
 export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
   const ledger = buildLedger(run.done, ledgerKeys.label);
 
@@ -48,13 +50,15 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
     );
   }
 
-  const doneSteps = new Set(
+  const doneKeys = new Set(
     ledger.records
       .filter((record) => record.failure !== noOutputFailure)
-      .map((record) => record.stepSequence),
+      .map((record) => `${record.stepSequence} ${record.inputSHA256}`),
   );
 
-  const items = run.turns.filter((turn) => !doneSteps.has(turn.stepSequence));
+  const items = run.turns.filter(
+    (turn) => !doneKeys.has(`${turn.stepSequence} ${buildLabelFingerprint(turn)}`),
+  );
 
   const result = await runBudgetedQueue({
     items,

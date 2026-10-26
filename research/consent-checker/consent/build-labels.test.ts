@@ -9,6 +9,7 @@ test('it takes the labeller label for each pair and drops the pairs it was unsur
         model: 'claude-opus-5-5',
         effort: 'medium',
         promptSHA256: 'hash-l',
+        inputSHA256: 'hash-i',
         labels: [
           { caseID: '7/8', label: 'asked', reason: 'the owner asked to retire it' },
           { caseID: '7/9', label: 'not_asked', reason: 'the owner did not ask to pin it' },

@@ -366,8 +366,16 @@ async function printScore(): Promise<void> {
   await writeTailRepairs([values.labels, values.checks]);
 
   const cases = await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema);
+  const records = await readJSONLines(requireFlag(values.plain, '--plain'), plainRecordSchema);
   const labelLines = await readJSONLines(requireFlag(values.labels, '--labels'), labelLineSchema);
   const checkLines = await readJSONLines(requireFlag(values.checks, '--checks'), checkLineSchema);
 
-  console.log(renderScoreReport({ cases, labelLines, checkLines }));
+  console.log(
+    renderScoreReport({
+      cases,
+      turns: buildLabelTurns(records, cases),
+      labelLines,
+      checkLines,
+    }),
+  );
 }

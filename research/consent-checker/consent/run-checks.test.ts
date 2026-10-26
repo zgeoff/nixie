@@ -66,6 +66,7 @@ test('it appends one record for each case with the parsed verdict and its cost',
         model: 'claude-sonnet-5-5',
         effort: 'high',
         promptSHA256: 'hash-a',
+        inputSHA256: '713bb5c50d2578cc730b50816e8bd32d1e6c1ba6d8ddb57a35480e9aa402cb3c',
         verdict: 'asserted',
         reason: 'the owner asked for the bus times',
         failure: null,
@@ -226,6 +227,7 @@ test('it records a call with no answer with its cost and stops the run', async (
         model: 'claude-sonnet-5-5',
         effort: 'high',
         promptSHA256: 'hash-a',
+        inputSHA256: '45d1ced4084ae4474e7e814a0799a81027d87203d7724bbd0a5f80a60036ed3d',
         verdict: 'unsure',
         reason: '',
         failure: 'no_output',
@@ -280,6 +282,7 @@ test('it keeps the reason and the cost a failed query gave in its record and in 
         model: 'claude-sonnet-5-5',
         effort: 'high',
         promptSHA256: 'hash-a',
+        inputSHA256: '45d1ced4084ae4474e7e814a0799a81027d87203d7724bbd0a5f80a60036ed3d',
         verdict: 'unsure',
         reason: '',
         failure: 'no_output',
@@ -321,6 +324,7 @@ test('it runs a case again when the file holds only a check with no answer', asy
         model: 'claude-sonnet-5-5',
         effort: 'high',
         promptSHA256: 'hash-a',
+        inputSHA256: '45d1ced4084ae4474e7e814a0799a81027d87203d7724bbd0a5f80a60036ed3d',
         verdict: 'unsure',
         reason: '',
         failure: 'no_output',
@@ -424,6 +428,7 @@ test('it skips the cases the output file already holds and counts their spend', 
         model: 'claude-sonnet-5-5',
         effort: 'high',
         promptSHA256: 'hash-a',
+        inputSHA256: '713bb5c50d2578cc730b50816e8bd32d1e6c1ba6d8ddb57a35480e9aa402cb3c',
         verdict: 'asserted',
         reason: 'the owner asked for the bus times',
         failure: null,
@@ -459,6 +464,66 @@ test('it skips the cases the output file already holds and counts their spend', 
   expect(runCheck).not.toHaveBeenCalled();
 });
 
+test('it checks a case again when its saved verdict judged another input under the same ID', async () => {
+  const ctx = setupTest();
+
+  const runCheck = mock<(request: CheckRequest) => Promise<PaidReply>>(() =>
+    Promise.resolve({
+      kind: 'answer',
+      output: { reason: 'the owner asked for the bus times', verdict: 'asserted' },
+      costUSD: 0.25,
+      durationMs: 900,
+      apiMs: 800,
+    }),
+  );
+
+  const result = await runChecks({
+    cases: [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        stepSequence: 2,
+        messages: [{ sequence: 1, text: 'check the bus times', spans: [] }],
+        call: { sequence: 3, tool: 'web_fetch', input: { url: 'https://bus.example/times' } },
+      },
+    ],
+    done: [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        tool: 'web_fetch',
+        model: 'claude-sonnet-5-5',
+        effort: 'high',
+        promptSHA256: 'hash-a',
+        inputSHA256: 'hash-of-an-older-case',
+        verdict: 'not_asserted',
+        reason: 'the owner asked for something else',
+        failure: null,
+        costUSD: 0.5,
+      },
+    ],
+    appendReservation: () => Promise.resolve(),
+    appendRecord: ctx.appendRecord,
+    reserveUSD: 0,
+    profile: {
+      model: 'claude-sonnet-5-5',
+      baseURL: 'https://api.anthropic.com',
+      effort: 'high',
+      authHeader: 'bearer',
+    },
+    systemPrompt: 'You check one tool call.',
+    promptSHA256: 'hash-a',
+    otherSpentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 1,
+    runCheck,
+  });
+
+  expect(runCheck).toHaveBeenCalledTimes(1);
+  expect(result.costUSD).toBe(0.75);
+});
+
 test('it refuses an output file that holds a run under another prompt', () => {
   expect(
     runChecks({
@@ -471,6 +536,7 @@ test('it refuses an output file that holds a run under another prompt', () => {
           model: 'claude-sonnet-5-5',
           effort: 'high',
           promptSHA256: 'hash-old',
+          inputSHA256: 'hash-i',
           verdict: 'asserted',
           reason: 'the owner asked',
           failure: null,

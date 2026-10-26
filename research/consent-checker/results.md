@@ -36,6 +36,11 @@ The steps live in these files:
 - [run-labels.ts](consent/run-labels.ts) and [run-checks.ts](consent/run-checks.ts) run the check
   guest's query options on each turn or pair, stop at the spend limit or at a call the model API
   refuses, and resume a run that stopped.
+- [build-check-fingerprint.ts](consent/build-check-fingerprint.ts) and
+  [build-label-fingerprint.ts](consent/build-label-fingerprint.ts) hash the input each call judged.
+  A resumed run and the score use a saved verdict or label only while its hash matches the input
+  that the current cases give, because a rebuild of the cases can keep an ID and change its
+  messages.
 - [run-paid-query.ts](consent/run-paid-query.ts) runs one query and keeps the cost its result
   reports, a failed result included, because the check guest's own loop drops the cost of a failure.
 - [build-ledger.ts](consent/build-ledger.ts) reads a run's spend from its output file. A run appends

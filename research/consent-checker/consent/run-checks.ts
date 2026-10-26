@@ -1,5 +1,6 @@
 // @boundaries-ignore a spike imports the code it measures
 import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
+import { buildCheckFingerprint } from './build-check-fingerprint.ts';
 import { buildCheckRecord } from './build-check-record.ts';
 import { buildLedger } from './build-ledger.ts';
 import { ledgerKeys } from './ledger-keys.ts';
@@ -30,8 +31,9 @@ export interface CheckRunResult extends QueueResult {
   skipped: number;
 }
 
-// A rerun skips the cases the done records hold a verdict for, and refuses done records of another
-// model, effort or prompt. One budget covers the done lines' spend and the other calls' spend.
+// A rerun skips the cases the done records hold a verdict of the case's current input for, and
+// refuses done records of another model, effort or prompt. One budget covers the done lines' spend
+// and the other calls' spend.
 export async function runChecks(run: CheckRun): Promise<CheckRunResult> {
   const ledger = buildLedger(run.done, ledgerKeys.check);
 
@@ -48,13 +50,15 @@ export async function runChecks(run: CheckRun): Promise<CheckRunResult> {
     );
   }
 
-  const doneIDs = new Set(
+  const doneKeys = new Set(
     ledger.records
       .filter((record) => record.failure !== noOutputFailure)
-      .map((record) => record.caseID),
+      .map((record) => `${record.caseID} ${record.inputSHA256}`),
   );
 
-  const items = run.cases.filter((consentCase) => !doneIDs.has(consentCase.caseID));
+  const items = run.cases.filter(
+    (consentCase) => !doneKeys.has(`${consentCase.caseID} ${buildCheckFingerprint(consentCase)}`),
+  );
 
   const result = await runBudgetedQueue({
     items,

@@ -1,3 +1,4 @@
+import { buildLabelFingerprint } from './build-label-fingerprint.ts';
 import type { PaidReply } from './run-paid-query.ts';
 import type { LabelRecord, LabelTurn, RecordSource } from './types.ts';
 import { emptyAnswerReason, labellerOutputSchema, noOutputFailure } from './types.ts';
@@ -14,6 +15,7 @@ export function buildLabelRecord(
     model: source.model,
     effort: source.effort,
     promptSHA256: source.promptSHA256,
+    inputSHA256: buildLabelFingerprint(turn),
   };
 
   if (reply.kind === 'failed' || reply.output === undefined) {

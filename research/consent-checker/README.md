@@ -42,7 +42,7 @@ model credential from `ANTHROPIC_AUTH_TOKEN`.
 bun run.ts cases --plain <plain> --out <cases>
 bun run.ts label --plain <plain> --cases <cases> --persona <persona> --checks <checks> --out <labels> --home <home>
 bun run.ts check --cases <cases> --labels <labels> --out <checks> --home <home>
-bun run.ts score --cases <cases> --labels <labels> --checks <checks>
+bun run.ts score --plain <plain> --cases <cases> --labels <labels> --checks <checks>
 ```
 
 One `--budget` in dollars covers both runs when each gets the other's output file, as above. `label`

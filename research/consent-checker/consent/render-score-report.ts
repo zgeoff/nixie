@@ -1,35 +1,54 @@
+import { buildCheckFingerprint } from './build-check-fingerprint.ts';
+import { buildLabelFingerprint } from './build-label-fingerprint.ts';
 import { buildLabels } from './build-labels.ts';
 import { buildLedger } from './build-ledger.ts';
 import { ledgerKeys } from './ledger-keys.ts';
 import type { Rate } from './score-verdicts.ts';
 import { scoreVerdicts } from './score-verdicts.ts';
-import type { CheckLine, ConsentCase, LabelLine } from './types.ts';
+import type { CheckLine, ConsentCase, LabelLine, LabelTurn } from './types.ts';
 
 export interface ScoreInput {
   cases: readonly ConsentCase[];
+  turns: readonly LabelTurn[];
   labelLines: readonly LabelLine[];
   checkLines: readonly CheckLine[];
 }
 
+// A record of a pair or a turn that a later build of the cases dropped or changed still counts in
+// the spend, and stays out of the labels and the rates.
 export function renderScoreReport(input: ScoreInput): string {
   const labelLedger = buildLedger(input.labelLines, ledgerKeys.label);
-  const labelRecords = labelLedger.records;
+  const allLabelRecords = labelLedger.records;
+
+  const turnKeys = new Set(
+    input.turns.map((turn) => `${turn.stepSequence} ${buildLabelFingerprint(turn)}`),
+  );
+
+  const labelRecords = allLabelRecords.filter((record) =>
+    turnKeys.has(`${record.stepSequence} ${record.inputSHA256}`),
+  );
+
   const built = buildLabels(labelRecords);
   const labels = built.labels;
   const checkLedger = buildLedger(input.checkLines, ledgerKeys.check);
   const allChecks = checkLedger.records;
 
-  const caseIDs = new Set(input.cases.map((consentCase) => consentCase.caseID));
+  const caseKeys = new Set(
+    input.cases.map((consentCase) => `${consentCase.caseID} ${buildCheckFingerprint(consentCase)}`),
+  );
 
-  // A check of a pair that a later build of the cases dropped still counts in the spend.
-  const checks = allChecks.filter((record) => caseIDs.has(record.caseID));
+  const checks = allChecks.filter((record) =>
+    caseKeys.has(`${record.caseID} ${record.inputSHA256}`),
+  );
+
   const score = scoreVerdicts(checks, labels);
   const labelSpend = labelLedger.spentUSD;
   const checkSpend = checkLedger.spentUSD;
 
   const lines = [
     `labeller: ${built.unsure} natural pairs unsure, ${labelRecords.filter((record) => record.failure !== null).length} failed turns`,
-    `checks of pairs outside the cases: ${allChecks.length - checks.length}`,
+    `label records of turns outside the cases or changed since: ${allLabelRecords.length - labelRecords.length}`,
+    `checks of pairs outside the cases or changed since: ${allChecks.length - checks.length}`,
   ];
 
   for (const bucket of score.buckets) {
