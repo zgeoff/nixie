@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import type { MomentTables } from './moment-types';
+import { readMomentRows } from './test-utils/read-moment-rows';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -456,4 +457,96 @@ test("it lets the owner remove a model's reflection", async () => {
     .executeTakeFirstOrThrow();
 
   expect(reflection.is_removed).toBe(1);
+});
+
+test("it refuses the owner's reflection, and writes no record and no row", async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'never buy the cheap kettle again' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  const before = await readMomentRows(ctx.db);
+
+  const edited = await ctx.memory.store.moments.edit({
+    caller: { kind: 'owner' },
+    target: { momentID: kept.momentID, version: 1 },
+    change: { kind: 'reflection', text: 'I was right about the kettle.' },
+  });
+
+  const after = await readMomentRows(ctx.db);
+  const records = await readRecords(ctx.memory.log, { afterSequence: kept.sequence, limit: 10 });
+
+  expect(edited).toStrictEqual({ status: 'refused', reason: 'model_only' });
+  expect(records).toStrictEqual([]);
+  expect(after).toStrictEqual(before);
+});
+
+test("it refuses a model's removal of a reflection, and writes no record and no row", async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'never buy the cheap kettle again' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  const reflected = await ctx.memory.store.moments.edit({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    target: { momentID: kept.shortID, version: 1 },
+    change: { kind: 'reflection', text: 'Price mattered less than the noise.' },
+  });
+
+  invariant(reflected.status === 'written' && reflected.reflectionID !== undefined);
+
+  const before = await readMomentRows(ctx.db);
+
+  const removed = await ctx.memory.store.moments.edit({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    target: { momentID: kept.shortID, version: 2 },
+    change: { kind: 'reflection_removed', reflectionID: reflected.reflectionID },
+  });
+
+  const after = await readMomentRows(ctx.db);
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: reflected.sequence,
+    limit: 10,
+  });
+
+  expect(removed).toStrictEqual({ status: 'refused', reason: 'owner_only' });
+  expect(records).toStrictEqual([]);
+  expect(after).toStrictEqual(before);
 });
