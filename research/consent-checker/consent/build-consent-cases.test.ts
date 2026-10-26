@@ -129,6 +129,130 @@ test('it pairs each turn with the first call of the turn half the list away', ()
   ]);
 });
 
+test('it never swaps in a call from a turn that used one of the same tools', () => {
+  const built = buildConsentCases([
+    {
+      sequence: 1,
+      recordedAt: '2026-03-02T09:00:00Z',
+      kind: 'owner_message',
+      thread: 'conversation',
+      parent: null,
+      payload: { spans: 'as_sent' },
+      erasable: { status: 'readable', fields: { text: 'look up the ferry times', spans: [] } },
+    },
+    {
+      sequence: 2,
+      recordedAt: '2026-03-02T09:00:01Z',
+      kind: 'task.step_started',
+      thread: 'conversation',
+      parent: null,
+      payload: {},
+      erasable: { status: 'none' },
+    },
+    {
+      sequence: 3,
+      recordedAt: '2026-03-02T09:00:02Z',
+      kind: 'tool_called',
+      thread: 'conversation',
+      parent: null,
+      payload: { tool: 'web_fetch' },
+      erasable: { status: 'readable', fields: { input: { url: 'https://ferry.example/times' } } },
+    },
+    {
+      sequence: 4,
+      recordedAt: '2026-03-02T09:00:03Z',
+      kind: 'task.step_committed',
+      thread: 'conversation',
+      parent: null,
+      payload: { readCursor: 1 },
+      erasable: { status: 'none' },
+    },
+    {
+      sequence: 5,
+      recordedAt: '2026-03-02T10:00:00Z',
+      kind: 'owner_message',
+      thread: 'conversation',
+      parent: null,
+      payload: { spans: 'as_sent' },
+      erasable: { status: 'readable', fields: { text: 'and the ferry times for Sunday', spans: [] } },
+    },
+    {
+      sequence: 6,
+      recordedAt: '2026-03-02T10:00:01Z',
+      kind: 'task.step_started',
+      thread: 'conversation',
+      parent: null,
+      payload: {},
+      erasable: { status: 'none' },
+    },
+    {
+      sequence: 7,
+      recordedAt: '2026-03-02T10:00:02Z',
+      kind: 'tool_called',
+      thread: 'conversation',
+      parent: null,
+      payload: { tool: 'web_fetch' },
+      erasable: { status: 'readable', fields: { input: { url: 'https://ferry.example/sunday' } } },
+    },
+  ]);
+
+  expect(built.counts.swapped).toBe(0);
+});
+
+test('it keeps out of a turn a message after the cursor its step committed', () => {
+  const built = buildConsentCases([
+    {
+      sequence: 1,
+      recordedAt: '2026-03-02T09:00:00Z',
+      kind: 'owner_message',
+      thread: 'conversation',
+      parent: null,
+      payload: { spans: 'as_sent' },
+      erasable: { status: 'readable', fields: { text: 'retire the old gym note', spans: [] } },
+    },
+    {
+      sequence: 2,
+      recordedAt: '2026-03-02T09:00:01Z',
+      kind: 'owner_message',
+      thread: 'conversation',
+      parent: null,
+      payload: { spans: 'as_sent' },
+      erasable: { status: 'readable', fields: { text: 'also save the new hours', spans: [] } },
+    },
+    {
+      sequence: 3,
+      recordedAt: '2026-03-02T09:00:02Z',
+      kind: 'task.step_started',
+      thread: 'conversation',
+      parent: null,
+      payload: {},
+      erasable: { status: 'none' },
+    },
+    {
+      sequence: 4,
+      recordedAt: '2026-03-02T09:00:03Z',
+      kind: 'tool_called',
+      thread: 'conversation',
+      parent: null,
+      payload: { tool: 'memory.retire' },
+      erasable: { status: 'readable', fields: { input: { itemID: 'item-a', version: 1 } } },
+    },
+    {
+      sequence: 5,
+      recordedAt: '2026-03-02T09:00:04Z',
+      kind: 'task.step_committed',
+      thread: 'conversation',
+      parent: null,
+      payload: { readCursor: 1 },
+      erasable: { status: 'none' },
+    },
+  ]);
+
+  expect(built.cases.map((consentCase) => consentCase.messages.map((message) => message.sequence))).toStrictEqual([
+    [1],
+  ]);
+});
+
 test('it attributes a call in a later step of the same turn to the turn that read the message', () => {
   const built = buildConsentCases([
     {

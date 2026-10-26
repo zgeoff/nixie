@@ -21,13 +21,14 @@ On 402 pairs from 137 turns, the draft checker on Sonnet 5.5 failed closed:
   a 95% interval up to 0.044.
 - It missed 84 of the 132 calls the user asked for, a miss rate of 0.636.
 - Web fetch keeps its whole input in the call record, and there the checker missed 31 of 66 asked
-  calls (0.470, interval 0.354 to 0.588) and credited none of 62 calls not asked.
+  calls (0.470, interval 0.354 to 0.588) and credited none of 52 calls not asked.
+- It credited none of 137 swapped pairs, each a call from a turn that used none of the turn's tools.
 - Each memory tool drops its free text from the call record, so the checker judged an item ID with
-  no text. Those calls hold most of the misses and all 3 of the 137 swapped credits.
+  no text. Those calls hold most of the misses.
 
 The decision point can trust a credit from this checker, but not a refusal: a refusal still needs
 the user's confirmation. The checker needs the whole call, the text of each memory included, before
-its memory rates mean anything. The run cost $3.48.
+its memory rates mean anything. The run cost $3.64.
 
 ## Run it
 

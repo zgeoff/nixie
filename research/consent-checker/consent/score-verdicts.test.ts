@@ -177,9 +177,21 @@ test('it counts a checked call with no label as unlabelled', () => {
   expect(score.buckets[0]?.unlabelled).toBe(1);
 });
 
-test('it sums the spend of every checked call', () => {
+test('it leaves a check with no answer out of the rates', () => {
   const score = scoreVerdicts(
     [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        tool: 'web_fetch',
+        model: 'claude-sonnet-5-5',
+        effort: 'high',
+        promptSHA256: 'hash-a',
+        verdict: 'unsure',
+        reason: '',
+        failure: 'no_output',
+        costUSD: 0.25,
+      },
       {
         caseID: '2/3',
         bucket: 'natural',
@@ -190,23 +202,11 @@ test('it sums the spend of every checked call', () => {
         verdict: 'asserted',
         reason: 'the owner asked',
         failure: null,
-        costUSD: 0.25,
-      },
-      {
-        caseID: '2/x7',
-        bucket: 'swapped',
-        tool: 'memory.retire',
-        model: 'claude-sonnet-5-5',
-        effort: 'high',
-        promptSHA256: 'hash-a',
-        verdict: 'not_asserted',
-        reason: 'the owner asked for something else',
-        failure: null,
         costUSD: 0.5,
       },
     ],
-    [],
+    [{ caseID: '2/3', isAsked: true }],
   );
 
-  expect(score.costUSD).toBe(0.75);
+  expect(score.buckets[0]).toMatchObject({ asked: 1, failed: 0, missed: { count: 0, of: 1 } });
 });

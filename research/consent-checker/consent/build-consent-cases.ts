@@ -53,7 +53,8 @@ interface Turn {
 // Groups the conversation's tool calls into turns. A step that reads an owner message starts a turn
 // with the messages of its batch, and a later step with no owner message in its batch, such as the
 // one after a tool result, continues that turn. Each call that needs consent pairs with its turn's
-// messages, and each turn with such a call also pairs with a call from another turn.
+// messages, and each turn with such a call also pairs with a call from a turn that used none of its
+// tools, so the swapped call is never the action the turn's own messages asked for.
 export function buildConsentCases(records: readonly PlainRecord[]): BuiltCases {
   const counts: CaseCounts = {
     turns: 0,
@@ -69,6 +70,7 @@ export function buildConsentCases(records: readonly PlainRecord[]): BuiltCases {
   const turns: Turn[] = [];
   let inbox: PlainRecord[] = [];
   let open: Turn | null = null;
+  let lastStarted = 0;
 
   for (const record of records) {
     if (record.thread !== conversationThread) {
@@ -81,7 +83,16 @@ export function buildConsentCases(records: readonly PlainRecord[]): BuiltCases {
       const { readCursor } = stepCommittedSchema.parse(record.payload);
 
       inbox = inbox.filter((entry) => entry.sequence > readCursor);
+
+      // The commit's cursor is the last inbox record the step read, and the inbox also holds records
+      // of other kinds that the export leaves out, so the cursor bounds the turn's batch exactly.
+      if (open !== null && open.stepSequence === lastStarted) {
+        open.messages = open.messages.filter((message) => message.sequence <= readCursor);
+      }
     } else if (record.kind === 'task.step_started') {
+      lastStarted = record.sequence;
+
+      // A step that never commits keeps no cursor, so its batch falls back to the inbox limit.
       const batch = inbox.slice(0, inboxBatchLimit);
 
       if (batch.length > 0) {
@@ -109,6 +120,9 @@ export function buildConsentCases(records: readonly PlainRecord[]): BuiltCases {
   const cases: ConsentCase[] = [];
 
   counts.turns = turns.length;
+  counts.callsWithoutMessage += turns
+    .filter((turn) => turn.messages.length === 0)
+    .reduce((sum, turn) => sum + turn.calls.length, 0);
 
   for (const [index, turn] of withCalls.entries()) {
     for (const call of turn.calls) {
@@ -123,27 +137,40 @@ export function buildConsentCases(records: readonly PlainRecord[]): BuiltCases {
       counts.naturalByTool[call.tool] = (counts.naturalByTool[call.tool] ?? 0) + 1;
     }
 
-    // The other turn sits half the list away, so it is never this turn while 2 turns or more have a
-    // call, and the same export always gives the same pairs.
-    const other = withCalls[(index + Math.floor(withCalls.length / 2)) % withCalls.length];
+    const other = findSwapTurn(withCalls, index);
+    const call = other?.calls[0];
 
-    if (other !== undefined && other !== turn) {
-      const [call] = other.calls;
-
-      if (call !== undefined) {
-        cases.push({
-          caseID: `${turn.stepSequence}/x${call.sequence}`,
-          bucket: 'swapped',
-          stepSequence: turn.stepSequence,
-          messages: turn.messages,
-          call,
-        });
-        counts.swapped += 1;
-      }
+    if (call !== undefined) {
+      cases.push({
+        caseID: `${turn.stepSequence}/x${call.sequence}`,
+        bucket: 'swapped',
+        stepSequence: turn.stepSequence,
+        messages: turn.messages,
+        call,
+      });
+      counts.swapped += 1;
     }
   }
 
   return { cases, counts };
+}
+
+// The first turn from half the list away, going round, whose calls use none of this turn's tools.
+// The same export always gives the same pairs.
+function findSwapTurn(turns: readonly Turn[], index: number): Turn | undefined {
+  const own = turns[index];
+  const ownTools = new Set(own?.calls.map((call) => call.tool));
+  const start = index + Math.floor(turns.length / 2);
+
+  for (let step = 0; step < turns.length; step += 1) {
+    const other = turns[(start + step) % turns.length];
+
+    if (other !== undefined && other !== own && other.calls.every((call) => !ownTools.has(call.tool))) {
+      return other;
+    }
+  }
+
+  return undefined;
 }
 
 function collectMessages(batch: readonly PlainRecord[], counts: CaseCounts): ConsentMessage[] {

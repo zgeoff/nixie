@@ -91,7 +91,7 @@ test('it labels every pair of a turn unsure when the answer is unreadable', asyn
   });
 });
 
-test('it writes no record for a refused call and stops the run', async () => {
+test('it records a call with no answer with its cost and no label, and stops the run', async () => {
   const ctx = await setupTest();
 
   const result = await runLabels({
@@ -112,11 +112,64 @@ test('it writes no record for a refused call and stops the run', async () => {
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runLabel: async () => ({ kind: 'answer', output: undefined, costUSD: 0, durationMs: 300, apiMs: 0 }),
+    runLabel: async () => ({ kind: 'answer', output: undefined, costUSD: 0.4, durationMs: 300, apiMs: 0 }),
   });
 
   expect(result.isStoppedByFailure).toBe(true);
-  expect(readFile(ctx.outPath, 'utf8')).rejects.toThrow();
+  expect(JSON.parse(await readFile(ctx.outPath, 'utf8'))).toMatchObject({
+    labels: [],
+    failure: 'no_output',
+    costUSD: 0.4,
+  });
+});
+
+test('it labels a turn again when the file holds only a record with no answer for it', async () => {
+  const ctx = await setupTest();
+
+  const result = await runLabels({
+    turns: [
+      {
+        stepSequence: 7,
+        earlier: [],
+        messages: [{ sequence: 6, text: 'pin it', spans: [] }],
+        calls: [{ caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } }],
+      },
+    ],
+    done: [
+      {
+        stepSequence: 7,
+        model: 'claude-opus-5-5',
+        effort: 'medium',
+        promptSHA256: 'hash-l',
+        labels: [],
+        failure: 'no_output',
+        costUSD: 0.5,
+      },
+    ],
+    outPath: ctx.outPath,
+    profile: { model: 'claude-opus-5-5', baseURL: 'https://api.anthropic.com', effort: 'medium', authHeader: 'bearer' },
+    systemPrompt: 'You label tool calls.',
+    promptSHA256: 'hash-l',
+    otherSpentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 1,
+    runLabel: async () => ({
+      kind: 'answer',
+      output: { calls: [{ call: 1, reason: 'the owner asked to pin it', label: 'asked' }] },
+      costUSD: 0.25,
+      durationMs: 4000,
+      apiMs: 3800,
+    }),
+  });
+
+  expect(result).toStrictEqual({
+    ran: 1,
+    skipped: 0,
+    costUSD: 0.75,
+    isStoppedAtBudget: false,
+    isStoppedByFailure: false,
+  });
 });
 
 test('it skips labelled turns and counts their spend with the other calls', async () => {

@@ -22,11 +22,13 @@ test('it appends each output as one line and adds its cost to the spend', async 
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runItem: async (item) => ({ item, costUSD: 0.25 }),
+    runItem: async (item) => ({ item, costUSD: 0.25, failure: null }),
   });
 
   expect(result).toStrictEqual({ ran: 2, costUSD: 1, isStoppedAtBudget: false, isStoppedByFailure: false });
-  expect(await readFile(ctx.outPath, 'utf8')).toBe('{"item":"a","costUSD":0.25}\n{"item":"b","costUSD":0.25}\n');
+  expect(await readFile(ctx.outPath, 'utf8')).toBe(
+    '{"item":"a","costUSD":0.25,"failure":null}\n{"item":"b","costUSD":0.25,"failure":null}\n',
+  );
 });
 
 test('it starts no item once the spend reaches the budget', async () => {
@@ -39,7 +41,7 @@ test('it starts no item once the spend reaches the budget', async () => {
     budgetUSD: 0.5,
     limit: null,
     concurrency: 1,
-    runItem: async (item) => ({ item, costUSD: 0.6 }),
+    runItem: async (item) => ({ item, costUSD: 0.6, failure: null }),
   });
 
   expect(result).toStrictEqual({ ran: 1, costUSD: 0.6, isStoppedAtBudget: true, isStoppedByFailure: false });
@@ -47,7 +49,7 @@ test('it starts no item once the spend reaches the budget', async () => {
 
 test('it starts no item when the spend before the run already reaches the budget', async () => {
   const ctx = await setupTest();
-  const runItem = mock(async (item: string) => ({ item, costUSD: 0.1 }));
+  const runItem = mock(async (item: string) => ({ item, costUSD: 0.1, failure: null }));
 
   const result = await runBudgetedQueue({
     items: ['a'],
@@ -73,15 +75,15 @@ test('it starts no more items than the limit', async () => {
     budgetUSD: 4,
     limit: 2,
     concurrency: 2,
-    runItem: async (item) => ({ item, costUSD: 0.1 }),
+    runItem: async (item) => ({ item, costUSD: 0.1, failure: null }),
   });
 
   expect(result.ran).toBe(2);
 });
 
-test('it writes nothing for an item with no output and stops the run', async () => {
+test('it keeps the cost of an output with no answer and stops the run', async () => {
   const ctx = await setupTest();
-  const runItem = mock(async (_item: string) => null);
+  const runItem = mock(async (item: string) => ({ item, costUSD: 0.75, failure: 'no_output' }));
 
   const result = await runBudgetedQueue({
     items: ['a', 'b'],
@@ -93,6 +95,7 @@ test('it writes nothing for an item with no output and stops the run', async () 
     runItem,
   });
 
-  expect(result).toStrictEqual({ ran: 0, costUSD: 0, isStoppedAtBudget: false, isStoppedByFailure: true });
+  expect(result).toStrictEqual({ ran: 0, costUSD: 0.75, isStoppedAtBudget: false, isStoppedByFailure: true });
   expect(runItem).toHaveBeenCalledTimes(1);
+  expect(await readFile(ctx.outPath, 'utf8')).toBe('{"item":"a","costUSD":0.75,"failure":"no_output"}\n');
 });

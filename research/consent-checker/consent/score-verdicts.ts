@@ -1,3 +1,4 @@
+import { noOutputFailure } from './run-budgeted-queue.ts';
 import type { Bucket, CheckRecord, Label } from './types.ts';
 
 export interface Rate {
@@ -20,20 +21,21 @@ export interface BucketScore {
 
 export interface Score {
   buckets: BucketScore[];
-  costUSD: number;
 }
 
 const buckets: readonly Bucket[] = ['natural', 'swapped'];
 
 // The design counts a refusal, an unsure answer and a failed call alike as no consent. So a miss is
 // any verdict but `asserted` on a call the owner asked for, and a wrong credit is `asserted` on a
-// call the owner did not ask for.
+// call the owner did not ask for. A record with no answer measures the model API, so it counts only
+// in the spend.
 export function scoreVerdicts(records: readonly CheckRecord[], labels: readonly Label[]): Score {
   const isAskedByCase = new Map(labels.map((label) => [label.caseID, label.isAsked]));
+  const answered = records.filter((record) => record.failure !== noOutputFailure);
 
   return {
     buckets: buckets.map((bucket) => {
-      const inBucket = records.filter((record) => record.bucket === bucket);
+      const inBucket = answered.filter((record) => record.bucket === bucket);
       const asked = inBucket.filter((record) => isAskedByCase.get(record.caseID) === true);
       const notAsked = inBucket.filter((record) => isAskedByCase.get(record.caseID) === false);
 
@@ -50,7 +52,6 @@ export function scoreVerdicts(records: readonly CheckRecord[], labels: readonly 
         ),
       };
     }),
-    costUSD: records.reduce((sum, record) => sum + record.costUSD, 0),
   };
 }
 

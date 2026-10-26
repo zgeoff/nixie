@@ -2,7 +2,7 @@
 import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { renderLabellerInput } from './render-labeller-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
-import { runBudgetedQueue } from './run-budgeted-queue.ts';
+import { noOutputFailure, runBudgetedQueue } from './run-budgeted-queue.ts';
 import type { LabelRecord, LabelTurn } from './types.ts';
 import { labellerOutputSchema } from './types.ts';
 
@@ -25,7 +25,7 @@ export interface LabelRunResult extends QueueResult {
 }
 
 // Runs the labeller on each turn the output file lacks, appending one record per turn. A rerun
-// skips the turns the file holds, and refuses a file whose records hold another model, effort or
+// skips the turns the file holds an answer for, and refuses a file whose records hold another model, effort or
 // prompt. One budget covers the file's own spend and the spend of the spike's other calls.
 export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
   const mismatch = run.done.find(
@@ -41,7 +41,9 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
     );
   }
 
-  const doneSteps = new Set(run.done.map((record) => record.stepSequence));
+  const doneSteps = new Set(
+    run.done.filter((record) => record.failure !== noOutputFailure).map((record) => record.stepSequence),
+  );
   const items = run.turns.filter((turn) => !doneSteps.has(turn.stepSequence));
   const result = await runBudgetedQueue({
     items,
@@ -56,9 +58,9 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
   return { ...result, skipped: run.turns.length - items.length };
 }
 
-// A failed query or an answer with no output, such as a call the model API refused, gives no record,
-// so a rerun labels the turn again.
-async function runOneLabel(run: LabelRun, turn: LabelTurn): Promise<LabelRecord | null> {
+// A failed query or an answer with no output, such as a call the model API refused, gives a record
+// that holds its cost and no label, so a rerun labels the turn again.
+async function runOneLabel(run: LabelRun, turn: LabelTurn): Promise<LabelRecord> {
   const reply = await run.runLabel({
     profile: run.profile,
     systemPrompt: run.systemPrompt,
@@ -72,7 +74,12 @@ async function runOneLabel(run: LabelRun, turn: LabelTurn): Promise<LabelRecord 
   };
 
   if (reply.kind === 'failed' || reply.output === undefined) {
-    return null;
+    return {
+      ...base,
+      labels: [],
+      failure: noOutputFailure,
+      costUSD: reply.kind === 'failed' ? 0 : reply.costUSD,
+    };
   }
 
   const parsed = labellerOutputSchema.safeParse(reply.output);

@@ -1,13 +1,17 @@
 import { appendFile } from 'node:fs/promises';
 
-export interface BudgetedQueue<Item, Output extends { costUSD: number }> {
+// The failure of an answer that held no output, such as a call the model API refused. Its record
+// keeps the call's cost, so the spend stays right, and a rerun runs the item again.
+export const noOutputFailure = 'no_output';
+
+export interface BudgetedQueue<Item, Output extends { costUSD: number; failure: string | null }> {
   items: readonly Item[];
   outPath: string;
   spentUSD: number;
   budgetUSD: number;
   limit: number | null;
   concurrency: number;
-  runItem: (item: Item) => Promise<Output | null>;
+  runItem: (item: Item) => Promise<Output>;
 }
 
 export interface QueueResult {
@@ -19,9 +23,8 @@ export interface QueueResult {
 
 // Runs each item and appends its output to the file as one JSON line. No item starts once the spend
 // reaches the budget or the run reaches its limit, so the spend passes the budget by at most the
-// items in flight. An item with no output, such as a call the model API refused, writes nothing and
-// stops the run, so a rerun tries it again.
-export async function runBudgetedQueue<Item, Output extends { costUSD: number }>(
+// items in flight. An output with no answer stops the run.
+export async function runBudgetedQueue<Item, Output extends { costUSD: number; failure: string | null }>(
   queue: BudgetedQueue<Item, Output>,
 ): Promise<QueueResult> {
   const pending = [...queue.items];
@@ -49,15 +52,16 @@ export async function runBudgetedQueue<Item, Output extends { costUSD: number }>
 
       const output = await queue.runItem(next);
 
-      if (output === null) {
+      result.costUSD += output.costUSD;
+      await appendFile(queue.outPath, `${JSON.stringify(output)}\n`, { mode: 0o600 });
+
+      if (output.failure === noOutputFailure) {
         result.isStoppedByFailure = true;
 
         return;
       }
 
-      result.costUSD += output.costUSD;
       result.ran += 1;
-      await appendFile(queue.outPath, `${JSON.stringify(output)}\n`, { mode: 0o600 });
     }
   });
 

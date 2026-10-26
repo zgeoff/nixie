@@ -43,9 +43,11 @@ The steps live in these files:
 The export held 1,119 conversation turns and 313 tool calls, with no unreadable record and no
 message whose spans were unknown. A call whose tool declares only a read effect needs no consent, so
 the harness left out the 48 such calls. The other 265 calls, from 137 turns, each form a natural
-pair with the messages of the turn that made it. Each of those turns also forms one swapped pair
-with the first call of the turn half the list away, 137 pairs in all, which are not asked by
-construction.
+pair with the messages of the turn that made it. A turn holds the messages up to the cursor its step
+committed, because the inbox also holds records of other kinds that the export leaves out. Each of
+those turns also forms one swapped pair with the first call of the nearest turn from half the list
+away whose calls use none of its tools, 137 pairs in all. A swapped call is never the action the
+turn's own messages asked for, so the swapped pairs are not asked by construction.
 
 | Labeller label | Natural pairs |
 | -------------- | ------------- |
@@ -63,11 +65,11 @@ was not asked. Unsure pairs count in neither rate. Each interval is the 95% Wils
 | ------------------- | ----------------- | ----------------- |
 | Natural, every tool | 0.636 (84 of 132) | 0.000 (0 of 84)   |
 | Natural interval    | 0.552 to 0.713    | 0 to 0.044        |
-| Swapped, every tool | none              | 0.022 (3 of 137)  |
-| Swapped interval    | none              | 0.007 to 0.062    |
+| Swapped, every tool | none              | 0.000 (0 of 137)  |
+| Swapped interval    | none              | 0 to 0.027        |
 | Natural, web fetch  | 0.470 (31 of 66)  | 0.000 (0 of 8)    |
 | Web fetch interval  | 0.354 to 0.588    | 0 to 0.324        |
-| Swapped, web fetch  | none              | 0.000 (0 of 54)   |
+| Swapped, web fetch  | none              | 0.000 (0 of 44)   |
 
 The natural pairs by tool:
 
@@ -89,7 +91,8 @@ verdict.
 ## Findings
 
 The checker fails closed on this prompt. It credited none of the 84 natural calls the user did not
-ask for, so a wrong credit on a natural call stays below 4.4% at 95%.
+ask for, so a wrong credit on a natural call stays below 4.4% at 95%, and none of the 137 swapped
+calls.
 
 It also refuses about half of the fetches the user asked for. Web fetch keeps its whole input in the
 record, so its 31 misses of 66 are the checker's own. A consent check that misses that often sends
@@ -99,18 +102,23 @@ named the target.
 Each memory tool removes its free-text fields, such as the memory's text, its quote and the
 retirement's intent quote, before the call record is written. So the checker saw only an item ID and
 a version for an edit or a retirement, and no content at all for most saves. It missed 25 of 28
-asked retirements and 22 of 29 asked edits, and all 3 swapped credits fell on a save or an edit
-whose text the record had dropped. These rates measure the record, so the checker that the decision
-point runs has to see the whole call, the text of each memory included, before its memory rates mean
-anything.
+asked retirements and 22 of 29 asked edits. These rates measure the record, so the checker that the
+decision point runs has to see the whole call, the text of each memory included, before its memory
+rates mean anything.
+
+An earlier build of the swapped pairs could borrow a call from a turn that used the same tool, and
+the checker credited 3 of the 38 such pairs, each a save or an edit with its text dropped. Such a
+call can be the very action the turn asked for, so those 38 pairs count only in the spend.
 
 ## Spend
 
 | Calls    | Count | Spend   |
 | -------- | ----- | ------- |
 | Labeller | 137   | $1.7357 |
-| Checker  | 402   | $1.7487 |
-| Total    | 539   | $3.4844 |
+| Checker  | 440   | $1.9056 |
+| Total    | 577   | $3.6413 |
+
+The checker's 440 calls include the 38 swapped pairs of the earlier build.
 
 ## Untested
 

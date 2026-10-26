@@ -111,7 +111,7 @@ test('it sends the checker the rendered case under the run profile and prompt', 
   ]);
 });
 
-test('it writes no record for a call with no answer and stops the run', async () => {
+test('it records a call with no answer with its cost and stops the run', async () => {
   const ctx = await setupTest();
 
   const result = await runChecks({
@@ -133,11 +133,62 @@ test('it writes no record for a call with no answer and stops the run', async ()
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runCheck: async () => ({ kind: 'answer', output: undefined, costUSD: 0, durationMs: 300, apiMs: 0 }),
+    runCheck: async () => ({ kind: 'answer', output: undefined, costUSD: 0.75, durationMs: 300, apiMs: 0 }),
   });
 
   expect(result.isStoppedByFailure).toBe(true);
-  expect(readFile(ctx.outPath, 'utf8')).rejects.toThrow();
+  expect(JSON.parse(await readFile(ctx.outPath, 'utf8'))).toMatchObject({ failure: 'no_output', costUSD: 0.75 });
+});
+
+test('it runs a case again when the file holds only a check with no answer', async () => {
+  const ctx = await setupTest();
+  const runCheck = mock(
+    async (_request: CheckRequest): Promise<CheckReply> => ({
+      kind: 'answer',
+      output: { reason: 'the owner asked to pin it', verdict: 'asserted' },
+      costUSD: 0.01,
+      durationMs: 900,
+      apiMs: 800,
+    }),
+  );
+
+  const result = await runChecks({
+    cases: [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        stepSequence: 2,
+        messages: [{ sequence: 1, text: 'pin the dentist note', spans: [] }],
+        call: { sequence: 3, tool: 'memory.pin', input: { id: 'M5' } },
+      },
+    ],
+    done: [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        tool: 'memory.pin',
+        model: 'claude-sonnet-5-5',
+        effort: 'high',
+        promptSHA256: 'hash-a',
+        verdict: 'unsure',
+        reason: '',
+        failure: 'no_output',
+        costUSD: 0.75,
+      },
+    ],
+    outPath: ctx.outPath,
+    profile: { model: 'claude-sonnet-5-5', baseURL: 'https://api.anthropic.com', effort: 'high', authHeader: 'bearer' },
+    systemPrompt: 'You check one tool call.',
+    promptSHA256: 'hash-a',
+    otherSpentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 1,
+    runCheck,
+  });
+
+  expect(runCheck).toHaveBeenCalledTimes(1);
+  expect(result.costUSD).toBe(0.76);
 });
 
 test('it records an unreadable answer as unsure', async () => {

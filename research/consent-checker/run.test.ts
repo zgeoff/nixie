@@ -42,7 +42,7 @@ test('it writes the cases and prints only their counts', async () => {
   ).toStrictEqual(['2/3']);
 });
 
-test('it prints the rates of each bucket and each tool, and the spend', async () => {
+test('it prints the rates of each bucket and each tool, and the spend of every check', async () => {
   const ctx = await setupTest();
   const casesPath = join(ctx.dir, 'cases.jsonl');
   const labelsPath = join(ctx.dir, 'labels.jsonl');
@@ -50,7 +50,11 @@ test('it prints the rates of each bucket and each tool, and the spend', async ()
 
   await writeFile(
     casesPath,
-    '{"caseID":"2/x7","bucket":"swapped","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":7,"tool":"memory.retire","input":{"itemID":"item-a","version":1}}}\n',
+    [
+      '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}',
+      '{"caseID":"2/x7","bucket":"swapped","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":7,"tool":"memory.retire","input":{"itemID":"item-a","version":1}}}',
+      '',
+    ].join('\n'),
   );
   await writeFile(
     labelsPath,
@@ -61,6 +65,7 @@ test('it prints the rates of each bucket and each tool, and the spend', async ()
     [
       '{"caseID":"2/3","bucket":"natural","tool":"web_fetch","model":"claude-sonnet-5-5","effort":"high","promptSHA256":"hash-c","verdict":"asserted","reason":"the owner asked","failure":null,"costUSD":0.5}',
       '{"caseID":"2/x7","bucket":"swapped","tool":"memory.retire","model":"claude-sonnet-5-5","effort":"high","promptSHA256":"hash-c","verdict":"not_asserted","reason":"the owner asked for something else","failure":null,"costUSD":0.25}',
+      '{"caseID":"2/x9","bucket":"swapped","tool":"web_fetch","model":"claude-sonnet-5-5","effort":"high","promptSHA256":"hash-c","verdict":"asserted","reason":"the owner asked","failure":null,"costUSD":0.125}',
       '',
     ].join('\n'),
   );
@@ -80,6 +85,7 @@ test('it prints the rates of each bucket and each tool, and the spend', async ()
   expect(child.exitCode).toBe(0);
   expect(child.stdout.toString()).toMatchInlineSnapshot(`
     "labeller: 0 natural pairs unsure, 0 failed turns
+    checks of pairs outside the cases: 1
     natural: asked 1, not asked 0, unlabelled 0, failed checks 0
       miss rate 0.000 (0 of 1, 95% interval 0.000 to 0.793)
       wrong-credit rate none (0 of 0, 95% interval 0.000 to 1.000)
@@ -87,7 +93,7 @@ test('it prints the rates of each bucket and each tool, and the spend', async ()
       miss rate none (0 of 0, 95% interval 0.000 to 1.000)
       wrong-credit rate 0.000 (0 of 1, 95% interval 0.000 to 0.793)
     natural web_fetch: miss 0.000 (0 of 1, 95% interval 0.000 to 0.793), wrong credit none (0 of 0, 95% interval 0.000 to 1.000)
-    spend: labeller $0.2500, checker $0.7500, total $1.0000
+    spend: labeller $0.2500, checker $0.8750, total $1.1250
     "
   `);
 });

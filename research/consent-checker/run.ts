@@ -206,11 +206,16 @@ async function printScore(): Promise<void> {
   const cases = await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema);
   const labelRecords = await readJSONLines(requireFlag(values.labels, '--labels'), labelRecordSchema);
   const { labels, unsure } = buildLabels(cases, labelRecords);
-  const checks = await readJSONLines(requireFlag(values.checks, '--checks'), checkRecordSchema);
+  const allChecks = await readJSONLines(requireFlag(values.checks, '--checks'), checkRecordSchema);
+  const caseIDs = new Set(cases.map((consentCase) => consentCase.caseID));
+  // A check of a pair that a later build of the cases dropped still counts in the spend.
+  const checks = allChecks.filter((record) => caseIDs.has(record.caseID));
   const score = scoreVerdicts(checks, labels);
   const labelSpend = labelRecords.reduce((sum, record) => sum + record.costUSD, 0);
+  const checkSpend = allChecks.reduce((sum, record) => sum + record.costUSD, 0);
 
   console.log(`labeller: ${unsure} natural pairs unsure, ${labelRecords.filter((record) => record.failure !== null).length} failed turns`);
+  console.log(`checks of pairs outside the cases: ${allChecks.length - checks.length}`);
 
   for (const bucket of score.buckets) {
     console.log(
@@ -234,7 +239,7 @@ async function printScore(): Promise<void> {
   }
 
   console.log(
-    `spend: labeller $${labelSpend.toFixed(4)}, checker $${score.costUSD.toFixed(4)}, total $${(labelSpend + score.costUSD).toFixed(4)}`,
+    `spend: labeller $${labelSpend.toFixed(4)}, checker $${checkSpend.toFixed(4)}, total $${(labelSpend + checkSpend).toFixed(4)}`,
   );
 }
 
