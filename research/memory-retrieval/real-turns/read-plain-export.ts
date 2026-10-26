@@ -5,17 +5,22 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { readJSONLines } from './read-json-lines.ts';
 
-const plainRecordSchema = z.object({
+const hiddenErasableSchema = z.object({ status: z.enum(['none', 'shredded', 'unreadable']) });
+const erasableFieldsSchema = z.record(z.string(), z.unknown());
+
+const readableErasableSchema = z.object({
+  status: z.literal('readable'),
+  fields: erasableFieldsSchema,
+});
+
+export const plainRecordSchema = z.object({
   sequence: z.int(),
   recordedAt: z.string(),
   kind: z.string(),
   thread: z.string().nullable(),
   parent: z.int().nullable(),
   payload: z.record(z.string(), z.unknown()),
-  erasable: z.discriminatedUnion('status', [
-    z.object({ status: z.enum(['none', 'shredded', 'unreadable']) }),
-    z.object({ status: z.literal('readable'), fields: z.record(z.string(), z.unknown()) }),
-  ]),
+  erasable: z.discriminatedUnion('status', [hiddenErasableSchema, readableErasableSchema]),
 });
 
 export type PlainRecord = z.infer<typeof plainRecordSchema>;
@@ -59,12 +64,12 @@ export interface PlainExport {
   notes: z.infer<typeof plainNoteSchema>[];
 }
 
-export async function readPlainExport(dir: string): Promise<PlainExport> {
+export async function readPlainExport(directory: string): Promise<PlainExport> {
   const [records, items, versions, notes] = await Promise.all([
-    readJSONLines(join(dir, 'records.jsonl'), plainRecordSchema),
-    readJSONLines(join(dir, 'memory-items.jsonl'), plainItemSchema),
-    readJSONLines(join(dir, 'memory-versions.jsonl'), plainVersionSchema),
-    readJSONLines(join(dir, 'rating-notes.jsonl'), plainNoteSchema),
+    readJSONLines(join(directory, 'records.jsonl'), plainRecordSchema),
+    readJSONLines(join(directory, 'memory-items.jsonl'), plainItemSchema),
+    readJSONLines(join(directory, 'memory-versions.jsonl'), plainVersionSchema),
+    readJSONLines(join(directory, 'rating-notes.jsonl'), plainNoteSchema),
   ]);
 
   return { records, items, versions, notes };

@@ -659,6 +659,17 @@
         "@types/bun": "1.4.3",
       },
     },
+    "research/consent-checker": {
+      "name": "@heynixie/spike-consent-checker",
+      "version": "0.0.0",
+      "dependencies": {
+        "@anthropic-ai/claude-agent-sdk": "0.3.296",
+        "zod": "4.6.7",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.3",
+      },
+    },
     "research/fetch-sandbox-start": {
       "name": "@heynixie/spike-fetch-sandbox-start",
       "version": "0.0.0",
@@ -1050,6 +1061,8 @@
     "@heynixie/spike-cache-lifetime": ["@heynixie/spike-cache-lifetime@workspace:research/cache-lifetime"],
 
     "@heynixie/spike-connector-account-pick": ["@heynixie/spike-connector-account-pick@workspace:research/connector-account-pick"],
+
+    "@heynixie/spike-consent-checker": ["@heynixie/spike-consent-checker@workspace:research/consent-checker"],
 
     "@heynixie/spike-fetch-sandbox-start": ["@heynixie/spike-fetch-sandbox-start@workspace:research/fetch-sandbox-start"],
 
