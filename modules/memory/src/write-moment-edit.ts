@@ -36,9 +36,10 @@ async function readEditFacts(state: MomentChangeState, change: MomentChange): Pr
     change.kind === 'edges' ? await probeThreadSpan(state.tx, state.row.thread, change) : false;
 
   const reflectionID = match(change)
-    .with({ kind: 'reflection', reflectionID: P.string }, (edit) => edit.reflectionID)
+    .with({ kind: 'reflection' }, (edit) => edit.reflectionID ?? null)
     .with({ kind: 'reflection_removed' }, (removed) => removed.reflectionID)
-    .otherwise(() => null);
+    .with({ kind: P.union('edges', 'title', 'note') }, () => null)
+    .exhaustive();
 
   const reflection = reflectionID === null ? null : await readReflection(state, reflectionID);
 
