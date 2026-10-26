@@ -1,60 +1,60 @@
 import type { RecordedInputEvent } from './build-span-state-from-events';
 
 // Gboard 18.4.1 voice typing recorded these into an empty textarea in Chrome 155 on Android 16, with
-// one spoken sentence in each run. Runs 2 and 3 hold invented words of the spoken words' lengths.
+// one spoken sentence in each run. Every run holds invented words of the spoken words' lengths.
 export const gboardVoiceEvents = {
   'run-1': [
-    { event: 'beforeinput', inputType: 'insertCompositionText', data: 'The', selection: [0, 0] },
-    { event: 'input', value: 'The' },
+    { event: 'beforeinput', inputType: 'insertCompositionText', data: 'Our', selection: [0, 0] },
+    { event: 'input', value: 'Our' },
     {
       event: 'beforeinput',
       inputType: 'insertCompositionText',
-      data: 'The garden',
+      data: 'Our silver',
       selection: [0, 3],
     },
-    { event: 'input', value: 'The garden' },
+    { event: 'input', value: 'Our silver' },
     {
       event: 'beforeinput',
       inputType: 'insertCompositionText',
-      data: 'The garden gate',
+      data: 'Our silver kite',
       selection: [0, 10],
     },
-    { event: 'input', value: 'The garden gate' },
+    { event: 'input', value: 'Our silver kite' },
     {
       event: 'beforeinput',
       inputType: 'insertCompositionText',
-      data: 'The garden gate stick',
+      data: 'Our silver kite drift',
       selection: [0, 15],
     },
-    { event: 'input', value: 'The garden gate stick' },
+    { event: 'input', value: 'Our silver kite drift' },
     {
       event: 'beforeinput',
       inputType: 'insertCompositionText',
-      data: 'The garden gate sticks',
+      data: 'Our silver kite drifts',
       selection: [0, 21],
     },
-    { event: 'input', value: 'The garden gate sticks' },
+    { event: 'input', value: 'Our silver kite drifts' },
     {
       event: 'beforeinput',
       inputType: 'insertCompositionText',
-      data: 'The garden gate sticks in',
+      data: 'Our silver kite drifts on',
       selection: [0, 22],
     },
-    { event: 'input', value: 'The garden gate sticks in' },
+    { event: 'input', value: 'Our silver kite drifts on' },
     {
       event: 'beforeinput',
       inputType: 'insertCompositionText',
-      data: 'The garden gate sticks in winter',
+      data: 'Our silver kite drifts on Sunday',
       selection: [0, 25],
     },
-    { event: 'input', value: 'The garden gate sticks in winter' },
+    { event: 'input', value: 'Our silver kite drifts on Sunday' },
     {
       event: 'beforeinput',
       inputType: 'insertCompositionText',
-      data: 'The garden gate sticks in winter',
+      data: 'Our silver kite drifts on Sunday',
       selection: [0, 32],
     },
-    { event: 'input', value: 'The garden gate sticks in winter' },
+    { event: 'input', value: 'Our silver kite drifts on Sunday' },
   ],
   'run-2': [
     {

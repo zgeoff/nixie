@@ -39,7 +39,7 @@ test('it labels the Gboard clipboard chip as unknown', () => {
 });
 
 test.each([
-  ['run-1', 'The garden gate sticks in winter'],
+  ['run-1', 'Our silver kite drifts on Sunday'],
   ['run-2', 'Planning to paint the workshop on Friday'],
   ['run-3', 'Book the dentist about the cracked cab'],
 ] as const)('it labels the Gboard voice typing of %s as unknown', (recorded, text) => {
@@ -52,7 +52,7 @@ test.each([
 test('it labels a Gboard voice composition of one word as typed', () => {
   expect(buildSpanStateFromEvents(gboardVoiceEvents['run-1'].slice(0, 2))).toStrictEqual({
     spans: [{ end: 3, source: 'typed', start: 0 }],
-    text: 'The',
+    text: 'Our',
   });
 });
 

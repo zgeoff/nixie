@@ -1,45 +1,45 @@
 {"case":"voice-1","sequence":1,"data":"granted","event":"microphone"}
 {"case":"voice-1","sequence":2,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":83517}
 {"case":"voice-1","sequence":3,"data":"","event":"compositionstart"}
-{"case":"voice-1","sequence":4,"data":"The","event":"compositionupdate"}
-{"case":"voice-1","sequence":5,"data":"The","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,0],"targetRanges":[],"time":83525}
-{"case":"voice-1","sequence":6,"data":"The","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The\""],"time":83528,"value":"The"}
+{"case":"voice-1","sequence":4,"data":"Our","event":"compositionupdate"}
+{"case":"voice-1","sequence":5,"data":"Our","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,0],"targetRanges":[],"time":83525}
+{"case":"voice-1","sequence":6,"data":"Our","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Our\""],"time":83528,"value":"Our"}
 {"case":"voice-1","sequence":7,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":83517}
 {"case":"voice-1","sequence":8,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":83812}
-{"case":"voice-1","sequence":10,"data":"The garden","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,3],"targetRanges":[],"time":83819}
-{"case":"voice-1","sequence":11,"data":"The garden","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden\""],"time":83825,"value":"The garden"}
-{"case":"voice-1","sequence":9,"data":"The garden","event":"compositionupdate"}
+{"case":"voice-1","sequence":10,"data":"Our silver","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,3],"targetRanges":[],"time":83819}
+{"case":"voice-1","sequence":11,"data":"Our silver","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Our silver\""],"time":83825,"value":"Our silver"}
+{"case":"voice-1","sequence":9,"data":"Our silver","event":"compositionupdate"}
 {"case":"voice-1","sequence":12,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":83812}
 {"case":"voice-1","sequence":13,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":84324}
-{"case":"voice-1","sequence":14,"data":"The garden gate","event":"compositionupdate"}
-{"case":"voice-1","sequence":15,"data":"The garden gate","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,10],"targetRanges":[],"time":84330}
-{"case":"voice-1","sequence":16,"data":"The garden gate","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate\""],"time":84332,"value":"The garden gate"}
+{"case":"voice-1","sequence":14,"data":"Our silver kite","event":"compositionupdate"}
+{"case":"voice-1","sequence":15,"data":"Our silver kite","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,10],"targetRanges":[],"time":84330}
+{"case":"voice-1","sequence":16,"data":"Our silver kite","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Our silver kite\""],"time":84332,"value":"Our silver kite"}
 {"case":"voice-1","sequence":17,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":84324}
 {"case":"voice-1","sequence":18,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":84726}
-{"case":"voice-1","sequence":19,"data":"The garden gate stick","event":"compositionupdate"}
-{"case":"voice-1","sequence":20,"data":"The garden gate stick","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,15],"targetRanges":[],"time":84733}
-{"case":"voice-1","sequence":21,"data":"The garden gate stick","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate stick\""],"time":84736,"value":"The garden gate stick"}
+{"case":"voice-1","sequence":19,"data":"Our silver kite drift","event":"compositionupdate"}
+{"case":"voice-1","sequence":20,"data":"Our silver kite drift","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,15],"targetRanges":[],"time":84733}
+{"case":"voice-1","sequence":21,"data":"Our silver kite drift","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Our silver kite drift\""],"time":84736,"value":"Our silver kite drift"}
 {"case":"voice-1","sequence":22,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":84726}
 {"case":"voice-1","sequence":23,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":84779}
-{"case":"voice-1","sequence":24,"data":"The garden gate sticks","event":"compositionupdate"}
-{"case":"voice-1","sequence":25,"data":"The garden gate sticks","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,21],"targetRanges":[],"time":84783}
-{"case":"voice-1","sequence":26,"data":"The garden gate sticks","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate sticks\""],"time":84784,"value":"The garden gate sticks"}
+{"case":"voice-1","sequence":24,"data":"Our silver kite drifts","event":"compositionupdate"}
+{"case":"voice-1","sequence":25,"data":"Our silver kite drifts","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,21],"targetRanges":[],"time":84783}
+{"case":"voice-1","sequence":26,"data":"Our silver kite drifts","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Our silver kite drifts\""],"time":84784,"value":"Our silver kite drifts"}
 {"case":"voice-1","sequence":27,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":84779}
 {"case":"voice-1","sequence":28,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":84939}
-{"case":"voice-1","sequence":29,"data":"The garden gate sticks in","event":"compositionupdate"}
-{"case":"voice-1","sequence":30,"data":"The garden gate sticks in","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,22],"targetRanges":[],"time":84947}
-{"case":"voice-1","sequence":31,"data":"The garden gate sticks in","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate sticks in\""],"time":84950,"value":"The garden gate sticks in"}
+{"case":"voice-1","sequence":29,"data":"Our silver kite drifts on","event":"compositionupdate"}
+{"case":"voice-1","sequence":30,"data":"Our silver kite drifts on","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,22],"targetRanges":[],"time":84947}
+{"case":"voice-1","sequence":31,"data":"Our silver kite drifts on","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Our silver kite drifts on\""],"time":84950,"value":"Our silver kite drifts on"}
 {"case":"voice-1","sequence":32,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":84939}
 {"case":"voice-1","sequence":33,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":85298}
-{"case":"voice-1","sequence":34,"data":"The garden gate sticks in winter","event":"compositionupdate"}
-{"case":"voice-1","sequence":35,"data":"The garden gate sticks in winter","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,25],"targetRanges":[],"time":85305}
-{"case":"voice-1","sequence":36,"data":"The garden gate sticks in winter","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate sticks in winter\""],"time":85308,"value":"The garden gate sticks in winter"}
+{"case":"voice-1","sequence":34,"data":"Our silver kite drifts on Sunday","event":"compositionupdate"}
+{"case":"voice-1","sequence":35,"data":"Our silver kite drifts on Sunday","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,25],"targetRanges":[],"time":85305}
+{"case":"voice-1","sequence":36,"data":"Our silver kite drifts on Sunday","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Our silver kite drifts on Sunday\""],"time":85308,"value":"Our silver kite drifts on Sunday"}
 {"case":"voice-1","sequence":37,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":85298}
 {"case":"voice-1","sequence":38,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":86092}
-{"case":"voice-1","sequence":39,"data":"The garden gate sticks in winter","event":"compositionupdate"}
-{"case":"voice-1","sequence":40,"data":"The garden gate sticks in winter","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,32],"targetRanges":[],"time":86101}
-{"case":"voice-1","sequence":41,"data":"The garden gate sticks in winter","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate sticks in winter\""],"time":86104,"value":"The garden gate sticks in winter"}
-{"case":"voice-1","sequence":42,"data":"The garden gate sticks in winter","event":"compositionend"}
+{"case":"voice-1","sequence":39,"data":"Our silver kite drifts on Sunday","event":"compositionupdate"}
+{"case":"voice-1","sequence":40,"data":"Our silver kite drifts on Sunday","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,32],"targetRanges":[],"time":86101}
+{"case":"voice-1","sequence":41,"data":"Our silver kite drifts on Sunday","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Our silver kite drifts on Sunday\""],"time":86104,"value":"Our silver kite drifts on Sunday"}
+{"case":"voice-1","sequence":42,"data":"Our silver kite drifts on Sunday","event":"compositionend"}
 {"case":"voice-1","sequence":43,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":86092}
 {"case":"voice-2","sequence":1,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":22046}
 {"case":"voice-2","sequence":2,"data":"","event":"compositionstart"}
