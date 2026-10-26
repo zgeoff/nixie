@@ -303,7 +303,7 @@ test("it rolls back the caller's write in the destroy's transaction when it refu
 
   invariant(kept.status === 'written');
 
-  await ctx.memory.store.moments.destroy({ momentID: kept.momentID, version: 2 }, async (tx) => {
+  const writeWake = mock(async (tx: Parameters<typeof writeRecordsInTransaction>[0]) => {
     await writeRecordsInTransaction(tx, ctx.memory.log, [
       {
         kind: 'task.wake',
@@ -314,8 +314,15 @@ test("it rolls back the caller's write in the destroy's transaction when it refu
     ]);
   });
 
+  const destroyed = await ctx.memory.store.moments.destroy(
+    { momentID: kept.momentID, version: 2 },
+    writeWake,
+  );
+
   const wakes = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['task.wake'] });
 
+  expect(destroyed).toStrictEqual({ status: 'refused', reason: 'stale' });
+  expect(writeWake).toHaveBeenCalledOnce();
   expect(wakes).toStrictEqual([]);
 });
 
