@@ -48,6 +48,10 @@ The steps live in these files:
   reservation holds at least the most one call of the run can cost, and a run refuses a `--reserve`
   below that. A resumed run first settles each reservation that a crash left open at its reserved
   amount, then runs the call again under a new reservation, so a crashed call counts twice.
+- [build-ledger-writer.ts](consent/build-ledger-writer.ts) appends each reservation, settlement and
+  record, and refuses a line whose move of its call's reservation the table in
+  [check-reservation-move.ts](consent/check-reservation-move.ts) lacks. The one move it holds is
+  from reserved to settled, and a rerun of a settled call writes a new reservation.
 - [build-label-record.ts](consent/build-label-record.ts) and
   [build-check-record.ts](consent/build-check-record.ts) turn each reply into the record a run
   appends.

@@ -14,6 +14,7 @@ import { readJSONLines } from '../memory-retrieval/real-turns/read-json-lines.ts
 import { plainRecordSchema } from '../memory-retrieval/real-turns/read-plain-export.ts';
 import { buildConsentCases } from './consent/build-consent-cases.ts';
 import { buildLabelTurns } from './consent/build-label-turns.ts';
+import { buildLedgerWriter } from './consent/build-ledger-writer.ts';
 import { buildLedger } from './consent/build-ledger.ts';
 import { createRunLock } from './consent/create-run-lock.ts';
 import { ledgerKeys } from './consent/ledger-keys.ts';
@@ -151,13 +152,16 @@ async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<v
   // The CLI's schema validator knows no draft 2020-12 meta-schema, so the key that names it goes.
   const { $schema: _, ...schema } = z.toJSONSchema(labellerOutputSchema);
   const outputFormat = { type: 'json_schema' as const, schema };
+  const done = existsSync(outPath) ? await readJSONLines(outPath, labelLineSchema) : [];
 
   const result = await runLabels({
     turns: buildLabelTurns(records, cases),
-    done: existsSync(outPath) ? await readJSONLines(outPath, labelLineSchema) : [],
-    appendReservation: makeAppendJSONLine(outPath),
-    appendSettlement: makeAppendJSONLine(outPath),
-    appendRecord: makeAppendJSONLine(outPath),
+    done,
+    ...buildLedgerWriter({
+      open: buildLedger(done, ledgerKeys.label).open,
+      keyOf: ledgerKeys.label,
+      appendLine: makeAppendJSONLine(outPath),
+    }),
     profile: buildProfile(labellerProfile),
     systemPrompt,
     promptSHA256: createHash('sha256').update(systemPrompt).digest('hex'),
@@ -197,12 +201,16 @@ async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<v
   const systemPrompt = await Bun.file(new URL('prompt.txt', import.meta.url)).text();
   const env = await createModelEnv();
 
+  const done = existsSync(outPath) ? await readJSONLines(outPath, checkLineSchema) : [];
+
   const result = await runChecks({
     cases: await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema),
-    done: existsSync(outPath) ? await readJSONLines(outPath, checkLineSchema) : [],
-    appendReservation: makeAppendJSONLine(outPath),
-    appendSettlement: makeAppendJSONLine(outPath),
-    appendRecord: makeAppendJSONLine(outPath),
+    done,
+    ...buildLedgerWriter({
+      open: buildLedger(done, ledgerKeys.check).open,
+      keyOf: ledgerKeys.check,
+      appendLine: makeAppendJSONLine(outPath),
+    }),
     profile: buildProfile(checkerProfile),
     systemPrompt,
     promptSHA256: createHash('sha256').update(systemPrompt).digest('hex'),
