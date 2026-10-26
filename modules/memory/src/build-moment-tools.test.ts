@@ -850,7 +850,7 @@ test('#memory.recall returns the moments linked to an item by ID and title, and 
     items: [{ moments: [{ momentID: kept.shortID, title: 'The kettle argument' }] }],
   });
 
-  expect(recalled?.record.erasable).toMatchObject({
+  expect(recalled?.record.erasable).toStrictEqual({
     status: 'readable',
     fields: {
       result: {
