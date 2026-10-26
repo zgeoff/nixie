@@ -224,20 +224,81 @@ test('#memory.keepMoment refuses a client action ID that another change used, an
   expect(records).toStrictEqual([]);
 });
 
-test('#memory.keepMoment refuses a caller with no session', async () => {
+test.each([
+  ['no session token', undefined],
+  ['a token that no session holds', 'f3a9c1e2b7d84605a1c9e2f3b4d5c6a7'],
+  ['an empty bearer token', ''],
+])('#memory.keepMoment refuses a caller with %s, and keeps nothing', async (_, token) => {
   const ctx = await setupTest();
 
-  const keep = buildTestClient(ctx.url).memory.keepMoment({
+  const [message] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the boiler gave out on the coldest night' },
+    },
+  ]);
+
+  invariant(message);
+
+  const keep = buildTestClient(ctx.url, token).memory.keepMoment({
     clientActionID: '3b9e2f61-4c7a-4d8e-9f10-5a6b7c8d9e0f',
     thread: 'conversation',
-    firstSequence: 1,
-    lastSequence: 1,
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
     title: 'The night the boiler gave out',
   });
 
   await keep.catch(() => {});
 
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['moment_kept'],
+  });
+
   expect(keep).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(records).toStrictEqual([]);
+});
+
+test('#memory.keepMoment refuses a caller whose session another device revoked, and keeps nothing', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const phone = await createDeviceSession(ctx.context, 'phone');
+
+  const [message] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the boiler gave out on the coldest night' },
+    },
+  ]);
+
+  invariant(message);
+
+  await buildTestClient(ctx.url, laptop.token).sessions.revoke({
+    clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    sessionID: phone.sessionID,
+  });
+
+  const keep = buildTestClient(ctx.url, phone.token).memory.keepMoment({
+    clientActionID: '3b9e2f61-4c7a-4d8e-9f10-5a6b7c8d9e0f',
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The night the boiler gave out',
+  });
+
+  await keep.catch(() => {});
+
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['moment_kept'],
+  });
+
+  expect(keep).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(records).toStrictEqual([]);
 });
 
 test('#memory.previewMomentDestroy shows the text the destroy shreds and the span records it keeps', async () => {
