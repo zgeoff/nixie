@@ -27,7 +27,23 @@ export type MomentDestroyPreviewRead =
   | { readonly status: 'ready'; readonly preview: MomentDestroyPreview }
   | { readonly status: 'refused'; readonly reason: 'not_found' | 'stale' };
 
-export async function readMomentDestroyPreview(
+// One transaction holds the version check, the texts and the counts, so an edit that commits
+// between the reads cannot pair the old version with the new reflection.
+export function readMomentDestroyPreview(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  target: MomentTarget,
+): Promise<MomentDestroyPreviewRead> {
+  return log.writer.db
+    .transaction()
+    .execute((tx) =>
+      readPreviewInSnapshot(
+        { deploymentKey: log.deploymentKey, writer: { ...log.writer, db: tx } },
+        target,
+      ),
+    );
+}
+
+async function readPreviewInSnapshot(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   target: MomentTarget,
 ): Promise<MomentDestroyPreviewRead> {

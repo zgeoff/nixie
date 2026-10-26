@@ -114,6 +114,45 @@ test('it refuses a preview bound to a version the moment moved past', async () =
   expect(read).toStrictEqual({ status: 'refused', reason: 'stale' });
 });
 
+test('it never pairs the version it checked with a reflection added after it, when an edit commits during the preview', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the bees swarmed into the hollow ash' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The swarm',
+  });
+
+  invariant(kept.status === 'written');
+
+  const [read] = await Promise.all([
+    readMomentDestroyPreview(ctx.memory.log, { momentID: kept.momentID, version: 1 }),
+    ctx.memory.store.moments.edit({
+      caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+      target: { momentID: kept.shortID, version: 1 },
+      change: { kind: 'reflection', text: 'The ash was hollow for years.' },
+    }),
+  ]);
+
+  expect(read).toMatchObject({
+    status: 'ready',
+    preview: { version: 1, reflections: [], lost: { texts: 1, links: 0 } },
+  });
+});
+
 test('it refuses a preview of a moment that does not exist', async () => {
   const ctx = await setupTest();
 
