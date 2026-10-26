@@ -118,7 +118,39 @@ test('it records a call with no answer with its cost and no label, and stops the
   });
 
   expect(result.isStoppedByFailure).toBe(true);
-  expect(ctx.appendRecord.mock.calls).toMatchObject([[{ labels: [], failure: 'no_output', costUSD: 0.4 }]]);
+  expect(ctx.appendRecord.mock.calls).toMatchObject([
+    [{ labels: [], failure: 'no_output', failureReason: 'the answer held no output', costUSD: 0.4 }],
+  ]);
+});
+
+test('it keeps the reason a failed query gave in its record and in the result', async () => {
+  const ctx = setupTest();
+
+  const result = await runLabels({
+    turns: [
+      {
+        stepSequence: 7,
+        earlier: [],
+        messages: [{ sequence: 6, text: 'pin it', spans: [] }],
+        calls: [{ caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } }],
+      },
+    ],
+    done: [],
+    appendRecord: ctx.appendRecord,
+    profile: { model: 'claude-opus-5-5', baseURL: 'https://api.anthropic.com', effort: 'medium', authHeader: 'bearer' },
+    systemPrompt: 'You label tool calls.',
+    promptSHA256: 'hash-l',
+    otherSpentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 1,
+    runLabel: async () => ({ kind: 'failed', reason: 'error_max_turns' }),
+  });
+
+  expect(result.failureReason).toBe('error_max_turns');
+  expect(ctx.appendRecord.mock.calls).toMatchObject([
+    [{ labels: [], failure: 'no_output', failureReason: 'error_max_turns', costUSD: 0 }],
+  ]);
 });
 
 test('it labels a turn again when the file holds only a record with no answer for it', async () => {

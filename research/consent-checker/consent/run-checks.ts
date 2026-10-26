@@ -4,7 +4,7 @@ import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-fram
 import { parseCheckerAnswer } from '../../../modules/sessions/src/parse-checker-answer.ts';
 import { renderCheckerInput } from './render-checker-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
-import { noOutputFailure, runBudgetedQueue } from './run-budgeted-queue.ts';
+import { emptyAnswerReason, noOutputFailure, runBudgetedQueue } from './run-budgeted-queue.ts';
 import type { CheckRecord, ConsentCase } from './types.ts';
 
 export interface CheckRun {
@@ -60,7 +60,7 @@ export async function runChecks(run: CheckRun): Promise<CheckRunResult> {
 }
 
 // A failed query or an answer with no output, such as a call the model API refused, measures the API
-// and not the checker, so its record holds only its cost.
+// and not the checker, so its record holds only its cost and the reason the query gave.
 async function runOneCheck(run: CheckRun, consentCase: ConsentCase): Promise<CheckRecord> {
   const reply = await run.runCheck({
     profile: run.profile,
@@ -82,6 +82,7 @@ async function runOneCheck(run: CheckRun, consentCase: ConsentCase): Promise<Che
       verdict: 'unsure',
       reason: '',
       failure: noOutputFailure,
+      failureReason: reply.kind === 'failed' ? reply.reason : emptyAnswerReason,
       costUSD: reply.kind === 'failed' ? 0 : reply.costUSD,
     };
   }

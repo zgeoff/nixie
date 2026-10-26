@@ -84,3 +84,23 @@ test('it keeps the cost of an output with no answer and stops the run', async ()
   expect(runItem).toHaveBeenCalledTimes(1);
   expect(appendOutput.mock.calls).toStrictEqual([[{ item: 'a', costUSD: 0.75, failure: 'no_output' }]]);
 });
+
+test('it gives the reason of the output that stopped the run', async () => {
+  const result = await runBudgetedQueue({
+    items: ['a'],
+    appendOutput: async () => {},
+    spentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 1,
+    runItem: async (item) => ({ item, costUSD: 0, failure: 'no_output', failureReason: 'error_max_turns' }),
+  });
+
+  expect(result).toStrictEqual({
+    ran: 0,
+    costUSD: 0,
+    isStoppedAtBudget: false,
+    isStoppedByFailure: true,
+    failureReason: 'error_max_turns',
+  });
+});

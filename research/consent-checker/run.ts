@@ -26,6 +26,7 @@ import { readJSONLines } from '../memory-retrieval/real-turns/read-json-lines.ts
 import { buildConsentCases } from './consent/build-consent-cases.ts';
 import { buildLabelTurns } from './consent/build-label-turns.ts';
 import { buildLabels } from './consent/build-labels.ts';
+import type { QueueResult } from './consent/run-budgeted-queue.ts';
 import { runChecks } from './consent/run-checks.ts';
 import { runLabels } from './consent/run-labels.ts';
 import type { Rate } from './consent/score-verdicts.ts';
@@ -130,7 +131,7 @@ async function runLabelCommand(): Promise<void> {
   console.log(
     `labelled ${result.ran} turns, skipped ${result.skipped}, spent $${result.costUSD.toFixed(4)} in total` +
       (result.isStoppedAtBudget ? `, stopped at the $${values.budget} budget` : '') +
-      (result.isStoppedByFailure ? ', stopped because a call got no answer from the model API' : ''),
+      formatFailureStop(result),
   );
 }
 
@@ -154,8 +155,16 @@ async function runCheckCommand(): Promise<void> {
   console.log(
     `checked ${result.ran} pairs, skipped ${result.skipped}, spent $${result.costUSD.toFixed(4)} in total` +
       (result.isStoppedAtBudget ? `, stopped at the $${values.budget} budget` : '') +
-      (result.isStoppedByFailure ? ', stopped because a call got no answer from the model API' : ''),
+      formatFailureStop(result),
   );
+}
+
+function formatFailureStop(result: QueueResult): string {
+  if (!result.isStoppedByFailure) {
+    return '';
+  }
+
+  return `, stopped because a call got no answer from the model API (${result.failureReason ?? 'no reason given'})`;
 }
 
 function makeAppendJSONLine(path: string): (value: unknown) => Promise<void> {

@@ -135,7 +135,40 @@ test('it records a call with no answer with its cost and stops the run', async (
   });
 
   expect(result.isStoppedByFailure).toBe(true);
-  expect(ctx.appendRecord.mock.calls).toMatchObject([[{ failure: 'no_output', costUSD: 0.75 }]]);
+  expect(ctx.appendRecord.mock.calls).toMatchObject([
+    [{ failure: 'no_output', failureReason: 'the answer held no output', costUSD: 0.75 }],
+  ]);
+});
+
+test('it keeps the reason a failed query gave in its record and in the result', async () => {
+  const ctx = setupTest();
+
+  const result = await runChecks({
+    cases: [
+      {
+        caseID: '2/3',
+        bucket: 'natural',
+        stepSequence: 2,
+        messages: [{ sequence: 1, text: 'pin the dentist note', spans: [] }],
+        call: { sequence: 3, tool: 'memory.pin', input: { id: 'M5' } },
+      },
+    ],
+    done: [],
+    appendRecord: ctx.appendRecord,
+    profile: { model: 'claude-sonnet-5-5', baseURL: 'https://api.anthropic.com', effort: 'high', authHeader: 'bearer' },
+    systemPrompt: 'You check one tool call.',
+    promptSHA256: 'hash-a',
+    otherSpentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 1,
+    runCheck: async () => ({ kind: 'failed', reason: 'error_max_turns' }),
+  });
+
+  expect(result.failureReason).toBe('error_max_turns');
+  expect(ctx.appendRecord.mock.calls).toMatchObject([
+    [{ failure: 'no_output', failureReason: 'error_max_turns', costUSD: 0 }],
+  ]);
 });
 
 test('it runs a case again when the file holds only a check with no answer', async () => {

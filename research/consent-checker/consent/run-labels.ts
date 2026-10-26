@@ -2,7 +2,7 @@
 import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { renderLabellerInput } from './render-labeller-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
-import { noOutputFailure, runBudgetedQueue } from './run-budgeted-queue.ts';
+import { emptyAnswerReason, noOutputFailure, runBudgetedQueue } from './run-budgeted-queue.ts';
 import type { LabelRecord, LabelTurn } from './types.ts';
 import { labellerOutputSchema } from './types.ts';
 
@@ -59,7 +59,7 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
 }
 
 // A failed query or an answer with no output, such as a call the model API refused, gives a record
-// that holds its cost and no label, so a rerun labels the turn again.
+// that holds its cost, the reason the query gave and no label, so a rerun labels the turn again.
 async function runOneLabel(run: LabelRun, turn: LabelTurn): Promise<LabelRecord> {
   const reply = await run.runLabel({
     profile: run.profile,
@@ -78,6 +78,7 @@ async function runOneLabel(run: LabelRun, turn: LabelTurn): Promise<LabelRecord>
       ...base,
       labels: [],
       failure: noOutputFailure,
+      failureReason: reply.kind === 'failed' ? reply.reason : emptyAnswerReason,
       costUSD: reply.kind === 'failed' ? 0 : reply.costUSD,
     };
   }

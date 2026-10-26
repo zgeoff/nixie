@@ -40,6 +40,7 @@ export const checkRecordSchema = z.object({
   verdict: z.enum(['asserted', 'not_asserted', 'unsure']),
   reason: z.string(),
   failure: z.string().nullable(),
+  failureReason: z.string().optional(),
   costUSD: z.number(),
 });
 
@@ -65,6 +66,7 @@ export const labelRecordSchema = z.object({
   promptSHA256: z.string(),
   labels: z.array(z.object({ caseID: z.string(), label: labelVerdictSchema, reason: z.string() })),
   failure: z.string().nullable(),
+  failureReason: z.string().optional(),
   costUSD: z.number(),
 });
 
