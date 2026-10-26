@@ -1,7 +1,7 @@
 // oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { expect, onTestFinished, test } from 'bun:test';
 import { existsSync } from 'node:fs';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 // @boundaries-ignore the spike reads its output the way the retrieval spike reads its files
@@ -143,6 +143,67 @@ test('it prints the rates of each bucket and each tool, and the spend of every c
     spend: labeller $0.2500, checker $0.8750, total $1.1250
     "
   `);
+});
+
+test('it scores nothing while another command holds the cases file', async () => {
+  const ctx = await setupTest();
+
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const labelsPath = join(ctx.directory, 'labels.jsonl');
+  const checksPath = join(ctx.directory, 'checks.jsonl');
+
+  await writeFile(casesPath, '');
+  await writeFile(labelsPath, '');
+  await writeFile(checksPath, '');
+  await writeFile(`${casesPath}.lock`, '4242\n');
+
+  const child = Bun.spawnSync([
+    'bun',
+    ctx.entry,
+    'score',
+    '--cases',
+    casesPath,
+    '--labels',
+    labelsPath,
+    '--checks',
+    checksPath,
+  ]);
+
+  expect(child.exitCode).toBe(1);
+  expect(child.stdout.toString()).toBe('');
+
+  expect(child.stderr.toString()).toInclude(
+    `${casesPath}.lock exists, so another label or check run holds these files`,
+  );
+});
+
+test('it leaves no lock file once it has scored', async () => {
+  const ctx = await setupTest();
+
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const labelsPath = join(ctx.directory, 'labels.jsonl');
+  const checksPath = join(ctx.directory, 'checks.jsonl');
+
+  await writeFile(casesPath, '');
+  await writeFile(labelsPath, '');
+  await writeFile(checksPath, '');
+
+  const child = Bun.spawnSync([
+    'bun',
+    ctx.entry,
+    'score',
+    '--cases',
+    casesPath,
+    '--labels',
+    labelsPath,
+    '--checks',
+    checksPath,
+  ]);
+
+  const entries = await readdir(ctx.directory);
+
+  expect(child.exitCode).toBe(0);
+  expect(entries.toSorted()).toStrictEqual(['cases.jsonl', 'checks.jsonl', 'labels.jsonl']);
 });
 
 test('it starts no check when the labeller spend already reaches the budget', async () => {

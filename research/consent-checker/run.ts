@@ -73,7 +73,13 @@ if (command === 'cases') {
 } else if (command === 'check') {
   await runCheckCommand();
 } else if (command === 'score') {
-  await printScore();
+  const paths = [
+    requireFlag(values.cases, '--cases'),
+    requireFlag(values.labels, '--labels'),
+    requireFlag(values.checks, '--checks'),
+  ];
+
+  await withRunLock(paths, () => printScore());
 } else {
   throw new Error(`unknown command ${command ?? '(none)'}; pass cases, label, check or score`);
 }
@@ -200,8 +206,8 @@ async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<v
 }
 
 // The label and check runs share one budget across both output files, so each holds both files from
-// before it reads their spend and done records until it ends. Each also holds the cases file, which
-// the cases command rewrites whole.
+// before it reads their spend and done records until it ends. Every command holds the cases file,
+// which the cases command rewrites whole, so no command reads it half written.
 async function withRunLock(
   paths: readonly (string | undefined)[],
   run: () => Promise<void>,
