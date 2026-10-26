@@ -3,6 +3,13 @@ import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
 import { spanSchema } from '../../../libs/contract/src/span-schema.ts';
 
+// The failure of an answer that held no output, such as a call the model API refused. Its record
+// keeps the call's cost, so the spend stays right, and a rerun runs the item again.
+export const noOutputFailure = 'no_output';
+
+// The reason a record with no answer gives when the query returned an answer with nothing in it.
+export const emptyAnswerReason = 'the answer held no output';
+
 const consentMessageSchema = z.object({
   sequence: z.int(),
   text: z.string(),

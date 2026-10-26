@@ -1,5 +1,5 @@
-import { noOutputFailure } from './run-budgeted-queue.ts';
 import type { Bucket, CheckRecord, Label } from './types.ts';
+import { noOutputFailure } from './types.ts';
 
 export interface Rate {
   count: number;

@@ -3,8 +3,8 @@
 import type { CheckReply } from '../../../libs/wire/src/check-frame.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { parseCheckerAnswer } from '../../../modules/sessions/src/parse-checker-answer.ts';
-import { emptyAnswerReason, noOutputFailure } from './run-budgeted-queue.ts';
 import type { CheckRecord, ConsentCase, RecordSource } from './types.ts';
+import { emptyAnswerReason, noOutputFailure } from './types.ts';
 
 // A failed query or an answer with no output, such as a call the model API refused, measures the API
 // and not the checker, so its record holds only its cost and the reason the query gave.

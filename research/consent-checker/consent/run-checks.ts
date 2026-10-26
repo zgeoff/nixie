@@ -3,8 +3,9 @@ import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-fram
 import { buildCheckRecord } from './build-check-record.ts';
 import { renderCheckerInput } from './render-checker-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
-import { noOutputFailure, runBudgetedQueue } from './run-budgeted-queue.ts';
+import { runBudgetedQueue } from './run-budgeted-queue.ts';
 import type { CheckRecord, ConsentCase } from './types.ts';
+import { noOutputFailure } from './types.ts';
 
 export interface CheckRun {
   cases: readonly ConsentCase[];

@@ -3,8 +3,9 @@ import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-fram
 import { buildLabelRecord } from './build-label-record.ts';
 import { renderLabellerInput } from './render-labeller-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
-import { noOutputFailure, runBudgetedQueue } from './run-budgeted-queue.ts';
+import { runBudgetedQueue } from './run-budgeted-queue.ts';
 import type { LabelRecord, LabelTurn } from './types.ts';
+import { noOutputFailure } from './types.ts';
 
 export interface LabelRun {
   turns: readonly LabelTurn[];

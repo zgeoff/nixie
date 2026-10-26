@@ -1,9 +1,5 @@
-// The failure of an answer that held no output, such as a call the model API refused. Its record
-// keeps the call's cost, so the spend stays right, and a rerun runs the item again.
-export const noOutputFailure = 'no_output';
-
-// The reason a record with no answer gives when the query returned an answer with nothing in it.
-export const emptyAnswerReason = 'the answer held no output';
+import { buildQueueResult } from './build-queue-result.ts';
+import { pickQueueStep } from './pick-queue-step.ts';
 
 export interface QueueOutput {
   costUSD: number;
@@ -49,17 +45,11 @@ export async function runBudgetedQueue<Item, Output extends QueueOutput>(
 
   const runWorker = async (): Promise<void> => {
     for (let next = pending.shift(); next !== undefined; next = pending.shift()) {
-      if (
-        hasErrored ||
-        result.isStoppedByFailure ||
-        (queue.limit !== null && started >= queue.limit)
-      ) {
-        return;
-      }
+      const step = pickQueueStep({ result, started, hasErrored }, queue);
 
-      if (result.costUSD >= queue.budgetUSD) {
-        result.isStoppedAtBudget = true;
+      result.isStoppedAtBudget ||= step.isStoppedAtBudget;
 
+      if (!step.isStarting) {
         return;
       }
 
@@ -67,21 +57,14 @@ export async function runBudgetedQueue<Item, Output extends QueueOutput>(
 
       const output = await queue.runItem(next);
 
-      result.costUSD += output.costUSD;
+      // The other workers read the spend and the stop while this output appends.
+      Object.assign(result, buildQueueResult(result, output));
 
       await queue.appendOutput(output);
 
-      if (output.failure === noOutputFailure) {
-        result.isStoppedByFailure = true;
-
-        if (output.failureReason !== undefined) {
-          result.failureReason = output.failureReason;
-        }
-
+      if (result.isStoppedByFailure) {
         return;
       }
-
-      result.ran += 1;
     }
   };
 

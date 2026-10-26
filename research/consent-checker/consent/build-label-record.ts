@@ -1,8 +1,7 @@
 // @boundaries-ignore a spike imports the code it measures
 import type { CheckReply } from '../../../libs/wire/src/check-frame.ts';
-import { emptyAnswerReason, noOutputFailure } from './run-budgeted-queue.ts';
 import type { LabelRecord, LabelTurn, RecordSource } from './types.ts';
-import { labellerOutputSchema } from './types.ts';
+import { emptyAnswerReason, labellerOutputSchema, noOutputFailure } from './types.ts';
 
 // A failed query or an answer with no output, such as a call the model API refused, gives a record
 // that holds its cost, the reason the query gave and no label, so a rerun labels the turn again.
