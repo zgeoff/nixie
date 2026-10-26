@@ -292,6 +292,70 @@ test('it refuses a check run while another run holds the labels file', async () 
   expect(existsSync(outPath)).toBe(false);
 });
 
+test.each([['cases.jsonl'], ['checks.jsonl']])(
+  'it starts no label and writes no labels file while another command holds %s',
+  async (heldFile) => {
+    const ctx = await setupTest();
+
+    const plainPath = join(ctx.directory, 'records.jsonl');
+    const casesPath = join(ctx.directory, 'cases.jsonl');
+    const checksPath = join(ctx.directory, 'checks.jsonl');
+    const personaPath = join(ctx.directory, 'persona.md');
+    const outPath = join(ctx.directory, 'labels.jsonl');
+
+    await writeFile(
+      plainPath,
+      [
+        '{"sequence":1,"recordedAt":"2026-03-02T09:00:00Z","kind":"owner_message","thread":"conversation","parent":null,"payload":{"spans":"as_sent"},"erasable":{"status":"readable","fields":{"text":"look up the ferry times","spans":[]}}}',
+        '{"sequence":2,"recordedAt":"2026-03-02T09:00:01Z","kind":"task.step_started","thread":"conversation","parent":null,"payload":{},"erasable":{"status":"none"}}',
+        '{"sequence":3,"recordedAt":"2026-03-02T09:00:02Z","kind":"tool_called","thread":"conversation","parent":null,"payload":{"tool":"web_fetch"},"erasable":{"status":"readable","fields":{"input":{"url":"https://ferry.example/times"}}}}',
+        '',
+      ].join('\n'),
+    );
+
+    await writeFile(
+      casesPath,
+      '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
+    );
+
+    await writeFile(checksPath, '');
+    await writeFile(personaPath, 'A made-up persona.\n');
+    await writeFile(join(ctx.directory, `${heldFile}.lock`), '4242\n');
+
+    const child = Bun.spawnSync(
+      [
+        'bun',
+        ctx.entry,
+        'label',
+        '--plain',
+        plainPath,
+        '--cases',
+        casesPath,
+        '--checks',
+        checksPath,
+        '--persona',
+        personaPath,
+        '--out',
+        outPath,
+        '--home',
+        join(ctx.directory, 'home'),
+        '--base-url',
+        'http://127.0.0.1:9',
+      ],
+      { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' } },
+    );
+
+    expect(child.exitCode).toBe(1);
+
+    expect(child.stderr.toString()).toInclude(
+      `${join(ctx.directory, heldFile)}.lock exists, so another command of this spike holds these files`,
+    );
+
+    expect(existsSync(outPath)).toBe(false);
+    expect(existsSync(join(ctx.directory, 'home'))).toBe(false);
+  },
+);
+
 test('it counts the reservation that a run which crashed before its record left toward the budget', async () => {
   const ctx = await setupTest();
 
