@@ -9,7 +9,9 @@ export interface QueueOutput {
 
 export interface BudgetedQueue<Item, Output extends QueueOutput> {
   items: readonly Item[];
+  appendReservation: (item: Item) => Promise<void>;
   appendOutput: (output: Output) => Promise<void>;
+  reserveUSD: number;
   spentUSD: number;
   budgetUSD: number;
   limit: number | null;
@@ -25,9 +27,9 @@ export interface QueueResult {
   failureReason?: string;
 }
 
-// Runs each item and appends its output. No item starts once the spend reaches the budget or the run
-// reaches its limit, so the spend passes the budget by at most the items in flight. An output with
-// no answer stops the run.
+// Runs each item between its reservation and its output. The spend holds each reservation until its
+// output settles it, so no item starts once the spend reaches the budget or the run reaches its
+// limit. An output with no answer stops the run.
 export async function runBudgetedQueue<Item, Output extends QueueOutput>(
   queue: BudgetedQueue<Item, Output>,
 ): Promise<QueueResult> {
@@ -54,11 +56,14 @@ export async function runBudgetedQueue<Item, Output extends QueueOutput>(
       }
 
       started += 1;
+      result.costUSD += queue.reserveUSD;
+
+      await queue.appendReservation(next);
 
       const output = await queue.runItem(next);
 
       // The other workers read the spend and the stop while this output appends.
-      Object.assign(result, buildQueueResult(result, output));
+      Object.assign(result, buildQueueResult(result, output, queue.reserveUSD));
 
       await queue.appendOutput(output);
 

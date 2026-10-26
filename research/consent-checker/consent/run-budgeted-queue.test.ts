@@ -15,6 +15,8 @@ test('it appends each output and adds its cost to the spend', async () => {
       { costUSD: 0.5, failure: null },
     ],
     appendOutput,
+    appendReservation: () => Promise.resolve(),
+    reserveUSD: 0,
     spentUSD: 0.5,
     budgetUSD: 4,
     limit: null,
@@ -39,6 +41,8 @@ test('it starts no item once the spend reaches the budget', async () => {
   const result = await runBudgetedQueue({
     items: ['a', 'b'],
     appendOutput: () => Promise.resolve(),
+    appendReservation: () => Promise.resolve(),
+    reserveUSD: 0,
     spentUSD: 0,
     budgetUSD: 0.5,
     limit: null,
@@ -60,6 +64,8 @@ test('it starts no item when the spend before the run already reaches the budget
   const result = await runBudgetedQueue({
     items: ['a'],
     appendOutput: () => Promise.resolve(),
+    appendReservation: () => Promise.resolve(),
+    reserveUSD: 0,
     spentUSD: 4,
     budgetUSD: 4,
     limit: null,
@@ -77,12 +83,16 @@ test('it runs as many items at once as its concurrency and no more', async () =>
   const running = runBudgetedQueue({
     items: ['a', 'b', 'c'],
     appendOutput: () => Promise.resolve(),
+    appendReservation: () => Promise.resolve(),
+    reserveUSD: 0,
     spentUSD: 0,
     budgetUSD: 4,
     limit: null,
     concurrency: 2,
     runItem: held.run,
   });
+
+  await waitForCondition(() => held.started.length === 2);
 
   const startedBeforeRelease = [...held.started];
 
@@ -92,6 +102,61 @@ test('it runs as many items at once as its concurrency and no more', async () =>
 
   expect(startedBeforeRelease).toStrictEqual(['a', 'b']);
   expect(held.started).toStrictEqual(['a', 'b', 'c']);
+});
+
+test('it appends each reservation before it runs the item, and the output after', async () => {
+  const events: string[] = [];
+
+  await runBudgetedQueue({
+    items: ['a'],
+    appendReservation: (item) => {
+      events.push(`reserve ${item}`);
+
+      return Promise.resolve();
+    },
+    appendOutput: () => {
+      events.push('append');
+
+      return Promise.resolve();
+    },
+    reserveUSD: 0.1,
+    spentUSD: 0,
+    budgetUSD: 4,
+    limit: null,
+    concurrency: 1,
+    runItem: (item) => {
+      events.push(`run ${item}`);
+
+      return Promise.resolve({ item, costUSD: 0.02, failure: null });
+    },
+  });
+
+  expect(events).toStrictEqual(['reserve a', 'run a', 'append']);
+});
+
+test('it holds a call in the spend at its reservation until the call settles', async () => {
+  const runItem = mock((item: string) => Promise.resolve({ item, costUSD: 0.02, failure: null }));
+
+  const result = await runBudgetedQueue({
+    items: ['a', 'b'],
+    appendReservation: () => Promise.resolve(),
+    appendOutput: () => Promise.resolve(),
+    reserveUSD: 0.5,
+    spentUSD: 0,
+    budgetUSD: 0.5,
+    limit: null,
+    concurrency: 2,
+    runItem,
+  });
+
+  expect(result).toStrictEqual({
+    ran: 1,
+    costUSD: 0.02,
+    isStoppedAtBudget: true,
+    isStoppedByFailure: false,
+  });
+
+  expect(runItem).toHaveBeenCalledTimes(1);
 });
 
 test('it lets every running item finish and starts no more before it passes on a failed append', async () => {
@@ -119,6 +184,8 @@ test('it lets every running item finish and starts no more before it passes on a
 
         return appendAnswers[output.item]();
       },
+      appendReservation: () => Promise.resolve(),
+      reserveUSD: 0,
       spentUSD: 0,
       budgetUSD: 4,
       limit: null,
@@ -146,6 +213,8 @@ test('it starts no more items than the limit', async () => {
   const result = await runBudgetedQueue({
     items: ['a', 'b', 'c'],
     appendOutput: () => Promise.resolve(),
+    appendReservation: () => Promise.resolve(),
+    reserveUSD: 0,
     spentUSD: 0,
     budgetUSD: 4,
     limit: 2,
@@ -166,6 +235,8 @@ test('it keeps the cost of an output with no answer and stops the run', async ()
       { costUSD: 0.1, failure: null },
     ],
     appendOutput,
+    appendReservation: () => Promise.resolve(),
+    reserveUSD: 0,
     spentUSD: 0,
     budgetUSD: 4,
     limit: null,
@@ -188,6 +259,8 @@ test('it gives the reason of the output that stopped the run', async () => {
   const result = await runBudgetedQueue({
     items: ['a'],
     appendOutput: () => Promise.resolve(),
+    appendReservation: () => Promise.resolve(),
+    reserveUSD: 0,
     spentUSD: 0,
     budgetUSD: 4,
     limit: null,

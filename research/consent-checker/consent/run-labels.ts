@@ -1,17 +1,21 @@
 // @boundaries-ignore a spike imports the code it measures
 import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { buildLabelRecord } from './build-label-record.ts';
+import { buildLedger } from './build-ledger.ts';
+import { ledgerKeys } from './ledger-keys.ts';
 import { renderLabellerInput } from './render-labeller-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
 import { runBudgetedQueue } from './run-budgeted-queue.ts';
 import type { PaidReply } from './run-paid-query.ts';
-import type { LabelRecord, LabelTurn } from './types.ts';
+import type { LabelLine, LabelRecord, LabelTurn, Reservation } from './types.ts';
 import { noOutputFailure } from './types.ts';
 
 export interface LabelRun {
   turns: readonly LabelTurn[];
-  done: readonly LabelRecord[];
+  done: readonly LabelLine[];
+  appendReservation: (reservation: Reservation) => Promise<void>;
   appendRecord: (record: LabelRecord) => Promise<void>;
+  reserveUSD: number;
   profile: CheckRequest['profile'];
   systemPrompt: string;
   promptSHA256: string;
@@ -26,11 +30,12 @@ export interface LabelRunResult extends QueueResult {
   skipped: number;
 }
 
-// Runs the labeller on each turn the done records lack, appending one record per turn. A rerun skips
-// the turns the done records hold an answer for, and refuses done records of another model, effort
-// or prompt. One budget covers the done records' spend and the spend of the spike's other calls.
+// A rerun skips the turns the done records hold an answer for, and refuses done records of another
+// model, effort or prompt. One budget covers the done lines' spend and the other calls' spend.
 export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
-  const mismatch = run.done.find(
+  const ledger = buildLedger(run.done, ledgerKeys.label);
+
+  const mismatch = ledger.records.find(
     (record) =>
       record.model !== run.profile.model ||
       record.effort !== run.profile.effort ||
@@ -44,7 +49,7 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
   }
 
   const doneSteps = new Set(
-    run.done
+    ledger.records
       .filter((record) => record.failure !== noOutputFailure)
       .map((record) => record.stepSequence),
   );
@@ -53,8 +58,11 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
 
   const result = await runBudgetedQueue({
     items,
+    appendReservation: (turn) =>
+      run.appendReservation({ reservedFor: ledgerKeys.label(turn), reserveUSD: run.reserveUSD }),
     appendOutput: run.appendRecord,
-    spentUSD: run.otherSpentUSD + run.done.reduce((sum, record) => sum + (record.costUSD ?? 0), 0),
+    reserveUSD: run.reserveUSD,
+    spentUSD: run.otherSpentUSD + ledger.spentUSD,
     budgetUSD: run.budgetUSD,
     limit: run.limit,
     concurrency: run.concurrency,

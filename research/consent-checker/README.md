@@ -46,9 +46,9 @@ bun run.ts score --cases <cases> --labels <labels> --checks <checks>
 ```
 
 One `--budget` in dollars covers both runs when each gets the other's output file, as above. `label`
-and `check` also take `--model`, `--effort`, `--limit`, `--concurrency` and `--base-url`. Every
-command locks each cases, labels and checks file it gets, and stops while another holds one. A
-command that crashes leaves its locks for you to remove.
+and `check` also take `--model`, `--effort`, `--limit`, `--concurrency`, `--reserve` and
+`--base-url`. Every command locks each cases, labels and checks file it gets, and stops while
+another holds one. A command that crashes leaves its locks for you to remove.
 
 ## Results
 

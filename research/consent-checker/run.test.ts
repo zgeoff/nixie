@@ -292,6 +292,66 @@ test('it refuses a check run while another run holds the labels file', async () 
   expect(existsSync(outPath)).toBe(false);
 });
 
+test('it counts the reservation that a run which crashed before its record left toward the budget', async () => {
+  const ctx = await setupTest();
+
+  const plainPath = join(ctx.directory, 'records.jsonl');
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const personaPath = join(ctx.directory, 'persona.md');
+  const outPath = join(ctx.directory, 'labels.jsonl');
+
+  await writeFile(
+    plainPath,
+    [
+      '{"sequence":1,"recordedAt":"2026-03-02T09:00:00Z","kind":"owner_message","thread":"conversation","parent":null,"payload":{"spans":"as_sent"},"erasable":{"status":"readable","fields":{"text":"look up the ferry times","spans":[]}}}',
+      '{"sequence":2,"recordedAt":"2026-03-02T09:00:01Z","kind":"task.step_started","thread":"conversation","parent":null,"payload":{},"erasable":{"status":"none"}}',
+      '{"sequence":3,"recordedAt":"2026-03-02T09:00:02Z","kind":"tool_called","thread":"conversation","parent":null,"payload":{"tool":"web_fetch"},"erasable":{"status":"readable","fields":{"input":{"url":"https://ferry.example/times"}}}}',
+      '',
+    ].join('\n'),
+  );
+
+  await writeFile(
+    casesPath,
+    '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
+  );
+
+  await writeFile(outPath, '{"reservedFor":"step 2","reserveUSD":1}\n');
+  await writeFile(personaPath, 'A made-up persona.\n');
+
+  const child = Bun.spawnSync(
+    [
+      'bun',
+      ctx.entry,
+      'label',
+      '--plain',
+      plainPath,
+      '--cases',
+      casesPath,
+      '--persona',
+      personaPath,
+      '--out',
+      outPath,
+      '--home',
+      join(ctx.directory, 'home'),
+      '--budget',
+      '1',
+      '--base-url',
+      'http://127.0.0.1:9',
+    ],
+    { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' } },
+  );
+
+  const labels = await readFile(outPath, 'utf8');
+
+  expect(child.exitCode).toBe(0);
+
+  expect(child.stdout.toString()).toBe(
+    'labelled 0 turns, skipped 0, spent $1.0000 in total, stopped at the $1 budget\n',
+  );
+
+  expect(labels).toBe('{"reservedFor":"step 2","reserveUSD":1}\n');
+});
+
 test('it starts no label when the checker spend already reaches the budget', async () => {
   const ctx = await setupTest();
 

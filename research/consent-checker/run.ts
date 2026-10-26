@@ -15,7 +15,9 @@ import { plainRecordSchema } from '../memory-retrieval/real-turns/read-plain-exp
 import { buildConsentCases } from './consent/build-consent-cases.ts';
 import { buildLabelTurns } from './consent/build-label-turns.ts';
 import { buildLabels } from './consent/build-labels.ts';
+import { buildLedger } from './consent/build-ledger.ts';
 import { createRunLock } from './consent/create-run-lock.ts';
+import { ledgerKeys } from './consent/ledger-keys.ts';
 import { nodeLockFiles } from './consent/node-lock-files.ts';
 import type { QueueResult } from './consent/run-budgeted-queue.ts';
 import { runChecks } from './consent/run-checks.ts';
@@ -24,9 +26,9 @@ import { runPaidQuery } from './consent/run-paid-query.ts';
 import type { Rate } from './consent/score-verdicts.ts';
 import { scoreVerdicts } from './consent/score-verdicts.ts';
 import {
-  checkRecordSchema,
+  checkLineSchema,
   consentCaseSchema,
-  labelRecordSchema,
+  labelLineSchema,
   labellerOutputSchema,
 } from './consent/types.ts';
 
@@ -56,6 +58,7 @@ const args = parseArgs({
     model: { type: 'string' },
     effort: { type: 'string' },
     budget: { type: 'string', default: '4' },
+    reserve: { type: 'string', default: '0.1' },
     limit: { type: 'string' },
     concurrency: { type: 'string', default: '2' },
   },
@@ -150,12 +153,13 @@ async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<v
 
   const result = await runLabels({
     turns: buildLabelTurns(records, cases),
-    done: existsSync(outPath) ? await readJSONLines(outPath, labelRecordSchema) : [],
+    done: existsSync(outPath) ? await readJSONLines(outPath, labelLineSchema) : [],
+    appendReservation: makeAppendJSONLine(outPath),
     appendRecord: makeAppendJSONLine(outPath),
     profile: buildProfile(labellerProfile),
     systemPrompt,
     promptSHA256: createHash('sha256').update(systemPrompt).digest('hex'),
-    otherSpentUSD: await readSpentUSD(values.checks, checkRecordSchema),
+    otherSpentUSD: await readCheckSpentUSD(values.checks),
     ...limits,
 
     // The check guest's options, with the labeller's answer shape in place of the verdict.
@@ -188,12 +192,13 @@ async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<v
 
   const result = await runChecks({
     cases: await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema),
-    done: existsSync(outPath) ? await readJSONLines(outPath, checkRecordSchema) : [],
+    done: existsSync(outPath) ? await readJSONLines(outPath, checkLineSchema) : [],
+    appendReservation: makeAppendJSONLine(outPath),
     appendRecord: makeAppendJSONLine(outPath),
     profile: buildProfile(checkerProfile),
     systemPrompt,
     promptSHA256: createHash('sha256').update(systemPrompt).digest('hex'),
-    otherSpentUSD: await readSpentUSD(values.labels, labelRecordSchema),
+    otherSpentUSD: await readLabelSpentUSD(values.labels),
     ...limits,
     runCheck: (request) => runPaidQuery(request, { env, runQuery: query }),
   });
@@ -268,6 +273,12 @@ function buildRunLimits() {
       z.coerce.number().nonnegative(),
       'a dollar amount of 0 or more',
     ),
+    reserveUSD: parseFlagNumber(
+      '--reserve',
+      values.reserve,
+      z.coerce.number().nonnegative(),
+      'a dollar amount of 0 or more',
+    ),
     limit:
       values.limit === undefined
         ? null
@@ -301,39 +312,47 @@ function parseFlagNumber(
   return parsed.data;
 }
 
-async function readSpentUSD(
-  path: string | undefined,
-  schema: typeof checkRecordSchema | typeof labelRecordSchema,
-): Promise<number> {
+async function readLabelSpentUSD(path: string | undefined): Promise<number> {
   if (path === undefined || !existsSync(path)) {
     return 0;
   }
 
-  const records: { costUSD: number | null }[] = await readJSONLines(path, schema);
+  const lines = await readJSONLines(path, labelLineSchema);
 
-  return records.reduce((sum, record) => sum + (record.costUSD ?? 0), 0);
+  return buildLedger(lines, ledgerKeys.label).spentUSD;
+}
+
+async function readCheckSpentUSD(path: string | undefined): Promise<number> {
+  if (path === undefined || !existsSync(path)) {
+    return 0;
+  }
+
+  const lines = await readJSONLines(path, checkLineSchema);
+
+  return buildLedger(lines, ledgerKeys.check).spentUSD;
 }
 
 async function printScore(): Promise<void> {
   const cases = await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema);
+  const labelLines = await readJSONLines(requireFlag(values.labels, '--labels'), labelLineSchema);
 
-  const labelRecords = await readJSONLines(
-    requireFlag(values.labels, '--labels'),
-    labelRecordSchema,
-  );
-
+  const labelLedger = buildLedger(labelLines, ledgerKeys.label);
+  const labelRecords = labelLedger.records;
   const built = buildLabels(labelRecords);
   const labels = built.labels;
 
-  const allChecks = await readJSONLines(requireFlag(values.checks, '--checks'), checkRecordSchema);
+  const checkLines = await readJSONLines(requireFlag(values.checks, '--checks'), checkLineSchema);
+
+  const checkLedger = buildLedger(checkLines, ledgerKeys.check);
+  const allChecks = checkLedger.records;
 
   const caseIDs = new Set(cases.map((consentCase) => consentCase.caseID));
 
   // A check of a pair that a later build of the cases dropped still counts in the spend.
   const checks = allChecks.filter((record) => caseIDs.has(record.caseID));
   const score = scoreVerdicts(checks, labels);
-  const labelSpend = labelRecords.reduce((sum, record) => sum + (record.costUSD ?? 0), 0);
-  const checkSpend = allChecks.reduce((sum, record) => sum + (record.costUSD ?? 0), 0);
+  const labelSpend = labelLedger.spentUSD;
+  const checkSpend = checkLedger.spentUSD;
 
   console.log(
     `labeller: ${built.unsure} natural pairs unsure, ${labelRecords.filter((record) => record.failure !== null).length} failed turns`,

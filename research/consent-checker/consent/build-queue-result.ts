@@ -1,9 +1,14 @@
 import type { QueueOutput, QueueResult } from './run-budgeted-queue.ts';
 import { noOutputFailure } from './types.ts';
 
-// An output with no answer still adds its cost, so the spend stays right, and it stops the run.
-export function buildQueueResult(result: QueueResult, output: QueueOutput): QueueResult {
-  const costUSD = result.costUSD + (output.costUSD ?? 0);
+// An output's cost replaces the reservation its call held, and an output with no known cost keeps
+// it. An output with no answer still counts its cost, and it stops the run.
+export function buildQueueResult(
+  result: QueueResult,
+  output: QueueOutput,
+  reserveUSD: number,
+): QueueResult {
+  const costUSD = result.costUSD - reserveUSD + (output.costUSD ?? reserveUSD);
 
   if (output.failure !== noOutputFailure) {
     return { ...result, costUSD, ran: result.ran + 1 };

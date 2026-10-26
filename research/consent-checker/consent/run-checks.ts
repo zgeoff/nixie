@@ -1,17 +1,21 @@
 // @boundaries-ignore a spike imports the code it measures
 import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { buildCheckRecord } from './build-check-record.ts';
+import { buildLedger } from './build-ledger.ts';
+import { ledgerKeys } from './ledger-keys.ts';
 import { renderCheckerInput } from './render-checker-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
 import { runBudgetedQueue } from './run-budgeted-queue.ts';
 import type { PaidReply } from './run-paid-query.ts';
-import type { CheckRecord, ConsentCase } from './types.ts';
+import type { CheckLine, CheckRecord, ConsentCase, Reservation } from './types.ts';
 import { noOutputFailure } from './types.ts';
 
 export interface CheckRun {
   cases: readonly ConsentCase[];
-  done: readonly CheckRecord[];
+  done: readonly CheckLine[];
+  appendReservation: (reservation: Reservation) => Promise<void>;
   appendRecord: (record: CheckRecord) => Promise<void>;
+  reserveUSD: number;
   profile: CheckRequest['profile'];
   systemPrompt: string;
   promptSHA256: string;
@@ -26,11 +30,12 @@ export interface CheckRunResult extends QueueResult {
   skipped: number;
 }
 
-// Runs the checker on each case the done records lack, appending one record per call. A rerun skips
-// the cases the done records hold a verdict for, and refuses done records of another model, effort
-// or prompt. One budget covers the done records' spend and the spend of the spike's other calls.
+// A rerun skips the cases the done records hold a verdict for, and refuses done records of another
+// model, effort or prompt. One budget covers the done lines' spend and the other calls' spend.
 export async function runChecks(run: CheckRun): Promise<CheckRunResult> {
-  const mismatch = run.done.find(
+  const ledger = buildLedger(run.done, ledgerKeys.check);
+
+  const mismatch = ledger.records.find(
     (record) =>
       record.model !== run.profile.model ||
       record.effort !== run.profile.effort ||
@@ -44,15 +49,23 @@ export async function runChecks(run: CheckRun): Promise<CheckRunResult> {
   }
 
   const doneIDs = new Set(
-    run.done.filter((record) => record.failure !== noOutputFailure).map((record) => record.caseID),
+    ledger.records
+      .filter((record) => record.failure !== noOutputFailure)
+      .map((record) => record.caseID),
   );
 
   const items = run.cases.filter((consentCase) => !doneIDs.has(consentCase.caseID));
 
   const result = await runBudgetedQueue({
     items,
+    appendReservation: (consentCase) =>
+      run.appendReservation({
+        reservedFor: ledgerKeys.check(consentCase),
+        reserveUSD: run.reserveUSD,
+      }),
     appendOutput: run.appendRecord,
-    spentUSD: run.otherSpentUSD + run.done.reduce((sum, record) => sum + (record.costUSD ?? 0), 0),
+    reserveUSD: run.reserveUSD,
+    spentUSD: run.otherSpentUSD + ledger.spentUSD,
     budgetUSD: run.budgetUSD,
     limit: run.limit,
     concurrency: run.concurrency,

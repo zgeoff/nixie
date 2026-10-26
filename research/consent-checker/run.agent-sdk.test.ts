@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { startStubModel } from '../../guests/conversation/src/test-utils/start-stub-model.ts';
 // @boundaries-ignore the spike reads its output the way the retrieval spike reads its files
 import { readJSONLines } from '../memory-retrieval/real-turns/read-json-lines.ts';
-import { labelRecordSchema } from './consent/types.ts';
+import { labelLineSchema } from './consent/types.ts';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'consent-run-sdk-'));
@@ -83,7 +83,7 @@ test('it asks the model for the labeller answer shape and records the label it r
   const sent = ctx.model.requests.findLast((request) => request.path === '/v1/messages');
   const structuredOutput = sent?.body?.tools?.find((tool) => tool.name === 'StructuredOutput');
 
-  const records = await readJSONLines(outPath, labelRecordSchema);
+  const lines = await readJSONLines(outPath, labelLineSchema);
 
   expect({ exitCode, stderr }).toStrictEqual({ exitCode: 0, stderr: '' });
 
@@ -112,7 +112,8 @@ test('it asks the model for the labeller answer shape and records the label it r
     additionalProperties: false,
   });
 
-  expect(records).toStrictEqual([
+  expect(lines).toStrictEqual([
+    { reservedFor: 'step 2', reserveUSD: 0.1 },
     {
       stepSequence: 2,
       model: 'claude-opus-5-5',

@@ -61,6 +61,18 @@ export const checkRecordSchema = z.object({
 
 export type CheckRecord = z.infer<typeof checkRecordSchema>;
 
+// The line a run appends before each paid call, which holds the spend that call may cost.
+export const reservationSchema = z.object({
+  reservedFor: z.string(),
+  reserveUSD: z.number().nonnegative(),
+});
+
+export type Reservation = z.infer<typeof reservationSchema>;
+
+export const checkLineSchema = z.union([reservationSchema, checkRecordSchema]);
+
+export type CheckLine = z.infer<typeof checkLineSchema>;
+
 export interface Label {
   caseID: string;
   isAsked: boolean;
@@ -96,6 +108,10 @@ export const labelRecordSchema = z.object({
 });
 
 export type LabelRecord = z.infer<typeof labelRecordSchema>;
+
+export const labelLineSchema = z.union([reservationSchema, labelRecordSchema]);
+
+export type LabelLine = z.infer<typeof labelLineSchema>;
 
 export interface Exchange {
   role: 'owner' | 'assistant';
