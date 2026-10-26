@@ -375,6 +375,85 @@ test('it moves the edges of a span within its thread', async () => {
 });
 
 test.each([
+  ['a reflection ID that no moment holds', 'unknown'],
+  ['a reflection of another moment', 'other'],
+  ['a removed reflection', 'removed'],
+] as const)('it refuses a rewrite of %s as not found, and writes no record', async (_, target) => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'never buy the cheap kettle again' },
+    },
+  ]);
+
+  invariant(message);
+
+  const model = { kind: 'model', thread: 'conversation', model: 'claude-test-4' } as const;
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: model,
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The kettle argument',
+  });
+
+  const other = await ctx.memory.store.moments.keep({
+    caller: model,
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The quiet kettle',
+  });
+
+  invariant(kept.status === 'written' && other.status === 'written');
+
+  const removed = await ctx.memory.store.moments.edit({
+    caller: model,
+    target: { momentID: kept.shortID, version: 1 },
+    change: { kind: 'reflection', text: 'The noise mattered more than the price.' },
+  });
+
+  const elsewhere = await ctx.memory.store.moments.edit({
+    caller: model,
+    target: { momentID: other.shortID, version: 1 },
+    change: { kind: 'reflection', text: 'Quiet won over cheap.' },
+  });
+
+  invariant(removed.status === 'written' && removed.reflectionID !== undefined);
+  invariant(elsewhere.status === 'written' && elsewhere.reflectionID !== undefined);
+
+  const removal = await ctx.memory.store.moments.edit({
+    caller: { kind: 'owner' },
+    target: { momentID: kept.momentID, version: 2 },
+    change: { kind: 'reflection_removed', reflectionID: removed.reflectionID },
+  });
+
+  invariant(removal.status === 'written');
+
+  const reflectionIDs = {
+    unknown: 'q4n8v2hw6t',
+    other: elsewhere.reflectionID,
+    removed: removed.reflectionID,
+  };
+
+  const edited = await ctx.memory.store.moments.edit({
+    caller: model,
+    target: { momentID: kept.shortID, version: 3 },
+    change: { kind: 'reflection', text: 'A rewrite.', reflectionID: reflectionIDs[target] },
+  });
+
+  const written = await readRecords(ctx.memory.log, { afterSequence: removal.sequence, limit: 10 });
+
+  expect(edited).toStrictEqual({ status: 'refused', reason: 'reflection_not_found' });
+  expect(written).toStrictEqual([]);
+});
+
+test.each([
   ['reversed edges', 1, 0],
   ['a last edge on another thread', 0, 2],
   ['a first edge on another thread', 2, 1],
