@@ -33,7 +33,7 @@ its memory rates mean anything. The run cost $3.64.
 
 ## Run it
 
-Run the commands from the spike's directory. `<plain>` is the conversation records of a plain export
+Run the commands from the spike's directory. `<plain>` is the `records.jsonl` file of a plain export
 of the data directory, `<persona>` is the deployment's persona, `<cases>`, `<labels>` and `<checks>`
 are files outside the repo, and `<home>` is the model's home directory. `label` and `check` read the
 model credential from `ANTHROPIC_AUTH_TOKEN`.

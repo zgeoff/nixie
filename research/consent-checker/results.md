@@ -6,9 +6,9 @@ checker credited no call the user did not ask for, and missed about half the cal
 for. On the memory tools, the call record drops the free text the call carries, so the checker
 judged an item ID with no text, and those rates measure the record, not the checker.
 
-The data is the user's own and never enters the repo. The harness reads a plain export from a folder
-given on the command line, writes its cases, labels and verdicts beside it, and prints counts and
-rates only.
+The data is the user's own and never enters the repo. The harness reads the `records.jsonl` file of
+a plain export, writes its cases, labels and verdicts to the output files its flags name, and prints
+counts and rates only.
 
 ## Setup
 
