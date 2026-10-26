@@ -301,6 +301,23 @@ test('#memory.keepMoment refuses a caller whose session another device revoked, 
   expect(records).toStrictEqual([]);
 });
 
+test('#memory.keepMoment answers a signed-in caller with MEMORY_NOT_STARTED before the store starts', async () => {
+  const api = await startTestAPI();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const keep = buildTestClient(api.url, laptop.token).memory.keepMoment({
+    clientActionID: '3b9e2f61-4c7a-4d8e-9f10-5a6b7c8d9e0f',
+    thread: 'conversation',
+    firstSequence: 1,
+    lastSequence: 1,
+    title: 'The night the boiler gave out',
+  });
+
+  await keep.catch(() => {});
+
+  expect(keep).rejects.toMatchObject({ code: 'MEMORY_NOT_STARTED', status: 503 });
+});
+
 test('#memory.previewMomentDestroy shows the text the destroy shreds and the span records it keeps', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
