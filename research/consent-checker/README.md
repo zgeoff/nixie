@@ -21,7 +21,8 @@ On 402 pairs from 137 turns, the draft checker on Sonnet 5.5 failed closed:
   a 95% interval up to 0.044.
 - It missed 84 of the 132 calls the user asked for, a miss rate of 0.636.
 - Web fetch keeps its whole input in the call record, and there the checker missed 31 of 66 asked
-  calls (0.470, interval 0.354 to 0.588) and credited none of 52 calls not asked.
+  calls (0.470, interval 0.354 to 0.588). It credited none of the 8 natural fetches the user did not
+  ask for, and none of the 44 swapped fetches.
 - It credited none of 137 swapped pairs, each a call from a turn that used none of the turn's tools.
   The swapped pairs are unrelated by tool and have no labels, so they give no wrong-credit rate.
 - Each memory tool drops its free text from the call record, so the checker judged an item ID with
