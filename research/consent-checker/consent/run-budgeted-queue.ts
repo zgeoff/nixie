@@ -93,7 +93,6 @@ export async function runBudgetedQueue<Item, Output extends QueueOutput>(
         await runWorker();
       } catch (error) {
         hasErrored = true;
-
         throw error;
       }
     }),

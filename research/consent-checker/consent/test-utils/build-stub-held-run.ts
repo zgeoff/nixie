@@ -9,6 +9,7 @@ export function buildStubHeldRun<Item, Output>(
   buildOutput: (item: Item) => Output,
 ): StubHeldRun<Item, Output> {
   const gates = new Map<Item, PromiseWithResolvers<void>>();
+
   const started: Item[] = [];
   let isAllReleased = false;
 

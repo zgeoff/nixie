@@ -96,6 +96,7 @@ test('it runs as many items at once as its concurrency and no more', async () =>
 
 test('it lets every running item finish and starts no more before it passes on a failed append', async () => {
   const failure = new Error('no space left on device');
+
   const held = buildStubHeldRun((item: 'one' | 'two' | 'three') => ({
     item,
     costUSD: 0.1,
@@ -133,6 +134,7 @@ test('it lets every running item finish and starts no more before it passes on a
   held.releaseAll();
 
   const settled = await outcome;
+
   const appendedBeforeSettle = [...appended];
 
   expect(settled).toStrictEqual([{ status: 'rejected', reason: failure }]);

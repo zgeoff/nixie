@@ -6,7 +6,6 @@ test('it records each item as its run starts', () => {
 
   void held.run('a');
   void held.run('b');
-
   expect(held.started).toStrictEqual(['a', 'b']);
 });
 
@@ -36,7 +35,6 @@ test('it finishes a run whose item was released before the run started', async (
 
 test('it finishes every run, started or later, once all are released', async () => {
   const held = buildStubHeldRun((item: string) => `${item} done`);
-
   const first = held.run('a');
 
   held.releaseAll();
