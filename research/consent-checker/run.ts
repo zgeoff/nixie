@@ -165,6 +165,7 @@ async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<v
       runPaidQuery(request, {
         env,
         runQuery: (params) => query({ ...params, options: { ...params.options, outputFormat } }),
+        createDirectory,
       }),
   });
 
@@ -198,7 +199,7 @@ async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<v
     promptSHA256: createHash('sha256').update(systemPrompt).digest('hex'),
     otherSpentUSD: await readLabelSpentUSD(values.labels),
     ...limits,
-    runCheck: (request) => runPaidQuery(request, { env, runQuery: query }),
+    runCheck: (request) => runPaidQuery(request, { env, runQuery: query, createDirectory }),
   });
 
   console.log(
@@ -233,6 +234,10 @@ function formatFailureStop(result: QueueResult): string {
   }
 
   return `, stopped because a call got no answer from the model API (${result.failureReason ?? 'no reason given'})`;
+}
+
+async function createDirectory(path: string): Promise<void> {
+  await mkdir(path, { recursive: true });
 }
 
 function makeAppendJSONLine(path: string): (value: unknown) => Promise<void> {

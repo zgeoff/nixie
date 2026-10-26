@@ -1,21 +1,8 @@
-import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { expect, test } from 'bun:test';
 import { runPaidQuery } from './run-paid-query.ts';
 import { buildStubPaidSession } from './test-utils/build-stub-paid-session.ts';
 
-async function setupTest() {
-  const home = await mkdtemp(join(tmpdir(), 'consent-paid-'));
-
-  onTestFinished(() => rm(home, { recursive: true, force: true }));
-
-  return { home, env: { HOME: home, ANTHROPIC_AUTH_TOKEN: 'test-token' } };
-}
-
 test('it gives the answer of a result that succeeded with its cost and timings', async () => {
-  const ctx = await setupTest();
-
   const stub = buildStubPaidSession([
     { type: 'system', subtype: 'init' },
     {
@@ -39,7 +26,11 @@ test('it gives the answer of a result that succeeded with its cost and timings',
       systemPrompt: 'You check one tool call.',
       input: 'look up the ferry times',
     },
-    { env: ctx.env, runQuery: () => stub.session },
+    {
+      env: { HOME: '/home/checker-test', ANTHROPIC_AUTH_TOKEN: 'test-token' },
+      runQuery: () => stub.session,
+      createDirectory: () => Promise.resolve(),
+    },
   );
 
   expect(reply).toStrictEqual({
@@ -52,8 +43,6 @@ test('it gives the answer of a result that succeeded with its cost and timings',
 });
 
 test('it keeps the cost of a result that failed', async () => {
-  const ctx = await setupTest();
-
   const stub = buildStubPaidSession([
     {
       type: 'result',
@@ -75,7 +64,11 @@ test('it keeps the cost of a result that failed', async () => {
       systemPrompt: 'You check one tool call.',
       input: 'look up the ferry times',
     },
-    { env: ctx.env, runQuery: () => stub.session },
+    {
+      env: { HOME: '/home/checker-test', ANTHROPIC_AUTH_TOKEN: 'test-token' },
+      runQuery: () => stub.session,
+      createDirectory: () => Promise.resolve(),
+    },
   );
 
   expect(reply).toStrictEqual({
@@ -86,8 +79,6 @@ test('it keeps the cost of a result that failed', async () => {
 });
 
 test('it gives no known cost for a query that ended with no result', async () => {
-  const ctx = await setupTest();
-
   const stub = buildStubPaidSession([{ type: 'system', subtype: 'init' }]);
 
   const reply = await runPaidQuery(
@@ -101,7 +92,11 @@ test('it gives no known cost for a query that ended with no result', async () =>
       systemPrompt: 'You check one tool call.',
       input: 'look up the ferry times',
     },
-    { env: ctx.env, runQuery: () => stub.session },
+    {
+      env: { HOME: '/home/checker-test', ANTHROPIC_AUTH_TOKEN: 'test-token' },
+      runQuery: () => stub.session,
+      createDirectory: () => Promise.resolve(),
+    },
   );
 
   expect(reply).toStrictEqual({
@@ -111,9 +106,40 @@ test('it gives no known cost for a query that ended with no result', async () =>
   });
 });
 
-test('it sends the input under the check guest options and closes the session', async () => {
-  const ctx = await setupTest();
+test('it creates the check folder under the home before it starts the query', async () => {
+  const stub = buildStubPaidSession([]);
+  const events: string[] = [];
 
+  await runPaidQuery(
+    {
+      profile: {
+        model: 'claude-sonnet-5-5',
+        baseURL: 'https://api.anthropic.com',
+        effort: 'high',
+        authHeader: 'bearer',
+      },
+      systemPrompt: 'You check one tool call.',
+      input: 'look up the ferry times',
+    },
+    {
+      env: { HOME: '/home/checker-test', ANTHROPIC_AUTH_TOKEN: 'test-token' },
+      runQuery: () => {
+        events.push('query');
+
+        return stub.session;
+      },
+      createDirectory: (path) => {
+        events.push(`create ${path}`);
+
+        return Promise.resolve();
+      },
+    },
+  );
+
+  expect(events).toStrictEqual(['create /home/checker-test/checker', 'query']);
+});
+
+test('it sends the input under the check guest options and closes the session', async () => {
   const stub = buildStubPaidSession([]);
   const prompts: string[] = [];
   const systemPrompts: unknown[] = [];
@@ -130,13 +156,14 @@ test('it sends the input under the check guest options and closes the session', 
       input: 'look up the ferry times',
     },
     {
-      env: ctx.env,
+      env: { HOME: '/home/checker-test', ANTHROPIC_AUTH_TOKEN: 'test-token' },
       runQuery: (params) => {
         prompts.push(params.prompt);
         systemPrompts.push(params.options.systemPrompt);
 
         return stub.session;
       },
+      createDirectory: () => Promise.resolve(),
     },
   );
 

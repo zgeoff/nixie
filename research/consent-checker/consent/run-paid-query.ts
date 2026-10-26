@@ -1,5 +1,4 @@
 // oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
-import { mkdir } from 'node:fs/promises';
 import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
 import { buildCheckOptions } from '../../../guests/conversation/src/build-check-options.ts';
@@ -24,6 +23,7 @@ export interface PaidQueryParams {
 export interface PaidQueryDependencies {
   env: Readonly<Record<string, string | undefined>>;
   runQuery: (params: PaidQueryParams) => PaidSession;
+  createDirectory: (path: string) => Promise<void>;
 }
 
 const resultSchema = z.object({
@@ -43,7 +43,7 @@ export async function runPaidQuery(
 ): Promise<PaidReply> {
   const options = buildCheckOptions(request, deps.env);
 
-  await mkdir(options.cwd ?? '', { recursive: true });
+  await deps.createDirectory(options.cwd ?? '');
 
   const session = deps.runQuery({ prompt: request.input, options });
 
