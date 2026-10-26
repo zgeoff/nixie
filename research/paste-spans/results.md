@@ -33,6 +33,8 @@ adb reverse tcp:4263 tcp:4263
 
 Open `http://localhost:4263/?case=<case_name>&copy=<copy_text>` in the phone's browser. The copy
 button puts `<copy_text>` on the clipboard, so a paste or a clipboard suggestion inserts known text.
+Before the voice case, tap the microphone button and allow Chrome's prompt once: Chrome on Android
+lets a keyboard's voice typing reach a page only when the page's site holds microphone permission.
 Drive the keyboard with `adb shell input tap`, `swipe` and `motionevent`, never
 `adb shell input text`, which bypasses the keyboard.
 
@@ -45,7 +47,9 @@ Drive the keyboard with `adb shell input tap`, `swipe` and `motionevent`, never
 On the desktop, all 3 browsers label a paste right and keep the spans right through every edit. On
 Android, 2 Gboard paths insert pasted text as `insertText`, and the client labels it `typed`: the
 clipboard chip and Gboard's own undo. The mapping of that run could not tell them from typing, and
-the client now applies the rule in [the client fix](#the-client-fix).
+the client now applies the rule in [the client fix](#the-client-fix). Gboard's voice typing inserts
+each spoken sentence as one composition, and the client labels the dictated words `typed`, which
+0011 forbids.
 
 ### Desktop browsers
 
@@ -78,9 +82,10 @@ Firefox delivers Playwright's `insertText` as `insertCompositionText`, which the
 ### Android, Gboard in Chrome
 
 Gboard is the only keyboard on the test phone. Each case below shows the `inputType` and `data` of
-every `input` event, and the spans after it. Every event arrived with `isComposing` false, and no
-composition event fired, so Gboard in Chrome sends each key, each suggestion and each swiped word as
-one `insertText`.
+every `input` event, and the spans after it. In these cases every event arrived with `isComposing`
+false, and no composition event fired, so Gboard in Chrome sends each key, each suggestion and each
+swiped word as one `insertText`. Voice typing composes instead, as
+[voice typing](#android-voice-typing) shows.
 
 ```text
 typing         insertText "H" "e" "l" "l" "o" " " ...  typed:"Hello there "
@@ -150,6 +155,45 @@ chip           insertText "chip test words"         unknown:"chip test words"
 A split that also changes a letter, such as "gardengste" to "garden gate", or a capital, stays
 `unknown`.
 
+### Android, voice typing
+
+A third run on the same phone tested Gboard's voice typing, 3 times, once Chrome held microphone
+permission for the page. Each run spoke one sentence into an empty text box. The page logged every
+event, and [voice-capture.jsonl](voice-capture.jsonl) holds the log of all 3 runs. The words of runs
+2 and 3 in the log and below are invented phrases, swapped in by hand with the same length for each
+word; the event sequence, its timing and every selection are as captured.
+
+```text
+run 1   said "the garden gate sticks in winter"           typed:"The garden gate sticks in winter"
+run 2   said "planning to paint the workshop on Friday"   typed:"Planning to paint the workshop on Friday"
+run 3   said "book the dentist about the cracked cap"     typed:"Book the dentist about the cracked cab"
+```
+
+Every run followed the same sequence:
+
+1. A `compositionstart` fires before the first word.
+2. Gboard sends one `insertCompositionText` for each word it recognizes. Its `data` holds the whole
+   phrase so far, such as "The garden gate", and the selection on `beforeinput` covers the phrase
+   before it, so each event replaces the composition.
+3. The last phrase arrives once more, then a `compositionend` fires.
+
+No `insertText` and no `insertFromDictation` arrived, and Chrome fired a keydown with key code 229
+before each update.
+
+- **Label:** the mapping counts `insertCompositionText` as typed, and the multi-word rule covers
+  only `insertText`, so all 3 sentences ended `typed`. Under 0011, dictated text never counts as
+  evidence, so this label is wrong. Run 3 shows the risk behind that rule: Gboard misheard the last
+  word, which the log holds as the invented "cap" heard as "cab".
+- **The fix:** applying the multi-word rule to `insertCompositionText` as well labels all 3
+  sentences `unknown`, in a replay of the log through the shipped span logic. The change is open
+  work in [GEO-1887](https://linear.app/zgeoff/issue/GEO-1887). Gboard typing never composes on this
+  phone, and the desktop composition case inserts one word, so the change turns no recorded typed
+  case `unknown`. A keyboard that types a whole phrase as one composition lands `unknown` under the
+  change, which fails closed.
+- **The gap:** a dictation of one word, or a phrase cut after its first word, lands `typed` under
+  the change too. The events hold no field that marks dictation, so keyboard voice typing never
+  reaches the `dictated` label; only a voice client of nixie's own can mark it.
+
 ### React Native
 
 The Android run tested the web client in Chrome, not a React Native input. React Native's
@@ -169,7 +213,7 @@ the cost is that a swiped or suggested word never serves as evidence.
 
 ## Untested
 
-- Voice typing, because the test phone's microphone did not work.
+- Voice typing after typed text in the same box.
 - Phrase suggestions of several words, which Gboard on the test phone never offered.
 - An undo by touch alone; the run reached Gboard's undo through Ctrl+Z.
 - Keyboards other than Gboard, and browsers on Android other than Chrome.

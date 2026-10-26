@@ -1,0 +1,147 @@
+{"case":"voice-1","sequence":1,"data":"granted","event":"microphone"}
+{"case":"voice-1","sequence":2,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":83517}
+{"case":"voice-1","sequence":3,"data":"","event":"compositionstart"}
+{"case":"voice-1","sequence":4,"data":"The","event":"compositionupdate"}
+{"case":"voice-1","sequence":5,"data":"The","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,0],"targetRanges":[],"time":83525}
+{"case":"voice-1","sequence":6,"data":"The","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The\""],"time":83528,"value":"The"}
+{"case":"voice-1","sequence":7,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":83517}
+{"case":"voice-1","sequence":8,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":83812}
+{"case":"voice-1","sequence":10,"data":"The garden","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,3],"targetRanges":[],"time":83819}
+{"case":"voice-1","sequence":11,"data":"The garden","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden\""],"time":83825,"value":"The garden"}
+{"case":"voice-1","sequence":9,"data":"The garden","event":"compositionupdate"}
+{"case":"voice-1","sequence":12,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":83812}
+{"case":"voice-1","sequence":13,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":84324}
+{"case":"voice-1","sequence":14,"data":"The garden gate","event":"compositionupdate"}
+{"case":"voice-1","sequence":15,"data":"The garden gate","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,10],"targetRanges":[],"time":84330}
+{"case":"voice-1","sequence":16,"data":"The garden gate","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate\""],"time":84332,"value":"The garden gate"}
+{"case":"voice-1","sequence":17,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":84324}
+{"case":"voice-1","sequence":18,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":84726}
+{"case":"voice-1","sequence":19,"data":"The garden gate stick","event":"compositionupdate"}
+{"case":"voice-1","sequence":20,"data":"The garden gate stick","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,15],"targetRanges":[],"time":84733}
+{"case":"voice-1","sequence":21,"data":"The garden gate stick","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate stick\""],"time":84736,"value":"The garden gate stick"}
+{"case":"voice-1","sequence":22,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":84726}
+{"case":"voice-1","sequence":23,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":84779}
+{"case":"voice-1","sequence":24,"data":"The garden gate sticks","event":"compositionupdate"}
+{"case":"voice-1","sequence":25,"data":"The garden gate sticks","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,21],"targetRanges":[],"time":84783}
+{"case":"voice-1","sequence":26,"data":"The garden gate sticks","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate sticks\""],"time":84784,"value":"The garden gate sticks"}
+{"case":"voice-1","sequence":27,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":84779}
+{"case":"voice-1","sequence":28,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":84939}
+{"case":"voice-1","sequence":29,"data":"The garden gate sticks in","event":"compositionupdate"}
+{"case":"voice-1","sequence":30,"data":"The garden gate sticks in","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,22],"targetRanges":[],"time":84947}
+{"case":"voice-1","sequence":31,"data":"The garden gate sticks in","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate sticks in\""],"time":84950,"value":"The garden gate sticks in"}
+{"case":"voice-1","sequence":32,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":84939}
+{"case":"voice-1","sequence":33,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":85298}
+{"case":"voice-1","sequence":34,"data":"The garden gate sticks in winter","event":"compositionupdate"}
+{"case":"voice-1","sequence":35,"data":"The garden gate sticks in winter","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,25],"targetRanges":[],"time":85305}
+{"case":"voice-1","sequence":36,"data":"The garden gate sticks in winter","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate sticks in winter\""],"time":85308,"value":"The garden gate sticks in winter"}
+{"case":"voice-1","sequence":37,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":85298}
+{"case":"voice-1","sequence":38,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":86092}
+{"case":"voice-1","sequence":39,"data":"The garden gate sticks in winter","event":"compositionupdate"}
+{"case":"voice-1","sequence":40,"data":"The garden gate sticks in winter","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,32],"targetRanges":[],"time":86101}
+{"case":"voice-1","sequence":41,"data":"The garden gate sticks in winter","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"The garden gate sticks in winter\""],"time":86104,"value":"The garden gate sticks in winter"}
+{"case":"voice-1","sequence":42,"data":"The garden gate sticks in winter","event":"compositionend"}
+{"case":"voice-1","sequence":43,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":86092}
+{"case":"voice-2","sequence":1,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":22046}
+{"case":"voice-2","sequence":2,"data":"","event":"compositionstart"}
+{"case":"voice-2","sequence":3,"data":"Planning","event":"compositionupdate"}
+{"case":"voice-2","sequence":4,"data":"Planning","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,0],"targetRanges":[],"time":22053}
+{"case":"voice-2","sequence":5,"data":"Planning","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Planning\""],"time":22054,"value":"Planning"}
+{"case":"voice-2","sequence":6,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":22046}
+{"case":"voice-2","sequence":7,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":22552}
+{"case":"voice-2","sequence":8,"data":"Planning to","event":"compositionupdate"}
+{"case":"voice-2","sequence":9,"data":"Planning to","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,8],"targetRanges":[],"time":22558}
+{"case":"voice-2","sequence":10,"data":"Planning to","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Planning to\""],"time":22560,"value":"Planning to"}
+{"case":"voice-2","sequence":11,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":22552}
+{"case":"voice-2","sequence":12,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":22873}
+{"case":"voice-2","sequence":13,"data":"Planning to paint","event":"compositionupdate"}
+{"case":"voice-2","sequence":14,"data":"Planning to paint","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,11],"targetRanges":[],"time":22879}
+{"case":"voice-2","sequence":15,"data":"Planning to paint","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Planning to paint\""],"time":22882,"value":"Planning to paint"}
+{"case":"voice-2","sequence":16,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":22873}
+{"case":"voice-2","sequence":17,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":23373}
+{"case":"voice-2","sequence":18,"data":"Planning to paint the","event":"compositionupdate"}
+{"case":"voice-2","sequence":19,"data":"Planning to paint the","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,17],"targetRanges":[],"time":23380}
+{"case":"voice-2","sequence":20,"data":"Planning to paint the","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Planning to paint the\""],"time":23383,"value":"Planning to paint the"}
+{"case":"voice-2","sequence":21,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":23373}
+{"case":"voice-2","sequence":22,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":23515}
+{"case":"voice-2","sequence":23,"data":"Planning to paint the worksh","event":"compositionupdate"}
+{"case":"voice-2","sequence":24,"data":"Planning to paint the worksh","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,21],"targetRanges":[],"time":23523}
+{"case":"voice-2","sequence":25,"data":"Planning to paint the worksh","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Planning to paint the worksh\""],"time":23527,"value":"Planning to paint the worksh"}
+{"case":"voice-2","sequence":26,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":23515}
+{"case":"voice-2","sequence":27,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":23831}
+{"case":"voice-2","sequence":28,"data":"Planning to paint the workshop","event":"compositionupdate"}
+{"case":"voice-2","sequence":29,"data":"Planning to paint the workshop","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,28],"targetRanges":[],"time":23838}
+{"case":"voice-2","sequence":30,"data":"Planning to paint the workshop","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Planning to paint the workshop\""],"time":23842,"value":"Planning to paint the workshop"}
+{"case":"voice-2","sequence":31,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":23831}
+{"case":"voice-2","sequence":32,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":24094}
+{"case":"voice-2","sequence":33,"data":"Planning to paint the workshop on","event":"compositionupdate"}
+{"case":"voice-2","sequence":34,"data":"Planning to paint the workshop on","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,30],"targetRanges":[],"time":24104}
+{"case":"voice-2","sequence":35,"data":"Planning to paint the workshop on","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Planning to paint the workshop on\""],"time":24108,"value":"Planning to paint the workshop on"}
+{"case":"voice-2","sequence":36,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":24094}
+{"case":"voice-2","sequence":37,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":24275}
+{"case":"voice-2","sequence":38,"data":"Planning to paint the workshop on Friday","event":"compositionupdate"}
+{"case":"voice-2","sequence":39,"data":"Planning to paint the workshop on Friday","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,33],"targetRanges":[],"time":24283}
+{"case":"voice-2","sequence":40,"data":"Planning to paint the workshop on Friday","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Planning to paint the workshop on Friday\""],"time":24288,"value":"Planning to paint the workshop on Friday"}
+{"case":"voice-2","sequence":41,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":24275}
+{"case":"voice-2","sequence":42,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":25380}
+{"case":"voice-2","sequence":43,"data":"Planning to paint the workshop on Friday","event":"compositionupdate"}
+{"case":"voice-2","sequence":44,"data":"Planning to paint the workshop on Friday","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,40],"targetRanges":[],"time":25389}
+{"case":"voice-2","sequence":45,"data":"Planning to paint the workshop on Friday","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Planning to paint the workshop on Friday\""],"time":25394,"value":"Planning to paint the workshop on Friday"}
+{"case":"voice-2","sequence":46,"data":"Planning to paint the workshop on Friday","event":"compositionend"}
+{"case":"voice-2","sequence":47,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":25380}
+{"case":"voice-3","sequence":1,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":20167}
+{"case":"voice-3","sequence":2,"data":"","event":"compositionstart"}
+{"case":"voice-3","sequence":3,"data":"Book","event":"compositionupdate"}
+{"case":"voice-3","sequence":4,"data":"Book","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,0],"targetRanges":[],"time":20178}
+{"case":"voice-3","sequence":5,"data":"Book","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Book\""],"time":20181,"value":"Book"}
+{"case":"voice-3","sequence":6,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":20167}
+{"case":"voice-3","sequence":7,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":20432}
+{"case":"voice-3","sequence":8,"data":"Book the","event":"compositionupdate"}
+{"case":"voice-3","sequence":9,"data":"Book the","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,4],"targetRanges":[],"time":20441}
+{"case":"voice-3","sequence":10,"data":"Book the","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Book the\""],"time":20444,"value":"Book the"}
+{"case":"voice-3","sequence":11,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":20432}
+{"case":"voice-3","sequence":12,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":20748}
+{"case":"voice-3","sequence":13,"data":"Book the de","event":"compositionupdate"}
+{"case":"voice-3","sequence":14,"data":"Book the de","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,8],"targetRanges":[],"time":20755}
+{"case":"voice-3","sequence":15,"data":"Book the de","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Book the de\""],"time":20758,"value":"Book the de"}
+{"case":"voice-3","sequence":16,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":20748}
+{"case":"voice-3","sequence":17,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":20801}
+{"case":"voice-3","sequence":18,"data":"Book the denti","event":"compositionupdate"}
+{"case":"voice-3","sequence":19,"data":"Book the denti","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,11],"targetRanges":[],"time":20805}
+{"case":"voice-3","sequence":20,"data":"Book the denti","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Book the denti\""],"time":20808,"value":"Book the denti"}
+{"case":"voice-3","sequence":21,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":20801}
+{"case":"voice-3","sequence":22,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":20861}
+{"case":"voice-3","sequence":23,"data":"Book the dentist","event":"compositionupdate"}
+{"case":"voice-3","sequence":24,"data":"Book the dentist","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,14],"targetRanges":[],"time":20865}
+{"case":"voice-3","sequence":25,"data":"Book the dentist","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Book the dentist\""],"time":20867,"value":"Book the dentist"}
+{"case":"voice-3","sequence":26,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":20861}
+{"case":"voice-3","sequence":27,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":21005}
+{"case":"voice-3","sequence":28,"data":"Book the dentist about","event":"compositionupdate"}
+{"case":"voice-3","sequence":29,"data":"Book the dentist about","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,16],"targetRanges":[],"time":21011}
+{"case":"voice-3","sequence":30,"data":"Book the dentist about","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Book the dentist about\""],"time":21015,"value":"Book the dentist about"}
+{"case":"voice-3","sequence":31,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":21005}
+{"case":"voice-3","sequence":32,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":21261}
+{"case":"voice-3","sequence":33,"data":"Book the dentist about the","event":"compositionupdate"}
+{"case":"voice-3","sequence":34,"data":"Book the dentist about the","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,22],"targetRanges":[],"time":21269}
+{"case":"voice-3","sequence":35,"data":"Book the dentist about the","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Book the dentist about the\""],"time":21272,"value":"Book the dentist about the"}
+{"case":"voice-3","sequence":36,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":21261}
+{"case":"voice-3","sequence":37,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":21435}
+{"case":"voice-3","sequence":38,"data":"Book the dentist about the cracked","event":"compositionupdate"}
+{"case":"voice-3","sequence":39,"data":"Book the dentist about the cracked","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,26],"targetRanges":[],"time":21442}
+{"case":"voice-3","sequence":40,"data":"Book the dentist about the cracked","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Book the dentist about the cracked\""],"time":21446,"value":"Book the dentist about the cracked"}
+{"case":"voice-3","sequence":41,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":21435}
+{"case":"voice-3","sequence":42,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":21901}
+{"case":"voice-3","sequence":43,"data":"Book the dentist about the cracked c","event":"compositionupdate"}
+{"case":"voice-3","sequence":44,"data":"Book the dentist about the cracked c","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,34],"targetRanges":[],"time":21909}
+{"case":"voice-3","sequence":45,"data":"Book the dentist about the cracked c","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Book the dentist about the cracked c\""],"time":21914,"value":"Book the dentist about the cracked c"}
+{"case":"voice-3","sequence":46,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":21901}
+{"case":"voice-3","sequence":47,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":21959}
+{"case":"voice-3","sequence":48,"data":"Book the dentist about the cracked cab","event":"compositionupdate"}
+{"case":"voice-3","sequence":49,"data":"Book the dentist about the cracked cab","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,36],"targetRanges":[],"time":21965}
+{"case":"voice-3","sequence":50,"data":"Book the dentist about the cracked cab","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Book the dentist about the cracked cab\""],"time":21968,"value":"Book the dentist about the cracked cab"}
+{"case":"voice-3","sequence":51,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":21959}
+{"case":"voice-3","sequence":52,"data":null,"event":"keydown","key":"Unidentified","keyCode":229,"time":22655}
+{"case":"voice-3","sequence":53,"data":"Book the dentist about the cracked cab","event":"compositionupdate"}
+{"case":"voice-3","sequence":54,"data":"Book the dentist about the cracked cab","event":"beforeinput","inputType":"insertCompositionText","isComposing":true,"pendingSource":"typed","selection":[0,38],"targetRanges":[],"time":22662}
+{"case":"voice-3","sequence":55,"data":"Book the dentist about the cracked cab","event":"input","inputType":"insertCompositionText","pendingSource":"typed","spans":["typed:\"Book the dentist about the cracked cab\""],"time":22664,"value":"Book the dentist about the cracked cab"}
+{"case":"voice-3","sequence":56,"data":"Book the dentist about the cracked cab","event":"compositionend"}
+{"case":"voice-3","sequence":57,"data":null,"event":"keyup","key":"Unidentified","keyCode":229,"time":22655}

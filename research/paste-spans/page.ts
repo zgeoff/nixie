@@ -107,6 +107,24 @@ document.querySelector('#copy')?.addEventListener('click', () => {
   void navigator.clipboard.writeText(copyText);
 });
 
+// Chrome on Android lets a keyboard's voice typing reach a page only when the page's site holds
+// microphone permission, and a site gains that permission only by asking for it.
+document.querySelector('#microphone')?.addEventListener('click', () => {
+  void openMicrophone();
+});
+
+async function openMicrophone(): Promise<void> {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    for (const track of stream.getTracks()) {
+      track.stop();
+    }
+    writeEntry({ data: 'granted', event: 'microphone' });
+  } catch (error) {
+    writeEntry({ data: error instanceof DOMException ? error.name : String(error), event: 'microphone' });
+  }
+}
+
 function writeEntry(entry: LogEntry): void {
   log.push(entry);
   const sequence = log.length;
@@ -166,7 +184,10 @@ const guidedCases: readonly GuidedCase[] = [
   },
   { name: 'long-press', step: 'Tap copy. Long-press the text box and tap Paste.' },
   { name: 'chip', step: 'Tap copy. Tap the clipboard suggestion in the keyboard strip.' },
-  { name: 'voice', step: 'Tap the microphone on the keyboard and say "the garden gate sticks".' },
+  {
+    name: 'voice',
+    step: 'Tap microphone and allow it, if you have not yet. Tap the microphone on the keyboard and say "the garden gate sticks".',
+  },
 ];
 
 const stepView = document.querySelector('#step');

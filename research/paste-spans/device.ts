@@ -18,6 +18,7 @@ const html = `<!doctype html><meta name="viewport" content="width=device-width, 
 <body style="text-size-adjust:none;-webkit-text-size-adjust:none">
 <div id="step" style="font-size:16px"></div>
 <button id="copy" style="font-size:20px">copy</button> <button id="next" style="font-size:20px">next</button>
+<button id="microphone" style="font-size:20px">microphone</button>
 <textarea rows="4" style="width:95%;font-size:20px"></textarea>
 <pre id="log" style="font-size:10px;white-space:pre-wrap;user-select:none"></pre>
 <script>${script}</script></body>`;
