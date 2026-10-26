@@ -120,3 +120,61 @@ test('it marks a moment destroyed when its destroy is done, and a rebuild gives 
   expect(live.links).toStrictEqual([]);
   expect(rebuilt).toStrictEqual(live);
 });
+
+test('it refuses a destroy start for a destroyed moment, and leaves the rows as they were', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the plum tree needs netting before the birds find it' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'Netting the plum tree',
+  });
+
+  invariant(kept.status === 'written');
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'moment_destroyed',
+      definitions: { snapshotHash: 'sha256:test' },
+      payload: { momentID: kept.momentID, version: 1, stage: 'started' },
+    },
+    {
+      kind: 'moment_destroyed',
+      definitions: { snapshotHash: 'sha256:test' },
+      payload: { momentID: kept.momentID, version: 1, stage: 'done' },
+    },
+  ]);
+
+  const before = await readMomentRows(ctx.db);
+
+  const restart = writeRecords(ctx.memory.log, [
+    {
+      kind: 'moment_destroyed',
+      definitions: { snapshotHash: 'sha256:test' },
+      payload: { momentID: kept.momentID, version: 1, stage: 'started' },
+    },
+  ]);
+
+  await restart.catch(() => {});
+
+  const after = await readMomentRows(ctx.db);
+
+  expect(restart).rejects.toThrow(
+    'a moment_destroyed record moves a destroyed moment to destroying',
+  );
+
+  expect(after).toStrictEqual(before);
+});
