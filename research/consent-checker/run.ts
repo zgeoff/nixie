@@ -206,7 +206,8 @@ async function printScore(): Promise<void> {
   const cases = await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema);
   const labelRecords = await readJSONLines(requireFlag(values.labels, '--labels'), labelRecordSchema);
   const { labels, unsure } = buildLabels(cases, labelRecords);
-  const score = scoreVerdicts(await readJSONLines(requireFlag(values.checks, '--checks'), checkRecordSchema), labels);
+  const checks = await readJSONLines(requireFlag(values.checks, '--checks'), checkRecordSchema);
+  const score = scoreVerdicts(checks, labels);
   const labelSpend = labelRecords.reduce((sum, record) => sum + record.costUSD, 0);
 
   console.log(`labeller: ${unsure} natural pairs unsure, ${labelRecords.filter((record) => record.failure !== null).length} failed turns`);
@@ -217,6 +218,19 @@ async function printScore(): Promise<void> {
     );
     console.log(`  miss rate ${formatRate(bucket.missed)}`);
     console.log(`  wrong-credit rate ${formatRate(bucket.wrongCredit)}`);
+  }
+
+  const natural = checks.filter((record) => record.bucket === 'natural');
+
+  for (const tool of [...new Set(natural.map((record) => record.tool))].toSorted()) {
+    const [byTool] = scoreVerdicts(
+      natural.filter((record) => record.tool === tool),
+      labels,
+    ).buckets;
+
+    if (byTool !== undefined) {
+      console.log(`natural ${tool}: miss ${formatRate(byTool.missed)}, wrong credit ${formatRate(byTool.wrongCredit)}`);
+    }
   }
 
   console.log(
