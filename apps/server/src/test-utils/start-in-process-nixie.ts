@@ -18,6 +18,7 @@ import { readDataFiles } from './read-data-files';
 import { readTestRecords } from './read-test-records';
 import type { BootFileExtras, BootFiles } from './write-boot-files';
 import { writeBootFiles } from './write-boot-files';
+import { writeMigratedData } from './write-migrated-data';
 
 export interface InProcessNixieOptions {
   readonly extraConfig?: readonly string[];
@@ -87,6 +88,8 @@ export async function startInProcessNixie(
     definitions: options.extraDefinitions ?? [],
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
   });
+
+  await writeMigratedData(files.dataDir);
 
   const host = buildRunHost();
   const toolResults: TestToolResult[] = [];
