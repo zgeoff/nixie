@@ -69,6 +69,53 @@ test("it reads a moment that another task kept with the task's name and the week
   ]);
 });
 
+test("it reads another task's keep behind more of the conversation's own keeps than one read takes", async () => {
+  const ctx = await setupTest();
+
+  const [message, wake] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the hedge wants trimming before the frost' },
+    },
+    {
+      kind: 'task.wake',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'task-garden',
+      payload: {},
+    },
+  ]);
+
+  invariant(message && wake);
+
+  for (const index of Array.from({ length: 55 }, (_, position) => position)) {
+    await ctx.memory.store.moments.keep({
+      caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+      thread: 'conversation',
+      firstSequence: message.sequence,
+      lastSequence: message.sequence,
+      title: `The hedge, take ${String(index)}`,
+    });
+  }
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'task-garden', model: 'claude-test-4' },
+    thread: 'task-garden',
+    firstSequence: wake.sequence,
+    lastSequence: wake.sequence,
+    title: 'The frost forecast',
+  });
+
+  invariant(kept.status === 'written');
+
+  const kind = buildMomentKeptKind(ctx.memory.log, (taskID) => taskID);
+
+  const events = await kind.read({ after: 0, through: kept.sequence });
+
+  expect(events.map((event) => event.detail.title)).toStrictEqual(['The frost forecast']);
+});
+
 test('it leaves out a moment whose destroy shredded its title', async () => {
   const ctx = await setupTest();
 
