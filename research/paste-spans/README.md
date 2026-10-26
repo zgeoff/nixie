@@ -19,10 +19,13 @@ on an Android phone insert pasted text that the client labels as typed?
   which the first run labelled `typed`.
 - A rule that one `insertText` of more than one word counts as `unknown` caught both, and a second
   run confirmed it, once Gboard's split of a run-together word counted as typed.
+- Gboard's voice typing inserts each spoken sentence as one composition of several words, which the
+  client labels `typed`, against 0011's rule that dictated text never counts as evidence.
 - React Native's `TextInput` has no paste event, so a multi-character insertion that no native hook
   named counts as `unknown` there.
 
-Label by `inputType`, fail closed to `unknown`, and treat a multi-word `insertText` as `unknown`.
+Label by `inputType`, fail closed to `unknown`, and treat a multi-word `insertText` or
+`insertCompositionText` as `unknown`. A dictated single word lands `typed` under that rule.
 
 ## Run it
 
@@ -39,9 +42,10 @@ run on an Android phone.
 ## Results
 
 The [results](results.md) hold the spans each browser and each Gboard path printed, the client fix,
-the second Android run and the React Native routes.
+the second Android run, the voice typing run and the React Native routes.
+[voice-capture.jsonl](voice-capture.jsonl) holds the event log of the voice typing run.
 
 ## Untested
 
-Voice typing, keyboards other than Gboard, and any React Native input on a device. The
+Keyboards other than Gboard, and any React Native input on a device. The
 [untested list](results.md#untested) gives the rest.
