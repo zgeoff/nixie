@@ -30,6 +30,13 @@ export const consentCaseSchema = z.object({
 
 export type ConsentCase = z.infer<typeof consentCaseSchema>;
 
+// The run settings each check or label record keeps, so a rerun can refuse a file of another run.
+export interface RecordSource {
+  model: string;
+  effort: string;
+  promptSHA256: string;
+}
+
 export const checkRecordSchema = z.object({
   caseID: z.string(),
   bucket: bucketSchema,

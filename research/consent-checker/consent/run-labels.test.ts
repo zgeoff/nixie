@@ -58,45 +58,6 @@ test('it maps each numbered answer to its pair and marks a pair the answer left 
   ]);
 });
 
-test('it labels every pair of a turn unsure when the answer is unreadable', async () => {
-  const ctx = setupTest();
-
-  await runLabels({
-    turns: [
-      {
-        stepSequence: 7,
-        earlier: [],
-        messages: [{ sequence: 6, text: 'pin it', spans: [] }],
-        calls: [{ caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } }],
-      },
-    ],
-    done: [],
-    appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-opus-5-5', baseURL: 'https://api.anthropic.com', effort: 'medium', authHeader: 'bearer' },
-    systemPrompt: 'You label tool calls.',
-    promptSHA256: 'hash-l',
-    otherSpentUSD: 0,
-    budgetUSD: 4,
-    limit: null,
-    concurrency: 1,
-    runLabel: async () => ({ kind: 'answer', output: { calls: 'none' }, costUSD: 0.02, durationMs: 900, apiMs: 800 }),
-  });
-
-  expect(ctx.appendRecord.mock.calls).toStrictEqual([
-    [
-      {
-        stepSequence: 7,
-        model: 'claude-opus-5-5',
-        effort: 'medium',
-        promptSHA256: 'hash-l',
-        labels: [{ caseID: '7/9', label: 'unsure', reason: 'the answer was unreadable' }],
-        failure: 'unreadable',
-        costUSD: 0.02,
-      },
-    ],
-  ]);
-});
-
 test('it records a call with no answer with its cost and no label, and stops the run', async () => {
   const ctx = setupTest();
 

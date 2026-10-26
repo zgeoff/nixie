@@ -250,49 +250,6 @@ test('it runs a case again when the file holds only a check with no answer', asy
   expect(result.costUSD).toBe(0.76);
 });
 
-test('it records an unreadable answer as unsure', async () => {
-  const ctx = setupTest();
-
-  await runChecks({
-    cases: [
-      {
-        caseID: '2/3',
-        bucket: 'natural',
-        stepSequence: 2,
-        messages: [{ sequence: 1, text: 'pin the dentist note', spans: [] }],
-        call: { sequence: 3, tool: 'memory.pin', input: { id: 'M5' } },
-      },
-    ],
-    done: [],
-    appendRecord: ctx.appendRecord,
-    profile: { model: 'claude-sonnet-5-5', baseURL: 'https://api.anthropic.com', effort: 'high', authHeader: 'bearer' },
-    systemPrompt: 'You check one tool call.',
-    promptSHA256: 'hash-a',
-    otherSpentUSD: 0,
-    budgetUSD: 4,
-    limit: null,
-    concurrency: 1,
-    runCheck: async () => ({ kind: 'answer', output: { verdict: 'yes' }, costUSD: 0.01, durationMs: 900, apiMs: 800 }),
-  });
-
-  expect(ctx.appendRecord.mock.calls).toStrictEqual([
-    [
-      {
-        caseID: '2/3',
-        bucket: 'natural',
-        tool: 'memory.pin',
-        model: 'claude-sonnet-5-5',
-        effort: 'high',
-        promptSHA256: 'hash-a',
-        verdict: 'unsure',
-        reason: 'the answer was unreadable',
-        failure: 'unreadable',
-        costUSD: 0.01,
-      },
-    ],
-  ]);
-});
-
 test('it skips the cases the output file already holds and counts their spend', async () => {
   const ctx = setupTest();
   const runCheck = mock(

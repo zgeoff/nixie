@@ -1,10 +1,9 @@
 // @boundaries-ignore a spike imports the code it measures
 import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-frame.ts';
-// @boundaries-ignore a spike imports the code it measures
-import { parseCheckerAnswer } from '../../../modules/sessions/src/parse-checker-answer.ts';
+import { buildCheckRecord } from './build-check-record.ts';
 import { renderCheckerInput } from './render-checker-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
-import { emptyAnswerReason, noOutputFailure, runBudgetedQueue } from './run-budgeted-queue.ts';
+import { noOutputFailure, runBudgetedQueue } from './run-budgeted-queue.ts';
 import type { CheckRecord, ConsentCase } from './types.ts';
 
 export interface CheckRun {
@@ -59,41 +58,16 @@ export async function runChecks(run: CheckRun): Promise<CheckRunResult> {
   return { ...result, skipped: run.cases.length - items.length };
 }
 
-// A failed query or an answer with no output, such as a call the model API refused, measures the API
-// and not the checker, so its record holds only its cost and the reason the query gave.
 async function runOneCheck(run: CheckRun, consentCase: ConsentCase): Promise<CheckRecord> {
   const reply = await run.runCheck({
     profile: run.profile,
     systemPrompt: run.systemPrompt,
     input: renderCheckerInput(consentCase),
   });
-  const base = {
-    caseID: consentCase.caseID,
-    bucket: consentCase.bucket,
-    tool: consentCase.call.tool,
+
+  return buildCheckRecord(consentCase, reply, {
     model: run.profile.model,
     effort: run.profile.effort,
     promptSHA256: run.promptSHA256,
-  };
-
-  if (reply.kind === 'failed' || reply.output === undefined) {
-    return {
-      ...base,
-      verdict: 'unsure',
-      reason: '',
-      failure: noOutputFailure,
-      failureReason: reply.kind === 'failed' ? reply.reason : emptyAnswerReason,
-      costUSD: reply.kind === 'failed' ? 0 : reply.costUSD,
-    };
-  }
-
-  const answer = parseCheckerAnswer(reply.output, run.profile.model);
-
-  return {
-    ...base,
-    verdict: answer.verdict,
-    reason: answer.reason,
-    failure: answer.failure,
-    costUSD: reply.costUSD,
-  };
+  });
 }

@@ -1,10 +1,10 @@
 // @boundaries-ignore a spike imports the code it measures
 import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-frame.ts';
+import { buildLabelRecord } from './build-label-record.ts';
 import { renderLabellerInput } from './render-labeller-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
-import { emptyAnswerReason, noOutputFailure, runBudgetedQueue } from './run-budgeted-queue.ts';
+import { noOutputFailure, runBudgetedQueue } from './run-budgeted-queue.ts';
 import type { LabelRecord, LabelTurn } from './types.ts';
-import { labellerOutputSchema } from './types.ts';
 
 export interface LabelRun {
   turns: readonly LabelTurn[];
@@ -58,58 +58,16 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
   return { ...result, skipped: run.turns.length - items.length };
 }
 
-// A failed query or an answer with no output, such as a call the model API refused, gives a record
-// that holds its cost, the reason the query gave and no label, so a rerun labels the turn again.
 async function runOneLabel(run: LabelRun, turn: LabelTurn): Promise<LabelRecord> {
   const reply = await run.runLabel({
     profile: run.profile,
     systemPrompt: run.systemPrompt,
     input: renderLabellerInput(turn),
   });
-  const base = {
-    stepSequence: turn.stepSequence,
+
+  return buildLabelRecord(turn, reply, {
     model: run.profile.model,
     effort: run.profile.effort,
     promptSHA256: run.promptSHA256,
-  };
-
-  if (reply.kind === 'failed' || reply.output === undefined) {
-    return {
-      ...base,
-      labels: [],
-      failure: noOutputFailure,
-      failureReason: reply.kind === 'failed' ? reply.reason : emptyAnswerReason,
-      costUSD: reply.kind === 'failed' ? 0 : reply.costUSD,
-    };
-  }
-
-  const parsed = labellerOutputSchema.safeParse(reply.output);
-
-  if (!parsed.success) {
-    return {
-      ...base,
-      labels: buildUnsureLabels(turn, 'the answer was unreadable'),
-      failure: 'unreadable',
-      costUSD: reply.costUSD,
-    };
-  }
-
-  const byNumber = new Map(parsed.data.calls.map((answer) => [answer.call, answer]));
-
-  return {
-    ...base,
-    labels: turn.calls.map((call, index) => {
-      const answer = byNumber.get(index + 1);
-
-      return answer === undefined
-        ? { caseID: call.caseID, label: 'unsure', reason: 'the answer left this call out' }
-        : { caseID: call.caseID, label: answer.label, reason: answer.reason };
-    }),
-    failure: null,
-    costUSD: reply.costUSD,
-  };
-}
-
-function buildUnsureLabels(turn: LabelTurn, reason: string): LabelRecord['labels'] {
-  return turn.calls.map((call) => ({ caseID: call.caseID, label: 'unsure', reason }));
+  });
 }
