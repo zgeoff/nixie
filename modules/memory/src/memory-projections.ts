@@ -8,6 +8,10 @@ import { memoryProposalMergesProjection } from './memory-proposal-merges-project
 import { memoryProposalsProjection } from './memory-proposals-projection';
 import { memoryVersionsProjection } from './memory-versions-projection';
 import { memoryWriterProjection } from './memory-writer-projection';
+import { momentLinksProjection } from './moment-links-projection';
+import { momentReflectionsProjection } from './moment-reflections-projection';
+import { momentTextsProjection } from './moment-texts-projection';
+import { momentsProjection } from './moments-projection';
 
 export const memoryProjections: readonly Projection[] = [
   memoryItemsProjection,
@@ -19,4 +23,8 @@ export const memoryProjections: readonly Projection[] = [
   memoryForgottenEvidenceProjection,
   memoryConsolidationsProjection,
   memoryConsolidationChangesProjection,
+  momentsProjection,
+  momentReflectionsProjection,
+  momentLinksProjection,
+  momentTextsProjection,
 ];
