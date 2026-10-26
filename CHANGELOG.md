@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.49.0](https://github.com/zgeoff/nixie/compare/v0.48.0...v0.49.0) (2026-10-26)
+
+
+### Features
+
+* **memory:** add the moment records, projections and store writes ([#673](https://github.com/zgeoff/nixie/issues/673)) ([518b81e](https://github.com/zgeoff/nixie/commit/518b81e07b4c1d3e4e57f38d548b849f021b6c24))
+* **memory:** destroy a moment by shredding its own records' keys ([#675](https://github.com/zgeoff/nixie/issues/675)) ([625ad9c](https://github.com/zgeoff/nixie/commit/625ad9cbecd03821d3f9d85901c2326163bd615f))
+* **memory:** give the conversation the six moment tools ([#674](https://github.com/zgeoff/nixie/issues/674)) ([1085687](https://github.com/zgeoff/nixie/commit/1085687392455613cf2750e3c00751b6e339ad04))
+* **memory:** show moments in the status, the events and the export ([#676](https://github.com/zgeoff/nixie/issues/676)) ([fe1a46f](https://github.com/zgeoff/nixie/commit/fe1a46f93874cc848e8ce1467855aecf08cb3fbc))
+
+
+### Bug Fixes
+
+* **contract:** label a voice composition of several words unknown ([#679](https://github.com/zgeoff/nixie/issues/679)) ([11547da](https://github.com/zgeoff/nixie/commit/11547dadd71ed78b45a7a310b512d6c09cc7d845))
+
 ## [0.48.0](https://github.com/zgeoff/nixie/compare/v0.47.0...v0.48.0) (2026-10-26)
 
 
