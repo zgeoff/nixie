@@ -141,6 +141,80 @@ test('it asks the model for the labeller answer shape and records the label it r
   ]);
 });
 
+test('it sends the labeller a persona that holds replacement patterns as the persona file wrote it', async () => {
+  const ctx = await setupTest();
+
+  const plainPath = join(ctx.directory, 'records.jsonl');
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const personaPath = join(ctx.directory, 'persona.md');
+  const outPath = join(ctx.directory, 'labels.jsonl');
+
+  await writeFile(
+    plainPath,
+    [
+      '{"sequence":1,"recordedAt":"2026-03-02T09:00:00Z","kind":"owner_message","thread":"conversation","parent":null,"payload":{"spans":"as_sent"},"erasable":{"status":"readable","fields":{"text":"look up the ferry times","spans":[]}}}',
+      '{"sequence":2,"recordedAt":"2026-03-02T09:00:01Z","kind":"task.step_started","thread":"conversation","parent":null,"payload":{},"erasable":{"status":"none"}}',
+      '{"sequence":3,"recordedAt":"2026-03-02T09:00:02Z","kind":"tool_called","thread":"conversation","parent":null,"payload":{"tool":"web_fetch"},"erasable":{"status":"readable","fields":{"input":{"url":"https://ferry.example/times"}}}}',
+      '',
+    ].join('\n'),
+  );
+
+  await writeFile(
+    casesPath,
+    '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
+  );
+
+  await writeFile(personaPath, 'A made-up persona who tips $& and $1 and pays $$5.\n');
+
+  ctx.model.addReplies({
+    toolUse: {
+      name: 'StructuredOutput',
+      input: {
+        calls: [{ call: 1, reason: 'the owner asked for the ferry times', label: 'asked' }],
+      },
+    },
+  });
+
+  const child = Bun.spawn(
+    [
+      'bun',
+      ctx.entry,
+      'label',
+      '--plain',
+      plainPath,
+      '--cases',
+      casesPath,
+      '--persona',
+      personaPath,
+      '--out',
+      outPath,
+      '--home',
+      join(ctx.directory, 'home'),
+      '--base-url',
+      ctx.model.url,
+      '--reserve',
+      '3.9',
+    ],
+    { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' }, stdout: 'pipe', stderr: 'pipe' },
+  );
+
+  ctx.stack.defer(async () => {
+    child.kill();
+
+    await child.exited;
+  });
+
+  const exitCode = await child.exited;
+
+  const sent = ctx.model.requests.findLast((request) => request.path === '/v1/messages');
+
+  expect(exitCode).toBe(0);
+
+  expect(JSON.stringify(sent?.body?.system)).toInclude(
+    String.raw`<persona>\nA made-up persona who tips $& and $1 and pays $$5.\n</persona>`,
+  );
+});
+
 test('it stops a check after 3 requests that each ask for at most 32,000 output tokens, structured-output retries included', async () => {
   const ctx = await setupTest();
 

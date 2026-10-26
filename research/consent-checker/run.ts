@@ -142,7 +142,8 @@ async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<v
   const persona = await Bun.file(requireFlag(values.persona, '--persona')).text();
   const template = await Bun.file(new URL('label-prompt.txt', import.meta.url)).text();
 
-  const systemPrompt = template.replace('{{persona}}', persona.trim());
+  // A string replacement reads $& and $$ in the persona as patterns, so a function inserts it as is.
+  const systemPrompt = template.replace('{{persona}}', () => persona.trim());
 
   const cases = await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema);
   const records = await readJSONLines(requireFlag(values.plain, '--plain'), plainRecordSchema);
