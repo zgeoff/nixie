@@ -6,11 +6,11 @@ import { buildMomentKeepTool } from './build-moment-keep-tool';
 import { buildMomentLinkTool } from './build-moment-link-tool';
 import { buildMomentReadTool } from './build-moment-read-tool';
 import { buildMomentRetireTool } from './build-moment-retire-tool';
-import type { MomentStore } from './build-moment-store';
+import type { MomentToolStore } from './memory-tool-store';
 import type { ItemIDStore } from './types';
 
 export function buildMomentTools(
-  moments: MomentStore,
+  moments: MomentToolStore,
   items: ItemIDStore,
   clock: Pick<Clock, 'now'>,
 ): readonly ToolDefinition[] {

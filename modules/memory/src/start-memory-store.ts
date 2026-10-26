@@ -6,6 +6,7 @@ import type { MomentStore } from './build-moment-store';
 import { buildMomentStore } from './build-moment-store';
 import { makeDeliveryLock } from './make-delivery-lock';
 import { removeLeftKeys } from './remove-left-keys';
+import { runPendingDestroys } from './run-pending-destroys';
 import { runPendingForgets } from './run-pending-forgets';
 import { startStoreIndexes } from './start-store-indexes';
 import type { ItemIDStore, MemoryContext, MemoryStore, StoreParts } from './types';
@@ -50,6 +51,7 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
 async function runStartSteps(parts: StoreParts): Promise<UpdatedIndexes> {
   try {
     await runPendingForgets(parts);
+    await runPendingDestroys(parts.context);
     await removeLeftKeys(parts);
 
     return await updateStoreIndexes(parts);

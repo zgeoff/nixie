@@ -3,6 +3,8 @@ import type { MemoryContext } from './types';
 
 export type MomentContext = Pick<MemoryContext, 'log' | 'definitions'>;
 
+export type MomentDestroyContext = Pick<MemoryContext, 'log' | 'definitions' | 'cleanupSessions'>;
+
 export type MomentState = 'active' | 'retired' | 'destroying' | 'destroyed';
 
 interface MomentTable {
@@ -128,3 +130,7 @@ export type MomentWrite =
       readonly reflectionID?: string;
     }
   | { readonly status: 'refused'; readonly reason: MomentRefusal };
+
+export type MomentDestroy =
+  | { readonly status: 'destroyed'; readonly momentID: string }
+  | { readonly status: 'refused'; readonly reason: 'not_found' | 'stale' };

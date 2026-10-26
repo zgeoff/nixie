@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { memoryExportContract } from './memory-export-contract';
+import { momentContract } from './moment-contract';
 import { proposalOutcomeSchema } from './proposal-outcome-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
@@ -304,4 +305,6 @@ export const memoryViewContract = {
     .output(proposalOutcomesSchema),
 
   ...memoryExportContract,
+
+  ...momentContract,
 };

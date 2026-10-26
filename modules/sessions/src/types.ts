@@ -122,7 +122,10 @@ export interface ImageTally {
   readonly count: number;
 }
 
-export type SessionCleanupCause = { readonly itemID: string } | { readonly recordSequence: number };
+export type SessionCleanupCause =
+  | { readonly itemID: string }
+  | { readonly recordSequence: number }
+  | { readonly momentID: string };
 
 export interface SessionDefinitions {
   readonly persona: string;

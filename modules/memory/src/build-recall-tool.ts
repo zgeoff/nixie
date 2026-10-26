@@ -4,6 +4,7 @@ import type { MemoryLineOptions, NextVersion } from '@heynixie/sessions';
 import { renderMemoryLine } from '@heynixie/sessions';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import type { MomentStore } from './build-moment-store';
 import { makeInputRecorder } from './make-input-recorder';
 import { readItemIDs } from './read-item-ids';
 import type { MomentLink } from './read-moment-links';
@@ -96,7 +97,10 @@ export interface RecallLineOptions {
 }
 
 export function buildRecallTool(
-  memory: Pick<StartedMemoryStore, 'recall' | 'moments'> & Pick<ItemIDStore, 'readItemIDMap'>,
+  memory: Pick<StartedMemoryStore, 'recall'> &
+    Pick<ItemIDStore, 'readItemIDMap'> & {
+      readonly moments: Pick<MomentStore, 'readLinks'>;
+    },
   options: RecallLineOptions,
 ): ToolDefinition {
   return {
