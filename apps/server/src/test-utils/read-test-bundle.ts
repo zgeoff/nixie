@@ -31,9 +31,11 @@ export async function readTestBundle(isTestBuild: boolean): Promise<TestBundle> 
   });
 
   const [bundle, mainText] = await Promise.all([
-    Bun.file(join(directory, 'bundle.json')).json(),
+    Bun.file(join(directory, 'bundle.json'))
+      .json()
+      .then((value: unknown) => bundleSchema.parse(value)),
     Bun.file(join(directory, 'out', 'main.js')).text(),
   ]);
 
-  return { ...bundleSchema.parse(bundle), mainText };
+  return { ...bundle, mainText };
 }
