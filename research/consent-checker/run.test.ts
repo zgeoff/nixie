@@ -98,6 +98,19 @@ test('it prints the rates of each bucket and each tool, and the spend of every c
   `);
 });
 
+test.each([
+  ['check', '--budget', 'lots', '--budget takes a dollar amount of 0 or more, not lots'],
+  ['check', '--budget', '-1', '--budget takes a dollar amount of 0 or more, not -1'],
+  ['check', '--limit', '2.5', '--limit takes a whole number of 0 or more, not 2.5'],
+  ['check', '--concurrency', '0', '--concurrency takes a whole number of 1 or more, not 0'],
+  ['label', '--concurrency', 'two', '--concurrency takes a whole number of 1 or more, not two'],
+])('it refuses %s with %s %s before it reads any file', (command, flag, value, message) => {
+  const child = Bun.spawnSync(['bun', join(import.meta.dir, 'run.ts'), command, `${flag}=${value}`]);
+
+  expect(child.exitCode).toBe(1);
+  expect(child.stderr.toString()).toInclude(message);
+});
+
 test('it refuses an unknown command', () => {
   const child = Bun.spawnSync(['bun', join(import.meta.dir, 'run.ts'), 'relabel']);
 

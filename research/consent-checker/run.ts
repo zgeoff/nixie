@@ -100,6 +100,7 @@ async function writeCases(plainPath: string, outPath: string): Promise<void> {
 }
 
 async function runLabelCommand(): Promise<void> {
+  const limits = buildRunLimits();
   const outPath = requireFlag(values.out, '--out');
   const persona = await Bun.file(requireFlag(values.persona, '--persona')).text();
   const template = await Bun.file(new URL('label-prompt.txt', import.meta.url)).text();
@@ -119,7 +120,7 @@ async function runLabelCommand(): Promise<void> {
     systemPrompt,
     promptSHA256: createHash('sha256').update(systemPrompt).digest('hex'),
     otherSpentUSD: await readSpentUSD(values.checks, checkRecordSchema),
-    ...buildRunLimits(),
+    ...limits,
     // The check guest's own query, with the labeller's answer shape in place of the verdict.
     runLabel: (request) =>
       runCheckQuery(request, {
@@ -136,6 +137,7 @@ async function runLabelCommand(): Promise<void> {
 }
 
 async function runCheckCommand(): Promise<void> {
+  const limits = buildRunLimits();
   const outPath = requireFlag(values.out, '--out');
   const systemPrompt = await Bun.file(new URL('prompt.txt', import.meta.url)).text();
   const env = await buildModelEnv();
@@ -148,7 +150,7 @@ async function runCheckCommand(): Promise<void> {
     systemPrompt,
     promptSHA256: createHash('sha256').update(systemPrompt).digest('hex'),
     otherSpentUSD: await readSpentUSD(values.labels, labelRecordSchema),
-    ...buildRunLimits(),
+    ...limits,
     runCheck: (request) => runCheckQuery(request, { env }),
   });
 
@@ -194,12 +196,36 @@ function buildProfile(defaults: { model: string; effort: string }) {
   };
 }
 
+// A flag that reads as no number, such as NaN, would turn the budget check off or start no worker.
 function buildRunLimits() {
   return {
-    budgetUSD: Number(values.budget),
-    limit: values.limit === undefined ? null : Number(values.limit),
-    concurrency: Number(values.concurrency),
+    budgetUSD: parseFlagNumber('--budget', values.budget, z.coerce.number().nonnegative(), 'a dollar amount of 0 or more'),
+    limit:
+      values.limit === undefined
+        ? null
+        : parseFlagNumber('--limit', values.limit, z.coerce.number().int().nonnegative(), 'a whole number of 0 or more'),
+    concurrency: parseFlagNumber(
+      '--concurrency',
+      values.concurrency,
+      z.coerce.number().int().positive(),
+      'a whole number of 1 or more',
+    ),
   };
+}
+
+function parseFlagNumber(
+  flag: string,
+  value: string | undefined,
+  schema: z.ZodType<number, unknown>,
+  expected: string,
+): number {
+  const parsed = schema.safeParse(value);
+
+  if (!parsed.success) {
+    throw new Error(`${flag} takes ${expected}, not ${value ?? '(none)'}`);
+  }
+
+  return parsed.data;
 }
 
 async function readSpentUSD(
