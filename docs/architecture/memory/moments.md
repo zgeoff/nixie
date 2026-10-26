@@ -101,8 +101,10 @@ destroyed ones. The count shows in three places and never blocks a keep:
 
 - **The `moment.keep` result,** as the moments kept this week.
 - **The events block,** which notes a moment that another task or the user kept, with its title, its
-  short ID and the count at the time it was kept. A moment the conversation keeps shows in its own
-  tool result instead. A replay after a destroy finds the title shredded and leaves the event out.
+  short ID and the count over the week that ends at its keep time. Each read of the block counts
+  again from the moments that survive, so a replay after a destroy counts one fewer. A moment the
+  conversation keeps shows in its own tool result instead, and a replay after its own destroy finds
+  the title shredded and leaves the event out.
 - **The session's [status](../core/session-opening.md#status),** which splits the count by keeper
   and counts the moments that wait for a reflection.
 
