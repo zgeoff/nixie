@@ -57,15 +57,15 @@ export function createMomentProcedures(context: APIContext, readMemory: ReadView
         throw toMomentError(error, options.errors);
       });
 
-      if (outcome === 'unauthorized') {
-        throw options.errors.UNAUTHORIZED();
-      }
-
-      if (outcome === 'reused') {
-        throw options.errors.CLIENT_ACTION_ID_REUSED();
-      }
-
-      const action = await readClientAction(context.log.writer.db, input.clientActionID);
+      const action = await match(outcome)
+        .with('unauthorized', () => {
+          throw options.errors.UNAUTHORIZED();
+        })
+        .with('reused', () => {
+          throw options.errors.CLIENT_ACTION_ID_REUSED();
+        })
+        .with('applied', () => readClientAction(context.log.writer.db, input.clientActionID))
+        .exhaustive();
 
       return keptResultSchema.parse(action?.result);
     }),
