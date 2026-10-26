@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readRecords, writeRecords } from '@heynixie/log';
+import { readRecords, writeRecords, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { MomentTables } from './moment-types';
@@ -220,4 +220,66 @@ test("it lets the owner keep a span of a task's thread", async () => {
     kept_thread: null,
     kept_model: null,
   });
+});
+
+test("it keeps a moment under the IDs the caller made, and rolls back the caller's write when it refuses the span", async () => {
+  const ctx = await setupTest();
+
+  const [message, wake] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'who left the kettle on the stove' },
+    },
+    {
+      kind: 'task.wake',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'task-kitchen',
+      payload: {},
+    },
+  ]);
+
+  invariant(message && wake);
+
+  const refused = await ctx.memory.store.moments.keep(
+    {
+      caller: { kind: 'owner' },
+      thread: 'conversation',
+      firstSequence: message.sequence,
+      lastSequence: wake.sequence,
+      title: 'The kettle on the stove',
+      ids: { momentID: '0b6f4c1e-2d3a-4e5f-8a9b-1c2d3e4f5a6b', shortID: 'k7m2q9x4w1' },
+    },
+    async (tx) => {
+      await writeRecordsInTransaction(tx, ctx.memory.log, [
+        {
+          kind: 'task.wake',
+          definitions: { snapshotHash: 'sha256:test' },
+          thread: 'client-action',
+          payload: {},
+        },
+      ]);
+    },
+  );
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The kettle on the stove',
+    ids: { momentID: '0b6f4c1e-2d3a-4e5f-8a9b-1c2d3e4f5a6b', shortID: 'k7m2q9x4w1' },
+  });
+
+  const wakes = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['task.wake'] });
+
+  expect(refused).toStrictEqual({ status: 'refused', reason: 'bad_span' });
+
+  expect(kept).toMatchObject({
+    momentID: '0b6f4c1e-2d3a-4e5f-8a9b-1c2d3e4f5a6b',
+    shortID: 'k7m2q9x4w1',
+  });
+
+  expect(wakes.map((entry) => entry.record.thread)).toStrictEqual(['task-kitchen']);
 });

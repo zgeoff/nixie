@@ -38,8 +38,10 @@ as stale and writes nothing. The check and the record commit in one write transa
 A model keeps a span of its own thread only, because the thread comes from the task run and never
 from the tool's arguments. The conversation therefore keeps moments from its conversation with the
 user, and a task keeps moments from its own work. The store refuses a keep from the memory writer's
-thread, and the memory writer's tool list holds no moment tool. The store lets the user keep a span
-of any thread.
+thread, and the memory writer's tool list holds no moment tool. The user keeps a span of any thread
+through a [checked action](../channels/api.md#checked-actions) in the client. The API makes the
+moment's IDs before the keep's transaction and keeps them as the action's result, so the API returns
+the first keep's IDs to a retry.
 
 The parts of a moment have different writers:
 
@@ -68,12 +70,18 @@ A model names a moment by its [short ID](../core/database.md#short-ids). A refus
 model as the tool's error, in a fixed sentence that holds no moment text.
 
 `moment.keep` returns the moment's short ID, the weekly count and a pending reflection, as JSON with
-no prose. `moment.find` decrypts the candidates' text in process memory and matches each query word
-against it, because a full-text index on disk would keep a destroyed moment's words. `moment.read`
-returns every record in the span, each with its event ID, its kind, its time, its text and its
-source of content. A record with no source holds only what nixie itself wrote, and a record whose
-key is gone shows as a gap. Each page stops at a token cap and returns a cursor, because a span over
-a long task holds thousands of records.
+no prose. `moment.find` decrypts every candidate's text in process memory, a batch at a time, and
+matches each query word against it, because a full-text index on disk would keep a destroyed
+moment's words.
+
+`moment.read` returns every record in the span, each with its event ID, its kind, its time, its
+payload, its policy decision, its text and its source of content. The payload holds what the text
+leaves out, such as a called tool's name or an action's outcome. A record with no source holds only
+what nixie itself wrote, and a record whose key is gone shows as a gap. Each page stops at a token
+cap and returns a cursor, because a span over a long task holds thousands of records and a moment
+gathers reflections over time. The first page holds the note, the reflections follow under the same
+cursor, and then the records. A single reflection or record larger than a page arrives cut to fit
+it.
 
 The records of a moment tool call hold references only: moment IDs, versions and event IDs. Each
 call record leaves out the title, the reflection and the search words, and each result record lists
@@ -100,16 +108,21 @@ destroyed ones. The count shows in three places and never blocks a keep:
 
 ## Destroying a moment
 
-The store's destroy is the user's operation, and no tool reaches it. It binds to the version the
-caller read, and runs as a durable operation in 2 parts:
+Only a checked action in the client destroys a moment, and no tool reaches it. The client first
+reads a preview at the moment's version, which shows the title, the note and the reflections, counts
+the texts and links the destroy removes, and counts the span's records that stay. The destroy binds
+to the version the preview showed, so an edit after the preview makes it stale, and it runs as a
+durable operation in 2 parts:
 
-1. One write transaction checks the state and the version and appends the record that marks the
-   moment destroying. From then on, no read, find, link or edit reaches the moment.
+1. One write transaction commits the client action, checks the state and the version, and appends
+   the record that marks the moment destroying. A refusal rolls the client action back with it. From
+   then on, no read, find, link or edit reaches the moment.
 2. The cleanup deletes the key of every record that holds the moment's text, runs the
    [session cleanup](./context.md#forgetting-and-the-live-session) with the moment as its cause, and
    appends the record that marks the destroy complete.
 
-Every step of the cleanup is safe to run twice, and the store's start runs the cleanup for every
+Every step of the cleanup is safe to run twice. A retry of the action with the same client action ID
+runs the cleanup of a destroy that a failed cleanup left, and the store's start runs it for every
 moment still destroying. The session cleanup erases every compaction summary and purges the session,
 because a summary or a transcript can hold the moment's text. The span's records keep their own
 keys, so the user's messages and the replies that quote the moment stay readable.

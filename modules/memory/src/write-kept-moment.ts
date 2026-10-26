@@ -5,28 +5,32 @@ import { memoryWriterTaskID } from './memory-writer-task-id';
 import { momentKeptCodec } from './moment-kept-codec';
 import type { KeepMomentRequest, MomentContext, MomentWrite } from './moment-types';
 import { probeThreadSpan } from './probe-thread-span';
+import type { WriteInTransaction } from './types';
 
-export function writeKeptMoment(
+export async function writeKeptMoment(
   context: MomentContext,
   request: KeepMomentRequest,
+  writeInTransaction?: WriteInTransaction,
 ): Promise<MomentWrite> {
   const caller = request.caller;
 
   if (caller.kind === 'model' && caller.thread === memoryWriterTaskID) {
-    return Promise.resolve({ status: 'refused', reason: 'memory_writer' });
+    return { status: 'refused', reason: 'memory_writer' };
   }
 
   if (caller.kind === 'model' && caller.thread !== request.thread) {
-    return Promise.resolve({ status: 'refused', reason: 'other_thread' });
+    return { status: 'refused', reason: 'other_thread' };
   }
 
-  return withWriteTransaction(context.log.writer, async (tx): Promise<MomentWrite> => {
+  const kept = await withWriteTransaction(context.log.writer, async (tx): Promise<MomentWrite> => {
+    await writeInTransaction?.(tx);
+
     if (!(await probeThreadSpan(tx, request.thread, request))) {
-      return { status: 'refused', reason: 'bad_span' };
+      throw new BadSpanError();
     }
 
-    const momentID = crypto.randomUUID();
-    const shortID = createShortID();
+    const momentID = request.ids?.momentID ?? crypto.randomUUID();
+    const shortID = request.ids?.shortID ?? createShortID();
 
     const [written] = await writeRecordsInTransaction(tx, context.log, [
       {
@@ -50,5 +54,22 @@ export function writeKeptMoment(
     invariant(written, 'the log wrote no record for the kept moment');
 
     return { status: 'written', momentID, shortID, version: 1, sequence: written.sequence };
+  }).catch((error: unknown) => {
+    if (error instanceof BadSpanError) {
+      return error;
+    }
+
+    throw error;
   });
+
+  return kept instanceof BadSpanError ? { status: 'refused', reason: 'bad_span' } : kept;
+}
+
+// A refusal throws inside the transaction, so a client action written by the hook rolls back with it.
+class BadSpanError extends Error {
+  override readonly name = 'BadSpanError';
+
+  constructor() {
+    super('the span is not on the thread');
+  }
 }
