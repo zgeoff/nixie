@@ -20,6 +20,7 @@
   "devDependencies": {
     "@heynixie/async": "workspace:*",
     "@heynixie/testing": "workspace:*",
+    "@impz/testing": "catalog:",
     "tiny-invariant": "catalog:"
   }
 }

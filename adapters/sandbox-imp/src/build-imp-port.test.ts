@@ -1,5 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { waitForCondition } from '@heynixie/testing';
+import { TEST_TOKEN, startTestImpd } from '@impz/testing';
 import { buildImpPort } from './build-imp-port';
 import { startStubImpd } from './test-utils/start-stub-impd';
 
@@ -97,6 +98,20 @@ test('it reads the features of an impd of major 5 with imp client 4', () => {
   onTestFinished(() => impd.stop(true));
 
   const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  expect(port.readFeatures()).resolves.toStrictEqual({
+    publicEgress: true,
+    isEgressEnforced: true,
+    hasBackupOptOut: true,
+  });
+});
+
+test('it reads the features of a real impd that runs in the test process', async () => {
+  const impd = await startTestImpd();
+
+  onTestFinished(impd.stop);
+
+  const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
 
   expect(port.readFeatures()).resolves.toStrictEqual({
     publicEgress: true,
