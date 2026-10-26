@@ -45,14 +45,14 @@ bun run.ts check --cases <cases> --labels <labels> --out <checks> --home <home>
 bun run.ts score --cases <cases> --labels <labels> --checks <checks>
 ```
 
-One `--budget` in dollars covers both output files when each command gets the other's file, as
-`--checks` and `--labels` above. Each command locks the cases and output files it uses, and stops
-while another run holds one; a crashed run leaves its lock files for you to remove.
+One `--budget` in dollars covers both runs when each gets the other's output file, as above. `label`
+and `check` also take `--model`, `--effort`, `--limit`, `--concurrency` and `--base-url`. Every
+command locks each cases, labels and checks file it gets, and stops while another holds one. A
+command that crashes leaves its locks for you to remove.
 
 ## Results
 
-The [results](results.md) hold the setup, the label counts, the rates by tool, the findings and the
-spend.
+The [results](results.md) hold the setup, the counts, the rates by tool, the findings and the spend.
 
 ## Untested
 
