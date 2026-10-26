@@ -25,6 +25,10 @@ test('it starts a log with the tasks, sandboxes and memory projections, an endpo
     'memory_forgotten_evidence',
     'memory_consolidations',
     'memory_consolidation_changes',
+    'moments',
+    'moment_reflections',
+    'moment_links',
+    'moment_texts',
   ]);
 
   expect(server.sandboxes).toMatchObject({ id: 'process', boundary: 'process' });

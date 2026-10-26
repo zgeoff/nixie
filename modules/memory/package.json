@@ -22,6 +22,7 @@
     "@heynixie/tools": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
+    "ts-pattern": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -31,7 +32,6 @@
     "@heynixie/models": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/testing": "workspace:*",
-    "@paralleldrive/cuid2": "catalog:",
-    "ts-pattern": "catalog:"
+    "@paralleldrive/cuid2": "catalog:"
   }
 }
