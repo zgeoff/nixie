@@ -501,6 +501,105 @@ test('#moment.edit refuses two changes in one call', async () => {
   ]);
 });
 
+test('#moment.edit changes only the title, and returns the next version', async () => {
+  const ctx = await setupTest();
+
+  const message = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'we settle the kettle question today',
+    spans: [],
+  });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message,
+    lastSequence: message,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  const result = await runToolCall(
+    {
+      tool: 'moment.edit',
+      input: { momentID: kept.shortID, version: 1, title: 'The kettle rule' },
+      toolUseID: 'toolu_1',
+    },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const row = await ctx.db
+    .selectFrom('moments')
+    .select(['first_sequence', 'last_sequence', 'title_sequence', 'version'])
+    .executeTakeFirstOrThrow();
+
+  expect(result.structuredContent).toStrictEqual({ momentID: kept.shortID, version: 2 });
+
+  expect(row).toStrictEqual({
+    first_sequence: message,
+    last_sequence: message,
+    title_sequence: expect.toSatisfy((sequence: number) => sequence > kept.sequence),
+    version: 2,
+  });
+});
+
+test('#moment.edit moves both edges of the span to the event IDs it was given', async () => {
+  const ctx = await setupTest();
+
+  const first = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'we settle the kettle question today',
+    spans: [],
+  });
+
+  const second = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'the quiet one costs twice as much',
+    spans: [],
+  });
+
+  const third = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'fine, the quiet one',
+    spans: [],
+  });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: first,
+    lastSequence: first,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  const result = await runToolCall(
+    {
+      tool: 'moment.edit',
+      input: {
+        momentID: kept.shortID,
+        version: 1,
+        firstEventID: String(second),
+        lastEventID: String(third),
+      },
+      toolUseID: 'toolu_1',
+    },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const row = await ctx.db
+    .selectFrom('moments')
+    .select(['first_sequence', 'last_sequence', 'version'])
+    .executeTakeFirstOrThrow();
+
+  expect(result.structuredContent).toStrictEqual({ momentID: kept.shortID, version: 2 });
+  expect(row).toStrictEqual({ first_sequence: second, last_sequence: third, version: 2 });
+});
+
 test('#moment.find finds a moment by a word of its reflection', async () => {
   const ctx = await setupTest();
 
