@@ -271,12 +271,15 @@ test('#moment.read returns every record of a span over the conversation, tool ca
         eventID: String(message + 1),
         kind: 'tool_called',
         source: 'nixie',
+        payload: { tool: 'moment.find' },
+        decision: 'allow',
         text: JSON.stringify({ input: {} }),
       },
       {
         eventID: String(message + 2),
         kind: 'tool_result',
         source: 'untrusted',
+        payload: { outcome: 'result' },
         text: JSON.stringify({ result: { moments: [], next: null } }),
       },
       {
@@ -287,6 +290,44 @@ test('#moment.read returns every record of a span over the conversation, tool ca
       },
     ],
   });
+});
+
+test('#moment.read keeps a full page of short records within its cap as the model receives it', async () => {
+  const ctx = await setupTest();
+
+  const sequences = await writeRecords(
+    ctx.memory.log,
+    Array.from({ length: 600 }, (_, index) => ({
+      kind: 'model.reply' as const,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: `Stir ${String(index)}.` },
+    })),
+  );
+
+  const first = sequences.at(0);
+  const last = sequences.at(-1);
+
+  invariant(first && last);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: first.sequence,
+    lastSequence: last.sequence,
+    title: 'Making the jam',
+  });
+
+  invariant(kept.status === 'written');
+
+  const result = await runToolCall(
+    { tool: 'moment.read', input: { momentID: kept.shortID }, toolUseID: 'toolu_1' },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toMatchObject({ next: expect.toBeString() });
+  expect(Math.ceil(JSON.stringify(result.structuredContent).length / 4)).toBeLessThanOrEqual(6000);
 });
 
 test('#moment.read reads a span longer than a page through the cursor, every record once and in order', async () => {
@@ -323,22 +364,20 @@ test('#moment.read reads a span longer than a page through the cursor, every rec
     tokenCap: 6000,
   });
 
-  invariant(firstPage !== null && firstPage.page.next !== null);
+  invariant(firstPage !== null && firstPage.next !== null);
 
   const secondPage = await ctx.memory.store.moments.read({
     momentID: kept.shortID,
-    after: firstPage.page.next,
+    after: firstPage.next,
     tokenCap: 6000,
   });
 
   invariant(secondPage !== null);
 
-  const read = [...firstPage.page.entries, ...secondPage.page.entries].map(
-    (entry) => entry.sequence,
-  );
+  const read = [...firstPage.records, ...secondPage.records].map((entry) => entry.sequence);
 
-  expect(firstPage.page.entries.length).toBeLessThan(40);
-  expect(secondPage.page.next).toBeNull();
+  expect(firstPage.records.length).toBeLessThan(40);
+  expect(secondPage.next).toBeNull();
   expect(read).toStrictEqual(sequences.map((record) => record.sequence));
 });
 

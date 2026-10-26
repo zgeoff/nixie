@@ -1,4 +1,4 @@
-import type { ContentSource, Log, LogRecord, RecordKind } from '@heynixie/log';
+import type { ContentSource, JSONObject, Log, LogRecord, RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { renderOwnerText } from '@heynixie/sessions';
 import { countBatchTokens } from './count-batch-tokens';
@@ -19,6 +19,10 @@ export interface MomentSpanEntry {
 
   // the record's source of content, or nixie for a record that holds only what nixie wrote
   readonly source: ContentSource | 'nixie';
+
+  // the record's payload, such as a called tool's name or an outcome, and its policy decision
+  readonly payload: JSONObject | null;
+  readonly decision: 'allow' | 'ask' | 'deny' | null;
   readonly text: string | null;
 
   // the record's text is gone, so the moment shows a gap
@@ -55,7 +59,7 @@ export async function readMomentSpanPage(
 
     for (const read of batch) {
       const entry = buildSpanEntry(read.record);
-      const cost = countBatchTokens(JSON.stringify(entry));
+      const cost = countEntryTokens(entry);
 
       if (entries.length > 0 && tokens + cost > query.tokenCap) {
         return { entries, next: after };
@@ -65,7 +69,7 @@ export async function readMomentSpanPage(
 
       entries.push(shown);
 
-      tokens += cost;
+      tokens += countEntryTokens(shown);
       after = read.record.sequence;
     }
   }
@@ -82,6 +86,8 @@ function buildSpanEntry(record: LogRecord): MomentSpanEntry {
     kind: record.kind,
     recordedAt: record.recordedAt.getTime(),
     source: record.contentSource ?? 'nixie',
+    payload: Object.keys(record.payload).length === 0 ? null : record.payload,
+    decision: record.decision?.outcome ?? null,
     text: erasable.status === 'readable' ? renderRecordText(record, erasable.fields) : null,
     isGap,
     isCut: false,
@@ -98,13 +104,38 @@ function renderRecordText(record: LogRecord, fields: Readonly<Record<string, unk
   return record.kind === 'model.reply' && typeof text === 'string' ? text : JSON.stringify(fields);
 }
 
-// One record larger than a page still reaches the reader, cut to the page's size.
+// The reader's form of an entry adds an event ID, a written-out time and a separator, which the
+// entry's own size leaves out.
+const entryOverhead = 8;
+
+function countEntryTokens(entry: MomentSpanEntry): number {
+  return countBatchTokens(JSON.stringify(entry)) + entryOverhead;
+}
+
+// One record larger than a page still reaches the reader, its text cut until the whole entry, as
+// the reader receives it, fits the page. A payload that alone outgrows the page is left out.
 function cutSpanEntry(entry: MomentSpanEntry, tokenCap: number): MomentSpanEntry {
   const text = entry.text;
+  const bare = { ...entry, text: text === null ? null : '', isCut: true };
+  const base = countEntryTokens(bare) <= tokenCap ? entry : { ...entry, payload: null };
 
   if (text === null) {
-    return entry;
+    return { ...base, isCut: true };
   }
 
-  return { ...entry, text: text.slice(0, tokenCap * 4), isCut: true };
+  let low = 0;
+  let high = text.length;
+
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    const cut = { ...base, text: text.slice(0, middle), isCut: true };
+
+    if (countEntryTokens(cut) <= tokenCap) {
+      low = middle;
+    } else {
+      high = middle - 1;
+    }
+  }
+
+  return { ...base, text: text.slice(0, low), isCut: true };
 }

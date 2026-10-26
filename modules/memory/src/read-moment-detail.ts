@@ -6,6 +6,9 @@ import { readMomentText } from './read-moment-text';
 interface MomentReflection {
   readonly reflectionID: string;
   readonly model: string;
+
+  // the reflections' order, which a removal or a rewrite never changes
+  readonly createdAt: number;
   readonly writtenAt: number;
   readonly text: string | null;
 }
@@ -45,6 +48,7 @@ export async function readMomentDetail(
     reflections: reflections.map((reflection, index) => ({
       reflectionID: reflection.reflection_id,
       model: reflection.model,
+      createdAt: reflection.created_at,
       writtenAt: reflection.updated_at,
       text: texts[index] ?? null,
     })),

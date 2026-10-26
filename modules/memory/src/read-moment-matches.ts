@@ -25,8 +25,6 @@ export interface MomentMatchPage {
   readonly next: number | null;
 }
 
-const scanLimit = 500;
-
 // A keyword search decrypts each candidate's text in process memory, because a full-text index on
 // disk would keep a destroyed moment's words.
 export async function readMomentMatches(
@@ -34,11 +32,10 @@ export async function readMomentMatches(
   query: MomentFindQuery,
 ): Promise<MomentMatchPage> {
   const words = query.words.map((word) => normalizeMatchWord(word)).filter((word) => word !== '');
-  const candidateLimit = words.length === 0 ? query.limit + 1 : scanLimit;
-
-  const rows = await readCandidateRows(log, query, candidateLimit);
 
   if (words.length === 0) {
+    const rows = await readCandidateRows(log, query, query.limit + 1);
+
     const page = rows.slice(0, query.limit);
 
     const details = await Promise.all(page.map((row) => readMomentDetail(log, row)));
@@ -51,23 +48,7 @@ export async function readMomentMatches(
     };
   }
 
-  const details = await Promise.all(rows.map((row) => readMomentDetail(log, row)));
-
-  const scored = rows
-    .map((row, index) => ({
-      row,
-      detail: details[index],
-      score: countMatchedWords(details[index], words),
-    }))
-    .filter((entry) => entry.score > 0)
-    .toSorted((left, right) => right.score - left.score);
-
-  return {
-    matches: scored
-      .slice(0, query.limit)
-      .map((entry) => ({ row: entry.row, title: entry.detail?.title ?? null })),
-    next: null,
-  };
+  return { matches: await readScoredMatches(log, query, words), next: null };
 }
 
 function normalizeMatchWord(text: string): string {
@@ -92,6 +73,45 @@ function readCandidateRows(
     .orderBy('kept_sequence', 'desc')
     .limit(limit)
     .execute();
+}
+
+interface ScoredMatch extends MomentMatch {
+  readonly score: number;
+}
+
+const scanBatch = 100;
+
+// Every candidate is scored, a batch at a time, so an old moment with the best match still ranks.
+async function readScoredMatches(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  query: MomentFindQuery,
+  words: readonly string[],
+): Promise<readonly MomentMatch[]> {
+  let best: readonly ScoredMatch[] = [];
+  let before = query.before;
+
+  for (;;) {
+    const rows = await readCandidateRows(log, { ...query, before }, scanBatch);
+    const details = await Promise.all(rows.map((row) => readMomentDetail(log, row)));
+
+    const scored = rows.map((row, index) => ({
+      row,
+      title: details[index]?.title ?? null,
+      score: countMatchedWords(details[index], words),
+    }));
+
+    best = [...best, ...scored.filter((entry) => entry.score > 0)]
+      .toSorted((left, right) => right.score - left.score)
+      .slice(0, query.limit);
+
+    const last = rows.at(-1);
+
+    if (rows.length < scanBatch || last === undefined) {
+      return best.map((entry) => ({ row: entry.row, title: entry.title }));
+    }
+
+    before = last.kept_sequence;
+  }
 }
 
 function countMatchedWords(detail: MomentDetail | undefined, words: readonly string[]): number {
