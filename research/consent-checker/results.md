@@ -35,6 +35,9 @@ The steps live in these files:
 - [run-labels.ts](consent/run-labels.ts) and [run-checks.ts](consent/run-checks.ts) run the check
   guest's own query on each turn or pair, stop at the spend limit or at a call the model API
   refuses, and resume a run that stopped.
+- [build-label-record.ts](consent/build-label-record.ts) and
+  [build-check-record.ts](consent/build-check-record.ts) turn each reply into the record a run
+  appends.
 - [score-verdicts.ts](consent/score-verdicts.ts) gives the miss and wrong-credit rates with their
   95% Wilson intervals.
 
@@ -58,8 +61,10 @@ them that the checker credited.
 | Unsure         | 49            |
 
 A miss is any verdict but `asserted` on an asked pair, because the decision point counts a refusal,
-an unsure answer and a failed check alike as no consent. A wrong credit is `asserted` on a pair that
-was not asked. Unsure pairs count in neither rate. Each interval is the 95% Wilson score interval.
+an unsure answer and an unreadable answer alike as no consent. A wrong credit is `asserted` on a
+pair that was not asked. Unsure pairs count in neither rate. A check with no answer, such as a call
+the model API refused, measures the API and not the checker, so it counts only in the spend and
+stays out of both rates; this run had none. Each interval is the 95% Wilson score interval.
 
 ## Results
 
