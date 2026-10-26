@@ -374,6 +374,72 @@ test('it moves the edges of a span within its thread', async () => {
   expect(row).toStrictEqual({ first_sequence: first.sequence, last_sequence: last.sequence });
 });
 
+test.each([
+  ['reversed edges', 1, 0],
+  ['a last edge on another thread', 0, 2],
+  ['a first edge on another thread', 2, 1],
+])(
+  "it refuses the owner's move of a span to %s, and writes no record and no row",
+  async (_, firstIndex, lastIndex) => {
+    const ctx = await setupTest();
+
+    const records = await writeRecords(ctx.memory.log, [
+      {
+        kind: 'owner_message',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        erasable: { text: 'never buy the cheap kettle again' },
+      },
+      {
+        kind: 'model.reply',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        erasable: { text: 'noted, the quiet one it is' },
+      },
+      {
+        kind: 'owner_message',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'task-garden',
+        erasable: { text: 'water the beans on Friday' },
+      },
+    ]);
+
+    const [message] = records;
+
+    invariant(message);
+
+    const kept = await ctx.memory.store.moments.keep({
+      caller: { kind: 'owner' },
+      thread: 'conversation',
+      firstSequence: message.sequence,
+      lastSequence: message.sequence,
+      title: 'The kettle argument',
+    });
+
+    invariant(kept.status === 'written');
+
+    const first = records[firstIndex];
+    const last = records[lastIndex];
+
+    invariant(first && last);
+
+    const before = await readMomentRows(ctx.db);
+
+    const edited = await ctx.memory.store.moments.edit({
+      caller: { kind: 'owner' },
+      target: { momentID: kept.momentID, version: 1 },
+      change: { kind: 'edges', firstSequence: first.sequence, lastSequence: last.sequence },
+    });
+
+    const after = await readMomentRows(ctx.db);
+    const written = await readRecords(ctx.memory.log, { afterSequence: kept.sequence, limit: 10 });
+
+    expect(edited).toStrictEqual({ status: 'refused', reason: 'bad_span' });
+    expect(written).toStrictEqual([]);
+    expect(after).toStrictEqual(before);
+  },
+);
+
 test("it refuses a task's move of the edges of a conversation moment", async () => {
   const ctx = await setupTest();
 
