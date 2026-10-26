@@ -111,11 +111,13 @@ pre-push:
     # in a long run, which times out tests and hooks that pass alone. The ignore patterns repeat
     # bunfig.toml's, because a pattern on the command line replaces that list; the
     # Agent SDK lane and the e2e lane run after, each with the limit its root lane script
-    # gives it
+    # gives it. The server's bundle checks read bundles that the test:bundles script writes
+    # first, so no test pays for a build
     - name: test
       use_stdin: true
       run: |
         commits=$(.lefthook/pushed-commits.sh) || exit 1
+        bun run test:bundles || exit 1
         for commit in $commits; do
           bun test --parallel=1 --no-isolate --changed="origin/main...$commit" --path-ignore-patterns='docs/design/**' --path-ignore-patterns='research/**' --path-ignore-patterns='**/*.agent-sdk.test.ts' --path-ignore-patterns='e2e/**' || exit 1
           bun test --parallel=1 --changed="origin/main...$commit" .agent-sdk.test.ts || exit 1

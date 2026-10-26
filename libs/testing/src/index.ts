@@ -2,6 +2,8 @@ export type { SettleRecorder } from './build-settle-recorder';
 export { buildSettleRecorder } from './build-settle-recorder';
 export type { StubCheck } from './build-stub-check';
 export { buildStubCheck } from './build-stub-check';
+export type { RunTemplateOptions } from './create-run-template';
+export { createRunTemplate } from './create-run-template';
 export type { TestClock } from './build-test-clock';
 export { buildTestClock } from './build-test-clock';
 export type { GatedCall, GatedCallOptions } from './make-gated-call';
