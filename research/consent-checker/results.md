@@ -155,8 +155,21 @@ Each query runs under two caps that this spike chose rather than measured: 32,00
 each request, and 3 requests for each query, structured-output retries included. The recorded run
 kept only the cost that each result reported, so it holds no token counts to measure them against. A
 check that needs more is cut off and recorded as a failed call, and the recorded run had no failed
-check. Under those caps one call costs at most about $1.74 for a Sonnet 5.5 check and $3.48 for an
-Opus 5.5 label, and a run reserves that much before each call.
+check.
+
+A run reserves before each call the most that call can cost under those caps, which grows with its
+prompt and input. With B the bytes of the system prompt and the rendered input, which over-count
+their tokens, the bound in millionths of a dollar is:
+
+```text
+bound = 6 × input price × (B + 32,000 + 2 × 16,384) + 3 × output price × 32,000
+```
+
+The prices are per million tokens, and the factor of 6 counts each of the 3 requests at the one-hour
+cache-write price, twice the input price. Each request carries the prompt, the input and 16,384
+bytes of client overhead, plus the full output and overhead of each request before it. At 1,000
+bytes the bound is $1.75 for a Sonnet 5.5 check and $3.50 for an Opus 5.5 label, and each further
+1,000 bytes adds $0.012 and $0.024.
 
 ## Untested
 
