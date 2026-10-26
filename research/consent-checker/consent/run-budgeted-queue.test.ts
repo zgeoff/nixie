@@ -4,15 +4,16 @@ import { expect, mock, test } from 'bun:test';
 import { waitForCondition } from '../../../libs/testing/src/wait-for-condition.ts';
 import type { QueueOutput } from './run-budgeted-queue.ts';
 import { runBudgetedQueue } from './run-budgeted-queue.ts';
+import { buildStubAnswerTable } from './test-utils/build-stub-answer-table.ts';
 import { buildStubHeldRun } from './test-utils/build-stub-held-run.ts';
 
 test('it appends each output and adds its cost to the spend', async () => {
   const appendOutput = mock<(output: QueueOutput) => Promise<void>>(() => Promise.resolve());
 
-  const outputs = {
+  const outputs = buildStubAnswerTable({
     first: { costUSD: 0.25, failure: null },
     second: { costUSD: 0.5, failure: null },
-  };
+  });
 
   const result = await runBudgetedQueue({
     items: ['first', 'second'] as const,
@@ -23,7 +24,7 @@ test('it appends each output and adds its cost to the spend', async () => {
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runItem: (item) => Promise.resolve(outputs[item]),
+    runItem: outputs.run,
   });
 
   expect(result).toStrictEqual({
@@ -191,13 +192,13 @@ test('it holds a call in the spend at its reservation until the call settles', a
 test('it lets every running item finish and starts no more before it passes on a failed append', async () => {
   const failure = new Error('no space left on device');
 
-  const outputs = {
+  const outputs = buildStubAnswerTable({
     one: { item: 'one', costUSD: 0.1, failure: null },
     two: { item: 'two', costUSD: 0.1, failure: null },
     three: { item: 'three', costUSD: 0.1, failure: null },
-  } as const;
+  } as const);
 
-  const held = buildStubHeldRun((item: 'one' | 'two' | 'three') => outputs[item]);
+  const held = buildStubHeldRun(outputs.answer);
   const appended: string[] = [];
 
   const appendAnswers = {
@@ -256,12 +257,12 @@ test('it starts no more items than the limit', async () => {
 });
 
 test('it keeps the cost of an output with no answer and stops the run', async () => {
-  const outputs = {
+  const outputs = buildStubAnswerTable({
     first: { costUSD: 0.75, failure: 'no_output' },
     second: { costUSD: 0.1, failure: null },
-  };
+  });
 
-  const runItem = mock((item: 'first' | 'second') => Promise.resolve(outputs[item]));
+  const runItem = mock(outputs.run);
   const appendOutput = mock<(output: QueueOutput) => Promise<void>>(() => Promise.resolve());
 
   const result = await runBudgetedQueue({
