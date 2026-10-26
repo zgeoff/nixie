@@ -1,4 +1,5 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
+import { match } from 'ts-pattern';
 import { apiImplementer } from './api-implementer';
 import { MomentRefusedError } from './moment-refused-error';
 import { requireCaller } from './require-caller';
@@ -62,15 +63,15 @@ export function createMomentProcedures(context: APIContext, readMemory: ReadView
         throw toMomentError(error, options.errors);
       });
 
-      if (outcome === 'unauthorized') {
-        throw options.errors.UNAUTHORIZED();
-      }
-
-      if (outcome === 'reused') {
-        throw options.errors.CLIENT_ACTION_ID_REUSED();
-      }
-
-      await store.moments.finishDestroy(target.momentID);
+      await match(outcome)
+        .with('unauthorized', () => {
+          throw options.errors.UNAUTHORIZED();
+        })
+        .with('reused', () => {
+          throw options.errors.CLIENT_ACTION_ID_REUSED();
+        })
+        .with('applied', () => store.moments.finishDestroy(target.momentID))
+        .exhaustive();
 
       return result;
     }),
