@@ -30,6 +30,24 @@ test.each([
     step: { isStarting: false, isStoppedAtBudget: true },
   },
   {
+    label: 'a run whose next reservation would pass the budget',
+    hasErrored: false,
+    isStoppedByFailure: false,
+    started: 1,
+    costUSD: 3.5,
+    limit: 2,
+    step: { isStarting: false, isStoppedAtBudget: true },
+  },
+  {
+    label: 'a run whose next reservation uses the rest of the budget',
+    hasErrored: false,
+    isStoppedByFailure: false,
+    started: 1,
+    costUSD: 3,
+    limit: 2,
+    step: { isStarting: true, isStoppedAtBudget: false },
+  },
+  {
     label: 'a run that reaches its limit',
     hasErrored: false,
     isStoppedByFailure: false,
@@ -78,7 +96,7 @@ test.each([
         started: row.started,
         hasErrored: row.hasErrored,
       },
-      { budgetUSD: 4, limit: row.limit },
+      { reserveUSD: 1, budgetUSD: 4, limit: row.limit },
     ),
   ).toStrictEqual(row.step);
 });

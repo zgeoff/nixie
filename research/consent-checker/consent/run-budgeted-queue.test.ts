@@ -77,6 +77,33 @@ test('it starts no item when the spend before the run already reaches the budget
   expect(runItem).not.toHaveBeenCalled();
 });
 
+test('it starts no item whose reservation would pass what the budget leaves', async () => {
+  const runItem = mock((item: string) => Promise.resolve({ item, costUSD: 0.1, failure: null }));
+  const appendReservation = mock(() => Promise.resolve());
+
+  const result = await runBudgetedQueue({
+    items: ['a'],
+    appendOutput: () => Promise.resolve(),
+    appendReservation,
+    reserveUSD: 1.75,
+    spentUSD: 3.5,
+    budgetUSD: 5,
+    limit: null,
+    concurrency: 1,
+    runItem,
+  });
+
+  expect(result).toStrictEqual({
+    ran: 0,
+    costUSD: 3.5,
+    isStoppedAtBudget: true,
+    isStoppedByFailure: false,
+  });
+
+  expect(appendReservation).not.toHaveBeenCalled();
+  expect(runItem).not.toHaveBeenCalled();
+});
+
 test('it runs as many items at once as its concurrency and no more', async () => {
   const held = buildStubHeldRun((item: string) => ({ item, costUSD: 0.1, failure: null }));
 

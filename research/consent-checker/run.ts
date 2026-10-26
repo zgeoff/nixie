@@ -175,7 +175,9 @@ async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<v
 
   console.log(
     `labelled ${result.ran} turns, skipped ${result.skipped}, spent $${result.costUSD.toFixed(4)} in total${
-      result.isStoppedAtBudget ? `, stopped at the $${values.budget} budget` : ''
+      result.isStoppedAtBudget
+        ? `, stopped before a call whose reservation would pass the $${values.budget} budget`
+        : ''
     }${formatFailureStop(result)}`,
   );
 }
@@ -211,7 +213,9 @@ async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<v
 
   console.log(
     `checked ${result.ran} pairs, skipped ${result.skipped}, spent $${result.costUSD.toFixed(4)} in total${
-      result.isStoppedAtBudget ? `, stopped at the $${values.budget} budget` : ''
+      result.isStoppedAtBudget
+        ? `, stopped before a call whose reservation would pass the $${values.budget} budget`
+        : ''
     }${formatFailureStop(result)}`,
   );
 }

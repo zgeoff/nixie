@@ -269,7 +269,54 @@ test('it starts no check when the labeller spend already reaches the budget', as
   expect(child.exitCode).toBe(0);
 
   expect(child.stdout.toString()).toBe(
-    'checked 0 pairs, skipped 0, spent $1.0000 in total, stopped at the $1 budget\n',
+    'checked 0 pairs, skipped 0, spent $1.0000 in total, stopped before a call whose reservation would pass the $1 budget\n',
+  );
+
+  expect(existsSync(outPath)).toBe(false);
+});
+
+test('it starts no check whose reservation would pass what the labeller spend leaves of the budget', async () => {
+  const ctx = await setupTest();
+
+  const casesPath = join(ctx.directory, 'cases.jsonl');
+  const labelsPath = join(ctx.directory, 'labels.jsonl');
+  const outPath = join(ctx.directory, 'checks.jsonl');
+
+  await writeFile(
+    casesPath,
+    '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
+  );
+
+  await writeFile(
+    labelsPath,
+    '{"stepSequence":2,"model":"claude-opus-5-5","effort":"medium","promptSHA256":"hash-l","inputSHA256":"hash-i","labels":[{"caseID":"2/3","label":"asked","reason":"the owner asked for the ferry times"}],"failure":null,"costUSD":3.5}\n',
+  );
+
+  const child = Bun.spawnSync(
+    [
+      'bun',
+      ctx.entry,
+      'check',
+      '--cases',
+      casesPath,
+      '--labels',
+      labelsPath,
+      '--out',
+      outPath,
+      '--home',
+      join(ctx.directory, 'home'),
+      '--base-url',
+      'http://127.0.0.1:9',
+      '--budget',
+      '5',
+    ],
+    { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' } },
+  );
+
+  expect(child.exitCode).toBe(0);
+
+  expect(child.stdout.toString()).toBe(
+    'checked 0 pairs, skipped 0, spent $3.5000 in total, stopped before a call whose reservation would pass the $5 budget\n',
   );
 
   expect(existsSync(outPath)).toBe(false);
@@ -434,7 +481,7 @@ test('it counts the reservation that a run which crashed before its record left 
   expect(child.exitCode).toBe(0);
 
   expect(child.stdout.toString()).toBe(
-    'labelled 0 turns, skipped 0, spent $1.0000 in total, stopped at the $1 budget\n',
+    'labelled 0 turns, skipped 0, spent $1.0000 in total, stopped before a call whose reservation would pass the $1 budget\n',
   );
 
   expect(labels).toBe(
@@ -587,7 +634,7 @@ test('it starts no label when the checker spend already reaches the budget', asy
   expect(child.exitCode).toBe(0);
 
   expect(child.stdout.toString()).toBe(
-    'labelled 0 turns, skipped 0, spent $1.0000 in total, stopped at the $1 budget\n',
+    'labelled 0 turns, skipped 0, spent $1.0000 in total, stopped before a call whose reservation would pass the $1 budget\n',
   );
 
   expect(existsSync(outPath)).toBe(false);
