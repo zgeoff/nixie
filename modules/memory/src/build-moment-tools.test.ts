@@ -389,6 +389,89 @@ test('#moment.read reads a span longer than a page through the cursor, every rec
   expect(read).toStrictEqual(sequences.map((record) => record.sequence));
 });
 
+test('#moment.read reads reflections longer than a page through the cursor, each once and in order, then the records', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the tomatoes split after the storm' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The split tomatoes',
+  });
+
+  invariant(kept.status === 'written');
+
+  for (const version of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    ctx.clock.advance(60_000);
+
+    await ctx.memory.store.moments.edit({
+      caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+      target: { momentID: kept.momentID, version },
+      change: {
+        kind: 'reflection',
+        text: `${String(version)} ${'rain after drought '.repeat(200)}`,
+      },
+    });
+  }
+
+  const reflectionSchema = z.object({ text: z.string() });
+  const entrySchema = z.object({ eventID: z.string() });
+
+  const pageSchema = z.object({
+    reflections: z.array(reflectionSchema),
+    records: z.array(entrySchema),
+    next: z.string().nullable(),
+  });
+
+  const firstCall = await runToolCall(
+    { tool: 'moment.read', input: { momentID: kept.shortID }, toolUseID: 'toolu_1' },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const firstPage = pageSchema.parse(firstCall.structuredContent);
+
+  invariant(firstPage.next !== null);
+
+  const secondCall = await runToolCall(
+    {
+      tool: 'moment.read',
+      input: { momentID: kept.shortID, after: firstPage.next },
+      toolUseID: 'toolu_2',
+    },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const secondPage = pageSchema.parse(secondCall.structuredContent);
+
+  const reflections = [...firstPage.reflections, ...secondPage.reflections].map(
+    (reflection) => reflection.text.split(' ')[0],
+  );
+
+  expect(firstPage.next).toStartWith('r');
+  expect(firstPage.records).toStrictEqual([]);
+  expect(reflections).toStrictEqual(['1', '2', '3', '4', '5', '6', '7', '8']);
+
+  expect(secondPage.records.map((entry) => entry.eventID)).toStrictEqual([
+    String(message.sequence),
+  ]);
+
+  expect(secondPage.next).toBeNull();
+});
+
 test('#moment.edit refuses an edit of a reflection that another model wrote', async () => {
   const ctx = await setupTest();
 
