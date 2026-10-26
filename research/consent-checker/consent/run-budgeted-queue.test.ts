@@ -201,11 +201,11 @@ test('it lets every running item finish and starts no more before it passes on a
   const held = buildStubHeldRun(outputs.answer);
   const appended: string[] = [];
 
-  const appendAnswers = {
+  const appendAnswers = buildStubAnswerTable({
     one: () => Promise.reject(failure),
     two: () => Promise.resolve(),
     three: () => Promise.resolve(),
-  };
+  });
 
   const outcome = Promise.allSettled([
     runBudgetedQueue({
@@ -213,7 +213,7 @@ test('it lets every running item finish and starts no more before it passes on a
       appendOutput: (output) => {
         appended.push(output.item);
 
-        return appendAnswers[output.item]();
+        return appendAnswers.answer(output.item)();
       },
       appendReservation: () => Promise.resolve(),
       reserveUSD: 0,
