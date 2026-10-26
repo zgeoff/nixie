@@ -240,6 +240,56 @@ test("it moves the note to the owner's newest note", async () => {
   expect(row).toStrictEqual({ note_sequence: edited.sequence, version: 2 });
 });
 
+test('it replaces the title with the readable text of the newest title edit', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'never buy the cheap kettle again' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  const edited = await ctx.memory.store.moments.edit({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    target: { momentID: kept.shortID, version: 1 },
+    change: { kind: 'title', title: 'The kettle rule' },
+  });
+
+  invariant(edited.status === 'written');
+
+  const row = await ctx.db
+    .selectFrom('moments')
+    .select(['title_sequence', 'version'])
+    .executeTakeFirstOrThrow();
+
+  const [record] = await readRecords(ctx.memory.log, {
+    afterSequence: row.title_sequence - 1,
+    limit: 1,
+  });
+
+  expect(row).toStrictEqual({ title_sequence: edited.sequence, version: 2 });
+
+  expect(record?.record.erasable).toStrictEqual({
+    status: 'readable',
+    fields: { title: 'The kettle rule' },
+  });
+});
+
 test('it refuses an edit bound to a version the moment moved past', async () => {
   const ctx = await setupTest();
 
