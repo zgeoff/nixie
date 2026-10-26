@@ -48,8 +48,9 @@ On the desktop, all 3 browsers label a paste right and keep the spans right thro
 Android, 2 Gboard paths insert pasted text as `insertText`, and the client labels it `typed`: the
 clipboard chip and Gboard's own undo. The mapping of that run could not tell them from typing, and
 the client now applies the rule in [the client fix](#the-client-fix). Gboard's voice typing inserts
-each spoken sentence as one composition, and the client labels the dictated words `typed`, which
-0011 forbids.
+each spoken sentence as one composition, and the voice typing run labelled the dictated words
+`typed`, which 0011 forbids. The client applies the same rule to a composition, as
+[voice typing](#android-voice-typing) shows, and only a dictation of one word still lands `typed`.
 
 ### Desktop browsers
 
@@ -180,19 +181,18 @@ Every run followed the same sequence:
 No `insertText` and no `insertFromDictation` arrived, and Chrome fired a keydown with key code 229
 before each update.
 
-- **Label:** the mapping counts `insertCompositionText` as typed, and the multi-word rule covers
-  only `insertText`, so all 3 sentences ended `typed`. Under 0011, dictated text never counts as
-  evidence, so this label is wrong. Run 3 shows the risk behind that rule: Gboard misheard the last
-  word, which the log holds as the invented "cap" heard as "cab".
-- **The fix:** applying the multi-word rule to `insertCompositionText` as well labels all 3
-  sentences `unknown`, in a replay of the log through the shipped span logic. The change is open
-  work in [GEO-1887](https://linear.app/zgeoff/issue/GEO-1887). Gboard typing never composes on this
-  phone, and the desktop composition case inserts one word, so the change turns no recorded typed
-  case `unknown`. A keyboard that types a whole phrase as one composition lands `unknown` under the
-  change, which fails closed.
-- **The gap:** a dictation of one word, or a phrase cut after its first word, lands `typed` under
-  the change too. The events hold no field that marks dictation, so keyboard voice typing never
-  reaches the `dictated` label; only a voice client of nixie's own can mark it.
+- **Label in the run:** the mapping of the run counted `insertCompositionText` as typed, and its
+  multi-word rule covered only `insertText`, so all 3 sentences ended `typed`. Under 0011, dictated
+  text never counts as evidence, so that label was wrong. Run 3 shows the risk behind that rule:
+  Gboard misheard the last word, which the log holds as the invented "cap" heard as "cab".
+- **The client rule:** the client applies the multi-word rule to `insertCompositionText` as well,
+  and the contract package's tests replay all 3 runs through the shipped span logic, which labels
+  each sentence `unknown`. Gboard typing never composes on this phone, and the desktop composition
+  case inserts one word, so the rule turns no recorded typed case `unknown`. A keyboard that types a
+  whole phrase as one composition lands `unknown`, which fails closed.
+- **The gap:** a dictation of one word, or a phrase cut after its first word, still lands `typed`.
+  The events hold no field that marks dictation, so keyboard voice typing never reaches the
+  `dictated` label; only a voice client of nixie's own can mark it.
 
 ### React Native
 
