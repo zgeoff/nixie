@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildTestClock, makeGatedCall } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { buildStubEncoder } from './test-utils/build-stub-encoder';
 import { createMemoryItem } from './test-utils/create-memory-item';
@@ -1316,4 +1317,58 @@ test('it returns an item past its end time as retired to a recall that includes 
   expect(result.items).toMatchObject([
     { itemID: item.itemID, state: 'retired', isPinned: false, text: 'Is in Lisbon this week' },
   ]);
+});
+
+test('it returns no moment text to the recall that per-turn retrieval makes, even for an item linked to a moment', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the quiet kettle wins' },
+    },
+  ]);
+
+  invariant(message);
+
+  const item = await ctx.memory.store.remember({
+    text: 'Buys only quiet kettles',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'Kettle noise ruling',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.store.moments.edit({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    target: { momentID: kept.momentID, version: 1 },
+    change: { kind: 'reflection', text: 'Kettle noise outweighed the price.' },
+  });
+
+  await ctx.memory.store.moments.link({
+    caller: { kind: 'owner' },
+    target: { momentID: kept.momentID, version: 2 },
+    itemID: item.itemID,
+    isLinked: true,
+  });
+
+  const result = await ctx.memory.store.recall({
+    query: 'kettle noise ruling',
+    limit: 5,
+    selfNoteLimit: 2,
+    excludePinned: true,
+    thread: 'conversation',
+  });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([item.itemID]);
+  expect(JSON.stringify(result)).not.toInclude('noise');
 });

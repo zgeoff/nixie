@@ -432,3 +432,45 @@ test('it leaves no key behind for the proposals of a batch that split', async ()
     ...pending.map((proposal) => proposal.itemID),
   ]);
 });
+
+test('it keeps no moment and flags none from a batch whose model calls moment.keep', async () => {
+  const ctx = await setupTest();
+
+  const [sequence] = await writeOwnerMessages(ctx.memory.context.log, [
+    'The kettle argument is settled: quiet kettles only.',
+  ]);
+
+  invariant(sequence !== undefined);
+
+  await ctx.memory.start();
+
+  ctx.memory.guest.addReplies(
+    {
+      toolUse: {
+        name: 'moment.keep',
+        input: {
+          firstEventID: String(sequence),
+          lastEventID: String(sequence),
+          title: 'The kettle argument',
+        },
+      },
+    },
+    { text: 'Staged.' },
+  );
+
+  await ctx.memory.run();
+
+  const results = await readRecords(ctx.memory.context.log, {
+    afterSequence: 0,
+    thread: 'memory-writer',
+    kinds: ['tool_result'],
+  });
+
+  const moments = await readRecords(ctx.memory.context.log, {
+    afterSequence: 0,
+    kinds: ['moment_kept', 'moment_edited', 'moment_linked'],
+  });
+
+  expect(results.map((entry) => entry.record.payload['outcome'])).toStrictEqual(['denied']);
+  expect(moments).toStrictEqual([]);
+});
