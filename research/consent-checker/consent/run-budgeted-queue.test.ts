@@ -9,11 +9,13 @@ import { buildStubHeldRun } from './test-utils/build-stub-held-run.ts';
 test('it appends each output and adds its cost to the spend', async () => {
   const appendOutput = mock<(output: QueueOutput) => Promise<void>>(() => Promise.resolve());
 
+  const outputs = {
+    first: { costUSD: 0.25, failure: null },
+    second: { costUSD: 0.5, failure: null },
+  };
+
   const result = await runBudgetedQueue({
-    items: [
-      { costUSD: 0.25, failure: null },
-      { costUSD: 0.5, failure: null },
-    ],
+    items: ['first', 'second'] as const,
     appendOutput,
     appendReservation: () => Promise.resolve(),
     reserveUSD: 0,
@@ -21,7 +23,7 @@ test('it appends each output and adds its cost to the spend', async () => {
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runItem: (item) => Promise.resolve(item),
+    runItem: (item) => Promise.resolve(outputs[item]),
   });
 
   expect(result).toStrictEqual({
@@ -47,7 +49,7 @@ test('it starts no item once the spend reaches the budget', async () => {
     budgetUSD: 0.5,
     limit: null,
     concurrency: 1,
-    runItem: (item) => Promise.resolve({ item, costUSD: 0.6, failure: null }),
+    runItem: () => Promise.resolve({ costUSD: 0.6, failure: null }),
   });
 
   expect(result).toStrictEqual({
@@ -59,7 +61,7 @@ test('it starts no item once the spend reaches the budget', async () => {
 });
 
 test('it starts no item when the spend before the run already reaches the budget', async () => {
-  const runItem = mock((item: string) => Promise.resolve({ item, costUSD: 0.1, failure: null }));
+  const runItem = mock(() => Promise.resolve({ costUSD: 0.1, failure: null }));
 
   const result = await runBudgetedQueue({
     items: ['a'],
@@ -78,7 +80,7 @@ test('it starts no item when the spend before the run already reaches the budget
 });
 
 test('it starts no item whose reservation would pass what the budget leaves', async () => {
-  const runItem = mock((item: string) => Promise.resolve({ item, costUSD: 0.1, failure: null }));
+  const runItem = mock(() => Promise.resolve({ costUSD: 0.1, failure: null }));
   const appendReservation = mock(() => Promise.resolve());
 
   const result = await runBudgetedQueue({
@@ -105,7 +107,7 @@ test('it starts no item whose reservation would pass what the budget leaves', as
 });
 
 test('it runs as many items at once as its concurrency and no more', async () => {
-  const held = buildStubHeldRun((item: string) => ({ item, costUSD: 0.1, failure: null }));
+  const held = buildStubHeldRun<string, QueueOutput>(() => ({ costUSD: 0.1, failure: null }));
 
   const running = runBudgetedQueue({
     items: ['a', 'b', 'c'],
@@ -136,8 +138,8 @@ test('it appends each reservation before it runs the item, and the output after'
 
   await runBudgetedQueue({
     items: ['a'],
-    appendReservation: (item) => {
-      events.push(`reserve ${item}`);
+    appendReservation: () => {
+      events.push('reserve');
 
       return Promise.resolve();
     },
@@ -151,18 +153,18 @@ test('it appends each reservation before it runs the item, and the output after'
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runItem: (item) => {
-      events.push(`run ${item}`);
+    runItem: () => {
+      events.push('run');
 
-      return Promise.resolve({ item, costUSD: 0.02, failure: null });
+      return Promise.resolve({ costUSD: 0.02, failure: null });
     },
   });
 
-  expect(events).toStrictEqual(['reserve a', 'run a', 'append']);
+  expect(events).toStrictEqual(['reserve', 'run', 'append']);
 });
 
 test('it holds a call in the spend at its reservation until the call settles', async () => {
-  const runItem = mock((item: string) => Promise.resolve({ item, costUSD: 0.02, failure: null }));
+  const runItem = mock(() => Promise.resolve({ costUSD: 0.02, failure: null }));
 
   const result = await runBudgetedQueue({
     items: ['a', 'b'],
@@ -189,12 +191,13 @@ test('it holds a call in the spend at its reservation until the call settles', a
 test('it lets every running item finish and starts no more before it passes on a failed append', async () => {
   const failure = new Error('no space left on device');
 
-  const held = buildStubHeldRun((item: 'one' | 'two' | 'three') => ({
-    item,
-    costUSD: 0.1,
-    failure: null,
-  }));
+  const outputs = {
+    one: { item: 'one', costUSD: 0.1, failure: null },
+    two: { item: 'two', costUSD: 0.1, failure: null },
+    three: { item: 'three', costUSD: 0.1, failure: null },
+  } as const;
 
+  const held = buildStubHeldRun((item: 'one' | 'two' | 'three') => outputs[item]);
   const appended: string[] = [];
 
   const appendAnswers = {
@@ -246,21 +249,23 @@ test('it starts no more items than the limit', async () => {
     budgetUSD: 4,
     limit: 2,
     concurrency: 2,
-    runItem: (item) => Promise.resolve({ item, costUSD: 0.1, failure: null }),
+    runItem: () => Promise.resolve({ costUSD: 0.1, failure: null }),
   });
 
   expect(result.ran).toBe(2);
 });
 
 test('it keeps the cost of an output with no answer and stops the run', async () => {
-  const runItem = mock((item: QueueOutput) => Promise.resolve(item));
+  const outputs = {
+    first: { costUSD: 0.75, failure: 'no_output' },
+    second: { costUSD: 0.1, failure: null },
+  };
+
+  const runItem = mock((item: 'first' | 'second') => Promise.resolve(outputs[item]));
   const appendOutput = mock<(output: QueueOutput) => Promise<void>>(() => Promise.resolve());
 
   const result = await runBudgetedQueue({
-    items: [
-      { costUSD: 0.75, failure: 'no_output' },
-      { costUSD: 0.1, failure: null },
-    ],
+    items: ['first', 'second'],
     appendOutput,
     appendReservation: () => Promise.resolve(),
     reserveUSD: 0,
@@ -292,8 +297,8 @@ test('it gives the reason of the output that stopped the run', async () => {
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runItem: (item) =>
-      Promise.resolve({ item, costUSD: 0, failure: 'no_output', failureReason: 'error_max_turns' }),
+    runItem: () =>
+      Promise.resolve({ costUSD: 0, failure: 'no_output', failureReason: 'error_max_turns' }),
   });
 
   expect(result).toStrictEqual({
