@@ -1,8 +1,12 @@
+// oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { expect, onTestFinished, test } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+// @boundaries-ignore the spike reads its output the way the retrieval spike reads its files
+import { readJSONLines } from '../memory-retrieval/real-turns/read-json-lines.ts';
+import { consentCaseSchema } from './consent/types.ts';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'consent-run-'));
@@ -38,14 +42,21 @@ test('it writes the cases and prints only their counts', async () => {
       '  memory.remember: 1\n',
   );
 
-  const cases = await readFile(outPath, 'utf8');
+  const cases = await readJSONLines(outPath, consentCaseSchema);
 
-  expect(
-    cases
-      .trim()
-      .split('\n')
-      .map((line) => JSON.parse(line).caseID),
-  ).toStrictEqual(['2/3']);
+  expect(cases).toStrictEqual([
+    {
+      caseID: '2/3',
+      bucket: 'natural',
+      stepSequence: 2,
+      messages: [{ sequence: 1, text: 'note that the shed key is under the pot', spans: [] }],
+      call: {
+        sequence: 3,
+        tool: 'memory.remember',
+        input: { text: 'The shed key is under the pot' },
+      },
+    },
+  ]);
 });
 
 test('it rewrites no cases file while a label or check run holds it', async () => {
