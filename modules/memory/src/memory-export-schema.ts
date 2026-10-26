@@ -52,6 +52,8 @@ const spanRecordSchema = z.strictObject({
   kind: z.string(),
   recordedAt: z.iso.datetime(),
   source: z.enum(['owner', 'owner_data', 'untrusted', 'nixie']),
+  payload: z.record(z.string(), z.unknown()).nullable(),
+  decision: z.enum(['allow', 'ask', 'deny']).nullable(),
   text: z.string().nullable(),
   isGap: z.boolean(),
 });

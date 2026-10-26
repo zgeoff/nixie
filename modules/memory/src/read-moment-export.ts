@@ -84,6 +84,8 @@ async function readExportMoment(log: ExportLog, row: MomentRow): Promise<MemoryE
       kind: entry.kind,
       recordedAt: new Date(entry.recordedAt).toISOString(),
       source: entry.source,
+      payload: entry.payload,
+      decision: entry.decision,
       text: entry.text,
       isGap: entry.isGap,
     })),

@@ -5,10 +5,10 @@ saves where they pick. The file holds a header and then each item in the order i
 active or retired item carries its subject, owner, shared or [self](./writes.md#self-notes), and
 every version, oldest first, with its text, the quote it was saved from and its provenance. A
 forgotten item carries only its ID and the time its forget completed, so the file never holds a
-forgotten item's words. The [moments](./moments.md) follow the items, each with its span's text
-decrypted, and a destroyed moment carries only its ID and the time its destroy completed. Only the
-user exports: the model's export tool is denied, and nixie never sends the file anywhere but the
-device that asked.
+forgotten item's words. The [moments](./moments.md) follow the items, each with its span's records
+decrypted, so a tool call keeps its tool's name and a result its outcome. A destroyed moment carries
+only its ID and the time its destroy completed. Only the user exports: the model's export tool is
+denied, and nixie never sends the file anywhere but the device that asked.
 
 [The memory store](./store.md) covers the items, versions and states the export reads, and
 [the memory view](./view.md) covers the page the export button sits on.

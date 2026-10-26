@@ -152,6 +152,8 @@
           "kind": "owner_message",
           "recordedAt": "2026-10-12T09:00:00.000Z",
           "source": "owner",
+          "payload": { "spans": [] },
+          "decision": null,
           "text": "the allotment plot is number 14",
           "isGap": false
         },
@@ -160,6 +162,13 @@
           "kind": "tool_called",
           "recordedAt": "2026-10-12T09:00:01.000Z",
           "source": "nixie",
+          "payload": {
+            "callID": "call-7",
+            "runID": "run-3",
+            "toolUseID": "toolu_7",
+            "tool": "memory.recall"
+          },
+          "decision": "allow",
           "text": "{\"input\":{}}",
           "isGap": false
         },
@@ -168,6 +177,15 @@
           "kind": "tool_result",
           "recordedAt": "2026-10-12T09:00:02.000Z",
           "source": "untrusted",
+          "payload": {
+            "callID": "call-7",
+            "runID": "run-3",
+            "toolUseID": "toolu_7",
+            "outcome": "result",
+            "actionID": null,
+            "sources": ["owner_data"]
+          },
+          "decision": null,
           "text": null,
           "isGap": true
         },
@@ -176,6 +194,8 @@
           "kind": "model.reply",
           "recordedAt": "2026-10-12T09:00:03.000Z",
           "source": "nixie",
+          "payload": null,
+          "decision": null,
           "text": "Plot 14 it is, next to the tap.",
           "isGap": false
         }

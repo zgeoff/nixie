@@ -73,7 +73,83 @@ test("it reads a moment's span with each record's text and source", async () => 
       kind: 'owner_message',
       recordedAt: expect.toBeString(),
       source: 'nixie',
+      payload: null,
+      decision: null,
       text: expect.toInclude('plant the garlic in October'),
+      isGap: false,
+    },
+  ]);
+});
+
+test("it exports a tool call and its result with each record's payload and policy decision", async () => {
+  const ctx = await setupTest();
+
+  const [called, result] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      decision: { outcome: 'allow', stage: 1, rule: null },
+      payload: { callID: 'call-4', runID: 'run-2', toolUseID: 'toolu_4', tool: 'web.fetch' },
+      erasable: { input: { url: 'https://example.test/garlic' } },
+    },
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: {
+        callID: 'call-4',
+        runID: 'run-2',
+        toolUseID: 'toolu_4',
+        outcome: 'result',
+        actionID: null,
+        sources: ['untrusted'],
+      },
+      erasable: { result: { title: 'Growing garlic' } },
+    },
+  ]);
+
+  invariant(called && result);
+
+  await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: called.sequence,
+    lastSequence: result.sequence,
+    title: 'Reading up on garlic',
+  });
+
+  const [moment] = await Array.fromAsync(readMomentExport(ctx.memory.log));
+
+  invariant(moment && 'records' in moment);
+
+  expect(moment.records).toStrictEqual([
+    {
+      sequence: called.sequence,
+      kind: 'tool_called',
+      recordedAt: expect.toBeString(),
+      source: 'nixie',
+      payload: { callID: 'call-4', runID: 'run-2', toolUseID: 'toolu_4', tool: 'web.fetch' },
+      decision: 'allow',
+      text: JSON.stringify({ input: { url: 'https://example.test/garlic' } }),
+      isGap: false,
+    },
+    {
+      sequence: result.sequence,
+      kind: 'tool_result',
+      recordedAt: expect.toBeString(),
+      source: 'untrusted',
+      payload: {
+        callID: 'call-4',
+        runID: 'run-2',
+        toolUseID: 'toolu_4',
+        outcome: 'result',
+        actionID: null,
+        sources: ['untrusted'],
+      },
+      decision: null,
+      text: JSON.stringify({ result: { title: 'Growing garlic' } }),
       isGap: false,
     },
   ]);
