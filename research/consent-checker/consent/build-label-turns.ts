@@ -1,6 +1,8 @@
 // oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 // @boundaries-ignore the spike reads the export the retrieval spike reads
 import type { PlainRecord } from '../../memory-retrieval/real-turns/read-plain-export.ts';
+// @boundaries-ignore the spike reads the export the retrieval spike reads
+import { readErasableText } from '../../memory-retrieval/real-turns/read-plain-export.ts';
 import type { ConsentCase, Exchange, LabelTurn } from './types.ts';
 
 // The owner's messages and the assistant's replies that a labeller reads before a turn: about the 2
@@ -8,6 +10,7 @@ import type { ConsentCase, Exchange, LabelTurn } from './types.ts';
 const earlierEntries = 4;
 
 // Gathers the natural pairs of each turn into one labeller call. Swapped pairs take no label.
+// oxlint-disable-next-line zgeoff/verb-contract -- the retrieval spike's reader names its pure field lookup `read`
 export function buildLabelTurns(
   records: readonly PlainRecord[],
   cases: readonly ConsentCase[],
@@ -18,7 +21,7 @@ export function buildLabelTurns(
     }
 
     const role = pickRole(record.kind);
-    const text = role === null ? null : findRecordText(record);
+    const text = role === null ? null : readErasableText(record);
 
     return role === null || text === null ? [] : [{ sequence: record.sequence, role, text }];
   });
@@ -65,14 +68,4 @@ function pickRole(kind: string): Exchange['role'] | null {
   }
 
   return kind === 'model.reply' ? 'assistant' : null;
-}
-
-function findRecordText(record: PlainRecord): string | null {
-  if (record.erasable.status !== 'readable') {
-    return null;
-  }
-
-  const text = record.erasable.fields['text'];
-
-  return typeof text === 'string' ? text : null;
 }
