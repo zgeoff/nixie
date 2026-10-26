@@ -5,7 +5,7 @@ import type { ModelWriteStore } from './gate-types';
 import type { StartedMemoryStore } from './start-memory-store';
 import type { ItemIDStore } from './types';
 
-export type MemoryToolStore = Pick<StartedMemoryStore, 'recall' | 'rate'> &
+export type MemoryToolStore = Pick<StartedMemoryStore, 'recall' | 'rate' | 'moments'> &
   PendingToolStore &
   DiffToolStore &
   CommentToolStore &

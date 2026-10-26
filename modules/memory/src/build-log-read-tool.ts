@@ -2,23 +2,23 @@ import type { JSONObject, Log } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { makeInputRecorder } from './make-input-recorder';
+import { parseUTCTime } from './parse-utc-time';
 import type { LogEntry } from './read-log-page';
 import { readLogPage } from './read-log-page';
-
-const timePattern = String.raw`^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}(:[0-9]{2}(\.[0-9]{1,3})?)?Z)?$`;
+import { utcTimePattern } from './utc-time-pattern';
 
 const logReadInput = {
   type: 'object',
   properties: {
     from: {
       type: 'string',
-      pattern: timePattern,
+      pattern: utcTimePattern,
       description:
         'read entries from this UTC date or time, such as 2026-10-12 or 2026-10-12T09:30Z',
     },
     to: {
       type: 'string',
-      pattern: timePattern,
+      pattern: utcTimePattern,
       description: 'read entries before this UTC date or time',
     },
     query: { type: 'string', maxLength: 200, description: 'words every entry must hold' },
@@ -92,7 +92,7 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
     recordInput: makeInputRecorder(['query']),
     run: async (call, context) => {
       const input = logReadArguments.parse(call.input);
-      const range = { from: parseTime(input.from), to: parseTime(input.to) };
+      const range = { from: parseUTCTime(input.from), to: parseUTCTime(input.to) };
 
       if (Number.isNaN(range.from) || Number.isNaN(range.to)) {
         return { status: 'error', message: 'from and to must be real UTC dates or times' };
@@ -116,22 +116,6 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
       };
     },
   };
-}
-
-// Date.parse rolls 2026-02-30 over into March, so a parsed date must read back as written.
-function parseTime(value: string | undefined): number | null {
-  if (value === undefined) {
-    return null;
-  }
-
-  const date = value.slice(0, 10);
-  const day = Date.parse(date);
-
-  if (Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== date) {
-    return Number.NaN;
-  }
-
-  return Date.parse(value);
 }
 
 function toEntryJSON(entry: LogEntry): JSONObject {

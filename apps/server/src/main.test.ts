@@ -106,6 +106,8 @@ test('it offers the memory tools, web fetch, the time tool and the log reader to
     'memory.recall',
     'memory.pending',
     'memory.retire',
+    'moment.keep',
+    'moment.read',
     'web_fetch',
     'time.now',
     'log.read',

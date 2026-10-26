@@ -2,6 +2,7 @@ import type { ToolDefinition } from '@heynixie/tools';
 import { buildCommentTool } from './build-comment-tool';
 import { buildDiffTool } from './build-diff-tool';
 import { buildExportTool } from './build-export-tool';
+import { buildMomentTools } from './build-moment-tools';
 import { buildPendingTool } from './build-pending-tool';
 import { buildRateTool } from './build-rate-tool';
 import type { RateToolOptions } from './build-rate-tool';
@@ -22,5 +23,6 @@ export function buildMemoryTools(
     buildDiffTool(memory),
     buildCommentTool(memory),
     buildExportTool(),
+    ...buildMomentTools(memory.moments, memory, options.clock),
   ];
 }

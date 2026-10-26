@@ -103,6 +103,12 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
     'memory.diff',
     'memory.comment',
     'memory.export',
+    'moment.keep',
+    'moment.edit',
+    'moment.link',
+    'moment.retire',
+    'moment.find',
+    'moment.read',
   ]);
 });
 
