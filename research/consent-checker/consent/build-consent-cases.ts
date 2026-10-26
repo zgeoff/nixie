@@ -50,11 +50,18 @@ interface Turn {
   calls: ConsentCall[];
 }
 
-// Groups the conversation's tool calls into turns. A step that reads an owner message starts a turn
-// with the messages of its batch, and a later step with no owner message in its batch, such as the
-// one after a tool result, continues that turn. Each call that needs consent pairs with its turn's
-// messages, and each turn with such a call also pairs with a call from a turn that used none of its
-// tools, so the swapped call is never the action the turn's own messages asked for.
+// A step whose commit has not come yet: the inbox records it may have read, and the calls it made.
+interface OpenStep {
+  stepSequence: number;
+  batch: PlainRecord[];
+  calls: ConsentCall[];
+}
+
+// Groups the conversation's tool calls into turns. A step whose committed cursor shows it read an
+// owner message starts a turn with the messages it read, and a step that read none, such as the one
+// after a tool result, continues the turn before it. Each call that needs consent pairs with its
+// turn's messages, and each turn with such a call also pairs with a call from a turn that used none
+// of its tools.
 export function buildConsentCases(records: readonly PlainRecord[]): BuiltCases {
   const counts: CaseCounts = {
     turns: 0,
@@ -69,8 +76,21 @@ export function buildConsentCases(records: readonly PlainRecord[]): BuiltCases {
   };
   const turns: Turn[] = [];
   let inbox: PlainRecord[] = [];
-  let open: Turn | null = null;
-  let lastStarted = 0;
+  let step: OpenStep | null = null;
+
+  // The step's calls join a new turn when it read an owner message, and the last turn otherwise.
+  const closeStep = (read: readonly PlainRecord[]): void => {
+    if (step === null) {
+      return;
+    }
+
+    if (read.length > 0) {
+      turns.push({ stepSequence: step.stepSequence, messages: collectMessages(read, counts), calls: [] });
+    }
+
+    addCalls(turns.at(-1), step.calls, counts);
+    step = null;
+  };
 
   for (const record of records) {
     if (record.thread !== conversationThread) {
@@ -82,23 +102,14 @@ export function buildConsentCases(records: readonly PlainRecord[]): BuiltCases {
     } else if (record.kind === 'task.step_committed') {
       const { readCursor } = stepCommittedSchema.parse(record.payload);
 
-      inbox = inbox.filter((entry) => entry.sequence > readCursor);
-
       // The commit's cursor is the last inbox record the step read, and the inbox also holds records
-      // of other kinds that the export leaves out, so the cursor bounds the turn's batch exactly.
-      if (open !== null && open.stepSequence === lastStarted) {
-        open.messages = open.messages.filter((message) => message.sequence <= readCursor);
-      }
+      // of other kinds that the export leaves out, so the cursor bounds the step's batch exactly.
+      closeStep(step?.batch.filter((entry) => entry.sequence <= readCursor) ?? []);
+      inbox = inbox.filter((entry) => entry.sequence > readCursor);
     } else if (record.kind === 'task.step_started') {
-      lastStarted = record.sequence;
-
       // A step that never commits keeps no cursor, so its batch falls back to the inbox limit.
-      const batch = inbox.slice(0, inboxBatchLimit);
-
-      if (batch.length > 0) {
-        open = { stepSequence: record.sequence, messages: collectMessages(batch, counts), calls: [] };
-        turns.push(open);
-      }
+      closeStep(step?.batch ?? []);
+      step = { stepSequence: record.sequence, batch: inbox.slice(0, inboxBatchLimit), calls: [] };
     } else if (record.kind === 'tool_called') {
       const call = pickConsentCall(record, counts);
 
@@ -106,15 +117,15 @@ export function buildConsentCases(records: readonly PlainRecord[]): BuiltCases {
         continue;
       }
 
-      if (open === null || open.messages.length === 0) {
-        counts.callsWithoutMessage += 1;
-
-        continue;
+      if (step === null) {
+        addCalls(turns.at(-1), [call], counts);
+      } else {
+        step.calls.push(call);
       }
-
-      open.calls.push(call);
     }
   }
+
+  closeStep(step?.batch ?? []);
 
   const withCalls = turns.filter((turn) => turn.messages.length > 0 && turn.calls.length > 0);
   const cases: ConsentCase[] = [];
@@ -171,6 +182,14 @@ function findSwapTurn(turns: readonly Turn[], index: number): Turn | undefined {
   }
 
   return undefined;
+}
+
+function addCalls(turn: Turn | undefined, calls: readonly ConsentCall[], counts: CaseCounts): void {
+  if (turn === undefined) {
+    counts.callsWithoutMessage += calls.length;
+  } else {
+    turn.calls.push(...calls);
+  }
 }
 
 function collectMessages(batch: readonly PlainRecord[], counts: CaseCounts): ConsentMessage[] {

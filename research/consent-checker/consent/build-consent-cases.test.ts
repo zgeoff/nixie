@@ -305,6 +305,81 @@ test('it attributes a call in a later step of the same turn to the turn that rea
   expect(built.cases.map((consentCase) => consentCase.caseID)).toStrictEqual(['2/5']);
 });
 
+test('it keeps a step whose cursor stops before a waiting message in the turn before it', () => {
+  const built = buildConsentCases([
+    {
+      sequence: 1,
+      recordedAt: '2026-03-02T09:00:00Z',
+      kind: 'owner_message',
+      thread: 'conversation',
+      parent: null,
+      payload: { spans: 'as_sent' },
+      erasable: { status: 'readable', fields: { text: 'fetch the bus timetable', spans: [] } },
+    },
+    {
+      sequence: 2,
+      recordedAt: '2026-03-02T09:00:01Z',
+      kind: 'task.step_started',
+      thread: 'conversation',
+      parent: null,
+      payload: {},
+      erasable: { status: 'none' },
+    },
+    {
+      sequence: 3,
+      recordedAt: '2026-03-02T09:00:02Z',
+      kind: 'task.step_committed',
+      thread: 'conversation',
+      parent: null,
+      payload: { readCursor: 1 },
+      erasable: { status: 'none' },
+    },
+    {
+      sequence: 5,
+      recordedAt: '2026-03-02T09:00:03Z',
+      kind: 'owner_message',
+      thread: 'conversation',
+      parent: null,
+      payload: { spans: 'as_sent' },
+      erasable: { status: 'readable', fields: { text: 'and pin the ferry note', spans: [] } },
+    },
+    {
+      sequence: 6,
+      recordedAt: '2026-03-02T09:00:04Z',
+      kind: 'task.step_started',
+      thread: 'conversation',
+      parent: null,
+      payload: {},
+      erasable: { status: 'none' },
+    },
+    {
+      sequence: 7,
+      recordedAt: '2026-03-02T09:00:05Z',
+      kind: 'tool_called',
+      thread: 'conversation',
+      parent: null,
+      payload: { tool: 'web_fetch' },
+      erasable: { status: 'readable', fields: { input: { url: 'https://bus.example/timetable' } } },
+    },
+    {
+      sequence: 8,
+      recordedAt: '2026-03-02T09:00:06Z',
+      kind: 'task.step_committed',
+      thread: 'conversation',
+      parent: null,
+      payload: { readCursor: 4 },
+      erasable: { status: 'none' },
+    },
+  ]);
+
+  expect(
+    built.cases.map((consentCase) => ({
+      caseID: consentCase.caseID,
+      messages: consentCase.messages.map((message) => message.sequence),
+    })),
+  ).toStrictEqual([{ caseID: '2/7', messages: [1] }]);
+});
+
 test('it leaves out read-only calls and counts them', () => {
   const built = buildConsentCases([
     {
