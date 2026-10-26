@@ -269,13 +269,15 @@ unknown. The labelling logic lives in the contract package, so every client shar
 
 1. Before each edit, the client records the browser's input type, the text it inserts and the text
    box's selection. Undo, redo and any input type the logic does not list map to unknown, because
-   they restore or insert text without saying where it came from. A single typing event that inserts
-   more than one word maps to unknown too, because an Android keyboard's clipboard chip and its own
-   undo insert pasted text that way, and typing, a prediction or a swipe inserts one word at most.
-   One exception: Gboard splits a run-together word by deleting it and inserting it again with a
-   space. The logic keeps the typed text that a delete removed until the next edit, and an insertion
-   of several words at that place, holding the same characters apart from whitespace, counts as
-   typed. That rule lets no character count as typed unless the user typed it one edit earlier.
+   they restore or insert text without saying where it came from. A single typing or composition
+   event that inserts more than one word maps to unknown too. An Android keyboard's clipboard chip
+   and its own undo insert pasted text that way, and its voice typing sends each recognized phrase
+   as one composition, while typing, a prediction or a swipe inserts one word at most. A dictated
+   single word counts as typed, because no field of the event marks dictation. One exception: Gboard
+   splits a run-together word by deleting it and inserting it again with a space. The logic keeps
+   the typed text that a delete removed until the next edit, and an insertion of several words at
+   that place, holding the same characters apart from whitespace, counts as typed. That rule lets no
+   character count as typed unless the user typed it one edit earlier.
 2. After the edit, the logic applies it at the recorded selection. The selection pins where the edit
    happened, so a paste next to repeated text keeps its label.
 3. An insertion that does not replace exactly the selection, such as a spelling fix elsewhere in the

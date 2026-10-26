@@ -4,6 +4,7 @@ import { buildSpanState } from './build-span-state';
 import { buildSpanStateFromEvents } from './test-utils/build-span-state-from-events';
 import { gboardPastedEvents } from './test-utils/gboard-pasted-events';
 import { gboardTypedEvents } from './test-utils/gboard-typed-events';
+import { gboardVoiceEvents } from './test-utils/gboard-voice-events';
 
 test.each([
   ['key by key typing', 'typing', 'The blue kettle is warm'],
@@ -34,6 +35,24 @@ test('it labels the Gboard clipboard chip as unknown', () => {
   expect(buildSpanStateFromEvents(gboardPastedEvents.chip)).toStrictEqual({
     spans: [{ end: 15, source: 'unknown', start: 0 }],
     text: 'chip test words',
+  });
+});
+
+test.each([
+  ['run-1', 'Our silver kite drifts on Sunday'],
+  ['run-2', 'Planning to paint the workshop on Friday'],
+  ['run-3', 'Book the dentist about the cracked cab'],
+] as const)('it labels the Gboard voice typing of %s as unknown', (recorded, text) => {
+  expect(buildSpanStateFromEvents(gboardVoiceEvents[recorded])).toStrictEqual({
+    spans: [{ end: text.length, source: 'unknown', start: 0 }],
+    text,
+  });
+});
+
+test('it labels a Gboard voice composition of one word as typed', () => {
+  expect(buildSpanStateFromEvents(gboardVoiceEvents['run-1'].slice(0, 2))).toStrictEqual({
+    spans: [{ end: 3, source: 'typed', start: 0 }],
+    text: 'Our',
   });
 });
 

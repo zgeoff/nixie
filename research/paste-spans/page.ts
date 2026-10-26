@@ -186,7 +186,7 @@ const guidedCases: readonly GuidedCase[] = [
   { name: 'chip', step: 'Tap copy. Tap the clipboard suggestion in the keyboard strip.' },
   {
     name: 'voice',
-    step: 'Tap microphone and allow it, if you have not yet. Tap the microphone on the keyboard and say "the garden gate sticks".',
+    step: 'Tap microphone and allow it, if you have not yet. Tap the microphone on the keyboard and say "our silver kite drifts".',
   },
 ];
 
