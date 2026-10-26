@@ -89,7 +89,7 @@ test('it records an answer with no output as unsure with no answer, and keeps it
   });
 });
 
-test('it records a failed query as unsure with no answer, and keeps the reason the query gave', () => {
+test('it records a failed query as unsure with no answer, and keeps the reason and the cost the query gave', () => {
   expect(
     buildCheckRecord(
       {
@@ -99,7 +99,7 @@ test('it records a failed query as unsure with no answer, and keeps the reason t
         messages: [{ sequence: 1, text: 'pin the dentist note', spans: [] }],
         call: { sequence: 3, tool: 'memory.pin', input: { id: 'M5' } },
       },
-      { kind: 'failed', reason: 'error_max_turns' },
+      { kind: 'failed', reason: 'error_max_turns', costUSD: 0.02 },
       { model: 'claude-sonnet-5-5', effort: 'high', promptSHA256: 'hash-a' },
     ),
   ).toStrictEqual({
@@ -113,6 +113,6 @@ test('it records a failed query as unsure with no answer, and keeps the reason t
     reason: '',
     failure: 'no_output',
     failureReason: 'error_max_turns',
-    costUSD: 0,
+    costUSD: 0.02,
   });
 });

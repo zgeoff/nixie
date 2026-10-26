@@ -56,7 +56,7 @@ export const checkRecordSchema = z.object({
   reason: z.string(),
   failure: z.string().nullable(),
   failureReason: z.string().optional(),
-  costUSD: z.number(),
+  costUSD: z.number().nullable(),
 });
 
 export type CheckRecord = z.infer<typeof checkRecordSchema>;
@@ -92,7 +92,7 @@ export const labelRecordSchema = z.object({
   labels: z.array(labelEntrySchema),
   failure: z.string().nullable(),
   failureReason: z.string().optional(),
-  costUSD: z.number(),
+  costUSD: z.number().nullable(),
 });
 
 export type LabelRecord = z.infer<typeof labelRecordSchema>;

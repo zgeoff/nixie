@@ -1,8 +1,7 @@
 // oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 // @boundaries-ignore a spike imports the code it measures
-import type { CheckReply } from '../../../libs/wire/src/check-frame.ts';
-// @boundaries-ignore a spike imports the code it measures
 import { parseCheckerAnswer } from '../../../modules/sessions/src/parse-checker-answer.ts';
+import type { PaidReply } from './run-paid-query.ts';
 import type { CheckRecord, ConsentCase, RecordSource } from './types.ts';
 import { emptyAnswerReason, noOutputFailure } from './types.ts';
 
@@ -10,7 +9,7 @@ import { emptyAnswerReason, noOutputFailure } from './types.ts';
 // and not the checker, so its record holds only its cost and the reason the query gave.
 export function buildCheckRecord(
   consentCase: ConsentCase,
-  reply: CheckReply,
+  reply: PaidReply,
   source: RecordSource,
 ): CheckRecord {
   const base = {
@@ -29,7 +28,7 @@ export function buildCheckRecord(
       reason: '',
       failure: noOutputFailure,
       failureReason: reply.kind === 'failed' ? reply.reason : emptyAnswerReason,
-      costUSD: reply.kind === 'failed' ? 0 : reply.costUSD,
+      costUSD: reply.costUSD,
     };
   }
 

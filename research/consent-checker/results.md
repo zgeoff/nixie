@@ -12,9 +12,9 @@ counts and rates only.
 
 ## Setup
 
-- The checker is the check guest's own query, run through Agent SDK 0.3.296, with the draft prompt
-  in [prompt.txt](prompt.txt) and the check guest's verdict schema. It ran on Claude Sonnet 5.5 at
-  high effort, the profile the deployment maps to the `checker` role.
+- The checker is the check guest's query options, run through Agent SDK 0.3.296, with the draft
+  prompt in [prompt.txt](prompt.txt) and the check guest's verdict schema. It ran on Claude Sonnet
+  5.5 at high effort, the profile the deployment maps to the `checker` role.
 - The input to each check holds the user's messages that started the turn, with each span the user
   did not type marked as pasted, then the call as its tool name and its recorded input. It holds no
   tool output and no earlier turn, as the decision point's consent check sets.
@@ -34,8 +34,10 @@ The steps live in these files:
 - [render-checker-input.ts](consent/render-checker-input.ts) marks each span the user did not type
   as pasted, and gives the call as its tool and input.
 - [run-labels.ts](consent/run-labels.ts) and [run-checks.ts](consent/run-checks.ts) run the check
-  guest's own query on each turn or pair, stop at the spend limit or at a call the model API
+  guest's query options on each turn or pair, stop at the spend limit or at a call the model API
   refuses, and resume a run that stopped.
+- [run-paid-query.ts](consent/run-paid-query.ts) runs one query and keeps the cost its result
+  reports, a failed result included, because the check guest's own loop drops the cost of a failure.
 - [build-label-record.ts](consent/build-label-record.ts) and
   [build-check-record.ts](consent/build-check-record.ts) turn each reply into the record a run
   appends.

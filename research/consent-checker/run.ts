@@ -5,11 +5,9 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-// oxlint-disable-next-line zgeoff/import-zones -- the labeller passes its own answer shape to the check guest's query, which only the SDK's query takes
+// oxlint-disable-next-line zgeoff/import-zones -- the spike runs the check guest's options through the SDK's query, with the labeller's answer shape in place of the verdict
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-// @boundaries-ignore a spike imports the code it measures
-import { runCheckQuery } from '../../guests/conversation/src/run-check-query.ts';
 // @boundaries-ignore the spike reads the export the retrieval spike reads
 import { readJSONLines } from '../memory-retrieval/real-turns/read-json-lines.ts';
 // @boundaries-ignore the spike reads the export the retrieval spike reads
@@ -22,6 +20,7 @@ import { nodeLockFiles } from './consent/node-lock-files.ts';
 import type { QueueResult } from './consent/run-budgeted-queue.ts';
 import { runChecks } from './consent/run-checks.ts';
 import { runLabels } from './consent/run-labels.ts';
+import { runPaidQuery } from './consent/run-paid-query.ts';
 import type { Rate } from './consent/score-verdicts.ts';
 import { scoreVerdicts } from './consent/score-verdicts.ts';
 import {
@@ -159,9 +158,9 @@ async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<v
     otherSpentUSD: await readSpentUSD(values.checks, checkRecordSchema),
     ...limits,
 
-    // The check guest's own query, with the labeller's answer shape in place of the verdict.
+    // The check guest's options, with the labeller's answer shape in place of the verdict.
     runLabel: (request) =>
-      runCheckQuery(request, {
+      runPaidQuery(request, {
         env,
         runQuery: (params) => query({ ...params, options: { ...params.options, outputFormat } }),
       }),
@@ -196,7 +195,7 @@ async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<v
     promptSHA256: createHash('sha256').update(systemPrompt).digest('hex'),
     otherSpentUSD: await readSpentUSD(values.labels, labelRecordSchema),
     ...limits,
-    runCheck: (request) => runCheckQuery(request, { env }),
+    runCheck: (request) => runPaidQuery(request, { env, runQuery: query }),
   });
 
   console.log(
@@ -310,9 +309,9 @@ async function readSpentUSD(
     return 0;
   }
 
-  const records: { costUSD: number }[] = await readJSONLines(path, schema);
+  const records: { costUSD: number | null }[] = await readJSONLines(path, schema);
 
-  return records.reduce((sum, record) => sum + record.costUSD, 0);
+  return records.reduce((sum, record) => sum + (record.costUSD ?? 0), 0);
 }
 
 async function printScore(): Promise<void> {
@@ -333,8 +332,8 @@ async function printScore(): Promise<void> {
   // A check of a pair that a later build of the cases dropped still counts in the spend.
   const checks = allChecks.filter((record) => caseIDs.has(record.caseID));
   const score = scoreVerdicts(checks, labels);
-  const labelSpend = labelRecords.reduce((sum, record) => sum + record.costUSD, 0);
-  const checkSpend = allChecks.reduce((sum, record) => sum + record.costUSD, 0);
+  const labelSpend = labelRecords.reduce((sum, record) => sum + (record.costUSD ?? 0), 0);
+  const checkSpend = allChecks.reduce((sum, record) => sum + (record.costUSD ?? 0), 0);
 
   console.log(
     `labeller: ${built.unsure} natural pairs unsure, ${labelRecords.filter((record) => record.failure !== null).length} failed turns`,

@@ -1,8 +1,9 @@
 // oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { expect, mock, test } from 'bun:test';
 // @boundaries-ignore a spike imports the code it measures
-import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-frame.ts';
+import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { runLabels } from './run-labels.ts';
+import type { PaidReply } from './run-paid-query.ts';
 import type { LabelRecord } from './types.ts';
 
 function setupTest() {
@@ -71,10 +72,11 @@ test('it maps each numbered answer to its pair and marks a pair the answer left 
 test('it sends the labeller the rendered turn under the run profile and prompt', async () => {
   const ctx = setupTest();
 
-  const runLabel = mock<(request: CheckRequest) => Promise<CheckReply>>(() =>
+  const runLabel = mock<(request: CheckRequest) => Promise<PaidReply>>(() =>
     Promise.resolve({
       kind: 'failed',
       reason: 'error_during_execution',
+      costUSD: 0,
     }),
   );
 
@@ -181,7 +183,7 @@ test('it records a call with no answer with its cost and no label, and stops the
   ]);
 });
 
-test('it keeps the reason a failed query gave in its record and in the result', async () => {
+test('it keeps the reason and the cost a failed query gave in its record and in the result', async () => {
   const ctx = setupTest();
 
   const result = await runLabels({
@@ -207,10 +209,11 @@ test('it keeps the reason a failed query gave in its record and in the result', 
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runLabel: () => Promise.resolve({ kind: 'failed', reason: 'error_max_turns' }),
+    runLabel: () => Promise.resolve({ kind: 'failed', reason: 'error_max_turns', costUSD: 0.02 }),
   });
 
   expect(result.failureReason).toBe('error_max_turns');
+  expect(result.costUSD).toBe(0.02);
 
   expect(ctx.appendRecord.mock.calls).toStrictEqual([
     [
@@ -222,7 +225,7 @@ test('it keeps the reason a failed query gave in its record and in the result', 
         labels: [],
         failure: 'no_output',
         failureReason: 'error_max_turns',
-        costUSD: 0,
+        costUSD: 0.02,
       },
     ],
   ]);
@@ -319,7 +322,8 @@ test('it skips labelled turns and counts their spend with the other calls', asyn
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runLabel: () => Promise.resolve({ kind: 'failed', reason: 'error_during_execution' }),
+    runLabel: () =>
+      Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0 }),
   });
 
   expect(result).toStrictEqual({
@@ -359,7 +363,8 @@ test('it refuses an output file that holds a run under another model', () => {
       budgetUSD: 4,
       limit: null,
       concurrency: 1,
-      runLabel: () => Promise.resolve({ kind: 'failed', reason: 'error_during_execution' }),
+      runLabel: () =>
+        Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0 }),
     }),
   ).rejects.toThrow(/holds a run of claude-sonnet-5-5/u);
 });

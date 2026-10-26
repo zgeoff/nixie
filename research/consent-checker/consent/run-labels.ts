@@ -1,9 +1,10 @@
 // @boundaries-ignore a spike imports the code it measures
-import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-frame.ts';
+import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { buildLabelRecord } from './build-label-record.ts';
 import { renderLabellerInput } from './render-labeller-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
 import { runBudgetedQueue } from './run-budgeted-queue.ts';
+import type { PaidReply } from './run-paid-query.ts';
 import type { LabelRecord, LabelTurn } from './types.ts';
 import { noOutputFailure } from './types.ts';
 
@@ -18,7 +19,7 @@ export interface LabelRun {
   budgetUSD: number;
   limit: number | null;
   concurrency: number;
-  runLabel: (request: CheckRequest) => Promise<CheckReply>;
+  runLabel: (request: CheckRequest) => Promise<PaidReply>;
 }
 
 export interface LabelRunResult extends QueueResult {
@@ -53,7 +54,7 @@ export async function runLabels(run: LabelRun): Promise<LabelRunResult> {
   const result = await runBudgetedQueue({
     items,
     appendOutput: run.appendRecord,
-    spentUSD: run.otherSpentUSD + run.done.reduce((sum, record) => sum + record.costUSD, 0),
+    spentUSD: run.otherSpentUSD + run.done.reduce((sum, record) => sum + (record.costUSD ?? 0), 0),
     budgetUSD: run.budgetUSD,
     limit: run.limit,
     concurrency: run.concurrency,

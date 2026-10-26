@@ -83,7 +83,7 @@ test('it gives an answer with no output no label and keeps its cost', () => {
   });
 });
 
-test('it gives a failed query no label and keeps the reason the query gave', () => {
+test('it gives a failed query no label and keeps the reason and the cost the query gave', () => {
   expect(
     buildLabelRecord(
       {
@@ -92,7 +92,7 @@ test('it gives a failed query no label and keeps the reason the query gave', () 
         messages: [{ sequence: 6, text: 'pin it', spans: [] }],
         calls: [{ caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } }],
       },
-      { kind: 'failed', reason: 'error_max_turns' },
+      { kind: 'failed', reason: 'error_max_turns', costUSD: 0.02 },
       { model: 'claude-opus-5-5', effort: 'medium', promptSHA256: 'hash-l' },
     ),
   ).toStrictEqual({
@@ -103,6 +103,30 @@ test('it gives a failed query no label and keeps the reason the query gave', () 
     labels: [],
     failure: 'no_output',
     failureReason: 'error_max_turns',
-    costUSD: 0,
+    costUSD: 0.02,
+  });
+});
+
+test('it gives a query that ended with no result no known cost', () => {
+  expect(
+    buildLabelRecord(
+      {
+        stepSequence: 7,
+        earlier: [],
+        messages: [{ sequence: 6, text: 'pin it', spans: [] }],
+        calls: [{ caseID: '7/9', tool: 'memory.pin', input: { id: 'M3' } }],
+      },
+      { kind: 'failed', reason: 'the query ended with no result', costUSD: null },
+      { model: 'claude-opus-5-5', effort: 'medium', promptSHA256: 'hash-l' },
+    ),
+  ).toStrictEqual({
+    stepSequence: 7,
+    model: 'claude-opus-5-5',
+    effort: 'medium',
+    promptSHA256: 'hash-l',
+    labels: [],
+    failure: 'no_output',
+    failureReason: 'the query ended with no result',
+    costUSD: null,
   });
 });

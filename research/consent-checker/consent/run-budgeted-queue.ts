@@ -2,7 +2,7 @@ import { buildQueueResult } from './build-queue-result.ts';
 import { pickQueueStep } from './pick-queue-step.ts';
 
 export interface QueueOutput {
-  costUSD: number;
+  costUSD: number | null;
   failure: string | null;
   failureReason?: string;
 }

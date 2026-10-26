@@ -1,9 +1,10 @@
 // @boundaries-ignore a spike imports the code it measures
-import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-frame.ts';
+import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { buildCheckRecord } from './build-check-record.ts';
 import { renderCheckerInput } from './render-checker-input.ts';
 import type { QueueResult } from './run-budgeted-queue.ts';
 import { runBudgetedQueue } from './run-budgeted-queue.ts';
+import type { PaidReply } from './run-paid-query.ts';
 import type { CheckRecord, ConsentCase } from './types.ts';
 import { noOutputFailure } from './types.ts';
 
@@ -18,7 +19,7 @@ export interface CheckRun {
   budgetUSD: number;
   limit: number | null;
   concurrency: number;
-  runCheck: (request: CheckRequest) => Promise<CheckReply>;
+  runCheck: (request: CheckRequest) => Promise<PaidReply>;
 }
 
 export interface CheckRunResult extends QueueResult {
@@ -51,7 +52,7 @@ export async function runChecks(run: CheckRun): Promise<CheckRunResult> {
   const result = await runBudgetedQueue({
     items,
     appendOutput: run.appendRecord,
-    spentUSD: run.otherSpentUSD + run.done.reduce((sum, record) => sum + record.costUSD, 0),
+    spentUSD: run.otherSpentUSD + run.done.reduce((sum, record) => sum + (record.costUSD ?? 0), 0),
     budgetUSD: run.budgetUSD,
     limit: run.limit,
     concurrency: run.concurrency,

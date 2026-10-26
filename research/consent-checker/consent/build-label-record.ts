@@ -1,5 +1,4 @@
-// @boundaries-ignore a spike imports the code it measures
-import type { CheckReply } from '../../../libs/wire/src/check-frame.ts';
+import type { PaidReply } from './run-paid-query.ts';
 import type { LabelRecord, LabelTurn, RecordSource } from './types.ts';
 import { emptyAnswerReason, labellerOutputSchema, noOutputFailure } from './types.ts';
 
@@ -7,7 +6,7 @@ import { emptyAnswerReason, labellerOutputSchema, noOutputFailure } from './type
 // that holds its cost, the reason the query gave and no label, so a rerun labels the turn again.
 export function buildLabelRecord(
   turn: LabelTurn,
-  reply: CheckReply,
+  reply: PaidReply,
   source: RecordSource,
 ): LabelRecord {
   const base = {
@@ -23,7 +22,7 @@ export function buildLabelRecord(
       labels: [],
       failure: noOutputFailure,
       failureReason: reply.kind === 'failed' ? reply.reason : emptyAnswerReason,
-      costUSD: reply.kind === 'failed' ? 0 : reply.costUSD,
+      costUSD: reply.costUSD,
     };
   }
 

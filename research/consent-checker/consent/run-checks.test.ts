@@ -1,8 +1,9 @@
 // oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { expect, mock, test } from 'bun:test';
 // @boundaries-ignore a spike imports the code it measures
-import type { CheckReply, CheckRequest } from '../../../libs/wire/src/check-frame.ts';
+import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
 import { runChecks } from './run-checks.ts';
+import type { PaidReply } from './run-paid-query.ts';
 import type { CheckRecord } from './types.ts';
 
 function setupTest() {
@@ -75,10 +76,11 @@ test('it appends one record for each case with the parsed verdict and its cost',
 test('it sends the checker the rendered case under the run profile and prompt', async () => {
   const ctx = setupTest();
 
-  const runCheck = mock<(request: CheckRequest) => Promise<CheckReply>>(() =>
+  const runCheck = mock<(request: CheckRequest) => Promise<PaidReply>>(() =>
     Promise.resolve({
       kind: 'failed',
       reason: 'error_during_execution',
+      costUSD: 0,
     }),
   );
 
@@ -184,7 +186,7 @@ test('it records a call with no answer with its cost and stops the run', async (
   ]);
 });
 
-test('it keeps the reason a failed query gave in its record and in the result', async () => {
+test('it keeps the reason and the cost a failed query gave in its record and in the result', async () => {
   const ctx = setupTest();
 
   const result = await runChecks({
@@ -211,10 +213,11 @@ test('it keeps the reason a failed query gave in its record and in the result', 
     budgetUSD: 4,
     limit: null,
     concurrency: 1,
-    runCheck: () => Promise.resolve({ kind: 'failed', reason: 'error_max_turns' }),
+    runCheck: () => Promise.resolve({ kind: 'failed', reason: 'error_max_turns', costUSD: 0.02 }),
   });
 
   expect(result.failureReason).toBe('error_max_turns');
+  expect(result.costUSD).toBe(0.02);
 
   expect(ctx.appendRecord.mock.calls).toStrictEqual([
     [
@@ -229,7 +232,7 @@ test('it keeps the reason a failed query gave in its record and in the result', 
         reason: '',
         failure: 'no_output',
         failureReason: 'error_max_turns',
-        costUSD: 0,
+        costUSD: 0.02,
       },
     ],
   ]);
@@ -238,7 +241,7 @@ test('it keeps the reason a failed query gave in its record and in the result', 
 test('it runs a case again when the file holds only a check with no answer', async () => {
   const ctx = setupTest();
 
-  const runCheck = mock<(request: CheckRequest) => Promise<CheckReply>>(() =>
+  const runCheck = mock<(request: CheckRequest) => Promise<PaidReply>>(() =>
     Promise.resolve({
       kind: 'answer',
       output: { reason: 'the owner asked to pin it', verdict: 'asserted' },
@@ -295,10 +298,11 @@ test('it runs a case again when the file holds only a check with no answer', asy
 test('it skips the cases the output file already holds and counts their spend', async () => {
   const ctx = setupTest();
 
-  const runCheck = mock<(request: CheckRequest) => Promise<CheckReply>>(() =>
+  const runCheck = mock<(request: CheckRequest) => Promise<PaidReply>>(() =>
     Promise.resolve({
       kind: 'failed',
       reason: 'error_during_execution',
+      costUSD: 0,
     }),
   );
 
@@ -384,7 +388,8 @@ test('it refuses an output file that holds a run under another prompt', () => {
       budgetUSD: 4,
       limit: null,
       concurrency: 1,
-      runCheck: () => Promise.resolve({ kind: 'failed', reason: 'error_during_execution' }),
+      runCheck: () =>
+        Promise.resolve({ kind: 'failed', reason: 'error_during_execution', costUSD: 0 }),
     }),
   ).rejects.toThrow(/with prompt hash-old$/u);
 });
