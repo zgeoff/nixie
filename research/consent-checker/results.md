@@ -38,6 +38,9 @@ The steps live in these files:
   refuses, and resume a run that stopped.
 - [run-paid-query.ts](consent/run-paid-query.ts) runs one query and keeps the cost its result
   reports, a failed result included, because the check guest's own loop drops the cost of a failure.
+- [build-ledger.ts](consent/build-ledger.ts) reads a run's spend from its output file. A run appends
+  a reservation before each call, and a reservation that no record settles counts in full, so a
+  crash between the call and its record loses no spend.
 - [build-label-record.ts](consent/build-label-record.ts) and
   [build-check-record.ts](consent/build-check-record.ts) turn each reply into the record a run
   appends.
