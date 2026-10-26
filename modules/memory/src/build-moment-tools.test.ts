@@ -535,6 +535,12 @@ test('#moment.edit changes only the title, and returns the next version', async 
     .select(['first_sequence', 'last_sequence', 'title_sequence', 'version'])
     .executeTakeFirstOrThrow();
 
+  const read = await ctx.memory.store.moments.read({
+    momentID: kept.shortID,
+    after: null,
+    tokenCap: 2000,
+  });
+
   expect(result.structuredContent).toStrictEqual({ momentID: kept.shortID, version: 2 });
 
   expect(row).toStrictEqual({
@@ -543,6 +549,8 @@ test('#moment.edit changes only the title, and returns the next version', async 
     title_sequence: expect.toSatisfy((sequence: number) => sequence > kept.sequence),
     version: 2,
   });
+
+  expect(read?.title).toBe('The kettle rule');
 });
 
 test('#moment.edit moves both edges of the span to the event IDs it was given', async () => {
