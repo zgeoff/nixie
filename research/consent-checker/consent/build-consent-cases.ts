@@ -34,7 +34,8 @@ interface Turn {
   calls: ConsentCall[];
 }
 
-// A step whose commit has not come yet: the inbox records it may have read, and the calls it made.
+// A step whose commit has not come yet: the inbox at its start, which stands in for its batch if it
+// never commits, and the calls it made.
 interface OpenStep {
   stepSequence: number;
   batch: PlainRecord[];
@@ -90,9 +91,9 @@ export function buildConsentCases(records: readonly PlainRecord[]): BuiltCases {
     } else if (record.kind === 'task.step_committed') {
       const committed = stepCommittedSchema.parse(record.payload);
 
-      // The commit's cursor is the last inbox record the step read, and the inbox also holds records
-      // of other kinds that the export leaves out, so the cursor bounds the step's batch exactly.
-      addStepToTurns(step?.batch.filter((entry) => entry.sequence <= committed.readCursor) ?? []);
+      // The step reads its inbox after its start record, so a message that lands in between is in
+      // its batch. The cursor is the last inbox record it read, which bounds the batch exactly.
+      addStepToTurns(inbox.filter((entry) => entry.sequence <= committed.readCursor));
 
       inbox = inbox.filter((entry) => entry.sequence > committed.readCursor);
     } else if (record.kind === 'task.step_started') {

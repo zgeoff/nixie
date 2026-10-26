@@ -390,6 +390,54 @@ test('it keeps a step whose cursor stops before a waiting message in the turn be
   ).toStrictEqual([{ caseID: '2/7', messages: [1] }]);
 });
 
+test('it gives a step a message that landed after its start and before its cursor', () => {
+  const built = buildConsentCases([
+    {
+      sequence: 2,
+      recordedAt: '2026-03-02T09:00:00Z',
+      kind: 'task.step_started',
+      thread: 'conversation',
+      parent: null,
+      payload: {},
+      erasable: { status: 'none' },
+    },
+    {
+      sequence: 3,
+      recordedAt: '2026-03-02T09:00:01Z',
+      kind: 'owner_message',
+      thread: 'conversation',
+      parent: null,
+      payload: { spans: 'as_sent' },
+      erasable: { status: 'readable', fields: { text: 'look up the tram fares', spans: [] } },
+    },
+    {
+      sequence: 4,
+      recordedAt: '2026-03-02T09:00:02Z',
+      kind: 'tool_called',
+      thread: 'conversation',
+      parent: null,
+      payload: { tool: 'web_fetch' },
+      erasable: { status: 'readable', fields: { input: { url: 'https://tram.example/fares' } } },
+    },
+    {
+      sequence: 5,
+      recordedAt: '2026-03-02T09:00:03Z',
+      kind: 'task.step_committed',
+      thread: 'conversation',
+      parent: null,
+      payload: { readCursor: 3 },
+      erasable: { status: 'none' },
+    },
+  ]);
+
+  expect(
+    built.cases.map((consentCase) => ({
+      caseID: consentCase.caseID,
+      messages: consentCase.messages.map((message) => message.sequence),
+    })),
+  ).toStrictEqual([{ caseID: '2/4', messages: [3] }]);
+});
+
 test('it leaves out read-only calls and counts them', () => {
   const built = buildConsentCases([
     {
