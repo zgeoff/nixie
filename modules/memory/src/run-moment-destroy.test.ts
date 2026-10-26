@@ -208,6 +208,76 @@ test('it refuses a destroy bound to a version the moment moved past', async () =
   expect(destroyed).toStrictEqual({ status: 'refused', reason: 'stale' });
 });
 
+test("it leaves another moment's title, note and reflections readable after a destroy", async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'only the quiet kettle from now on' },
+    },
+  ]);
+
+  invariant(message);
+
+  const doomed = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The kettle argument',
+  });
+
+  const spared = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The quiet kettle',
+  });
+
+  invariant(doomed.status === 'written' && spared.status === 'written');
+
+  await ctx.memory.store.moments.edit({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    target: { momentID: doomed.shortID, version: 1 },
+    change: { kind: 'reflection', text: 'The argument was about the noise.' },
+  });
+
+  await ctx.memory.store.moments.edit({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    target: { momentID: spared.shortID, version: 1 },
+    change: { kind: 'reflection', text: 'Quiet won over cheap.' },
+  });
+
+  await ctx.memory.store.moments.edit({
+    caller: { kind: 'owner' },
+    target: { momentID: spared.momentID, version: 2 },
+    change: { kind: 'note', note: 'Bought the quiet one in the end.' },
+  });
+
+  const destroyed = await ctx.memory.store.moments.destroy({
+    momentID: doomed.momentID,
+    version: 2,
+  });
+
+  invariant(destroyed.status === 'destroyed');
+
+  const read = await ctx.memory.store.moments.read({
+    momentID: spared.momentID,
+    after: null,
+    tokenCap: 2000,
+  });
+
+  expect(read).toMatchObject({
+    title: 'The quiet kettle',
+    note: 'Bought the quiet one in the end.',
+    reflections: [{ model: 'claude-test-4', text: 'Quiet won over cheap.' }],
+  });
+});
+
 test("it rolls back the caller's write in the destroy's transaction when it refuses the destroy", async () => {
   const ctx = await setupTest();
 
