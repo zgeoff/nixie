@@ -152,6 +152,83 @@ test('#memory.previewMomentDestroy refuses a version the moment moved past', asy
   expect(preview).rejects.toMatchObject({ code: 'STALE_VERSION' });
 });
 
+test("#memory.previewMomentDestroy refuses a caller with no session, and shows none of the moment's text", async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'we planted the quince by the back wall' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The quince tree',
+  });
+
+  invariant(kept.status === 'written');
+
+  const preview = buildTestClient(ctx.url).memory.previewMomentDestroy({
+    momentID: kept.momentID,
+    version: 1,
+  });
+
+  await preview.catch(() => {});
+
+  expect(preview).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});
+
+test('#memory.previewMomentDestroy answers a signed-in caller with MEMORY_NOT_STARTED before the store starts', async () => {
+  const api = await startTestAPI();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const preview = buildTestClient(api.url, laptop.token).memory.previewMomentDestroy({
+    momentID: 'moment-a',
+    version: 1,
+  });
+
+  await preview.catch(() => {});
+
+  expect(preview).rejects.toMatchObject({ code: 'MEMORY_NOT_STARTED', status: 503 });
+});
+
+test('#memory.previewMomentDestroy refuses a moment that does not exist', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const preview = buildTestClient(ctx.url, laptop.token).memory.previewMomentDestroy({
+    momentID: 'no-such-moment',
+    version: 1,
+  });
+
+  await preview.catch(() => {});
+
+  expect(preview).rejects.toMatchObject({ code: 'MOMENT_NOT_FOUND' });
+});
+
+test('#memory.destroyMoment answers a signed-in caller with MEMORY_NOT_STARTED before the store starts', async () => {
+  const api = await startTestAPI();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const destroy = buildTestClient(api.url, laptop.token).memory.destroyMoment({
+    clientActionID: '7a3e1c52-9d4b-4f0e-b8a6-2c5d9e1f3a74',
+    momentID: 'moment-a',
+    version: 1,
+  });
+
+  await destroy.catch(() => {});
+
+  expect(destroy).rejects.toMatchObject({ code: 'MEMORY_NOT_STARTED', status: 503 });
+});
+
 test('#memory.destroyMoment shreds the title, cleans up the sessions and records the destroy as complete', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
