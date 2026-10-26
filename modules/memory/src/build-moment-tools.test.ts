@@ -358,23 +358,31 @@ test('#moment.read reads a span longer than a page through the cursor, every rec
 
   invariant(kept.status === 'written');
 
-  const firstPage = await ctx.memory.store.moments.read({
-    momentID: kept.shortID,
-    after: null,
-    tokenCap: 6000,
-  });
+  const entrySchema = z.object({ eventID: z.string() });
+  const pageSchema = z.object({ records: z.array(entrySchema), next: z.string().nullable() });
 
-  invariant(firstPage !== null && firstPage.next !== null);
+  const firstCall = await runToolCall(
+    { tool: 'moment.read', input: { momentID: kept.shortID }, toolUseID: 'toolu_1' },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
 
-  const secondPage = await ctx.memory.store.moments.read({
-    momentID: kept.shortID,
-    after: firstPage.next,
-    tokenCap: 6000,
-  });
+  const firstPage = pageSchema.parse(firstCall.structuredContent);
 
-  invariant(secondPage !== null);
+  invariant(firstPage.next !== null);
 
-  const read = [...firstPage.records, ...secondPage.records].map((entry) => entry.sequence);
+  const secondCall = await runToolCall(
+    {
+      tool: 'moment.read',
+      input: { momentID: kept.shortID, after: firstPage.next },
+      toolUseID: 'toolu_2',
+    },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const secondPage = pageSchema.parse(secondCall.structuredContent);
+  const read = [...firstPage.records, ...secondPage.records].map((entry) => Number(entry.eventID));
 
   expect(firstPage.records.length).toBeLessThan(40);
   expect(secondPage.next).toBeNull();
