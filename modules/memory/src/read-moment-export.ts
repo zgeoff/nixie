@@ -1,4 +1,5 @@
 import type { Log, LogTables } from '@heynixie/log';
+import { match } from 'ts-pattern';
 import type { MemoryExportMoment } from './memory-export-schema';
 import type { MomentTables } from './moment-types';
 import { readMomentDetail } from './read-moment-detail';
@@ -35,11 +36,22 @@ export function readMomentExport(
   });
 }
 
-async function readExportMoment(log: ExportLog, row: MomentRow): Promise<MemoryExportMoment> {
-  if (row.state !== 'active' && row.state !== 'retired') {
-    return { momentID: row.moment_id, destroyedAt: await readDestroyedAt(log, row) };
-  }
+function readExportMoment(log: ExportLog, row: MomentRow): Promise<MemoryExportMoment> {
+  return match(row.state)
+    .with('active', 'retired', (state) => readReadableMoment(log, row, state))
+    .with('destroying', () => Promise.resolve({ momentID: row.moment_id, destroyedAt: null }))
+    .with('destroyed', async () => ({
+      momentID: row.moment_id,
+      destroyedAt: await readDestroyedAt(log, row),
+    }))
+    .exhaustive();
+}
 
+async function readReadableMoment(
+  log: ExportLog,
+  row: MomentRow,
+  state: 'active' | 'retired',
+): Promise<MemoryExportMoment> {
   const detail = await readMomentDetail(log, row);
 
   const links = await log.writer.db
@@ -61,7 +73,7 @@ async function readExportMoment(log: ExportLog, row: MomentRow): Promise<MemoryE
   return {
     momentID: row.moment_id,
     shortID: row.short_id,
-    state: row.state,
+    state,
     thread: row.thread,
     firstSequence: row.first_sequence,
     lastSequence: row.last_sequence,
@@ -92,12 +104,8 @@ async function readExportMoment(log: ExportLog, row: MomentRow): Promise<MemoryE
   };
 }
 
-// The destroy completes when its done record commits, and only then does the moment show a time.
+// The destroy's done record is the moment's last change, so its time is when the destroy completed.
 async function readDestroyedAt(log: ExportLog, row: MomentRow): Promise<string | null> {
-  if (row.state !== 'destroyed') {
-    return null;
-  }
-
   const record = await log.writer.db
     .$extendTables<LogTables>()
     .selectFrom('records')
