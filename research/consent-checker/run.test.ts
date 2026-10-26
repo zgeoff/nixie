@@ -142,6 +142,41 @@ test('it starts no check when the labeller spend already reaches the budget', as
   expect(await Bun.file(outPath).exists()).toBe(false);
 });
 
+test('it refuses a check run while another run holds the labels file', async () => {
+  const ctx = await setupTest();
+  const casesPath = join(ctx.dir, 'cases.jsonl');
+  const labelsPath = join(ctx.dir, 'labels.jsonl');
+  const outPath = join(ctx.dir, 'checks.jsonl');
+
+  await writeFile(
+    casesPath,
+    '{"caseID":"2/3","bucket":"natural","stepSequence":2,"messages":[{"sequence":1,"text":"look up the ferry times","spans":[]}],"call":{"sequence":3,"tool":"web_fetch","input":{"url":"https://ferry.example/times"}}}\n',
+  );
+  await writeFile(`${labelsPath}.lock`, '4242\n');
+
+  const child = Bun.spawnSync(
+    [
+      'bun',
+      ctx.entry,
+      'check',
+      '--cases',
+      casesPath,
+      '--labels',
+      labelsPath,
+      '--out',
+      outPath,
+      '--home',
+      join(ctx.dir, 'home'),
+    ],
+    { env: { ...process.env, ANTHROPIC_AUTH_TOKEN: 'test-token' } },
+  );
+
+  expect(child.exitCode).toBe(1);
+  expect(child.stderr.toString()).toInclude(`${labelsPath}.lock exists, so another label or check run holds these files`);
+  expect(await Bun.file(`${outPath}.lock`).exists()).toBe(false);
+  expect(await Bun.file(outPath).exists()).toBe(false);
+});
+
 test('it starts no label when the checker spend already reaches the budget', async () => {
   const ctx = await setupTest();
   const plainPath = join(ctx.dir, 'records.jsonl');

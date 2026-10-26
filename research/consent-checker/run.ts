@@ -26,6 +26,7 @@ import { readJSONLines } from '../memory-retrieval/real-turns/read-json-lines.ts
 import { buildConsentCases } from './consent/build-consent-cases.ts';
 import { buildLabelTurns } from './consent/build-label-turns.ts';
 import { buildLabels } from './consent/build-labels.ts';
+import { createRunLock } from './consent/create-run-lock.ts';
 import type { QueueResult } from './consent/run-budgeted-queue.ts';
 import { runChecks } from './consent/run-checks.ts';
 import { runLabels } from './consent/run-labels.ts';
@@ -99,9 +100,16 @@ async function writeCases(plainPath: string, outPath: string): Promise<void> {
   }
 }
 
+type RunLimits = ReturnType<typeof buildRunLimits>;
+
 async function runLabelCommand(): Promise<void> {
   const limits = buildRunLimits();
   const outPath = requireFlag(values.out, '--out');
+
+  await withRunLock([outPath, values.checks], () => runLabelsUnderLock(outPath, limits));
+}
+
+async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<void> {
   const persona = await Bun.file(requireFlag(values.persona, '--persona')).text();
   const template = await Bun.file(new URL('label-prompt.txt', import.meta.url)).text();
   const systemPrompt = template.replace('{{persona}}', persona.trim());
@@ -139,6 +147,11 @@ async function runLabelCommand(): Promise<void> {
 async function runCheckCommand(): Promise<void> {
   const limits = buildRunLimits();
   const outPath = requireFlag(values.out, '--out');
+
+  await withRunLock([outPath, values.labels], () => runChecksUnderLock(outPath, limits));
+}
+
+async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<void> {
   const systemPrompt = await Bun.file(new URL('prompt.txt', import.meta.url)).text();
   const env = await buildModelEnv();
 
@@ -159,6 +172,18 @@ async function runCheckCommand(): Promise<void> {
       (result.isStoppedAtBudget ? `, stopped at the $${values.budget} budget` : '') +
       formatFailureStop(result),
   );
+}
+
+// The label and check runs share one budget across both output files, so each holds both files from
+// before it reads their spend and done records until it ends.
+async function withRunLock(paths: readonly (string | undefined)[], run: () => Promise<void>): Promise<void> {
+  const lock = await createRunLock(paths.filter((path) => path !== undefined));
+
+  try {
+    await run();
+  } finally {
+    await lock.remove();
+  }
 }
 
 function formatFailureStop(result: QueueResult): string {
