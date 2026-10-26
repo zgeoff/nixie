@@ -18,6 +18,7 @@ import { buildConsentCases } from './consent/build-consent-cases.ts';
 import { buildLabelTurns } from './consent/build-label-turns.ts';
 import { buildLabels } from './consent/build-labels.ts';
 import { createRunLock } from './consent/create-run-lock.ts';
+import { nodeLockFiles } from './consent/node-lock-files.ts';
 import type { QueueResult } from './consent/run-budgeted-queue.ts';
 import { runChecks } from './consent/run-checks.ts';
 import { runLabels } from './consent/run-labels.ts';
@@ -205,7 +206,10 @@ async function withRunLock(
   paths: readonly (string | undefined)[],
   run: () => Promise<void>,
 ): Promise<void> {
-  const lock = await createRunLock(paths.filter((path) => path !== undefined));
+  const lock = await createRunLock(
+    paths.filter((path) => path !== undefined),
+    nodeLockFiles,
+  );
 
   try {
     await run();
