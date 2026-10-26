@@ -33,19 +33,6 @@ async function setupTest() {
     memory,
     cleanupSessions,
     db: memory.writer.db.$extendTables<MomentTables>(),
-    run: {
-      runID: 'run-1',
-      thread: 'conversation',
-      tools: [
-        'memory.recall',
-        'moment.keep',
-        'moment.edit',
-        'moment.link',
-        'moment.find',
-        'moment.read',
-      ],
-      model: { model: 'claude-test-4', profile: 'standard' },
-    },
     toolCallOptions: {
       registry,
 
@@ -67,6 +54,20 @@ async function setupTest() {
 
 test('it destroys a moment and leaves no readable copy of its title, note or reflections in any record', async () => {
   const ctx = await setupTest();
+
+  const run = {
+    runID: 'run-1',
+    thread: 'conversation',
+    tools: [
+      'memory.recall',
+      'moment.keep',
+      'moment.edit',
+      'moment.link',
+      'moment.find',
+      'moment.read',
+    ],
+    model: { model: 'claude-test-4', profile: 'standard' },
+  };
 
   const [message] = await writeRecords(ctx.memory.log, [
     {
@@ -95,7 +96,7 @@ test('it destroys a moment and leaves no readable copy of its title, note or ref
       },
       toolUseID: 'toolu_1',
     },
-    ctx.run,
+    run,
     ctx.toolCallOptions,
   );
 
@@ -107,7 +108,7 @@ test('it destroys a moment and leaves no readable copy of its title, note or ref
       input: { momentID, version: 1, reflection: 'Juniper-reflection-3VK' },
       toolUseID: 'toolu_2',
     },
-    ctx.run,
+    run,
     ctx.toolCallOptions,
   );
 
@@ -129,7 +130,7 @@ test('it destroys a moment and leaves no readable copy of its title, note or ref
       input: { momentID, version: 4, itemID: item.itemID },
       toolUseID: 'toolu_3',
     },
-    ctx.run,
+    run,
     ctx.toolCallOptions,
   );
 
@@ -138,7 +139,7 @@ test('it destroys a moment and leaves no readable copy of its title, note or ref
     ['moment.find', { query: 'Juniper-title-3VK' }],
     ['moment.read', { momentID }],
   ] as const) {
-    await runToolCall({ tool, input, toolUseID: `toolu_${tool}` }, ctx.run, ctx.toolCallOptions);
+    await runToolCall({ tool, input, toolUseID: `toolu_${tool}` }, run, ctx.toolCallOptions);
   }
 
   const destroyed = await ctx.memory.store.moments.destroy({ momentID, version: 5 });
