@@ -62,7 +62,9 @@ const { positionals, values } = parseArgs({
 const command = positionals[0];
 
 if (command === 'cases') {
-  await writeCases(requireFlag(values.plain, '--plain'), requireFlag(values.out, '--out'));
+  const outPath = requireFlag(values.out, '--out');
+
+  await withRunLock([outPath], () => writeCases(requireFlag(values.plain, '--plain'), outPath));
 } else if (command === 'label') {
   await runLabelCommand();
 } else if (command === 'check') {
@@ -106,7 +108,7 @@ async function runLabelCommand(): Promise<void> {
   const limits = buildRunLimits();
   const outPath = requireFlag(values.out, '--out');
 
-  await withRunLock([outPath, values.checks], () => runLabelsUnderLock(outPath, limits));
+  await withRunLock([outPath, values.checks, values.cases], () => runLabelsUnderLock(outPath, limits));
 }
 
 async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<void> {
@@ -115,7 +117,7 @@ async function runLabelsUnderLock(outPath: string, limits: RunLimits): Promise<v
   const systemPrompt = template.replace('{{persona}}', persona.trim());
   const cases = await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema);
   const records = await readJSONLines(requireFlag(values.plain, '--plain'), plainRecordSchema);
-  const env = await buildModelEnv();
+  const env = await createModelEnv();
   // The CLI's schema validator knows no draft 2020-12 meta-schema, so the key that names it goes.
   const { $schema: _, ...schema } = z.toJSONSchema(labellerOutputSchema);
   const outputFormat = { type: 'json_schema' as const, schema };
@@ -148,12 +150,12 @@ async function runCheckCommand(): Promise<void> {
   const limits = buildRunLimits();
   const outPath = requireFlag(values.out, '--out');
 
-  await withRunLock([outPath, values.labels], () => runChecksUnderLock(outPath, limits));
+  await withRunLock([outPath, values.labels, values.cases], () => runChecksUnderLock(outPath, limits));
 }
 
 async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<void> {
   const systemPrompt = await Bun.file(new URL('prompt.txt', import.meta.url)).text();
-  const env = await buildModelEnv();
+  const env = await createModelEnv();
 
   const result = await runChecks({
     cases: await readJSONLines(requireFlag(values.cases, '--cases'), consentCaseSchema),
@@ -175,7 +177,8 @@ async function runChecksUnderLock(outPath: string, limits: RunLimits): Promise<v
 }
 
 // The label and check runs share one budget across both output files, so each holds both files from
-// before it reads their spend and done records until it ends.
+// before it reads their spend and done records until it ends. Each also holds the cases file, which
+// the cases command rewrites whole.
 async function withRunLock(paths: readonly (string | undefined)[], run: () => Promise<void>): Promise<void> {
   const lock = await createRunLock(paths.filter((path) => path !== undefined));
 
@@ -198,7 +201,7 @@ function makeAppendJSONLine(path: string): (value: unknown) => Promise<void> {
   return (value) => appendFile(path, `${JSON.stringify(value)}\n`, { mode: 0o600 });
 }
 
-async function buildModelEnv(): Promise<Record<string, string | undefined>> {
+async function createModelEnv(): Promise<Record<string, string | undefined>> {
   const token = process.env['ANTHROPIC_AUTH_TOKEN'];
 
   if (token === undefined || token === '') {

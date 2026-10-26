@@ -42,6 +42,22 @@ test('it writes the cases and prints only their counts', async () => {
   ).toStrictEqual(['2/3']);
 });
 
+test('it rewrites no cases file while a label or check run holds it', async () => {
+  const ctx = await setupTest();
+  const plainPath = join(ctx.dir, 'records.jsonl');
+  const outPath = join(ctx.dir, 'cases.jsonl');
+
+  await writeFile(plainPath, '');
+  await writeFile(outPath, 'the cases a run reads\n');
+  await writeFile(`${outPath}.lock`, '4242\n');
+
+  const child = Bun.spawnSync(['bun', ctx.entry, 'cases', '--plain', plainPath, '--out', outPath]);
+
+  expect(child.exitCode).toBe(1);
+  expect(child.stderr.toString()).toInclude(`${outPath}.lock exists, so another label or check run holds these files`);
+  expect(await readFile(outPath, 'utf8')).toBe('the cases a run reads\n');
+});
+
 test('it prints the rates of each bucket and each tool, and the spend of every check', async () => {
   const ctx = await setupTest();
   const casesPath = join(ctx.dir, 'cases.jsonl');
