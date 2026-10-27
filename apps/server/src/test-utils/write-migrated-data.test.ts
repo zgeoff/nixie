@@ -35,7 +35,7 @@ test('it writes a data directory that a writer opens with no migration left to r
   expect(writer.migration.from).toBe(writer.migration.to);
 });
 
-test('it gives each data directory a database of its own', async () => {
+test('it gives each data directory a migrated database that a writer on the other leaves alone', async () => {
   const ctx = await setupTest();
 
   await writeMigratedData(ctx.dataDir, ctx.io);
@@ -49,6 +49,8 @@ test('it gives each data directory a database of its own', async () => {
 
   onTestFinished(() => other.stop());
 
+  expect(writer.migration.from).toBe(writer.migration.to);
+  expect(other.migration.from).toBe(other.migration.to);
   expect(other.epoch).toBe(writer.epoch);
 });
 
