@@ -177,7 +177,11 @@ stub guest from
 [`buildStubGuestSandboxes`](../../../modules/sandbox/src/test-utils/build-stub-guest-sandboxes.ts)
 in place of the sandbox adapter, so a turn starts no guest and no Agent SDK. A test that checks what
 the model sees asserts on the turn frames the stub guest received. The stub never imitates the SDK's
-request to the model, because a copy of the SDK's logic drifts from it unseen.
+request to the model, because a copy of the SDK's logic drifts from it unseen. Each in-process start
+copies its data directory from a per-run template that
+[`writeMigratedData`](../../../apps/server/src/test-utils/write-migrated-data.ts) migrates once, so
+its first start runs no migration. A test of the migration from an empty data directory starts a
+writer of its own.
 
 The two nixie harnesses stay apart because each checks what the other cannot reach. The in-process
 harness hands a test the stub guest's frames, which a child process keeps to itself. The spawned
