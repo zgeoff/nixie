@@ -52,13 +52,13 @@ test('it gives each data directory files of its own that a change to the other l
   expect(after).toStrictEqual(before);
 });
 
-test('it fails when the writer cannot migrate the template', async () => {
+test('it fails when the writer cannot open the folder it migrates', async () => {
   const ctx = await setupTest();
 
   expect(
     writeMigratedData(ctx.dataDir, {
       ...ctx.io,
-      startWriter: () => Promise.reject(new Error('the disk is full')),
+      startWriter: (options) => startWriter({ ...options, dataDir: join(options.dataDir, 'gone') }),
     }),
-  ).rejects.toThrow('the disk is full');
+  ).rejects.toMatchObject({ code: 'ENOENT' });
 });
