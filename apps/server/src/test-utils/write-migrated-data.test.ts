@@ -1,10 +1,11 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
 import type { RunTemplateOptions } from '@heynixie/testing';
 import { createRunTemplate } from '@heynixie/testing';
+import { readDataFiles } from './read-data-files';
 import { writeMigratedData } from './write-migrated-data';
 
 async function setupTest() {
@@ -35,23 +36,20 @@ test('it writes a data directory that a writer opens with no migration left to r
   expect(writer.migration.from).toBe(writer.migration.to);
 });
 
-test('it gives each data directory a migrated database that a writer on the other leaves alone', async () => {
+test('it gives each data directory files of its own that a change to the other leaves alone', async () => {
   const ctx = await setupTest();
 
   await writeMigratedData(ctx.dataDir, ctx.io);
   await writeMigratedData(ctx.otherDir, ctx.io);
 
-  const writer = await startWriter({ dataDir: ctx.dataDir });
+  const before = await readDataFiles(ctx.otherDir);
 
-  await writer.stop();
+  await writeFile(join(ctx.dataDir, 'nixie.db'), 'a changed database');
 
-  const other = await startWriter({ dataDir: ctx.otherDir });
+  const after = await readDataFiles(ctx.otherDir);
 
-  onTestFinished(() => other.stop());
-
-  expect(writer.migration.from).toBe(writer.migration.to);
-  expect(other.migration.from).toBe(other.migration.to);
-  expect(other.epoch).toBe(writer.epoch);
+  expect(before.map((file) => file.name)).toIncludeSameMembers(['nixie.db', 'keys.db']);
+  expect(after).toStrictEqual(before);
 });
 
 test('it fails when the writer cannot migrate the template', async () => {
