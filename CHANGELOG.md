@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.49.2](https://github.com/zgeoff/nixie/compare/v0.49.1...v0.49.2) (2026-10-28)
+
+
+### Bug Fixes
+
+* **deps:** update orpc monorepo to v1.16.0 ([#691](https://github.com/zgeoff/nixie/issues/691)) ([bcd70a8](https://github.com/zgeoff/nixie/commit/bcd70a8aa72735fcd0d6ae5bd767652c773bbe9f))
+* **deps:** update patch updates ([#664](https://github.com/zgeoff/nixie/issues/664)) ([edecc7e](https://github.com/zgeoff/nixie/commit/edecc7e89116a2b05543e11281ca21d1d7035340))
+
 ## [0.49.1](https://github.com/zgeoff/nixie/compare/v0.49.0...v0.49.1) (2026-10-28)
 
 
