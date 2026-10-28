@@ -808,7 +808,7 @@
     "@faker-js/faker": "10.6.0",
     "@huggingface/tokenizers": "0.2.0",
     "@impz/client": "4.2.5",
-    "@impz/testing": "6.0.0",
+    "@impz/testing": "6.0.1",
     "@logtape/logtape": "2.4.2",
     "@modelcontextprotocol/client": "2.3.1",
     "@modelcontextprotocol/server": "2.3.1",
@@ -1205,7 +1205,7 @@
 
     "@impz/client": ["@impz/client@4.2.5", "", { "dependencies": { "@orpc/client": "^1.15.5", "@orpc/contract": "^1.15.5", "p-retry": "^8.0.1", "ts-pattern": "^5.9.0", "zod": "^4.6.7" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-XHJ0rGrNcaWFnP+2O6tuWO+vXHZWosF337eMYUOh8M+xa/CrlQFUzOwhqYAL9FYPZc4N6qiW25iKBZVBBZKVow=="],
 
-    "@impz/testing": ["@impz/testing@6.0.0", "", { "dependencies": { "@balena/dockerignore": "^1.0.2", "@better-auth/mcp": "^1.7.11", "@better-auth/oauth-provider": "^1.7.11", "@bufbuild/protobuf": "^2.16.0", "@impz/client": "6.0.0", "@logtape/logtape": "^2.4.2", "@modelcontextprotocol/server": "^2.3.1", "@opentelemetry/api": "^1.9.1", "@orpc/client": "^1.15.7", "@orpc/contract": "^1.15.7", "@orpc/openapi": "^1.15.7", "@orpc/openapi-client": "^1.15.7", "@orpc/server": "^1.15.7", "@peculiar/x509": "^1.14.3", "@zgeoff/kysely-bun-sqlite": "^0.3.0", "better-auth": "^1.7.11", "dns-packet": "^5.6.1", "elysia": "^1.4.30", "ipaddr.js": "^2.5.0", "kysely": "^0.29.7", "lru-cache": "^11.5.3", "reflect-metadata": "^0.2.2", "tar-stream": "^3.2.2", "tiny-invariant": "^1.3.3", "ts-pattern": "^5.9.2", "xstate": "^5.33.3", "zod": "^4.6.7" }, "peerDependencies": { "@opentelemetry/exporter-metrics-otlp-proto": "^0.223.0", "@opentelemetry/exporter-trace-otlp-proto": "^0.223.0", "@opentelemetry/resources": "^2.12.0", "@opentelemetry/sdk-metrics": "^2.12.0", "@opentelemetry/sdk-trace-base": "^2.12.0", "acme-client": "^5.4.0" }, "optionalPeers": ["@opentelemetry/exporter-metrics-otlp-proto", "@opentelemetry/exporter-trace-otlp-proto", "@opentelemetry/resources", "@opentelemetry/sdk-metrics", "@opentelemetry/sdk-trace-base", "acme-client"] }, "sha512-1iPfXq0cy05NjLbYX0ZkLNQtBpiQRvEJJcZX499fLA7ErCXc0g88qyjZyrQVHBR4s5jY8J48gK9/cYGDWDbT2A=="],
+    "@impz/testing": ["@impz/testing@6.0.1", "", { "dependencies": { "@balena/dockerignore": "^1.0.2", "@better-auth/mcp": "^1.7.11", "@better-auth/oauth-provider": "^1.7.11", "@bufbuild/protobuf": "^2.16.0", "@impz/client": "6.0.1", "@logtape/logtape": "^2.4.2", "@modelcontextprotocol/server": "^2.3.1", "@opentelemetry/api": "^1.10.0", "@orpc/client": "^1.15.7", "@orpc/contract": "^1.15.7", "@orpc/openapi": "^1.15.7", "@orpc/openapi-client": "^1.15.7", "@orpc/server": "^1.15.7", "@peculiar/x509": "^1.14.3", "@zgeoff/kysely-bun-sqlite": "^0.3.0", "better-auth": "^1.7.11", "dns-packet": "^5.6.1", "elysia": "^1.4.30", "ipaddr.js": "^2.5.0", "kysely": "^0.29.7", "lru-cache": "^11.5.3", "reflect-metadata": "^0.2.2", "tar-stream": "^3.2.2", "tiny-invariant": "^1.3.3", "ts-pattern": "^5.9.2", "xstate": "^5.33.3", "zod": "^4.6.7" }, "peerDependencies": { "@opentelemetry/exporter-metrics-otlp-proto": "^0.300.0", "@opentelemetry/exporter-trace-otlp-proto": "^0.300.0", "@opentelemetry/resources": "^2.12.0", "@opentelemetry/sdk-metrics": "^2.12.0", "@opentelemetry/sdk-trace-base": "^2.12.0", "acme-client": "^5.4.0" }, "optionalPeers": ["@opentelemetry/exporter-metrics-otlp-proto", "@opentelemetry/exporter-trace-otlp-proto", "@opentelemetry/resources", "@opentelemetry/sdk-metrics", "@opentelemetry/sdk-trace-base", "acme-client"] }, "sha512-CYrvyd5q06fSr0hdvgo4ELjPZDysu6xuif5DUqtHnqdwBflMjPEBy21Fqf9NCI77JDamWrNuEuFhTHRdmWw22g=="],
 
     "@inquirer/ansi": ["@inquirer/ansi@2.0.9", "", {}, "sha512-0Ywt3S8tqM6TWUcsRlBFQ1x+X3/o8kktX0ZiKAnByYb9GFDknnOhse1PVtfiD2BXPI8ar+BWx9PV9R0lQIcygw=="],
 
@@ -3215,9 +3215,7 @@
 
     "@img/sharp-wasm32/@emnapi/runtime": ["@emnapi/runtime@1.11.3", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA=="],
 
-    "@impz/testing/@impz/client": ["@impz/client@6.0.0", "", { "dependencies": { "@orpc/client": "^1.15.7", "@orpc/contract": "^1.15.7", "p-retry": "^8.0.1", "ts-pattern": "^5.9.2", "zod": "^4.6.7" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-7I9FGqL2aaZWtnXYjJHoOm7TJrxaVAO3uM3OCkBnTmIJ8Rfg2GFLRe5gQClV2G87FRu2fTy4r5pA7MuOgsJcFA=="],
-
-    "@impz/testing/@orpc/openapi-client": ["@orpc/openapi-client@1.15.7", "", { "dependencies": { "@orpc/client": "1.15.7", "@orpc/contract": "1.15.7", "@orpc/shared": "1.15.7", "@orpc/standard-server": "1.15.7" } }, "sha512-AzQZjNVtiXl6EoD2nGkEPLw32RajePd8nm6vZ7OlW7o9X/nOsnFJH91c9jcj1twMm+wikqsRqKlY0GfBrDMpBA=="],
+    "@impz/testing/@impz/client": ["@impz/client@6.0.1", "", { "dependencies": { "@orpc/client": "^1.15.7", "@orpc/contract": "^1.15.7", "p-retry": "^8.0.1", "ts-pattern": "^5.9.2", "zod": "^4.6.7" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-ee/2i7KeXTiRMxW2NcnklgGsJV20ezVYcDHuL/0QokRmJD8qBD95R7Eu+vB7is4TQEwSDHXCIYdRU2O8zxtVZg=="],
 
     "@inquirer/core/signal-exit": ["signal-exit@4.1.0", "", {}, "sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw=="],
 
@@ -3467,14 +3465,6 @@
 
     "@grpc/proto-loader/yargs/yargs-parser": ["yargs-parser@21.1.1", "", {}, "sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw=="],
 
-    "@impz/testing/@orpc/openapi-client/@orpc/client": ["@orpc/client@1.15.7", "", { "dependencies": { "@orpc/shared": "1.15.7", "@orpc/standard-server": "1.15.7", "@orpc/standard-server-fetch": "1.15.7", "@orpc/standard-server-peer": "1.15.7" } }, "sha512-Lkqy8CpuNO+1Xq2Fv/a0Gurekwf8UPMoI7RnG/iqW998zZkQIitAwtqYjZ/3JmIckFHJudThdh42SjDB+eMxdg=="],
-
-    "@impz/testing/@orpc/openapi-client/@orpc/contract": ["@orpc/contract@1.15.7", "", { "dependencies": { "@orpc/client": "1.15.7", "@orpc/shared": "1.15.7", "@standard-schema/spec": "^1.1.0", "openapi-types": "^12.1.3" } }, "sha512-odDdWRjfQggsiO40OZbITnDC92RGJ3hG3NVK6Uzn5lL2QHFw6OQbBX96hfm/quoJL3MfaXsAjVKPYgflCQRt7w=="],
-
-    "@impz/testing/@orpc/openapi-client/@orpc/shared": ["@orpc/shared@1.15.7", "", { "dependencies": { "radash": "^12.1.1", "type-fest": "^5.4.4" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-GbrRsaMNb2vt1R/zvVyBxxNNnAP3n2wx6G2mU23yQfmt349EuqAf2R/U6IERbRhbbc1VcXsBPWnWj21LzaKsdg=="],
-
-    "@impz/testing/@orpc/openapi-client/@orpc/standard-server": ["@orpc/standard-server@1.15.7", "", { "dependencies": { "@orpc/shared": "1.15.7" } }, "sha512-iKfg90hyYhbS06C7adQxPAx+M/NLsWFjsQ7JGD6NFdmxOPhSueKrQUuQPQrDjwY482ivjxNbUFrLiOg44P97vA=="],
-
     "@npmcli/git/which/isexe": ["isexe@4.0.0", "", {}, "sha512-FFUtZMpoZ8RqHS3XeXEmHWLA4thH+ZxCv2lOiPIn1Xc7CxrqhWzNSDzD+/chS/zbYezmiwWLdQC09JdQKmthOw=="],
 
     "@npmcli/promise-spawn/which/isexe": ["isexe@4.0.0", "", {}, "sha512-FFUtZMpoZ8RqHS3XeXEmHWLA4thH+ZxCv2lOiPIn1Xc7CxrqhWzNSDzD+/chS/zbYezmiwWLdQC09JdQKmthOw=="],
@@ -3718,10 +3708,6 @@
     "@grpc/proto-loader/yargs/cliui/wrap-ansi": ["wrap-ansi@7.0.0", "", { "dependencies": { "ansi-styles": "^4.0.0", "string-width": "^4.1.0", "strip-ansi": "^6.0.0" } }, "sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q=="],
 
     "@grpc/proto-loader/yargs/string-width/strip-ansi": ["strip-ansi@6.0.1", "", { "dependencies": { "ansi-regex": "^5.0.1" } }, "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A=="],
-
-    "@impz/testing/@orpc/openapi-client/@orpc/client/@orpc/standard-server-fetch": ["@orpc/standard-server-fetch@1.15.7", "", { "dependencies": { "@orpc/shared": "1.15.7", "@orpc/standard-server": "1.15.7" } }, "sha512-6wz3nNLUUiRFgMoG9Mrmpplwe1H7n5SuQu3QWpp8ykEjzogkFVlcXhpFkjRu6xATpXqDshyVlD/ESAc7MbLJtg=="],
-
-    "@impz/testing/@orpc/openapi-client/@orpc/client/@orpc/standard-server-peer": ["@orpc/standard-server-peer@1.15.7", "", { "dependencies": { "@orpc/shared": "1.15.7", "@orpc/standard-server": "1.15.7" } }, "sha512-5SSPCAaigRSy3Ba2Rtj/WVfHvxvRNdKScPN4a7UP3a/Hnqfca1BRy8/ZvkpCjrt2UCzm3oPm2TlHW+LZ1Zvfdw=="],
 
     "@tanstack/router-plugin/@babel/core/@babel/code-frame/@babel/helper-validator-identifier": ["@babel/helper-validator-identifier@7.29.7", "", {}, "sha512-qehxGkRj55h/ff8EMaJ+cYhyaKlHIxqYDn682wQD7RNp9UujOQsHog2uS0r2vzr4pW+sXf90NeeayjcNaX3fFg=="],
 
