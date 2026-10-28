@@ -1,26 +1,26 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { join } from 'node:path';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
+import type { normalizeImage } from './normalize-image';
 import { checkBrowserSkip } from './test-utils/check-browser-skip';
+import { createBrowserView } from './test-utils/create-browser-view';
+import { findBrowserRun } from './test-utils/find-browser-run';
+import { runInPage } from './test-utils/run-in-page';
 
 // Bun 1.4.2's skipIf takes a boolean and has no in-body skip, so the suite checks the browser
 // before its tests start.
 const browserSkip = await checkBrowserSkip();
 
 async function setupTest() {
-  const built = await Bun.build({
-    entrypoints: [join(import.meta.dir, 'normalize-image.ts')],
-    format: 'esm',
-    target: 'browser',
-  });
+  const run = findBrowserRun(process.env);
 
-  const script = await built.outputs[0]?.text();
-
-  invariant(script !== undefined, 'the build wrote no bundle');
+  invariant(run !== null, 'the browser preload refuses a process with no browser run');
 
   const answerRequest = (request: Request) =>
     new URL(request.url).pathname === '/normalize-image.js'
-      ? new Response(script, { headers: { 'content-type': 'text/javascript' } })
+      ? new Response(Bun.file(run.normalizeImagePath), {
+          headers: { 'content-type': 'text/javascript' },
+        })
       : new Response('<!doctype html><title>images</title>', {
           headers: { 'content-type': 'text/html' },
         });
@@ -35,9 +35,7 @@ async function setupTest() {
     await page.stop(true);
   });
 
-  // Chrome's sandbox needs user namespaces that a container or a root user lacks, and the browser
-  // loads only the page this test serves.
-  const view = new Bun.WebView({ backend: { argv: ['--no-sandbox'], type: 'chrome', url: false } });
+  const view = createBrowserView();
 
   onTestFinished(() => {
     view.close();
@@ -53,28 +51,70 @@ test.skipIf(browserSkip.isSkipped)(
   async () => {
     const ctx = await setupTest();
 
-    const result: unknown = await ctx.view.evaluate(`(async () => {
-    const canvas = new OffscreenCanvas(3000, 2000);
-    const context = canvas.getContext('2d');
-    context.fillStyle = '#4a7';
-    context.fillRect(0, 0, 3000, 2000);
-    const photo = new Uint8Array(await (await canvas.convertToBlob({ type: 'image/jpeg' })).arrayBuffer());
-    const payload = new TextEncoder().encode('Exif\\0\\0GPS-51.4778N-0.0014W');
-    const segment = new Uint8Array([0xff, 0xe1, (payload.length + 2) >> 8, (payload.length + 2) & 255, ...payload]);
-    const tagged = new Uint8Array([...photo.slice(0, 2), ...segment, ...photo.slice(2)]);
-    const { normalizeImage } = await import('/normalize-image.js');
-    const image = await normalizeImage(new File([tagged], 'garden.jpg', { type: 'image/jpeg' }));
-    const bitmap = await createImageBitmap(image);
-    const text = new TextDecoder('latin1').decode(await image.arrayBuffer());
-    return {
-      type: image.type,
-      width: bitmap.width,
-      height: bitmap.height,
-      hadTag: new TextDecoder('latin1').decode(tagged).includes('GPS-51.4778N'),
-      hasExif: text.includes('Exif'),
-      hasTag: text.includes('GPS-51.4778N'),
-    };
-  })()`);
+    const result = await runInPage(
+      ctx.view,
+      async (scriptURL: string) => {
+        const canvas = new OffscreenCanvas(3000, 2000);
+
+        const context = canvas.getContext('2d');
+
+        if (context === null) {
+          throw new Error('the page has no 2D canvas');
+        }
+
+        context.fillStyle = '#4a7';
+
+        context.fillRect(0, 0, 3000, 2000);
+
+        const jpeg = await canvas.convertToBlob({ type: 'image/jpeg' });
+        const jpegBytes = await jpeg.arrayBuffer();
+
+        const photo = new Uint8Array(jpegBytes);
+        const payload = new TextEncoder().encode('Exif\0\0GPS-51.4778N-0.0014W');
+
+        const segment = new Uint8Array([
+          0xff,
+          0xe1,
+          (payload.length + 2) >> 8,
+          (payload.length + 2) & 255,
+          ...payload,
+        ]);
+
+        const tagged = new Uint8Array([...photo.slice(0, 2), ...segment, ...photo.slice(2)]);
+
+        // oxlint-disable-next-line zgeoff/import-zones -- the page imports the lane's bundle by its URL
+        const imported: { readonly normalizeImage: typeof normalizeImage } = await import(
+          scriptURL
+        );
+
+        const image = await imported.normalizeImage(
+          new File([tagged], 'garden.jpg', { type: 'image/jpeg' }),
+        );
+
+        const bitmap = await createImageBitmap(image);
+        const imageBytes = await image.arrayBuffer();
+
+        const text = new TextDecoder('latin1').decode(imageBytes);
+
+        return {
+          type: image.type,
+          width: bitmap.width,
+          height: bitmap.height,
+          hadTag: new TextDecoder('latin1').decode(tagged).includes('GPS-51.4778N'),
+          hasExif: text.includes('Exif'),
+          hasTag: text.includes('GPS-51.4778N'),
+        };
+      },
+      '/normalize-image.js',
+      z.object({
+        type: z.string(),
+        width: z.number(),
+        height: z.number(),
+        hadTag: z.boolean(),
+        hasExif: z.boolean(),
+        hasTag: z.boolean(),
+      }),
+    );
 
     expect(result).toStrictEqual({
       type: 'image/jpeg',
@@ -92,15 +132,37 @@ test.skipIf(browserSkip.isSkipped)(
   async () => {
     const ctx = await setupTest();
 
-    const result: unknown = await ctx.view.evaluate(`(async () => {
-    const canvas = new OffscreenCanvas(800, 600);
-    canvas.getContext('2d').fillRect(10, 10, 100, 100);
-    const screenshot = await canvas.convertToBlob({ type: 'image/png' });
-    const { normalizeImage } = await import('/normalize-image.js');
-    const image = await normalizeImage(new File([screenshot], 'screen.png', { type: 'image/png' }));
-    const bitmap = await createImageBitmap(image);
-    return { type: image.type, width: bitmap.width, height: bitmap.height };
-  })()`);
+    const result = await runInPage(
+      ctx.view,
+      async (scriptURL: string) => {
+        const canvas = new OffscreenCanvas(800, 600);
+
+        const context = canvas.getContext('2d');
+
+        if (context === null) {
+          throw new Error('the page has no 2D canvas');
+        }
+
+        context.fillRect(10, 10, 100, 100);
+
+        const screenshot = await canvas.convertToBlob({ type: 'image/png' });
+
+        // oxlint-disable-next-line zgeoff/import-zones -- the page imports the lane's bundle by its URL
+        const imported: { readonly normalizeImage: typeof normalizeImage } = await import(
+          scriptURL
+        );
+
+        const image = await imported.normalizeImage(
+          new File([screenshot], 'screen.png', { type: 'image/png' }),
+        );
+
+        const bitmap = await createImageBitmap(image);
+
+        return { type: image.type, width: bitmap.width, height: bitmap.height };
+      },
+      '/normalize-image.js',
+      z.object({ type: z.string(), width: z.number(), height: z.number() }),
+    );
 
     expect(result).toStrictEqual({ type: 'image/png', width: 800, height: 600 });
   },
@@ -111,11 +173,28 @@ test.skipIf(browserSkip.isSkipped)(
   async () => {
     const ctx = await setupTest();
 
-    const result: unknown = await ctx.view.evaluate(`(async () => {
-    const { normalizeImage } = await import('/normalize-image.js');
-    return normalizeImage(new File([new TextEncoder().encode('not an image')], 'notes.png', { type: 'image/png' }))
-      .then(() => 'decoded', (error) => error.name);
-  })()`);
+    const result = await runInPage(
+      ctx.view,
+      async (scriptURL: string) => {
+        // oxlint-disable-next-line zgeoff/import-zones -- the page imports the lane's bundle by its URL
+        const imported: { readonly normalizeImage: typeof normalizeImage } = await import(
+          scriptURL
+        );
+
+        return imported
+          .normalizeImage(
+            new File([new TextEncoder().encode('not an image')], 'notes.png', {
+              type: 'image/png',
+            }),
+          )
+          .then(
+            () => 'decoded',
+            (error: unknown) => (error instanceof Error ? error.name : 'no error'),
+          );
+      },
+      '/normalize-image.js',
+      z.string(),
+    );
 
     expect(result).toBe('ImageUnreadableError');
   },

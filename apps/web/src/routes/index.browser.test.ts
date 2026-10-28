@@ -1,7 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
+import { z } from 'zod';
 import { store } from '../mocks/store';
 import { checkBrowserSkip } from '../test-utils/check-browser-skip';
+import { createBrowserView } from '../test-utils/create-browser-view';
+import { runInPage } from '../test-utils/run-in-page';
 import { setBrowserFiles } from '../test-utils/set-browser-files';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
@@ -36,9 +39,7 @@ async function setupTest() {
     await elsewhere.stop(true);
   });
 
-  // Chrome's sandbox needs user namespaces that a container or a root user lacks, and the browser
-  // loads only pages from the loopback servers this test starts.
-  const view = new Bun.WebView({ backend: { argv: ['--no-sandbox'], type: 'chrome', url: false } });
+  const view = createBrowserView();
 
   onTestFinished(() => {
     view.close();
@@ -64,11 +65,27 @@ test.skipIf(browserSkip.isSkipped)(
 
     await ctx.view.navigate(`${ctx.appURL}/`);
 
-    await ctx.view.evaluate(`fetch('/rpc/sessions/enrol', {
-    body: JSON.stringify({ json: { clientActionID: '0b7e4f2a-6c1d-4e8b-9a3f-5d2c8e1b7a64', code: '${code.code}', deviceName: 'kitchen tablet', tokenDelivery: 'cookie' } }),
-    headers: { 'content-type': 'application/json', 'x-nixie-client': 'web' },
-    method: 'POST',
-  }).then((response) => response.status)`);
+    await runInPage(
+      ctx.view,
+      async (enrolmentCode: string) => {
+        const response = await fetch('/rpc/sessions/enrol', {
+          body: JSON.stringify({
+            json: {
+              clientActionID: '0b7e4f2a-6c1d-4e8b-9a3f-5d2c8e1b7a64',
+              code: enrolmentCode,
+              deviceName: 'kitchen tablet',
+              tokenDelivery: 'cookie',
+            },
+          }),
+          headers: { 'content-type': 'application/json', 'x-nixie-client': 'web' },
+          method: 'POST',
+        });
+
+        return response.status;
+      },
+      code.code,
+      z.number(),
+    );
 
     await ctx.view.navigate(ctx.elsewhereURL);
     await ctx.view.click('#open');

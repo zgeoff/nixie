@@ -1,3 +1,5 @@
+import { createBrowserView } from './create-browser-view';
+
 export interface BrowserSkip {
   readonly isSkipped: boolean;
 
@@ -43,11 +45,8 @@ export async function checkBrowserSkip(probe: BrowserProbe = {}): Promise<Browse
   return { isSkipped: true, reason };
 }
 
-// Bun runs one Chrome for the whole test process and the first view's options win, so these
-// match the browser suites' options.
 async function openChromeView(): Promise<void> {
-  // Chrome's sandbox needs user namespaces that a container or a root user lacks.
-  const view = new Bun.WebView({ backend: { argv: ['--no-sandbox'], type: 'chrome', url: false } });
+  const view = createBrowserView();
 
   try {
     await view.navigate('about:blank');

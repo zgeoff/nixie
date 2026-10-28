@@ -1,5 +1,8 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import { z } from 'zod';
 import { checkBrowserSkip } from './check-browser-skip';
+import { createBrowserView } from './create-browser-view';
+import { runInPage } from './run-in-page';
 import { setBrowserFiles } from './set-browser-files';
 
 // Bun 1.4.2's skipIf takes a boolean and has no in-body skip, so the suite checks the browser
@@ -24,8 +27,7 @@ async function setupTest() {
     await page.stop(true);
   });
 
-  // Chrome's sandbox needs user namespaces that a container or a root user lacks.
-  const view = new Bun.WebView({ backend: { argv: ['--no-sandbox'], type: 'chrome', url: false } });
+  const view = createBrowserView();
 
   onTestFinished(() => {
     view.close();
@@ -49,9 +51,29 @@ test.skipIf(browserSkip.isSkipped)(
       ],
     });
 
-    const picked: unknown = await ctx.view.evaluate(`Promise.all(
-    [...document.querySelector('#picker').files].map(async (file) => [file.name, [...new Uint8Array(await file.arrayBuffer())]]),
-  )`);
+    const pickedFile = z.tuple([z.string(), z.array(z.int())]);
+
+    const picked = await runInPage(
+      ctx.view,
+      async (selector: string) => {
+        const input = document.querySelector(selector);
+
+        if (!(input instanceof HTMLInputElement) || input.files === null) {
+          throw new Error(`the page shows no file input at ${selector}`);
+        }
+
+        const files = [...input.files];
+
+        const contents = await Promise.all(files.map((file) => file.arrayBuffer()));
+
+        return contents.map((content, index): [string, number[]] => [
+          files[index]?.name ?? '',
+          [...new Uint8Array(content)],
+        ]);
+      },
+      '#picker',
+      z.array(pickedFile),
+    );
 
     expect(picked).toStrictEqual([
       ['swatch.png', [0x89, 0x50, 0x4e, 0x47]],

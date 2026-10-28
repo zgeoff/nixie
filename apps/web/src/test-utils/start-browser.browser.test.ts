@@ -29,3 +29,47 @@ test.skipIf(browserSkip.isSkipped)(
     expect(children).toMatch(/chrom/u);
   },
 );
+
+test.skipIf(browserSkip.isSkipped)('it refuses a process that names no browser run', async () => {
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      '-e',
+      `await import(${JSON.stringify(join(import.meta.dir, 'start-browser.ts'))});`,
+    ],
+    { env: { ...process.env, NIXIE_BROWSER_RUN_ID: '' }, stderr: 'pipe', stdout: 'ignore' },
+  );
+
+  onTestFinished(() => {
+    child.kill();
+  });
+
+  const [exitCode, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()]);
+
+  expect(stderr).toInclude('NIXIE_BROWSER_RUN_ID names none');
+  expect(exitCode).toBe(1);
+});
+
+test.skipIf(browserSkip.isSkipped)('it refuses a run whose build is missing', async () => {
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      '-e',
+      `await import(${JSON.stringify(join(import.meta.dir, 'start-browser.ts'))});`,
+    ],
+    {
+      env: { ...process.env, NIXIE_BROWSER_RUN_ID: 'no-such-run' },
+      stderr: 'pipe',
+      stdout: 'ignore',
+    },
+  );
+
+  onTestFinished(() => {
+    child.kill();
+  });
+
+  const [exitCode, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()]);
+
+  expect(stderr).toInclude('the browser run no-such-run has no build at ');
+  expect(exitCode).toBe(1);
+});

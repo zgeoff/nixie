@@ -19,6 +19,30 @@ test('it builds into a directory for its own process, so parallel test processes
   expect(path).toBe(join(tmpdir(), 'nixie-web-builds', String(process.pid), 'server', 'server.js'));
 });
 
+test("it reads the browser lane's prebuilt client instead of building one", async () => {
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      '-e',
+      `const { runWebBuildOnce } = await import(${JSON.stringify(join(import.meta.dir, '..', '..', 'apps', 'web', 'src', 'test-utils', 'run-web-build-once.ts'))});
+      console.log(await runWebBuildOnce());`,
+    ],
+    { env: { ...process.env, NIXIE_BROWSER_RUN_ID: '4417' }, stdout: 'pipe' },
+  );
+
+  onTestFinished(() => {
+    child.kill();
+  });
+
+  const [exitCode, stdout] = await Promise.all([child.exited, new Response(child.stdout).text()]);
+
+  expect(stdout).toBe(
+    `${join(import.meta.dir, '..', '..', 'node_modules', '.cache', 'nixie-browser-runs', '4417', 'web', 'server', 'server.js')}\n`,
+  );
+
+  expect(exitCode).toBe(0);
+});
+
 test('it removes the build of a test process that has exited before it builds', async () => {
   const buildsDir = await mkdtemp(join(tmpdir(), 'nixie-web-builds-test-'));
 
