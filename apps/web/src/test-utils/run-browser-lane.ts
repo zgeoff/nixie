@@ -7,7 +7,7 @@ import { removeExitedProcessDirs } from './remove-exited-process-dirs';
 
 const webDir = join(import.meta.dir, '..', '..');
 
-// `bun test --parallel=1` runs each file in its own process, and the preload runs in each, so the
+// `bun test --parallel=1` isolates each file, so the preload runs again for each one, and the
 // builds and the run ID come from here, once per run. Bun starts Chrome with the environment the
 // test process started with, so Chrome's TMPDIR is set here too.
 export async function runBrowserLane(testArgs: readonly string[]): Promise<number> {
