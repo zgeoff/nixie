@@ -74,15 +74,19 @@ no prose. `moment.find` decrypts every candidate's text in process memory, a bat
 matches each query word against it, because a full-text index on disk would keep a destroyed
 moment's words.
 
-`moment.read` returns every record in the span, each with its event ID, its kind, its time, its
-payload, its policy decision, its text and its source of content. The payload holds what the text
-leaves out, such as a called tool's name or an action's outcome. A record with no source holds only
-what nixie itself wrote, and a record whose key is gone shows as a gap. Each page stops at a token
-cap and returns a cursor, because a span over a long task holds thousands of records and a moment
-gathers reflections over time. The first page holds the note, the reflections follow under the same
-cursor, and then the records. A single reflection or record larger than a page arrives cut to fit
-it. Every page repeats the title, so a title long enough to crowd out the rest of the page arrives
-cut as well.
+`moment.read` returns the conversation of the span by default: the user's messages and the model's
+replies, in order. The raw fields of tool calls, tool results and step markers bury those words, so
+they come only in a read that asks for all records, which returns every record in the span. Each
+record comes with its event ID, its kind, its time, its payload, its policy decision, its text and
+its source of content. Either read returns the records as untrusted, so a span that holds outside
+content taints the task that reads it, even when the outside content itself is left out. The payload
+holds what the text leaves out, such as a called tool's name or an action's outcome. A record with
+no source holds only what nixie itself wrote, and a record whose key is gone shows as a gap. Each
+page stops at a token cap and returns a cursor, because a span over a long task holds thousands of
+records and a moment gathers reflections over time. The first page holds the note, the reflections
+follow under the same cursor, and then the records. A single reflection or record larger than a page
+arrives cut to fit it. Every page repeats the title, so a title long enough to crowd out the rest of
+the page arrives cut as well.
 
 The records of a moment tool call hold references only: moment IDs, versions and event IDs. Each
 call record leaves out the title, the reflection and the search words, and each result record lists

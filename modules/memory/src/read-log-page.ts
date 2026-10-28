@@ -9,6 +9,7 @@ import type {
 import { readRecords } from '@heynixie/log';
 import { renderImageMarkers, renderOwnerText } from '@heynixie/sessions';
 import { z } from 'zod';
+import { conversationKinds } from './conversation-kinds';
 
 export interface LogPageQuery {
   readonly thread: string;
@@ -53,7 +54,7 @@ export async function readLogPage(
   return { entries: scan.entries, next: scan.after >= bounds.through ? null : scan.after };
 }
 
-const entryKinds: readonly RecordKind[] = ['owner_message', 'model.reply', 'tool_result'];
+const entryKinds: readonly RecordKind[] = [...conversationKinds, 'tool_result'];
 
 interface SequenceBounds {
   readonly after: number;

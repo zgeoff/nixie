@@ -271,6 +271,7 @@ test("it leaves another moment's title, note and reflections readable after a de
     momentID: spared.momentID,
     after: null,
     tokenCap: 2000,
+    records: 'all',
   });
 
   expect(read).toMatchObject({

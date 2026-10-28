@@ -68,6 +68,7 @@ async function readReadableMoment(
     lastSequence: row.last_sequence,
     after: null,
     tokenCap: Number.POSITIVE_INFINITY,
+    records: 'all',
   });
 
   return {

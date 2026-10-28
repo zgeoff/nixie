@@ -81,6 +81,7 @@ test('#memory.keepMoment keeps the span with its title as a moment the user kept
     momentID: kept.momentID,
     after: null,
     tokenCap: 1000,
+    records: 'all',
   });
 
   const [record] = await readRecords(ctx.context.log, {
@@ -717,6 +718,7 @@ test('#memory.destroyMoment refuses a client action ID that another change used,
     momentID: kept.momentID,
     after: null,
     tokenCap: 1000,
+    records: 'all',
   });
 
   expect(destroy).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
@@ -763,6 +765,7 @@ test.each([
     momentID: kept.momentID,
     after: null,
     tokenCap: 1000,
+    records: 'all',
   });
 
   expect(destroy).rejects.toMatchObject({ code: 'UNAUTHORIZED' });

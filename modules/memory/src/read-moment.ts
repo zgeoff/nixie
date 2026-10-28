@@ -5,13 +5,14 @@ import { pickMomentPage } from './pick-moment-page';
 import { readMomentDetail } from './read-moment-detail';
 import type { MomentRow } from './read-moment-row';
 import { readMomentRow } from './read-moment-row';
-import type { MomentSpanEntry } from './read-moment-span-page';
+import type { MomentSpanEntry, MomentSpanRecords } from './read-moment-span-page';
 import { readMomentSpanPage } from './read-moment-span-page';
 
 export interface MomentReadRequest {
   readonly momentID: string;
   readonly after: MomentCursor | null;
   readonly tokenCap: number;
+  readonly records: MomentSpanRecords;
 }
 
 export interface MomentRead {
@@ -65,6 +66,7 @@ export async function readMoment(
     lastSequence: row.last_sequence,
     after: records.after,
     tokenCap: records.tokenCap,
+    records: request.records,
   });
 
   return {

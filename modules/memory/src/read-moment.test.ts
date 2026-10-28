@@ -49,6 +49,7 @@ test('it pages the reflections and then the records under one cursor, each once,
     momentID: kept.shortID,
     after: null,
     tokenCap: 2500,
+    records: 'all',
   });
 
   invariant(first !== null && first.next !== null);
@@ -57,6 +58,7 @@ test('it pages the reflections and then the records under one cursor, each once,
     momentID: kept.shortID,
     after: first.next,
     tokenCap: 2500,
+    records: 'all',
   });
 
   invariant(second !== null && second.next !== null);
@@ -65,6 +67,7 @@ test('it pages the reflections and then the records under one cursor, each once,
     momentID: kept.shortID,
     after: second.next,
     tokenCap: 2500,
+    records: 'all',
   });
 
   invariant(third !== null);
@@ -132,6 +135,7 @@ test('it cuts a note larger than the page, so the first page stays within the ca
     momentID: kept.shortID,
     after: null,
     tokenCap: 2000,
+    records: 'all',
   });
 
   invariant(page !== null);
@@ -193,6 +197,7 @@ test('it goes on from the next reflection after the user removes one the page be
     momentID: kept.shortID,
     after: null,
     tokenCap: 2500,
+    records: 'all',
   });
 
   invariant(firstPage !== null && firstPage.next !== null);
@@ -207,6 +212,7 @@ test('it goes on from the next reflection after the user removes one the page be
     momentID: kept.shortID,
     after: firstPage.next,
     tokenCap: 2500,
+    records: 'all',
   });
 
   invariant(secondPage !== null);
@@ -256,6 +262,7 @@ test('it gives the note on the first page only', async () => {
     momentID: kept.shortID,
     after: null,
     tokenCap: 1000,
+    records: 'all',
   });
 
   invariant(firstPage !== null && firstPage.next !== null);
@@ -264,6 +271,7 @@ test('it gives the note on the first page only', async () => {
     momentID: kept.shortID,
     after: firstPage.next,
     tokenCap: 1000,
+    records: 'all',
   });
 
   invariant(secondPage !== null);

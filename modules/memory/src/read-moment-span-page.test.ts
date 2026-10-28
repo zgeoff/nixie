@@ -30,6 +30,7 @@ test('it cuts a record larger than the page until the entry, escaped as the read
     lastSequence: reply.sequence,
     after: null,
     tokenCap: 6000,
+    records: 'all',
   });
 
   const [entry] = page.entries;
@@ -61,6 +62,7 @@ test('it leaves out a payload that alone outgrows the page, so the entry still f
     lastSequence: wake.sequence,
     after: null,
     tokenCap: 6000,
+    records: 'all',
   });
 
   const [entry] = page.entries;
@@ -94,6 +96,7 @@ test('it gives each record its payload and its policy decision beside its text',
     lastSequence: called.sequence,
     after: null,
     tokenCap: 6000,
+    records: 'all',
   });
 
   expect(page.entries).toStrictEqual([
