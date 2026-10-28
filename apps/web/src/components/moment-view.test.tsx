@@ -291,6 +291,184 @@ test('it says the moment changed when an edit meets a newer version', async () =
   );
 });
 
+test('it holds a note draft when another device changes the note, until the user keeps the draft', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const moment = await store.moments.create({
+    title: 'The ladder',
+    note: { text: 'Never leave it on the landing.', writtenAt: new Date() },
+  });
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const edit = await rendered.findByRole('button', { name: 'Edit the note' });
+
+  await ctx.user.click(edit);
+
+  await ctx.user.type(
+    rendered.getByRole('textbox', { name: 'Why this moment matters, in your words' }),
+    ' Or in the hall.',
+  );
+
+  await store.moments.update((query) => query.where({ momentID: moment.momentID }), {
+    data(draft) {
+      draft.note = { text: 'Keep it in the shed.', writtenAt: new Date() };
+      draft.version = 2;
+    },
+  });
+
+  globalThis.dispatchEvent(new Event('visibilitychange'));
+
+  const conflict = await rendered.findByRole('group', { name: 'The moment changed' });
+
+  const save = rendered.getByRole('button', { name: 'Save the note' });
+  const isHeld = save.hasAttribute('disabled');
+
+  await ctx.user.click(within(conflict).getByRole('button', { name: 'Keep my draft' }));
+  await ctx.user.click(save);
+  await rendered.findByText('Never leave it on the landing. Or in the hall.');
+
+  const saved = store.moments.findFirst((query) => query.where({ momentID: moment.momentID }));
+
+  expect(isHeld).toBe(true);
+  expect(saved?.note?.text).toBe('Never leave it on the landing. Or in the hall.');
+  expect(saved?.version).toBe(3);
+});
+
+test('it replaces a note draft with the note another device wrote when the user takes the latest', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const moment = await store.moments.create({
+    title: 'The ladder',
+    note: { text: 'Never leave it on the landing.', writtenAt: new Date() },
+  });
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const edit = await rendered.findByRole('button', { name: 'Edit the note' });
+
+  await ctx.user.click(edit);
+
+  const field = rendered.getByRole('textbox', { name: 'Why this moment matters, in your words' });
+
+  await ctx.user.type(field, ' Or in the hall.');
+
+  await store.moments.update((query) => query.where({ momentID: moment.momentID }), {
+    data(draft) {
+      draft.note = { text: 'Keep it in the shed.', writtenAt: new Date() };
+      draft.version = 2;
+    },
+  });
+
+  globalThis.dispatchEvent(new Event('visibilitychange'));
+
+  const conflict = await rendered.findByRole('group', { name: 'The moment changed' });
+
+  await ctx.user.click(within(conflict).getByRole('button', { name: 'Take the latest' }));
+
+  expect(field).toHaveValue('Keep it in the shed.');
+  expect(rendered.getByRole('button', { name: 'Save the note' })).toBeEnabled();
+});
+
+test('it holds a title draft when another device renames the moment', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const moment = await store.moments.create({ title: 'The ladder' });
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const rename = await rendered.findByRole('button', { name: 'Rename' });
+
+  await ctx.user.click(rename);
+  await ctx.user.type(rendered.getByRole('textbox', { name: 'Title' }), ' on the stairs');
+
+  await store.moments.update((query) => query.where({ momentID: moment.momentID }), {
+    data(draft) {
+      draft.title = 'The step ladder';
+      draft.version = 2;
+    },
+  });
+
+  globalThis.dispatchEvent(new Event('visibilitychange'));
+
+  const conflict = await rendered.findByRole('group', { name: 'The moment changed' });
+
+  expect(conflict).toBeVisible();
+  expect(rendered.getByRole('textbox', { name: 'Title' })).toHaveValue('The ladder on the stairs');
+  expect(rendered.getByRole('button', { name: 'Save the title' })).toBeDisabled();
+});
+
+test('it holds an edges draft when another device moves the edges', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const moment = await store.moments.create({
+    title: 'The ladder',
+    firstSequence: 2,
+    lastSequence: 4,
+  });
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const first = await rendered.findByRole('textbox', { name: 'First record' });
+
+  await ctx.user.clear(first);
+  await ctx.user.type(first, '1');
+
+  await store.moments.update((query) => query.where({ momentID: moment.momentID }), {
+    data(draft) {
+      draft.lastSequence = 6;
+      draft.version = 2;
+    },
+  });
+
+  globalThis.dispatchEvent(new Event('visibilitychange'));
+
+  const conflict = await rendered.findByRole('group', { name: 'The moment changed' });
+
+  expect(conflict).toBeVisible();
+  expect(rendered.getByRole('textbox', { name: 'Last record' })).toHaveValue('4');
+  expect(rendered.getByRole('button', { name: 'Move the edges' })).toBeDisabled();
+});
+
+test('it shows the edges another device moved when the user has not changed them', async () => {
+  await createDeviceSession();
+
+  const moment = await store.moments.create({
+    title: 'The ladder',
+    firstSequence: 2,
+    lastSequence: 4,
+  });
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  await rendered.findByRole('textbox', { name: 'Last record' });
+
+  await store.moments.update((query) => query.where({ momentID: moment.momentID }), {
+    data(draft) {
+      draft.lastSequence = 6;
+      draft.version = 2;
+    },
+  });
+
+  globalThis.dispatchEvent(new Event('visibilitychange'));
+
+  const moved = await rendered.findByText(
+    'The moment holds records 2 to 6 of its conversation. Move an edge to hold more or less of it.',
+  );
+
+  expect(moved).toBeVisible();
+  expect(rendered.getByRole('textbox', { name: 'Last record' })).toHaveValue('6');
+  expect(rendered.queryByRole('group', { name: 'The moment changed' })).toBeNull();
+});
+
 test('it sends an edit that got no answer again with its first action ID and version', async () => {
   const ctx = setupTest();
 

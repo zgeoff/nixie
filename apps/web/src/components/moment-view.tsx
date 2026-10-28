@@ -5,9 +5,11 @@ import { useState } from 'react';
 import { formatMemoryDate } from '../format-memory-date';
 import { css } from '../styled-system/css';
 import type { MomentDetail } from '../types';
+import { useMomentDraft } from '../use-moment-draft';
 import { useMomentEdit } from '../use-moment-edit';
 import { useNixieClient } from '../use-nixie-client';
 import { MomentDestroyControl } from './moment-destroy-control';
+import { MomentDraftConflict } from './moment-draft-conflict';
 import { MomentLinks } from './moment-links';
 import { MomentNoteForm } from './moment-note-form';
 import { MomentReflections } from './moment-reflections';
@@ -98,13 +100,18 @@ const field = css({ borderWidth: '1px', paddingInline: '2' });
 
 function MomentTitle(props: MomentPartProps): ReactNode {
   const moment = props.moment;
-  const [draft, setDraft] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const draft = useMomentDraft(moment.title ?? '', moment.version);
 
-  const edit = useMomentEdit(moment.momentID, () => {
-    setDraft(null);
-  });
+  const stopEditing = (): void => {
+    draft.takeLatest();
 
-  if (draft === null) {
+    setIsEditing(false);
+  };
+
+  const edit = useMomentEdit(moment.momentID, stopEditing);
+
+  if (!isEditing) {
     return (
       <div className={row}>
         <h1 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>
@@ -113,7 +120,7 @@ function MomentTitle(props: MomentPartProps): ReactNode {
         {moment.titleBy === 'model' ? <span className={quiet}>(title by a model)</span> : null}
         <button
           onClick={() => {
-            setDraft(moment.title ?? '');
+            setIsEditing(true);
           }}
           type="button"
         >
@@ -123,7 +130,7 @@ function MomentTitle(props: MomentPartProps): ReactNode {
     );
   }
 
-  const title = draft.trim();
+  const title = draft.value.trim();
 
   return (
     <form
@@ -131,8 +138,8 @@ function MomentTitle(props: MomentPartProps): ReactNode {
       onSubmit={(event) => {
         event.preventDefault();
 
-        if (title !== '') {
-          edit.send({ change: { kind: 'title', title }, version: moment.version });
+        if (title !== '' && !draft.isOutdated) {
+          edit.send({ change: { kind: 'title', title }, version: draft.baseVersion });
         }
       }}
     >
@@ -142,22 +149,20 @@ function MomentTitle(props: MomentPartProps): ReactNode {
           className={field}
           maxLength={120}
           onChange={(event) => {
-            setDraft(event.target.value);
+            draft.change(event.target.value);
           }}
-          value={draft}
+          value={draft.value}
         />
       </label>
-      <button disabled={title === '' || edit.isPending} type="submit">
+      <button disabled={title === '' || draft.isOutdated || edit.isPending} type="submit">
         Save the title
       </button>
-      <button
-        onClick={() => {
-          setDraft(null);
-        }}
-        type="button"
-      >
+      <button onClick={stopEditing} type="button">
         Cancel
       </button>
+      {draft.isOutdated ? (
+        <MomentDraftConflict onKeepDraft={draft.keepDraft} onTakeLatest={draft.takeLatest} />
+      ) : null}
       {edit.notice === null ? null : <p role="alert">{edit.notice}</p>}
     </form>
   );
@@ -209,9 +214,15 @@ function MomentNote(props: MomentPartProps): ReactNode {
 
 function MomentEdges(props: MomentPartProps): ReactNode {
   const moment = props.moment;
-  const [first, setFirst] = useState(String(moment.firstSequence));
-  const [last, setLast] = useState(String(moment.lastSequence));
-  const edit = useMomentEdit(moment.momentID);
+
+  const draft = useMomentDraft(
+    { first: String(moment.firstSequence), last: String(moment.lastSequence) },
+    moment.version,
+  );
+
+  const edit = useMomentEdit(moment.momentID, draft.markSaved);
+  const first = draft.value.first;
+  const last = draft.value.last;
   const firstSequence = Number(first);
   const lastSequence = Number(last);
 
@@ -233,10 +244,10 @@ function MomentEdges(props: MomentPartProps): ReactNode {
         onSubmit={(event) => {
           event.preventDefault();
 
-          if (isValid) {
+          if (isValid && !draft.isOutdated) {
             edit.send({
               change: { kind: 'edges', firstSequence, lastSequence },
-              version: moment.version,
+              version: draft.baseVersion,
             });
           }
         }}
@@ -247,7 +258,7 @@ function MomentEdges(props: MomentPartProps): ReactNode {
             className={field}
             inputMode="numeric"
             onChange={(event) => {
-              setFirst(event.target.value);
+              draft.change({ first: event.target.value, last });
             }}
             value={first}
           />
@@ -258,15 +269,18 @@ function MomentEdges(props: MomentPartProps): ReactNode {
             className={field}
             inputMode="numeric"
             onChange={(event) => {
-              setLast(event.target.value);
+              draft.change({ first, last: event.target.value });
             }}
             value={last}
           />
         </label>
-        <button disabled={!isValid || edit.isPending} type="submit">
+        <button disabled={!isValid || draft.isOutdated || edit.isPending} type="submit">
           Move the edges
         </button>
       </form>
+      {draft.isOutdated ? (
+        <MomentDraftConflict onKeepDraft={draft.keepDraft} onTakeLatest={draft.takeLatest} />
+      ) : null}
       {edit.notice === null ? null : <p role="alert">{edit.notice}</p>}
     </section>
   );

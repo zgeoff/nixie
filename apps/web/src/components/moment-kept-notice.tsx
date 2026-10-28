@@ -101,7 +101,7 @@ function NoteWriter(props: NoteWriterProps): ReactNode {
     return <p role="alert">This moment did not load. It may be gone.</p>;
   }
 
-  // The form takes its starting text once, so it waits for the moment and shows any note it holds.
+  // A form mounted before the moment loads starts from no note, and a save would replace the note.
   if (moment.data === undefined) {
     return <p>Loading the moment…</p>;
   }

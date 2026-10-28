@@ -130,9 +130,11 @@ gone shows as a gap in its place, so a forget wins over the span.
 
 The user renames a moment, moves its edges, writes or rewrites its note, removes a reflection, and
 links or unlinks a memory item by its short ID. Each edit is a
-[checked action](../channels/api.md#checked-actions) bound to the version the view read. An edit
-that meets a newer version fails as stale, and the refusal rolls back the client action with the
-change.
+[checked action](../channels/api.md#checked-actions) bound to the version its draft started from. An
+edit that meets a newer version fails as stale, and the refusal rolls back the client action with
+the change. When a read shows that the moment changed under a draft the user has typed, the client
+holds the save until the user takes the latest text or keeps the draft, so a save never overwrites a
+change the user did not see.
 
 A moment that the conversation keeps shows in the conversation as a keep notice after the step that
 kept it, with its title and a link to its view. The notice offers to add a note once. The client
