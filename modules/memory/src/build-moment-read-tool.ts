@@ -6,7 +6,12 @@ import type { MomentCursor } from './pick-moment-page';
 import type { MomentRead } from './read-moment';
 import type { MomentSpanEntry } from './read-moment-span-page';
 
-const readArguments = z.object({ momentID: z.string(), after: z.string().optional() });
+const readArguments = z.object({
+  momentID: z.string(),
+  after: z.string().optional(),
+  records: z.enum(['conversation', 'all']).default('conversation'),
+});
+
 const pageTokenCap = 6000;
 
 export function buildMomentReadTool(moments: Pick<MomentStore, 'read'>): ToolDefinition {
@@ -14,8 +19,10 @@ export function buildMomentReadTool(moments: Pick<MomentStore, 'read'>): ToolDef
     name: 'moment.read',
     description:
       "Reads a kept moment whole: its title, the owner's note, each reflection with the model " +
-      'that wrote it, and the records of its span in order, each with its eventID, its ' +
-      'payload, its policy decision and the source of its content. Read a moment that ' +
+      "that wrote it, and its span in order: by default only the owner's messages and your " +
+      'replies, each with its eventID, its time and the source of its content. Pass records ' +
+      'as all to read every record of the span, tool calls and results included, each with ' +
+      'its payload and its policy decision as well. Read a moment that ' +
       'memory.recall links to an item, or that moment.find returns, when the reason behind a ' +
       'fact matters, such as a case the fact does not cover. A long moment comes a page at a ' +
       'time: the first page holds the note, and the reflections and then the records follow. ' +
@@ -26,6 +33,7 @@ export function buildMomentReadTool(moments: Pick<MomentStore, 'read'>): ToolDef
       properties: {
         momentID: { type: 'string' },
         after: { type: 'string', pattern: '^(r[a-z0-9]{1,40}|[0-9]{1,15})$' },
+        records: { type: 'string', enum: ['conversation', 'all'] },
       },
       required: ['momentID'],
       additionalProperties: false,
@@ -72,6 +80,7 @@ export function buildMomentReadTool(moments: Pick<MomentStore, 'read'>): ToolDef
         momentID: input.momentID,
         after: parseMomentCursor(input.after),
         tokenCap: pageTokenCap,
+        records: input.records,
       });
 
       if (read === null) {

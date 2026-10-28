@@ -1,8 +1,11 @@
 import type { ContentSource, JSONObject, Log, LogRecord, RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { renderOwnerText } from '@heynixie/sessions';
+import { conversationKinds } from './conversation-kinds';
 import { countBatchTokens } from './count-batch-tokens';
 import type { MomentSpan } from './moment-types';
+
+export type MomentSpanRecords = 'conversation' | 'all';
 
 export interface MomentSpanQuery extends MomentSpan {
   readonly thread: string;
@@ -10,6 +13,7 @@ export interface MomentSpanQuery extends MomentSpan {
   // the sequence the page before ended at, or null for the first page
   readonly after: number | null;
   readonly tokenCap: number;
+  readonly records: MomentSpanRecords;
 }
 
 export interface MomentSpanEntry {
@@ -50,6 +54,7 @@ export async function readMomentSpanPage(
       afterSequence: after,
       beforeSequence: query.lastSequence + 1,
       thread: query.thread,
+      ...(query.records === 'conversation' ? { kinds: conversationKinds } : {}),
       limit: batchSize,
     });
 

@@ -211,7 +211,7 @@ test('#moment.keep counts the moments of the last 7 days across the conversation
   expect(result.structuredContent).toMatchObject({ keptThisWeek: 3 });
 });
 
-test('#moment.read returns every record of a span over the conversation, tool calls and results included, each with its source', async () => {
+test('#moment.read returns every record of a span when asked for all, tool calls and results included, each with its source', async () => {
   const ctx = await setupTest();
 
   const message = await writeOwnerMessageRecord(ctx.memory.log, {
@@ -248,7 +248,11 @@ test('#moment.read returns every record of a span over the conversation, tool ca
   invariant(kept.status === 'written');
 
   const result = await runToolCall(
-    { tool: 'moment.read', input: { momentID: kept.shortID }, toolUseID: 'toolu_2' },
+    {
+      tool: 'moment.read',
+      input: { momentID: kept.shortID, records: 'all' },
+      toolUseID: 'toolu_2',
+    },
     ctx.run,
     ctx.toolCallOptions,
   );
@@ -292,6 +296,202 @@ test('#moment.read returns every record of a span over the conversation, tool ca
   });
 });
 
+test("#moment.read returns only the owner's messages and the replies of a span by default, in order, each with its eventID, time and source", async () => {
+  const ctx = await setupTest();
+
+  const message = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'should the shed door face the hedge',
+    spans: [],
+  });
+
+  await runToolCall(
+    { tool: 'moment.find', input: { query: 'shed' }, toolUseID: 'toolu_1' },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const [step, reply] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'task.wake',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {},
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'face it away from the hedge, so the rain runs off' },
+    },
+  ]);
+
+  invariant(step && reply);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message,
+    lastSequence: reply.sequence,
+    title: 'The shed door',
+  });
+
+  invariant(kept.status === 'written');
+
+  const result = await runToolCall(
+    { tool: 'moment.read', input: { momentID: kept.shortID }, toolUseID: 'toolu_2' },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toMatchObject({
+    next: null,
+    records: [
+      {
+        eventID: String(message),
+        kind: 'owner_message',
+        recordedAt: '2026-10-14T11:10:00.000Z',
+        source: 'owner',
+        text: 'should the shed door face the hedge',
+      },
+      {
+        eventID: String(reply.sequence),
+        kind: 'model.reply',
+        recordedAt: '2026-10-14T11:10:00.000Z',
+        source: 'nixie',
+        text: 'face it away from the hedge, so the rain runs off',
+      },
+    ],
+  });
+});
+
+test("#moment.read reads a span longer than a page through the cursor by default, each of the owner's messages and the replies once and in order", async () => {
+  const ctx = await setupTest();
+
+  const sequences = await writeRecords(
+    ctx.memory.log,
+    Array.from({ length: 40 }, (_, index) =>
+      index % 2 === 0
+        ? {
+            kind: 'model.reply' as const,
+            definitions: { snapshotHash: 'sha256:test' },
+            thread: 'conversation',
+            erasable: { text: `${String(index)} ${'the bees swarm again '.repeat(60)}` },
+          }
+        : {
+            kind: 'task.wake' as const,
+            definitions: { snapshotHash: 'sha256:test' },
+            thread: 'conversation',
+            payload: {},
+          },
+    ),
+  );
+
+  const first = sequences.at(0);
+  const last = sequences.at(-1);
+
+  invariant(first && last);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: first.sequence,
+    lastSequence: last.sequence,
+    title: 'The swarm week',
+  });
+
+  invariant(kept.status === 'written');
+
+  const entrySchema = z.object({ eventID: z.string() });
+  const pageSchema = z.object({ records: z.array(entrySchema), next: z.string().nullable() });
+
+  const firstCall = await runToolCall(
+    { tool: 'moment.read', input: { momentID: kept.shortID }, toolUseID: 'toolu_1' },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const firstPage = pageSchema.parse(firstCall.structuredContent);
+
+  invariant(firstPage.next !== null);
+
+  const secondCall = await runToolCall(
+    {
+      tool: 'moment.read',
+      input: { momentID: kept.shortID, after: firstPage.next },
+      toolUseID: 'toolu_2',
+    },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const secondPage = pageSchema.parse(secondCall.structuredContent);
+  const read = [...firstPage.records, ...secondPage.records];
+
+  expect(firstPage.records.length).toBeLessThan(20);
+  expect(secondPage.next).toBeNull();
+
+  expect(read.map((entry) => Number(entry.eventID))).toStrictEqual(
+    sequences.filter((_, index) => index % 2 === 0).map((record) => record.sequence),
+  );
+});
+
+test('#moment.read keeps a span that holds outside content untrusted when it returns only the conversation', async () => {
+  const ctx = await setupTest();
+
+  const message = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'what does the seed catalogue say about frost',
+    spans: [],
+  });
+
+  const [fetched, reply] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { outcome: 'result', sources: { text: 'untrusted' } },
+      erasable: { result: { text: 'sow after the last frost in May' } },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the catalogue says to sow after the last frost in May' },
+    },
+  ]);
+
+  invariant(fetched && reply);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message,
+    lastSequence: reply.sequence,
+    title: 'Sowing after the frost',
+  });
+
+  invariant(kept.status === 'written');
+
+  const result = await runToolCall(
+    { tool: 'moment.read', input: { momentID: kept.shortID }, toolUseID: 'toolu_1' },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const [readResult] = await readRecords(ctx.memory.log, {
+    afterSequence: reply.sequence,
+    kinds: ['tool_result'],
+  });
+
+  expect(result.structuredContent).toMatchObject({
+    records: [{ eventID: String(message) }, { eventID: String(reply.sequence) }],
+  });
+
+  expect(readResult?.record.contentSource).toBe('untrusted');
+});
+
 test('#moment.read keeps a full page of short records within its cap as the model receives it', async () => {
   const ctx = await setupTest();
 
@@ -330,7 +530,7 @@ test('#moment.read keeps a full page of short records within its cap as the mode
   expect(Math.ceil(JSON.stringify(result.structuredContent).length / 4)).toBeLessThanOrEqual(6000);
 });
 
-test('#moment.read reads a span longer than a page through the cursor, every record once and in order', async () => {
+test('#moment.read reads a span longer than a page through the cursor when asked for all, every record once and in order', async () => {
   const ctx = await setupTest();
 
   const sequences = await writeRecords(
@@ -362,7 +562,11 @@ test('#moment.read reads a span longer than a page through the cursor, every rec
   const pageSchema = z.object({ records: z.array(entrySchema), next: z.string().nullable() });
 
   const firstCall = await runToolCall(
-    { tool: 'moment.read', input: { momentID: kept.shortID }, toolUseID: 'toolu_1' },
+    {
+      tool: 'moment.read',
+      input: { momentID: kept.shortID, records: 'all' },
+      toolUseID: 'toolu_1',
+    },
     ctx.run,
     ctx.toolCallOptions,
   );
@@ -374,7 +578,7 @@ test('#moment.read reads a span longer than a page through the cursor, every rec
   const secondCall = await runToolCall(
     {
       tool: 'moment.read',
-      input: { momentID: kept.shortID, after: firstPage.next },
+      input: { momentID: kept.shortID, after: firstPage.next, records: 'all' },
       toolUseID: 'toolu_2',
     },
     ctx.run,
@@ -630,6 +834,7 @@ test('#moment.edit changes only the title, and returns the next version', async 
     momentID: kept.shortID,
     after: null,
     tokenCap: 2000,
+    records: 'all',
   });
 
   expect(result.structuredContent).toStrictEqual({ momentID: kept.shortID, version: 2 });

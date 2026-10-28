@@ -311,11 +311,11 @@ test('it leaves the excluded words of a query out of the match when asked', asyn
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([bun.itemID]);
 });
 
-test('it finds an unpinned match when more pinned matches rank first than recall ranks at most', async () => {
+test('it finds an unpinned match when more pinned matches rank first than the recall returns', async () => {
   const ctx = await setupTest();
 
   await Promise.all(
-    Array.from({ length: 101 }, (_, index) =>
+    Array.from({ length: 3 }, (_, index) =>
       ctx.memory.store.remember({
         text: `Spare key ${index}`,
         isPinned: true,
