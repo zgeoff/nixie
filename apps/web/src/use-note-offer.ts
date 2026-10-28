@@ -1,5 +1,6 @@
-import { useState, useSyncExternalStore } from 'react';
+import { use, useState, useSyncExternalStore } from 'react';
 import { z } from 'zod';
+import { NoteOfferStorageContext } from './note-offer-storage-context';
 
 export interface NoteOffer {
   readonly isOpen: boolean;
@@ -7,41 +8,34 @@ export interface NoteOffer {
   readonly close: () => void;
 }
 
-const storageKey = 'nixie.momentNoteOffers';
 const keptCount = 500;
 
 // The keep notice offers a note once, so the answer lives on the device and outlives a reload. A
 // server render has no device storage, so it shows no offer.
 export function useNoteOffer(momentID: string): NoteOffer {
-  const stored = useSyncExternalStore(subscribeToStorage, readStoredOffers, () => null);
+  const storage = use(NoteOfferStorageContext);
+
+  const stored = useSyncExternalStore(
+    storage.subscribe,
+    () => storage.read() ?? '[]',
+    () => null,
+  );
+
   const [isClosed, setIsClosed] = useState(false);
   const isAnswered = stored === null || parseAnswered(stored).includes(momentID);
 
   return {
     isOpen: !isClosed && !isAnswered,
     close: () => {
-      const answered = parseAnswered(readStoredOffers()).filter((answer) => answer !== momentID);
-
-      globalThis.localStorage.setItem(
-        storageKey,
-        JSON.stringify([...answered, momentID].slice(-keptCount)),
+      const answered = parseAnswered(storage.read() ?? '[]').filter(
+        (answer) => answer !== momentID,
       );
+
+      storage.write(JSON.stringify([...answered, momentID].slice(-keptCount)));
 
       setIsClosed(true);
     },
   };
-}
-
-function subscribeToStorage(onChange: () => void): () => void {
-  globalThis.addEventListener('storage', onChange);
-
-  return () => {
-    globalThis.removeEventListener('storage', onChange);
-  };
-}
-
-function readStoredOffers(): string {
-  return globalThis.localStorage.getItem(storageKey) ?? '[]';
 }
 
 function parseAnswered(text: string): readonly string[] {

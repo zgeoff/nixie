@@ -1,6 +1,7 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import userEvent from '@testing-library/user-event';
 import { store } from '../mocks/store';
+import { NoteOfferStorageContext } from '../note-offer-storage-context';
 import { buildMockLogRecord } from '../test-utils/build-mock-log-record';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -175,4 +176,77 @@ test('it lets the user skip the note, and offers it no more', async () => {
   ).toBeVisible();
 
   expect(again.queryByRole('button', { name: 'Add a note' })).toBeNull();
+});
+
+test('it keeps the skip in the storage it is given, beside the answers already there', async () => {
+  const ctx = setupTest();
+  const write = mock<(text: string) => void>();
+
+  const rendered = render(
+    <NoteOfferStorageContext
+      value={{
+        read: () => '["5d2e8a41-7b3c-4f9e-a6d0-1c2b3e4f5a6b"]',
+        write,
+        subscribe: () => () => {},
+      }}
+    >
+      <ConversationList
+        entries={[]}
+        notices={[]}
+        onDiscard={() => {}}
+        onRetry={() => Promise.resolve()}
+        records={[
+          buildMockLogRecord({
+            kind: 'moment_kept',
+            moment: {
+              momentID: '0c8b5f2e-1d3a-4e6b-9f7c-2a4d6e8b0c1d',
+              shortID: 'q4n8v2hw6t',
+              title: 'The ladder on the stairs',
+            },
+          }),
+        ]}
+      />
+    </NoteOfferStorageContext>,
+  );
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Skip' }));
+
+  expect(write).toHaveBeenCalledExactlyOnceWith(
+    '["5d2e8a41-7b3c-4f9e-a6d0-1c2b3e4f5a6b","0c8b5f2e-1d3a-4e6b-9f7c-2a4d6e8b0c1d"]',
+  );
+});
+
+test('it shows no offer for a moment that the given storage holds as answered', () => {
+  const rendered = render(
+    <NoteOfferStorageContext
+      value={{
+        read: () => '["0c8b5f2e-1d3a-4e6b-9f7c-2a4d6e8b0c1d"]',
+        write: () => {},
+        subscribe: () => () => {},
+      }}
+    >
+      <ConversationList
+        entries={[]}
+        notices={[]}
+        onDiscard={() => {}}
+        onRetry={() => Promise.resolve()}
+        records={[
+          buildMockLogRecord({
+            kind: 'moment_kept',
+            moment: {
+              momentID: '0c8b5f2e-1d3a-4e6b-9f7c-2a4d6e8b0c1d',
+              shortID: 'q4n8v2hw6t',
+              title: 'The ladder on the stairs',
+            },
+          }),
+        ]}
+      />
+    </NoteOfferStorageContext>,
+  );
+
+  expect(
+    rendered.getByRole('listitem', { name: 'Kept a moment: The ladder on the stairs' }),
+  ).toBeVisible();
+
+  expect(rendered.queryByRole('button', { name: 'Add a note' })).toBeNull();
 });
