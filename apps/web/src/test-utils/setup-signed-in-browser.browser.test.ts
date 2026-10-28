@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { checkBrowserSkip } from './check-browser-skip';
+import { createBrowserView } from './create-browser-view';
 import { setupSignedInBrowser } from './setup-signed-in-browser';
 
 // Bun 1.4.2's skipIf takes a boolean and has no in-body skip, so the suite checks the browser
@@ -27,8 +28,7 @@ async function setupTest() {
     await app.stop(true);
   });
 
-  // Chrome's sandbox needs user namespaces that a container or a root user lacks.
-  const view = new Bun.WebView({ backend: { argv: ['--no-sandbox'], type: 'chrome', url: false } });
+  const view = createBrowserView();
 
   onTestFinished(() => {
     view.close();

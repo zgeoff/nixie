@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import { store } from '../mocks/store';
 import { checkBrowserSkip } from '../test-utils/check-browser-skip';
+import { createBrowserView } from '../test-utils/create-browser-view';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
@@ -17,10 +18,7 @@ async function setupTest() {
   const web = await startBuiltWeb(api.url);
 
   const app = startFrontProxy({ apiURL: api.url, webURL: web.url });
-
-  // Chrome's sandbox needs user namespaces that a container or a root user lacks, and the browser
-  // loads only pages from the loopback servers this test starts.
-  const view = new Bun.WebView({ backend: { argv: ['--no-sandbox'], type: 'chrome', url: false } });
+  const view = createBrowserView();
 
   onTestFinished(() => {
     view.close();
