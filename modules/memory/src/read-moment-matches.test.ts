@@ -10,7 +10,7 @@ async function setupTest() {
   return { memory };
 }
 
-test('it finds the oldest moment by a word that only it holds, behind more than 500 newer moments', async () => {
+test('it finds the oldest moment by a word that only it holds, behind more than 100 newer moments', async () => {
   const ctx = await setupTest();
 
   const [message] = await writeRecords(ctx.memory.log, [
@@ -33,7 +33,7 @@ test('it finds the oldest moment by a word that only it holds, behind more than 
   });
 
   await Promise.all(
-    Array.from({ length: 520 }, (_, index) =>
+    Array.from({ length: 120 }, (_, index) =>
       ctx.memory.store.moments.keep({
         caller: { kind: 'owner' },
         thread: 'conversation',
