@@ -92,6 +92,40 @@ test("it shows the span's messages and replies, and a gap where a record was for
   ]);
 });
 
+test('it shows more of a long span when the user asks for the next page', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await Promise.all(
+    Array.from({ length: 101 }, (_, index) =>
+      store.records.create({
+        sequence: index + 1,
+        kind: 'owner_message',
+        message: { text: `the ladder moved, take ${String(index + 1)}` },
+      }),
+    ),
+  );
+
+  const moment = await store.moments.create({ firstSequence: 1, lastSequence: 101 });
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const more = await rendered.findByRole('button', { name: 'Show more of the conversation' });
+
+  const records = rendered.getByRole('list', { name: 'Records' });
+  const firstPage = within(records).getAllByRole('listitem').length;
+
+  await ctx.user.click(more);
+
+  const last = await within(records).findByText('the ladder moved, take 101');
+
+  expect(firstPage).toBe(100);
+  expect(last).toBeVisible();
+  expect(within(records).getAllByRole('listitem')).toHaveLength(101);
+  expect(rendered.queryByRole('button', { name: 'Show more of the conversation' })).toBeNull();
+});
+
 test('it renames the moment, which then shows the title as yours', async () => {
   const ctx = setupTest();
 

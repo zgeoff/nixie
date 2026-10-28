@@ -38,7 +38,7 @@ export const mockMomentProcedures = {
   readMomentSpan: memory.readMomentSpan.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-    const span = readMockMomentSpan(options.input.momentID);
+    const span = readMockMomentSpan(options.input.momentID, options.input.after);
 
     if (span === null) {
       throw options.errors.MOMENT_NOT_FOUND();

@@ -3,8 +3,12 @@ import { store } from './store';
 interface MomentListInput {
   readonly includeRetired: boolean;
   readonly query?: string | undefined;
+  readonly before?: number | undefined;
 }
 
+const pageSize = 50;
+
+// The mock's cursor counts the moments of the pages before it, and the client treats it as opaque.
 export function readMockMoments(input: MomentListInput) {
   const words = (input.query ?? '')
     .toLowerCase()
@@ -31,8 +35,11 @@ export function readMockMoments(input: MomentListInput) {
     })
     .toSorted((left, right) => right.keptAt.getTime() - left.keptAt.getTime());
 
+  const start = input.before ?? 0;
+  const end = start + pageSize;
+
   return {
-    moments: moments.flatMap((moment) =>
+    moments: moments.slice(start, end).flatMap((moment) =>
       moment.state === 'destroyed'
         ? []
         : [
@@ -47,6 +54,6 @@ export function readMockMoments(input: MomentListInput) {
             },
           ],
     ),
-    next: null,
+    next: end < moments.length ? end : null,
   };
 }

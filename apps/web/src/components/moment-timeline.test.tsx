@@ -42,6 +42,36 @@ test('it lists the active moments newest first, each linked to its view', async 
   );
 });
 
+test('it shows older moments when the user asks for the next page', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await Promise.all(
+    Array.from({ length: 51 }, (_, index) =>
+      store.moments.create({
+        title: `Moment ${String(index + 1)}`,
+        keptAt: new Date(Date.UTC(2026, 8, 1) + index * 86_400_000),
+      }),
+    ),
+  );
+
+  const rendered = render(<MomentTimeline />);
+
+  const older = await rendered.findByRole('button', { name: 'Show older moments' });
+
+  const firstPage = rendered.getAllByRole('listitem').length;
+
+  await ctx.user.click(older);
+
+  const oldest = await rendered.findByRole('listitem', { name: 'Moment 1' });
+
+  expect(firstPage).toBe(50);
+  expect(oldest).toBeVisible();
+  expect(rendered.getAllByRole('listitem')).toHaveLength(51);
+  expect(rendered.queryByRole('button', { name: 'Show older moments' })).toBeNull();
+});
+
 test('it marks a moment kept by nixie and edited later with the date of its edit', async () => {
   await createDeviceSession();
 
