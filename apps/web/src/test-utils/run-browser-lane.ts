@@ -1,18 +1,33 @@
 import { mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import type { BrowserRun } from './build-browser-run';
 import { buildBrowserRun } from './build-browser-run';
 import { pickChromeTmpdir } from './pick-chrome-tmpdir';
 import { removeExitedProcessDirs } from './remove-exited-process-dirs';
 
-const webDir = join(import.meta.dir, '..', '..');
+interface BrowserLaneDependencies {
+  readonly run: BrowserRun;
+
+  readonly chromeTmpdir: string;
+
+  readonly runBuilds: (run: BrowserRun) => Promise<void>;
+
+  readonly runTests: (
+    testArgs: readonly string[],
+    env: Readonly<Record<string, string | undefined>>,
+  ) => Promise<number>;
+}
 
 // `bun test --parallel=1` isolates each file, so the preload runs again for each one, and the
 // builds and the run ID come from here, once per run. Bun starts Chrome with the environment the
 // test process started with, so Chrome's TMPDIR is set here too.
-export async function runBrowserLane(testArgs: readonly string[]): Promise<number> {
-  const run = buildBrowserRun(String(process.pid));
-  const chromeTmpdir = pickChromeTmpdir(tmpdir(), run.runID);
+export async function runBrowserLane(
+  testArgs: readonly string[],
+  dependencies: BrowserLaneDependencies,
+): Promise<number> {
+  const run = dependencies.run;
+  const chromeTmpdir = dependencies.chromeTmpdir;
 
   await Promise.all([
     removeExitedProcessDirs(run.runsDir),
@@ -25,9 +40,9 @@ export async function runBrowserLane(testArgs: readonly string[]): Promise<numbe
       mkdir(chromeTmpdir, { recursive: true }),
     ]);
 
-    await runBuilds(run.webDir, run.normalizeImagePath);
+    await dependencies.runBuilds(run);
 
-    return await runTests(testArgs, {
+    return await dependencies.runTests(testArgs, {
       ...process.env,
       NIXIE_BROWSER_RUN_ID: run.runID,
       TMPDIR: chromeTmpdir,
@@ -40,8 +55,10 @@ export async function runBrowserLane(testArgs: readonly string[]): Promise<numbe
   }
 }
 
-async function runBuilds(webOutDir: string, normalizeImagePath: string): Promise<void> {
-  const child = Bun.spawn(['bun', 'run', 'build', '--outDir', webOutDir], {
+const webDir = join(import.meta.dir, '..', '..');
+
+async function runBuilds(run: BrowserRun): Promise<void> {
+  const child = Bun.spawn(['bun', 'run', 'build', '--outDir', run.webDir], {
     cwd: webDir,
     stderr: 'inherit',
     stdout: 'inherit',
@@ -57,7 +74,7 @@ async function runBuilds(webOutDir: string, normalizeImagePath: string): Promise
     entrypoints: [join(webDir, 'src', 'normalize-image.ts')],
     format: 'esm',
     naming: 'normalize-image.js',
-    outdir: dirname(normalizeImagePath),
+    outdir: dirname(run.normalizeImagePath),
     target: 'browser',
   });
 }
@@ -91,5 +108,12 @@ async function runTests(
 }
 
 if (import.meta.main) {
-  process.exitCode = await runBrowserLane(process.argv.slice(2));
+  const run = buildBrowserRun(String(process.pid));
+
+  process.exitCode = await runBrowserLane(process.argv.slice(2), {
+    chromeTmpdir: pickChromeTmpdir(tmpdir(), run.runID),
+    run,
+    runBuilds,
+    runTests,
+  });
 }
