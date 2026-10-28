@@ -1,8 +1,9 @@
 import { expect, mock, test } from 'bun:test';
 import { within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, getResponse, http } from 'msw';
 import { z } from 'zod';
+import { handlers } from '../mocks/handlers';
 import { server } from '../mocks/node';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -520,6 +521,68 @@ test('it sends an edit that got no answer again with its first action ID and ver
   expect(failed).toHaveTextContent('The change did not save. Try again.');
   expect(sent).toHaveBeenCalledTimes(2);
   expect(second).toStrictEqual(first);
+});
+
+test('it resends an edit that committed but lost its answer with its first action ID and version, and edits once', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const moment = await store.moments.create({ title: 'The ladder' });
+
+  const sent = mock((body: unknown) =>
+    z.object({ json: z.object({ clientActionID: z.string(), version: z.number() }) }).parse(body),
+  );
+
+  server.use(
+    http.post('*/rpc/memory/editMoment', async (call) => {
+      const body: unknown = await call.request.clone().json();
+
+      sent(body);
+    }),
+  );
+
+  server.use(
+    http.post(
+      '*/rpc/memory/editMoment',
+      async (call) => {
+        const body: unknown = await call.request.clone().json();
+
+        sent(body);
+
+        await getResponse(handlers, call.request);
+
+        return HttpResponse.error();
+      },
+      { once: true },
+    ),
+  );
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const rename = await rendered.findByRole('button', { name: 'Rename' });
+
+  await ctx.user.click(rename);
+  await ctx.user.type(rendered.getByRole('textbox', { name: 'Title' }), ' on the stairs');
+  await ctx.user.click(rendered.getByRole('button', { name: 'Save the title' }));
+
+  const failed = await rendered.findByRole('alert');
+  const refreshed = await rendered.findByText(/· edited/u);
+
+  const conflict = rendered.queryByRole('group', { name: 'The moment changed' });
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Save the title' }));
+  await rendered.findByRole('heading', { name: 'The ladder on the stairs' });
+
+  const [first, second] = sent.mock.results.map((result) => result.value);
+  const edited = store.moments.findFirst((query) => query.where({ momentID: moment.momentID }));
+
+  expect(failed).toHaveTextContent('The change did not save. Try again.');
+  expect(refreshed).toBeVisible();
+  expect(conflict).toBeNull();
+  expect(sent).toHaveBeenCalledTimes(2);
+  expect(second).toStrictEqual(first);
+  expect(edited?.version).toBe(2);
 });
 
 test('it hides the moment once a read finds it destroyed elsewhere', async () => {
