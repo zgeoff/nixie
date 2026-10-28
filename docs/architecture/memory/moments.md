@@ -81,12 +81,13 @@ record comes with its event ID, its kind, its time, its payload, its policy deci
 its source of content. Either read returns the records as untrusted, so a span that holds outside
 content taints the task that reads it, even when the outside content itself is left out. The payload
 holds what the text leaves out, such as a called tool's name or an action's outcome. A record with
-no source holds only what nixie itself wrote, and a record whose key is gone shows as a gap. Each
-page stops at a token cap and returns a cursor, because a span over a long task holds thousands of
-records and a moment gathers reflections over time. The first page holds the note, the reflections
-follow under the same cursor, and then the records. A single reflection or record larger than a page
-arrives cut to fit it. Every page repeats the title, so a title long enough to crowd out the rest of
-the page arrives cut as well.
+no source holds only what nixie itself wrote, and a record whose key is gone shows as a gap.
+
+Each page of `moment.read` stops at a token cap and returns a cursor, because a span over a long
+task holds thousands of records and a moment gathers reflections over time. The first page holds the
+note, the reflections follow under the same cursor, and then the records. A single reflection or
+record larger than a page arrives cut to fit it. Every page repeats the title, so a title long
+enough to crowd out the rest of the page arrives cut as well.
 
 The records of a moment tool call hold references only: moment IDs, versions and event IDs. Each
 call record leaves out the title, the reflection and the search words, and each result record lists
