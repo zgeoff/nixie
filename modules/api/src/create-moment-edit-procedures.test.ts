@@ -355,19 +355,99 @@ test('#memory.editMoment refuses to remove a reflection the moment does not hold
   expect(edited).rejects.toMatchObject({ code: 'REFLECTION_NOT_FOUND' });
 });
 
-test('#memory.editMoment refuses a caller with no session', async () => {
+test.each([
+  ['no session token', undefined],
+  ['a token that no session holds', 'f3a9c1e2b7d84605a1c9e2f3b4d5c6a7'],
+  ['an empty bearer token', ''],
+])('#memory.editMoment refuses a caller with %s, and edits nothing', async (_, token) => {
   const ctx = await setupTest();
 
-  const edited = buildTestClient(ctx.url, 'not-a-session').memory.editMoment({
+  const [message] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the radio only gets one station now' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The radio',
+  });
+
+  invariant(kept.status === 'written');
+
+  const edited = buildTestClient(ctx.url, token).memory.editMoment({
     clientActionID: '6e1f3a92-4c7d-4b0a-9e58-3d2c1b0a9f87',
-    momentID: 'q4n8v2hw6t',
+    momentID: kept.momentID,
     version: 1,
-    change: { kind: 'title', title: 'The radio' },
+    change: { kind: 'title', title: 'The one-station radio' },
   });
 
   await edited.catch(() => {});
 
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['moment_edited'],
+  });
+
   expect(edited).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(records).toStrictEqual([]);
+});
+
+test('#memory.editMoment refuses a caller whose session another device revoked, and edits nothing', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const phone = await createDeviceSession(ctx.context, 'phone');
+
+  const [message] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the radio only gets one station now' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The radio',
+  });
+
+  invariant(kept.status === 'written');
+
+  await buildTestClient(ctx.url, laptop.token).sessions.revoke({
+    clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    sessionID: phone.sessionID,
+  });
+
+  const edited = buildTestClient(ctx.url, phone.token).memory.editMoment({
+    clientActionID: '6e1f3a92-4c7d-4b0a-9e58-3d2c1b0a9f87',
+    momentID: kept.momentID,
+    version: 1,
+    change: { kind: 'title', title: 'The one-station radio' },
+  });
+
+  await edited.catch(() => {});
+
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['moment_edited'],
+  });
+
+  expect(edited).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(records).toStrictEqual([]);
 });
 
 test('#memory.linkMoment links a memory item that the user names by its short ID', async () => {
@@ -421,6 +501,64 @@ test('#memory.linkMoment links a memory item that the user names by its short ID
   expect(read.links).toStrictEqual([
     { itemID: item.itemID, shortID, text: 'Listens to the news at seven' },
   ]);
+});
+
+test.each([
+  ['no session token', undefined],
+  ['a token that no session holds', 'f3a9c1e2b7d84605a1c9e2f3b4d5c6a7'],
+  ['an empty bearer token', ''],
+])('#memory.linkMoment refuses a caller with %s, and links nothing', async (_, token) => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the radio only gets one station now' },
+    },
+  ]);
+
+  invariant(message);
+
+  const item = await ctx.memory.remember({
+    text: 'Listens to the news at seven',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const shortIDs = await ctx.memory.readShortIDs([item.itemID]);
+
+  const shortID = shortIDs.get(item.itemID);
+
+  invariant(shortID !== undefined);
+
+  const kept = await ctx.memory.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The radio',
+  });
+
+  invariant(kept.status === 'written');
+
+  const linked = buildTestClient(ctx.url, token).memory.linkMoment({
+    clientActionID: '6e1f3a92-4c7d-4b0a-9e58-3d2c1b0a9f87',
+    momentID: kept.momentID,
+    version: 1,
+    itemID: shortID,
+    isLinked: true,
+  });
+
+  await linked.catch(() => {});
+
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['moment_linked'],
+  });
+
+  expect(linked).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(records).toStrictEqual([]);
 });
 
 test('#memory.linkMoment removes a link', async () => {
