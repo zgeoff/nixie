@@ -302,6 +302,36 @@ const memoryProposals = new Collection({
   }),
 });
 
+const momentReflectionSchema = z.object({
+  model: z.string().default('claude-test-4'),
+  reflectionID: z.string().default(() => faker.string.alphanumeric(10)),
+  text: z.string().default(() => faker.lorem.sentence()),
+  writtenAt: z.date().default(() => faker.date.recent()),
+});
+
+const momentNoteSchema = z.object({ text: z.string(), writtenAt: z.date() });
+const itemIDsSchema = z.array(z.string());
+
+const moments = new Collection({
+  schema: z.object({
+    editedAt: z.date().nullable().default(null),
+    firstSequence: z.int().nonnegative().default(1),
+    keptAt: z.date().default(() => faker.date.recent()),
+    keptBy: z.enum(['owner', 'model']).default('model'),
+    lastSequence: z.int().nonnegative().default(1),
+    linkedItemIDs: itemIDsSchema.default([]),
+    momentID: z.uuid().default(() => faker.string.uuid()),
+    note: momentNoteSchema.nullable().default(null),
+    reflections: z.array(momentReflectionSchema).default([]),
+    shortID: z.string().default(() => faker.string.alphanumeric(10)),
+    state: z.enum(['active', 'retired', 'destroyed']).default('active'),
+    thread: z.string().default('conversation'),
+    title: z.string().default(() => faker.lorem.words(3)),
+    titleBy: z.enum(['owner', 'model']).default('model'),
+    version: z.int().positive().default(1),
+  }),
+});
+
 const forgetActions = new Collection({
   schema: z.object({
     clientActionID: z.uuid(),
@@ -321,6 +351,7 @@ export const store = {
   memoryProposals,
   memoryVersions,
   memoryWriter,
+  moments,
   ratingNotes,
   records,
 
@@ -336,6 +367,7 @@ export const store = {
       memoryWriter,
       memoryConsolidator,
       memoryVersions,
+      moments,
       ratingNotes,
       enrolmentCodes,
       sessions,

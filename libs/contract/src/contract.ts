@@ -95,6 +95,10 @@ const recordSchema = z.object({
     })
     .optional(),
 
+  moment: z
+    .object({ momentID: z.string(), shortID: z.string(), title: z.string().optional() })
+    .optional(),
+
   rating: ratingSchema.optional(),
 
   recall: recallSchema.optional(),

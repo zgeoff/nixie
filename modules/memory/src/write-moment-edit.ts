@@ -11,18 +11,25 @@ import type {
   MomentWrite,
 } from './moment-types';
 import { probeThreadSpan } from './probe-thread-span';
+import type { WriteInTransaction } from './types';
 import type { MomentChangeState, PlannedMomentRecord } from './write-moment-change';
 import { writeMomentChange } from './write-moment-change';
 
 export function writeMomentEdit(
   context: MomentContext,
   request: EditMomentRequest,
+  writeInTransaction?: WriteInTransaction,
 ): Promise<MomentWrite> {
-  return writeMomentChange(context, request, async (state) => {
-    const facts = await readEditFacts(state, request.change);
+  return writeMomentChange(
+    context,
+    request,
+    async (state) => {
+      const facts = await readEditFacts(state, request.change);
 
-    return buildEditPlan(state, facts, request.caller, request.change);
-  });
+      return buildEditPlan(state, facts, request.caller, request.change);
+    },
+    writeInTransaction,
+  );
 }
 
 interface EditFacts {

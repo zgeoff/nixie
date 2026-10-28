@@ -56,3 +56,15 @@ export type MemoryNotice = ReadonlyDeep<
 >;
 
 export type MemoryNoticeEntry = MemoryNotice['entries'][number];
+
+export type MomentSummary = ReadonlyDeep<
+  ContractOutputs['memory']['listMoments']['moments'][number]
+>;
+
+export type MomentDetail = ReadonlyDeep<ContractOutputs['memory']['readMoment']>;
+
+export type MomentSpanRecord = ReadonlyDeep<
+  ContractOutputs['memory']['readMomentSpan']['records'][number]
+>;
+
+export type MomentDestroyPreview = ReadonlyDeep<ContractOutputs['memory']['previewMomentDestroy']>;

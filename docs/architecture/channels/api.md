@@ -66,11 +66,11 @@ the old log.
 ## Checked actions
 
 Enrolment, code issue, revoke, message send, record forget, the changes of the
-[memory view](../memory/view.md#changes) and a moment's keep and destroy share one table of client
-action IDs, which holds the first result of each action and a hash of its input. A retry with the
-same ID and input gets the first result, and the same ID with another procedure, input or caller
-gets `CLIENT_ACTION_ID_REUSED`. Two results hold secrets that nixie keeps only as hashes, so their
-retries answer with fresh values that replace the first:
+[memory view](../memory/view.md#changes) and a moment's keep, edit, link and destroy share one table
+of client action IDs, which holds the first result of each action and a hash of its input. A retry
+with the same ID and input gets the first result, and the same ID with another procedure, input or
+caller gets `CLIENT_ACTION_ID_REUSED`. Two results hold secrets that nixie keeps only as hashes, so
+their retries answer with fresh values that replace the first:
 
 - The API answers an enrolment retry with the same session and a fresh token, and the first token
   stops working. It works only while the code it used would still work.

@@ -623,3 +623,60 @@ test('it gives no rating for a rating record that names no recall', () => {
     thread: 'conversation',
   });
 });
+
+test('it carries a kept moment with its IDs and its title', () => {
+  const record = buildMockLogRecord({
+    sequence: 15,
+    recordedAt: new Date('2026-10-10T12:00:06Z'),
+    kind: 'moment_kept',
+    thread: 'conversation',
+    payload: {
+      momentID: '5d1c9e2a-7b3f-4a6d-8c0e-1f2a3b4c5d6e',
+      shortID: 'q4n8v2hw6t',
+      thread: 'conversation',
+      firstSequence: 3,
+      lastSequence: 9,
+      keptBy: 'model',
+      keptThread: 'conversation',
+      model: 'claude-test-4',
+    },
+    erasable: { status: 'readable', fields: { title: 'The ladder on the stairs' } },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'moment_kept',
+    moment: {
+      momentID: '5d1c9e2a-7b3f-4a6d-8c0e-1f2a3b4c5d6e',
+      shortID: 'q4n8v2hw6t',
+      title: 'The ladder on the stairs',
+    },
+    recordedAt: new Date('2026-10-10T12:00:06Z'),
+    sequence: 15,
+    thread: 'conversation',
+  });
+});
+
+test('it carries a destroyed moment with its IDs and no title', () => {
+  const record = buildMockLogRecord({
+    sequence: 15,
+    recordedAt: new Date('2026-10-10T12:00:06Z'),
+    kind: 'moment_kept',
+    thread: 'conversation',
+    payload: {
+      momentID: '5d1c9e2a-7b3f-4a6d-8c0e-1f2a3b4c5d6e',
+      shortID: 'q4n8v2hw6t',
+      thread: 'conversation',
+      firstSequence: 3,
+      lastSequence: 9,
+      keptBy: 'model',
+      keptThread: 'conversation',
+      model: 'claude-test-4',
+    },
+    erasable: { status: 'shredded' },
+  });
+
+  expect(toContractRecord(record)?.moment).toStrictEqual({
+    momentID: '5d1c9e2a-7b3f-4a6d-8c0e-1f2a3b4c5d6e',
+    shortID: 'q4n8v2hw6t',
+  });
+});

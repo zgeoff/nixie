@@ -81,12 +81,13 @@ record comes with its event ID, its kind, its time, its payload, its policy deci
 its source of content. Either read returns the records as untrusted, so a span that holds outside
 content taints the task that reads it, even when the outside content itself is left out. The payload
 holds what the text leaves out, such as a called tool's name or an action's outcome. A record with
-no source holds only what nixie itself wrote, and a record whose key is gone shows as a gap. Each
-page stops at a token cap and returns a cursor, because a span over a long task holds thousands of
-records and a moment gathers reflections over time. The first page holds the note, the reflections
-follow under the same cursor, and then the records. A single reflection or record larger than a page
-arrives cut to fit it. Every page repeats the title, so a title long enough to crowd out the rest of
-the page arrives cut as well.
+no source holds only what nixie itself wrote, and a record whose key is gone shows as a gap.
+
+Each page of `moment.read` stops at a token cap and returns a cursor, because a span over a long
+task holds thousands of records and a moment gathers reflections over time. The first page holds the
+note, the reflections follow under the same cursor, and then the records. A single reflection or
+record larger than a page arrives cut to fit it. Every page repeats the title, so a title long
+enough to crowd out the rest of the page arrives cut as well.
 
 The records of a moment tool call hold references only: moment IDs, versions and event IDs. Each
 call record leaves out the title, the reflection and the search words, and each result record lists
@@ -112,6 +113,32 @@ destroyed ones. The count shows in three places and never blocks a keep:
   the title shredded and leaves the event out.
 - **The session's [status](../core/session-opening.md#status),** which splits the count by keeper
   and counts the moments that wait for a reflection.
+
+## The client
+
+The client shows moments on a timeline and opens each one whole, beside its span. The timeline lists
+the active moments newest first, a page at a time, with each one's title, keeper, keep date and last
+edit date. Its keyword search runs the same match as `moment.find` and shows the best matches in
+time order. Retired moments join the timeline only behind a filter.
+
+The moment view reads the title, the note, every reflection and the links in one read transaction,
+so an edit that commits between the reads cannot pair one version's row with another version's text.
+The view marks a title that a model wrote, dates the note by the record that holds it, and labels
+each reflection with its model and date. Each link shows the memory item's short ID and current
+text. The span arrives a page of records at a time, in sequence order, and a record whose key is
+gone shows as a gap in its place, so a forget wins over the span.
+
+The user renames a moment, moves its edges, writes or rewrites its note, removes a reflection, and
+links or unlinks a memory item by its short ID. Each edit is a
+[checked action](../channels/api.md#checked-actions) bound to the version its draft started from. An
+edit that meets a newer version fails as stale, and the refusal rolls back the client action with
+the change. When a read shows that the moment changed under a draft the user has typed, the client
+holds the save until the user takes the latest text or keeps the draft, so a save never overwrites a
+change the user did not see.
+
+A moment that the conversation keeps shows in the conversation as a keep notice after the step that
+kept it, with its title and a link to its view. The notice offers to add a note once. The client
+keeps the user's answer, a saved note or a skip, on the device, so the offer never returns.
 
 ## Destroying a moment
 

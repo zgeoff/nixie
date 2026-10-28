@@ -551,6 +551,72 @@ test('#memory.destroyMoment shreds the title, cleans up the sessions and records
   ]);
 });
 
+test("#memory.destroyMoment shreds the title, the note and each reflection, and leaves the span's records readable", async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const [message, reply] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'we planted the quince by the back wall' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'It will like the shelter of the wall.' },
+    },
+  ]);
+
+  invariant(message && reply);
+
+  const kept = await ctx.memory.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: reply.sequence,
+    title: 'The quince tree',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.moments.edit({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    target: { momentID: kept.momentID, version: 1 },
+    change: { kind: 'reflection', text: 'The wall was the reason it took.' },
+  });
+
+  await client.memory.editMoment({
+    clientActionID: '2f8d4c61-0a3b-4e7c-9d15-6b2a8e4f0c93',
+    momentID: kept.momentID,
+    version: 2,
+    change: { kind: 'note', note: 'It flowered in its second spring.' },
+  });
+
+  await client.memory.destroyMoment({
+    clientActionID: '7a3e1c52-9d4b-4f0e-b8a6-2c5d9e1f3a74',
+    momentID: kept.momentID,
+    version: 3,
+  });
+
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['owner_message', 'model.reply', 'moment_kept', 'moment_edited'],
+  });
+
+  expect(records.map((entry) => [entry.record.kind, entry.record.erasable.status])).toStrictEqual([
+    ['owner_message', 'readable'],
+    ['model.reply', 'readable'],
+    ['moment_kept', 'shredded'],
+    ['moment_edited', 'shredded'],
+    ['moment_edited', 'shredded'],
+  ]);
+});
+
 test('#memory.destroyMoment completes a destroy on the retry after its session cleanup failed', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');

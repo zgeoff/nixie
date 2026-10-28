@@ -9,6 +9,7 @@ import type { MemoryNotice as MemoryNoticeData, OutboxMessage } from '../types';
 import type { LiveRecord } from '../use-live-records';
 import type { OutboxEntry } from '../use-outbox';
 import { MemoryNotice } from './memory-notice';
+import { MomentKeptNotice } from './moment-kept-notice';
 import { OutboxItem } from './outbox-item';
 import { RecordItem } from './record-item';
 import { ResetMarker } from './reset-marker';
@@ -100,6 +101,10 @@ function ActivityEntry(props: ActivityEntryProps): ReactNode {
 
   if (item.kind === 'reset') {
     return <ResetMarker record={item.record} />;
+  }
+
+  if (item.kind === 'moment') {
+    return <MomentKeptNotice moment={item.moment} />;
   }
 
   return <StepGroup step={item} />;

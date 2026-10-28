@@ -32,12 +32,19 @@ function Home(): ReactNode {
     >
       <Conversation
         navigation={
-          <Link className={css({ color: 'link', textDecoration: 'underline' })} to="/memory">
-            Memory
-          </Link>
+          <nav className={css({ display: 'flex', gap: '3' })}>
+            <Link className={link} to="/memory">
+              Memory
+            </Link>
+            <Link className={link} to="/moments">
+              Moments
+            </Link>
+          </nav>
         }
         thread={thread}
       />
     </SignedInPage>
   );
 }
+
+const link = css({ color: 'link', textDecoration: 'underline' });

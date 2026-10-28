@@ -2,19 +2,12 @@ import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { MemoryProposals } from '../components/memory-proposals';
 import { SignedInPage } from '../components/signed-in-page';
-import { readSessionState } from '../read-session-state';
+import { readRouteSession } from '../read-route-session';
 import { css } from '../styled-system/css';
 
 export const Route = createFileRoute('/memory_/proposals')({
   component: Proposals,
-  loader: async (options) => ({
-    session: await readSessionState(() =>
-      options.context.queryClient.query({
-        ...options.context.queryUtils.memory.writerStatus.queryOptions(),
-        staleTime: 'static',
-      }),
-    ),
-  }),
+  loader: (options) => readRouteSession(options.context),
 });
 
 function Proposals(): ReactNode {

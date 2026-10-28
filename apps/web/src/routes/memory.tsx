@@ -2,7 +2,7 @@ import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { MemoryView } from '../components/memory-view';
 import { SignedInPage } from '../components/signed-in-page';
-import { readSessionState } from '../read-session-state';
+import { readRouteSession } from '../read-route-session';
 import { css } from '../styled-system/css';
 
 interface MemorySearch {
@@ -13,14 +13,7 @@ export const Route = createFileRoute('/memory')({
   component: Memory,
   validateSearch: (search: Record<string, unknown>): MemorySearch =>
     typeof search['item'] === 'string' ? { item: search['item'] } : {},
-  loader: async (options) => ({
-    session: await readSessionState(() =>
-      options.context.queryClient.query({
-        ...options.context.queryUtils.memory.writerStatus.queryOptions(),
-        staleTime: 'static',
-      }),
-    ),
-  }),
+  loader: (options) => readRouteSession(options.context),
 });
 
 function Memory(): ReactNode {
@@ -41,6 +34,9 @@ function Memory(): ReactNode {
           <nav className={css({ display: 'flex', gap: '3' })}>
             <Link className={link} to="/memory/proposals">
               Proposals
+            </Link>
+            <Link className={link} to="/moments">
+              Moments
             </Link>
             <Link className={link} to="/">
               Conversation
