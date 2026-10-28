@@ -52,6 +52,12 @@ test('it stops a running web build on abort, waits for it to exit, and bundles n
 
   const building = buildStep(ctx.run, controller.signal);
 
+  onTestFinished(async () => {
+    controller.abort();
+
+    await building;
+  });
+
   await waitFor(async () => {
     const started = await Bun.file(pidPath).exists();
 
