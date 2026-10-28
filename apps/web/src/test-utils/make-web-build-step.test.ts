@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { waitFor } from '@testing-library/react';
 import { makeWebBuildStep } from './make-web-build-step';
 
 async function setupTest() {
@@ -33,6 +34,41 @@ test('it returns the exit code of a web build that fails and bundles nothing', a
   const bundled = await Bun.file(ctx.run.normalizeImagePath).exists();
 
   expect(exitCode).toBe(3);
+  expect(bundled).toBe(false);
+});
+
+test('it stops a running web build on abort, waits for it to exit, and bundles nothing', async () => {
+  const ctx = await setupTest();
+
+  const pidPath = join(ctx.run.runsDir, 'build.pid');
+
+  const controller = new AbortController();
+
+  const buildStep = makeWebBuildStep([
+    process.execPath,
+    '-e',
+    `await Bun.write(${JSON.stringify(pidPath)}, String(process.pid)); setInterval(() => {}, 1000);`,
+  ]);
+
+  const building = buildStep(ctx.run, controller.signal);
+
+  await waitFor(async () => {
+    const started = await Bun.file(pidPath).exists();
+
+    expect(started).toBe(true);
+  });
+
+  const pidText = await Bun.file(pidPath).text();
+
+  const pid = Number(pidText);
+
+  controller.abort();
+
+  const exitCode = await building;
+  const bundled = await Bun.file(ctx.run.normalizeImagePath).exists();
+
+  expect(exitCode).not.toBe(0);
+  expect(() => process.kill(pid, 0)).toThrow();
   expect(bundled).toBe(false);
 });
 
