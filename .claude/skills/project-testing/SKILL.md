@@ -171,6 +171,11 @@ its certificate names and response handler, so a test calls it in its body.
 [`startFakeImp`](../../../adapters/sandbox-imp/src/test-utils/start-fake-imp.ts) takes none, so
 `setupTest()` may wrap it.
 
+A test of the imp port can run a real impd in the test process through `startTestImpd` from
+`@impz/testing`, which impz publishes with each `@impz/client` release. That impd runs its own API
+and lifecycle on stand-ins for the VMs and the host, so the test needs no `/dev/kvm` and runs in the
+unit run.
+
 A server suite runs nixie in the test process through
 [`startInProcessNixie`](../../../apps/server/src/test-utils/start-in-process-nixie.ts), with the
 stub guest from

@@ -13,6 +13,7 @@ minimumReleaseAge = 604800
 # one nixie uses needs an entry here, or bun install refuses the bump.
 minimumReleaseAgeExcludes = [
   "@impz/client",
+  "@impz/testing",
   "@zgeoff/bun-test-extended",
   "@zgeoff/bun-test-react",
   "@zgeoff/format-codemod",
