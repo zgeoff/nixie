@@ -4,6 +4,7 @@ import { NoteOfferStorageContext } from './note-offer-storage-context';
 
 export interface NoteOffer {
   readonly isOpen: boolean;
+  readonly notice: string | null;
 
   readonly close: () => void;
 }
@@ -22,18 +23,25 @@ export function useNoteOffer(momentID: string): NoteOffer {
   );
 
   const [isClosed, setIsClosed] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const isAnswered = stored === null || parseAnswered(stored).includes(momentID);
 
   return {
     isOpen: !isClosed && !isAnswered,
+    notice,
     close: () => {
-      const answered = parseAnswered(storage.read() ?? '[]').filter(
-        (answer) => answer !== momentID,
-      );
-
-      storage.write(JSON.stringify([...answered, momentID].slice(-keptCount)));
-
       setIsClosed(true);
+
+      try {
+        const answered = parseAnswered(storage.read() ?? '[]').filter(
+          (answer) => answer !== momentID,
+        );
+
+        storage.write(JSON.stringify([...answered, momentID].slice(-keptCount)));
+      } catch {
+        // A browser refuses the write when its storage is full or blocked for the site.
+        setNotice('This device could not keep your answer, so it may offer a note again.');
+      }
     },
   };
 }

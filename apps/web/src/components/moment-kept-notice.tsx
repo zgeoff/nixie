@@ -37,13 +37,19 @@ interface NoteOfferProps {
 function NoteOffer(props: NoteOfferProps): ReactNode {
   const offer = useNoteOffer(props.momentID);
   const [stage, setStage] = useState<'offered' | 'writing' | 'saved'>('offered');
+  const notice = offer.notice === null ? null : <p role="alert">{offer.notice}</p>;
 
   if (stage === 'saved') {
-    return <p role="status">Note added.</p>;
+    return (
+      <>
+        <p role="status">Note added.</p>
+        {notice}
+      </>
+    );
   }
 
   if (!offer.isOpen) {
-    return null;
+    return notice;
   }
 
   if (stage === 'writing') {

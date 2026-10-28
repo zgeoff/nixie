@@ -216,6 +216,97 @@ test('it keeps the skip in the storage it is given, beside the answers already t
   );
 });
 
+test('it closes the offer on a skip that the device cannot store, and says so', async () => {
+  const ctx = setupTest();
+
+  const rendered = render(
+    <NoteOfferStorageContext
+      value={{
+        read: () => null,
+        write: () => {
+          throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+        },
+        subscribe: () => () => {},
+      }}
+    >
+      <ConversationList
+        entries={[]}
+        notices={[]}
+        onDiscard={() => {}}
+        onRetry={() => Promise.resolve()}
+        records={[
+          buildMockLogRecord({
+            kind: 'moment_kept',
+            moment: {
+              momentID: '0c8b5f2e-1d3a-4e6b-9f7c-2a4d6e8b0c1d',
+              shortID: 'q4n8v2hw6t',
+              title: 'The ladder on the stairs',
+            },
+          }),
+        ]}
+      />
+    </NoteOfferStorageContext>,
+  );
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Skip' }));
+
+  expect(rendered.getByRole('alert')).toHaveTextContent(
+    'This device could not keep your answer, so it may offer a note again.',
+  );
+
+  expect(rendered.queryByRole('button', { name: 'Add a note' })).toBeNull();
+});
+
+test('it shows a saved note as added when the device cannot store the answer', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const moment = await store.moments.create({ title: 'The ladder on the stairs', note: null });
+
+  const rendered = render(
+    <NoteOfferStorageContext
+      value={{
+        read: () => null,
+        write: () => {
+          throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+        },
+        subscribe: () => () => {},
+      }}
+    >
+      <ConversationList
+        entries={[]}
+        notices={[]}
+        onDiscard={() => {}}
+        onRetry={() => Promise.resolve()}
+        records={[
+          buildMockLogRecord({
+            kind: 'moment_kept',
+            moment: { momentID: moment.momentID, shortID: moment.shortID, title: moment.title },
+          }),
+        ]}
+      />
+    </NoteOfferStorageContext>,
+  );
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Add a note' }));
+
+  const field = await rendered.findByRole('textbox', {
+    name: 'Why this moment matters, in your words',
+  });
+
+  await ctx.user.type(field, 'Never leave it on the landing.');
+  await ctx.user.click(rendered.getByRole('button', { name: 'Save the note' }));
+
+  const added = await rendered.findByText('Note added.');
+
+  expect(added).toBeVisible();
+
+  expect(rendered.getByRole('alert')).toHaveTextContent(
+    'This device could not keep your answer, so it may offer a note again.',
+  );
+});
+
 test('it shows no offer for a moment that the given storage holds as answered', () => {
   const rendered = render(
     <NoteOfferStorageContext
