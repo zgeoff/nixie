@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildBrowserRun } from './build-browser-run';
 import { checkBrowserSkip } from './check-browser-skip';
@@ -9,23 +10,28 @@ import { checkBrowserSkip } from './check-browser-skip';
 const browserSkip = await checkBrowserSkip();
 
 // The run folder takes this process's ID, so the lane's start-of-run sweep removes it when a run
-// dies before the cleanup.
-function setupTest() {
+// dies before the cleanup. The preloads point TMPDIR at memory, so the child's Chrome gets a temp
+// folder of its own, which the test removes.
+async function setupTest() {
   const run = buildBrowserRun(String(process.pid));
 
   onTestFinished(() => rm(run.runDir, { recursive: true, force: true }));
 
-  return { run };
+  const chromeTmpdir = await mkdtemp(join(tmpdir(), 'nixie-chrome-'));
+
+  onTestFinished(() => rm(chromeTmpdir, { recursive: true, force: true }));
+
+  return { chromeTmpdir, run };
 }
 
 test.skipIf(browserSkip.isSkipped)(
   "it opens the Chrome of each load of the module in one process on a profile folder of its own in the run's folder",
   async () => {
-    const ctx = setupTest();
+    const ctx = await setupTest();
 
-    // Each query string loads the module afresh, as an isolated test file does, and closeAll stops
-    // the first Chrome, as the end of a test file does. A Chrome that Bun starts before the last one
-    // has exited closes its pipe at once, so the script waits for that exit.
+    // Each query string loads the module afresh and closeAll stops its Chrome, as a test file's
+    // start and end do. A Chrome started before the last one exits closes its pipe at once, and an
+    // exiting Chrome still writes to its folders, so the script waits for each exit.
     const modulePath = JSON.stringify(join(import.meta.dir, 'create-browser-view.ts'));
 
     const script = `const first = await import(${modulePath} + '?first');
@@ -38,10 +44,14 @@ test.skipIf(browserSkip.isSkipped)(
       const second = await import(${modulePath} + '?second');
       const secondView = second.createBrowserView();
       await secondView.navigate('about:blank');
+      Bun.WebView.closeAll();
+      while (Bun.spawnSync(['pgrep', '--parent', String(process.pid), 'chrom']).exitCode === 0) {
+        await Bun.sleep(20);
+      }
       process.exit(0);`;
 
     const child = Bun.spawn([process.execPath, '-e', script], {
-      env: { ...process.env, NIXIE_BROWSER_RUN_ID: ctx.run.runID },
+      env: { ...process.env, NIXIE_BROWSER_RUN_ID: ctx.run.runID, TMPDIR: ctx.chromeTmpdir },
       stdout: 'ignore',
     });
 

@@ -6,8 +6,9 @@ import { findBrowserRun } from './find-browser-run';
 // one's profile can start before the last one lets go of it, so each file's Chrome gets its own.
 const profileName = crypto.randomUUID();
 
-// Bun runs one Chrome for each test file and the first view's options win, so every view opens
-// through here. Chrome's sandbox needs user namespaces that a container or a root user lacks.
+// The first view's options win, so every view opens here. The sandbox needs user namespaces that a
+// container lacks. A killed Chrome leaves its shared memory files, so they go to the TMPDIR that
+// the lane removes, in place of /dev/shm.
 export function createBrowserView(): Bun.WebView {
   const run = findBrowserRun(process.env);
 
@@ -18,7 +19,7 @@ export function createBrowserView(): Bun.WebView {
   }
 
   return new Bun.WebView({
-    backend: { argv: ['--no-sandbox'], type: 'chrome', url: false },
+    backend: { argv: ['--no-sandbox', '--disable-dev-shm-usage'], type: 'chrome', url: false },
     dataStore: { directory: join(run.profilesDir, profileName) },
   });
 }
