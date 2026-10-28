@@ -95,14 +95,19 @@ function NoteWriter(props: NoteWriterProps): ReactNode {
     return <p role="alert">This moment did not load. It may be gone.</p>;
   }
 
+  // The form takes its starting text once, so it waits for the moment and shows any note it holds.
+  if (moment.data === undefined) {
+    return <p>Loading the moment…</p>;
+  }
+
   return (
     <MomentNoteForm
       cancelLabel="Skip"
       momentID={props.momentID}
-      note={moment.data?.note?.text ?? ''}
+      note={moment.data.note?.text ?? ''}
       onCancel={props.onCancel}
       onSaved={props.onSaved}
-      version={moment.data?.version ?? null}
+      version={moment.data.version}
     />
   );
 }

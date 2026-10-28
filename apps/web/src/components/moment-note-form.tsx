@@ -5,7 +5,7 @@ import { useMomentEdit } from '../use-moment-edit';
 
 export interface MomentNoteFormProps {
   readonly momentID: string;
-  readonly version: number | null;
+  readonly version: number;
   readonly note: string;
 
   readonly onSaved: () => void;
@@ -28,7 +28,7 @@ export function MomentNoteForm(props: MomentNoteFormProps): ReactNode {
       onSubmit={(event) => {
         event.preventDefault();
 
-        if (version !== null && note !== '') {
+        if (note !== '') {
           edit.send({ change: { kind: 'note', note }, version });
         }
       }}
@@ -46,7 +46,7 @@ export function MomentNoteForm(props: MomentNoteFormProps): ReactNode {
       </label>
       {edit.notice === null ? null : <p role="alert">{edit.notice}</p>}
       <div className={css({ display: 'flex', gap: '2' })}>
-        <button disabled={version === null || note === '' || edit.isPending} type="submit">
+        <button disabled={note === '' || edit.isPending} type="submit">
           Save the note
         </button>
         <button disabled={edit.isPending} onClick={props.onCancel} type="button">

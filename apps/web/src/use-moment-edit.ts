@@ -1,6 +1,7 @@
 import type { ContractInputs } from '@heynixie/contract';
 import { ORPCError } from '@orpc/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useNixieClient } from './use-nixie-client';
 
 type MomentEditChange =
@@ -19,14 +20,27 @@ export interface MomentEdit {
   readonly notice: string | null;
 }
 
+interface MomentEditAttempt extends MomentEditInput {
+  readonly clientActionID: string;
+}
+
 export function useMomentEdit(momentID: string, onApplied?: () => void): MomentEdit {
   const nixie = useNixieClient();
   const queryClient = useQueryClient();
 
+  // A failure with no answer may have committed, so sending the same change again repeats that
+  // attempt whole, with its action ID and its version, and the API answers with the first result.
+  const [uncertain, setUncertain] = useState<MomentEditAttempt | null>(null);
+
   const mutation = useMutation({
-    mutationFn: (input: MomentEditInput) => {
-      const target = { clientActionID: crypto.randomUUID(), momentID, version: input.version };
-      const change = input.change;
+    mutationFn: (attempt: MomentEditAttempt) => {
+      const target = {
+        clientActionID: attempt.clientActionID,
+        momentID,
+        version: attempt.version,
+      };
+
+      const change = attempt.change;
 
       return change.kind === 'link'
         ? nixie.client.memory.linkMoment({
@@ -36,17 +50,28 @@ export function useMomentEdit(momentID: string, onApplied?: () => void): MomentE
           })
         : nixie.client.memory.editMoment({ ...target, change });
     },
+    onError: (error, attempt) => {
+      const unanswered = findRefusalCode(error) === null ? attempt : null;
+
+      setUncertain(unanswered);
+    },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() });
     },
     onSuccess: () => {
+      setUncertain(null);
       onApplied?.();
     },
   });
 
   return {
     send: (input) => {
-      mutation.mutate(input);
+      const isRepeat =
+        uncertain !== null && JSON.stringify(uncertain.change) === JSON.stringify(input.change);
+
+      const attempt = isRepeat ? uncertain : { ...input, clientActionID: crypto.randomUUID() };
+
+      mutation.mutate(attempt);
     },
     isPending: mutation.isPending,
     notice: mutation.isError ? pickEditNotice(mutation.error) : null,
@@ -63,8 +88,14 @@ const editNotices: Readonly<Record<string, string>> = {
   NOT_LINKED: 'That memory item is no longer linked.',
 };
 
-function pickEditNotice(error: unknown): string {
-  const code = error instanceof ORPCError && typeof error.code === 'string' ? error.code : '';
+function findRefusalCode(error: unknown): string | null {
+  if (error instanceof ORPCError && typeof error.code === 'string' && error.code in editNotices) {
+    return error.code;
+  }
 
-  return editNotices[code] ?? 'The change did not save. Try again.';
+  return null;
+}
+
+function pickEditNotice(error: unknown): string {
+  return editNotices[findRefusalCode(error) ?? ''] ?? 'The change did not save. Try again.';
 }

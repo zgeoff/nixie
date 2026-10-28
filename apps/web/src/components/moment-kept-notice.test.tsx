@@ -98,6 +98,40 @@ test('it saves a note from the keep notice, and offers no note again', async () 
   expect(again.queryByRole('button', { name: 'Add a note' })).toBeNull();
 });
 
+test('it opens the note form with the note the moment already holds', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const moment = await store.moments.create({
+    title: 'The ladder on the stairs',
+    note: { text: 'Never leave it on the landing.', writtenAt: new Date() },
+  });
+
+  const rendered = render(
+    <ConversationList
+      entries={[]}
+      notices={[]}
+      onDiscard={() => {}}
+      onRetry={() => Promise.resolve()}
+      records={[
+        buildMockLogRecord({
+          kind: 'moment_kept',
+          moment: { momentID: moment.momentID, shortID: moment.shortID, title: moment.title },
+        }),
+      ]}
+    />,
+  );
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Add a note' }));
+
+  const field = await rendered.findByRole('textbox', {
+    name: 'Why this moment matters, in your words',
+  });
+
+  expect(field).toHaveValue('Never leave it on the landing.');
+});
+
 test('it lets the user skip the note, and offers it no more', async () => {
   const ctx = setupTest();
 

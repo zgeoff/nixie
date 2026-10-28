@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client';
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -43,11 +44,16 @@ export function MomentView(props: MomentViewProps): ReactNode {
       </header>
       {moment.isPending ? <p>Loading the moment…</p> : null}
       {moment.isError ? <p role="alert">This moment did not load. It may be gone.</p> : null}
-      {moment.data === undefined ? null : (
+      {moment.data === undefined || isMomentGone(moment.error) ? null : (
         <MomentDetails moment={moment.data} onDestroyed={props.onDestroyed} />
       )}
     </main>
   );
+}
+
+// A refetch that fails keeps the last data, so a moment destroyed elsewhere would still show.
+function isMomentGone(error: unknown): boolean {
+  return error instanceof ORPCError && error.code === 'MOMENT_NOT_FOUND';
 }
 
 interface MomentDetailsProps {

@@ -1,6 +1,9 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
+import { z } from 'zod';
+import { server } from '../mocks/node';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -286,4 +289,89 @@ test('it says the moment changed when an edit meets a newer version', async () =
   expect(alert).toHaveTextContent(
     'This moment changed after the page loaded. Check it, then try again.',
   );
+});
+
+test('it sends an edit that got no answer again with its first action ID and version', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const moment = await store.moments.create({ title: 'The ladder' });
+
+  const sent = mock((body: unknown) =>
+    z.object({ json: z.object({ clientActionID: z.string(), version: z.number() }) }).parse(body),
+  );
+
+  server.use(
+    http.post('*/rpc/memory/editMoment', async (call) => {
+      const body: unknown = await call.request.clone().json();
+
+      sent(body);
+    }),
+  );
+
+  server.use(
+    http.post(
+      '*/rpc/memory/editMoment',
+      async (call) => {
+        const body: unknown = await call.request.clone().json();
+
+        sent(body);
+
+        return HttpResponse.error();
+      },
+      { once: true },
+    ),
+  );
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const rename = await rendered.findByRole('button', { name: 'Rename' });
+
+  await ctx.user.click(rename);
+  await ctx.user.type(rendered.getByRole('textbox', { name: 'Title' }), ' on the stairs');
+  await ctx.user.click(rendered.getByRole('button', { name: 'Save the title' }));
+
+  const failed = await rendered.findByRole('alert');
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Save the title' }));
+  await rendered.findByRole('heading', { name: 'The ladder on the stairs' });
+
+  const [first, second] = sent.mock.results.map((result) => result.value);
+
+  expect(failed).toHaveTextContent('The change did not save. Try again.');
+  expect(sent).toHaveBeenCalledTimes(2);
+  expect(second).toStrictEqual(first);
+});
+
+test('it hides the moment once a read finds it destroyed elsewhere', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const moment = await store.moments.create({ title: 'The ladder', note: null });
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const add = await rendered.findByRole('button', { name: 'Add a note' });
+
+  await store.moments.update((query) => query.where({ momentID: moment.momentID }), {
+    data(draft) {
+      draft.state = 'destroyed';
+    },
+  });
+
+  await ctx.user.click(add);
+
+  await ctx.user.type(
+    rendered.getByRole('textbox', { name: 'Why this moment matters, in your words' }),
+    'Never leave it on the landing.',
+  );
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Save the note' }));
+
+  const gone = await rendered.findByText('This moment did not load. It may be gone.');
+
+  expect(gone).toBeVisible();
+  expect(rendered.queryByRole('heading', { name: 'The ladder' })).toBeNull();
 });
