@@ -26,6 +26,11 @@ export type MemoryRecordKind =
   | 'memory.version_added'
   | 'memory.writer_failed'
   | 'memory.writer_started'
+  | 'moment_destroyed'
+  | 'moment_edited'
+  | 'moment_kept'
+  | 'moment_linked'
+  | 'moment_retired'
   | 'record.forget_started'
   | 'record.forgotten';
 

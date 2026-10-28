@@ -1,5 +1,6 @@
 import { apiImplementer } from './api-implementer';
 import { createMemoryForgetProcedures } from './create-memory-forget-procedures';
+import { createMomentProcedures } from './create-moment-procedures';
 import { ownerProvenance } from './owner-provenance';
 import { runMemoryChange } from './run-memory-change';
 import type { APIContext, ReadViewMemory } from './types';
@@ -58,5 +59,6 @@ export function createMemoryChangeProcedures(context: APIContext, readMemory: Re
     }),
 
     ...createMemoryForgetProcedures(context, readMemory),
+    ...createMomentProcedures(context, readMemory),
   };
 }

@@ -1,19 +1,14 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import addFormats from 'ajv-formats';
-import Ajv2020 from 'ajv/dist/2020';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { buildConfigJSONSchema } from './build-config-json-schema';
 import { deploymentConfigSchema } from './deployment-config-schema';
+import { getConfigValidator } from './test-utils/get-config-validator';
 
 function setupTest() {
-  const ajv = new Ajv2020({ allErrors: true, strict: true });
-
-  addFormats(ajv);
-
-  return { validate: ajv.compile(buildConfigJSONSchema()) };
+  return { validate: getConfigValidator() };
 }
 
 // Each release publishes the committed file, and the schema check reads it at the last release

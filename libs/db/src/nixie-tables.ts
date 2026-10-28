@@ -206,6 +206,43 @@ export interface NixieTables {
     readonly last_error_at: number | null;
     readonly updated_sequence: number;
   };
+  readonly moment_links: {
+    readonly link_key: string;
+    readonly moment_id: string;
+    readonly item_id: string;
+    readonly linked_sequence: number;
+  };
+  readonly moment_reflections: {
+    readonly reflection_id: string;
+    readonly moment_id: string;
+    readonly model: string;
+    readonly text_sequence: number;
+    readonly created_at: number;
+    readonly updated_at: number;
+    readonly is_removed: number;
+  };
+  readonly moment_texts: {
+    readonly sequence: number;
+    readonly moment_id: string;
+  };
+  readonly moments: {
+    readonly moment_id: string;
+    readonly short_id: string;
+    readonly thread: string;
+    readonly first_sequence: number;
+    readonly last_sequence: number;
+    readonly state: string;
+    readonly version: number;
+    readonly kept_by: string;
+    readonly kept_thread: string | null;
+    readonly kept_model: string | null;
+    readonly kept_at: number;
+    readonly kept_sequence: number;
+    readonly title_sequence: number;
+    readonly note_sequence: number | null;
+    readonly edited_at: number | null;
+    readonly updated_sequence: number;
+  };
   readonly personas: {
     readonly persona_version: string;
     readonly instructions: string;

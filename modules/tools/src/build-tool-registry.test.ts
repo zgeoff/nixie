@@ -75,6 +75,19 @@ test('it reports the path of an input that breaks the input schema', () => {
   });
 });
 
+test('it compiles an input schema only when a call first parses against it', () => {
+  const registry = buildToolRegistry([
+    buildMockToolDefinition({
+      name: 'notes_read',
+      input: { properties: { query: { type: 'sentence' } } },
+    }),
+  ]);
+
+  expect(() => registry.findTool('notes_read')?.parseInput({ query: 'milk' })).toThrow(
+    'type must be JSONType or JSONType[]: sentence',
+  );
+});
+
 test('it accepts an input that meets the input schema', () => {
   const registered = buildToolRegistry([buildMockToolDefinition({ name: 'notes_read' })]).findTool(
     'notes_read',

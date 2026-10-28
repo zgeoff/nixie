@@ -20,7 +20,9 @@ on an Android phone insert pasted text that the client labels as typed?
 - A rule that one `insertText` of more than one word counts as `unknown` caught both, and a second
   run confirmed it, once Gboard's split of a run-together word counted as typed.
 - Gboard's voice typing inserts each spoken sentence as one composition of several words, which the
-  client labels `typed`, against 0011's rule that dictated text never counts as evidence.
+  voice typing run labelled `typed`, against 0011's rule that dictated text never counts as
+  evidence. The client applies the multi-word rule to a composition as well, and labels it
+  `unknown`.
 - React Native's `TextInput` has no paste event, so a multi-character insertion that no native hook
   named counts as `unknown` there.
 

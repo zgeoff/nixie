@@ -1,0 +1,75 @@
+import { createShortID } from '@heynixie/db';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import invariant from 'tiny-invariant';
+import { memoryWriterTaskID } from './memory-writer-task-id';
+import { momentKeptCodec } from './moment-kept-codec';
+import type { KeepMomentRequest, MomentContext, MomentWrite } from './moment-types';
+import { probeThreadSpan } from './probe-thread-span';
+import type { WriteInTransaction } from './types';
+
+export async function writeKeptMoment(
+  context: MomentContext,
+  request: KeepMomentRequest,
+  writeInTransaction?: WriteInTransaction,
+): Promise<MomentWrite> {
+  const caller = request.caller;
+
+  if (caller.kind === 'model' && caller.thread === memoryWriterTaskID) {
+    return { status: 'refused', reason: 'memory_writer' };
+  }
+
+  if (caller.kind === 'model' && caller.thread !== request.thread) {
+    return { status: 'refused', reason: 'other_thread' };
+  }
+
+  const kept = await withWriteTransaction(context.log.writer, async (tx): Promise<MomentWrite> => {
+    await writeInTransaction?.(tx);
+
+    if (!(await probeThreadSpan(tx, request.thread, request))) {
+      throw new BadSpanError();
+    }
+
+    const momentID = request.ids?.momentID ?? crypto.randomUUID();
+    const shortID = request.ids?.shortID ?? createShortID();
+
+    const [written] = await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: 'moment_kept',
+        definitions: context.definitions(),
+        ...(caller.kind === 'model' ? { thread: caller.thread } : {}),
+        payload: momentKeptCodec.encode({
+          momentID,
+          shortID,
+          thread: request.thread,
+          firstSequence: request.firstSequence,
+          lastSequence: request.lastSequence,
+          keptBy: caller.kind,
+          keptThread: caller.kind === 'model' ? caller.thread : null,
+          model: caller.kind === 'model' ? caller.model : null,
+        }),
+        erasable: { title: request.title },
+      },
+    ]);
+
+    invariant(written, 'the log wrote no record for the kept moment');
+
+    return { status: 'written', momentID, shortID, version: 1, sequence: written.sequence };
+  }).catch((error: unknown) => {
+    if (error instanceof BadSpanError) {
+      return error;
+    }
+
+    throw error;
+  });
+
+  return kept instanceof BadSpanError ? { status: 'refused', reason: 'bad_span' } : kept;
+}
+
+// A refusal throws inside the transaction, so a client action written by the hook rolls back with it.
+class BadSpanError extends Error {
+  override readonly name = 'BadSpanError';
+
+  constructor() {
+    super('the span is not on the thread');
+  }
+}

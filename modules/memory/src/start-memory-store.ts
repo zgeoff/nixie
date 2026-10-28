@@ -2,8 +2,11 @@ import { buildItemIDStore } from './build-item-id-store';
 import type { MemoryGate } from './build-memory-gate';
 import { buildMemoryGate } from './build-memory-gate';
 import { buildMemoryStore } from './build-memory-store';
+import type { MomentStore } from './build-moment-store';
+import { buildMomentStore } from './build-moment-store';
 import { makeDeliveryLock } from './make-delivery-lock';
 import { removeLeftKeys } from './remove-left-keys';
+import { runPendingDestroys } from './run-pending-destroys';
 import { runPendingForgets } from './run-pending-forgets';
 import { startStoreIndexes } from './start-store-indexes';
 import type { ItemIDStore, MemoryContext, MemoryStore, StoreParts } from './types';
@@ -14,6 +17,8 @@ import { writeMemoryBatch } from './write-memory-batch';
 
 export interface StartedMemoryStore extends MemoryStore, MemoryGate, ItemIDStore {
   readonly writeBatch: (publication: BatchPublication) => Promise<PublishResult>;
+
+  readonly moments: MomentStore;
 
   readonly waitForSemanticIndex: () => Promise<boolean>;
   readonly stop: () => Promise<void>;
@@ -31,6 +36,7 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
     ...buildItemIDStore(parts),
     ...buildMemoryGate(parts),
     writeBatch: (publication) => writeMemoryBatch(parts, publication),
+    moments: buildMomentStore(context),
     waitForSemanticIndex: async () => {
       const isReady = await updated.rebuilt;
 
@@ -45,6 +51,7 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
 async function runStartSteps(parts: StoreParts): Promise<UpdatedIndexes> {
   try {
     await runPendingForgets(parts);
+    await runPendingDestroys(parts.context);
     await removeLeftKeys(parts);
 
     return await updateStoreIndexes(parts);

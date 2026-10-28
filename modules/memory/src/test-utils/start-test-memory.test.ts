@@ -20,6 +20,10 @@ test('it starts a store over a log that folds the memory projections, with no re
     'memory_forgotten_evidence',
     'memory_consolidations',
     'memory_consolidation_changes',
+    'moments',
+    'moment_reflections',
+    'moment_links',
+    'moment_texts',
   ]);
 
   expect(records).toStrictEqual([]);

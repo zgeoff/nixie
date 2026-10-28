@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.49.1](https://github.com/zgeoff/nixie/compare/v0.49.0...v0.49.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **deps:** update qs to fix advisories ([#685](https://github.com/zgeoff/nixie/issues/685)) ([cf8aa5b](https://github.com/zgeoff/nixie/commit/cf8aa5b8bf1c85e188a499b20fc11ae84df80c77))
+
+
+### Performance Improvements
+
+* **server:** make the in-process start cheaper for tests ([#682](https://github.com/zgeoff/nixie/issues/682)) ([0428074](https://github.com/zgeoff/nixie/commit/0428074a9bbceb8df4806554621cef4db3cf25ff))
+
+## [0.49.0](https://github.com/zgeoff/nixie/compare/v0.48.0...v0.49.0) (2026-10-26)
+
+
+### Features
+
+* **memory:** add the moment records, projections and store writes ([#673](https://github.com/zgeoff/nixie/issues/673)) ([518b81e](https://github.com/zgeoff/nixie/commit/518b81e07b4c1d3e4e57f38d548b849f021b6c24))
+* **memory:** destroy a moment by shredding its own records' keys ([#675](https://github.com/zgeoff/nixie/issues/675)) ([625ad9c](https://github.com/zgeoff/nixie/commit/625ad9cbecd03821d3f9d85901c2326163bd615f))
+* **memory:** give the conversation the six moment tools ([#674](https://github.com/zgeoff/nixie/issues/674)) ([1085687](https://github.com/zgeoff/nixie/commit/1085687392455613cf2750e3c00751b6e339ad04))
+* **memory:** show moments in the status, the events and the export ([#676](https://github.com/zgeoff/nixie/issues/676)) ([fe1a46f](https://github.com/zgeoff/nixie/commit/fe1a46f93874cc848e8ce1467855aecf08cb3fbc))
+
+
+### Bug Fixes
+
+* **contract:** label a voice composition of several words unknown ([#679](https://github.com/zgeoff/nixie/issues/679)) ([11547da](https://github.com/zgeoff/nixie/commit/11547dadd71ed78b45a7a310b512d6c09cc7d845))
+
+## [0.48.0](https://github.com/zgeoff/nixie/compare/v0.47.0...v0.48.0) (2026-10-26)
+
+
+### Features
+
+* **research:** measure the consent checker on real messages ([#669](https://github.com/zgeoff/nixie/issues/669)) ([8f70a9b](https://github.com/zgeoff/nixie/commit/8f70a9be49a7018099c563aa8c0cb75ec774034d))
+
+
+### Bug Fixes
+
+* **tasks:** open no wait for a question to a task on its own schedule ([#662](https://github.com/zgeoff/nixie/issues/662)) ([ae887e2](https://github.com/zgeoff/nixie/commit/ae887e27a38aa0690032ad74ea6dd3e17851cb22))
+
 ## [0.47.0](https://github.com/zgeoff/nixie/compare/v0.46.0...v0.47.0) (2026-10-25)
 
 

@@ -50,7 +50,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
   };
 }
 
-test('it declares read for recall, pending and diff, export for export, and note for remember, edit, retire, pin, unpin, comment and rate', async () => {
+test('it declares read for the reads, export for export, and note for the memory and moment writes', async () => {
   const ctx = await setupTest();
 
   const effects = [
@@ -65,6 +65,12 @@ test('it declares read for recall, pending and diff, export for export, and note
     'memory.comment',
     'memory.rate',
     'memory.export',
+    'moment.keep',
+    'moment.edit',
+    'moment.link',
+    'moment.retire',
+    'moment.find',
+    'moment.read',
   ].map((name) => [name, ctx.registry.findTool(name)?.definition.declaration.effects]);
 
   expect(effects).toStrictEqual([
@@ -79,6 +85,12 @@ test('it declares read for recall, pending and diff, export for export, and note
     ['memory.comment', ['note']],
     ['memory.rate', ['note']],
     ['memory.export', ['export']],
+    ['moment.keep', ['note']],
+    ['moment.edit', ['note']],
+    ['moment.link', ['note']],
+    ['moment.retire', ['note']],
+    ['moment.find', ['read']],
+    ['moment.read', ['read']],
   ]);
 });
 

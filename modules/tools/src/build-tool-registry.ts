@@ -10,9 +10,21 @@ import type {
 } from './types';
 
 export function buildToolRegistry(definitions: readonly ToolDefinition[]): ToolRegistry {
-  const validator = new AjvJsonSchemaValidator();
+  const compiler: { validator: AjvJsonSchemaValidator | null } = { validator: null };
 
-  const makeSchemaParser = (schema: JsonSchema) => toSchemaParser(validator.getValidator(schema));
+  // Ajv compiles each schema to code, and a start registers every tool while a turn calls few, so
+  // each schema compiles on its first parse.
+  const makeSchemaParser = (schema: JsonSchema) => {
+    const parser: { validate: JsonSchemaValidator<unknown> | null } = { validate: null };
+
+    return (value: unknown): SchemaCheck => {
+      compiler.validator ??= new AjvJsonSchemaValidator();
+
+      parser.validate ??= compiler.validator.getValidator(schema);
+
+      return toSchemaCheck(parser.validate(value));
+    };
+  };
 
   const tools = new Map<string, RegisteredTool>();
 
@@ -33,12 +45,8 @@ export function buildToolRegistry(definitions: readonly ToolDefinition[]): ToolR
   return { findTool: (name) => tools.get(name) ?? null };
 }
 
-function toSchemaParser(validate: JsonSchemaValidator<unknown>): (value: unknown) => SchemaCheck {
-  return (value) => {
-    const result = validate(value);
-
-    return result.valid ? { isValid: true } : { isValid: false, errors: result.errorMessage };
-  };
+function toSchemaCheck(result: ReturnType<JsonSchemaValidator<unknown>>): SchemaCheck {
+  return result.valid ? { isValid: true } : { isValid: false, errors: result.errorMessage };
 }
 
 function assertDefinition(definition: ToolDefinition): void {

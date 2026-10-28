@@ -59,6 +59,16 @@ export function buildConversationTools(
           unpin: (request) => requireStore().writes.unpin(request),
         },
         renderReviewReason: (reason) => requireStore().renderReviewReason(reason),
+        moments: {
+          keep: (request) => requireStore().moments.keep(request),
+          edit: (request) => requireStore().moments.edit(request),
+          link: (request) => requireStore().moments.link(request),
+          retire: (request) => requireStore().moments.retire(request),
+          read: (request) => requireStore().moments.read(request),
+          readMatches: (query) => requireStore().moments.readMatches(query),
+          readWeekCount: (at) => requireStore().moments.readWeekCount(at),
+          readLinks: (itemIDs) => requireStore().moments.readLinks(itemIDs),
+        },
       },
       {
         clock: memory.clock,

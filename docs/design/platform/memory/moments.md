@@ -55,17 +55,23 @@ model ID, and a different model adds a reflection of its own. You remove a refle
 and never edit one. **Why:** an edited reflection would no longer hold the words of the model in its
 label. nixie sets the label from the model ID on the record, never from the model's arguments.
 
+A moment is kept first and reflected on later. `moment.keep` takes a title and refuses a reflection,
+and a model adds its reflection with `moment.edit` on a later turn, after it reads the span again
+with `moment.read`. The [reflection pass](https://linear.app/zgeoff/issue/GEO-558) takes over that
+later reading once it exists. **Why:** a reflection written in the turn that keeps the moment holds
+that turn's view, and one written after a second reading weighs the whole stretch.
+
 ## Records and the projection
 
 Moments are event-sourced. These record kinds fold into the `moments` projection:
 
-| Kind               | Written when                                                    |
-| ------------------ | --------------------------------------------------------------- |
-| `moment_kept`      | A moment is kept, with its span, title and any first reflection |
-| `moment_edited`    | The edges, the title, the note or a reflection changes          |
-| `moment_linked`    | A memory item is linked to the moment, or a link is removed     |
-| `moment_retired`   | The moment is retired or restored                               |
-| `moment_destroyed` | The moment's keys are shredded                                  |
+| Kind               | Written when                                                |
+| ------------------ | ----------------------------------------------------------- |
+| `moment_kept`      | A moment is kept, with its span and title                   |
+| `moment_edited`    | The edges, the title, the note or a reflection changes      |
+| `moment_linked`    | A memory item is linked to the moment, or a link is removed |
+| `moment_retired`   | The moment is retired or restored                           |
+| `moment_destroyed` | The moment's keys are shredded                              |
 
 The title, the note and each reflection are erasable fields under their record's own key. The
 projection holds the thread, the span's sequences, the links and the state, and never free text.
@@ -79,7 +85,7 @@ event log is append-only. A link goes with its memory item when that item is des
 
 | Tool            | Effect | Does                                                                |
 | --------------- | ------ | ------------------------------------------------------------------- |
-| `moment.keep`   | `note` | Keeps a span with a title, and optionally a reflection              |
+| `moment.keep`   | `note` | Keeps a span of the caller's own thread with a title                |
 | `moment.edit`   | `note` | Changes the edges or the title, or adds or edits a reflection       |
 | `moment.link`   | `note` | Links a memory item to a moment, or removes the link                |
 | `moment.retire` | `note` | Retires a moment, with undo                                         |
@@ -88,20 +94,49 @@ event log is append-only. A link goes with its memory item when that item is des
 
 The moment tools declare `note`, as the memory write tools do, so the starter rule `allow-notes`
 allows them, and a rule on `moment.keep` makes nixie ask first. A "keep this" in chat runs through
-the consent check like any request in your own words. A task that runs while you are away keeps a
-moment whenever your rules allow it.
+the consent check like any request in your own words.
 
 `moment.read` caps each page in tokens. **Why:** a span over a long task, such as an hour of web
 browsing, holds thousands of records with tool results.
+
+### Who keeps a moment
+
+A model keeps a span of its own thread only, and its rules decide whether it keeps one at all:
+
+- **The conversation** keeps a moment from its conversation with you, and it is the only model that
+  keeps one from that conversation.
+- **A task** keeps a moment from its own work, on its own thread, whenever your rules allow it, even
+  while you are away.
+- **The memory writer** neither keeps a moment nor flags a span for keeping. Its tools hold no
+  moment tool, and the moments store refuses a keep from its thread.
+- **You** keep a span of any thread from the client.
+
+**Why:** a moment from a conversation with you records what that conversation judged mattered, so no
+other task marks the conversation's records. The memory writer reads your messages for facts and has
+no part in which conversations matter.
+
+### The weekly count
+
+nixie counts the moments kept over the last 7 days, across the conversation, every task and the
+client, and shows the count in three places. The count never blocks a keep. **Why:** a count the
+model reads keeps keeping deliberate, and a cap would refuse the one moment that matters in a busy
+week. The places, with invented titles:
+
+- **The `moment.keep` result** is JSON with no prose:
+  `{"momentID": "q4n8v2hw6t", "keptThisWeek": 4, "reflection": "pending"}`.
+- **The events block** shows a moment that another task or you kept:
+  `Wed 14 Oct, 22:10, Sydney · Another of your tasks (morning-reading) kept a moment: "The kettle argument". Moment k7p2m9xq4r. Moments kept this week: 3.`
+- **The status** of each new session, near the memory lines:
+  `Moments kept this week: 2 (1 by you, 1 by another of your tasks). 1 is waiting for a reflection.`
 
 ## Reading moments back
 
 `memory.recall` returns each item's links as moment IDs and titles, never moment text. The tool
 descriptions of `memory.recall` and `moment.read` tell the model to read a linked moment when the
 reason behind a fact matters. Per-turn retrieval and the pinned core never include a moment's title,
-note or reflection. The moments package adds an entry to the
-[session opening](../../../architecture/core/session-opening.md#status) status for the moments kept
-in the last 7 days.
+note or reflection. The memory package adds the [weekly count](#the-weekly-count) to the
+[session opening](../../../architecture/core/session-opening.md#status) status, and a moment that
+another task or you keep during a session reaches that session through the events block.
 
 `moment.read` returns each record with its source of content. A span that holds outside content
 stays untrusted when it is read, so the task that reads it is tainted under

@@ -1,15 +1,16 @@
 import { onTestFinished } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { countTextTokens } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
+import { startWriter } from '@heynixie/log';
 import type { LogFields, LogLevel, Logger } from '@heynixie/logger';
 import type { SandboxRecorder, ToolTargetResolver } from '@heynixie/sandbox';
 import type { ReceivedFrame, StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildStubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { ScriptedModel } from '@heynixie/testing';
-import { startScriptedModel, waitForCondition } from '@heynixie/testing';
+import { createRunTemplate, startScriptedModel, waitForCondition } from '@heynixie/testing';
 import { readTestToolNames, sendTestToolCall } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import type { SandboxAdapterOptions } from '../create-sandbox-adapter';
@@ -18,6 +19,7 @@ import { readDataFiles } from './read-data-files';
 import { readTestRecords } from './read-test-records';
 import type { BootFileExtras, BootFiles } from './write-boot-files';
 import { writeBootFiles } from './write-boot-files';
+import { writeMigratedData } from './write-migrated-data';
 
 export interface InProcessNixieOptions {
   readonly extraConfig?: readonly string[];
@@ -86,6 +88,12 @@ export async function startInProcessNixie(
     secrets: options.extraSecrets ?? [],
     definitions: options.extraDefinitions ?? [],
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
+  });
+
+  await writeMigratedData(files.dataDir, {
+    createTemplate: createRunTemplate,
+    startWriter,
+    copyDirectory: (from, to) => cp(from, to, { recursive: true }),
   });
 
   const host = buildRunHost();

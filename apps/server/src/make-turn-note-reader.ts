@@ -5,6 +5,7 @@ import type { AnswerQuoteSource, StartedMemoryStore } from '@heynixie/memory';
 import {
   buildCatchUpKind,
   buildMemoryChangeKind,
+  buildMomentKeptKind,
   buildProposalAnswerKind,
   buildProposalMergeKind,
   buildSelfNoteFlagKind,
@@ -30,6 +31,8 @@ export interface TurnNoteReaderOptions {
   readonly defaultZone: string;
 
   readonly compaction: Pick<CompactionSettings, 'threshold' | 'headsUp'>;
+
+  readonly getTaskName: (taskID: string) => string;
 }
 
 export function makeTurnNoteReader(
@@ -49,6 +52,7 @@ export function makeTurnNoteReader(
     buildProposalMergeKind(options.log),
     buildProposalAnswerKind(options.log, store),
     buildSelfNoteFlagKind(options.log),
+    buildMomentKeptKind(options.log, options.getTaskName),
     buildRestartKind(options.log),
     buildRetriedTurnKind(options.log),
     buildCompactionHeadsUpKind(options.log, options.compaction),

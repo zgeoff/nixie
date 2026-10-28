@@ -42,15 +42,19 @@ Agent SDK against the model. The deployment repo's preview service runs it on a 
 changes the SDK version, and posts the result as the `sdk-contract` commit status.
 
 The memory encoder's suites run the real model from `node_modules/.cache/nixie-encoder`, which
-`bun run models` fills with the pinned model files after checking each one. `bun run test` runs it
-before the unit run, `bun test --parallel=${TEST_WORKERS:-4} --no-isolate --randomize`. The unit run
-spreads the files over 4 worker processes, the vCPUs of a CI runner, and `TEST_WORKERS` changes the
-count. The files in a worker share one global object, so only the preloads' resets stand between one
-file and the next, and the run shuffles the files so a test that passes only after another file
-fails. A failure prints the run's `--seed=<n>`; run again with that flag to repeat its order. Plain
-`bun test` skips those suites when the files are missing, and CI, where the `CI` variable is set,
-fails them instead, so a run there never passes without the model. The spikes under `research/` and
-`docs/design/` run by hand, so the root [`bunfig.toml`](../../../bunfig.toml) skips them.
+`bun run models` fills with the pinned model files after checking each one. `bun run test` runs it,
+and then `bun run test:bundles`, before the unit run,
+`bun test --parallel=${TEST_WORKERS:-4} --no-isolate --randomize`. `bun run test:bundles` writes the
+server's release and test bundles to `node_modules/.cache/nixie-test-bundles` through
+`createRunTemplate`, keyed by a hash of the sources, and the server's bundle checks read them, so no
+unit test pays for a build. The unit run spreads the files over 4 worker processes, the vCPUs of a
+CI runner, and `TEST_WORKERS` changes the count. The files in a worker share one global object, so
+only the preloads' resets stand between one file and the next, and the run shuffles the files so a
+test that passes only after another file fails. A failure prints the run's `--seed=<n>`; run again
+with that flag to repeat its order. Plain `bun test` skips those suites when the files are missing,
+and CI, where the `CI` variable is set, fails them instead, so a run there never passes without the
+model. The spikes under `research/` and `docs/design/` run by hand, so the root
+[`bunfig.toml`](../../../bunfig.toml) skips them.
 
 The web app's browser suites, the `*.browser.test.ts` files, drive a headless Chrome or Chromium
 through `Bun.WebView`, so `bun test` needs one that Bun finds on `PATH`, in a standard install
@@ -178,7 +182,11 @@ stub guest from
 [`buildStubGuestSandboxes`](../../../modules/sandbox/src/test-utils/build-stub-guest-sandboxes.ts)
 in place of the sandbox adapter, so a turn starts no guest and no Agent SDK. A test that checks what
 the model sees asserts on the turn frames the stub guest received. The stub never imitates the SDK's
-request to the model, because a copy of the SDK's logic drifts from it unseen.
+request to the model, because a copy of the SDK's logic drifts from it unseen. Each in-process start
+copies its data directory from a per-run template that
+[`writeMigratedData`](../../../apps/server/src/test-utils/write-migrated-data.ts) migrates once, so
+its first start runs no migration. A test of the migration from an empty data directory starts a
+writer of its own.
 
 The two nixie harnesses stay apart because each checks what the other cannot reach. The in-process
 harness hands a test the stub guest's frames, which a child process keeps to itself. The spawned

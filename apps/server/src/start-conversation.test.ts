@@ -1274,3 +1274,138 @@ test('it leaves out a past message that the session already holds and places the
       .map((record) => record.payload['retrievedMessages']),
   ).toStrictEqual([[], booked]);
 });
+
+test('it erases the summary when you destroy a moment, and leaves no readable record that holds its text', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  ctx.guest.setContextSize(170_000);
+
+  ctx.guest.addReplies(
+    { text: 'Kept as Juniper-title-3VK.' },
+    { text: 'The quiet one, for the noise.' },
+  );
+
+  await ctx.conversation.send('Which kettle did we agree on?');
+  await ctx.conversation.sendForStep('Thanks.');
+
+  const thread = await ctx.readRecords();
+
+  const first = thread.find((record) => record.kind === 'owner_message');
+  const last = thread.findLast((record) => record.kind === 'model.reply');
+
+  invariant(first && last);
+
+  const kept = await ctx.memory.moments.keep({
+    caller: { kind: 'model', thread: conversationTaskID, model: 'claude-test-4' },
+    thread: conversationTaskID,
+    firstSequence: first.sequence,
+    lastSequence: last.sequence,
+    title: 'Juniper-title-3VK',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.moments.edit({
+    caller: { kind: 'model', thread: conversationTaskID, model: 'claude-test-4' },
+    target: { momentID: kept.shortID, version: 1 },
+    change: { kind: 'reflection', text: 'Juniper-reflection-3VK' },
+  });
+
+  await ctx.memory.moments.edit({
+    caller: { kind: 'owner' },
+    target: { momentID: kept.momentID, version: 2 },
+    change: { kind: 'note', note: 'Juniper-note-3VK' },
+  });
+
+  await ctx.memory.moments.destroy({ momentID: kept.momentID, version: 3 });
+
+  const turn = await ctx.conversation.send('What was I asking about?');
+  const records = await ctx.readRecords();
+
+  const readable = records.flatMap((record) =>
+    record.erasable.status === 'readable' && record.kind !== 'model.reply'
+      ? [record.erasable.fields]
+      : [],
+  );
+
+  expect(records.filter((record) => record.kind === 'model.session_summarized')).toMatchObject([
+    { erasable: { status: 'shredded' } },
+  ]);
+
+  expect(turn.resume).toBeNull();
+  expect(JSON.stringify(readable)).not.toInclude('Juniper');
+});
+
+test('it places no moment text in a turn whose message matches its title and reflection', async () => {
+  const ctx = await setupTest();
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const [item] = await Promise.all([
+    ctx.memory.remember({ text: 'Keeps the bramble shelter for hedgehogs', provenance }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+
+    // BM25 scores a word in half the index at nothing, so the item needs 6 items beside it to
+    // pass the score floor
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
+    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
+    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
+    ctx.memory.remember({ text: 'Runs a half marathon each spring', provenance }),
+  ]);
+
+  ctx.guest.addReplies({ text: 'Noted.' });
+
+  await ctx.conversation.send('Good morning.');
+
+  const [message] = await ctx.readRecords();
+
+  invariant(message);
+
+  const kept = await ctx.memory.moments.keep({
+    caller: { kind: 'owner' },
+    thread: conversationTaskID,
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'Bramble shelter hedgehogs',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.moments.edit({
+    caller: { kind: 'model', thread: conversationTaskID, model: 'claude-test-4' },
+    target: { momentID: kept.shortID, version: 1 },
+    change: { kind: 'reflection', text: 'Hedgehogs chose the bramble shelter over the box.' },
+  });
+
+  await ctx.memory.moments.link({
+    caller: { kind: 'owner' },
+    target: { momentID: kept.momentID, version: 2 },
+    itemID: item.itemID,
+    isLinked: true,
+  });
+
+  ctx.guest.addReplies({ text: 'Under the brambles.' });
+
+  const turn = await ctx.conversation.send('Where is the bramble shelter for the hedgehogs?');
+
+  const sent = JSON.stringify(turn.input);
+
+  expect(sent).toInclude('Keeps the bramble shelter for hedgehogs');
+  expect(sent).not.toInclude('chose the bramble shelter over the box');
+  expect(sent).not.toInclude(kept.shortID);
+  expect(sent).not.toInclude('Bramble shelter hedgehogs');
+});

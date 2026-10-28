@@ -11,6 +11,8 @@ const typedInputTypes = new Set([
   'insertText',
 ]);
 
+const wordInputTypes = new Set(['insertCompositionText', 'insertText']);
+
 // Undo, redo and every unlisted inputType count as unknown, because memory evidence needs an
 // affirmative typed, so an inputType that says nothing of the text's origin fails closed.
 export function pickSpanSource(inputType: string, data: string | null): SpanSource {
@@ -22,7 +24,7 @@ export function pickSpanSource(inputType: string, data: string | null): SpanSour
     return 'dropped';
   }
 
-  if (inputType === 'insertText' && data !== null && hasSeveralWords(data)) {
+  if (wordInputTypes.has(inputType) && data !== null && hasSeveralWords(data)) {
     return 'unknown';
   }
 

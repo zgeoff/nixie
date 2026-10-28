@@ -4,8 +4,10 @@ import type { MemoryLineOptions, NextVersion } from '@heynixie/sessions';
 import { renderMemoryLine } from '@heynixie/sessions';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import type { MomentStore } from './build-moment-store';
 import { makeInputRecorder } from './make-input-recorder';
 import { readItemIDs } from './read-item-ids';
+import type { MomentLink } from './read-moment-links';
 import type { StartedMemoryStore } from './start-memory-store';
 import type { ItemIDStore, RecallRequest, RecalledItem, RecalledVersion } from './types';
 
@@ -69,6 +71,15 @@ const recallOutput = {
               'a deal, a nickname or a running joke, self for a self-note you wrote about yourself',
           },
           history: { type: 'array', items: recalledVersion },
+          moments: {
+            type: 'array',
+            description: 'the moments linked to the item, each by its momentID and title',
+            items: {
+              type: 'object',
+              properties: { momentID: { type: 'string' }, title: { type: 'string' } },
+              required: ['momentID', 'title'],
+            },
+          },
         },
         required: [...recalledVersion.required, 'itemID', 'isPinned', 'subject'],
       },
@@ -86,7 +97,10 @@ export interface RecallLineOptions {
 }
 
 export function buildRecallTool(
-  memory: Pick<StartedMemoryStore, 'recall'> & Pick<ItemIDStore, 'readItemIDMap'>,
+  memory: Pick<StartedMemoryStore, 'recall'> &
+    Pick<ItemIDStore, 'readItemIDMap'> & {
+      readonly moments: Pick<MomentStore, 'readLinks'>;
+    },
   options: RecallLineOptions,
 ): ToolDefinition {
   return {
@@ -97,7 +111,9 @@ export function buildRecallTool(
       'model that wrote it. Pass a query to search, itemIDs ' +
       'to read items by ID, or neither to list every active item a page at a time. Answer ' +
       'questions about memory from these items, never from a summary. Use it when you ' +
-      'half-remember something said, or when a detail from before would change your answer.',
+      'half-remember something said, or when a detail from before would change your answer. ' +
+      'An item linked to a moment lists its momentID and title: read the moment with ' +
+      'moment.read when the reason behind the fact matters.',
     input: recallInput,
     output: recallOutput,
     declaration: {
@@ -113,6 +129,7 @@ export function buildRecallTool(
     run: async (call, context) => {
       const request = await readRecallRequest(memory, call.input, context.run.thread);
       const result = await memory.recall(request);
+      const links = await memory.moments.readLinks(result.items.map((item) => item.itemID));
 
       const lines = {
         ownerName: options.ownerName,
@@ -122,9 +139,12 @@ export function buildRecallTool(
 
       return {
         status: 'ok',
-        result: { items: result.items.map((item) => toItemJSON(item, lines)), next: result.next },
+        result: {
+          items: result.items.map((item) => toItemJSON(item, lines, links.get(item.itemID) ?? [])),
+          next: result.next,
+        },
         record: {
-          items: result.items.map((item) => ({ itemID: item.itemID, version: item.version })),
+          items: result.items.map((item) => toItemRecord(item, links.get(item.itemID) ?? [])),
           next: result.next,
         },
       };
@@ -162,7 +182,11 @@ async function readRecallRequest(
   };
 }
 
-function toItemJSON(item: RecalledItem, lines: MemoryLineOptions): JSONObject {
+function toItemJSON(
+  item: RecalledItem,
+  lines: MemoryLineOptions,
+  links: readonly MomentLink[],
+): JSONObject {
   return {
     ...toVersionJSON(item, lines, null),
     itemID: item.shortID,
@@ -171,6 +195,9 @@ function toItemJSON(item: RecalledItem, lines: MemoryLineOptions): JSONObject {
     ...(item.history === undefined
       ? {}
       : { history: item.history.map((version) => toPastVersionJSON(item, version, lines)) }),
+    ...(links.length === 0
+      ? {}
+      : { moments: links.map((link) => ({ momentID: link.momentID, title: link.title })) }),
   };
 }
 
@@ -203,4 +230,13 @@ function toPastVersionJSON(
       : { ref: `${item.shortID} v${after.version}`, isRetirement: after.change === 'retired' };
 
   return toVersionJSON({ ...version, shortID: item.shortID }, lines, next);
+}
+
+// The record names each linked moment by ID only, so a destroy leaves no copy of its title here.
+function toItemRecord(item: RecalledItem, links: readonly MomentLink[]): JSONObject {
+  return {
+    itemID: item.itemID,
+    version: item.version,
+    ...(links.length === 0 ? {} : { momentIDs: links.map((link) => link.momentID) }),
+  };
 }
