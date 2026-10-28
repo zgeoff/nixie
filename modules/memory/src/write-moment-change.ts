@@ -12,6 +12,7 @@ import type {
 } from './moment-types';
 import type { MomentRow } from './read-moment-row';
 import { readMomentRow } from './read-moment-row';
+import type { WriteInTransaction } from './types';
 
 export interface PlannedMomentRecord {
   readonly kind: 'moment_edited' | 'moment_linked' | 'moment_retired';
@@ -31,51 +32,82 @@ export interface MomentChangeRequest {
   readonly target: MomentTarget;
 }
 
+type WrittenMoment = Extract<MomentWrite, { readonly status: 'written' }>;
+
 // The check and the record commit in one write transaction, so two callers that read the same
 // version never both change the moment.
-export function writeMomentChange(
+export async function writeMomentChange(
   context: MomentContext,
   request: MomentChangeRequest,
   planChange: (state: MomentChangeState) => Promise<PlannedMomentRecord | MomentRefusal>,
+  writeInTransaction?: WriteInTransaction,
 ): Promise<MomentWrite> {
-  return withWriteTransaction(context.log.writer, async (tx): Promise<MomentWrite> => {
-    const row = await readMomentRow(tx.$extendTables<MomentTables>(), request.target.momentID);
+  const written = await withWriteTransaction(
+    context.log.writer,
+    async (tx): Promise<WrittenMoment> => {
+      await writeInTransaction?.(tx);
 
-    if (row === null || row.state === 'destroying' || row.state === 'destroyed') {
-      return { status: 'refused', reason: 'not_found' };
+      const row = await readMomentRow(tx.$extendTables<MomentTables>(), request.target.momentID);
+
+      if (row === null || row.state === 'destroying' || row.state === 'destroyed') {
+        throw new MomentChangeRefusedError('not_found');
+      }
+
+      if (row.version !== request.target.version) {
+        throw new MomentChangeRefusedError('stale');
+      }
+
+      const planned = await planChange({ row, nextVersion: row.version + 1, tx });
+
+      if (typeof planned === 'string') {
+        throw new MomentChangeRefusedError(planned);
+      }
+
+      const caller = request.caller;
+
+      const [record] = await writeRecordsInTransaction(tx, context.log, [
+        {
+          kind: planned.kind,
+          definitions: context.definitions(),
+          ...(caller.kind === 'model' ? { thread: caller.thread } : {}),
+          payload: planned.payload,
+          ...(planned.erasable === undefined ? {} : { erasable: planned.erasable }),
+        },
+      ]);
+
+      invariant(record, 'the log wrote no record for the moment change');
+
+      return {
+        status: 'written',
+        momentID: row.moment_id,
+        shortID: row.short_id,
+        version: row.version + 1,
+        sequence: record.sequence,
+        ...(planned.reflectionID === undefined ? {} : { reflectionID: planned.reflectionID }),
+      };
+    },
+  ).catch((error: unknown) => {
+    if (error instanceof MomentChangeRefusedError) {
+      return error;
     }
 
-    if (row.version !== request.target.version) {
-      return { status: 'refused', reason: 'stale' };
-    }
-
-    const planned = await planChange({ row, nextVersion: row.version + 1, tx });
-
-    if (typeof planned === 'string') {
-      return { status: 'refused', reason: planned };
-    }
-
-    const caller = request.caller;
-
-    const [written] = await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: planned.kind,
-        definitions: context.definitions(),
-        ...(caller.kind === 'model' ? { thread: caller.thread } : {}),
-        payload: planned.payload,
-        ...(planned.erasable === undefined ? {} : { erasable: planned.erasable }),
-      },
-    ]);
-
-    invariant(written, 'the log wrote no record for the moment change');
-
-    return {
-      status: 'written',
-      momentID: row.moment_id,
-      shortID: row.short_id,
-      version: row.version + 1,
-      sequence: written.sequence,
-      ...(planned.reflectionID === undefined ? {} : { reflectionID: planned.reflectionID }),
-    };
+    throw error;
   });
+
+  return written instanceof MomentChangeRefusedError
+    ? { status: 'refused', reason: written.reason }
+    : written;
+}
+
+// A refusal throws inside the transaction, so a client action written by the hook rolls back with it.
+class MomentChangeRefusedError extends Error {
+  override readonly name = 'MomentChangeRefusedError';
+
+  readonly reason: MomentRefusal;
+
+  constructor(reason: MomentRefusal) {
+    super(`the moment change is refused as ${reason}`);
+
+    this.reason = reason;
+  }
 }

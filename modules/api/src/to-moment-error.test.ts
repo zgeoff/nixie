@@ -22,6 +22,22 @@ test('it maps a refused span to its error', () => {
   ).toStrictEqual(new Error('the span is bad'));
 });
 
+test.each([
+  ['reflection_not_found', 'the reflection is missing'],
+  ['item_not_found', 'the item is missing'],
+  ['already_linked', 'the item is linked'],
+  ['not_linked', 'the item is not linked'],
+])('it maps a refused edit or link as %s to its error', (reason, message) => {
+  expect(
+    toMomentError(new MomentRefusedError(reason), {
+      REFLECTION_NOT_FOUND: () => new Error('the reflection is missing'),
+      MEMORY_ITEM_NOT_FOUND: () => new Error('the item is missing'),
+      ALREADY_LINKED: () => new Error('the item is linked'),
+      NOT_LINKED: () => new Error('the item is not linked'),
+    }),
+  ).toStrictEqual(new Error(message));
+});
+
 test('it passes on a refusal whose procedure declares no error for it', () => {
   const error = new MomentRefusedError('stale');
 

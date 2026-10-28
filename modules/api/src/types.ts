@@ -1,7 +1,13 @@
 import type { ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { RecordKind } from '@heynixie/log';
-import type { HostMemoryStore, MemoryProposals, MemoryStore, MomentStore } from '@heynixie/memory';
+import type {
+  HostMemoryStore,
+  ItemIDStore,
+  MemoryProposals,
+  MemoryStore,
+  MomentStore,
+} from '@heynixie/memory';
 import type { PromptsInForce } from '@heynixie/prompts';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
@@ -75,8 +81,18 @@ export type ViewMemoryStore = Pick<
   | 'finishForgets'
 > & {
   readonly proposals: Pick<MemoryProposals, 'approve' | 'reject'>;
-  readonly moments: Pick<MomentStore, 'keep' | 'readDestroyPreview' | 'destroy' | 'finishDestroy'>;
-};
+  readonly moments: Pick<
+    MomentStore,
+    | 'keep'
+    | 'edit'
+    | 'link'
+    | 'readMatches'
+    | 'readView'
+    | 'readDestroyPreview'
+    | 'destroy'
+    | 'finishDestroy'
+  >;
+} & Pick<ItemIDStore, 'readItemIDMap'>;
 
 export type ReadViewMemory = () => ViewMemoryStore | null;
 

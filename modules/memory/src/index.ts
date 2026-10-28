@@ -70,6 +70,7 @@ export { SelfNoteError } from './self-note-error';
 export { StaleVersionError } from './stale-version-error';
 export type { MomentStore } from './build-moment-store';
 export type { MomentDestroyPreview } from './read-moment-destroy-preview';
+export type { MomentRow } from './read-moment-row';
 export type { StartedMemoryStore } from './start-memory-store';
 export { startMemoryStore } from './start-memory-store';
 export type { MemoryWriter, MemoryWriterOptions } from './start-memory-writer';
@@ -130,6 +131,7 @@ export type {
   Encoder,
   ForgetRequest,
   ForgetStatus,
+  ItemIDStore,
   MemoryChange,
   MemorySubject,
   MemoryContext,
@@ -181,5 +183,6 @@ export type { ShownItem, SpeakerNames, WriterPromptInput } from './render-writer
 export { renderWriterPrompt } from './render-writer-prompt';
 export type { MemoryRecordKind } from './memory-record-kind';
 export { memoryRatedCodec } from './memory-rated-codec';
+export { momentKeptCodec } from './moment-kept-codec';
 export { recordForgetStartedCodec } from './record-forget-started-codec';
 export { recordForgottenCodec } from './record-forgotten-codec';

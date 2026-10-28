@@ -1,7 +1,12 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import { spanSchema } from '@heynixie/contract';
 import type { JSONObject, JSONValue, LogRecord, RecordKind } from '@heynixie/log';
-import { memoryRatedCodec, recordForgetStartedCodec, recordForgottenCodec } from '@heynixie/memory';
+import {
+  memoryRatedCodec,
+  momentKeptCodec,
+  recordForgetStartedCodec,
+  recordForgottenCodec,
+} from '@heynixie/memory';
 import {
   modelCompactedCodec,
   modelCompactionFailedCodec,
@@ -34,12 +39,14 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
   const toolCall = toToolCall(record);
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
   const rating = record.kind === 'memory.rated' ? toRating(record) : undefined;
+  const moment = record.kind === 'moment_kept' ? toKeptMoment(record) : undefined;
 
   return {
     ...toSessionFields(record),
     ...toForget(record),
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
+    ...(moment === undefined ? {} : { moment }),
     ...(rating === undefined ? {} : { rating }),
     ...(recall === undefined ? {} : { recall }),
     recordedAt: record.recordedAt,
@@ -194,6 +201,23 @@ function toRating(record: LogRecord): Rating | undefined {
     })),
     ...(rated.ratedBy === undefined ? {} : { ratedBy: rated.ratedBy }),
     recalledSequence: rated.recalledSequence,
+  };
+}
+
+type KeptMoment = NonNullable<ContractRecord['moment']>;
+
+function toKeptMoment(record: LogRecord): KeptMoment | undefined {
+  const kept = momentKeptCodec.tryDecodePartial(record.payload);
+  const title = record.erasable.status === 'readable' ? record.erasable.fields['title'] : undefined;
+
+  if (kept?.momentID === undefined || kept.shortID === undefined) {
+    return undefined;
+  }
+
+  return {
+    momentID: kept.momentID,
+    shortID: kept.shortID,
+    ...(typeof title === 'string' ? { title } : {}),
   };
 }
 

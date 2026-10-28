@@ -43,12 +43,17 @@ test('it serves the memory store the test sets', async () => {
     finishForget: () => Promise.reject(new Error('no change runs here')),
     forgetRetired: () => Promise.reject(new Error('no change runs here')),
     finishForgets: () => Promise.reject(new Error('no change runs here')),
+    readItemIDMap: () => Promise.resolve(new Map()),
     proposals: {
       approve: () => Promise.reject(new Error('no answer runs here')),
       reject: () => Promise.reject(new Error('no answer runs here')),
     },
     moments: {
       keep: () => Promise.reject(new Error('no change runs here')),
+      edit: () => Promise.reject(new Error('no change runs here')),
+      link: () => Promise.reject(new Error('no change runs here')),
+      readMatches: () => Promise.resolve({ matches: [], next: null }),
+      readView: () => Promise.resolve(null),
       readDestroyPreview: () => Promise.reject(new Error('no preview runs here')),
       destroy: () => Promise.reject(new Error('no change runs here')),
       finishDestroy: () => Promise.reject(new Error('no change runs here')),

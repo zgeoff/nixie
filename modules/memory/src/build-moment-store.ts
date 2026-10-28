@@ -17,6 +17,8 @@ import type { MomentLink } from './read-moment-links';
 import { readMomentLinks } from './read-moment-links';
 import type { MomentFindQuery, MomentMatchPage } from './read-moment-matches';
 import { readMomentMatches } from './read-moment-matches';
+import type { MomentView } from './read-moment-view';
+import { readMomentView } from './read-moment-view';
 import type { MomentWeekCount } from './read-week-count';
 import { readWeekCount } from './read-week-count';
 import { runBegunDestroy } from './run-begun-destroy';
@@ -32,8 +34,14 @@ export interface MomentStore {
     request: KeepMomentRequest,
     writeInTransaction?: WriteInTransaction,
   ) => Promise<MomentWrite>;
-  readonly edit: (request: EditMomentRequest) => Promise<MomentWrite>;
-  readonly link: (request: LinkMomentRequest) => Promise<MomentWrite>;
+  readonly edit: (
+    request: EditMomentRequest,
+    writeInTransaction?: WriteInTransaction,
+  ) => Promise<MomentWrite>;
+  readonly link: (
+    request: LinkMomentRequest,
+    writeInTransaction?: WriteInTransaction,
+  ) => Promise<MomentWrite>;
   readonly retire: (request: RetireMomentRequest) => Promise<MomentWrite>;
 
   readonly read: (request: MomentReadRequest) => Promise<MomentRead | null>;
@@ -42,6 +50,9 @@ export interface MomentStore {
   readonly readLinks: (
     itemIDs: readonly string[],
   ) => Promise<ReadonlyMap<string, readonly MomentLink[]>>;
+
+  // the client's whole view of one moment, with no cut and no page
+  readonly readView: (momentID: string) => Promise<MomentView | null>;
 
   // the client's checked destroy, bound to the version its preview showed
   readonly readDestroyPreview: (target: MomentTarget) => Promise<MomentDestroyPreviewRead>;
@@ -57,13 +68,14 @@ export function buildMomentStore(context: MomentDestroyContext): MomentStore {
 
   return {
     keep: (request, writeInTransaction) => writeKeptMoment(context, request, writeInTransaction),
-    edit: (request) => writeMomentEdit(context, request),
-    link: (request) => writeMomentLink(context, request),
+    edit: (request, writeInTransaction) => writeMomentEdit(context, request, writeInTransaction),
+    link: (request, writeInTransaction) => writeMomentLink(context, request, writeInTransaction),
     retire: (request) => writeMomentRetirement(context, request),
     read: (request) => readMoment(log, request),
     readMatches: (query) => readMomentMatches(log, query),
     readWeekCount: (at) => readWeekCount(log.writer.db.$extendTables<MomentTables>(), at),
     readLinks: (itemIDs) => readMomentLinks(log, itemIDs),
+    readView: (momentID) => readMomentView(log, momentID),
     readDestroyPreview: (target) => readMomentDestroyPreview(log, target),
     destroy: (target, writeInTransaction) => runMomentDestroy(context, target, writeInTransaction),
     finishDestroy: (momentID) => runBegunDestroy(context, momentID),
