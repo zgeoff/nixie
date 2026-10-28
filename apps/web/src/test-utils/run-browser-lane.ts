@@ -1,8 +1,9 @@
 import { mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import type { BrowserRun } from './build-browser-run';
 import { buildBrowserRun } from './build-browser-run';
+import { makeWebBuildStep } from './make-web-build-step';
 import { pickChromeTmpdir } from './pick-chrome-tmpdir';
 import { removeExitedProcessDirs } from './remove-exited-process-dirs';
 
@@ -89,33 +90,6 @@ async function removeDirs(paths: readonly string[]): Promise<void> {
   }
 }
 
-const webDir = join(import.meta.dir, '..', '..');
-
-async function runBuilds(run: BrowserRun, signal: AbortSignal): Promise<number> {
-  const child = Bun.spawn(['bun', 'run', 'build', '--outDir', run.webDir], {
-    cwd: webDir,
-    signal,
-    stderr: 'inherit',
-    stdout: 'inherit',
-  });
-
-  const exitCode = await child.exited;
-
-  if (exitCode !== 0 || signal.aborted) {
-    return exitCode;
-  }
-
-  await Bun.build({
-    entrypoints: [join(webDir, 'src', 'normalize-image.ts')],
-    format: 'esm',
-    naming: 'normalize-image.js',
-    outdir: dirname(run.normalizeImagePath),
-    target: 'browser',
-  });
-
-  return 0;
-}
-
 function runTests(testArgs: readonly string[], env: Env, signal: AbortSignal): Promise<number> {
   const child = Bun.spawn([process.execPath, 'test', ...testArgs], {
     env,
@@ -145,7 +119,7 @@ if (import.meta.main) {
   process.exitCode = await runBrowserLane(process.argv.slice(2), {
     chromeTmpdir: pickChromeTmpdir(tmpdir(), run.runID),
     run,
-    runBuilds,
+    runBuilds: makeWebBuildStep(['bun', 'run', 'build']),
     runTests,
     signal: controller.signal,
   });

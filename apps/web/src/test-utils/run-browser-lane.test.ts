@@ -3,6 +3,7 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { waitFor } from '@testing-library/react';
+import { makeWebBuildStep } from './make-web-build-step';
 import { runBrowserLane } from './run-browser-lane';
 
 async function setupTest() {
@@ -144,7 +145,7 @@ test('it starts the tests only once the build finishes', async () => {
   expect(runTests).toHaveBeenCalledOnce();
 });
 
-test('it fails without running the tests, and removes its folders, when the build fails', async () => {
+test('it fails without running the tests, and removes its folders, when the web build fails', async () => {
   const ctx = await setupTest();
 
   const runTests = mock(() => Promise.resolve(0));
@@ -152,7 +153,7 @@ test('it fails without running the tests, and removes its folders, when the buil
   const exitCode = await runBrowserLane(['.browser.test.ts'], {
     chromeTmpdir: ctx.chromeTmpdir,
     run: ctx.run,
-    runBuilds: () => Promise.resolve(2),
+    runBuilds: makeWebBuildStep([process.execPath, '-e', 'process.exit(2)']),
     runTests,
     signal: new AbortController().signal,
   });
