@@ -500,6 +500,82 @@ test('#memory.readMomentSpan reads a long span a page at a time', async () => {
   expect(rest.next).toBeNull();
 });
 
+test.each([
+  ['no session token', undefined],
+  ['a token that no session holds', 'f3a9c1e2b7d84605a1c9e2f3b4d5c6a7'],
+  ['an empty bearer token', ''],
+])(
+  "#memory.readMoment refuses a caller with %s, and shows none of the moment's text",
+  async (_, token) => {
+    const ctx = await setupTest();
+
+    const [message] = await writeRecords(ctx.context.log, [
+      {
+        kind: 'owner_message',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        erasable: { text: 'the cat learned the flap today' },
+      },
+    ]);
+
+    invariant(message);
+
+    const kept = await ctx.memory.moments.keep({
+      caller: { kind: 'owner' },
+      thread: 'conversation',
+      firstSequence: message.sequence,
+      lastSequence: message.sequence,
+      title: 'The cat flap',
+    });
+
+    invariant(kept.status === 'written');
+
+    const read = buildTestClient(ctx.url, token).memory.readMoment({ momentID: kept.momentID });
+
+    await read.catch(() => {});
+
+    expect(read).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  },
+);
+
+test.each([
+  ['no session token', undefined],
+  ['a token that no session holds', 'f3a9c1e2b7d84605a1c9e2f3b4d5c6a7'],
+  ['an empty bearer token', ''],
+])(
+  "#memory.readMomentSpan refuses a caller with %s, and shows none of the span's records",
+  async (_, token) => {
+    const ctx = await setupTest();
+
+    const [message] = await writeRecords(ctx.context.log, [
+      {
+        kind: 'owner_message',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        erasable: { text: 'the cat learned the flap today' },
+      },
+    ]);
+
+    invariant(message);
+
+    const kept = await ctx.memory.moments.keep({
+      caller: { kind: 'owner' },
+      thread: 'conversation',
+      firstSequence: message.sequence,
+      lastSequence: message.sequence,
+      title: 'The cat flap',
+    });
+
+    invariant(kept.status === 'written');
+
+    const span = buildTestClient(ctx.url, token).memory.readMomentSpan({ momentID: kept.momentID });
+
+    await span.catch(() => {});
+
+    expect(span).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  },
+);
+
 test('#memory.readMomentSpan refuses a moment that does not exist', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
