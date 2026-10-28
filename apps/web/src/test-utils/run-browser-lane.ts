@@ -15,15 +15,21 @@ interface BrowserLaneDependencies {
 
   readonly env: Env;
 
+  readonly signal: AbortSignal;
+
   readonly createDir: (path: string) => Promise<void>;
 
   readonly removeDir: (path: string) => Promise<void>;
 
   readonly removeExitedProcessDirs: (parentDir: string) => Promise<void>;
 
-  readonly runBuilds: (run: BrowserRun) => Promise<void>;
+  readonly runBuilds: (run: BrowserRun, signal: AbortSignal) => Promise<void>;
 
-  readonly runTests: (testArgs: readonly string[], env: Env) => Promise<number>;
+  readonly runTests: (
+    testArgs: readonly string[],
+    env: Env,
+    signal: AbortSignal,
+  ) => Promise<number>;
 }
 
 // `bun test --parallel=1` isolates each file, so the preload runs again for each one, and the
@@ -47,13 +53,17 @@ export async function runBrowserLane(
       dependencies.createDir(chromeTmpdir),
     ]);
 
-    await dependencies.runBuilds(run);
+    await dependencies.runBuilds(run, dependencies.signal);
 
-    return await dependencies.runTests(testArgs, {
-      ...dependencies.env,
-      NIXIE_BROWSER_RUN_ID: run.runID,
-      TMPDIR: chromeTmpdir,
-    });
+    if (dependencies.signal.aborted) {
+      return 1;
+    }
+
+    return await dependencies.runTests(
+      testArgs,
+      { ...dependencies.env, NIXIE_BROWSER_RUN_ID: run.runID, TMPDIR: chromeTmpdir },
+      dependencies.signal,
+    );
   } finally {
     await Promise.all([dependencies.removeDir(run.runDir), dependencies.removeDir(chromeTmpdir)]);
   }
@@ -61,14 +71,19 @@ export async function runBrowserLane(
 
 const webDir = join(import.meta.dir, '..', '..');
 
-async function runBuilds(run: BrowserRun): Promise<void> {
+async function runBuilds(run: BrowserRun, signal: AbortSignal): Promise<void> {
   const child = Bun.spawn(['bun', 'run', 'build', '--outDir', run.webDir], {
     cwd: webDir,
+    signal,
     stderr: 'inherit',
     stdout: 'inherit',
   });
 
   const exitCode = await child.exited;
+
+  if (signal.aborted) {
+    return;
+  }
 
   if (exitCode !== 0) {
     throw new Error(`the web build failed with exit code ${exitCode}`);
@@ -83,33 +98,31 @@ async function runBuilds(run: BrowserRun): Promise<void> {
   });
 }
 
-async function runTests(testArgs: readonly string[], env: Env): Promise<number> {
+function runTests(testArgs: readonly string[], env: Env, signal: AbortSignal): Promise<number> {
   const child = Bun.spawn([process.execPath, 'test', ...testArgs], {
     env,
+    signal,
     stderr: 'inherit',
     stdin: 'inherit',
     stdout: 'inherit',
   });
 
-  // The memory cap script stops the lane with a signal, and the test process takes it on, so the
-  // lane still removes its folders.
-  const handleSignal = (signal: NodeJS.Signals) => {
-    child.kill(signal);
-  };
-
-  process.on('SIGINT', handleSignal);
-  process.on('SIGTERM', handleSignal);
-
-  try {
-    return await child.exited;
-  } finally {
-    process.off('SIGINT', handleSignal);
-    process.off('SIGTERM', handleSignal);
-  }
+  return child.exited;
 }
 
 if (import.meta.main) {
   const run = buildBrowserRun(String(process.pid));
+
+  // The memory cap script stops the lane with a signal. The abort stops the build or the test
+  // process, and the lane waits for it to exit before it removes its folders.
+  const controller = new AbortController();
+
+  const handleSignal = () => {
+    controller.abort();
+  };
+
+  process.on('SIGINT', handleSignal);
+  process.on('SIGTERM', handleSignal);
 
   process.exitCode = await runBrowserLane(process.argv.slice(2), {
     chromeTmpdir: pickChromeTmpdir(tmpdir(), run.runID),
@@ -122,5 +135,6 @@ if (import.meta.main) {
     run,
     runBuilds,
     runTests,
+    signal: controller.signal,
   });
 }
