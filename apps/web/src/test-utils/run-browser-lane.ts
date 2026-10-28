@@ -6,17 +6,24 @@ import { buildBrowserRun } from './build-browser-run';
 import { pickChromeTmpdir } from './pick-chrome-tmpdir';
 import { removeExitedProcessDirs } from './remove-exited-process-dirs';
 
+type Env = Readonly<Record<string, string | undefined>>;
+
 interface BrowserLaneDependencies {
   readonly run: BrowserRun;
 
   readonly chromeTmpdir: string;
 
+  readonly env: Env;
+
+  readonly createDir: (path: string) => Promise<void>;
+
+  readonly removeDir: (path: string) => Promise<void>;
+
+  readonly removeExitedProcessDirs: (parentDir: string) => Promise<void>;
+
   readonly runBuilds: (run: BrowserRun) => Promise<void>;
 
-  readonly runTests: (
-    testArgs: readonly string[],
-    env: Readonly<Record<string, string | undefined>>,
-  ) => Promise<number>;
+  readonly runTests: (testArgs: readonly string[], env: Env) => Promise<number>;
 }
 
 // `bun test --parallel=1` isolates each file, so the preload runs again for each one, and the
@@ -30,28 +37,25 @@ export async function runBrowserLane(
   const chromeTmpdir = dependencies.chromeTmpdir;
 
   await Promise.all([
-    removeExitedProcessDirs(run.runsDir),
-    removeExitedProcessDirs(dirname(chromeTmpdir)),
+    dependencies.removeExitedProcessDirs(run.runsDir),
+    dependencies.removeExitedProcessDirs(dirname(chromeTmpdir)),
   ]);
 
   try {
     await Promise.all([
-      mkdir(run.profilesDir, { recursive: true }),
-      mkdir(chromeTmpdir, { recursive: true }),
+      dependencies.createDir(run.profilesDir),
+      dependencies.createDir(chromeTmpdir),
     ]);
 
     await dependencies.runBuilds(run);
 
     return await dependencies.runTests(testArgs, {
-      ...process.env,
+      ...dependencies.env,
       NIXIE_BROWSER_RUN_ID: run.runID,
       TMPDIR: chromeTmpdir,
     });
   } finally {
-    await Promise.all([
-      rm(run.runDir, { recursive: true, force: true }),
-      rm(chromeTmpdir, { recursive: true, force: true }),
-    ]);
+    await Promise.all([dependencies.removeDir(run.runDir), dependencies.removeDir(chromeTmpdir)]);
   }
 }
 
@@ -79,10 +83,7 @@ async function runBuilds(run: BrowserRun): Promise<void> {
   });
 }
 
-async function runTests(
-  testArgs: readonly string[],
-  env: Readonly<Record<string, string | undefined>>,
-): Promise<number> {
+async function runTests(testArgs: readonly string[], env: Env): Promise<number> {
   const child = Bun.spawn([process.execPath, 'test', ...testArgs], {
     env,
     stderr: 'inherit',
@@ -112,6 +113,12 @@ if (import.meta.main) {
 
   process.exitCode = await runBrowserLane(process.argv.slice(2), {
     chromeTmpdir: pickChromeTmpdir(tmpdir(), run.runID),
+    createDir: async (path) => {
+      await mkdir(path, { recursive: true });
+    },
+    env: process.env,
+    removeDir: (path) => rm(path, { recursive: true, force: true }),
+    removeExitedProcessDirs,
     run,
     runBuilds,
     runTests,
