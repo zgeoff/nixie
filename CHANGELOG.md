@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.50.0](https://github.com/zgeoff/nixie/compare/v0.49.2...v0.50.0) (2026-10-28)
+
+
+### Features
+
+* **memory:** read a moment as its conversation by default ([#697](https://github.com/zgeoff/nixie/issues/697)) ([0f8a9e8](https://github.com/zgeoff/nixie/commit/0f8a9e861819510e629b75987e3b99cd90730ce3))
+
+
+### Bug Fixes
+
+* run the skill-gate hook with bun --no-install ([#694](https://github.com/zgeoff/nixie/issues/694)) ([ff80b7b](https://github.com/zgeoff/nixie/commit/ff80b7b3d330e1936f9a0f33dad3425a32368501))
+
 ## [0.49.2](https://github.com/zgeoff/nixie/compare/v0.49.1...v0.49.2) (2026-10-28)
 
 
