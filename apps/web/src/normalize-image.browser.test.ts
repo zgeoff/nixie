@@ -1,7 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
-import type { normalizeImage } from './normalize-image';
 import { checkBrowserSkip } from './test-utils/check-browser-skip';
 import { createBrowserView } from './test-utils/create-browser-view';
 import { findBrowserRun } from './test-utils/find-browser-run';
@@ -16,8 +15,10 @@ async function setupTest() {
 
   invariant(run !== null, 'the browser preload refuses a process with no browser run');
 
+  // The page code imports the module by its source path, which the page resolves against its own
+  // URL, so the server answers that path with the lane's bundle of the module.
   const answerRequest = (request: Request) =>
-    new URL(request.url).pathname === '/normalize-image.js'
+    new URL(request.url).pathname === '/normalize-image'
       ? new Response(Bun.file(run.normalizeImagePath), {
           headers: { 'content-type': 'text/javascript' },
         })
@@ -53,7 +54,7 @@ test.skipIf(browserSkip.isSkipped)(
 
     const result = await runInPage(
       ctx.view,
-      async (scriptURL: string) => {
+      async () => {
         const canvas = new OffscreenCanvas(3000, 2000);
 
         const context = canvas.getContext('2d');
@@ -82,10 +83,7 @@ test.skipIf(browserSkip.isSkipped)(
 
         const tagged = new Uint8Array([...photo.slice(0, 2), ...segment, ...photo.slice(2)]);
 
-        // oxlint-disable-next-line zgeoff/import-zones -- the page imports the lane's bundle by its URL
-        const imported: { readonly normalizeImage: typeof normalizeImage } = await import(
-          scriptURL
-        );
+        const imported = await import('./normalize-image');
 
         const image = await imported.normalizeImage(
           new File([tagged], 'garden.jpg', { type: 'image/jpeg' }),
@@ -105,7 +103,7 @@ test.skipIf(browserSkip.isSkipped)(
           hasTag: text.includes('GPS-51.4778N'),
         };
       },
-      '/normalize-image.js',
+      null,
       z.object({
         type: z.string(),
         width: z.number(),
@@ -134,7 +132,7 @@ test.skipIf(browserSkip.isSkipped)(
 
     const result = await runInPage(
       ctx.view,
-      async (scriptURL: string) => {
+      async () => {
         const canvas = new OffscreenCanvas(800, 600);
 
         const context = canvas.getContext('2d');
@@ -146,11 +144,7 @@ test.skipIf(browserSkip.isSkipped)(
         context.fillRect(10, 10, 100, 100);
 
         const screenshot = await canvas.convertToBlob({ type: 'image/png' });
-
-        // oxlint-disable-next-line zgeoff/import-zones -- the page imports the lane's bundle by its URL
-        const imported: { readonly normalizeImage: typeof normalizeImage } = await import(
-          scriptURL
-        );
+        const imported = await import('./normalize-image');
 
         const image = await imported.normalizeImage(
           new File([screenshot], 'screen.png', { type: 'image/png' }),
@@ -160,7 +154,7 @@ test.skipIf(browserSkip.isSkipped)(
 
         return { type: image.type, width: bitmap.width, height: bitmap.height };
       },
-      '/normalize-image.js',
+      null,
       z.object({ type: z.string(), width: z.number(), height: z.number() }),
     );
 
@@ -175,11 +169,8 @@ test.skipIf(browserSkip.isSkipped)(
 
     const result = await runInPage(
       ctx.view,
-      async (scriptURL: string) => {
-        // oxlint-disable-next-line zgeoff/import-zones -- the page imports the lane's bundle by its URL
-        const imported: { readonly normalizeImage: typeof normalizeImage } = await import(
-          scriptURL
-        );
+      async () => {
+        const imported = await import('./normalize-image');
 
         return imported
           .normalizeImage(
@@ -192,7 +183,7 @@ test.skipIf(browserSkip.isSkipped)(
             (error: unknown) => (error instanceof Error ? error.name : 'no error'),
           );
       },
-      '/normalize-image.js',
+      null,
       z.string(),
     );
 
