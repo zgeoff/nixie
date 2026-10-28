@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.49.1](https://github.com/zgeoff/nixie/compare/v0.49.0...v0.49.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **deps:** update qs to fix advisories ([#685](https://github.com/zgeoff/nixie/issues/685)) ([cf8aa5b](https://github.com/zgeoff/nixie/commit/cf8aa5b8bf1c85e188a499b20fc11ae84df80c77))
+
+
+### Performance Improvements
+
+* **server:** make the in-process start cheaper for tests ([#682](https://github.com/zgeoff/nixie/issues/682)) ([0428074](https://github.com/zgeoff/nixie/commit/0428074a9bbceb8df4806554621cef4db3cf25ff))
+
 ## [0.49.0](https://github.com/zgeoff/nixie/compare/v0.48.0...v0.49.0) (2026-10-26)
 
 
