@@ -106,6 +106,34 @@ test('it reads the features of an impd of major 5 with imp client 4', () => {
   });
 });
 
+test('it reads the features of an impd of major 6 with imp client 4', () => {
+  const answerRequest = mock(() =>
+    Response.json({
+      json: {
+        version: '6.0.0',
+        features: { publicEgress: true, backupOptOut: true },
+        egress: { isEnforced: true },
+      },
+    }),
+  );
+
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: answerRequest,
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  expect(port.readFeatures()).resolves.toStrictEqual({
+    publicEgress: true,
+    isEgressEnforced: true,
+    hasBackupOptOut: true,
+  });
+});
+
 test('it reads the features of a real impd that runs in the test process', async () => {
   const impd = await startTestImpd();
 
@@ -120,9 +148,9 @@ test('it reads the features of a real impd that runs in the test process', async
   });
 });
 
-test('it refuses to read the features of an impd of major 6 with imp client 4', () => {
+test('it refuses to read the features of an impd of major 7 with imp client 4', () => {
   const answerRequest = mock(() =>
-    Response.json({ json: { version: '6.0.0', features: {}, egress: {} } }),
+    Response.json({ json: { version: '7.0.0', features: {}, egress: {} } }),
   );
 
   const impd = Bun.serve({
@@ -135,7 +163,7 @@ test('it refuses to read the features of an impd of major 6 with imp client 4', 
 
   const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
 
-  expect(port.readFeatures()).rejects.toThrow(/^impd 6\.0\.0 does not speak imp client 4\./u);
+  expect(port.readFeatures()).rejects.toThrow(/^impd 7\.0\.0 does not speak imp client 4\./u);
 });
 
 test('it refuses to read the features of an impd of major 1 with imp client 4', () => {
