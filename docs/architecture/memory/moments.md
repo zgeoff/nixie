@@ -113,6 +113,30 @@ destroyed ones. The count shows in three places and never blocks a keep:
 - **The session's [status](../core/session-opening.md#status),** which splits the count by keeper
   and counts the moments that wait for a reflection.
 
+## The client
+
+The client shows moments on a timeline and opens each one whole, beside its span. The timeline lists
+the active moments newest first, a page at a time, with each one's title, keeper, keep date and last
+edit date. Its keyword search runs the same match as `moment.find` and shows the best matches in
+time order. Retired moments join the timeline only behind a filter.
+
+The moment view reads the title, the note, every reflection and the links in one read transaction,
+so an edit that commits between the reads cannot pair one version's row with another version's text.
+The view marks a title that a model wrote, dates the note by the record that holds it, and labels
+each reflection with its model and date. Each link shows the memory item's short ID and current
+text. The span arrives a page of records at a time, in sequence order, and a record whose key is
+gone shows as a gap in its place, so a forget wins over the span.
+
+The user renames a moment, moves its edges, writes or rewrites its note, removes a reflection, and
+links or unlinks a memory item by its short ID. Each edit is a
+[checked action](../channels/api.md#checked-actions) bound to the version the view read. An edit
+that meets a newer version fails as stale, and the refusal rolls back the client action with the
+change.
+
+A moment that the conversation keeps shows in the conversation as a keep notice after the step that
+kept it, with its title and a link to its view. The notice offers to add a note once. The client
+keeps the user's answer, a saved note or a skip, on the device, so the offer never returns.
+
 ## Destroying a moment
 
 Only a checked action in the client destroys a moment, and no tool reaches it. The client first

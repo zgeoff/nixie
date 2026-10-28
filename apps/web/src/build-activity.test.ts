@@ -84,6 +84,27 @@ test('it keeps a reset on its own in place of folding it into a step', () => {
   expect(buildActivity([reset, started]).at(0)).toStrictEqual({ kind: 'reset', record: reset });
 });
 
+test('it shows a kept moment on its own after the step that kept it', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  const kept = buildMockLogRecord({
+    kind: 'moment_kept',
+    moment: { momentID: '5d1c9e2a-7b3f-4a6d-8c0e-1f2a3b4c5d6e', shortID: 'q4n8v2hw6t' },
+    sequence: 2,
+  });
+
+  const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 3 });
+
+  expect(buildActivity([started, kept, committed]).map((item) => item.kind)).toStrictEqual([
+    'step',
+    'moment',
+  ]);
+});
+
 test('it folds a record before a step into the step that follows it', () => {
   const created = buildMockLogRecord({
     kind: 'task.created',

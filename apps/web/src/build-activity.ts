@@ -61,6 +61,11 @@ export interface StepActivity {
 export type ActivityItem =
   | { readonly kind: 'message'; readonly record: LiveRecord }
   | { readonly kind: 'reset'; readonly record: LiveRecord }
+  | {
+      readonly kind: 'moment';
+      readonly record: LiveRecord;
+      readonly moment: NonNullable<LiveRecord['moment']>;
+    }
   | StepActivity;
 
 type Ratings = Readonly<Record<string, MemoryRating>>;
@@ -130,6 +135,8 @@ function foldRecord(state: ActivityState, record: LiveRecord): void {
     state.items.push({ kind: 'message', record });
   } else if (record.kind === 'log_reset') {
     state.items.push({ kind: 'reset', record });
+  } else if (record.moment !== undefined) {
+    state.items.push({ kind: 'moment', record, moment: record.moment });
   } else if (record.kind === 'task.step_started') {
     state.open = buildStep([...state.pending, record], 'running', state.ratings);
     state.pending = [];

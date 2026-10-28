@@ -42,6 +42,9 @@ function Memory(): ReactNode {
             <Link className={link} to="/memory/proposals">
               Proposals
             </Link>
+            <Link className={link} to="/moments">
+              Moments
+            </Link>
             <Link className={link} to="/">
               Conversation
             </Link>
