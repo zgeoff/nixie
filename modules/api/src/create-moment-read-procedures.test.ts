@@ -314,7 +314,7 @@ test('#memory.readMoment shows the dated note, each labelled reflection, the lin
 
   const shortID = shortIDs.get(item.itemID);
 
-  invariant(shortID);
+  invariant(shortID !== undefined);
 
   const read = await buildTestClient(ctx.url, laptop.token).memory.readMoment({
     momentID: kept.momentID,

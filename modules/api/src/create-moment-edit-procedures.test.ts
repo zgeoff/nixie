@@ -396,7 +396,7 @@ test('#memory.linkMoment links a memory item that the user names by its short ID
 
   const shortID = shortIDs.get(item.itemID);
 
-  invariant(shortID);
+  invariant(shortID !== undefined);
 
   const kept = await ctx.memory.moments.keep({
     caller: { kind: 'owner' },
