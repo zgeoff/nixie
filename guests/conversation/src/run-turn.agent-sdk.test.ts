@@ -140,7 +140,14 @@ test('it offers the model nixie tools alone, on the profile model, with the plac
       headers: { 'x-api-key': 'imp-placeholder' },
       body: {
         model: 'model-a',
-        tools: [{ name: 'mcp__nixie__note_read' }, { name: 'mcp__nixie__note_wait' }],
+
+        // The CLI adds a deferred stub before the last tool; the API never shows a deferred tool
+        // to the model, so the model still sees nixie tools alone.
+        tools: [
+          { name: 'mcp__nixie__note_read' },
+          { name: 'DeferredToolPlaceholder', defer_loading: true },
+          { name: 'mcp__nixie__note_wait' },
+        ],
       },
     },
   ]);
