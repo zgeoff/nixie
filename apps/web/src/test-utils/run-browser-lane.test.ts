@@ -28,6 +28,25 @@ async function setupTest() {
   };
 }
 
+test('it removes the run folder and the Chrome temp folder when the tests pass', async () => {
+  const ctx = await setupTest();
+
+  const exitCode = await runBrowserLane(['.browser.test.ts'], {
+    chromeTmpdir: ctx.chromeTmpdir,
+    run: ctx.run,
+    runBuilds: () => Promise.resolve(0),
+    runTests: () => Promise.resolve(0),
+    signal: new AbortController().signal,
+  });
+
+  const runs = await readdir(ctx.run.runsDir);
+  const chromeTmpdirs = await readdir(ctx.chromeDir);
+
+  expect(exitCode).toBe(0);
+  expect(runs).toStrictEqual([]);
+  expect(chromeTmpdirs).toStrictEqual([]);
+});
+
 test('it removes the run folder and the Chrome temp folder when the tests fail', async () => {
   const ctx = await setupTest();
 
