@@ -13,7 +13,7 @@
     "fastembed": "3.0.0",
     "onnxruntime-node": "1.30.0",
     "onnxruntime-web": "1.30.0",
-    "ts-pattern": "5.9.0"
+    "ts-pattern": "5.9.2"
   },
   "devDependencies": {
     "@types/bun": "1.4.3"

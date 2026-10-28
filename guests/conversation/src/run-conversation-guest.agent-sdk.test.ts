@@ -83,7 +83,14 @@ test('it answers a turn whose tool server connection failed at start, after one 
   expect(ctx.frames.map((frame) => frame.type)).toStrictEqual(['read', 'assistant', 'ended']);
 
   expect(ctx.model.requests.filter((request) => request.path === '/v1/messages')).toMatchObject([
-    { body: { tools: [{ name: 'mcp__nixie__note_read' }] } },
+    {
+      body: {
+        tools: [
+          { name: 'DeferredToolPlaceholder', defer_loading: true },
+          { name: 'mcp__nixie__note_read' },
+        ],
+      },
+    },
   ]);
 
   expect(tools.resets()).toBeGreaterThanOrEqual(1);
