@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "0.3.296",
-    "ts-pattern": "5.9.0"
+    "@anthropic-ai/claude-agent-sdk": "0.3.306",
+    "ts-pattern": "5.9.2"
   },
   "scripts": {
     "typecheck": "tsrs --noEmit"
