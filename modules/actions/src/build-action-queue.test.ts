@@ -385,7 +385,7 @@ test.each([
   },
 );
 
-test('it gives a failed outcome for an action that a stop of its task cancelled', async () => {
+test('it gives a cancelled outcome for an action that a stop of its task cancelled', async () => {
   const ctx = await setupTest();
   const claim = await createTestStep(ctx.context);
 
@@ -426,7 +426,7 @@ test('it gives a failed outcome for an action that a stop of its task cancelled'
   const outcome = await queue.queue.waitForOutcome(String(result.sessionBoundary), 0);
 
   expect(outcome).toStrictEqual({
-    outcome: 'failed',
-    reason: 'a stop of the task cancelled it unsent',
+    outcome: 'cancelled',
+    reason: 'the task was stopped before it ran',
   });
 });

@@ -481,6 +481,48 @@ test('it returns a failed action outcome as text that is no tool error', async (
   });
 });
 
+test('it returns an action that a stop cancelled as cancelled, never as failed', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'test.send',
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+      }),
+    ],
+  });
+
+  const call = runToolCall(
+    { tool: 'test.send', input: { query: 'hello' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  await waitForCondition(() => ctx.queue.waits.length === 1);
+
+  invariant(ctx.queue.waits[0]);
+
+  ctx.queue.writeOutcome(ctx.queue.waits[0].actionID, {
+    outcome: 'cancelled',
+    reason: 'the task was stopped before it ran',
+  });
+
+  expect(call).resolves.toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: `action ${ctx.queue.waits[0].actionID} cancelled: the task was stopped before it ran`,
+      },
+    ],
+    isError: false,
+  });
+});
+
 test('it denies a listed send tool with the rule ID and sentence', async () => {
   const ctx = await setupTest({
     tools: [

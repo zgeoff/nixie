@@ -34,8 +34,10 @@ and wakes nothing. The cancel marks the action with the stop's sequence and leav
 was, so the release before reads the actions table unchanged. One check decides whether an action is
 cancelled, and every reader of the queue applies it: a runner never claims a cancelled action, an
 attempt start refuses one that a stop cancelled after its claim, a later call of the same tool
-queues a new action, and the model reads the action as failed with the stop as its reason. A rerun
-of the step that the stop ended gets the cancelled action back, so a restart never sends it.
+queues a new action, and the model reads the action as cancelled by the stop. The tool result record
+keeps the cancel under the failed outcome, because the release before refuses an outcome its codec
+does not list. A rerun of the step that the stop ended gets the cancelled action back, so a restart
+never sends it.
 
 ## Queuing a call
 

@@ -137,7 +137,7 @@ test('it never claims an action that a stop cancelled before its first attempt, 
   expect(view).toStrictEqual({
     status: 'cancelled',
     actionID: queued.actionID,
-    message: 'a stop of the task cancelled it unsent',
+    message: 'the task was stopped before it ran',
   });
 });
 

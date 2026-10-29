@@ -127,6 +127,6 @@ test('it shows a cancelled action as cancelled unsent by a stop, never as queued
   expect(view).toStrictEqual({
     status: 'cancelled',
     actionID: 'action-1',
-    message: 'a stop of the task cancelled it unsent',
+    message: 'the task was stopped before it ran',
   });
 });

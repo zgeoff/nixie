@@ -10,7 +10,7 @@ export function buildModelView(
   const actionID = action.action_id;
 
   if (action.isCancelled) {
-    return { status: 'cancelled', actionID, message: 'a stop of the task cancelled it unsent' };
+    return { status: 'cancelled', actionID, message: 'the task was stopped before it ran' };
   }
 
   if (action.status === 'done') {
