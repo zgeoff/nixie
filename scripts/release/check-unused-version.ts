@@ -2,7 +2,7 @@ import { $ } from 'bun';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
 
-const images = ['nixie-conversation', 'nixie-fetch', 'nixie', 'nixie-web'];
+const images = ['nixie-conversation', 'nixie-fetch', 'nixie-backup', 'nixie', 'nixie-web'];
 
 // A tagged image may already be pinned, and a rebuild would give its tag another digest; the tag
 // stage refuses that too, and this stops the run before it builds anything.

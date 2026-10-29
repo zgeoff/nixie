@@ -64,10 +64,13 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile --ignore-scripts
 
+      # a rehearsal digest, so the pack proves the release writes its backup image into the component
       - name: Pack the package and dry-run its publish
         env:
           PACKAGE: ${{ matrix.package }}
-        run: .github/scripts/publish-npm-package.sh "$PACKAGE" 0.0.0-rehearsal --dry-run
+        run: |
+          BACKUP_IMAGE="ghcr.io/example/nixie-backup@sha256:$(printf '0%.0s' {1..64})" \
+            .github/scripts/publish-npm-package.sh "$PACKAGE" 0.0.0-rehearsal --dry-run
 
       - name: Run the release path against a stand-in for npm
         env:

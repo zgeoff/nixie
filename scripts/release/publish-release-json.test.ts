@@ -47,6 +47,7 @@ test('it builds release.json from the notes summaries and publishes it', async (
       SHA: 'a1b2c3',
       CONVERSATION: 'ghcr.io/heynixie/nixie-conversation@sha256:aa11',
       FETCH: 'ghcr.io/heynixie/nixie-fetch@sha256:bb22',
+      BACKUP: 'ghcr.io/heynixie/nixie-backup@sha256:ab12',
       NIXIE: 'ghcr.io/heynixie/nixie@sha256:cc33',
       WEB: 'ghcr.io/heynixie/nixie-web@sha256:dd44',
       MIGRATIONS: '{"count":2}',
@@ -64,7 +65,7 @@ test('it builds release.json from the notes summaries and publishes it', async (
 
   expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
     [
-      `bun apps/server/src/run-release-manifest.ts --version 0.59.0 --commit a1b2c3 --server ghcr.io/heynixie/nixie@sha256:cc33 --web ghcr.io/heynixie/nixie-web@sha256:dd44 --conversation ghcr.io/heynixie/nixie-conversation@sha256:aa11 --fetch ghcr.io/heynixie/nixie-fetch@sha256:bb22 --migrations ${ctx.runnerTemp}/migrations.json --config-schema ${ctx.runnerTemp}/config-schema.json --out ${ctx.runnerTemp}/release.json`,
+      `bun apps/server/src/run-release-manifest.ts --version 0.59.0 --commit a1b2c3 --server ghcr.io/heynixie/nixie@sha256:cc33 --web ghcr.io/heynixie/nixie-web@sha256:dd44 --conversation ghcr.io/heynixie/nixie-conversation@sha256:aa11 --fetch ghcr.io/heynixie/nixie-fetch@sha256:bb22 --backup ghcr.io/heynixie/nixie-backup@sha256:ab12 --migrations ${ctx.runnerTemp}/migrations.json --config-schema ${ctx.runnerTemp}/config-schema.json --out ${ctx.runnerTemp}/release.json`,
       `bash .github/scripts/publish-release-assets.sh v0.59.0 ${ctx.runnerTemp}/release.json`,
       '',
     ].join('\n'),
@@ -81,7 +82,7 @@ test('it fails, and publishes nothing, when release.json cannot be built', async
   createStubProgram(join(ctx.binPath, 'bun'), {
     callsPath: ctx.callsPath,
     answers: {
-      [`apps/server/src/run-release-manifest.ts --version 0.59.0 --commit a1b2c3 --server ghcr.io/heynixie/nixie@sha256:cc33 --web ghcr.io/heynixie/nixie-web@sha256:dd44 --conversation ghcr.io/heynixie/nixie-conversation@sha256:aa11 --fetch ghcr.io/heynixie/nixie-fetch@sha256:bb22 --migrations ${ctx.runnerTemp}/migrations.json --config-schema ${ctx.runnerTemp}/config-schema.json --out ${ctx.runnerTemp}/release.json`]:
+      [`apps/server/src/run-release-manifest.ts --version 0.59.0 --commit a1b2c3 --server ghcr.io/heynixie/nixie@sha256:cc33 --web ghcr.io/heynixie/nixie-web@sha256:dd44 --conversation ghcr.io/heynixie/nixie-conversation@sha256:aa11 --fetch ghcr.io/heynixie/nixie-fetch@sha256:bb22 --backup ghcr.io/heynixie/nixie-backup@sha256:ab12 --migrations ${ctx.runnerTemp}/migrations.json --config-schema ${ctx.runnerTemp}/config-schema.json --out ${ctx.runnerTemp}/release.json`]:
         { exitCode: 1 },
     },
   });
@@ -98,6 +99,7 @@ test('it fails, and publishes nothing, when release.json cannot be built', async
       SHA: 'a1b2c3',
       CONVERSATION: 'ghcr.io/heynixie/nixie-conversation@sha256:aa11',
       FETCH: 'ghcr.io/heynixie/nixie-fetch@sha256:bb22',
+      BACKUP: 'ghcr.io/heynixie/nixie-backup@sha256:ab12',
       NIXIE: 'ghcr.io/heynixie/nixie@sha256:cc33',
       WEB: 'ghcr.io/heynixie/nixie-web@sha256:dd44',
       MIGRATIONS: '{"count":2}',

@@ -690,6 +690,159 @@ test("it registers the backup CronJob on nixie's data volume, with the deploymen
   });
 });
 
+test("it runs the image's own job on the staging folder alone, every 5 minutes in UTC, when the deployment sets no script", async () => {
+  const ctx = await setupTest();
+
+  createNixie('nixie', {
+    namespace: 'assistant',
+    image:
+      'ghcr.io/example/nixie:1.2.3@sha256:1111111111111111111111111111111111111111111111111111111111111111',
+    config: 'models: {}\n',
+    secretsFile: 'sops: {}\n',
+    ageKey: 'AGE-SECRET-KEY-1EXAMPLE',
+    definitions: {
+      repository: 'example/assistant-definitions',
+      ref: 'live',
+      deployKey: 'an ssh key for tests',
+    },
+    storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
+    backup: {
+      image:
+        'ghcr.io/example/nixie-backup:1.2.3@sha256:4444444444444444444444444444444444444444444444444444444444444444',
+      pullSecret: 'registry-pull',
+      environment: { NIXIE_BACKUP_DATA_REPOSITORY: 's3:https://backups.example.test/data' },
+    },
+  });
+
+  const cronJob = await ctx.stub.whenRegistered('kubernetes:batch/v1:CronJob::nixie-backup');
+
+  const lockedDown = {
+    allowPrivilegeEscalation: false,
+    readOnlyRootFilesystem: true,
+    capabilities: { drop: ['ALL'] },
+  };
+
+  expect(cronJob).toStrictEqual({
+    apiVersion: 'batch/v1',
+    kind: 'CronJob',
+    metadata: { name: 'nixie-backup', namespace: 'assistant' },
+    spec: {
+      schedule: '*/5 * * * *',
+      timeZone: 'Etc/UTC',
+      suspend: false,
+      concurrencyPolicy: 'Forbid',
+      jobTemplate: {
+        spec: {
+          backoffLimit: 2,
+          template: {
+            spec: {
+              restartPolicy: 'OnFailure',
+              securityContext: {
+                runAsNonRoot: true,
+                runAsUser: 10_001,
+                runAsGroup: 10_001,
+                fsGroup: 10_001,
+                seccompProfile: { type: 'RuntimeDefault' },
+              },
+              automountServiceAccountToken: false,
+              imagePullSecrets: [{ name: 'registry-pull' }],
+              initContainers: [
+                {
+                  name: 'staging',
+                  image:
+                    'ghcr.io/example/nixie-backup:1.2.3@sha256:4444444444444444444444444444444444444444444444444444444444444444',
+                  command: ['mkdir', '-p', '-m', '0700', '/state/backup'],
+                  volumeMounts: [{ name: 'state', mountPath: '/state' }],
+                  resources: {
+                    requests: { cpu: '10m', memory: '16Mi' },
+                    limits: { memory: '32Mi' },
+                  },
+                  securityContext: lockedDown,
+                },
+              ],
+              containers: [
+                {
+                  name: 'backup',
+                  image:
+                    'ghcr.io/example/nixie-backup:1.2.3@sha256:4444444444444444444444444444444444444444444444444444444444444444',
+                  args: ['run'],
+                  env: [
+                    { name: 'NIXIE_BACKUP_STAGING_DIR', value: '/backup' },
+                    { name: 'HOME', value: '/tmp' },
+                  ],
+                  envFrom: [{ secretRef: { name: 'nixie-backup' } }],
+                  volumeMounts: [
+                    { name: 'state', mountPath: '/backup', subPath: 'backup' },
+                    { name: 'tmp', mountPath: '/tmp' },
+                  ],
+                  resources: {
+                    requests: { cpu: '50m', memory: '128Mi' },
+                    limits: { memory: '512Mi' },
+                  },
+                  securityContext: lockedDown,
+                },
+              ],
+              volumes: [
+                { name: 'state', persistentVolumeClaim: { claimName: 'data-nixie-0' } },
+                { name: 'tmp', emptyDir: {} },
+              ],
+            },
+          },
+        },
+      },
+    },
+  });
+});
+
+test("it keeps the backup Secret out of nixie's pod, and nixie's secrets out of the backup job", async () => {
+  const ctx = await setupTest();
+
+  createNixie('nixie', {
+    namespace: 'assistant',
+    image:
+      'ghcr.io/example/nixie:1.2.3@sha256:1111111111111111111111111111111111111111111111111111111111111111',
+    config: 'models: {}\n',
+    secretsFile: 'sops: {}\n',
+    ageKey: 'AGE-SECRET-KEY-1EXAMPLE',
+    definitions: {
+      repository: 'example/assistant-definitions',
+      ref: 'live',
+      deployKey: 'an ssh key for tests',
+    },
+    storageClassName: 'local-retain',
+    web: {
+      image:
+        'ghcr.io/example/nixie-web:1.2.3@sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    },
+    backup: {
+      image:
+        'ghcr.io/example/nixie-backup:1.2.3@sha256:4444444444444444444444444444444444444444444444444444444444444444',
+      pullSecret: 'registry-pull',
+      environment: {
+        NIXIE_BACKUP_DATA_REPOSITORY: 's3:https://backups.example.test/data',
+        NIXIE_BACKUP_DATA_PASSWORD: 'a data password for tests',
+      },
+    },
+  });
+
+  const statefulSet = await ctx.stub.whenRegistered('kubernetes:apps/v1:StatefulSet::nixie');
+  const cronJob = await ctx.stub.whenRegistered('kubernetes:batch/v1:CronJob::nixie-backup');
+
+  const nixiePod = JSON.stringify(statefulSet);
+  const jobPod = JSON.stringify(cronJob);
+
+  expect(nixiePod).not.toInclude('nixie-backup');
+  expect(nixiePod).not.toInclude('NIXIE_BACKUP_');
+  expect(nixiePod).not.toInclude('a data password for tests');
+  expect(jobPod).not.toInclude('nixie-secrets');
+  expect(jobPod).not.toInclude('nixie-definitions-key');
+  expect(jobPod).not.toInclude('AGE-SECRET-KEY');
+});
+
 test("it registers the backup's environment as a secret in a Secret that the restore Job names", async () => {
   const ctx = await setupTest();
 

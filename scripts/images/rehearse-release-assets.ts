@@ -32,7 +32,7 @@ async function runCLI(): Promise<void> {
   await $`bun ${migrationCheckPath} --summary ${migrationsPath}`.quiet();
   await $`bun ${configSchemaCheckPath} --summary ${configSchemaPath}`.quiet();
 
-  await $`bun ${releaseManifestPath} --version 0.0.0-rehearsal --commit ${getStepEnv(process.env, 'GITHUB_SHA')} --server ${getStepEnv(process.env, 'NIXIE')} --web ${getStepEnv(process.env, 'WEB')} --conversation ${getStepEnv(process.env, 'CONVERSATION')} --fetch ${getStepEnv(process.env, 'FETCH')} --migrations ${migrationsPath} --config-schema ${configSchemaPath} --out ${releasePath}`;
+  await $`bun ${releaseManifestPath} --version 0.0.0-rehearsal --commit ${getStepEnv(process.env, 'GITHUB_SHA')} --server ${getStepEnv(process.env, 'NIXIE')} --web ${getStepEnv(process.env, 'WEB')} --conversation ${getStepEnv(process.env, 'CONVERSATION')} --fetch ${getStepEnv(process.env, 'FETCH')} --backup ${getStepEnv(process.env, 'BACKUP')} --migrations ${migrationsPath} --config-schema ${configSchemaPath} --out ${releasePath}`;
 
   const release = readFileSync(releasePath, 'utf8');
   const releaseImages = releaseImagesSchema.parse(JSON.parse(release));

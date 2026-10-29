@@ -18,7 +18,7 @@ async function runCLI(): Promise<void> {
   const summaryPath = getStepEnv(process.env, 'GITHUB_STEP_SUMMARY');
 
   // the sandbox images first and nixie last, as the release tags them
-  const refs = ['CONVERSATION', 'FETCH', 'WEB', 'NIXIE'].map((name) =>
+  const refs = ['CONVERSATION', 'FETCH', 'BACKUP', 'WEB', 'NIXIE'].map((name) =>
     getStepEnv(process.env, name),
   );
 

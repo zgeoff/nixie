@@ -35,7 +35,7 @@ test('it builds release.json from the rehearsal digests and rehearses its upload
   // the release.json that the stubbed manifest script would write
   writeFileSync(
     join(ctx.runnerTemp, 'release.json'),
-    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11","fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22"}}\n',
+    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33","backup":"r/nixie-backup:0.0.0-rehearsal@sha256:ab12"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11","fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22"}}\n',
   );
 
   createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
@@ -49,6 +49,9 @@ test('it builds release.json from the rehearsal digests and rehearses its upload
       },
       'buildx imagetools inspect r/nixie-web:0.0.0-rehearsal --format {{.Manifest.Digest}}': {
         stdout: 'sha256:cc33\n',
+      },
+      'buildx imagetools inspect r/nixie-backup:0.0.0-rehearsal --format {{.Manifest.Digest}}': {
+        stdout: 'sha256:ab12\n',
       },
       'buildx imagetools inspect r/nixie-conversation:0.0.0-rehearsal --format {{.Manifest.Digest}}':
         { stdout: 'sha256:aa11\n' },
@@ -66,6 +69,7 @@ test('it builds release.json from the rehearsal digests and rehearses its upload
       GITHUB_SHA: 'a1b2c3',
       CONVERSATION: 'r/nixie-conversation@sha256:aa11',
       FETCH: 'r/nixie-fetch@sha256:bb22',
+      BACKUP: 'r/nixie-backup@sha256:ab12',
       WEB: 'r/nixie-web@sha256:cc33',
       NIXIE: 'r/nixie@sha256:dd44',
     })
@@ -78,9 +82,10 @@ test('it builds release.json from the rehearsal digests and rehearses its upload
     [
       `bun libs/db/src/run-migration-check.ts --summary ${ctx.runnerTemp}/migrations.json`,
       `bun apps/server/src/run-config-schema-check.ts --summary ${ctx.runnerTemp}/config-schema.json`,
-      `bun apps/server/src/run-release-manifest.ts --version 0.0.0-rehearsal --commit a1b2c3 --server r/nixie@sha256:dd44 --web r/nixie-web@sha256:cc33 --conversation r/nixie-conversation@sha256:aa11 --fetch r/nixie-fetch@sha256:bb22 --migrations ${ctx.runnerTemp}/migrations.json --config-schema ${ctx.runnerTemp}/config-schema.json --out ${ctx.runnerTemp}/release.json`,
+      `bun apps/server/src/run-release-manifest.ts --version 0.0.0-rehearsal --commit a1b2c3 --server r/nixie@sha256:dd44 --web r/nixie-web@sha256:cc33 --conversation r/nixie-conversation@sha256:aa11 --fetch r/nixie-fetch@sha256:bb22 --backup r/nixie-backup@sha256:ab12 --migrations ${ctx.runnerTemp}/migrations.json --config-schema ${ctx.runnerTemp}/config-schema.json --out ${ctx.runnerTemp}/release.json`,
       'docker buildx imagetools inspect r/nixie:0.0.0-rehearsal --format {{.Manifest.Digest}}',
       'docker buildx imagetools inspect r/nixie-web:0.0.0-rehearsal --format {{.Manifest.Digest}}',
+      'docker buildx imagetools inspect r/nixie-backup:0.0.0-rehearsal --format {{.Manifest.Digest}}',
       'docker buildx imagetools inspect r/nixie-conversation:0.0.0-rehearsal --format {{.Manifest.Digest}}',
       'docker buildx imagetools inspect r/nixie-fetch:0.0.0-rehearsal --format {{.Manifest.Digest}}',
       `bash .github/scripts/check-publish-release-assets.sh ${ctx.runnerTemp}/release.json`,
@@ -98,7 +103,7 @@ test('it fails, and uploads nothing, when a tag in release.json names another di
 
   writeFileSync(
     join(ctx.runnerTemp, 'release.json'),
-    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11","fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22"}}\n',
+    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33","backup":"r/nixie-backup:0.0.0-rehearsal@sha256:ab12"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11","fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22"}}\n',
   );
 
   createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
@@ -121,6 +126,7 @@ test('it fails, and uploads nothing, when a tag in release.json names another di
       GITHUB_SHA: 'a1b2c3',
       CONVERSATION: 'r/nixie-conversation@sha256:aa11',
       FETCH: 'r/nixie-fetch@sha256:bb22',
+      BACKUP: 'r/nixie-backup@sha256:ab12',
       WEB: 'r/nixie-web@sha256:cc33',
       NIXIE: 'r/nixie@sha256:dd44',
     })
@@ -141,7 +147,7 @@ test('it fails when release.json leaves out a sandbox image', async () => {
 
   writeFileSync(
     join(ctx.runnerTemp, 'release.json'),
-    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11"}}\n',
+    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33","backup":"r/nixie-backup:0.0.0-rehearsal@sha256:ab12"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11"}}\n',
   );
 
   createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
@@ -156,6 +162,7 @@ test('it fails when release.json leaves out a sandbox image', async () => {
       GITHUB_SHA: 'a1b2c3',
       CONVERSATION: 'r/nixie-conversation@sha256:aa11',
       FETCH: 'r/nixie-fetch@sha256:bb22',
+      BACKUP: 'r/nixie-backup@sha256:ab12',
       WEB: 'r/nixie-web@sha256:cc33',
       NIXIE: 'r/nixie@sha256:dd44',
     })

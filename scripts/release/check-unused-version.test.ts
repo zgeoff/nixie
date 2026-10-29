@@ -31,6 +31,7 @@ test('it passes when no image carries the version yet', async () => {
     answers: {
       'buildx imagetools inspect ghcr.io/heynixie/nixie-conversation:0.59.0': { exitCode: 1 },
       'buildx imagetools inspect ghcr.io/heynixie/nixie-fetch:0.59.0': { exitCode: 1 },
+      'buildx imagetools inspect ghcr.io/heynixie/nixie-backup:0.59.0': { exitCode: 1 },
       'buildx imagetools inspect ghcr.io/heynixie/nixie:0.59.0': { exitCode: 1 },
       'buildx imagetools inspect ghcr.io/heynixie/nixie-web:0.59.0': { exitCode: 1 },
     },
@@ -47,6 +48,7 @@ test('it passes when no image carries the version yet', async () => {
     [
       'docker buildx imagetools inspect ghcr.io/heynixie/nixie-conversation:0.59.0',
       'docker buildx imagetools inspect ghcr.io/heynixie/nixie-fetch:0.59.0',
+      'docker buildx imagetools inspect ghcr.io/heynixie/nixie-backup:0.59.0',
       'docker buildx imagetools inspect ghcr.io/heynixie/nixie:0.59.0',
       'docker buildx imagetools inspect ghcr.io/heynixie/nixie-web:0.59.0',
       '',
