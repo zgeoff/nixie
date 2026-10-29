@@ -1,7 +1,7 @@
+import type { ClaimFileLock } from '@heynixie/async';
 import type { DatabaseOptions } from '@heynixie/db';
 import type { BackupFileReads } from '@heynixie/wire';
 import type { Kysely } from 'kysely';
-import type { ClaimFileLock } from './claim-file-lock';
 
 export interface DataStorage {
   readonly startDatabase: (path: string, options: DatabaseOptions) => Kysely<unknown>;

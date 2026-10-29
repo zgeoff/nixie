@@ -46,7 +46,10 @@ leaves either a set the job may ship or no set at all.
 ## The backup job
 
 The job is a separate program in its own image, which pins restic by version and checksum. Each job
-run lists the set folders in sequence order, and skips each one that lacks its marker or holds a
+run first takes an exclusive lock on a file in the staging folder, and holds it until its last set
+is done. A job run that finds the lock held ships nothing and exits with success, because 2 job runs
+at once would each keep only their own key snapshot and could forget the other's. The job run then
+lists the set folders in sequence order, and skips each one that lacks its marker or holds a
 receipt. For each set it ships, the job:
 
 1. checks the manifest against the folder's sequence, and each copy against its size and checksum;

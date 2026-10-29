@@ -1,5 +1,5 @@
-import type { ClaimFileLock } from './claim-file-lock';
-import { claimFileLock } from './claim-file-lock';
+import type { ClaimFileLock } from '@heynixie/async';
+import { claimFileLock } from '@heynixie/async';
 import type { WriterLock } from './types';
 import { WriterLockHeldError } from './writer-lock-held-error';
 

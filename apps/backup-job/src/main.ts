@@ -64,7 +64,15 @@ async function runLoggedPass(config: JobConfig, logger: Logger): Promise<number>
     keys: buildResticClient(config, config.keys, 'key'),
   };
 
-  const receipts = await runJobPass(config, repos, localJobFiles);
+  const pass = await runJobPass(config, repos, localJobFiles);
+
+  if (pass.status === 'locked') {
+    logger('backup.pass_locked', { stagingDir: config.stagingDir });
+
+    return 0;
+  }
+
+  const receipts = pass.receipts;
 
   for (const receipt of receipts) {
     if (receipt.status === 'published') {

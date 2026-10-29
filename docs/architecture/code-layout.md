@@ -166,7 +166,8 @@ The other packages each hold one piece the modules and apps share:
 - `libs/retry` is the backoff that sets the wait before each retry, so every part that retries backs
   off the same way.
 - `libs/async` holds the promise helpers, such as the wait for work to settle that a caller uses
-  when another part reads the work's failure.
+  when another part reads the work's failure, and the file lock that the writer and the backup job
+  each take.
 - `libs/logger` is the logger, so a module that logs needs none of the health code.
 - `libs/testing` holds the test helpers and the [crash test harness](core/crash-tests.md), tagged
   `server-only`.
