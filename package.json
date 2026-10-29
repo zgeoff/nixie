@@ -47,7 +47,7 @@
       "@pandacss/dev": "2.4.0",
       "@paralleldrive/cuid2": "3.3.0",
       "@pulumi/kubernetes": "4.34.2",
-      "@pulumi/pulumi": "3.271.0",
+      "@pulumi/pulumi": "3.272.0",
       "@pandacss/preset-base": "2.4.0",
       "@pandacss/preset-panda": "2.4.0",
       "@rolldown/plugin-babel": "0.2.4",
