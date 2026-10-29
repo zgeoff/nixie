@@ -70,6 +70,7 @@
       "name": "@heynixie/backup-job",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/async": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "gunshi": "catalog:",
@@ -266,6 +267,9 @@
     "libs/async": {
       "name": "@heynixie/async",
       "version": "0.0.0",
+      "dependencies": {
+        "tiny-invariant": "catalog:",
+      },
     },
     "libs/clock": {
       "name": "@heynixie/clock",
@@ -467,6 +471,7 @@
       "name": "@heynixie/log",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/async": "workspace:*",
         "@heynixie/clock": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/wire": "workspace:*",

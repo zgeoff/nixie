@@ -61,7 +61,7 @@ test('it ships no set that nixie was killed while copying, and a restart replace
   expect(isResticCalled).toBeFalse();
   expect(afterRestart.exitCode).toBe(0);
   expect(afterRestart.stdout.toString()).toInclude('"sequence":2');
-  expect(staging).toStrictEqual([]);
+  expect(staging).toStrictEqual(['job.lock']);
 
   expect(sets).toMatchObject([
     { sequence: 1, kind: 'scheduled', state: 'abandoned' },

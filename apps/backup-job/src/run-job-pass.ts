@@ -6,11 +6,55 @@ import type { JobConfig } from './parse-job-config';
 import type { BackupRepos } from './publish-backup-set';
 import { publishBackupSet } from './publish-backup-set';
 
+export type JobPass =
+  | { readonly status: 'ran'; readonly receipts: readonly BackupReceipt[] }
+  | { readonly status: 'locked' };
+
+type PassConfig = Pick<JobConfig, 'stagingDir' | 'retention'>;
+
+// Each pass keeps only its own key snapshot, so 2 passes at once could each forget the other's and
+// leave the key repo with none. A pass holds the staging lock from its listing to its last receipt,
+// and a pass that finds the lock held ships nothing.
+export async function runJobPass(
+  config: PassConfig,
+  repos: BackupRepos,
+  files: JobFiles,
+): Promise<JobPass> {
+  const lockPath = join(config.stagingDir, backupSetLayout.jobLock);
+
+  const isWritten = await files.writeFile(lockPath, '').then(
+    () => true,
+    (error: unknown) => {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+        return false;
+      }
+
+      throw error;
+    },
+  );
+
+  if (!isWritten) {
+    return { status: 'ran', receipts: [] };
+  }
+
+  const lock = files.claimFileLock(lockPath, 'exclusive');
+
+  if (lock === null) {
+    return { status: 'locked' };
+  }
+
+  try {
+    return { status: 'ran', receipts: await publishStagedSets(config, repos, files) };
+  } finally {
+    lock.release();
+  }
+}
+
 // nixie stages one set at a time and writes each one's marker last, so a set with no marker is
 // either still copying or one a crash stopped, and the job ships neither. Sets ship in sequence
 // order, so the newest key snapshot is always the newest set's.
-export async function runJobPass(
-  config: Pick<JobConfig, 'stagingDir' | 'retention'>,
+async function publishStagedSets(
+  config: PassConfig,
   repos: BackupRepos,
   files: JobFiles,
 ): Promise<readonly BackupReceipt[]> {

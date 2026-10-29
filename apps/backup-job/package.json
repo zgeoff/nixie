@@ -10,6 +10,7 @@
     "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
+    "@heynixie/async": "workspace:*",
     "@heynixie/logger": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "gunshi": "catalog:",

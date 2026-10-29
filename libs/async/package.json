@@ -9,5 +9,8 @@
   },
   "scripts": {
     "typecheck": "tsrs --noEmit"
+  },
+  "dependencies": {
+    "tiny-invariant": "catalog:"
   }
 }

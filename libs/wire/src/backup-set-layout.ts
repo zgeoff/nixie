@@ -4,5 +4,6 @@ export const backupSetLayout = {
   manifest: 'manifest.json',
   marker: 'complete',
   receipt: 'receipt.json',
+  jobLock: 'job.lock',
   sequenceDigits: 12,
 } as const;
