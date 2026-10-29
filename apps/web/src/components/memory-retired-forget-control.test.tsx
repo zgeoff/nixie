@@ -114,6 +114,7 @@ test('it deletes nothing and says why when an item was restored after the list l
         checks: null,
         evidence: null,
         evidenceQuote: null,
+        image: null,
         isUnreadable: false,
         origin: 'owner',
         proposalID: null,

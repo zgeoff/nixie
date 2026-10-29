@@ -3,9 +3,11 @@ import type { Kysely } from 'kysely';
 import type { ApprovedProposal } from './build-version-approval';
 import { buildVersionApproval } from './build-version-approval';
 import { decodeVersionText } from './decode-version-text';
+import { findImageSource } from './find-image-source';
 import { getItemShortID } from './get-item-short-id';
 import { getRowSubject } from './get-row-subject';
 import { isItemLapsed } from './is-item-lapsed';
+import { parseChecks } from './parse-checks';
 import { toReviewReason } from './to-review-reason';
 import type {
   MemoryItemRow,
@@ -143,6 +145,7 @@ async function readVersion(key: CryptoKey, row: ApprovableVersionRow): Promise<R
     recordedAt: row.recorded_at,
     text: text.text,
     evidenceQuote: text.evidenceQuote,
+    image: row.checks === null ? null : findImageSource(parseChecks(row.checks)),
     model: row.model,
     approval: buildVersionApproval(row.proposal_id, toApprovedProposal(row)),
   };

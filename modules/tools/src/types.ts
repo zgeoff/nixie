@@ -19,12 +19,21 @@ export interface ToolContext {
 }
 
 export type ToolOutcome =
-  | ({ readonly status: 'ok' } & TypedResult)
+  | ({ readonly status: 'ok' } & DirectResult)
   | { readonly status: 'error'; readonly message: string };
 
-export interface TypedResult {
+interface TypedResult {
   readonly result: JSONObject;
   readonly record?: JSONObject;
+}
+
+export interface DirectResult extends TypedResult {
+  readonly images?: readonly ToolImage[];
+}
+
+export interface ToolImage {
+  readonly mediaType: string;
+  readonly bytes: Uint8Array;
 }
 
 export interface ToolDefinition {
@@ -76,6 +85,10 @@ export interface ToolRun {
 export interface ToolSession {
   readonly key: string;
   readonly invalidatedThrough: number;
+
+  // The SDK repeats every image a session took in each later request, so an image a tool returns
+  // counts against the session's image budget, and false refuses it.
+  readonly reserveImages?: (images: readonly ToolImage[]) => boolean;
 }
 
 export interface ToolRunModel {

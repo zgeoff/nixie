@@ -1,5 +1,5 @@
 import type { ContentSource, JSONObject } from '@heynixie/log';
-import type { MemoryNotice, MemoryProposal, NoticeEntry } from './gate-types';
+import type { MemoryNotice, MemoryProposal, NoticeEntry, ProposalImage } from './gate-types';
 import type { MemoryExportRequest } from './read-memory-export';
 import type {
   ForgetStatus,
@@ -15,7 +15,7 @@ import type {
 
 export type HistoryVersion = Omit<
   RecalledVersion,
-  'text' | 'evidenceQuote' | 'model' | 'approval'
+  'text' | 'evidenceQuote' | 'image' | 'model' | 'approval'
 > &
   (
     | { readonly status: 'readable'; readonly text: string }
@@ -111,6 +111,8 @@ export type ViewVersion = ViewText & {
 
   readonly evidenceQuote: string | null;
   readonly evidence: ViewEvidence | null;
+
+  readonly image: ProposalImage | null;
 };
 
 export type ViewItemDetail = ViewItem & { readonly versions: readonly ViewVersion[] };

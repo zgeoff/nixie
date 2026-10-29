@@ -7,13 +7,14 @@ import { toolCalledCodec } from './tool-called-codec';
 import { toolResultCodec } from './tool-result-codec';
 import type {
   ActionQueue,
+  DirectResult,
   RegisteredTool,
   ResultSources,
   SchemaCheck,
   ToolCall,
+  ToolImage,
   ToolRegistry,
   ToolRun,
-  TypedResult,
 } from './types';
 
 export interface ToolCallOptions {
@@ -64,7 +65,11 @@ interface Settled {
   readonly sources: ResultSources;
   readonly content: JSONObject;
   readonly reply:
-    | { readonly kind: 'typed'; readonly result: JSONObject }
+    | {
+        readonly kind: 'typed';
+        readonly result: JSONObject;
+        readonly images: readonly ToolImage[];
+      }
     | { readonly kind: 'text'; readonly text: string; readonly isError: boolean };
 }
 
@@ -132,9 +137,26 @@ function pickLeastTrusted(sources: readonly ContentSource[]): ContentSource | nu
 }
 
 function toCallToolResult(settled: Settled): CallToolResult {
-  return settled.reply.kind === 'typed'
-    ? { content: [], structuredContent: settled.reply.result }
-    : { content: [{ type: 'text', text: settled.reply.text }], isError: settled.reply.isError };
+  const reply = settled.reply;
+
+  if (reply.kind === 'text') {
+    return { content: [{ type: 'text', text: reply.text }], isError: reply.isError };
+  }
+
+  if (reply.images.length === 0) {
+    return { content: [], structuredContent: reply.result };
+  }
+
+  return {
+    content: [
+      { type: 'text', text: JSON.stringify(reply.result) },
+      ...reply.images.map((image) => ({
+        type: 'image' as const,
+        data: Buffer.from(image.bytes).toString('base64'),
+        mimeType: image.mediaType,
+      })),
+    ],
+  };
 }
 
 // A tool missing from the run's list skips the schema, so its errors never show the tool to the
@@ -240,7 +262,7 @@ async function runDirect(allowed: AllowedCall): Promise<Settled> {
 
 function buildTypedResult(
   registered: RegisteredTool,
-  typed: TypedResult,
+  typed: DirectResult,
   actionID: string | null,
 ): Settled {
   const result = typed.result;
@@ -260,7 +282,7 @@ function buildTypedResult(
     actionID,
     sources: registered.definition.declaration.results,
     content: { result: typed.record ?? result },
-    reply: { kind: 'typed', result },
+    reply: { kind: 'typed', result, images: typed.images ?? [] },
   };
 }
 

@@ -29,6 +29,7 @@ function readMockVersion(version: StoredVersion, number: number, isGone: boolean
     checks: version.checks === null ? null : { ...version.checks },
     evidence: version.evidence === null ? null : readEvidence(version.evidence, isClosed),
     evidenceQuote: isClosed ? null : version.evidenceQuote,
+    image: isClosed || version.image === null ? null : { ...version.image },
     origin: version.origin,
     proposalID: version.proposalID,
     recordedAt: version.recordedAt,

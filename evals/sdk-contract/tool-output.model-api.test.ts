@@ -175,3 +175,57 @@ test.skipIf(!isContractRun)(
   },
   16_000,
 );
+
+test.skipIf(!isContractRun)(
+  'it passes the model the image of a result whose JSON rides in a text block beside it',
+  async () => {
+    const ctx = await setupTest();
+
+    const photos = createSdkMcpServer({
+      name: 'pages',
+      version: '0.0.0',
+      tools: [
+        tool('read_photo', 'Reads the lighthouse photo.', { page: z.number().int() }, () =>
+          Promise.resolve({
+            content: [
+              { type: 'text' as const, text: '{"eventID":"12","number":1}' },
+              {
+                type: 'image' as const,
+                data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
+                mimeType: 'image/png',
+              },
+            ],
+          }),
+        ),
+      ],
+    });
+
+    const run = await runContractQuery({
+      prompt: 'Call read_photo once for page 1, then reply DONE.',
+      options: {
+        ...ctx.options,
+        mcpServers: { pages: photos },
+        env: {
+          ...ctx.options.env,
+          MAX_MCP_OUTPUT_TOKENS: String(toolOutputLimitTokens),
+          ENABLE_MCP_LARGE_OUTPUT_FILES: '0',
+        },
+      },
+    });
+
+    const parts = run.messages.flatMap((message) =>
+      message.type === 'user' && typeof message.message.content !== 'string'
+        ? message.message.content.flatMap((block) =>
+            block.type === 'tool_result' && Array.isArray(block.content) ? block.content : [],
+          )
+        : [],
+    );
+
+    expect(parts).toStrictEqual([
+      { type: 'text', text: '{"eventID":"12","number":1}' },
+      { type: 'image', source: expect.objectContaining({ media_type: 'image/png' }) },
+      { type: 'text', text: expect.toStartWith('[Image: source: ') },
+    ]);
+  },
+  16_000,
+);

@@ -401,13 +401,21 @@ test("it gives each turn a step token of the step's run identity, and stops it o
   expect(ctx.steps).toStrictEqual([
     {
       stepRunID: 'conversation:1@1',
-      session: { key: expect.toBeString(), invalidatedThrough: 0 },
+      session: {
+        key: expect.toBeString(),
+        invalidatedThrough: 0,
+        reserveImages: expect.any(Function),
+      },
       token: 'step-token-1',
       isStopped: true,
     },
     {
       stepRunID: 'conversation:2@2',
-      session: { key: expect.toBeString(), invalidatedThrough: 0 },
+      session: {
+        key: expect.toBeString(),
+        invalidatedThrough: 0,
+        reserveImages: expect.any(Function),
+      },
       token: 'step-token-2',
       isStopped: true,
     },
@@ -1308,6 +1316,61 @@ test('it resumes the session for a photo while the images it holds leave room', 
   expect(ctx.sandboxes.turns.at(-1)?.resume?.sessionID).toBe(
     '5e2a9c71-4b0d-4f6e-8a3b-2d7c1e9f0a11',
   );
+});
+
+test("it counts an image a tool returns in the turn's image tally, and refuses one past the budget", async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    imageBudget: { bytes: 100_000, count: 2 },
+  });
+
+  const reserved: (boolean | undefined)[] = [];
+  const toolImage = { mediaType: 'image/png', bytes: new Uint8Array(30).fill(5) };
+
+  ctx.sandboxes.setGuestScript((turn) => {
+    const reserveImages = ctx.steps.at(-1)?.session?.reserveImages;
+
+    reserved.push(reserveImages?.([toolImage]), reserveImages?.([toolImage]));
+
+    return [
+      { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+      {
+        type: 'ended',
+        boundary: {
+          sessionID: '6d1f8b30-2e4c-4a7b-9c5d-0e3f7a1b2c48',
+          messageID: crypto.randomUUID(),
+        },
+        subtype: 'success',
+        stopReason: 'end_turn',
+        turns: 1,
+        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      },
+    ];
+  });
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { images: [{ mediaType: 'image/jpeg' }] },
+      erasable: { text: 'The garden bed.' },
+      attachments: [new Uint8Array(600).fill(7)],
+    },
+  ]);
+
+  await ctx.runNextStep(runner);
+
+  const ended = await ctx.readKinds('model.turn_ended');
+
+  expect(reserved).toStrictEqual([true, false]);
+  expect(ended).toMatchObject([{ payload: { sessionImageBytes: 840, sessionImageCount: 2 } }]);
 });
 
 test('it records the persona and policy hashes in force on the opening of a session', async () => {

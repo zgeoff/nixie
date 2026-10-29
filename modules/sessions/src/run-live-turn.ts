@@ -4,7 +4,9 @@ import type { ToolSession } from '@heynixie/tools';
 import type { InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { CompletedTurn } from './build-step-result';
+import { makeImageReserver } from './make-image-reserver';
 import { readLiveInbox } from './read-live-inbox';
+import type { OpeningBatch } from './read-opening-batch';
 import { readOpeningBatch } from './read-opening-batch';
 import { readRecalledThrough } from './read-recalled-through';
 import { renderHeldMessages } from './render-held-messages';
@@ -34,19 +36,32 @@ export async function runLiveTurn(
   input: StepInput,
   plan: LiveTurnPlan,
 ): Promise<CompletedTurn> {
-  const stepToken = run.endpoint.startStep(buildStepRunID(input), plan.session);
+  const opening = await readOpeningBatch(run.context.log, input.inbox, {
+    ...plan,
+    imageBudget: run.imageBudget,
+  });
+
+  const stepToken = run.endpoint.startStep(buildStepRunID(input), {
+    ...plan.session,
+    reserveImages: makeImageReserver(opening.images),
+  });
 
   try {
-    return await runTokenTurn(run, input, { ...plan, token: stepToken.token });
+    return await runTokenTurn(run, input, { ...plan, token: stepToken.token, opening });
   } finally {
     await stepToken.stop();
   }
 }
 
+interface TokenTurnPlan extends LiveTurnPlan {
+  readonly token: string;
+  readonly opening: OpeningBatch;
+}
+
 async function runTokenTurn(
   run: ConversationRun,
   input: StepInput,
-  plan: LiveTurnPlan & { readonly token: string },
+  plan: TokenTurnPlan,
 ): Promise<CompletedTurn> {
   plan.signal.throwIfAborted();
 
@@ -55,10 +70,7 @@ async function runTokenTurn(
     readTurnNote(run, plan.resume === null),
   ]);
 
-  const opening = await readOpeningBatch(run.context.log, input.inbox, {
-    ...plan,
-    imageBudget: run.imageBudget,
-  });
+  const opening = plan.opening;
 
   const sent = new Set(opening.batch.records.map((record) => record.sequence));
 

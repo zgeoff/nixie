@@ -1,5 +1,6 @@
-import type { Log } from '@heynixie/log';
+import type { Log, LogTables } from '@heynixie/log';
 import { findCheckerModel } from './find-checker-model';
+import { findImageSource } from './find-image-source';
 import { loadWriterModel } from './load-writer-model';
 import { parseChecks } from './parse-checks';
 import { parseEvidence } from './parse-evidence';
@@ -41,18 +42,34 @@ export async function readItemDetail(
   };
 
   const loadModel = (row: MemoryVersionRow): Promise<string | null> => loadWriterModel(log, row);
+  const readThread = (sequence: number): Promise<string | null> => readRecordThread(log, sequence);
 
   const versions = await Promise.all(
-    rows.map((row) => readViewVersion(row, { key, readMessage, loadModel })),
+    rows.map((row) => readViewVersion(row, { key, readMessage, loadModel, readThread })),
   );
 
   return { ...item, versions };
+}
+
+async function readRecordThread(
+  log: Pick<Log, 'writer'>,
+  sequence: number,
+): Promise<string | null> {
+  const row = await log.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('thread')
+    .where('sequence', '=', sequence)
+    .executeTakeFirst();
+
+  return row?.thread ?? null;
 }
 
 interface VersionReaders {
   readonly key: CryptoKey | null | undefined;
   readonly readMessage: (sequence: number) => Promise<EvidenceMessage>;
   readonly loadModel: (row: MemoryVersionRow) => Promise<string | null>;
+  readonly readThread: (sequence: number) => Promise<string | null>;
 }
 
 async function readViewVersion(
@@ -67,6 +84,9 @@ async function readViewVersion(
 
   const evidence = parseEvidence(row.evidence);
   const checks = row.checks === null ? null : parseChecks(row.checks);
+  const image = checks === null ? null : findImageSource(checks);
+  const isImageShown = image !== null && opened.text.status === 'readable';
+  const thread = isImageShown ? await readers.readThread(image.messageSequence) : null;
 
   return {
     version: row.version,
@@ -91,6 +111,7 @@ async function readViewVersion(
                 ? await readers.readMessage(evidence.recordSequence)
                 : null,
           },
+    image: image === null || thread === null ? null : { thread, ...image },
     ...opened.text,
   };
 }

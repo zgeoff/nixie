@@ -147,12 +147,19 @@ const ratingNotes = new Collection({
   }),
 });
 
+const ownerImageSchema = z.object({
+  position: z.int().nonnegative(),
+  sequence: z.int().positive(),
+  thread: z.string(),
+});
+
 const memoryItemVersionSchema = z.object({
   change: z.enum(['created', 'edited', 'retired', 'restored', 'undone']).default('created'),
   checkerModel: z.string().nullable().default(null),
   checks: z.record(z.string(), z.unknown()).nullable().default(null),
   evidence: z.object({ end: z.int(), sequence: z.int(), start: z.int() }).nullable().default(null),
   evidenceQuote: z.string().nullable().default(null),
+  image: ownerImageSchema.nullable().default(null),
 
   isUnreadable: z.boolean().default(false),
   origin: z.enum(['owner', 'conversation', 'task', 'memory_writer']).default('owner'),
@@ -252,12 +259,6 @@ const proposalEvidenceSchema = z.object({
   start: z.int().nonnegative(),
 });
 
-const proposalImageSchema = z.object({
-  position: z.int().nonnegative(),
-  sequence: z.int().positive(),
-  thread: z.string(),
-});
-
 const memoryProposals = new Collection({
   schema: z.object({
     actionHash: z
@@ -267,7 +268,7 @@ const memoryProposals = new Collection({
       ),
     createdAt: z.date().default(() => faker.date.recent()),
     evidence: proposalEvidenceSchema.nullable().default(null),
-    image: proposalImageSchema.nullable().default(null),
+    image: ownerImageSchema.nullable().default(null),
     isPinned: z.boolean().default(false),
     isSensitive: z.boolean().default(false),
     itemID: z.uuid().default(() => faker.string.uuid()),

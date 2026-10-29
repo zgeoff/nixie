@@ -111,6 +111,7 @@ test('it offers the memory tools, web fetch, the time tool and the log reader to
     'web_fetch',
     'time.now',
     'log.read',
+    'log.read_image',
     'tasks.list',
     'task.message',
   ]);

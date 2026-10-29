@@ -4,6 +4,7 @@ import type { ViewProposal } from '@heynixie/memory';
 import { apiImplementer } from './api-implementer';
 import { requireCaller } from './require-caller';
 import { requireViewMemory } from './require-view-memory';
+import { toContractImage } from './to-contract-image';
 import { toContractKind } from './to-contract-kind';
 import type { APIContext, Identity, ReadViewMemory, ViewMemoryStore } from './types';
 import type { ProposalAnswerAction, ProposalOutcome } from './write-proposal-answer';
@@ -105,14 +106,7 @@ function toContractProposal(proposal: ViewProposal) {
             message: evidence.message,
           },
 
-    image:
-      proposal.image === null
-        ? null
-        : {
-            thread: proposal.image.thread,
-            sequence: proposal.image.messageSequence,
-            position: proposal.image.image - 1,
-          },
+    image: toContractImage(proposal.image),
   };
 }
 

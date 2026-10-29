@@ -37,6 +37,7 @@ test('it reads each version with its provenance and its quote inside the message
         start: 11,
       },
       evidenceQuote: 'my sister Ana lives in Porto',
+      image: null,
       origin: 'memory_writer',
       proposalID: null,
       recordedAt: new Date('2026-03-01T09:00:00Z'),
@@ -49,6 +50,20 @@ test('it reads each version with its provenance and its quote inside the message
       writerModel: 'writer-model-1',
     },
   ]);
+});
+
+test('it reads a version made from a photo with the image it came from', async () => {
+  const item = await store.memoryItems.create({
+    versions: [{ image: { position: 1, sequence: 9, thread: 'conversation' } }],
+  });
+
+  const detail = readMockMemoryItem(item.itemID);
+
+  expect(detail?.versions[0]?.image).toStrictEqual({
+    position: 1,
+    sequence: 9,
+    thread: 'conversation',
+  });
 });
 
 test('it reads the message of a forgotten message as forgotten', async () => {
@@ -89,6 +104,17 @@ test('it reads a forgotten item as gaps that show no message and no quote', asyn
     evidenceQuote: null,
     status: 'shredded',
   });
+});
+
+test('it reads a forgotten item made from a photo with no image', async () => {
+  const item = await store.memoryItems.create({
+    state: 'forgotten',
+    versions: [{ image: { position: 0, sequence: 9, thread: 'conversation' } }],
+  });
+
+  const detail = readMockMemoryItem(item.itemID);
+
+  expect(detail?.versions[0]).toMatchObject({ image: null, status: 'shredded' });
 });
 
 test('it reads a version whose text fails to open as unreadable, with no message and no quote', async () => {

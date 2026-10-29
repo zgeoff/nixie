@@ -1,6 +1,6 @@
 import { buildTimeTool, buildWebFetchTool, webFetchDefaults } from '@heynixie/connectors';
 import type { MemoryToolStore } from '@heynixie/memory';
-import { buildLogReadTool } from '@heynixie/memory';
+import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import type { FetchReply } from '@heynixie/wire';
 import { buildConversationTools } from '../build-conversation-tools';
@@ -28,7 +28,7 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
             findTimeZone: () => Promise.resolve(null),
             defaultZone: 'UTC',
           }),
-          logRead: buildLogReadTool(context.log),
+          logReaders: [buildLogReadTool(context.log), buildLogReadImageTool(context.log)],
           skills: [],
           prompts: [],
           tasks: [],

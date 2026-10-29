@@ -2,6 +2,8 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { cli } from 'gunshi';
+import { previewRouteCommand } from './preview-route-command';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'preview-route-'));
@@ -10,7 +12,6 @@ async function setupTest() {
 
   return {
     directory,
-    entry: join(import.meta.dir, 'run-preview-route-config.ts'),
     previewConfig: join(import.meta.dir, '..', '..', '..', 'preview', 'config.yaml'),
   };
 }
@@ -18,12 +19,8 @@ async function setupTest() {
 test("it writes a copy of the preview's own config with the route on its model base URL", async () => {
   const ctx = await setupTest();
 
-  const child = Bun.spawn(
+  await cli(
     [
-      process.execPath,
-      '--define',
-      'NIXIE_TEST_BUILD=true',
-      ctx.entry,
       '--route',
       'preview-a',
       '--source',
@@ -31,28 +28,21 @@ test("it writes a copy of the preview's own config with the route on its model b
       '--target',
       join(ctx.directory, 'config.yaml'),
     ],
-    { stdout: 'ignore', stderr: 'pipe' },
+    previewRouteCommand,
   );
 
-  const code = await child.exited;
   const written = await readFile(join(ctx.directory, 'config.yaml'), 'utf8');
-
-  expect(code).toBe(0);
 
   expect(Bun.YAML.parse(written)).toMatchObject({
     models: { profiles: { preview: { base_url: 'https://api.anthropic.com/preview-a' } } },
   });
 });
 
-test('it exits 1 for a route that is not a slug and writes no copy', async () => {
+test('it refuses a route that is not a slug and writes no copy', async () => {
   const ctx = await setupTest();
 
-  const child = Bun.spawn(
+  const run = cli(
     [
-      process.execPath,
-      '--define',
-      'NIXIE_TEST_BUILD=true',
-      ctx.entry,
       '--route',
       'Preview-A',
       '--source',
@@ -60,14 +50,15 @@ test('it exits 1 for a route that is not a slug and writes no copy', async () =>
       '--target',
       join(ctx.directory, 'config.yaml'),
     ],
-    { stdout: 'ignore', stderr: 'pipe' },
+    previewRouteCommand,
   );
 
-  const code = await child.exited;
-  const stderr = await child.stderr.text();
-  const written = await Bun.file(join(ctx.directory, 'config.yaml')).exists();
+  expect(run).rejects.toThrowWithMessage(
+    Error,
+    "NIXIE_PREVIEW_MODEL_ROUTE must be a lowercase slug, not 'Preview-A'",
+  );
 
-  expect(code).toBe(1);
-  expect(stderr).toBe("NIXIE_PREVIEW_MODEL_ROUTE must be a lowercase slug, not 'Preview-A'\n");
-  expect(written).toBeFalse();
+  const isWritten = await Bun.file(join(ctx.directory, 'config.yaml')).exists();
+
+  expect(isWritten).toBeFalse();
 });

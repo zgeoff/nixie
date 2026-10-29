@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import {
   defaultGateLimits,
   defaultOwnerPronouns,
@@ -6,6 +7,7 @@ import {
   startMemoryStore,
 } from '@heynixie/memory';
 import { createConversationTask } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
@@ -348,9 +350,59 @@ test("#memory.readItem reads a version's quote inside the message it came from",
         end: 39,
         message: { status: 'readable', text: 'Quick one: my sister Ana lives in Porto now.' },
       },
+      image: null,
       status: 'readable',
       text: "The user's sister Ana lives in Porto",
     },
+  ]);
+});
+
+test('#memory.readItem reads an approved photo version with the thread, sequence and position of its image', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const [photo] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'owner',
+      payload: { images: [{ mediaType: 'image/png' }, { mediaType: 'image/jpeg' }] },
+      erasable: { text: 'Both boats', spans: [{ start: 0, end: 10, source: 'typed' }] },
+      attachments: [new Uint8Array([1, 2]), new Uint8Array([3, 4])],
+    },
+  ]);
+
+  invariant(photo);
+
+  await ctx.memory.writes.remember({
+    text: 'Owns a red kayak',
+    image: { messageSequence: photo.sequence, image: 2 },
+    caller: {
+      origin: 'conversation',
+      thread: 'conversation',
+      taskID: 'conversation',
+      runID: 'conversation',
+      model: 'test-model',
+    },
+  });
+
+  const [pending] = await ctx.memory.proposals.listPending();
+
+  invariant(pending);
+
+  await ctx.memory.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const detail = await buildTestClient(ctx.url, laptop.token).memory.readItem({
+    itemID: pending.itemID,
+  });
+
+  expect(detail.versions.map((version) => version.image)).toStrictEqual([
+    { thread: 'conversation', sequence: photo.sequence, position: 1 },
   ]);
 });
 

@@ -20,6 +20,7 @@ export type {
   ToolDefinition,
   ToolEndpoint,
   ToolExecution,
+  ToolImage,
   ToolOutcome,
   ToolRegistry,
   ToolRun,

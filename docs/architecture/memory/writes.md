@@ -221,6 +221,11 @@ write apply at once under the rule's token check, with outside content as its so
 a photo keeps the image in its checks and takes outside content as its source, even when the user
 approves an edit of its text.
 
+The recall tool returns that image source beside each version from a photo, as the event ID and the
+image's number, so the conversation can open the photo with the
+[log image tool](./context.md#reading-the-log) when it needs to see it. The item's history on the
+[memory page](./view.md#an-items-history) shows the photo beside the version.
+
 ### Image offer records
 
 The log of a deployment that ran an earlier release can hold image offer records. Each one seals a

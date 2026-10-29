@@ -1,6 +1,6 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
+import { readOwnerImage } from '@heynixie/memory';
 import { apiImplementer } from './api-implementer';
-import { readOwnerImage } from './read-owner-image';
 import { readOwnerImages } from './read-owner-images';
 import { readThreadPage } from './read-thread-page';
 import { requireCaller } from './require-caller';
@@ -85,12 +85,14 @@ function createReadImageProcedure(context: APIContext) {
   return apiImplementer.conversation.readImage.handler(async (options) => {
     await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-    const image = await readOwnerImage(context, options.input);
+    const image = await readOwnerImage(context.log, options.input);
 
     if (image === null) {
       throw options.errors.IMAGE_NOT_FOUND();
     }
 
-    return image;
+    return new File([image.bytes], `image-${options.input.position + 1}`, {
+      type: image.mediaType,
+    });
   });
 }

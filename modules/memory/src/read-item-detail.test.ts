@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
+import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
 import { removeMessageKey } from './test-utils/remove-message-key';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
@@ -48,9 +50,43 @@ test("it reads a version's provenance with the writer's and the checker's models
       checkerModel: 'checker-model-1',
       evidenceQuote: null,
       evidence: null,
+      image: null,
       status: 'readable',
       text: 'Plays the cello on Thursdays',
     },
+  ]);
+});
+
+test('it reads the image an approved photo version came from, in the thread of its proposal', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Look at these two',
+    spans: [{ start: 0, end: 17, source: 'typed' }],
+    images: ['image/png', 'image/jpeg'],
+  });
+
+  await ctx.memory.store.writes.remember({
+    text: 'Owns a red kayak',
+    image: { messageSequence: photo, image: 2 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await ctx.memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const detail = await ctx.memory.store.view.readItem(pending.itemID);
+
+  expect(detail?.versions).toMatchObject([
+    { version: 1, image: { thread: 'conversation', messageSequence: photo, image: 2 } },
   ]);
 });
 
@@ -190,6 +226,70 @@ test('it reads a forgotten item as dated gaps that show no message', async () =>
       },
     ],
   });
+});
+
+test('it reads the image of a photo version that applied without a proposal, in the thread of its message', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Look at this one',
+    spans: [{ start: 0, end: 16, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: 'Owns a red kayak',
+    provenance: {
+      origin: 'conversation',
+      source: 'untrusted',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: { tokens: 'pass', image: { messageSequence: photo, image: 1 } },
+    },
+  });
+
+  const detail = await ctx.memory.store.view.readItem(item.itemID);
+
+  expect(detail?.versions).toMatchObject([
+    { version: 1, image: { thread: 'conversation', messageSequence: photo, image: 1 } },
+  ]);
+});
+
+test('it reads no image for a version of a forgotten item made from a photo', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Look at this one',
+    spans: [{ start: 0, end: 16, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  await ctx.memory.store.writes.remember({
+    text: 'Owns a red kayak',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await ctx.memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  await ctx.memory.store.forget({
+    target: { itemID: pending.itemID, version: 1 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const detail = await ctx.memory.store.view.readItem(pending.itemID);
+
+  expect(detail?.versions).toMatchObject([{ version: 1, status: 'shredded', image: null }]);
 });
 
 test('it reads no checker model for a version no checker saw', async () => {
