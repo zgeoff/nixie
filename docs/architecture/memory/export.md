@@ -2,13 +2,14 @@
 
 The memory export writes every memory item, with its whole history, into one JSON file that the user
 saves where they pick. The file holds a header and then each item in the order it was created. An
-active or retired item carries its subject, owner, shared or [self](./writes.md#self-notes), and
-every version, oldest first, with its text, the quote it was saved from and its provenance. A
-forgotten item carries only its ID and the time its forget completed, so the file never holds a
-forgotten item's words. The [moments](./moments.md) follow the items, each with its span's records
-decrypted, so a tool call keeps its tool's name and a result its outcome. A destroyed moment carries
-only its ID and the time its destroy completed. Only the user exports: the model's export tool is
-denied, and nixie never sends the file anywhere but the device that asked.
+active or retired item carries its subject, owner, shared or [self](./writes.md#self-notes), whether
+it is pinned or [sensitive](./store.md#sensitive-items), and every version, oldest first, with its
+text, the quote it was saved from and its provenance. A forgotten item carries only its ID and the
+time its forget completed, so the file never holds a forgotten item's words. The
+[moments](./moments.md) follow the items, each with its span's records decrypted, so a tool call
+keeps its tool's name and a result its outcome. A destroyed moment carries only its ID and the time
+its destroy completed. Only the user exports: the model's export tool is denied, and nixie never
+sends the file anywhere but the device that asked.
 
 [The memory store](./store.md) covers the items, versions and states the export reads, and
 [the memory view](./view.md) covers the page the export button sits on.
@@ -21,7 +22,8 @@ the snapshot hash of the definitions in force when the export ran, so a reader c
 before it reads the items. Each version also keeps the snapshot hash it was written under, because a
 version's checks only make sense against the definitions that ran them. A change to the shape raises
 the schema version, so a file from an older release holds the version of the shape it was written
-in.
+in. The schema reads one older version: a file from before the sensitive mark reads with every item
+not sensitive.
 
 A version whose key or ciphertext fails exports with no text and no quote, as the memory view shows
 it unreadable. An item a forget began exports as a forgotten one even before the forget's cleanup

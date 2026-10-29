@@ -31,6 +31,7 @@ const readableItemSchema = z.strictObject({
   shortID: z.string(),
   state: z.enum(['active', 'retired']),
   isPinned: z.boolean(),
+  isSensitive: z.boolean().exactOptional(),
   subject: z.enum(['owner', 'self', 'shared']),
   versions: z.array(versionSchema).min(1),
 });
@@ -82,15 +83,38 @@ const destroyedMomentSchema = z.strictObject({
   destroyedAt: z.iso.datetime().nullable(),
 });
 
-export const memoryExportSchema = z.strictObject({
-  header: z.strictObject({
-    schemaVersion: z.literal(memoryExportSchemaVersion),
-    exportedAt: z.iso.datetime(),
-    snapshotHash: z.string(),
-  }),
-  items: z.array(z.union([readableItemSchema, forgottenItemSchema])),
-  moments: z.array(z.union([readableMomentSchema, destroyedMomentSchema])),
-});
+// A version 5 file predates the sensitive mark, so its items read as not sensitive.
+const sensitiveMarkVersion = 6;
+
+export const memoryExportSchema = z
+  .strictObject({
+    header: z.strictObject({
+      schemaVersion: z.literal([sensitiveMarkVersion - 1, memoryExportSchemaVersion]),
+      exportedAt: z.iso.datetime(),
+      snapshotHash: z.string(),
+    }),
+    items: z.array(z.union([readableItemSchema, forgottenItemSchema])),
+    moments: z.array(z.union([readableMomentSchema, destroyedMomentSchema])),
+  })
+  .superRefine((file, ctx) => {
+    const isMarkRequired = file.header.schemaVersion >= sensitiveMarkVersion;
+
+    for (const [index, item] of file.items.entries()) {
+      if ('versions' in item && 'isSensitive' in item !== isMarkRequired) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `schema version ${file.header.schemaVersion} items ${isMarkRequired ? 'need' : 'have no'} a sensitive mark`,
+          path: ['items', index, 'isSensitive'],
+        });
+      }
+    }
+  })
+  .transform((file) => ({
+    ...file,
+    items: file.items.map((item) =>
+      'versions' in item ? { ...item, isSensitive: item.isSensitive ?? false } : item,
+    ),
+  }));
 
 export type MemoryExport = z.infer<typeof memoryExportSchema>;
 
