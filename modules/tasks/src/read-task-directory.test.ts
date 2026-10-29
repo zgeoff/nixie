@@ -76,7 +76,7 @@ test('it names a started task by its ID once its name is forgotten', async () =>
     .where('sequence', '=', 1)
     .executeTakeFirstOrThrow();
 
-  invariant(created.key_id);
+  invariant(created.key_id !== null);
 
   await removeRecordKey(ctx.context.log, created.key_id);
 

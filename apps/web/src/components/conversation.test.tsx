@@ -635,6 +635,33 @@ test('it sends stored messages in the order you sent them', async () => {
   ).toStrictEqual(['first', 'second']);
 });
 
+test('it leaves a held message of another thread out of a task page', async () => {
+  await createDeviceSession();
+
+  await store.tasks.create({ name: 'Garden plan', taskID: 'k3vq8m2xpa' });
+
+  const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '6c1e3a5f-7b9d-4f2a-8c4e-0d2f4a6c8e17',
+        spans: [{ end: 15, source: 'typed', start: 0 }],
+        text: 'Lock the garage',
+        thread: 'conversation',
+        writtenAt: threeHoursAgo,
+      },
+    ]),
+  );
+
+  const rendered = render(<Conversation thread="k3vq8m2xpa" />);
+
+  const list = await rendered.findByRole('list', { name: 'Conversation' });
+
+  expect(list).not.toHaveTextContent('Lock the garage');
+});
+
 test('it sends a stored message written under 2 minutes ago, and holds an older one until you send it', async () => {
   const ctx = setupTest();
 

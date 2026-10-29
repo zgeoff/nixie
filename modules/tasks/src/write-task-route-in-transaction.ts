@@ -22,19 +22,29 @@ export async function writeTaskRouteInTransaction(
       ? await readUnreadOwnerMessages(tx)
       : route.onBehalfOf.map(Number);
 
-  await writeRecordsInTransaction(tx, context.log, [
-    {
+  const elsewhere = await readMessagesElsewhere(tx, messages);
+
+  const definitions = context.definitions();
+
+  // A client reads one thread at a time, so a message written on another task's thread and moved
+  // to the conversation gets its route on that thread too.
+  const threads = [[conversationTaskID, messages] as const, ...elsewhere];
+
+  await writeRecordsInTransaction(
+    tx,
+    context.log,
+    threads.map(([thread, routed]) => ({
       kind: 'task.routed',
-      definitions: context.definitions(),
-      thread: conversationTaskID,
+      definitions,
+      thread,
       payload: taskRoutedCodec.encode({
         taskID: route.taskID,
         via: route.via,
         messageID: route.messageID,
-        messages,
+        messages: routed,
       }),
-    },
-  ]);
+    })),
+  );
 }
 
 async function readUnreadOwnerMessages(tx: Transaction<unknown>): Promise<readonly number[]> {
@@ -64,4 +74,32 @@ async function readUnreadOwnerMessages(tx: Transaction<unknown>): Promise<readon
 
     return moved.to === conversationTaskID ? [moved.message] : [];
   });
+}
+
+async function readMessagesElsewhere(
+  tx: Transaction<unknown>,
+  messages: readonly number[],
+): Promise<ReadonlyMap<string, readonly number[]>> {
+  const grouped = new Map<string, number[]>();
+
+  if (messages.length === 0) {
+    return grouped;
+  }
+
+  const rows = await tx
+    .$extendTables<TasksTables>()
+    .selectFrom('records')
+    .select(['sequence', 'thread'])
+    .where('sequence', 'in', [...messages])
+    .where('thread', '!=', conversationTaskID)
+    .orderBy('sequence')
+    .execute();
+
+  for (const row of rows) {
+    if (row.thread !== null) {
+      grouped.set(row.thread, [...(grouped.get(row.thread) ?? []), row.sequence]);
+    }
+  }
+
+  return grouped;
 }

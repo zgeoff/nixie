@@ -163,7 +163,9 @@ tells the model to tell the user that the task is queued.
 Each start from the conversation, and each conversation message to another task, writes a routing
 record on the conversation's thread. The record names the task and the user's messages that the work
 came from: the on-behalf-of IDs of the message, or, when the message lists none, the conversation's
-unread user messages. A message-routes projection keeps one row per routed user message with the
+unread user messages. A user message that the user wrote on another task's thread, and later moved
+to the conversation, gets a copy of the routing record on that thread too, because a client reads
+one thread at a time. A message-routes projection keeps one row per routed user message with the
 task it went to, and a later route of the same message replaces the row. The tool's note tells the
 model to say in its reply where the work went, and the [client](../channels/client.md#routing-marks)
 shows each route beside the user's message.
