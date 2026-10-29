@@ -1,14 +1,15 @@
 import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { runWebBuildOnce, startBuiltWeb, startStubAPI, store } from '@heynixie/web/test-utils';
+import { startBuiltWeb, startStubAPI, store } from '@heynixie/web/test-utils';
+import { readWebBuild } from '../test-utils/read-web-build';
 
 async function setupTest() {
-  const serverPath = await runWebBuildOnce();
+  const serverPath = await readWebBuild();
 
   const api = startStubAPI();
 
-  const web = await startBuiltWeb(api.url);
+  const web = await startBuiltWeb(api.url, serverPath);
 
   return { api, serverPath, url: web.url };
 }
