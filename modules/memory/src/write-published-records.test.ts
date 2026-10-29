@@ -211,3 +211,69 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
 
   expect(pending).toHaveLength(1);
 });
+
+test('it keeps a sensitive write and a write with no mark of the same text as proposals of their own', async () => {
+  const ctx = await setupTest();
+  const lease = await claimWriterLease(ctx.parts.context);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+  };
+
+  const planned = await writePlannedBatch(ctx.memory.log, [
+    'I live at 12 Juniper Row.',
+    'Yes, 12 Juniper Row.',
+  ]);
+
+  const session = createStubWriterSession({
+    op: 'remember',
+    subject: 'owner',
+    text: 'The owner lives at 12 Juniper Row.',
+    quote: 'I live at 12 Juniper Row',
+    sourceSequence: planned.bounds.end,
+    itemID: null,
+  });
+
+  session.model.runSession.mockImplementationOnce(() => {
+    session.staging.stage({
+      op: 'remember',
+      subject: 'owner',
+      text: 'The owner lives at 12 Juniper Row.',
+      quote: 'I live at 12 Juniper Row',
+      sourceSequence: planned.sequences[0] ?? 0,
+      itemID: null,
+      isSensitive: true,
+    });
+
+    session.staging.stage({
+      op: 'remember',
+      subject: 'owner',
+      text: 'The owner lives at 12 Juniper Row.',
+      quote: 'I live at 12 Juniper Row',
+      sourceSequence: planned.sequences[0] ?? 0,
+      itemID: null,
+    });
+
+    return Promise.resolve({
+      inputTokens: 1,
+      outputTokens: 1,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+    });
+  });
+
+  await runWriterBatch(
+    { ...ctx.parts, ...session },
+    { input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
+  );
+
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(pending.map((proposal) => proposal.isSensitive)).toStrictEqual([true, false]);
+});
