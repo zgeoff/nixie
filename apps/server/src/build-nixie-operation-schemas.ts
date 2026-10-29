@@ -8,6 +8,10 @@ export function buildNixieOperationSchemas() {
     // A test that names the task can arm a fault point for it before the task exists.
     createTask: z.object({ brief: z.string(), taskID: z.string().exactOptional() }),
     finishTask: z.object({ taskID: z.string() }),
+    controlTask: z.object({
+      taskID: z.string(),
+      control: z.enum(['pause', 'resume', 'stop', 'restart', 'close', 'interrupt']),
+    }),
     releaseWriterLock: z.null(),
   };
 }
