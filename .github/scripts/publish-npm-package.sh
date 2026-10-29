@@ -61,7 +61,7 @@ undeclared=$(grep -rhoE "(from |import\()['\"][^'\"./][^'\"]*['\"]" "$work/unpac
   sed -E "s#^(from |import\()['\"]##; s#['\"]\$##; s#^((@[^/]+/)?[^/]+).*#\1#" | sort -u |
   grep -vxF -f <(printf '%s\n' "$declared") || true)
 if [[ -n $undeclared ]]; then
-  echo "::error::the packed $name imports modules it does not declare as dependencies:" $undeclared
+  echo "::error::the packed $name imports modules it does not declare as dependencies: ${undeclared//$'\n'/ }"
   exit 1
 fi
 
