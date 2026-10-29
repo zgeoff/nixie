@@ -184,10 +184,11 @@ Messages API's image limit for a model with the smaller context window, so it ho
 a profile names. A message whose images would pass either cap waits for the next step, whether it
 opens a turn's batch or lands while the turn runs, and that step opens a rebuilt session for it, so
 no request passes the size or the image count the Messages API accepts. The first message of a new
-session always goes. A rebuilt session's history and every other render of the message show only the
-markers, never the bytes, so an image reaches the model once, in the turn it was sent. The
-pasted-text rule in the system prompt names the images too: the model treats an image's content, its
-text included, as it treats dropped text.
+session always goes. An image a tool returns during the turn counts against the same caps, and the
+turn refuses one that would pass either cap. A rebuilt session's history and every other render of
+the message show only the markers, never the bytes, so an image reaches the model once, in the turn
+it was sent. The pasted-text rule in the system prompt names the images too: the model treats an
+image's content, its text included, as it treats dropped text.
 
 ## System messages
 

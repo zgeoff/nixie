@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import type { LogTables } from '@heynixie/log';
 import { removeRecordKey, writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
@@ -39,13 +39,84 @@ test("it returns an owner's image as image input with its event, number and medi
       input: { eventID: `#${String(photo.sequence)}`, number: 2 },
       toolUseID: null,
     },
-    buildMockToolContext(),
+    buildMockToolContext({
+      session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
+    }),
   );
 
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: { eventID: String(photo.sequence), number: 2, mediaType: 'image/jpeg' },
     images: [{ mediaType: 'image/jpeg', bytes: new TextEncoder().encode('shelf-plan-B') }],
+  });
+});
+
+test("it reserves the image it returns in the session's image budget", async () => {
+  const ctx = await setupTest();
+
+  const [photo] = await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'owner',
+      payload: { images: [{ mediaType: 'image/png' }] },
+      erasable: { text: 'The shelf plan', spans: [{ start: 0, end: 14, source: 'typed' }] },
+      attachments: [new TextEncoder().encode('shelf-plan-A')],
+    },
+  ]);
+
+  invariant(photo);
+
+  const reserveImages = mock(() => true);
+
+  await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'log.read_image',
+      input: { eventID: String(photo.sequence), number: 1 },
+      toolUseID: null,
+    },
+    buildMockToolContext({ session: { key: 'session-a', invalidatedThrough: 0, reserveImages } }),
+  );
+
+  expect(reserveImages).toHaveBeenCalledExactlyOnceWith([
+    { mediaType: 'image/png', bytes: new TextEncoder().encode('shelf-plan-A') },
+  ]);
+});
+
+test('it refuses an image that would pass the session image budget', async () => {
+  const ctx = await setupTest();
+
+  const [photo] = await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'owner',
+      payload: { images: [{ mediaType: 'image/png' }] },
+      erasable: { text: 'The shelf plan', spans: [{ start: 0, end: 14, source: 'typed' }] },
+      attachments: [new TextEncoder().encode('shelf-plan-A')],
+    },
+  ]);
+
+  invariant(photo);
+
+  const outcome = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'log.read_image',
+      input: { eventID: String(photo.sequence), number: 1 },
+      toolUseID: null,
+    },
+    buildMockToolContext({
+      session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => false },
+    }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'image unavailable: this session holds as many images as it can take',
   });
 });
 

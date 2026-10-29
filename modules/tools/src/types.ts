@@ -85,6 +85,10 @@ export interface ToolRun {
 export interface ToolSession {
   readonly key: string;
   readonly invalidatedThrough: number;
+
+  // The SDK repeats every image a session took in each later request, so an image a tool returns
+  // counts against the session's image budget, and false refuses it.
+  readonly reserveImages?: (images: readonly ToolImage[]) => boolean;
 }
 
 export interface ToolRunModel {

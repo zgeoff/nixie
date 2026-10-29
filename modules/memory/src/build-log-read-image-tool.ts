@@ -42,8 +42,9 @@ export function buildLogReadImageTool(log: Pick<Log, 'deploymentKey' | 'writer'>
       'Shows you one image the owner attached to a message in this conversation, by the eventID ' +
       'of the message and the number of the image: the n of its <dropped-image> marker, or the ' +
       'image a memory.recall item names. Open an image only when seeing it would change your ' +
-      'answer. It returns image unavailable once the owner forgot the message, or when the ' +
-      "message holds no such image of the owner's.",
+      'answer. It returns image unavailable once the owner forgot the message, when the ' +
+      "message holds no such image of the owner's, or when this session already holds as many " +
+      'images as it can take.',
     input: logReadImageInput,
     output: logReadImageOutput,
     declaration: {
@@ -67,6 +68,13 @@ export function buildLogReadImageTool(log: Pick<Log, 'deploymentKey' | 'writer'>
 
       if (image === null) {
         return { status: 'error', message: 'image unavailable' };
+      }
+
+      if (context.run.session?.reserveImages?.([image]) !== true) {
+        return {
+          status: 'error',
+          message: 'image unavailable: this session holds as many images as it can take',
+        };
       }
 
       return {
