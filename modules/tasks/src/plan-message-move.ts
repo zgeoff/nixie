@@ -9,11 +9,13 @@ export interface MessageMoveFacts {
   readonly routedTo: string | null;
   readonly fromState: TaskState | null;
   readonly targetState: TaskState | null;
+  readonly isTargetTakingMessages: boolean;
 }
 
 export type MessageMoveRefusal =
   | { readonly reason: 'not_found' }
   | { readonly reason: 'unknown_task' }
+  | { readonly reason: 'takes_no_messages' }
   | { readonly reason: 'same_task' }
   | { readonly reason: 'empty_name' }
   | { readonly reason: 'empty_brief' };
@@ -33,7 +35,7 @@ export function planMessageMove(target: MoveTarget, facts: MessageMoveFacts): Me
   }
 
   const from = facts.routedTo ?? facts.messageThread;
-  const refusal = pickTargetRefusal(target, from, facts.targetState);
+  const refusal = pickTargetRefusal(target, from, facts);
 
   if (refusal !== null) {
     return { status: 'refused', refusal };
@@ -50,7 +52,7 @@ export function planMessageMove(target: MoveTarget, facts: MessageMoveFacts): Me
 function pickTargetRefusal(
   target: MoveTarget,
   from: string,
-  targetState: TaskState | null,
+  facts: Pick<MessageMoveFacts, 'targetState' | 'isTargetTakingMessages'>,
 ): MessageMoveRefusal | null {
   if (target.kind === 'new') {
     if (target.name.trim() === '') {
@@ -60,8 +62,12 @@ function pickTargetRefusal(
     return target.brief.trim() === '' ? { reason: 'empty_brief' } : null;
   }
 
-  if (targetState === null || isFinished(targetState)) {
+  if (facts.targetState === null || isFinished(facts.targetState)) {
     return { reason: 'unknown_task' };
+  }
+
+  if (!facts.isTargetTakingMessages) {
+    return { reason: 'takes_no_messages' };
   }
 
   return target.taskID === from ? { reason: 'same_task' } : null;

@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { store } from '../mocks/store';
@@ -17,15 +17,20 @@ test('it marks a moved message with its task and the move', () => {
     <RoutingMark
       record={buildMockLogRecord({ kind: 'owner_message', message: { text: 'Order seed.' } })}
       route={{ isMove: true, taskID: 'p7hd2wq9zn' }}
-      tasks={[
-        {
-          brief: 'Buys what the garden needs.',
-          lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
-          name: 'Seed order',
-          state: 'waiting',
-          taskID: 'p7hd2wq9zn',
-        },
-      ]}
+      taskList={{
+        isFailed: false,
+        onRetry: () => {},
+        tasks: [
+          {
+            brief: 'Buys what the garden needs.',
+            isTakingMessages: true,
+            lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
+            name: 'Seed order',
+            state: 'waiting',
+            taskID: 'p7hd2wq9zn',
+          },
+        ],
+      }}
     />,
   );
 
@@ -40,7 +45,7 @@ test('it links a message routed to the conversation to the conversation page', (
     <RoutingMark
       record={buildMockLogRecord({ kind: 'owner_message', message: { text: 'Order seed.' } })}
       route={{ isMove: true, taskID: 'conversation' }}
-      tasks={[]}
+      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
     />,
   );
 
@@ -55,43 +60,58 @@ test('it names a task the list does not hold by its ID', () => {
     <RoutingMark
       record={buildMockLogRecord({ kind: 'owner_message', message: { text: 'Order seed.' } })}
       route={{ isMove: false, taskID: 'p7hd2wq9zn' }}
-      tasks={[]}
+      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
     />,
   );
 
   expect(rendered.getByRole('link')).toHaveTextContent('→ task p7hd2wq9zn');
 });
 
-test('it offers only the open tasks other than the current one as places to move to', async () => {
+test('it offers only the open tasks that take your messages, other than the current one', async () => {
   const ctx = setupTest();
 
   const rendered = render(
     <RoutingMark
       record={buildMockLogRecord({ kind: 'owner_message', message: { text: 'Order seed.' } })}
       route={{ isMove: false, taskID: 'p7hd2wq9zn' }}
-      tasks={[
-        {
-          brief: 'Buys what the garden needs.',
-          lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
-          name: 'Seed order',
-          state: 'waiting',
-          taskID: 'p7hd2wq9zn',
-        },
-        {
-          brief: 'Plans the vegetable beds.',
-          lastActivityAt: new Date('2026-10-14T08:00:00.000Z'),
-          name: 'Garden plan',
-          state: 'ready',
-          taskID: 'k3vq8m2xpa',
-        },
-        {
-          brief: 'Booked the tiler.',
-          lastActivityAt: new Date('2026-10-13T08:00:00.000Z'),
-          name: 'Tiler booking',
-          state: 'done',
-          taskID: 'r5bn1cy6tf',
-        },
-      ]}
+      taskList={{
+        isFailed: false,
+        onRetry: () => {},
+        tasks: [
+          {
+            brief: 'Buys what the garden needs.',
+            isTakingMessages: true,
+            lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
+            name: 'Seed order',
+            state: 'waiting',
+            taskID: 'p7hd2wq9zn',
+          },
+          {
+            brief: 'Plans the vegetable beds.',
+            isTakingMessages: true,
+            lastActivityAt: new Date('2026-10-14T08:00:00.000Z'),
+            name: 'Garden plan',
+            state: 'ready',
+            taskID: 'k3vq8m2xpa',
+          },
+          {
+            brief: 'Booked the tiler.',
+            isTakingMessages: true,
+            lastActivityAt: new Date('2026-10-13T08:00:00.000Z'),
+            name: 'Tiler booking',
+            state: 'done',
+            taskID: 'r5bn1cy6tf',
+          },
+          {
+            brief: 'Saves what you say as memory.',
+            isTakingMessages: false,
+            lastActivityAt: new Date('2026-10-13T07:00:00.000Z'),
+            name: 'Memory writer',
+            state: 'waiting',
+            taskID: 'memory-writer',
+          },
+        ],
+      }}
     />,
   );
 
@@ -100,6 +120,28 @@ test('it offers only the open tasks other than the current one as places to move
   const options = rendered.getAllByRole('option').map((option) => option.textContent);
 
   expect(options).toStrictEqual(['Garden plan', 'A new task']);
+});
+
+test('it says when your tasks did not load and loads them again when you ask', async () => {
+  const ctx = setupTest();
+  const onRetry = mock<() => void>();
+
+  const rendered = render(
+    <RoutingMark
+      record={buildMockLogRecord({ kind: 'owner_message', message: { text: 'Order seed.' } })}
+      route={undefined}
+      taskList={{ isFailed: true, onRetry, tasks: [] }}
+    />,
+  );
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Move' }));
+  await ctx.user.click(rendered.getByRole('button', { name: 'Load tasks again' }));
+
+  expect(rendered.getByRole('alert')).toHaveTextContent(
+    'Your tasks did not load, so only a new task is on offer.',
+  );
+
+  expect(onRetry).toHaveBeenCalledOnce();
 });
 
 test('it moves the message to the task you pick', async () => {
@@ -119,15 +161,20 @@ test('it moves the message to the task you pick', async () => {
     <RoutingMark
       record={toLogRecord(stored)}
       route={undefined}
-      tasks={[
-        {
-          brief: garden.brief,
-          lastActivityAt: garden.lastActivityAt,
-          name: garden.name,
-          state: garden.state,
-          taskID: garden.taskID,
-        },
-      ]}
+      taskList={{
+        isFailed: false,
+        onRetry: () => {},
+        tasks: [
+          {
+            brief: garden.brief,
+            isTakingMessages: true,
+            lastActivityAt: garden.lastActivityAt,
+            name: garden.name,
+            state: garden.state,
+            taskID: garden.taskID,
+          },
+        ],
+      }}
     />,
   );
 
@@ -161,7 +208,11 @@ test('it moves the message to a new task with the name and brief you give', asyn
   });
 
   const rendered = render(
-    <RoutingMark record={toLogRecord(stored)} route={undefined} tasks={[]} />,
+    <RoutingMark
+      record={toLogRecord(stored)}
+      route={undefined}
+      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
+    />,
   );
 
   await ctx.user.click(rendered.getByRole('button', { name: 'Move' }));
@@ -192,7 +243,7 @@ test('it tells you when the move does not finish', async () => {
         thread: 'conversation',
       })}
       route={undefined}
-      tasks={[]}
+      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
     />,
   );
 

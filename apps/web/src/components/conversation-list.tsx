@@ -1,4 +1,3 @@
-import type { ContractOutputs } from '@heynixie/contract';
 import type { ReactNode } from 'react';
 import { Fragment } from 'react';
 import type { ActivityItem } from '../build-activity';
@@ -11,6 +10,7 @@ import { css } from '../styled-system/css';
 import type { MemoryNotice as MemoryNoticeData, OutboxMessage } from '../types';
 import type { LiveRecord } from '../use-live-records';
 import type { OutboxEntry } from '../use-outbox';
+import type { RoutedTasks } from '../use-routed-tasks';
 import { useRoutedTasks } from '../use-routed-tasks';
 import { MemoryNotice } from './memory-notice';
 import { MomentKeptNotice } from './moment-kept-notice';
@@ -60,14 +60,14 @@ export function ConversationList(props: ConversationListProps): ReactNode {
   const placement = buildNoticePlacement(activity, props.notices);
   const unshown = props.entries.filter((entry) => !shown.has(entry.message.clientMessageId));
   const routes = collectMessageRoutes(props.records);
-  const tasks = useRoutedTasks(routes);
+  const taskList = useRoutedTasks(routes);
 
   return (
     <>
       <ol aria-label="Conversation" className={css(column, messages)}>
         {activity.map((item, index) => (
           <Fragment key={item.kind === 'step' ? `step/${String(item.key)}` : item.record.sequence}>
-            <ActivityEntry item={item} routes={routes} tasks={tasks} />
+            <ActivityEntry item={item} routes={routes} taskList={taskList} />
             {placement.get(index)?.map((notice) => (
               <MemoryNotice key={notice.noticeKey} notice={notice} />
             ))}
@@ -94,12 +94,10 @@ export function ConversationList(props: ConversationListProps): ReactNode {
   );
 }
 
-type ListedTask = ContractOutputs['tasks']['list']['tasks'][number];
-
 interface ActivityEntryProps {
   readonly item: ActivityItem;
   readonly routes: ReadonlyMap<number, MessageRoute>;
-  readonly tasks: readonly ListedTask[];
+  readonly taskList: RoutedTasks;
 }
 
 function ActivityEntry(props: ActivityEntryProps): ReactNode {
@@ -110,7 +108,7 @@ function ActivityEntry(props: ActivityEntryProps): ReactNode {
       <RecordItem
         record={item.record}
         route={props.routes.get(item.record.sequence)}
-        tasks={props.tasks}
+        taskList={props.taskList}
       />
     );
   }

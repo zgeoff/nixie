@@ -200,8 +200,10 @@ task's name, which links to that task's page, with "(moved)" after a move. The c
 route records of the page and the live stream, and the newest route of a message wins. It reads the
 task names from the task list, and it reads the list again once for each route that names a task the
 list lacks, so a task started a moment ago gets its name. A move control under each message opens a
-form that offers the open tasks other than the one that holds the message, or a new task with its
-name and brief, and sends one [checked move](./api.md#moving-a-message).
+form that offers the open tasks that take a message of the user's, other than the one that holds the
+message, or a new task with its name and brief, and sends one
+[checked move](./api.md#moving-a-message). When the task list fails to load, the form says so and
+offers to load it again, and a new task stays on offer meanwhile.
 
 A task's page at `/tasks/<task_id>` shows that task's thread in the conversation view. Its composer
 sends to that thread, so a message sent there lands in the task's inbox and never in the

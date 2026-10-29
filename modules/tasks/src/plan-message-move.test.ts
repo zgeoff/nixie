@@ -10,6 +10,7 @@ test('it moves a routed message from the task it went to', () => {
         routedTo: 'k3x9m2p7qa',
         fromState: 'waiting',
         targetState: 'waiting',
+        isTargetTakingMessages: true,
       },
     ),
   ).toStrictEqual({
@@ -24,7 +25,13 @@ test('it moves a message that went nowhere from the thread it was sent on', () =
   expect(
     planMessageMove(
       { kind: 'task', taskID: 'k3x9m2p7qa' },
-      { messageThread: 'conversation', routedTo: null, fromState: 'running', targetState: 'ready' },
+      {
+        messageThread: 'conversation',
+        routedTo: null,
+        fromState: 'running',
+        targetState: 'ready',
+        isTargetTakingMessages: true,
+      },
     ),
   ).toMatchObject({ status: 'move', from: 'conversation' });
 });
@@ -38,6 +45,7 @@ test('it leaves out the notice to a task that has finished', () => {
         routedTo: 'k3x9m2p7qa',
         fromState: 'done',
         targetState: 'waiting',
+        isTargetTakingMessages: true,
       },
     ),
   ).toMatchObject({ status: 'move', isFromNotified: false });
@@ -51,16 +59,43 @@ test.each([
   expect(
     planMessageMove(
       { kind: 'task', taskID: 'w8d2n5rt1c' },
-      { messageThread: 'conversation', routedTo: null, fromState: 'waiting', targetState },
+      {
+        messageThread: 'conversation',
+        routedTo: null,
+        fromState: 'waiting',
+        targetState,
+        isTargetTakingMessages: true,
+      },
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'unknown_task' } });
+});
+
+test('it refuses to move a message to a task that runs on its own schedule', () => {
+  expect(
+    planMessageMove(
+      { kind: 'task', taskID: 'memory-writer' },
+      {
+        messageThread: 'conversation',
+        routedTo: null,
+        fromState: 'waiting',
+        targetState: 'waiting',
+        isTargetTakingMessages: false,
+      },
+    ),
+  ).toStrictEqual({ status: 'refused', refusal: { reason: 'takes_no_messages' } });
 });
 
 test('it refuses a new task with a blank name', () => {
   expect(
     planMessageMove(
       { kind: 'new', name: ' ', brief: 'Find a plumber.' },
-      { messageThread: 'conversation', routedTo: null, fromState: 'waiting', targetState: null },
+      {
+        messageThread: 'conversation',
+        routedTo: null,
+        fromState: 'waiting',
+        targetState: null,
+        isTargetTakingMessages: true,
+      },
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'empty_name' } });
 });
@@ -69,7 +104,13 @@ test('it refuses a new task with a blank brief', () => {
   expect(
     planMessageMove(
       { kind: 'new', name: 'Plumber', brief: '' },
-      { messageThread: 'conversation', routedTo: null, fromState: 'waiting', targetState: null },
+      {
+        messageThread: 'conversation',
+        routedTo: null,
+        fromState: 'waiting',
+        targetState: null,
+        isTargetTakingMessages: true,
+      },
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'empty_brief' } });
 });

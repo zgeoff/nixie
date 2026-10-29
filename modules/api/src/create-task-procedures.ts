@@ -1,4 +1,4 @@
-import { readTaskDirectory, readTaskList } from '@heynixie/tasks';
+import { readOwnerMessageTakers, readTaskDirectory, readTaskList } from '@heynixie/tasks';
 import { apiImplementer } from './api-implementer';
 import { requireCaller } from './require-caller';
 import type { APIContext } from './types';
@@ -20,9 +20,15 @@ export function createTaskProcedures(context: APIContext) {
         limit: listLimit,
       });
 
+      const takers = await readOwnerMessageTakers(
+        context,
+        tasks.map((task) => task.id),
+      );
+
       return {
         tasks: tasks.map((task) => ({
           brief: task.brief,
+          isTakingMessages: takers.has(task.id),
           lastActivityAt: task.lastActivityAt,
           name: task.name,
           state: task.state,

@@ -210,5 +210,8 @@ test('it puts the task board in the newest turn and keeps the system prompt the 
 
   expect(second.systemPrompt).toBe(first.systemPrompt);
   expect(second.systemPrompt).not.toInclude('Seed order');
-  expect(second.input[0]?.text).toMatch(/<system-message type="task-board"[^>]*>[^<]*Seed order/u);
+
+  expect(second.input[0]?.text).toMatch(
+    /<system-message type="task-board"[^>]*>\n.+\n.+\n<task-data id="[\da-f]{12}">\n[^<]*Seed order/u,
+  );
 });

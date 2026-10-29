@@ -6,13 +6,12 @@ import type { MessageRoute } from '../collect-message-routes';
 import { css } from '../styled-system/css';
 import type { LiveRecord } from '../use-live-records';
 import { useNixieClient } from '../use-nixie-client';
-
-type ListedTask = ContractOutputs['tasks']['list']['tasks'][number];
+import type { RoutedTasks } from '../use-routed-tasks';
 
 export interface RoutingMarkProps {
   readonly record: LiveRecord;
   readonly route: MessageRoute | undefined;
-  readonly tasks: readonly ListedTask[];
+  readonly taskList: RoutedTasks;
 }
 
 const mark = css({
@@ -35,7 +34,7 @@ export function RoutingMark(props: RoutingMarkProps): ReactNode {
     <div className={mark}>
       {props.route === undefined ? null : (
         <a className={link} href={buildTaskHref(props.route.taskID)}>
-          → {formatTaskName(props.tasks, props.route.taskID)}
+          → {formatTaskName(props.taskList.tasks, props.route.taskID)}
           {props.route.isMove ? ' (moved)' : ''}
         </a>
       )}
@@ -56,7 +55,7 @@ export function RoutingMark(props: RoutingMarkProps): ReactNode {
             setActionID(null);
           }}
           record={props.record}
-          tasks={props.tasks}
+          taskList={props.taskList}
         />
       )}
     </div>
@@ -69,6 +68,8 @@ function buildTaskHref(taskID: string): string {
   return taskID === conversationID ? '/' : `/tasks/${encodeURIComponent(taskID)}`;
 }
 
+type ListedTask = ContractOutputs['tasks']['list']['tasks'][number];
+
 function formatTaskName(tasks: readonly ListedTask[], taskID: string): string {
   return tasks.find((task) => task.taskID === taskID)?.name ?? `task ${taskID}`;
 }
@@ -77,7 +78,7 @@ interface MoveFormProps {
   readonly actionID: string;
   readonly current: string;
   readonly record: LiveRecord;
-  readonly tasks: readonly ListedTask[];
+  readonly taskList: RoutedTasks;
   readonly onDone: () => void;
 }
 
@@ -86,8 +87,12 @@ const newTask = 'new';
 function MoveForm(props: MoveFormProps): ReactNode {
   const nixie = useNixieClient();
 
-  const targets = props.tasks.filter(
-    (task) => task.taskID !== props.current && task.state !== 'done' && task.state !== 'failed',
+  const targets = props.taskList.tasks.filter(
+    (task) =>
+      task.taskID !== props.current &&
+      task.isTakingMessages &&
+      task.state !== 'done' &&
+      task.state !== 'failed',
   );
 
   const [target, setTarget] = useState(targets[0]?.taskID ?? newTask);
@@ -116,6 +121,14 @@ function MoveForm(props: MoveFormProps): ReactNode {
         });
       }}
     >
+      {props.taskList.isFailed ? (
+        <p role="alert">
+          Your tasks did not load, so only a new task is on offer.{' '}
+          <button onClick={props.taskList.onRetry} type="button">
+            Load tasks again
+          </button>
+        </p>
+      ) : null}
       <label>
         Move to{' '}
         <select

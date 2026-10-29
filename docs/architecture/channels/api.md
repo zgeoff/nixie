@@ -141,11 +141,14 @@ action bound to the message's thread and sequence and to the target task. For a 
 hash holds only that the target is new and leaves out the name and brief, because both are free
 text. The move and the action's result commit in one transaction, so a retry never moves the message
 twice. The API answers `RECORD_NOT_FOUND` for a sequence that is not the user's message on that
-thread, `TASK_NOT_FOUND` for a task that does not exist or has finished, and `ALREADY_THERE` for the
-task that holds the message already.
+thread, `TASK_NOT_FOUND` for a task that does not exist or has finished, `TASK_TAKES_NO_MESSAGES`
+for a task that runs on its own schedule, and `ALREADY_THERE` for the task that holds the message
+already. A client action whose write fails rolls the whole move back.
 
-A task list read returns every task with its name, brief, state and last activity, so the client can
-name the task of each route. A started task whose name the user forgot shows under its ID.
+A task list read returns the most recently active tasks up to a cap, each with its name, brief,
+state, last activity and whether it takes a message of the user's. The client names the task of each
+route from that list, so a route to a task past the cap shows the task's ID. A started task whose
+name the user forgot shows under its ID too.
 
 ## Reading and the live stream
 

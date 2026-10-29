@@ -123,7 +123,7 @@ test('it puts the task board in the turn, after the system prompt, and leaves th
 
   expect(after.preamble).toStrictEqual([
     expect.stringMatching(
-      /^<system-message type="task-board" [^>]+>\n.+\n- \[k3x9m2p7qa\] Garden plan · ready · last active .+\n {2}Plan the beds\.\n<\/system-message/u,
+      /^<system-message type="task-board" [^>]+>\n.+\n.+\n<task-data id="[\da-f]{12}">\n- \[k3x9m2p7qa\] Garden plan · ready · last active .+\n {2}Plan the beds\.\n<\/task-data id="[\da-f]{12}">\n<\/system-message/u,
     ),
   ]);
 });

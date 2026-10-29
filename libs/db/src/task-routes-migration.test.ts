@@ -42,7 +42,7 @@ test('it moves the schema to version 30, which the release before can still read
   expect(nixieSchema.oldestReader).toBeLessThan(30);
 });
 
-test('it keeps each task of a database it upgrades, started by nobody', async () => {
+test('it keeps each task of a database it upgrades, started by nobody in no step', async () => {
   const ctx = await setupTest();
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
@@ -54,12 +54,19 @@ test('it keeps each task of a database it upgrades, started by nobody', async ()
 
   await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
 
-  const rows = await sql`select task_id, state, committed_steps, started_by from tasks`.execute(
-    ctx.db,
-  );
+  const rows =
+    await sql`select task_id, state, committed_steps, started_by, start_step from tasks`.execute(
+      ctx.db,
+    );
 
   expect(rows.rows).toStrictEqual([
-    { task_id: 'conversation', state: 'waiting', committed_steps: 3, started_by: null },
+    {
+      task_id: 'conversation',
+      state: 'waiting',
+      committed_steps: 3,
+      started_by: null,
+      start_step: null,
+    },
   ]);
 });
 

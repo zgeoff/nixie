@@ -22,7 +22,7 @@ export async function writeMigratedData(dataDir: string, io: MigratedDataIO): Pr
     // a checkout with other database sources would replace a template in a shared folder while a
     // start in this checkout copies it
     parentDir: join(repoRoot, 'node_modules', '.cache', 'nixie-run-templates'),
-    inputs: ['{libs/db,modules/log}/src/**/*', 'bun.lock'],
+    inputs: ['libs/db/src/**/*', 'modules/log/src/**/*', 'bun.lock'],
     write: async (building) => {
       const writer = await io.startWriter({ dataDir: building });
 

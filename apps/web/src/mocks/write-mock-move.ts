@@ -15,6 +15,7 @@ type MoveResult =
   | { readonly status: 'moved'; readonly movedAt: Date; readonly taskID: string }
   | { readonly status: 'not_found' }
   | { readonly status: 'task_not_found' }
+  | { readonly status: 'takes_no_messages' }
   | { readonly status: 'already_there' }
   | { readonly status: 'reused' };
 
@@ -49,11 +50,13 @@ export async function writeMockMove(input: MoveInput): Promise<MoveResult> {
       )
       .at(-1)?.route?.taskID ?? input.thread;
 
-  const taskID = await resolveMoveTarget(input.to);
+  const target = await resolveMoveTarget(input.to);
 
-  if (taskID === null) {
-    return { status: 'task_not_found' };
+  if (target.status !== 'found') {
+    return target;
   }
+
+  const taskID = target.taskID;
 
   if (taskID === from) {
     return { status: 'already_there' };
@@ -75,16 +78,25 @@ export async function writeMockMove(input: MoveInput): Promise<MoveResult> {
   return { status: 'moved', movedAt: moved.recordedAt, taskID };
 }
 
-async function resolveMoveTarget(to: MoveTarget): Promise<string | null> {
+type MoveTargetResult =
+  | { readonly status: 'found'; readonly taskID: string }
+  | { readonly status: 'task_not_found' }
+  | { readonly status: 'takes_no_messages' };
+
+async function resolveMoveTarget(to: MoveTarget): Promise<MoveTargetResult> {
   if (to.kind === 'new') {
     const task = await store.tasks.create({ brief: to.brief, name: to.name, state: 'ready' });
 
-    return task.taskID;
+    return { status: 'found', taskID: task.taskID };
   }
 
   const task = store.tasks.findFirst((query) => query.where({ taskID: to.taskID }));
 
-  return task === undefined || task.state === 'done' || task.state === 'failed'
-    ? null
-    : task.taskID;
+  if (task === undefined || task.state === 'done' || task.state === 'failed') {
+    return { status: 'task_not_found' };
+  }
+
+  return task.isTakingMessages
+    ? { status: 'found', taskID: task.taskID }
+    : { status: 'takes_no_messages' };
 }

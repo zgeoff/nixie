@@ -3,6 +3,7 @@ export { buildTaskMessageTool } from './build-task-message-tool';
 export { buildTaskStartTool } from './build-task-start-tool';
 export { buildTasksListTool } from './build-tasks-list-tool';
 export type { MessageMoveRefusal, MoveTarget } from './plan-message-move';
+export { readOwnerMessageTakers } from './read-owner-message-takers';
 export { readTaskDirectory } from './read-task-directory';
 export type { ListedTask } from './read-task-list';
 export { readTaskList } from './read-task-list';

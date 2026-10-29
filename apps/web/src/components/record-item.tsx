@@ -1,21 +1,19 @@
-import type { ContractOutputs } from '@heynixie/contract';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import type { MessageRoute } from '../collect-message-routes';
 import { css } from '../styled-system/css';
 import type { LiveRecord } from '../use-live-records';
+import type { RoutedTasks } from '../use-routed-tasks';
 import { ForgetControl } from './forget-control';
 import { MessageImages } from './message-images';
 import { ReplyText } from './reply-text';
 import { RoutingMark } from './routing-mark';
 
-type ListedTask = ContractOutputs['tasks']['list']['tasks'][number];
-
 export interface RecordItemProps {
   readonly record: LiveRecord;
 
   readonly route: MessageRoute | undefined;
-  readonly tasks: readonly ListedTask[];
+  readonly taskList: RoutedTasks;
 }
 
 const forgettableKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
@@ -47,7 +45,7 @@ export function RecordItem(props: RecordItemProps): ReactNode {
       ) : null}
       {text !== undefined && !isYours ? <ReplyText text={text} /> : null}
       {text !== undefined && isYours ? (
-        <RoutingMark record={props.record} route={props.route} tasks={props.tasks} />
+        <RoutingMark record={props.record} route={props.route} taskList={props.taskList} />
       ) : null}
       {forgettableKinds.has(props.record.kind) ? (
         <ForgetControl

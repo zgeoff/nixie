@@ -9,5 +9,6 @@ export const taskCreatedCodec = defineRecordCodec(
     isConversation: z.boolean(),
     state: taskStateSchema,
     startedBy: z.string().exactOptional(),
+    startStep: z.string().exactOptional(),
   }),
 );

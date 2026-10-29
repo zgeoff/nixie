@@ -371,6 +371,7 @@ export interface NixieTables {
     readonly updated_sequence: number;
     readonly step_hop: number;
     readonly started_by: string | null;
+    readonly start_step: string | null;
   };
   readonly threads: {
     readonly thread: string;

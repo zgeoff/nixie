@@ -49,10 +49,18 @@ async function readInputHash(root: string, inputs: readonly string[]): Promise<s
   const paths = new Set<string>();
 
   for (const pattern of inputs) {
+    const before = paths.size;
+
     for await (const path of new Bun.Glob(pattern).scan({ cwd: root, onlyFiles: true })) {
       if (!path.includes('node_modules')) {
         paths.add(path);
       }
+    }
+
+    // Bun's glob scan matches nothing for a brace whose alternatives hold a slash, and a pattern
+    // that matches nothing leaves the key unchanged when its files change
+    if (paths.size === before) {
+      throw new Error(`the template input ${pattern} matches no file under ${root}`);
     }
   }
 

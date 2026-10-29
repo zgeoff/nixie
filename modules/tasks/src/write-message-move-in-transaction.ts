@@ -1,6 +1,7 @@
 import { createShortID } from '@heynixie/db';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import { isTakingOwnerMessages } from './is-taking-owner-messages';
 import type { MessageMoveFacts, MessageMoveRefusal, MoveTarget } from './plan-message-move';
 import { planMessageMove } from './plan-message-move';
 import { taskCreatedCodec } from './task-created-codec';
@@ -112,7 +113,7 @@ async function readMoveFacts(
     request.to.kind === 'task'
       ? await db
           .selectFrom('tasks')
-          .select('state')
+          .select(['state', 'is_conversation', 'started_by'])
           .where('task_id', '=', request.to.taskID)
           .executeTakeFirst()
       : undefined;
@@ -122,5 +123,6 @@ async function readMoveFacts(
     routedTo: route?.task_id ?? null,
     fromState: fromTask?.state ?? null,
     targetState: target?.state ?? null,
+    isTargetTakingMessages: target === undefined ? true : isTakingOwnerMessages(target),
   };
 }

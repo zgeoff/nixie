@@ -6,7 +6,13 @@ import { useNixieClient } from './use-nixie-client';
 
 type ListedTask = ContractOutputs['tasks']['list']['tasks'][number];
 
-export function useRoutedTasks(routes: ReadonlyMap<number, MessageRoute>): readonly ListedTask[] {
+export interface RoutedTasks {
+  readonly tasks: readonly ListedTask[];
+  readonly isFailed: boolean;
+  readonly onRetry: () => void;
+}
+
+export function useRoutedTasks(routes: ReadonlyMap<number, MessageRoute>): RoutedTasks {
   const nixie = useNixieClient();
   const listed = useQuery(nixie.queryUtils.tasks.list.queryOptions());
   const asked = useRef(new Set<string>());
@@ -30,5 +36,11 @@ export function useRoutedTasks(routes: ReadonlyMap<number, MessageRoute>): reado
     }
   }, [unknown, isSettled, refetch]);
 
-  return tasks;
+  return {
+    tasks,
+    isFailed: listed.isError,
+    onRetry: () => {
+      void refetch();
+    },
+  };
 }

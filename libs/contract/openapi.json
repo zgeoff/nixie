@@ -2135,6 +2135,31 @@
                           "const": true
                         },
                         "code": {
+                          "const": "TASK_TAKES_NO_MESSAGES"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This task runs on its own schedule and takes no message of yours"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
                           "const": "ALREADY_THERE"
                         },
                         "status": {
@@ -2204,6 +2229,9 @@
                           "brief": {
                             "type": "string"
                           },
+                          "isTakingMessages": {
+                            "type": "boolean"
+                          },
                           "lastActivityAt": {
                             "type": "string",
                             "format": "date-time",
@@ -2230,6 +2258,7 @@
                         },
                         "required": [
                           "brief",
+                          "isTakingMessages",
                           "lastActivityAt",
                           "name",
                           "state",

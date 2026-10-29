@@ -126,6 +126,7 @@ export const mockAPIRouter = os.router({
         throw {
           not_found: options.errors.RECORD_NOT_FOUND,
           task_not_found: options.errors.TASK_NOT_FOUND,
+          takes_no_messages: options.errors.TASK_TAKES_NO_MESSAGES,
           already_there: options.errors.ALREADY_THERE,
           reused: options.errors.CLIENT_ACTION_ID_REUSED,
         }[result.status]();

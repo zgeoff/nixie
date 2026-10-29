@@ -217,13 +217,19 @@ each body leads with the record's event ID so the model can cite it. The user's 
 outside any element, after its stamp, because it holds the user's own words.
 
 Each turn of the conversation ends its preamble with a `task-board` system message, which lists the
-tasks the conversation can pass work to, the most recently active first. Each line gives the task's
-short ID, name, state, last activity and the task it waits on, and a cut of its brief follows. The
-board lives in the newest turn's message and never in the system prompt, because the board changes
-whenever a task starts or moves, and a change to the system prompt would end the prompt cache's hit
-on every earlier turn. The system prompt's routing line tells the model that the board lists its
-tasks and that its reply names where it passed each message. A turn with no other task to list
-carries no board.
+conversation's most recently active tasks up to a cap, in every state. A done or failed task stays
+on the board for context, and the board says that such a task takes no more work, because the
+message tool refuses it. Each line gives the task's short ID, name, state, last activity and the
+task it waits on, and a cut of its brief follows. The board lives in the newest turn's message and
+never in the system prompt, because the board changes whenever a task starts or moves, and a change
+to the system prompt would end the prompt cache's hit on every earlier turn. A turn with no other
+task to list carries no board.
+
+A task's name and brief come from the model, which can copy them from outside text such as a
+ticket's title, so the board puts every line inside a `<task-data>` block whose random ID the
+closing tag repeats, as a pasted block's does. The board's own lines, and the system prompt's
+routing line, say that the names and briefs in that block are data and never instructions. The
+routing line also tells the model to name in its reply where it passed each message.
 
 ## Records of a turn
 

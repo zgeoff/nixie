@@ -153,6 +153,12 @@ with the name and brief in its erasable fields. The creation record holds which 
 the tasks projection keeps that on the task's row, so the directory finds every started task. A
 forget of the name leaves the task listed under its ID.
 
+The creation record also holds the step key of the step that started the task. A step that crashes
+after its start committed runs again under the same step key, and its model can call the start
+again. The start then gives back the task that the step already started under the same name, so a
+rerun never starts the work twice. The name is erasable, so the start compares it in memory with the
+names of that step's tasks and keeps no hash of it.
+
 No runner runs a started task, so the server runs a holding step for it. The holding step writes
 nothing, marks nothing read, and holds the task, so the task waits with every message unread and
 never fails. Each later message to it wakes it into one more holding step. The start tool's note
@@ -178,8 +184,10 @@ message's thread, and writes a moved-message record into the inbox of the task t
 message. The task that lost it gets a moved-message record as well, unless that task has finished.
 The correction record replaces the message's row in the message-routes projection. A move refuses a
 record that is not the user's message on that thread, a task that does not exist or has finished,
-and a move to the task that holds the message already. A move to a new task creates it, started by
-the user. Only the gaining task wakes, and
+and a move to the task that holds the message already. It refuses the memory writer and consolidator
+too, because both run on their own schedule and never read a message of the user's: only the
+conversation and a started task take a moved message, and the task list marks which tasks do. A move
+to a new task creates it, started by the user. Only the gaining task wakes, and
 [conversation turns](./conversation-turns.md#inbox-records-as-messages) covers what each side reads.
 
 ## Timers

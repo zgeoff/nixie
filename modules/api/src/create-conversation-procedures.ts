@@ -120,6 +120,7 @@ function createMoveProcedure(context: APIContext) {
         throw match(refused.refusal.reason)
           .with('not_found', () => options.errors.RECORD_NOT_FOUND())
           .with('unknown_task', () => options.errors.TASK_NOT_FOUND())
+          .with('takes_no_messages', () => options.errors.TASK_TAKES_NO_MESSAGES())
           .with('same_task', () => options.errors.ALREADY_THERE())
           .with('empty_name', 'empty_brief', (reason) => {
             throw new Error(`the contract's input schema lets no ${reason} through`);

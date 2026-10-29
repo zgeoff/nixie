@@ -346,6 +346,7 @@ const moments = new Collection({
 const tasks = new Collection({
   schema: z.object({
     brief: z.string().default(() => faker.lorem.sentence()),
+    isTakingMessages: z.boolean().default(true),
     lastActivityAt: z.date().default(() => new Date()),
     name: z.string().default(() => faker.lorem.words(2)),
     state: z.enum(['ready', 'running', 'waiting', 'done', 'failed']).default('waiting'),

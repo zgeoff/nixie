@@ -150,6 +150,7 @@ interface TaskTable {
   readonly session_boundary: string | null;
   readonly step_hop: number;
   readonly started_by: string | null;
+  readonly start_step: string | null;
   readonly created_sequence: number;
   readonly updated_sequence: number;
 }

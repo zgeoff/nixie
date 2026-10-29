@@ -150,6 +150,7 @@ const moveTargetSchema = z.discriminatedUnion('kind', [
 
 const listedTaskSchema = z.object({
   brief: z.string(),
+  isTakingMessages: z.boolean(),
   lastActivityAt: z.date(),
   name: z.string(),
   state: z.enum(['ready', 'running', 'waiting', 'done', 'failed']),
@@ -230,6 +231,10 @@ export const contract = {
           status: 404,
         },
         TASK_NOT_FOUND: { message: 'No open task has this ID', status: 404 },
+        TASK_TAKES_NO_MESSAGES: {
+          message: 'This task runs on its own schedule and takes no message of yours',
+          status: 409,
+        },
         ALREADY_THERE: { message: 'The message already went to this task', status: 409 },
       })
       .input(

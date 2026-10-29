@@ -16,7 +16,7 @@ test('it shows your message as typed with the controls that move and forget it',
         message: { text: 'The shed code is 4417.' },
       })}
       route={undefined}
-      tasks={[]}
+      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
     />,
   );
 
@@ -32,15 +32,20 @@ test('it marks your message with the task it went to', () => {
         thread: 'conversation',
       })}
       route={{ isMove: false, taskID: 'k3vq8m2xpa' }}
-      tasks={[
-        {
-          brief: 'Plans the vegetable beds.',
-          lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
-          name: 'Garden plan',
-          state: 'waiting',
-          taskID: 'k3vq8m2xpa',
-        },
-      ]}
+      taskList={{
+        isFailed: false,
+        onRetry: () => {},
+        tasks: [
+          {
+            brief: 'Plans the vegetable beds.',
+            isTakingMessages: true,
+            lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
+            name: 'Garden plan',
+            state: 'waiting',
+            taskID: 'k3vq8m2xpa',
+          },
+        ],
+      }}
     />,
   );
 
@@ -65,7 +70,13 @@ test('it shows the images of your message, each read from the API', async () => 
     thread: 'conversation',
   });
 
-  const rendered = render(<RecordItem record={toLogRecord(stored)} route={undefined} tasks={[]} />);
+  const rendered = render(
+    <RecordItem
+      record={toLogRecord(stored)}
+      route={undefined}
+      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
+    />,
+  );
 
   const images = await rendered.findAllByRole('img');
 
@@ -88,7 +99,7 @@ test('it shows an image the API no longer holds as unavailable', async () => {
         thread: 'conversation',
       })}
       route={undefined}
-      tasks={[]}
+      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
     />,
   );
 
@@ -102,7 +113,7 @@ test('it shows nothing for a message whose text is shredded', () => {
     <RecordItem
       record={buildMockLogRecord({ kind: 'owner_message' })}
       route={undefined}
-      tasks={[]}
+      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
     />,
   );
 
@@ -114,7 +125,7 @@ test('it offers no forget for a message of a kind the API cannot forget', () => 
     <RecordItem
       record={buildMockLogRecord({ kind: 'assistant_message', message: { text: 'Hello.' } })}
       route={undefined}
-      tasks={[]}
+      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
     />,
   );
 
@@ -131,7 +142,13 @@ test('it takes the message out of the view as soon as your forget succeeds', asy
     message: { text: 'Your shed code is 4417.' },
   });
 
-  const rendered = render(<RecordItem record={toLogRecord(stored)} route={undefined} tasks={[]} />);
+  const rendered = render(
+    <RecordItem
+      record={toLogRecord(stored)}
+      route={undefined}
+      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
+    />,
+  );
 
   await user.click(rendered.getByRole('button', { name: 'Forget' }));
   await user.click(rendered.getByRole('button', { name: 'Forget for good' }));

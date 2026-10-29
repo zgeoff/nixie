@@ -90,6 +90,25 @@ test('it refuses to move a message to a task that has finished', async () => {
   expect(result).toStrictEqual({ status: 'task_not_found' });
 });
 
+test('it refuses to move a message to a task that runs on its own schedule', async () => {
+  await store.tasks.create({
+    isTakingMessages: false,
+    name: 'Memory writer',
+    taskID: 'memory-writer',
+  });
+
+  const message = await store.records.create({ kind: 'owner_message' });
+
+  const result = await writeMockMove({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    sequence: message.sequence,
+    thread: 'conversation',
+    to: { kind: 'task', taskID: 'memory-writer' },
+  });
+
+  expect(result).toStrictEqual({ status: 'takes_no_messages' });
+});
+
 test('it refuses to move a record that is no message of yours', async () => {
   const reply = await store.records.create({ kind: 'model.reply' });
 
