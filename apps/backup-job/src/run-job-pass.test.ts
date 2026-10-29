@@ -5,7 +5,9 @@ import { join } from 'node:path';
 import { backupReceiptSchema, parseBackupFile } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { buildResticClient } from './build-restic-client';
+import { localJobFiles } from './local-job-files';
 import { runJobPass } from './run-job-pass';
+import { buildStubNixieCleanup } from './test-utils/build-stub-nixie-cleanup';
 import { createStagedSet } from './test-utils/create-staged-set';
 import { createStubRestic } from './test-utils/create-stub-restic';
 
@@ -46,7 +48,7 @@ test('it publishes a complete set to both repos, writes a published receipt, and
     isComplete: true,
   });
 
-  const receipts = await runJobPass(ctx.config, ctx.repos);
+  const receipts = await runJobPass(ctx.config, ctx.repos, localJobFiles);
 
   const directory = join(ctx.config.stagingDir, '000000000001');
 
@@ -93,7 +95,7 @@ test('it ships no set that lacks its marker, and runs no restic', async () => {
     isComplete: false,
   });
 
-  const receipts = await runJobPass(ctx.config, ctx.repos);
+  const receipts = await runJobPass(ctx.config, ctx.repos, localJobFiles);
   const names = await readdir(join(ctx.config.stagingDir, '000000000001'));
   const calls = await Bun.file(ctx.calls).exists();
 
@@ -112,7 +114,7 @@ test('it keeps the newest key snapshot alone and prunes the blob of every older 
     isComplete: true,
   });
 
-  await runJobPass(ctx.config, ctx.repos);
+  await runJobPass(ctx.config, ctx.repos, localJobFiles);
 
   await createStagedSet({
     stagingDir: ctx.config.stagingDir,
@@ -121,7 +123,7 @@ test('it keeps the newest key snapshot alone and prunes the blob of every older 
     isComplete: true,
   });
 
-  const receipts = await runJobPass(ctx.config, ctx.repos);
+  const receipts = await runJobPass(ctx.config, ctx.repos, localJobFiles);
 
   const firstText = await Bun.file(
     join(ctx.config.stagingDir, '000000000001', 'receipt.json'),
@@ -167,7 +169,7 @@ test('it ships sets in sequence order', async () => {
     isComplete: true,
   });
 
-  const receipts = await runJobPass(ctx.config, ctx.repos);
+  const receipts = await runJobPass(ctx.config, ctx.repos, localJobFiles);
   const calls = await Bun.file(ctx.calls).text();
 
   const tags = calls
@@ -191,7 +193,7 @@ test('it writes a failed receipt for a copy that does not match its checksum, an
 
   await appendFile(join(ctx.config.stagingDir, '000000000001', 'keys.db'), 'a changed byte');
 
-  const receipts = await runJobPass(ctx.config, ctx.repos);
+  const receipts = await runJobPass(ctx.config, ctx.repos, localJobFiles);
   const calls = await Bun.file(ctx.calls).exists();
 
   expect(receipts).toStrictEqual([
@@ -222,14 +224,16 @@ test('it writes a failed receipt that names a failed prune, and runs no check af
     isComplete: true,
   });
 
-  const receipts = await runJobPass(ctx.config, {
+  const repos = {
     data: ctx.repos.data,
     keys: buildResticClient(
       { restic: ctx.config.restic, backendEnv: { STUB_RESTIC_FAIL: 'prune' } },
       { repository: ctx.keyRepository, password: 'key-pass' },
       'key',
     ),
-  });
+  };
+
+  const receipts = await runJobPass(ctx.config, repos, localJobFiles);
 
   expect(receipts).toMatchObject([
     {
@@ -244,6 +248,34 @@ test('it writes a failed receipt that names a failed prune, and runs no check af
   ]);
 });
 
+test('it finishes a set as published when nixie removes the set once its receipt is in place', async () => {
+  const ctx = await setupTest();
+
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: true,
+  });
+
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 2,
+    kind: 'scheduled',
+    isComplete: true,
+  });
+
+  const receipts = await runJobPass(ctx.config, ctx.repos, buildStubNixieCleanup(localJobFiles));
+  const staging = await readdir(ctx.config.stagingDir);
+
+  expect(receipts).toMatchObject([
+    { sequence: 1, status: 'published' },
+    { sequence: 2, status: 'published' },
+  ]);
+
+  expect(staging).toStrictEqual([]);
+});
+
 test('it leaves a set that holds its receipt alone', async () => {
   const ctx = await setupTest();
 
@@ -254,9 +286,9 @@ test('it leaves a set that holds its receipt alone', async () => {
     isComplete: true,
   });
 
-  await runJobPass(ctx.config, ctx.repos);
+  await runJobPass(ctx.config, ctx.repos, localJobFiles);
 
-  const receipts = await runJobPass(ctx.config, ctx.repos);
+  const receipts = await runJobPass(ctx.config, ctx.repos, localJobFiles);
 
   expect(receipts).toStrictEqual([]);
 });

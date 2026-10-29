@@ -53,16 +53,18 @@ function writeReceipt(
   const parsed = parseBackupFile(text, backupReceiptSchema);
 
   if ('refused' in parsed) {
-    return Promise.resolve({ sequence, refused: parsed.refused });
+    return writeRefusedReceipt(context, sequence, text, parsed.refused);
   }
 
   const receipt = parsed.value;
 
   if (receipt.sequence !== sequence) {
-    return Promise.resolve({
+    return writeRefusedReceipt(
+      context,
       sequence,
-      refused: `the receipt names set ${String(receipt.sequence)}, and it sits in the directory of set ${String(sequence)}`,
-    });
+      text,
+      `the receipt names set ${String(receipt.sequence)}, and it sits in the directory of set ${String(sequence)}`,
+    );
   }
 
   return withWriteTransaction(context.writer, async (tx) => {
@@ -97,4 +99,26 @@ function writeReceipt(
 
     return { sequence, status: receipt.status, failure: receipt.failure };
   });
+}
+
+// A set waiting on its receipt blocks every scheduled set, so a receipt nixie cannot read fails its
+// set, and the row keeps the receipt's text.
+async function writeRefusedReceipt(
+  context: BackupContext,
+  sequence: number,
+  text: string,
+  refused: string,
+): Promise<ReceivedReceipt> {
+  await withWriteTransaction(context.writer, async (tx) => {
+    const db = tx.$extendTables<BackupTables>();
+
+    await db
+      .updateTable('backup_sets')
+      .set({ state: 'failed', received_at: context.writer.clock.now(), receipt: text })
+      .where('sequence', '=', sequence)
+      .where('state', '=', 'staged')
+      .execute();
+  });
+
+  return { sequence, refused };
 }

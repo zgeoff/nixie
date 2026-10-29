@@ -99,7 +99,7 @@ test('it numbers a set above a directory in staging that nixie holds no row for'
   expect(manifest.sequence).toBe(10);
 });
 
-test('it leaves no marker and no manifest when the copy stops before them', async () => {
+test('it removes the copies and abandons the set when the copy fails before its marker', async () => {
   const ctx = await setupTest();
 
   startFaultPointFailure('backup.set.copied');
@@ -109,10 +109,10 @@ test('it leaves no marker and no manifest when the copy stops before them', asyn
     (error: unknown) => error,
   );
 
-  const files = await readdir(join(ctx.dataDir, 'backup', '000000000001'));
+  const staging = await readdir(join(ctx.dataDir, 'backup'));
   const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);
 
   expect(failure).toMatchObject({ message: 'crashed at backup.set.copied' });
-  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db']);
-  expect(rows.rows).toStrictEqual([{ state: 'staging' }]);
+  expect(staging).toStrictEqual([]);
+  expect(rows.rows).toStrictEqual([{ state: 'abandoned' }]);
 });

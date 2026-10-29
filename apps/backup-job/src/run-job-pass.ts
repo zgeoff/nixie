@@ -1,7 +1,7 @@
-import { open, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { BackupReceipt } from '@heynixie/wire';
 import { backupSetFiles, backupSetLayout, formatBackupFile, readBackupSets } from '@heynixie/wire';
+import type { JobFiles } from './local-job-files';
 import type { JobConfig } from './parse-job-config';
 import type { BackupRepos } from './publish-backup-set';
 import { publishBackupSet } from './publish-backup-set';
@@ -12,6 +12,7 @@ import { publishBackupSet } from './publish-backup-set';
 export async function runJobPass(
   config: Pick<JobConfig, 'stagingDir' | 'retention'>,
   repos: BackupRepos,
+  files: JobFiles,
 ): Promise<readonly BackupReceipt[]> {
   const sets = await readBackupSets(config.stagingDir);
 
@@ -20,8 +21,8 @@ export async function runJobPass(
   for (const set of sets.filter((entry) => entry.hasMarker && !entry.hasReceipt)) {
     const receipt = await publishBackupSet(repos, config.retention, set);
 
-    await writeReceipt(set.directory, receipt);
-    await removeCopies(set.directory);
+    await writeReceipt(files, set.directory, receipt);
+    await removeCopies(files, set.directory);
 
     receipts.push(receipt);
   }
@@ -29,30 +30,39 @@ export async function runJobPass(
   return receipts;
 }
 
-async function writeReceipt(directory: string, receipt: BackupReceipt): Promise<void> {
+async function writeReceipt(
+  files: JobFiles,
+  directory: string,
+  receipt: BackupReceipt,
+): Promise<void> {
   const path = join(directory, backupSetLayout.receipt);
   const partial = `${path}.partial`;
 
-  await writeFile(partial, formatBackupFile(receipt));
-  await writeToDisk(partial);
-  await rename(partial, path);
-  await writeToDisk(directory);
+  await files.writeFile(partial, formatBackupFile(receipt));
+  await files.writeToDisk(partial);
+  await files.renameFile(partial, path);
+
+  await writeSetDirectoryToDisk(files, directory);
 }
 
-async function writeToDisk(path: string): Promise<void> {
-  const handle = await open(path, 'r');
-
+// nixie records a receipt and removes its set as soon as the receipt is in place, so the set's
+// directory can be gone by then, and nixie then holds the receipt already.
+async function writeSetDirectoryToDisk(files: JobFiles, directory: string): Promise<void> {
   try {
-    await handle.sync();
-  } finally {
-    await handle.close();
+    await files.writeToDisk(directory);
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return;
+    }
+
+    throw error;
   }
 }
 
-async function removeCopies(directory: string): Promise<void> {
+async function removeCopies(files: JobFiles, directory: string): Promise<void> {
   for (const file of backupSetFiles) {
-    await rm(join(directory, file), { force: true });
+    await files.removeFile(join(directory, file));
   }
 
-  await writeToDisk(directory);
+  await writeSetDirectoryToDisk(files, directory);
 }

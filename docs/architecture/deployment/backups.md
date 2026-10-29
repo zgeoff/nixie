@@ -37,9 +37,11 @@ before it creates its folder. nixie copies the pair with the same check that the
 every record that the log copy keeps readable. It then writes the manifest with each copy's size and
 checksum, and writes the `complete` marker last, with an fsync of each file and of the folder.
 
-A restart removes every set folder that lacks its marker, and moves its row to abandoned. A marked
-folder whose row never reached staged moves to staged, because its copies passed every check before
-the marker. A crash at any point therefore leaves either a set the job may ship or no set at all.
+A copy that fails before the marker removes its set folder and moves its row to abandoned, so the
+schedule's next try starts from a clean staging folder. A restart does the same for every set folder
+that a crash left without its marker. A marked folder whose row never reached staged moves to
+staged, because its copies passed every check before the marker. A crash at any point therefore
+leaves either a set the job may ship or no set at all.
 
 ## The backup job
 
@@ -52,7 +54,7 @@ receipt. For each set it ships, the job:
 3. backs up the key store copy to the key repository, forgets every other key snapshot by its ID,
    prunes every unused byte, and checks the repository's data once the prune passes;
 4. writes the receipt with an fsync and a rename, so nixie never reads a partial one;
-5. removes the set's copies.
+5. removes the set's copies, unless nixie has removed the set folder first.
 
 A restic failure in either repository gives the set a failed receipt that lists each failed step,
 and the job moves on to the next set. A failed manifest check gives the set a failed receipt too.
@@ -75,9 +77,10 @@ both take the backup repositories and passwords from a source that nixie's conta
 ## Receipts in nixie
 
 nixie parses each receipt with the format's schema, and refuses a receipt whose sequence differs
-from its folder's, or whose row is not staged. A refused receipt stays on disk and nixie logs it. An
-accepted receipt moves the row to published or failed with the snapshot IDs and the receipt text,
-and nixie then removes the set's folder.
+from its folder's, or whose row is not staged. An accepted receipt moves the row to published or
+failed with the snapshot IDs and the receipt text. A refused receipt moves a staged row to failed
+with the receipt text, because a set that waits on its receipt holds back every scheduled set, and
+nixie logs the refusal. Either way, nixie then removes the set's folder.
 
 ## Formats
 

@@ -18,10 +18,13 @@ services:
       - sh
       - -euc
       - |
-        chown 10001:10001 /data
+        # root holds neither DAC_OVERRIDE nor FOWNER here, so it takes /data and the staging folder
+        # back while it makes the folder and sets its mode
+        chown 0:0 /data
         mkdir -p /data/backup
-        chown 10001:10001 /data/backup
+        chown 0:0 /data/backup
         chmod 0700 /data/backup
+        chown 10001:10001 /data/backup /data
         chown 0:10001 /secrets
         chmod 0750 /secrets
         umask 077
