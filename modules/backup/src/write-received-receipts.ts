@@ -8,6 +8,7 @@ import {
 } from '@heynixie/wire';
 import type { Transaction } from 'kysely';
 import { getBackupStagingDir } from './get-backup-staging-dir';
+import { removeRecordedSet } from './remove-recorded-set';
 import type { BackupContext, BackupSetState, BackupTables } from './types';
 import type { BackupSetReceiptFields } from './write-backup-set-state';
 import { writeBackupSetState } from './write-backup-set-state';
@@ -38,7 +39,7 @@ export async function writeReceivedReceipts(
 
     received.push(receipt);
 
-    await files.removeFile(set.directory);
+    await removeRecordedSet(files, set.directory);
   }
 
   if (received.length > 0) {

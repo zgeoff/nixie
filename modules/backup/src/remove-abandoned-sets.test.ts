@@ -34,6 +34,19 @@ test('it removes a set whose copy stopped before its marker, and abandons its ro
   expect(rows.rows).toStrictEqual([{ sequence: 4, state: 'abandoned' }]);
 });
 
+test('it removes the folder of a recorded set whose removal stopped after its rename', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.dataDir, 'backup', '000000000002.removed'));
+  await writeFile(join(ctx.dataDir, 'backup', '000000000002.removed', 'complete'), '');
+
+  const abandoned = await removeAbandonedSets(ctx.context);
+  const names = await readdir(join(ctx.dataDir, 'backup'));
+
+  expect(abandoned).toStrictEqual({ sequences: [] });
+  expect(names).toStrictEqual([]);
+});
+
 test('it keeps a set that holds its marker, and stages the row of one whose start crashed after the marker', async () => {
   const ctx = await setupTest();
 

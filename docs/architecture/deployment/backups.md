@@ -84,7 +84,10 @@ from its folder's, or whose row is neither staging nor staged. A receipt for a s
 row to staged first, because the job ships only a marked set. An accepted receipt moves the row to
 published or failed with the snapshot IDs and the receipt text. A refused receipt moves a staged row
 to failed with the receipt text, because a set that waits on its receipt holds back every scheduled
-set, and nixie logs the refusal. Either way, nixie then removes the set's folder.
+set, and nixie logs the refusal. Either way, nixie then renames the set's folder to a name that is
+no set, syncs the staging folder, and removes the renamed folder. A stop part way through the
+removal therefore never leaves a marked set without its files, and the next start removes what the
+stop left.
 
 ## Formats
 
