@@ -1,5 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { findCheckerModel } from './find-checker-model';
+import { findImageSource } from './find-image-source';
 import { loadWriterModel } from './load-writer-model';
 import { parseChecks } from './parse-checks';
 import { parseEvidence } from './parse-evidence';
@@ -23,9 +24,11 @@ export async function readItemDetail(
   const rows = await log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_versions')
-    .selectAll()
-    .where('item_id', '=', itemID)
-    .orderBy('version')
+    .leftJoin('memory_proposals', 'memory_proposals.proposal_id', 'memory_versions.proposal_id')
+    .selectAll('memory_versions')
+    .select('memory_proposals.thread as proposal_thread')
+    .where('memory_versions.item_id', '=', itemID)
+    .orderBy('memory_versions.version')
     .execute();
 
   const key = await readItemKey(log, itemID);
@@ -55,8 +58,12 @@ interface VersionReaders {
   readonly loadModel: (row: MemoryVersionRow) => Promise<string | null>;
 }
 
+interface DetailVersionRow extends MemoryVersionRow {
+  readonly proposal_thread: string | null;
+}
+
 async function readViewVersion(
-  row: MemoryVersionRow,
+  row: DetailVersionRow,
   readers: VersionReaders,
 ): Promise<ViewVersion> {
   const opened = await readViewText(readers.key, {
@@ -67,6 +74,7 @@ async function readViewVersion(
 
   const evidence = parseEvidence(row.evidence);
   const checks = row.checks === null ? null : parseChecks(row.checks);
+  const image = checks === null ? null : findImageSource(checks);
 
   return {
     version: row.version,
@@ -91,6 +99,10 @@ async function readViewVersion(
                 ? await readers.readMessage(evidence.recordSequence)
                 : null,
           },
+    image:
+      image === null || row.proposal_thread === null
+        ? null
+        : { thread: row.proposal_thread, ...image },
     ...opened.text,
   };
 }

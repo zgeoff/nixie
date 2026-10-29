@@ -2,6 +2,8 @@ export type { CheckerRule } from './build-checker-rules';
 export { buildCheckerRules } from './build-checker-rules';
 export type { MemoryToolStore } from './memory-tool-store';
 export { buildLogReadTool } from './build-log-read-tool';
+export { buildLogReadImageTool } from './build-log-read-image-tool';
+export { readOwnerImage } from './read-owner-image';
 export { buildMemoryTools } from './build-memory-tools';
 export { buildPinnedCoreStatus } from './build-pinned-core-status';
 export { buildMomentKeptKind } from './build-moment-kept-kind';
@@ -97,6 +99,7 @@ export type {
   OwnerMessage,
   OwnerPronouns,
   ProposalAnswer,
+  ProposalImage,
   ReviewReason,
   WriteCaller,
   WriteOutcome,

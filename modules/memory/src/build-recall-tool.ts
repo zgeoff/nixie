@@ -47,6 +47,14 @@ const recalledVersion = {
         'and who confirmed it, and for a past version the version that replaced it',
     },
     quote: { type: 'string', description: 'the words the version came from' },
+    image: {
+      type: 'object',
+      description:
+        "the owner's photo the version came from: the eventID of the message that holds it and " +
+        'its number, which log.read_image opens',
+      properties: { eventID: { type: 'string' }, number: { type: 'integer' } },
+      required: ['eventID', 'number'],
+    },
     model: { type: ['string', 'null'], description: 'the model that wrote the version' },
   },
   required: ['version', 'change', 'state', 'text', 'about', 'model'],
@@ -113,7 +121,9 @@ export function buildRecallTool(
       'questions about memory from these items, never from a summary. Use it when you ' +
       'half-remember something said, or when a detail from before would change your answer. ' +
       'An item linked to a moment lists its momentID and title: read the moment with ' +
-      'moment.read when the reason behind the fact matters.',
+      'moment.read when the reason behind the fact matters. A version made from a photo the ' +
+      'owner attached names that image: open it with log.read_image when seeing it would ' +
+      'change your answer.',
     input: recallInput,
     output: recallOutput,
     declaration: {
@@ -213,6 +223,11 @@ function toVersionJSON(
     text: version.text,
     about: renderMemoryLine(version, lines, next),
     ...(version.evidenceQuote === null ? {} : { quote: version.evidenceQuote }),
+    ...(version.image === null
+      ? {}
+      : {
+          image: { eventID: String(version.image.messageSequence), number: version.image.image },
+        }),
     model: version.model,
   };
 }

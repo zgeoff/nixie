@@ -45,7 +45,10 @@ model's prose wherever the SDK exposes the answer.
   conversation guest sets, a web fetch result at the default text limit reaches the model whole, and
   a longer result reaches it cut and inline.
   [Web fetch](../../docs/architecture/connectors/web-fetch.md) keeps its text limit under that
-  limit.
+  limit. A result of a JSON text block and an image block reaches the model as both blocks, then a
+  text block that holds the path of the file where the CLI saved the image.
+  [Tool calls](../../docs/architecture/connectors/tool-calls.md) send a result with images in that
+  shape.
 - `mod-policy`: a Claude Code mod loaded into a query denies, rewrites and answers tool calls, and a
   catch handler turns a throwing hook into a deny. The mod's command is missing from the session
   when the mod throws as it loads, and leaves it when a hook wedges the hooks worker. No nixie code

@@ -165,6 +165,74 @@ test('it returns the model the whole result and records the record form the tool
   });
 });
 
+test('it returns the model the images of a direct result as image blocks beside its JSON', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () =>
+          Promise.resolve({
+            status: 'ok',
+            result: { text: 'a sketch' },
+            images: [{ mediaType: 'image/png', bytes: new TextEncoder().encode('sketch-bytes') }],
+          }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'sketch' }, toolUseID: 'toolu_3' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [
+      { type: 'text', text: '{"text":"a sketch"}' },
+      { type: 'image', data: 'c2tldGNoLWJ5dGVz', mimeType: 'image/png' },
+    ],
+  });
+});
+
+test('it records the result of a direct call that returns images without their bytes', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () =>
+          Promise.resolve({
+            status: 'ok',
+            result: { text: 'a sketch' },
+            images: [{ mediaType: 'image/png', bytes: new TextEncoder().encode('sketch-bytes') }],
+          }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'notes_read', input: { query: 'sketch' }, toolUseID: 'toolu_3' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(entries[1]?.record.erasable).toStrictEqual({
+    status: 'readable',
+    fields: { result: { text: 'a sketch' } },
+  });
+});
+
 test("it records the call's input in the record form the tool gives", async () => {
   const ctx = await setupTest({
     tools: [

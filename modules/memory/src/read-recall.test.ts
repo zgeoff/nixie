@@ -235,6 +235,7 @@ test('it returns the items that match a query word for word, with their provenan
         recordedAt: expect.toBeNumber(),
         text: 'The spare key sits under the blue flowerpot',
         evidenceQuote: null,
+        image: null,
         model: null,
         approval: null,
       },
@@ -242,6 +243,27 @@ test('it returns the items that match a query word for word, with their provenan
     next: null,
     searchMode: 'keyword',
   });
+});
+
+test('it returns the image a version came from with an item made from a photo', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'Paddles a red kayak',
+    provenance: {
+      origin: 'owner',
+      source: 'untrusted',
+      taskID: null,
+      proposalID: null,
+      checks: { tokens: 'pass', image: { messageSequence: 7, image: 2 } },
+    },
+  });
+
+  const result = await ctx.memory.store.recall({ query: 'red kayak' });
+
+  expect(result.items).toMatchObject([
+    { text: 'Paddles a red kayak', image: { messageSequence: 7, image: 2 } },
+  ]);
 });
 
 test('it never returns a session summary whose text matches the query', async () => {

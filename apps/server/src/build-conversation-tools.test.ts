@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildTimeTool } from '@heynixie/connectors';
-import { buildLogReadTool } from '@heynixie/memory';
+import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import { buildPromptReadTool } from '@heynixie/prompts';
 import { buildSkillTools } from '@heynixie/skills';
@@ -30,10 +30,10 @@ async function setupTest() {
 
   stack.defer(() => log.writer.stop());
 
-  return { log, logRead: buildLogReadTool(log) };
+  return { log, logReaders: [buildLogReadTool(log), buildLogReadImageTool(log)] };
 }
 
-test('it lists the web fetch tool, the time tool, the log reader, the skill tools, the prompt reader and the 12 memory tools', async () => {
+test('it lists the web fetch tool, the time tool, the log readers, the skill tools, the prompt reader and the 12 memory tools', async () => {
   const ctx = await setupTest();
 
   const definitions = buildConversationTools(
@@ -62,7 +62,7 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
         findTimeZone: () => Promise.resolve(null),
         defaultZone: 'Australia/Sydney',
       }),
-      logRead: ctx.logRead,
+      logReaders: ctx.logReaders,
       skills: buildSkillTools({
         log: ctx.log,
         clock: buildTestClock(0),
@@ -86,6 +86,7 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
     'web.fetch',
     'time.now',
     'log.read',
+    'log.read_image',
     'skill_read',
     'skill_reload',
     'skill_reload_all',
@@ -200,7 +201,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
         findTimeZone: () => Promise.resolve(null),
         defaultZone: 'Australia/Sydney',
       }),
-      logRead: ctx.logRead,
+      logReaders: ctx.logReaders,
       skills: [],
       prompts: [],
       tasks: [],
@@ -261,7 +262,7 @@ test('it allows the time tool, the log reader and each memory tool but export, a
           findTimeZone: () => Promise.resolve(null),
           defaultZone: 'Australia/Sydney',
         }),
-        logRead: ctx.logRead,
+        logReaders: ctx.logReaders,
         skills: [],
         prompts: [],
         tasks: [],
@@ -298,6 +299,7 @@ test('it allows the time tool, the log reader and each memory tool but export, a
   const readTools = [
     'time.now',
     'log.read',
+    'log.read_image',
     'memory.recall',
     'memory.rate',
     'memory.pending',
@@ -360,7 +362,7 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
         findTimeZone: () => Promise.resolve(null),
         defaultZone: 'Australia/Sydney',
       }),
-      logRead: ctx.logRead,
+      logReaders: ctx.logReaders,
       skills: [],
       prompts: [],
       tasks: [],
@@ -417,7 +419,7 @@ test('it denies a model call to memory.export under the read-only rule, so nothi
           findTimeZone: () => Promise.resolve(null),
           defaultZone: 'Australia/Sydney',
         }),
-        logRead: ctx.logRead,
+        logReaders: ctx.logReaders,
         skills: [],
         prompts: [],
         tasks: [],

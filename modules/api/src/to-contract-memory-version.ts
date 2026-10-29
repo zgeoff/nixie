@@ -1,4 +1,5 @@
 import type { ViewEvidence, ViewVersion } from '@heynixie/memory';
+import { toContractImage } from './to-contract-image';
 
 export function toContractMemoryVersion(version: ViewVersion) {
   return {
@@ -15,6 +16,7 @@ export function toContractMemoryVersion(version: ViewVersion) {
     checkerModel: version.checkerModel,
     evidenceQuote: version.evidenceQuote,
     evidence: version.evidence === null ? null : toContractEvidence(version.evidence),
+    image: toContractImage(version.image),
     status: version.status,
     ...(version.status === 'readable' ? { text: version.text } : {}),
   };

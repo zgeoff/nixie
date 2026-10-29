@@ -861,6 +861,55 @@ test('it recalls a version with its quote, its model and the line that says wher
   });
 });
 
+test('it recalls a version made from a photo with the event and number of its image', async () => {
+  const ctx = await setupTest();
+
+  setSystemTime(new Date(Date.UTC(2026, 9, 3, 11, 0)));
+  onTestFinished(() => setSystemTime());
+
+  const item = await ctx.memory.store.remember({
+    text: 'Paddles a red kayak',
+    provenance: {
+      origin: 'owner',
+      source: 'untrusted',
+      taskID: null,
+      proposalID: null,
+      checks: { tokens: 'pass', image: { messageSequence: 7, image: 2 } },
+    },
+  });
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const result = await runToolCall(
+    { tool: 'memory.recall', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.recall'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toStrictEqual({
+    items: [
+      {
+        itemID: shortID,
+        isPinned: false,
+        subject: 'owner',
+        version: 1,
+        change: 'created',
+        state: 'active',
+        text: 'Paddles a red kayak',
+        about: `${shortID} v1 · 3 Oct · unconfirmed`,
+        image: { eventID: '7', number: 2 },
+        model: null,
+      },
+    ],
+    next: null,
+  });
+});
+
 test('it recalls a version with no quote or model without them', async () => {
   const ctx = await setupTest();
 

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { within } from '@testing-library/react';
 import { store } from '../mocks/store';
+import { writeMockForget } from '../mocks/write-mock-forget';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { MemoryItemHistory } from './memory-item-history';
@@ -33,6 +34,73 @@ test('it shows a version evidence quote marked inside its message', async () => 
   );
 
   expect(evidence.querySelector('mark')).toHaveTextContent(/^my sister Ana lives in Porto$/u);
+});
+
+test('it shows the photo a version came from beside the version', async () => {
+  await createDeviceSession();
+
+  const photo = await store.records.create({
+    kind: 'owner_message',
+    message: { images: [{ data: '/9j/4A==', mediaType: 'image/jpeg' }], text: 'The new boat.' },
+    thread: 'conversation',
+  });
+
+  await store.memoryItems.create({
+    itemID: '3c8e1a5f-2b7d-4e9a-8f6c-1d0b5a7e2c94',
+    versions: [
+      {
+        image: { position: 0, sequence: photo.sequence, thread: 'conversation' },
+        origin: 'conversation',
+        source: 'untrusted',
+        text: 'Owns a red kayak',
+      },
+    ],
+  });
+
+  const rendered = render(<MemoryItemHistory itemID="3c8e1a5f-2b7d-4e9a-8f6c-1d0b5a7e2c94" />);
+
+  const version = await rendered.findByRole('listitem', { name: 'Version 1' });
+  const image = await within(version).findByRole('img', { name: 'Image 1' });
+
+  expect(image.getAttribute('src')).toStartWith('blob:');
+
+  expect(within(version).getByRole('figure', { name: 'Photo' })).toHaveTextContent(
+    'From your photo',
+  );
+});
+
+test("it shows a version's photo as unavailable once you forget the photo's message", async () => {
+  await createDeviceSession();
+
+  const photo = await store.records.create({
+    kind: 'owner_message',
+    message: { images: [{ data: '/9j/4A==', mediaType: 'image/jpeg' }], text: 'The new boat.' },
+    thread: 'conversation',
+  });
+
+  await store.memoryItems.create({
+    itemID: '3c8e1a5f-2b7d-4e9a-8f6c-1d0b5a7e2c94',
+    versions: [
+      {
+        image: { position: 0, sequence: photo.sequence, thread: 'conversation' },
+        text: 'Owns a red kayak',
+      },
+    ],
+  });
+
+  await writeMockForget({
+    clientActionID: '2d6b9e41-5c3a-4f7e-b8d0-9a1c4e6f3b25',
+    sequence: photo.sequence,
+    thread: 'conversation',
+  });
+
+  const rendered = render(<MemoryItemHistory itemID="3c8e1a5f-2b7d-4e9a-8f6c-1d0b5a7e2c94" />);
+
+  const photoFigure = await rendered.findByRole('figure', { name: 'Photo' });
+  const gap = await within(photoFigure).findByText('Image unavailable');
+
+  expect(gap).toBeInTheDocument();
+  expect(within(photoFigure).queryByRole('img')).toBeNull();
 });
 
 test('it shows the quote alone when the message it came from was forgotten', async () => {

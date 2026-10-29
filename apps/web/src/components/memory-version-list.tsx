@@ -6,6 +6,7 @@ import { formatMemoryProvenance } from '../format-memory-provenance';
 import { splitEvidenceMessage } from '../split-evidence-message';
 import { css } from '../styled-system/css';
 import type { MemoryVersion } from '../types';
+import { MessageImage } from './message-image';
 
 export interface MemoryVersionListProps {
   readonly versions: readonly MemoryVersion[];
@@ -59,6 +60,7 @@ function VersionEntry(props: VersionEntryProps): ReactNode {
         </p>
       )}
       <VersionEvidence version={version} />
+      <VersionPhoto version={version} />
       <VersionProvenance version={version} />
     </li>
   );
@@ -155,6 +157,21 @@ function formatMissingMessage(status: string | undefined): string {
   return status === undefined
     ? 'The quote it came from'
     : 'The message it came from is unavailable';
+}
+
+function VersionPhoto(props: VersionProps): ReactNode {
+  const image = props.version.image;
+
+  if (image === null) {
+    return null;
+  }
+
+  return (
+    <figure aria-label="Photo" className={evidenceBox}>
+      <MessageImage {...image} />
+      <figcaption className={meta}>From your photo</figcaption>
+    </figure>
+  );
 }
 
 const factList = css({ color: 'textMuted', fontSize: 'sm' });

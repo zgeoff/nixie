@@ -92,6 +92,12 @@ rendering of it:
 | Tool error        | The tool's message, or what it threw      | Yes   |
 | Result off schema | A refusal with the tool's name            | Yes   |
 
+A direct tool can return images beside its typed result, and the model then receives content blocks
+in place of structured content: the typed result as JSON in one text block, then one image block for
+each image. The result record holds the typed result alone, so an image's bytes never reach the log.
+Claude Code also saves each image to a file in the session's config directory, which a forget
+removes with the rest of the session state.
+
 An action that failed or went unknown is no tool error: the call was allowed and the action ran, so
 the model reads its outcome as a result.
 

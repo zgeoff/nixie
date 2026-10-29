@@ -197,6 +197,13 @@ memory learns only what the user wrote. The call's record holds only the event I
 forget leaves no readable copy of what the model read, and a forgotten message reads with no text
 and never matches a search.
 
+The model opens one image with the `log.read_image` tool, by the event ID of the user's message that
+holds it and the image's number in that message. The tool returns the image to the model as image
+input beside its media type, through the [tool calls](../connectors/tool-calls.md) path that keeps
+the bytes out of the result record. It reads only the calling run's thread, and it refuses with
+"image unavailable" once the user forgot the message, or when the record is not one of the user's
+messages or holds no image of that number.
+
 A memory write that quotes a message passes that message's event ID with its quote, from the
 message's stamp in the session or from a log read entry. The content gate then checks the quote
 against that one record in place of the recent window, under the same quote rules: the record must

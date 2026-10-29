@@ -3,7 +3,7 @@ import { buildTimeTool, readMessageTimeZone } from '@heynixie/connectors';
 import type { DefinitionsInForce } from '@heynixie/definitions';
 import { checkPromptProposal } from '@heynixie/definitions';
 import type { MemoryToolStore } from '@heynixie/memory';
-import { buildLogReadTool } from '@heynixie/memory';
+import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import type { SkillVendorContext } from '@heynixie/skills';
@@ -46,7 +46,10 @@ export async function startConversationEndpoint(
     defaultZone: options.config.time.default_zone,
   });
 
-  const logRead = buildLogReadTool(options.context.log);
+  const logReaders = [
+    buildLogReadTool(options.context.log),
+    buildLogReadImageTool(options.context.log),
+  ];
 
   const skills = buildConversationSkillTools(
     {
@@ -78,7 +81,7 @@ export async function startConversationEndpoint(
   ];
 
   const definitions = buildConversationTools(
-    { webFetch: tools.webFetch, time, logRead, skills, prompts, tasks },
+    { webFetch: tools.webFetch, time, logReaders, skills, prompts, tasks },
     {
       readStore: tools.readStore,
       clock: options.context.clock,

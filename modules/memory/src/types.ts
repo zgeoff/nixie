@@ -4,6 +4,7 @@ import type { MemoryApproval, PinnedCoreUse } from '@heynixie/sessions';
 import type { Selectable, Transaction } from 'kysely';
 import type {
   GateContext,
+  ImageRef,
   MemoryForgottenEvidenceTable,
   MemoryNoticeEntryTable,
   MemoryProposalTable,
@@ -184,6 +185,8 @@ export interface RecalledVersion {
   readonly text: string;
 
   readonly evidenceQuote: string | null;
+
+  readonly image: ImageRef | null;
 
   readonly model: string | null;
 

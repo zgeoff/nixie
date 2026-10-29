@@ -322,6 +322,7 @@ async function applyApproval(
   const isEdited = input.editedText !== undefined;
 
   const version = {
+    image: proposal.image === null ? null : { ...proposal.image },
     origin: isEdited ? ('owner' as const) : proposal.origin,
     proposalID: proposal.proposalID,
     source: isEdited ? ('owner' as const) : proposal.source,

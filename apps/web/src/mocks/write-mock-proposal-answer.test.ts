@@ -29,6 +29,27 @@ test('it approves a new item proposal as a new item with its own approval record
   ]);
 });
 
+test('it approves a proposal from a photo as a version that keeps the image it came from', async () => {
+  const proposal = await store.memoryProposals.create({
+    text: 'Owns a red kayak',
+    image: { position: 0, sequence: 4, thread: 'conversation' },
+  });
+
+  await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '7a1e3c52-9d4b-4f8a-b6c0-2e5d8f1a3b94',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+  });
+
+  const item = store.memoryItems.findFirst((query) => query.where({ itemID: proposal.itemID }));
+
+  expect(item?.versions).toMatchObject([
+    { text: 'Owns a red kayak', image: { position: 0, sequence: 4, thread: 'conversation' } },
+  ]);
+});
+
 test('it approves edited text as your own words, and records the answer as edited', async () => {
   const proposal = await store.memoryProposals.create({ text: 'Keeps bes on the roof' });
 

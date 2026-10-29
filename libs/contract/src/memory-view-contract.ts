@@ -59,12 +59,19 @@ const evidenceSchema = z.object({
   start: z.int().nonnegative(),
 });
 
+const ownerImageSchema = z.object({
+  position: z.int().nonnegative(),
+  sequence: z.int().positive(),
+  thread: z.string(),
+});
+
 const memoryVersionSchema = z.object({
   change: z.enum(['created', 'edited', 'retired', 'restored', 'undone']),
   checkerModel: z.string().nullable(),
   checks: z.record(z.string(), z.unknown()).nullable(),
   evidence: evidenceSchema.nullable(),
   evidenceQuote: z.string().nullable(),
+  image: ownerImageSchema.nullable(),
   origin: originSchema,
   proposalID: z.string().nullable(),
   recordedAt: z.date(),
@@ -107,13 +114,7 @@ const memoryProposalSchema = z.object({
   createdAt: z.date(),
   evidence: evidenceSchema.nullable(),
 
-  image: z
-    .object({
-      position: z.int().nonnegative(),
-      sequence: z.int().positive(),
-      thread: z.string(),
-    })
-    .nullable(),
+  image: ownerImageSchema.nullable(),
   isPinned: z.boolean(),
   isSensitive: z.boolean(),
   itemID: z.string(),
