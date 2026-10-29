@@ -1,4 +1,7 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
+import { stat } from 'node:fs/promises';
+import { waitForCondition } from '@heynixie/testing';
+import { createTestClient } from './create-test-client';
 import { runHostCommand } from './run-host-command';
 import { runTestReset } from './run-test-reset';
 import { startInProcessNixie } from './start-in-process-nixie';
@@ -59,5 +62,37 @@ test('it stops the server started again and reads its records', async () => {
   expect(run.records.at(0)).toMatchObject({
     sequence: reset.lastSequence + 1,
     kind: 'definitions_seeded',
+  });
+});
+
+test('it lets a reset that outlasts its test end before the cleanup stops nixie', async () => {
+  const gate = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    gate.resolve();
+  });
+
+  const nixie = await startInProcessNixie();
+  const api = await createTestClient(nixie);
+
+  nixie.guest.addReplies({ text: 'The ferry leaves at six.', gate: () => gate.promise });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'When does the ferry leave?',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(() => nixie.guest.turns.length === 1);
+
+  const reset = runTestReset(nixie);
+
+  await nixie.waitForLogEvent('reset.started');
+
+  onTestFinished(() => {
+    expect(Bun.peek.status(reset)).toBe('pending');
+    expect(nixie.readLogEvents()).toPartiallyContain({ event: 'reset.finished' });
+    expect(stat(nixie.directory)).rejects.toThrow();
   });
 });
