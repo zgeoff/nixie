@@ -294,7 +294,7 @@ test('it leaves sensitive items out of a query when asked, and fills the limit f
   const ctx = await setupTest();
 
   const sensitive = await ctx.memory.store.remember({
-    text: 'The door code for the spare key box is 4417',
+    text: 'Spare key box: spare key code 4417',
     provenance: buildMockProvenance(),
   });
 
@@ -305,7 +305,7 @@ test('it leaves sensitive items out of a query when asked, and fills the limit f
   });
 
   const plain = await ctx.memory.store.remember({
-    text: 'The spare key sits under the blue flowerpot',
+    text: 'A neighbour keeps the spare key for the garden shed under the blue flowerpot by the gate',
     provenance: buildMockProvenance(),
   });
 
