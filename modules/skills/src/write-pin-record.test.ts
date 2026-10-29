@@ -85,7 +85,11 @@ test('it writes one pin when 2 first pins of a thread race', async () => {
 
   const pins = await readRecords(ctx.log, { afterSequence: 0, kinds: ['skills.pinned'] });
 
-  expect(results.toSorted()).toStrictEqual([false, true]);
+  expect(results.toSorted((left, right) => Number(left) - Number(right))).toStrictEqual([
+    false,
+    true,
+  ]);
+
   expect(pins).toHaveLength(1);
 });
 

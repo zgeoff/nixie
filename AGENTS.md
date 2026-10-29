@@ -125,8 +125,9 @@ a secret value, and never write one to a file in the repo.
   check that CI runs.
 - lefthook runs the light checks before a commit and a push. Leave the heavier checks to CI, because
   the host may have little memory.
-- `bun run lint` is plain oxlint. `bun run lint:full` adds the type-aware pass, and is CI-only:
-  never run it locally.
+- `bun run lint` is plain oxlint. `bun run lint:full` adds the type-aware pass. oxlint runs it
+  through tsrslint (`@maschwenk/tsrslint`), a Rust port of tsgolint, in tsgolint's place, because
+  stock tsgolint runs out of memory under 2 GiB. `lint:full` is CI-only: never run it locally.
 - Run `bun install` in the main checkout before you run `bun run deadcode` or `bun run check` in a
   worktree. knip's config loader looks for a `tsconfig.json` from the directory above the worktree,
   so it reads the main checkout's, and without that checkout's `node_modules` knip exits 1 with
