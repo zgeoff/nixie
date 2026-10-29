@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.0](https://github.com/zgeoff/nixie/compare/v0.56.0...v0.57.0) (2026-10-29)
+
+
+### Features
+
+* **tasks:** pause, stop, restart, close and interrupt a task ([#724](https://github.com/zgeoff/nixie/issues/724)) ([79eb06b](https://github.com/zgeoff/nixie/commit/79eb06bb2b80e41df17f72ed5b262fe671fbb279))
+
 ## [0.56.0](https://github.com/zgeoff/nixie/compare/v0.55.0...v0.56.0) (2026-10-29)
 
 
