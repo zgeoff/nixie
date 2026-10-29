@@ -208,6 +208,11 @@ export interface NixieTables {
     readonly last_error_at: number | null;
     readonly updated_sequence: number;
   };
+  readonly message_routes: {
+    readonly message_sequence: number;
+    readonly task_id: string;
+    readonly routed_sequence: number;
+  };
   readonly moment_links: {
     readonly link_key: string;
     readonly moment_id: string;
@@ -365,6 +370,8 @@ export interface NixieTables {
     readonly created_sequence: number;
     readonly updated_sequence: number;
     readonly step_hop: number;
+    readonly started_by: string | null;
+    readonly start_step: string | null;
   };
   readonly threads: {
     readonly thread: string;

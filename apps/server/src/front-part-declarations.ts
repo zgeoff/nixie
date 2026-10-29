@@ -2,6 +2,7 @@ import { defaultAPISettings } from '@heynixie/api';
 import { buildAPIGate } from './build-api-gate';
 import { buildSeedInputs } from './build-seed-inputs';
 import { buildServerReset } from './build-server-reset';
+import { buildTaskMessaging } from './build-task-messaging';
 import { createServerContext } from './create-server-context';
 import { loadStartState } from './load-start-state';
 import { runApprovedSkillsSeed } from './run-approved-skills-seed';
@@ -31,6 +32,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           ...defaultAPISettings,
           isMemoryWriterEnabled: options.config.memory_writer.isEnabled,
           isMemoryConsolidatorEnabled: options.config.memory_consolidation.isEnabled,
+          taskDirectory: buildTaskMessaging(options.config).directory,
         },
       );
     },

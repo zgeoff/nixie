@@ -137,6 +137,30 @@ test('it never removes a template of another name', async () => {
   expect(entries).toContain(other.slice(ctx.parentDir.length + 1));
 });
 
+test('it rejects an input pattern that matches no file, and builds no template', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'seeds'));
+  await writeFile(join(ctx.root, 'seeds', 'entry.ts'), 'export const pear = 1;\n');
+
+  const write = mock((directory: string) => writeFile(join(directory, 'out.js'), 'pear'));
+
+  const options = {
+    name: 'orchard',
+    root: ctx.root,
+    inputs: ['{seeds,roots/deep}/**/*.ts'],
+    write,
+    parentDir: ctx.parentDir,
+  };
+
+  expect(createRunTemplate(options)).rejects.toThrowWithMessage(
+    Error,
+    /the template input \{seeds,roots\/deep\}\/\*\*\/\*\.ts matches no file/u,
+  );
+
+  expect(write).not.toHaveBeenCalled();
+});
+
 test('it ignores a file under node_modules when it keys the template', async () => {
   const ctx = await setupTest();
 

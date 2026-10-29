@@ -52,6 +52,12 @@ const taskSchema = z.object({
   taskID: z.string().default(() => faker.string.uuid()),
 });
 
+const routeSchema = z.object({
+  isMove: z.boolean().default(false),
+  messages: z.array(z.int()),
+  taskID: z.string(),
+});
+
 const toolCallSchema = z.object({
   callID: z.string().default(() => faker.string.uuid()),
   content: jsonObjectSchema.optional(),
@@ -117,6 +123,7 @@ const records = new Collection({
     rating: ratingSchema.optional(),
     recall: recallSchema.optional(),
     recordedAt: z.date().default(() => new Date()),
+    route: routeSchema.optional(),
     sequence: z.int().default(() => {
       counter.lastSequence += 1;
 
@@ -336,6 +343,26 @@ const moments = new Collection({
   }),
 });
 
+const tasks = new Collection({
+  schema: z.object({
+    brief: z.string().default(() => faker.lorem.sentence()),
+    isTakingMessages: z.boolean().default(true),
+    lastActivityAt: z.date().default(() => new Date()),
+    name: z.string().default(() => faker.lorem.words(2)),
+    state: z.enum(['ready', 'running', 'waiting', 'done', 'failed']).default('waiting'),
+    taskID: z.string().default(() => faker.string.alphanumeric({ length: 10, casing: 'lower' })),
+  }),
+});
+
+const moveActions = new Collection({
+  schema: z.object({
+    clientActionID: z.uuid(),
+    movedAt: z.date(),
+    sequence: z.int(),
+    taskID: z.string(),
+  }),
+});
+
 const forgetActions = new Collection({
   schema: z.object({
     clientActionID: z.uuid(),
@@ -356,6 +383,7 @@ export const store = {
   memoryVersions,
   memoryWriter,
   moments,
+  moveActions,
   ratingNotes,
   records,
 
@@ -364,6 +392,8 @@ export const store = {
     for (const collection of [
       records,
       forgetActions,
+      moveActions,
+      tasks,
       memoryActions,
       memoryItems,
       memoryNotices,
@@ -382,4 +412,5 @@ export const store = {
     counter.lastSequence = 0;
   },
   sessions,
+  tasks,
 };

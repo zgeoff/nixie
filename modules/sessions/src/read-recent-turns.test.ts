@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import { readRecentTurns } from './read-recent-turns';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
@@ -364,4 +365,71 @@ test('it leaves out every record from before the newest reset of the conversatio
   });
 
   expect(turns.map((turn) => turn.record.sequence)).toStrictEqual([4, 5]);
+});
+
+test('it reads a message moved to this thread as the message the user sent, and leaves out a notice of one moved away', async () => {
+  const ctx = await setupTest();
+
+  const [kept, gained] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Order the seed.' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'k3x9m2p7qa',
+      erasable: { text: 'Book the ferry for Saturday.' },
+    },
+  ]);
+
+  invariant(kept && gained);
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.message_moved',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        message: gained.sequence,
+        messageThread: 'k3x9m2p7qa',
+        from: 'k3x9m2p7qa',
+        to: 'conversation',
+      },
+    },
+    {
+      kind: 'task.message_moved',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        message: kept.sequence,
+        messageThread: 'conversation',
+        from: 'conversation',
+        to: 'w8d2n5rt1c',
+      },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Booked for Saturday.' },
+    },
+  ]);
+
+  const turns = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 100,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+  });
+
+  expect(
+    turns.map((turn) => [turn.record.sequence, turn.answered?.sequence ?? null]),
+  ).toStrictEqual([
+    [kept.sequence, null],
+    [gained.sequence, null],
+    [5, gained.sequence],
+  ]);
 });

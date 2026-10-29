@@ -28,6 +28,7 @@ test('it lists the tasks projection before the timers projection that refers to 
     'tasks',
     'timers',
     'task_messages',
+    'message_routes',
   ]);
 });
 
@@ -228,6 +229,54 @@ test('it rebuilds the task messages and their waits equal to the live ones after
     .execute();
 
   expect(live.map((row) => row.wait_state)).toStrictEqual(['answered', 'open', 'none']);
+  expect(rebuilt).toStrictEqual(live);
+});
+
+test('it rebuilds where each message went equal to the live routes after a route and its correction', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'task.routed',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { taskID: 'k3x9m2p7qa', via: 'start', messageID: null, messages: [1] },
+    },
+    {
+      kind: 'task.routed',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { taskID: 'w8d2n5rt1c', via: 'message', messageID: 'p4m7x2q9za', messages: [1, 2] },
+    },
+    {
+      kind: 'task.route_corrected',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { message: 2, from: 'w8d2n5rt1c', to: 'conversation' },
+    },
+  ]);
+
+  const live = await ctx.db
+    .selectFrom('message_routes')
+    .selectAll()
+    .orderBy('message_sequence')
+    .execute();
+
+  await runProjectionRebuild(ctx.context.log);
+
+  const rebuilt = await ctx.db
+    .selectFrom('message_routes')
+    .selectAll()
+    .orderBy('message_sequence')
+    .execute();
+
+  expect(live).toStrictEqual([
+    { message_sequence: 1, task_id: 'w8d2n5rt1c', routed_sequence: 3 },
+    { message_sequence: 2, task_id: 'conversation', routed_sequence: 4 },
+  ]);
+
   expect(rebuilt).toStrictEqual(live);
 });
 

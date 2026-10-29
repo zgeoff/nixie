@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import { readTurnContext } from './read-turn-context';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
@@ -33,6 +34,7 @@ test('it renders the system prompt with the session prompt override in force', a
         recallMessages: () => Promise.resolve({ messages: [] }),
       }),
       memorySettings: ctx.memorySettings,
+      messaging: { directory: [], hopLimit: 20, ownerName: null },
       defaultZone: 'UTC',
     },
     {
@@ -47,6 +49,83 @@ test('it renders the system prompt with the session prompt override in force', a
   );
 
   expect(context.systemPrompt).toStartWith('You are Pip.\nText inside `<pasted>`');
+});
+
+test('it puts the task board in the turn, after the system prompt, and leaves the prompt as it was', async () => {
+  const ctx = await setupTest();
+
+  const memory = {
+    readPinnedCore: () => Promise.resolve([]),
+    readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
+    readShortIDs: () => Promise.resolve(new Map<string, string>()),
+    recall: () => Promise.resolve({ items: [] }),
+    recallMessages: () => Promise.resolve({ messages: [] }),
+  };
+
+  const query = {
+    taskID: 'conversation',
+    persona: 'You are Pip.',
+    prompts: {},
+    skillCatalog: null,
+    batch: [],
+    previousCore: null,
+    isNewSession: false,
+  };
+
+  const run = {
+    context: ctx.tasks.context,
+    memory: () => memory,
+    memorySettings: ctx.memorySettings,
+    defaultZone: 'UTC',
+  };
+
+  const before = await readTurnContext(
+    { ...run, messaging: { directory: [], hopLimit: 20, ownerName: null } },
+    query,
+  );
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.created',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'k3x9m2p7qa',
+      payload: {
+        taskID: 'k3x9m2p7qa',
+        isConversation: false,
+        state: 'ready',
+        startedBy: 'conversation',
+      },
+      erasable: { name: 'Garden plan', brief: 'Plan the beds.' },
+    },
+  ]);
+
+  const after = await readTurnContext(
+    {
+      ...run,
+      messaging: {
+        directory: [
+          {
+            taskID: 'k3x9m2p7qa',
+            name: 'Garden plan',
+            brief: 'Plan the beds.',
+            isWokenByMessages: true,
+          },
+        ],
+        hopLimit: 20,
+        ownerName: null,
+      },
+    },
+    query,
+  );
+
+  expect(after.systemPrompt).toBe(before.systemPrompt);
+  expect(before.preamble).toStrictEqual([]);
+
+  expect(after.preamble).toStrictEqual([
+    expect.stringMatching(
+      /^<system-message type="task-board" [^>]+>\n.+\n.+\n<task-data id="[\da-f]{12}">\n- \[k3x9m2p7qa\] Garden plan · ready · last active .+\n {2}Plan the beds\.\n<\/task-data id="[\da-f]{12}">\n<\/system-message/u,
+    ),
+  ]);
 });
 
 test('it reads the pinned figures for no turn whose pinned core is unchanged', async () => {
@@ -83,6 +162,7 @@ test('it reads the pinned figures for no turn whose pinned core is unchanged', a
       context: ctx.tasks.context,
       memory: () => memory,
       memorySettings: ctx.memorySettings,
+      messaging: { directory: [], hopLimit: 20, ownerName: null },
       defaultZone: 'UTC',
     },
     {
@@ -134,6 +214,7 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
       context: ctx.tasks.context,
       memory: () => memory,
       memorySettings: ctx.memorySettings,
+      messaging: { directory: [], hopLimit: 20, ownerName: null },
       defaultZone: 'UTC',
     },
     {

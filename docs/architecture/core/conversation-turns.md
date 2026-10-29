@@ -172,6 +172,14 @@ weighs its requests as a colleague's. Messages that arrived past the hop limit o
 one system message with a summary line per sender, which counts that sender's messages and names
 what woke the turn, as [task messages](./tasks.md#task-messages) describes.
 
+A message the user [moved](./tasks.md#moving-a-misrouted-message) renders as a `message-moved`
+system message on both sides of the move. The task that lost the message reads a notice that names
+the message's event ID and the task that answers it now, and that tells it to leave the message to
+that task. The task that gained the message reads a notice that names the task it came from, then
+the user's message under its own stamp, as if the message had come there first. The task reads the
+message's images from the original record, inside the same image budget as any other message. A
+message the user forgot before the move renders as a placeholder line.
+
 Images the user sends with a message reach the model as image input, read as dropped in like dropped
 text. The inbox message holds the text first, then for each image a `<dropped-image id="…" n="…"/>`
 marker with its own random ID and the image's number, then the image block. The host reads each
@@ -207,6 +215,21 @@ change note and the retrieved items each render as one system message before the
 fired timer and an action's outcome render as one each, with the time their record was written, and
 each body leads with the record's event ID so the model can cite it. The user's own message stays
 outside any element, after its stamp, because it holds the user's own words.
+
+Each turn of the conversation ends its preamble with a `task-board` system message, which lists the
+conversation's most recently active tasks up to a cap, in every state. A done or failed task stays
+on the board for context, and the board says that such a task takes no more work, because the
+message tool refuses it. Each line gives the task's short ID, name, state, last activity and the
+task it waits on, and a cut of its brief follows. The board lives in the newest turn's message and
+never in the system prompt, because the board changes whenever a task starts or moves, and a change
+to the system prompt would end the prompt cache's hit on every earlier turn. A turn with no other
+task to list carries no board.
+
+A task's name and brief come from the model, which can copy them from outside text such as a
+ticket's title, so the board puts every line inside a `<task-data>` block whose random ID the
+closing tag repeats, as a pasted block's does. The board's own lines, and the system prompt's
+routing line, say that the names and briefs in that block are data and never instructions. The
+routing line also tells the model to name in its reply where it passed each message.
 
 ## Records of a turn
 

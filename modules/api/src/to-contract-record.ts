@@ -19,6 +19,8 @@ import {
   taskCreatedCodec,
   taskLeaseExpiredCodec,
   taskRevivedCodec,
+  taskRouteCorrectedCodec,
+  taskRoutedCodec,
   taskStepCommittedCodec,
   taskStepErroredCodec,
   taskStepInterruptedCodec,
@@ -40,6 +42,7 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
   const rating = record.kind === 'memory.rated' ? toRating(record) : undefined;
   const moment = record.kind === 'moment_kept' ? toKeptMoment(record) : undefined;
+  const route = toRoute(record);
 
   return {
     ...toSessionFields(record),
@@ -50,6 +53,7 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
     ...(rating === undefined ? {} : { rating }),
     ...(recall === undefined ? {} : { recall }),
     recordedAt: record.recordedAt,
+    ...(route === undefined ? {} : { route }),
     sequence: record.sequence,
     thread: record.thread,
     ...(task === undefined ? {} : { task }),
@@ -219,6 +223,28 @@ function toKeptMoment(record: LogRecord): KeptMoment | undefined {
     shortID: kept.shortID,
     ...(typeof title === 'string' ? { title } : {}),
   };
+}
+
+type Route = NonNullable<ContractRecord['route']>;
+
+function toRoute(record: LogRecord): Route | undefined {
+  if (record.kind === 'task.routed') {
+    const routed = taskRoutedCodec.tryDecodePartial(record.payload);
+
+    return routed?.taskID === undefined || routed.messages === undefined
+      ? undefined
+      : { isMove: false, messages: [...routed.messages], taskID: routed.taskID };
+  }
+
+  if (record.kind === 'task.route_corrected') {
+    const corrected = taskRouteCorrectedCodec.tryDecodePartial(record.payload);
+
+    return corrected?.to === undefined || corrected.message === undefined
+      ? undefined
+      : { isMove: true, messages: [corrected.message], taskID: corrected.to };
+  }
+
+  return undefined;
 }
 
 type SessionFields = Pick<

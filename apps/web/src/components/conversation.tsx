@@ -70,6 +70,7 @@ export function Conversation(props: ConversationProps): ReactNode {
   }
 
   const records = conversation.records;
+  const entries = outbox.entries.filter((entry) => entry.message.thread === props.thread);
 
   return (
     <main className={layout}>
@@ -87,11 +88,11 @@ export function Conversation(props: ConversationProps): ReactNode {
       <CompactionFailureNotice records={records} />
       {notices.isFailed ? <MemoryNoticesFailure onRetry={notices.retry} /> : null}
       <ConversationScroller
-        arrivals={records.length + outbox.entries.length + notices.notices.length}
+        arrivals={records.length + entries.length + notices.notices.length}
         sends={sends}
       >
         <ConversationList
-          entries={outbox.entries}
+          entries={entries}
           notices={notices.notices}
           onDiscard={outbox.discard}
           onRetry={outbox.retry}

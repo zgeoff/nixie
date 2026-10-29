@@ -3,11 +3,15 @@ import { Fragment } from 'react';
 import type { ActivityItem } from '../build-activity';
 import { buildActivity } from '../build-activity';
 import { buildNoticePlacement } from '../build-notice-placement';
+import type { MessageRoute } from '../collect-message-routes';
+import { collectMessageRoutes } from '../collect-message-routes';
 import { isWorking } from '../is-working';
 import { css } from '../styled-system/css';
 import type { MemoryNotice as MemoryNoticeData, OutboxMessage } from '../types';
 import type { LiveRecord } from '../use-live-records';
 import type { OutboxEntry } from '../use-outbox';
+import type { RoutedTasks } from '../use-routed-tasks';
+import { useRoutedTasks } from '../use-routed-tasks';
 import { MemoryNotice } from './memory-notice';
 import { MomentKeptNotice } from './moment-kept-notice';
 import { OutboxItem } from './outbox-item';
@@ -55,13 +59,15 @@ export function ConversationList(props: ConversationListProps): ReactNode {
   const activity = buildActivity(props.records);
   const placement = buildNoticePlacement(activity, props.notices);
   const unshown = props.entries.filter((entry) => !shown.has(entry.message.clientMessageId));
+  const routes = collectMessageRoutes(props.records);
+  const taskList = useRoutedTasks(routes);
 
   return (
     <>
       <ol aria-label="Conversation" className={css(column, messages)}>
         {activity.map((item, index) => (
           <Fragment key={item.kind === 'step' ? `step/${String(item.key)}` : item.record.sequence}>
-            <ActivityEntry item={item} />
+            <ActivityEntry item={item} routes={routes} taskList={taskList} />
             {placement.get(index)?.map((notice) => (
               <MemoryNotice key={notice.noticeKey} notice={notice} />
             ))}
@@ -90,13 +96,21 @@ export function ConversationList(props: ConversationListProps): ReactNode {
 
 interface ActivityEntryProps {
   readonly item: ActivityItem;
+  readonly routes: ReadonlyMap<number, MessageRoute>;
+  readonly taskList: RoutedTasks;
 }
 
 function ActivityEntry(props: ActivityEntryProps): ReactNode {
   const item = props.item;
 
   if (item.kind === 'message') {
-    return <RecordItem record={item.record} />;
+    return (
+      <RecordItem
+        record={item.record}
+        route={props.routes.get(item.record.sequence)}
+        taskList={props.taskList}
+      />
+    );
   }
 
   if (item.kind === 'reset') {

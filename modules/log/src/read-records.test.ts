@@ -100,6 +100,20 @@ test('it returns only the records of the kinds asked for', async () => {
   expect(read.map((entry) => entry.record.sequence)).toStrictEqual([1, 3]);
 });
 
+test('it returns only the records at the sequences asked for', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' }, thread: 'conversation' },
+    { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:aa11' }, thread: 'conversation' },
+    { kind: 'model.reply', definitions: { snapshotHash: 'sha256:aa11' }, thread: 'conversation' },
+  ]);
+
+  const read = await readRecords(ctx.log, { afterSequence: 0, sequences: [1, 3, 9] });
+
+  expect(read.map((entry) => entry.record.sequence)).toStrictEqual([1, 3]);
+});
+
 test('it returns the newest records first, up to the limit, when asked', async () => {
   const ctx = await setupTest();
 

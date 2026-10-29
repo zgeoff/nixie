@@ -1,3 +1,4 @@
+import { conversationTaskID } from '@heynixie/tasks';
 import type { APISettings } from './types';
 
 export const defaultAPISettings: APISettings = {
@@ -7,4 +8,12 @@ export const defaultAPISettings: APISettings = {
   lastSeenIntervalMs: 60 * 1000,
   isMemoryWriterEnabled: true,
   isMemoryConsolidatorEnabled: true,
+  taskDirectory: [
+    {
+      taskID: conversationTaskID,
+      name: 'Conversation',
+      brief: 'Talks with the owner and answers each message.',
+      isWokenByMessages: true,
+    },
+  ],
 };

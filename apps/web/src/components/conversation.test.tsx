@@ -27,7 +27,7 @@ test('it shows the conversation the API holds', async () => {
 
   const list = await rendered.findByRole('list', { name: 'Conversation' });
 
-  expect(list).toHaveTextContent('You Is it raining?Forgetnixie Not yet.');
+  expect(list).toHaveTextContent('You Is it raining?MoveForgetnixie Not yet.');
 });
 
 test('it turns on voice typing from the header, asking for the microphone once and stopping it at once', async () => {
@@ -90,7 +90,7 @@ test('it folds the records of a step into one line between the messages', async 
       (item) => item.querySelector('summary')?.textContent ?? item.textContent,
     ),
   ).toStrictEqual([
-    'You Rain?Forget',
+    'You Rain?MoveForget',
     'conversation · web fetch: weather.test · 4.2s',
     'nixie Not yet.Forget',
   ]);
@@ -489,7 +489,9 @@ test('it shows no placeholder for a message or a reply whose text is shredded', 
     'listitem',
   );
 
-  expect(items.map((item) => item.textContent)).toStrictEqual(['You Is the ferry on time?Forget']);
+  expect(items.map((item) => item.textContent)).toStrictEqual([
+    'You Is the ferry on time?MoveForget',
+  ]);
 });
 
 test('it shows an unsent message as not sent', async () => {
@@ -631,6 +633,33 @@ test('it sends stored messages in the order you sent them', async () => {
       .findMany((query) => query.where({ kind: 'owner_message' }), { orderBy: { sequence: 'asc' } })
       .map((record) => record.message?.text),
   ).toStrictEqual(['first', 'second']);
+});
+
+test('it leaves a held message of another thread out of a task page', async () => {
+  await createDeviceSession();
+
+  await store.tasks.create({ name: 'Garden plan', taskID: 'k3vq8m2xpa' });
+
+  const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '6c1e3a5f-7b9d-4f2a-8c4e-0d2f4a6c8e17',
+        spans: [{ end: 15, source: 'typed', start: 0 }],
+        text: 'Lock the garage',
+        thread: 'conversation',
+        writtenAt: threeHoursAgo,
+      },
+    ]),
+  );
+
+  const rendered = render(<Conversation thread="k3vq8m2xpa" />);
+
+  const list = await rendered.findByRole('list', { name: 'Conversation' });
+
+  expect(list).not.toHaveTextContent('Lock the garage');
 });
 
 test('it sends a stored message written under 2 minutes ago, and holds an older one until you send it', async () => {

@@ -25,7 +25,7 @@ export function buildStepWake(unread: readonly WakeRecord[], previousHop: number
 }
 
 function toWake(record: WakeRecord): StepWake {
-  if (record.kind === 'owner_message') {
+  if (record.kind === 'owner_message' || record.kind === 'task.message_moved') {
     return { hop: 0, cause: { kind: 'owner' } };
   }
 

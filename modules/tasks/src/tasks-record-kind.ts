@@ -9,6 +9,9 @@ export type TasksRecordKind =
   | 'task.wake'
   | 'task_message'
   | 'task.exchange_limited'
+  | 'task.routed'
+  | 'task.route_corrected'
+  | 'task.message_moved'
   | 'timer.fired'
   | 'owner_message'
   | 'action.outcome';

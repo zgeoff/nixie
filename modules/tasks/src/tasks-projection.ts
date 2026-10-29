@@ -98,6 +98,8 @@ async function applyTaskRecord(
         claimable_at: 0,
         session_boundary: null,
         step_hop: 0,
+        started_by: parsed.startedBy ?? null,
+        start_step: parsed.startStep ?? null,
         created_sequence: record.sequence,
         updated_sequence: record.sequence,
       })

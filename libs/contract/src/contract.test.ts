@@ -37,6 +37,30 @@ test('it refuses a message send without its client message ID', () => {
   ).toPartiallyContain({ path: ['clientMessageId'] });
 });
 
+test('it refuses a move to a new task with a blank name', () => {
+  expect(
+    contract.conversation.move['~orpc'].inputSchema?.safeParse({
+      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      sequence: 12,
+      thread: 'conversation',
+      to: { kind: 'new', name: '  ', brief: 'Find a plumber who can come this week.' },
+    }).error?.issues,
+  ).toPartiallyContain({ path: ['to', 'name'] });
+});
+
+test('it accepts a move to a task by its ID', () => {
+  const input = {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    sequence: 12,
+    thread: 'conversation',
+    to: { kind: 'task' as const, taskID: 'k3x9m2p7qa' },
+  };
+
+  expect(contract.conversation.move['~orpc'].inputSchema?.safeParse(input).data).toStrictEqual(
+    input,
+  );
+});
+
 test('it declares a reused action ID and an invalid code for enrolment, and no device session error', () => {
   expect(contract.sessions.enrol['~orpc'].errorMap).toContainAllKeys([
     'CLIENT_ACTION_ID_REUSED',

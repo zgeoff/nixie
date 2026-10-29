@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { renderTurnPreamble } from './render-turn-preamble';
 
-test('it renders the change note, the facts, the self-notes and the past messages in that order', () => {
+test('it renders the change note, the facts, the self-notes, the past messages and the task board in that order', () => {
   const fact = {
     itemID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
     shortID: 'h4ns8w1cpe',
@@ -34,6 +34,7 @@ test('it renders the change note, the facts, the self-notes and the past message
       },
       thread: 'garden',
       at: 'Wed 14 Oct, 12:00, UTC',
+      board: '- [k3x9m2p7qa] Garden plan · waiting',
     },
     { ownerName: 'Sam', defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
   );
@@ -45,6 +46,7 @@ test('it renders the change note, the facts, the self-notes and the past message
     'retrieved-memory',
     'retrieved-self-notes',
     'retrieved-messages',
+    'task-board',
   ]);
 });
 
@@ -56,6 +58,7 @@ test('it leaves out each block with nothing in it', () => {
         retrieval: { items: [], selfNotes: [], messages: [] },
         thread: 'garden',
         at: 'Wed 14 Oct, 12:00, UTC',
+        board: null,
       },
       { ownerName: null, defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
     ),

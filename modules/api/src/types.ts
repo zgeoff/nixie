@@ -9,7 +9,7 @@ import type {
   MomentStore,
 } from '@heynixie/memory';
 import type { PromptsInForce } from '@heynixie/prompts';
-import type { TasksContext } from '@heynixie/tasks';
+import type { TaskProfile, TasksContext } from '@heynixie/tasks';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 
 export interface APISettings {
@@ -24,6 +24,8 @@ export interface APISettings {
   readonly isMemoryWriterEnabled: boolean;
 
   readonly isMemoryConsolidatorEnabled: boolean;
+
+  readonly taskDirectory: readonly TaskProfile[];
 }
 
 export interface OwnerImage {

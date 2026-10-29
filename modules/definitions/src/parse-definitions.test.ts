@@ -385,7 +385,7 @@ test.each([
     'a part file that reads a path the prompt does not have',
     'format: 3\nprompts:\n  session:\n    safety: prompts/session.md\n',
     [{ path: 'prompts/session.md', text: 'Answer {{ assistant.name }} kindly.\n' }],
-    'prompts/session.md: the safety part of the session prompt reads {{ assistant.name }}, which it does not accept; it accepts persona, skillCatalog, owner.name, parts.skillCatalog, parts.instruction',
+    'prompts/session.md: the safety part of the session prompt reads {{ assistant.name }}, which it does not accept; it accepts persona, skillCatalog, owner.name, parts.skillCatalog, parts.instruction, parts.routing',
   ],
   [
     'a template that reads a path the prompt does not have',

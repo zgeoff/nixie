@@ -1,6 +1,17 @@
 export { buildStepRunID } from './build-step-run-id';
 export { buildTaskMessageTool } from './build-task-message-tool';
+export { buildTaskStartTool } from './build-task-start-tool';
 export { buildTasksListTool } from './build-tasks-list-tool';
+export type { MessageMoveRefusal, MoveTarget } from './plan-message-move';
+export { readOwnerMessageTakers } from './read-owner-message-takers';
+export { readTaskDirectory } from './read-task-directory';
+export type { ListedTask } from './read-task-list';
+export { readTaskList } from './read-task-list';
+export { taskMessageMovedCodec } from './task-message-moved-codec';
+export { taskRouteCorrectedCodec } from './task-route-corrected-codec';
+export { taskRoutedCodec } from './task-routed-codec';
+export type { MessageMoveOutcome } from './write-message-move-in-transaction';
+export { writeMessageMoveInTransaction } from './write-message-move-in-transaction';
 export { canReplyWake } from './can-reply-wake';
 export { getTaskName } from './get-task-name';
 export { renderExchangeNotice } from './render-exchange-notice';

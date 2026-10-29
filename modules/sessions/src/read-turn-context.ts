@@ -1,11 +1,13 @@
 import type { LogRecord } from '@heynixie/log';
 import type { PromptOverrides } from '@heynixie/prompts';
 import { renderPrompt } from '@heynixie/prompts';
+import { readTaskList } from '@heynixie/tasks';
 import { formatMessageTime } from './format-message-time';
 import { isCoreChanged } from './is-core-changed';
 import { readTurnRetrieval } from './read-turn-retrieval';
 import { renderCoreChanges } from './render-core-changes';
 import { renderPinnedMemory } from './render-pinned-memory';
+import { renderTaskBoard } from './render-task-board';
 import { renderTurnPreamble } from './render-turn-preamble';
 import type {
   ConversationMemory,
@@ -40,8 +42,10 @@ export interface TurnContext {
   readonly retrievedMessages: readonly number[];
 }
 
+const boardLimit = 20;
+
 export async function readTurnContext(
-  run: Pick<ConversationRun, 'context' | 'memory' | 'memorySettings' | 'defaultZone'>,
+  run: Pick<ConversationRun, 'context' | 'memory' | 'memorySettings' | 'defaultZone' | 'messaging'>,
   query: TurnContextQuery,
 ): Promise<TurnContext> {
   const memory = run.memory();
@@ -60,6 +64,12 @@ export async function readTurnContext(
 
   const changes = await readCoreChanges(memory, query, { core, lines });
 
+  const tasks = await readTaskList(run.context, run.messaging, {
+    callerID: query.taskID,
+    state: 'all',
+    limit: boardLimit,
+  });
+
   return {
     systemPrompt: renderPrompt(
       'session',
@@ -71,7 +81,10 @@ export async function readTurnContext(
       query.prompts,
     ),
     pinnedMemory,
-    preamble: renderTurnPreamble({ changes, retrieval, thread: query.taskID, at }, lines),
+    preamble: renderTurnPreamble(
+      { changes, retrieval, thread: query.taskID, at, board: renderTaskBoard(tasks, lines) },
+      lines,
+    ),
     pinnedCore: core.map((item) => toMemoryRef(item)),
     retrieved: [...retrieval.items, ...retrieval.selfNotes].map((item) => toMemoryRef(item)),
     retrievedMessages: retrieval.messages.map((message) => message.sequence),

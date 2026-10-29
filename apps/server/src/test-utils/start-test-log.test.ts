@@ -23,6 +23,7 @@ test('it starts a log with the tasks, sandboxes and memory projections and a fre
     'tasks',
     'timers',
     'task_messages',
+    'message_routes',
     'sandboxes',
     'memory_items',
     'memory_versions',
