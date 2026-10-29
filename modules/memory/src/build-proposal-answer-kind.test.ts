@@ -75,6 +75,40 @@ test('it renders the rejection of the conversation own proposed edit, quoting th
   );
 });
 
+test('it leaves the rejection of a proposed edit of a sensitive item unquoted', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Lives at 12 Juniper Row',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.markSensitive({
+    itemID: item.itemID,
+    isSensitive: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const proposal = await createProposal(ctx.memory.store, {
+    text: 'Lives at 14 Juniper Row',
+    target: item,
+  });
+
+  await ctx.memory.store.proposals.reject({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const note = await readEventsNote(
+    buildEventRegistry([buildProposalAnswerKind(ctx.memory.log, ctx.memory.store)]),
+    { after: 0, through: 100 },
+    { ownerName: 'Avery', timeZone: 'UTC' },
+  );
+
+  expect(note).toEndWith(` · Avery rejected your memory proposal ${proposal.proposalID}.`);
+});
+
 test('it renders the rejection of the conversation own proposed edit with the owner reason after the edit', async () => {
   const ctx = await setupTest();
 

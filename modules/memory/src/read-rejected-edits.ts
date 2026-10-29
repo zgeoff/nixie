@@ -25,6 +25,7 @@ export function readRejectedEdits(
       .where('memory_proposals.origin', '=', 'conversation')
       .where('memory_proposals.is_new_item', '=', 0)
       .where('memory_items.state', 'in', ['active', 'retired'])
+      .where('memory_items.is_sensitive', '=', 0)
       .execute();
 
     const keys = await readRecordKeys(
