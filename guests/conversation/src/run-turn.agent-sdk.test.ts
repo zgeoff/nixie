@@ -720,6 +720,34 @@ test('it ends an interrupted turn at its last chain entry, and leaves a queued m
   });
 });
 
+test('it ends a turn cleanly when an interrupt lands as the turn ends', async () => {
+  const ctx = await setupTest();
+
+  const interrupt = new AbortController();
+
+  ctx.model.addReplies({ text: 'Noted.' });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Note the time.' }],
+    }),
+    {
+      ...ctx.deps,
+      interrupt: interrupt.signal,
+      emit: async (frame) => {
+        await ctx.deps.emit(frame);
+
+        if (frame.type === 'ended') {
+          interrupt.abort();
+        }
+      },
+    },
+  );
+
+  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', subtype: 'success' });
+});
+
 test('it starts the next turn from the message an interrupt left unread, resumed after the interrupted turn', async () => {
   const ctx = await setupTest();
 

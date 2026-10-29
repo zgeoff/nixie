@@ -48,7 +48,7 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
 
   const unsubscribe = subscribeToInterrupt(deps.interrupt, () => {
     state.isInterrupted = true;
-    void session.interrupt();
+    void runInterrupt(session);
   });
 
   try {
@@ -85,6 +85,14 @@ function subscribeToInterrupt(
   return () => {
     signal.removeEventListener('abort', onInterrupt);
   };
+}
+
+// The SDK rejects a control request still pending when the session closes, and a turn that ends as
+// the interrupt lands closes its session before the CLI answers.
+async function runInterrupt(session: ReturnType<typeof query>): Promise<void> {
+  try {
+    await session.interrupt();
+  } catch {}
 }
 
 async function drainConnectedSession(
