@@ -165,6 +165,7 @@ export interface MemoryProposal {
   readonly isPinned: boolean;
 
   readonly subject: MemorySubject;
+  readonly newSubject: MemorySubject | null;
 
   readonly isSensitive: boolean;
   readonly reason: ReviewReason;
@@ -291,6 +292,7 @@ export interface MemoryProposalTable {
   readonly kind: 'fact' | 'self';
   readonly subject: MemorySubject | null;
   readonly is_sensitive: number;
+  readonly new_subject: MemorySubject | null;
 }
 
 export interface MemoryNoticeEntryTable {

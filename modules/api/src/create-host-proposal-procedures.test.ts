@@ -28,6 +28,7 @@ test('#list lists each pending proposal with its text and the hash an answer bin
       targetVersion: null,
       isPinned: false,
       subject: 'owner',
+      newSubject: null,
       isSensitive: false,
       kind: 'fact',
       reason: 'no_quote',
@@ -46,6 +47,24 @@ test('#list lists each pending proposal with its text and the hash an answer bin
       text: 'Likes jazz',
       quote: null,
     },
+  ]);
+});
+
+test('#list lists an edit that moves its item with the subject it has and the subject it moves to', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Calls the kettle Captain Steam' });
+
+  await ctx.memory.store.writes.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    target: item,
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await ctx.client.list();
+
+  expect(pending).toMatchObject([
+    { targetVersion: 1, subject: 'owner', newSubject: 'shared', kind: 'fact', reason: 'no_quote' },
   ]);
 });
 

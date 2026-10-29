@@ -89,6 +89,11 @@ function ProposalDetails(props: ProposalDetailsProps): ReactNode {
         {proposal.subject === 'self' ? <SelfNoteBadge /> : null}
         {formatReviewReason(proposal.reason)}
       </p>
+      {proposal.newSubject === null ? null : (
+        <p className={meta}>
+          Moves it from {formatSubject(proposal.subject)} to {formatSubject(proposal.newSubject)}.
+        </p>
+      )}
       {proposal.isSensitive ? (
         <p className={meta}>Sensitive: once kept, it comes up only when a request needs it.</p>
       ) : null}
@@ -109,6 +114,14 @@ function ProposalDetails(props: ProposalDetailsProps): ReactNode {
       )}
     </>
   );
+}
+
+function formatSubject(subject: MemoryProposal['subject']): string {
+  return match(subject)
+    .with('owner', () => 'a fact about you')
+    .with('shared', () => 'something shared between you and nixie')
+    .with('self', () => 'a self-note')
+    .exhaustive();
 }
 
 interface CloseMatchChoiceProps extends ProposalCardProps {

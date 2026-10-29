@@ -53,6 +53,7 @@ function buildPendingEntry(proposal: MemoryProposal) {
     targetVersion: proposal.targetVersion,
     isPinned: proposal.isPinned,
     subject: proposal.subject,
+    newSubject: proposal.newSubject,
     isSensitive: proposal.isSensitive,
     kind: toContractKind(proposal.subject),
     reason: proposal.reason,

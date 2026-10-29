@@ -170,6 +170,7 @@ export interface NixieTables {
     readonly kind: string;
     readonly subject: string | null;
     readonly is_sensitive: number;
+    readonly new_subject: string | null;
   };
   readonly memory_versions: {
     readonly version_key: string;

@@ -44,6 +44,7 @@ test('it reads a pending proposal as the API lists it', async () => {
       kind: 'fact',
       subject: 'owner',
       lapseAt: proposal.lapseAt,
+      newSubject: null,
       operation: 'remember',
       origin: 'memory_writer',
       proposalID: '7a2c5e9f-0b4d-4f1a-8e6c-2d9b7f3a5c10',

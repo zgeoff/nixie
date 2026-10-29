@@ -49,6 +49,28 @@ async function setupTest() {
   return { ...api, memory };
 }
 
+test('#memory.listProposals lists an edit that moves its item with the subject it has and the subject it moves to', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await createMemoryItem(ctx.memory, { text: 'Calls the kettle Captain Steam' });
+
+  await ctx.memory.writes.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    target: item,
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const listed = await client.memory.listProposals();
+
+  expect(listed.proposals).toMatchObject([
+    { targetVersion: 1, subject: 'owner', newSubject: 'shared', reason: 'no_quote' },
+  ]);
+});
+
 test('#memory.listProposals lists a proposal whose review reason a later release wrote with the reason other', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
@@ -129,6 +151,7 @@ test('#memory.listProposals lists each pending proposal with its review reason, 
         isSensitive: false,
         kind: 'fact',
         subject: 'owner',
+        newSubject: null,
         reason: 'checker_unreachable',
         actionHash: proposal.actionHash,
         origin: 'conversation',

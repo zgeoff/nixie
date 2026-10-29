@@ -150,9 +150,10 @@ to finish a failed run after the user leaves the page and comes back.
 The view lists every pending proposal on a page of its own, which the memory page links to. Each
 proposal shows its text, the check that sent it to review, who proposed it and from what source, its
 quote inside the message it came from, the date its fact ends when it sets an end time, whether it
-marks its item sensitive, and when it lapses. The quote and its message open under the item's key,
-as the proposal's text does, so a forgotten item's proposal drops out of the list whole
-([memory proposals](./writes.md#memory-proposals)).
+marks its item sensitive, the subject it moves its item from and to when it
+[changes the subject](./writes.md#subject-changes), and when it lapses. The quote and its message
+open under the item's key, as the proposal's text does, so a forgotten item's proposal drops out of
+the list whole ([memory proposals](./writes.md#memory-proposals)).
 
 A proposal [from a photo](./writes.md#writes-from-a-photo) shows the photo beside its text. The page
 reads the photo as the conversation page reads a message's images, so a forget of the photo's

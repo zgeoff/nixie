@@ -108,6 +108,71 @@ test("it shows that the note-taker's proposal is sensitive and why it waits for 
   expect(card).toHaveTextContent('Sensitive: once kept, it comes up only when a request needs it.');
 });
 
+test('it shows the subject an edit moves its item from and the subject it moves it to, and why it waits for review', async () => {
+  await createDeviceSession();
+
+  await store.memoryProposals.create({
+    newSubject: 'shared',
+    reason: 'subject_change',
+    subject: 'owner',
+    targetVersion: 1,
+    text: 'The owner and nixie call the kettle Captain Steam',
+  });
+
+  const rendered = render(<MemoryProposals />);
+
+  const card = await rendered.findByRole('listitem', {
+    name: 'The owner and nixie call the kettle Captain Steam',
+  });
+
+  expect(card).toHaveTextContent(
+    'Moves it from a fact about you to something shared between you and nixie.',
+  );
+
+  expect(card).toHaveTextContent(
+    'It changes whose fact the item is, and every subject change waits for your review.',
+  );
+});
+
+test('it moves the item to the new subject when you approve a subject change', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const item = await store.memoryItems.create({
+    subject: 'owner',
+    versions: [{ text: 'Calls the kettle Captain Steam' }],
+  });
+
+  await store.memoryProposals.create({
+    itemID: item.itemID,
+    newSubject: 'shared',
+    reason: 'subject_change',
+    subject: 'owner',
+    targetVersion: 1,
+    text: 'The owner and nixie call the kettle Captain Steam',
+  });
+
+  const rendered = render(<MemoryProposals />);
+
+  const card = await rendered.findByRole('listitem', {
+    name: 'The owner and nixie call the kettle Captain Steam',
+  });
+
+  await ctx.user.click(within(card).getByRole('button', { name: 'Approve' }));
+  await rendered.findByText('No proposal waits for you.');
+
+  expect(
+    store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID })),
+  ).toMatchObject({
+    subject: 'shared',
+    versions: [
+      { text: 'Calls the kettle Captain Steam' },
+      { text: 'The owner and nixie call the kettle Captain Steam' },
+    ],
+  });
+});
+
 test('it creates a sensitive item when you approve a sensitive proposal', async () => {
   const ctx = setupTest();
 

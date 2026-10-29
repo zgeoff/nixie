@@ -32,6 +32,8 @@ export interface ProposalPlan {
 
   readonly subject?: MemorySubject;
 
+  readonly newSubject?: MemorySubject;
+
   readonly isSensitive?: boolean;
 
   readonly until?: number | null;

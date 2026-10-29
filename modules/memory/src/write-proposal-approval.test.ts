@@ -517,6 +517,100 @@ test('it keeps an item a self-note when you approve an edit of it', async () => 
   expect(item).toStrictEqual({ subject: 'self', version: 2 });
 });
 
+test('it moves the item to the new subject when you approve a subject change, in records of their own', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'The owner calls the kettle Captain Steam',
+    provenance: {
+      origin: 'owner',
+      source: 'owner',
+      taskID: null,
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  await memory.store.writes.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    target: item,
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const [records, row] = await Promise.all([
+    readRecords(memory.log, {
+      afterSequence: 0,
+      kinds: ['memory.proposal_subject_changed', 'memory.subject_changed'],
+    }),
+    memory.writer.db
+      .$extendTables<MemoryTables>()
+      .selectFrom('memory_items')
+      .select(['subject', 'kind', 'version'])
+      .where('item_id', '=', item.itemID)
+      .executeTakeFirstOrThrow(),
+  ]);
+
+  expect(records.map((entry) => entry.record.payload)).toStrictEqual([
+    { proposalID: pending.proposalID, subject: 'shared' },
+    { itemID: item.itemID, subject: 'shared' },
+  ]);
+
+  expect(row).toStrictEqual({ subject: 'shared', kind: 'fact', version: 2 });
+});
+
+test('it makes a self-note a fact about the owner when you approve its move to the owner', async () => {
+  const memory = await startTestMemory();
+
+  const note = await memory.store.remember({
+    text: 'I like short answers in the morning',
+    subject: 'self',
+    provenance: {
+      origin: 'conversation',
+      source: 'untrusted',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  await memory.store.writes.remember({
+    text: 'The owner likes short answers in the morning',
+    target: note,
+    subject: 'owner',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['subject', 'kind', 'version'])
+    .where('item_id', '=', note.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({ subject: 'owner', kind: 'fact', version: 2 });
+});
+
 test('it recalls an approved proposal with your approval and its stored source unchanged', async () => {
   const memory = await startTestMemory();
   const pending = await createProposal(memory.store, { text: 'Likes jazz' });

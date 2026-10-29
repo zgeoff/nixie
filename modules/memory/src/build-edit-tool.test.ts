@@ -38,6 +38,61 @@ test('it applies an edit with no quote under your allow rule on memory.edit', as
   });
 });
 
+test.each(['conversation', 'task-1'])(
+  'it proposes an edit from the %s thread that moves the item to another subject, though your allow rule on memory.edit applies other edits at once',
+  async (thread) => {
+    const memory = await startTestMemory({
+      gate: { findAllowRule: makeToolAllowRule('memory.edit') },
+    });
+
+    const item = await memory.store.remember({
+      text: 'The owner calls the kettle Captain Steam',
+      provenance: {
+        origin: 'owner',
+        source: 'owner',
+        taskID: null,
+        proposalID: null,
+        checks: null,
+      },
+    });
+
+    const outcome = await buildEditTool(memory.store).run(
+      {
+        callID: 'call-1',
+        tool: 'memory.edit',
+        input: {
+          itemID: item.itemID,
+          version: 1,
+          text: 'The owner and the assistant call the kettle Captain Steam',
+          subject: 'shared',
+        },
+        toolUseID: null,
+      },
+      buildMockToolContext({ thread }),
+    );
+
+    const row = await memory.writer.db
+      .$extendTables<MemoryTables>()
+      .selectFrom('memory_items')
+      .select(['version', 'subject'])
+      .where('item_id', '=', item.itemID)
+      .executeTakeFirstOrThrow();
+
+    expect(outcome).toStrictEqual({
+      status: 'ok',
+      result: {
+        status: 'proposed',
+        proposalID: expect.toBeString(),
+        reason:
+          'subject_change: Saved as a proposal for the owner to review. It changes whose fact the item is, and every subject change waits for their review.',
+        merged: false,
+      },
+    });
+
+    expect(row).toStrictEqual({ version: 1, subject: 'owner' });
+  },
+);
+
 test('it clears the end time of an item when the edit passes a null end time', async () => {
   const memory = await startTestMemory({
     gate: {

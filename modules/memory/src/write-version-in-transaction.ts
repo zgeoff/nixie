@@ -91,21 +91,24 @@ export async function writeVersionInTransaction(
   );
 
   const ref = { itemID: versionKey.itemID, version: current + 1 };
+  const subject = plan.subject ?? (item === null ? 'owner' : getRowSubject(item));
 
   const sealed = await encodePinnableVersion(parts, db, {
     key: versionKey.key,
     plan,
     ref,
     shortID: versionKey.shortID,
-    subject: item === null ? (plan.subject ?? 'owner') : getRowSubject(item),
+    subject,
     next,
     wasPinned: item?.is_pinned === 1,
   });
 
+  const isSubjectChange = item !== null && subject !== getRowSubject(item);
+
   await writeRecordsInTransaction(
     tx,
     parts.context.log,
-    buildRecords(parts, { plan, ref, shortID: versionKey.shortID, next, sealed }),
+    buildRecords(parts, { plan, ref, shortID: versionKey.shortID, next, sealed, isSubjectChange }),
   );
 
   return { ref, next };
@@ -163,6 +166,7 @@ interface SealedVersion {
   readonly shortID: string;
   readonly next: NewVersion;
   readonly sealed: string;
+  readonly isSubjectChange: boolean;
 }
 
 const itemMarkKinds = {
@@ -236,10 +240,21 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
       ? [{ ...base, kind: itemMarkKinds[subject], payload: { itemID: written.ref.itemID } }]
       : [];
 
+  const changed: readonly RecordInput[] = written.isSubjectChange
+    ? [
+        {
+          ...base,
+          kind: 'memory.subject_changed',
+          payload: { itemID: written.ref.itemID, subject },
+        },
+      ]
+    : [];
+
   return [
     ...(approval === undefined ? [] : [approval.record]),
     version,
     ...marked,
+    ...changed,
     ...pinned,
     ...sensitive,
   ];

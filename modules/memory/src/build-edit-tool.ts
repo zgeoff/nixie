@@ -18,6 +18,11 @@ const editDescription =
   "state the new text, and that message's eventID: the number after # in its stamp, or a " +
   "log.read entry's eventID. The edit applies at once only when those typed words back " +
   "it; otherwise it waits for the owner's review as a proposal, and the result says why. " +
+  'The item keeps its subject unless you pass subject: owner for a fact about the owner, shared ' +
+  'for something between the owner and you, self for a note about yourself. Pass it to fix an ' +
+  'item filed under the wrong subject. A subject change changes whose fact the item is, so it ' +
+  "always waits for the owner's review as a proposal, whatever the quote. To split an item " +
+  'that holds two subjects, edit it down to one fact and store the other with memory.remember. ' +
   'The item keeps its end time unless you pass until: a new end time, which the quote must ' +
   `back, or null when the fact no longer ends, such as after "actually I'm staying on". ${untilConventions}`;
 
@@ -35,6 +40,11 @@ const editInput = {
         'the eventID of the message the quote comes from, as its stamp or log.read shows it',
     },
     until: { ...untilInputSchema, type: ['string', 'null'] },
+    subject: {
+      type: 'string',
+      enum: ['owner', 'self', 'shared'],
+      description: 'the subject to move the item to; leave it out to keep its subject',
+    },
   },
   required: ['itemID', 'version', 'text'],
   additionalProperties: false,
@@ -47,6 +57,7 @@ const editArguments = z.object({
   quote: z.string().optional(),
   eventID: z.string().optional(),
   until: z.string().nullable().optional(),
+  subject: z.enum(['owner', 'self', 'shared']).optional(),
 });
 
 export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefinition {
@@ -94,6 +105,7 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
               ? {}
               : { eventID: Number(input.eventID.replace(/^#/u, '')) }),
             ...(parsed.until === undefined ? {} : { until: parsed.until }),
+            ...(input.subject === undefined ? {} : { subject: input.subject }),
           }),
         itemID,
       );

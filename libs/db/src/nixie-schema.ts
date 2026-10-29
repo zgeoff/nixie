@@ -7,6 +7,7 @@ import { memoryKindsMigration } from './memory-kinds-migration';
 import { memoryMigrations } from './memory-migrations';
 import { memoryPinProposalsMigration } from './memory-pin-proposals-migration';
 import { memorySensitiveMigration } from './memory-sensitive-migration';
+import { memorySubjectChangesMigration } from './memory-subject-changes-migration';
 import { memorySubjectsMigration } from './memory-subjects-migration';
 import { memoryUntilMigration } from './memory-until-migration';
 import { momentsMigration } from './moments-migration';
@@ -48,6 +49,7 @@ export const nixieSchema: BuildSchema = {
     momentsMigration,
     memorySensitiveMigration,
     taskRoutesMigration,
+    memorySubjectChangesMigration,
   ],
   oldestReader: 25,
 };

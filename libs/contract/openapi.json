@@ -9043,6 +9043,21 @@
                             "format": "date-time",
                             "x-native-type": "date"
                           },
+                          "newSubject": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "owner",
+                                  "self",
+                                  "shared"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
                           "operation": {
                             "enum": [
                               "remember",
@@ -9089,7 +9104,8 @@
                               "other",
                               "self_note",
                               "from_photo",
-                              "sensitive"
+                              "sensitive",
+                              "subject_change"
                             ],
                             "type": "string"
                           },
@@ -9185,6 +9201,7 @@
                           "itemID",
                           "kind",
                           "lapseAt",
+                          "newSubject",
                           "operation",
                           "origin",
                           "proposalID",

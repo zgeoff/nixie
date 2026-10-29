@@ -280,6 +280,7 @@ const memoryProposals = new Collection({
     isSensitive: z.boolean().default(false),
     itemID: z.uuid().default(() => faker.string.uuid()),
     subject: z.enum(['owner', 'self', 'shared']).default('owner'),
+    newSubject: z.enum(['owner', 'self', 'shared']).nullable().default(null),
     lapseAt: z.date().default(() => faker.date.soon({ days: 7 })),
     operation: z.enum(['remember', 'retire', 'pin']).default('remember'),
     origin: z.enum(['owner', 'conversation', 'task', 'memory_writer']).default('memory_writer'),
@@ -301,6 +302,7 @@ const memoryProposals = new Collection({
         'self_note',
         'from_photo',
         'sensitive',
+        'subject_change',
       ])
       .default('no_quote'),
     source: z.enum(['owner', 'owner_data', 'untrusted']).default('untrusted'),

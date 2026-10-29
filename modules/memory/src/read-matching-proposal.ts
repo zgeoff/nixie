@@ -24,6 +24,8 @@ export interface ProposedChange {
 
   readonly subject?: MemorySubject;
 
+  readonly newSubject?: MemorySubject;
+
   readonly isSensitive?: boolean;
 
   readonly checks?: JSONObject | null;
@@ -60,7 +62,10 @@ export async function readMatchingProposal(
           .where('is_new_item', '=', 1)
           .where(subjectColumn, '=', change.subject ?? 'owner')
           .where('is_sensitive', '=', isSensitive)
-      : pending.where('item_id', '=', target.itemID).where('target_version', '=', target.version);
+      : pending
+          .where('item_id', '=', target.itemID)
+          .where('target_version', '=', target.version)
+          .where('new_subject', 'is', change.newSubject ?? null);
 
   const rows = await sameTarget.orderBy('created_sequence').execute();
 

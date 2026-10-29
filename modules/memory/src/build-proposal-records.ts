@@ -40,7 +40,17 @@ export function buildProposalRecords(
   };
 
   if (plan.target !== null) {
-    return [proposed];
+    return plan.newSubject === undefined
+      ? [proposed]
+      : [
+          proposed,
+          {
+            kind: 'memory.proposal_subject_changed',
+            definitions: parts.context.definitions(),
+            thread: plan.caller.thread,
+            payload: { proposalID: pending.sealed.proposalID, subject: plan.newSubject },
+          },
+        ];
   }
 
   const subject = plan.subject ?? 'owner';

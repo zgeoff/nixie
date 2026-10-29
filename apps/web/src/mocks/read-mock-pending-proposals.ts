@@ -23,6 +23,7 @@ export function readMockPendingProposals() {
     itemID: proposal.itemID,
     kind: proposal.subject === 'self' ? ('self' as const) : ('fact' as const),
     lapseAt: proposal.lapseAt,
+    newSubject: proposal.newSubject,
     operation: proposal.operation,
     origin: proposal.origin,
     proposalID: proposal.proposalID,

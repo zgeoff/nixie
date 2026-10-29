@@ -24,6 +24,41 @@ test.each([
   });
 });
 
+test('it reads a subject change of an item as the subject it moves the item to', () => {
+  const record = buildMockLogRecord({
+    kind: 'memory.subject_changed',
+    payload: { itemID: 'item-a', subject: 'owner' },
+  });
+
+  expect(parseSubjectRecord(record)).toStrictEqual({
+    target: 'item',
+    itemID: 'item-a',
+    subject: 'owner',
+  });
+});
+
+test('it reads the subject change a proposal holds as the subject it moves its item to', () => {
+  const record = buildMockLogRecord({
+    kind: 'memory.proposal_subject_changed',
+    payload: { proposalID: 'proposal-a', subject: 'shared' },
+  });
+
+  expect(parseSubjectRecord(record)).toStrictEqual({
+    target: 'proposal_change',
+    proposalID: 'proposal-a',
+    subject: 'shared',
+  });
+});
+
+test('it refuses a subject change that names no subject', () => {
+  const record = buildMockLogRecord({
+    kind: 'memory.subject_changed',
+    payload: { itemID: 'item-a', subject: 'team' },
+  });
+
+  expect(() => parseSubjectRecord(record)).toThrow();
+});
+
 test('it refuses a subject mark with a key its shape does not hold', () => {
   const record = buildMockLogRecord({
     kind: 'memory.shared_noted',

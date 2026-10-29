@@ -49,5 +49,6 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
       };
     },
     ...marks,
+    ...(request.subject === undefined ? {} : { subject: request.subject }),
   };
 }
