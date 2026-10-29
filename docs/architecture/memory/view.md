@@ -59,7 +59,8 @@ items or the matches of a search, then the retired and the forgotten items, each
 list draws an item through one row, so a control on an item shows in every list. The active items
 and the matches show self-notes in a section of their own, apart from the user's and the shared
 items, and a self-note's row in any other list carries a self-note label. A row offers a pin
-whatever the item's subject.
+whatever the item's subject. A row shows whether its item is [sensitive](./store.md#sensitive-items)
+and offers to mark it or clear the mark.
 
 An item's history loads only when the user opens it, so a long list reads no history it never shows.
 Each version shows the words it changed from the version before as a word diff, and its evidence as
@@ -71,7 +72,8 @@ with the reason the message is missing.
 A retire, a restore, a pin and an unpin from the view each go through the store with the user as
 origin and source, as the host commands' changes do. Each binds to the version the view showed: the
 retire and the restore through their target, and the pin through the version it names, so an item
-that moved on since the user looked fails the change as stale and changes nothing.
+that moved on since the user looked fails the change as stale and changes nothing. A sensitive mark
+goes through the store the same way and binds to no version, because it changes no text.
 
 Each change from a device is a checked action
 ([checked actions](../channels/api.md#checked-actions)). The store runs a caller's own write inside
@@ -142,9 +144,9 @@ to finish a failed run after the user leaves the page and comes back.
 
 The view lists every pending proposal on a page of its own, which the memory page links to. Each
 proposal shows its text, the check that sent it to review, who proposed it and from what source, its
-quote inside the message it came from, the date its fact ends when it sets an end time, and when it
-lapses. The quote and its message open under the item's key, as the proposal's text does, so a
-forgotten item's proposal drops out of the list whole
+quote inside the message it came from, the date its fact ends when it sets an end time, whether it
+marks its item sensitive, and when it lapses. The quote and its message open under the item's key,
+as the proposal's text does, so a forgotten item's proposal drops out of the list whole
 ([memory proposals](./writes.md#memory-proposals)).
 
 A proposal [from a photo](./writes.md#writes-from-a-photo) shows the photo beside its text. The page

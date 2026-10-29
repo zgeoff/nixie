@@ -99,8 +99,10 @@ stages the fact again with the new end time, which the gate keeps as a proposal 
 The session's tools are recall, remember, edit, retire and flag-self-note. Remember only creates an
 item, and edit is the one tool that changes an item's text, as in the conversation. Remember and
 edit take the subject owner or shared, and their input schema refuses self, so only the conversation
-writes a [self-note](./writes.md#self-notes). Recall, remember, edit and retire stage writes instead
-of applying them.
+writes a [self-note](./writes.md#self-notes). Remember can also mark the new item
+[sensitive](./store.md#sensitive-items), and its description names an address, a phone number, and
+an account or health detail as the cases for it. Recall, remember, edit and retire stage writes
+instead of applying them.
 
 Staging refuses a write that cites a record outside the batch, a change to an item the session was
 never shown, a second change to the same item, an edit that changes its item's subject, and a write
@@ -140,12 +142,13 @@ older than any window. The quote must be typed in that message, a memory's token
 quote, and the checker must confirm it; a message that backed a forgotten item never backs a write
 again. A write that passes applies with its quote's place in the message as its evidence. An edit of
 a pinned item waits for review even when every check passes, because the pinned core rides every
-turn and a batch must never fail on the core's budget. Every other write becomes a proposal from the
-memory writer: the gate seals its text and builds its records, and the batch publishes them in its
-own transaction. A batch's proposals share one group for the cap and the notice. An edit or a
-retirement whose item moved on or was forgotten since the session read it fails the gate before any
-check runs, and so does a retirement of a retired item. The batch then runs again at once against
-the item as it stands.
+turn and a batch must never fail on the core's budget. A new item the session marked sensitive waits
+for review the same way, so the user confirms the mark before the item exists. Every other write
+becomes a proposal from the memory writer: the gate seals its text and builds its records, and the
+batch publishes them in its own transaction. A batch's proposals share one group for the cap and the
+notice. An edit or a retirement whose item moved on or was forgotten since the session read it fails
+the gate before any check runs, and so does a retirement of a retired item. The batch then runs
+again at once against the item as it stands.
 
 A proposal for a new item seals its text under a key the gate creates before the transaction. When
 the proposal never publishes, because its batch split, ran again or failed, the writer removes that

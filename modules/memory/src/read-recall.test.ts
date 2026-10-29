@@ -290,6 +290,109 @@ test('it leaves pinned items out of a query when asked', async () => {
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([unpinned.itemID]);
 });
 
+test('it leaves sensitive items out of a query when asked, and fills the limit from the rest', async () => {
+  const ctx = await setupTest();
+
+  const sensitive = await ctx.memory.store.remember({
+    text: 'The door code for the spare key box is 4417',
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.markSensitive({
+    itemID: sensitive.itemID,
+    isSensitive: true,
+    provenance: buildMockProvenance(),
+  });
+
+  const plain = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: buildMockProvenance(),
+  });
+
+  const result = await ctx.memory.store.recall({
+    query: 'spare key',
+    limit: 1,
+    excludeSensitive: true,
+  });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([plain.itemID]);
+});
+
+test('it recalls a sensitive item for a query that does not exclude sensitive items', async () => {
+  const ctx = await setupTest();
+
+  const sensitive = await ctx.memory.store.remember({
+    text: 'The door code for the spare key box is 4417',
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.markSensitive({
+    itemID: sensitive.itemID,
+    isSensitive: true,
+    provenance: buildMockProvenance(),
+  });
+
+  const result = await ctx.memory.store.recall({ query: 'door code' });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([sensitive.itemID]);
+});
+
+test('it leaves sensitive items out of a page and out of named items when asked', async () => {
+  const ctx = await setupTest();
+
+  const sensitive = await ctx.memory.store.remember({
+    text: 'The door code for the spare key box is 4417',
+    provenance: buildMockProvenance(),
+  });
+
+  const plain = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.markSensitive({
+    itemID: sensitive.itemID,
+    isSensitive: true,
+    provenance: buildMockProvenance(),
+  });
+
+  const [page, named] = await Promise.all([
+    ctx.memory.store.recall({ excludeSensitive: true }),
+    ctx.memory.store.recall({
+      itemIDs: [sensitive.itemID, plain.itemID],
+      excludeSensitive: true,
+    }),
+  ]);
+
+  expect(page.items.map((recalled) => recalled.itemID)).toStrictEqual([plain.itemID]);
+  expect(named.items.map((recalled) => recalled.itemID)).toStrictEqual([plain.itemID]);
+});
+
+test('it recalls an item again in a query that excludes sensitive items once its mark is cleared', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'The door code for the spare key box is 4417',
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.markSensitive({
+    itemID: item.itemID,
+    isSensitive: true,
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.markSensitive({
+    itemID: item.itemID,
+    isSensitive: false,
+    provenance: buildMockProvenance(),
+  });
+
+  const result = await ctx.memory.store.recall({ query: 'door code', excludeSensitive: true });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([item.itemID]);
+});
+
 test('it leaves the excluded words of a query out of the match when asked', async () => {
   const ctx = await setupTest();
 

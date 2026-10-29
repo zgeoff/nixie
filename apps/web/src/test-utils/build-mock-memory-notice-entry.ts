@@ -28,6 +28,7 @@ export function buildMockMemoryNoticeEntry(overrides: EntryOverrides = {}): Memo
             createdAt: recordedAt,
             forgottenAt: null,
             isPinned: false,
+            isSensitive: false,
             itemID,
             kind: 'fact',
             origin: 'conversation',

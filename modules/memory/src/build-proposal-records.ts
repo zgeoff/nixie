@@ -39,19 +39,24 @@ export function buildProposalRecords(
     },
   };
 
-  const subject = plan.subject ?? 'owner';
-
-  if (plan.target !== null || subject === 'owner') {
+  if (plan.target !== null) {
     return [proposed];
   }
 
+  const subject = plan.subject ?? 'owner';
+
+  const markKinds = [
+    ...(subject === 'owner' ? [] : [proposalMarkKinds[subject]]),
+    ...(plan.isSensitive === true ? ['memory.proposal_sensitive_noted' as const] : []),
+  ];
+
   return [
     proposed,
-    {
-      kind: proposalMarkKinds[subject],
+    ...markKinds.map((kind) => ({
+      kind,
       definitions: parts.context.definitions(),
       thread: plan.caller.thread,
       payload: { proposalID: pending.sealed.proposalID },
-    },
+    })),
   ];
 }

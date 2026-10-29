@@ -86,6 +86,54 @@ test('it marks a self-note proposal with a self-note badge and why it waits for 
   );
 });
 
+test("it shows that the note-taker's proposal is sensitive and why it waits for review", async () => {
+  await createDeviceSession();
+
+  await store.memoryProposals.create({
+    isSensitive: true,
+    reason: 'sensitive',
+    text: 'The owner can be reached on 0400 118 552',
+  });
+
+  const rendered = render(<MemoryProposals />);
+
+  const card = await rendered.findByRole('listitem', {
+    name: 'The owner can be reached on 0400 118 552',
+  });
+
+  expect(card).toHaveTextContent(
+    'The note-taker marked it sensitive, and every sensitive item waits for your review.',
+  );
+
+  expect(card).toHaveTextContent('Sensitive: once kept, it comes up only when a request needs it.');
+});
+
+test('it creates a sensitive item when you approve a sensitive proposal', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const proposal = await store.memoryProposals.create({
+    isSensitive: true,
+    reason: 'sensitive',
+    text: 'The owner can be reached on 0400 118 552',
+  });
+
+  const rendered = render(<MemoryProposals />);
+
+  const card = await rendered.findByRole('listitem', {
+    name: 'The owner can be reached on 0400 118 552',
+  });
+
+  await ctx.user.click(within(card).getByRole('button', { name: 'Approve' }));
+
+  await waitFor(() => {
+    expect(
+      store.memoryItems.findFirst((query) => query.where({ itemID: proposal.itemID }))?.isSensitive,
+    ).toBeTrue();
+  });
+});
+
 test('it shows the photo a proposal comes from beside its text', async () => {
   await createDeviceSession();
 

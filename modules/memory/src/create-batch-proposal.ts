@@ -80,7 +80,10 @@ function buildBatchProposalPlan(reviewed: ReviewedWrite, batch: GateBatch): Prop
     caller,
     group: buildWriteGroup(caller, null),
     ...(reviewed.write.op === 'remember' && reviewed.write.target === null
-      ? { subject: reviewed.write.subject }
+      ? {
+          subject: reviewed.write.subject,
+          ...(reviewed.write.isSensitive === true ? { isSensitive: true } : {}),
+        }
       : {}),
     ...(reviewed.until === undefined ? {} : { until: reviewed.until }),
   };

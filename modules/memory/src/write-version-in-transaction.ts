@@ -48,6 +48,8 @@ export interface VersionPlan {
 
   readonly subject?: MemorySubject;
 
+  readonly isSensitive?: boolean;
+
   readonly newItemID?: string;
 
   readonly noticeKey?: string;
@@ -216,6 +218,17 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
         ]
       : [];
 
+  const sensitive: readonly RecordInput[] =
+    written.plan.isSensitive === true
+      ? [
+          {
+            ...base,
+            kind: 'memory.sensitive_marked',
+            payload: { itemID: written.ref.itemID, isSensitive: true },
+          },
+        ]
+      : [];
+
   const subject = written.plan.subject ?? 'owner';
 
   const marked: readonly RecordInput[] =
@@ -223,7 +236,13 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
       ? [{ ...base, kind: itemMarkKinds[subject], payload: { itemID: written.ref.itemID } }]
       : [];
 
-  return [...(approval === undefined ? [] : [approval.record]), version, ...marked, ...pinned];
+  return [
+    ...(approval === undefined ? [] : [approval.record]),
+    version,
+    ...marked,
+    ...pinned,
+    ...sensitive,
+  ];
 }
 
 function toJSONEvidence(evidence: QuoteEvidence | null): JSONObject | null {

@@ -60,6 +60,7 @@ test('#memory.listItems lists each active item with its text, origin, source and
         shortID: expect.toBeString(),
         state: 'active',
         isPinned: false,
+        isSensitive: false,
         kind: 'fact',
         subject: 'owner',
         version: 1,

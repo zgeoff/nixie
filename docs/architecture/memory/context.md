@@ -83,13 +83,15 @@ checking an item and not answering with it.
 
 Before each turn, the conversation searches memory with the readable text of the user's new
 messages. The search is the store's recall over active items, by keyword and by meaning, with pinned
-items left out because the session's opening already holds them. A message such as "when is the
-heating engineer coming" therefore places the item about the boiler service, though the two share no
-word. An item places when its keyword score or its similarity clears that index's floor, so a word
-that half the items hold places nothing, and neither does small talk such as a greeting, which sits
-at about the same small distance from every item. The search leaves out function words such as "to",
-so a message that shares only those with an item places nothing, as
-[the store](./store.md#the-indexes) explains.
+items left out because the session's opening already holds them. It leaves
+[sensitive items](./store.md#sensitive-items) out too, so an address comes up only when the model
+recalls it for a request that needs it, and never beside a message that only shares its words. A
+message such as "when is the heating engineer coming" therefore places the item about the boiler
+service, though the two share no word. An item places when its keyword score or its similarity
+clears that index's floor, so a word that half the items hold places nothing, and neither does small
+talk such as a greeting, which sits at about the same small distance from every item. The search
+leaves out function words such as "to", so a message that shares only those with an item places
+nothing, as [the store](./store.md#the-indexes) explains.
 
 The search also leaves out the user's name and the names the deployment configuration gives the
 agent, because nearly every item names one of them, so a message that says "Nix" would otherwise

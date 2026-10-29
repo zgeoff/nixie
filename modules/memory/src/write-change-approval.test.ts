@@ -58,6 +58,79 @@ test('it writes a merged item with the least trusted source among its inputs', a
   ]);
 });
 
+test('it marks a merged item sensitive when an input it retires is sensitive', async () => {
+  const ctx = await setupTest();
+  const lead = await createMemoryItem(ctx.memory.store, { text: 'Sees a dentist in Fernhill' });
+
+  const address = await createMemoryItem(ctx.memory.store, {
+    text: 'The dentist is at 8 Quarry Row, Fernhill',
+  });
+
+  await ctx.memory.store.markSensitive({
+    itemID: address.itemID,
+    isSensitive: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [
+      {
+        kind: 'merge',
+        inputs: [lead, address],
+        text: 'Sees a dentist at 8 Quarry Row, Fernhill',
+        reason: 'Both items name the same dentist.',
+        source: 'owner',
+      },
+    ],
+  });
+
+  const [change] = diff.changes;
+
+  invariant(change);
+
+  await ctx.memory.store.consolidations.approve({
+    changeID: change.changeID,
+    actionHash: change.actionHash,
+    identityID: 'device-1',
+  });
+
+  const page = await ctx.memory.store.view.readPage({ state: 'active' });
+
+  expect(page.items).toMatchObject([{ itemID: lead.itemID, isSensitive: true }]);
+});
+
+test('it leaves a merged item unmarked when no input is sensitive', async () => {
+  const ctx = await setupTest();
+  const lead = await createMemoryItem(ctx.memory.store, { text: 'Sees a dentist in Fernhill' });
+  const other = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist in Fernhill' });
+
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [
+      {
+        kind: 'merge',
+        inputs: [lead, other],
+        text: 'Sees a dentist in Fernhill',
+        reason: 'Both items name the same dentist.',
+        source: 'owner',
+      },
+    ],
+  });
+
+  const [change] = diff.changes;
+
+  invariant(change);
+
+  await ctx.memory.store.consolidations.approve({
+    changeID: change.changeID,
+    actionHash: change.actionHash,
+    identityID: 'device-1',
+  });
+
+  const page = await ctx.memory.store.view.readPage({ state: 'active' });
+
+  expect(page.items).toMatchObject([{ itemID: lead.itemID, isSensitive: false }]);
+});
+
 test('it merges 2 pinned items into one that fits the pinned core once the other input retires', async () => {
   const ctx = await setupTest();
 

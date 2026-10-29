@@ -384,6 +384,59 @@ test("it creates a shared item when you approve the note-taker's shared proposal
   ]);
 });
 
+test("it creates a sensitive item when you approve the note-taker's sensitive proposal", async () => {
+  const memory = await startTestMemory();
+
+  const pending = await createWriterProposal(memory, {
+    message: 'My new number is 0400 118 552.',
+    text: 'The owner can be reached on 0400 118 552.',
+    quote: 'My new number is 0400 118 552',
+    isSensitive: true,
+  });
+
+  const approved = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  invariant(approved.status === 'applied');
+
+  const [page, records] = await Promise.all([
+    memory.store.view.readPage({ state: 'active' }),
+    readRecords(memory.log, { afterSequence: 0, kinds: ['memory.sensitive_marked'] }),
+  ]);
+
+  expect(page.items).toMatchObject([{ itemID: approved.itemID, isSensitive: true }]);
+
+  expect(records.map((entry) => entry.record.payload)).toStrictEqual([
+    { itemID: approved.itemID, isSensitive: true },
+  ]);
+});
+
+test('it creates an item that is not sensitive when you approve a proposal with no mark', async () => {
+  const memory = await startTestMemory();
+
+  const pending = await createWriterProposal(memory, {
+    message: 'I keep bees on the allotment.',
+    text: 'The owner keeps bees.',
+    quote: 'I keep bees',
+  });
+
+  const approved = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  invariant(approved.status === 'applied');
+
+  const page = await memory.store.view.readPage({ state: 'active' });
+
+  expect(pending.isSensitive).toBe(false);
+  expect(page.items).toMatchObject([{ itemID: approved.itemID, isSensitive: false }]);
+});
+
 test('it creates a shared item when you approve its proposal, marked in records of their own', async () => {
   const memory = await startTestMemory();
 

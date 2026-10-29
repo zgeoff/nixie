@@ -261,6 +261,94 @@ test('#memory.pin pins an item at the version the view showed', async () => {
   expect(core.items.map((pin) => pin.itemID)).toStrictEqual([item.itemID]);
 });
 
+test('#memory.markSensitive marks an item sensitive, and the view shows the mark', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const item = await ctx.memory.remember({
+    text: 'Lives at 14 Larkspur Lane, flat 3',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const marked = await client.memory.markSensitive({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    itemID: item.itemID,
+    isSensitive: true,
+  });
+
+  const page = await client.memory.listItems({ state: 'active' });
+
+  expect(marked).toStrictEqual({ itemID: item.itemID, isSensitive: true });
+  expect(page.items).toMatchObject([{ itemID: item.itemID, isSensitive: true }]);
+});
+
+test('#memory.markSensitive clears the mark of a sensitive item', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const item = await ctx.memory.remember({
+    text: 'Lives at 14 Larkspur Lane, flat 3',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.markSensitive({
+    itemID: item.itemID,
+    isSensitive: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  await client.memory.markSensitive({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    itemID: item.itemID,
+    isSensitive: false,
+  });
+
+  const page = await client.memory.listItems({ state: 'active' });
+
+  expect(page.items).toMatchObject([{ itemID: item.itemID, isSensitive: false }]);
+});
+
+test('#memory.markSensitive refuses an item that does not exist', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const marked = buildTestClient(ctx.url, laptop.token).memory.markSensitive({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    itemID: 'no-such-item',
+    isSensitive: true,
+  });
+
+  await marked.catch(() => {});
+
+  expect(marked).rejects.toMatchObject({ code: 'MEMORY_ITEM_NOT_FOUND' });
+});
+
+test('#memory.markSensitive refuses a caller with no session, and marks nothing', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.remember({
+    text: 'Lives at 14 Larkspur Lane, flat 3',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const marked = buildTestClient(ctx.url).memory.markSensitive({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    itemID: item.itemID,
+    isSensitive: true,
+  });
+
+  await marked.catch(() => {});
+
+  const page = await ctx.memory.view.readPage({ state: 'active' });
+
+  expect(marked).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(page.items).toMatchObject([{ itemID: item.itemID, isSensitive: false }]);
+});
+
 test('#memory.pin unpins an item', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');

@@ -89,6 +89,9 @@ function ProposalDetails(props: ProposalDetailsProps): ReactNode {
         {proposal.subject === 'self' ? <SelfNoteBadge /> : null}
         {formatReviewReason(proposal.reason)}
       </p>
+      {proposal.isSensitive ? (
+        <p className={meta}>Sensitive: once kept, it comes up only when a request needs it.</p>
+      ) : null}
       {proposal.until === null ? null : (
         <p className={meta}>Lasts until {formatMemoryDate(proposal.until)}</p>
       )}

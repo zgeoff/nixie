@@ -16,6 +16,10 @@ export interface ProposalOperation {
   // item, so a change to either rule changes the hash of every pending proposal.
   readonly subject?: MemorySubject;
 
+  // Stored hashes name the flag only for a sensitive item, so a change to that rule changes the
+  // hash of every pending proposal.
+  readonly isSensitive?: boolean;
+
   readonly until?: number | null;
 }
 
@@ -32,6 +36,7 @@ export function buildProposalHash(operation: ProposalOperation): string {
     ...(operation.subject === undefined || operation.subject === 'owner'
       ? {}
       : { itemKind: operation.subject }),
+    ...(operation.isSensitive === true ? { isSensitive: true } : {}),
     ...(operation.until === undefined || operation.until === null
       ? {}
       : { until: operation.until }),

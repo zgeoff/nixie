@@ -21,6 +21,7 @@ test('it lists an item at its current version, with the times of its first and l
     createdAt: new Date('2026-03-01T09:00:00Z'),
     forgottenAt: null,
     isPinned: false,
+    isSensitive: false,
     itemID: item.itemID,
     kind: 'fact',
     origin: 'memory_writer',

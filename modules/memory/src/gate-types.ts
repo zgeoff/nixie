@@ -122,6 +122,12 @@ export interface UnpinRequest {
   readonly caller: WriteCaller;
 }
 
+export interface SensitiveMarkRequest {
+  readonly itemID: string;
+  readonly isSensitive: boolean;
+  readonly caller: WriteCaller;
+}
+
 export type WriteOutcome =
   | { readonly status: 'applied'; readonly itemID: string; readonly version: number }
   | {
@@ -141,12 +147,13 @@ export interface MemoryWrites {
   readonly retire: (request: GatedRetireRequest) => Promise<WriteOutcome>;
   readonly pin: (request: GatedPinRequest) => Promise<WriteOutcome>;
   readonly unpin: (request: UnpinRequest) => Promise<WriteOutcome>;
+  readonly markSensitive: (request: SensitiveMarkRequest) => Promise<WriteOutcome>;
 
   readonly batch: WriterGate;
 }
 
 export interface ModelWriteStore {
-  readonly writes: Pick<MemoryWrites, 'remember' | 'retire' | 'pin' | 'unpin'>;
+  readonly writes: Pick<MemoryWrites, 'remember' | 'retire' | 'pin' | 'unpin' | 'markSensitive'>;
   readonly renderReviewReason: (reason: ReviewReason) => string;
 }
 
@@ -158,6 +165,8 @@ export interface MemoryProposal {
   readonly isPinned: boolean;
 
   readonly subject: MemorySubject;
+
+  readonly isSensitive: boolean;
   readonly reason: ReviewReason;
   readonly actionHash: string;
   readonly origin: ProposalOrigin;
@@ -281,6 +290,7 @@ export interface MemoryProposalTable {
 
   readonly kind: 'fact' | 'self';
   readonly subject: MemorySubject | null;
+  readonly is_sensitive: number;
 }
 
 export interface MemoryNoticeEntryTable {

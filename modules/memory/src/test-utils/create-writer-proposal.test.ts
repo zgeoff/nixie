@@ -39,3 +39,16 @@ test('it stages the write with the subject the request names', async () => {
 
   expect(proposal.subject).toBe('shared');
 });
+
+test('it stages the write as sensitive when the request asks', async () => {
+  const memory = await startTestMemory();
+
+  const proposal = await createWriterProposal(memory, {
+    message: 'My new number is 0400 118 552.',
+    text: 'The owner can be reached on 0400 118 552.',
+    quote: 'My new number is 0400 118 552',
+    isSensitive: true,
+  });
+
+  expect(proposal.isSensitive).toBe(true);
+});

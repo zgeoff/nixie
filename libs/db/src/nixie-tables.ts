@@ -120,6 +120,7 @@ export interface NixieTables {
     readonly kind: string;
     readonly subject: string | null;
     readonly until: number | null;
+    readonly is_sensitive: number;
   };
   readonly memory_notice_entries: {
     readonly entry_key: string;
@@ -168,6 +169,7 @@ export interface NixieTables {
     readonly resolved_sequence: number | null;
     readonly kind: string;
     readonly subject: string | null;
+    readonly is_sensitive: number;
   };
   readonly memory_versions: {
     readonly version_key: string;

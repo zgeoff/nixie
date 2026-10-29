@@ -9,7 +9,11 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
   };
 
   const evidence = request.evidence ?? null;
-  const pin = request.isPinned === undefined ? {} : { isPinned: request.isPinned };
+
+  const marks = {
+    ...(request.isPinned === undefined ? {} : { isPinned: request.isPinned }),
+    ...(request.isSensitive === undefined ? {} : { isSensitive: request.isSensitive }),
+  };
 
   if (request.target === undefined) {
     return {
@@ -24,7 +28,7 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
           intentEvidence: null,
           until: request.until ?? null,
         }),
-      ...pin,
+      ...marks,
       ...(request.subject === undefined ? {} : { subject: request.subject }),
     };
   }
@@ -44,6 +48,6 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
         until: request.until === undefined ? before.row.until : request.until,
       };
     },
-    ...pin,
+    ...marks,
   };
 }

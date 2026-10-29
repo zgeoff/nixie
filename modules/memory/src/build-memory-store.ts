@@ -11,6 +11,7 @@ import { writePin } from './write-pin';
 import { writeRememberedItem } from './write-remembered-item';
 import { writeRestoration } from './write-restoration';
 import { writeRetirement } from './write-retirement';
+import { writeSensitiveMark } from './write-sensitive-mark';
 import { writeUndo } from './write-undo';
 
 export function buildMemoryStore(parts: StoreParts): MemoryStore {
@@ -24,6 +25,7 @@ export function buildMemoryStore(parts: StoreParts): MemoryStore {
     undo: (request) => writeUndo(parts, request),
     keep: (request) => writeKeep(parts, request),
     pin: (request) => writePin(parts, request),
+    markSensitive: (request) => writeSensitiveMark(parts, request),
     readPinnedCore: () => readPinnedCore(parts),
     readPinnedCoreUse: () => readPinnedCoreUse(parts),
     readHistory: (itemID) => readItemHistory(parts, itemID),

@@ -33,7 +33,7 @@ async function setupTest() {
   return { log, logRead: buildLogReadTool(log) };
 }
 
-test('it lists the web fetch tool, the time tool, the log reader, the skill tools, the prompt reader and the 11 memory tools', async () => {
+test('it lists the web fetch tool, the time tool, the log reader, the skill tools, the prompt reader and the 12 memory tools', async () => {
   const ctx = await setupTest();
 
   const definitions = buildConversationTools(
@@ -100,6 +100,7 @@ test('it lists the web fetch tool, the time tool, the log reader, the skill tool
     'memory.retire',
     'memory.pin',
     'memory.unpin',
+    'memory.mark_sensitive',
     'memory.diff',
     'memory.comment',
     'memory.export',
@@ -305,6 +306,7 @@ test('it allows the time tool, the log reader and each memory tool but export, a
     'memory.retire',
     'memory.pin',
     'memory.unpin',
+    'memory.mark_sensitive',
     'memory.diff',
     'memory.comment',
   ];

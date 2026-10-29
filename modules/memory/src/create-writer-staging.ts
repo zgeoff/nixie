@@ -35,6 +35,8 @@ type StagedWriteRequest =
       readonly itemID: string | null;
 
       readonly until?: number | null;
+
+      readonly isSensitive?: boolean;
     }
   | {
       readonly op: 'retire';
@@ -159,6 +161,7 @@ function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): Planned
       sourceSequence: request.sourceSequence,
       target: null,
       ...(request.until === undefined ? {} : { until: request.until }),
+      ...(request.isSensitive === true ? { isSensitive: true } : {}),
     };
   }
 

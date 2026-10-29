@@ -63,6 +63,50 @@ test('it applies a staged memory with the message it cites as its evidence, outs
   });
 });
 
+test('it sends a staged sensitive memory to review though the checker asserts it, marked in a record of its own', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })),
+    },
+  });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'My new number is 0400 118 552',
+    spans: [{ start: 0, end: 29, source: 'typed' }],
+  });
+
+  const verdict = await memory.store.writes.batch.check(
+    {
+      op: 'remember',
+      subject: 'owner',
+      text: 'The owner can be reached on 0400 118 552',
+      quote: 'My new number is 0400 118 552',
+      sourceSequence: sequence,
+      target: null,
+      isSensitive: true,
+    },
+    {
+      sequence,
+      text: 'My new number is 0400 118 552',
+      spans: [{ start: 0, end: 29, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
+    },
+    { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
+  );
+
+  invariant(verdict?.outcome === 'propose');
+
+  expect(verdict.reason).toBe('sensitive');
+  expect(verdict.plan).toMatchObject({ isSensitive: true, evidence: { recordSequence: sequence } });
+
+  expect(verdict.records.map((record) => record.kind)).toStrictEqual([
+    'memory.proposed',
+    'memory.proposal_sensitive_noted',
+  ]);
+});
+
 test('it drops a staged edit of a self-note, though the checker would assert it', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
 

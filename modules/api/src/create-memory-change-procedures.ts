@@ -60,6 +60,22 @@ export function createMemoryChangeProcedures(context: APIContext, readMemory: Re
       return result;
     }),
 
+    markSensitive: memory.markSensitive.handler(async (options) => {
+      const { clientActionID, ...input } = options.input;
+      const result = { itemID: input.itemID, isSensitive: input.isSensitive };
+
+      await runMemoryChange(parts, options, (store) => ({
+        clientActionID,
+        procedure: 'memory.markSensitive',
+        input,
+        result,
+        apply: (writeInTransaction) =>
+          store.markSensitive({ ...input, provenance: ownerProvenance, writeInTransaction }),
+      }));
+
+      return result;
+    }),
+
     ...createMemoryForgetProcedures(context, readMemory),
     ...createMomentProcedures(context, readMemory),
     ...createMomentReadProcedures(context, readMemory),

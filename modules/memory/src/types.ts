@@ -66,6 +66,8 @@ export interface RememberRequest {
 
   readonly subject?: MemorySubject;
 
+  readonly isSensitive?: boolean;
+
   readonly until?: number | null;
 }
 
@@ -103,6 +105,14 @@ export interface PinRequest {
   readonly provenance: Provenance;
 
   readonly version?: number;
+  readonly writeInTransaction?: WriteInTransaction;
+}
+
+export interface SensitiveRequest {
+  readonly itemID: string;
+  readonly isSensitive: boolean;
+  readonly provenance: Provenance;
+
   readonly writeInTransaction?: WriteInTransaction;
 }
 
@@ -148,6 +158,8 @@ export interface RecallRequest {
   readonly minSimilarity?: number;
 
   readonly excludePinned?: boolean;
+
+  readonly excludeSensitive?: boolean;
 
   readonly excludedVersions?: readonly VersionRef[];
 
@@ -213,6 +225,7 @@ export interface MemoryStore {
   readonly undo: (request: UndoRequest) => Promise<VersionRef>;
   readonly keep: (request: KeepRequest) => Promise<void>;
   readonly pin: (request: PinRequest) => Promise<void>;
+  readonly markSensitive: (request: SensitiveRequest) => Promise<VersionRef>;
 
   readonly readPinnedCore: () => Promise<readonly RecalledItem[]>;
   readonly readPinnedCoreUse: () => Promise<PinnedCoreUse>;
@@ -289,6 +302,7 @@ interface MemoryItemTable {
   readonly kind: 'fact' | 'self';
   readonly subject: MemorySubject | null;
   readonly until: number | null;
+  readonly is_sensitive: number;
 }
 
 interface MemoryVersionTable {

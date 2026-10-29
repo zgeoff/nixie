@@ -787,6 +787,58 @@ test('it retrieves a matching item of each subject, each under its own heading',
   expect(sent).toInclude('- I like the riddle of where the spare key went');
 });
 
+test('it leaves a sensitive item out of the recall block though the message matches its words', async () => {
+  const ctx = await setupTest();
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const [sensitive, plain] = await Promise.all([
+    ctx.memory.remember({
+      text: 'The owner lives at 14 Larkspur Lane, flat 3',
+      provenance,
+    }),
+    ctx.memory.remember({
+      text: 'The owner plants larkspur along the lane every spring',
+      provenance,
+    }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+
+    // BM25 scores a word in half the index at nothing, so the two need 6 items beside them to
+    // pass the score floor
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
+    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
+    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
+    ctx.memory.remember({ text: 'Runs a half marathon each spring', provenance }),
+  ]);
+
+  await ctx.memory.markSensitive({ itemID: sensitive.itemID, isSensitive: true, provenance });
+
+  ctx.guest.addReplies({ text: 'Noted.' });
+
+  const turn = await ctx.conversation.send('What should the larkspur lane code standard say?');
+  const records = await ctx.readRecords();
+
+  const sent = turn.input[0]?.text ?? '';
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .flatMap((record) => record.payload['retrieved']),
+  ).toStrictEqual([{ ...plain }]);
+
+  expect(sent).toInclude('- The owner plants larkspur along the lane every spring');
+  expect(sent).not.toInclude('Larkspur Lane, flat 3');
+});
+
 test('it retrieves an item again in the session that opens after a compaction', async () => {
   const ctx = await setupTest();
 

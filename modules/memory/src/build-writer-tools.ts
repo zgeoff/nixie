@@ -111,6 +111,7 @@ const rememberArguments = z.object({
   quote: z.string(),
   sourceID: z.int(),
   until: z.string().optional(),
+  isSensitive: z.boolean().optional(),
 });
 
 function buildRememberTool(staging: WriterStaging): ToolDefinition {
@@ -120,7 +121,10 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
       'Stages one durable fact as a new memory item: about the owner (subject owner), or ' +
       'between the owner and the assistant (subject shared). To change a current item, use ' +
       'memory.edit. quote is the exact words from the owner message whose ID is sourceID. Pass ' +
-      `until only when that message says when the fact stops being true. ${untilConventions}`,
+      `until only when that message says when the fact stops being true. ${untilConventions} ` +
+      'Pass isSensitive true for an address, a phone number, or an account or health detail: ' +
+      'the item then waits for the owner to review it, and once kept it comes back only when ' +
+      'a request needs it.',
     input: {
       type: 'object',
       properties: {
@@ -129,6 +133,7 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
         quote: { type: 'string', minLength: 1, maxLength: 2000 },
         sourceID: { type: 'integer', minimum: 1 },
         until: untilInputSchema,
+        isSensitive: { type: 'boolean' },
       },
       required: ['subject', 'text', 'quote', 'sourceID'],
       additionalProperties: false,
@@ -160,6 +165,7 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
             sourceSequence: input.sourceID,
             itemID: null,
             ...(parsed.until === undefined ? {} : { until: parsed.until }),
+            ...(input.isSensitive === true ? { isSensitive: true } : {}),
           }),
         ),
       );

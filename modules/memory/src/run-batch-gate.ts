@@ -55,6 +55,17 @@ export async function runBatchGate(
     { quote: write.quote, found },
   );
 
+  if (gate.status === 'pass' && write.target === null && write.isSensitive === true) {
+    return {
+      gate: buildGateReview('sensitive', {
+        checks: gate.checks,
+        ...(gate.evidence === null ? {} : { evidence: gate.evidence }),
+      }),
+      text: write.text,
+      until,
+    };
+  }
+
   return { gate, text: write.text, until };
 }
 

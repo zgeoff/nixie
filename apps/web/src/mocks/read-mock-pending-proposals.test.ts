@@ -39,6 +39,7 @@ test('it reads a pending proposal as the API lists it', async () => {
       },
       image: null,
       isPinned: false,
+      isSensitive: false,
       itemID: '3d7b9e1a-6c2f-4e8d-b0a5-9f1c4e7a2d63',
       kind: 'fact',
       subject: 'owner',

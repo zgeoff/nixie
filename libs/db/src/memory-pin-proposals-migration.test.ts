@@ -77,6 +77,7 @@ test('it keeps each proposal of a database it upgrades, and the merges that name
       operation: 'remember',
       target_version: 3,
       is_pinned: 1,
+      is_sensitive: 0,
       review_reason: 'checker_unsure',
       status: 'rejected',
       action_hash: 'hash-a',

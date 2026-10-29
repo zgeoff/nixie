@@ -61,6 +61,7 @@ test('it declares read for the reads, export for export, and note for the memory
     'memory.retire',
     'memory.pin',
     'memory.unpin',
+    'memory.mark_sensitive',
     'memory.diff',
     'memory.comment',
     'memory.rate',
@@ -81,6 +82,7 @@ test('it declares read for the reads, export for export, and note for the memory
     ['memory.retire', ['note']],
     ['memory.pin', ['note']],
     ['memory.unpin', ['note']],
+    ['memory.mark_sensitive', ['note']],
     ['memory.diff', ['read']],
     ['memory.comment', ['note']],
     ['memory.rate', ['note']],
@@ -1031,6 +1033,38 @@ test('it recalls the item its short ID names', async () => {
   expect(result.structuredContent).toMatchObject({
     items: [{ itemID: shortID, text: 'Keeps the bike lock code in the blue notebook' }],
     next: null,
+  });
+});
+
+test('it recalls a sensitive item when the model asks for it by its words', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'The owner lives at 14 Larkspur Lane, flat 3',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.markSensitive({
+    itemID: item.itemID,
+    isSensitive: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const result = await runToolCall(
+    { tool: 'memory.recall', input: { query: 'larkspur lane address' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.recall'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toMatchObject({
+    items: [{ itemID: shortID, text: 'The owner lives at 14 Larkspur Lane, flat 3' }],
   });
 });
 

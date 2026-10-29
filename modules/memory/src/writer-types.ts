@@ -41,6 +41,8 @@ export type StagedWrite =
       readonly target: VersionRef | null;
 
       readonly until?: number | null;
+
+      readonly isSensitive?: boolean;
     }
   | {
       readonly op: 'retire';
