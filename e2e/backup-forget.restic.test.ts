@@ -3,7 +3,6 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeSnapshotSet } from '@heynixie/backup';
-import { backupJobEntry } from '@heynixie/backup-job/test-utils';
 import { startDatabase } from '@heynixie/db';
 import {
   createRecordKey,
@@ -17,6 +16,7 @@ import { $ } from 'bun';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { readBackupJobBundle } from './test-utils/read-backup-job-bundle';
 
 // Bun's skipIf takes a boolean and has no in-body skip, so the gate reads the binary at collection;
 // CI's image job always names one, so there a missing binary fails the run instead
@@ -27,6 +27,7 @@ async function setupTest() {
   const restic = process.env['NIXIE_RESTIC_BINARY'] ?? 'restic';
 
   const log = await startTestLog();
+  const job = await readBackupJobBundle();
   const repos = await mkdtemp(join(tmpdir(), 'nixie-restic-repos-'));
 
   onTestFinished(() => rm(repos, { recursive: true, force: true }));
@@ -43,7 +44,7 @@ async function setupTest() {
     NIXIE_BACKUP_KEY_PASSWORD: keyEnv.RESTIC_PASSWORD,
   };
 
-  return { ...log, restic, repos, dataEnv, keyEnv, jobEnv };
+  return { ...log, restic, job, repos, dataEnv, keyEnv, jobEnv };
 }
 
 test.skipIf(isResticMissing)(
@@ -93,7 +94,7 @@ test.skipIf(isResticMissing)(
 
     await writeSnapshotSet(context, 'scheduled');
 
-    await $`${process.execPath} ${backupJobEntry} run`.env(ctx.jobEnv).quiet();
+    await $`${process.execPath} ${ctx.job} run`.env(ctx.jobEnv).quiet();
 
     await removeRecordKey(ctx.log, forgotten.keyID);
 
@@ -104,10 +105,7 @@ test.skipIf(isResticMissing)(
 
     await writeSnapshotSet(context, 'forget');
 
-    const job = await $`${process.execPath} ${backupJobEntry} run`
-      .env(ctx.jobEnv)
-      .nothrow()
-      .quiet();
+    const job = await $`${process.execPath} ${ctx.job} run`.env(ctx.jobEnv).nothrow().quiet();
 
     const receiptText = await Bun.file(
       join(ctx.jobEnv.NIXIE_BACKUP_STAGING_DIR, '000000000002', 'receipt.json'),

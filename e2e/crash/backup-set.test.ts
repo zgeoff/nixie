@@ -1,13 +1,15 @@
 import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { backupJobEntry, createStubRestic } from '@heynixie/backup-job/test-utils';
+import { createStubRestic } from '@heynixie/backup-job/test-utils';
 import { $ } from 'bun';
+import { readBackupJobBundle } from '../test-utils/read-backup-job-bundle';
 import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
 
 async function setupTest() {
   const nixie = await startSpawnedNixie({ backups: true });
   const restic = await createStubRestic(nixie.directory);
+  const job = await readBackupJobBundle();
 
   const jobEnv = {
     NIXIE_BACKUP_STAGING_DIR: join(nixie.dataDir, 'backup'),
@@ -19,7 +21,7 @@ async function setupTest() {
     STUB_RESTIC_LOG: join(nixie.directory, 'restic-calls.jsonl'),
   };
 
-  return { nixie, jobEnv };
+  return { nixie, job, jobEnv };
 }
 
 test('it ships no set that nixie was killed while copying, and a restart replaces it with a set the job ships and nixie records', async () => {
@@ -31,12 +33,7 @@ test('it ships no set that nixie was killed while copying, and a restart replace
   await killed.kill();
 
   const leftBehind = await readdir(join(ctx.nixie.dataDir, 'backup', '000000000001'));
-
-  const afterKill = await $`${process.execPath} ${backupJobEntry} run`
-    .env(ctx.jobEnv)
-    .nothrow()
-    .quiet();
-
+  const afterKill = await $`${process.execPath} ${ctx.job} run`.env(ctx.jobEnv).nothrow().quiet();
   const isResticCalled = await Bun.file(ctx.jobEnv.STUB_RESTIC_LOG).exists();
 
   const restarted = ctx.nixie.harness.start();
@@ -45,7 +42,7 @@ test('it ships no set that nixie was killed while copying, and a restart replace
 
   await restarted.waitForLogEvent('backup.set_staged');
 
-  const afterRestart = await $`${process.execPath} ${backupJobEntry} run`
+  const afterRestart = await $`${process.execPath} ${ctx.job} run`
     .env(ctx.jobEnv)
     .nothrow()
     .quiet();
