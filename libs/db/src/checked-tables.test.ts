@@ -1,12 +1,14 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-checked-tables-'));
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
+
+  const kyselyDirectory = dirname(Bun.resolveSync('kysely', import.meta.dir));
 
   await writeFile(
     join(directory, 'tsconfig.json'),
@@ -17,10 +19,13 @@ async function setupTest() {
         module: 'preserve',
         moduleResolution: 'bundler',
         target: 'esnext',
+        lib: ['es5'],
         skipLibCheck: true,
         types: [],
 
-        paths: { kysely: [Bun.resolveSync('kysely', import.meta.dir).replace(/\.js$/u, '.d.ts')] },
+        // kysely's index declarations load about 265 files, and the default lib about 90 more, which
+        // make each check slow. The column types need only this one file.
+        paths: { kysely: [join(kyselyDirectory, 'util', 'column-type.d.ts')] },
       },
       files: ['tables.ts'],
     }),
