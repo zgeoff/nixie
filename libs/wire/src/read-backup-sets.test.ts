@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { localBackupFileReads } from './local-backup-file-reads';
 import { readBackupSets } from './read-backup-sets';
 
 async function setupTest() {
@@ -22,7 +23,7 @@ test('it lists the sets in sequence order, with whether each holds its marker an
   await writeFile(join(ctx.stagingDir, '000000000009', 'receipt.json'), '{}');
   await mkdir(join(ctx.stagingDir, '000000000011'));
 
-  const sets = await readBackupSets(ctx.stagingDir);
+  const sets = await readBackupSets(localBackupFileReads, ctx.stagingDir);
 
   expect(sets).toStrictEqual([
     {
@@ -52,14 +53,14 @@ test('it leaves out a name that is no set', async () => {
   await mkdir(join(ctx.stagingDir, '.000000000012.tmp'));
   await writeFile(join(ctx.stagingDir, 'notes.txt'), 'kept by the operator');
 
-  const sets = await readBackupSets(ctx.stagingDir);
+  const sets = await readBackupSets(localBackupFileReads, ctx.stagingDir);
 
   expect(sets).toStrictEqual([]);
 });
 
 test('it reads a staging directory that does not exist yet as no sets', async () => {
   const ctx = await setupTest();
-  const sets = await readBackupSets(join(ctx.stagingDir, 'missing'));
+  const sets = await readBackupSets(localBackupFileReads, join(ctx.stagingDir, 'missing'));
 
   expect(sets).toStrictEqual([]);
 });

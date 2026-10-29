@@ -1,11 +1,11 @@
 import { join } from 'node:path';
-import type { BackupReceipt, BackupSetEntry, BackupSetManifest } from '@heynixie/wire';
-import {
-  backupSetLayout,
-  backupSetManifestSchema,
-  parseBackupFile,
-  readFileSHA256,
+import type {
+  BackupFileReads,
+  BackupReceipt,
+  BackupSetEntry,
+  BackupSetManifest,
 } from '@heynixie/wire';
+import { backupSetLayout, backupSetManifestSchema, parseBackupFile } from '@heynixie/wire';
 import type { ResticClient } from './build-restic-client';
 import type { DataRetention } from './parse-job-config';
 import { ResticError } from './restic-error';
@@ -14,6 +14,8 @@ export interface BackupRepos {
   readonly data: ResticClient;
   readonly keys: ResticClient;
 }
+
+type ManifestReads = Pick<BackupFileReads, 'readText' | 'readFileSHA256'>;
 
 type StepResult = BackupReceipt['prune'];
 
@@ -36,9 +38,10 @@ const emptyKeyPublication: KeyPublication = {
 export async function publishBackupSet(
   repos: BackupRepos,
   retention: DataRetention,
+  files: ManifestReads,
   set: BackupSetEntry,
 ): Promise<BackupReceipt> {
-  const verified = await readVerifiedManifest(set);
+  const verified = await readVerifiedManifest(files, set);
 
   if ('refused' in verified) {
     return buildReceipt({
@@ -74,8 +77,11 @@ export async function publishBackupSet(
 
 type VerifiedManifest = { readonly manifest: BackupSetManifest } | { readonly refused: string };
 
-async function readVerifiedManifest(set: BackupSetEntry): Promise<VerifiedManifest> {
-  const text = await Bun.file(join(set.directory, backupSetLayout.manifest)).text();
+async function readVerifiedManifest(
+  files: ManifestReads,
+  set: BackupSetEntry,
+): Promise<VerifiedManifest> {
+  const text = await files.readText(join(set.directory, backupSetLayout.manifest));
 
   const parsed = parseBackupFile(text, backupSetManifestSchema);
 
@@ -90,7 +96,7 @@ async function readVerifiedManifest(set: BackupSetEntry): Promise<VerifiedManife
   }
 
   for (const copy of parsed.value.copies) {
-    const digest = await readFileSHA256(join(set.directory, copy.name));
+    const digest = await files.readFileSHA256(join(set.directory, copy.name));
 
     if (digest.sha256 !== copy.sha256 || digest.bytes !== copy.bytes) {
       return {

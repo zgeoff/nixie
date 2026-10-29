@@ -14,12 +14,12 @@ export async function runJobPass(
   repos: BackupRepos,
   files: JobFiles,
 ): Promise<readonly BackupReceipt[]> {
-  const sets = await readBackupSets(config.stagingDir);
+  const sets = await readBackupSets(files, config.stagingDir);
 
   const receipts: BackupReceipt[] = [];
 
   for (const set of sets.filter((entry) => entry.hasMarker && !entry.hasReceipt)) {
-    const receipt = await publishBackupSet(repos, config.retention, set);
+    const receipt = await publishBackupSet(repos, config.retention, files, set);
 
     await writeReceipt(files, set.directory, receipt);
     await removeCopies(files, set.directory);

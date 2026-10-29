@@ -214,6 +214,34 @@ test('it writes a failed receipt for a copy that does not match its checksum, an
   expect(calls).toBeFalse();
 });
 
+test('it stops the pass and leaves the set with no receipt when its manifest cannot be read', async () => {
+  const ctx = await setupTest();
+
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: true,
+  });
+
+  const files = {
+    ...localJobFiles,
+    readText: () => Promise.reject(new Error('EIO: i/o error, read')),
+  };
+
+  const refused = await runJobPass(ctx.config, ctx.repos, files).then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  const names = await readdir(join(ctx.config.stagingDir, '000000000001'));
+  const calls = await Bun.file(ctx.calls).exists();
+
+  expect(refused).toMatchObject({ message: 'EIO: i/o error, read' });
+  expect(names).toIncludeSameMembers(['nixie.db', 'keys.db', 'manifest.json', 'complete']);
+  expect(calls).toBeFalse();
+});
+
 test('it writes a failed receipt that names a failed prune, and runs no check after it', async () => {
   const ctx = await setupTest();
 

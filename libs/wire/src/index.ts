@@ -37,6 +37,8 @@ export { backupSetFiles, backupSetManifestSchema } from './backup-set-manifest';
 export { formatBackupFile } from './format-backup-file';
 export { formatBackupSetName } from './format-backup-set-name';
 export type { ParsedBackupFile } from './parse-backup-file';
+export type { BackupFileReads } from './local-backup-file-reads';
+export { localBackupFileReads } from './local-backup-file-reads';
 export { parseBackupFile } from './parse-backup-file';
 export { parseBackupSetName } from './parse-backup-set-name';
 export type { BackupSetEntry } from './read-backup-sets';
