@@ -66,6 +66,24 @@
         "tiny-invariant": "catalog:",
       },
     },
+    "apps/backup-job": {
+      "name": "@heynixie/backup-job",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "gunshi": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/backup": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/testing": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+      },
+    },
     "apps/counting-proxy": {
       "name": "@heynixie/counting-proxy",
       "version": "0.0.0",
@@ -87,6 +105,7 @@
         "@heynixie/actions": "workspace:*",
         "@heynixie/api": "workspace:*",
         "@heynixie/async": "workspace:*",
+        "@heynixie/backup": "workspace:*",
         "@heynixie/clock": "workspace:*",
         "@heynixie/compaction": "workspace:*",
         "@heynixie/connectors": "workspace:*",
@@ -1047,6 +1066,8 @@
     "@heynixie/async": ["@heynixie/async@workspace:libs/async"],
 
     "@heynixie/backup": ["@heynixie/backup@workspace:modules/backup"],
+
+    "@heynixie/backup-job": ["@heynixie/backup-job@workspace:apps/backup-job"],
 
     "@heynixie/clock": ["@heynixie/clock@workspace:libs/clock"],
 

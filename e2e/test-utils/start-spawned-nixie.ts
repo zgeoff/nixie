@@ -112,6 +112,8 @@ export interface SpawnedNixieOptions {
   readonly logLevel?: LogLevel;
 
   readonly release?: string;
+
+  readonly backups?: boolean;
 }
 
 // A turn runs the real SDK in a guest process, which takes a few seconds on a slow host, and each
@@ -238,6 +240,7 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
         }
       : {}),
     ...(options.release === undefined ? {} : { sandboxAdapter: 'imp' as const }),
+    ...(options.backups === undefined ? {} : { isBackupOn: options.backups }),
   };
 }
 

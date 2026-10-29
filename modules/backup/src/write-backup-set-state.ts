@@ -1,8 +1,7 @@
-import type { Writer } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { requireBackupSetMove } from './backup-set-moves';
-import type { BackupSetState, BackupTables } from './types';
+import type { BackupSetState, BackupTables, BackupWriter } from './types';
 
 export interface BackupSetReceiptFields {
   readonly received_at: number;
@@ -12,7 +11,7 @@ export interface BackupSetReceiptFields {
 }
 
 export async function writeBackupSetState(
-  writer: Writer,
+  writer: BackupWriter,
   sequence: number,
   state: BackupSetState,
   fields?: BackupSetReceiptFields,

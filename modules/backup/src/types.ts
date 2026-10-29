@@ -4,8 +4,10 @@ import type { BackupSetKind } from '@heynixie/wire';
 
 export type BackupSetState = 'staging' | 'staged' | 'published' | 'failed' | 'abandoned';
 
+export type BackupWriter = Pick<Writer, 'clock' | 'commits' | 'dataDir' | 'db' | 'epoch'>;
+
 export interface BackupContext {
-  readonly writer: Writer;
+  readonly writer: BackupWriter;
   readonly storage: DataStorage;
 }
 
