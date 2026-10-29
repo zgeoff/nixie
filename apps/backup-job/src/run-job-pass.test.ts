@@ -1,44 +1,50 @@
-import { expect, test } from 'bun:test';
-import { appendFile, readdir } from 'node:fs/promises';
+import { expect, onTestFinished, test } from 'bun:test';
+import { appendFile, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { writeSnapshotSet } from '@heynixie/backup';
-import { localDataStorage } from '@heynixie/log';
-import { startTestLog } from '@heynixie/log/test-utils';
-import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { backupReceiptSchema, parseBackupFile } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { buildResticClient } from './build-restic-client';
 import { runJobPass } from './run-job-pass';
+import { createStagedSet } from './test-utils/create-staged-set';
 import { createStubRestic } from './test-utils/create-stub-restic';
 
 async function setupTest() {
-  const log = await startTestLog();
-  const restic = await createStubRestic(log.dataDir);
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-job-pass-'));
 
-  const calls = join(log.dataDir, 'restic-calls.jsonl');
+  onTestFinished(() => rm(directory, { recursive: true, force: true }));
+
+  const restic = await createStubRestic(directory);
+
+  const calls = join(directory, 'restic-calls.jsonl');
 
   const config = {
-    stagingDir: join(log.dataDir, 'backup'),
+    stagingDir: join(directory, 'backup'),
     restic,
     backendEnv: { STUB_RESTIC_LOG: calls },
     retention: { hourly: 24, daily: 7, weekly: 4, monthly: 6 },
   };
 
-  const dataRepository = join(log.dataDir, 'repos', 'data');
-  const keyRepository = join(log.dataDir, 'repos', 'keys');
+  const dataRepository = join(directory, 'repos', 'data');
+  const keyRepository = join(directory, 'repos', 'keys');
 
   const repos = {
     data: buildResticClient(config, { repository: dataRepository, password: 'data-pass' }, 'data'),
     keys: buildResticClient(config, { repository: keyRepository, password: 'key-pass' }, 'key'),
   };
 
-  return { ...log, config, repos, calls, dataRepository, keyRepository };
+  return { config, repos, calls, dataRepository, keyRepository };
 }
 
 test('it publishes a complete set to both repos, writes a published receipt, and removes the copies', async () => {
   const ctx = await setupTest();
 
-  await writeSnapshotSet({ writer: ctx.writer, storage: localDataStorage }, 'scheduled');
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: true,
+  });
 
   const receipts = await runJobPass(ctx.config, ctx.repos);
 
@@ -77,14 +83,15 @@ test('it publishes a complete set to both repos, writes a published receipt, and
   expect(keySnapshots).toStrictEqual([`${receipt.keySnapshotID ?? ''}.json`]);
 });
 
-test('it ships no set whose copy stopped before its marker, and runs no restic', async () => {
+test('it ships no set that lacks its marker, and runs no restic', async () => {
   const ctx = await setupTest();
 
-  startFaultPointFailure('backup.set.copied');
-
-  await writeSnapshotSet({ writer: ctx.writer, storage: localDataStorage }, 'scheduled').catch(
-    () => {},
-  );
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: false,
+  });
 
   const receipts = await runJobPass(ctx.config, ctx.repos);
   const names = await readdir(join(ctx.config.stagingDir, '000000000001'));
@@ -98,9 +105,21 @@ test('it ships no set whose copy stopped before its marker, and runs no restic',
 test('it keeps the newest key snapshot alone and prunes the blob of every older one, while the data repo keeps both', async () => {
   const ctx = await setupTest();
 
-  await writeSnapshotSet({ writer: ctx.writer, storage: localDataStorage }, 'scheduled');
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: true,
+  });
+
   await runJobPass(ctx.config, ctx.repos);
-  await writeSnapshotSet({ writer: ctx.writer, storage: localDataStorage }, 'forget');
+
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 2,
+    kind: 'forget',
+    isComplete: true,
+  });
 
   const receipts = await runJobPass(ctx.config, ctx.repos);
 
@@ -134,8 +153,19 @@ test('it keeps the newest key snapshot alone and prunes the blob of every older 
 test('it ships sets in sequence order', async () => {
   const ctx = await setupTest();
 
-  await writeSnapshotSet({ writer: ctx.writer, storage: localDataStorage }, 'scheduled');
-  await writeSnapshotSet({ writer: ctx.writer, storage: localDataStorage }, 'forget');
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: true,
+  });
+
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 2,
+    kind: 'forget',
+    isComplete: true,
+  });
 
   const receipts = await runJobPass(ctx.config, ctx.repos);
   const calls = await Bun.file(ctx.calls).text();
@@ -152,7 +182,13 @@ test('it ships sets in sequence order', async () => {
 test('it writes a failed receipt for a copy that does not match its checksum, and uploads nothing', async () => {
   const ctx = await setupTest();
 
-  await writeSnapshotSet({ writer: ctx.writer, storage: localDataStorage }, 'scheduled');
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: true,
+  });
+
   await appendFile(join(ctx.config.stagingDir, '000000000001', 'keys.db'), 'a changed byte');
 
   const receipts = await runJobPass(ctx.config, ctx.repos);
@@ -179,7 +215,12 @@ test('it writes a failed receipt for a copy that does not match its checksum, an
 test('it writes a failed receipt that names a failed prune, and runs no check after it', async () => {
   const ctx = await setupTest();
 
-  await writeSnapshotSet({ writer: ctx.writer, storage: localDataStorage }, 'forget');
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 1,
+    kind: 'forget',
+    isComplete: true,
+  });
 
   const receipts = await runJobPass(ctx.config, {
     data: ctx.repos.data,
@@ -206,7 +247,13 @@ test('it writes a failed receipt that names a failed prune, and runs no check af
 test('it leaves a set that holds its receipt alone', async () => {
   const ctx = await setupTest();
 
-  await writeSnapshotSet({ writer: ctx.writer, storage: localDataStorage }, 'scheduled');
+  await createStagedSet({
+    stagingDir: ctx.config.stagingDir,
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: true,
+  });
+
   await runJobPass(ctx.config, ctx.repos);
 
   const receipts = await runJobPass(ctx.config, ctx.repos);
