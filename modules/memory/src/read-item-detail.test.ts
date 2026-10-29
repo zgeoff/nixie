@@ -228,6 +228,42 @@ test('it reads a forgotten item as dated gaps that show no message', async () =>
   });
 });
 
+test('it reads no image for a version of a forgotten item made from a photo', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Look at this one',
+    spans: [{ start: 0, end: 16, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  await ctx.memory.store.writes.remember({
+    text: 'Owns a red kayak',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await ctx.memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  await ctx.memory.store.forget({
+    target: { itemID: pending.itemID, version: 1 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const detail = await ctx.memory.store.view.readItem(pending.itemID);
+
+  expect(detail?.versions).toMatchObject([{ version: 1, status: 'shredded', image: null }]);
+});
+
 test('it reads no checker model for a version no checker saw', async () => {
   const ctx = await setupTest();
 

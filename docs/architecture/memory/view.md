@@ -50,7 +50,8 @@ message still holds them. A message forgotten on its own reads as a gap beside a
 
 A version [from a photo](./writes.md#writes-from-a-photo) carries the photo's event ID, its number
 and the thread of the proposal the user approved, and the web view shows the photo beside the
-version as the proposals page does.
+version as the proposals page does. The view gives a version its photo only while the version's text
+is readable, as it does the message behind a quote, so a forgotten item never shows its photo.
 
 ## The web view
 

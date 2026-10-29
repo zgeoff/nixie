@@ -106,6 +106,17 @@ test('it reads a forgotten item as gaps that show no message and no quote', asyn
   });
 });
 
+test('it reads a forgotten item made from a photo with no image', async () => {
+  const item = await store.memoryItems.create({
+    state: 'forgotten',
+    versions: [{ image: { position: 0, sequence: 9, thread: 'conversation' } }],
+  });
+
+  const detail = readMockMemoryItem(item.itemID);
+
+  expect(detail?.versions[0]).toMatchObject({ image: null, status: 'shredded' });
+});
+
 test('it reads a version whose text fails to open as unreadable, with no message and no quote', async () => {
   const message = await store.records.create({ message: { text: 'I owe Robin twenty pounds.' } });
 

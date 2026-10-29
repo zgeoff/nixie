@@ -100,7 +100,7 @@ async function readViewVersion(
                 : null,
           },
     image:
-      image === null || row.proposal_thread === null
+      image === null || row.proposal_thread === null || opened.text.status !== 'readable'
         ? null
         : { thread: row.proposal_thread, ...image },
     ...opened.text,
