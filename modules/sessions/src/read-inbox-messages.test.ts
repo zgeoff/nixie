@@ -212,3 +212,48 @@ test('it reads a message moved to this task with the text of the message the own
     },
   ]);
 });
+
+test('it reads a message moved to this task with the images of the message the owner sent', async () => {
+  const ctx = await setupTest();
+
+  const [original] = await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { images: [{ mediaType: 'image/png' }] },
+      erasable: { text: 'The bed plan.' },
+      attachments: [new Uint8Array([0x89, 0x50, 0x4e, 0x47])],
+    },
+  ]);
+
+  invariant(original);
+
+  const moved = await writeRecords(ctx.log, [
+    {
+      kind: 'task.message_moved',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'k3x9m2p7qa',
+      payload: {
+        message: original.sequence,
+        messageThread: 'conversation',
+        from: 'conversation',
+        to: 'k3x9m2p7qa',
+      },
+    },
+  ]);
+
+  const messages = await readInboxMessages(ctx.log, moved, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
+    imageBudget: { bytes: 1024, count: 100 },
+  });
+
+  expect(messages).toStrictEqual([
+    {
+      uuid: expect.toBeString(),
+      text: expect.toEndWith('] The bed plan.'),
+      images: [{ marker: expect.toInclude('n="1"'), mediaType: 'image/png', data: 'iVBORw==' }],
+    },
+  ]);
+});

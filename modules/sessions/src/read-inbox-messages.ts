@@ -78,8 +78,16 @@ async function readMovedMessage(
 
   const original = entry?.record.kind === 'owner_message' ? entry.record : null;
 
-  return {
+  const message = {
     uuid: encodeInboxUUID(record.sequence),
     text: renderMovedMessage(record, original, read.times, read.view),
   };
+
+  if (original === null) {
+    return message;
+  }
+
+  const delivered = await readInboxMessage(log, original, read);
+
+  return delivered.images === undefined ? message : { ...message, images: delivered.images };
 }

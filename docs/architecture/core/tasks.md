@@ -157,7 +157,9 @@ The creation record also holds the step key of the step that started the task. A
 after its start committed runs again under the same step key, and its model can call the start
 again. The start then gives back the task that the step already started under the same name, so a
 rerun never starts the work twice. The name is erasable, so the start compares it in memory with the
-names of that step's tasks and keeps no hash of it.
+names of that step's tasks and keeps no hash of it. That compare runs before the write transaction,
+so the transaction counts the step's tasks again, and when a start in the same step committed in
+between, the start compares the names again.
 
 No runner runs a started task, so the server runs a holding step for it. The holding step writes
 nothing, marks nothing read, and holds the task, so the task waits with every message unread and

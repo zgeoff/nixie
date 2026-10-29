@@ -128,6 +128,33 @@ test('it gives a repeated start of the same name in one step the task the first 
   expect(started).toHaveLength(1);
 });
 
+test('it gives two overlapping starts of the same name in one step one task', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
+
+  const tool = buildTaskStartTool(ctx.context, { ownerName: null });
+
+  const call = buildMockToolCall({
+    tool: 'task.start',
+    input: { name: 'Parcel', brief: 'Track the parcel until it lands.' },
+  });
+
+  const run = buildMockToolContext({
+    run: { thread: 'conversation', stepRunID: buildStepRunID(claim) },
+  });
+
+  const outcomes = await Promise.all([tool.run(call, run), tool.run(call, run)]);
+
+  const started = await ctx.db
+    .selectFrom('tasks')
+    .select('task_id')
+    .where('is_conversation', '=', 0)
+    .execute();
+
+  expect(outcomes[1]).toStrictEqual(outcomes[0]);
+  expect(started).toHaveLength(1);
+});
+
 test('it starts a second task for another name in the same step', async () => {
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');

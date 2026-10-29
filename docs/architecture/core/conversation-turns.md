@@ -176,9 +176,9 @@ A message the user [moved](./tasks.md#moving-a-misrouted-message) renders as a `
 system message on both sides of the move. The task that lost the message reads a notice that names
 the message's event ID and the task that answers it now, and that tells it to leave the message to
 that task. The task that gained the message reads a notice that names the task it came from, then
-the user's message under its own stamp, as if the message had come there first. A move carries the
-message's text and never its images. A message the user forgot before the move renders as a
-placeholder line.
+the user's message under its own stamp, as if the message had come there first. The task reads the
+message's images from the original record, inside the same image budget as any other message. A
+message the user forgot before the move renders as a placeholder line.
 
 Images the user sends with a message reach the model as image input, read as dropped in like dropped
 text. The inbox message holds the text first, then for each image a `<dropped-image id="…" n="…"/>`
