@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.0](https://github.com/zgeoff/nixie/compare/v0.50.0...v0.51.0) (2026-10-28)
+
+
+### Features
+
+* **web:** browse, read, edit and destroy moments ([#698](https://github.com/zgeoff/nixie/issues/698)) ([862b982](https://github.com/zgeoff/nixie/commit/862b982d20a688b9baa7a77e00d2194a6b0d6f44))
+
 ## [0.50.0](https://github.com/zgeoff/nixie/compare/v0.49.2...v0.50.0) (2026-10-28)
 
 
