@@ -14,6 +14,9 @@ export function toLogRecord(record: StoredRecord): LogRecord {
     ...(record.rating === undefined ? {} : { rating: toLogRating(record.rating) }),
     ...(record.recall === undefined ? {} : { recall: toLogRecall(record.recall) }),
     recordedAt: record.recordedAt,
+    ...(record.route === undefined
+      ? {}
+      : { route: { ...record.route, messages: [...record.route.messages] } }),
     sequence: record.sequence,
     ...(record.summary === undefined ? {} : { summary: { ...record.summary } }),
     ...(record.task === undefined ? {} : { task: structuredClone(record.task) }),

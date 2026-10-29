@@ -10,6 +10,7 @@ test('it starts a writer whose log folds the tasks projections, on a test clock'
     'tasks',
     'timers',
     'task_messages',
+    'message_routes',
   ]);
 
   expect(ctx.context.clock.now()).toBe(1_000_000);

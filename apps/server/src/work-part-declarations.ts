@@ -8,6 +8,7 @@ import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
 import { makeRetriedStart } from './make-retried-start';
 import { registerHarnessOperations } from './register-harness-operations';
 import { runDefinitionsSeed } from './run-definitions-seed';
+import { runHeldTaskStep } from './run-held-task-step';
 import { runTestTaskStep } from './run-test-task-step';
 import type { ServerPartValues } from './server-part-values';
 import { startDefinitionsExports } from './start-definitions-exports';
@@ -51,21 +52,18 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const parts = reader.get('server_parts');
 
       const systemSteps = new Map([
+        [conversationTaskID, reader.get('conversation_imp').runStep],
         [memoryWriterTaskID, reader.get('memory_writer')],
         [memoryConsolidatorTaskID, reader.get('memory_consolidator')],
       ]);
 
-      const conversationStep = reader.get('conversation_imp').runStep;
       const harness = reader.get('inputs').options.harness;
 
       // A task that a crash test creates runs the test step, so its scenario needs no model.
       const otherStep: RunStep =
         NIXIE_TEST_BUILD && harness !== undefined
-          ? (input) =>
-              input.taskID === conversationTaskID
-                ? conversationStep(input)
-                : Promise.resolve(runTestTaskStep(parts.context.clock, input))
-          : conversationStep;
+          ? (input) => Promise.resolve(runTestTaskStep(parts.context.clock, input))
+          : runHeldTaskStep;
 
       await startRunners(parts, (input) => (systemSteps.get(input.taskID) ?? otherStep)(input));
 

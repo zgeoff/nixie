@@ -90,7 +90,7 @@ test('it takes the bearer token over the cookie', async () => {
 test('it answers 404 for a path no procedure has', async () => {
   const ctx = await setupTest();
 
-  const response = await fetch(`${ctx.url}/rpc/tasks/list`, {
+  const response = await fetch(`${ctx.url}/rpc/weather/forecast`, {
     method: 'POST',
     headers: { [clientHeaderName]: 'web', 'content-type': 'application/json' },
     body: '{}',

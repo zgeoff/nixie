@@ -1,5 +1,6 @@
 import { DatabaseError } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { match } from 'ts-pattern';
 import { readStepCursor } from './read-step-cursor';
 import { requireLease } from './require-lease';
 import { resetLease } from './reset-lease';
@@ -71,11 +72,12 @@ function requireStepResult(result: StepResult): void {
 }
 
 function pickNextState(next: StepResult['next'], hasUnread: boolean): TaskState {
-  if (hasUnread || next === 'continue') {
-    return 'ready';
-  }
-
-  return next === 'done' ? 'done' : 'waiting';
+  return match(next)
+    .with('continue', () => 'ready' as const)
+    .with('hold', () => 'waiting' as const)
+    .with('wait', () => (hasUnread ? 'ready' : 'waiting'))
+    .with('done', () => (hasUnread ? 'ready' : 'done'))
+    .exhaustive();
 }
 
 function isStepKeyConflict(error: unknown): boolean {

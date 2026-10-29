@@ -83,6 +83,33 @@ test('it keeps a task ready when input it did not read is still in its inbox', a
   });
 });
 
+test('it moves a task that holds its inbox to waiting with its input still unread', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
+  const [message] = await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: claim.lease.workID,
+      contentSource: 'owner',
+      erasable: { text: 'one more thing' },
+    },
+  ]);
+
+  invariant(message);
+
+  await writeStepCommit(ctx.context, claim, { next: 'hold', records: [], acknowledged: [] });
+
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+
+  expect(task).toMatchObject({
+    state: 'waiting',
+    read_cursor: 0,
+    last_inbox_sequence: message.sequence,
+  });
+});
+
 test('it moves the read cursor over the contiguous run of acknowledged inbox records', async () => {
   const ctx = await setupTest();
   const claim = await createTestClaim(ctx.context, 'tidy the inbox');

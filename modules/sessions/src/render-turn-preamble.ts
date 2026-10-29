@@ -11,6 +11,7 @@ export interface TurnPreamble {
   readonly retrieval: TurnRetrieval;
   readonly thread: string;
   readonly at: string;
+  readonly board: string | null;
 }
 
 export function renderTurnPreamble(
@@ -33,6 +34,7 @@ export function renderTurnPreamble(
       at,
       renderRetrievedMessages(retrieval.messages, { ...lines, thread: preamble.thread }),
     ),
+    renderPreambleMessage('task-board', at, preamble.board),
   ].filter((block) => block !== null);
 }
 

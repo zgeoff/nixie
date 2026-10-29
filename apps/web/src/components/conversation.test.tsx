@@ -27,7 +27,7 @@ test('it shows the conversation the API holds', async () => {
 
   const list = await rendered.findByRole('list', { name: 'Conversation' });
 
-  expect(list).toHaveTextContent('You Is it raining?Forgetnixie Not yet.');
+  expect(list).toHaveTextContent('You Is it raining?MoveForgetnixie Not yet.');
 });
 
 test('it turns on voice typing from the header, asking for the microphone once and stopping it at once', async () => {
@@ -90,7 +90,7 @@ test('it folds the records of a step into one line between the messages', async 
       (item) => item.querySelector('summary')?.textContent ?? item.textContent,
     ),
   ).toStrictEqual([
-    'You Rain?Forget',
+    'You Rain?MoveForget',
     'conversation · web fetch: weather.test · 4.2s',
     'nixie Not yet.Forget',
   ]);
@@ -489,7 +489,9 @@ test('it shows no placeholder for a message or a reply whose text is shredded', 
     'listitem',
   );
 
-  expect(items.map((item) => item.textContent)).toStrictEqual(['You Is the ferry on time?Forget']);
+  expect(items.map((item) => item.textContent)).toStrictEqual([
+    'You Is the ferry on time?MoveForget',
+  ]);
 });
 
 test('it shows an unsent message as not sent', async () => {

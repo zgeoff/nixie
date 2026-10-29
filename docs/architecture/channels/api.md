@@ -65,7 +65,7 @@ the old log.
 
 ## Checked actions
 
-Enrolment, code issue, revoke, message send, record forget, the changes of the
+Enrolment, code issue, revoke, message send, record forget, message move, the changes of the
 [memory view](../memory/view.md#changes) and a moment's keep, edit, link and destroy share one table
 of client action IDs, which holds the first result of each action and a hash of its input. A retry
 with the same ID and input gets the first result, and the same ID with another procedure, input or
@@ -132,6 +132,20 @@ so a forget that arrives first stops after the key deletion, as does one that a 
 The server's start hands the API the session cleanup and then finishes every such forget, before any
 runner claims work, so no turn resumes a session that holds the text. A retry of the action runs the
 cleanup again too, so a cleanup that failed finishes on the retry.
+
+## Moving a message
+
+A move hands one of the user's messages to another task, as
+[moving a misrouted message](../core/tasks.md#moving-a-misrouted-message) describes. It is a checked
+action bound to the message's thread and sequence and to the target task. For a new task, the input
+hash holds only that the target is new and leaves out the name and brief, because both are free
+text. The move and the action's result commit in one transaction, so a retry never moves the message
+twice. The API answers `RECORD_NOT_FOUND` for a sequence that is not the user's message on that
+thread, `TASK_NOT_FOUND` for a task that does not exist or has finished, and `ALREADY_THERE` for the
+task that holds the message already.
+
+A task list read returns every task with its name, brief, state and last activity, so the client can
+name the task of each route. A started task whose name the user forgot shows under its ID.
 
 ## Reading and the live stream
 

@@ -7,7 +7,7 @@ import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import type { SkillVendorContext } from '@heynixie/skills';
-import { buildTaskMessageTool, buildTasksListTool } from '@heynixie/tasks';
+import { buildTaskMessageTool, buildTaskStartTool, buildTasksListTool } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildConversationSkillTools } from './build-conversation-skill-tools';
@@ -78,6 +78,7 @@ export async function startConversationEndpoint(
   const tasks = [
     buildTasksListTool(options.context, messaging),
     buildTaskMessageTool(options.context, messaging),
+    buildTaskStartTool(options.context, messaging),
   ];
 
   const definitions = buildConversationTools(

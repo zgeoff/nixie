@@ -14,6 +14,7 @@ import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as MomentsRouteImport } from './routes/moments'
 import { Route as MemoryProposalsRouteImport } from './routes/memory_.proposals'
 import { Route as MomentsMomentIDRouteImport } from './routes/moments_.$momentID'
+import { Route as TasksTaskIDRouteImport } from './routes/tasks.$taskID'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +41,11 @@ const MomentsMomentIDRoute = MomentsMomentIDRouteImport.update({
   path: '/moments/$momentID',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TasksTaskIDRoute = TasksTaskIDRouteImport.update({
+  id: '/tasks/$taskID',
+  path: '/tasks/$taskID',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/moments': typeof MomentsRoute
   '/memory/proposals': typeof MemoryProposalsRoute
   '/moments/$momentID': typeof MomentsMomentIDRoute
+  '/tasks/$taskID': typeof TasksTaskIDRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/moments': typeof MomentsRoute
   '/memory/proposals': typeof MemoryProposalsRoute
   '/moments/$momentID': typeof MomentsMomentIDRoute
+  '/tasks/$taskID': typeof TasksTaskIDRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,25 @@ export interface FileRoutesById {
   '/moments': typeof MomentsRoute
   '/memory_/proposals': typeof MemoryProposalsRoute
   '/moments_/$momentID': typeof MomentsMomentIDRoute
+  '/tasks/$taskID': typeof TasksTaskIDRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/memory' | '/moments' | '/memory/proposals' | '/moments/$momentID'
+    | '/'
+    | '/memory'
+    | '/moments'
+    | '/memory/proposals'
+    | '/moments/$momentID'
+    | '/tasks/$taskID'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/memory' | '/moments' | '/memory/proposals' | '/moments/$momentID'
+  to:
+    | '/'
+    | '/memory'
+    | '/moments'
+    | '/memory/proposals'
+    | '/moments/$momentID'
+    | '/tasks/$taskID'
   id:
     | '__root__'
     | '/'
@@ -76,6 +96,7 @@ export interface FileRouteTypes {
     | '/moments'
     | '/memory_/proposals'
     | '/moments_/$momentID'
+    | '/tasks/$taskID'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -84,6 +105,7 @@ export interface RootRouteChildren {
   MomentsRoute: typeof MomentsRoute
   MemoryProposalsRoute: typeof MemoryProposalsRoute
   MomentsMomentIDRoute: typeof MomentsMomentIDRoute
+  TasksTaskIDRoute: typeof TasksTaskIDRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -123,6 +145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MomentsMomentIDRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tasks/$taskID': {
+      id: '/tasks/$taskID'
+      path: '/tasks/$taskID'
+      fullPath: '/tasks/$taskID'
+      preLoaderRoute: typeof TasksTaskIDRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -132,6 +161,7 @@ const rootRouteChildren: RootRouteChildren = {
   MomentsRoute: MomentsRoute,
   MemoryProposalsRoute: MemoryProposalsRoute,
   MomentsMomentIDRoute: MomentsMomentIDRoute,
+  TasksTaskIDRoute: TasksTaskIDRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

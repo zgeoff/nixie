@@ -21,6 +21,7 @@ export interface ReadRecordsOptions {
   readonly thread?: string;
 
   readonly kinds?: readonly RecordKind[];
+  readonly sequences?: readonly number[];
 
   readonly order?: 'oldest' | 'newest';
 }
@@ -43,6 +44,9 @@ export async function readRecords(
     )
     .$if(options.thread !== undefined, (query) => query.where('thread', '=', options.thread ?? ''))
     .$if(options.kinds !== undefined, (query) => query.where('kind', 'in', options.kinds ?? []))
+    .$if(options.sequences !== undefined, (query) =>
+      query.where('sequence', 'in', options.sequences ?? []),
+    )
     .orderBy('sequence', direction)
     .limit(options.limit ?? DEFAULT_LIMIT)
     .execute();

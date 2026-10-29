@@ -3,7 +3,7 @@ import type { TaskMessaging, TaskState, TasksContext, TasksTables } from './type
 type TaskListState = 'active' | 'waiting' | 'done' | 'all';
 
 export interface TaskListQuery {
-  readonly callerID: string;
+  readonly callerID: string | null;
   readonly state: TaskListState;
   readonly limit: number;
 }

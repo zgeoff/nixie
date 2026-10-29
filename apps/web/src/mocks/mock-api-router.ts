@@ -8,6 +8,7 @@ import { requireMockSession } from './require-mock-session';
 import { store } from './store';
 import { toLogRecord } from './to-log-record';
 import { writeMockForget } from './write-mock-forget';
+import { writeMockMove } from './write-mock-move';
 
 const os = mockImplementer;
 
@@ -115,6 +116,23 @@ export const mockAPIRouter = os.router({
 
       return { forgottenAt: result.forgottenAt };
     }),
+
+    move: os.conversation.move.handler(async (options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const result = await writeMockMove(options.input);
+
+      if (result.status !== 'moved') {
+        throw {
+          not_found: options.errors.RECORD_NOT_FOUND,
+          task_not_found: options.errors.TASK_NOT_FOUND,
+          already_there: options.errors.ALREADY_THERE,
+          reused: options.errors.CLIENT_ACTION_ID_REUSED,
+        }[result.status]();
+      }
+
+      return { movedAt: result.movedAt, taskID: result.taskID };
+    }),
   },
   log: { follow: followProcedure },
   memory: mockMemoryRouter,
@@ -182,6 +200,19 @@ export const mockAPIRouter = os.router({
       });
 
       return { revokedAt };
+    }),
+  },
+  tasks: {
+    list: os.tasks.list.handler((options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return {
+        tasks: store.tasks
+          .all()
+          .toSorted(
+            (left, right) => right.lastActivityAt.getTime() - left.lastActivityAt.getTime(),
+          ),
+      };
     }),
   },
 });

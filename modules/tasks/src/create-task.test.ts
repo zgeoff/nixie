@@ -32,6 +32,7 @@ test('it creates a ready task with its brief in the erasable fields', async () =
     claimable_at: 0,
     session_boundary: null,
     step_hop: 0,
+    started_by: null,
     created_sequence: 1,
     updated_sequence: 1,
   });

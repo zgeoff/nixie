@@ -1,10 +1,12 @@
 import type { Log, LogRecord } from '@heynixie/log';
-import { readRecordAttachments } from '@heynixie/log';
-import { ownerMessageCodec } from '@heynixie/tasks';
+import { readRecordAttachments, readRecords } from '@heynixie/log';
+import { ownerMessageCodec, taskMessageMovedCodec } from '@heynixie/tasks';
 import type { InboxMessage } from '@heynixie/wire';
 import { countImages } from './count-images';
+import { encodeInboxUUID } from './encode-inbox-uuid';
 import { isPastImageBudget } from './is-past-image-budget';
 import { mergeImageTallies } from './merge-image-tallies';
+import { renderMovedMessage } from './render-moved-message';
 import type { TaskMessageView } from './render-task-message';
 import { toInboxMessage } from './to-inbox-message';
 import type { ImageTally, MessageTimeOptions } from './types';
@@ -46,6 +48,10 @@ async function readInboxMessage(
   record: LogRecord,
   read: Pick<InboxRead, 'times' | 'view'>,
 ): Promise<InboxMessage> {
+  if (record.kind === 'task.message_moved') {
+    return readMovedMessage(log, record, read);
+  }
+
   if (ownerMessageCodec.tryDecodePartial(record.payload)?.images === undefined) {
     return toInboxMessage(record, read.times, read.view);
   }
@@ -56,4 +62,24 @@ async function readInboxMessage(
   const bytes = attached?.status === 'readable' ? attached.attachments : [];
 
   return toInboxMessage(record, read.times, read.view, bytes);
+}
+
+async function readMovedMessage(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  record: LogRecord,
+  read: Pick<InboxRead, 'times' | 'view'>,
+): Promise<InboxMessage> {
+  const move = taskMessageMovedCodec.decode(record.payload);
+
+  const [entry] =
+    record.thread === move.to
+      ? await readRecords(log, { afterSequence: 0, sequences: [move.message], limit: 1 })
+      : [];
+
+  const original = entry?.record.kind === 'owner_message' ? entry.record : null;
+
+  return {
+    uuid: encodeInboxUUID(record.sequence),
+    text: renderMovedMessage(record, original, read.times, read.view),
+  };
 }

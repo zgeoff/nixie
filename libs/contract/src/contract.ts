@@ -74,6 +74,12 @@ const versionTextSchema = versionRefSchema.extend({
   text: z.string().optional(),
 });
 
+const routeSchema = z.object({
+  isMove: z.boolean(),
+  messages: z.array(sequenceSchema),
+  taskID: threadSchema,
+});
+
 const recordSchema = z.object({
   compaction: compactionSchema.optional(),
 
@@ -103,6 +109,8 @@ const recordSchema = z.object({
 
   recall: recallSchema.optional(),
   recordedAt: z.date(),
+
+  route: routeSchema.optional(),
   sequence: sequenceSchema,
 
   summary: summarySchema.optional(),
@@ -126,6 +134,27 @@ const sessionSchema = z.object({
 });
 
 const checkedAction = signedIn.errors(reusedIDErrors);
+const taskNameSchema = z.string().trim().min(1).max(80);
+const taskBriefSchema = z.string().trim().min(1).max(8000);
+
+const newTaskTargetSchema = z.object({
+  kind: z.literal('new'),
+  name: taskNameSchema,
+  brief: taskBriefSchema,
+});
+
+const moveTargetSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('task'), taskID: threadSchema }),
+  newTaskTargetSchema,
+]);
+
+const listedTaskSchema = z.object({
+  brief: z.string(),
+  lastActivityAt: z.date(),
+  name: z.string(),
+  state: z.enum(['ready', 'running', 'waiting', 'done', 'failed']),
+  taskID: threadSchema,
+});
 
 const followRecords = signedIn
   .input(z.object({ afterSequence: sequenceSchema, thread: threadSchema.optional() }))
@@ -193,6 +222,28 @@ export const contract = {
         }),
       )
       .output(z.object({ forgottenAt: z.date() })),
+
+    move: checkedAction
+      .errors({
+        RECORD_NOT_FOUND: {
+          message: 'No message of yours on this thread has this sequence',
+          status: 404,
+        },
+        TASK_NOT_FOUND: { message: 'No open task has this ID', status: 404 },
+        ALREADY_THERE: { message: 'The message already went to this task', status: 409 },
+      })
+      .input(
+        z.object({
+          clientActionID: clientActionIDSchema,
+          sequence: sequenceSchema,
+          thread: threadSchema,
+          to: moveTargetSchema,
+        }),
+      )
+      .output(z.object({ movedAt: z.date(), taskID: threadSchema })),
+  },
+  tasks: {
+    list: signedIn.output(z.object({ tasks: z.array(listedTaskSchema) })),
   },
   memory: {
     readVersions: signedIn

@@ -2,7 +2,7 @@ import { createShortID } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
-import type { StepRunRef } from './parse-step-run-id';
+import { conversationTaskID } from './conversation-task-id';
 import { parseStepRunID } from './parse-step-run-id';
 import type {
   TaskMessageFacts,
@@ -11,11 +11,13 @@ import type {
   TaskMessageRequest,
 } from './plan-task-message';
 import { planTaskMessage } from './plan-task-message';
+import { readLeasedStepHop } from './read-leased-step-hop';
 import { taskExchangeLimitedCodec } from './task-exchange-limited-codec';
 import { taskMessageCodec } from './task-message-codec';
 import { toEventID } from './to-event-id';
 import type { TaskMessaging, TasksContext, TasksTables } from './types';
 import { writeInboxRecordsInTransaction } from './write-inbox-records-in-transaction';
+import { writeTaskRouteInTransaction } from './write-task-route-in-transaction';
 
 export type TaskMessageOutcome =
   | {
@@ -80,6 +82,15 @@ export function writeTaskMessage(
       },
     ]);
 
+    if (request.from === conversationTaskID) {
+      await writeTaskRouteInTransaction(tx, context, {
+        taskID: request.to,
+        via: 'message',
+        messageID,
+        onBehalfOf: plan.onBehalfOf,
+      });
+    }
+
     const isNoticeDue =
       plan.hold === 'hop_limit' && !(await probeNotice(tx, request, step.stepKey));
 
@@ -103,30 +114,6 @@ export function writeTaskMessage(
 
     return { status: 'sent', messageID, hop: plan.hop, woke: plan.woke, hold: plan.hold };
   });
-}
-
-// The write transaction opens with BEGIN IMMEDIATE, so this check holds against every claim until
-// the message commits.
-async function readLeasedStepHop(
-  tx: Transaction<unknown>,
-  taskID: string,
-  step: StepRunRef,
-  now: number,
-): Promise<number | null> {
-  const row = await tx
-    .$extendTables<TasksTables>()
-    .selectFrom('tasks')
-    .innerJoin('leases', (join) =>
-      join.onRef('leases.work_id', '=', 'tasks.task_id').on('leases.kind', '=', 'task'),
-    )
-    .select('tasks.step_hop')
-    .where('tasks.task_id', '=', taskID)
-    .where('tasks.started_step_key', '=', step.stepKey)
-    .where('leases.generation', '=', step.generation)
-    .where('leases.expires_at', '>', now)
-    .executeTakeFirst();
-
-  return row?.step_hop ?? null;
 }
 
 async function readFacts(

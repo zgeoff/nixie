@@ -7,6 +7,46 @@ test('it counts a step woken by the owner as hop 0, whatever hop it carried', ()
   ).toStrictEqual({ hop: 0, cause: { kind: 'owner' } });
 });
 
+test('it counts a step woken by a message the owner moved to the task as hop 0, from the owner', () => {
+  expect(
+    buildStepWake(
+      [
+        {
+          kind: 'task.message_moved',
+          thread: 'k3x9m2p7qa',
+          payload: {
+            message: 12,
+            messageThread: 'conversation',
+            from: 'conversation',
+            to: 'k3x9m2p7qa',
+          },
+        },
+      ],
+      7,
+    ),
+  ).toStrictEqual({ hop: 0, cause: { kind: 'owner' } });
+});
+
+test('it leaves out the notice that a message moved away from the task', () => {
+  expect(
+    buildStepWake(
+      [
+        {
+          kind: 'task.message_moved',
+          thread: 'conversation',
+          payload: {
+            message: 12,
+            messageThread: 'conversation',
+            from: 'conversation',
+            to: 'k3x9m2p7qa',
+          },
+        },
+      ],
+      7,
+    ),
+  ).toStrictEqual({ hop: 7, cause: { kind: 'carried' } });
+});
+
 test('it counts a step woken by a timer as hop 0', () => {
   expect(buildStepWake([{ kind: 'timer.fired', thread: 'planner', payload: {} }], 7)).toStrictEqual(
     { hop: 0, cause: { kind: 'timer' } },

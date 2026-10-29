@@ -1,8 +1,10 @@
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
+import { conversationTaskID } from './conversation-task-id';
 import { getTaskName } from './get-task-name';
 import type { TaskMessageRefusal } from './plan-task-message';
+import { readTaskDirectory } from './read-task-directory';
 import { renderHeldNote } from './render-held-note';
 import { taskMessageKindSchema } from './task-message-kind-schema';
 import type { TaskMessaging, TasksContext } from './types';
@@ -85,7 +87,9 @@ export function buildTaskMessageTool(
     run: async (call, tool): Promise<ToolOutcome> => {
       const input = messageArguments.parse(call.input);
 
-      const outcome = await writeTaskMessage(context, messaging, {
+      const directory = await readTaskDirectory(context, messaging);
+
+      const outcome = await writeTaskMessage(context, directory, {
         from: tool.run.thread,
         to: input.to,
         kind: input.kind,
@@ -97,17 +101,27 @@ export function buildTaskMessageTool(
       });
 
       if (outcome.status === 'refused') {
-        return { status: 'error', message: renderRefusal(messaging, outcome.refusal) };
+        return { status: 'error', message: renderRefusal(directory, outcome.refusal) };
       }
 
-      const note = renderHeldNote({
+      const name = getTaskName(directory, input.to);
+
+      const held = renderHeldNote({
         hold: outcome.hold,
         kind: input.kind,
-        name: getTaskName(messaging, input.to),
+        name,
         messageID: outcome.messageID,
         hop: outcome.hop,
         ownerName: messaging.ownerName,
       });
+
+      const routed =
+        tool.run.thread === conversationTaskID
+          ? `In your reply, tell ${owner} in a few words that you passed this to ${name}.`
+          : null;
+
+      const parts = [held, routed].filter((part) => part !== null);
+      const note = parts.length === 0 ? null : parts.join(' ');
 
       return {
         status: 'ok',

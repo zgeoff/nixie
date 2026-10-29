@@ -17,6 +17,7 @@ import { skillExportAttemptsMigration } from './skill-export-attempts-migration'
 import { skillExportsMigration } from './skill-exports-migration';
 import { skillsMigration } from './skills-migration';
 import { taskMessagesMigration } from './task-messages-migration';
+import { taskRoutesMigration } from './task-routes-migration';
 import { tasksMigration } from './tasks-migration';
 import type { BuildSchema } from './types';
 import { webFetchLinksMigration } from './web-fetch-links-migration';
@@ -46,6 +47,7 @@ export const nixieSchema: BuildSchema = {
     taskMessagesMigration,
     momentsMigration,
     memorySensitiveMigration,
+    taskRoutesMigration,
   ],
   oldestReader: 25,
 };

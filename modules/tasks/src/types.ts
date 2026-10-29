@@ -68,7 +68,7 @@ export interface StepErrored {
 }
 
 export interface StepResult {
-  readonly next: 'continue' | 'wait' | 'done';
+  readonly next: 'continue' | 'wait' | 'hold' | 'done';
   readonly records: readonly RecordInput[];
   readonly acknowledged: readonly number[];
   readonly timers?: readonly { readonly dueAt: number }[];
@@ -149,6 +149,7 @@ interface TaskTable {
   readonly claimable_at: number;
   readonly session_boundary: string | null;
   readonly step_hop: number;
+  readonly started_by: string | null;
   readonly created_sequence: number;
   readonly updated_sequence: number;
 }
@@ -189,6 +190,12 @@ interface TaskMessageTable {
   readonly sent_sequence: number;
 }
 
+interface MessageRouteTable {
+  readonly message_sequence: number;
+  readonly task_id: string;
+  readonly routed_sequence: number;
+}
+
 export type TaskRow = TaskTable;
 
 // Kysely's table map needs an index signature, which an interface lacks.
@@ -199,6 +206,7 @@ export type TasksTables = CheckedTables<
     leases: LeaseTable;
     records: InboxRecordTable;
     task_messages: TaskMessageTable;
+    message_routes: MessageRouteTable;
   }>,
   'records'
 >;

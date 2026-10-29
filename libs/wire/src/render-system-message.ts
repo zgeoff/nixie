@@ -13,7 +13,9 @@ export type SystemMessageType =
   | 'pinned-memory-changes'
   | 'timer'
   | 'outcome'
-  | 'task-messages';
+  | 'task-messages'
+  | 'task-board'
+  | 'message-moved';
 
 export interface SystemMessage {
   readonly type: SystemMessageType;

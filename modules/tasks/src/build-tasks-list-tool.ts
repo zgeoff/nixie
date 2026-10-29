@@ -1,6 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { readTaskDirectory } from './read-task-directory';
 import type { ListedTask } from './read-task-list';
 import { readTaskList } from './read-task-list';
 import type { TaskMessaging, TasksContext } from './types';
@@ -64,7 +65,9 @@ export function buildTasksListTool(
     run: async (call, tool) => {
       const input = listArguments.parse(call.input);
 
-      const tasks = await readTaskList(context, messaging, {
+      const directory = await readTaskDirectory(context, messaging);
+
+      const tasks = await readTaskList(context, directory, {
         callerID: tool.run.thread,
         state: input.state ?? 'all',
         limit: input.limit ?? defaultLimit,

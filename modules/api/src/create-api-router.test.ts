@@ -1092,6 +1092,7 @@ test('#memory.writerStatus reports the writer as off when the deployment turns i
     lastSeenIntervalMs: 60_000,
     isMemoryWriterEnabled: false,
     isMemoryConsolidatorEnabled: true,
+    taskDirectory: [],
   });
 
   const laptop = await createDeviceSession(api.context, 'laptop');
@@ -1116,6 +1117,7 @@ test('#memory.consolidatorStatus reports the consolidator as off when the deploy
     lastSeenIntervalMs: 60_000,
     isMemoryWriterEnabled: true,
     isMemoryConsolidatorEnabled: false,
+    taskDirectory: [],
   });
 
   const laptop = await createDeviceSession(api.context, 'laptop');
