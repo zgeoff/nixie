@@ -38,7 +38,9 @@ export async function writeSnapshotSet(
     async (error: unknown) => {
       await files.removeFile(directory);
 
-      await writeBackupSetState(context.writer, started.sequence, 'abandoned');
+      await withWriteTransaction(context.writer, (tx) =>
+        writeBackupSetState(tx, started.sequence, 'abandoned'),
+      );
 
       throw error;
     },
@@ -50,7 +52,9 @@ export async function writeSnapshotSet(
   await files.writeFileToDisk(markerPath);
   await files.writeDirectoryToDisk(directory);
 
-  await writeBackupSetState(context.writer, started.sequence, 'staged');
+  await withWriteTransaction(context.writer, (tx) =>
+    writeBackupSetState(tx, started.sequence, 'staged'),
+  );
 
   return manifest;
 }
