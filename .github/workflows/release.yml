@@ -1,11 +1,11 @@
 # Cuts a nixie release. On every push to main, release-please opens or updates the release pull
 # request, and merging it creates the v<version> tag and the GitHub release. The release commit then
 # goes through one stage per job, each after the one before succeeds: the sandbox images and the
-# backup image, the nixie image with the sandbox digests, the web image, the migrations and the config schema in the release
-# notes, a pull of each sandbox image with no credentials, the version tag on every image, and the
-# counting proxy binary, release.json, config.schema.json and definitions-manifest.schema.json
-# assets, and last the Kubernetes component, with the backup image as its backup job's default, and
-# the API contract on npm at the release's version.
+# backup image, the nixie image with the sandbox digests, the web image, the migrations and the
+# config schema in the release notes, a pull of each sandbox image with no credentials, the version
+# tag on every image, and the counting proxy binary, release.json, config.schema.json and
+# definitions-manifest.schema.json assets, and last the Kubernetes component, with the backup image
+# as its backup job's default, and the API contract on npm at the release's version.
 #
 # A manual run on a release tag rebuilds that release from its commit. Re-running the failed
 # jobs of a run resumes from the stage that failed with the same digests.

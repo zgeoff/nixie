@@ -40,9 +40,10 @@ services:
     volumes:
       - ./ci/config.yaml:/etc/nixie/config.yaml:ro
 
-  # the backup job, built from this checkout, ships each staged set to two repositories in a volume
-  # of its own; it mounts only the staging folder, and holds the backup passwords and no secrets
-  backup:
+  # the backup job, built from this checkout, ships each staged set to 2 repositories on a tmpfs of
+  # its own; it mounts only the staging folder, and holds the backup passwords and none of nixie's
+  # secrets
+  nixie-backup:
     image: nixie-backup-compose-test:local
     build:
       context: ../..
