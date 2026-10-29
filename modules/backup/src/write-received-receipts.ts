@@ -122,8 +122,14 @@ async function writeWaitingSetState(
     .where('sequence', '=', sequence)
     .executeTakeFirst();
 
-  if (row?.state !== 'staged') {
+  if (row?.state !== 'staging' && row?.state !== 'staged') {
     return false;
+  }
+
+  // A row stays in staging when a step after the marker fails, and the job ships only a marked set,
+  // so a receipt for a staging row reconciles it to staged first, as a restart would.
+  if (row.state === 'staging') {
+    await writeBackupSetState(tx, sequence, 'staged');
   }
 
   await writeBackupSetState(tx, sequence, state, fields);
