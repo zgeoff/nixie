@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.54.0](https://github.com/zgeoff/nixie/compare/v0.53.0...v0.54.0) (2026-10-29)
+
+
+### Features
+
+* **contract:** publish the contract package to npm at each release ([#707](https://github.com/zgeoff/nixie/issues/707)) ([5adcfdc](https://github.com/zgeoff/nixie/commit/5adcfdc750a24a66cbfeadedccae9afa6855753e))
+
 ## [0.53.0](https://github.com/zgeoff/nixie/compare/v0.52.0...v0.53.0) (2026-10-29)
 
 
