@@ -16,8 +16,8 @@ the shared testing skill, and nothing here relaxes them.
 
 Each line links the section that explains it.
 
-- [Runs](#runs): `bun run test` at the root runs every suite but the gated ones, which need their
-  own host or credential.
+- [Runs](#runs): `bun run test` at the root runs the unit run, each lane runs through its own
+  script, and `bun run check` runs both; the gated suites need their own host or credential.
 - [Preloads](#preloads): the root preloads make every run a test build, swap in Bun's own
   `FormData`, run one MSW server for every package, and reset each package's state after each test.
 - [The test build](#the-test-build): the fault points, test clock, and other test-only code sit
@@ -59,9 +59,9 @@ model. The spikes under `research/` and `docs/design/` run by hand, so the root
 The web app's browser suites, the `*.browser.test.ts` files, drive a headless Chrome or Chromium
 through `Bun.WebView`, so `bun test` needs one that Bun finds on `PATH`, in a standard install
 location, or at `BUN_CHROME_PATH`. GitHub's Ubuntu runners ship Chrome. `bun run test` leaves the
-browser suites out of the parallel run and runs them after it through `test:browser`, the browser
-lane. The parallel run's ignore patterns repeat the root config's, because a pattern given on the
-command line replaces that list.
+browser suites out of the parallel run, and `test:browser`, the browser lane, runs them. The
+parallel run's ignore patterns repeat the root config's, because a pattern given on the command line
+replaces that list.
 
 The browser lane runs every suite on one setup. Its script runs
 [`run-browser-lane.ts`](../../../apps/web/src/test-utils/run-browser-lane.ts) under the shared
@@ -89,9 +89,9 @@ is too long. Outside CI, each browser suite skips and prints why when no browser
 the same check, so the run goes on. In CI the check fails the run instead.
 
 Beside the browser suites, four lanes run suites that need a real system the parallel run cannot
-host. `bun run test` leaves each one out of the parallel run. It ends with the Agent SDK and e2e
-lanes' scripts, which run their files one at a time. The imp and model API lanes run outside CI, as
-[Runs](#runs) gives.
+host. `bun run test` leaves each one out of the parallel run, and the Agent SDK and e2e lanes'
+scripts run their files one at a time. The imp and model API lanes run outside CI, as [Runs](#runs)
+gives.
 
 | Lane      | Files                 | Real system                                                   | Script           | Limit per test     |
 | --------- | --------------------- | ------------------------------------------------------------- | ---------------- | ------------------ |
@@ -104,9 +104,11 @@ An Agent SDK suite, in a guest or in `evals/test-utils`, never calls the live mo
 contract suite in `evals/sdk-contract` does. A test in a lane sets no limit of its own, and a slow
 test gets a fix, never a raised lane limit. A model API test is the one exception: a live model's
 time varies by test, so each sets a limit of about twice its measured time, within the lane's. CI's
-test timeouts check lets only a lane script raise the limit. The pre-push test job splits its run
-the same way. A suite that spawns nixie, the web client or a build of either lives under `e2e/`. The
-web package exports the helpers those suites share from its test utils.
+test timeouts check lets only a lane script raise the limit. CI runs each lane's script as a check
+of its own. The pre-push hook runs no lane: its test job runs, through `bun run test`, only the unit
+tests beside the files the branch changes. A suite that spawns nixie, the web client or a build of
+either lives under `e2e/`. The web package exports the helpers those suites share from its test
+utils.
 
 [`startSpawnedNixie`](../../../e2e/test-utils/start-spawned-nixie.ts) in `e2e/` spawns the test
 build of the server's `serve` command as a child process and joins it to

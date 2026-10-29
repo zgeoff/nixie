@@ -1,4 +1,6 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": ["*.ts", "deploy/**/*.ts", "preview/**/*.ts"]
+  // the scripts that repo-sync delivers import each other by their .ts paths
+  "compilerOptions": { "allowImportingTsExtensions": true },
+  "include": ["*.ts", "deploy/**/*.ts", "preview/**/*.ts", "scripts/**/*.ts"]
 }
