@@ -1,5 +1,6 @@
 import { copyFile, mkdir, open, rename, rm, writeFile } from 'node:fs/promises';
 import { createDatabaseCopy, startDatabase } from '@heynixie/db';
+import { localBackupFileReads } from '@heynixie/wire';
 import { claimFileLock } from './claim-file-lock';
 import type { DataStorage } from './data-storage';
 
@@ -8,7 +9,7 @@ export const localDataStorage: DataStorage = {
   writeDatabaseCopy: createDatabaseCopy,
   claimFileLock,
   files: {
-    probeFile: (path) => Bun.file(path).exists(),
+    ...localBackupFileReads,
     createDirectories: async (path) => {
       await mkdir(path, { recursive: true, mode: 0o700 });
     },

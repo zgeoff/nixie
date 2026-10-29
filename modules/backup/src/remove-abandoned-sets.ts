@@ -13,7 +13,7 @@ export interface AbandonedSets {
 export async function removeAbandonedSets(context: BackupContext): Promise<AbandonedSets> {
   const stagingDir = getBackupStagingDir(context.writer.dataDir);
 
-  const sets = await readBackupSets(stagingDir);
+  const sets = await readBackupSets(context.storage.files, stagingDir);
 
   const unmarked = sets.filter((set) => !set.hasMarker);
 
