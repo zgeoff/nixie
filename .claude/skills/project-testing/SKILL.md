@@ -88,17 +88,19 @@ is too long. Outside CI, each browser suite skips and prints why when no browser
 [`checkBrowserSkip`](../../../apps/web/src/test-utils/check-browser-skip.ts), and the preload runs
 the same check, so the run goes on. In CI the check fails the run instead.
 
-Beside the browser suites, four lanes run suites that need a real system the parallel run cannot
+Beside the browser suites, five lanes run suites that need a real system the parallel run cannot
 host. `bun run test` leaves each one out of the parallel run, and the Agent SDK and e2e lanes'
 scripts run their files one at a time. The imp and model API lanes run outside CI, as [Runs](#runs)
-gives.
+gives. The restic lane runs in the Images workflow, against the restic binary that the backup image
+carries, and a local run skips it unless `NIXIE_RESTIC_BINARY` names a restic.
 
-| Lane      | Files                 | Real system                                                   | Script           | Limit per test     |
-| --------- | --------------------- | ------------------------------------------------------------- | ---------------- | ------------------ |
-| Agent SDK | `*.agent-sdk.test.ts` | The Agent SDK's CLI as a subprocess, against a scripted model | `test:agent-sdk` | 5 s, Bun's default |
-| e2e       | every suite in `e2e/` | The built nixie or web client, driven from outside            | `test:e2e`       | 15 s               |
-| imp       | `*.imp.test.ts`       | A real impd on a host with `/dev/kvm`                         | `test:imp`       | 14 s               |
-| model API | `*.model-api.test.ts` | The live model, through the pinned Agent SDK                  | SDK contract run | 120 s              |
+| Lane      | Files                    | Real system                                                   | Script           | Limit per test     |
+| --------- | ------------------------ | ------------------------------------------------------------- | ---------------- | ------------------ |
+| Agent SDK | `*.agent-sdk.test.ts`    | The Agent SDK's CLI as a subprocess, against a scripted model | `test:agent-sdk` | 5 s, Bun's default |
+| e2e       | every other `e2e/` suite | The built nixie or web client, driven from outside            | `test:e2e`       | 15 s               |
+| imp       | `*.imp.test.ts`          | A real impd on a host with `/dev/kvm`                         | `test:imp`       | 14 s               |
+| model API | `*.model-api.test.ts`    | The live model, through the pinned Agent SDK                  | SDK contract run | 120 s              |
+| restic    | `*.restic.test.ts`       | The restic binary that the backup image pins                  | `test:restic`    | 15 s               |
 
 An Agent SDK suite, in a guest or in `evals/test-utils`, never calls the live model; the SDK
 contract suite in `evals/sdk-contract` does. A test in a lane sets no limit of its own, and a slow

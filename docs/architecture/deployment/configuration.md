@@ -25,6 +25,7 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
 - the [web fetch](../connectors/web-fetch.md) limits, the fetches one fetch sandbox serves, and the
   [time](../connectors/time.md) tool's default zone
 - the task and action [runner pool](../core/leases-and-recovery.md#runner-pools) sizes
+- whether nixie stages [backups](backups.md), and how often
 - the tuning of the [memory writer](../memory/writer.md), [memory in context](../memory/context.md)
   and [consolidation](../memory/consolidation.md)
 

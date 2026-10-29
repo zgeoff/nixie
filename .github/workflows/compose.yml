@@ -144,11 +144,11 @@ jobs:
             echo '::error::the nixie service holds a backup variable'
             exit 1
           fi
-          if jq -e '.services.backup.volumes | any(.source == "secrets")' <<< "$config"; then
-            echo '::error::the backup service mounts the secrets volume'
+          if jq -e '.services["nixie-backup"].volumes | any(.source == "secrets")' <<< "$config"; then
+            echo '::error::the nixie-backup service mounts the secrets volume'
             exit 1
           fi
-          jq -e '.services.backup.volumes | length == 1 and .[0].source == "data" and .[0].volume.subpath == "backup"' <<< "$config"
+          jq -e '.services["nixie-backup"].volumes | length == 1 and .[0].source == "data" and .[0].volume.subpath == "backup"' <<< "$config"
 
       - name: Show the logs
         if: failure()

@@ -49,4 +49,6 @@ recipe or the test build reads. It checks that each pinned tag resolves to its p
 then starts the recipe with the overlay in `ci/`, which swaps nixie's release image for the test
 build, because the release image leaves the test sandbox out. The test sandbox runs each guest as a
 local process with no isolation, so the overlay is never a deployment. The workflow checks the
-health URL through the recipe's origin, and that the `enrol` service prints a sign-in code.
+health URL through the recipe's origin, and that the `enrol` service prints a sign-in code. The
+overlay adds the `nixie-backup` container, built from the checkout, and the workflow checks that
+nixie records a set that the container shipped.

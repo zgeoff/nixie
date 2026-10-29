@@ -3,14 +3,14 @@
 A nixie release is one version, cut from one commit on `main`, that publishes every nixie image to
 GitHub Container Registry (GHCR). release-please opens a release pull request from the Conventional
 Commits since the last release, and merging it creates the `v<version>` tag and the GitHub release.
-The release workflow then builds the conversation and fetch images, the nixie image with their
-digests inside it, and the web image, in that order. Each image gets a build provenance attestation
-as it is pushed, and the version tag reaches every image only after all of them exist. The release
-then publishes `release.json` and `config.schema.json`, the contract a deployment reads in place of
-nixie's tree. Pull-request CI checks the 2 compatibility rules that a one-release rollback depends
-on: the oRPC contract only grows, and each migration keeps the schema readable by the release
-before. A third check fails a config schema change that can refuse a released `config.yaml`, unless
-the pull request title marks it breaking.
+The release workflow then builds the conversation, fetch and backup images, the nixie image with the
+sandbox digests inside it, and the web image, in that order. Each image gets a build provenance
+attestation as it is pushed, and the version tag reaches every image only after all of them exist.
+The release then publishes `release.json` and `config.schema.json`, the contract a deployment reads
+in place of nixie's tree. Pull-request CI checks the 2 compatibility rules that a one-release
+rollback depends on: the oRPC contract only grows, and each migration keeps the schema readable by
+the release before. A third check fails a config schema change that can refuse a released
+`config.yaml`, unless the pull request title marks it breaking.
 
 [The server](server.md) covers how nixie reads the sandbox manifest that the pipeline writes into
 the nixie image, and [the database](../core/database.md#migrations) covers migrations and the oldest
@@ -21,12 +21,12 @@ checks and verification that later slices add.
 ## Images and versions
 
 Each image builds for `linux/amd64` only, from the Dockerfile in the package it ships, and lives in
-one flat GHCR namespace: `nixie` for the server and `nixie-<image>` for the conversation, fetch and
-web images. One release-please component at the repository root versions the whole repo, so one
-version covers every image. Conventional Commits drive the bump under Semantic Versioning, the first
-release is `0.1.0`, and before 1.0 a breaking change bumps the minor version. The release pull
-request bumps the version in the server's source as well as in the manifest, so the server knows the
-release it runs without reading a tag.
+one flat GHCR namespace: `nixie` for the server and `nixie-<image>` for the conversation, fetch,
+backup and web images. One release-please component at the repository root versions the whole repo,
+so one version covers every image. Conventional Commits drive the bump under Semantic Versioning,
+the first release is `0.1.0`, and before 1.0 a breaking change bumps the minor version. The release
+pull request bumps the version in the server's source as well as in the manifest, so the server
+knows the release it runs without reading a tag.
 
 Each image gets the tag `<version>` without the `v`, such as `nixie:0.4.0`, and no image gets
 `latest`, because every consumer pins a digest and a moving tag would invite an unpinned pull.
@@ -44,19 +44,23 @@ commit and runs one job per stage, each after the stage before it succeeds:
 ```mermaid
 flowchart LR
   rp[release-please] --> conv[conversation image]
-  rp --> fetch[fetch image]
+    rp --> fetch[fetch image]
+  rp --> backup[backup image]
+
   conv --> nixie[nixie image]
   fetch --> nixie
-  nixie --> web[web image]
+    nixie --> web[web image]
   web --> notes[release notes]
+  backup --> notes
   notes --> pulls[check pulls]
   pulls --> tag[tag]
   tag --> assets[assets]
   assets --> npm[npm packages]
 ```
 
-1. **Sandbox images.** The conversation and fetch images build in parallel, and each pushes by
-   digest only.
+1. **Sandbox and backup images.** The conversation, fetch and backup images build in parallel, and
+   each pushes by digest only. The backup image downloads restic at the version its package pins and
+   refuses a download whose checksum differs from the pinned one.
 2. **The nixie image.** The workflow builds the sandbox manifest from the stage 1 digests, writes it
    into the build context, then builds and pushes the nixie image by digest.
 3. **The web image.** The web image builds and pushes by digest.
@@ -65,7 +69,7 @@ flowchart LR
 5. **Check pulls.** The workflow pulls each sandbox image with no credentials, as impd does, and
    fails while a sandbox package is private.
 6. **Tag.** The workflow gives the version tag to each image's digest: the sandbox images first,
-   then web, then nixie.
+   then the backup image, web, then nixie.
 7. **Assets.** The workflow uploads the committed `config.schema.json` and
    `definitions-manifest.schema.json` to the GitHub release, then builds and uploads `release.json`,
    replacing the assets of an earlier attempt. `release.json` goes last, so a reader that finds it
@@ -73,7 +77,8 @@ flowchart LR
 8. **npm packages.** The workflow publishes the
    [Pulumi component](kubernetes.md#the-pulumi-component) and the API contract to npm at the
    release's version, each in its own job, with npm's provenance. It skips a version that npm holds
-   already, and a package that npm does not hold yet.
+   already, and a package that npm does not hold yet. The publish writes the backup image's tag and
+   digest into the component as its backup job's default.
 
 The nixie image needs the sandbox digests, so the sandbox images go first. A failed nixie build
 stops the release before a web image exists that calls an API no image serves. The tag stage comes
@@ -99,11 +104,11 @@ A deployment reads two assets of the GitHub release and nothing else of nixie's:
 from the repo, and no parse of the release notes. Each release publishes both, and their shape is a
 contract that changes only in step with the readers.
 
-- **`release.json`** holds the version, its tag and its commit; the server and web images and the
-  sandbox images, each by version tag and digest; the migrations the release adds since the release
-  before, and whether that release reads the schema they leave; and the config schema result. Its
-  `format` rises only on a change that a reader of the format before would misread, so an added
-  field leaves it as it is.
+- **`release.json`** holds the version, its tag and its commit; the server, web and backup images
+  and the sandbox images, each by version tag and digest; the migrations the release adds since the
+  release before, and whether that release reads the schema they leave; and the config schema
+  result. Its `format` rises only on a change that a reader of the format before would misread, so
+  an added field leaves it as it is.
 - **`config.schema.json`** is the JSON Schema of `config.yaml`, which a deployment checks its
   configuration against before it rolls out. The server's configuration schema generates it, and a
   test fails when the committed file differs, so every release tag holds the schema of its own
@@ -134,8 +139,9 @@ impd pulls without credentials, and the check-pulls stage fails the release unti
 
 The Images workflow rehearses the image stages against a registry that lives only for the job. It
 runs on each push to main, and on each pull request that changes a file the images or the stages
-read. It builds all 4 images, writes the sandbox manifest, checks that the nixie image carries it,
-pulls the sandbox images with no credentials, and tags every image twice to prove the tag stage
+read. It builds all 5 images, writes the sandbox manifest, checks that the backup image runs the
+pinned restic, runs the job's restic tests against that binary, checks that the nixie image carries
+it, pulls the sandbox images with no credentials, and tags every image twice to prove the tag stage
 keeps each digest and repeats safely. It then builds `release.json` from those digests, as the
 assets stage does, and checks that each image it names resolves its tag to its digest. It runs the
 upload script against a stand-in for the GitHub CLI, which proves the schema goes up before
