@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import type { DataStorage } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
-import { readBackupSets } from '@heynixie/wire';
+import { parseBackupSetName, readBackupSets } from '@heynixie/wire';
 import { getBackupStagingDir } from './get-backup-staging-dir';
 import { removedSetSuffix } from './remove-recorded-set';
 import type { BackupContext, BackupSetState, BackupTables } from './types';
@@ -74,7 +74,11 @@ async function removeHalfRemovedSets(
     throw error;
   });
 
-  const removed = names.filter((name) => name.endsWith(removedSetSuffix));
+  const removed = names.filter(
+    (name) =>
+      name.endsWith(removedSetSuffix) &&
+      parseBackupSetName(name.slice(0, -removedSetSuffix.length)) !== null,
+  );
 
   for (const name of removed) {
     await files.removeFile(join(stagingDir, name));
