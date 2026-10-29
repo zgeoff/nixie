@@ -1,6 +1,6 @@
-import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { backupSetLayout } from './backup-set-layout';
+import type { BackupFileReads } from './local-backup-file-reads';
 import { parseBackupSetName } from './parse-backup-set-name';
 
 export interface BackupSetEntry {
@@ -10,8 +10,11 @@ export interface BackupSetEntry {
   readonly hasReceipt: boolean;
 }
 
-export async function readBackupSets(stagingDir: string): Promise<readonly BackupSetEntry[]> {
-  const names = await readdir(stagingDir).catch((error: unknown) => {
+export async function readBackupSets(
+  files: Pick<BackupFileReads, 'readDirectory' | 'probeFile'>,
+  stagingDir: string,
+): Promise<readonly BackupSetEntry[]> {
+  const names = await files.readDirectory(stagingDir).catch((error: unknown) => {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       return [];
     }
@@ -32,8 +35,8 @@ export async function readBackupSets(stagingDir: string): Promise<readonly Backu
       return {
         sequence,
         directory,
-        hasMarker: await Bun.file(join(directory, backupSetLayout.marker)).exists(),
-        hasReceipt: await Bun.file(join(directory, backupSetLayout.receipt)).exists(),
+        hasMarker: await files.probeFile(join(directory, backupSetLayout.marker)),
+        hasReceipt: await files.probeFile(join(directory, backupSetLayout.receipt)),
       };
     }),
   );

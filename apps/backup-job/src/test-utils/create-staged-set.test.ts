@@ -2,7 +2,12 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { backupSetManifestSchema, parseBackupFile, readBackupSets } from '@heynixie/wire';
+import {
+  backupSetManifestSchema,
+  localBackupFileReads,
+  parseBackupFile,
+  readBackupSets,
+} from '@heynixie/wire';
 import { createStagedSet } from './create-staged-set';
 
 async function setupTest() {
@@ -24,7 +29,7 @@ test('it writes a complete set whose manifest parses and records the size of eac
   });
 
   const text = await Bun.file(join(directory, 'manifest.json')).text();
-  const sets = await readBackupSets(ctx.stagingDir);
+  const sets = await readBackupSets(localBackupFileReads, ctx.stagingDir);
 
   expect(parseBackupFile(text, backupSetManifestSchema)).toStrictEqual({
     value: {
