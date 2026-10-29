@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeSnapshotSet } from '@heynixie/backup';
+import { backupJobEntry } from '@heynixie/backup-job/test-utils';
 import { startDatabase } from '@heynixie/db';
 import {
   createRecordKey,
@@ -11,12 +12,11 @@ import {
   withWriteTransaction,
 } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
+import { backupReceiptSchema, parseBackupFile } from '@heynixie/wire';
 import { $ } from 'bun';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
-import { buildResticClient } from './build-restic-client';
-import { runJobPass } from './run-job-pass';
 
 // Bun's skipIf takes a boolean and has no in-body skip, so the gate reads the binary at collection;
 // CI's image job always names one, so there a missing binary fails the run instead
@@ -31,30 +31,19 @@ async function setupTest() {
 
   onTestFinished(() => rm(repos, { recursive: true, force: true }));
 
-  const config = {
-    stagingDir: join(log.dataDir, 'backup'),
-    restic,
-    backendEnv: {},
-    retention: { hourly: 24, daily: 7, weekly: 4, monthly: 6 },
-  };
-
   const dataEnv = { RESTIC_REPOSITORY: join(repos, 'data'), RESTIC_PASSWORD: 'data-pass' };
   const keyEnv = { RESTIC_REPOSITORY: join(repos, 'keys'), RESTIC_PASSWORD: 'key-pass' };
 
-  const clients = {
-    data: buildResticClient(
-      config,
-      { repository: dataEnv.RESTIC_REPOSITORY, password: dataEnv.RESTIC_PASSWORD },
-      'data',
-    ),
-    keys: buildResticClient(
-      config,
-      { repository: keyEnv.RESTIC_REPOSITORY, password: keyEnv.RESTIC_PASSWORD },
-      'key',
-    ),
+  const jobEnv = {
+    NIXIE_BACKUP_STAGING_DIR: join(log.dataDir, 'backup'),
+    NIXIE_BACKUP_RESTIC: restic,
+    NIXIE_BACKUP_DATA_REPOSITORY: dataEnv.RESTIC_REPOSITORY,
+    NIXIE_BACKUP_DATA_PASSWORD: dataEnv.RESTIC_PASSWORD,
+    NIXIE_BACKUP_KEY_REPOSITORY: keyEnv.RESTIC_REPOSITORY,
+    NIXIE_BACKUP_KEY_PASSWORD: keyEnv.RESTIC_PASSWORD,
   };
 
-  return { ...log, restic, repos, config, dataEnv, keyEnv, clients };
+  return { ...log, restic, repos, dataEnv, keyEnv, jobEnv };
 }
 
 test.skipIf(isResticMissing)(
@@ -103,7 +92,9 @@ test.skipIf(isResticMissing)(
     invariant(forgottenRow, 'the forgotten key has its wrapped row before the forget');
 
     await writeSnapshotSet(context, 'scheduled');
-    await runJobPass(ctx.config, ctx.clients);
+
+    await $`${process.execPath} ${backupJobEntry} run`.env(ctx.jobEnv).quiet();
+
     await removeRecordKey(ctx.log, forgotten.keyID);
 
     await withWriteTransaction(ctx.writer, async (tx) => {
@@ -113,11 +104,29 @@ test.skipIf(isResticMissing)(
 
     await writeSnapshotSet(context, 'forget');
 
-    const receipts = await runJobPass(ctx.config, ctx.clients);
-    const keySnapshots = await ctx.clients.keys.readSnapshotIDs();
-    const dataSnapshots = await ctx.clients.data.readSnapshotIDs();
+    const job = await $`${process.execPath} ${backupJobEntry} run`
+      .env(ctx.jobEnv)
+      .nothrow()
+      .quiet();
 
-    await $`${ctx.restic} --no-cache restore ${keySnapshots[0] ?? ''} --target ${join(ctx.repos, 'keys-restored')}`
+    const receiptText = await Bun.file(
+      join(ctx.jobEnv.NIXIE_BACKUP_STAGING_DIR, '000000000002', 'receipt.json'),
+    ).text();
+
+    const receipt = parseBackupFile(receiptText, backupReceiptSchema);
+
+    const keyList: unknown = await $`${ctx.restic} --no-cache snapshots --json`
+      .env(ctx.keyEnv)
+      .json();
+
+    const dataList: unknown = await $`${ctx.restic} --no-cache snapshots --json`
+      .env(ctx.dataEnv)
+      .json();
+
+    const keySnapshots = z.array(z.object({ id: z.string() })).parse(keyList);
+    const dataSnapshots = z.array(z.object({ id: z.string() })).parse(dataList);
+
+    await $`${ctx.restic} --no-cache restore ${keySnapshots[0]?.id ?? ''} --target ${join(ctx.repos, 'keys-restored')}`
       .env(ctx.keyEnv)
       .quiet();
 
@@ -134,10 +143,10 @@ test.skipIf(isResticMissing)(
       .parse(keyRows.rows);
 
     const restoredPayloads = await Promise.all(
-      dataSnapshots.map(async (snapshotID) => {
-        const target = join(ctx.repos, `data-${snapshotID}`);
+      dataSnapshots.map(async (snapshot) => {
+        const target = join(ctx.repos, `data-${snapshot.id}`);
 
-        await $`${ctx.restic} --no-cache restore ${snapshotID} --target ${target}`
+        await $`${ctx.restic} --no-cache restore ${snapshot.id} --target ${target}`
           .env(ctx.dataEnv)
           .quiet();
 
@@ -190,15 +199,21 @@ test.skipIf(isResticMissing)(
         }),
     );
 
-    const [receipt] = receipts;
+    invariant('value' in receipt, 'the second job run writes the forget set its receipt');
 
-    invariant(receipt, 'the second pass publishes the forget set');
+    expect(job.exitCode).toBe(0);
 
-    expect(receipts).toMatchObject([
-      { sequence: 2, status: 'published', prune: 'passed', check: 'passed' },
+    expect(receipt.value).toMatchObject({
+      sequence: 2,
+      status: 'published',
+      prune: 'passed',
+      check: 'passed',
+    });
+
+    expect(keySnapshots.map((snapshot) => snapshot.id)).toStrictEqual([
+      receipt.value.keySnapshotID ?? 'no key snapshot',
     ]);
 
-    expect(keySnapshots).toStrictEqual([receipt.keySnapshotID ?? 'no key snapshot']);
     expect(restoredKeyRows.map((row) => row.key_id)).toStrictEqual([neighbour.keyID]);
     expect(restoredPayloads).toStrictEqual([payload, payload]);
     expect(new TextDecoder().decode(neighbourPlain)).toBe('Prefers window seats');

@@ -1,21 +1,29 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { writeSnapshotSet } from '@heynixie/backup';
-import { localDataStorage } from '@heynixie/log';
-import { startTestLog } from '@heynixie/log/test-utils';
+import { createStagedSet } from './test-utils/create-staged-set';
 import { createStubRestic } from './test-utils/create-stub-restic';
 
 async function setupTest() {
-  const log = await startTestLog();
-  const restic = await createStubRestic(log.dataDir);
+  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-backup-main-'));
 
-  return { ...log, restic, entry: join(import.meta.dir, 'main.ts') };
+  onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
+
+  const restic = await createStubRestic(dataDir);
+
+  return { dataDir, restic, entry: join(import.meta.dir, 'main.ts') };
 }
 
 test('it publishes the staged sets once and exits 0 for run', async () => {
   const ctx = await setupTest();
 
-  await writeSnapshotSet({ writer: ctx.writer, storage: localDataStorage }, 'scheduled');
+  await createStagedSet({
+    stagingDir: join(ctx.dataDir, 'backup'),
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: true,
+  });
 
   const child = Bun.spawn([process.execPath, ctx.entry, 'run'], {
     env: {
