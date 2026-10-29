@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.0](https://github.com/zgeoff/nixie/compare/v0.51.0...v0.52.0) (2026-10-29)
+
+
+### Features
+
+* **memory:** mark an item sensitive so per-turn recall leaves it out ([#702](https://github.com/zgeoff/nixie/issues/702)) ([57b71c1](https://github.com/zgeoff/nixie/commit/57b71c1b352fc938098620774d03a5354367679d))
+
 ## [0.51.0](https://github.com/zgeoff/nixie/compare/v0.50.0...v0.51.0) (2026-10-28)
 
 
