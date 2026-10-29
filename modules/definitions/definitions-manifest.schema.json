@@ -120,6 +120,9 @@
                 "instruction": {
                   "type": "string"
                 },
+                "routing": {
+                  "type": "string"
+                },
                 "safety": {
                   "type": "string"
                 }
