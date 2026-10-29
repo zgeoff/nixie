@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.0](https://github.com/zgeoff/nixie/compare/v0.55.0...v0.56.0) (2026-10-29)
+
+
+### Features
+
+* **memory:** let memory.edit move an item to another subject ([#723](https://github.com/zgeoff/nixie/issues/723)) ([7f8f9bc](https://github.com/zgeoff/nixie/commit/7f8f9bc261801184130f4dc168bfe170aacc26c4))
+
 ## [0.55.0](https://github.com/zgeoff/nixie/compare/v0.54.0...v0.55.0) (2026-10-29)
 
 
