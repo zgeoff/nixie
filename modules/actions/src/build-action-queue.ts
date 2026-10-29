@@ -71,5 +71,9 @@ function toActionOutcome(view: ModelView): ActionOutcome | null {
     return { outcome: 'failed', reason: view.reason };
   }
 
+  if (view.status === 'cancelled') {
+    return { outcome: 'failed', reason: view.message };
+  }
+
   return view.status === 'unknown' ? { outcome: 'unknown', reason: view.message } : null;
 }

@@ -3,7 +3,7 @@ import { buildModelView } from './build-model-view';
 
 test('it shows a done action with the connector result', () => {
   const view = buildModelView(
-    { action_id: 'action-1', status: 'done', reason: null },
+    { action_id: 'action-1', status: 'done', reason: null, isCancelled: false },
     {
       sequence: 9,
       recordedAt: new Date(0),
@@ -30,7 +30,7 @@ test('it shows a done action with the connector result', () => {
 
 test('it shows a done action whose result was forgotten with no result', () => {
   const view = buildModelView(
-    { action_id: 'action-1', status: 'done', reason: null },
+    { action_id: 'action-1', status: 'done', reason: null, isCancelled: false },
     {
       sequence: 9,
       recordedAt: new Date(0),
@@ -53,7 +53,7 @@ test('it shows a done action whose result was forgotten with no result', () => {
 
 test('it shows a failed action with the provider reason', () => {
   const view = buildModelView(
-    { action_id: 'action-1', status: 'failed', reason: 'refused' },
+    { action_id: 'action-1', status: 'failed', reason: 'refused', isCancelled: false },
     {
       sequence: 9,
       recordedAt: new Date(0),
@@ -80,7 +80,7 @@ test('it shows a failed action with the provider reason', () => {
 
 test('it shows a failed action with no provider text by its reason code', () => {
   const view = buildModelView(
-    { action_id: 'action-1', status: 'failed', reason: 'unknown_tool' },
+    { action_id: 'action-1', status: 'failed', reason: 'unknown_tool', isCancelled: false },
     null,
   );
 
@@ -88,7 +88,10 @@ test('it shows a failed action with no provider text by its reason code', () => 
 });
 
 test('it shows a pending action as queued under its ID', () => {
-  const view = buildModelView({ action_id: 'action-1', status: 'pending', reason: null }, null);
+  const view = buildModelView(
+    { action_id: 'action-1', status: 'pending', reason: null, isCancelled: false },
+    null,
+  );
 
   expect(view).toStrictEqual({
     status: 'pending',
@@ -99,7 +102,12 @@ test('it shows a pending action as queued under its ID', () => {
 
 test('it shows an unknown action as a question put to you', () => {
   const view = buildModelView(
-    { action_id: 'action-1', status: 'unknown', reason: 'attempt_without_result' },
+    {
+      action_id: 'action-1',
+      status: 'unknown',
+      reason: 'attempt_without_result',
+      isCancelled: false,
+    },
     null,
   );
 
@@ -107,5 +115,18 @@ test('it shows an unknown action as a question put to you', () => {
     status: 'unknown',
     actionID: 'action-1',
     message: 'you were asked whether this happened',
+  });
+});
+
+test('it shows a cancelled action as cancelled unsent by a stop, never as queued', () => {
+  const view = buildModelView(
+    { action_id: 'action-1', status: 'pending', reason: null, isCancelled: true },
+    null,
+  );
+
+  expect(view).toStrictEqual({
+    status: 'cancelled',
+    actionID: 'action-1',
+    message: 'a stop of the task cancelled it unsent',
   });
 });

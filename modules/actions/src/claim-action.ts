@@ -1,6 +1,7 @@
 import type { Lease, TaskState, TasksContext } from '@heynixie/tasks';
 import { claimLease } from '@heynixie/tasks';
 import { sql } from 'kysely';
+import { buildCancelledCheck } from './build-cancelled-check';
 import type { ActionsTables } from './types';
 
 export interface ClaimActionOptions {
@@ -32,6 +33,7 @@ export function claimAction(
         .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
         .select('actions.action_id')
         .where('actions.status', '=', 'pending')
+        .where((eb) => eb.not(buildCancelledCheck(eb)))
         .where('actions.next_attempt_at', '<=', now)
         .where((eb) =>
           eb.or([eb('actions.attempt_count', '>', 0), eb('tasks.state', 'not in', heldTaskStates)]),

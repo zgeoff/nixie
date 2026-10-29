@@ -5,6 +5,7 @@ import { createAllowedAction } from './create-allowed-action';
 import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionsTables } from './types';
+import { waitForActionOutcome } from './wait-for-action-outcome';
 
 async function setupTest() {
   const actions = await startTestActions();
@@ -111,6 +112,55 @@ test('it holds an action that never started while its task is paused', async () 
   const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
   expect(lease).toBeNull();
+});
+
+test('it never claims an action that a stop cancelled before its first attempt, after the task restarts', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'stop' });
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'restart' });
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+  const view = await waitForActionOutcome(ctx.context, queued.actionID, { timeoutMs: 0 });
+
+  expect(lease).toBeNull();
+
+  expect(view).toStrictEqual({
+    status: 'cancelled',
+    actionID: queued.actionID,
+    message: 'a stop of the task cancelled it unsent',
+  });
+});
+
+test('it claims an action with a started attempt after a stop and a restart of its task', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  await ctx.db.updateTable('actions').set({ attempt_count: 1 }).execute();
+
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'stop' });
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'restart' });
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease?.workID).toBe(queued.actionID);
 });
 
 test('it claims an action with a started attempt while its task is paused', async () => {

@@ -3,11 +3,15 @@ import { isJSONObject } from './is-json-object';
 import type { ActionRow, ModelView } from './types';
 
 export function buildModelView(
-  action: Pick<ActionRow, 'action_id' | 'reason' | 'status'>,
+  action: Pick<ActionRow, 'action_id' | 'reason' | 'status'> & { readonly isCancelled: boolean },
   outcome: LogRecord | null,
 ): ModelView {
   const fields = outcome?.erasable.status === 'readable' ? outcome.erasable.fields : null;
   const actionID = action.action_id;
+
+  if (action.isCancelled) {
+    return { status: 'cancelled', actionID, message: 'a stop of the task cancelled it unsent' };
+  }
 
   if (action.status === 'done') {
     return { status: 'done', actionID, result: toResult(fields) };

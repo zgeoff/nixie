@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { StepInput } from '@heynixie/tasks';
-import { buildStepRunID } from '@heynixie/tasks';
+import { buildStepRunID, writeTaskControl } from '@heynixie/tasks';
 import { buildActionQueue } from './build-action-queue';
 import { claimAction } from './claim-action';
 import { runActionAttempt } from './run-action-attempt';
@@ -384,3 +384,49 @@ test.each([
     expect(outcome).toStrictEqual(expected);
   },
 );
+
+test('it gives a failed outcome for an action that a stop of its task cancelled', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestStep(ctx.context);
+
+  const stepInput: StepInput = {
+    taskID: claim.lease.workID,
+    stepKey: claim.stepKey,
+    lease: claim.lease,
+    inbox: [],
+    wake: claim.wake,
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
+  };
+
+  const queue = buildActionQueue(ctx.context);
+
+  const step = queue.trackSteps(async () => {
+    const actionID = await queue.queue.enqueue({
+      call: { callID: 'call-1', tool: 'test.send', input: { to: 'team' }, toolUseID: null },
+      run: {
+        runID: stepInput.taskID,
+        thread: stepInput.taskID,
+        tools: ['test.send'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        stepRunID: buildStepRunID(stepInput),
+      },
+      decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
+      callSequence: 1,
+    });
+
+    return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
+  });
+
+  const result = await step(stepInput);
+
+  await writeTaskControl(ctx.context, { taskID: stepInput.taskID, control: 'stop' });
+
+  const outcome = await queue.queue.waitForOutcome(String(result.sessionBoundary), 0);
+
+  expect(outcome).toStrictEqual({
+    outcome: 'failed',
+    reason: 'a stop of the task cancelled it unsent',
+  });
+});

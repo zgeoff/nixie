@@ -10,6 +10,7 @@ import {
   startLeaseRenewal,
   waitAtFaultPoint,
 } from '@heynixie/tasks';
+import { buildCancelledCheck } from './build-cancelled-check';
 import { isJSONObject } from './is-json-object';
 import { pickOutcome } from './pick-outcome';
 import type { ActionRow, ActionsTables, Outcome } from './types';
@@ -138,7 +139,11 @@ async function runAttempt(
     return;
   }
 
-  await writeAttemptStarted(context, attempt);
+  const isStarted = await writeAttemptStarted(context, attempt);
+
+  if (!isStarted) {
+    return;
+  }
 
   const response = await runConnector(context, attempt, { connector, args, options });
 
@@ -157,23 +162,45 @@ async function readArguments(context: TasksContext, sequence: number): Promise<J
   return isJSONObject(args) ? args : null;
 }
 
-async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Promise<void> {
-  await writeLeasedRecord(context, attempt.lease, {
-    record: {
-      kind: 'action.attempt_started',
-      definitions: context.definitions(),
-      thread: attempt.action.task_id,
-      payload: { actionID: attempt.action.action_id, attempt: attempt.attempt },
-    },
-    reset: false,
+// A stop can commit between the claim and the attempt's start, so the start reads the cancel again
+// in its own transaction and frees the lease of a cancelled action.
+async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Promise<boolean> {
+  const isStarted = await withWriteTransaction(context.log.writer, async (tx) => {
+    await requireLease(tx, attempt.lease, context.clock.now());
+
+    const action = await tx
+      .$extendTables<ActionsTables>()
+      .selectFrom('actions')
+      .select((eb) => buildCancelledCheck(eb).as('is_cancelled'))
+      .where('action_id', '=', attempt.action.action_id)
+      .executeTakeFirstOrThrow();
+
+    if (action.is_cancelled === 1 || action.is_cancelled === true) {
+      await resetLease(tx, attempt.lease);
+
+      return false;
+    }
+
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: 'action.attempt_started',
+        definitions: context.definitions(),
+        thread: attempt.action.task_id,
+        payload: { actionID: attempt.action.action_id, attempt: attempt.attempt },
+      },
+    ]);
+
+    return true;
   });
 
-  if (NIXIE_TEST_BUILD) {
+  if (isStarted && NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.record.after', {
       kind: 'action',
       id: attempt.action.action_id,
     });
   }
+
+  return isStarted;
 }
 
 interface ConnectorCall {

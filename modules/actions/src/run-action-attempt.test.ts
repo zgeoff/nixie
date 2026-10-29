@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { setFaultPointHandler } from '@heynixie/tasks';
+import { setFaultPointHandler, writeTaskControl } from '@heynixie/tasks';
 import { createAllowedAction, runActionAttempt } from './index';
 import { buildStubConnector } from './test-utils/build-stub-connector';
 import { claimTestAction } from './test-utils/claim-test-action';
@@ -45,6 +45,46 @@ test('it calls the provider with the action ID as the idempotency key', async ()
       idempotencyKey: queued.actionID,
     },
   ]);
+});
+
+test('it calls no provider and frees the lease when a stop cancelled the action after its claim', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'stop' });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: { messageID: 'm-1' } }));
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  const action = await ctx.db
+    .selectFrom('actions')
+    .select(['attempt_count', 'outcome_sequence'])
+    .where('action_id', '=', queued.actionID)
+    .executeTakeFirstOrThrow();
+
+  const actionLease = await ctx.db
+    .selectFrom('leases')
+    .select('holder')
+    .where('work_id', '=', queued.actionID)
+    .executeTakeFirstOrThrow();
+
+  expect(stub.calls).toStrictEqual([]);
+  expect(action).toStrictEqual({ attempt_count: 0, outcome_sequence: null });
+  expect(actionLease.holder).toBeNull();
 });
 
 test('it settles a success as done', async () => {

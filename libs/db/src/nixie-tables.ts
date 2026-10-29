@@ -15,6 +15,7 @@ export interface NixieTables {
     readonly queued_sequence: number;
     readonly outcome_sequence: number | null;
     readonly updated_sequence: number;
+    readonly cancelled_sequence: number | null;
   };
   readonly client_actions: {
     readonly client_action_id: string;

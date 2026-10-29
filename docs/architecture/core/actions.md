@@ -26,6 +26,17 @@ failed and unknown are final. A final outcome is a record on the task's thread, 
 task's inbox and wakes the task. Its erasable fields hold the connector's result or the provider's
 reason. An unknown action stays unknown, because nothing reconciles it with the provider.
 
+### Cancelled actions
+
+A stop of the task cancels each of its actions that is pending and has not started an attempt. The
+actions projection folds the stop record into those actions, so a cancel writes no record of its own
+and wakes nothing. The cancel marks the action with the stop's sequence and leaves its status as it
+was, so the release before reads the actions table unchanged. One check decides whether an action is
+cancelled, and every reader of the queue applies it: a runner never claims a cancelled action, an
+attempt start refuses one that a stop cancelled after its claim, a later call of the same tool
+queues a new action, and the model reads the action as failed with the stop as its reason. A rerun
+of the step that the stop ended gets the cancelled action back, so a restart never sends it.
+
 ## Queuing a call
 
 The queue takes only a call that the [decision point](../policy/decision-point.md) allowed, under

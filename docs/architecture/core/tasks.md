@@ -133,8 +133,10 @@ a rebuild gives the same rows.
   model, such as a holding step, has no turn to end, and commits when it would have.
 
 An [action](./actions.md) whose task is paused or closed waits unclaimed until it has started an
-attempt, so a pause holds the queued actions with the task. A stop leaves the queued actions to run.
-The task list shows a paused or stopped task under waiting, and a closed task under done.
+attempt, so a pause holds the queued actions with the task. A stop
+[cancels](./actions.md#cancelled-actions) each queued action that has not started an attempt, so a
+restart never sends it, and an action with a started attempt runs on to its outcome. The task list
+shows a paused or stopped task under waiting, and a closed task under done.
 
 ## Task messages
 
