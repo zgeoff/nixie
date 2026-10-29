@@ -2,6 +2,7 @@ import { buildGateReview } from './build-gate-review';
 import type { ContentGateResult } from './gate-types';
 import { getRowSubject } from './get-row-subject';
 import { memoryWriterTaskID } from './memory-writer-task-id';
+import { pickSensitiveReview } from './pick-sensitive-review';
 import { readSourceEvidence } from './read-source-evidence';
 import { requireItem } from './require-item';
 import { runBatchRetirementGate } from './run-batch-retirement-gate';
@@ -55,18 +56,7 @@ export async function runBatchGate(
     { quote: write.quote, found },
   );
 
-  if (gate.status === 'pass' && write.target === null && write.isSensitive === true) {
-    return {
-      gate: buildGateReview('sensitive', {
-        checks: gate.checks,
-        ...(gate.evidence === null ? {} : { evidence: gate.evidence }),
-      }),
-      text: write.text,
-      until,
-    };
-  }
-
-  return { gate, text: write.text, until };
+  return { gate: pickSensitiveReview(write, gate), text: write.text, until };
 }
 
 function requireEditTarget(parts: StoreParts, target: VersionRef): Promise<MemoryItemRow> {
