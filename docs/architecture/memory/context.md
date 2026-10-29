@@ -84,9 +84,9 @@ checking an item and not answering with it.
 Before each turn, the conversation searches memory with the readable text of the user's new
 messages. The search is the store's recall over active items, by keyword and by meaning, with pinned
 items left out because the session's opening already holds them. It leaves
-[sensitive items](./store.md#sensitive-items) out too, so an address comes up only when the model
-recalls it for a request that needs it, and never beside a message that only shares its words. A
-message such as "when is the heating engineer coming" therefore places the item about the boiler
+[sensitive items](./store.md#sensitive-items) out too, so an unpinned address comes up only when the
+model recalls it for a request that needs it, and never beside a message that only shares its words.
+A message such as "when is the heating engineer coming" therefore places the item about the boiler
 service, though the two share no word. An item places when its keyword score or its similarity
 clears that index's floor, so a word that half the items hold places nothing, and neither does small
 talk such as a greeting, which sits at about the same small distance from every item. The search

@@ -95,6 +95,10 @@ approval of a sensitive item with no text, and lists no change to one. A recall 
 itself returns a sensitive item as it returns any other item, so the model reads the detail only
 when it asks for it. Every item starts with no mark.
 
+The mark leaves [the pinned core](./context.md#the-pinned-core) alone, because a pin is the user's
+own choice to open every session with an item. A pinned sensitive item therefore reaches the model
+in each new session with no recall.
+
 The mark changes how an item comes up and not its text, so, as a pin does, it appends a record and
 adds no version. It applies to an active or a retired item, and a forget ends it with the item. The
 mark is a record of its own, as a subject mark is, so the release before skips it. The user marks
