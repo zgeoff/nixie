@@ -3,6 +3,7 @@
 import { apps, batch, core } from '@pulumi/kubernetes';
 import type { ComponentResourceOptions, CustomResourceOptions, Input } from '@pulumi/pulumi';
 import { ComponentResource, interpolate, rootStackResource, secret } from '@pulumi/pulumi';
+import { buildBackupJobPodSpec } from './build-backup-job-pod-spec';
 import { buildBackupPodSpec } from './build-backup-pod-spec';
 import {
   buildNixieSpec,
@@ -16,6 +17,8 @@ import {
 } from './build-nixie-spec';
 import { buildNixieWebSpec, nixieWebLabels, nixieWebPort } from './build-nixie-web-spec';
 import { buildServiceArgs } from './build-service-args';
+import { pickBackupImage } from './pick-backup-image';
+import { releaseBackupImage } from './release-backup-image';
 import type { NixieArgs, NixieBackupArgs } from './types';
 
 export interface Nixie {
@@ -172,6 +175,10 @@ function createWebDeployment(
 const backupScriptConfigMap = 'nixie-backup-script';
 const backupEnvSecret = 'nixie-backup';
 
+// the StatefulSet's claim on its one pod; ReadWriteOnce lets the job mount it beside nixie when
+// both run on one node
+const dataClaim = 'data-nixie-0';
+
 function createBackupJob(
   namespace: Input<string>,
   backup: NixieBackupArgs,
@@ -187,44 +194,49 @@ function createBackupJob(
     opts,
   );
 
+  const image = pickBackupImage(backup.image, releaseBackupImage);
+
   // Pulumi updates the script in place, and the CronJob's next run reads it
-  const script = new core.v1.ConfigMap(
-    'nixie-backup-script',
-    {
-      metadata: { name: backupScriptConfigMap, namespace },
-      data: { 'backup.sh': backup.script },
-    },
-    opts,
-  );
+  const script =
+    backup.script === undefined
+      ? null
+      : new core.v1.ConfigMap(
+          'nixie-backup-script',
+          {
+            metadata: { name: backupScriptConfigMap, namespace },
+            data: { 'backup.sh': backup.script },
+          },
+          opts,
+        );
+
+  const podSpec =
+    script === null
+      ? buildBackupJobPodSpec({
+          image,
+          claim: dataClaim,
+          envSecret: backupEnvSecret,
+          pullSecret: backup.pullSecret,
+        })
+      : buildBackupPodSpec({
+          image,
+          claim: dataClaim,
+          scriptConfigMap: backupScriptConfigMap,
+          envSecret: backupEnvSecret,
+          pullSecret: backup.pullSecret,
+        });
 
   return new batch.v1.CronJob(
     'nixie-backup',
     {
       metadata: { name: 'nixie-backup', namespace },
       spec: {
-        schedule: backup.schedule,
-        timeZone: backup.timeZone,
+        schedule: backup.schedule ?? '*/5 * * * *',
+        timeZone: backup.timeZone ?? 'Etc/UTC',
         suspend: false,
         concurrencyPolicy: 'Forbid',
-        jobTemplate: {
-          spec: {
-            backoffLimit: 2,
-            template: {
-              spec: buildBackupPodSpec({
-                image: backup.image,
-
-                // the StatefulSet's claim on its one pod; ReadWriteOnce lets the job mount it beside
-                // nixie when both run on one node
-                claim: 'data-nixie-0',
-                scriptConfigMap: backupScriptConfigMap,
-                envSecret: backupEnvSecret,
-                pullSecret: backup.pullSecret,
-              }),
-            },
-          },
-        },
+        jobTemplate: { spec: { backoffLimit: 2, template: { spec: podSpec } } },
       },
     },
-    { ...opts, dependsOn: [env, script, statefulSet] },
+    { ...opts, dependsOn: script === null ? [env, statefulSet] : [env, script, statefulSet] },
   );
 }

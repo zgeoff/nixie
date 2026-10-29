@@ -1,6 +1,7 @@
 # Rehearses the release's image stages against a registry that lives only for the job: it builds
 # each image as the release does, writes the sandbox manifest from the sandbox digests, checks that
-# the nixie image carries it, then runs the release's pull check, tag stage and assets stage. A
+# the nixie image carries it and that the backup image runs its pinned restic, runs the restic lane
+# on that restic, then runs the release's pull check, tag stage and assets stage. A
 # broken Dockerfile or a changed checksum then fails the pull request, never a release. A pull
 # request runs it only when it changes a file the images or the stages read; every push to main runs
 # it in full.
@@ -82,6 +83,25 @@ jobs:
           dockerfile: guests/fetch/Dockerfile
           cache-scope: fetch
 
+      - name: Build the backup image
+        id: backup
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-backup
+          dockerfile: apps/backup-job/Dockerfile
+          cache-scope: backup
+
+      # the version binaries.txt pins, and the job's own command with no network and a read-only
+      # root, as the backup CronJob runs it
+      - name: Check that the backup image runs its pinned restic and the job
+        env:
+          BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
+        run: |
+          pinned=$(grep -v '^#' apps/backup-job/binaries.txt | awk '$1 == "restic" { print $2 }')
+          docker run --rm --network none --entrypoint restic "$BACKUP" version | tee "$RUNNER_TEMP/restic-version.txt"
+          grep -q "^restic $pinned " "$RUNNER_TEMP/restic-version.txt"
+          docker run --rm --network none --read-only "$BACKUP" --help
+
       # before the sandbox manifest is written, so its context is the checkout, as in the Preview
       # workflow's web build, and the two share their layers through the web scope
       - name: Build the web image
@@ -146,16 +166,17 @@ jobs:
           CONVERSATION:
             ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
           FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
+          BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
           NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
           WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
         run: |
-          .github/scripts/tag-images.sh 0.0.0-rehearsal "$CONVERSATION" "$FETCH" "$WEB" "$NIXIE"
-          .github/scripts/tag-images.sh 0.0.0-rehearsal "$CONVERSATION" "$FETCH" "$WEB" "$NIXIE"
+          .github/scripts/tag-images.sh 0.0.0-rehearsal "$CONVERSATION" "$FETCH" "$BACKUP" "$WEB" "$NIXIE"
+          .github/scripts/tag-images.sh 0.0.0-rehearsal "$CONVERSATION" "$FETCH" "$BACKUP" "$WEB" "$NIXIE"
           {
             echo '| Image | Digest |'
             echo '| ----- | ------ |'
             printf "| \`%s\` | \`%s\` |\n" "${CONVERSATION%@*}" "${CONVERSATION#*@}" "${FETCH%@*}" "${FETCH#*@}" \
-              "${WEB%@*}" "${WEB#*@}" "${NIXIE%@*}" "${NIXIE#*@}"
+              "${BACKUP%@*}" "${BACKUP#*@}" "${WEB%@*}" "${WEB#*@}" "${NIXIE%@*}" "${NIXIE#*@}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Bun
@@ -166,6 +187,16 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile --ignore-scripts
 
+      # the restic the image carries, so the lane proves the forget against the binary that ships
+      - name: Run the restic lane on the backup image's restic
+        env:
+          BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
+        run: |
+          container=$(docker create "$BACKUP")
+          docker cp "$container:/usr/local/bin/restic" "$RUNNER_TEMP/restic"
+          docker rm "$container" > /dev/null
+          NIXIE_RESTIC_BINARY="$RUNNER_TEMP/restic" bun run test:restic
+
       # the release's assets stage on the rehearsal digests, with the summaries the notes stage
       # writes: every image that release.json names must resolve its tag to its digest, and the
       # upload script runs against a stand-in for gh
@@ -174,6 +205,7 @@ jobs:
           CONVERSATION:
             ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
           FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
+          BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
           NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
           WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
         run: |
@@ -182,7 +214,7 @@ jobs:
             > /dev/null
           bun apps/server/src/run-release-manifest.ts --version 0.0.0-rehearsal \
             --commit "$GITHUB_SHA" --server "$NIXIE" --web "$WEB" --conversation "$CONVERSATION" \
-            --fetch "$FETCH" --migrations "$RUNNER_TEMP/migrations.json" \
+            --fetch "$FETCH" --backup "$BACKUP" --migrations "$RUNNER_TEMP/migrations.json" \
             --config-schema "$RUNNER_TEMP/config-schema.json" --out "$RUNNER_TEMP/release.json"
           jq -r '.images[], .sandboxImages[]' "$RUNNER_TEMP/release.json" | while read -r ref; do
             named=$(docker buildx imagetools inspect "${ref%@*}" --format '{{json .Manifest}}' | jq -r .digest)

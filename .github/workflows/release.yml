@@ -1,10 +1,11 @@
 # Cuts a nixie release. On every push to main, release-please opens or updates the release pull
 # request, and merging it creates the v<version> tag and the GitHub release. The release commit then
-# goes through one stage per job, each after the one before succeeds: the sandbox images, the nixie
-# image with their digests, the web image, the migrations and the config schema in the release
+# goes through one stage per job, each after the one before succeeds: the sandbox images and the
+# backup image, the nixie image with the sandbox digests, the web image, the migrations and the config schema in the release
 # notes, a pull of each sandbox image with no credentials, the version tag on every image, and the
 # counting proxy binary, release.json, config.schema.json and definitions-manifest.schema.json
-# assets, and last the Kubernetes component and the API contract on npm at the release's version.
+# assets, and last the Kubernetes component, with the backup image as its backup job's default, and
+# the API contract on npm at the release's version.
 #
 # A manual run on a release tag rebuilds that release from its commit. Re-running the failed
 # jobs of a run resumes from the stage that failed with the same digests.
@@ -122,7 +123,7 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           VERSION: ${{ steps.release.outputs.version }}
         run: |
-          for image in nixie-conversation nixie-fetch nixie nixie-web; do
+          for image in nixie-conversation nixie-fetch nixie-backup nixie nixie-web; do
             if docker buildx imagetools inspect "ghcr.io/$OWNER/$image:$VERSION" > /dev/null 2>&1; then
               echo "::error::ghcr.io/$OWNER/$image:$VERSION already exists, so the release refuses to rebuild it"
               exit 1
@@ -153,6 +154,19 @@ jobs:
     with:
       image: nixie-fetch
       dockerfile: guests/fetch/Dockerfile
+      sha: ${{ needs.resolve.outputs.sha }}
+
+  backup:
+    needs: resolve
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/release-image.yml
+    with:
+      image: nixie-backup
+      dockerfile: apps/backup-job/Dockerfile
       sha: ${{ needs.resolve.outputs.sha }}
 
   sandbox-manifest:
@@ -206,7 +220,7 @@ jobs:
       sha: ${{ needs.resolve.outputs.sha }}
 
   notes:
-    needs: [resolve, conversation, fetch, nixie, web]
+    needs: [resolve, conversation, fetch, backup, nixie, web]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -240,6 +254,7 @@ jobs:
           SHA: ${{ needs.resolve.outputs.sha }}
           CONVERSATION: ${{ needs.conversation.outputs.ref }}
           FETCH: ${{ needs.fetch.outputs.ref }}
+          BACKUP: ${{ needs.backup.outputs.ref }}
           NIXIE: ${{ needs.nixie.outputs.ref }}
           WEB: ${{ needs.web.outputs.ref }}
         run: |
@@ -271,7 +286,7 @@ jobs:
             echo
             echo '## Images'
             echo
-            printf -- "- \`%s\`\n" "$CONVERSATION" "$FETCH" "$NIXIE" "$WEB"
+            printf -- "- \`%s\`\n" "$CONVERSATION" "$FETCH" "$BACKUP" "$NIXIE" "$WEB"
           } >> "$body"
           gh release edit "$TAG" --notes-file "$body"
           cat "$body" >> "$GITHUB_STEP_SUMMARY"
@@ -294,7 +309,7 @@ jobs:
         run: .github/scripts/check-public-pulls.sh "$CONVERSATION" "$FETCH"
 
   tag:
-    needs: [resolve, check-pulls, conversation, fetch, nixie, web]
+    needs: [resolve, check-pulls, conversation, fetch, backup, nixie, web]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -319,13 +334,15 @@ jobs:
           VERSION: ${{ needs.resolve.outputs.version }}
           CONVERSATION: ${{ needs.conversation.outputs.ref }}
           FETCH: ${{ needs.fetch.outputs.ref }}
+          BACKUP: ${{ needs.backup.outputs.ref }}
           NIXIE: ${{ needs.nixie.outputs.ref }}
           WEB: ${{ needs.web.outputs.ref }}
-        run: .github/scripts/tag-images.sh "$VERSION" "$CONVERSATION" "$FETCH" "$WEB" "$NIXIE"
+        run: |
+          .github/scripts/tag-images.sh "$VERSION" "$CONVERSATION" "$FETCH" "$BACKUP" "$WEB" "$NIXIE"
 
   # last, so a reader that finds release.json finds every image under its version tag
   assets:
-    needs: [resolve, notes, tag, conversation, fetch, nixie, web]
+    needs: [resolve, notes, tag, conversation, fetch, backup, nixie, web]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -367,6 +384,7 @@ jobs:
           SHA: ${{ needs.resolve.outputs.sha }}
           CONVERSATION: ${{ needs.conversation.outputs.ref }}
           FETCH: ${{ needs.fetch.outputs.ref }}
+          BACKUP: ${{ needs.backup.outputs.ref }}
           NIXIE: ${{ needs.nixie.outputs.ref }}
           WEB: ${{ needs.web.outputs.ref }}
           MIGRATIONS: ${{ needs.notes.outputs.migrations }}
@@ -376,7 +394,7 @@ jobs:
           printf '%s\n' "$CONFIG_SCHEMA" > "$RUNNER_TEMP/config-schema.json"
           bun apps/server/src/run-release-manifest.ts --version "$VERSION" --commit "$SHA" \
             --server "$NIXIE" --web "$WEB" --conversation "$CONVERSATION" --fetch "$FETCH" \
-            --migrations "$RUNNER_TEMP/migrations.json" \
+            --backup "$BACKUP" --migrations "$RUNNER_TEMP/migrations.json" \
             --config-schema "$RUNNER_TEMP/config-schema.json" --out "$RUNNER_TEMP/release.json"
           .github/scripts/publish-release-assets.sh "$TAG" "$RUNNER_TEMP/release.json"
           {
@@ -390,7 +408,7 @@ jobs:
   # after the assets, so a package of a version reaches npm only once every image of that version
   # carries its tag; each package publishes in its own job, so one that fails leaves the other's
   npm-package:
-    needs: [resolve, assets]
+    needs: [resolve, assets, backup]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -425,4 +443,5 @@ jobs:
         env:
           PACKAGE: ${{ matrix.package }}
           VERSION: ${{ needs.resolve.outputs.version }}
+          BACKUP_IMAGE: ${{ needs.backup.outputs.ref }}
         run: .github/scripts/publish-npm-package.sh "$PACKAGE" "$VERSION"

@@ -4,7 +4,9 @@
 #   check-publish-npm-package.sh <package dir>
 # It checks that a package npm does not hold publishes nothing and passes with a warning, that a
 # version npm holds already publishes nothing, that an absent version publishes the packed tarball
-# with provenance, and that each run leaves package.json as it was.
+# with provenance, and that each run leaves package.json as it was. For the Kubernetes component it
+# passes an example backup image, and checks that the published build runs it as the backup job's
+# default and that each run leaves the image's source as it was.
 set -euo pipefail
 
 package=$1
@@ -47,12 +49,15 @@ exit 1
 STUB
 chmod +x "$work/bin/npm"
 
+backup_digest="sha256:$(printf '4%.0s' {1..64})"
+
 # run_publish <case> [<version npm holds>]: runs the release path in its own stand-in directory
 run_publish() {
   mkdir -p "$work/$1/published"
   STUB_DIR="$work/$1" PUBLISHED="${2:-}" PATH="$work/bin:$PATH" \
+    BACKUP_IMAGE="ghcr.io/example/nixie-backup@$backup_digest" \
     .github/scripts/publish-npm-package.sh "$package" 1.2.3 > "$work/$1/out.log"
-  git diff --quiet -- "$package/package.json"
+  git diff --quiet -- "$package/package.json" "$package/src"
 }
 
 NO_PACKAGE=1 run_publish no-package
@@ -71,5 +76,9 @@ diff <(printf '%s\n' \
   "view $name@1.2.3 version" \
   "publish $tarball --access public --provenance") "$work/absent/calls.log"
 [[ $(tar -xzOf "$work/absent/published/$tarball" package/package.json | jq -r .version) == 1.2.3 ]]
+if [[ $name == @heynixie/pulumi-k8s ]]; then
+  tar -xzOf "$work/absent/published/$tarball" package/dist/index.js |
+    grep -qF "ghcr.io/example/nixie-backup:1.2.3@$backup_digest"
+fi
 
 echo "the release path for $name skips a package npm lacks and a version npm holds, and publishes an absent version with provenance"
