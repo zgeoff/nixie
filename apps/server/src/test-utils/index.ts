@@ -2,6 +2,7 @@ export { buildTestConversationTools } from './build-test-conversation-tools';
 export { createTestClient } from './create-test-client';
 export type { NixieOperationArgs } from '../build-nixie-operation-schemas';
 export { readDataFiles } from './read-data-files';
+export { readTestBundle } from './read-test-bundle';
 export { readTestRecords } from './read-test-records';
 export { runHostCommand } from './run-host-command';
 export { sendClientMessage } from './send-client-message';

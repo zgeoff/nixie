@@ -223,6 +223,4 @@ test.skipIf(isResticMissing)(
     expect(blobs.length).toBeGreaterThan(0);
     expect(blobs).toSatisfyAll((blob: Buffer) => !blob.includes(Buffer.from(forgottenRow.wrapped)));
   },
-  // oxlint-disable-next-line zgeoff/max-test-timeout -- 19 s on CI; floor: about 30 restic repo opens, each a scrypt key derivation that restic calibrates to 500 ms
-  { timeout: 40_000 },
 );

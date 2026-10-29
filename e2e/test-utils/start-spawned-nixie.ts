@@ -7,7 +7,12 @@ import type { LogRecord } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
 import type { LogLevel } from '@heynixie/logger';
 import type { BootFiles, NixieOperationArgs } from '@heynixie/server/test-utils';
-import { readDataFiles, readTestRecords, writeBootFiles } from '@heynixie/server/test-utils';
+import {
+  readDataFiles,
+  readTestBundle,
+  readTestRecords,
+  writeBootFiles,
+} from '@heynixie/server/test-utils';
 import type {
   AdvanceOptions,
   CrashHarness,
@@ -120,7 +125,6 @@ export interface SpawnedNixieOptions {
 // wait ends inside the e2e lane's 15 s limit per test, so a slow turn fails on the wait it missed.
 const recordTimeoutMs = 10_000;
 const startMs = 1_000_000;
-const serverEntry = join(import.meta.dir, '../../apps/server/src/main.ts');
 
 interface Launch {
   readonly entry: string;
@@ -148,8 +152,12 @@ export async function startSpawnedNixie(options: SpawnedNixieOptions = {}): Prom
 
   const reader = startLogReader(files.dataDir, stack);
 
+  // a start from source transpiles the whole server each time, so each start runs the test bundle
+  // that the run builds once
+  const testBundle = await readTestBundle(true);
+
   const launch: Launch = {
-    entry: options.release ?? serverEntry,
+    entry: options.release ?? testBundle.entry,
     args: buildServeArgs(files),
     env: { NIXIE_TEST_PROVIDER_URL: doubles.provider.url },
     files,

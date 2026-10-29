@@ -7,6 +7,7 @@ import { startTestLog } from '@heynixie/log/test-utils';
 import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { backupSetManifestSchema, parseBackupFile, readFileSHA256 } from '@heynixie/wire';
 import { sql } from 'kysely';
+import { buildStubFailingStorage } from './test-utils/build-stub-failing-storage';
 import { writeSnapshotSet } from './write-snapshot-set';
 
 async function setupTest() {
@@ -115,4 +116,25 @@ test('it removes the copies and abandons the set when the copy fails before its 
   expect(failure).toMatchObject({ message: 'crashed at backup.set.copied' });
   expect(staging).toStrictEqual([]);
   expect(rows.rows).toStrictEqual([{ state: 'abandoned' }]);
+});
+
+test('it keeps a set whose marker exists when a later step fails, for the job may be shipping it', async () => {
+  const ctx = await setupTest();
+
+  const context = {
+    writer: ctx.writer,
+    storage: buildStubFailingStorage(localDataStorage, 'complete'),
+  };
+
+  const failure = await writeSnapshotSet(context, 'scheduled').then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  const files = await readdir(join(ctx.dataDir, 'backup', '000000000001'));
+  const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);
+
+  expect(failure).toMatchObject({ message: 'the stub fails the fsync of complete' });
+  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'manifest.json', 'complete']);
+  expect(rows.rows).toStrictEqual([{ state: 'staging' }]);
 });

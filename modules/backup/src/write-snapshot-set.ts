@@ -33,8 +33,9 @@ export async function writeSnapshotSet(
   invariant(created, 'each set takes a sequence above every set directory in staging');
 
   // the schedule tries again after a failed copy, so a failed set leaves neither its copies nor a
-  // staging row behind
-  const manifest = await writeSetFiles(context, kind, started, directory).catch(
+  // staging row behind; once the marker exists the job may be shipping the set, so a later failure
+  // leaves it for the restart to reconcile
+  const manifest = await writeSetCopies(context, kind, started, directory).catch(
     async (error: unknown) => {
       await files.removeFile(directory);
 
@@ -43,6 +44,12 @@ export async function writeSnapshotSet(
       throw error;
     },
   );
+
+  const markerPath = join(directory, backupSetLayout.marker);
+
+  await files.writeFile(markerPath, '');
+  await files.writeFileToDisk(markerPath);
+  await files.writeDirectoryToDisk(directory);
 
   await writeBackupSetState(context.writer, started.sequence, 'staged');
 
@@ -96,7 +103,7 @@ async function createSetRow(
   });
 }
 
-async function writeSetFiles(
+async function writeSetCopies(
   context: BackupContext,
   kind: BackupSetKind,
   started: StartedSet,
@@ -137,12 +144,6 @@ async function writeSetFiles(
 
   await files.writeFile(manifestPath, formatBackupFile(manifest));
   await files.writeFileToDisk(manifestPath);
-  await files.writeDirectoryToDisk(directory);
-
-  const markerPath = join(directory, backupSetLayout.marker);
-
-  await files.writeFile(markerPath, '');
-  await files.writeFileToDisk(markerPath);
   await files.writeDirectoryToDisk(directory);
 
   return manifest;

@@ -92,7 +92,9 @@ Beside the browser suites, five lanes run suites that need a real system the par
 host. `bun run test` leaves each one out of the parallel run, and the Agent SDK and e2e lanes'
 scripts run their files one at a time. The imp and model API lanes run outside CI, as [Runs](#runs)
 gives. The restic lane runs in the Images workflow, against the restic binary that the backup image
-carries, and a local run skips it unless `NIXIE_RESTIC_BINARY` names a restic.
+carries, and a local run skips it unless `NIXIE_RESTIC_BINARY` names a restic. Each
+restic command derives its repository key with scrypt, which restic tunes to take 500 ms, so the
+lane's limit holds about twice the time its suite measured on CI.
 
 | Lane      | Files                    | Real system                                                   | Script           | Limit per test     |
 | --------- | ------------------------ | ------------------------------------------------------------- | ---------------- | ------------------ |
@@ -100,7 +102,7 @@ carries, and a local run skips it unless `NIXIE_RESTIC_BINARY` names a restic.
 | e2e       | every other `e2e/` suite | The built nixie or web client, driven from outside            | `test:e2e`       | 15 s               |
 | imp       | `*.imp.test.ts`          | A real impd on a host with `/dev/kvm`                         | `test:imp`       | 14 s               |
 | model API | `*.model-api.test.ts`    | The live model, through the pinned Agent SDK                  | SDK contract run | 120 s              |
-| restic    | `*.restic.test.ts`       | The restic binary that the backup image pins                  | `test:restic`    | 15 s               |
+| restic    | `*.restic.test.ts`       | The restic binary that the backup image pins                  | `test:restic`    | 40 s               |
 
 An Agent SDK suite, in a guest or in `evals/test-utils`, never calls the live model; the SDK
 contract suite in `evals/sdk-contract` does. A test in a lane sets no limit of its own, and a slow
