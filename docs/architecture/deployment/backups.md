@@ -76,9 +76,11 @@ the data snapshots.
 ## Where the job runs
 
 On Kubernetes, the [Pulumi component](kubernetes.md#the-pulumi-component) runs the job as a CronJob
-that mounts only the staging folder. In the Compose recipe, the job runs as a container that loops
-and mounts the same folder as a subpath of the data volume. Both run the job as nixie's user, and
-both take the backup repositories and passwords from a source that nixie's container never mounts.
+that mounts only the staging folder, as nixie's user, and takes the backup repositories and
+passwords from a secret that nixie's container never mounts. The reference Compose recipe runs no
+backup job. Its CI overlay runs the job as a container that loops and mounts the staging folder as a
+subpath of the data volume, as the [Compose recipe's README](../../../deploy/compose/README.md)
+describes.
 
 ## Receipts in nixie
 
