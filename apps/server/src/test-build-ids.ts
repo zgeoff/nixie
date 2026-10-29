@@ -30,6 +30,7 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'writer.publish.inside': 'writer.publish.inside',
   'writer.publish.before': 'writer.publish.before',
   'writer.publish.after': 'writer.publish.after',
+  'backup.set.copied': 'backup.set.copied',
 };
 
 export const testBuildIDs: readonly string[] = [

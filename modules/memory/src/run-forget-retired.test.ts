@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { createMemoryItem } from './test-utils/create-memory-item';
-import { startFaultPointFailure } from './test-utils/start-fault-point-failure';
 import { startFaultPointHold } from './test-utils/start-fault-point-hold';
 import { startNextTestMemory } from './test-utils/start-next-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';

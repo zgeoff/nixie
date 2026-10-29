@@ -23,6 +23,8 @@ export type { DataRestore, DataRestoreOptions } from './restore-data-backup';
 export { restoreDataBackup } from './restore-data-backup';
 export type { DataBackup, DataBackupOptions } from './write-data-backup';
 export { writeDataBackup } from './write-data-backup';
+export type { DataStorage } from './data-storage';
+export { writeDatabasePair } from './write-database-pair';
 export { writeKeyStoreCheckpoint } from './write-key-store-checkpoint';
 export { requireWriterEpoch } from './require-writer-epoch';
 export type { LogReset, LogResetOptions } from './run-log-reset';
