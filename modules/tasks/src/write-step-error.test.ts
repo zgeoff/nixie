@@ -193,3 +193,29 @@ test('it fails a task whose pause waited on the step that used its last try', as
 
   expect(task.state).toBe('failed');
 });
+
+test('it runs a step of a task that failed while its pause waited, once the task restarts', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
+  await writeTaskControl(ctx.context, { taskID: claim.lease.workID, control: 'pause' });
+
+  await writeStepError(ctx.context, claim, {
+    error: new Error('the model profile is unreachable'),
+    maxStepErrors: 1,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  await writeTaskControl(ctx.context, { taskID: claim.lease.workID, control: 'restart' });
+
+  const next = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'pause_requested'])
+    .executeTakeFirstOrThrow();
+
+  expect(next?.lease.workID).toBe(claim.lease.workID);
+  expect(task).toStrictEqual({ state: 'running', pause_requested: 0 });
+});

@@ -137,6 +137,7 @@ function buildTaskUpdate(
       started_step_key: null,
       step_errors: 0,
       session_boundary: committed.sessionBoundary,
+      pause_requested: 0,
     }))
     .with({ kind: 'task.step_interrupted' }, () => ({ started_step_key: null }))
     .with({ kind: 'task.step_errored' }, (errored) => ({
@@ -144,9 +145,10 @@ function buildTaskUpdate(
       started_step_key: null,
       step_errors: errored.errors,
       claimable_at: errored.claimableAt,
+      pause_requested: 0,
     }))
     .with({ kind: 'task.revived' }, () => ({ state: 'ready', step_errors: 0, claimable_at: 0 }))
-    .with({ kind: 'task.lease_expired' }, () => ({ state: 'ready' }))
+    .with({ kind: 'task.lease_expired' }, () => ({ state: 'ready', pause_requested: 0 }))
     .with({ kind: 'task.pause_requested' }, () => ({ pause_requested: 1 }))
     .with({ kind: 'task.paused' }, (paused) => ({
       state: 'paused',
