@@ -1,5 +1,4 @@
-import type { Writer } from '@heynixie/log';
-import type { BackupTables } from './types';
+import type { BackupTables, BackupWriter } from './types';
 
 export interface BackupDue {
   readonly isForgetDue: boolean;
@@ -10,7 +9,7 @@ export interface BackupDue {
 // A forget deletes its key before it writes its forgotten record, so a set whose copy started after
 // that record lacks the key. A failed set counts too, so a backend that stays down fails one set
 // per interval rather than one per pass.
-export async function readBackupDue(writer: Writer): Promise<BackupDue> {
+export async function readBackupDue(writer: BackupWriter): Promise<BackupDue> {
   const db = writer.db.$extendTables<BackupTables>();
 
   const newest = await db

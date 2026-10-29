@@ -162,6 +162,33 @@ test('it selects the adapter it names', async () => {
   expect(config.sandbox).toStrictEqual({ adapter: 'imp' });
 });
 
+test('it keeps backups off unless the test asks for them', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+  });
+
+  const config = await loadDeploymentConfig(files.configPath);
+
+  expect(config.backup).toStrictEqual({ isEnabled: false, intervalMs: 3_600_000 });
+});
+
+test('it turns backups on when the test asks for them', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    isBackupOn: true,
+  });
+
+  const config = await loadDeploymentConfig(files.configPath);
+
+  expect(config.backup).toStrictEqual({ isEnabled: true, intervalMs: 3_600_000 });
+});
+
 test('it appends the extra lines to the secrets file', async () => {
   const ctx = await setupTest();
 

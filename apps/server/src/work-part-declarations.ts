@@ -14,6 +14,7 @@ import type { ServerPartValues } from './server-part-values';
 import { startDefinitionsExports } from './start-definitions-exports';
 import { startRunners } from './start-runners';
 import { startSeedPoll } from './start-seed-poll';
+import { startServerBackups } from './start-server-backups';
 import type { AnyPartDeclaration } from './types';
 import { writeStartRecord } from './write-start-record';
 
@@ -124,6 +125,11 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         logEvent: parts.log,
       });
     },
+  },
+  {
+    name: 'backups',
+    needs: ['server_parts', 'start_record'],
+    start: (reader) => startServerBackups(reader.get('server_parts')),
   },
   {
     name: 'ready',

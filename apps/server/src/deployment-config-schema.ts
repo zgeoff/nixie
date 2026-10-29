@@ -1,4 +1,5 @@
 import { actionsConfigSchema } from '@heynixie/actions';
+import { backupConfigSchema } from '@heynixie/backup';
 import { timeConfigSchema, webFetchConfigSchema } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
 import {
@@ -29,6 +30,7 @@ export const deploymentConfigSchema = z
     memory: memoryConfigSchema.default(memoryConfigSchema.parse({})),
     memory_consolidation: consolidationConfigSchema.default(consolidationConfigSchema.parse({})),
     skills: skillsConfigSchema.default(skillsConfigSchema.parse({})),
+    backup: backupConfigSchema.default(backupConfigSchema.parse({})),
   })
   .superRefine((config, issues) => {
     if (config.sandbox.adapter === 'imp' && config.imp === undefined) {

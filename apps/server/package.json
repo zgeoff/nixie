@@ -16,6 +16,7 @@
     "@heynixie/actions": "workspace:*",
     "@heynixie/api": "workspace:*",
     "@heynixie/async": "workspace:*",
+    "@heynixie/backup": "workspace:*",
     "@heynixie/clock": "workspace:*",
     "@heynixie/compaction": "workspace:*",
     "@heynixie/connectors": "workspace:*",

@@ -1,0 +1,5 @@
+# The binaries the nixie-backup image holds, one per line: name, version, download URL and SHA-256.
+# restic ships each release as a bzip2 archive, so the checksum is the archive's, as restic's
+# SHA256SUMS file records it. The image build downloads each archive, checks it with sha256sum -c,
+# and only then unpacks it. An update changes the version, the URL and the checksum together.
+restic 0.19.1 https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_linux_amd64.bz2 f415415624dcc452f2a02b8c33641791a8c6d6d3b65bbb3543fcf9a25151585c
