@@ -220,9 +220,9 @@ test.skipIf(isResticMissing)(
     expect(restoredKeyRows.map((row) => row.key_id)).toStrictEqual([neighbour.keyID]);
     expect(restoredPayloads).toStrictEqual([payload, payload]);
     expect(new TextDecoder().decode(neighbourPlain)).toBe('Prefers window seats');
-    expect(blobs).not.toBeEmpty();
+    expect(blobs.length).toBeGreaterThan(0);
     expect(blobs).toSatisfyAll((blob: Buffer) => !blob.includes(Buffer.from(forgottenRow.wrapped)));
   },
-  // oxlint-disable-next-line zgeoff/max-test-timeout -- floor: about 30 restic repo opens, each a scrypt key derivation that restic calibrates to 500 ms
-  { timeout: 60_000 },
+  // oxlint-disable-next-line zgeoff/max-test-timeout -- 19 s on CI; floor: about 30 restic repo opens, each a scrypt key derivation that restic calibrates to 500 ms
+  { timeout: 40_000 },
 );
