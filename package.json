@@ -103,7 +103,7 @@
     "test:browser": "bash scripts/run-memory-capped.sh 8192 bun apps/web/src/test-utils/run-browser-lane.ts --parallel=1 --timeout=10000 --preload ./apps/web/src/test-utils/start-browser.ts .browser.test.ts",
     "test:agent-sdk": "bun test --parallel=1 .agent-sdk.test.ts",
     "test:e2e": "bun run models && bun test --parallel=1 --timeout=15000 e2e/",
-    "typecheck": "tsrs --noEmit && turbo run typecheck",
+    "typecheck": "workers=$(bun scripts/read-worker-count.ts) && tsrs --noEmit --checkers $workers && turbo run typecheck --concurrency=$workers -- --checkers $workers",
     "files:branch": "bun scripts/read-branch-files.ts",
     "lint:files": "oxlint --no-error-on-unmatched-pattern",
     "test:related": "bun scripts/run-related-tests.ts",
