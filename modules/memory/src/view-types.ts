@@ -39,6 +39,8 @@ export type ViewItem = ViewText & {
   readonly state: MemoryState;
   readonly isPinned: boolean;
 
+  readonly isSensitive: boolean;
+
   readonly subject: MemorySubject;
   readonly version: number;
   readonly origin: MemoryOrigin;

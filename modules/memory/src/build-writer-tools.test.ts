@@ -46,7 +46,7 @@ test('it takes the subject owner or shared and an end time on remember and edit,
   );
 
   expect(inputs).toStrictEqual([
-    ['memory.remember', ['subject', 'text', 'quote', 'sourceID', 'until'], false],
+    ['memory.remember', ['subject', 'text', 'quote', 'sourceID', 'until', 'isSensitive'], false],
     ['memory.edit', ['itemID', 'subject', 'text', 'quote', 'sourceID', 'until'], false],
     ['memory.retire', ['itemID', 'quote', 'sourceID'], false],
     ['memory.flag-self-note', ['text', 'sourceID'], false],
@@ -155,6 +155,66 @@ test('it stages a new item that cites your message in the batch, with its subjec
       quote: 'I keep bees',
       sourceSequence: 12,
       target: null,
+    },
+  ]);
+});
+
+test('it stages a new item marked sensitive when the call asks', async () => {
+  const ctx = await setupTest();
+
+  const tool = ctx.registry.findTool('memory.remember');
+
+  invariant(tool);
+
+  const staged = ctx.staging.open({
+    sources: new Map([
+      [
+        12,
+        {
+          sequence: 12,
+          text: 'My new number is 0400 118 552.',
+          spans: [],
+          sentAt: Date.parse('2026-10-19T09:00:00Z'),
+          timeZone: null,
+        },
+      ],
+    ]),
+    shown: new Map(),
+    startedAt: Date.parse('2026-10-19T10:00:00Z'),
+  });
+
+  await tool.definition.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.remember',
+      input: {
+        subject: 'owner',
+        text: 'The owner can be reached on 0400 118 552.',
+        quote: 'My new number is 0400 118 552',
+        sourceID: 12,
+        isSensitive: true,
+      },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'memory-writer',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  expect(staged.close()).toStrictEqual([
+    {
+      op: 'remember',
+      subject: 'owner',
+      text: 'The owner can be reached on 0400 118 552.',
+      quote: 'My new number is 0400 118 552',
+      sourceSequence: 12,
+      target: null,
+      isSensitive: true,
     },
   ]);
 });

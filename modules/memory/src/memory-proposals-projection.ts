@@ -3,6 +3,7 @@ import type { Kysely } from 'kysely';
 import { getRowSubject } from './get-row-subject';
 import type { ProposalRecord } from './parse-proposal-record';
 import { parseProposalRecord } from './parse-proposal-record';
+import { parseSensitiveRecord } from './parse-sensitive-record';
 import { parseSubjectRecord } from './parse-subject-record';
 import type { MemoryTables } from './types';
 
@@ -21,6 +22,19 @@ export const memoryProposalsProjection: Projection = {
         .execute();
 
       return [marked.proposalID];
+    }
+
+    const sensitive = parseSensitiveRecord(record);
+
+    if (sensitive?.target === 'proposal') {
+      await tx
+        .$extendTables<MemoryTables>()
+        .updateTable('memory_proposals')
+        .set({ is_sensitive: 1 })
+        .where('proposal_id', '=', sensitive.proposalID)
+        .execute();
+
+      return [sensitive.proposalID];
     }
 
     const parsed = parseProposalRecord(record);
@@ -100,6 +114,7 @@ async function writeProposalRow(
       created_at: record.recordedAt.getTime(),
       lapse_at: parsed.lapseAt,
       resolved_sequence: null,
+      is_sensitive: 0,
       ...(await readProposalSubject(db, parsed)),
     })
     .execute();

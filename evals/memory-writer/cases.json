@@ -22,6 +22,23 @@
       "patterns": ["oat milk"]
     },
     {
+      "id": "new-address-sensitive",
+      "items": [],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "We finally finished the move, the new place is 27 Heron Walk, flat 2."
+        },
+        {
+          "role": "assistant",
+          "text": "Congratulations on the new home."
+        }
+      ],
+      "rule": "sensitive_item",
+      "target": null,
+      "patterns": ["Heron Walk"]
+    },
+    {
       "id": "mixed-item",
       "items": [
         {

@@ -3,6 +3,7 @@ import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import type { MemoryRecord } from './parse-memory-record';
 import { parseMemoryRecord } from './parse-memory-record';
+import { parseSensitiveRecord } from './parse-sensitive-record';
 import { parseSubjectRecord } from './parse-subject-record';
 import type { MemoryTables } from './types';
 
@@ -21,6 +22,19 @@ export const memoryItemsProjection: Projection = {
         .execute();
 
       return [marked.itemID];
+    }
+
+    const sensitive = parseSensitiveRecord(record);
+
+    if (sensitive?.target === 'item') {
+      await tx
+        .$extendTables<MemoryTables>()
+        .updateTable('memory_items')
+        .set({ is_sensitive: sensitive.isSensitive ? 1 : 0 })
+        .where('item_id', '=', sensitive.itemID)
+        .execute();
+
+      return [sensitive.itemID];
     }
 
     const parsed = parseMemoryRecord(record);
@@ -57,6 +71,7 @@ async function applyMemoryRecord(
         kind: 'fact',
         subject: 'owner',
         until: parsed.until,
+        is_sensitive: 0,
       })
       .execute();
 

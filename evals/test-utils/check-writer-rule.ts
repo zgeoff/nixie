@@ -9,6 +9,8 @@ const ruleChecks: Readonly<
   Record<WriterCase['rule'], (writerCase: CheckedCase, call: CheckedCall) => string | null>
 > = {
   owner_item: (writerCase, call) => checkNewItem(writerCase, call, 'owner'),
+  sensitive_item: (writerCase, call) =>
+    checkNewItem(writerCase, call, 'owner') ?? findUnmarkedItem(call),
   shared_item: (writerCase, call) => checkNewItem(writerCase, call, 'shared'),
   edit_not_add: (writerCase, call) => checkEdit(writerCase, call),
   flag_only: (_writerCase, call) =>
@@ -67,6 +69,14 @@ function findUntilMiss(
   const wanted = expected === null ? 'no end time' : new Date(expected).toISOString();
 
   return `a write ends at ${ended}, not ${wanted}`;
+}
+
+function findUnmarkedItem(call: Pick<WriterCall, 'writes'>): string | null {
+  const unmarked = call.writes.some(
+    (write) => write.op === 'remember' && write.itemID === null && write.isSensitive !== true,
+  );
+
+  return unmarked ? 'it filed a new item it did not mark sensitive' : null;
 }
 
 function checkEdit(

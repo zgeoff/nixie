@@ -145,6 +145,73 @@ test('it unpins an item from the pinned core once the user confirms', async () =
   ).toBeFalse();
 });
 
+test('it marks an item sensitive once the user confirms, and the row shows the mark', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.memoryItems.create({
+    shortID: 'k3m9qa',
+    versions: [{ text: 'Lives at 14 Larkspur Lane, flat 3' }],
+  });
+
+  const rendered = render(<MemoryView />);
+
+  const item = await within(rendered.getByRole('region', { name: 'Active' })).findByRole(
+    'listitem',
+    { name: 'k3m9qa' },
+  );
+
+  await ctx.user.click(within(item).getByRole('button', { name: 'Mark sensitive' }));
+
+  await ctx.user.click(
+    within(within(item).getByRole('group', { name: 'Mark this item sensitive' })).getByRole(
+      'button',
+      { name: 'Mark sensitive' },
+    ),
+  );
+
+  await within(item).findByText(/· sensitive/u);
+
+  expect(
+    store.memoryItems.findFirst((query) => query.where({ shortID: 'k3m9qa' }))?.isSensitive,
+  ).toBeTrue();
+});
+
+test('it clears the sensitive mark of an item once the user confirms', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.memoryItems.create({
+    isSensitive: true,
+    shortID: 'k3m9qa',
+    versions: [{ text: 'Lives at 14 Larkspur Lane, flat 3' }],
+  });
+
+  const rendered = render(<MemoryView />);
+
+  const item = await within(rendered.getByRole('region', { name: 'Active' })).findByRole(
+    'listitem',
+    { name: 'k3m9qa' },
+  );
+
+  await ctx.user.click(within(item).getByRole('button', { name: 'Clear sensitive' }));
+
+  await ctx.user.click(
+    within(within(item).getByRole('group', { name: 'Clear the sensitive mark' })).getByRole(
+      'button',
+      { name: 'Clear sensitive' },
+    ),
+  );
+
+  await within(item).findByRole('button', { name: 'Mark sensitive' });
+
+  expect(
+    store.memoryItems.findFirst((query) => query.where({ shortID: 'k3m9qa' }))?.isSensitive,
+  ).toBeFalse();
+});
+
 test('it changes nothing and says why when the item changed after the confirmation opened', async () => {
   const ctx = setupTest();
 
@@ -396,7 +463,9 @@ test('it offers no change for an item a forget began, even while its text still 
   );
 
   expect(
-    within(item).queryByRole('button', { name: /^(?:Retire|Restore|Pin|Unpin)$/u }),
+    within(item).queryByRole('button', {
+      name: /^(?:Retire|Restore|Pin|Unpin|Mark sensitive|Clear sensitive)$/u,
+    }),
   ).toBeNull();
 });
 

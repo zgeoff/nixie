@@ -16,6 +16,8 @@ export interface WriterProposalRequest {
   readonly quote: string;
 
   readonly subject?: WriterSubject;
+
+  readonly isSensitive?: boolean;
 }
 
 export async function createWriterProposal(
@@ -51,6 +53,7 @@ export async function createWriterProposal(
         quote: request.quote,
         sourceSequence: planned.bounds.end,
         itemID: null,
+        ...(request.isSensitive === undefined ? {} : { isSensitive: request.isSensitive }),
       }),
     },
     {

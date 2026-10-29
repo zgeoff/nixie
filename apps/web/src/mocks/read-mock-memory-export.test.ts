@@ -29,6 +29,7 @@ test('it reads a readable item with every version and a forgotten item as only i
         shortID: active.shortID,
         state: 'active',
         isPinned: false,
+        isSensitive: false,
         subject: 'owner',
         versions: [
           {
@@ -54,19 +55,100 @@ test('it reads a readable item with every version and a forgotten item as only i
       },
       { itemID: forgotten.itemID, forgottenAt: '2026-10-13T18:31:00.000Z' },
     ],
+    moments: [],
   });
 });
 
-test('it heads the file with schema version 4, the export time and the mock snapshot hash', () => {
+test('it reads the sensitive mark of an item', async () => {
+  await store.memoryItems.create({
+    isSensitive: true,
+    versions: [{ text: 'The door code for the spare key box is 4417' }],
+  });
+
+  const chunks = readMockMemoryExport(new Date('2026-10-14T08:00:00.000Z'));
+
+  expect(JSON.parse(chunks.join(''))).toMatchObject({ items: [{ isSensitive: true }] });
+});
+
+test('it reads a destroyed moment as only its ID and its destroy time', async () => {
+  const destroyed = await store.moments.create({ state: 'destroyed' });
+
+  const file: unknown = JSON.parse(readMockMemoryExport(new Date('2026-10-14T08:00:00Z')).join(''));
+
+  expect(file).toStrictEqual({
+    header: expect.toBeObject(),
+    items: [],
+    moments: [{ momentID: destroyed.momentID, destroyedAt: null }],
+  });
+});
+
+test('it reads a kept moment with its span', async () => {
+  const message = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'the allotment plot is number 14' },
+    recordedAt: new Date('2026-10-12T09:00:00.000Z'),
+    sequence: 41,
+  });
+
+  const kept = await store.moments.create({
+    firstSequence: message.sequence,
+    keptAt: new Date('2026-10-12T09:05:00.000Z'),
+    keptBy: 'owner',
+    lastSequence: message.sequence,
+    reflections: [],
+    title: 'The allotment plot decision',
+  });
+
+  const file: unknown = JSON.parse(readMockMemoryExport(new Date('2026-10-14T08:00:00Z')).join(''));
+
+  expect(file).toStrictEqual({
+    header: expect.toBeObject(),
+    items: [],
+    moments: [
+      {
+        momentID: kept.momentID,
+        shortID: kept.shortID,
+        state: 'active',
+        thread: 'conversation',
+        firstSequence: 41,
+        lastSequence: 41,
+        keptBy: 'owner',
+        keptThread: null,
+        keptModel: null,
+        keptAt: '2026-10-12T09:05:00.000Z',
+        editedAt: null,
+        title: 'The allotment plot decision',
+        note: null,
+        reflections: [],
+        links: [],
+        records: [
+          {
+            sequence: 41,
+            kind: 'owner_message',
+            recordedAt: '2026-10-12T09:00:00.000Z',
+            source: 'owner',
+            payload: null,
+            decision: null,
+            text: 'the allotment plot is number 14',
+            isGap: false,
+          },
+        ],
+      },
+    ],
+  });
+});
+
+test('it heads the file with schema version 6, the export time and the mock snapshot hash', () => {
   const chunks = readMockMemoryExport(new Date('2026-10-14T08:00:00.000Z'));
 
   expect(JSON.parse(chunks.join(''))).toStrictEqual({
     header: {
-      schemaVersion: 4,
+      schemaVersion: 6,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:mock',
     },
     items: [],
+    moments: [],
   });
 });
 

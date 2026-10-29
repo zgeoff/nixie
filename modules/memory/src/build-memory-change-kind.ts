@@ -97,6 +97,7 @@ async function readNotedItems(
     limit: events.length,
     thread: conversationTaskID,
     isTurnNote: true,
+    excludeSensitive: true,
   });
 
   const items = new Map(result.items.map((item) => [item.itemID, item]));

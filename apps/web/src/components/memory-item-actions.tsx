@@ -2,6 +2,7 @@ import { ORPCError } from '@orpc/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { match } from 'ts-pattern';
 import { css } from '../styled-system/css';
 import type { MemoryItem } from '../types';
 import { useNixieClient } from '../use-nixie-client';
@@ -13,7 +14,7 @@ export interface MemoryItemActionsProps {
   readonly onSettled: (notice: string | null) => void;
 }
 
-type MemoryChange = 'retire' | 'restore' | 'pin' | 'unpin';
+type MemoryChange = 'retire' | 'restore' | 'pin' | 'unpin' | 'mark' | 'unmark';
 
 interface PendingChange {
   readonly change: MemoryChange;
@@ -21,7 +22,14 @@ interface PendingChange {
   readonly version: number;
 }
 
-const labels = { pin: 'Pin', restore: 'Restore', retire: 'Retire', unpin: 'Unpin' };
+const labels = {
+  pin: 'Pin',
+  restore: 'Restore',
+  retire: 'Retire',
+  unpin: 'Unpin',
+  mark: 'Mark sensitive',
+  unmark: 'Clear sensitive',
+};
 
 const controls = css({
   display: 'flex',
@@ -81,15 +89,17 @@ function pickChanges(item: MemoryItem): readonly MemoryChange[] {
     return [];
   }
 
+  const sensitive = item.isSensitive ? 'unmark' : 'mark';
+
   if (item.state === 'retired') {
-    return item.isPinned ? ['restore', 'unpin'] : ['restore'];
+    return item.isPinned ? ['restore', 'unpin', sensitive] : ['restore', sensitive];
   }
 
   if (item.isPinned) {
-    return ['retire', 'unpin'];
+    return ['retire', 'unpin', sensitive];
   }
 
-  return ['retire', 'pin'];
+  return ['retire', 'pin', sensitive];
 }
 
 const questions = {
@@ -97,6 +107,8 @@ const questions = {
   restore: 'Restore this item? Recalls find it again.',
   retire: 'Retire this item? Recalls stop finding it, and you can restore it.',
   unpin: 'Unpin this item? Sessions stop opening with it.',
+  mark: 'Mark this item sensitive? Turns stop bringing it up, and nixie finds it only when a request needs it.',
+  unmark: 'Clear the sensitive mark? Turns bring this item up again when a message matches it.',
 };
 
 interface ChangeConfirmationProps {
@@ -109,6 +121,15 @@ interface ChangeConfirmationProps {
 
   readonly onSettled: (notice: string | null) => void;
 }
+
+const groupLabels = {
+  pin: 'Pin this item',
+  restore: 'Restore this item',
+  retire: 'Retire this item',
+  unpin: 'Unpin this item',
+  mark: 'Mark this item sensitive',
+  unmark: 'Clear the sensitive mark',
+};
 
 const confirmation = css({
   alignItems: 'baseline',
@@ -140,7 +161,7 @@ function ChangeConfirmation(props: ChangeConfirmationProps): ReactNode {
   });
 
   return (
-    <div aria-label={`${labels[props.change]} this item`} className={confirmation} role="group">
+    <div aria-label={groupLabels[props.change]} className={confirmation} role="group">
       <span>{questions[props.change]}</span>
       <button
         disabled={change.isPending}
@@ -168,13 +189,18 @@ async function sendChange(client: NixieClient, props: ChangeConfirmationProps): 
     version: props.version,
   };
 
-  if (props.change === 'retire') {
-    await client.memory.retire(input);
-  } else if (props.change === 'restore') {
-    await client.memory.restore(input);
-  } else {
-    await client.memory.pin({ ...input, isPinned: props.change === 'pin' });
-  }
+  await match(props.change)
+    .with('retire', () => client.memory.retire(input))
+    .with('restore', () => client.memory.restore(input))
+    .with('pin', 'unpin', (change) => client.memory.pin({ ...input, isPinned: change === 'pin' }))
+    .with('mark', 'unmark', (change) =>
+      client.memory.markSensitive({
+        clientActionID: props.actionID,
+        itemID: props.itemID,
+        isSensitive: change === 'mark',
+      }),
+    )
+    .exhaustive();
 }
 
 const refusalNotices: Readonly<Record<string, string>> = {

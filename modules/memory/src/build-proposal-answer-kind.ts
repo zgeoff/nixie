@@ -189,6 +189,7 @@ async function readApprovedTexts(
     limit: versions.length,
     thread: conversationTaskID,
     isTurnNote: true,
+    excludeSensitive: true,
   });
 
   const texts = new Map(

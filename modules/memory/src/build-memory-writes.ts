@@ -2,6 +2,7 @@ import { buildWriterGate } from './build-writer-gate';
 import type { MemoryWrites } from './gate-types';
 import type { StoreParts } from './types';
 import { withFreshChecker } from './with-fresh-checker';
+import { writeCallerSensitiveMark } from './write-caller-sensitive-mark';
 import { writeGatedPin } from './write-gated-pin';
 import { writeGatedRemember } from './write-gated-remember';
 import { writeGatedRetirement } from './write-gated-retirement';
@@ -13,6 +14,7 @@ export function buildMemoryWrites(parts: StoreParts): MemoryWrites {
     retire: (request) => withFreshChecker(() => writeGatedRetirement(parts, request)),
     pin: (request) => writeGatedPin(parts, request),
     unpin: (request) => writeUnpin(parts, request),
+    markSensitive: (request) => writeCallerSensitiveMark(parts, request),
     batch: buildWriterGate(parts),
   };
 }

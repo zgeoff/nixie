@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 import type { SDKResultMessage, SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk';
 import { createSdkMcpServer, query } from '@anthropic-ai/claude-agent-sdk';
 import type { JSONObject } from '@heynixie/log';
+import type { StagedWrite } from '@heynixie/memory';
 import { buildWriterTools, createWriterStaging } from '@heynixie/memory';
 import type { ToolDefinition, ToolRegistry } from '@heynixie/tools';
 import { buildToolRegistry } from '@heynixie/tools';
@@ -89,17 +90,24 @@ async function runCase(run: PlannedRun): Promise<WriterCall> {
     case: run.writerCase.id,
     repeat: run.repeat,
     input: input.hash,
-    writes: writes.map((write) => ({
-      op: write.op,
-      subject: write.op === 'remember' ? write.subject : null,
-      itemID: write.target?.itemID ?? null,
-      text: write.op === 'remember' ? write.text : null,
-      until: write.op === 'remember' ? (write.until ?? null) : null,
-    })),
+    writes: writes.map((write) => toReportWrite(write)),
     flags: staged.readFlags().map((flag) => flag.text),
     failure: session.failure,
     inputTokens: session.inputTokens,
     outputTokens: session.outputTokens,
+  };
+}
+
+function toReportWrite(write: StagedWrite): WriterCall['writes'][number] {
+  const isSensitive = write.op === 'remember' && write.isSensitive === true;
+
+  return {
+    op: write.op,
+    subject: write.op === 'remember' ? write.subject : null,
+    itemID: write.target?.itemID ?? null,
+    text: write.op === 'remember' ? write.text : null,
+    until: write.op === 'remember' ? (write.until ?? null) : null,
+    ...(isSensitive ? { isSensitive: true } : {}),
   };
 }
 

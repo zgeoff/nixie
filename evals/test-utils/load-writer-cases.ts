@@ -14,6 +14,7 @@ const messageSchema = z
 
 const ruleSchema = z.enum([
   'owner_item',
+  'sensitive_item',
   'shared_item',
   'edit_not_add',
   'flag_only',

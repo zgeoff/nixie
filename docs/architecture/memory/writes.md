@@ -157,6 +157,19 @@ next turn's change note names the unpinned item ([the pinned core](./context.md#
 The memory writer never pins, and its edit of a pinned item waits for review even when every check
 passes ([publishing](./writer.md#publishing)).
 
+## Sensitive marks
+
+`memory.mark_sensitive` marks an item [sensitive](./store.md#sensitive-items), or clears the mark,
+by the item alone. The mark applies at once and needs no review, because it changes no text and the
+item stays in memory, where the model's own recall still finds it. It records the calling thread,
+adds no version, and fails on a forgotten item. The user changes the mark again from the memory
+view.
+
+The memory writer marks only a new item, and that item waits for review with the sensitive reason
+even when every check passes ([publishing](./writer.md#publishing)). The proposal carries the mark
+in a record of its own, and an approval marks the item in the transaction that creates it. A pending
+proposal merges only with one that carries the same mark.
+
 ## Self-notes
 
 A self-note is an item whose subject is self: nixie writes it about itself, in its own voice, such

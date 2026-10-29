@@ -28,6 +28,7 @@ const memoryItemSchema = z.object({
   createdAt: z.date(),
   forgottenAt: z.date().nullable(),
   isPinned: z.boolean(),
+  isSensitive: z.boolean(),
   itemID: z.string(),
   kind: kindSchema,
   origin: originSchema,
@@ -92,6 +93,7 @@ const reviewReasonSchema = z.enum([
   'other',
   'self_note',
   'from_photo',
+  'sensitive',
 ]);
 
 const proposalSourceSchema = z.object({
@@ -113,6 +115,7 @@ const memoryProposalSchema = z.object({
     })
     .nullable(),
   isPinned: z.boolean(),
+  isSensitive: z.boolean(),
   itemID: z.string(),
   kind: kindSchema,
   lapseAt: z.date(),
@@ -285,6 +288,10 @@ export const memoryViewContract = {
     })
     .input(versionTargetSchema.extend({ isPinned: z.boolean() }))
     .output(z.object({ isPinned: z.boolean(), itemID: z.string() })),
+
+  markSensitive: memoryChange
+    .input(z.object({ clientActionID: z.uuid(), isSensitive: z.boolean(), itemID: itemIDSchema }))
+    .output(z.object({ isSensitive: z.boolean(), itemID: z.string() })),
 
   listProposals: memoryView.output(z.object({ proposals: z.array(memoryProposalSchema) })),
 

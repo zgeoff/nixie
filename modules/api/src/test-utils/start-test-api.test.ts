@@ -39,6 +39,7 @@ test('it serves the memory store the test sets', async () => {
     undo: () => Promise.reject(new Error('no change runs here')),
     keep: () => Promise.reject(new Error('no change runs here')),
     pin: () => Promise.reject(new Error('no change runs here')),
+    markSensitive: () => Promise.reject(new Error('no change runs here')),
     forget: () => Promise.reject(new Error('no change runs here')),
     finishForget: () => Promise.reject(new Error('no change runs here')),
     forgetRetired: () => Promise.reject(new Error('no change runs here')),

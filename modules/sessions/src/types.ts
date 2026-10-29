@@ -51,6 +51,8 @@ interface MemoryRetrieval {
 
   readonly excludePinned: true;
 
+  readonly excludeSensitive: true;
+
   readonly excludedVersions: readonly MemoryRef[];
 
   readonly excludedWords: readonly string[];

@@ -63,6 +63,7 @@ function writeApprovedVersion(parts: StoreParts, approved: ApprovedRemember): Pr
         ? {}
         : { evidence, evidenceQuote: opened.text.quote }),
       ...(row.is_pinned === 1 ? { isPinned: true } : {}),
+      ...(row.is_sensitive === 1 ? { isSensitive: true } : {}),
       ...(until === undefined || (until === null && row.target_version === null) ? {} : { until }),
       subject: getRowSubject(row),
     },

@@ -334,6 +334,7 @@ async function applyApproval(
   if (item === undefined) {
     await store.memoryItems.create({
       isPinned: proposal.isPinned,
+      isSensitive: proposal.isSensitive,
       itemID,
       subject: proposal.subject,
       until: proposal.until,
@@ -352,6 +353,8 @@ async function applyApproval(
       if (isNewEndTime) {
         draft.until = proposal.until;
       }
+
+      draft.isSensitive ||= proposal.isSensitive;
 
       draft.versions.push({
         ...version,

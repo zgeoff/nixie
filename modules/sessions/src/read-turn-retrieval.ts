@@ -46,6 +46,7 @@ export async function readTurnRetrieval(
     minScore: settings.retrievalMinScore,
     minSimilarity: settings.retrievalMinSimilarity,
     excludePinned: true,
+    excludeSensitive: true,
     excludedVersions: delivered.versions,
     excludedWords,
     thread: query.taskID,

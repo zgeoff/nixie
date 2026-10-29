@@ -46,9 +46,20 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
 
     const excluded = buildVersionKeys(request.excludedVersions ?? []);
 
+    const sensitiveIDs =
+      request.excludeSensitive === true
+        ? await readSensitiveItemIDs(
+            parts,
+            deliverable.map((item) => item.itemID),
+          )
+        : [];
+
+    const sensitive = new Set(sensitiveIDs);
+
     const items = deliverable.filter(
       (item) =>
         !(request.excludePinned === true && item.isPinned) &&
+        !sensitive.has(item.itemID) &&
         !excluded.has(buildVersionKey(item)) &&
         isAtNamedVersion(item, request) &&
         (request.subjects === undefined || request.subjects.includes(item.subject)),
@@ -111,6 +122,7 @@ async function readCandidates(parts: StoreParts, query: CandidateQuery): Promise
       ),
     )
     .where('created_sequence', '>', parseItemCursor(request.after))
+    .$if(request.excludeSensitive === true, (listed) => listed.where('is_sensitive', '=', 0))
     .$if(request.subjects !== undefined, (listed) =>
       listed.where(subjectColumn, 'in', request.subjects ?? []),
     )
@@ -134,14 +146,15 @@ interface QueryCandidates extends CandidateQuery {
 async function readQueryCandidates(parts: StoreParts, query: QueryCandidates): Promise<Candidates> {
   const request = query.request;
 
-  const [pinned, held, others, lapsed] = await Promise.all([
+  const [pinned, sensitive, held, others, lapsed] = await Promise.all([
     request.excludePinned === true ? readPinnedItemIDs(parts) : [],
+    request.excludeSensitive === true ? readSensitiveItemIDs(parts, null) : [],
     readCurrentItemIDs(parts, request.excludedVersions ?? []),
     request.subjects === undefined ? [] : readOtherSubjectIDs(parts, request.subjects),
     query.lapsedBefore === null ? [] : readLapsedItemIDs(parts, query.lapsedBefore),
   ]);
 
-  const excludedIDs = [...pinned, ...held, ...others, ...lapsed];
+  const excludedIDs = [...pinned, ...sensitive, ...held, ...others, ...lapsed];
   const selfLimit = request.selfNoteLimit;
 
   const ranked =
@@ -170,6 +183,25 @@ async function readPinnedItemIDs(parts: StoreParts): Promise<readonly string[]> 
     .select('item_id')
     .where('is_pinned', '=', 1)
     .where((row) => row.or([row('until', 'is', null), row('until', '>', now)]))
+    .execute();
+
+  return rows.map((row) => row.item_id);
+}
+
+async function readSensitiveItemIDs(
+  parts: StoreParts,
+  itemIDs: readonly string[] | null,
+): Promise<readonly string[]> {
+  if (itemIDs?.length === 0) {
+    return [];
+  }
+
+  const rows = await parts.context.log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('item_id')
+    .where('is_sensitive', '=', 1)
+    .$if(itemIDs !== null, (query) => query.where('item_id', 'in', itemIDs ?? []))
     .execute();
 
   return rows.map((row) => row.item_id);

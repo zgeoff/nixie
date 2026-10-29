@@ -1,8 +1,14 @@
 import { withWriteTransaction } from '@heynixie/log';
-import type { ChangeAnswer, ConsolidationTables } from './consolidation-types';
+import type { Transaction } from 'kysely';
+import type {
+  ChangeAnswer,
+  ConsolidationChangeRow,
+  ConsolidationTables,
+} from './consolidation-types';
+import { parseChangeInputs } from './parse-change-inputs';
 import { planChangeVersions } from './plan-change-versions';
 import { requirePendingChange } from './require-pending-change';
-import type { StoreParts, VersionRef } from './types';
+import type { MemoryTables, StoreParts, VersionRef } from './types';
 import { updateVersionIndex } from './update-version-index';
 import { writeConsolidatorWakeInTransaction } from './write-consolidator-wake-in-transaction';
 import type { WrittenVersion } from './write-version-in-transaction';
@@ -28,10 +34,15 @@ export async function writeChangeApproval(
         now: parts.context.gate.clock.now(),
       });
 
+      const isSensitive = await probeSensitiveMerge(tx, row);
+
+      const lead = plans.at(-1);
       const versions: WrittenVersion[] = [];
 
       for (const plan of plans) {
-        const version = await writeVersionInTransaction(parts, tx, plan);
+        const marked = isSensitive && plan === lead ? { ...plan, isSensitive: true } : plan;
+
+        const version = await writeVersionInTransaction(parts, tx, marked);
 
         versions.push(version);
       }
@@ -49,4 +60,29 @@ export async function writeChangeApproval(
 
     return [...refs.slice(-1), ...refs.slice(0, -1)];
   });
+}
+
+async function probeSensitiveMerge(
+  tx: Transaction<unknown>,
+  row: ConsolidationChangeRow,
+): Promise<boolean> {
+  const [, ...merged] = parseChangeInputs(row.inputs);
+
+  if (merged.length === 0) {
+    return false;
+  }
+
+  const sensitive = await tx
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('item_id')
+    .where(
+      'item_id',
+      'in',
+      merged.map((input) => input.itemID),
+    )
+    .where('is_sensitive', '=', 1)
+    .executeTakeFirst();
+
+  return sensitive !== undefined;
 }

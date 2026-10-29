@@ -16,11 +16,11 @@ and [memory in context](./context.md) covers how memory reaches the conversation
 ## Items and versions
 
 Memory lives in 2 projections of the event log. The items table holds one row per item: its current
-version, its state, whether it is pinned, its [short ID](../core/database.md#short-ids), its
-subject, and the sequences that created it and last changed it. The subject says whose the item is:
-owner for a fact about the user, shared for something between the user and nixie, such as a deal, a
-nickname or a running joke, and self for a [self-note](./writes.md#self-notes) that nixie writes
-about itself.
+version, its state, whether it is pinned, whether it is [sensitive](#sensitive-items), its
+[short ID](../core/database.md#short-ids), its subject, and the sequences that created it and last
+changed it. The subject says whose the item is: owner for a fact about the user, shared for
+something between the user and nixie, such as a deal, a nickname or a running joke, and self for a
+[self-note](./writes.md#self-notes) that nixie writes about itself.
 
 An item's subject is owner unless a subject mark follows the record that creates it, so no later
 version changes the subject. The mark is a record of its own, as is the mark on a new item's
@@ -85,6 +85,32 @@ transaction makes.
   pinned item, fails when it would take the pinned core past its budget
   ([the pinned core](./context.md#the-pinned-core)).
 
+## Sensitive items
+
+A sensitive item holds a detail the user wants brought up only when a request needs it, such as an
+address, a phone number, or an account or health detail.
+[Per-turn retrieval](./context.md#per-turn-retrieval) leaves every sensitive item out. In
+[the events block](../core/conversation-turns.md#the-events-block), the 2 kinds of line that quote
+an item's text leave a sensitive item's text out: a proposal answer reports the approval of a
+sensitive item, or the rejection of an edit to one, with no text, and the memory change line lists
+no change to a sensitive item. A recall that the model calls itself returns a sensitive item as it
+returns any other item, so the model reads the detail only when it asks for it. Every item starts
+with no mark.
+
+The mark leaves [the pinned core](./context.md#the-pinned-core) alone, because a pin is the user's
+own choice to open every session with an item. A pinned sensitive item therefore reaches the model
+in each new session with no recall.
+
+The mark changes how an item comes up and not its text, so, as a pin does, it appends a record and
+adds no version. It applies to an active or a retired item, and a forget ends it with the item. The
+mark is a record of its own, as a subject mark is, so the release before skips it. The user marks
+and clears an item in [the memory view](./view.md#changes), and the model does through its own tool
+([sensitive marks](./writes.md#sensitive-marks)).
+
+A consolidation merge that retires a sensitive item marks the item it keeps, in the transaction that
+writes the merged text, because that text can hold the detail. A merge into a sensitive item keeps
+its mark.
+
 ## End times
 
 An item can carry an end time, the UTC instant after which its fact stops holding, such as the end
@@ -148,8 +174,10 @@ rankings, because a BM25 score and a similarity share no scale. A query can also
 their own: it then ranks self-notes apart from the other subjects, takes the best of the others up
 to its limit and the best self-notes up to their cap, and its one recall record lists both, so the
 user's and the shared items never crowd self-notes out. A recall may name the subjects it keeps, and
-the items of every other subject leave the ranking before its limit applies. The record's search
-mode is hybrid, keyword with no encoder, or keyword fallback while the vector index rebuilds.
+the items of every other subject leave the ranking before its limit applies. A recall may leave
+sensitive items out in the same way, and it checks the mark again under the delivery lock, so an
+item marked after the ranking never reaches the caller. The record's search mode is hybrid, keyword
+with no encoder, or keyword fallback while the vector index rebuilds.
 
 ### The indexes
 
@@ -251,18 +279,19 @@ rest for the store's start.
 
 The model reaches memory through these tools over the same interface:
 
-| Tool              | Effect | Does                                                       |
-| ----------------- | ------ | ---------------------------------------------------------- |
-| `memory.recall`   | `read` | Recalls items by query, by ID or a page at a time          |
-| `memory.pending`  | `read` | Lists the proposals that wait for the user's review        |
-| `memory.remember` | `note` | Creates an item, with a quote or a photo as its source     |
-| `memory.edit`     | `note` | Edits an item at a version it read, with a quote           |
-| `memory.retire`   | `note` | Retires an item at a version it read, with an intent quote |
-| `memory.pin`      | `note` | Asks to pin an item at a version it read                   |
-| `memory.unpin`    | `note` | Takes an item out of the pinned core                       |
-| `memory.diff`     | `read` | Shows the pending consolidation diff                       |
-| `memory.comment`  | `note` | Leaves a comment on one change of that diff                |
-| `memory.rate`     | `note` | Rates how the items of the thread's latest recall worked   |
+| Tool                    | Effect | Does                                                       |
+| ----------------------- | ------ | ---------------------------------------------------------- |
+| `memory.recall`         | `read` | Recalls items by query, by ID or a page at a time          |
+| `memory.pending`        | `read` | Lists the proposals that wait for the user's review        |
+| `memory.remember`       | `note` | Creates an item, with a quote or a photo as its source     |
+| `memory.edit`           | `note` | Edits an item at a version it read, with a quote           |
+| `memory.retire`         | `note` | Retires an item at a version it read, with an intent quote |
+| `memory.pin`            | `note` | Asks to pin an item at a version it read                   |
+| `memory.unpin`          | `note` | Takes an item out of the pinned core                       |
+| `memory.mark_sensitive` | `note` | Marks an item sensitive, or clears the mark                |
+| `memory.diff`           | `read` | Shows the pending consolidation diff                       |
+| `memory.comment`        | `note` | Leaves a comment on one change of that diff                |
+| `memory.rate`           | `note` | Rates how the items of the thread's latest recall worked   |
 
 Creating and editing are separate tools because the tool list is where the model learns what it can
 do, and a model that finds editing only in the description of a create tool can miss it. Rating has

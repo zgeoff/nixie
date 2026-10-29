@@ -20,6 +20,47 @@ test.each([
   ).toBe(finding);
 });
 
+test('it accepts a new owner item marked sensitive under the sensitive rule', () => {
+  expect(
+    checkWriterRule(
+      { rule: 'sensitive_item', target: null, patterns: ['Heron Walk'] },
+      {
+        writes: [
+          {
+            op: 'remember',
+            subject: 'owner',
+            itemID: null,
+            text: 'Sam lives at 27 Heron Walk, flat 2.',
+            until: null,
+            isSensitive: true,
+          },
+        ],
+        flags: [],
+      },
+    ),
+  ).toBeNull();
+});
+
+test('it refuses a new owner item left unmarked under the sensitive rule', () => {
+  expect(
+    checkWriterRule(
+      { rule: 'sensitive_item', target: null, patterns: ['Heron Walk'] },
+      {
+        writes: [
+          {
+            op: 'remember',
+            subject: 'owner',
+            itemID: null,
+            text: 'Sam lives at 27 Heron Walk, flat 2.',
+            until: null,
+          },
+        ],
+        flags: [],
+      },
+    ),
+  ).toBe('it filed a new item it did not mark sensitive');
+});
+
 test('it refuses a new item whose text misses a pattern', () => {
   expect(
     checkWriterRule(

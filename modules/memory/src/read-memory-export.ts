@@ -74,6 +74,7 @@ interface ItemRow {
   readonly short_id: string | null;
   readonly state: MemoryState;
   readonly is_pinned: number;
+  readonly is_sensitive: number;
   readonly kind: 'fact' | 'self';
   readonly subject: MemorySubject | null;
   readonly created_sequence: number;
@@ -93,6 +94,7 @@ function readItemRows(log: ExportLog, after: number): Promise<readonly ItemRow[]
       'item.short_id',
       'item.state',
       'item.is_pinned',
+      'item.is_sensitive',
       'item.kind',
       'item.subject',
       'item.created_sequence',
@@ -165,6 +167,7 @@ async function loadReadableItem(row: ReadableRow, parts: ItemParts): Promise<Mem
     shortID: getItemShortID(row),
     state: row.state,
     isPinned: row.is_pinned === 1,
+    isSensitive: row.is_sensitive === 1,
     subject: getRowSubject(row),
     versions: await Promise.all(parts.versions.map((version) => loadExportVersion(version, parts))),
   };

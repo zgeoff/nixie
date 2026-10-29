@@ -16,6 +16,10 @@ test.each([
   ['other', 'A newer release of nixie sent it to review.'],
   ['self_note', 'nixie wrote it about itself, and every self-note waits for your review.'],
   ['from_photo', 'It comes from a photo you sent, and nixie never takes a photo as your words.'],
+  [
+    'sensitive',
+    'The note-taker marked it sensitive, and every sensitive item waits for your review.',
+  ],
 ] as const)('it describes the review reason %s', (reason, expected) => {
   expect(formatReviewReason(reason)).toBe(expected);
 });

@@ -57,6 +57,7 @@ export function buildConversationTools(
           retire: (request) => requireStore().writes.retire(request),
           pin: (request) => requireStore().writes.pin(request),
           unpin: (request) => requireStore().writes.unpin(request),
+          markSensitive: (request) => requireStore().writes.markSensitive(request),
         },
         renderReviewReason: (reason) => requireStore().renderReviewReason(reason),
         moments: {

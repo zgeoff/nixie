@@ -6,6 +6,7 @@ import { eventLogMigration } from './event-log-migration';
 import { memoryKindsMigration } from './memory-kinds-migration';
 import { memoryMigrations } from './memory-migrations';
 import { memoryPinProposalsMigration } from './memory-pin-proposals-migration';
+import { memorySensitiveMigration } from './memory-sensitive-migration';
 import { memorySubjectsMigration } from './memory-subjects-migration';
 import { memoryUntilMigration } from './memory-until-migration';
 import { momentsMigration } from './moments-migration';
@@ -44,6 +45,7 @@ export const nixieSchema: BuildSchema = {
     promptApprovalsMigration,
     taskMessagesMigration,
     momentsMigration,
+    memorySensitiveMigration,
   ],
   oldestReader: 25,
 };
