@@ -174,6 +174,20 @@ test('it starts nixie again on the same data directory and the same guest once i
   expect(again.guest.readSandboxIDs()).toIncludeAllMembers([...before]);
 });
 
+test('it lists each run on the data directory in the order they started', async () => {
+  const nixie = await startInProcessNixie();
+
+  await nixie.waitForLogEvent('ready');
+
+  nixie.signalStop();
+
+  await nixie.exited;
+
+  const again = nixie.startAgain();
+
+  expect(again.readRuns()).toStrictEqual([nixie, again]);
+});
+
 test('it writes the log level it names into the configuration', async () => {
   const nixie = await startInProcessNixie({ logLevel: 'warn' });
   const config = await loadDeploymentConfig(nixie.configPath);

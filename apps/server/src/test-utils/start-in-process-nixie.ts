@@ -65,6 +65,8 @@ export interface InProcessNixie extends BootFiles {
 
   readonly startAgain: () => InProcessNixie;
 
+  readonly readRuns: () => readonly InProcessNixie[];
+
   readonly runBeforeCleanup: RunBeforeCleanup;
 
   readonly readDataFiles: () => Promise<
@@ -174,6 +176,7 @@ async function startFirstRun(
     host,
     stack,
     runBeforeCleanup,
+    runs: [],
   });
 }
 
@@ -218,6 +221,8 @@ interface InProcessNixieFiles {
 
   readonly stack: AsyncDisposableStack;
   readonly runBeforeCleanup: RunBeforeCleanup;
+
+  readonly runs: InProcessNixie[];
 }
 
 function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
@@ -247,16 +252,9 @@ function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
   };
 
   const exited = runServe();
-
-  start.stack.defer(async () => {
-    stopSignal.resolve('SIGTERM');
-
-    await exited;
-  });
-
   const findEvent = (event: string) => events.find((logged) => logged.event === event);
 
-  return {
+  const run: InProcessNixie = {
     ...start.files,
     directory: start.directory,
     model: start.model,
@@ -294,8 +292,19 @@ function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
     },
     readDataFiles: () => readDataFiles(start.files.dataDir),
     startAgain: () => startNixieRun(start),
+    readRuns: () => start.runs,
     runBeforeCleanup: start.runBeforeCleanup,
   };
+
+  start.runs.push(run);
+
+  start.stack.defer(async () => {
+    stopSignal.resolve('SIGTERM');
+
+    await exited;
+  });
+
+  return run;
 }
 
 function buildServeArgs(files: BootFiles): readonly string[] {
