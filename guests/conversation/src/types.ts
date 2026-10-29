@@ -6,6 +6,7 @@ export interface TurnDependencies {
   readonly toolServer: McpServerConfig;
 
   readonly messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>;
+  readonly interrupt?: AbortSignal;
   readonly emit: (frame: GuestFrame) => Promise<void>;
 
   readonly runQuery?: typeof query;

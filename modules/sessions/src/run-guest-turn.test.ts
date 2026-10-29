@@ -1,7 +1,9 @@
 import { expect, mock, test } from 'bun:test';
+import { once } from 'node:events';
 import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import type { InboxMessage } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
+import invariant from 'tiny-invariant';
 import { runGuestTurn } from './run-guest-turn';
 
 function setupTest() {
@@ -131,6 +133,37 @@ test('it passes each live message into the running turn', async () => {
   });
 
   expect(turn.failure).toStrictEqual({ type: 'failed', reason: 'error', detail: 'And?' });
+});
+
+test('it sends the guest an interrupt frame when the interrupt signal aborts', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  const interrupt = new AbortController();
+
+  ctx.stub.setGuestScript(async (_turn, guest) => {
+    invariant(guest.interrupt);
+
+    interrupt.abort();
+
+    await once(guest.interrupt, 'abort');
+
+    return [{ type: 'failed', reason: 'error', detail: 'interrupted' }];
+  });
+
+  const turn = await runGuestTurn({
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame({
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
+    }),
+    messages: [],
+    signal: new AbortController().signal,
+    interrupt: interrupt.signal,
+  });
+
+  expect(turn.failure).toStrictEqual({ type: 'failed', reason: 'error', detail: 'interrupted' });
 });
 
 test('it throws when the guest exits before it ends or fails its turn', async () => {

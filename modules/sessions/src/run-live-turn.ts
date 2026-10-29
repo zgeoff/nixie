@@ -103,6 +103,7 @@ async function runTokenTurn(
             images: opening.images,
           }),
       signal: plan.signal,
+      interrupt: input.interrupt,
       readRecallMark: () => readRecalledThrough(run.context, input.taskID),
     });
 
