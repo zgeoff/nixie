@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
@@ -73,9 +73,9 @@ test('it copies a database that holds the rows committed before the set', async 
     readonly: true,
   });
 
-  const rows = await sql`select sequence, kind from records`.execute(copy);
+  onTestFinished(() => copy.destroy());
 
-  await copy.destroy();
+  const rows = await sql`select sequence, kind from records`.execute(copy);
 
   expect(rows.rows).toStrictEqual([{ sequence: 3, kind: 'task.created' }]);
 });
