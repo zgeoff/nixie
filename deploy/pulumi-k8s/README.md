@@ -35,7 +35,8 @@ bun add @heynixie/pulumi-k8s
 - **nixie's pod.** One replica on a `ReadWriteOnce` claim, with the configuration, the encrypted
   secrets and a git-sync container that follows your definitions repo on GitHub.
 - **The web client.** A Deployment that rolls out after nixie and calls its API by the Service.
-- **The backup.** A CronJob that runs your backup script on nixie's volume, on your schedule.
+- **The backup.** A CronJob that runs the release's backup image on nixie's staging folder, and
+  ships each snapshot set to your 2 restic repositories.
 - **Moving onto it.** Each resource keeps its own Pulumi name and an alias to the stack, so a stack
   that declared the same resources itself moves onto the component with no replacement.
 

@@ -132,6 +132,8 @@ below, and planned work lives in Linear.
   stages, the sandbox manifest, publishing, attestations and the compatibility checks
 - [Kubernetes](architecture/deployment/kubernetes.md) — the reference manifests, nixie's pod and its
   mounts, impd and the address ranges, and the ingress
+- [Backups](architecture/deployment/backups.md) — snapshot sets, the backup job and its 2 restic
+  repositories, receipts, and the shared formats
 
 ## Guides
 
@@ -228,8 +230,8 @@ rests on.
 - [Deployment design index](design/platform/deployment/README.md) — the 4 deployment docs
 - [Deployment](design/platform/deployment/deployment.md) — the first build, the host, the images,
   secrets, seeding the definitions, health, and Kubernetes
-- [Backup and restore](design/platform/deployment/backup-and-restore.md) — the backup sidecar,
-  Restic snapshots, the key repo and forget, the offsite replica, and restoring on a new host
+- [Backup and restore](design/platform/deployment/backup-and-restore.md) — the backup job, Restic
+  snapshots, the key repo and forget, the offsite replica, and restoring on a new host
 - [Release pipeline](design/platform/deployment/release-pipeline.md) — the worker, code and backup
   images, pinned binary updates, the rollback test, Renovate and attestation verification
 - [Upgrades](design/platform/deployment/upgrades.md) — the pin and the bot, delivery to the host, a
@@ -361,8 +363,8 @@ nixie's interfaces, external MCP servers, credentials, search and code.
 Definitions and deployment models.
 
 - [0020: Deployment and definitions](decisions/0020-deployment.md) — definitions in their own repo
-  seed the database, running nixie lives with the deployment, and the backup tools run in a sidecar
-  with a secrets file per container
+  seed the database, running nixie lives with the deployment, and the backup tools run in a
+  scheduled job that holds the backup credentials alone
 - [0032: Offsite backups and replication](decisions/0032-offsite-backups-and-replication.md) —
   Restic snapshots first, then a Litestream replica through a host rclone crypt gateway to an
   S3-compatible backend the deployment supplies, with at most 5 minutes of encrypted content lost

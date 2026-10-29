@@ -39,3 +39,38 @@ services:
     <<: *test-build
     volumes:
       - ./ci/config.yaml:/etc/nixie/config.yaml:ro
+
+  # the backup job, built from this checkout, ships each staged set to 2 repositories on a tmpfs of
+  # its own; it mounts only the staging folder, and holds the backup passwords and none of nixie's
+  # secrets
+  nixie-backup:
+    image: nixie-backup-compose-test:local
+    build:
+      context: ../..
+      dockerfile: apps/backup-job/Dockerfile
+    command: ['loop']
+    environment:
+      HOME: /tmp
+      NIXIE_BACKUP_POLL_SECONDS: '5'
+      NIXIE_BACKUP_DATA_REPOSITORY: /repos/data
+      NIXIE_BACKUP_DATA_PASSWORD: invented-data-password
+      NIXIE_BACKUP_KEY_REPOSITORY: /repos/keys
+      NIXIE_BACKUP_KEY_PASSWORD: invented-key-password
+    volumes:
+      - type: volume
+        source: data
+        target: /backup
+        volume:
+          subpath: backup
+    # the job's user owns the repositories, which Docker would create owned by root in a volume
+    tmpfs:
+      - /tmp:size=16m
+      - /repos:size=256m,uid=10001,gid=10001,mode=0700
+    read_only: true
+    network_mode: none
+    cap_drop: ['ALL']
+    security_opt: ['no-new-privileges:true']
+    restart: unless-stopped
+    depends_on:
+      setup:
+        condition: service_completed_successfully

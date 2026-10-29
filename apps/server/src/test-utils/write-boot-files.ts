@@ -22,6 +22,8 @@ export interface BootFileExtras {
 
   readonly sandboxAdapter?: 'imp' | 'test';
 
+  readonly isBackupOn?: boolean;
+
   readonly roleModelURLs?: Readonly<Partial<Record<'memory-writer' | 'checker', string>>>;
 }
 
@@ -44,6 +46,11 @@ export async function writeBootFiles(
     ...(extras.definitions ?? []).map((line) => `  ${line}`),
     'sandbox:',
     `  adapter: ${extras.sandboxAdapter ?? 'test'}`,
+
+    // a start stages a backup set at once, which copies both databases, so a test that does not ask
+    // for backups keeps them off
+    'backup:',
+    `  enabled: ${String(extras.isBackupOn ?? false)}`,
     ...extras.config,
   ]);
 

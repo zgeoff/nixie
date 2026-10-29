@@ -8,6 +8,8 @@
   },
   "dependencies": {
     "@heynixie/actions": "workspace:*",
+    "@heynixie/backup": "workspace:*",
+    "@heynixie/backup-job": "workspace:*",
     "@heynixie/clock": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
@@ -19,7 +21,9 @@
     "@heynixie/tasks": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@heynixie/web": "workspace:*",
+    "@heynixie/wire": "workspace:*",
     "@orpc/client": "catalog:",
+    "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "zod": "catalog:"
   }

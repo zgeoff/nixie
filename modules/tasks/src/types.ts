@@ -125,10 +125,11 @@ export type FaultPointID =
   | 'writer.batch.gated'
   | 'writer.publish.inside'
   | 'writer.publish.before'
-  | 'writer.publish.after';
+  | 'writer.publish.after'
+  | 'backup.set.copied';
 
 export interface FaultPointContext {
-  readonly kind: LeaseKind | 'recovery' | 'pool' | 'memory';
+  readonly kind: LeaseKind | 'recovery' | 'pool' | 'memory' | 'backup';
   readonly id: string | null;
 }
 

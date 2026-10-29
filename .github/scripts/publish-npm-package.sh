@@ -11,17 +11,49 @@
 # A version already on npm is skipped, so a re-run of the release job passes. A package npm does not
 # hold yet is skipped with a warning, because npm sets up trusted publishing only on a package that
 # exists. --dry-run packs, checks that Node imports the installed tarball and that a TypeScript
-# program typechecks against it, and publishes nothing.
+# program typechecks against it, and publishes nothing. The Kubernetes component runs the release's
+# nixie-backup image as its backup job's default, so for it the script reads that image, named
+# <repository>@sha256:<digest>, from BACKUP_IMAGE, and writes it by the version tag and the digest
+# into the source the build bundles, which it restores after.
 set -euo pipefail
 
 package=$1
 version=$2
 mode=${3:-}
 name=$(jq -r .name "$package/package.json")
+image_source="$package/src/release-backup-image.ts"
+placeholder='export const releaseBackupImage: string | null = null;'
+
+backup_ref=
+if [[ $name == @heynixie/pulumi-k8s ]]; then
+  if [[ ! ${BACKUP_IMAGE:-} =~ ^([a-z0-9./_-]+)@(sha256:[0-9a-f]{64})$ ]]; then
+    echo "::error::$name needs BACKUP_IMAGE to name the release's backup image as <repository>@sha256:<digest>"
+    exit 1
+  fi
+  backup_ref="${BASH_REMATCH[1]}:$version@${BASH_REMATCH[2]}"
+  if ! grep -qxF "$placeholder" "$image_source"; then
+    echo "::error::$image_source holds no placeholder for the release's backup image"
+    exit 1
+  fi
+fi
 
 work=$(mktemp -d)
 cp "$package/package.json" "$work/package.json"
-trap 'cp "$work/package.json" "$package/package.json"; rm -rf "$package/dist" "$work"' EXIT
+if [[ -n $backup_ref ]]; then
+  cp "$image_source" "$work/release-backup-image.ts"
+fi
+restore() {
+  cp "$work/package.json" "$package/package.json"
+  if [[ -n $backup_ref ]]; then
+    cp "$work/release-backup-image.ts" "$image_source"
+  fi
+  rm -rf "$package/dist" "$work"
+}
+trap restore EXIT
+
+if [[ -n $backup_ref ]]; then
+  sed -i "s#^export const releaseBackupImage: string | null = null;\$#export const releaseBackupImage: string | null = '$backup_ref';#" "$image_source"
+fi
 
 (
   cd "$package"
@@ -48,6 +80,11 @@ if jq -e '[.. | strings | select(startswith("catalog:") or startswith("workspace
 fi
 if tar -tzf "$tarball" | grep -E '\.ts$' | grep -vE '\.d\.ts$'; then
   echo "::error::the packed $name holds the TypeScript source above"
+  exit 1
+fi
+
+if [[ -n $backup_ref ]] && ! tar -xzOf "$tarball" package/dist/index.js | grep -qF "$backup_ref"; then
+  echo "::error::the packed $name does not run $backup_ref as its backup job's default"
   exit 1
 fi
 

@@ -1,0 +1,18 @@
+{
+  "format": 1,
+  "kind": "forget",
+  "sequence": 42,
+  "stagedAt": 1798761600000,
+  "copies": [
+    {
+      "name": "nixie.db",
+      "bytes": 81920,
+      "sha256": "3f4a3f4a3f4a3f4a3f4a3f4a3f4a3f4a3f4a3f4a3f4a3f4a3f4a3f4a3f4a3f4a"
+    },
+    {
+      "name": "keys.db",
+      "bytes": 12288,
+      "sha256": "a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2a1b2"
+    }
+  ]
+}

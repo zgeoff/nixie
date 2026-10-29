@@ -11,8 +11,10 @@
     "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
+    "@heynixie/async": "workspace:*",
     "@heynixie/clock": "workspace:*",
     "@heynixie/db": "workspace:*",
+    "@heynixie/wire": "workspace:*",
     "@zgeoff/std": "catalog:",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",

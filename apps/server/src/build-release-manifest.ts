@@ -5,6 +5,7 @@ interface ReleaseImages {
   readonly web: string;
   readonly conversation: string;
   readonly fetch: string;
+  readonly backup: string;
 }
 
 interface ConfigSchemaSummary {
@@ -29,6 +30,7 @@ export function buildReleaseManifest(inputs: ReleaseManifestInputs) {
     images: {
       server: toTaggedImage(inputs.images.server, inputs.version),
       web: toTaggedImage(inputs.images.web, inputs.version),
+      backup: toTaggedImage(inputs.images.backup, inputs.version),
     },
 
     sandboxImages: {

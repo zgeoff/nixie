@@ -1,0 +1,22 @@
+{
+  "name": "@heynixie/backup-job",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./test-utils": "./src/test-utils/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/async": "workspace:*",
+    "@heynixie/logger": "workspace:*",
+    "@heynixie/wire": "workspace:*",
+    "gunshi": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "tiny-invariant": "catalog:"
+  }
+}

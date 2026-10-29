@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "sequence": 43,
+  "writtenAt": 1798765260000,
+  "status": "failed",
+  "dataSnapshotID": "7a6b7a6b7a6b7a6b7a6b7a6b7a6b7a6b7a6b7a6b7a6b7a6b7a6b7a6b7a6b7a6b",
+  "keySnapshotID": null,
+  "removedKeySnapshotIDs": [],
+  "prune": "not-run",
+  "check": "not-run",
+  "failure": "restic backup of keys.db exited 1: Fatal: unable to open repository"
+}

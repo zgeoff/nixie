@@ -6,7 +6,8 @@
 name: nixie
 
 services:
-  # Gives the data volume to nixie's user, and copies the sops file and the age key into a volume
+  # Gives the data volume to nixie's user, makes the backup staging folder that a backup container
+  # mounts as a subpath of that volume, and copies the sops file and the age key into a volume
   # that only that user reads, mode 0400. Docker creates each volume owned by root, and the host's
   # files keep their host owner and mode, so nixie's user could otherwise read neither. It runs on
   # every start, so a changed file on the host reaches nixie at the next up.
@@ -17,7 +18,13 @@ services:
       - sh
       - -euc
       - |
-        chown 10001:10001 /data
+        # root holds neither DAC_OVERRIDE nor FOWNER here, so it takes /data and the staging folder
+        # back while it makes the folder and sets its mode
+        chown 0:0 /data
+        mkdir -p /data/backup
+        chown 0:0 /data/backup
+        chmod 0700 /data/backup
+        chown 10001:10001 /data/backup /data
         chown 0:10001 /secrets
         chmod 0750 /secrets
         umask 077

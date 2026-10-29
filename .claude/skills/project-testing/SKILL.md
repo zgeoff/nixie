@@ -47,14 +47,21 @@ and then `bun run test:bundles`, before the unit run,
 `bun test --parallel=${TEST_WORKERS:-4} --no-isolate --randomize`. `bun run test:bundles` writes the
 server's release and test bundles to `node_modules/.cache/nixie-test-bundles` through
 `createRunTemplate`, keyed by a hash of the sources, and the server's bundle checks read them, so no
-unit test pays for a build. The unit run spreads the files over 4 worker processes, the vCPUs of a
-CI runner, and `TEST_WORKERS` changes the count. The files in a worker share one global object, so
-only the preloads' resets stand between one file and the next, and the run shuffles the files so a
-test that passes only after another file fails. A failure prints the run's `--seed=<n>`; run again
-with that flag to repeat its order. Plain `bun test` skips those suites when the files are missing,
-and CI, where the `CI` variable is set, fails them instead, so a run there never passes without the
-model. The spikes under `research/` and `docs/design/` run by hand, so the root
-[`bunfig.toml`](../../../bunfig.toml) skips them.
+unit test pays for a build. The e2e lane's script runs `bun run test:bundles` too, then
+`bun run test:web-build` and `bun run test:backup-job-build`, which write the web client's build and
+the backup job's bundle to the same folder. Every spawned nixie starts from the test bundle, because
+a start from source transpiles the whole server, and the web suites read the web build, which takes
+longer than a test's limit on a host with 2 cores. Every suite that runs the backup job runs its
+bundle, as the image does, and the restic lane's script builds that bundle first too.
+
+The unit run spreads the files over 4 worker processes, the vCPUs of a CI runner, and `TEST_WORKERS`
+changes the count. The files in a worker share one global object, so only the preloads' resets stand
+between one file and the next, and the run shuffles the files so a test that passes only after
+another file fails. A failure prints the run's `--seed=<n>`; run again with that flag to repeat its
+order. Plain `bun test` skips those suites when the files are missing, and CI, where the `CI`
+variable is set, fails them instead, so a run there never passes without the model. The spikes under
+`research/` and `docs/design/` run by hand, so the root [`bunfig.toml`](../../../bunfig.toml) skips
+them.
 
 The web app's browser suites, the `*.browser.test.ts` files, drive a headless Chrome or Chromium
 through `Bun.WebView`, so `bun test` needs one that Bun finds on `PATH`, in a standard install
@@ -88,17 +95,21 @@ is too long. Outside CI, each browser suite skips and prints why when no browser
 [`checkBrowserSkip`](../../../apps/web/src/test-utils/check-browser-skip.ts), and the preload runs
 the same check, so the run goes on. In CI the check fails the run instead.
 
-Beside the browser suites, four lanes run suites that need a real system the parallel run cannot
+Beside the browser suites, five lanes run suites that need a real system the parallel run cannot
 host. `bun run test` leaves each one out of the parallel run, and the Agent SDK and e2e lanes'
 scripts run their files one at a time. The imp and model API lanes run outside CI, as [Runs](#runs)
-gives.
+gives. The restic lane runs in the Images workflow, against the restic binary that the backup image
+carries, and a local run skips it unless `NIXIE_RESTIC_BINARY` names a restic. Each restic command
+derives its repository key with scrypt, which restic tunes to take 500 ms, so the lane's limit holds
+about twice the time its suite measured on CI.
 
-| Lane      | Files                 | Real system                                                   | Script           | Limit per test     |
-| --------- | --------------------- | ------------------------------------------------------------- | ---------------- | ------------------ |
-| Agent SDK | `*.agent-sdk.test.ts` | The Agent SDK's CLI as a subprocess, against a scripted model | `test:agent-sdk` | 5 s, Bun's default |
-| e2e       | every suite in `e2e/` | The built nixie or web client, driven from outside            | `test:e2e`       | 15 s               |
-| imp       | `*.imp.test.ts`       | A real impd on a host with `/dev/kvm`                         | `test:imp`       | 14 s               |
-| model API | `*.model-api.test.ts` | The live model, through the pinned Agent SDK                  | SDK contract run | 120 s              |
+| Lane      | Files                    | Real system                                                   | Script           | Limit per test     |
+| --------- | ------------------------ | ------------------------------------------------------------- | ---------------- | ------------------ |
+| Agent SDK | `*.agent-sdk.test.ts`    | The Agent SDK's CLI as a subprocess, against a scripted model | `test:agent-sdk` | 5 s, Bun's default |
+| e2e       | every other `e2e/` suite | The built nixie or web client, driven from outside            | `test:e2e`       | 15 s               |
+| imp       | `*.imp.test.ts`          | A real impd on a host with `/dev/kvm`                         | `test:imp`       | 14 s               |
+| model API | `*.model-api.test.ts`    | The live model, through the pinned Agent SDK                  | SDK contract run | 120 s              |
+| restic    | `*.restic.test.ts`       | The restic binary that the backup image pins                  | `test:restic`    | 40 s               |
 
 An Agent SDK suite, in a guest or in `evals/test-utils`, never calls the live model; the SDK
 contract suite in `evals/sdk-contract` does. A test in a lane sets no limit of its own, and a slow

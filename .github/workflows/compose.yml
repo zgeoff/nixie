@@ -2,7 +2,9 @@
 # that digest under that tag, then starts the recipe with CI's overlay, which swaps nixie's release
 # image for the test build on the test sandbox, because the release image leaves the test sandbox
 # out. It checks that nixie's health URL answers ready through the recipe's origin, and that the
-# enrol service prints a sign-in code. A pull request runs it only when it changes a file the recipe
+# enrol service prints a sign-in code. It runs the backup container built from the checkout, checks
+# that nixie records a shipped set, and checks that the backup passwords and nixie's secrets stay in
+# their own services. A pull request runs it only when it changes a file the recipe
 # or the test build reads; every push to main runs it in full.
 name: Compose
 
@@ -119,6 +121,34 @@ jobs:
       - name: Check the sign-in code
         run: |
           docker compose -f compose.yaml -f ci/compose.yaml run --rm enrol | grep -E '^[0-9A-Z]{5}-[0-9A-Z]{5}$'
+
+      # nixie stages a set at start, the backup container ships it, and nixie records its receipt on
+      # its next pass, within its 60 s poll
+      - name: Check that a backup set ships
+        run: |
+          for _ in $(seq 60); do
+            if docker compose -f compose.yaml -f ci/compose.yaml logs --no-color nixie | grep -F '"backup.set_published"'; then
+              docker compose -f compose.yaml -f ci/compose.yaml logs --no-color nixie | grep -F '"backup.set_published"' | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo '::error::nixie recorded no published backup set within 300 s'
+          exit 1
+
+      # the backup passwords reach only the backup container, and nixie's secrets never reach it
+      - name: Check the backup credentials stay apart
+        run: |
+          config=$(docker compose -f compose.yaml -f ci/compose.yaml config --format json)
+          if jq -e '.services.nixie.environment // {} | keys | any(startswith("NIXIE_BACKUP_"))' <<< "$config"; then
+            echo '::error::the nixie service holds a backup variable'
+            exit 1
+          fi
+          if jq -e '.services["nixie-backup"].volumes | any(.source == "secrets")' <<< "$config"; then
+            echo '::error::the nixie-backup service mounts the secrets volume'
+            exit 1
+          fi
+          jq -e '.services["nixie-backup"].volumes | length == 1 and .[0].source == "data" and .[0].volume.subpath == "backup"' <<< "$config"
 
       - name: Show the logs
         if: failure()
