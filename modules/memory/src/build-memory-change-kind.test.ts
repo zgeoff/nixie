@@ -307,6 +307,29 @@ test('it leaves out an item once a forget of it began', async () => {
   expect(note).toBeNull();
 });
 
+test('it leaves out a sensitive item', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'The door code for the spare key box is 4417',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.markSensitive({
+    itemID: item.itemID,
+    isSensitive: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const note = await readEventsNote(
+    buildEventRegistry([buildMemoryChangeKind(ctx.memory.log, ctx.memory.store)]),
+    { after: 0, through: 100 },
+    { ownerName: 'Avery', timeZone: 'UTC' },
+  );
+
+  expect(note).toBeNull();
+});
+
 test('it records the text it lists as recalled into the conversation for a turn note', async () => {
   const ctx = await setupTest();
 

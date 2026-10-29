@@ -89,9 +89,11 @@ transaction makes.
 
 A sensitive item holds a detail the user wants brought up only when a request needs it, such as an
 address, a phone number, or an account or health detail.
-[Per-turn retrieval](./context.md#per-turn-retrieval) leaves every sensitive item out, and a recall
-that the model calls itself returns one as it returns any other item, so the model reads the detail
-only when it asks for it. Every item starts with no mark.
+[Per-turn retrieval](./context.md#per-turn-retrieval) leaves every sensitive item out, and
+[the events block](../core/conversation-turns.md#the-events-block) quotes none: it reports the
+approval of a sensitive item with no text, and lists no change to one. A recall that the model calls
+itself returns a sensitive item as it returns any other item, so the model reads the detail only
+when it asks for it. Every item starts with no mark.
 
 The mark changes how an item comes up and not its text, so, as a pin does, it appends a record and
 adds no version. It applies to an active or a retired item, and a forget ends it with the item. The

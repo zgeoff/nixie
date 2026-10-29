@@ -235,6 +235,34 @@ test('it leaves an approval unquoted once a forget of its item began, before its
   expect(note).toEndWith(` · Avery approved your memory proposal ${proposal.proposalID}.`);
 });
 
+test('it leaves an approval of a sensitive item unquoted', async () => {
+  const ctx = await setupTest();
+
+  const proposal = await createProposal(ctx.memory.store, {
+    text: 'The door code for the spare key box is 4417',
+  });
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'identity-1',
+  });
+
+  await ctx.memory.store.markSensitive({
+    itemID: proposal.itemID,
+    isSensitive: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const note = await readEventsNote(
+    buildEventRegistry([buildProposalAnswerKind(ctx.memory.log, ctx.memory.store)]),
+    { after: 0, through: 100 },
+    { ownerName: 'Avery', timeZone: 'UTC' },
+  );
+
+  expect(note).toEndWith(` · Avery approved your memory proposal ${proposal.proposalID}.`);
+});
+
 test('it renders a rejected new item without its text, which the rejection removed', async () => {
   const ctx = await setupTest();
   const proposal = await createProposal(ctx.memory.store, { text: 'Avery prefers tabs.' });
