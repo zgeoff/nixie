@@ -1,8 +1,8 @@
-# Rehearses the release's publish of the Kubernetes component: it packs the package at a rehearsal
-# version, checks the tarball, and runs npm's publish as a dry run, then runs the release path
-# against a stand-in for npm. A pull request runs it only when
-# it changes a file the package or the publish reads; every push to main runs it in full.
-name: K8s package
+# Rehearses the release's publish of each npm package, the Kubernetes component and the API
+# contract: it packs the package at a rehearsal version, checks the tarball, and runs npm's publish
+# as a dry run, then runs the release path against a stand-in for npm. A pull request runs it only
+# when it changes a file a package or the publish reads; every push to main runs it in full.
+name: npm packages
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: k8s-package-${{ github.ref }}
+  group: npm-packages-${{ github.ref }}
   cancel-in-progress: true
 
 # an explicit bash runs each step with pipefail, so a failure inside a pipeline fails the step
@@ -26,20 +26,25 @@ jobs:
     uses: zgeoff/tools/.github/workflows/paths-changed.yml@sync-v29
     with:
       paths: |
-        .github/workflows/k8s-package.yml
-        .github/scripts/publish-k8s-package.sh
-        .github/scripts/check-publish-k8s-package.sh
+        .github/workflows/npm-packages.yml
+        .github/scripts/publish-npm-package.sh
+        .github/scripts/check-publish-npm-package.sh
         .bun-version
         bun.lock
         bunfig.toml
         package.json
         deploy/pulumi-k8s/**
+        libs/contract/**
 
   rehearse:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [deploy/pulumi-k8s, libs/contract]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,8 +64,12 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Pack the component and dry-run its publish
-        run: .github/scripts/publish-k8s-package.sh 0.0.0-rehearsal --dry-run
+      - name: Pack the package and dry-run its publish
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: .github/scripts/publish-npm-package.sh "$PACKAGE" 0.0.0-rehearsal --dry-run
 
       - name: Run the release path against a stand-in for npm
-        run: .github/scripts/check-publish-k8s-package.sh
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: .github/scripts/check-publish-npm-package.sh "$PACKAGE"

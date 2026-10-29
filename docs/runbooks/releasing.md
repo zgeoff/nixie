@@ -2,8 +2,8 @@
 
 The [release pipeline](../architecture/deployment/release-pipeline.md) cuts a release when you merge
 the release pull request that release-please keeps open on `main`. These are the steps it leaves to
-you: the release App it runs with, the package visibility that GHCR sets on a first publish, and the
-checks and repairs after a run.
+you: the release App it runs with, the package visibility that GHCR sets on a first publish, the npm
+package that trusted publishing needs, and the checks and repairs after a run.
 
 ## Set up the release App
 
@@ -34,9 +34,9 @@ step, and no release pull request opens.
    gh run watch "$(gh run list --repo <owner>/nixie --workflow release.yml --commit <merge_commit> --json databaseId --jq '.[0].databaseId')" --repo <owner>/nixie
    ```
 
-   Expect every job to pass, ending with `assets`. Expect the GitHub release to list the migrations,
-   the config schema result and the 4 image digests, and to hold the assets `release.json`,
-   `config.schema.json` and `definitions-manifest.schema.json`.
+   Expect every job to pass, ending with the 2 `npm-package` jobs. Expect the GitHub release to list
+   the migrations, the config schema result and the 4 image digests, and to hold the assets
+   `release.json`, `config.schema.json` and `definitions-manifest.schema.json`.
 
 ## Make a new sandbox image public
 
@@ -57,6 +57,40 @@ nothing can pin the release in this state.
 
 The nixie and web packages stay private unless you set them public the same way. A host pulls a
 private package only with a GHCR credential that can read it.
+
+## Set up a new npm package
+
+The release publishes each npm package through trusted publishing, and npm adds a trusted publisher
+only to a package that exists on the registry. Until then, the package's `npm-package` job passes
+with `npm holds no <package_name> yet` and publishes nothing. Do this once for each package the
+release publishes, such as `@heynixie/contract`.
+
+1. Create the package with a first publish under your own npm login, from an empty folder outside
+   the repo. A placeholder `package.json` that holds only the name and version `0.0.0` is enough, so
+   nothing needs a build:
+
+   ```bash
+   echo '{ "name": "<package_name>", "version": "0.0.0" }' > package.json
+   npm publish --access public
+   ```
+
+   Expect `+ <package_name>@0.0.0`.
+
+2. On npmjs.com, open the package's settings, and under "Trusted Publisher" choose GitHub Actions,
+   with organization or user `<owner>`, repository `nixie` and workflow filename `release.yml`.
+   Leave the environment name empty, because the release's publish job runs in no environment.
+3. Publish within 2 days, because npm needs a new trusted publisher to make its first successful
+   publish in that window. Merge the release pull request, as in [Cut a release](#cut-a-release).
+   When a Release run since the package joined the release already skipped it, re-run that run's
+   `npm-package` job for the package instead, found with
+   `gh run view <run_id> --repo <owner>/nixie --json jobs`:
+
+   ```bash
+   gh run rerun <run_id> --repo <owner>/nixie --job <job_id>
+   ```
+
+   Expect the job's log to end with `+ <package_name>@<version>`, and
+   `npm view <package_name> version` to print that version.
 
 ## Check an attestation
 
