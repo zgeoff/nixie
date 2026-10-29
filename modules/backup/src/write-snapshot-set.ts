@@ -8,7 +8,6 @@ import {
   formatBackupFile,
   formatBackupSetName,
   readBackupSets,
-  readFileSHA256,
 } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { getBackupStagingDir } from './get-backup-staging-dir';
@@ -68,7 +67,7 @@ async function createSetRow(
   kind: BackupSetKind,
   stagingDir: string,
 ): Promise<StartedSet> {
-  const staged = await readBackupSets(stagingDir);
+  const staged = await readBackupSets(context.storage.files, stagingDir);
 
   const newestStaged = staged.at(-1)?.sequence ?? 0;
   const stagedAt = context.writer.clock.now();
@@ -124,7 +123,7 @@ async function writeSetCopies(
 
   const copies = await Promise.all(
     backupSetFiles.map(async (name) => {
-      const digest = await readFileSHA256(join(directory, name));
+      const digest = await files.readFileSHA256(join(directory, name));
 
       return { name, bytes: digest.bytes, sha256: digest.sha256 };
     }),

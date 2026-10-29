@@ -214,3 +214,36 @@ test('it leaves a set with no receipt in staging', async () => {
 
   expect(names).toStrictEqual(['000000000003']);
 });
+
+test('it keeps the set and its staged row when its receipt cannot be read', async () => {
+  const ctx = await setupTest();
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
+      values (3, 'scheduled', 'staged', 0, 1798761600000)`.execute(tx);
+  });
+
+  await mkdir(join(ctx.dataDir, 'backup', '000000000003'));
+  await writeFile(join(ctx.dataDir, 'backup', '000000000003', 'complete'), '');
+  await writeFile(join(ctx.dataDir, 'backup', '000000000003', 'receipt.json'), '{}');
+
+  const storage = {
+    ...localDataStorage,
+    files: {
+      ...localDataStorage.files,
+      readText: () => Promise.reject(new Error('EIO: i/o error, read')),
+    },
+  };
+
+  const refused = await writeReceivedReceipts({ writer: ctx.writer, storage }).then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  const names = await readdir(join(ctx.dataDir, 'backup', '000000000003'));
+  const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);
+
+  expect(refused).toMatchObject({ message: 'EIO: i/o error, read' });
+  expect(names).toIncludeSameMembers(['complete', 'receipt.json']);
+  expect(rows.rows).toStrictEqual([{ state: 'staged' }]);
+});

@@ -1,4 +1,5 @@
 import type { DatabaseOptions } from '@heynixie/db';
+import type { BackupFileReads } from '@heynixie/wire';
 import type { Kysely } from 'kysely';
 import type { ClaimFileLock } from './claim-file-lock';
 
@@ -9,8 +10,7 @@ export interface DataStorage {
   readonly files: DataFileSystem;
 }
 
-export interface DataFileSystem {
-  readonly probeFile: (path: string) => Promise<boolean>;
+export interface DataFileSystem extends BackupFileReads {
   readonly createDirectories: (path: string) => Promise<void>;
   readonly createDirectory: (path: string) => Promise<boolean>;
   readonly copyFile: (from: string, to: string) => Promise<void>;

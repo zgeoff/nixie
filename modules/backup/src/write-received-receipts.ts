@@ -24,22 +24,23 @@ export async function writeReceivedReceipts(
   context: BackupContext,
 ): Promise<readonly ReceivedReceipt[]> {
   const stagingDir = getBackupStagingDir(context.writer.dataDir);
+  const files = context.storage.files;
 
-  const sets = await readBackupSets(stagingDir);
+  const sets = await readBackupSets(files, stagingDir);
 
   const received: ReceivedReceipt[] = [];
 
   for (const set of sets.filter((entry) => entry.hasReceipt)) {
-    const text = await Bun.file(join(set.directory, backupSetLayout.receipt)).text();
+    const text = await files.readText(join(set.directory, backupSetLayout.receipt));
     const receipt = await writeReceipt(context, set.sequence, text);
 
     received.push(receipt);
 
-    await context.storage.files.removeFile(set.directory);
+    await files.removeFile(set.directory);
   }
 
   if (received.length > 0) {
-    await context.storage.files.writeDirectoryToDisk(stagingDir);
+    await files.writeDirectoryToDisk(stagingDir);
   }
 
   return received;
