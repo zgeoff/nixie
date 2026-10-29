@@ -160,6 +160,8 @@ The other packages each hold one piece the modules and apps share:
   a clock the test steps.
 - `libs/retry` is the backoff that sets the wait before each retry, so every part that retries backs
   off the same way.
+- `libs/task-control` holds the transition table of the task controls, so the tasks module and the
+  web client's mock API allow and refuse the same controls.
 - `libs/async` holds the promise helpers, such as the wait for work to settle that a caller uses
   when another part reads the work's failure.
 - `libs/logger` is the logger, so a module that logs needs none of the health code.

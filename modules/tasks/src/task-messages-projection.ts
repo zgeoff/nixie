@@ -18,11 +18,18 @@ export const taskMessagesProjection: Projection = {
 
     const parsed = parseTaskRecord(record);
 
+    if (parsed?.kind === 'task.stopped') {
+      return releaseWaits(db, parsed.taskID, ['from_task']);
+    }
+
     const finished =
       (parsed?.kind === 'task.step_committed' && parsed.nextState === 'done') ||
-      (parsed?.kind === 'task.step_errored' && parsed.nextState === 'failed');
+      (parsed?.kind === 'task.step_errored' && parsed.nextState === 'failed') ||
+      parsed?.kind === 'task.closed';
 
-    return finished ? releaseWaits(db, parsed.taskID) : Promise.resolve([]);
+    return finished
+      ? releaseWaits(db, parsed.taskID, ['from_task', 'to_task'])
+      : Promise.resolve([]);
   },
 };
 
@@ -65,12 +72,13 @@ async function insertMessage(
 async function releaseWaits(
   db: Transaction<TasksTables>,
   taskID: string,
+  sides: readonly ('from_task' | 'to_task')[],
 ): Promise<readonly string[]> {
   const released = await db
     .updateTable('task_messages')
     .set({ wait_state: 'released' })
     .where('wait_state', 'in', collectTaskWaitSources('released'))
-    .where((eb) => eb.or([eb('from_task', '=', taskID), eb('to_task', '=', taskID)]))
+    .where((eb) => eb.or(sides.map((side) => eb(side, '=', taskID))))
     .returning('message_id')
     .execute();
 

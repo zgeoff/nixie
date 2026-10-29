@@ -20,6 +20,8 @@ interface TurnState extends TurnInputState {
 
   contextSize: number | null;
   readonly compactWindow: number;
+
+  isInterrupted: boolean;
 }
 
 export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<void> {
@@ -33,6 +35,7 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
     committed: turn.resume,
     contextSize: null,
     compactWindow: getCompactWindow(turn.profile),
+    isInterrupted: false,
     toolsReady: Promise.withResolvers(),
     inputFailed: Promise.withResolvers(),
     ended: Promise.withResolvers(),
@@ -43,9 +46,16 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
     options,
   });
 
+  const unsubscribe = subscribeToInterrupt(deps.interrupt, () => {
+    state.isInterrupted = true;
+    void runInterrupt(session);
+  });
+
   try {
     await drainConnectedSession(session, deps, state);
   } finally {
+    unsubscribe();
+
     state.ended.resolve();
 
     // In the SDK, close() ends a read that still waits on the CLI, and return() waits for the CLI
@@ -54,6 +64,35 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
 
     await session.return();
   }
+}
+
+function subscribeToInterrupt(
+  signal: AbortSignal | undefined,
+  onInterrupt: () => void,
+): () => void {
+  if (signal === undefined) {
+    return () => {};
+  }
+
+  if (signal.aborted) {
+    onInterrupt();
+
+    return () => {};
+  }
+
+  signal.addEventListener('abort', onInterrupt, { once: true });
+
+  return () => {
+    signal.removeEventListener('abort', onInterrupt);
+  };
+}
+
+// The SDK rejects a control request still pending when the session closes, and a turn that ends as
+// the interrupt lands closes its session before the CLI answers.
+async function runInterrupt(session: ReturnType<typeof query>): Promise<void> {
+  try {
+    await session.interrupt();
+  } catch {}
 }
 
 async function drainConnectedSession(
@@ -266,6 +305,10 @@ async function emitResult(
   deps: TurnDependencies,
   state: TurnState,
 ): Promise<MessageOutcome> {
+  if (message.subtype !== 'success' && state.isInterrupted) {
+    return emitInterrupted(message, deps, state);
+  }
+
   if (message.subtype !== 'success') {
     const isMissing = message.errors.some((error) => error.startsWith(missingSessionPrefix));
 
@@ -291,20 +334,31 @@ async function emitResult(
   return 'result';
 }
 
-const overflowReasons: ReadonlySet<string> = new Set(['blocking_limit', 'prompt_too_long']);
-
-function pickBoundary(
-  message: Extract<SDKResultMessage, { subtype: 'success' }>,
+// The CLI ends an interrupted turn with an error result, yet every chain entry before the interrupt
+// stands, so the turn ends at the last of them and the host commits what the model read.
+async function emitInterrupted(
+  message: SDKResultMessage,
+  deps: TurnDependencies,
   state: TurnState,
-): SessionPoint | null {
-  const isOverflow =
-    message.terminal_reason !== undefined && overflowReasons.has(message.terminal_reason);
+): Promise<MessageOutcome> {
+  const boundary = state.boundary ?? state.committed;
 
-  return isOverflow ? (state.committed ?? state.boundary) : state.boundary;
+  const frame: GuestFrame =
+    boundary === null
+      ? {
+          type: 'failed',
+          reason: 'error',
+          detail: 'the turn was interrupted before any chain entry',
+        }
+      : buildEnded(message, boundary, state);
+
+  await deps.emit(frame);
+
+  return 'stop';
 }
 
 function buildEnded(
-  message: Extract<SDKResultMessage, { subtype: 'success' }>,
+  message: SDKResultMessage,
   boundary: SessionPoint,
   state: TurnState,
 ): GuestFrame {
@@ -331,4 +385,16 @@ function buildEnded(
       ? {}
       : { context: { size: state.contextSize, window: state.compactWindow } }),
   };
+}
+
+const overflowReasons: ReadonlySet<string> = new Set(['blocking_limit', 'prompt_too_long']);
+
+function pickBoundary(
+  message: Extract<SDKResultMessage, { subtype: 'success' }>,
+  state: TurnState,
+): SessionPoint | null {
+  const isOverflow =
+    message.terminal_reason !== undefined && overflowReasons.has(message.terminal_reason);
+
+  return isOverflow ? (state.committed ?? state.boundary) : state.boundary;
 }

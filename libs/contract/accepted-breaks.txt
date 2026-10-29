@@ -18,3 +18,6 @@ GEO-1170: POST /memory/approveProposals added the new `PIN_EDIT` enum value to t
 GEO-1170: POST /memory/rejectProposals added the new `PIN_EDIT` enum value to the `outcomes/items/anyOf[subschema #5]/code` response property for the response status `200`
 GEO-1353: POST /memory/listProposals added the new `sensitive` enum value to the `proposals/items/reason` response property for the response status `200`
 GEO-1839: POST /memory/listProposals added the new `subject_change` enum value to the `proposals/items/reason` response property for the response status `200`
+GEO-1795: POST /tasks/list added the new `paused` enum value to the `tasks/items/state` response property for the response status `200`
+GEO-1795: POST /tasks/list added the new `stopped` enum value to the `tasks/items/state` response property for the response status `200`
+GEO-1795: POST /tasks/list added the new `closed` enum value to the `tasks/items/state` response property for the response status `200`

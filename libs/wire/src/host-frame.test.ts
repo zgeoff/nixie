@@ -64,3 +64,9 @@ test('it refuses a summarize frame with an empty instruction', () => {
 
   expect(result.error?.issues).toPartiallyContain({ path: ['instruction'] });
 });
+
+test('it accepts an interrupt frame', () => {
+  const frame: HostFrame = { type: 'interrupt' };
+
+  expect(hostFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});

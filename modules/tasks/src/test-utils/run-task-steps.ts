@@ -1,7 +1,7 @@
 import { claimTask } from '../claim-task';
 import { runDueTimers } from '../run-due-timers';
 import { runTaskStep } from '../run-task-step';
-import type { RunStep, TaskClaim, TasksContext } from '../types';
+import type { RunStep, TaskClaim, TasksContext, TasksTables } from '../types';
 
 export interface TaskStepsOptions {
   readonly steps: Readonly<Record<string, RunStep>>;
@@ -71,10 +71,11 @@ async function runAfterNextTimer(
 
 async function readNextTimer(context: TasksContext): Promise<number | null> {
   const row = await context.log.writer.db
-    .$extendTables<{ timers: { due_at: number; fired_at: number | null } }>()
+    .$extendTables<TasksTables>()
     .selectFrom('timers')
     .select('due_at')
     .where('fired_at', 'is', null)
+    .where('withdrawn_sequence', 'is', null)
     .orderBy('due_at')
     .executeTakeFirst();
 

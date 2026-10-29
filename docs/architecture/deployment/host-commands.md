@@ -163,3 +163,10 @@ after, so the operator sees what the release's migrations do to memory before th
 The dry run reads the file it names only through a read-only connection, which copies one snapshot
 of the database and its write-ahead log, so it never changes the database and a server that writes
 meanwhile never splits the copy.
+
+## Tasks
+
+The task host commands pause, resume, stop, restart, close or interrupt one task by its ID, through
+the same transition table as the [API](../channels/api.md#controlling-a-task), and print the task's
+state after the control. A control the task's state refuses changes nothing and fails the command
+with the state it met, as does a close of the conversation.

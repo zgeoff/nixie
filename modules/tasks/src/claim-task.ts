@@ -2,25 +2,31 @@ import type { RecordInput } from '@heynixie/log';
 import { parseJSONObject, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
+import { buildPausedRecord } from './build-paused-record';
 import { buildStepWake } from './build-step-wake';
 import { claimLease } from './claim-lease';
+import { resetLease } from './reset-lease';
 import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
 import { taskStepStartedCodec } from './task-step-started-codec';
-import type { Lease, StepWake, TaskClaim, TasksContext, TasksTables } from './types';
+import type { Lease, StartedClaim, StepWake, TasksContext, TasksTables } from './types';
 
 export interface ClaimTaskOptions {
   readonly holder: string;
   readonly leaseMs: number;
 }
 
+interface StartedStep {
+  readonly stepKey: string;
+  readonly wake: StepWake;
+  readonly startSequence: number;
+}
+
 export async function claimTask(
   context: TasksContext,
   options: ClaimTaskOptions,
-): Promise<TaskClaim | null> {
-  const started: { stepKey: string; wake: StepWake } = {
-    stepKey: '',
-    wake: { hop: 0, cause: { kind: 'carried' } },
-  };
+): Promise<StartedClaim | null> {
+  const started: { step: StartedStep | null } = { step: null };
 
   const lease = await claimLease(context, {
     kind: 'task',
@@ -28,14 +34,11 @@ export async function claimTask(
     durationMs: options.leaseMs,
     readCandidate: readClaimableTask,
     onClaim: async (tx, held) => {
-      const step = await writeStepStart(tx, context, held);
-
-      started.stepKey = step.stepKey;
-      started.wake = step.wake;
+      started.step = await writeStepStart(tx, context, held);
     },
   });
 
-  return lease === null ? null : { lease, stepKey: started.stepKey, wake: started.wake };
+  return lease === null || started.step === null ? null : { lease, ...started.step };
 }
 
 async function readClaimableTask(tx: Transaction<unknown>, now: number): Promise<string | null> {
@@ -60,13 +63,13 @@ async function writeStepStart(
   tx: Transaction<unknown>,
   context: TasksContext,
   lease: Lease,
-): Promise<{ readonly stepKey: string; readonly wake: StepWake }> {
+): Promise<StartedStep | null> {
   const taskID = lease.workID;
   const db = tx.$extendTables<TasksTables>();
 
   const task = await db
     .selectFrom('tasks')
-    .select(['committed_steps', 'started_step_key', 'read_cursor', 'step_hop'])
+    .select(['committed_steps', 'started_step_key', 'read_cursor', 'step_hop', 'pause_requested'])
     .where('task_id', '=', taskID)
     .executeTakeFirstOrThrow();
 
@@ -102,7 +105,18 @@ async function writeStepStart(
           },
         ];
 
-  await writeRecordsInTransaction(tx, context.log, [
+  if (task.pause_requested === 1) {
+    await writeRecordsInTransaction(tx, context.log, [
+      ...interrupted,
+      buildPausedRecord(taskID, 'ready', definitions),
+    ]);
+
+    await resetLease(tx, lease);
+
+    return null;
+  }
+
+  const records = await writeRecordsInTransaction(tx, context.log, [
     ...interrupted,
     {
       kind: 'task.step_started',
@@ -118,5 +132,9 @@ async function writeStepStart(
     },
   ]);
 
-  return { stepKey, wake };
+  const start = records.at(-1);
+
+  invariant(start, 'the step start writes its record');
+
+  return { stepKey, wake, startSequence: start.sequence };
 }

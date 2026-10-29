@@ -66,6 +66,8 @@ const messageFrameSchema = z
   })
   .readonly();
 
+const interruptFrameSchema = z.object({ type: z.literal('interrupt') }).readonly();
+
 const summarizeFrameSchema = z
   .object({
     type: z.literal('summarize'),
@@ -81,6 +83,7 @@ const purgeFrameSchema = z.object({ type: z.literal('purge') }).readonly();
 export const hostFrameSchema = z.discriminatedUnion('type', [
   turnFrameSchema,
   messageFrameSchema,
+  interruptFrameSchema,
   summarizeFrameSchema,
   purgeFrameSchema,
 ]);

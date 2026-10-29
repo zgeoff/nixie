@@ -1,12 +1,14 @@
 import { DatabaseError } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { match } from 'ts-pattern';
+import { buildPausedRecord } from './build-paused-record';
+import { probePauseRequested } from './probe-pause-requested';
 import { readStepCursor } from './read-step-cursor';
 import { requireLease } from './require-lease';
 import { resetLease } from './reset-lease';
 import { StepAlreadyCommittedError } from './step-already-committed-error';
 import { taskStepCommittedCodec } from './task-step-committed-codec';
-import type { StepResult, TaskClaim, TaskState, TasksContext } from './types';
+import type { ResumeState, StepResult, TaskClaim, TaskState, TasksContext } from './types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
 export async function writeStepCommit(
@@ -28,6 +30,12 @@ export async function writeStepCommit(
 
     const cursor = await readStepCursor(tx, taskID, result.acknowledged);
 
+    const nextState = pickNextState(result.next, cursor.hasUnread);
+
+    const isPauseRequested = await probePauseRequested(tx, taskID);
+
+    const resumeState = pickPausedResume(nextState, isPauseRequested);
+
     await writeRecordsInTransaction(tx, context.log, [
       ...result.records.map((record) => ({ ...record, thread: taskID })),
       {
@@ -37,7 +45,7 @@ export async function writeStepCommit(
         stepKey: claim.stepKey,
         payload: taskStepCommittedCodec.encode({
           taskID,
-          nextState: pickNextState(result.next, cursor.hasUnread),
+          nextState,
           readCursor: cursor.readCursor,
           sessionBoundary: result.sessionBoundary ?? null,
           timers: (result.timers ?? []).map((timer) => ({
@@ -46,6 +54,9 @@ export async function writeStepCommit(
           })),
         }),
       },
+      ...(resumeState === null
+        ? []
+        : [buildPausedRecord(taskID, resumeState, context.definitions())]),
     ]);
 
     await resetLease(tx, claim.lease);
@@ -78,6 +89,14 @@ function pickNextState(next: StepResult['next'], hasUnread: boolean): TaskState 
     .with('wait', () => (hasUnread ? 'ready' : 'waiting'))
     .with('done', () => (hasUnread ? 'ready' : 'done'))
     .exhaustive();
+}
+
+function pickPausedResume(nextState: TaskState, isPauseRequested: boolean): ResumeState | null {
+  if (!isPauseRequested) {
+    return null;
+  }
+
+  return nextState === 'ready' || nextState === 'waiting' ? nextState : null;
 }
 
 function isStepKeyConflict(error: unknown): boolean {

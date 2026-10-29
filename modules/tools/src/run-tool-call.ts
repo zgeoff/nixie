@@ -306,7 +306,11 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
     return buildTypedResult(allowed.registered, outcome, actionID);
   }
 
-  return buildMessage(outcome.outcome, `action ${actionID} ${outcome.outcome}: ${outcome.reason}`, {
+  // The tool result record keeps a cancel under failed, because the release before refuses an
+  // outcome its record codec does not list, and only the text names the cancel.
+  const recorded = outcome.outcome === 'cancelled' ? 'failed' : outcome.outcome;
+
+  return buildMessage(recorded, `action ${actionID} ${outcome.outcome}: ${outcome.reason}`, {
     source: 'untrusted',
     isError: false,
     actionID,

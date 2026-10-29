@@ -24,6 +24,7 @@ test('it gives the tasks the API lists', async () => {
     expect(hook.result.current.tasks).toStrictEqual([
       {
         brief: garden.brief,
+        isPauseRequested: false,
         isTakingMessages: true,
         lastActivityAt: garden.lastActivityAt,
         name: 'Garden plan',

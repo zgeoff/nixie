@@ -2,7 +2,11 @@ import type { Span } from '@heynixie/contract';
 import { isTimeZone } from '@heynixie/contract';
 import type { JSONObject, LogRecord } from '@heynixie/log';
 import { readRecordAttachments, readRecords, withWriteTransaction } from '@heynixie/log';
-import { ownerMessageCodec, writeInboxRecordsInTransaction } from '@heynixie/tasks';
+import {
+  isFinishedState,
+  ownerMessageCodec,
+  writeInboxRecordsInTransaction,
+} from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { normalizeSpans } from './normalize-spans';
@@ -82,7 +86,7 @@ async function writeMessage(
     .where('task_id', '=', input.thread)
     .executeTakeFirst();
 
-  if (task === undefined || task.state === 'done' || task.state === 'failed') {
+  if (task === undefined || isFinishedState(task.state)) {
     return { status: 'thread_not_found' };
   }
 

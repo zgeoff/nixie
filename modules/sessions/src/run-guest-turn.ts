@@ -24,6 +24,8 @@ export interface GuestTurnSpec {
 
   readonly signal: AbortSignal;
 
+  readonly interrupt?: AbortSignal;
+
   readonly readRecallMark?: () => Promise<number>;
 }
 
@@ -52,6 +54,7 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
     await stream.send(encodeTurnFrame(spec.turn));
 
     void sendMessages(stream, spec.messages);
+    void sendInterrupt(stream, spec.interrupt, spec.signal);
 
     return await readTurn(stream, spec.readRecallMark);
   } catch (error) {
@@ -83,6 +86,49 @@ async function sendMessages(stream: ExecStream, messages: LiveMessages): Promise
       await stream.send(encodeTurnFrame({ type: 'message', message }));
     }
   } catch {}
+}
+
+// A guest that already ended its turn takes no frame, so a late interrupt fails quietly.
+async function sendInterrupt(
+  stream: ExecStream,
+  interrupt: AbortSignal | undefined,
+  signal: AbortSignal,
+): Promise<void> {
+  if (interrupt === undefined) {
+    return;
+  }
+
+  const interrupted = await waitForAbort(interrupt, signal);
+
+  if (interrupted) {
+    await stream.send(encodeTurnFrame({ type: 'interrupt' })).catch(() => {});
+  }
+}
+
+function waitForAbort(interrupt: AbortSignal, signal: AbortSignal): Promise<boolean> {
+  if (interrupt.aborted) {
+    return Promise.resolve(true);
+  }
+
+  const settled = Promise.withResolvers<boolean>();
+
+  interrupt.addEventListener(
+    'abort',
+    () => {
+      settled.resolve(true);
+    },
+    { once: true },
+  );
+
+  signal.addEventListener(
+    'abort',
+    () => {
+      settled.resolve(false);
+    },
+    { once: true },
+  );
+
+  return settled.promise;
 }
 
 interface MutableTurn {

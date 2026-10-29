@@ -44,6 +44,7 @@ test('it merges a conversation write into the pending proposal the writer made o
     wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const planned = await writePlannedBatch(ctx.memory.log, ['I keep bees on the allotment.']);
@@ -105,6 +106,7 @@ test('it merges a writer proposal into the pending proposal the conversation mad
     wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const first = await ctx.memory.store.writes.remember({
@@ -155,6 +157,7 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
     wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const planned = await writePlannedBatch(ctx.memory.log, ['I keep bees.', 'Yes, I keep bees.']);
@@ -224,6 +227,7 @@ test('it keeps a sensitive write and a write with no mark of the same text as pr
     wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const planned = await writePlannedBatch(ctx.memory.log, [

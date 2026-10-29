@@ -12,6 +12,7 @@ export interface ListedTask {
   readonly id: string;
   readonly name: string;
   readonly state: TaskState;
+  readonly isPauseRequested: boolean;
   readonly brief: string;
   readonly lastActivityAt: Date;
 
@@ -20,9 +21,9 @@ export interface ListedTask {
 
 const listedStates: Readonly<Record<TaskListState, readonly TaskState[]>> = {
   active: ['ready', 'running'],
-  waiting: ['waiting'],
-  done: ['done', 'failed'],
-  all: ['ready', 'running', 'waiting', 'done', 'failed'],
+  waiting: ['waiting', 'paused', 'stopped'],
+  done: ['done', 'failed', 'closed'],
+  all: ['ready', 'running', 'waiting', 'paused', 'stopped', 'done', 'failed', 'closed'],
 };
 
 export async function readTaskList(
@@ -41,7 +42,7 @@ export async function readTaskList(
   const rows = await db
     .selectFrom('tasks')
     .innerJoin('records', 'records.sequence', 'tasks.updated_sequence')
-    .select(['tasks.task_id', 'tasks.state', 'records.recorded_at'])
+    .select(['tasks.task_id', 'tasks.state', 'tasks.pause_requested', 'records.recorded_at'])
     .where(
       'tasks.task_id',
       'in',
@@ -72,6 +73,7 @@ export async function readTaskList(
             id: row.task_id,
             name: profile.name,
             state: row.state,
+            isPauseRequested: row.pause_requested === 1,
             brief: profile.brief,
             lastActivityAt: new Date(row.recorded_at),
             ...(target === undefined ? {} : { waitingOn: target }),

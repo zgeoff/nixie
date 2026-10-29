@@ -1,5 +1,7 @@
+import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { buildPausedRecord } from './build-paused-record';
 import { runDueTimers } from './run-due-timers';
 import { taskLeaseExpiredCodec } from './task-lease-expired-codec';
 import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
@@ -53,7 +55,7 @@ async function resetStaleLeases(context: TasksContext): Promise<void> {
 
     const running = await db
       .selectFrom('tasks')
-      .select('task_id')
+      .select(['task_id', 'pause_requested'])
       .where('state', '=', 'running')
       .orderBy('task_id')
       .execute();
@@ -61,12 +63,18 @@ async function resetStaleLeases(context: TasksContext): Promise<void> {
     await writeRecordsInTransaction(
       tx,
       context.log,
-      running.map((task) => ({
-        kind: 'task.lease_expired',
-        definitions: context.definitions(),
-        thread: task.task_id,
-        payload: taskLeaseExpiredCodec.encode({ taskID: task.task_id }),
-      })),
+      running.flatMap((task) => {
+        const expired: RecordInput = {
+          kind: 'task.lease_expired',
+          definitions: context.definitions(),
+          thread: task.task_id,
+          payload: taskLeaseExpiredCodec.encode({ taskID: task.task_id }),
+        };
+
+        return task.pause_requested === 1
+          ? [expired, buildPausedRecord(task.task_id, 'ready', context.definitions())]
+          : [expired];
+      }),
     );
   });
 }

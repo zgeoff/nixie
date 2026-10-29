@@ -1,5 +1,5 @@
 import type { TasksTables } from '@heynixie/tasks';
-import { writeInboxRecordsInTransaction } from '@heynixie/tasks';
+import { isFinishedState, writeInboxRecordsInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import type { ConsolidationTables } from './consolidation-types';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
@@ -25,7 +25,7 @@ export async function writeConsolidatorWakeInTransaction(
     .where('task_id', '=', memoryConsolidatorTaskID)
     .executeTakeFirst();
 
-  if ((pending?.count ?? 0) > 0 || task === undefined || isFinished(task.state)) {
+  if ((pending?.count ?? 0) > 0 || task === undefined || isFinishedState(task.state)) {
     return;
   }
 
@@ -37,8 +37,4 @@ export async function writeConsolidatorWakeInTransaction(
       payload: { at: now },
     },
   ]);
-}
-
-function isFinished(state: string): boolean {
-  return state === 'done' || state === 'failed';
 }

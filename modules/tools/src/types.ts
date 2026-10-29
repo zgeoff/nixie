@@ -107,7 +107,7 @@ export interface QueuedAction {
 
 export type ActionOutcome =
   | { readonly outcome: 'done'; readonly result: JSONObject }
-  | { readonly outcome: 'failed' | 'unknown'; readonly reason: string };
+  | { readonly outcome: 'failed' | 'unknown' | 'cancelled'; readonly reason: string };
 
 export interface ActionQueue {
   readonly enqueue: (action: QueuedAction) => Promise<string>;

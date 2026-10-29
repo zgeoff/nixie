@@ -91,6 +91,8 @@ export interface CLIFlags {
 
   readonly to?: string;
   readonly from?: string;
+
+  readonly taskID?: string;
 }
 
 export type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => Promise<number>;

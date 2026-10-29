@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
+import invariant from 'tiny-invariant';
 import { runTurn } from './run-turn';
 import { buildQueryRecorder } from './test-utils/build-query-recorder';
 import { createStubToolServer } from './test-utils/create-stub-tool-server';
@@ -672,6 +673,135 @@ test('it passes a message into the running turn at the next tool boundary and re
   ]);
 
   expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toInclude('Also buy eggs.');
+});
+
+test('it ends an interrupted turn at its last chain entry, and leaves a queued message unread', async () => {
+  const ctx = await setupTest();
+
+  const interrupt = new AbortController();
+
+  ctx.model.addReplies({ toolUse: { name: 'mcp__nixie__note_wait', input: {} } });
+
+  const turn = runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Watch my note.' }],
+    }),
+    { ...ctx.deps, messages: ctx.channel.readable, interrupt: interrupt.signal },
+  );
+
+  onTestFinished(async () => {
+    ctx.tools.release();
+
+    await turn;
+  });
+
+  await ctx.tools.waitForHeldCall();
+
+  await Promise.all([
+    ctx.channel.writable
+      .getWriter()
+      .write({ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' }),
+    ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002'),
+  ]);
+
+  interrupt.abort();
+
+  await turn;
+
+  expect(ctx.frames.filter((frame) => frame.type === 'read')).toStrictEqual([
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
+  ]);
+
+  expect(ctx.frames.at(-1)).toMatchObject({
+    type: 'ended',
+    subtype: 'error_during_execution',
+    boundary: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+  });
+});
+
+test('it ends a turn cleanly when an interrupt lands as the turn ends', async () => {
+  const ctx = await setupTest();
+
+  const interrupt = new AbortController();
+
+  ctx.model.addReplies({ text: 'Noted.' });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Note the time.' }],
+    }),
+    {
+      ...ctx.deps,
+      interrupt: interrupt.signal,
+      emit: async (frame) => {
+        await ctx.deps.emit(frame);
+
+        if (frame.type === 'ended') {
+          interrupt.abort();
+        }
+      },
+    },
+  );
+
+  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', subtype: 'success' });
+});
+
+test('it starts the next turn from the message an interrupt left unread, resumed after the interrupted turn', async () => {
+  const ctx = await setupTest();
+
+  const interrupt = new AbortController();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_wait', input: {} } },
+    { text: 'Eggs are on the list.' },
+  );
+
+  const first = runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Watch my note.' }],
+    }),
+    { ...ctx.deps, messages: ctx.channel.readable, interrupt: interrupt.signal },
+  );
+
+  onTestFinished(async () => {
+    ctx.tools.release();
+
+    await first;
+  });
+
+  await ctx.tools.waitForHeldCall();
+
+  interrupt.abort();
+
+  await first;
+
+  const ended = ctx.frames.at(-1);
+
+  invariant(ended?.type === 'ended');
+
+  const firstFrames = ctx.frames.length;
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      resume: ended.boundary,
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' }],
+    }),
+    { ...ctx.deps, toolServer: createStubToolServer().config },
+  );
+
+  const messages = JSON.stringify(ctx.model.requests.at(-1)?.body?.messages);
+
+  expect(ctx.frames.slice(firstFrames).filter((frame) => frame.type === 'read')).toStrictEqual([
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000002'] },
+  ]);
+
+  expect(messages).toInclude('Watch my note.');
+  expect(messages).toInclude('Also buy eggs.');
+  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', subtype: 'success' });
 });
 
 test('it fails the turn with the error its host message stream throws', async () => {

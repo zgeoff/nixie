@@ -2,6 +2,7 @@ import type { Clock } from '@heynixie/clock';
 import type { RecordWake } from '@heynixie/log';
 import { readRecords, startRecordWake, subscribeToCommits } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
+import { buildCancelledCheck } from './build-cancelled-check';
 import { buildModelView } from './build-model-view';
 import type { ActionRow, ActionsTables, ModelView } from './types';
 
@@ -31,7 +32,9 @@ export async function waitForActionOutcome(
   }
 }
 
-type SettledRow = Pick<ActionRow, 'action_id' | 'outcome_sequence' | 'reason' | 'status'>;
+type SettledRow = Pick<ActionRow, 'action_id' | 'outcome_sequence' | 'reason' | 'status'> & {
+  readonly isCancelled: boolean;
+};
 
 interface SettledWait {
   readonly actionID: string;
@@ -45,15 +48,17 @@ async function waitForSettledRow(context: TasksContext, wait: SettledWait): Prom
   for (;;) {
     wait.wake.reset();
 
-    const row = await db
+    const { is_cancelled: isCancelled, ...action } = await db
       .selectFrom('actions')
       .select(['action_id', 'status', 'reason', 'outcome_sequence'])
+      .select((eb) => buildCancelledCheck(eb).as('is_cancelled'))
       .where('action_id', '=', wait.actionID)
       .executeTakeFirstOrThrow();
 
+    const row = { ...action, isCancelled: isCancelled === 1 || isCancelled === true };
     const remainingMs = wait.deadline - context.clock.now();
 
-    if (row.status !== 'pending' || remainingMs <= 0) {
+    if (row.status !== 'pending' || row.isCancelled || remainingMs <= 0) {
       return row;
     }
 

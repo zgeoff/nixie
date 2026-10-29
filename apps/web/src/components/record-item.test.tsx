@@ -38,6 +38,7 @@ test('it marks your message with the task it went to', () => {
         tasks: [
           {
             brief: 'Plans the vegetable beds.',
+            isPauseRequested: false,
             isTakingMessages: true,
             lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
             name: 'Garden plan',

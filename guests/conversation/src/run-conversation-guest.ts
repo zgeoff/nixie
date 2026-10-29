@@ -31,7 +31,7 @@ export async function runConversationGuest(io: GuestIO): Promise<void> {
   try {
     const first = await frames.next();
 
-    if (first.done === true || first.value.type === 'message') {
+    if (first.done === true || first.value.type === 'message' || first.value.type === 'interrupt') {
       throw new Error('the first host frame must start a turn, a summary or a purge');
     }
 
@@ -60,7 +60,7 @@ interface GuestRun {
 }
 
 async function runFirstFrame(
-  frame: Exclude<HostFrame, { type: 'message' }>,
+  frame: Exclude<HostFrame, { type: 'message' | 'interrupt' }>,
   run: GuestRun,
 ): Promise<void> {
   if (frame.type === 'purge') {
@@ -77,10 +77,13 @@ async function runFirstFrame(
     return;
   }
 
+  const interrupt = new AbortController();
+
   await runTurn(frame, {
     env: run.io.env,
     toolServer: (run.io.createToolServer ?? buildHTTPToolServer)(frame),
-    messages: readMessages(run.frames),
+    messages: readMessages(run.frames, interrupt),
+    interrupt: interrupt.signal,
     emit: run.emit,
     ...(run.io.waitBeforeReconnect === undefined
       ? {}
@@ -100,7 +103,10 @@ function buildHTTPToolServer(turn: TurnFrame): McpServerConfig {
   };
 }
 
-async function* readMessages(frames: AsyncIterator<HostFrame>): AsyncGenerator<InboxMessage> {
+async function* readMessages(
+  frames: AsyncIterator<HostFrame>,
+  interrupt: AbortController,
+): AsyncGenerator<InboxMessage> {
   for (;;) {
     const next = await frames.next();
 
@@ -108,10 +114,12 @@ async function* readMessages(frames: AsyncIterator<HostFrame>): AsyncGenerator<I
       return;
     }
 
-    if (next.value.type !== 'message') {
+    if (next.value.type === 'interrupt') {
+      interrupt.abort();
+    } else if (next.value.type === 'message') {
+      yield next.value.message;
+    } else {
       throw new Error('a turn is already running');
     }
-
-    yield next.value.message;
   }
 }

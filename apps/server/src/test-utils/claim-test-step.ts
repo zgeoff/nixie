@@ -16,5 +16,6 @@ export async function claimTestStep(context: TasksContext): Promise<StepInput> {
     wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 }

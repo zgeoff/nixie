@@ -12,9 +12,11 @@ test('it builds a default step input', () => {
     'wake',
     'sessionBoundary',
     'signal',
+    'interrupt',
   ]);
 
   expect(input.signal.aborted).toBe(false);
+  expect(input.interrupt.aborted).toBe(false);
 
   expect(input).toMatchObject({
     taskID: 'conversation',

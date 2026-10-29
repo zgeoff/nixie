@@ -2,7 +2,14 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { readRecords } from '@heynixie/log';
 import type { FaultPointID } from '@heynixie/tasks';
-import { LeaseLostError, setFaultPointHandler } from '@heynixie/tasks';
+import {
+  LeaseLostError,
+  claimTask,
+  setFaultPointHandler,
+  writeStepCommit,
+  writeTaskControl,
+} from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
 import { createAllowedAction } from './create-allowed-action';
 import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
@@ -178,6 +185,74 @@ test('it queues a new action when the same call settled under an earlier step', 
 
   const next = await createAllowedAction(ctx.context, {
     step: { ...step, stepKey: `${step.lease.workID}:2` },
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  expect(next.isRepeat).toBeFalse();
+  expect(next.actionID).not.toBe(first.actionID);
+});
+
+test('it returns the cancelled action to the rerun of the step that a stop ended', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const first = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'stop' });
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'restart' });
+
+  const rerun = await claimTask(ctx.context, { holder: 'step-runner', leaseMs: 60_000 });
+
+  invariant(rerun);
+
+  const next = await createAllowedAction(ctx.context, {
+    step: rerun,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  expect(rerun.stepKey).toBe(step.stepKey);
+  expect(next).toStrictEqual({ actionID: first.actionID, status: 'pending', isRepeat: true });
+});
+
+test('it queues a new action for the same call in a later step than the one a stop ended', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const first = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'stop' });
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'restart' });
+
+  const rerun = await claimTask(ctx.context, { holder: 'step-runner', leaseMs: 60_000 });
+
+  invariant(rerun);
+
+  await writeStepCommit(ctx.context, rerun, { next: 'continue', records: [], acknowledged: [] });
+
+  const later = await claimTask(ctx.context, { holder: 'step-runner', leaseMs: 60_000 });
+
+  invariant(later);
+
+  const next = await createAllowedAction(ctx.context, {
+    step: later,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },

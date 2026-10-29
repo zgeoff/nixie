@@ -148,14 +148,45 @@ const moveTargetSchema = z.discriminatedUnion('kind', [
   newTaskTargetSchema,
 ]);
 
+const taskStateSchema = z.enum([
+  'ready',
+  'running',
+  'waiting',
+  'paused',
+  'stopped',
+  'done',
+  'failed',
+  'closed',
+]);
+
 const listedTaskSchema = z.object({
   brief: z.string(),
+  isPauseRequested: z.boolean(),
   isTakingMessages: z.boolean(),
   lastActivityAt: z.date(),
   name: z.string(),
-  state: z.enum(['ready', 'running', 'waiting', 'done', 'failed']),
+  state: taskStateSchema,
   taskID: threadSchema,
 });
+
+const controlledTaskSchema = z.object({
+  controlledAt: z.date(),
+  isPauseRequested: z.boolean(),
+  state: taskStateSchema,
+  taskID: threadSchema,
+});
+
+const taskControl = checkedAction
+  .errors({
+    TASK_NOT_FOUND: { message: 'No task has this ID', status: 404 },
+    TASK_STATE_REFUSED: {
+      message: 'The task is in a state that does not take this control',
+      status: 409,
+      data: z.object({ isPauseRequested: z.boolean(), state: taskStateSchema }),
+    },
+  })
+  .input(z.object({ clientActionID: clientActionIDSchema, taskID: threadSchema }))
+  .output(controlledTaskSchema);
 
 const followRecords = signedIn
   .input(z.object({ afterSequence: sequenceSchema, thread: threadSchema.optional() }))
@@ -249,6 +280,14 @@ export const contract = {
   },
   tasks: {
     list: signedIn.output(z.object({ tasks: z.array(listedTaskSchema) })),
+    pause: taskControl,
+    resume: taskControl,
+    stop: taskControl,
+    restart: taskControl,
+    close: taskControl.errors({
+      CONVERSATION_NEVER_CLOSES: { message: 'The conversation is never closed', status: 409 },
+    }),
+    interrupt: taskControl,
   },
   memory: {
     readVersions: signedIn

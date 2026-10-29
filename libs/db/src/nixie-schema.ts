@@ -1,3 +1,4 @@
+import { actionCancelMigration } from './action-cancel-migration';
 import { actionsMigration } from './actions-migration';
 import { apiMigration } from './api-migration';
 import { definitionSeedRepositoryMigration } from './definition-seed-repository-migration';
@@ -17,6 +18,7 @@ import { sandboxesMigration } from './sandboxes-migration';
 import { skillExportAttemptsMigration } from './skill-export-attempts-migration';
 import { skillExportsMigration } from './skill-exports-migration';
 import { skillsMigration } from './skills-migration';
+import { taskControlsMigration } from './task-controls-migration';
 import { taskMessagesMigration } from './task-messages-migration';
 import { taskRoutesMigration } from './task-routes-migration';
 import { tasksMigration } from './tasks-migration';
@@ -50,6 +52,8 @@ export const nixieSchema: BuildSchema = {
     memorySensitiveMigration,
     taskRoutesMigration,
     memorySubjectChangesMigration,
+    taskControlsMigration,
+    actionCancelMigration,
   ],
   oldestReader: 25,
 };

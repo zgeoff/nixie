@@ -31,7 +31,8 @@ export type ModelView =
   | { readonly status: 'done'; readonly actionID: string; readonly result: JSONObject | null }
   | { readonly status: 'failed'; readonly actionID: string; readonly reason: string }
   | { readonly status: 'pending'; readonly actionID: string; readonly message: string }
-  | { readonly status: 'unknown'; readonly actionID: string; readonly message: string };
+  | { readonly status: 'unknown'; readonly actionID: string; readonly message: string }
+  | { readonly status: 'cancelled'; readonly actionID: string; readonly message: string };
 
 interface ActionTable {
   readonly action_id: string;
@@ -47,6 +48,7 @@ interface ActionTable {
   readonly queued_sequence: number;
   readonly outcome_sequence: number | null;
   readonly updated_sequence: number;
+  readonly cancelled_sequence: number | null;
 }
 
 export type ActionRow = ActionTable;

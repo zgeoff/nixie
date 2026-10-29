@@ -65,6 +65,7 @@ export async function createWriterProposal(
         wake: { hop: 0, cause: { kind: 'event' } },
         sessionBoundary: null,
         signal: new AbortController().signal,
+        interrupt: new AbortController().signal,
       },
       row: await readWriterRow(memory.log),
       now: context.clock.now(),

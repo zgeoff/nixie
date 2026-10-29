@@ -22,6 +22,7 @@ test('it claims the conversation step for runner-a under a 60 s lease', async ()
     },
     stepKey: 'conversation:1',
     wake: { hop: 0, cause: { kind: 'owner' } },
+    startSequence: 3,
   });
 });
 

@@ -16,7 +16,9 @@ next piece of work, then takes its lease with one conditional upsert that succee
 lease is free or expired. A successful claim records the holder, the expiry, the writer epoch and a
 generation one higher than the lease's last. SQLite's write lock serializes every claim against
 every other write, so two runners never take the same lease. The claim of a task step records the
-step's start in the same transaction, so a lease never exists without the step it covers.
+step's start in the same transaction, so a lease never exists without the step it covers. A claim
+that takes back an expired lease on a task with a pause request pauses the task instead, and runs no
+step.
 
 The generation is what makes a lease safe to lose. Every write a step or an attempt makes checks,
 first and inside its own transaction, that its lease still stands with the same holder and
@@ -52,7 +54,7 @@ epoch. Every lease still held therefore belongs to a process that is gone. Recov
 in order:
 
 1. It frees every lease claimed under an older epoch, and records each running task's return to
-   ready.
+   ready, or its pause when the user asked to pause it.
 2. It records each step that started without a commit as interrupted.
 3. It records each action that started an attempt with no result as unknown, because its call may
    have reached the provider ([actions](./actions.md#attempts)).

@@ -134,6 +134,7 @@ test('#conversation.move moves a message to a new task with the name and brief y
 
   expect(listed.tasks.find((task) => task.taskID === moved.taskID)).toStrictEqual({
     brief: 'Books a plumber for the outside tap.',
+    isPauseRequested: false,
     isTakingMessages: true,
     lastActivityAt: expect.toBeValidDate(),
     name: 'Plumber',

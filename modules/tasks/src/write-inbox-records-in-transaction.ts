@@ -1,5 +1,6 @@
 import type { LogRecord, RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
+import { isFinishedState } from '@heynixie/task-control';
 import type { Transaction } from 'kysely';
 import { isInboxRecord } from './is-inbox-record';
 import type { TasksContext, TasksTables } from './types';
@@ -37,7 +38,7 @@ async function requireTask(db: Transaction<TasksTables>, taskID: string): Promis
     throw new Error(`no task has the ID ${taskID}`);
   }
 
-  if (row.state === 'done' || row.state === 'failed') {
+  if (isFinishedState(row.state)) {
     throw new Error(`task ${taskID} is ${row.state} and takes no input`);
   }
 }

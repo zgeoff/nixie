@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { runProjectionRebuild } from '@heynixie/log';
+import { writeTaskControl } from '@heynixie/tasks';
 import { createAllowedAction } from './create-allowed-action';
 import { runActionAttempt } from './run-action-attempt';
 import { buildStubConnector } from './test-utils/build-stub-connector';
@@ -45,6 +46,30 @@ test('it rebuilds an action that a refusal returned to pending equal to the live
   const rebuilt = await ctx.db.selectFrom('actions').selectAll().execute();
 
   expect(live).toMatchObject([{ status: 'pending' }]);
+  expect(rebuilt).toStrictEqual(live);
+});
+
+test('it rebuilds an action that a stop cancelled equal to the live one', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'stop' });
+
+  const live = await ctx.db.selectFrom('actions').selectAll().execute();
+
+  await runProjectionRebuild(ctx.context.log);
+
+  const rebuilt = await ctx.db.selectFrom('actions').selectAll().execute();
+
+  expect(live).toMatchObject([{ status: 'pending', cancelled_sequence: expect.toBeNumber() }]);
   expect(rebuilt).toStrictEqual(live);
 });
 

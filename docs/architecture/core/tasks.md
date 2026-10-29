@@ -22,15 +22,26 @@ stateDiagram-v2
   running --> waiting: the step commits with nothing unread, or holds
   running --> done: the step commits as done
   running --> failed: steps throw too many times in a row
-  failed --> ready: a start revives the conversation
+  failed --> ready: a restart, or a start of the conversation
   waiting --> ready: a record lands in the inbox
+  running --> paused: the step ends after a pause
+  ready --> paused: a pause
+  waiting --> paused: a pause
+  paused --> ready: a resume
+  paused --> waiting: a resume
+  running --> stopped: a stop
+  ready --> stopped: a stop
+  waiting --> stopped: a stop
+  paused --> stopped: a stop
+  stopped --> ready: a restart
+  stopped --> waiting: a restart
+  closed --> [*]
 ```
 
 A task's row in the tasks projection holds its state, and every change of state is a record on the
-task's thread, so a rebuild of the projection gives the live rows. The code reaches five of the
-eight states in the design. The table's state check lists all eight, because SQLite changes a check
-only by rebuilding the table, and a migration never changes a released one. A running task whose
-runner died stays running until a claim or recovery takes it back
+task's thread, so a rebuild of the projection gives the live rows. Every state but closed can move
+to closed, which the diagram leaves out, as [pause, stop and close](#pause-stop-and-close)
+describes. A running task whose runner died stays running until a claim or recovery takes it back
 ([leases and recovery](./leases-and-recovery.md)).
 
 ## The inbox
@@ -42,7 +53,9 @@ last inbox sequence, and a waiting task becomes ready in the same transaction, t
 projection's fold. A task message that did not wake its receiver is the one inbox record that wakes
 nothing, as [task messages](#task-messages) describes. The same fold ends the conversation's retry
 wait, so the user's next message gets a try at once. nixie refuses inbox input for a task that does
-not exist or has finished, because a finished task never runs again, so the input would stay unread.
+not exist or has finished, which means done, failed or closed, because no step would read the input.
+A done or closed task never runs again. A failed task refuses input until a restart returns it to
+ready.
 
 A step reports the inbox sequences it read, and its commit moves the read cursor over the contiguous
 run of them, oldest first. A record read past a gap stays unread, so a step that crashed before its
@@ -88,6 +101,44 @@ part of its readiness report as failing, an advisory part that never takes nixie
 the web UI says that nixie is failing to answer; the next turn that commits clears both. A start
 makes a failed conversation ready again with its errors cleared, because a failed task never wakes
 and the conversation must.
+
+## Pause, stop and close
+
+The user controls a task with 6 checked actions of the [API](../channels/api.md): pause, resume,
+stop, restart, close and interrupt. Each one writes its own record on the task's thread, and a pure
+transition table decides from the task's state which controls it allows, so a refused control writes
+nothing and returns the state it met. The tasks projection folds each record into the task's row, so
+a rebuild gives the same rows.
+
+- **Pause** of a ready or waiting task pauses it at once. A pause of a running task records a pause
+  request, and the step runs on: its commit, its error or the recovery of its lease then pauses the
+  task in the same transaction. A paused task holds the state it left, ready or waiting, and no
+  runner claims it. A step that commits as done finishes the task, because a pause holds only work
+  that remains. A step error that uses up the task's tries fails the task, and the pause request
+  ends with the step, so only a restart runs the task again.
+- **Resume** of a paused task returns it to its held state, or to ready when waking input arrived
+  while it was paused. A resume of a running task withdraws its pause request.
+- **Stop** ends the current task run. It frees the lease, so the running step's commit fails as a
+  lost lease, and the step's watch on the task's thread aborts the step at once. A stop withdraws
+  the task's pending timers, so they never fire, and releases each wait the task holds on another
+  task. A stopped task takes inbox input and leaves it unread.
+- **Restart** of a stopped or failed task returns it to the state that the stop held, or to ready
+  when waking input waits unread. The next step resumes the session from the last committed step, as
+  a rerun after a crash does.
+- **Close** ends a task for good, from any state but closed. It frees the lease, withdraws the
+  pending timers and releases every wait that names the task, on either side, and the inbox refuses
+  later input. The conversation refuses a close, because every deployment needs it to answer, but it
+  takes a stop and a restart.
+- **Interrupt** of a running task records the step it interrupts, and that step's watch fires the
+  step's interrupt signal. A conversation turn then ends at its last chain entry and commits as
+  usual, as [conversation turns](./conversation-turns.md#interrupts) describes. A step that runs no
+  model, such as a holding step, has no turn to end, and commits when it would have.
+
+An [action](./actions.md) whose task is paused or closed waits unclaimed until it has started an
+attempt, so a pause holds the queued actions with the task. A stop
+[cancels](./actions.md#cancelled-actions) each queued action that has not started an attempt, so a
+restart never sends it, and an action with a started attempt runs on to its outcome. The task list
+shows a paused or stopped task under waiting, and a closed task under done.
 
 ## Task messages
 
@@ -135,10 +186,10 @@ arrives as a new message. The message record holds whether the message opens a w
 the projection keeps each wait as it was. A record that lacks that field opens a wait for every
 question and request.
 
-A reply that names the question answers that wait. A step that commits as done, or a task that
-fails, releases every open wait that names the task. Only an open wait moves, so an answered wait
-stays answered when its task finishes. The list tool reads the newest open wait as the task it waits
-on.
+A reply that names the question answers that wait. A step that commits as done, a task that fails,
+and a close release every open wait that names the task, and a stop releases the waits the stopped
+task holds on others. Only an open wait moves, so an answered wait stays answered when its task
+finishes. The list tool reads the newest open wait as the task it waits on.
 
 [Conversation turns](./conversation-turns.md) covers the block that shows a task message to the
 model, and [memory writes](../memory/writes.md) covers why the content gate never takes its body as

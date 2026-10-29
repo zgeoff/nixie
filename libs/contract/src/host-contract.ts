@@ -260,6 +260,34 @@ const prompts = oc.errors({
 
 const forgottenItemsSchema = z.object({ itemIDs: z.array(z.string()) });
 
+const hostTaskStateSchema = z.enum([
+  'ready',
+  'running',
+  'waiting',
+  'paused',
+  'stopped',
+  'done',
+  'failed',
+  'closed',
+]);
+
+const taskControl = oc
+  .errors({
+    TASK_NOT_FOUND: { message: 'no task has that ID', status: 404 },
+    TASK_STATE_REFUSED: {
+      message: 'the task is in a state that does not take this control',
+      status: 409,
+    },
+  })
+  .input(z.strictObject({ taskID: z.string().min(1) }))
+  .output(
+    z.object({
+      taskID: z.string(),
+      state: hostTaskStateSchema,
+      isPauseRequested: z.boolean(),
+    }),
+  );
+
 export const hostContract = {
   reset: oc.output(
     z.object({
@@ -275,6 +303,16 @@ export const hostContract = {
       shreddedRecords: z.int().nonnegative(),
     }),
   ),
+  tasks: {
+    pause: taskControl,
+    resume: taskControl,
+    stop: taskControl,
+    restart: taskControl,
+    close: taskControl.errors({
+      CONVERSATION_NEVER_CLOSES: { message: 'the conversation is never closed', status: 409 },
+    }),
+    interrupt: taskControl,
+  },
   sessions: {
     issueCode: oc.output(z.object({ code: z.string(), expiresAt: z.date() })),
     list: oc.output(z.array(hostSessionSchema)),

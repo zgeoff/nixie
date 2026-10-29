@@ -7,6 +7,7 @@ import { createHostProposalProcedures } from './create-host-proposal-procedures'
 import { createHostSessionProcedures } from './create-host-session-procedures';
 import { createHostSkillProposalProcedures } from './create-host-skill-proposal-procedures';
 import { createHostSubjectsProcedure } from './create-host-subjects-procedure';
+import { createHostTaskProcedures } from './create-host-task-procedures';
 import { createHostWrittenSkillProcedures } from './create-host-written-skill-procedures';
 import { hostImplementer } from './host-implementer';
 import type { HostRouterOptions } from './types';
@@ -33,6 +34,7 @@ export function createHostRouter(options: HostRouterOptions) {
     resetConversations: hostImplementer.resetConversations.handler(() =>
       options.runConversationReset(),
     ),
+    tasks: hostImplementer.tasks.use(gated).router(createHostTaskProcedures(options.context)),
     sessions: hostImplementer.sessions
       .use(gated)
       .router(createHostSessionProcedures(options.context)),

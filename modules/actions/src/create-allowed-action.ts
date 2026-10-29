@@ -2,6 +2,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { TasksContext } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
+import { buildCancelledCheck } from './build-cancelled-check';
 import type { ActionRow, ActionStatus, ActionsTables, AllowedCall } from './types';
 
 export interface QueuedAction {
@@ -74,9 +75,12 @@ function readRepeat(
     .select(['action_id', 'status'])
     .where('task_id', '=', call.step.lease.workID)
     .where('action_hash', '=', call.actionHash)
-    .where((eb) =>
-      eb.or([eb('step_key', '=', call.step.stepKey), eb('status', 'in', ['pending', 'unknown'])]),
-    )
+    .where((eb) => {
+      const isLive = eb.not(buildCancelledCheck(eb));
+      const isOpen = eb.and([eb('status', 'in', ['pending', 'unknown']), isLive]);
+
+      return eb.or([eb('step_key', '=', call.step.stepKey), isOpen]);
+    })
     .orderBy('queued_sequence', 'desc')
     .limit(1)
     .executeTakeFirst();

@@ -23,6 +23,7 @@ test('it marks a moved message with its task and the move', () => {
         tasks: [
           {
             brief: 'Buys what the garden needs.',
+            isPauseRequested: false,
             isTakingMessages: true,
             lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
             name: 'Seed order',
@@ -80,6 +81,7 @@ test('it offers only the open tasks that take your messages, other than the curr
         tasks: [
           {
             brief: 'Buys what the garden needs.',
+            isPauseRequested: false,
             isTakingMessages: true,
             lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
             name: 'Seed order',
@@ -88,6 +90,7 @@ test('it offers only the open tasks that take your messages, other than the curr
           },
           {
             brief: 'Plans the vegetable beds.',
+            isPauseRequested: false,
             isTakingMessages: true,
             lastActivityAt: new Date('2026-10-14T08:00:00.000Z'),
             name: 'Garden plan',
@@ -96,6 +99,7 @@ test('it offers only the open tasks that take your messages, other than the curr
           },
           {
             brief: 'Booked the tiler.',
+            isPauseRequested: false,
             isTakingMessages: true,
             lastActivityAt: new Date('2026-10-13T08:00:00.000Z'),
             name: 'Tiler booking',
@@ -103,7 +107,17 @@ test('it offers only the open tasks that take your messages, other than the curr
             taskID: 'r5bn1cy6tf',
           },
           {
+            brief: 'Compared the paint quotes.',
+            isPauseRequested: false,
+            isTakingMessages: true,
+            lastActivityAt: new Date('2026-10-13T08:30:00.000Z'),
+            name: 'Paint quotes',
+            state: 'closed',
+            taskID: 'w2jk7nd4hs',
+          },
+          {
             brief: 'Saves what you say as memory.',
+            isPauseRequested: false,
             isTakingMessages: false,
             lastActivityAt: new Date('2026-10-13T07:00:00.000Z'),
             name: 'Memory writer',
@@ -167,6 +181,7 @@ test('it moves the message to the task you pick', async () => {
         tasks: [
           {
             brief: garden.brief,
+            isPauseRequested: false,
             isTakingMessages: true,
             lastActivityAt: garden.lastActivityAt,
             name: garden.name,

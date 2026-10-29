@@ -150,9 +150,10 @@ A message the user sends while a turn runs reaches the same turn, when that turn
 inbox. A turn that left records for the next step takes no live message, so the read cursor never
 meets a gap and no record reaches the model twice. The host watches the conversation thread for
 inbox records that land after the step started and writes each one to the guest as a message frame,
-and the guest passes it into the running query. The SDK acknowledges a message it folds into a
-running turn in a different form from the turn's opening messages, and the guest counts both forms
-as a read.
+and the guest passes it into the running query at the SDK's next priority. The model reads it at the
+turn's next tool boundary, and the step's commit marks it read. The SDK acknowledges a message it
+folds into a running turn in a different form from the turn's opening messages, and the guest counts
+both forms as a read.
 
 The user's message renders with each span the client labelled pasted or dropped wrapped in a
 `<pasted id="…">` or `<dropped id="…">` block, in the inbox and in a rebuilt session's history
@@ -197,6 +198,17 @@ turn refuses one that would pass either cap. A rebuilt session's history and eve
 the message show only the markers, never the bytes, so an image reaches the model once, in the turn
 it was sent. The pasted-text rule in the system prompt names the images too: the model treats an
 image's content, its text included, as it treats dropped text.
+
+## Interrupts
+
+An [interrupt](./tasks.md#pause-stop-and-close) ends a running turn early and keeps what the turn
+did. The host writes an interrupt frame to the guest, and the guest interrupts the query. The SDK
+then ends the turn with an error result, yet every chain entry before the interrupt stands, so the
+guest ends the turn at the last of them and the step commits that boundary. A message the turn never
+reached stays unread, so it starts the next turn, and the next turn resumes the session at the
+interrupted turn's last entry. A resumed turn interrupted before its first new chain entry ends at
+the entry it resumed from. A fresh turn interrupted before its first chain entry has no boundary to
+end at, so it fails as a step error, and the next step runs it again.
 
 ## System messages
 

@@ -1,6 +1,7 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { renderSessionCookie } from '@heynixie/contract';
 import { withEventMeta } from '@orpc/server';
+import { match } from 'ts-pattern';
 import type { ReadonlyDeep } from '../types';
 import { mockImplementer } from './mock-implementer';
 import { mockMemoryRouter } from './mock-memory-router';
@@ -9,6 +10,8 @@ import { store } from './store';
 import { toLogRecord } from './to-log-record';
 import { writeMockForget } from './write-mock-forget';
 import { writeMockMove } from './write-mock-move';
+import type { MockTaskControl } from './write-mock-task-control';
+import { writeMockTaskControl } from './write-mock-task-control';
 
 const os = mockImplementer;
 
@@ -215,6 +218,22 @@ export const mockAPIRouter = os.router({
           ),
       };
     }),
+    pause: os.tasks.pause.handler((options) => runMockControl('pause', options)),
+    resume: os.tasks.resume.handler((options) => runMockControl('resume', options)),
+    stop: os.tasks.stop.handler((options) => runMockControl('stop', options)),
+    restart: os.tasks.restart.handler((options) => runMockControl('restart', options)),
+    interrupt: os.tasks.interrupt.handler((options) => runMockControl('interrupt', options)),
+    close: os.tasks.close.handler(async (options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const result = await writeMockTaskControl('close', options.input);
+
+      if (result.status === 'conversation_never_closes') {
+        throw options.errors.CONVERSATION_NEVER_CLOSES();
+      }
+
+      return toMockControlled(result, options.errors);
+    }),
   },
 });
 
@@ -315,6 +334,43 @@ async function claimEnrolmentCode(input: EnrolInput): Promise<StoredSession> {
   });
 
   return session;
+}
+
+type MockControlOptions = Parameters<Parameters<typeof os.tasks.pause.handler>[0]>[0];
+
+async function runMockControl(control: MockTaskControl, options: MockControlOptions) {
+  requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+  const result = await writeMockTaskControl(control, options.input);
+
+  return toMockControlled(result, options.errors);
+}
+
+type MockControlResult = Awaited<ReturnType<typeof writeMockTaskControl>>;
+
+function toMockControlled(result: MockControlResult, errors: MockControlOptions['errors']) {
+  return match(result)
+    .with({ status: 'controlled' }, (controlled) => ({
+      controlledAt: controlled.controlledAt,
+      isPauseRequested: controlled.isPauseRequested,
+      state: controlled.state,
+      taskID: controlled.taskID,
+    }))
+    .with({ status: 'task_not_found' }, () => {
+      throw errors.TASK_NOT_FOUND();
+    })
+    .with({ status: 'state_refused' }, (refused) => {
+      throw errors.TASK_STATE_REFUSED({
+        data: { isPauseRequested: refused.isPauseRequested, state: refused.state },
+      });
+    })
+    .with({ status: 'reused' }, () => {
+      throw errors.CLIENT_ACTION_ID_REUSED();
+    })
+    .with({ status: 'conversation_never_closes' }, () => {
+      throw new Error('only a close refuses the conversation');
+    })
+    .exhaustive();
 }
 
 const mediaTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;

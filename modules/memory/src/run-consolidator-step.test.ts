@@ -61,6 +61,7 @@ async function setupTest() {
         wake: { hop: 0, cause: { kind: 'event' } },
         sessionBoundary: null,
         signal: new AbortController().signal,
+        interrupt: new AbortController().signal,
       });
 
       await writeStepCommit(context, claim, result);

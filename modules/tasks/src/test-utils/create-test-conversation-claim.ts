@@ -1,13 +1,13 @@
 import invariant from 'tiny-invariant';
 import { claimTask } from '../claim-task';
 import { createConversationTask } from '../create-conversation-task';
-import type { TaskClaim, TasksContext } from '../types';
+import type { StartedClaim, TasksContext } from '../types';
 import { writeInboxRecords } from '../write-inbox-records';
 
 export async function createTestConversationClaim(
   context: TasksContext,
   text: string,
-): Promise<TaskClaim> {
+): Promise<StartedClaim> {
   await createConversationTask(context);
 
   await writeInboxRecords(context, [

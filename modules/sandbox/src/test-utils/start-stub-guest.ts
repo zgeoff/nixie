@@ -9,6 +9,8 @@ type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 interface StubGuest {
   readonly signal?: AbortSignal;
 
+  readonly interrupt?: AbortSignal;
+
   readonly waitForMessage: () => Promise<InboxMessage>;
 
   readonly takeMessage?: () => InboxMessage | undefined;
@@ -33,6 +35,8 @@ export interface StubGuestHooks {
   readonly onFrame?: (frame: HostFrame) => void;
 }
 
+type FirstFrame = Exclude<HostFrame, { type: 'message' | 'interrupt' }>;
+
 const noStderr = { bytes: new Uint8Array(0), totalBytes: 0, isCut: false };
 
 export function startStubGuest(hooks: StubGuestHooks): ExecStream {
@@ -42,6 +46,7 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
   const exit = Promise.withResolvers<StreamExit>();
 
   const stopping = new AbortController();
+  const interrupting = new AbortController();
 
   const inbox = buildMessageQueue(stopping.signal);
   const sending = { done: Promise.resolve() };
@@ -67,9 +72,10 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
     exit.resolve(ended);
   };
 
-  const runScript = async (first: Exclude<HostFrame, { type: 'message' }>) => {
+  const runScript = async (first: FirstFrame) => {
     const answer = await tryRunFirstFrame(hooks, first, {
       signal: stopping.signal,
+      interrupt: interrupting.signal,
       waitForMessage: inbox.wait,
       takeMessage: inbox.take,
       emit,
@@ -93,6 +99,8 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
 
       if (frame.type === 'message') {
         inbox.push(frame.message);
+      } else if (frame.type === 'interrupt') {
+        interrupting.abort();
       } else {
         void runScript(frame);
       }
@@ -176,7 +184,7 @@ async function writeFrames(
 
 async function tryRunFirstFrame(
   hooks: StubGuestHooks,
-  first: Exclude<HostFrame, { type: 'message' }>,
+  first: FirstFrame,
   guest: StubGuest,
 ): Promise<readonly GuestFrame[]> {
   try {
@@ -188,7 +196,7 @@ async function tryRunFirstFrame(
 
 function runFirstFrame(
   hooks: StubGuestHooks,
-  first: Exclude<HostFrame, { type: 'message' }>,
+  first: FirstFrame,
   guest: StubGuest,
 ): Promise<readonly GuestFrame[]> | readonly GuestFrame[] {
   if (first.type === 'purge') {
