@@ -2,12 +2,13 @@
 
 These steps confirm the [results](results.md) on a real phone with Chrome and the installed nixie
 web app. Run the blocks in order, and record each "Record" line in a copy of this file or in the
-issue. Each block names the row of the [draft recommendation](results.md#draft-recommendation) it
-confirms.
+issue. The [draft recommendation](results.md#draft-recommendation) names the block that confirms
+each of its rows.
 
-Blocks 1, 2, 6 and 7 need a service worker and manifest entries that the web client lacks. They run
-against a test app on its own HTTPS host, `<test_host>`, which the step names; the test app is not
-yet built. The other blocks run against your deployment, `<nixie_host>`, with no new code.
+Blocks 1, 2, 6 and 7 need a service worker and manifest entries that the web client lacks, so they
+need the test app, which waits on a decision. The [device run](README.md#device-run) gives the 2
+options for it, and `<test_host>` stands for the host it runs on. Blocks 3, 4 and 5 run against your
+deployment, `<nixie_host>`, with no new code.
 
 ## Before you start
 
@@ -24,9 +25,9 @@ yet built. The other blocks run against your deployment, `<nixie_host>`, with no
 
 ## Block 1: push delivery
 
-Needs the test app at `<test_host>`: a service worker that shows each push, a page with a
-**Subscribe** button, and a command that sends a push with a chosen `Urgency`, `tag`, `silent` and
-`renotify`.
+Needs the test app, waiting on a decision. The test app at `<test_host>` holds a service worker that
+shows each push, a page with a **Subscribe** button, and a command that sends a push with a chosen
+`Urgency`, `tag`, `silent` and `renotify`.
 
 1. Install the test app as in "Before you start", open it, and tap **Subscribe**. Expect: Chrome's
    notification prompt. Record: the prompt's form, and the result after you allow.
@@ -48,9 +49,9 @@ Needs the test app at `<test_host>`: a service worker that shows each push, a pa
 
 ## Block 2: Approve from a notification
 
-Needs the test app: a service worker whose `notificationclick` calls a test endpoint with the
-`x-nixie-client` header, and an endpoint that checks an `HttpOnly; Secure; SameSite=Lax` session
-cookie and logs each call.
+Needs the test app, waiting on a decision. The test app holds a service worker whose
+`notificationclick` calls a test endpoint with the `x-nixie-client` header, and an endpoint that
+checks an `HttpOnly; Secure; SameSite=Lax` session cookie and logs each call.
 
 1. Open the test app once so it sets the session cookie, then close it.
 2. Send a push with 2 actions, **Approve** and **Open**. Record: the buttons shown, and the value of
@@ -109,8 +110,8 @@ keyboard you can install, such as Gboard, Samsung Keyboard and SwiftKey.
 
 ## Block 6: share target
 
-Needs the test app: a manifest `share_target` that takes text, a link and an image by POST, and a
-page that shows what arrived.
+Needs the test app, waiting on a decision. The test app holds a manifest `share_target` that takes
+text, a link and an image by POST, and a page that shows what arrived.
 
 1. Install the test app, wait for its WebAPK to update with the share target, then share a web page
    from Chrome's share sheet. Expect: the test app in the share sheet. Record: present or absent,
@@ -121,8 +122,9 @@ page that shows what arrived.
 
 ## Block 7: background sync
 
-Needs the test app: a page that queues a message in IndexedDB and registers a `sync` event, and a
-service worker that sends the queue and logs each send on the server.
+Needs the test app, waiting on a decision. The test app holds a page that queues a message in
+IndexedDB and registers a `sync` event, and a service worker that sends the queue and logs each send
+on the server.
 
 1. Turn on aeroplane mode, queue one message, and close the app.
 2. Wait 1 min, then turn off aeroplane mode. Expect: the server logs the send within 5 min, with the

@@ -31,11 +31,25 @@ Draft, waiting on the device run: build web push, the share target and backgroun
 outbox as web work, ahead of the native app, and keep the native app only for what the device run
 shows the web app cannot do.
 
+## Device run
+
+The [device checklist](device-checklist.md) runs on a phone. Blocks 3 to 5 need only a deployment.
+Blocks 1, 2, 6 and 7 need a service worker, a push sender, a share target and a test endpoint that
+checks the session cookie, which nixie lacks, so they wait on a choice between 2 options:
+
+- A throwaway test app in this folder, a Bun package with its own server and pages, on its own HTTPS
+  host that Google's server can reach to mint the WebAPK. It leaves product code untouched and tests
+  Chrome's behaviour, with an endpoint that makes the same header and cookie check as nixie's API.
+- Product code: the service worker in `apps/web/public/`, a subscribe control in the web client's
+  routes, `share_target` in the manifest, a push module with its procedures in `modules/api`, and
+  the push signing key in the configuration. It builds the feature before the device run confirms
+  it.
+
 ## Results
 
 The [results](results.md) hold the sources with their dates, the findings for each question with
-nixie's code, and the draft recommendation. The [device checklist](device-checklist.md) holds the
-steps to run on a phone and what to record.
+nixie's code, and the draft recommendation. The device checklist holds the steps to run on a phone
+and what to record.
 
 ## Untested
 
