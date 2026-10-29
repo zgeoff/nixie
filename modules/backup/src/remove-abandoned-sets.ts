@@ -1,6 +1,9 @@
+import { join } from 'node:path';
+import type { DataStorage } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import { readBackupSets } from '@heynixie/wire';
 import { getBackupStagingDir } from './get-backup-staging-dir';
+import { removedSetSuffix } from './remove-recorded-set';
 import type { BackupContext, BackupSetState, BackupTables } from './types';
 import { writeBackupSetState } from './write-backup-set-state';
 
@@ -13,6 +16,7 @@ export interface AbandonedSets {
 export async function removeAbandonedSets(context: BackupContext): Promise<AbandonedSets> {
   const stagingDir = getBackupStagingDir(context.writer.dataDir);
 
+  const removed = await removeHalfRemovedSets(context.storage.files, stagingDir);
   const sets = await readBackupSets(context.storage.files, stagingDir);
 
   const unmarked = sets.filter((set) => !set.hasMarker);
@@ -21,7 +25,7 @@ export async function removeAbandonedSets(context: BackupContext): Promise<Aband
     await context.storage.files.removeFile(set.directory);
   }
 
-  if (unmarked.length > 0) {
+  if (removed > 0 || unmarked.length > 0) {
     await context.storage.files.writeDirectoryToDisk(stagingDir);
   }
 
@@ -54,4 +58,27 @@ export async function removeAbandonedSets(context: BackupContext): Promise<Aband
   });
 
   return { sequences: abandoned };
+}
+
+// A stop after a recorded set's rename and before its removal leaves the renamed folder, which no
+// later pass reads as a set.
+async function removeHalfRemovedSets(
+  files: DataStorage['files'],
+  stagingDir: string,
+): Promise<number> {
+  const names = await files.readDirectory(stagingDir).catch((error: unknown) => {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return [];
+    }
+
+    throw error;
+  });
+
+  const removed = names.filter((name) => name.endsWith(removedSetSuffix));
+
+  for (const name of removed) {
+    await files.removeFile(join(stagingDir, name));
+  }
+
+  return removed.length;
 }
