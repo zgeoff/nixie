@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createStagedSet } from '@heynixie/backup-job/test-utils';
+import { backupReceiptSchema, parseBackupFile } from '@heynixie/wire';
 import { $ } from 'bun';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -23,6 +24,8 @@ async function setupTest() {
 
   const dataEnv = { RESTIC_REPOSITORY: join(directory, 'data'), RESTIC_PASSWORD: 'data-pass' };
 
+  // restic keeps the oldest snapshot too while a keep rule has fewer buckets than its count, so a
+  // count of 1 for each rule is what lets an older snapshot expire in a repo this small
   const jobEnv = {
     NIXIE_BACKUP_STAGING_DIR: join(directory, 'backup'),
     NIXIE_BACKUP_RESTIC: restic,
@@ -30,13 +33,17 @@ async function setupTest() {
     NIXIE_BACKUP_DATA_PASSWORD: dataEnv.RESTIC_PASSWORD,
     NIXIE_BACKUP_KEY_REPOSITORY: join(directory, 'keys'),
     NIXIE_BACKUP_KEY_PASSWORD: 'key-pass',
+    NIXIE_BACKUP_KEEP_HOURLY: '1',
+    NIXIE_BACKUP_KEEP_DAILY: '1',
+    NIXIE_BACKUP_KEEP_WEEKLY: '1',
+    NIXIE_BACKUP_KEEP_MONTHLY: '1',
   };
 
   return { restic, job, directory, dataEnv, jobEnv };
 }
 
 test.skipIf(isResticMissing)(
-  'it removes a data snapshot that the retention keeps no bucket for, and keeps the newest in each',
+  'it removes every data snapshot that the retention keeps no bucket for',
   async () => {
     const ctx = await setupTest();
 
@@ -50,20 +57,9 @@ test.skipIf(isResticMissing)(
       .env(ctx.dataEnv)
       .quiet();
 
-    await $`${ctx.restic} --no-cache backup --host nixie --time ${'2020-01-01 10:30:00'} ${older}`
+    await $`${ctx.restic} --no-cache backup --host nixie --time ${'2020-02-01 10:00:00'} ${older}`
       .env(ctx.dataEnv)
       .quiet();
-
-    const seeded: unknown = await $`${ctx.restic} --no-cache snapshots --json`
-      .env(ctx.dataEnv)
-      .json();
-
-    const [expired, kept] = z
-      .array(z.object({ id: z.string(), time: z.string() }))
-      .parse(seeded)
-      .toSorted((first, second) => Date.parse(first.time) - Date.parse(second.time));
-
-    invariant(expired && kept, 'restic lists both seeded snapshots');
 
     await createStagedSet({
       stagingDir: ctx.jobEnv.NIXIE_BACKUP_STAGING_DIR,
@@ -74,6 +70,12 @@ test.skipIf(isResticMissing)(
 
     const run = await $`${process.execPath} ${ctx.job} run`.env(ctx.jobEnv).nothrow().quiet();
 
+    const receiptText = await Bun.file(
+      join(ctx.jobEnv.NIXIE_BACKUP_STAGING_DIR, '000000000001', 'receipt.json'),
+    ).text();
+
+    const receipt = parseBackupFile(receiptText, backupReceiptSchema);
+
     const listed: unknown = await $`${ctx.restic} --no-cache snapshots --json`
       .env(ctx.dataEnv)
       .json();
@@ -83,9 +85,10 @@ test.skipIf(isResticMissing)(
       .parse(listed)
       .map((snapshot) => snapshot.id);
 
+    invariant('value' in receipt, 'the job writes a receipt nixie can read');
+
     expect(run.exitCode).toBe(0);
-    expect(snapshotIDs).toHaveLength(2);
-    expect(snapshotIDs).toContain(kept.id);
-    expect(snapshotIDs).not.toContain(expired.id);
+    expect(receipt.value.status).toBe('published');
+    expect(snapshotIDs).toStrictEqual([receipt.value.dataSnapshotID ?? '']);
   },
 );
