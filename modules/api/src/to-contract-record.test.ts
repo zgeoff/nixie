@@ -324,6 +324,20 @@ test('it carries a tool result with its outcome and content', () => {
   });
 });
 
+test('it shows a failed tool result as cancelled when its action is among the cancelled ones', () => {
+  const record = buildMockLogRecord({
+    kind: 'tool_result',
+    thread: 'conversation',
+    payload: { callID: 'call-1', outcome: 'failed', actionID: 'action-1', sources: {} },
+    erasable: { status: 'shredded' },
+  });
+
+  expect(toContractRecord(record, new Set(['action-1']))?.toolCall).toStrictEqual({
+    callID: 'call-1',
+    outcome: 'cancelled',
+  });
+});
+
 test('it keeps a forgotten tool result with its outcome and no content', () => {
   expect(
     toContractRecord({

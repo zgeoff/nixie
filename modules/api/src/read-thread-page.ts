@@ -1,6 +1,7 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import type { RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { readCancelledToolResults } from './read-cancelled-tool-results';
 import { toContractRecord } from './to-contract-record';
 import type { APIContext, APITables } from './types';
 
@@ -59,10 +60,15 @@ export async function readThreadPage(
           thread: input.thread,
         });
 
+  const cancelled = await readCancelledToolResults(
+    context,
+    entries.map((entry) => entry.record),
+  );
+
   return {
     hasEarlier: window.hasEarlier,
     readAtSequence: last.sequence,
-    records: entries.flatMap((entry) => toContractRecord(entry.record) ?? []),
+    records: entries.flatMap((entry) => toContractRecord(entry.record, cancelled) ?? []),
     lastStepEnd: await readLastStepEnd(context, input.thread, last.sequence),
   };
 }
@@ -133,5 +139,11 @@ async function readLastStepEnd(
 
   const record = entries[0]?.record;
 
-  return record === undefined ? null : toContractRecord(record);
+  if (record === undefined) {
+    return null;
+  }
+
+  const cancelled = await readCancelledToolResults(context, [record]);
+
+  return toContractRecord(record, cancelled);
 }

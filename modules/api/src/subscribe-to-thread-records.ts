@@ -1,5 +1,6 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import { subscribeToRecords } from '@heynixie/log';
+import { readCancelledToolResults } from './read-cancelled-tool-results';
 import { sessionRevokedCodec } from './session-revoked-codec';
 import { toContractRecord } from './to-contract-record';
 import type { APIContext, APITables, Identity } from './types';
@@ -44,7 +45,9 @@ export async function* subscribeToThreadRecords(
       throw options.buildUnauthorized();
     }
 
-    const visible = toContractRecord(record);
+    const cancelled = await readCancelledToolResults(context, [record]);
+
+    const visible = toContractRecord(record, cancelled);
 
     if (visible !== null && (options.thread === undefined || visible.thread === options.thread)) {
       yield visible;
