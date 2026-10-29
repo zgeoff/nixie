@@ -80,10 +80,11 @@ both take the backup repositories and passwords from a source that nixie's conta
 ## Receipts in nixie
 
 nixie parses each receipt with the format's schema, and refuses a receipt whose sequence differs
-from its folder's, or whose row is not staged. An accepted receipt moves the row to published or
-failed with the snapshot IDs and the receipt text. A refused receipt moves a staged row to failed
-with the receipt text, because a set that waits on its receipt holds back every scheduled set, and
-nixie logs the refusal. Either way, nixie then removes the set's folder.
+from its folder's, or whose row is neither staging nor staged. A receipt for a staging row moves the
+row to staged first, because the job ships only a marked set. An accepted receipt moves the row to
+published or failed with the snapshot IDs and the receipt text. A refused receipt moves a staged row
+to failed with the receipt text, because a set that waits on its receipt holds back every scheduled
+set, and nixie logs the refusal. Either way, nixie then removes the set's folder.
 
 ## Formats
 

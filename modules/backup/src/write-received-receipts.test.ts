@@ -61,6 +61,46 @@ test('it records a published receipt with its snapshot IDs, and removes the set 
   ]);
 });
 
+test('it records a published receipt for a marked set whose row stayed in staging', async () => {
+  const ctx = await setupTest();
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
+      values (4, 'scheduled', 'staging', 0, 1798761600000)`.execute(tx);
+  });
+
+  await mkdir(join(ctx.dataDir, 'backup', '000000000004'));
+  await writeFile(join(ctx.dataDir, 'backup', '000000000004', 'complete'), '');
+
+  await writeFile(
+    join(ctx.dataDir, 'backup', '000000000004', 'receipt.json'),
+    JSON.stringify({
+      format: 1,
+      sequence: 4,
+      writtenAt: 1_798_761_660_000,
+      status: 'published',
+      dataSnapshotID: 'd'.repeat(64),
+      keySnapshotID: 'e'.repeat(64),
+      removedKeySnapshotIDs: [],
+      prune: 'passed',
+      check: 'passed',
+      failure: null,
+    }),
+  );
+
+  const received = await writeReceivedReceipts(ctx.context);
+
+  const rows = await sql`select state, data_snapshot_id, key_snapshot_id from backup_sets`.execute(
+    ctx.writer.db,
+  );
+
+  expect(received).toStrictEqual([{ sequence: 4, status: 'published', failure: null }]);
+
+  expect(rows.rows).toStrictEqual([
+    { state: 'published', data_snapshot_id: 'd'.repeat(64), key_snapshot_id: 'e'.repeat(64) },
+  ]);
+});
+
 test('it records a failed receipt with the failure it names', async () => {
   const ctx = await setupTest();
 
