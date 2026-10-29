@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "sequence": 42,
+  "writtenAt": 1798761660000,
+  "status": "published",
+  "dataSnapshotID": "5e8f5e8f5e8f5e8f5e8f5e8f5e8f5e8f5e8f5e8f5e8f5e8f5e8f5e8f5e8f5e8f",
+  "keySnapshotID": "9d1c9d1c9d1c9d1c9d1c9d1c9d1c9d1c9d1c9d1c9d1c9d1c9d1c9d1c9d1c9d1c",
+  "removedKeySnapshotIDs": ["c4d5c4d5c4d5c4d5c4d5c4d5c4d5c4d5c4d5c4d5c4d5c4d5c4d5c4d5c4d5c4d5"],
+  "prune": "passed",
+  "check": "passed",
+  "failure": null
+}
