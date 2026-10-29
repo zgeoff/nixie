@@ -89,11 +89,13 @@ transaction makes.
 
 A sensitive item holds a detail the user wants brought up only when a request needs it, such as an
 address, a phone number, or an account or health detail.
-[Per-turn retrieval](./context.md#per-turn-retrieval) leaves every sensitive item out, and
-[the events block](../core/conversation-turns.md#the-events-block) quotes none: it reports the
-approval of a sensitive item with no text, and lists no change to one. A recall that the model calls
-itself returns a sensitive item as it returns any other item, so the model reads the detail only
-when it asks for it. Every item starts with no mark.
+[Per-turn retrieval](./context.md#per-turn-retrieval) leaves every sensitive item out. In
+[the events block](../core/conversation-turns.md#the-events-block), the 2 kinds of line that quote
+an item's text leave a sensitive item's text out: a proposal answer reports the approval of a
+sensitive item, or the rejection of an edit to one, with no text, and the memory change line lists
+no change to a sensitive item. A recall that the model calls itself returns a sensitive item as it
+returns any other item, so the model reads the detail only when it asks for it. Every item starts
+with no mark.
 
 The mark leaves [the pinned core](./context.md#the-pinned-core) alone, because a pin is the user's
 own choice to open every session with an item. A pinned sensitive item therefore reaches the model

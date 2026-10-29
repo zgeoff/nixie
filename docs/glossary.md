@@ -53,7 +53,7 @@ one person a nixie deployment works for, and the architecture docs call that per
 | subject            | Whose a memory item is: owner for a fact about you, shared, or self for a self-note          |
 | shared item        | A memory item that lives between you and nixie, such as a deal, a nickname or a running joke |
 | self-note          | A memory item nixie writes about itself in its own voice, which you always review            |
-| sensitive item     | A memory item, such as an address, that per-turn retrieval and the events block leave out    |
+| sensitive item     | A memory item, such as an address, whose text retrieval and the events block leave out       |
 | evidence           | Your quote that backs a memory item                                                          |
 | retire             | Stop using a memory item in recall, with undo                                                |
 | forget             | Destroy a memory item's key, so the item is unreadable everywhere                            |
