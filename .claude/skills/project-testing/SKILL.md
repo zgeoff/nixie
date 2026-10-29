@@ -50,8 +50,9 @@ server's release and test bundles to `node_modules/.cache/nixie-test-bundles` th
 unit test pays for a build. The e2e lane's script runs `bun run test:bundles` too, and
 `bun run test:web-build`, which writes the web client's build to the same folder. Every spawned
 nixie starts from the test bundle, because a start from source transpiles the whole server, and the
-web suites read the web build, which takes longer than a test's limit on a host with 2 cores. The
-unit run spreads the files over 4 worker processes, the vCPUs of a CI runner, and `TEST_WORKERS`
+web suites read the web build, which takes longer than a test's limit on a host with 2 cores.
+
+The unit run spreads the files over 4 worker processes, the vCPUs of a CI runner, and `TEST_WORKERS`
 changes the count. The files in a worker share one global object, so only the preloads' resets stand
 between one file and the next, and the run shuffles the files so a test that passes only after
 another file fails. A failure prints the run's `--seed=<n>`; run again with that flag to repeat its
@@ -96,9 +97,9 @@ Beside the browser suites, five lanes run suites that need a real system the par
 host. `bun run test` leaves each one out of the parallel run, and the Agent SDK and e2e lanes'
 scripts run their files one at a time. The imp and model API lanes run outside CI, as [Runs](#runs)
 gives. The restic lane runs in the Images workflow, against the restic binary that the backup image
-carries, and a local run skips it unless `NIXIE_RESTIC_BINARY` names a restic. Each
-restic command derives its repository key with scrypt, which restic tunes to take 500 ms, so the
-lane's limit holds about twice the time its suite measured on CI.
+carries, and a local run skips it unless `NIXIE_RESTIC_BINARY` names a restic. Each restic command
+derives its repository key with scrypt, which restic tunes to take 500 ms, so the lane's limit holds
+about twice the time its suite measured on CI.
 
 | Lane      | Files                    | Real system                                                   | Script           | Limit per test     |
 | --------- | ------------------------ | ------------------------------------------------------------- | ---------------- | ------------------ |
