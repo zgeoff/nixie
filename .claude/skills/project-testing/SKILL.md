@@ -47,10 +47,12 @@ and then `bun run test:bundles`, before the unit run,
 `bun test --parallel=${TEST_WORKERS:-4} --no-isolate --randomize`. `bun run test:bundles` writes the
 server's release and test bundles to `node_modules/.cache/nixie-test-bundles` through
 `createRunTemplate`, keyed by a hash of the sources, and the server's bundle checks read them, so no
-unit test pays for a build. The e2e lane's script runs `bun run test:bundles` too, and
-`bun run test:web-build`, which writes the web client's build to the same folder. Every spawned
-nixie starts from the test bundle, because a start from source transpiles the whole server, and the
-web suites read the web build, which takes longer than a test's limit on a host with 2 cores.
+unit test pays for a build. The e2e lane's script runs `bun run test:bundles` too, then
+`bun run test:web-build` and `bun run test:backup-job-build`, which write the web client's build and
+the backup job's bundle to the same folder. Every spawned nixie starts from the test bundle, because
+a start from source transpiles the whole server, and the web suites read the web build, which takes
+longer than a test's limit on a host with 2 cores. Every suite that runs the backup job runs its
+bundle, as the image does, and the restic lane's script builds that bundle first too.
 
 The unit run spreads the files over 4 worker processes, the vCPUs of a CI runner, and `TEST_WORKERS`
 changes the count. The files in a worker share one global object, so only the preloads' resets stand
