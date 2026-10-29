@@ -6,9 +6,9 @@ import {
   parseBackupFile,
   readBackupSets,
 } from '@heynixie/wire';
-import { requireBackupSetMove } from './backup-set-moves';
 import { getBackupStagingDir } from './get-backup-staging-dir';
 import type { BackupContext, BackupTables } from './types';
+import { writeBackupSetState } from './write-backup-set-state';
 
 export type ReceivedReceipt =
   | {
@@ -84,19 +84,12 @@ function writeReceipt(
       };
     }
 
-    requireBackupSetMove(row.state, receipt.status);
-
-    await db
-      .updateTable('backup_sets')
-      .set({
-        state: receipt.status,
-        received_at: context.writer.clock.now(),
-        data_snapshot_id: receipt.dataSnapshotID,
-        key_snapshot_id: receipt.keySnapshotID,
-        receipt: text,
-      })
-      .where('sequence', '=', sequence)
-      .execute();
+    await writeBackupSetState(tx, sequence, receipt.status, {
+      received_at: context.writer.clock.now(),
+      data_snapshot_id: receipt.dataSnapshotID,
+      key_snapshot_id: receipt.keySnapshotID,
+      receipt: text,
+    });
 
     return { sequence, status: receipt.status, failure: receipt.failure };
   });

@@ -1,7 +1,7 @@
-import { withWriteTransaction } from '@heynixie/log';
+import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { requireBackupSetMove } from './backup-set-moves';
-import type { BackupSetState, BackupTables, BackupWriter } from './types';
+import type { BackupSetState, BackupTables } from './types';
 
 export interface BackupSetReceiptFields {
   readonly received_at: number;
@@ -11,27 +11,25 @@ export interface BackupSetReceiptFields {
 }
 
 export async function writeBackupSetState(
-  writer: BackupWriter,
+  tx: Transaction<unknown>,
   sequence: number,
   state: BackupSetState,
   fields?: BackupSetReceiptFields,
 ): Promise<void> {
-  await withWriteTransaction(writer, async (tx) => {
-    const db = tx.$extendTables<BackupTables>();
+  const db = tx.$extendTables<BackupTables>();
 
-    const row = await db
-      .selectFrom('backup_sets')
-      .select('state')
-      .where('sequence', '=', sequence)
-      .executeTakeFirst();
+  const row = await db
+    .selectFrom('backup_sets')
+    .select('state')
+    .where('sequence', '=', sequence)
+    .executeTakeFirst();
 
-    invariant(row, `backup set ${String(sequence)} has a row before its state moves`);
-    requireBackupSetMove(row.state, state);
+  invariant(row, `backup set ${String(sequence)} has a row before its state moves`);
+  requireBackupSetMove(row.state, state);
 
-    await db
-      .updateTable('backup_sets')
-      .set({ state, ...fields })
-      .where('sequence', '=', sequence)
-      .execute();
-  });
+  await db
+    .updateTable('backup_sets')
+    .set({ state, ...fields })
+    .where('sequence', '=', sequence)
+    .execute();
 }
