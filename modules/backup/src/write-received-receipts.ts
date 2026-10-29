@@ -6,8 +6,10 @@ import {
   parseBackupFile,
   readBackupSets,
 } from '@heynixie/wire';
+import type { Transaction } from 'kysely';
 import { getBackupStagingDir } from './get-backup-staging-dir';
-import type { BackupContext, BackupTables } from './types';
+import type { BackupContext, BackupSetState, BackupTables } from './types';
+import type { BackupSetReceiptFields } from './write-backup-set-state';
 import { writeBackupSetState } from './write-backup-set-state';
 
 export type ReceivedReceipt =
@@ -46,7 +48,7 @@ export async function writeReceivedReceipts(
   return received;
 }
 
-function writeReceipt(
+async function writeReceipt(
   context: BackupContext,
   sequence: number,
   text: string,
@@ -68,31 +70,23 @@ function writeReceipt(
     );
   }
 
-  return withWriteTransaction(context.writer, async (tx) => {
-    const db = tx.$extendTables<BackupTables>();
-
-    const row = await db
-      .selectFrom('backup_sets')
-      .select('state')
-      .where('sequence', '=', sequence)
-      .executeTakeFirst();
-
-    if (row?.state !== 'staged') {
-      return {
-        sequence,
-        refused: `nixie holds no staged set ${String(sequence)}, so the receipt answers no set it waits on`,
-      };
-    }
-
-    await writeBackupSetState(tx, sequence, receipt.status, {
+  const isWaiting = await withWriteTransaction(context.writer, (tx) =>
+    writeWaitingSetState(tx, sequence, receipt.status, {
       received_at: context.writer.clock.now(),
       data_snapshot_id: receipt.dataSnapshotID,
       key_snapshot_id: receipt.keySnapshotID,
       receipt: text,
-    });
+    }),
+  );
 
-    return { sequence, status: receipt.status, failure: receipt.failure };
-  });
+  if (!isWaiting) {
+    return {
+      sequence,
+      refused: `nixie holds no staged set ${String(sequence)}, so the receipt answers no set it waits on`,
+    };
+  }
+
+  return { sequence, status: receipt.status, failure: receipt.failure };
 }
 
 // A set waiting on its receipt blocks every scheduled set, so a receipt nixie cannot read fails its
@@ -103,16 +97,36 @@ async function writeRefusedReceipt(
   text: string,
   refused: string,
 ): Promise<ReceivedReceipt> {
-  await withWriteTransaction(context.writer, async (tx) => {
-    const db = tx.$extendTables<BackupTables>();
-
-    await db
-      .updateTable('backup_sets')
-      .set({ state: 'failed', received_at: context.writer.clock.now(), receipt: text })
-      .where('sequence', '=', sequence)
-      .where('state', '=', 'staged')
-      .execute();
-  });
+  await withWriteTransaction(context.writer, (tx) =>
+    writeWaitingSetState(tx, sequence, 'failed', {
+      received_at: context.writer.clock.now(),
+      data_snapshot_id: null,
+      key_snapshot_id: null,
+      receipt: text,
+    }),
+  );
 
   return { sequence, refused };
+}
+
+async function writeWaitingSetState(
+  tx: Transaction<unknown>,
+  sequence: number,
+  state: BackupSetState,
+  fields: BackupSetReceiptFields,
+): Promise<boolean> {
+  const row = await tx
+    .$extendTables<BackupTables>()
+    .selectFrom('backup_sets')
+    .select('state')
+    .where('sequence', '=', sequence)
+    .executeTakeFirst();
+
+  if (row?.state !== 'staged') {
+    return false;
+  }
+
+  await writeBackupSetState(tx, sequence, state, fields);
+
+  return true;
 }
