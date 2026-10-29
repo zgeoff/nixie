@@ -1,8 +1,8 @@
 import { withWriteTransaction } from '@heynixie/log';
 import { readBackupSets } from '@heynixie/wire';
-import { requireBackupSetMove } from './backup-set-moves';
 import { getBackupStagingDir } from './get-backup-staging-dir';
 import type { BackupContext, BackupSetState, BackupTables } from './types';
+import { writeBackupSetState } from './write-backup-set-state';
 
 export interface AbandonedSets {
   readonly sequences: readonly number[];
@@ -47,13 +47,7 @@ export async function removeAbandonedSets(context: BackupContext): Promise<Aband
     const changed = moves.filter((move) => move.from !== move.to);
 
     for (const move of changed) {
-      requireBackupSetMove(move.from, move.to);
-
-      await db
-        .updateTable('backup_sets')
-        .set({ state: move.to })
-        .where('sequence', '=', move.sequence)
-        .execute();
+      await writeBackupSetState(tx, move.sequence, move.to);
     }
 
     return changed.filter((move) => move.to === 'abandoned').map((move) => move.sequence);
