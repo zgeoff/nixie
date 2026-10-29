@@ -173,6 +173,8 @@ contract's program builds an oRPC client and expects an error on a route the con
 proves the client's type comes from the contract. The workflow runs npm's publish as a dry run, then
 runs the release path against a stand-in for npm. The stand-in proves that a package npm does not
 hold and a version npm holds publish nothing, and that an absent version publishes with provenance.
+For the Kubernetes component, the stand-in run proves that the published build carries the backup
+image it was given, and that the publish restores the component's source.
 
 ## Attestations
 
