@@ -11,7 +11,10 @@ test('it reads the manifest of format 1, which the release before writes', async
     join(import.meta.dir, '..', 'backup-formats', '1', 'manifest.json'),
   ).text();
 
-  expect(parseBackupFile(text, backupSetManifestSchema)).toStrictEqual({ value: JSON.parse(text) });
+  const fixture: unknown = JSON.parse(text);
+  const parsed: unknown = parseBackupFile(text, backupSetManifestSchema);
+
+  expect(parsed).toStrictEqual({ value: fixture });
 });
 
 test.each(['receipt-published.json', 'receipt-failed.json'])(
@@ -19,7 +22,10 @@ test.each(['receipt-published.json', 'receipt-failed.json'])(
   async (file) => {
     const text = await Bun.file(join(import.meta.dir, '..', 'backup-formats', '1', file)).text();
 
-    expect(parseBackupFile(text, backupReceiptSchema)).toStrictEqual({ value: JSON.parse(text) });
+    const fixture: unknown = JSON.parse(text);
+    const parsed: unknown = parseBackupFile(text, backupReceiptSchema);
+
+    expect(parsed).toStrictEqual({ value: fixture });
   },
 );
 

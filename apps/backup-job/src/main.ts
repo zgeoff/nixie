@@ -3,6 +3,7 @@ import type { Logger } from '@heynixie/logger';
 import { makeLogger, startLineLog, toErrorFields } from '@heynixie/logger';
 import { cli, define } from 'gunshi';
 import { buildResticClient } from './build-restic-client';
+import { localJobFiles } from './local-job-files';
 import type { JobConfig } from './parse-job-config';
 import { parseJobConfig } from './parse-job-config';
 import { runJobPass } from './run-job-pass';
@@ -58,10 +59,12 @@ try {
 }
 
 async function runLoggedPass(config: JobConfig, logger: Logger): Promise<number> {
-  const receipts = await runJobPass(config, {
+  const repos = {
     data: buildResticClient(config, config.data, 'data'),
     keys: buildResticClient(config, config.keys, 'key'),
-  });
+  };
+
+  const receipts = await runJobPass(config, repos, localJobFiles);
 
   for (const receipt of receipts) {
     if (receipt.status === 'published') {

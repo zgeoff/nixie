@@ -32,46 +32,17 @@ export async function writeSnapshotSet(
 
   invariant(created, 'each set takes a sequence above every set directory in staging');
 
-  await writeDatabasePair({
-    storage: context.storage,
-    dataDir: context.writer.dataDir,
-    directory,
-    onCopied: () => {},
-  });
+  // the schedule tries again after a failed copy, so a failed set leaves neither its copies nor a
+  // staging row behind
+  const manifest = await writeSetFiles(context, kind, started, directory).catch(
+    async (error: unknown) => {
+      await files.removeFile(directory);
 
-  if (NIXIE_TEST_BUILD) {
-    await waitAtFaultPoint('backup.set.copied', { kind: 'backup', id: String(started.sequence) });
-  }
+      await writeBackupSetState(context.writer, started.sequence, 'abandoned');
 
-  const copies = await Promise.all(
-    backupSetFiles.map(async (name) => {
-      const digest = await readFileSHA256(join(directory, name));
-
-      return { name, bytes: digest.bytes, sha256: digest.sha256 };
-    }),
+      throw error;
+    },
   );
-
-  const manifest: BackupSetManifest = {
-    format: 1,
-    kind,
-    sequence: started.sequence,
-    stagedAt: started.stagedAt,
-    copies,
-  };
-
-  // the job ships only a set whose marker exists, so the copies and the manifest reach the disk
-  // before the marker does
-  const manifestPath = join(directory, backupSetLayout.manifest);
-
-  await files.writeFile(manifestPath, formatBackupFile(manifest));
-  await files.writeFileToDisk(manifestPath);
-  await files.writeDirectoryToDisk(directory);
-
-  const markerPath = join(directory, backupSetLayout.marker);
-
-  await files.writeFile(markerPath, '');
-  await files.writeFileToDisk(markerPath);
-  await files.writeDirectoryToDisk(directory);
 
   await writeBackupSetState(context.writer, started.sequence, 'staged');
 
@@ -123,4 +94,56 @@ async function createSetRow(
 
     return { sequence, stagedAt };
   });
+}
+
+async function writeSetFiles(
+  context: BackupContext,
+  kind: BackupSetKind,
+  started: StartedSet,
+  directory: string,
+): Promise<BackupSetManifest> {
+  const files = context.storage.files;
+
+  await writeDatabasePair({
+    storage: context.storage,
+    dataDir: context.writer.dataDir,
+    directory,
+    onCopied: () => {},
+  });
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('backup.set.copied', { kind: 'backup', id: String(started.sequence) });
+  }
+
+  const copies = await Promise.all(
+    backupSetFiles.map(async (name) => {
+      const digest = await readFileSHA256(join(directory, name));
+
+      return { name, bytes: digest.bytes, sha256: digest.sha256 };
+    }),
+  );
+
+  const manifest: BackupSetManifest = {
+    format: 1,
+    kind,
+    sequence: started.sequence,
+    stagedAt: started.stagedAt,
+    copies,
+  };
+
+  // the job ships only a set whose marker exists, so the copies and the manifest reach the disk
+  // before the marker does
+  const manifestPath = join(directory, backupSetLayout.manifest);
+
+  await files.writeFile(manifestPath, formatBackupFile(manifest));
+  await files.writeFileToDisk(manifestPath);
+  await files.writeDirectoryToDisk(directory);
+
+  const markerPath = join(directory, backupSetLayout.marker);
+
+  await files.writeFile(markerPath, '');
+  await files.writeFileToDisk(markerPath);
+  await files.writeDirectoryToDisk(directory);
+
+  return manifest;
 }

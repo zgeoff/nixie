@@ -97,7 +97,7 @@ test('it records a failed receipt with the failure it names', async () => {
   expect(rows.rows).toStrictEqual([{ state: 'failed' }]);
 });
 
-test('it refuses a receipt that names another set, and leaves the staged row waiting', async () => {
+test('it refuses a receipt that names another set, and fails the staged set with the receipt text', async () => {
   const ctx = await setupTest();
 
   await withWriteTransaction(ctx.writer, async (tx) => {
@@ -124,7 +124,8 @@ test('it refuses a receipt that names another set, and leaves the staged row wai
   );
 
   const received = await writeReceivedReceipts(ctx.context);
-  const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);
+  const rows = await sql`select state, receipt from backup_sets`.execute(ctx.writer.db);
+  const staging = await readdir(join(ctx.dataDir, 'backup'));
 
   expect(received).toStrictEqual([
     {
@@ -133,11 +134,23 @@ test('it refuses a receipt that names another set, and leaves the staged row wai
     },
   ]);
 
-  expect(rows.rows).toStrictEqual([{ state: 'staged' }]);
+  expect(rows.rows).toStrictEqual([
+    {
+      state: 'failed',
+      receipt: expect.toInclude('"failure":"restic backup of nixie.db exited 1"'),
+    },
+  ]);
+
+  expect(staging).toStrictEqual([]);
 });
 
-test('it refuses a receipt it cannot read, naming the field', async () => {
+test('it refuses a receipt it cannot read, naming the field, and fails the staged set', async () => {
   const ctx = await setupTest();
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
+      values (3, 'scheduled', 'staged', 0, 1798761600000)`.execute(tx);
+  });
 
   await mkdir(join(ctx.dataDir, 'backup', '000000000003'));
 
@@ -147,10 +160,13 @@ test('it refuses a receipt it cannot read, naming the field', async () => {
   );
 
   const received = await writeReceivedReceipts(ctx.context);
+  const rows = await sql`select state, receipt from backup_sets`.execute(ctx.writer.db);
 
   expect(received).toStrictEqual([
     { sequence: 3, refused: expect.toInclude('writtenAt: Invalid input') },
   ]);
+
+  expect(rows.rows).toStrictEqual([{ state: 'failed', receipt: '{"format":1,"sequence":3}' }]);
 });
 
 test('it refuses a receipt for a set nixie holds no staged row for', async () => {

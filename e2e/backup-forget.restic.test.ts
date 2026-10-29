@@ -186,10 +186,13 @@ test.skipIf(isResticMissing)(
 
     const blobList = await $`${ctx.restic} --no-cache list blobs`.env(ctx.keyEnv).text();
 
+    // a file's bytes live only in data blobs, and each restic command pays a full key derivation, so
+    // the check reads the data blobs alone
     const blobs = await Promise.all(
       blobList
         .trim()
         .split('\n')
+        .filter((line) => line.startsWith('data '))
         .map(async (line) => {
           const blob = await $`${ctx.restic} --no-cache cat blob ${line.split(' ').at(-1) ?? ''}`
             .env(ctx.keyEnv)
@@ -217,6 +220,9 @@ test.skipIf(isResticMissing)(
     expect(restoredKeyRows.map((row) => row.key_id)).toStrictEqual([neighbour.keyID]);
     expect(restoredPayloads).toStrictEqual([payload, payload]);
     expect(new TextDecoder().decode(neighbourPlain)).toBe('Prefers window seats');
+    expect(blobs).not.toBeEmpty();
     expect(blobs).toSatisfyAll((blob: Buffer) => !blob.includes(Buffer.from(forgottenRow.wrapped)));
   },
+  // oxlint-disable-next-line zgeoff/max-test-timeout -- floor: about 30 restic repo opens, each a scrypt key derivation that restic calibrates to 500 ms
+  { timeout: 60_000 },
 );
