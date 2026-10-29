@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@heynixie/actions": "workspace:*",
+    "@heynixie/backup-job": "workspace:*",
     "@heynixie/clock": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
