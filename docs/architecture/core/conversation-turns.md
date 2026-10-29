@@ -206,8 +206,9 @@ did. The host writes an interrupt frame to the guest, and the guest interrupts t
 then ends the turn with an error result, yet every chain entry before the interrupt stands, so the
 guest ends the turn at the last of them and the step commits that boundary. A message the turn never
 reached stays unread, so it starts the next turn, and the next turn resumes the session at the
-interrupted turn's last entry. A turn interrupted before its first chain entry fails as a step
-error, so the next step runs it again.
+interrupted turn's last entry. A resumed turn interrupted before its first new chain entry ends at
+the entry it resumed from. A fresh turn interrupted before its first chain entry has no boundary to
+end at, so it fails as a step error, and the next step runs it again.
 
 ## System messages
 

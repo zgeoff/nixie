@@ -1,6 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import type { CheckedTables } from '@heynixie/db';
 import type { Definitions, Log, LogRecord, RecordInput, RecordKind } from '@heynixie/log';
+import type { ResumeState, TaskState } from '@heynixie/task-control';
 
 export interface TasksContext {
   readonly log: Log;
@@ -8,28 +9,12 @@ export interface TasksContext {
   readonly definitions: () => Definitions;
 }
 
-export type TaskState =
-  | 'ready'
-  | 'running'
-  | 'waiting'
-  | 'paused'
-  | 'stopped'
-  | 'failed'
-  | 'done'
-  | 'closed';
-
-export type ResumeState = 'ready' | 'waiting';
-
-export type TaskControl = 'pause' | 'resume' | 'stop' | 'restart' | 'close' | 'interrupt';
-
-export type TaskControlRefusal =
-  | { readonly reason: 'unknown_task' }
-  | { readonly reason: 'conversation_never_closes' }
-  | {
-      readonly reason: 'not_allowed';
-      readonly state: TaskState;
-      readonly isPauseRequested: boolean;
-    };
+export type {
+  ResumeState,
+  TaskControl,
+  TaskControlRefusal,
+  TaskState,
+} from '@heynixie/task-control';
 
 export type LeaseKind = 'task' | 'action';
 

@@ -622,3 +622,33 @@ test('it refuses a value flag given no value', async () => {
     message: "Optional argument '--hash' requires a value",
   });
 });
+
+test('it reads the task ID of a task command as its flag, with no words left over', async () => {
+  const parsed = await readCLIArgs(
+    ['task-stop', 'r4kq9wz2ma', '--config', '/srv/nixie.yaml'],
+    ['task-stop'],
+    ['task-stop'],
+  );
+
+  expect(parsed).toMatchObject({
+    kind: 'command',
+    command: 'task-stop',
+    flags: { config: '/srv/nixie.yaml', taskID: 'r4kq9wz2ma' },
+    args: [],
+  });
+});
+
+test.each([
+  ['no task ID', ['task-pause'], "Positional argument 'taskID' is required"],
+  ['2 task IDs', ['task-pause', 'r4kq9wz2ma', 'b7nd3xc5pe'], 'task-pause takes one task ID'],
+  ['words after --', ['task-pause', 'r4kq9wz2ma', '--', 'now'], 'task-pause takes one task ID'],
+  [
+    'the command after --',
+    ['--', 'task-pause', 'r4kq9wz2ma'],
+    'task-pause takes its task ID before --',
+  ],
+])('it refuses a task command given %s', async (_label, argv, message) => {
+  const parsed = await readCLIArgs(argv, ['task-pause'], ['task-pause']);
+
+  expect(parsed).toStrictEqual({ kind: 'invalid-flags', message });
+});

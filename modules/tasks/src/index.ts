@@ -29,7 +29,7 @@ export { createConversationTask } from './create-conversation-task';
 export { createSystemTask } from './create-system-task';
 export { createTask } from './create-task';
 export { DEFAULT_MAX_STEP_ERRORS } from './default-max-step-errors';
-export { isFinishedState } from './is-finished-state';
+export { isFinishedState } from '@heynixie/task-control';
 export { isInboxRecord } from './is-inbox-record';
 export { LeaseLostError } from './lease-lost-error';
 export { ownerMessageCodec } from './owner-message-codec';

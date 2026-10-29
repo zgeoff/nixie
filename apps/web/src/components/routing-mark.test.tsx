@@ -107,6 +107,15 @@ test('it offers only the open tasks that take your messages, other than the curr
             taskID: 'r5bn1cy6tf',
           },
           {
+            brief: 'Compared the paint quotes.',
+            isPauseRequested: false,
+            isTakingMessages: true,
+            lastActivityAt: new Date('2026-10-13T08:30:00.000Z'),
+            name: 'Paint quotes',
+            state: 'closed',
+            taskID: 'w2jk7nd4hs',
+          },
+          {
             brief: 'Saves what you say as memory.',
             isPauseRequested: false,
             isTakingMessages: false,

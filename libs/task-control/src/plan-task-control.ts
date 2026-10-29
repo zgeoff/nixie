@@ -1,22 +1,12 @@
 import { match } from 'ts-pattern';
-import type { ResumeState, TaskControl, TaskControlRefusal, TaskState } from './types';
-
-export interface TaskControlFacts {
-  readonly state: TaskState;
-  readonly isConversation: boolean;
-  readonly isPauseRequested: boolean;
-  readonly hasUnread: boolean;
-  readonly resumeState: ResumeState | null;
-}
-
-export type TaskControlPlan =
-  | { readonly kind: 'task.pause_requested' }
-  | { readonly kind: 'task.paused'; readonly resumeState: ResumeState }
-  | { readonly kind: 'task.resumed'; readonly nextState: ResumeState | 'running' }
-  | { readonly kind: 'task.stopped'; readonly resumeState: ResumeState }
-  | { readonly kind: 'task.restarted'; readonly nextState: ResumeState }
-  | { readonly kind: 'task.closed' }
-  | { readonly kind: 'task.interrupted' };
+import type {
+  ResumeState,
+  TaskControl,
+  TaskControlFacts,
+  TaskControlPlan,
+  TaskControlRefusal,
+  TaskState,
+} from './types';
 
 export function planTaskControl(
   control: TaskControl,

@@ -25,6 +25,13 @@ export function startStepControlWatch(
     onInterrupted: () => {
       interrupted.abort(new Error(`the user interrupted step ${claim.stepKey}`));
     },
+    onFailed: (error) => {
+      ended.abort(
+        new Error(`the watch for the user's controls of step ${claim.stepKey} failed`, {
+          cause: error,
+        }),
+      );
+    },
   });
 
   return {
@@ -42,10 +49,9 @@ interface ControlHandlers {
   readonly signal: AbortSignal;
   readonly onEnded: () => void;
   readonly onInterrupted: () => void;
+  readonly onFailed: (error: unknown) => void;
 }
 
-// A stop or a close frees the step's lease in the same transaction as its record, so a watch that
-// fails still leaves the step unable to commit.
 async function readStepControls(
   context: Pick<TasksContext, 'log'>,
   claim: StartedClaim,
@@ -71,5 +77,7 @@ async function readStepControls(
         return;
       }
     }
-  } catch {}
+  } catch (error) {
+    handlers.onFailed(error);
+  }
 }

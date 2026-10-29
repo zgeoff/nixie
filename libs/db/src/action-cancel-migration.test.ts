@@ -37,9 +37,9 @@ async function setupTest() {
   return { db, directory };
 }
 
-test('it moves the schema to version 32, which the release before can still read', () => {
-  expect(nixieSchema.migrations.indexOf(actionCancelMigration) + 1).toBe(32);
-  expect(nixieSchema.oldestReader).toBeLessThan(32);
+test('it moves the schema to version 33, which the release before can still read', () => {
+  expect(nixieSchema.migrations.indexOf(actionCancelMigration) + 1).toBe(33);
+  expect(nixieSchema.oldestReader).toBeLessThan(33);
 });
 
 test('it keeps every action, index and foreign key of a database it upgrades, with no action cancelled', async () => {

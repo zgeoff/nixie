@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { createTask } from '../create-task';
 import type { RunStep } from '../types';
+import { writeTaskControl } from '../write-task-control';
 import { runTaskSteps } from './run-task-steps';
 import { startTestTasks } from './start-test-tasks';
 
@@ -58,6 +59,40 @@ test('it moves the clock to the next timer when no task has work', async () => {
   expect(
     runStep.mock.calls.map(([input]) => input.inbox.map((record) => record.kind)),
   ).toStrictEqual([[], ['timer.fired']]);
+});
+
+test('it ends with no step when the only timer left belongs to a stopped task', async () => {
+  const ctx = await setupTest();
+  const taskID = await createTask(ctx.context, 'send the weekly summary');
+
+  const runStep = mock<RunStep>(() =>
+    Promise.resolve({
+      next: 'wait',
+      records: [],
+      acknowledged: [],
+      timers: [{ dueAt: 1_060_000 }],
+    }),
+  );
+
+  const options = {
+    steps: { [taskID]: runStep },
+    advance: (durationMs: number) => {
+      ctx.clock.advance(durationMs);
+    },
+    maxSteps: 10,
+  };
+
+  await runTaskSteps(ctx.context, {
+    ...options,
+    probeDone: () => Promise.resolve(runStep.mock.calls.length > 0),
+  });
+
+  await writeTaskControl(ctx.context, { taskID, control: 'stop' });
+
+  const steps = await runTaskSteps(ctx.context, options);
+
+  expect(steps).toBe(0);
+  expect(ctx.clock.now()).toBe(1_000_000);
 });
 
 test('it stops after the step at which probeDone holds', async () => {

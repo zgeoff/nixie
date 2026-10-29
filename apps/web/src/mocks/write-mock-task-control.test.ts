@@ -65,6 +65,43 @@ test('it refuses a control of a task the store does not hold', async () => {
   expect(result).toStrictEqual({ status: 'task_not_found' });
 });
 
+test('it replays the first result of a repeated control after the task moved on', async () => {
+  await store.tasks.create({ state: 'ready', taskID: 'k3x9m2p7qa' });
+
+  const first = await writeMockTaskControl('pause', {
+    clientActionID: '1a3c5e7f-9b2d-4f6a-8c0e-2d4f6a8b0c1e',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  await writeMockTaskControl('resume', {
+    clientActionID: '7e9a1c3b-5d2f-4a8e-9c6b-0f1d3e5a7c92',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  const repeat = await writeMockTaskControl('pause', {
+    clientActionID: '1a3c5e7f-9b2d-4f6a-8c0e-2d4f6a8b0c1e',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  expect(repeat).toStrictEqual(first);
+});
+
+test('it returns a paused waiting task to waiting on a resume', async () => {
+  await store.tasks.create({ state: 'waiting', taskID: 'k3x9m2p7qa' });
+
+  await writeMockTaskControl('pause', {
+    clientActionID: '1a3c5e7f-9b2d-4f6a-8c0e-2d4f6a8b0c1e',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  const result = await writeMockTaskControl('resume', {
+    clientActionID: '7e9a1c3b-5d2f-4a8e-9c6b-0f1d3e5a7c92',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  expect(result).toMatchObject({ status: 'controlled', state: 'waiting' });
+});
+
 test('it refuses a client action ID that another control used', async () => {
   await store.tasks.create({ state: 'waiting', taskID: 'k3x9m2p7qa' });
 

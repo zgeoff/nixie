@@ -1,4 +1,4 @@
-import { isFinishedState } from './is-finished-state';
+import { isFinishedState } from '@heynixie/task-control';
 import type { TaskState } from './types';
 
 export type MoveTarget =

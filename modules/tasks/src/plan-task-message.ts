@@ -1,4 +1,4 @@
-import { isFinishedState } from './is-finished-state';
+import { isFinishedState } from '@heynixie/task-control';
 import { isWaitingKind } from './is-waiting-kind';
 import { toEventID } from './to-event-id';
 import type { TaskMessageKind, TaskMessaging, TaskState } from './types';

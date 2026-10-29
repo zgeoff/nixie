@@ -1,4 +1,6 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
+import type { ControlledFields } from '@heynixie/task-control';
+import { buildControlledFields } from '@heynixie/task-control';
 import type { Transaction, UpdateObject } from 'kysely';
 import { match } from 'ts-pattern';
 import { isInboxRecord } from './is-inbox-record';
@@ -149,35 +151,31 @@ function buildTaskUpdate(
     }))
     .with({ kind: 'task.revived' }, () => ({ state: 'ready', step_errors: 0, claimable_at: 0 }))
     .with({ kind: 'task.lease_expired' }, () => ({ state: 'ready', pause_requested: 0 }))
-    .with({ kind: 'task.pause_requested' }, () => ({ pause_requested: 1 }))
-    .with({ kind: 'task.paused' }, (paused) => ({
-      state: 'paused',
-      pause_requested: 0,
-      resume_state: paused.resumeState,
-    }))
-    .with({ kind: 'task.resumed' }, (resumed) => ({
-      state: resumed.nextState,
-      pause_requested: 0,
-      resume_state: null,
-    }))
-    .with({ kind: 'task.stopped' }, (stopped) => ({
-      state: 'stopped',
+    .with(
+      { kind: 'task.pause_requested' },
+      { kind: 'task.paused' },
+      { kind: 'task.resumed' },
+      { kind: 'task.interrupted' },
+      (control) => toControlledColumns(buildControlledFields(control)),
+    )
+    .with({ kind: 'task.stopped' }, { kind: 'task.closed' }, (control) => ({
+      ...toControlledColumns(buildControlledFields(control)),
       started_step_key: null,
-      pause_requested: 0,
-      resume_state: stopped.resumeState,
     }))
     .with({ kind: 'task.restarted' }, (restarted) => ({
-      state: restarted.nextState,
+      ...toControlledColumns(buildControlledFields(restarted)),
       step_errors: 0,
       claimable_at: 0,
-      resume_state: null,
     }))
-    .with({ kind: 'task.closed' }, () => ({
-      state: 'closed',
-      started_step_key: null,
-      pause_requested: 0,
-      resume_state: null,
-    }))
-    .with({ kind: 'task.interrupted' }, () => ({}))
     .exhaustive();
+}
+
+function toControlledColumns(fields: ControlledFields): TaskUpdate {
+  return {
+    ...(fields.state === undefined ? {} : { state: fields.state }),
+    ...(fields.isPauseRequested === undefined
+      ? {}
+      : { pause_requested: fields.isPauseRequested ? 1 : 0 }),
+    ...(fields.resumeState === undefined ? {} : { resume_state: fields.resumeState }),
+  };
 }

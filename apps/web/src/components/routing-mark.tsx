@@ -1,4 +1,5 @@
 import type { ContractOutputs } from '@heynixie/contract';
+import { isFinishedState } from '@heynixie/task-control';
 import { useMutation } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -89,10 +90,7 @@ function MoveForm(props: MoveFormProps): ReactNode {
 
   const targets = props.taskList.tasks.filter(
     (task) =>
-      task.taskID !== props.current &&
-      task.isTakingMessages &&
-      task.state !== 'done' &&
-      task.state !== 'failed',
+      task.taskID !== props.current && task.isTakingMessages && !isFinishedState(task.state),
   );
 
   const [target, setTarget] = useState(targets[0]?.taskID ?? newTask);

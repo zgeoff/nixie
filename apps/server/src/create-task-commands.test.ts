@@ -43,6 +43,7 @@ test('it stops the task it names over the host transport and prints the task sta
   const parsed = await readCLIArgs(
     ['task-stop', taskID, '--config', '/etc/nixie/config.yaml'],
     [...commands.keys()],
+    [...commands.keys()],
   );
 
   invariant(parsed.kind === 'command');
@@ -65,28 +66,4 @@ test('it stops the task it names over the host transport and prints the task sta
   expect(io.print).toHaveBeenCalledExactlyOnceWith(
     JSON.stringify({ taskID, state: 'stopped', isPauseRequested: false }),
   );
-});
-
-test('it refuses a task control with no task ID, and reaches no server', async () => {
-  const ctx = await setupTest();
-
-  const host = buildRecordingHostTransport(ctx.socketPath);
-
-  const commands = new Map(createTaskCommands(host.transport));
-
-  const parsed = await readCLIArgs(['task-pause'], [...commands.keys()]);
-
-  invariant(parsed.kind === 'command');
-
-  const run = commands.get(parsed.command);
-
-  invariant(run);
-
-  const io = { log: mock(), print: mock(), waitForSignal: mock() };
-
-  const exitCode = await run(parsed.flags, io, parsed.args);
-
-  expect(exitCode).toBe(2);
-  expect(io.print).toHaveBeenCalledExactlyOnceWith('nixie task-pause takes one task ID');
-  expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
 });

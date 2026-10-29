@@ -1,17 +1,14 @@
-import type { Lease, TaskState, TasksContext } from '@heynixie/tasks';
+import type { Lease, TasksContext } from '@heynixie/tasks';
 import { claimLease } from '@heynixie/tasks';
 import { sql } from 'kysely';
 import { buildCancelledCheck } from './build-cancelled-check';
+import { buildHeldCheck } from './build-held-check';
 import type { ActionsTables } from './types';
 
 export interface ClaimActionOptions {
   readonly holder: string;
   readonly leaseMs: number;
 }
-
-// An action with a started attempt runs to its outcome whatever its task's state, so only an action
-// that never started waits for its task.
-const heldTaskStates: readonly TaskState[] = ['paused', 'closed'];
 
 export function claimAction(
   context: TasksContext,
@@ -35,9 +32,7 @@ export function claimAction(
         .where('actions.status', '=', 'pending')
         .where((eb) => eb.not(buildCancelledCheck(eb)))
         .where('actions.next_attempt_at', '<=', now)
-        .where((eb) =>
-          eb.or([eb('actions.attempt_count', '>', 0), eb('tasks.state', 'not in', heldTaskStates)]),
-        )
+        .where((eb) => eb.not(buildHeldCheck(eb)))
         .where((eb) => eb.or([eb('leases.holder', 'is', null), eb('leases.expires_at', '<=', now)]))
         .orderBy('actions.next_attempt_at')
         .limit(1)

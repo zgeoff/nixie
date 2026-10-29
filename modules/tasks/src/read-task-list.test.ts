@@ -8,6 +8,7 @@ import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeTestTaskMessage } from './test-utils/write-test-task-message';
 import { writeStepCommit } from './write-step-commit';
 import { writeStepError } from './write-step-error';
+import { writeTaskControl } from './write-task-control';
 
 function setupTest() {
   return startTestTasks();
@@ -72,6 +73,39 @@ test('it lists only the tasks in the state the caller asks for', async () => {
 
   expect(tasks.map((task) => task.id)).toStrictEqual(['conversation']);
 });
+
+test.each([
+  ['active', []],
+  ['waiting', ['planner', 'critic']],
+  ['done', ['sorter']],
+  ['all', ['planner', 'critic', 'sorter']],
+] as const)(
+  'it lists under %s only the paused, stopped and closed tasks that belong there',
+  async (state, expected) => {
+    const ctx = await setupTest();
+
+    await createSystemTask(ctx.context, 'planner');
+    await createSystemTask(ctx.context, 'critic');
+    await createSystemTask(ctx.context, 'sorter');
+    await writeTaskControl(ctx.context, { taskID: 'planner', control: 'pause' });
+    await writeTaskControl(ctx.context, { taskID: 'critic', control: 'stop' });
+    await writeTaskControl(ctx.context, { taskID: 'sorter', control: 'close' });
+
+    const tasks = await readTaskList(
+      ctx.context,
+      {
+        directory: [
+          { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+          { taskID: 'critic', name: 'Critic', brief: 'Checks plans.', isWokenByMessages: true },
+          { taskID: 'sorter', name: 'Sorter', brief: 'Sorts the mail.', isWokenByMessages: true },
+        ],
+      },
+      { callerID: 'conversation', state, limit: 20 },
+    );
+
+    expect(tasks.map((task) => task.id)).toIncludeSameMembers([...expected]);
+  },
+);
 
 test('it shows a task that asked a question as waiting on the task it asked', async () => {
   const ctx = await setupTest();

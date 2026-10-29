@@ -1,11 +1,11 @@
 import type { JSONObject } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
+import type { TaskControlPlan } from '@heynixie/task-control';
+import { planTaskControl } from '@heynixie/task-control';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
-import type { TaskControlPlan } from './plan-task-control';
-import { planTaskControl } from './plan-task-control';
 import { taskClosedCodec } from './task-closed-codec';
 import { taskInterruptedCodec } from './task-interrupted-codec';
 import { taskPauseRequestedCodec } from './task-pause-requested-codec';

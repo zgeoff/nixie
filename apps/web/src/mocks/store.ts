@@ -352,6 +352,7 @@ const tasks = new Collection({
     isTakingMessages: z.boolean().default(true),
     lastActivityAt: z.date().default(() => new Date()),
     name: z.string().default(() => faker.lorem.words(2)),
+    resumeState: z.enum(['ready', 'waiting']).nullable().default(null),
     state: z
       .enum(['ready', 'running', 'waiting', 'paused', 'stopped', 'done', 'failed', 'closed'])
       .default('waiting'),
@@ -373,6 +374,8 @@ const taskControlActions = new Collection({
     clientActionID: z.uuid(),
     control: z.string(),
     controlledAt: z.date(),
+    isPauseRequested: z.boolean(),
+    state: z.enum(['ready', 'running', 'waiting', 'paused', 'stopped', 'done', 'failed', 'closed']),
     taskID: z.string(),
   }),
 });

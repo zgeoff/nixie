@@ -11,6 +11,7 @@ import {
   waitAtFaultPoint,
 } from '@heynixie/tasks';
 import { buildCancelledCheck } from './build-cancelled-check';
+import { buildHeldCheck } from './build-held-check';
 import { isJSONObject } from './is-json-object';
 import { pickOutcome } from './pick-outcome';
 import type { ActionRow, ActionsTables, Outcome } from './types';
@@ -162,8 +163,9 @@ async function readArguments(context: TasksContext, sequence: number): Promise<J
   return isJSONObject(args) ? args : null;
 }
 
-// A stop can commit between the claim and the attempt's start, so the start reads the cancel again
-// in its own transaction and frees the lease of a cancelled action.
+// A stop, a pause or a close can commit between the claim and the attempt's start, so the start
+// reads the cancel and the hold again in its own transaction, and frees the lease of an action that
+// must not start.
 async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Promise<boolean> {
   const isStarted = await withWriteTransaction(context.log.writer, async (tx) => {
     await requireLease(tx, attempt.lease, context.clock.now());
@@ -171,11 +173,12 @@ async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Pro
     const action = await tx
       .$extendTables<ActionsTables>()
       .selectFrom('actions')
-      .select((eb) => buildCancelledCheck(eb).as('is_cancelled'))
-      .where('action_id', '=', attempt.action.action_id)
+      .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
+      .select((eb) => eb.or([buildCancelledCheck(eb), buildHeldCheck(eb)]).as('is_barred'))
+      .where('actions.action_id', '=', attempt.action.action_id)
       .executeTakeFirstOrThrow();
 
-    if (action.is_cancelled === 1 || action.is_cancelled === true) {
+    if (action.is_barred === 1 || action.is_barred === true) {
       await resetLease(tx, attempt.lease);
 
       return false;

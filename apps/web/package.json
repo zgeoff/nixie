@@ -16,6 +16,7 @@
   "dependencies": {
     "@heynixie/contract": "workspace:*",
     "@heynixie/retry": "workspace:*",
+    "@heynixie/task-control": "workspace:*",
     "@orpc/client": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",

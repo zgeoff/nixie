@@ -43,31 +43,59 @@ interface CLIParams {
   readonly extensions: ExtendContext;
 }
 
+const TASK_ID_OPTIONS = {
+  ...CLI_OPTIONS,
+  taskID: { type: 'positional', required: true },
+} as const;
+
+interface TaskIDParams {
+  readonly args: typeof TASK_ID_OPTIONS;
+  readonly extensions: ExtendContext;
+}
+
 export async function readCLIArgs(
   argv: readonly string[],
   commandNames: readonly string[],
+  taskIDCommandNames: readonly string[] = [],
 ): Promise<ParsedCLIArgs> {
   let parsed: ParsedCLIArgs = { kind: 'unknown-command', command: '' };
 
-  const read = (
-    command: string,
-    ctx: Readonly<CommandContext<CLIParams>>,
-    args: readonly string[],
-  ): void => {
-    parsed = { kind: 'command', command, flags: ctx.values, args };
+  const read = (command: string, flags: CLIFlags, args: readonly string[]): void => {
+    parsed = { kind: 'command', command, flags, args };
   };
 
-  const subCommands = Object.fromEntries(
-    commandNames.map((name) => [
+  const plainCommands = Object.fromEntries(
+    commandNames
+      .filter((name) => !taskIDCommandNames.includes(name))
+      .map((name) => [
+        name,
+        lazy(
+          () => (ctx: Readonly<CommandContext<CLIParams>>) => {
+            read(name, ctx.values, [...ctx.positionals.slice(ctx.commandPath.length), ...ctx.rest]);
+          },
+          { name, args: CLI_OPTIONS },
+        ),
+      ]),
+  );
+
+  const taskIDCommands = Object.fromEntries(
+    taskIDCommandNames.map((name) => [
       name,
       lazy(
-        () => (ctx: Readonly<CommandContext<CLIParams>>) => {
-          read(name, ctx, [...ctx.positionals.slice(ctx.commandPath.length), ...ctx.rest]);
+        () => (ctx: Readonly<CommandContext<TaskIDParams>>) => {
+          const extra = [...ctx.positionals.slice(ctx.commandPath.length + 1), ...ctx.rest];
+
+          parsed =
+            extra.length === 0
+              ? { kind: 'command', command: name, flags: ctx.values, args: [] }
+              : { kind: 'invalid-flags', message: `${name} takes one task ID` };
         },
-        { name, args: CLI_OPTIONS },
+        { name, args: TASK_ID_OPTIONS },
       ),
     ]),
   );
+
+  const subCommands = { ...plainCommands, ...taskIDCommands };
 
   const entry = define({
     name: 'nixie',
@@ -79,9 +107,11 @@ export async function readCLIArgs(
       const [command, ...args] = ctx.rest;
 
       if (command === undefined) {
-        read('serve', ctx, []);
+        read('serve', ctx.values, []);
+      } else if (taskIDCommandNames.includes(command)) {
+        parsed = { kind: 'invalid-flags', message: `${command} takes its task ID before --` };
       } else if (commandNames.includes(command)) {
-        read(command, ctx, args);
+        read(command, ctx.values, args);
       } else {
         parsed = { kind: 'unknown-command', command };
       }

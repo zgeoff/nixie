@@ -19,13 +19,14 @@ import { startServer } from './start-server';
 import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
 
 const host: HostTransport = { resolveSocketPath, sendHostRequest };
+const taskCommands = createTaskCommands(host);
 
 const commands = new Map<string, Command>([
   ['serve', (flags, io) => runServe(flags, io)],
   ['check-encoder', (flags, io) => checkEncoder(flags.encoder, io)],
   ...createDeploymentCommands(),
   ...createSessionCommands(host),
-  ...createTaskCommands(host),
+  ...taskCommands,
   ...createResetCommands(host),
   ...createMemoryCommands(host),
   ...createConsolidationCommands(host),
@@ -36,7 +37,11 @@ const commands = new Map<string, Command>([
 ]);
 
 export async function runCLI(argv: readonly string[], io: CLIIO): Promise<number> {
-  const parsed = await readCLIArgs(argv, [...commands.keys()]);
+  const parsed = await readCLIArgs(
+    argv,
+    [...commands.keys()],
+    taskCommands.map(([name]) => name),
+  );
 
   const run = parsed.kind === 'command' ? commands.get(parsed.command) : undefined;
 

@@ -1,7 +1,8 @@
-import { match } from 'ts-pattern';
+import type { TaskControl } from '@heynixie/task-control';
+import { buildControlledFields, planTaskControl } from '@heynixie/task-control';
 import { store } from './store';
 
-export type MockTaskControl = 'pause' | 'resume' | 'stop' | 'restart' | 'close' | 'interrupt';
+export type MockTaskControl = TaskControl;
 
 type MockTask = NonNullable<ReturnType<typeof store.tasks.findFirst>>;
 
@@ -38,91 +39,62 @@ export async function writeMockTaskControl(
     query.where({ clientActionID: input.clientActionID }),
   );
 
-  const task = store.tasks.findFirst((query) => query.where({ taskID: input.taskID }));
-
   if (earlier !== undefined) {
-    return earlier.control === control && earlier.taskID === input.taskID && task !== undefined
+    return earlier.control === control && earlier.taskID === input.taskID
       ? {
           status: 'controlled',
           controlledAt: earlier.controlledAt,
-          isPauseRequested: task.isPauseRequested,
-          state: task.state,
-          taskID: task.taskID,
+          isPauseRequested: earlier.isPauseRequested,
+          state: earlier.state,
+          taskID: earlier.taskID,
         }
       : { status: 'reused' };
   }
+
+  const task = store.tasks.findFirst((query) => query.where({ taskID: input.taskID }));
 
   if (task === undefined) {
     return { status: 'task_not_found' };
   }
 
-  if (control === 'close' && task.taskID === 'conversation') {
-    return { status: 'conversation_never_closes' };
+  // The mock holds no inbox, so no message waits unread when a task resumes or restarts.
+  const plan = planTaskControl(control, {
+    state: task.state,
+    isConversation: task.taskID === 'conversation',
+    isPauseRequested: task.isPauseRequested,
+    hasUnread: false,
+    resumeState: task.resumeState,
+  });
+
+  if ('reason' in plan) {
+    return plan.reason === 'conversation_never_closes'
+      ? { status: 'conversation_never_closes' }
+      : { status: 'state_refused', state: task.state, isPauseRequested: task.isPauseRequested };
   }
 
-  const next = pickTaskMove(control, task);
+  const fields = buildControlledFields(plan);
 
-  if (next === null) {
-    return { status: 'state_refused', state: task.state, isPauseRequested: task.isPauseRequested };
-  }
-
-  const controlledAt = new Date();
+  const controlled = {
+    controlledAt: new Date(),
+    isPauseRequested: fields.isPauseRequested ?? task.isPauseRequested,
+    state: fields.state ?? task.state,
+    taskID: task.taskID,
+  };
 
   await store.tasks.update(task, {
     data(draft) {
-      draft.state = next.state;
-      draft.isPauseRequested = next.isPauseRequested;
-      draft.lastActivityAt = controlledAt;
+      draft.state = controlled.state;
+      draft.isPauseRequested = controlled.isPauseRequested;
+      draft.resumeState = fields.resumeState === undefined ? draft.resumeState : fields.resumeState;
+      draft.lastActivityAt = controlled.controlledAt;
     },
   });
 
   await store.taskControlActions.create({
     clientActionID: input.clientActionID,
     control,
-    controlledAt,
-    taskID: task.taskID,
+    ...controlled,
   });
 
-  return { status: 'controlled', controlledAt, ...next, taskID: task.taskID };
-}
-
-interface TaskMove {
-  readonly state: MockTaskState;
-  readonly isPauseRequested: boolean;
-}
-
-function pickTaskMove(control: MockTaskControl, task: MockTask): TaskMove | null {
-  const isRunning = task.state === 'running';
-  const isHeld = task.state === 'stopped' || task.state === 'failed';
-  const isFinished = task.state === 'done' || task.state === 'failed' || task.state === 'closed';
-
-  return match(control)
-    .returnType<TaskMove | null>()
-    .with('pause', () => {
-      if (isRunning) {
-        return task.isPauseRequested ? null : { state: 'running', isPauseRequested: true };
-      }
-
-      return task.state === 'ready' || task.state === 'waiting'
-        ? { state: 'paused', isPauseRequested: false }
-        : null;
-    })
-    .with('resume', () => {
-      if (isRunning) {
-        return task.isPauseRequested ? { state: 'running', isPauseRequested: false } : null;
-      }
-
-      return task.state === 'paused' ? { state: 'ready', isPauseRequested: false } : null;
-    })
-    .with('stop', () =>
-      isHeld || isFinished ? null : { state: 'stopped', isPauseRequested: false },
-    )
-    .with('restart', () => (isHeld ? { state: 'ready', isPauseRequested: false } : null))
-    .with('close', () =>
-      task.state === 'closed' ? null : { state: 'closed', isPauseRequested: false },
-    )
-    .with('interrupt', () =>
-      isRunning ? { state: 'running', isPauseRequested: task.isPauseRequested } : null,
-    )
-    .exhaustive();
+  return { status: 'controlled', ...controlled };
 }

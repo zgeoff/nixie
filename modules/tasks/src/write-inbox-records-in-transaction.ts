@@ -1,7 +1,7 @@
 import type { LogRecord, RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
+import { isFinishedState } from '@heynixie/task-control';
 import type { Transaction } from 'kysely';
-import { isFinishedState } from './is-finished-state';
 import { isInboxRecord } from './is-inbox-record';
 import type { TasksContext, TasksTables } from './types';
 

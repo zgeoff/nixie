@@ -53,8 +53,9 @@ last inbox sequence, and a waiting task becomes ready in the same transaction, t
 projection's fold. A task message that did not wake its receiver is the one inbox record that wakes
 nothing, as [task messages](#task-messages) describes. The same fold ends the conversation's retry
 wait, so the user's next message gets a try at once. nixie refuses inbox input for a task that does
-not exist or has finished, which means done, failed or closed, because a finished task never runs
-again, so the input would stay unread.
+not exist or has finished, which means done, failed or closed, because no step would read the input.
+A done or closed task never runs again. A failed task refuses input until a restart returns it to
+ready.
 
 A step reports the inbox sequences it read, and its commit moves the read cursor over the contiguous
 run of them, oldest first. A record read past a gap stays unread, so a step that crashed before its
@@ -113,7 +114,8 @@ a rebuild gives the same rows.
   request, and the step runs on: its commit, its error or the recovery of its lease then pauses the
   task in the same transaction. A paused task holds the state it left, ready or waiting, and no
   runner claims it. A step that commits as done finishes the task, because a pause holds only work
-  that remains.
+  that remains. A step error that uses up the task's tries fails the task, and the pause request
+  ends with the step, so only a restart runs the task again.
 - **Resume** of a paused task returns it to its held state, or to ready when waking input arrived
   while it was paused. A resume of a running task withdraws its pause request.
 - **Stop** ends the current task run. It frees the lease, so the running step's commit fails as a

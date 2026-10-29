@@ -6,6 +6,7 @@ import { createTestClaim } from './test-utils/create-test-claim';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { FaultPointID, TasksTables } from './types';
 import { writeStepCommit } from './write-step-commit';
+import { writeTaskControl } from './write-task-control';
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -107,6 +108,39 @@ test('it fires each timer once', async () => {
   const fired = await runDueTimers(ctx.context);
 
   expect(fired).toBe(0);
+});
+
+test('it fires no timer that a stop withdrew after the timer runner picked it', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    timers: [{ dueAt: 1_060_000 }],
+  });
+
+  setFaultPointHandler(async () => {
+    await writeTaskControl(ctx.context, { taskID: claim.lease.workID, control: 'stop' });
+  });
+
+  onTestFinished(() => {
+    setFaultPointHandler(null);
+  });
+
+  ctx.clock.advance(60_000);
+
+  const fired = await runDueTimers(ctx.context);
+
+  const records = await ctx.db
+    .selectFrom('records')
+    .select('kind')
+    .where('kind', '=', 'timer.fired')
+    .execute();
+
+  expect(fired).toBe(0);
+  expect(records).toStrictEqual([]);
 });
 
 test('it reaches timer.fire.before, then inbox.write.after once the fire commits', async () => {
