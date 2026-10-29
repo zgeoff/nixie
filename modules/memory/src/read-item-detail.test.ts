@@ -228,6 +228,34 @@ test('it reads a forgotten item as dated gaps that show no message', async () =>
   });
 });
 
+test('it reads the image of a photo version that applied without a proposal, in the thread of its message', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Look at this one',
+    spans: [{ start: 0, end: 16, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: 'Owns a red kayak',
+    provenance: {
+      origin: 'conversation',
+      source: 'untrusted',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: { tokens: 'pass', image: { messageSequence: photo, image: 1 } },
+    },
+  });
+
+  const detail = await ctx.memory.store.view.readItem(item.itemID);
+
+  expect(detail?.versions).toMatchObject([
+    { version: 1, image: { thread: 'conversation', messageSequence: photo, image: 1 } },
+  ]);
+});
+
 test('it reads no image for a version of a forgotten item made from a photo', async () => {
   const ctx = await setupTest();
 

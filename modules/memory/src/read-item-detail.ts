@@ -1,4 +1,4 @@
-import type { Log } from '@heynixie/log';
+import type { Log, LogTables } from '@heynixie/log';
 import { findCheckerModel } from './find-checker-model';
 import { findImageSource } from './find-image-source';
 import { loadWriterModel } from './load-writer-model';
@@ -24,11 +24,9 @@ export async function readItemDetail(
   const rows = await log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_versions')
-    .leftJoin('memory_proposals', 'memory_proposals.proposal_id', 'memory_versions.proposal_id')
-    .selectAll('memory_versions')
-    .select('memory_proposals.thread as proposal_thread')
-    .where('memory_versions.item_id', '=', itemID)
-    .orderBy('memory_versions.version')
+    .selectAll()
+    .where('item_id', '=', itemID)
+    .orderBy('version')
     .execute();
 
   const key = await readItemKey(log, itemID);
@@ -44,26 +42,38 @@ export async function readItemDetail(
   };
 
   const loadModel = (row: MemoryVersionRow): Promise<string | null> => loadWriterModel(log, row);
+  const readThread = (sequence: number): Promise<string | null> => readRecordThread(log, sequence);
 
   const versions = await Promise.all(
-    rows.map((row) => readViewVersion(row, { key, readMessage, loadModel })),
+    rows.map((row) => readViewVersion(row, { key, readMessage, loadModel, readThread })),
   );
 
   return { ...item, versions };
+}
+
+async function readRecordThread(
+  log: Pick<Log, 'writer'>,
+  sequence: number,
+): Promise<string | null> {
+  const row = await log.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('thread')
+    .where('sequence', '=', sequence)
+    .executeTakeFirst();
+
+  return row?.thread ?? null;
 }
 
 interface VersionReaders {
   readonly key: CryptoKey | null | undefined;
   readonly readMessage: (sequence: number) => Promise<EvidenceMessage>;
   readonly loadModel: (row: MemoryVersionRow) => Promise<string | null>;
-}
-
-interface DetailVersionRow extends MemoryVersionRow {
-  readonly proposal_thread: string | null;
+  readonly readThread: (sequence: number) => Promise<string | null>;
 }
 
 async function readViewVersion(
-  row: DetailVersionRow,
+  row: MemoryVersionRow,
   readers: VersionReaders,
 ): Promise<ViewVersion> {
   const opened = await readViewText(readers.key, {
@@ -75,6 +85,8 @@ async function readViewVersion(
   const evidence = parseEvidence(row.evidence);
   const checks = row.checks === null ? null : parseChecks(row.checks);
   const image = checks === null ? null : findImageSource(checks);
+  const isImageShown = image !== null && opened.text.status === 'readable';
+  const thread = isImageShown ? await readers.readThread(image.messageSequence) : null;
 
   return {
     version: row.version,
@@ -99,10 +111,7 @@ async function readViewVersion(
                 ? await readers.readMessage(evidence.recordSequence)
                 : null,
           },
-    image:
-      image === null || row.proposal_thread === null || opened.text.status !== 'readable'
-        ? null
-        : { thread: row.proposal_thread, ...image },
+    image: image === null || thread === null ? null : { thread, ...image },
     ...opened.text,
   };
 }
