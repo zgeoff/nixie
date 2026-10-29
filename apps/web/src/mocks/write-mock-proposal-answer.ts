@@ -356,6 +356,7 @@ async function applyApproval(
       }
 
       draft.isSensitive ||= proposal.isSensitive;
+      draft.subject = proposal.newSubject ?? draft.subject;
 
       draft.versions.push({
         ...version,

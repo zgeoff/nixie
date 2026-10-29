@@ -46,6 +46,23 @@ test('it hashes a shared proposal apart from the same proposal about the owner',
   );
 });
 
+test('it hashes an edit that moves its item to another subject apart from the same edit that keeps it', () => {
+  const operation = {
+    operation: 'remember',
+    itemID: '8d2e4b71-0c5f-4e9a-b3d6-1f7a9c2e5b80',
+    targetVersion: 2,
+    isPinned: false,
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    quote: null,
+    salt: 'c2FsdC1h',
+    subject: 'owner',
+  } as const;
+
+  expect(buildProposalHash({ ...operation, newSubject: 'shared' })).not.toBe(
+    buildProposalHash(operation),
+  );
+});
+
 test('it hashes proposals that differ only in their end time apart', () => {
   const operation = {
     operation: 'remember',

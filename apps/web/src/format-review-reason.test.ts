@@ -20,6 +20,10 @@ test.each([
     'sensitive',
     'The note-taker marked it sensitive, and every sensitive item waits for your review.',
   ],
+  [
+    'subject_change',
+    'It changes whose fact the item is, and every subject change waits for your review.',
+  ],
 ] as const)('it describes the review reason %s', (reason, expected) => {
   expect(formatReviewReason(reason)).toBe(expected);
 });

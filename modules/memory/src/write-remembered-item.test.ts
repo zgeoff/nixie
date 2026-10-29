@@ -52,6 +52,7 @@ test('it creates an item at version 1 with its provenance', async () => {
       snapshot_hash: 'sha256:test',
       recorded_at: expect.toBeNumber(),
       until: null,
+      previous_subject: null,
     },
   ]);
 });

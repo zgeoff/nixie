@@ -15,4 +15,5 @@ export const reviewReasons = [
   'self_note',
   'from_photo',
   'sensitive',
+  'subject_change',
 ] as const;

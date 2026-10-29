@@ -1,12 +1,12 @@
 import type { Kysely } from 'kysely';
 import { buildApprovalExtras } from './build-approval-extras';
 import { buildApprovedProvenance } from './build-approved-provenance';
-import type { ProposalAnswer } from './gate-types';
+import type { MemoryProposalRow, ProposalAnswer } from './gate-types';
 import { getRowSubject } from './get-row-subject';
 import { parseEvidence } from './parse-evidence';
 import { ProposalClosedError } from './proposal-closed-error';
 import type { OpenedProposal } from './read-open-proposal';
-import type { MemoryTables, StoreParts, VersionRef } from './types';
+import type { MemorySubject, MemoryTables, StoreParts, VersionRef } from './types';
 import { UntilPassedError } from './until-passed-error';
 import { writeRememberedItem } from './write-remembered-item';
 
@@ -65,8 +65,19 @@ function writeApprovedVersion(parts: StoreParts, approved: ApprovedRemember): Pr
       ...(row.is_pinned === 1 ? { isPinned: true } : {}),
       ...(row.is_sensitive === 1 ? { isSensitive: true } : {}),
       ...(until === undefined || (until === null && row.target_version === null) ? {} : { until }),
-      subject: getRowSubject(row),
+      ...pickApprovedSubject(row, target),
     },
     extras,
   );
+}
+
+function pickApprovedSubject(
+  row: MemoryProposalRow,
+  target: VersionRef | null,
+): { readonly subject?: MemorySubject } {
+  if (target === null) {
+    return { subject: getRowSubject(row) };
+  }
+
+  return row.new_subject === null ? {} : { subject: row.new_subject };
 }

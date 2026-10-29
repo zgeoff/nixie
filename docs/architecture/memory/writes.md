@@ -174,10 +174,10 @@ proposal merges only with one that carries the same mark.
 
 A self-note is an item whose subject is self: nixie writes it about itself, in its own voice, such
 as its tastes or how something landed with the user, and every one waits for the user's review. An
-item takes its subject when it is created, and no edit changes it, so an edit of a self-note is a
-self-note write whatever subject the call asks for. The conversation's `memory.remember` takes the
-subject, and `memory.edit` takes none. A shared item runs through the same gate as an item about the
-user, so it needs a quote of the user's own typed words to apply at once.
+item takes its subject when it is created, and only an approved [subject change](#subject-changes)
+moves it to another, so an edit that keeps a self-note's subject is a self-note write. The
+conversation's `memory.remember` takes the subject. A shared item runs through the same gate as an
+item about the user, so it needs a quote of the user's own typed words to apply at once.
 
 Nothing of the user's backs a self-note, so the quote check and the checker have nothing to judge,
 and the gate skips both. It runs the hidden-character check and the token check, which compares the
@@ -199,6 +199,35 @@ entry whose undo brings the note back. The retire needs no quote, and its versio
 quote even when the call passes one, because no words of the user's back it. A retirement only
 narrows what the conversation reads, and the note was nixie's own. A task's retire of a self-note
 runs the intent gate as any retirement does.
+
+## Subject changes
+
+`memory.edit` takes an optional subject, and a subject other than the item's own moves the item to
+that subject, so nixie can fix an item filed under the wrong one. A subject change changes whose
+fact the item is, so it always waits for the user's review. The gate runs the checks of the subject
+the item moves to: a move to self runs the self-note checks, and a move to owner or shared needs a
+quote as any edit does. A write that passes every check still becomes a proposal, with the subject
+change reason, and a write that fails a check keeps that check's reason. A move into self passes
+when its token check passes. A failed token check keeps the self-note reason, as it does for any
+self-note write. An edit that passes the item's own subject is a plain edit.
+
+A move into self is a self-note write, so only the conversation makes one, and a move out of self is
+an edit of a self-note, which the memory writer never makes. The memory writer's edit refuses any
+subject other than its item's own ([a batch's session](./writer.md#a-batchs-session)). To split an
+item that holds two subjects, nixie edits it down to one fact and stores the other as a new item,
+and each waits for review on its own.
+
+The proposal holds the subject its item has and the subject the item moves to. The second sits in a
+record of its own after the proposal record, for the reason that a subject mark does
+([the memory store](./store.md#items-and-versions)). A pending edit merges only with one that makes
+the same move, or with one that makes none when it makes none. An approval writes the new version
+and a subject change record for its item in one transaction, and checks the pinned core budget
+against the subject the item moves to.
+
+The subject change record names the version that made the move and the subject the item had before
+it, and the store keeps that subject on the version. An undo of a version that moved the item moves
+it back to that subject, with a subject change record of its own, so an undo of that undo moves the
+item again.
 
 ## Writes from a photo
 

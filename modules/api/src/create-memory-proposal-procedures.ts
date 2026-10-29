@@ -82,6 +82,7 @@ function toContractProposal(proposal: ViewProposal) {
     isSensitive: proposal.isSensitive,
     kind: toContractKind(proposal.subject),
     subject: proposal.subject,
+    newSubject: proposal.newSubject,
     reason: proposal.reason,
     actionHash: proposal.actionHash,
     origin: proposal.origin,

@@ -30,6 +30,7 @@ const reviewReasonSchema = z.enum([
   'self_note',
   'from_photo',
   'sensitive',
+  'subject_change',
 ]);
 
 const proposalSourceSchema = z.object({
@@ -45,6 +46,7 @@ const pendingProposalSchema = z.object({
   targetVersion: z.int().nullable(),
   isPinned: z.boolean(),
   subject: z.enum(['owner', 'self', 'shared']),
+  newSubject: z.enum(['owner', 'self', 'shared']).nullable(),
   isSensitive: z.boolean(),
 
   kind: z.enum(['fact', 'self']),

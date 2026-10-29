@@ -1304,6 +1304,54 @@ test('it keeps the same text under another subject as a proposal of its own, and
   ]);
 });
 
+test('it keeps an edit that moves its item to another subject apart from the same edit that keeps the subject, and merges a write only into the proposal of its move', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Calls the garden shed the cabin',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const kept = await memory.store.writes.remember({
+    text: 'Calls the garden shed the cabin, and the assistant does too',
+    target: item,
+    caller: buildMockWriteCaller(),
+  });
+
+  const moved = await memory.store.writes.remember({
+    text: 'Calls the garden shed the cabin, and the assistant does too',
+    target: item,
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const again = await memory.store.writes.remember({
+    text: 'Calls the garden shed the cabin, and the assistant does too',
+    target: item,
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  invariant(kept.status === 'proposed');
+  invariant(moved.status === 'proposed');
+
+  expect(moved.proposalID).not.toBe(kept.proposalID);
+
+  expect(again).toStrictEqual({
+    status: 'proposed',
+    proposalID: moved.proposalID,
+    reason: 'no_quote',
+    merged: true,
+  });
+
+  expect(pending.map((proposal) => [proposal.proposalID, proposal.newSubject])).toStrictEqual([
+    [kept.proposalID, null],
+    [moved.proposalID, 'shared'],
+  ]);
+});
+
 test('it keeps a reworded write as a proposal of its own', async () => {
   const memory = await startTestMemory();
 

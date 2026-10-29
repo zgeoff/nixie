@@ -43,6 +43,90 @@ test('it undoes an edit by adding a version with the text before it', async () =
   ]);
 });
 
+test('it moves the item back to the subject it had when it undoes an edit that moved it', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Likes short answers in the morning',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const moved = await ctx.memory.store.remember({
+    text: 'I like short answers in the morning',
+    target: item,
+    subject: 'self',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.undo({
+    target: moved,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(recalled.items).toMatchObject([
+    { version: 3, subject: 'owner', text: 'Likes short answers in the morning' },
+  ]);
+});
+
+test('it moves the item to the subject of the version it returns to when it undoes the undo of a move', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Likes short answers in the morning',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const moved = await ctx.memory.store.remember({
+    text: 'I like short answers in the morning',
+    target: item,
+    subject: 'self',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const undone = await ctx.memory.store.undo({
+    target: moved,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.undo({
+    target: undone,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(recalled.items).toMatchObject([
+    { version: 4, subject: 'self', text: 'I like short answers in the morning' },
+  ]);
+});
+
+test('it keeps the subject when it undoes an edit that kept it', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'The owner and the assistant call Mondays launch day',
+    subject: 'shared',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const edited = await ctx.memory.store.remember({
+    text: 'The owner and the assistant call Tuesdays launch day',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.undo({
+    target: edited,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(recalled.items).toMatchObject([{ version: 3, subject: 'shared' }]);
+});
+
 test('it rejects an undo that brings back text too long for the 2,000-token pinned core', async () => {
   const ctx = await setupTest();
 

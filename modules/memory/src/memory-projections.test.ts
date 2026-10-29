@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
 import { runProjectionRebuild, writeRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
+import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
 import { readMemoryRows } from './test-utils/read-memory-rows';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
@@ -153,4 +155,46 @@ test('it rebuilds a restored item equal to the live rows', async () => {
 
   expect(live.versions).toHaveLength(3);
   expect(rebuilt).toStrictEqual(live);
+});
+
+test('it rebuilds an item and its proposal after an approved subject change equal to the live rows', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'The owner calls the kettle Captain Steam',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const outcome = await ctx.memory.store.writes.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    target: item,
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await ctx.memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const readProposals = () =>
+    ctx.db.selectFrom('memory_proposals').selectAll().orderBy('proposal_id').execute();
+
+  const live = await readMemoryRows(ctx.db);
+  const liveProposals = await readProposals();
+
+  await runProjectionRebuild(ctx.memory.log);
+
+  const rebuilt = await readMemoryRows(ctx.db);
+  const rebuiltProposals = await readProposals();
+
+  expect(outcome.status).toBe('proposed');
+  expect(live.items).toMatchObject([{ subject: 'shared', version: 2 }]);
+  expect(rebuilt).toStrictEqual(live);
+  expect(rebuiltProposals).toStrictEqual(liveProposals);
 });

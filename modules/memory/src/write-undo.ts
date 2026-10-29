@@ -21,6 +21,7 @@ export function writeUndo(parts: StoreParts, request: UndoRequest): Promise<Vers
         source: earlier.row.source,
         intentEvidence: parseEvidence(earlier.row.intent_evidence),
         until: undone.row.origin === 'lapse' ? null : earlier.row.until,
+        ...(undone.row.previous_subject === null ? {} : { subject: undone.row.previous_subject }),
       };
     },
   });

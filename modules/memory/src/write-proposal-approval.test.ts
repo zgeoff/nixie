@@ -517,6 +517,179 @@ test('it keeps an item a self-note when you approve an edit of it', async () => 
   expect(item).toStrictEqual({ subject: 'self', version: 2 });
 });
 
+test('it moves the item to the new subject when you approve a subject change, in records of their own', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'The owner calls the kettle Captain Steam',
+    provenance: {
+      origin: 'owner',
+      source: 'owner',
+      taskID: null,
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  await memory.store.writes.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    target: item,
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const [records, row] = await Promise.all([
+    readRecords(memory.log, {
+      afterSequence: 0,
+      kinds: ['memory.proposal_subject_changed', 'memory.subject_changed'],
+    }),
+    memory.writer.db
+      .$extendTables<MemoryTables>()
+      .selectFrom('memory_items')
+      .select(['subject', 'kind', 'version'])
+      .where('item_id', '=', item.itemID)
+      .executeTakeFirstOrThrow(),
+  ]);
+
+  expect(records.map((entry) => entry.record.payload)).toStrictEqual([
+    { proposalID: pending.proposalID, subject: 'shared' },
+    { itemID: item.itemID, version: 2, previousSubject: 'owner', subject: 'shared' },
+  ]);
+
+  expect(row).toStrictEqual({ subject: 'shared', kind: 'fact', version: 2 });
+});
+
+test('it applies an edit of a pinned item that keeps its subject when the 2,000-token pinned core holds the new text', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.remember({
+    text: 'Keeps a long packing list for trips. '.repeat(210),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Calls the kettle Captain Steam',
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.writes.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    target: item,
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const approved = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  expect(approved).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+});
+
+test('it refuses a move of a pinned item to shared when the heading of the new subject takes the 2,000-token pinned core over, and leaves the item as it was', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.remember({
+    text: 'Keeps a long packing list for trips. '.repeat(210),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Calls the kettle Captain Steam',
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.writes.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    target: item,
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const approval = memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  await approval.catch(() => {});
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['subject', 'version'])
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(approval).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
+  expect(row).toStrictEqual({ subject: 'owner', version: 1 });
+});
+
+test('it makes a self-note a fact about the owner when you approve its move to the owner', async () => {
+  const memory = await startTestMemory();
+
+  const note = await memory.store.remember({
+    text: 'I like short answers in the morning',
+    subject: 'self',
+    provenance: {
+      origin: 'conversation',
+      source: 'untrusted',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  await memory.store.writes.remember({
+    text: 'The owner likes short answers in the morning',
+    target: note,
+    subject: 'owner',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['subject', 'kind', 'version'])
+    .where('item_id', '=', note.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({ subject: 'owner', kind: 'fact', version: 2 });
+});
+
 test('it recalls an approved proposal with your approval and its stored source unchanged', async () => {
   const memory = await startTestMemory();
   const pending = await createProposal(memory.store, { text: 'Likes jazz' });

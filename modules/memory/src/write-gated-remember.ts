@@ -38,6 +38,7 @@ export async function writeGatedRemember(
     review: gate,
     group,
     subject,
+    newSubject: checked.newSubject,
     until: checked.until,
   });
 }
@@ -75,6 +76,7 @@ async function applyPassedRemember(
       review,
       group: passed.group,
       subject: passed.subject,
+      newSubject: null,
       until: passed.until,
     });
   }
@@ -126,6 +128,7 @@ interface ReviewedRemember {
   readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
   readonly group: WriteGroup;
   readonly subject: MemorySubject;
+  readonly newSubject: MemorySubject | null;
   readonly until: number | null;
 }
 
@@ -150,6 +153,7 @@ async function writeRememberProposal(
     caller: request.caller,
     group: reviewed.group,
     subject: reviewed.subject,
+    ...(reviewed.newSubject === null ? {} : { newSubject: reviewed.newSubject }),
     until: reviewed.until,
   });
 

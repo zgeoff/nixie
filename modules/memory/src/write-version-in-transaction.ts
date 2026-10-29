@@ -32,6 +32,8 @@ export interface NewVersion {
   readonly evidence: QuoteEvidence | null;
   readonly intentEvidence: QuoteEvidence | null;
   readonly until: number | null;
+
+  readonly subject?: MemorySubject;
 }
 
 type ReadEarlierVersion = (version: number) => Promise<ReadableVersion>;
@@ -91,21 +93,26 @@ export async function writeVersionInTransaction(
   );
 
   const ref = { itemID: versionKey.itemID, version: current + 1 };
+  const previousSubject = item === null ? null : getRowSubject(item);
+  const subject = next.subject ?? plan.subject ?? previousSubject ?? 'owner';
 
   const sealed = await encodePinnableVersion(parts, db, {
     key: versionKey.key,
     plan,
     ref,
     shortID: versionKey.shortID,
-    subject: item === null ? (plan.subject ?? 'owner') : getRowSubject(item),
+    subject,
     next,
     wasPinned: item?.is_pinned === 1,
   });
 
+  const move =
+    previousSubject === null || previousSubject === subject ? null : { previousSubject, subject };
+
   await writeRecordsInTransaction(
     tx,
     parts.context.log,
-    buildRecords(parts, { plan, ref, shortID: versionKey.shortID, next, sealed }),
+    buildRecords(parts, { plan, ref, shortID: versionKey.shortID, next, sealed, move }),
   );
 
   return { ref, next };
@@ -157,12 +164,18 @@ async function encodePinnableVersion(
   return encodeVersionText(version.key, version.ref, version.next.text);
 }
 
+interface SubjectMove {
+  readonly previousSubject: MemorySubject;
+  readonly subject: MemorySubject;
+}
+
 interface SealedVersion {
   readonly plan: VersionPlan;
   readonly ref: VersionRef;
   readonly shortID: string;
   readonly next: NewVersion;
   readonly sealed: string;
+  readonly move: SubjectMove | null;
 }
 
 const itemMarkKinds = {
@@ -236,10 +249,24 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
       ? [{ ...base, kind: itemMarkKinds[subject], payload: { itemID: written.ref.itemID } }]
       : [];
 
+  const move = written.move;
+
+  const changed: readonly RecordInput[] =
+    move === null
+      ? []
+      : [
+          {
+            ...base,
+            kind: 'memory.subject_changed',
+            payload: { itemID: written.ref.itemID, version: written.ref.version, ...move },
+          },
+        ];
+
   return [
     ...(approval === undefined ? [] : [approval.record]),
     version,
     ...marked,
+    ...changed,
     ...pinned,
     ...sensitive,
   ];

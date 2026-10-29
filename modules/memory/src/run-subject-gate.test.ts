@@ -80,7 +80,7 @@ test('it proposes a self-note that holds a link you never typed with the self-no
   });
 });
 
-test('it proposes an edit of a self-note with the self-note reason, though the edit asks for a fact', async () => {
+test('it proposes an edit that moves a self-note to the owner with the subject change reason, even when typed words back it and the checker asserts it', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
 
   const memory = await startTestMemory({ gate: { check } });
@@ -107,9 +107,133 @@ test('it proposes an edit of a self-note with the self-note reason, though the e
 
   const pending = await memory.store.proposals.listPending();
 
-  expect(outcome).toMatchObject({ status: 'proposed', reason: 'self_note' });
-  expect(pending).toMatchObject([{ subject: 'self', targetVersion: 1 }]);
-  expect(check).not.toHaveBeenCalled();
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'subject_change' });
+  expect(pending).toMatchObject([{ subject: 'self', newSubject: 'owner', targetVersion: 1 }]);
+  expect(check).toHaveBeenCalledOnce();
+});
+
+test.each([
+  ['conversation', 'conversation'],
+  ['task', 'task-1'],
+] as const)(
+  'it proposes a backed edit from the %s that moves an owner item to shared, and leaves the item as it was',
+  async (origin, thread) => {
+    const memory = await startTestMemory({
+      gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+    });
+
+    const item = await memory.store.remember({
+      text: 'The owner calls the kettle Captain Steam',
+      provenance: buildMockProvenance({ origin: 'owner', source: 'owner' }),
+    });
+
+    await writeOwnerMessageRecord(memory.log, {
+      thread,
+      text: 'We both call the kettle Captain Steam',
+      spans: [{ start: 0, end: 37, source: 'typed' }],
+    });
+
+    const outcome = await memory.store.writes.remember({
+      text: 'The owner and the assistant call the kettle Captain Steam',
+      quote: 'We both call the kettle Captain Steam',
+      target: item,
+      subject: 'shared',
+      caller: buildMockWriteCaller({ origin, thread, taskID: thread }),
+    });
+
+    const row = await memory.writer.db
+      .$extendTables<MemoryTables>()
+      .selectFrom('memory_items')
+      .select(['version', 'subject'])
+      .where('item_id', '=', item.itemID)
+      .executeTakeFirstOrThrow();
+
+    expect(outcome).toMatchObject({ status: 'proposed', reason: 'subject_change' });
+    expect(row).toStrictEqual({ version: 1, subject: 'owner' });
+  },
+);
+
+test('it applies a backed edit that names the subject the item already has as a plain edit', async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  const item = await memory.store.remember({
+    text: 'The owner lives on Elm Street',
+    provenance: buildMockProvenance({ origin: 'owner', source: 'owner' }),
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I moved to Oak Avenue',
+    spans: [{ start: 0, end: 21, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'The owner lives on Oak Avenue',
+    quote: 'I moved to Oak Avenue',
+    target: item,
+    subject: 'owner',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+});
+
+test('it proposes an edit from the conversation that moves an owner item into a self-note with the subject change reason, and leaves the item as it was', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'The owner likes tidy lists',
+    provenance: buildMockProvenance({ origin: 'owner', source: 'owner' }),
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'I like tidy lists',
+    target: item,
+    subject: 'self',
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['version', 'subject', 'kind'])
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'subject_change' });
+  expect(pending).toMatchObject([{ subject: 'owner', newSubject: 'self', targetVersion: 1 }]);
+  expect(row).toStrictEqual({ version: 1, subject: 'owner', kind: 'fact' });
+});
+
+test('it refuses a task an edit that moves an item into a self-note, and writes nothing', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'The owner likes tidy lists',
+    provenance: buildMockProvenance({ origin: 'owner', source: 'owner' }),
+  });
+
+  const write = memory.store.writes.remember({
+    text: 'I like tidy lists',
+    target: item,
+    subject: 'self',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+  });
+
+  await Promise.allSettled([write]);
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(write).rejects.toThrowWithMessage(
+    SelfNoteError,
+    'only the conversation writes a self-note, and this write came from the task',
+  );
+
+  expect(pending).toStrictEqual([]);
 });
 
 test('it proposes a fact mislabelled as a self-note with the self-note reason', async () => {

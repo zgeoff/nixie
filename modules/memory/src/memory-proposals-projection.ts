@@ -13,6 +13,17 @@ export const memoryProposalsProjection: Projection = {
   fold: async (tx, record) => {
     const marked = parseSubjectRecord(record);
 
+    if (marked?.target === 'proposal_change') {
+      await tx
+        .$extendTables<MemoryTables>()
+        .updateTable('memory_proposals')
+        .set({ new_subject: marked.subject })
+        .where('proposal_id', '=', marked.proposalID)
+        .execute();
+
+      return [marked.proposalID];
+    }
+
     if (marked?.target === 'proposal') {
       await tx
         .$extendTables<MemoryTables>()
@@ -115,6 +126,7 @@ async function writeProposalRow(
       lapse_at: parsed.lapseAt,
       resolved_sequence: null,
       is_sensitive: 0,
+      new_subject: null,
       ...(await readProposalSubject(db, parsed)),
     })
     .execute();

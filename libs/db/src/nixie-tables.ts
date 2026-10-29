@@ -170,6 +170,7 @@ export interface NixieTables {
     readonly kind: string;
     readonly subject: string | null;
     readonly is_sensitive: number;
+    readonly new_subject: string | null;
   };
   readonly memory_versions: {
     readonly version_key: string;
@@ -190,6 +191,7 @@ export interface NixieTables {
     readonly recorded_at: number;
     readonly model: string | null;
     readonly until: number | null;
+    readonly previous_subject: string | null;
   };
   readonly memory_writer: {
     readonly writer_id: string;

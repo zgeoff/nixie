@@ -13,7 +13,7 @@ export const memoryItemsProjection: Projection = {
   fold: async (tx, record) => {
     const marked = parseSubjectRecord(record);
 
-    if (marked?.target === 'item') {
+    if (marked?.target === 'item' || marked?.target === 'item_change') {
       await tx
         .$extendTables<MemoryTables>()
         .updateTable('memory_items')

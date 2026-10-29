@@ -1,5 +1,6 @@
 import type { ContentGateResult, GatedRememberRequest } from './gate-types';
 import { getRowSubject } from './get-row-subject';
+import { pickSubjectChangeReview } from './pick-subject-change-review';
 import { requireImageSource } from './require-image-source';
 import { requireItem } from './require-item';
 import { runContentGate } from './run-content-gate';
@@ -11,6 +12,7 @@ import type { MemorySubject, MemoryTables, StoreParts } from './types';
 export interface SubjectGateResult {
   readonly gate: ContentGateResult;
   readonly subject: MemorySubject;
+  readonly newSubject: MemorySubject | null;
 
   readonly until: number | null;
 }
@@ -29,29 +31,48 @@ export async function runSubjectGate(
         });
 
   const subject = item === null ? (request.subject ?? 'owner') : getRowSubject(item);
+
+  const newSubject =
+    item === null || request.subject === undefined || request.subject === subject
+      ? null
+      : request.subject;
+
   const image = request.image;
 
   if (image !== undefined) {
     await requireImageSource(parts.context.log, { thread: request.caller.thread, image });
   }
 
-  const gate = await runGateOfSubject(parts, request, subject);
+  const checked = await runGateOfSubject(parts, request, { subject, newSubject });
+
+  const gate = pickSubjectChangeReview(newSubject, checked);
 
   return {
     gate: image === undefined ? gate : { ...gate, checks: { ...gate.checks, image: { ...image } } },
     subject,
+    newSubject,
     until: request.until === undefined ? (item?.until ?? null) : request.until,
   };
+}
+
+interface WriteSubjects {
+  readonly subject: MemorySubject;
+  readonly newSubject: MemorySubject | null;
 }
 
 function runGateOfSubject(
   parts: StoreParts,
   request: GatedRememberRequest,
-  subject: MemorySubject,
+  subjects: WriteSubjects,
 ): Promise<ContentGateResult> {
-  if (subject === 'self') {
-    requireSelfNoteWrite(request);
+  const isNewSelfNote =
+    subjects.newSubject === 'self' || (request.target === undefined && subjects.subject === 'self');
 
+  if (subjects.subject === 'self' || isNewSelfNote) {
+    requireSelfNoteWrite(request, isNewSelfNote);
+  }
+
+  if ((subjects.newSubject ?? subjects.subject) === 'self') {
     return runSelfNoteGate(parts.context, { text: request.text, thread: request.caller.thread });
   }
 
@@ -73,8 +94,8 @@ function runGateOfSubject(
   return runContentGate(parts.context, content, tool);
 }
 
-function requireSelfNoteWrite(request: GatedRememberRequest): void {
-  if (request.target === undefined && request.caller.origin !== 'conversation') {
+function requireSelfNoteWrite(request: GatedRememberRequest, isNewSelfNote: boolean): void {
+  if (isNewSelfNote && request.caller.origin !== 'conversation') {
     throw new SelfNoteError(
       `only the conversation writes a self-note, and this write came from the ${request.caller.origin}`,
     );

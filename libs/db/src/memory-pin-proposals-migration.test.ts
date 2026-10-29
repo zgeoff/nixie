@@ -90,6 +90,7 @@ test('it keeps each proposal of a database it upgrades, and the merges that name
       cap_group: 'group-a',
       checks: '{"pin":"review"}',
       model: 'model-a',
+      new_subject: null,
       notice_key: 'notice-a',
       created_sequence: 1,
       created_at: 1_767_225_600_000,

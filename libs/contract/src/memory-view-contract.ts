@@ -101,6 +101,7 @@ const reviewReasonSchema = z.enum([
   'self_note',
   'from_photo',
   'sensitive',
+  'subject_change',
 ]);
 
 const proposalSourceSchema = z.object({
@@ -120,6 +121,7 @@ const memoryProposalSchema = z.object({
   itemID: z.string(),
   kind: kindSchema,
   lapseAt: z.date(),
+  newSubject: subjectSchema.nullable(),
   operation: z.enum(['remember', 'retire', 'pin']),
   origin: proposalOriginSchema,
   proposalID: z.string(),

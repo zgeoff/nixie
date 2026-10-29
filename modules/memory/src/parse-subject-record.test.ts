@@ -24,6 +24,56 @@ test.each([
   });
 });
 
+test('it reads a subject change of an item as the version that moved it, and the subjects it moved from and to', () => {
+  const record = buildMockLogRecord({
+    kind: 'memory.subject_changed',
+    payload: { itemID: 'item-a', version: 3, subject: 'owner', previousSubject: 'self' },
+  });
+
+  expect(parseSubjectRecord(record)).toStrictEqual({
+    target: 'item_change',
+    itemID: 'item-a',
+    version: 3,
+    subject: 'owner',
+    previousSubject: 'self',
+  });
+});
+
+test('it reads the subject change a proposal holds as the subject it moves its item to', () => {
+  const record = buildMockLogRecord({
+    kind: 'memory.proposal_subject_changed',
+    payload: { proposalID: 'proposal-a', subject: 'shared' },
+  });
+
+  expect(parseSubjectRecord(record)).toStrictEqual({
+    target: 'proposal_change',
+    proposalID: 'proposal-a',
+    subject: 'shared',
+  });
+});
+
+test('it refuses a subject change of an item whose subject is not one of the three', () => {
+  const record = buildMockLogRecord({
+    kind: 'memory.subject_changed',
+    payload: { itemID: 'item-a', version: 3, subject: 'team', previousSubject: 'self' },
+  });
+
+  expect(() => parseSubjectRecord(record)).toThrow(
+    expect.objectContaining({ issues: [expect.objectContaining({ path: ['subject'] })] }),
+  );
+});
+
+test('it refuses the subject change of a proposal whose subject is not one of the three', () => {
+  const record = buildMockLogRecord({
+    kind: 'memory.proposal_subject_changed',
+    payload: { proposalID: 'proposal-a', subject: 'team' },
+  });
+
+  expect(() => parseSubjectRecord(record)).toThrow(
+    expect.objectContaining({ issues: [expect.objectContaining({ path: ['subject'] })] }),
+  );
+});
+
 test('it refuses a subject mark with a key its shape does not hold', () => {
   const record = buildMockLogRecord({
     kind: 'memory.shared_noted',

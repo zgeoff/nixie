@@ -495,10 +495,10 @@ test('it keeps the text of each item a recall showed the batch', () => {
   expect(staged.readRecalledTexts()).toStrictEqual(new Set(['The owner rides a red bike.']));
 });
 
-test('it refuses an edit that changes the subject of its item', () => {
+test('it refuses an edit that changes the subject of its item, and stages nothing', () => {
   const staging = createWriterStaging();
 
-  staging.open({
+  const staged = staging.open({
     sources: new Map([
       [
         7,
@@ -528,6 +528,8 @@ test('it refuses an edit that changes the subject of its item', () => {
     status: 'refused',
     reason: "item item-deal has the subject shared; an edit keeps its item's subject",
   });
+
+  expect(staged.close()).toStrictEqual([]);
 });
 
 test('it binds an edit of a shared item that keeps its subject', () => {

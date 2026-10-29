@@ -65,6 +65,7 @@ async function sealProposal(
     quote: plan.quote,
     salt,
     ...(plan.subject === undefined ? {} : { subject: plan.subject }),
+    ...(plan.newSubject === undefined ? {} : { newSubject: plan.newSubject }),
     ...(plan.isSensitive === true ? { isSensitive: true } : {}),
     ...(plan.until === undefined ? {} : { until: plan.until }),
   });

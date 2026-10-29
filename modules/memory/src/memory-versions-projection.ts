@@ -1,12 +1,28 @@
 import type { Projection } from '@heynixie/log';
 import { buildVersionKey } from './build-version-key';
 import { parseMemoryRecord } from './parse-memory-record';
+import { parseSubjectRecord } from './parse-subject-record';
 import type { MemoryTables } from './types';
 
 export const memoryVersionsProjection: Projection = {
   table: 'memory_versions',
   keyColumn: 'version_key',
   fold: async (tx, record) => {
+    const changed = parseSubjectRecord(record);
+
+    if (changed?.target === 'item_change') {
+      const changedKey = buildVersionKey(changed);
+
+      await tx
+        .$extendTables<MemoryTables>()
+        .updateTable('memory_versions')
+        .set({ previous_subject: changed.previousSubject })
+        .where('version_key', '=', changedKey)
+        .execute();
+
+      return [changedKey];
+    }
+
     const parsed = parseMemoryRecord(record);
 
     if (parsed?.kind !== 'memory.version_added') {
@@ -35,6 +51,7 @@ export const memoryVersionsProjection: Projection = {
         checks: parsed.checks === null ? null : JSON.stringify(parsed.checks),
         model: parsed.model,
         until: parsed.until,
+        previous_subject: null,
         sequence: record.sequence,
         snapshot_hash: record.definitions.snapshotHash,
         recorded_at: record.recordedAt.getTime(),

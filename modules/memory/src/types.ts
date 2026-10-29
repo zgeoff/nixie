@@ -328,6 +328,7 @@ interface MemoryVersionTable {
   readonly snapshot_hash: string;
   readonly recorded_at: number;
   readonly until: number | null;
+  readonly previous_subject: MemorySubject | null;
 }
 
 interface MemoryProposalMergeTable {
