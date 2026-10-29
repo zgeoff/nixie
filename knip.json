@@ -16,6 +16,9 @@
   "workspaces": {
     // a test spawns the stub program as its own process, so no import reaches it
     "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
+    // the backup image runs the bundle of main.ts, and tests spawn the restic stand-in, so no
+    // import reaches either
+    "apps/backup-job": { "entry": ["src/main.ts", "src/test-utils/run-stub-*.ts"] },
     "libs/testing": { "entry": ["src/test-utils/run-stub-*.ts"] },
     // the image build and `bun run models` run the pinned download by its path, so no import
     // reaches it

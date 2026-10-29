@@ -4,7 +4,7 @@ export const backupSetFiles = ['nixie.db', 'keys.db'] as const;
 
 export type BackupSetFile = (typeof backupSetFiles)[number];
 
-export const backupSetKinds = ['scheduled', 'forget'] as const;
+const backupSetKinds = ['scheduled', 'forget'] as const;
 
 export type BackupSetKind = (typeof backupSetKinds)[number];
 
