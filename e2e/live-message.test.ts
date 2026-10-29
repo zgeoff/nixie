@@ -65,7 +65,9 @@ test('it ends an interrupted turn, and the message the turn left unread starts t
 
   const heldReply = Promise.withResolvers<void>();
 
-  onTestFinished(() => heldReply.resolve());
+  onTestFinished(() => {
+    heldReply.resolve();
+  });
 
   ctx.nixie.model.addReplies(
     { toolUse: { name: 'mcp__nixie__time_now', input: {} } },

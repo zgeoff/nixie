@@ -8,16 +8,16 @@ export const taskControlsMigration: Migration = {
       select name from pragma_table_info('tasks') where name = 'pause_requested'`.execute(tx);
 
     if (pauseRequested.rows.length === 0) {
-      await sql`alter table tasks add column pause_requested integer not null default 0
-        check (pause_requested in (0, 1))`.execute(tx);
+      await sql`alter table tasks add column pause_requested integer not null default 0`.execute(
+        tx,
+      );
     }
 
     const resumeState = await sql`
       select name from pragma_table_info('tasks') where name = 'resume_state'`.execute(tx);
 
     if (resumeState.rows.length === 0) {
-      await sql`alter table tasks add column resume_state text
-        check (resume_state in ('ready', 'waiting'))`.execute(tx);
+      await sql`alter table tasks add column resume_state text`.execute(tx);
     }
 
     const withdrawnSequence = await sql`

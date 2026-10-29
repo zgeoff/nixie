@@ -112,8 +112,21 @@ function waitForAbort(interrupt: AbortSignal, signal: AbortSignal): Promise<bool
 
   const settled = Promise.withResolvers<boolean>();
 
-  interrupt.addEventListener('abort', () => settled.resolve(true), { once: true });
-  signal.addEventListener('abort', () => settled.resolve(false), { once: true });
+  interrupt.addEventListener(
+    'abort',
+    () => {
+      settled.resolve(true);
+    },
+    { once: true },
+  );
+
+  signal.addEventListener(
+    'abort',
+    () => {
+      settled.resolve(false);
+    },
+    { once: true },
+  );
 
   return settled.promise;
 }
