@@ -84,9 +84,10 @@ test('it never removes a file in staging that is no set', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.dataDir, 'backup', 'notes.txt'), 'kept by the operator');
+  await mkdir(join(ctx.dataDir, 'backup', 'notes.removed'));
   await removeAbandonedSets(ctx.context);
 
   const names = await readdir(join(ctx.dataDir, 'backup'));
 
-  expect(names).toStrictEqual(['notes.txt']);
+  expect(names).toIncludeSameMembers(['notes.txt', 'notes.removed']);
 });
