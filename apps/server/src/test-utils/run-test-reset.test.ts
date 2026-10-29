@@ -96,3 +96,41 @@ test('it lets a reset that outlasts its test end before the cleanup stops nixie'
     expect(stat(nixie.directory)).rejects.toThrow();
   });
 });
+
+test('it stops each server that a reset outlasting its test started before it removes their data', async () => {
+  const gate = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    gate.resolve();
+  });
+
+  const nixie = await startInProcessNixie();
+  const api = await createTestClient(nixie);
+
+  nixie.guest.addReplies({ text: 'The bakery opens at seven.', gate: () => gate.promise });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'When does the bakery open?',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(() => nixie.guest.turns.length === 1);
+
+  const reset = runTestReset(nixie);
+
+  await nixie.waitForLogEvent('reset.started');
+
+  onTestFinished(() => {
+    const runs = nixie.readRuns();
+
+    expect(runs.map((run) => Bun.peek(run.exited))).toStrictEqual([0, 0]);
+
+    expect(runs.flatMap((run) => run.readLogEvents())).not.toPartiallyContain({
+      event: 'command.failed',
+    });
+
+    expect(Bun.peek.status(reset)).toBe('pending');
+  });
+});
