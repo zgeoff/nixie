@@ -56,30 +56,21 @@ test('it keeps a staged set with no receipt yet', async () => {
   ]);
 });
 
-test('it refuses a set in a state the stager never writes', async () => {
+test.each([
+  ['state', 'scheduled', 'uploading'],
+  ['kind', 'manual', 'staged'],
+])('it refuses a set whose %s the stager never writes', async (column, kind, state) => {
   const ctx = await setupTest();
 
   const refused = await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
-    values (1, 'scheduled', 'uploading', 12, 1798761600000)`
+    values (1, ${kind}, ${state}, 12, 1798761600000)`
     .execute(ctx.db)
     .then(
       () => null,
       (error: unknown) => error,
     );
 
-  expect(refused).toBeInstanceOf(Error);
-});
-
-test('it refuses a kind the stager never writes', async () => {
-  const ctx = await setupTest();
-
-  const refused = await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
-    values (1, 'manual', 'staged', 12, 1798761600000)`
-    .execute(ctx.db)
-    .then(
-      () => null,
-      (error: unknown) => error,
-    );
-
-  expect(refused).toBeInstanceOf(Error);
+  expect(refused).toMatchObject({
+    message: expect.stringContaining(`CHECK constraint failed: ${column} in`),
+  });
 });
