@@ -70,7 +70,19 @@ test('it reads the sensitive mark of an item', async () => {
   expect(JSON.parse(chunks.join(''))).toMatchObject({ items: [{ isSensitive: true }] });
 });
 
-test('it reads a kept moment with its span and a destroyed moment as only its ID', async () => {
+test('it reads a destroyed moment as only its ID and its destroy time', async () => {
+  const destroyed = await store.moments.create({ state: 'destroyed' });
+
+  const file: unknown = JSON.parse(readMockMemoryExport(new Date('2026-10-14T08:00:00Z')).join(''));
+
+  expect(file).toStrictEqual({
+    header: expect.toBeObject(),
+    items: [],
+    moments: [{ momentID: destroyed.momentID, destroyedAt: null }],
+  });
+});
+
+test('it reads a kept moment with its span', async () => {
   const message = await store.records.create({
     kind: 'owner_message',
     message: { text: 'the allotment plot is number 14' },
@@ -87,11 +99,11 @@ test('it reads a kept moment with its span and a destroyed moment as only its ID
     title: 'The allotment plot decision',
   });
 
-  const destroyed = await store.moments.create({ state: 'destroyed' });
-
   const file: unknown = JSON.parse(readMockMemoryExport(new Date('2026-10-14T08:00:00Z')).join(''));
 
-  expect(file).toMatchObject({
+  expect(file).toStrictEqual({
+    header: expect.toBeObject(),
+    items: [],
     moments: [
       {
         momentID: kept.momentID,
@@ -122,7 +134,6 @@ test('it reads a kept moment with its span and a destroyed moment as only its ID
           },
         ],
       },
-      { momentID: destroyed.momentID, destroyedAt: null },
     ],
   });
 });
