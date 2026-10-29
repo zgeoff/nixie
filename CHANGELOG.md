@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.1](https://github.com/zgeoff/nixie/compare/v0.57.0...v0.57.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **api:** show a stop's cancelled action as cancelled in the thread ([#727](https://github.com/zgeoff/nixie/issues/727)) ([b45784a](https://github.com/zgeoff/nixie/commit/b45784a26737d84d685b83222ba0e8257db70989))
+
 ## [0.57.0](https://github.com/zgeoff/nixie/compare/v0.56.0...v0.57.0) (2026-10-29)
 
 
