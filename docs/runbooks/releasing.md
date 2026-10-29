@@ -2,8 +2,8 @@
 
 The [release pipeline](../architecture/deployment/release-pipeline.md) cuts a release when you merge
 the release pull request that release-please keeps open on `main`. These are the steps it leaves to
-you: the release App it runs with, the package visibility that GHCR sets on a first publish, and the
-checks and repairs after a run.
+you: the release App it runs with, the package visibility that GHCR sets on a first publish, the npm
+package that trusted publishing needs, and the checks and repairs after a run.
 
 ## Set up the release App
 
@@ -34,9 +34,9 @@ step, and no release pull request opens.
    gh run watch "$(gh run list --repo <owner>/nixie --workflow release.yml --commit <merge_commit> --json databaseId --jq '.[0].databaseId')" --repo <owner>/nixie
    ```
 
-   Expect every job to pass, ending with `assets`. Expect the GitHub release to list the migrations,
-   the config schema result and the 4 image digests, and to hold the assets `release.json`,
-   `config.schema.json` and `definitions-manifest.schema.json`.
+   Expect every job to pass, ending with the 2 `npm-package` jobs. Expect the GitHub release to list
+   the migrations, the config schema result and the 4 image digests, and to hold the assets
+   `release.json`, `config.schema.json` and `definitions-manifest.schema.json`.
 
 ## Make a new sandbox image public
 
@@ -57,6 +57,34 @@ nothing can pin the release in this state.
 
 The nixie and web packages stay private unless you set them public the same way. A host pulls a
 private package only with a GHCR credential that can read it.
+
+## Set up a new npm package
+
+The release publishes each npm package through trusted publishing, and npm sets up a trusted
+publisher only on a package that exists. Until then, the package's `npm-package` job passes with
+`npm holds no <package_name> yet` and publishes nothing. Do this once for each package the release
+publishes, such as `@heynixie/contract`.
+
+1. Publish a placeholder of the package under your own npm login, from an empty folder outside the
+   repo:
+
+   ```bash
+   echo '{ "name": "<package_name>", "version": "0.0.0" }' > package.json
+   npm publish --access public
+   ```
+
+   Expect `+ <package_name>@0.0.0`.
+
+2. On npmjs.com, open the package's settings, and under "Trusted Publisher" choose GitHub Actions,
+   with user `<owner>`, repository `nixie` and workflow filename `release.yml`.
+3. Re-run the package's `npm-package` job of the last Release run, found with
+   `gh run view <run_id> --repo <owner>/nixie --json jobs`:
+
+   ```bash
+   gh run rerun <run_id> --repo <owner>/nixie --job <job_id>
+   ```
+
+   Expect the job's log to end with `+ <package_name>@<version>`.
 
 ## Check an attestation
 

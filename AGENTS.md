@@ -18,9 +18,10 @@ The rules a task needs are not repeated here. Load the skill for the work before
 ## Repo structure
 
 nixie is one Bun workspace, which the [code layout](docs/architecture/code-layout.md) describes.
-Every package takes the name `@heynixie/<folder>`, and every package but the Pulumi component in
-`deploy/pulumi-k8s/` is private. A package that others import is consumed as source through an
-`exports` map that points at `src/index.ts`.
+Every package takes the name `@heynixie/<folder>`, and every package is private except the 2 that
+each release publishes to npm: the Pulumi component in `deploy/pulumi-k8s/` and the API contract in
+`libs/contract/`. A package that others import is consumed as source through an `exports` map that
+points at `src/index.ts`.
 
 ```text
 apps/              deployables

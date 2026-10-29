@@ -49,15 +49,16 @@ image recipe for the test build of one pull request.
 
 ## Packages
 
-Every package name is `@heynixie/` plus its folder name, and every package but the Pulumi component
-is private. A deployment's own Pulumi program installs the component, so its package declares the
-Pulumi SDKs as peer dependencies with a range, and the catalog pins the versions its tests run
-against. A library package is consumed as source: its `exports` map points at `./src/index.ts`, and
-nothing builds it before use. A package whose helpers other packages' tests use exports them as a
-second entry, `./test-utils`. A package that nothing imports, such as `apps/web`, the fetch guest or
-the root suites, has no `exports` map. An `exports` map refuses every subpath it does not list, and
-`turbo boundaries` refuses a relative path into another package, so no package imports another
-package's internal files.
+Every package name is `@heynixie/` plus its folder name, and every package is private except the
+Pulumi component and the API contract, which each release
+[publishes to npm](deployment/release-pipeline.md#build-settings-and-publishing). A deployment's own
+Pulumi program installs the component, so its package declares the Pulumi SDKs as peer dependencies
+with a range, and the catalog pins the versions its tests run against. A library package is consumed
+as source: its `exports` map points at `./src/index.ts`, and nothing builds it before use. A package
+whose helpers other packages' tests use exports them as a second entry, `./test-utils`. A package
+that nothing imports, such as `apps/web`, the fetch guest or the root suites, has no `exports` map.
+An `exports` map refuses every subpath it does not list, and `turbo boundaries` refuses a relative
+path into another package, so no package imports another package's internal files.
 
 Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
 for an external dependency and `"workspace:*"` for an internal one, and pins no version itself. The

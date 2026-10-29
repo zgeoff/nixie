@@ -1,7 +1,13 @@
 {
   "name": "@heynixie/contract",
   "version": "0.0.0",
-  "private": true,
+  "description": "The oRPC contract of the nixie API, with the types a client needs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zgeoff/nixie.git",
+    "directory": "libs/contract"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {
