@@ -18,6 +18,60 @@ test('it sends a passing subject change to review with its checks and its eviden
   });
 });
 
+test('it gives a move into self that passed the self-note checks the subject change reason, with those checks', () => {
+  expect(
+    pickSubjectChangeReview('self', {
+      status: 'review',
+      reason: 'self_note',
+      evidence: null,
+      checks: { tokens: 'pass' },
+      checkerReason: null,
+    }),
+  ).toStrictEqual({
+    status: 'review',
+    reason: 'subject_change',
+    evidence: null,
+    checks: { tokens: 'pass' },
+    checkerReason: null,
+  });
+});
+
+test('it keeps the self-note reason of a move into self whose token check failed', () => {
+  expect(
+    pickSubjectChangeReview('self', {
+      status: 'review',
+      reason: 'self_note',
+      evidence: null,
+      checks: { tokens: 'fail' },
+      checkerReason: null,
+    }),
+  ).toStrictEqual({
+    status: 'review',
+    reason: 'self_note',
+    evidence: null,
+    checks: { tokens: 'fail' },
+    checkerReason: null,
+  });
+});
+
+test('it keeps the self-note reason of a self-note edit that keeps its subject', () => {
+  expect(
+    pickSubjectChangeReview(null, {
+      status: 'review',
+      reason: 'self_note',
+      evidence: null,
+      checks: { tokens: 'pass' },
+      checkerReason: null,
+    }),
+  ).toStrictEqual({
+    status: 'review',
+    reason: 'self_note',
+    evidence: null,
+    checks: { tokens: 'pass' },
+    checkerReason: null,
+  });
+});
+
 test('it passes a write that keeps its subject as the gate passed it', () => {
   expect(
     pickSubjectChangeReview(null, {

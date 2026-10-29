@@ -180,6 +180,35 @@ test('it applies a backed edit that names the subject the item already has as a 
   expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
 });
 
+test('it proposes an edit from the conversation that moves an owner item into a self-note with the subject change reason, and leaves the item as it was', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'The owner likes tidy lists',
+    provenance: buildMockProvenance({ origin: 'owner', source: 'owner' }),
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'I like tidy lists',
+    target: item,
+    subject: 'self',
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['version', 'subject', 'kind'])
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'subject_change' });
+  expect(pending).toMatchObject([{ subject: 'owner', newSubject: 'self', targetVersion: 1 }]);
+  expect(row).toStrictEqual({ version: 1, subject: 'owner', kind: 'fact' });
+});
+
 test('it refuses a task an edit that moves an item into a self-note, and writes nothing', async () => {
   const memory = await startTestMemory();
 

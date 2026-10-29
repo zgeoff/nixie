@@ -569,6 +569,85 @@ test('it moves the item to the new subject when you approve a subject change, in
   expect(row).toStrictEqual({ subject: 'shared', kind: 'fact', version: 2 });
 });
 
+test('it applies an edit of a pinned item that keeps its subject when the 2,000-token pinned core holds the new text', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.remember({
+    text: 'Keeps a long packing list for trips. '.repeat(210),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Calls the kettle Captain Steam',
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.writes.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    target: item,
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const approved = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  expect(approved).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+});
+
+test('it refuses a move of a pinned item to shared when the heading of the new subject takes the 2,000-token pinned core over, and leaves the item as it was', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.remember({
+    text: 'Keeps a long packing list for trips. '.repeat(210),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const item = await memory.store.remember({
+    text: 'Calls the kettle Captain Steam',
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.writes.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    target: item,
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const approval = memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  await approval.catch(() => {});
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['subject', 'version'])
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(approval).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
+  expect(row).toStrictEqual({ subject: 'owner', version: 1 });
+});
+
 test('it makes a self-note a fact about the owner when you approve its move to the owner', async () => {
   const memory = await startTestMemory();
 

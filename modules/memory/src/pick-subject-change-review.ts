@@ -6,7 +6,7 @@ export function pickSubjectChangeReview(
   newSubject: MemorySubject | null,
   gate: ContentGateResult,
 ): ContentGateResult {
-  if (gate.status !== 'pass' || newSubject === null) {
+  if (newSubject === null || !isPassingGate(gate)) {
     return gate;
   }
 
@@ -14,4 +14,12 @@ export function pickSubjectChangeReview(
     checks: gate.checks,
     ...(gate.evidence === null ? {} : { evidence: gate.evidence }),
   });
+}
+
+function isPassingGate(gate: ContentGateResult): boolean {
+  if (gate.status === 'pass') {
+    return true;
+  }
+
+  return gate.reason === 'self_note' && gate.checks['tokens'] !== 'fail';
 }

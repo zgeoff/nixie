@@ -207,8 +207,9 @@ that subject, so nixie can fix an item filed under the wrong one. A subject chan
 fact the item is, so it always waits for the user's review. The gate runs the checks of the subject
 the item moves to: a move to self runs the self-note checks, and a move to owner or shared needs a
 quote as any edit does. A write that passes every check still becomes a proposal, with the subject
-change reason, and a write that fails a check keeps that check's reason. An edit that passes the
-item's own subject is a plain edit.
+change reason, and a write that fails a check keeps that check's reason. A move into self passes
+when its token check passes. A failed token check keeps the self-note reason, as it does for any
+self-note write. An edit that passes the item's own subject is a plain edit.
 
 A move into self is a self-note write, so only the conversation makes one, and a move out of self is
 an edit of a self-note, which the memory writer never makes. The memory writer's edit refuses any

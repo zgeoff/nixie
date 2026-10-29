@@ -52,13 +52,26 @@ test('it reads the subject change a proposal holds as the subject it moves its i
   });
 });
 
-test('it refuses a subject change that names no subject', () => {
+test('it refuses a subject change of an item whose subject is not one of the three', () => {
   const record = buildMockLogRecord({
     kind: 'memory.subject_changed',
     payload: { itemID: 'item-a', version: 3, subject: 'team', previousSubject: 'self' },
   });
 
-  expect(() => parseSubjectRecord(record)).toThrow();
+  expect(() => parseSubjectRecord(record)).toThrow(
+    expect.objectContaining({ issues: [expect.objectContaining({ path: ['subject'] })] }),
+  );
+});
+
+test('it refuses the subject change of a proposal whose subject is not one of the three', () => {
+  const record = buildMockLogRecord({
+    kind: 'memory.proposal_subject_changed',
+    payload: { proposalID: 'proposal-a', subject: 'team' },
+  });
+
+  expect(() => parseSubjectRecord(record)).toThrow(
+    expect.objectContaining({ issues: [expect.objectContaining({ path: ['subject'] })] }),
+  );
 });
 
 test('it refuses a subject mark with a key its shape does not hold', () => {
