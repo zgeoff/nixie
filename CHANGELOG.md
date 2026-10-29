@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.0](https://github.com/zgeoff/nixie/compare/v0.54.0...v0.55.0) (2026-10-29)
+
+
+### Features
+
+* **tasks:** start tasks from the conversation and route its messages ([#712](https://github.com/zgeoff/nixie/issues/712)) ([71b65b2](https://github.com/zgeoff/nixie/commit/71b65b277d42ad5af77eb9e75bd0a9b01f38426a))
+
 ## [0.54.0](https://github.com/zgeoff/nixie/compare/v0.53.0...v0.54.0) (2026-10-29)
 
 
