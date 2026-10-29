@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.0](https://github.com/zgeoff/nixie/compare/v0.52.0...v0.53.0) (2026-10-29)
+
+
+### Features
+
+* **memory:** give recall a photo's image and let the model open it ([#706](https://github.com/zgeoff/nixie/issues/706)) ([7b90c9c](https://github.com/zgeoff/nixie/commit/7b90c9c8dcada12a7ddd935870ef0ad643e842d4))
+
 ## [0.52.0](https://github.com/zgeoff/nixie/compare/v0.51.0...v0.52.0) (2026-10-29)
 
 
