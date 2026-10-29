@@ -31,14 +31,17 @@ import { z } from 'zod';
 
 const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.reply']);
 
-export function toContractRecord(record: LogRecord): ContractRecord | null {
+export function toContractRecord(
+  record: LogRecord,
+  cancelledActionIDs: ReadonlySet<string> = new Set(),
+): ContractRecord | null {
   if (record.thread === null) {
     return null;
   }
 
   const message = messageKinds.has(record.kind) ? toMessage(record) : undefined;
   const task = toTask(record);
-  const toolCall = toToolCall(record);
+  const toolCall = toToolCall(record, cancelledActionIDs);
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
   const rating = record.kind === 'memory.rated' ? toRating(record) : undefined;
   const moment = record.kind === 'moment_kept' ? toKeptMoment(record) : undefined;
@@ -144,9 +147,13 @@ interface ToolFields {
   readonly callID?: string | undefined;
   readonly tool?: string | undefined;
   readonly outcome?: string | undefined;
+  readonly actionID?: string | null | undefined;
 }
 
-function toToolCall(record: LogRecord): ToolCall | undefined {
+function toToolCall(
+  record: LogRecord,
+  cancelledActionIDs: ReadonlySet<string>,
+): ToolCall | undefined {
   const codec = toolCodecs.find((candidate) => candidate.kind === record.kind);
   const call: ToolFields | null | undefined = codec?.tryDecodePartial(record.payload);
 
@@ -158,11 +165,20 @@ function toToolCall(record: LogRecord): ToolCall | undefined {
   const input = record.kind === 'tool_called' ? fields?.['input'] : undefined;
   const content = record.kind === 'tool_result' ? fields : undefined;
 
+  // The tool result record keeps a stop's cancel under failed, so the release before can read it,
+  // and the action's own row records the cancel.
+  const isCancelled =
+    call.outcome === 'failed' &&
+    typeof call.actionID === 'string' &&
+    cancelledActionIDs.has(call.actionID);
+
+  const outcome = isCancelled ? 'cancelled' : call.outcome;
+
   return {
     callID: call.callID,
     ...(content === undefined ? {} : { content: { ...content } }),
     ...(isJSONObject(input) ? { input: { ...input } } : {}),
-    ...(call.outcome === undefined ? {} : { outcome: call.outcome }),
+    ...(outcome === undefined ? {} : { outcome }),
     ...(call.tool === undefined ? {} : { tool: call.tool }),
   };
 }

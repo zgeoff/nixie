@@ -9,6 +9,7 @@ export { claimAction } from './claim-action';
 export type { QueuedAction } from './create-allowed-action';
 export { createAllowedAction } from './create-allowed-action';
 export { pickOutcome } from './pick-outcome';
+export { readCancelledActionIDs } from './read-cancelled-action-ids';
 
 export type {
   ActionRow,

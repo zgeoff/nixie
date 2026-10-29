@@ -1,8 +1,10 @@
 import { expect, test } from 'bun:test';
+import type { ActionsTables } from '@heynixie/actions';
 import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
 import { writeRecords } from '@heynixie/log';
 import { createConversationTask } from '@heynixie/tasks';
 import { isDefinedError, safe } from '@orpc/client';
+import invariant from 'tiny-invariant';
 import { createEnrolmentCode } from './create-enrolment-code';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
@@ -835,6 +837,66 @@ test('#records.follow streams the records of the thread after the sequence asked
   const seen = await readEvents(connection, 3);
 
   expect(seen.map((event) => event.record.message?.text)).toStrictEqual([undefined, 'one', 'two']);
+});
+
+test('#records.follow streams a failed tool result as cancelled when a stop cancelled its action', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  await ctx.writer.db
+    .$extendTables<ActionsTables>()
+    .insertInto('actions')
+    .values({
+      action_id: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24',
+      task_id: 'conversation',
+      step_key: 'conversation:1',
+      action_hash: 'sha256:send-1',
+      tool: 'test.send',
+      status: 'pending',
+      attempt_count: 0,
+      attempt_open: 0,
+      next_attempt_at: 0,
+      reason: null,
+      queued_sequence: 1,
+      outcome_sequence: null,
+      cancelled_sequence: 1,
+      updated_sequence: 1,
+    })
+    .execute();
+
+  const [result] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        outcome: 'failed',
+        actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24',
+        sources: {},
+      },
+    },
+  ]);
+
+  invariant(result);
+
+  const connection = await laptopClient.records.follow({
+    afterSequence: result.sequence - 1,
+    thread: 'conversation',
+  });
+
+  const seen = await readEvents(connection, 1);
+
+  expect(seen.map((event) => event.record.toolCall)).toStrictEqual([
+    { callID: 'call-1', outcome: 'cancelled' },
+  ]);
 });
 
 test('#log.follow still streams the records of the thread for a client of an earlier release', async () => {

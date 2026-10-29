@@ -324,6 +324,35 @@ test('it carries a tool result with its outcome and content', () => {
   });
 });
 
+test('it shows a failed tool result as cancelled when its action is among the cancelled ones', () => {
+  expect(
+    toContractRecord(
+      {
+        sequence: 6,
+        recordedAt: new Date('2026-10-10T12:00:02Z'),
+        kind: 'tool_result',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        stepKey: null,
+        parent: 5,
+        contentSource: 'untrusted',
+        decision: null,
+        promptCause: null,
+        approval: null,
+        payload: { callID: 'call-1', outcome: 'failed', actionID: 'action-1', sources: {} },
+        erasable: { status: 'shredded' },
+      },
+      new Set(['action-1']),
+    ),
+  ).toStrictEqual({
+    kind: 'tool_result',
+    recordedAt: new Date('2026-10-10T12:00:02Z'),
+    sequence: 6,
+    thread: 'conversation',
+    toolCall: { callID: 'call-1', outcome: 'cancelled' },
+  });
+});
+
 test('it keeps a forgotten tool result with its outcome and no content', () => {
   expect(
     toContractRecord({
