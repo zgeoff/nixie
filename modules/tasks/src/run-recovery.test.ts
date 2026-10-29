@@ -6,6 +6,7 @@ import { startNextTestWriter } from './test-utils/start-next-test-writer';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 import { writeStepCommit } from './write-step-commit';
+import { writeTaskControl } from './write-task-control';
 
 function setupTest() {
   return startTestTasks();
@@ -104,6 +105,33 @@ test('it returns a task running under the older epoch to ready', async () => {
 
   expect(before.state).toBe('running');
   expect(after).toStrictEqual({ state: 'ready', started_step_key: null });
+});
+
+test('it pauses a task running under the older epoch whose pause waited on its step', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
+  await writeTaskControl(ctx.context, { taskID: claim.lease.workID, control: 'pause' });
+
+  const next = await startNextTestWriter(ctx);
+
+  await runRecovery(next.context, {
+    writeUnknownOutcomes: mock(() => Promise.resolve()),
+    sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
+  });
+
+  const after = await next.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select(['state', 'started_step_key', 'pause_requested', 'resume_state'])
+    .executeTakeFirstOrThrow();
+
+  expect(after).toStrictEqual({
+    state: 'paused',
+    started_step_key: null,
+    pause_requested: 0,
+    resume_state: 'ready',
+  });
 });
 
 test('it records the step that started without a commit as interrupted', async () => {

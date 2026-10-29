@@ -1,5 +1,6 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { planBackoffDelay } from '@heynixie/retry';
+import { buildPausedRecord } from './build-paused-record';
 import { requireLease } from './require-lease';
 import { resetLease } from './reset-lease';
 import { taskStepErroredCodec } from './task-step-errored-codec';
@@ -27,7 +28,7 @@ export function writeStepError(
     const task = await tx
       .$extendTables<TasksTables>()
       .selectFrom('tasks')
-      .select(['step_errors', 'is_conversation'])
+      .select(['step_errors', 'is_conversation', 'pause_requested'])
       .where('task_id', '=', taskID)
       .executeTakeFirstOrThrow();
 
@@ -50,6 +51,9 @@ export function writeStepError(
         }),
         erasable: { message: formatError(failure.error) },
       },
+      ...(retry.nextState === 'ready' && task.pause_requested === 1
+        ? [buildPausedRecord(taskID, 'ready', context.definitions())]
+        : []),
     ]);
 
     await resetLease(tx, claim.lease);

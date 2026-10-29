@@ -56,6 +56,7 @@ test('it returns the first step of a new task that a runner claimed', async () =
     wake: { hop: 0, cause: { kind: 'carried' } },
     sessionBoundary: null,
     signal: step.signal,
+    interrupt: step.interrupt,
   });
 
   expect(step.signal).toBeInstanceOf(AbortSignal);

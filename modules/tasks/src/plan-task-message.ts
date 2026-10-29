@@ -1,3 +1,4 @@
+import { isFinishedState } from './is-finished-state';
 import { isWaitingKind } from './is-waiting-kind';
 import { toEventID } from './to-event-id';
 import type { TaskMessageKind, TaskMessaging, TaskState } from './types';
@@ -95,7 +96,7 @@ function pickRefusal(request: TaskMessageRequest, facts: RefusalFacts): TaskMess
     return { reason: 'unknown_task', taskID: request.to };
   }
 
-  if (facts.receiverState === 'done' || facts.receiverState === 'failed') {
+  if (isFinishedState(facts.receiverState)) {
     return { reason: 'finished', taskID: request.to };
   }
 

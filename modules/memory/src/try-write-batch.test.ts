@@ -61,6 +61,7 @@ test('it publishes the batch and advances the cursor with its record', async () 
     wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
@@ -109,6 +110,7 @@ test('it returns superseded when an item moved on since the session read it', as
     wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
@@ -180,6 +182,7 @@ test('it returns superseded when the checker passed a write under definitions th
     wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
@@ -250,6 +253,7 @@ test('it returns superseded when an item a proposal names was forgotten since th
     wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
@@ -318,6 +322,7 @@ test('it rejects a publish whose lease another claim replaced', async () => {
     wake: { hop: 0, cause: { kind: 'event' as const } },
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);

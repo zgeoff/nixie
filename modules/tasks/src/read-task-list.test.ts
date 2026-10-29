@@ -39,6 +39,7 @@ test('it lists the other tasks in the directory, the most recently active first'
       name: 'Critic',
       state: 'ready',
       brief: 'Checks plans.',
+      isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
     },
     {
@@ -46,6 +47,7 @@ test('it lists the other tasks in the directory, the most recently active first'
       name: 'Planner',
       state: 'ready',
       brief: 'Plans the week.',
+      isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
     },
   ]);
@@ -151,6 +153,7 @@ test.each(['question', 'request'] as const)(
         name: 'Planner',
         state: 'running',
         brief: 'Plans the week.',
+        isPauseRequested: false,
         lastActivityAt: expect.toBeValidDate(),
       },
     ]);
@@ -214,6 +217,7 @@ test('it clears the wait when the asked task replies to the question, by its ID'
       name: 'Planner',
       state: 'ready',
       brief: 'Plans the week.',
+      isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
     },
   ]);
@@ -261,6 +265,7 @@ test('it clears the wait when the task that asked finishes', async () => {
       name: 'Planner',
       state: 'done',
       brief: 'Plans the week.',
+      isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
     },
   ]);
@@ -319,6 +324,7 @@ test('it clears the wait when the asked task stops on its errors', async () => {
       name: 'Planner',
       state: 'waiting',
       brief: 'Plans the week.',
+      isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
     },
   ]);

@@ -11,6 +11,7 @@ import {
   writeInboxRecords,
   writeStepCommit,
   writeStepError,
+  writeTaskControl,
 } from './index';
 import { tasksProjections } from './tasks-projections';
 import { createTestClaim } from './test-utils/create-test-claim';
@@ -159,6 +160,36 @@ test('it rebuilds the timers table equal to the live one after a timer fires', a
 
   expect(live).toHaveLength(1);
   expect(rebuilt).toStrictEqual(live);
+});
+
+test('it rebuilds the tasks and timers equal to the live ones after a pause, a resume and a stop', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
+
+  await writeTaskControl(ctx.context, { taskID: claim.lease.workID, control: 'pause' });
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    timers: [{ dueAt: 1_060_000 }],
+  });
+
+  await writeTaskControl(ctx.context, { taskID: claim.lease.workID, control: 'resume' });
+  await writeTaskControl(ctx.context, { taskID: claim.lease.workID, control: 'stop' });
+
+  const liveTasks = await ctx.db.selectFrom('tasks').selectAll().execute();
+  const liveTimers = await ctx.db.selectFrom('timers').selectAll().execute();
+
+  await runProjectionRebuild(ctx.context.log);
+
+  const rebuiltTasks = await ctx.db.selectFrom('tasks').selectAll().execute();
+  const rebuiltTimers = await ctx.db.selectFrom('timers').selectAll().execute();
+
+  expect(liveTasks).toMatchObject([{ state: 'stopped', resume_state: 'waiting' }]);
+  expect(liveTimers).toMatchObject([{ withdrawn_sequence: expect.toBeNumber() }]);
+  expect(rebuiltTasks).toStrictEqual(liveTasks);
+  expect(rebuiltTimers).toStrictEqual(liveTimers);
 });
 
 test('it rebuilds the task messages and their waits equal to the live ones after a reply', async () => {

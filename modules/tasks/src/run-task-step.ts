@@ -3,7 +3,8 @@ import { LeaseLostError } from './lease-lost-error';
 import { readInbox } from './read-inbox';
 import { readSessionBoundary } from './read-session-boundary';
 import { startLeaseRenewal } from './start-lease-renewal';
-import type { RunStep, StepErrored, TaskClaim, TasksContext } from './types';
+import { startStepControlWatch } from './start-step-control-watch';
+import type { RunStep, StartedClaim, StepErrored, TasksContext } from './types';
 import { writeStepCommit } from './write-step-commit';
 import type { StepErrorOptions } from './write-step-error';
 import { writeStepError } from './write-step-error';
@@ -15,13 +16,18 @@ export interface TaskStepOptions extends StepErrorOptions {
 
 export async function runTaskStep(
   context: TasksContext,
-  claim: TaskClaim,
+  claim: StartedClaim,
   options: TaskStepOptions,
 ): Promise<StepErrored | null> {
   const renewal = startLeaseRenewal(context, claim.lease, options.leaseMs);
+  const controls = startStepControlWatch(context, claim);
 
   try {
-    const failure = await tryCommitStep(context, claim, { ...options, signal: renewal.signal });
+    const failure = await tryCommitStep(context, claim, {
+      ...options,
+      signal: AbortSignal.any([renewal.signal, controls.ended]),
+      interrupt: controls.interrupted,
+    });
 
     return failure === null
       ? null
@@ -33,14 +39,14 @@ export async function runTaskStep(
 
     return null;
   } finally {
-    await renewal.stop();
+    await Promise.all([renewal.stop(), controls.stop()]);
   }
 }
 
 async function tryCommitStep(
   context: TasksContext,
-  claim: TaskClaim,
-  options: TaskStepOptions & { readonly signal: AbortSignal },
+  claim: StartedClaim,
+  options: TaskStepOptions & { readonly signal: AbortSignal; readonly interrupt: AbortSignal },
 ): Promise<{ readonly error: unknown } | null> {
   try {
     const inbox = await readInbox(context, claim.lease.workID);
@@ -54,6 +60,7 @@ async function tryCommitStep(
       wake: claim.wake,
       sessionBoundary,
       signal: options.signal,
+      interrupt: options.interrupt,
     });
 
     await writeStepCommit(context, claim, result);

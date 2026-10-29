@@ -20,6 +20,7 @@ export const timersProjection: Projection = {
             set_sequence: record.sequence,
             fired_at: null,
             fired_sequence: null,
+            withdrawn_sequence: null,
           })),
         )
         .execute();
@@ -35,6 +36,19 @@ export const timersProjection: Projection = {
         .execute();
 
       return [parsed.timerID];
+    }
+
+    if (
+      (parsed?.kind === 'task.stopped' || parsed?.kind === 'task.closed') &&
+      parsed.timerIDs.length > 0
+    ) {
+      await db
+        .updateTable('timers')
+        .set({ withdrawn_sequence: record.sequence })
+        .where('timer_id', 'in', parsed.timerIDs)
+        .execute();
+
+      return parsed.timerIDs;
     }
 
     return [];

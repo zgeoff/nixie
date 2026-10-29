@@ -7,6 +7,7 @@ import { runTaskStep } from './run-task-step';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { StepInput, StepResult, TasksTables } from './types';
 import { writeInboxRecords } from './write-inbox-records';
+import { writeTaskControl } from './write-task-control';
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -223,4 +224,90 @@ test('it aborts the step and commits nothing once the lease is lost', async () =
 
   expect(seen.aborted).toBeTrue();
   expect(task).toMatchObject({ state: 'running', committed_steps: 0 });
+});
+
+test('it aborts a running step that the user stops, and commits nothing', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  const errored = await runTaskStep(ctx.context, claim, {
+    runStep: async (input) => {
+      await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'stop' });
+      await waitForCondition(() => input.signal.aborted);
+
+      input.signal.throwIfAborted();
+
+      return { next: 'wait', records: [], acknowledged: [2] };
+    },
+    leaseMs: 60_000,
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'committed_steps', 'step_errors'])
+    .executeTakeFirstOrThrow();
+
+  expect(errored).toBeNull();
+  expect(task).toStrictEqual({ state: 'stopped', committed_steps: 0, step_errors: 0 });
+});
+
+test('it tells a running step that the user interrupted it, and commits what the step returns', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  const seen = { isSignalAborted: true };
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: async (input) => {
+      await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'interrupt' });
+      await waitForCondition(() => input.interrupt.aborted);
+
+      seen.isSignalAborted = input.signal.aborted;
+
+      return { next: 'wait', records: [], acknowledged: [2] };
+    },
+    leaseMs: 60_000,
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'committed_steps'])
+    .executeTakeFirstOrThrow();
+
+  expect(seen.isSignalAborted).toBeFalse();
+  expect(task).toStrictEqual({ state: 'waiting', committed_steps: 1 });
 });

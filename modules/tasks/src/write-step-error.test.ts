@@ -7,6 +7,7 @@ import { createTestConversationClaim } from './test-utils/create-test-conversati
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 import { writeStepError } from './write-step-error';
+import { writeTaskControl } from './write-task-control';
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -152,4 +153,43 @@ test("it doubles the conversation's retry delay with each error until the delay 
       .filter((entry) => entry.record.kind === 'task.step_errored')
       .map((entry) => entry.record.payload['claimableAt']),
   ).toStrictEqual([1_030_000, 1_090_000, 1_190_000, 1_290_000, 1_390_000]);
+});
+
+test('it pauses a task whose pause waited on the step that threw', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
+  await writeTaskControl(ctx.context, { taskID: claim.lease.workID, control: 'pause' });
+
+  await writeStepError(ctx.context, claim, {
+    error: new Error('the model profile is unreachable'),
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'resume_state'])
+    .executeTakeFirstOrThrow();
+
+  expect(task).toStrictEqual({ state: 'paused', resume_state: 'ready' });
+});
+
+test('it fails a task whose pause waited on the step that used its last try', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
+  await writeTaskControl(ctx.context, { taskID: claim.lease.workID, control: 'pause' });
+
+  await writeStepError(ctx.context, claim, {
+    error: new Error('the model profile is unreachable'),
+    maxStepErrors: 1,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db.selectFrom('tasks').select('state').executeTakeFirstOrThrow();
+
+  expect(task.state).toBe('failed');
 });

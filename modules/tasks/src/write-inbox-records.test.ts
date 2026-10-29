@@ -1,6 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
+import { createTask } from './create-task';
 import { setFaultPointHandler } from './set-fault-point-handler';
 import { createTestClaim } from './test-utils/create-test-claim';
 import { createTestConversationClaim } from './test-utils/create-test-conversation-claim';
@@ -8,6 +9,7 @@ import { startTestTasks } from './test-utils/start-test-tasks';
 import type { FaultPointContext, FaultPointID, TasksTables } from './types';
 import { writeInboxRecords } from './write-inbox-records';
 import { writeStepError } from './write-step-error';
+import { writeTaskControl } from './write-task-control';
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -128,6 +130,21 @@ test('it refuses a record for a task that is done', async () => {
   await write.catch(() => {});
 
   expect(write).rejects.toThrowWithMessage(Error, 'task conversation is done and takes no input');
+});
+
+test('it refuses a record for a task that is closed', async () => {
+  const ctx = await setupTest();
+  const taskID = await createTask(ctx.context, 'sort the receipts');
+
+  await writeTaskControl(ctx.context, { taskID, control: 'close' });
+
+  const write = writeInboxRecords(ctx.context, [
+    { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, thread: taskID },
+  ]);
+
+  await write.catch(() => {});
+
+  expect(write).rejects.toThrowWithMessage(Error, `task ${taskID} is closed and takes no input`);
 });
 
 test('it reaches inbox.write.after once the message commits', async () => {

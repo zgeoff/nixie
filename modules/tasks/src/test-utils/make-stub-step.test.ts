@@ -17,6 +17,7 @@ test('it runs its act on the step and then waits with the whole inbox read', asy
     wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const result = await makeStubStep(act)(input);

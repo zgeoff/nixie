@@ -2048,6 +2048,7 @@ test('it keeps the session boundary and runs no turn for a step with nothing unr
     wake: { hop: 0, cause: { kind: 'carried' } },
     sessionBoundary: '{"sessionID":"s","messageID":"m"}',
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   });
 
   expect(result).toStrictEqual({

@@ -17,6 +17,7 @@ export function buildMockStepInput(overrides: Partial<StepInput> = {}): StepInpu
     wake: { hop: 0, cause: { kind: 'owner' } },
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
     ...overrides,
   };
 }

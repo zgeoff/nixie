@@ -8,7 +8,28 @@ export interface TasksContext {
   readonly definitions: () => Definitions;
 }
 
-export type TaskState = 'ready' | 'running' | 'waiting' | 'failed' | 'done';
+export type TaskState =
+  | 'ready'
+  | 'running'
+  | 'waiting'
+  | 'paused'
+  | 'stopped'
+  | 'failed'
+  | 'done'
+  | 'closed';
+
+export type ResumeState = 'ready' | 'waiting';
+
+export type TaskControl = 'pause' | 'resume' | 'stop' | 'restart' | 'close' | 'interrupt';
+
+export type TaskControlRefusal =
+  | { readonly reason: 'unknown_task' }
+  | { readonly reason: 'conversation_never_closes' }
+  | {
+      readonly reason: 'not_allowed';
+      readonly state: TaskState;
+      readonly isPauseRequested: boolean;
+    };
 
 export type LeaseKind = 'task' | 'action';
 
@@ -25,6 +46,10 @@ export interface TaskClaim {
   readonly lease: Lease;
   readonly stepKey: string;
   readonly wake: StepWake;
+}
+
+export interface StartedClaim extends TaskClaim {
+  readonly startSequence: number;
 }
 
 export type TaskMessageKind = 'progress' | 'question' | 'request' | 'report' | 'reply' | 'chat';
@@ -88,6 +113,8 @@ export interface StepInput {
   readonly sessionBoundary: string | null;
 
   readonly signal: AbortSignal;
+
+  readonly interrupt: AbortSignal;
 }
 
 export type RunStep = (input: StepInput) => Promise<StepResult>;
@@ -151,6 +178,8 @@ interface TaskTable {
   readonly step_hop: number;
   readonly started_by: string | null;
   readonly start_step: string | null;
+  readonly pause_requested: number;
+  readonly resume_state: ResumeState | null;
   readonly created_sequence: number;
   readonly updated_sequence: number;
 }
@@ -162,6 +191,7 @@ interface TimerTable {
   readonly set_sequence: number;
   readonly fired_at: number | null;
   readonly fired_sequence: number | null;
+  readonly withdrawn_sequence: number | null;
 }
 
 interface LeaseTable {

@@ -1,3 +1,4 @@
+import { isFinishedState } from './is-finished-state';
 import type { TaskState } from './types';
 
 export type MoveTarget =
@@ -44,7 +45,7 @@ export function planMessageMove(target: MoveTarget, facts: MessageMoveFacts): Me
   return {
     status: 'move',
     from,
-    isFromNotified: facts.fromState !== null && !isFinished(facts.fromState),
+    isFromNotified: facts.fromState !== null && !isFinishedState(facts.fromState),
     target,
   };
 }
@@ -62,7 +63,7 @@ function pickTargetRefusal(
     return target.brief.trim() === '' ? { reason: 'empty_brief' } : null;
   }
 
-  if (facts.targetState === null || isFinished(facts.targetState)) {
+  if (facts.targetState === null || isFinishedState(facts.targetState)) {
     return { reason: 'unknown_task' };
   }
 
@@ -71,8 +72,4 @@ function pickTargetRefusal(
   }
 
   return target.taskID === from ? { reason: 'same_task' } : null;
-}
-
-function isFinished(state: TaskState): boolean {
-  return state === 'done' || state === 'failed';
 }

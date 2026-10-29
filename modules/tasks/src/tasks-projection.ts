@@ -1,5 +1,6 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction, UpdateObject } from 'kysely';
+import { match } from 'ts-pattern';
 import { isInboxRecord } from './is-inbox-record';
 import { isWakingRecord } from './is-waking-record';
 import type { TaskRecord } from './parse-task-record';
@@ -100,6 +101,8 @@ async function applyTaskRecord(
         step_hop: 0,
         started_by: parsed.startedBy ?? null,
         start_step: parsed.startStep ?? null,
+        pause_requested: 0,
+        resume_state: null,
         created_sequence: record.sequence,
         updated_sequence: record.sequence,
       })
@@ -120,39 +123,59 @@ type TaskUpdate = UpdateObject<TasksTables, 'tasks'>;
 function buildTaskUpdate(
   parsed: Exclude<TaskRowRecord, { readonly kind: 'task.created' }>,
 ): TaskUpdate {
-  if (parsed.kind === 'task.step_started') {
-    return {
+  return match(parsed)
+    .returnType<TaskUpdate>()
+    .with({ kind: 'task.step_started' }, (started) => ({
       state: 'running',
-      started_step_key: parsed.stepKey,
-      ...(parsed.hop === undefined ? {} : { step_hop: parsed.hop }),
-    };
-  }
-
-  if (parsed.kind === 'task.step_committed') {
-    return {
-      state: parsed.nextState,
-      read_cursor: parsed.readCursor,
+      started_step_key: started.stepKey,
+      ...(started.hop === undefined ? {} : { step_hop: started.hop }),
+    }))
+    .with({ kind: 'task.step_committed' }, (committed) => ({
+      state: committed.nextState,
+      read_cursor: committed.readCursor,
       committed_steps: (expressionBuilder) => expressionBuilder('committed_steps', '+', 1),
       started_step_key: null,
       step_errors: 0,
-      session_boundary: parsed.sessionBoundary,
-    };
-  }
-
-  if (parsed.kind === 'task.step_interrupted') {
-    return { started_step_key: null };
-  }
-
-  if (parsed.kind === 'task.step_errored') {
-    return {
-      state: parsed.nextState,
+      session_boundary: committed.sessionBoundary,
+    }))
+    .with({ kind: 'task.step_interrupted' }, () => ({ started_step_key: null }))
+    .with({ kind: 'task.step_errored' }, (errored) => ({
+      state: errored.nextState,
       started_step_key: null,
-      step_errors: parsed.errors,
-      claimable_at: parsed.claimableAt,
-    };
-  }
-
-  return parsed.kind === 'task.revived'
-    ? { state: 'ready', step_errors: 0, claimable_at: 0 }
-    : { state: 'ready' };
+      step_errors: errored.errors,
+      claimable_at: errored.claimableAt,
+    }))
+    .with({ kind: 'task.revived' }, () => ({ state: 'ready', step_errors: 0, claimable_at: 0 }))
+    .with({ kind: 'task.lease_expired' }, () => ({ state: 'ready' }))
+    .with({ kind: 'task.pause_requested' }, () => ({ pause_requested: 1 }))
+    .with({ kind: 'task.paused' }, (paused) => ({
+      state: 'paused',
+      pause_requested: 0,
+      resume_state: paused.resumeState,
+    }))
+    .with({ kind: 'task.resumed' }, (resumed) => ({
+      state: resumed.nextState,
+      pause_requested: 0,
+      resume_state: null,
+    }))
+    .with({ kind: 'task.stopped' }, (stopped) => ({
+      state: 'stopped',
+      started_step_key: null,
+      pause_requested: 0,
+      resume_state: stopped.resumeState,
+    }))
+    .with({ kind: 'task.restarted' }, (restarted) => ({
+      state: restarted.nextState,
+      step_errors: 0,
+      claimable_at: 0,
+      resume_state: null,
+    }))
+    .with({ kind: 'task.closed' }, () => ({
+      state: 'closed',
+      started_step_key: null,
+      pause_requested: 0,
+      resume_state: null,
+    }))
+    .with({ kind: 'task.interrupted' }, () => ({}))
+    .exhaustive();
 }

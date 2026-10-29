@@ -1,11 +1,18 @@
 import type { EnvelopeRecord, JSONObject, RecordKind } from '@heynixie/log';
+import { taskClosedCodec } from './task-closed-codec';
 import { taskCreatedCodec } from './task-created-codec';
+import { taskInterruptedCodec } from './task-interrupted-codec';
 import { taskLeaseExpiredCodec } from './task-lease-expired-codec';
+import { taskPauseRequestedCodec } from './task-pause-requested-codec';
+import { taskPausedCodec } from './task-paused-codec';
+import { taskRestartedCodec } from './task-restarted-codec';
+import { taskResumedCodec } from './task-resumed-codec';
 import { taskRevivedCodec } from './task-revived-codec';
 import { taskStepCommittedCodec } from './task-step-committed-codec';
 import { taskStepErroredCodec } from './task-step-errored-codec';
 import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
 import { taskStepStartedCodec } from './task-step-started-codec';
+import { taskStoppedCodec } from './task-stopped-codec';
 import { timerFiredCodec } from './timer-fired-codec';
 
 type DecodedRecord<
@@ -22,6 +29,13 @@ export type TaskRecord =
   | DecodedRecord<typeof taskStepErroredCodec>
   | DecodedRecord<typeof taskLeaseExpiredCodec>
   | DecodedRecord<typeof taskRevivedCodec>
+  | DecodedRecord<typeof taskPauseRequestedCodec>
+  | DecodedRecord<typeof taskPausedCodec>
+  | DecodedRecord<typeof taskResumedCodec>
+  | DecodedRecord<typeof taskStoppedCodec>
+  | DecodedRecord<typeof taskRestartedCodec>
+  | DecodedRecord<typeof taskClosedCodec>
+  | DecodedRecord<typeof taskInterruptedCodec>
   | DecodedRecord<typeof timerFiredCodec>;
 
 const taskRecordDecoders: {
@@ -51,6 +65,22 @@ const taskRecordDecoders: {
     ...taskLeaseExpiredCodec.decode(payload),
   }),
   'task.revived': (payload) => ({ kind: 'task.revived', ...taskRevivedCodec.decode(payload) }),
+  'task.pause_requested': (payload) => ({
+    kind: 'task.pause_requested',
+    ...taskPauseRequestedCodec.decode(payload),
+  }),
+  'task.paused': (payload) => ({ kind: 'task.paused', ...taskPausedCodec.decode(payload) }),
+  'task.resumed': (payload) => ({ kind: 'task.resumed', ...taskResumedCodec.decode(payload) }),
+  'task.stopped': (payload) => ({ kind: 'task.stopped', ...taskStoppedCodec.decode(payload) }),
+  'task.restarted': (payload) => ({
+    kind: 'task.restarted',
+    ...taskRestartedCodec.decode(payload),
+  }),
+  'task.closed': (payload) => ({ kind: 'task.closed', ...taskClosedCodec.decode(payload) }),
+  'task.interrupted': (payload) => ({
+    kind: 'task.interrupted',
+    ...taskInterruptedCodec.decode(payload),
+  }),
   'timer.fired': (payload) => ({ kind: 'timer.fired', ...timerFiredCodec.decode(payload) }),
 };
 

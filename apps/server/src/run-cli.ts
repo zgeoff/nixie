@@ -10,6 +10,7 @@ import { createResetCommands } from './create-reset-commands';
 import { createSessionCommands } from './create-session-commands';
 import { createSkillCommands } from './create-skill-commands';
 import { createSubjectCommands } from './create-subject-commands';
+import { createTaskCommands } from './create-task-commands';
 import { readCLIArgs } from './read-cli-args';
 import type { ParsedCLIArgs } from './read-cli-args';
 import { resolveSocketPath } from './resolve-socket-path';
@@ -24,6 +25,7 @@ const commands = new Map<string, Command>([
   ['check-encoder', (flags, io) => checkEncoder(flags.encoder, io)],
   ...createDeploymentCommands(),
   ...createSessionCommands(host),
+  ...createTaskCommands(host),
   ...createResetCommands(host),
   ...createMemoryCommands(host),
   ...createConsolidationCommands(host),

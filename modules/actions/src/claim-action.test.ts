@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { writeStepCommit, writeTaskControl } from '@heynixie/tasks';
 import { claimAction } from './claim-action';
 import { createAllowedAction } from './create-allowed-action';
 import { createTestStep } from './test-utils/create-test-step';
@@ -90,4 +91,46 @@ test('it leaves an action whose lease another runner holds', async () => {
   const lease = await claimAction(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
   expect(lease).toBeNull();
+});
+
+test('it holds an action that never started while its task is paused', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'pause' });
+  await writeStepCommit(ctx.context, step, { next: 'wait', records: [], acknowledged: [] });
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease).toBeNull();
+});
+
+test('it claims an action with a started attempt while its task is paused', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'pause' });
+  await writeStepCommit(ctx.context, step, { next: 'wait', records: [], acknowledged: [] });
+
+  await ctx.db.updateTable('actions').set({ attempt_count: 1 }).execute();
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease?.workID).toBe(queued.actionID);
 });

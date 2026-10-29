@@ -4,6 +4,7 @@ import { createConversationTask } from './create-conversation-task';
 import { createTask } from './create-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
+import { writeTaskControl } from './write-task-control';
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -36,6 +37,7 @@ test('it moves a ready task to running and records the step it starts', async ()
     },
     stepKey: `${taskID}:1`,
     wake: { hop: 0, cause: { kind: 'carried' } },
+    startSequence: 2,
   });
 
   expect(task).toStrictEqual({ state: 'running', started_step_key: `${taskID}:1` });
@@ -103,4 +105,30 @@ test('it waits out the retry delay of a failed step before claiming the task aga
 
   expect(early).toBeNull();
   expect(due?.lease.workID).toBe(taskID);
+});
+
+test('it pauses a running task whose pause waited on a step whose lease expired, and starts no step', async () => {
+  const ctx = await setupTest();
+  const taskID = await createTask(ctx.context, 'tidy the inbox');
+
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+  await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+
+  ctx.clock.advance(60_000);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const records = await ctx.db
+    .selectFrom('records')
+    .select(['kind'])
+    .where('sequence', '>', 3)
+    .execute();
+
+  const lease = await ctx.db.selectFrom('leases').select('holder').executeTakeFirstOrThrow();
+  const task = await ctx.db.selectFrom('tasks').select('state').executeTakeFirstOrThrow();
+
+  expect(claim).toBeNull();
+  expect(records).toStrictEqual([{ kind: 'task.step_interrupted' }, { kind: 'task.paused' }]);
+  expect(lease.holder).toBeNull();
+  expect(task.state).toBe('paused');
 });

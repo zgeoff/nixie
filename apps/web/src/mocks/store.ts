@@ -348,10 +348,13 @@ const moments = new Collection({
 const tasks = new Collection({
   schema: z.object({
     brief: z.string().default(() => faker.lorem.sentence()),
+    isPauseRequested: z.boolean().default(false),
     isTakingMessages: z.boolean().default(true),
     lastActivityAt: z.date().default(() => new Date()),
     name: z.string().default(() => faker.lorem.words(2)),
-    state: z.enum(['ready', 'running', 'waiting', 'done', 'failed']).default('waiting'),
+    state: z
+      .enum(['ready', 'running', 'waiting', 'paused', 'stopped', 'done', 'failed', 'closed'])
+      .default('waiting'),
     taskID: z.string().default(() => faker.string.alphanumeric({ length: 10, casing: 'lower' })),
   }),
 });
@@ -361,6 +364,15 @@ const moveActions = new Collection({
     clientActionID: z.uuid(),
     movedAt: z.date(),
     sequence: z.int(),
+    taskID: z.string(),
+  }),
+});
+
+const taskControlActions = new Collection({
+  schema: z.object({
+    clientActionID: z.uuid(),
+    control: z.string(),
+    controlledAt: z.date(),
     taskID: z.string(),
   }),
 });
@@ -395,6 +407,7 @@ export const store = {
       records,
       forgetActions,
       moveActions,
+      taskControlActions,
       tasks,
       memoryActions,
       memoryItems,
@@ -414,5 +427,6 @@ export const store = {
     counter.lastSequence = 0;
   },
   sessions,
+  taskControlActions,
   tasks,
 };

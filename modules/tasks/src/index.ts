@@ -29,6 +29,7 @@ export { createConversationTask } from './create-conversation-task';
 export { createSystemTask } from './create-system-task';
 export { createTask } from './create-task';
 export { DEFAULT_MAX_STEP_ERRORS } from './default-max-step-errors';
+export { isFinishedState } from './is-finished-state';
 export { isInboxRecord } from './is-inbox-record';
 export { LeaseLostError } from './lease-lost-error';
 export { ownerMessageCodec } from './owner-message-codec';
@@ -60,6 +61,7 @@ export { taskStepInterruptedCodec } from './task-step-interrupted-codec';
 export { taskStepStartedCodec } from './task-step-started-codec';
 export type { TasksConfig } from './tasks-config-schema';
 export { tasksConfigSchema } from './tasks-config-schema';
+export { taskStateSchema } from './task-state-schema';
 export { tasksProjection } from './tasks-projection';
 export { tasksProjections } from './tasks-projections';
 export { timerFiredCodec } from './timer-fired-codec';
@@ -73,11 +75,14 @@ export type {
   LeaseKind,
   RunStep,
   SandboxCleanup,
+  StartedClaim,
   StepErrored,
   StepInput,
   StepResult,
   StepWake,
   TaskClaim,
+  TaskControl,
+  TaskControlRefusal,
   TaskMessageKind,
   TaskMessaging,
   TaskProfile,
@@ -92,6 +97,16 @@ export { waitAtFaultPoint } from './wait-at-fault-point';
 export { writeInboxRecords } from './write-inbox-records';
 export { writeInboxRecordsInTransaction } from './write-inbox-records-in-transaction';
 export { writeStepCommit } from './write-step-commit';
+export { writeTaskControl } from './write-task-control';
+export type { TaskControlOutcome, TaskControlRequest } from './write-task-control-in-transaction';
+export { writeTaskControlInTransaction } from './write-task-control-in-transaction';
+export { taskClosedCodec } from './task-closed-codec';
+export { taskInterruptedCodec } from './task-interrupted-codec';
+export { taskPauseRequestedCodec } from './task-pause-requested-codec';
+export { taskPausedCodec } from './task-paused-codec';
+export { taskRestartedCodec } from './task-restarted-codec';
+export { taskResumedCodec } from './task-resumed-codec';
+export { taskStoppedCodec } from './task-stopped-codec';
 export type { StepErrorOptions } from './write-step-error';
 export { writeStepError } from './write-step-error';
 export type { TasksRecordKind } from './tasks-record-kind';

@@ -29,6 +29,7 @@ test('it queues a call that a step makes under that step and returns its action 
     wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const queue = buildActionQueue(ctx.context);
@@ -77,6 +78,7 @@ test('it returns the action a step queued when its rerun makes the same call', a
     wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const queue = buildActionQueue(ctx.context);
@@ -123,6 +125,7 @@ test('it refuses a call on a thread where no step runs', async () => {
     wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const queue = buildActionQueue(ctx.context);
@@ -155,6 +158,7 @@ test('it forgets the step once it ends, so a later call queues nothing', async (
     wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const queue = buildActionQueue(ctx.context);
@@ -193,6 +197,7 @@ test('it refuses a call from a step whose claim a takeover replaced, and queues 
     wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const queue = buildActionQueue(ctx.context);
@@ -240,6 +245,7 @@ test('it refuses a call that carries no step run ID, and queues nothing', async 
     wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const queue = buildActionQueue(ctx.context);
@@ -281,6 +287,7 @@ test('it gives no outcome for an action still pending when the wait ends', async
     wake: claim.wake,
     sessionBoundary: null,
     signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
   };
 
   const queue = buildActionQueue(ctx.context);
@@ -338,6 +345,7 @@ test.each([
       wake: claim.wake,
       sessionBoundary: null,
       signal: new AbortController().signal,
+      interrupt: new AbortController().signal,
     };
 
     const queue = buildActionQueue(ctx.context);

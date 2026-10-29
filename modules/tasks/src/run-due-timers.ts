@@ -9,6 +9,7 @@ export async function runDueTimers(context: TasksContext): Promise<number> {
     .selectFrom('timers')
     .select(['timer_id', 'task_id', 'due_at'])
     .where('fired_at', 'is', null)
+    .where('withdrawn_sequence', 'is', null)
     .where('due_at', '<=', context.clock.now())
     .orderBy('due_at')
     .execute();
@@ -44,6 +45,7 @@ async function writeTimerFired(context: TasksContext, timer: DueTimer): Promise<
       .select('timer_id')
       .where('timer_id', '=', timer.timer_id)
       .where('fired_at', 'is', null)
+      .where('withdrawn_sequence', 'is', null)
       .executeTakeFirst();
 
     if (pending === undefined) {
