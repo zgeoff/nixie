@@ -23,15 +23,15 @@ something between the user and nixie, such as a deal, a nickname or a running jo
 [self-note](./writes.md#self-notes) that nixie writes about itself.
 
 An item's subject is owner unless a subject mark follows the record that creates it. Only an
-approved [subject change](./writes.md#subject-changes) moves the item to another subject later,
-through a subject change record beside the version record it approves. Each mark and each subject
-change is a record of its own, as is the mark on a new item's proposal, because the release before
-reads a version or a proposal record as a strict shape and skips a record of a kind it does not
-know. A self-note's mark keeps the record kind that the release before reads as a self-note, and the
-row keeps the kind column that release reads, so a rollback by one release still tells a self-note
-from a fact. A row that the release before writes holds no subject, and the store reads its subject
-from its kind. The model reads and names an item by its short ID, and the store keys everything
-else, the item's key included, by the item's UUID.
+approved [subject change](./writes.md#subject-changes), or an undo of one, moves the item to another
+subject later, through a subject change record beside the version record that moves it. Each mark
+and each subject change is a record of its own, as is the mark on a new item's proposal, because the
+release before reads a version or a proposal record as a strict shape and skips a record of a kind
+it does not know. A self-note's mark keeps the record kind that the release before reads as a
+self-note, and the row keeps the kind column that release reads, so a rollback by one release still
+tells a self-note from a fact. A row that the release before writes holds no subject, and the store
+reads its subject from its kind. The model reads and names an item by its short ID, and the store
+keys everything else, the item's key included, by the item's UUID.
 
 The versions table holds one row per version: what changed, the state that version gave the item,
 the sealed text, its [end time](#end-times), and the provenance. A version's provenance is its

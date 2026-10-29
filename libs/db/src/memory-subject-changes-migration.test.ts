@@ -75,6 +75,41 @@ test('it gives every proposal no subject change and leaves its other fields and 
   expect(changes.rows).toStrictEqual([{ new_subject: null }, { new_subject: null }]);
 });
 
+test('it gives every version no earlier subject and leaves its other fields and the count unchanged', async () => {
+  const ctx = await setupTest();
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
+
+  await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
+    updated_sequence, short_id, kind, subject) values
+    ('2e7a9c15-6d3b-4f80-a1c4-8b5e0d3f7a26', 2, 'active', 0, 1, 1, 'r5tn2k8wqd', 'fact',
+      'owner')`.execute(ctx.db);
+
+  await sql`insert into memory_versions (version_key, item_id, version, change, state, sealed,
+    origin, source, sequence, snapshot_hash, recorded_at) values
+    ('2e7a9c15-6d3b-4f80-a1c4-8b5e0d3f7a26/1', '2e7a9c15-6d3b-4f80-a1c4-8b5e0d3f7a26', 1, 'created',
+      'active', 'sealed-e', 'owner', 'owner', 1, 'snapshot-a', 1767225600000),
+    ('2e7a9c15-6d3b-4f80-a1c4-8b5e0d3f7a26/2', '2e7a9c15-6d3b-4f80-a1c4-8b5e0d3f7a26', 2, 'edited',
+      'active', 'sealed-f', 'conversation', 'untrusted', 1, 'snapshot-a', 1767225660000)`.execute(
+    ctx.db,
+  );
+
+  const before = await readQueryRows(
+    sql`select * from memory_versions order by version_key`,
+    ctx.db,
+    z.record(z.string(), z.unknown()),
+  );
+
+  await ctx.db.transaction().execute((tx) => memorySubjectChangesMigration.up(tx));
+
+  const after = await sql`select * from memory_versions order by version_key`.execute(ctx.db);
+  const changes = await sql`select previous_subject from memory_versions`.execute(ctx.db);
+
+  expect(after.rows).toStrictEqual(before.map((row) => expect.objectContaining(row)));
+  expect(changes.rows).toStrictEqual([{ previous_subject: null }, { previous_subject: null }]);
+});
+
 test('it keeps a subject change when it runs again', async () => {
   const ctx = await setupTest();
 

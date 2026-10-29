@@ -223,6 +223,11 @@ the same move, or with one that makes none when it makes none. An approval write
 and a subject change record for its item in one transaction, and checks the pinned core budget
 against the subject the item moves to.
 
+The subject change record names the version that made the move and the subject the item had before
+it, and the store keeps that subject on the version. An undo of a version that moved the item moves
+it back to that subject, with a subject change record of its own, so an undo of that undo moves the
+item again.
+
 ## Writes from a photo
 
 Memory never holds an image or a description of one: the writer and the log reader see only a marker

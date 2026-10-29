@@ -563,7 +563,7 @@ test('it moves the item to the new subject when you approve a subject change, in
 
   expect(records.map((entry) => entry.record.payload)).toStrictEqual([
     { proposalID: pending.proposalID, subject: 'shared' },
-    { itemID: item.itemID, subject: 'shared' },
+    { itemID: item.itemID, version: 2, previousSubject: 'owner', subject: 'shared' },
   ]);
 
   expect(row).toStrictEqual({ subject: 'shared', kind: 'fact', version: 2 });
