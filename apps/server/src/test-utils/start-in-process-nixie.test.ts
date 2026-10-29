@@ -63,6 +63,14 @@ test('it stops nixie and removes its directory once the test finishes', async ()
   expect(listening['port']).toBeNumber();
 });
 
+test('it lets a start that outlasts its test end before the cleanup runs', () => {
+  const starting = startInProcessNixie();
+
+  onTestFinished(() => {
+    expect(Bun.peek.status(starting)).toBe('pending');
+  });
+});
+
 test('it answers a turn through the stub guest, which receives the turn frame', async () => {
   const nixie = await startInProcessNixie();
   const api = await createTestClient(nixie);

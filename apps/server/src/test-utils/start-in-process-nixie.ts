@@ -42,6 +42,8 @@ interface TestToolResult {
   readonly result: string;
 }
 
+type RunBeforeCleanup = <T>(work: () => Promise<T>) => Promise<T>;
+
 export interface InProcessNixie extends BootFiles {
   readonly directory: string;
   readonly model: ScriptedModel;
@@ -63,18 +65,65 @@ export interface InProcessNixie extends BootFiles {
 
   readonly startAgain: () => InProcessNixie;
 
+  readonly runBeforeCleanup: RunBeforeCleanup;
+
   readonly readDataFiles: () => Promise<
     readonly { readonly name: string; readonly text: string }[]
   >;
 }
 
-export async function startInProcessNixie(
-  options: InProcessNixieOptions = {},
-): Promise<InProcessNixie> {
+export function startInProcessNixie(options: InProcessNixieOptions = {}): Promise<InProcessNixie> {
   const stack = new AsyncDisposableStack();
 
-  onTestFinished(() => stack.disposeAsync());
+  const runBeforeCleanup = makeRunBeforeCleanup(stack);
 
+  return runBeforeCleanup(() => startFirstRun(options, stack, runBeforeCleanup));
+}
+
+// Bun reports a rejection that reaches a timed-out test's body as an unhandled error, so work that
+// ends after the test finished never settles for its caller.
+function makeRunBeforeCleanup(stack: AsyncDisposableStack): RunBeforeCleanup {
+  const running = new Set<Promise<unknown>>();
+
+  const state = { hasFinished: false };
+
+  onTestFinished(async () => {
+    state.hasFinished = true;
+
+    await Promise.allSettled(running);
+    await stack.disposeAsync();
+  });
+
+  return async (work) => {
+    if (state.hasFinished) {
+      return Promise.withResolvers<never>().promise;
+    }
+
+    const started = work();
+
+    running.add(started);
+
+    const [settled] = await Promise.allSettled([started]);
+
+    running.delete(started);
+
+    if (state.hasFinished) {
+      return Promise.withResolvers<never>().promise;
+    }
+
+    if (settled.status === 'rejected') {
+      throw settled.reason;
+    }
+
+    return settled.value;
+  };
+}
+
+async function startFirstRun(
+  options: InProcessNixieOptions,
+  stack: AsyncDisposableStack,
+  runBeforeCleanup: RunBeforeCleanup,
+): Promise<InProcessNixie> {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-main-'));
 
   stack.defer(() => rm(directory, { recursive: true, force: true }));
@@ -116,7 +165,16 @@ export async function startInProcessNixie(
     countTokens: countTextTokens,
   });
 
-  return startNixieRun({ directory, model, files, guest, toolResults, host, stack });
+  return startNixieRun({
+    directory,
+    model,
+    files,
+    guest,
+    toolResults,
+    host,
+    stack,
+    runBeforeCleanup,
+  });
 }
 
 interface RunHost {
@@ -159,6 +217,7 @@ interface InProcessNixieFiles {
   readonly host: RunHost;
 
   readonly stack: AsyncDisposableStack;
+  readonly runBeforeCleanup: RunBeforeCleanup;
 }
 
 function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
@@ -235,6 +294,7 @@ function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
     },
     readDataFiles: () => readDataFiles(start.files.dataDir),
     startAgain: () => startNixieRun(start),
+    runBeforeCleanup: start.runBeforeCleanup,
   };
 }
 

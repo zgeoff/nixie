@@ -14,10 +14,14 @@ export interface TestReset {
   readonly stop: () => Promise<{ readonly exitCode: number; readonly records: LogRecord[] }>;
 }
 
-export async function runTestReset(
+export function runTestReset(
   nixie: InProcessNixie,
   args: readonly string[] = ['--keep-sessions', '--yes'],
 ): Promise<TestReset> {
+  return nixie.runBeforeCleanup(() => runResetSteps(nixie, args));
+}
+
+async function runResetSteps(nixie: InProcessNixie, args: readonly string[]): Promise<TestReset> {
   const command = await runHostCommand(nixie.configPath, ['reset', ...args]);
   const finished = await nixie.waitForLogEvent('reset.finished');
   const serverExit = await nixie.exited;
