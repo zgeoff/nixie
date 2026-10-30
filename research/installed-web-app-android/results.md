@@ -196,30 +196,6 @@ unknown. The web client keeps more of the user's typing as evidence than the nat
 clipboard chip of one word lands typed on either route. The device run covers the keyboards the
 paste spans spike left out.
 
-## Other capabilities
-
-- **Share target.** An installed app can take shared text, links and files from Android's share
-  sheet through `share_target`; a POST share with files reaches the service worker
-  ([Web Share Target](https://developer.chrome.com/docs/capabilities/web-apis/web-share-target)).
-  Android often puts a shared link in `text`, not `url`. A changed `share_target` updates the WebAPK
-  ([manifest updates](https://web.dev/articles/manifest-updates)).
-- **Background sync.** The `sync` event fires once the network returns, with the app closed. The
-  outbox keeps unsent messages in `localStorage`
-  ([use-stored-outbox.ts:83](../../apps/web/src/use-stored-outbox.ts#L83)), which a service worker
-  cannot read, so background sending needs the outbox in IndexedDB. Periodic sync needs an installed
-  app and lets Chrome pick the interval
-  ([periodic background sync](https://developer.chrome.com/docs/capabilities/periodic-background-sync)).
-- **Manifest shortcuts.** A long press on the icon offers the manifest's shortcuts, such as the
-  approval digest and a new message; MDN lists `shortcuts` on Chrome for Android from 84
-  ([shortcuts](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Manifest/Reference/shortcuts)).
-- **Voice.** The installed app shares the site's microphone permission, as the
-  [client doc](../../docs/architecture/channels/client.md) gives, and `SpeechRecognition` is
-  unprefixed from Chrome 139 on Android. [0009](../../docs/decisions/0009-first-channel.md) gives
-  iOS's limits on audio in the background.
-- **WebAPK updates.** Chrome checks the manifest at most once a day and installs a changed WebAPK
-  once the app is closed and the phone charges on Wi-Fi
-  ([manifest updates](https://web.dev/articles/manifest-updates)).
-
 ## Probe app
 
 The [probe app](probe-app/README.md) runs blocks 1, 2, 6 and 7 of the device checklist. Its build
@@ -254,6 +230,30 @@ rests on these facts, read on 2026-10-30, and the device run checks each one:
   makes Chrome schedule a retry with back-off; no page gives the number of tries
   ([Background Synchronization API](https://developer.mozilla.org/en-US/docs/Web/API/Background_Synchronization_API),
   [background sync](https://developer.chrome.com/blog/background-sync)).
+
+## Other capabilities
+
+- **Share target.** An installed app can take shared text, links and files from Android's share
+  sheet through `share_target`; a POST share with files reaches the service worker
+  ([Web Share Target](https://developer.chrome.com/docs/capabilities/web-apis/web-share-target)).
+  Android often puts a shared link in `text`, not `url`. A changed `share_target` updates the WebAPK
+  ([manifest updates](https://web.dev/articles/manifest-updates)).
+- **Background sync.** The `sync` event fires once the network returns, with the app closed. The
+  outbox keeps unsent messages in `localStorage`
+  ([use-stored-outbox.ts:83](../../apps/web/src/use-stored-outbox.ts#L83)), which a service worker
+  cannot read, so background sending needs the outbox in IndexedDB. Periodic sync needs an installed
+  app and lets Chrome pick the interval
+  ([periodic background sync](https://developer.chrome.com/docs/capabilities/periodic-background-sync)).
+- **Manifest shortcuts.** A long press on the icon offers the manifest's shortcuts, such as the
+  approval digest and a new message; MDN lists `shortcuts` on Chrome for Android from 84
+  ([shortcuts](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Manifest/Reference/shortcuts)).
+- **Voice.** The installed app shares the site's microphone permission, as the
+  [client doc](../../docs/architecture/channels/client.md) gives, and `SpeechRecognition` is
+  unprefixed from Chrome 139 on Android. [0009](../../docs/decisions/0009-first-channel.md) gives
+  iOS's limits on audio in the background.
+- **WebAPK updates.** Chrome checks the manifest at most once a day and installs a changed WebAPK
+  once the app is closed and the phone charges on Wi-Fi
+  ([manifest updates](https://web.dev/articles/manifest-updates)).
 
 ## Draft recommendation
 
