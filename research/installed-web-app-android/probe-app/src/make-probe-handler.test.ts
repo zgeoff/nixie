@@ -872,6 +872,34 @@ test('it refuses an API call over 64 KiB before it parses it', async () => {
   expect(response.status).toBe(413);
 });
 
+test('it refuses an API call whose body stream fails after a whole call and runs nothing', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const call = JSON.stringify({
+    json: {
+      messageID: '6f1c2a54-93b7-4c1e-9d4e-2b8f0a7c5e11',
+      text: 'buy more tea',
+      queuedAt: Date.UTC(2026, 9, 30, 8, 58, 0),
+      lastChance: false,
+    },
+  });
+
+  const response = await ctx.answerRequest(
+    new Request('http://probe.test/rpc/sync', {
+      method: 'POST',
+      headers: { cookie: phone.cookie, 'x-nixie-client': 'probe', 'content-type': 'application/json' },
+      body: new ReadableStream<Uint8Array>({
+        start: (controller) => controller.enqueue(new TextEncoder().encode(call)),
+        pull: (controller) => controller.error(new Error('connection reset')),
+      }),
+    }),
+  );
+
+  expect(response.status).toBe(400);
+  expect(await response.text()).toBe('the call broke off');
+  expect((await phone.client.log()).filter((entry) => entry.kind === 'sync')).toStrictEqual([]);
+});
+
 test('it logs one receipt for a push that a phone reports twice', async () => {
   const ctx = await setupTest();
   const phone = await createTestPhone(ctx, ctx.endpoint);

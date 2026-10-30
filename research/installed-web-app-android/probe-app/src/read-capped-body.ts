@@ -1,7 +1,9 @@
 export type CappedBody =
   | { kind: 'read'; body: Uint8Array<ArrayBuffer> }
   | { kind: 'too-large' }
-  | { kind: 'too-slow' };
+  | { kind: 'too-slow' }
+  // the sender's stream failed before its end, so the bytes read so far are no whole body
+  | { kind: 'broken' };
 
 // Reads a request body up to a byte limit, and stops reading as soon as it passes the limit, so a
 // caller never holds more than the limit in memory. A declared length over the limit stops it
@@ -34,13 +36,21 @@ export async function readCappedBody(
   let total = 0;
 
   for (;;) {
-    const { done, value } = await reader.read().catch(() => ({ done: true, value: undefined }));
+    const chunk = await reader.read().catch(() => null);
 
     if (deadline.aborted) {
       return { kind: 'too-slow' };
     }
 
-    if (done || value === undefined) {
+    if (chunk === null) {
+      deadline.removeEventListener('abort', stopReading);
+
+      return { kind: 'broken' };
+    }
+
+    const { done, value } = chunk;
+
+    if (done) {
       break;
     }
 

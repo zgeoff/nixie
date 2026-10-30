@@ -64,6 +64,23 @@ test('it stops a body that is still arriving when the deadline passes', async ()
   expect(cancelled).toHaveLength(1);
 });
 
+test('it answers a stream that fails before its end as broken', async () => {
+  const stream = new ReadableStream<Uint8Array>({
+    start: (controller) => {
+      controller.enqueue(new TextEncoder().encode('{"json":'));
+      controller.error(new Error('connection reset'));
+    },
+  });
+
+  const result = await readCappedBody(
+    new Request('http://probe.test/', { method: 'POST', body: stream }),
+    4096,
+    new AbortController().signal,
+  );
+
+  expect(result).toStrictEqual({ kind: 'broken' });
+});
+
 test('it reads nothing once the deadline has passed', async () => {
   const deadline = new AbortController();
 

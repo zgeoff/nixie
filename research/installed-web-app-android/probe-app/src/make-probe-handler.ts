@@ -5,18 +5,19 @@ import { ResponseHeadersPlugin, type ResponseHeadersPluginContext } from '@orpc/
 import { match } from 'ts-pattern';
 import type { z } from 'zod';
 import { buildPairingCode } from './build-pairing-code.ts';
+import { buildPushDelivery } from './build-push-delivery.ts';
 import type { VapidKeys } from './build-vapid-authorization.ts';
 import {
   adminHeaderName,
   clientHeaderName,
   type LogEntry,
-  type PushPayload,
   probeContract,
   type pushInputSchema,
   rpcPrefix,
 } from './contract.ts';
 import { hashSecret } from './hash-secret.ts';
 import { pickApprovalRefusal, type StoredApproval } from './pick-approval-refusal.ts';
+import { type SendResult, pickSendOutcome } from './pick-send-outcome.ts';
 import { pickStaticResponse } from './pick-static-response.ts';
 import { type CappedBody, readCappedBody } from './read-capped-body.ts';
 import { renderIconPNG } from './render-icon-png.ts';
@@ -184,71 +185,63 @@ export function makeProbeHandler(
     pushID: string,
   ): Promise<number> {
     const session = sessions.get(subscription.sessionToken);
+    const sentAt = options.now();
+    const delivery = buildPushDelivery({
+      sessionKnown: session !== undefined,
+      sessionToken: subscription.sessionToken,
+      push,
+      pushID,
+      sentAt,
+      approvalID: crypto.randomUUID(),
+      approvalToken: Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url'),
+    });
 
-    // a phone that signed out while a delayed push waited gets nothing
-    if (session === undefined) {
+    if (delivery.kind === 'skip' || session === undefined) {
       return 0;
     }
 
-    const sentAt = options.now();
-    let approval: PushPayload['approval'] = null;
-
-    if (push.approve) {
-      const approvalID = crypto.randomUUID();
-      const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
-
-      session.approvals.set(approvalID, {
-        tokenHash: hashSecret(token),
-        sessionToken: subscription.sessionToken,
-        issuedAt: sentAt,
-        used: false,
-      });
+    if (delivery.approval !== null) {
+      session.approvals.set(delivery.approval.approvalID, delivery.approval.stored);
       trimOldest(session.approvals, probeLimits.approvalsPerSession);
-      approval = { approvalID, token };
     }
 
     session.pushSentAt.set(pushID, sentAt);
     trimOldest(session.pushSentAt, probeLimits.pushesPerSession);
 
-    const payload: PushPayload = {
-      pushID,
-      sentAt,
-      title: push.title,
-      tag: push.tag,
-      silent: push.silent,
-      renotify: push.renotify,
-      urgency: push.urgency,
-      approval,
-    };
-    const status = await sendPush({
-      subscription,
-      payload,
-      urgency: push.urgency,
-      vapidKeys: options.vapidKeys,
-      nowMs: sentAt,
-      transport: options.pushTransport,
-    }).catch((error: unknown) => {
-      options.writeError('push send failed', error);
+    const outcome = pickSendOutcome(
+      await sendPush({
+        subscription,
+        payload: delivery.payload,
+        urgency: push.urgency,
+        vapidKeys: options.vapidKeys,
+        nowMs: sentAt,
+        transport: options.pushTransport,
+      }).then(
+        (status): SendResult => ({ kind: 'answered', status }),
+        (error: unknown): SendResult => ({ kind: 'failed', error }),
+      ),
+    );
 
-      return 0;
-    });
+    if (outcome.failure !== null) {
+      options.writeError('push send failed', outcome.failure.error);
+    }
 
-    if (status === 404 || status === 410) {
+    if (outcome.removeSubscription) {
       subscriptions.delete(subscription.endpoint);
     }
 
     writeLog('push-sent', subscription.sessionToken, {
       pushID,
       pushService: new URL(subscription.endpoint).host,
-      status,
+      status: outcome.status,
       urgency: push.urgency,
       tag: push.tag,
       silent: push.silent,
       renotify: push.renotify,
-      approvalID: approval?.approvalID ?? null,
+      approvalID: delivery.approval?.approvalID ?? null,
     });
 
-    return status;
+    return outcome.status;
   }
 
   const base = implement(probeContract).$context<ProbeContext>();
@@ -709,6 +702,7 @@ function answerUnreadBody(read: Exclude<CappedBody, { kind: 'read' }>, what: str
   return match(read)
     .with({ kind: 'too-large' }, () => new Response(`the ${what} is too large`, { status: 413 }))
     .with({ kind: 'too-slow' }, () => new Response(`the ${what} arrived too slowly`, { status: 408 }))
+    .with({ kind: 'broken' }, () => new Response(`the ${what} broke off`, { status: 400 }))
     .exhaustive();
 }
 

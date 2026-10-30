@@ -66,6 +66,35 @@ test('it resolves the sync of the outbox once every message is sent', async () =
   ]);
 });
 
+test('it approves from the Approve button, closes the notification and opens no window', async () => {
+  const ctx = setupTest();
+  const probe = await createTestProbe();
+  const phone = await createTestPhone(probe, probe.endpoint);
+  const waitUntil = mock((_promise: Promise<unknown>) => {});
+  const close = mock(() => {});
+
+  await phone.client.push({ approve: true, tag: 'approval' });
+
+  const push = await phone.readPush(probe.pushBodies[0] ?? new Uint8Array());
+  const clickEvent = {
+    waitUntil,
+    action: 'approve',
+    notification: { tag: 'approval', data: { approval: push.approval, page: '/block-2.html' }, close },
+  };
+
+  registerWorker(ctx.scope, phone.client);
+  ctx.listeners.mock.calls.find(([type]) => type === 'notificationclick')?.[1](clickEvent);
+
+  await waitUntil.mock.calls[0]?.[0];
+
+  expect((await phone.client.log()).filter((entry) => entry.kind === 'approve')).toMatchObject([
+    { detail: { outcome: 'approved' } },
+  ]);
+  expect(close).toHaveBeenCalledTimes(1);
+  expect(ctx.scope.clients.openWindow).not.toHaveBeenCalled();
+  expect(ctx.scope.clients.matchAll).not.toHaveBeenCalled();
+});
+
 test('it registers the receipt sync when a push receipt cannot be reported', async () => {
   const ctx = setupTest();
   const waitUntil = mock((_promise: Promise<unknown>) => {});

@@ -14,18 +14,21 @@ export async function createTestSession(probe: PairableProbe): Promise<string> {
     headers: { [adminHeaderName]: probe.adminKey },
     fetch: probe.answerRequest,
   });
+  // a browser keeps the cookie that the pairing answer sets, and the client only reads the body
+  const setCookies: string[] = [];
+  const phone = buildProbeClient({
+    origin: 'http://probe.test',
+    fetch: async (request) => {
+      const response = await probe.answerRequest(request);
+
+      setCookies.push(...response.headers.getSetCookie());
+
+      return response;
+    },
+  });
   const { code } = await admin.createPairing();
-  const response = await probe.answerRequest(
-    new Request('http://probe.test/rpc/pair', {
-      method: 'POST',
-      headers: { 'x-nixie-client': 'probe', 'content-type': 'application/json' },
-      body: JSON.stringify({ json: { code } }),
-    }),
-  );
 
-  if (response.status !== 200) {
-    throw new Error(`pairing failed with ${response.status}: ${await response.text()}`);
-  }
+  await phone.pair({ code });
 
-  return (response.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  return (setCookies[0] ?? '').split(';')[0] ?? '';
 }
