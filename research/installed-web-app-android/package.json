@@ -8,9 +8,13 @@
     "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
+    "@orpc/client": "1.16.0",
+    "@orpc/contract": "1.16.0",
+    "@orpc/server": "1.16.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@types/bun": "1.4.3"
+    "@types/bun": "1.4.3",
+    "fake-indexeddb": "6.2.6"
   }
 }

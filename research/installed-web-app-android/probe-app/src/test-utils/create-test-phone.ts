@@ -1,21 +1,13 @@
-import { z } from 'zod';
+import { type ProbeClient, buildProbeClient } from '../../client/build-probe-client.ts';
+import { type PushPayload, pushPayloadSchema } from '../contract.ts';
 import { decryptPushPayload } from './decrypt-push-payload.ts';
-
-const pushPayloadSchema = z.strictObject({
-  pushID: z.uuid(),
-  sentAt: z.number(),
-  title: z.string(),
-  tag: z.string(),
-  silent: z.boolean(),
-  renotify: z.boolean(),
-  urgency: z.string(),
-  approval: z.strictObject({ approvalID: z.uuid(), token: z.string() }).nullable(),
-});
 
 export interface TestPhone {
   // the Cookie header value that holds the phone's session
   cookie: string;
-  readPush: (body: Uint8Array<ArrayBuffer>) => Promise<z.infer<typeof pushPayloadSchema>>;
+  // the probe client a page or the service worker on this phone builds
+  client: ProbeClient;
+  readPush: (body: Uint8Array<ArrayBuffer>) => Promise<PushPayload>;
 }
 
 // Plays the browser of one phone against the probe's handler: opens a page to get a session
@@ -26,34 +18,31 @@ export async function createTestPhone(
 ): Promise<TestPhone> {
   const page = await answerRequest(new Request('http://probe.test/'));
   const cookie = (page.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  const client = buildProbeClient({
+    origin: 'http://probe.test',
+    headers: { cookie },
+    fetch: answerRequest,
+  });
   const userAgentKeyPair = await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
     true,
     ['deriveBits'],
   );
   const authSecret = crypto.getRandomValues(new Uint8Array(16));
-  const subscribed = await answerRequest(
-    new Request('http://probe.test/api/subscribe', {
-      method: 'POST',
-      headers: { cookie, 'content-type': 'application/json', 'x-nixie-client': 'test' },
-      body: JSON.stringify({
-        endpoint,
-        keys: {
-          p256dh: Buffer.from(
-            await crypto.subtle.exportKey('raw', userAgentKeyPair.publicKey),
-          ).toString('base64url'),
-          auth: Buffer.from(authSecret).toString('base64url'),
-        },
-      }),
-    }),
-  );
 
-  if (!subscribed.ok) {
-    throw new Error(`subscribe refused: ${subscribed.status} ${await subscribed.text()}`);
-  }
+  await client.subscribe({
+    endpoint,
+    keys: {
+      p256dh: Buffer.from(await crypto.subtle.exportKey('raw', userAgentKeyPair.publicKey)).toString(
+        'base64url',
+      ),
+      auth: Buffer.from(authSecret).toString('base64url'),
+    },
+  });
 
   return {
     cookie,
+    client,
     readPush: async (body) =>
       pushPayloadSchema.parse(
         JSON.parse(

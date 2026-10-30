@@ -43,65 +43,6 @@
     <p id="send-result" class="status"></p>
     <h2>Log</h2>
     <ul id="log" class="log"></ul>
-    <script src="/probe.js"></script>
-    <script>
-      const showPermission = () =>
-        probe.show('#permission', `Permission: ${Notification.permission}`);
-
-      probe.start().then((config) => {
-        showPermission();
-        probe.pollLog(['subscribed', 'push-sent', 'push-received']);
-
-        document.querySelector('#subscribe').addEventListener('click', async () => {
-          const permission = await Notification.requestPermission();
-
-          showPermission();
-
-          if (permission !== 'granted') {
-            probe.show('#subscribe-result', `Not subscribed: permission ${permission}`);
-
-            return;
-          }
-
-          const registration = await navigator.serviceWorker.ready;
-          const existing = await registration.pushManager.getSubscription();
-          const key = config.vapidPublicKey;
-
-          // a subscription made under another server key cannot be reused
-          if (existing && existing.options.applicationServerKey) {
-            const existingKey = btoa(
-              String.fromCharCode(...new Uint8Array(existing.options.applicationServerKey)),
-            )
-              .replaceAll('+', '-')
-              .replaceAll('/', '_')
-              .replace(/=+$/, '');
-
-            if (existingKey !== key) {
-              await existing.unsubscribe();
-            }
-          }
-
-          const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: key,
-          });
-
-          probe.show('#subscribe-result', await probe.post('/api/subscribe', subscription.toJSON()));
-        });
-
-        document.querySelector('#send').addEventListener('click', async () => {
-          probe.show(
-            '#send-result',
-            await probe.post('/api/push', {
-              delaySeconds: Number(document.querySelector('#delay').value),
-              urgency: document.querySelector('#urgency').value,
-              tag: document.querySelector('#tag').value,
-              silent: document.querySelector('#silent').checked,
-              renotify: document.querySelector('#renotify').checked,
-            }),
-          );
-        });
-      });
-    </script>
+    <script type="module" src="/assets/block-1.js"></script>
   </body>
 </html>

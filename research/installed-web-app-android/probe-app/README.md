@@ -4,7 +4,8 @@ The probe app is a throwaway installable web app for blocks 1, 2, 6 and 7 of the
 [device checklist](../device-checklist.md), which need code that the nixie web client lacks. A Bun
 server serves one page per block, a service worker and a manifest with a share target. It sends web
 push itself, checks each notification's Approve tap with a one-time token, and keeps a results log
-in memory that each page reads back. It shares no code with nixie.
+in memory that each page reads back. It shares no code with nixie. The pages and the service worker
+call the server through one oRPC contract, and the server bundles their scripts when it starts.
 
 ## Run it
 
@@ -50,4 +51,5 @@ bun test probe-app
 ```
 
 The tests run in the spike folder. They cover the push encryption against the RFC 8291 test vector,
-the VAPID signature, the Approve token check, and the share and background sync handlers.
+the VAPID signature, the Approve token check, the share and background sync handlers, and the
+service worker's Approve, receipt and outbox code against the real handler.

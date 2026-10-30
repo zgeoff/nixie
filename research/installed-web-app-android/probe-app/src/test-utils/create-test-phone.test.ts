@@ -22,40 +22,36 @@ test('it subscribes with a session cookie and reads a push sent to it', async ()
     true,
     ['sign', 'verify'],
   );
-  const vapidKeys = {
-    privateKey: vapidPair.privateKey,
-    publicKey: Buffer.from(await crypto.subtle.exportKey('raw', vapidPair.publicKey)).toString(
-      'base64url',
-    ),
-  };
   const answerRequest = makeProbeHandler({
-    vapidKeys,
+    vapidKeys: {
+      privateKey: vapidPair.privateKey,
+      publicKey: Buffer.from(await crypto.subtle.exportKey('raw', vapidPair.publicKey)).toString(
+        'base64url',
+      ),
+    },
     adminKey: 'test-admin-key',
     publicDirectory: join(import.meta.dir, '..', '..', 'public'),
+    clientAssets: new Map(),
     isPushEndpointAllowed: () => true,
+    pushTransport: (url, init) => fetch(url, init),
+    schedule: () => {},
     now: () => Date.UTC(2026, 9, 30, 9, 0, 0),
   });
-  const endpoint = new URL('/push/phone', pushService.url).href;
 
-  const phone = await createTestPhone(answerRequest, endpoint);
-  const subscriptions = await answerRequest(
-    new Request('http://probe.test/api/subscriptions', {
-      headers: { 'x-probe-admin': 'test-admin-key' },
-    }),
-  );
+  const phone = await createTestPhone(answerRequest, new URL('/push/phone', pushService.url).href);
 
-  await answerRequest(
-    new Request('http://probe.test/api/push', {
-      method: 'POST',
-      headers: { cookie: phone.cookie, 'x-nixie-client': 'test' },
-      body: JSON.stringify({ title: 'hello phone' }),
-    }),
-  );
+  await phone.client.push({
+    title: 'hello phone',
+    urgency: 'normal',
+    tag: '',
+    silent: false,
+    renotify: false,
+    approve: false,
+    delaySeconds: 0,
+  });
 
   expect(phone.cookie).toMatch(/^probe_session=[\w-]{43}$/);
-  expect(await subscriptions.json()).toStrictEqual([
-    { session: expect.stringMatching(/^S-/), pushService: pushService.url.host },
-  ]);
+  expect(await phone.client.config()).toMatchObject({ session: expect.stringMatching(/^S-/) });
   expect(await phone.readPush(bodies[0] ?? new Uint8Array())).toMatchObject({
     title: 'hello phone',
   });

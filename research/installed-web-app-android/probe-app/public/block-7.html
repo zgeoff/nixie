@@ -22,47 +22,15 @@
       <li>Open this page again: the log shows each send, with its delay from the queue time.</li>
     </ol>
     <p id="support" class="status">Background sync: loading</p>
-    <label>Message <input id="text" value="a queued test message" /></label>
+    <label>Message <input id="text" value="a queued test message" maxlength="2000" /></label>
     <button id="queue">Queue</button>
     <p id="queue-result" class="status"></p>
     <h2>Waiting in the outbox</h2>
     <ul id="outbox" class="log"></ul>
+    <h2>Refused by the server</h2>
+    <ul id="refused" class="log"></ul>
     <h2>Log</h2>
     <ul id="log" class="log"></ul>
-    <script src="/outbox-db.js"></script>
-    <script src="/probe.js"></script>
-    <script>
-      const renderOutbox = async () => {
-        const messages = await outboxDB.list();
-
-        document
-          .querySelector('#outbox')
-          .replaceChildren(
-            ...(messages.length === 0
-              ? [probe.item('empty')]
-              : messages.map((message) => probe.item(`${message.id} ${message.text}`))),
-          );
-      };
-
-      probe.start().then(async () => {
-        const registration = await navigator.serviceWorker.ready;
-
-        probe.show('#support', `Background sync: ${'sync' in registration ? 'supported' : 'not supported'}`);
-        probe.pollLog(['sync']);
-        void renderOutbox();
-        setInterval(() => void renderOutbox(), 3000);
-
-        document.querySelector('#queue').addEventListener('click', async () => {
-          await outboxDB.add({
-            id: crypto.randomUUID(),
-            text: document.querySelector('#text').value,
-            queuedAt: Date.now(),
-          });
-          await registration.sync.register('probe-outbox');
-          probe.show('#queue-result', `Queued at ${new Date().toLocaleTimeString()}`);
-          await renderOutbox();
-        });
-      });
-    </script>
+    <script type="module" src="/assets/block-7.js"></script>
   </body>
 </html>

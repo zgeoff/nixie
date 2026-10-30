@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { isKnownPushService } from './src/is-known-push-service.ts';
 import { makeProbeHandler } from './src/make-probe-handler.ts';
 import { openVapidKeys } from './src/open-vapid-keys.ts';
+import { runClientBuild } from './src/run-client-build.ts';
 
 const port = Number(process.env['PORT'] ?? 8787);
 const adminKey = Buffer.from(crypto.getRandomValues(new Uint8Array(18))).toString('base64url');
@@ -9,7 +10,12 @@ const answerRequest = makeProbeHandler({
   vapidKeys: await openVapidKeys(join(import.meta.dir, '.vapid')),
   adminKey,
   publicDirectory: join(import.meta.dir, 'public'),
+  clientAssets: await runClientBuild(),
   isPushEndpointAllowed: isKnownPushService,
+  pushTransport: (url, init) => fetch(url, init),
+  schedule: (delayMs, task) => {
+    setTimeout(() => void task(), delayMs);
+  },
   now: Date.now,
 });
 

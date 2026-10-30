@@ -34,8 +34,8 @@ shows the delay from the send to the receipt.
 1. Open `https://<probe_host>/` in Chrome and install it as in "Before you start". Open
    `chrome://webapks` and record whether an entry for `https://<probe_host>/` exists.
 2. Open the app from its icon, open **Block 1**, and tap **Subscribe**. Expect: Chrome's
-   notification prompt, then `Permission: granted` and a `200 {"subscribed":true}` line. Record: the
-   prompt's form, and the result after you allow.
+   notification prompt, then `Permission: granted` and a `Subscribed` line. Record: the prompt's
+   form, and the result after you allow.
 3. Open **Settings > Apps > nixie probe > Notifications**. Record: whether the app has its own
    notification settings, and the channels listed.
 4. On the block 1 page, keep the delay at 15 s and the urgency at `normal`, tap **Send to this
@@ -144,7 +144,8 @@ its delay from the queue time.
 
 1. Open **Block 7**. Expect: `Background sync: supported`. Record: the line.
 2. Turn on aeroplane mode, tap **Queue**, and close the app. Expect: the message under **Waiting in
-   the outbox** before you close it.
+   the outbox** before you close it. A message the server refuses moves to **Refused by the server**
+   with the reason, and the messages behind it still send.
 3. Wait 1 min, then turn off aeroplane mode. Expect: a `sync` line on the send page within 5 min,
    with the app closed. Record: its `phoneClockDelayMs`, less the minute you waited offline.
 4. Repeat with the phone in battery saver. Record: the delay, or no send within 30 min, and

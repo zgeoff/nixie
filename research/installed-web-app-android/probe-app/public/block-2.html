@@ -35,30 +35,6 @@
     <p id="sign-out-result" class="status"></p>
     <h2>Log</h2>
     <ul id="log" class="log"></ul>
-    <script src="/probe.js"></script>
-    <script>
-      probe.show(
-        '#actions',
-        `Notification.maxActions: ${'maxActions' in Notification ? Notification.maxActions : 'not defined'}`,
-      );
-      probe.start().then(() => {
-        probe.pollLog(['approve', 'push-sent', 'push-received']);
-        document.querySelector('#sign-out').addEventListener('click', async () => {
-          probe.show('#sign-out-result', await probe.post('/api/sign-out', {}));
-        });
-        document.querySelector('#send').addEventListener('click', async () => {
-          probe.show(
-            '#send-result',
-            await probe.post('/api/push', {
-              title: 'Approve a test item?',
-              tag: 'approval',
-              urgency: 'high',
-              approve: true,
-              delaySeconds: Number(document.querySelector('#delay').value),
-            }),
-          );
-        });
-      });
-    </script>
+    <script type="module" src="/assets/block-2.js"></script>
   </body>
 </html>

@@ -1,88 +1,70 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
-import { extname, resolve, sep } from 'node:path';
-import { z } from 'zod';
+import { timingSafeEqual } from 'node:crypto';
+import { ORPCError, implement } from '@orpc/server';
+import { RPCHandler } from '@orpc/server/fetch';
+import { ResponseHeadersPlugin, type ResponseHeadersPluginContext } from '@orpc/server/plugins';
+import type { z } from 'zod';
 import type { VapidKeys } from './build-vapid-authorization.ts';
+import {
+  adminHeaderName,
+  clientHeaderName,
+  type LogEntry,
+  type PushPayload,
+  probeContract,
+  type pushInputSchema,
+  rpcPrefix,
+} from './contract.ts';
+import { hashSecret } from './hash-secret.ts';
+import { pickApprovalRefusal, type StoredApproval } from './pick-approval-refusal.ts';
+import { pickStaticResponse } from './pick-static-response.ts';
 import { renderIconPNG } from './render-icon-png.ts';
-import { type PushSubscriptionRecord, sendPush } from './send-push.ts';
+import { type PushSubscriptionRecord, type PushTransport, sendPush } from './send-push.ts';
 
 interface ProbeHandlerOptions {
   vapidKeys: VapidKeys;
   adminKey: string;
   publicDirectory: string;
+  // the bundled service worker and page scripts, by the path the browser asks for
+  clientAssets: ReadonlyMap<string, Blob>;
   isPushEndpointAllowed: (endpoint: URL) => boolean;
+  pushTransport: PushTransport;
+  // runs a delayed push; the server passes a timer, and a test runs the task when it chooses
+  schedule: (delayMs: number, task: () => Promise<void>) => void;
   now: () => number;
 }
 
-export interface LogEntry {
-  id: string;
-  at: string;
-  // the session's public label, never its cookie value
-  session: string | null;
-  kind: 'subscribed' | 'push-sent' | 'push-received' | 'approve' | 'share' | 'sync';
-  detail: Record<string, unknown>;
-}
-
-interface Approval {
-  tokenHash: Buffer;
-  sessionToken: string;
-  issuedAt: number;
-  used: boolean;
+interface ProbeContext extends ResponseHeadersPluginContext {
+  sessionToken: string | null;
+  isAdmin: boolean;
+  cookieSent: boolean;
+  secFetchSite: string | null;
+  secFetchMode: string | null;
 }
 
 interface StoredSubscription extends PushSubscriptionRecord {
   sessionToken: string;
 }
 
-// The same header and cookie check that nixie's API makes on each call.
-const clientHeader = 'x-nixie-client';
-const adminHeader = 'x-probe-admin';
+// The log keeps each entry's session cookie value beside it for access checks, and never sends it.
+interface StoredLogEntry {
+  entry: LogEntry;
+  sessionToken: string | null;
+}
+
 const sessionCookie = 'probe_session';
 const approvalLifetimeMs = 15 * 60 * 1000;
 const sessionMaxAgeSeconds = 30 * 24 * 60 * 60;
 const logLimit = 500;
 
-const subscribeSchema = z.object({
-  endpoint: z.url(),
-  keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
-});
-
-const pushSchema = z.object({
-  title: z.string().max(120).default('nixie probe'),
-  urgency: z.enum(['very-low', 'low', 'normal', 'high']).default('normal'),
-  tag: z.string().max(64).default(''),
-  silent: z.boolean().default(false),
-  renotify: z.boolean().default(false),
-  approve: z.boolean().default(false),
-  delaySeconds: z.number().int().min(0).max(3600).default(0),
-});
-
-const pushReceivedSchema = z.object({ pushID: z.uuid(), receivedAt: z.number() });
-
-const approveSchema = z.object({ approvalID: z.uuid(), token: z.string().min(1).max(200) });
-
-const syncSchema = z.object({
-  messageID: z.uuid(),
-  text: z.string().max(2000),
-  queuedAt: z.number(),
-  lastChance: z.boolean(),
-});
-
-const contentTypes: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.webmanifest': 'application/manifest+json',
-};
-
-export function makeProbeHandler(options: ProbeHandlerOptions): (request: Request) => Promise<Response> {
+export function makeProbeHandler(
+  options: ProbeHandlerOptions,
+): (request: Request) => Promise<Response> {
   // session cookie value → public label
   const sessions = new Map<string, string>();
   const subscriptions = new Map<string, StoredSubscription>();
-  const approvals = new Map<string, Approval>();
+  const approvals = new Map<string, StoredApproval>();
   const pushSentAt = new Map<string, number>();
   const syncedMessages = new Set<string>();
-  const log: LogEntry[] = [];
-  const publicRoot = resolve(options.publicDirectory);
+  const log: StoredLogEntry[] = [];
 
   function writeLog(
     kind: LogEntry['kind'],
@@ -97,7 +79,7 @@ export function makeProbeHandler(options: ProbeHandlerOptions): (request: Reques
       detail,
     };
 
-    log.push(entry);
+    log.push({ entry, sessionToken });
     log.splice(0, Math.max(0, log.length - logLimit));
 
     return entry;
@@ -109,19 +91,13 @@ export function makeProbeHandler(options: ProbeHandlerOptions): (request: Reques
     return token !== null && sessions.has(token) ? token : null;
   }
 
-  function isAdmin(request: Request): boolean {
-    const given = request.headers.get(adminHeader);
-
-    return given !== null && isSameSecret(given, options.adminKey);
-  }
-
   async function sendOne(
     subscription: StoredSubscription,
-    push: z.infer<typeof pushSchema>,
+    push: z.infer<typeof pushInputSchema>,
     pushID: string,
   ): Promise<number> {
     const sentAt = options.now();
-    let approval: { approvalID: string; token: string } | null = null;
+    let approval: PushPayload['approval'] = null;
 
     if (push.approve) {
       const approvalID = crypto.randomUUID();
@@ -138,21 +114,23 @@ export function makeProbeHandler(options: ProbeHandlerOptions): (request: Reques
 
     pushSentAt.set(pushID, sentAt);
 
+    const payload: PushPayload = {
+      pushID,
+      sentAt,
+      title: push.title,
+      tag: push.tag,
+      silent: push.silent,
+      renotify: push.renotify,
+      urgency: push.urgency,
+      approval,
+    };
     const status = await sendPush({
       subscription,
-      payload: {
-        pushID,
-        sentAt,
-        title: push.title,
-        tag: push.tag,
-        silent: push.silent,
-        renotify: push.renotify,
-        urgency: push.urgency,
-        approval,
-      },
+      payload,
       urgency: push.urgency,
       vapidKeys: options.vapidKeys,
       nowMs: sentAt,
+      transport: options.pushTransport,
     }).catch((error: unknown) => {
       console.error('push send failed', error);
 
@@ -177,138 +155,214 @@ export function makeProbeHandler(options: ProbeHandlerOptions): (request: Reques
     return status;
   }
 
-  async function answerPush(request: Request): Promise<Response> {
-    const admin = isAdmin(request);
-    const sessionToken = findSession(request);
+  const base = implement(probeContract).$context<ProbeContext>();
 
-    if (!admin && (sessionToken === null || !request.headers.has(clientHeader))) {
-      return Response.json({ error: 'needs the admin key or a session' }, { status: 401 });
+  function requireSession(context: ProbeContext): string {
+    if (context.sessionToken === null) {
+      throw new ORPCError('UNAUTHORIZED', { message: 'no session' });
     }
 
-    const parsed = pushSchema.safeParse(await readJSON(request));
-
-    if (!parsed.success) {
-      return Response.json({ error: z.prettifyError(parsed.error) }, { status: 400 });
-    }
-
-    const targets = [...subscriptions.values()].filter(
-      (subscription) => admin || subscription.sessionToken === sessionToken,
-    );
-
-    if (targets.length === 0) {
-      return Response.json({ error: 'no subscription to send to' }, { status: 409 });
-    }
-
-    const pushID = crypto.randomUUID();
-    const sendAll = () =>
-      Promise.all(targets.map((subscription) => sendOne(subscription, parsed.data, pushID)));
-
-    if (parsed.data.delaySeconds > 0) {
-      setTimeout(() => void sendAll(), parsed.data.delaySeconds * 1000);
-
-      return Response.json({ pushID, delaySeconds: parsed.data.delaySeconds }, { status: 202 });
-    }
-
-    return Response.json({ pushID, statuses: await sendAll() });
+    return context.sessionToken;
   }
 
-  async function answerSubscribe(request: Request): Promise<Response> {
-    const sessionToken = findSession(request);
+  const router = base.router({
+    config: base.config.handler(({ context }) => ({
+      vapidPublicKey: options.vapidKeys.publicKey,
+      session: context.sessionToken === null ? null : (sessions.get(context.sessionToken) ?? null),
+    })),
 
-    if (!request.headers.has(clientHeader)) {
-      return Response.json({ error: `missing ${clientHeader}` }, { status: 400 });
-    }
+    subscribe: base.subscribe.handler(({ context, input }) => {
+      const sessionToken = requireSession(context);
 
-    if (sessionToken === null) {
-      return Response.json({ error: 'no session' }, { status: 401 });
-    }
+      if (!options.isPushEndpointAllowed(new URL(input.endpoint))) {
+        throw new ORPCError('BAD_REQUEST', { message: 'unknown push service' });
+      }
 
-    const parsed = subscribeSchema.safeParse(await readJSON(request));
+      subscriptions.set(input.endpoint, {
+        endpoint: input.endpoint,
+        p256dh: input.keys.p256dh,
+        auth: input.keys.auth,
+        sessionToken,
+      });
+      writeLog('subscribed', sessionToken, { pushService: new URL(input.endpoint).host });
 
-    if (!parsed.success) {
-      return Response.json({ error: z.prettifyError(parsed.error) }, { status: 400 });
-    }
+      return { subscribed: true as const };
+    }),
 
-    if (!options.isPushEndpointAllowed(new URL(parsed.data.endpoint))) {
-      return Response.json({ error: 'unknown push service' }, { status: 400 });
-    }
+    push: base.push.handler(async ({ context, input }) => {
+      if (!context.isAdmin) {
+        requireSession(context);
+      }
 
-    subscriptions.set(parsed.data.endpoint, {
-      endpoint: parsed.data.endpoint,
-      p256dh: parsed.data.keys.p256dh,
-      auth: parsed.data.keys.auth,
-      sessionToken,
-    });
-    writeLog('subscribed', sessionToken, { pushService: new URL(parsed.data.endpoint).host });
-
-    return Response.json({ subscribed: true });
-  }
-
-  async function answerPushReceived(request: Request): Promise<Response> {
-    const parsed = pushReceivedSchema.safeParse(await readJSON(request));
-
-    if (!request.headers.has(clientHeader) || !parsed.success) {
-      return Response.json({ error: 'bad report' }, { status: 400 });
-    }
-
-    const sentAt = pushSentAt.get(parsed.data.pushID);
-
-    if (sentAt === undefined) {
-      return Response.json({ error: 'unknown push' }, { status: 404 });
-    }
-
-    writeLog('push-received', findSession(request), {
-      pushID: parsed.data.pushID,
-      phoneClockDelayMs: parsed.data.receivedAt - sentAt,
-      reportedAfterMs: options.now() - sentAt,
-    });
-
-    return Response.json({ recorded: true });
-  }
-
-  async function answerApprove(request: Request): Promise<Response> {
-    const sessionToken = findSession(request);
-    const context = {
-      clientHeader: request.headers.has(clientHeader),
-      cookieSent: request.headers.has('cookie'),
-      sessionKnown: sessionToken !== null,
-      secFetchSite: request.headers.get('sec-fetch-site'),
-      secFetchMode: request.headers.get('sec-fetch-mode'),
-    };
-    const parsed = approveSchema.safeParse(await readJSON(request));
-    const approval = parsed.success ? approvals.get(parsed.data.approvalID) : undefined;
-    const refusal = pickApprovalRefusal({
-      hasClientHeader: context.clientHeader,
-      sessionToken,
-      approval,
-      token: parsed.success ? parsed.data.token : null,
-      nowMs: options.now(),
-    });
-
-    writeLog('approve', sessionToken, {
-      ...context,
-      approvalID: parsed.success ? parsed.data.approvalID : null,
-      outcome: refusal?.reason ?? 'approved',
-    });
-
-    if (refusal !== null || approval === undefined) {
-      return Response.json(
-        { error: refusal?.reason ?? 'unknown approval' },
-        { status: refusal?.status ?? 404 },
+      const targets = [...subscriptions.values()].filter(
+        (subscription) => context.isAdmin || subscription.sessionToken === context.sessionToken,
       );
+
+      if (targets.length === 0) {
+        throw new ORPCError('CONFLICT', { message: 'no subscription to send to' });
+      }
+
+      const pushID = crypto.randomUUID();
+      const sendAll = () =>
+        Promise.all(targets.map((subscription) => sendOne(subscription, input, pushID)));
+
+      if (input.delaySeconds > 0) {
+        options.schedule(input.delaySeconds * 1000, async () => {
+          await sendAll();
+        });
+
+        return { pushID, delaySeconds: input.delaySeconds, statuses: null };
+      }
+
+      return { pushID, delaySeconds: 0, statuses: await sendAll() };
+    }),
+
+    pushReceived: base.pushReceived.handler(({ context, input }) => {
+      const sentAt = pushSentAt.get(input.pushID);
+
+      if (sentAt === undefined) {
+        throw new ORPCError('NOT_FOUND', { message: 'unknown push' });
+      }
+
+      writeLog('push-received', context.sessionToken, {
+        pushID: input.pushID,
+        phoneClockDelayMs: input.receivedAt - sentAt,
+        reportedAfterMs: options.now() - sentAt,
+      });
+
+      return { recorded: true as const };
+    }),
+
+    approve: base.approve.handler(({ context, input }) => {
+      const approval = approvals.get(input.approvalID);
+      const refusal = pickApprovalRefusal({
+        sessionToken: context.sessionToken,
+        approval,
+        token: input.token,
+        nowMs: options.now(),
+        lifetimeMs: approvalLifetimeMs,
+      });
+
+      writeLog('approve', context.sessionToken, {
+        cookieSent: context.cookieSent,
+        sessionKnown: context.sessionToken !== null,
+        secFetchSite: context.secFetchSite,
+        secFetchMode: context.secFetchMode,
+        approvalID: input.approvalID,
+        outcome: refusal?.reason ?? 'approved',
+      });
+
+      if (refusal !== null || approval === undefined) {
+        throw new ORPCError(refusal?.code ?? 'NOT_FOUND', {
+          status: refusal?.status ?? 404,
+          message: refusal?.reason ?? 'unknown approval',
+        });
+      }
+
+      approval.used = true;
+
+      return { approved: true as const };
+    }),
+
+    signOut: base.signOut.handler(({ context }) => {
+      if (context.sessionToken !== null) {
+        sessions.delete(context.sessionToken);
+      }
+
+      context.resHeaders?.append(
+        'set-cookie',
+        `${sessionCookie}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`,
+      );
+
+      return { signedOut: context.sessionToken !== null };
+    }),
+
+    sync: base.sync.handler(({ context, input }) => {
+      const sessionToken = requireSession(context);
+
+      if (syncedMessages.has(input.messageID)) {
+        return { duplicate: true };
+      }
+
+      syncedMessages.add(input.messageID);
+      writeLog('sync', sessionToken, {
+        messageID: input.messageID,
+        text: input.text,
+        lastChance: input.lastChance,
+        phoneClockDelayMs: options.now() - input.queuedAt,
+      });
+
+      return { duplicate: false };
+    }),
+
+    log: base.log.handler(({ context }) => {
+      if (context.isAdmin) {
+        return log.map((stored) => stored.entry).toReversed();
+      }
+
+      const sessionToken = requireSession(context);
+
+      return log
+        .filter((stored) => stored.sessionToken === sessionToken)
+        .map((stored) => stored.entry)
+        .toReversed();
+    }),
+
+    entry: base.entry.handler(({ input }) => {
+      const stored = log.find((candidate) => candidate.entry.id === input.id);
+
+      if (stored === undefined) {
+        throw new ORPCError('NOT_FOUND', { message: 'unknown entry' });
+      }
+
+      return stored.entry;
+    }),
+
+    subscriptions: base.subscriptions.handler(({ context }) => {
+      if (!context.isAdmin) {
+        throw new ORPCError('UNAUTHORIZED', { message: 'needs the admin key' });
+      }
+
+      return [...subscriptions.values()].map((subscription) => ({
+        session: sessions.get(subscription.sessionToken) ?? null,
+        pushService: new URL(subscription.endpoint).host,
+      }));
+    }),
+  });
+
+  const rpcHandler = new RPCHandler(router, { plugins: [new ResponseHeadersPlugin()] });
+
+  async function answerRPC(request: Request): Promise<Response> {
+    // A cross-site form cannot send a custom header, so nixie's API refuses a call without one.
+    if ((request.headers.get(clientHeaderName) ?? '') === '') {
+      return new Response('the client header is missing', { status: 403 });
     }
 
-    approval.used = true;
+    const givenAdminKey = request.headers.get(adminHeaderName);
+    const result = await rpcHandler.handle(request, {
+      prefix: rpcPrefix,
+      context: {
+        sessionToken: findSession(request),
+        isAdmin:
+          givenAdminKey !== null &&
+          timingSafeEqual(hashSecret(givenAdminKey), hashSecret(options.adminKey)),
+        cookieSent: request.headers.has('cookie'),
+        secFetchSite: request.headers.get('sec-fetch-site'),
+        secFetchMode: request.headers.get('sec-fetch-mode'),
+      },
+    });
 
-    return Response.json({ approved: true });
+    return result.matched ? result.response : new Response('not found', { status: 404 });
   }
 
+  // The share sheet posts a browser form, which no RPC client builds, so the share target is a
+  // plain route.
   async function answerShare(request: Request): Promise<Response> {
     const sessionToken = findSession(request);
     const form = await request.formData().catch(() => null);
 
     if (form === null) {
-      return Response.json({ error: 'expected multipart/form-data' }, { status: 400 });
+      return new Response('expected multipart/form-data', { status: 400 });
     }
 
     const files = form
@@ -332,176 +386,60 @@ export function makeProbeHandler(options: ProbeHandlerOptions): (request: Reques
     });
   }
 
-  async function answerSync(request: Request): Promise<Response> {
-    const sessionToken = findSession(request);
-
-    if (!request.headers.has(clientHeader)) {
-      return Response.json({ error: `missing ${clientHeader}` }, { status: 400 });
-    }
-
-    if (sessionToken === null) {
-      return Response.json({ error: 'no session' }, { status: 401 });
-    }
-
-    const parsed = syncSchema.safeParse(await readJSON(request));
-
-    if (!parsed.success) {
-      return Response.json({ error: z.prettifyError(parsed.error) }, { status: 400 });
-    }
-
-    if (syncedMessages.has(parsed.data.messageID)) {
-      return Response.json({ duplicate: true });
-    }
-
-    syncedMessages.add(parsed.data.messageID);
-    writeLog('sync', sessionToken, {
-      messageID: parsed.data.messageID,
-      text: parsed.data.text,
-      lastChance: parsed.data.lastChance,
-      phoneClockDelayMs: options.now() - parsed.data.queuedAt,
-    });
-
-    return Response.json({ duplicate: false });
-  }
-
-  function answerLog(request: Request): Response {
-    if (isAdmin(request)) {
-      return Response.json(log.toReversed());
-    }
-
-    const sessionToken = findSession(request);
-
-    if (sessionToken === null) {
-      return Response.json({ error: 'no session' }, { status: 401 });
-    }
-
-    const label = sessions.get(sessionToken);
-
-    return Response.json(log.filter((entry) => entry.session === label).toReversed());
-  }
-
-  function answerSubscriptions(request: Request): Response {
-    if (!isAdmin(request)) {
-      return Response.json({ error: 'needs the admin key' }, { status: 401 });
-    }
-
-    return Response.json(
-      [...subscriptions.values()].map((subscription) => ({
-        session: sessions.get(subscription.sessionToken) ?? null,
-        pushService: new URL(subscription.endpoint).host,
-      })),
-    );
-  }
-
   async function answerStatic(request: Request, pathname: string): Promise<Response> {
-    const iconMatch = /^\/icons\/(launcher|badge)-(\d+)\.png$/.exec(pathname);
+    const decision = pickStaticResponse(
+      pathname,
+      options.publicDirectory,
+      findSession(request) !== null,
+    );
 
-    if (iconMatch !== null) {
-      const kind = iconMatch[1] === 'badge' ? 'badge' : 'launcher';
-      const size = Number(iconMatch[2]);
-
-      if (![96, 192, 512].includes(size)) {
-        return new Response('not found', { status: 404 });
-      }
-
-      return new Response(renderIconPNG(size, kind), { headers: { 'content-type': 'image/png' } });
+    if (decision.kind === 'icon') {
+      return new Response(renderIconPNG(decision.size, decision.variant), {
+        headers: { 'content-type': 'image/png' },
+      });
     }
 
-    const path = resolve(publicRoot, `.${pathname === '/' ? '/index.html' : pathname}`);
-    const file = Bun.file(path);
+    if (decision.kind === 'asset') {
+      const asset = options.clientAssets.get(decision.name);
 
-    if (!path.startsWith(publicRoot + sep) || !(await file.exists())) {
+      return asset === undefined
+        ? new Response('not found', { status: 404 })
+        : new Response(asset, {
+            headers: {
+              'content-type': 'text/javascript; charset=utf-8',
+              'cache-control': 'no-cache',
+            },
+          });
+    }
+
+    if (decision.kind === 'not-found' || !(await Bun.file(decision.path).exists())) {
       return new Response('not found', { status: 404 });
     }
 
-    const headers = new Headers({
-      'content-type': contentTypes[extname(path)] ?? 'application/octet-stream',
-      'cache-control': 'no-cache',
-    });
+    const headers = new Headers({ 'content-type': decision.contentType, 'cache-control': 'no-cache' });
 
-    if (extname(path) === '.html' && findSession(request) === null) {
+    if (decision.startsSession) {
       const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
 
-      sessions.set(token, `S-${crypto.randomUUID().slice(0, 6)}`);
+      sessions.set(token, `S-${crypto.randomUUID().slice(0, 8)}`);
       headers.append(
         'set-cookie',
         `${sessionCookie}=${token}; Path=/; Max-Age=${sessionMaxAgeSeconds}; HttpOnly; Secure; SameSite=Lax`,
       );
     }
 
-    return new Response(file, { headers });
+    return new Response(Bun.file(decision.path), { headers });
   }
 
   return async function answerRequest(request: Request): Promise<Response> {
     const { pathname } = new URL(request.url);
-    const route = `${request.method} ${pathname}`;
 
-    if (route === 'GET /api/config') {
-      const sessionToken = findSession(request);
-
-      return Response.json({
-        vapidPublicKey: options.vapidKeys.publicKey,
-        session: sessionToken === null ? null : (sessions.get(sessionToken) ?? null),
-      });
+    if (pathname.startsWith(`${rpcPrefix}/`)) {
+      return answerRPC(request);
     }
 
-    if (route === 'POST /api/subscribe') {
-      return answerSubscribe(request);
-    }
-
-    if (route === 'POST /api/push') {
-      return answerPush(request);
-    }
-
-    if (route === 'POST /api/push-received') {
-      return answerPushReceived(request);
-    }
-
-    if (route === 'POST /api/approve') {
-      return answerApprove(request);
-    }
-
-    if (route === 'POST /api/sign-out') {
-      const sessionToken = findSession(request);
-
-      if (sessionToken !== null) {
-        sessions.delete(sessionToken);
-      }
-
-      return Response.json(
-        { signedOut: sessionToken !== null },
-        {
-          headers: {
-            'set-cookie': `${sessionCookie}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`,
-          },
-        },
-      );
-    }
-
-    if (route === 'POST /share') {
+    if (request.method === 'POST' && pathname === '/share') {
       return answerShare(request);
-    }
-
-    if (route === 'POST /api/sync') {
-      return answerSync(request);
-    }
-
-    if (route === 'GET /api/log') {
-      return answerLog(request);
-    }
-
-    if (route === 'GET /api/subscriptions') {
-      return answerSubscriptions(request);
-    }
-
-    const entryMatch = /^GET \/api\/entries\/([0-9a-f-]{36})$/.exec(route);
-
-    if (entryMatch !== null) {
-      const entry = log.find((candidate) => candidate.id === entryMatch[1]);
-
-      return entry === undefined
-        ? Response.json({ error: 'unknown entry' }, { status: 404 })
-        : Response.json(entry);
     }
 
     if (request.method === 'GET') {
@@ -510,58 +448,6 @@ export function makeProbeHandler(options: ProbeHandlerOptions): (request: Reques
 
     return new Response('not found', { status: 404 });
   };
-}
-
-interface ApprovalCheck {
-  hasClientHeader: boolean;
-  sessionToken: string | null;
-  approval: Approval | undefined;
-  token: string | null;
-  nowMs: number;
-}
-
-function pickApprovalRefusal(check: ApprovalCheck): { status: number; reason: string } | null {
-  if (!check.hasClientHeader) {
-    return { status: 400, reason: `missing ${clientHeader}` };
-  }
-
-  if (check.sessionToken === null) {
-    return { status: 401, reason: 'no session' };
-  }
-
-  if (check.approval === undefined || check.token === null) {
-    return { status: 404, reason: 'unknown approval' };
-  }
-
-  if (!timingSafeEqual(hashSecret(check.token), check.approval.tokenHash)) {
-    return { status: 403, reason: 'wrong token' };
-  }
-
-  if (check.approval.sessionToken !== check.sessionToken) {
-    return { status: 403, reason: 'another session' };
-  }
-
-  if (check.approval.used) {
-    return { status: 409, reason: 'token already used' };
-  }
-
-  if (check.nowMs - check.approval.issuedAt > approvalLifetimeMs) {
-    return { status: 410, reason: 'token expired' };
-  }
-
-  return null;
-}
-
-function hashSecret(secret: string): Buffer {
-  return createHash('sha256').update(secret).digest();
-}
-
-function isSameSecret(given: string, expected: string): boolean {
-  return timingSafeEqual(hashSecret(given), hashSecret(expected));
-}
-
-function readJSON(request: Request): Promise<unknown> {
-  return request.json().catch(() => null);
 }
 
 function readField(form: FormData, name: string): string | null {

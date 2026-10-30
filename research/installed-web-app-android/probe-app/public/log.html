@@ -18,11 +18,6 @@
     <p id="session" class="status">Session: loading</p>
     <p>Every entry this session recorded, newest first.</p>
     <ul id="log" class="log"></ul>
-    <script src="/probe.js"></script>
-    <script>
-      probe.start().then(() =>
-        probe.pollLog(['subscribed', 'push-sent', 'push-received', 'approve', 'share', 'sync']),
-      );
-    </script>
+    <script type="module" src="/assets/log.js"></script>
   </body>
 </html>

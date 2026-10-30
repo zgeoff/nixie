@@ -7,12 +7,15 @@ export interface PushSubscriptionRecord {
   auth: string;
 }
 
+export type PushTransport = (url: string, init: RequestInit) => Promise<Response>;
+
 interface SendPushInput {
   subscription: PushSubscriptionRecord;
   payload: object;
   urgency: 'very-low' | 'low' | 'normal' | 'high';
   vapidKeys: VapidKeys;
   nowMs: number;
+  transport: PushTransport;
 }
 
 // The push service's answer: 201 for a queued message, 404 or 410 for a subscription that is gone.
@@ -22,7 +25,7 @@ export async function sendPush(input: SendPushInput): Promise<number> {
     userAgentPublicKey: new Uint8Array(Buffer.from(input.subscription.p256dh, 'base64url')),
     authSecret: new Uint8Array(Buffer.from(input.subscription.auth, 'base64url')),
   });
-  const response = await fetch(input.subscription.endpoint, {
+  const response = await input.transport(input.subscription.endpoint, {
     method: 'POST',
     headers: {
       authorization: await buildVapidAuthorization(

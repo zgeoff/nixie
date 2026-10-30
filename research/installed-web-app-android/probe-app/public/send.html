@@ -42,54 +42,6 @@
     <p id="send-result" class="status"></p>
     <h2>Log, every session</h2>
     <ul id="log" class="log"></ul>
-    <script src="/probe.js"></script>
-    <script>
-      const adminHeaders = {
-        'content-type': 'application/json',
-        'x-probe-admin': new URLSearchParams(location.search).get('key') ?? '',
-      };
-      const renderSubscriptions = async () => {
-        const response = await fetch('/api/subscriptions', { headers: adminHeaders });
-        const list = document.querySelector('#subscriptions');
-
-        if (!response.ok) {
-          list.replaceChildren(probe.item(`refused: ${response.status}, open the address the server prints`));
-
-          return;
-        }
-
-        const subscriptions = await response.json();
-
-        list.replaceChildren(
-          ...(subscriptions.length === 0
-            ? [probe.item('none yet')]
-            : subscriptions.map((entry) => probe.item(`${entry.session} via ${entry.pushService}`))),
-        );
-      };
-
-      probe.start().then(() => {
-        probe.pollLog(['subscribed', 'push-sent', 'push-received', 'approve', 'share', 'sync'], adminHeaders);
-        void renderSubscriptions();
-        setInterval(() => void renderSubscriptions(), 5000);
-        document.querySelector('#send').addEventListener('click', async () => {
-          probe.show(
-            '#send-result',
-            await probe.post(
-              '/api/push',
-              {
-                title: document.querySelector('#title').value,
-                delaySeconds: Number(document.querySelector('#delay').value),
-                urgency: document.querySelector('#urgency').value,
-                tag: document.querySelector('#tag').value,
-                silent: document.querySelector('#silent').checked,
-                renotify: document.querySelector('#renotify').checked,
-                approve: document.querySelector('#approve').checked,
-              },
-              adminHeaders,
-            ),
-          );
-        });
-      });
-    </script>
+    <script type="module" src="/assets/send.js"></script>
   </body>
 </html>

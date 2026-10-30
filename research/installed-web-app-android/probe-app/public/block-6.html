@@ -24,19 +24,6 @@
     <p id="share" class="status">No share in this page's address.</p>
     <h2>Log</h2>
     <ul id="log" class="log"></ul>
-    <script src="/probe.js"></script>
-    <script>
-      probe.start().then(async () => {
-        const shareID = new URLSearchParams(location.search).get('share');
-
-        if (shareID) {
-          const response = await fetch(`/api/entries/${encodeURIComponent(shareID)}`);
-
-          probe.show('#share', JSON.stringify(await response.json(), null, 1));
-        }
-
-        probe.pollLog(['share']);
-      });
-    </script>
+    <script type="module" src="/assets/block-6.js"></script>
   </body>
 </html>

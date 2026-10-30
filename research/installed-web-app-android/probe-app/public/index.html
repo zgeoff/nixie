@@ -26,18 +26,6 @@
       <li>Open the app from its home screen icon, then open each block from the links above.</li>
     </ol>
     <p id="worker" class="status">Service worker: loading</p>
-    <script src="/probe.js"></script>
-    <script>
-      probe.start().then(async () => {
-        const registration = await navigator.serviceWorker.ready;
-        const standalone = matchMedia('(display-mode: standalone)').matches;
-
-        probe.show(
-          '#worker',
-          `Service worker: ${registration.active ? 'active' : 'installing'}\n` +
-            `Display mode: ${standalone ? 'standalone (installed app)' : 'browser tab'}`,
-        );
-      });
-    </script>
+    <script type="module" src="/assets/home.js"></script>
   </body>
 </html>
