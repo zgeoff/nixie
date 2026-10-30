@@ -1119,6 +1119,8 @@
 
     "@heynixie/spike-imp-worker-start": ["@heynixie/spike-imp-worker-start@workspace:research/imp-worker-start"],
 
+    "@heynixie/spike-installed-web-app-android": ["@heynixie/spike-installed-web-app-android@workspace:research/installed-web-app-android"],
+
     "@heynixie/spike-mcp-proxy-pin": ["@heynixie/spike-mcp-proxy-pin@workspace:research/mcp-proxy-pin"],
 
     "@heynixie/spike-memory-retrieval": ["@heynixie/spike-memory-retrieval@workspace:research/memory-retrieval"],
