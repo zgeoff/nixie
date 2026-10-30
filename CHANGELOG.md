@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.58.0](https://github.com/zgeoff/nixie/compare/v0.57.1...v0.58.0) (2026-10-30)
+
+
+### Features
+
+* **api:** give the task list its waits, controls and action counts ([#735](https://github.com/zgeoff/nixie/issues/735)) ([40d0fcc](https://github.com/zgeoff/nixie/commit/40d0fccd01dcbfb29fab6a6cb59a8069a14435a7))
+* **web:** add the task dashboard and the task page controls ([#736](https://github.com/zgeoff/nixie/issues/736)) ([a9e0bbf](https://github.com/zgeoff/nixie/commit/a9e0bbfc0dc2b0887a42b85da67f3a543a8c9639))
+
+
+### Bug Fixes
+
+* **deps:** update tanstack-router monorepo ([#729](https://github.com/zgeoff/nixie/issues/729)) ([b356c51](https://github.com/zgeoff/nixie/commit/b356c51fc34739987725f4617a4280803bd3099c))
+
 ## [0.57.1](https://github.com/zgeoff/nixie/compare/v0.57.0...v0.57.1) (2026-10-29)
 
 
