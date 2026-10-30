@@ -1,15 +1,22 @@
 import { appendFileSync } from 'node:fs';
-import { $ } from 'bun';
+import type { ProgramResult } from '../run-program.ts';
+
+export interface SummaryCommandIO {
+  readonly runCommand: (argv: readonly string[]) => ProgramResult;
+  readonly writeOutput: (text: string) => void;
+  readonly writeError: (text: string) => void;
+}
 
 // The step's log and its summary each get the command's output, as `tee -a` gives them.
-export async function runIntoSummary(
+export function runIntoSummary(
   argv: readonly string[],
   summaryPath: string,
-): Promise<number> {
-  const result = await $`${argv}`.nothrow().quiet();
+  io: SummaryCommandIO,
+): number {
+  const result = io.runCommand(argv);
 
-  process.stdout.write(result.stdout);
-  process.stderr.write(result.stderr);
+  io.writeOutput(result.stdout);
+  io.writeError(result.stderr);
 
   appendFileSync(summaryPath, result.stdout);
 

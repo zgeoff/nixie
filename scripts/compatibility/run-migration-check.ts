@@ -3,6 +3,7 @@ import { $ } from 'bun';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
 import { runIntoSummary } from '../lib/run-into-summary.ts';
+import { runProgram } from '../run-program.ts';
 
 // Checks the migrations since the last release against the schema that release reads; before the
 // first release, TAG is empty and the check has nothing to compare.
@@ -21,8 +22,15 @@ async function runCLI(): Promise<void> {
   const summaryPath = getStepEnv(process.env, 'GITHUB_STEP_SUMMARY');
   const check = ['bun', 'libs/db/src/run-migration-check.ts'];
 
+  const io = {
+    runCommand: (argv: readonly string[]) =>
+      runProgram(argv, { cwd: process.cwd(), env: process.env }),
+    writeOutput: (text: string) => process.stdout.write(text),
+    writeError: (text: string) => process.stderr.write(text),
+  };
+
   if (tag === '') {
-    process.exitCode = await runIntoSummary(check, summaryPath);
+    process.exitCode = runIntoSummary(check, summaryPath, io);
 
     return;
   }
@@ -31,9 +39,10 @@ async function runCLI(): Promise<void> {
 
   await $`bash .github/scripts/read-released-schema.sh ${tag} ${releasedPath}`;
 
-  process.exitCode = await runIntoSummary(
+  process.exitCode = runIntoSummary(
     [...check, '--released', releasedPath, '--last-tag', tag],
     summaryPath,
+    io,
   );
 }
 
