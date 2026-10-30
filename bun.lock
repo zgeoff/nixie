@@ -10,7 +10,7 @@
         "@stylistic/eslint-plugin": "5.10.0",
         "@tsconfig/strictest": "2.0.8",
         "@types/bun": "1.4.3",
-        "@zgeoff/bun-test-extended": "0.2.1",
+        "@zgeoff/bun-test-extended": "0.2.2",
         "@zgeoff/bun-test-react": "0.2.2",
         "@zgeoff/format-codemod": "0.3.3",
         "@zgeoff/oxlint-config": "0.7.1",
@@ -1938,7 +1938,7 @@
 
     "@xmldom/xmldom": ["@xmldom/xmldom@0.8.15", "", {}, "sha512-/5NV/vDALVFDXgLmfsy9TRCBlKwO2LNBFzpzvb9iIj+jR+eSc6DLYYvVOdivT/jm7MtU6TebYuRmzEOI7w40UA=="],
 
-    "@zgeoff/bun-test-extended": ["@zgeoff/bun-test-extended@0.2.1", "", { "dependencies": { "jest-extended": "7.0.0", "jest-matcher-utils": "30.5.2" } }, "sha512-5PEjFsQXU7zpwA+K8rvA8X59z4o4EWE0pUDqAWnbnJPhzofKRrZBZ/XHOgKIncguNjsH99B7Pxlv9VPtPCuVNQ=="],
+    "@zgeoff/bun-test-extended": ["@zgeoff/bun-test-extended@0.2.2", "", { "dependencies": { "jest-extended": "7.0.0", "jest-matcher-utils": "30.5.2" } }, "sha512-YQoZhzj8syJBlLZBeH65FBu+lDe9IbYxbs1nzy+w1vsVkaVgNIKl9RmA4K9V5BTLz2vQTBBRqAdDquA4hYxN4A=="],
 
     "@zgeoff/bun-test-react": ["@zgeoff/bun-test-react@0.2.2", "", { "dependencies": { "@happy-dom/global-registrator": "21.0.4", "@testing-library/jest-dom": "7.0.1", "happy-dom": "21.0.4" }, "peerDependencies": { "@testing-library/react": ">=16.0.0", "react": ">=19.0.0", "react-dom": ">=19.0.0", "zustand": ">=5.0.0" }, "optionalPeers": ["zustand"] }, "sha512-egSIb/NAnb9W8RJ3TuBqzEkjaaQREdCd8sP1rLhdSIhhJ3ATq2veY7GdBzmDihx4hsa7pOsDi/7bF1WbQ5N00w=="],
 
