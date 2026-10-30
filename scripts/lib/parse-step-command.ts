@@ -1,9 +1,7 @@
 import { parseArgs } from 'node:util';
 
 export interface StepArgument {
-  readonly name: string;
-  readonly choices?: readonly string[];
-  readonly isOptional?: boolean;
+  readonly choices: readonly string[];
 }
 
 export type StepCommand =
@@ -15,9 +13,11 @@ export function parseStepCommand(
   stepArguments: readonly StepArgument[],
   argv: readonly string[],
 ): StepCommand {
-  const usage = ['usage:', script, ...stepArguments.map((argument) => formatStepArgument(argument))]
-    .join(' ')
-    .trimEnd();
+  const usage = [
+    'usage:',
+    script,
+    ...stepArguments.map((argument) => `<${argument.choices.join('|')}>`),
+  ].join(' ');
 
   const parsed = parseArgs({
     args: [...argv],
@@ -27,26 +27,15 @@ export function parseStepCommand(
   });
 
   const hasFlag = parsed.tokens.some((token) => token.kind !== 'positional');
-  const required = stepArguments.filter((argument) => argument.isOptional !== true).length;
   const values = parsed.positionals;
 
-  const isOutsideChoices = values.some((value, index) => {
-    const choices = stepArguments[index]?.choices;
+  const isOutsideChoices = values.some(
+    (value, index) => stepArguments[index]?.choices.includes(value) !== true,
+  );
 
-    return choices !== undefined && !choices.includes(value);
-  });
-
-  const hasWrongCount = values.length < required || values.length > stepArguments.length;
-
-  if (hasFlag || hasWrongCount || isOutsideChoices) {
+  if (hasFlag || values.length !== stepArguments.length || isOutsideChoices) {
     return { isValid: false, usage };
   }
 
   return { isValid: true, values };
-}
-
-function formatStepArgument(argument: StepArgument): string {
-  const inner = argument.choices === undefined ? argument.name : argument.choices.join('|');
-
-  return argument.isOptional === true ? `[${inner}]` : `<${inner}>`;
 }

@@ -7,7 +7,7 @@ const codePattern = /^[0-9A-Z]{5}-[0-9A-Z]{5}$/mu;
 async function runCLI(): Promise<void> {
   const command = parseStepCommand(
     'check-sign-in-code.ts',
-    [{ name: 'recipe', choices: ['recipe', 'preview'] }],
+    [{ choices: ['recipe', 'preview'] }],
     process.argv.slice(2),
   );
 

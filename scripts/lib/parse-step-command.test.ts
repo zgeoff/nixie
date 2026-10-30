@@ -19,7 +19,7 @@ test('it refuses a flag', () => {
   expect(
     parseStepCommand(
       'check-sign-in-code.ts',
-      [{ name: 'recipe', choices: ['recipe', 'preview'] }],
+      [{ choices: ['recipe', 'preview'] }],
       ['--verbose', 'recipe'],
     ),
   ).toStrictEqual({ isValid: false, usage: 'usage: check-sign-in-code.ts <recipe|preview>' });
@@ -27,37 +27,18 @@ test('it refuses a flag', () => {
 
 test('it accepts a value among the choices', () => {
   expect(
-    parseStepCommand(
-      'check-sign-in-code.ts',
-      [{ name: 'recipe', choices: ['recipe', 'preview'] }],
-      ['preview'],
-    ),
+    parseStepCommand('check-sign-in-code.ts', [{ choices: ['recipe', 'preview'] }], ['preview']),
   ).toStrictEqual({ isValid: true, values: ['preview'] });
 });
 
 test('it refuses a value outside the choices', () => {
   expect(
-    parseStepCommand(
-      'check-sign-in-code.ts',
-      [{ name: 'recipe', choices: ['recipe', 'preview'] }],
-      ['staging'],
-    ),
+    parseStepCommand('check-sign-in-code.ts', [{ choices: ['recipe', 'preview'] }], ['staging']),
   ).toStrictEqual({ isValid: false, usage: 'usage: check-sign-in-code.ts <recipe|preview>' });
 });
 
-test('it refuses a command that leaves out a required argument', () => {
-  expect(parseStepCommand('tag-images.ts', [{ name: 'version' }], [])).toStrictEqual({
-    isValid: false,
-    usage: 'usage: tag-images.ts <version>',
-  });
-});
-
-test('it accepts a command that leaves out an optional argument', () => {
+test('it refuses a command that leaves out an argument', () => {
   expect(
-    parseStepCommand(
-      'tag-images.ts',
-      [{ name: 'version' }, { name: 'note', isOptional: true }],
-      ['1.2.3'],
-    ),
-  ).toStrictEqual({ isValid: true, values: ['1.2.3'] });
+    parseStepCommand('check-sign-in-code.ts', [{ choices: ['recipe', 'preview'] }], []),
+  ).toStrictEqual({ isValid: false, usage: 'usage: check-sign-in-code.ts <recipe|preview>' });
 });
