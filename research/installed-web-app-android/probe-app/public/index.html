@@ -23,8 +23,15 @@
     <ol>
       <li>Open this page in Chrome on the phone, through the public HTTPS URL.</li>
       <li>Open Chrome's menu, tap <b>Add to home screen</b>, then <b>Install</b>.</li>
+      <li>
+        On the PC, open the send page and tap <b>Make a pairing code</b>. Enter the code below
+        within 10 minutes. Only a paired phone can subscribe, approve, share and sync.
+      </li>
       <li>Open the app from its home screen icon, then open each block from the links above.</li>
     </ol>
+    <label>Pairing code <input id="pair-code" autocomplete="off" autocapitalize="none" /></label>
+    <button id="pair">Pair</button>
+    <p id="pair-result" class="status"></p>
     <p id="worker" class="status">Service worker: loading</p>
     <script type="module" src="/assets/home.js"></script>
   </body>

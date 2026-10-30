@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { buildProbeClient } from '../client/build-probe-client.ts';
 import { makeProbeHandler } from './make-probe-handler.ts';
 import { createTestPhone } from './test-utils/create-test-phone.ts';
+import { createTestSession } from './test-utils/create-test-session.ts';
 
 async function setupTest() {
   const received = mock((_body: Uint8Array<ArrayBuffer>, _headers: Headers) => {});
@@ -25,6 +26,7 @@ async function setupTest() {
   );
   const clock = { nowMs: Date.UTC(2026, 9, 30, 9, 0, 0) };
   const schedule = mock((_delayMs: number, _task: () => Promise<void>) => {});
+  const writeError = mock((_message: string, _error: unknown) => {});
   const answerRequest = makeProbeHandler({
     vapidKeys: {
       privateKey: vapidPair.privateKey,
@@ -43,21 +45,32 @@ async function setupTest() {
 
       return (await file.exists()) ? file : null;
     },
+    bodyDeadlineMs: 1000,
+    writeError,
     now: () => clock.nowMs,
+  });
+  const admin = buildProbeClient({
+    origin: 'http://probe.test',
+    headers: { 'x-probe-admin': 'test-admin-key' },
+    fetch: answerRequest,
   });
 
   return {
     answerRequest,
+    adminKey: 'test-admin-key',
+    admin,
     clock,
     received,
     schedule,
+    writeError,
+    stopPushService: () => pushService.stop(true),
     endpoint: new URL('/push/phone', pushService.url).href,
   };
 }
 
 test('it approves once with the token that the push carried', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const phone = await createTestPhone(ctx, ctx.endpoint);
 
   await phone.client.push({ approve: true, tag: 'approval' });
 
@@ -72,7 +85,7 @@ test('it approves once with the token that the push carried', async () => {
 
 test('it refuses a second approve with a token already used', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const phone = await createTestPhone(ctx, ctx.endpoint);
 
   await phone.client.push({ approve: true });
 
@@ -98,11 +111,10 @@ test.each([
   ['a token past 15 minutes', 'own', 'issued', 15 * 60 * 1000 + 1, 410, 'token expired'],
 ])('it refuses an approve with %s', async (_label, caller, token, laterMs, status, message) => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
-  const otherPage = await ctx.answerRequest(new Request('http://probe.test/'));
+  const phone = await createTestPhone(ctx, ctx.endpoint);
   const cookies: Record<string, string> = {
     own: phone.cookie,
-    other: (otherPage.headers.get('set-cookie') ?? '').split(';')[0] ?? '',
+    other: await createTestSession(ctx),
     none: '',
     stale: 'probe_session=a-value-the-server-never-issued',
   };
@@ -131,7 +143,7 @@ test.each([
 
 test('it refuses every API call without the x-nixie-client header', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const phone = await createTestPhone(ctx, ctx.endpoint);
 
   const response = await ctx.answerRequest(
     new Request('http://probe.test/rpc/log', { method: 'POST', headers: { cookie: phone.cookie } }),
@@ -143,7 +155,7 @@ test('it refuses every API call without the x-nixie-client header', async () => 
 
 test('it sends a push with the chosen urgency and a VAPID signature', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const phone = await createTestPhone(ctx, ctx.endpoint);
 
   const sent = await phone.client.push({
     urgency: 'high',
@@ -170,9 +182,21 @@ test('it sends a push with the chosen urgency and a VAPID signature', async () =
   });
 });
 
+test('it passes a failed push send to the error log and answers it as status 0', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+
+  ctx.stopPushService();
+
+  const sent = await phone.client.push({});
+
+  expect(sent.statuses).toStrictEqual([0]);
+  expect(ctx.writeError.mock.calls).toStrictEqual([['push send failed', expect.any(Error)]]);
+});
+
 test('it sends a delayed push only when its scheduled task runs', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const phone = await createTestPhone(ctx, ctx.endpoint);
 
   const sent = await phone.client.push({ delaySeconds: 15 });
   const sentBeforeTask = ctx.received.mock.calls.length;
@@ -188,16 +212,10 @@ test('it sends a delayed push only when its scheduled task runs', async () => {
 test('it sends to every subscribed phone for the admin key', async () => {
   const ctx = await setupTest();
 
-  await createTestPhone(ctx.answerRequest, ctx.endpoint);
-  await createTestPhone(ctx.answerRequest, `${ctx.endpoint}-second`);
+  await createTestPhone(ctx, ctx.endpoint);
+  await createTestPhone(ctx, `${ctx.endpoint}-second`);
 
-  const admin = buildProbeClient({
-    origin: 'http://probe.test',
-    headers: { 'x-probe-admin': 'test-admin-key' },
-    fetch: ctx.answerRequest,
-  });
-
-  expect(await admin.push({})).toMatchObject({ statuses: [201, 201] });
+  expect(await ctx.admin.push({})).toMatchObject({ statuses: [201, 201] });
 });
 
 test.each([
@@ -208,7 +226,7 @@ test.each([
 ])('it refuses a push from a caller with %s', async (_label, headers) => {
   const ctx = await setupTest();
 
-  await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  await createTestPhone(ctx, ctx.endpoint);
 
   const caller = buildProbeClient({ origin: 'http://probe.test', headers, fetch: ctx.answerRequest });
 
@@ -223,9 +241,8 @@ test.each([
   ['an endpoint that is no URL', 'not a url', 'own', 400],
 ])('it refuses a subscription with %s', async (_label, endpoint, caller, status) => {
   const ctx = await setupTest();
-  const page = await ctx.answerRequest(new Request('http://probe.test/'));
   const cookies: Record<string, string> = {
-    own: (page.headers.get('set-cookie') ?? '').split(';')[0] ?? '',
+    own: await createTestSession(ctx),
     none: '',
     stale: 'probe_session=a-value-the-server-never-issued',
   };
@@ -243,10 +260,48 @@ test.each([
   ).rejects.toMatchObject({ status });
 });
 
+test('it refuses a subscription to an endpoint that another session holds', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const intruder = buildProbeClient({
+    origin: 'http://probe.test',
+    headers: { cookie: await createTestSession(ctx) },
+    fetch: ctx.answerRequest,
+  });
+
+  const taking = intruder.subscribe({
+    endpoint: ctx.endpoint,
+    keys: { p256dh: 'key', auth: 'secret' },
+  });
+
+  expect(taking).rejects.toMatchObject({ status: 409 });
+  expect(await phone.client.push({})).toMatchObject({ statuses: [201] });
+});
+
+test('it keeps the 5 newest subscriptions of a session and every other session', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const other = await createTestPhone(ctx, `${ctx.endpoint}-other`);
+
+  await Promise.all(
+    Array.from({ length: 10 }, (_, index) =>
+      other.client.subscribe({
+        endpoint: `${ctx.endpoint}-other-${index}`,
+        keys: { p256dh: 'key', auth: 'secret' },
+      }),
+    ),
+  );
+
+  const listed = await ctx.admin.subscriptions();
+  const phoneLabel = (await phone.client.config()).session;
+
+  expect(listed).toHaveLength(6);
+  expect(listed.filter((entry) => entry.session === phoneLabel)).toHaveLength(1);
+});
+
 test('it records a share with its fields and files and sends the page to block 6', async () => {
   const ctx = await setupTest();
-  const page = await ctx.answerRequest(new Request('http://probe.test/'));
-  const cookie = (page.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  const cookie = await createTestSession(ctx);
   const form = new FormData();
 
   form.append('title', 'A shared page');
@@ -257,7 +312,11 @@ test('it records a share with its fields and files and sends the page to block 6
     new Request('http://probe.test/share', { method: 'POST', headers: { cookie }, body: form }),
   );
   const location = response.headers.get('location') ?? '';
-  const reader = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+  const reader = buildProbeClient({
+    origin: 'http://probe.test',
+    headers: { cookie },
+    fetch: ctx.answerRequest,
+  });
 
   expect(response.status).toBe(303);
   expect(location).toStartWith('/block-6.html?share=');
@@ -280,7 +339,7 @@ test('it records a share with its fields and files and sends the page to block 6
   });
 });
 
-test('it records a share that arrives without the session cookie', async () => {
+test('it records a share that arrives without the session cookie for the admin', async () => {
   const ctx = await setupTest();
   const form = new FormData();
 
@@ -289,14 +348,42 @@ test('it records a share that arrives without the session cookie', async () => {
   const response = await ctx.answerRequest(
     new Request('http://probe.test/share', { method: 'POST', body: form }),
   );
-  const reader = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
 
   expect(
-    await reader.entry({ id: (response.headers.get('location') ?? '').split('share=')[1] ?? '' }),
+    await ctx.admin.entry({ id: (response.headers.get('location') ?? '').split('share=')[1] ?? '' }),
   ).toMatchObject({
     session: null,
     detail: { url: 'https://example.com/page', cookieSent: false, sessionKnown: false },
   });
+});
+
+test.each([
+  ['another session', 'other', 404],
+  ['no session', 'none', 401],
+])('it refuses a log entry to a caller with %s', async (_label, caller, status) => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const form = new FormData();
+
+  form.append('text', 'a private note');
+
+  const response = await ctx.answerRequest(
+    new Request('http://probe.test/share', {
+      method: 'POST',
+      headers: { cookie: phone.cookie },
+      body: form,
+    }),
+  );
+  const cookies: Record<string, string> = { other: await createTestSession(ctx), none: '' };
+  const reader = buildProbeClient({
+    origin: 'http://probe.test',
+    headers: { cookie: cookies[caller] ?? '' },
+    fetch: ctx.answerRequest,
+  });
+
+  expect(
+    reader.entry({ id: (response.headers.get('location') ?? '').split('share=')[1] ?? '' }),
+  ).rejects.toMatchObject({ status });
 });
 
 test('it refuses a share that is no form', async () => {
@@ -311,7 +398,7 @@ test('it refuses a share that is no form', async () => {
 
 test('it records a synced message once and answers a repeat as a duplicate', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const phone = await createTestPhone(ctx, ctx.endpoint);
   const message = {
     messageID: '6f1c2a54-93b7-4c1e-9d4e-2b8f0a7c5e11',
     text: 'buy more tea',
@@ -340,15 +427,30 @@ test('it records a synced message once and answers a repeat as a duplicate', asy
   ]);
 });
 
+test('it records a message that another session synced first under the same ID', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const other = await createTestPhone(ctx, `${ctx.endpoint}-other`);
+  const message = {
+    messageID: '6f1c2a54-93b7-4c1e-9d4e-2b8f0a7c5e11',
+    text: 'buy more tea',
+    queuedAt: Date.UTC(2026, 9, 30, 8, 58, 0),
+    lastChance: false,
+  };
+
+  await other.client.sync(message);
+
+  expect(await phone.client.sync(message)).toStrictEqual({ duplicate: false });
+});
+
 test.each([
   ['no session', 'none', 'buy more tea', 401],
   ['a cookie the server never issued', 'stale', 'buy more tea', 401],
   ['a text over 2000 characters', 'own', 'a'.repeat(2001), 400],
 ])('it refuses a synced message with %s', async (_label, caller, text, status) => {
   const ctx = await setupTest();
-  const page = await ctx.answerRequest(new Request('http://probe.test/'));
   const cookies: Record<string, string> = {
-    own: (page.headers.get('set-cookie') ?? '').split(';')[0] ?? '',
+    own: await createTestSession(ctx),
     none: '',
     stale: 'probe_session=a-value-the-server-never-issued',
   };
@@ -370,8 +472,8 @@ test.each([
 
 test('it shows a session only its own log entries', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
-  const otherPhone = await createTestPhone(ctx.answerRequest, `${ctx.endpoint}-second`);
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const otherPhone = await createTestPhone(ctx, `${ctx.endpoint}-second`);
 
   const own = await phone.client.log();
 
@@ -379,19 +481,38 @@ test('it shows a session only its own log entries', async () => {
   expect(own[0]?.session).not.toBe((await otherPhone.client.log())[0]?.session);
 });
 
-test('it shows every log entry for the admin key', async () => {
+test('it shows every log entry, newest first, for the admin key', async () => {
   const ctx = await setupTest();
 
-  await createTestPhone(ctx.answerRequest, ctx.endpoint);
-  await createTestPhone(ctx.answerRequest, `${ctx.endpoint}-second`);
+  await createTestPhone(ctx, ctx.endpoint);
+  await createTestPhone(ctx, `${ctx.endpoint}-second`);
+  await ctx.answerRequest(
+    new Request('http://probe.test/share', { method: 'POST', body: new FormData() }),
+  );
 
-  const admin = buildProbeClient({
-    origin: 'http://probe.test',
-    headers: { 'x-probe-admin': 'test-admin-key' },
-    fetch: ctx.answerRequest,
-  });
+  expect(await ctx.admin.log()).toMatchObject([
+    { kind: 'share', session: null },
+    { kind: 'subscribed' },
+    { kind: 'subscribed' },
+  ]);
+});
 
-  expect(await admin.log()).toMatchObject([{ kind: 'subscribed' }, { kind: 'subscribed' }]);
+test('it keeps a phone log entry through a flood of anonymous shares and approve calls', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const anonymous = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+
+  for (let index = 0; index < 150; index += 1) {
+    await ctx.answerRequest(
+      new Request('http://probe.test/share', { method: 'POST', body: new FormData() }),
+    );
+    await anonymous
+      .approve({ approvalID: crypto.randomUUID(), token: 'guessed-token' })
+      .catch(() => null);
+  }
+
+  expect(await phone.client.log()).toMatchObject([{ kind: 'subscribed' }]);
+  expect(await ctx.admin.log()).toHaveLength(101);
 });
 
 test.each([
@@ -401,7 +522,7 @@ test.each([
 ])('it refuses the log to a caller with %s', async (_label, headers) => {
   const ctx = await setupTest();
 
-  await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  await createTestPhone(ctx, ctx.endpoint);
 
   const caller = buildProbeClient({ origin: 'http://probe.test', headers, fetch: ctx.answerRequest });
 
@@ -420,14 +541,14 @@ test.each([
 
 test('it refuses the subscription list to a phone with only its session', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const phone = await createTestPhone(ctx, ctx.endpoint);
 
   expect(phone.client.subscriptions()).rejects.toMatchObject({ status: 401 });
 });
 
-test('it forgets a session that signs out and clears its cookie', async () => {
+test('it forgets a session that signs out, with its subscriptions, and clears its cookie', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const phone = await createTestPhone(ctx, ctx.endpoint);
 
   const response = await ctx.answerRequest(
     new Request('http://probe.test/rpc/signOut', {
@@ -438,16 +559,143 @@ test('it forgets a session that signs out and clears its cookie', async () => {
 
   expect(response.headers.get('set-cookie')).toStartWith('probe_session=; Path=/; Max-Age=0;');
   expect(phone.client.log()).rejects.toMatchObject({ status: 401 });
+  expect(await ctx.admin.subscriptions()).toStrictEqual([]);
 });
 
-test('it starts a session on a page with a cookie only scripts on the same site send', async () => {
+test('it pairs with a code from the admin and sets a cookie only scripts on the same site send', async () => {
   const ctx = await setupTest();
+  const { code } = await ctx.admin.createPairing();
 
-  const response = await ctx.answerRequest(new Request('http://probe.test/block-1.html'));
+  const response = await ctx.answerRequest(
+    new Request('http://probe.test/rpc/pair', {
+      method: 'POST',
+      headers: { 'x-nixie-client': 'probe', 'content-type': 'application/json' },
+      body: JSON.stringify({ json: { code: ` ${code.slice(0, 5).toUpperCase()}-${code.slice(5)} ` } }),
+    }),
+  );
 
+  expect(response.status).toBe(200);
   expect(response.headers.get('set-cookie')).toMatch(
     /^probe_session=[\w-]{43}; Path=\/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax$/,
   );
+});
+
+test('it makes a pairing code of 10 characters that expires in 10 minutes', async () => {
+  const ctx = await setupTest();
+
+  expect(await ctx.admin.createPairing()).toStrictEqual({
+    code: expect.stringMatching(/^[0-9a-hjkmnp-tv-z]{10}$/),
+    expiresAt: '2026-10-30T09:10:00.000Z',
+  });
+});
+
+test('it refuses a pairing code to a caller without the admin key', async () => {
+  const ctx = await setupTest();
+  const anonymous = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+
+  expect(anonymous.createPairing()).rejects.toMatchObject({ status: 401 });
+});
+
+test('it refuses a pairing while no code waits', async () => {
+  const ctx = await setupTest();
+  const anonymous = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+
+  expect(anonymous.pair({ code: 'abcdefghjk' })).rejects.toMatchObject({
+    status: 403,
+    message: 'no pairing code waiting',
+  });
+});
+
+test('it refuses a pairing with a wrong code', async () => {
+  const ctx = await setupTest();
+  const anonymous = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+
+  await ctx.admin.createPairing();
+
+  expect(anonymous.pair({ code: 'abcdefghjk' })).rejects.toMatchObject({
+    status: 403,
+    message: 'wrong pairing code',
+  });
+});
+
+test('it refuses a pairing with a code past 10 minutes', async () => {
+  const ctx = await setupTest();
+  const anonymous = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+  const { code } = await ctx.admin.createPairing();
+
+  ctx.clock.nowMs += 10 * 60 * 1000 + 1;
+
+  expect(anonymous.pair({ code })).rejects.toMatchObject({
+    status: 403,
+    message: 'no pairing code waiting',
+  });
+});
+
+test('it refuses a pairing code that a phone already used', async () => {
+  const ctx = await setupTest();
+  const { code } = await ctx.admin.createPairing();
+  const first = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+  const second = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+
+  await first.pair({ code });
+
+  expect(second.pair({ code })).rejects.toMatchObject({
+    status: 403,
+    message: 'no pairing code waiting',
+  });
+});
+
+test('it drops a pairing code after 5 wrong tries', async () => {
+  const ctx = await setupTest();
+  const { code } = await ctx.admin.createPairing();
+  const anonymous = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+
+  for (let index = 0; index < 5; index += 1) {
+    await anonymous.pair({ code: `wrong${index}` }).catch(() => null);
+  }
+
+  expect(anonymous.pair({ code })).rejects.toMatchObject({
+    status: 403,
+    message: 'no pairing code waiting',
+  });
+});
+
+test('it refuses a pairing past 20 sessions and keeps every paired phone', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+
+  for (let index = 0; index < 19; index += 1) {
+    await createTestSession(ctx);
+  }
+
+  const { code } = await ctx.admin.createPairing();
+  const anonymous = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+
+  expect(anonymous.pair({ code })).rejects.toMatchObject({ status: 409 });
+  expect((await phone.client.config()).session).toStartWith('S-');
+});
+
+test('it replaces the session of a phone that pairs again', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const { code } = await ctx.admin.createPairing();
+
+  await phone.client.pair({ code });
+
+  expect((await phone.client.config()).session).toBeNull();
+});
+
+test('it starts no session for a flood of page requests, and a paired phone keeps working', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+
+  const pages = await Promise.all(
+    Array.from({ length: 2000 }, () => ctx.answerRequest(new Request('http://probe.test/'))),
+  );
+
+  expect(pages.filter((page) => page.headers.has('set-cookie'))).toStrictEqual([]);
+  expect(await phone.client.push({})).toMatchObject({ statuses: [201] });
+  expect((await phone.client.config()).session).toStartWith('S-');
 });
 
 test('it serves the bundled service worker from the root', async () => {
@@ -470,11 +718,6 @@ test('it answers a missing public file as not found', async () => {
 test('it refuses a streamed share over 25 MiB and logs nothing', async () => {
   const ctx = await setupTest();
   const chunk = new Uint8Array(1024 * 1024);
-  const admin = buildProbeClient({
-    origin: 'http://probe.test',
-    headers: { 'x-probe-admin': 'test-admin-key' },
-    fetch: ctx.answerRequest,
-  });
 
   const response = await ctx.answerRequest(
     new Request('http://probe.test/share', {
@@ -485,7 +728,7 @@ test('it refuses a streamed share over 25 MiB and logs nothing', async () => {
   );
 
   expect(response.status).toBe(413);
-  expect(await admin.log()).toStrictEqual([]);
+  expect(await ctx.admin.log()).toStrictEqual([]);
 });
 
 test('it refuses a share that declares a length over 25 MiB', async () => {
@@ -502,10 +745,24 @@ test('it refuses a share that declares a length over 25 MiB', async () => {
   expect(response.status).toBe(413);
 });
 
+test('it refuses a share whose body still arrives at the deadline', async () => {
+  const ctx = await setupTest();
+
+  const response = await ctx.answerRequest(
+    new Request('http://probe.test/share', {
+      method: 'POST',
+      body: new ReadableStream<Uint8Array>({
+        start: (controller) => controller.enqueue(new Uint8Array(10)),
+      }),
+    }),
+  );
+
+  expect(response.status).toBe(408);
+});
+
 test('it keeps at most 2000 characters of a shared field and 20 shared files', async () => {
   const ctx = await setupTest();
   const form = new FormData();
-  const reader = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
 
   form.append('text', 'x'.repeat(5000));
   form.append('title', 'short');
@@ -519,7 +776,7 @@ test('it keeps at most 2000 characters of a shared field and 20 shared files', a
   const response = await ctx.answerRequest(
     new Request('http://probe.test/share', { method: 'POST', body: form }),
   );
-  const entry = await reader.entry({
+  const entry = await ctx.admin.entry({
     id: (response.headers.get('location') ?? '').split('share=')[1] ?? '',
   });
 
@@ -534,7 +791,6 @@ test('it keeps at most 2000 characters of a shared field and 20 shared files', a
 
 test('it keeps at most 100 characters of a header the log copies', async () => {
   const ctx = await setupTest();
-  const reader = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
 
   const response = await ctx.answerRequest(
     new Request('http://probe.test/share', {
@@ -543,14 +799,14 @@ test('it keeps at most 100 characters of a header the log copies', async () => {
       body: new FormData(),
     }),
   );
-  const entry = await reader.entry({
+  const entry = await ctx.admin.entry({
     id: (response.headers.get('location') ?? '').split('share=')[1] ?? '',
   });
 
   expect(entry.detail['secFetchSite']).toBe('s'.repeat(100));
 });
 
-test('it refuses a third share while 2 are still arriving', async () => {
+test('it refuses a third share without a session while 2 are still arriving', async () => {
   const ctx = await setupTest();
   const controllers: ReadableStreamDefaultController<Uint8Array>[] = [];
   const startShare = () =>
@@ -573,9 +829,37 @@ test('it refuses a third share while 2 are still arriving', async () => {
   expect(third.status).toBe(503);
 });
 
+test('it records a share from a paired phone while 2 shares without a session are arriving', async () => {
+  const ctx = await setupTest();
+  const cookie = await createTestSession(ctx);
+  const controllers: ReadableStreamDefaultController<Uint8Array>[] = [];
+  const startShare = () =>
+    ctx.answerRequest(
+      new Request('http://probe.test/share', {
+        method: 'POST',
+        body: new ReadableStream<Uint8Array>({ start: (controller) => void controllers.push(controller) }),
+      }),
+    );
+
+  onTestFinished(() => controllers.forEach((controller) => controller.close()));
+
+  void startShare();
+  void startShare();
+
+  const phoneShare = await ctx.answerRequest(
+    new Request('http://probe.test/share', {
+      method: 'POST',
+      headers: { cookie },
+      body: new FormData(),
+    }),
+  );
+
+  expect(phoneShare.status).toBe(303);
+});
+
 test('it refuses an API call over 64 KiB before it parses it', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const phone = await createTestPhone(ctx, ctx.endpoint);
 
   const response = await ctx.answerRequest(
     new Request('http://probe.test/rpc/sync', {
@@ -590,7 +874,7 @@ test('it refuses an API call over 64 KiB before it parses it', async () => {
 
 test('it logs one receipt for a push that a phone reports twice', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const phone = await createTestPhone(ctx, ctx.endpoint);
   const sent = await phone.client.push({});
 
   const first = await phone.client.pushReceived({ pushID: sent.pushID, receivedAt: 1_000 });
@@ -603,58 +887,49 @@ test('it logs one receipt for a push that a phone reports twice', async () => {
   );
 });
 
-test('it forgets the least recently used session past 1000 sessions', async () => {
+test.each([
+  ['another session', 'other', 404],
+  ['no session', 'none', 401],
+])('it refuses a receipt for a push from a caller with %s', async (_label, caller, status) => {
   const ctx = await setupTest();
-  const oldest = await ctx.answerRequest(new Request('http://probe.test/'));
-  const recent = await ctx.answerRequest(new Request('http://probe.test/'));
-  const oldestCookie = (oldest.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
-  const recentCookie = (recent.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
-  const recentClient = buildProbeClient({
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const sent = await phone.client.push({});
+  const cookies: Record<string, string> = { other: await createTestSession(ctx), none: '' };
+  const reporter = buildProbeClient({
     origin: 'http://probe.test',
-    headers: { cookie: recentCookie },
-    fetch: ctx.answerRequest,
-  });
-  const oldestClient = buildProbeClient({
-    origin: 'http://probe.test',
-    headers: { cookie: oldestCookie },
+    headers: { cookie: cookies[caller] ?? '' },
     fetch: ctx.answerRequest,
   });
 
-  await recentClient.config();
-  await Promise.all(
-    Array.from({ length: 999 }, () => ctx.answerRequest(new Request('http://probe.test/'))),
-  );
-
-  expect((await oldestClient.config()).session).toBeNull();
-  expect((await recentClient.config()).session).toStartWith('S-');
+  expect(reporter.pushReceived({ pushID: sent.pushID, receivedAt: 1_000 })).rejects.toMatchObject({
+    status,
+  });
 });
 
-test('it keeps the 50 newest subscriptions', async () => {
+test('it refuses a push past 10 in progress for one session', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
-  const admin = buildProbeClient({
-    origin: 'http://probe.test',
-    headers: { 'x-probe-admin': 'test-admin-key' },
-    fetch: ctx.answerRequest,
-  });
+  const phone = await createTestPhone(ctx, ctx.endpoint);
 
-  await Promise.all(
-    Array.from({ length: 60 }, (_, index) =>
-      phone.client.subscribe({
-        endpoint: `${ctx.endpoint}-${index}`,
-        keys: { p256dh: 'key', auth: 'secret' },
-      }),
-    ),
-  );
-
-  expect(await admin.subscriptions()).toHaveLength(50);
-});
-
-test('it refuses a delayed push past 20 waiting', async () => {
-  const ctx = await setupTest();
-  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
-
-  await Promise.all(Array.from({ length: 20 }, () => phone.client.push({ delaySeconds: 60 })));
+  await Promise.all(Array.from({ length: 10 }, () => phone.client.push({ delaySeconds: 60 })));
 
   expect(phone.client.push({ delaySeconds: 60 })).rejects.toMatchObject({ status: 429 });
+});
+
+test('it takes a push from the admin while a session has 10 in progress', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+
+  await Promise.all(Array.from({ length: 10 }, () => phone.client.push({ delaySeconds: 60 })));
+
+  expect(await ctx.admin.push({ delaySeconds: 60 })).toMatchObject({ statuses: null });
+});
+
+test('it frees a push slot once a delayed push is sent', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+
+  await Promise.all(Array.from({ length: 10 }, () => phone.client.push({ delaySeconds: 60 })));
+  await ctx.schedule.mock.calls[0]?.[1]();
+
+  expect(await phone.client.push({ delaySeconds: 60 })).toMatchObject({ statuses: null });
 });

@@ -8,7 +8,7 @@ import { createTestProbe } from '../src/test-utils/create-test-probe.ts';
 
 test('it shows the push and reports its receipt with the time the phone received it', async () => {
   const probe = await createTestProbe();
-  const phone = await createTestPhone(probe.answerRequest, probe.endpoint);
+  const phone = await createTestPhone(probe,probe.endpoint);
   const store = openProbeStore(new IDBFactory());
   const showNotification = mock(async (_title: string, _options: NotificationOptions) => {});
 

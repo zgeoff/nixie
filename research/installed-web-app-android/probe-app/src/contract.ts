@@ -52,6 +52,10 @@ export type PushPayload = z.infer<typeof pushPayloadSchema>;
 
 export const probeContract = {
   config: oc.output(z.object({ vapidPublicKey: z.string(), session: z.string().nullable() })),
+  createPairing: oc.output(z.object({ code: z.string(), expiresAt: z.string() })),
+  pair: oc
+    .input(z.object({ code: z.string().min(1).max(64) }))
+    .output(z.object({ session: z.string() })),
   subscribe: oc
     .input(
       z.object({

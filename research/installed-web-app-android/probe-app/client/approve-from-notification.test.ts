@@ -6,7 +6,7 @@ import { createTestProbe } from '../src/test-utils/create-test-probe.ts';
 
 test('it approves with the session cookie and shows the answer in place of the push', async () => {
   const probe = await createTestProbe();
-  const phone = await createTestPhone(probe.answerRequest, probe.endpoint);
+  const phone = await createTestPhone(probe,probe.endpoint);
   const showNotification = mock(async (_title: string, _options: NotificationOptions) => {});
 
   await phone.client.push({ approve: true, tag: 'approval' });
@@ -44,7 +44,7 @@ test('it approves with the session cookie and shows the answer in place of the p
 
 test('it shows the refusal when the worker has no session', async () => {
   const probe = await createTestProbe();
-  const phone = await createTestPhone(probe.answerRequest, probe.endpoint);
+  const phone = await createTestPhone(probe,probe.endpoint);
   const signedOut = buildProbeClient({ origin: 'http://probe.test', fetch: probe.answerRequest });
   const showNotification = mock(async (_title: string, _options: NotificationOptions) => {});
 

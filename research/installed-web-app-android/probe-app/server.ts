@@ -12,7 +12,8 @@ const answerRequest = makeProbeHandler({
   publicDirectory: join(import.meta.dir, 'public'),
   clientAssets: await runClientBuild(),
   isPushEndpointAllowed: isKnownPushService,
-  pushTransport: (url, init) => fetch(url, init),
+  // a push service that never answers would hold the push's slot for good
+  pushTransport: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(30_000) }),
   schedule: (delayMs, task) => {
     setTimeout(() => void task(), delayMs);
   },
@@ -21,6 +22,8 @@ const answerRequest = makeProbeHandler({
 
     return (await file.exists()) ? file : null;
   },
+  bodyDeadlineMs: 60_000,
+  writeError: (message, error) => console.error(message, error),
   now: Date.now,
 });
 

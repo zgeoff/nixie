@@ -27,7 +27,7 @@ export async function startPage(headers?: Record<string, string>): Promise<Start
   const config = await client.config();
 
   getElement('#session', HTMLElement).textContent =
-    `Session: ${config.session ?? 'none, reload the page'}`;
+    `Session: ${config.session ?? 'none: pair this phone on the home page'}`;
   void flushReceipts(client, store);
 
   return {

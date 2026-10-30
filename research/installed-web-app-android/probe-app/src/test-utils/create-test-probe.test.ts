@@ -4,7 +4,7 @@ import { createTestProbe } from './create-test-probe.ts';
 
 test('it delivers a push from the probe to its local push service', async () => {
   const probe = await createTestProbe();
-  const phone = await createTestPhone(probe.answerRequest, probe.endpoint);
+  const phone = await createTestPhone(probe,probe.endpoint);
 
   await phone.client.push({ title: 'to the stand-in' });
 

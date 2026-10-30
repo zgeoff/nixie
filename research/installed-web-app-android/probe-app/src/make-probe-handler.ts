@@ -2,7 +2,9 @@ import { timingSafeEqual } from 'node:crypto';
 import { ORPCError, implement } from '@orpc/server';
 import { RPCHandler } from '@orpc/server/fetch';
 import { ResponseHeadersPlugin, type ResponseHeadersPluginContext } from '@orpc/server/plugins';
+import { match } from 'ts-pattern';
 import type { z } from 'zod';
+import { buildPairingCode } from './build-pairing-code.ts';
 import type { VapidKeys } from './build-vapid-authorization.ts';
 import {
   adminHeaderName,
@@ -16,7 +18,7 @@ import {
 import { hashSecret } from './hash-secret.ts';
 import { pickApprovalRefusal, type StoredApproval } from './pick-approval-refusal.ts';
 import { pickStaticResponse } from './pick-static-response.ts';
-import { readCappedBody } from './read-capped-body.ts';
+import { type CappedBody, readCappedBody } from './read-capped-body.ts';
 import { renderIconPNG } from './render-icon-png.ts';
 import { type PushSubscriptionRecord, type PushTransport, sendPush } from './send-push.ts';
 import { trimOldest } from './trim-oldest.ts';
@@ -33,6 +35,9 @@ interface ProbeHandlerOptions {
   schedule: (delayMs: number, task: () => Promise<void>) => void;
   // a file from the public folder, or null when it does not exist
   readPublicFile: (path: string) => Promise<Blob | null>;
+  // how long a caller has to send a whole request body
+  bodyDeadlineMs: number;
+  writeError: (message: string, error: unknown) => void;
   now: () => number;
 }
 
@@ -48,30 +53,56 @@ interface StoredSubscription extends PushSubscriptionRecord {
   sessionToken: string;
 }
 
-// The log keeps each entry's session cookie value beside it for access checks, and never sends it.
+// Everything the server keeps for one paired phone lives with its session and has a bound of its
+// own, so one session can never push out another's records.
+interface Session {
+  label: string;
+  log: StoredLogEntry[];
+  approvals: Map<string, StoredApproval>;
+  // when the server sent each push to this session
+  pushSentAt: Map<string, number>;
+  // push IDs of the receipts the log holds
+  receipts: Set<string>;
+  syncedMessages: Set<string>;
+}
+
+// The order number lets the admin's log merge every session's entries in the order they came.
 interface StoredLogEntry {
+  order: number;
   entry: LogEntry;
-  sessionToken: string | null;
+}
+
+interface Pairing {
+  codeHash: Buffer;
+  issuedAt: number;
+  failures: number;
 }
 
 const sessionCookie = 'probe_session';
 const approvalLifetimeMs = 15 * 60 * 1000;
+const pairingLifetimeMs = 10 * 60 * 1000;
+const pairingCodeLength = 10;
 const sessionMaxAgeSeconds = 30 * 24 * 60 * 60;
 
-// Anyone who reaches the public URL can call the server, so every request it keeps from bounds
-// both its count and its size.
+// Anyone who reaches the public URL can call the server. Only the admin key makes a session, through
+// a pairing code, and every request the server keeps from bounds both its count and its size.
 export const probeLimits = {
-  logEntries: 500,
-  sessions: 1000,
-  subscriptions: 50,
-  approvals: 1000,
-  pushes: 1000,
-  syncedMessages: 5000,
-  receipts: 5000,
-  delayedPushes: 20,
+  sessions: 20,
+  pairingAttempts: 5,
+  logEntriesPerSession: 500,
+  // shares without a session and approve calls without one, which only the admin reads
+  anonymousLogEntries: 100,
+  subscriptionsPerSession: 5,
+  approvalsPerSession: 200,
+  pushesPerSession: 200,
+  syncedMessagesPerSession: 1000,
+  receiptsPerSession: 1000,
+  // waiting or sending, for each session and for the admin
+  pushesInProgress: 10,
   rpcBodyBytes: 64 * 1024,
   // a phone photo fits; the server keeps only each file's name, type and size
   shareBodyBytes: 25 * 1024 * 1024,
+  // for shares with a session, and again for shares without one
   sharesInFlight: 2,
   shareFieldCharacters: 2000,
   shareFiles: 20,
@@ -82,50 +113,69 @@ export const probeLimits = {
 export function makeProbeHandler(
   options: ProbeHandlerOptions,
 ): (request: Request) => Promise<Response> {
-  // session cookie value → public label, least recently used first
-  const sessions = new Map<string, string>();
+  // session cookie value → the session's records
+  const sessions = new Map<string, Session>();
   const subscriptions = new Map<string, StoredSubscription>();
-  const approvals = new Map<string, StoredApproval>();
-  const pushSentAt = new Map<string, number>();
-  const syncedMessages = new Set<string>();
-  // push ID and session of each receipt the log holds
-  const receipts = new Set<string>();
-  const log: StoredLogEntry[] = [];
-  let delayedPushes = 0;
-  let sharesInFlight = 0;
+  const anonymousLog: StoredLogEntry[] = [];
+  // the session cookie value, or 'admin', → pushes waiting or sending
+  const pushesInProgress = new Map<string, number>();
+  const sharesInFlight = { session: 0, anonymous: 0 };
+  let pairing: Pairing | null = null;
+  let nextLogOrder = 0;
 
   function writeLog(
     kind: LogEntry['kind'],
     sessionToken: string | null,
     detail: Record<string, unknown>,
   ): LogEntry {
+    const session = sessionToken === null ? undefined : sessions.get(sessionToken);
     const entry: LogEntry = {
       id: crypto.randomUUID(),
       at: new Date(options.now()).toISOString(),
-      session: sessionToken === null ? null : (sessions.get(sessionToken) ?? null),
+      session: session?.label ?? null,
       kind,
       detail,
     };
+    const bucket = session?.log ?? anonymousLog;
 
-    log.push({ entry, sessionToken });
-    log.splice(0, Math.max(0, log.length - probeLimits.logEntries));
+    bucket.push({ order: nextLogOrder, entry });
+    nextLogOrder += 1;
+    bucket.splice(
+      0,
+      Math.max(
+        0,
+        bucket.length -
+          (session === undefined ? probeLimits.anonymousLogEntries : probeLimits.logEntriesPerSession),
+      ),
+    );
 
     return entry;
   }
 
   function findSession(request: Request): string | null {
     const token = new Bun.CookieMap(request.headers.get('cookie') ?? '').get(sessionCookie);
-    const label = token === null ? undefined : sessions.get(token);
 
-    if (token === null || label === undefined) {
-      return null;
+    return token !== null && sessions.has(token) ? token : null;
+  }
+
+  function removeSession(sessionToken: string): void {
+    sessions.delete(sessionToken);
+
+    for (const subscription of subscriptions.values()) {
+      if (subscription.sessionToken === sessionToken) {
+        subscriptions.delete(subscription.endpoint);
+      }
     }
+  }
 
-    // a session in use moves to the back, so the oldest one past the limit is the least used
-    sessions.delete(token);
-    sessions.set(token, label);
+  function changePushesInProgress(caller: string, change: 1 | -1): void {
+    const count = (pushesInProgress.get(caller) ?? 0) + change;
 
-    return token;
+    if (count === 0) {
+      pushesInProgress.delete(caller);
+    } else {
+      pushesInProgress.set(caller, count);
+    }
   }
 
   async function sendOne(
@@ -133,6 +183,13 @@ export function makeProbeHandler(
     push: z.infer<typeof pushInputSchema>,
     pushID: string,
   ): Promise<number> {
+    const session = sessions.get(subscription.sessionToken);
+
+    // a phone that signed out while a delayed push waited gets nothing
+    if (session === undefined) {
+      return 0;
+    }
+
     const sentAt = options.now();
     let approval: PushPayload['approval'] = null;
 
@@ -140,18 +197,18 @@ export function makeProbeHandler(
       const approvalID = crypto.randomUUID();
       const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
 
-      approvals.set(approvalID, {
+      session.approvals.set(approvalID, {
         tokenHash: hashSecret(token),
         sessionToken: subscription.sessionToken,
         issuedAt: sentAt,
         used: false,
       });
-      trimOldest(approvals, probeLimits.approvals);
+      trimOldest(session.approvals, probeLimits.approvalsPerSession);
       approval = { approvalID, token };
     }
 
-    pushSentAt.set(pushID, sentAt);
-    trimOldest(pushSentAt, probeLimits.pushes);
+    session.pushSentAt.set(pushID, sentAt);
+    trimOldest(session.pushSentAt, probeLimits.pushesPerSession);
 
     const payload: PushPayload = {
       pushID,
@@ -171,7 +228,7 @@ export function makeProbeHandler(
       nowMs: sentAt,
       transport: options.pushTransport,
     }).catch((error: unknown) => {
-      console.error('push send failed', error);
+      options.writeError('push send failed', error);
 
       return 0;
     });
@@ -196,64 +253,150 @@ export function makeProbeHandler(
 
   const base = implement(probeContract).$context<ProbeContext>();
 
-  function requireSession(context: ProbeContext): string {
-    if (context.sessionToken === null) {
+  function requireSession(context: ProbeContext): { token: string; session: Session } {
+    const session = context.sessionToken === null ? undefined : sessions.get(context.sessionToken);
+
+    if (context.sessionToken === null || session === undefined) {
       throw new ORPCError('UNAUTHORIZED', { message: 'no session' });
     }
 
-    return context.sessionToken;
+    return { token: context.sessionToken, session };
+  }
+
+  function requireAdmin(context: ProbeContext): void {
+    if (!context.isAdmin) {
+      throw new ORPCError('UNAUTHORIZED', { message: 'needs the admin key' });
+    }
   }
 
   const router = base.router({
     config: base.config.handler(({ context }) => ({
       vapidPublicKey: options.vapidKeys.publicKey,
-      session: context.sessionToken === null ? null : (sessions.get(context.sessionToken) ?? null),
+      session:
+        context.sessionToken === null ? null : (sessions.get(context.sessionToken)?.label ?? null),
     })),
 
+    createPairing: base.createPairing.handler(({ context }) => {
+      requireAdmin(context);
+
+      const code = buildPairingCode(crypto.getRandomValues(new Uint8Array(pairingCodeLength)));
+      const issuedAt = options.now();
+
+      pairing = { codeHash: hashSecret(code), issuedAt, failures: 0 };
+
+      return { code, expiresAt: new Date(issuedAt + pairingLifetimeMs).toISOString() };
+    }),
+
+    pair: base.pair.handler(({ context, input }) => {
+      if (pairing === null || options.now() - pairing.issuedAt > pairingLifetimeMs) {
+        pairing = null;
+
+        throw new ORPCError('FORBIDDEN', { message: 'no pairing code waiting' });
+      }
+
+      const code = input.code.toLowerCase().replaceAll(/[^0-9a-z]/g, '');
+
+      if (!timingSafeEqual(hashSecret(code), pairing.codeHash)) {
+        pairing.failures += 1;
+
+        if (pairing.failures >= probeLimits.pairingAttempts) {
+          pairing = null;
+        }
+
+        throw new ORPCError('FORBIDDEN', { message: 'wrong pairing code' });
+      }
+
+      // pairing again replaces the phone's earlier session
+      if (context.sessionToken !== null) {
+        removeSession(context.sessionToken);
+      }
+
+      if (sessions.size >= probeLimits.sessions) {
+        throw new ORPCError('CONFLICT', {
+          message: 'too many paired sessions; sign one out or restart the server',
+        });
+      }
+
+      pairing = null;
+
+      const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
+      const label = `S-${crypto.randomUUID().slice(0, 8)}`;
+
+      sessions.set(token, {
+        label,
+        log: [],
+        approvals: new Map(),
+        pushSentAt: new Map(),
+        receipts: new Set(),
+        syncedMessages: new Set(),
+      });
+      context.resHeaders?.append(
+        'set-cookie',
+        `${sessionCookie}=${token}; Path=/; Max-Age=${sessionMaxAgeSeconds}; HttpOnly; Secure; SameSite=Lax`,
+      );
+
+      return { session: label };
+    }),
+
     subscribe: base.subscribe.handler(({ context, input }) => {
-      const sessionToken = requireSession(context);
+      const { token } = requireSession(context);
 
       if (!options.isPushEndpointAllowed(new URL(input.endpoint))) {
         throw new ORPCError('BAD_REQUEST', { message: 'unknown push service' });
       }
 
+      const existing = subscriptions.get(input.endpoint);
+
+      if (existing !== undefined && existing.sessionToken !== token) {
+        throw new ORPCError('CONFLICT', { message: 'another session holds this endpoint' });
+      }
+
+      subscriptions.delete(input.endpoint);
       subscriptions.set(input.endpoint, {
         endpoint: input.endpoint,
         p256dh: input.keys.p256dh,
         auth: input.keys.auth,
-        sessionToken,
+        sessionToken: token,
       });
-      trimOldest(subscriptions, probeLimits.subscriptions);
-      writeLog('subscribed', sessionToken, { pushService: new URL(input.endpoint).host });
+
+      const own = [...subscriptions.values()].filter(
+        (subscription) => subscription.sessionToken === token,
+      );
+
+      for (const oldest of own.slice(0, Math.max(0, own.length - probeLimits.subscriptionsPerSession))) {
+        subscriptions.delete(oldest.endpoint);
+      }
+
+      writeLog('subscribed', token, { pushService: new URL(input.endpoint).host });
 
       return { subscribed: true as const };
     }),
 
     push: base.push.handler(async ({ context, input }) => {
-      if (!context.isAdmin) {
-        requireSession(context);
-      }
-
+      const caller = context.isAdmin ? 'admin' : requireSession(context).token;
       const targets = [...subscriptions.values()].filter(
-        (subscription) => context.isAdmin || subscription.sessionToken === context.sessionToken,
+        (subscription) => context.isAdmin || subscription.sessionToken === caller,
       );
 
       if (targets.length === 0) {
         throw new ORPCError('CONFLICT', { message: 'no subscription to send to' });
       }
 
+      if ((pushesInProgress.get(caller) ?? 0) >= probeLimits.pushesInProgress) {
+        throw new ORPCError('TOO_MANY_REQUESTS', { message: 'too many pushes in progress' });
+      }
+
       const pushID = crypto.randomUUID();
+
+      changePushesInProgress(caller, 1);
+
       const sendAll = () =>
-        Promise.all(targets.map((subscription) => sendOne(subscription, input, pushID)));
+        Promise.all(targets.map((subscription) => sendOne(subscription, input, pushID))).finally(
+          () => changePushesInProgress(caller, -1),
+        );
 
       if (input.delaySeconds > 0) {
-        if (delayedPushes >= probeLimits.delayedPushes) {
-          throw new ORPCError('TOO_MANY_REQUESTS', { message: 'too many delayed pushes waiting' });
-        }
-
-        delayedPushes += 1;
         options.schedule(input.delaySeconds * 1000, async () => {
-          delayedPushes -= 1;
           await sendAll();
         });
 
@@ -264,7 +407,8 @@ export function makeProbeHandler(
     }),
 
     pushReceived: base.pushReceived.handler(({ context, input }) => {
-      const sentAt = pushSentAt.get(input.pushID);
+      const { token, session } = requireSession(context);
+      const sentAt = session.pushSentAt.get(input.pushID);
 
       if (sentAt === undefined) {
         throw new ORPCError('NOT_FOUND', { message: 'unknown push' });
@@ -272,15 +416,13 @@ export function makeProbeHandler(
 
       // a report whose answer got lost comes again, and a page and the service worker can report
       // the same receipt at once; the log keeps one entry for each push a session received
-      const receiptKey = `${input.pushID} ${context.sessionToken ?? 'no session'}`;
-
-      if (receipts.has(receiptKey)) {
+      if (session.receipts.has(input.pushID)) {
         return { recorded: true as const, duplicate: true };
       }
 
-      receipts.add(receiptKey);
-      trimOldest(receipts, probeLimits.receipts);
-      writeLog('push-received', context.sessionToken, {
+      session.receipts.add(input.pushID);
+      trimOldest(session.receipts, probeLimits.receiptsPerSession);
+      writeLog('push-received', token, {
         pushID: input.pushID,
         phoneClockDelayMs: input.receivedAt - sentAt,
         reportedAfterMs: options.now() - sentAt,
@@ -290,7 +432,9 @@ export function makeProbeHandler(
     }),
 
     approve: base.approve.handler(({ context, input }) => {
-      const approval = approvals.get(input.approvalID);
+      const approval = [...sessions.values()]
+        .map((session) => session.approvals.get(input.approvalID))
+        .find((candidate) => candidate !== undefined);
       const refusal = pickApprovalRefusal({
         sessionToken: context.sessionToken,
         approval,
@@ -322,7 +466,7 @@ export function makeProbeHandler(
 
     signOut: base.signOut.handler(({ context }) => {
       if (context.sessionToken !== null) {
-        sessions.delete(context.sessionToken);
+        removeSession(context.sessionToken);
       }
 
       context.resHeaders?.append(
@@ -334,15 +478,15 @@ export function makeProbeHandler(
     }),
 
     sync: base.sync.handler(({ context, input }) => {
-      const sessionToken = requireSession(context);
+      const { token, session } = requireSession(context);
 
-      if (syncedMessages.has(input.messageID)) {
+      if (session.syncedMessages.has(input.messageID)) {
         return { duplicate: true };
       }
 
-      syncedMessages.add(input.messageID);
-      trimOldest(syncedMessages, probeLimits.syncedMessages);
-      writeLog('sync', sessionToken, {
+      session.syncedMessages.add(input.messageID);
+      trimOldest(session.syncedMessages, probeLimits.syncedMessagesPerSession);
+      writeLog('sync', token, {
         messageID: input.messageID,
         text: input.text,
         lastChance: input.lastChance,
@@ -354,19 +498,19 @@ export function makeProbeHandler(
 
     log: base.log.handler(({ context }) => {
       if (context.isAdmin) {
-        return log.map((stored) => stored.entry).toReversed();
+        return collectEveryEntry().map((stored) => stored.entry);
       }
 
-      const sessionToken = requireSession(context);
-
-      return log
-        .filter((stored) => stored.sessionToken === sessionToken)
-        .map((stored) => stored.entry)
+      return requireSession(context)
+        .session.log.map((stored) => stored.entry)
         .toReversed();
     }),
 
-    entry: base.entry.handler(({ input }) => {
-      const stored = log.find((candidate) => candidate.entry.id === input.id);
+    entry: base.entry.handler(({ context, input }) => {
+      const candidates = context.isAdmin
+        ? collectEveryEntry()
+        : requireSession(context).session.log;
+      const stored = candidates.find((candidate) => candidate.entry.id === input.id);
 
       if (stored === undefined) {
         throw new ORPCError('NOT_FOUND', { message: 'unknown entry' });
@@ -376,16 +520,22 @@ export function makeProbeHandler(
     }),
 
     subscriptions: base.subscriptions.handler(({ context }) => {
-      if (!context.isAdmin) {
-        throw new ORPCError('UNAUTHORIZED', { message: 'needs the admin key' });
-      }
+      requireAdmin(context);
 
       return [...subscriptions.values()].map((subscription) => ({
-        session: sessions.get(subscription.sessionToken) ?? null,
+        session: sessions.get(subscription.sessionToken)?.label ?? null,
         pushService: new URL(subscription.endpoint).host,
       }));
     }),
   });
+
+  // newest first
+  function collectEveryEntry(): StoredLogEntry[] {
+    return [...sessions.values()]
+      .flatMap((session) => session.log)
+      .concat(anonymousLog)
+      .toSorted((left, right) => right.order - left.order);
+  }
 
   const rpcHandler = new RPCHandler(router, { plugins: [new ResponseHeadersPlugin()] });
 
@@ -397,17 +547,23 @@ export function makeProbeHandler(
 
     // the RPC handler reads the whole body before the contract checks its fields
     const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
-    const body = hasBody ? await readCappedBody(request, probeLimits.rpcBodyBytes) : null;
+    const read = hasBody
+      ? await readCappedBody(
+          request,
+          probeLimits.rpcBodyBytes,
+          AbortSignal.timeout(options.bodyDeadlineMs),
+        )
+      : null;
 
-    if (hasBody && body === null) {
-      return new Response('the call is too large', { status: 413 });
+    if (read !== null && read.kind !== 'read') {
+      return answerUnreadBody(read, 'call');
     }
 
     const givenAdminKey = request.headers.get(adminHeaderName);
     const capped = new Request(request.url, {
       method: request.method,
       headers: request.headers,
-      ...(body === null ? {} : { body }),
+      ...(read === null ? {} : { body: read.body }),
     });
     const result = await rpcHandler.handle(capped, {
       prefix: rpcPrefix,
@@ -426,25 +582,37 @@ export function makeProbeHandler(
   }
 
   // The share sheet posts a browser form, which no RPC client builds, so the share target is a
-  // plain route.
+  // plain route. Shares with a session and shares without one take slots from separate pools, so
+  // anonymous shares never hold the slots a paired phone needs.
   async function answerShare(request: Request): Promise<Response> {
-    // each share in flight holds its body in memory, so only a few run at once
-    if (sharesInFlight >= probeLimits.sharesInFlight) {
+    const sessionToken = findSession(request);
+    const pool = sessionToken === null ? 'anonymous' : 'session';
+
+    if (sharesInFlight[pool] >= probeLimits.sharesInFlight) {
       return new Response('another share is in progress', { status: 503 });
     }
 
-    sharesInFlight += 1;
+    sharesInFlight[pool] += 1;
 
-    const body = await readCappedBody(request, probeLimits.shareBodyBytes).finally(() => {
-      sharesInFlight -= 1;
-    });
+    try {
+      return await recordShare(request, sessionToken);
+    } finally {
+      sharesInFlight[pool] -= 1;
+    }
+  }
 
-    if (body === null) {
-      return new Response('the share is too large', { status: 413 });
+  async function recordShare(request: Request, sessionToken: string | null): Promise<Response> {
+    const read = await readCappedBody(
+      request,
+      probeLimits.shareBodyBytes,
+      AbortSignal.timeout(options.bodyDeadlineMs),
+    );
+
+    if (read.kind !== 'read') {
+      return answerUnreadBody(read, 'share');
     }
 
-    const sessionToken = findSession(request);
-    const form = await new Response(body, {
+    const form = await new Response(read.body, {
       headers: { 'content-type': request.headers.get('content-type') ?? '' },
     })
       .formData()
@@ -485,52 +653,37 @@ export function makeProbeHandler(
     });
   }
 
-  async function answerStatic(request: Request, pathname: string): Promise<Response> {
-    const decision = pickStaticResponse(
-      pathname,
-      options.publicDirectory,
-      findSession(request) !== null,
-    );
+  // A page GET never starts a session, so an anonymous caller adds nothing to the server's state.
+  function answerStatic(pathname: string): Promise<Response> {
+    return match(pickStaticResponse(pathname, options.publicDirectory))
+      .with({ kind: 'icon' }, async (decision) =>
+        new Response(renderIconPNG(decision.size, decision.variant), {
+          headers: { 'content-type': 'image/png' },
+        }),
+      )
+      .with({ kind: 'asset' }, async (decision) => {
+        const asset = options.clientAssets.get(decision.name);
 
-    if (decision.kind === 'icon') {
-      return new Response(renderIconPNG(decision.size, decision.variant), {
-        headers: { 'content-type': 'image/png' },
-      });
-    }
+        return asset === undefined
+          ? new Response('not found', { status: 404 })
+          : new Response(asset, {
+              headers: {
+                'content-type': 'text/javascript; charset=utf-8',
+                'cache-control': 'no-cache',
+              },
+            });
+      })
+      .with({ kind: 'file' }, async (decision) => {
+        const file = await options.readPublicFile(decision.path);
 
-    if (decision.kind === 'asset') {
-      const asset = options.clientAssets.get(decision.name);
-
-      return asset === undefined
-        ? new Response('not found', { status: 404 })
-        : new Response(asset, {
-            headers: {
-              'content-type': 'text/javascript; charset=utf-8',
-              'cache-control': 'no-cache',
-            },
-          });
-    }
-
-    const file = decision.kind === 'file' ? await options.readPublicFile(decision.path) : null;
-
-    if (decision.kind === 'not-found' || file === null) {
-      return new Response('not found', { status: 404 });
-    }
-
-    const headers = new Headers({ 'content-type': decision.contentType, 'cache-control': 'no-cache' });
-
-    if (decision.startsSession) {
-      const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
-
-      sessions.set(token, `S-${crypto.randomUUID().slice(0, 8)}`);
-      trimOldest(sessions, probeLimits.sessions);
-      headers.append(
-        'set-cookie',
-        `${sessionCookie}=${token}; Path=/; Max-Age=${sessionMaxAgeSeconds}; HttpOnly; Secure; SameSite=Lax`,
-      );
-    }
-
-    return new Response(file, { headers });
+        return file === null
+          ? new Response('not found', { status: 404 })
+          : new Response(file, {
+              headers: { 'content-type': decision.contentType, 'cache-control': 'no-cache' },
+            });
+      })
+      .with({ kind: 'not-found' }, async () => new Response('not found', { status: 404 }))
+      .exhaustive();
   }
 
   return async function answerRequest(request: Request): Promise<Response> {
@@ -545,11 +698,18 @@ export function makeProbeHandler(
     }
 
     if (request.method === 'GET') {
-      return answerStatic(request, pathname);
+      return answerStatic(pathname);
     }
 
     return new Response('not found', { status: 404 });
   };
+}
+
+function answerUnreadBody(read: Exclude<CappedBody, { kind: 'read' }>, what: string): Response {
+  return match(read)
+    .with({ kind: 'too-large' }, () => new Response(`the ${what} is too large`, { status: 413 }))
+    .with({ kind: 'too-slow' }, () => new Response(`the ${what} arrived too slowly`, { status: 408 }))
+    .exhaustive();
 }
 
 // The log keeps a copy of a few request headers; a browser's values are short words such as

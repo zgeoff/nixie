@@ -1,5 +1,6 @@
 import { type ProbeClient, buildProbeClient } from '../../client/build-probe-client.ts';
 import { type PushPayload, pushPayloadSchema } from '../contract.ts';
+import { type PairableProbe, createTestSession } from './create-test-session.ts';
 import { decryptPushPayload } from './decrypt-push-payload.ts';
 
 export interface TestPhone {
@@ -10,18 +11,14 @@ export interface TestPhone {
   readPush: (body: Uint8Array<ArrayBuffer>) => Promise<PushPayload>;
 }
 
-// Plays the browser of one phone against the probe's handler: opens a page to get a session
-// cookie, then subscribes to push at the given endpoint with a key pair of its own.
-export async function createTestPhone(
-  answerRequest: (request: Request) => Promise<Response>,
-  endpoint: string,
-): Promise<TestPhone> {
-  const page = await answerRequest(new Request('http://probe.test/'));
-  const cookie = (page.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+// Plays the browser of one phone against the probe's handler: pairs to get a session cookie, then
+// subscribes to push at the given endpoint with a key pair of its own.
+export async function createTestPhone(probe: PairableProbe, endpoint: string): Promise<TestPhone> {
+  const cookie = await createTestSession(probe);
   const client = buildProbeClient({
     origin: 'http://probe.test',
     headers: { cookie },
-    fetch: answerRequest,
+    fetch: probe.answerRequest,
   });
   const userAgentKeyPair = await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },

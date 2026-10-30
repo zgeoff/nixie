@@ -33,9 +33,10 @@ shows the delay from the send to the receipt.
 
 1. Open `https://<probe_host>/` in Chrome and install it as in "Before you start". Open
    `chrome://webapks` and record whether an entry for `https://<probe_host>/` exists.
-2. Open the app from its icon, open **Block 1**, and tap **Subscribe**. Expect: Chrome's
-   notification prompt, then `Permission: granted` and a `Subscribed` line. Record: the prompt's
-   form, and the result after you allow.
+2. Open the app from its icon. On the send page, tap **Make a pairing code**, then enter the code on
+   the app's home page and tap **Pair**. Expect: `Paired as S-` and a label. Then open **Block 1**
+   and tap **Subscribe**. Expect: Chrome's notification prompt, then `Permission: granted` and a
+   `Subscribed` line. Record: the prompt's form, and the result after you allow.
 3. Open **Settings > Apps > nixie probe > Notifications**. Record: whether the app has its own
    notification settings, and the channels listed.
 4. On the block 1 page, keep the delay at 15 s and the urgency at `normal`, tap **Send to this
@@ -74,8 +75,9 @@ service worker shows the answer as a second notification.
    the call, and the log line.
 5. Send an approval push, then tap **Sign out** on the block 2 page, which makes the server forget
    the session and clear the cookie, and tap **Approve** on the notification. Expect:
-   `Refused (401): no session`, and a log line on the send page with `"sessionKnown": false`.
-   Record: the log line, and what the notification shows.
+   `Refused (401): no session`, and a log line on the send page with `"sessionKnown": false`. Pair
+   the phone again, as in block 1 step 2, before the next block. Record: the log line, and what the
+   notification shows.
 
 ## Block 3: links
 
@@ -134,7 +136,8 @@ files by POST, and the probe server records each share and opens the block 6 pag
    what the page shows.
 3. Share selected text from another app. Record: the fields that arrived.
 4. On any share, record `cookieSent` and `secFetchSite`, which show whether the share's POST carried
-   the `SameSite=Lax` session cookie.
+   the `SameSite=Lax` session cookie. A share without the cookie belongs to no session, so it shows
+   only in the send page's log.
 
 ## Block 7: background sync
 

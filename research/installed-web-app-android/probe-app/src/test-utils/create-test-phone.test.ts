@@ -40,10 +40,15 @@ test('it subscribes with a session cookie and reads a push sent to it', async ()
 
       return (await file.exists()) ? file : null;
     },
+    bodyDeadlineMs: 5000,
+    writeError: () => {},
     now: () => Date.UTC(2026, 9, 30, 9, 0, 0),
   });
 
-  const phone = await createTestPhone(answerRequest, new URL('/push/phone', pushService.url).href);
+  const phone = await createTestPhone(
+    { answerRequest, adminKey: 'test-admin-key' },
+    new URL('/push/phone', pushService.url).href,
+  );
 
   await phone.client.push({
     title: 'hello phone',

@@ -7,7 +7,7 @@ import { createTestProbe } from '../src/test-utils/create-test-probe.ts';
 
 test('it drops a receipt the server refuses for good, such as one from before a restart', async () => {
   const probe = await createTestProbe();
-  const phone = await createTestPhone(probe.answerRequest, probe.endpoint);
+  const phone = await createTestPhone(probe,probe.endpoint);
   const store = openProbeStore(new IDBFactory());
 
   await store.addReceipt({ pushID: '3e8a6c10-5b2d-4f7e-9a1c-6d8e0f2a4b33', receivedAt: 4_000 });
@@ -20,7 +20,7 @@ test('it drops a receipt the server refuses for good, such as one from before a 
 
 test('it reports a stored receipt once the probe answers again', async () => {
   const probe = await createTestProbe();
-  const phone = await createTestPhone(probe.answerRequest, probe.endpoint);
+  const phone = await createTestPhone(probe,probe.endpoint);
   const store = openProbeStore(new IDBFactory());
 
   await phone.client.push({});

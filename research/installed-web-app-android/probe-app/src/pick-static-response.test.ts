@@ -12,7 +12,6 @@ test.each<[string, StaticResponse]>([
       kind: 'file',
       path: '/srv/probe/public/index.html',
       contentType: 'text/html; charset=utf-8',
-      startsSession: true,
     },
   ],
   [
@@ -21,18 +20,10 @@ test.each<[string, StaticResponse]>([
       kind: 'file',
       path: '/srv/probe/public/manifest.webmanifest',
       contentType: 'application/manifest+json',
-      startsSession: false,
     },
   ],
 ])('it answers %s', (pathname, expected) => {
-  expect(pickStaticResponse(pathname, '/srv/probe/public', false)).toStrictEqual(expected);
-});
-
-test('it starts no second session for a page request that holds one', () => {
-  expect(pickStaticResponse('/block-2.html', '/srv/probe/public', true)).toMatchObject({
-    kind: 'file',
-    startsSession: false,
-  });
+  expect(pickStaticResponse(pathname, '/srv/probe/public')).toStrictEqual(expected);
 });
 
 test.each([
@@ -42,7 +33,7 @@ test.each([
   ['a file type it never serves', '/keys.json'],
   ['a script outside the bundle names', '/assets/../server.ts'],
 ])('it refuses %s', (_label, pathname) => {
-  expect(pickStaticResponse(pathname, '/srv/probe/public', false)).toStrictEqual({
+  expect(pickStaticResponse(pathname, '/srv/probe/public')).toStrictEqual({
     kind: 'not-found',
   });
 });

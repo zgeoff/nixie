@@ -8,7 +8,7 @@ import { createTestProbe } from '../src/test-utils/create-test-probe.ts';
 
 test('it sets a refused message aside and sends the messages behind it', async () => {
   const probe = await createTestProbe();
-  const phone = await createTestPhone(probe.answerRequest, probe.endpoint);
+  const phone = await createTestPhone(probe,probe.endpoint);
   const store = openProbeStore(new IDBFactory());
 
   await store.addMessage({

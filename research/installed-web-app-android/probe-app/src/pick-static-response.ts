@@ -3,7 +3,7 @@ import { extname, resolve, sep } from 'node:path';
 export type StaticResponse =
   | { kind: 'icon'; variant: 'launcher' | 'badge'; size: number }
   | { kind: 'asset'; name: string }
-  | { kind: 'file'; path: string; contentType: string; startsSession: boolean }
+  | { kind: 'file'; path: string; contentType: string }
   | { kind: 'not-found' };
 
 const iconSizes = [96, 192, 512];
@@ -15,12 +15,8 @@ const contentTypes: Record<string, string> = {
 };
 
 // Decides how to answer a GET outside the API: a drawn icon, a bundled script, a file from the
-// public folder, or nothing. A page starts a session when the request holds none.
-export function pickStaticResponse(
-  pathname: string,
-  publicRoot: string,
-  hasSession: boolean,
-): StaticResponse {
+// public folder, or nothing.
+export function pickStaticResponse(pathname: string, publicRoot: string): StaticResponse {
   const icon = /^\/icons\/(launcher|badge)-(\d+)\.png$/.exec(pathname);
 
   if (icon !== null) {
@@ -44,5 +40,5 @@ export function pickStaticResponse(
     return { kind: 'not-found' };
   }
 
-  return { kind: 'file', path, contentType, startsSession: extname(path) === '.html' && !hasSession };
+  return { kind: 'file', path, contentType };
 }

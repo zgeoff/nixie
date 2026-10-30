@@ -32,6 +32,15 @@ const renderSubscriptions = async () => {
   );
 };
 
+getElement('#make-pairing', HTMLButtonElement).addEventListener('click', async () => {
+  getElement('#pairing', HTMLElement).textContent = await page.client.createPairing().then(
+    (pairing) =>
+      `Code: ${pairing.code}, until ${new Date(pairing.expiresAt).toLocaleTimeString()}. ` +
+      'A new code replaces this one.',
+    formatCallError,
+  );
+});
+
 void renderSubscriptions();
 setInterval(() => void renderSubscriptions(), 5000);
 

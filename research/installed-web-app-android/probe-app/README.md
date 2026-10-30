@@ -33,16 +33,23 @@ binds to loopback only, so the tunnel is the one way in from outside your PC.
 
 On the first start, the server writes its VAPID key pair to the git-ignored `.vapid/` folder and
 reuses it after that, so a phone's push subscription outlives a restart. The results log, the
-sessions and the subscriptions live in memory, and a restart clears them: subscribe again on block 1
-after a restart.
+sessions and the subscriptions live in memory, and a restart clears them: pair the phone and
+subscribe again on block 1 after a restart.
+
+Anyone who learns the tunnel's URL can reach the server, so only the send page's admin key makes a
+session. The send page makes a pairing code that works once, and the phone enters it on the home
+page. Each session keeps its records within bounds of its own, so a caller without a session can
+neither fill nor push out a paired phone's records.
 
 ## Pages
 
+- **Home** pairs the phone with a code from the send page.
 - **Blocks 1, 2, 6 and 7** each list the taps to make and show what the server recorded for this
   phone.
 - **Log** shows every entry for this phone's session.
-- **Send** opens on the PC, from the address the server prints. It sends a push to every subscribed
-  phone with a chosen urgency, tag, sound and buttons, and shows every session's log.
+- **Send** opens on the PC, from the address the server prints. It makes pairing codes, sends a push
+  to every subscribed phone with a chosen urgency, tag, sound and buttons, and shows every session's
+  log.
 
 ## Checks
 

@@ -4,6 +4,7 @@ import { makeProbeHandler } from '../make-probe-handler.ts';
 
 export interface TestProbe {
   answerRequest: (request: Request) => Promise<Response>;
+  adminKey: string;
   // the push endpoint on a local stand-in for the push service, which accepts every push
   endpoint: string;
   // each push body the stand-in received, in order
@@ -51,8 +52,11 @@ export async function createTestProbe(): Promise<TestProbe> {
 
         return (await file.exists()) ? file : null;
       },
+      bodyDeadlineMs: 5000,
+      writeError: () => {},
       now: Date.now,
     }),
+    adminKey: 'test-admin-key',
     endpoint: new URL('/push/phone', pushService.url).href,
     pushBodies,
   };
