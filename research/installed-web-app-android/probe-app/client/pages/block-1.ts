@@ -1,6 +1,7 @@
-import { pushInputSchema } from '../../src/contract.ts';
+import { replacePushSubscription } from '../replace-push-subscription.ts';
 import { formatCallError } from './format-call-error.ts';
 import { getElement } from './get-element.ts';
+import { requestPush } from './request-push.ts';
 import { startPage } from './start-page.ts';
 
 const page = await startPage();
@@ -24,47 +25,30 @@ getElement('#subscribe', HTMLButtonElement).addEventListener('click', async () =
     return;
   }
 
-  const existing = await page.registration.pushManager.getSubscription();
-  const existingKey = existing?.options.applicationServerKey;
-
-  // a subscription made under another server key cannot be reused
-  if (
-    existing !== null &&
-    existingKey !== null &&
-    existingKey !== undefined &&
-    btoa(String.fromCharCode(...new Uint8Array(existingKey)))
-      .replaceAll('+', '-')
-      .replaceAll('/', '_')
-      .replace(/=+$/, '') !== page.vapidPublicKey
-  ) {
-    await existing.unsubscribe();
-  }
-
-  const subscription = (
-    await page.registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: page.vapidPublicKey,
-    })
-  ).toJSON();
-
-  result.textContent = await page.client
-    .subscribe({
-      endpoint: subscription.endpoint ?? '',
-      keys: { p256dh: subscription.keys?.['p256dh'] ?? '', auth: subscription.keys?.['auth'] ?? '' },
-    })
-    .then(() => 'Subscribed', formatCallError);
+  result.textContent = await replacePushSubscription(
+    page.registration.pushManager,
+    page.vapidPublicKey,
+  ).then(
+    (subscription) =>
+      page.client
+        .subscribe({
+          endpoint: subscription.endpoint ?? '',
+          keys: {
+            p256dh: subscription.keys?.['p256dh'] ?? '',
+            auth: subscription.keys?.['auth'] ?? '',
+          },
+        })
+        .then(() => 'Subscribed', formatCallError),
+    (error: unknown) => `Not subscribed: ${String(error)}`,
+  );
 });
 
 getElement('#send', HTMLButtonElement).addEventListener('click', async () => {
-  getElement('#send-result', HTMLElement).textContent = await page.client
-    .push(
-      pushInputSchema.parse({
-        delaySeconds: Number(getElement('#delay', HTMLInputElement).value),
-        urgency: getElement('#urgency', HTMLSelectElement).value,
-        tag: getElement('#tag', HTMLInputElement).value,
-        silent: getElement('#silent', HTMLInputElement).checked,
-        renotify: getElement('#renotify', HTMLInputElement).checked,
-      }),
-    )
-    .then((sent) => JSON.stringify(sent), formatCallError);
+  getElement('#send-result', HTMLElement).textContent = await requestPush(page.client, {
+    delaySeconds: Number(getElement('#delay', HTMLInputElement).value),
+    urgency: getElement('#urgency', HTMLSelectElement).value,
+    tag: getElement('#tag', HTMLInputElement).value,
+    silent: getElement('#silent', HTMLInputElement).checked,
+    renotify: getElement('#renotify', HTMLInputElement).checked,
+  });
 });

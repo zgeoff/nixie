@@ -18,22 +18,21 @@ export async function drainOutbox(
   const result: DrainResult = { sent: 0, refused: 0, kept: 0 };
 
   for (const message of await store.listMessages()) {
-    try {
-      await client.sync({
-        messageID: message.id,
-        text: message.text,
-        queuedAt: message.queuedAt,
-        lastChance,
-      });
-      await store.removeMessage(message.id);
+    const failure = await client
+      .sync({ messageID: message.id, text: message.text, queuedAt: message.queuedAt, lastChance })
+      .then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+    if (failure === null) {
+      await store.markSent(message.id);
       result.sent += 1;
-    } catch (error) {
-      if (isPermanentRefusal(error)) {
-        await store.refuseMessage({ ...message, status: error.status, reason: error.message });
-        result.refused += 1;
-      } else {
-        result.kept += 1;
-      }
+    } else if (isPermanentRefusal(failure)) {
+      await store.refuseMessage(message.id, failure.status, failure.message);
+      result.refused += 1;
+    } else {
+      result.kept += 1;
     }
   }
 

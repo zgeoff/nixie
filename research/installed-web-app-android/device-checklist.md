@@ -46,8 +46,8 @@ shows the delay from the send to the receipt.
    `phoneClockDelayMs` of each, and the time each notification shows.
 6. From the send page, send 2 pushes with the tag `replace`, the second with **silent** ticked.
    Expect: one notification, replaced without sound or vibration. Record: what you heard and saw.
-7. Send a push with the tag `replace` and **renotify** ticked. Expect: the notification replaced,
-   with sound. Record: what you heard.
+7. Untick **silent**, tick **renotify**, and send a push with the tag `replace`. Expect: the
+   notification replaced, with sound. Record: what you heard.
 8. Turn on Do Not Disturb, then send a push with `Urgency: high`. Expect: no sound. Record: whether
    the app appears under the exceptions Do Not Disturb offers.
 9. Look at the app's icon with a notification unread. Expect: a dot, not a number. Record: dot,

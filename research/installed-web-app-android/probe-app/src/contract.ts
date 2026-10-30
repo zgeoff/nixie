@@ -55,8 +55,11 @@ export const probeContract = {
   subscribe: oc
     .input(
       z.object({
-        endpoint: z.url(),
-        keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
+        endpoint: z.url().max(2048),
+        keys: z.object({
+          p256dh: z.string().min(1).max(200),
+          auth: z.string().min(1).max(100),
+        }),
       }),
     )
     .output(z.object({ subscribed: z.literal(true) })),
@@ -70,7 +73,7 @@ export const probeContract = {
   ),
   pushReceived: oc
     .input(z.object({ pushID: z.uuid(), receivedAt: z.number() }))
-    .output(z.object({ recorded: z.literal(true) })),
+    .output(z.object({ recorded: z.literal(true), duplicate: z.boolean() })),
   approve: oc.input(approvalSchema).output(z.object({ approved: z.literal(true) })),
   signOut: oc.output(z.object({ signedOut: z.boolean() })),
   sync: oc

@@ -1,5 +1,6 @@
 import { formatCallError } from './format-call-error.ts';
 import { getElement } from './get-element.ts';
+import { requestPush } from './request-push.ts';
 import { startPage } from './start-page.ts';
 
 const page = await startPage();
@@ -9,17 +10,13 @@ getElement('#actions', HTMLElement).textContent =
 page.pollLog(['approve', 'push-sent', 'push-received']);
 
 getElement('#send', HTMLButtonElement).addEventListener('click', async () => {
-  getElement('#send-result', HTMLElement).textContent = await page.client
-    .push({
-      title: 'Approve a test item?',
-      urgency: 'high',
-      tag: 'approval',
-      silent: false,
-      renotify: false,
-      approve: true,
-      delaySeconds: Number(getElement('#delay', HTMLInputElement).value),
-    })
-    .then((sent) => JSON.stringify(sent), formatCallError);
+  getElement('#send-result', HTMLElement).textContent = await requestPush(page.client, {
+    title: 'Approve a test item?',
+    urgency: 'high',
+    tag: 'approval',
+    approve: true,
+    delaySeconds: Number(getElement('#delay', HTMLInputElement).value),
+  });
 });
 
 getElement('#sign-out', HTMLButtonElement).addEventListener('click', async () => {

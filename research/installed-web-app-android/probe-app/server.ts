@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { isKnownPushService } from './src/is-known-push-service.ts';
-import { makeProbeHandler } from './src/make-probe-handler.ts';
+import { makeProbeHandler, probeLimits } from './src/make-probe-handler.ts';
 import { openVapidKeys } from './src/open-vapid-keys.ts';
 import { runClientBuild } from './src/run-client-build.ts';
 
@@ -16,11 +16,22 @@ const answerRequest = makeProbeHandler({
   schedule: (delayMs, task) => {
     setTimeout(() => void task(), delayMs);
   },
+  readPublicFile: async (path) => {
+    const file = Bun.file(path);
+
+    return (await file.exists()) ? file : null;
+  },
   now: Date.now,
 });
 
 // loopback only: the tunnel reaches the server here, and the network around the PC never does
-const server = Bun.serve({ hostname: '127.0.0.1', port, fetch: answerRequest });
+const server = Bun.serve({
+  hostname: '127.0.0.1',
+  port,
+  // Bun refuses a larger body before the handler sees it; the handler holds each route to less
+  maxRequestBodySize: probeLimits.shareBodyBytes + 1024 * 1024,
+  fetch: answerRequest,
+});
 
 console.log(`probe app on ${server.url.href}`);
 console.log(`send page: ${server.url.href}send.html?key=${adminKey}`);

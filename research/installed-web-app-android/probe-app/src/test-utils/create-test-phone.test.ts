@@ -35,6 +35,11 @@ test('it subscribes with a session cookie and reads a push sent to it', async ()
     isPushEndpointAllowed: () => true,
     pushTransport: (url, init) => fetch(url, init),
     schedule: () => {},
+    readPublicFile: async (path) => {
+      const file = Bun.file(path);
+
+      return (await file.exists()) ? file : null;
+    },
     now: () => Date.UTC(2026, 9, 30, 9, 0, 0),
   });
 

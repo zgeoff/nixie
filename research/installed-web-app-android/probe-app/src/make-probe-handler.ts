@@ -16,8 +16,10 @@ import {
 import { hashSecret } from './hash-secret.ts';
 import { pickApprovalRefusal, type StoredApproval } from './pick-approval-refusal.ts';
 import { pickStaticResponse } from './pick-static-response.ts';
+import { readCappedBody } from './read-capped-body.ts';
 import { renderIconPNG } from './render-icon-png.ts';
 import { type PushSubscriptionRecord, type PushTransport, sendPush } from './send-push.ts';
+import { trimOldest } from './trim-oldest.ts';
 
 interface ProbeHandlerOptions {
   vapidKeys: VapidKeys;
@@ -29,6 +31,8 @@ interface ProbeHandlerOptions {
   pushTransport: PushTransport;
   // runs a delayed push; the server passes a timer, and a test runs the task when it chooses
   schedule: (delayMs: number, task: () => Promise<void>) => void;
+  // a file from the public folder, or null when it does not exist
+  readPublicFile: (path: string) => Promise<Blob | null>;
   now: () => number;
 }
 
@@ -53,18 +57,42 @@ interface StoredLogEntry {
 const sessionCookie = 'probe_session';
 const approvalLifetimeMs = 15 * 60 * 1000;
 const sessionMaxAgeSeconds = 30 * 24 * 60 * 60;
-const logLimit = 500;
+
+// Anyone who reaches the public URL can call the server, so every request it keeps from bounds
+// both its count and its size.
+export const probeLimits = {
+  logEntries: 500,
+  sessions: 1000,
+  subscriptions: 50,
+  approvals: 1000,
+  pushes: 1000,
+  syncedMessages: 5000,
+  receipts: 5000,
+  delayedPushes: 20,
+  rpcBodyBytes: 64 * 1024,
+  // a phone photo fits; the server keeps only each file's name, type and size
+  shareBodyBytes: 25 * 1024 * 1024,
+  sharesInFlight: 2,
+  shareFieldCharacters: 2000,
+  shareFiles: 20,
+  fileNameCharacters: 200,
+  headerValueCharacters: 100,
+};
 
 export function makeProbeHandler(
   options: ProbeHandlerOptions,
 ): (request: Request) => Promise<Response> {
-  // session cookie value → public label
+  // session cookie value → public label, least recently used first
   const sessions = new Map<string, string>();
   const subscriptions = new Map<string, StoredSubscription>();
   const approvals = new Map<string, StoredApproval>();
   const pushSentAt = new Map<string, number>();
   const syncedMessages = new Set<string>();
+  // push ID and session of each receipt the log holds
+  const receipts = new Set<string>();
   const log: StoredLogEntry[] = [];
+  let delayedPushes = 0;
+  let sharesInFlight = 0;
 
   function writeLog(
     kind: LogEntry['kind'],
@@ -80,15 +108,24 @@ export function makeProbeHandler(
     };
 
     log.push({ entry, sessionToken });
-    log.splice(0, Math.max(0, log.length - logLimit));
+    log.splice(0, Math.max(0, log.length - probeLimits.logEntries));
 
     return entry;
   }
 
   function findSession(request: Request): string | null {
     const token = new Bun.CookieMap(request.headers.get('cookie') ?? '').get(sessionCookie);
+    const label = token === null ? undefined : sessions.get(token);
 
-    return token !== null && sessions.has(token) ? token : null;
+    if (token === null || label === undefined) {
+      return null;
+    }
+
+    // a session in use moves to the back, so the oldest one past the limit is the least used
+    sessions.delete(token);
+    sessions.set(token, label);
+
+    return token;
   }
 
   async function sendOne(
@@ -109,10 +146,12 @@ export function makeProbeHandler(
         issuedAt: sentAt,
         used: false,
       });
+      trimOldest(approvals, probeLimits.approvals);
       approval = { approvalID, token };
     }
 
     pushSentAt.set(pushID, sentAt);
+    trimOldest(pushSentAt, probeLimits.pushes);
 
     const payload: PushPayload = {
       pushID,
@@ -184,6 +223,7 @@ export function makeProbeHandler(
         auth: input.keys.auth,
         sessionToken,
       });
+      trimOldest(subscriptions, probeLimits.subscriptions);
       writeLog('subscribed', sessionToken, { pushService: new URL(input.endpoint).host });
 
       return { subscribed: true as const };
@@ -207,7 +247,13 @@ export function makeProbeHandler(
         Promise.all(targets.map((subscription) => sendOne(subscription, input, pushID)));
 
       if (input.delaySeconds > 0) {
+        if (delayedPushes >= probeLimits.delayedPushes) {
+          throw new ORPCError('TOO_MANY_REQUESTS', { message: 'too many delayed pushes waiting' });
+        }
+
+        delayedPushes += 1;
         options.schedule(input.delaySeconds * 1000, async () => {
+          delayedPushes -= 1;
           await sendAll();
         });
 
@@ -224,13 +270,23 @@ export function makeProbeHandler(
         throw new ORPCError('NOT_FOUND', { message: 'unknown push' });
       }
 
+      // a report whose answer got lost comes again, and a page and the service worker can report
+      // the same receipt at once; the log keeps one entry for each push a session received
+      const receiptKey = `${input.pushID} ${context.sessionToken ?? 'no session'}`;
+
+      if (receipts.has(receiptKey)) {
+        return { recorded: true as const, duplicate: true };
+      }
+
+      receipts.add(receiptKey);
+      trimOldest(receipts, probeLimits.receipts);
       writeLog('push-received', context.sessionToken, {
         pushID: input.pushID,
         phoneClockDelayMs: input.receivedAt - sentAt,
         reportedAfterMs: options.now() - sentAt,
       });
 
-      return { recorded: true as const };
+      return { recorded: true as const, duplicate: false };
     }),
 
     approve: base.approve.handler(({ context, input }) => {
@@ -285,6 +341,7 @@ export function makeProbeHandler(
       }
 
       syncedMessages.add(input.messageID);
+      trimOldest(syncedMessages, probeLimits.syncedMessages);
       writeLog('sync', sessionToken, {
         messageID: input.messageID,
         text: input.text,
@@ -338,8 +395,21 @@ export function makeProbeHandler(
       return new Response('the client header is missing', { status: 403 });
     }
 
+    // the RPC handler reads the whole body before the contract checks its fields
+    const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
+    const body = hasBody ? await readCappedBody(request, probeLimits.rpcBodyBytes) : null;
+
+    if (hasBody && body === null) {
+      return new Response('the call is too large', { status: 413 });
+    }
+
     const givenAdminKey = request.headers.get(adminHeaderName);
-    const result = await rpcHandler.handle(request, {
+    const capped = new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      ...(body === null ? {} : { body }),
+    });
+    const result = await rpcHandler.handle(capped, {
       prefix: rpcPrefix,
       context: {
         sessionToken: findSession(request),
@@ -347,8 +417,8 @@ export function makeProbeHandler(
           givenAdminKey !== null &&
           timingSafeEqual(hashSecret(givenAdminKey), hashSecret(options.adminKey)),
         cookieSent: request.headers.has('cookie'),
-        secFetchSite: request.headers.get('sec-fetch-site'),
-        secFetchMode: request.headers.get('sec-fetch-mode'),
+        secFetchSite: readHeaderValue(request, 'sec-fetch-site'),
+        secFetchMode: readHeaderValue(request, 'sec-fetch-mode'),
       },
     });
 
@@ -358,25 +428,54 @@ export function makeProbeHandler(
   // The share sheet posts a browser form, which no RPC client builds, so the share target is a
   // plain route.
   async function answerShare(request: Request): Promise<Response> {
+    // each share in flight holds its body in memory, so only a few run at once
+    if (sharesInFlight >= probeLimits.sharesInFlight) {
+      return new Response('another share is in progress', { status: 503 });
+    }
+
+    sharesInFlight += 1;
+
+    const body = await readCappedBody(request, probeLimits.shareBodyBytes).finally(() => {
+      sharesInFlight -= 1;
+    });
+
+    if (body === null) {
+      return new Response('the share is too large', { status: 413 });
+    }
+
     const sessionToken = findSession(request);
-    const form = await request.formData().catch(() => null);
+    const form = await new Response(body, {
+      headers: { 'content-type': request.headers.get('content-type') ?? '' },
+    })
+      .formData()
+      .catch(() => null);
 
     if (form === null) {
       return new Response('expected multipart/form-data', { status: 400 });
     }
 
-    const files = form
-      .getAll('files')
-      .filter((value) => value instanceof File)
-      .map((file) => ({ name: file.name, type: file.type, size: file.size }));
+    const files = form.getAll('files').filter((value) => value instanceof File);
+    const fields = {
+      title: capField(form.get('title'), probeLimits.shareFieldCharacters),
+      text: capField(form.get('text'), probeLimits.shareFieldCharacters),
+      url: capField(form.get('url'), probeLimits.shareFieldCharacters),
+    };
     const entry = writeLog('share', sessionToken, {
-      title: readField(form, 'title'),
-      text: readField(form, 'text'),
-      url: readField(form, 'url'),
-      files,
+      title: fields.title.value,
+      text: fields.text.value,
+      url: fields.url.value,
+      truncated: Object.entries(fields)
+        .filter(([, field]) => field.truncated)
+        .map(([name]) => name),
+      files: files.slice(0, probeLimits.shareFiles).map((file) => ({
+        name: file.name.slice(0, probeLimits.fileNameCharacters),
+        type: file.type.slice(0, probeLimits.fileNameCharacters),
+        size: file.size,
+      })),
+      fileCount: files.length,
       cookieSent: request.headers.has('cookie'),
       sessionKnown: sessionToken !== null,
-      secFetchSite: request.headers.get('sec-fetch-site'),
+      secFetchSite: readHeaderValue(request, 'sec-fetch-site'),
     });
 
     // a 303 turns the share's POST into a GET, so a reload never posts the share again
@@ -412,7 +511,9 @@ export function makeProbeHandler(
           });
     }
 
-    if (decision.kind === 'not-found' || !(await Bun.file(decision.path).exists())) {
+    const file = decision.kind === 'file' ? await options.readPublicFile(decision.path) : null;
+
+    if (decision.kind === 'not-found' || file === null) {
       return new Response('not found', { status: 404 });
     }
 
@@ -422,13 +523,14 @@ export function makeProbeHandler(
       const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
 
       sessions.set(token, `S-${crypto.randomUUID().slice(0, 8)}`);
+      trimOldest(sessions, probeLimits.sessions);
       headers.append(
         'set-cookie',
         `${sessionCookie}=${token}; Path=/; Max-Age=${sessionMaxAgeSeconds}; HttpOnly; Secure; SameSite=Lax`,
       );
     }
 
-    return new Response(Bun.file(decision.path), { headers });
+    return new Response(file, { headers });
   }
 
   return async function answerRequest(request: Request): Promise<Response> {
@@ -450,8 +552,17 @@ export function makeProbeHandler(
   };
 }
 
-function readField(form: FormData, name: string): string | null {
-  const value = form.get(name);
+// The log keeps a copy of a few request headers; a browser's values are short words such as
+// same-origin.
+function readHeaderValue(request: Request, name: string): string | null {
+  return request.headers.get(name)?.slice(0, probeLimits.headerValueCharacters) ?? null;
+}
 
-  return typeof value === 'string' ? value : null;
+function capField(
+  value: FormDataEntryValue | null,
+  maxCharacters: number,
+): { value: string | null; truncated: boolean } {
+  return typeof value === 'string'
+    ? { value: value.slice(0, maxCharacters), truncated: value.length > maxCharacters }
+    : { value: null, truncated: false };
 }

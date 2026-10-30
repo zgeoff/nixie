@@ -1,6 +1,7 @@
-import { adminHeaderName, pushInputSchema } from '../../src/contract.ts';
+import { adminHeaderName } from '../../src/contract.ts';
 import { formatCallError } from './format-call-error.ts';
 import { getElement } from './get-element.ts';
+import { requestPush } from './request-push.ts';
 import { startPage } from './start-page.ts';
 
 const page = await startPage({
@@ -35,17 +36,13 @@ void renderSubscriptions();
 setInterval(() => void renderSubscriptions(), 5000);
 
 getElement('#send', HTMLButtonElement).addEventListener('click', async () => {
-  getElement('#send-result', HTMLElement).textContent = await page.client
-    .push(
-      pushInputSchema.parse({
-        title: getElement('#title', HTMLInputElement).value,
-        delaySeconds: Number(getElement('#delay', HTMLInputElement).value),
-        urgency: getElement('#urgency', HTMLSelectElement).value,
-        tag: getElement('#tag', HTMLInputElement).value,
-        silent: getElement('#silent', HTMLInputElement).checked,
-        renotify: getElement('#renotify', HTMLInputElement).checked,
-        approve: getElement('#approve', HTMLInputElement).checked,
-      }),
-    )
-    .then((sent) => JSON.stringify(sent), formatCallError);
+  getElement('#send-result', HTMLElement).textContent = await requestPush(page.client, {
+    title: getElement('#title', HTMLInputElement).value,
+    delaySeconds: Number(getElement('#delay', HTMLInputElement).value),
+    urgency: getElement('#urgency', HTMLSelectElement).value,
+    tag: getElement('#tag', HTMLInputElement).value,
+    silent: getElement('#silent', HTMLInputElement).checked,
+    renotify: getElement('#renotify', HTMLInputElement).checked,
+    approve: getElement('#approve', HTMLInputElement).checked,
+  });
 });

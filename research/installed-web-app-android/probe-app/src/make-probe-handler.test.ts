@@ -38,6 +38,11 @@ async function setupTest() {
     isPushEndpointAllowed: (endpoint) => endpoint.origin === pushService.url.origin,
     pushTransport: (url, init) => fetch(url, init),
     schedule,
+    readPublicFile: async (path) => {
+      const file = Bun.file(path);
+
+      return (await file.exists()) ? file : null;
+    },
     now: () => clock.nowMs,
   });
 
@@ -265,7 +270,9 @@ test('it records a share with its fields and files and sends the page to block 6
       title: 'A shared page',
       text: 'look at https://example.com/article',
       url: null,
+      truncated: [],
       files: [{ name: 'photo.jpg', type: 'image/jpeg', size: 16 }],
+      fileCount: 1,
       cookieSent: true,
       sessionKnown: true,
       secFetchSite: null,
@@ -450,4 +457,204 @@ test('it serves the bundled service worker from the root', async () => {
 
   expect(response.headers.get('content-type')).toBe('text/javascript; charset=utf-8');
   expect(await response.text()).toBe('// worker');
+});
+
+test('it answers a missing public file as not found', async () => {
+  const ctx = await setupTest();
+
+  const response = await ctx.answerRequest(new Request('http://probe.test/missing.html'));
+
+  expect(response.status).toBe(404);
+});
+
+test('it refuses a streamed share over 25 MiB and logs nothing', async () => {
+  const ctx = await setupTest();
+  const chunk = new Uint8Array(1024 * 1024);
+  const admin = buildProbeClient({
+    origin: 'http://probe.test',
+    headers: { 'x-probe-admin': 'test-admin-key' },
+    fetch: ctx.answerRequest,
+  });
+
+  const response = await ctx.answerRequest(
+    new Request('http://probe.test/share', {
+      method: 'POST',
+      headers: { 'content-type': 'multipart/form-data; boundary=probe' },
+      body: new ReadableStream<Uint8Array>({ pull: (controller) => controller.enqueue(chunk) }),
+    }),
+  );
+
+  expect(response.status).toBe(413);
+  expect(await admin.log()).toStrictEqual([]);
+});
+
+test('it refuses a share that declares a length over 25 MiB', async () => {
+  const ctx = await setupTest();
+
+  const response = await ctx.answerRequest(
+    new Request('http://probe.test/share', {
+      method: 'POST',
+      headers: { 'content-length': String(25 * 1024 * 1024 + 1) },
+      body: 'a short body',
+    }),
+  );
+
+  expect(response.status).toBe(413);
+});
+
+test('it keeps at most 2000 characters of a shared field and 20 shared files', async () => {
+  const ctx = await setupTest();
+  const form = new FormData();
+  const reader = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+
+  form.append('text', 'x'.repeat(5000));
+  form.append('title', 'short');
+
+  await Promise.all(
+    Array.from({ length: 25 }, (_, index) =>
+      form.append('files', new File(['bytes'], `photo-${index}.jpg`, { type: 'image/jpeg' })),
+    ),
+  );
+
+  const response = await ctx.answerRequest(
+    new Request('http://probe.test/share', { method: 'POST', body: form }),
+  );
+  const entry = await reader.entry({
+    id: (response.headers.get('location') ?? '').split('share=')[1] ?? '',
+  });
+
+  expect(entry.detail).toMatchObject({
+    text: 'x'.repeat(2000),
+    title: 'short',
+    truncated: ['text'],
+    fileCount: 25,
+  });
+  expect(entry.detail['files']).toHaveLength(20);
+});
+
+test('it keeps at most 100 characters of a header the log copies', async () => {
+  const ctx = await setupTest();
+  const reader = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
+
+  const response = await ctx.answerRequest(
+    new Request('http://probe.test/share', {
+      method: 'POST',
+      headers: { 'sec-fetch-site': 's'.repeat(4000) },
+      body: new FormData(),
+    }),
+  );
+  const entry = await reader.entry({
+    id: (response.headers.get('location') ?? '').split('share=')[1] ?? '',
+  });
+
+  expect(entry.detail['secFetchSite']).toBe('s'.repeat(100));
+});
+
+test('it refuses a third share while 2 are still arriving', async () => {
+  const ctx = await setupTest();
+  const controllers: ReadableStreamDefaultController<Uint8Array>[] = [];
+  const startShare = () =>
+    ctx.answerRequest(
+      new Request('http://probe.test/share', {
+        method: 'POST',
+        body: new ReadableStream<Uint8Array>({ start: (controller) => void controllers.push(controller) }),
+      }),
+    );
+
+  onTestFinished(() => controllers.forEach((controller) => controller.close()));
+
+  void startShare();
+  void startShare();
+
+  const third = await ctx.answerRequest(
+    new Request('http://probe.test/share', { method: 'POST', body: new FormData() }),
+  );
+
+  expect(third.status).toBe(503);
+});
+
+test('it refuses an API call over 64 KiB before it parses it', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+
+  const response = await ctx.answerRequest(
+    new Request('http://probe.test/rpc/sync', {
+      method: 'POST',
+      headers: { cookie: phone.cookie, 'x-nixie-client': 'probe', 'content-type': 'application/json' },
+      body: JSON.stringify({ json: { text: 'x'.repeat(70 * 1024) } }),
+    }),
+  );
+
+  expect(response.status).toBe(413);
+});
+
+test('it logs one receipt for a push that a phone reports twice', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const sent = await phone.client.push({});
+
+  const first = await phone.client.pushReceived({ pushID: sent.pushID, receivedAt: 1_000 });
+  const second = await phone.client.pushReceived({ pushID: sent.pushID, receivedAt: 1_000 });
+
+  expect(first).toStrictEqual({ recorded: true, duplicate: false });
+  expect(second).toStrictEqual({ recorded: true, duplicate: true });
+  expect((await phone.client.log()).filter((entry) => entry.kind === 'push-received')).toHaveLength(
+    1,
+  );
+});
+
+test('it forgets the least recently used session past 1000 sessions', async () => {
+  const ctx = await setupTest();
+  const oldest = await ctx.answerRequest(new Request('http://probe.test/'));
+  const recent = await ctx.answerRequest(new Request('http://probe.test/'));
+  const oldestCookie = (oldest.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  const recentCookie = (recent.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  const recentClient = buildProbeClient({
+    origin: 'http://probe.test',
+    headers: { cookie: recentCookie },
+    fetch: ctx.answerRequest,
+  });
+  const oldestClient = buildProbeClient({
+    origin: 'http://probe.test',
+    headers: { cookie: oldestCookie },
+    fetch: ctx.answerRequest,
+  });
+
+  await recentClient.config();
+  await Promise.all(
+    Array.from({ length: 999 }, () => ctx.answerRequest(new Request('http://probe.test/'))),
+  );
+
+  expect((await oldestClient.config()).session).toBeNull();
+  expect((await recentClient.config()).session).toStartWith('S-');
+});
+
+test('it keeps the 50 newest subscriptions', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+  const admin = buildProbeClient({
+    origin: 'http://probe.test',
+    headers: { 'x-probe-admin': 'test-admin-key' },
+    fetch: ctx.answerRequest,
+  });
+
+  await Promise.all(
+    Array.from({ length: 60 }, (_, index) =>
+      phone.client.subscribe({
+        endpoint: `${ctx.endpoint}-${index}`,
+        keys: { p256dh: 'key', auth: 'secret' },
+      }),
+    ),
+  );
+
+  expect(await admin.subscriptions()).toHaveLength(50);
+});
+
+test('it refuses a delayed push past 20 waiting', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx.answerRequest, ctx.endpoint);
+
+  await Promise.all(Array.from({ length: 20 }, () => phone.client.push({ delaySeconds: 60 })));
+
+  expect(phone.client.push({ delaySeconds: 60 })).rejects.toMatchObject({ status: 429 });
 });

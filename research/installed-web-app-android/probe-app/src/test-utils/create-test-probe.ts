@@ -46,6 +46,11 @@ export async function createTestProbe(): Promise<TestProbe> {
       isPushEndpointAllowed: (endpoint) => endpoint.origin === pushService.url.origin,
       pushTransport: (url, init) => fetch(url, init),
       schedule: () => {},
+      readPublicFile: async (path) => {
+        const file = Bun.file(path);
+
+        return (await file.exists()) ? file : null;
+      },
       now: Date.now,
     }),
     endpoint: new URL('/push/phone', pushService.url).href,
