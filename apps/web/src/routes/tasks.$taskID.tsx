@@ -1,7 +1,8 @@
-import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
+import { Link, createFileRoute, useLocation, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { Conversation } from '../components/conversation';
 import { SignedInPage } from '../components/signed-in-page';
+import { TaskPage } from '../components/task-page';
+import { parseLinkedMessage } from '../parse-linked-message';
 import { readRouteSession } from '../read-route-session';
 import { css } from '../styled-system/css';
 
@@ -14,6 +15,8 @@ function Task(): ReactNode {
   const data = Route.useLoaderData();
   const params = Route.useParams();
   const router = useRouter();
+  const messageID = useLocation({ select: (location) => parseLinkedMessage(location.hash) });
+  const messageOptions = messageID === undefined ? {} : { messageID };
 
   return (
     <SignedInPage
@@ -22,16 +25,20 @@ function Task(): ReactNode {
       }}
       session={data.session}
     >
-      <Conversation
+      <TaskPage
+        {...messageOptions}
         key={params.taskID}
         navigation={
           <nav className={css({ display: 'flex', gap: '3' })}>
             <Link className={link} to="/">
               Conversation
             </Link>
+            <Link className={link} to="/tasks">
+              Tasks
+            </Link>
           </nav>
         }
-        thread={params.taskID}
+        taskID={params.taskID}
       />
     </SignedInPage>
   );

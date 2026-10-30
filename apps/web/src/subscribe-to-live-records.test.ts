@@ -1,4 +1,5 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import type { LogRecord } from '@heynixie/contract';
 import { waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { buildBrowserClient } from './build-browser-client';
@@ -7,6 +8,7 @@ import { store } from './mocks/store';
 import { subscribeToLiveRecords } from './subscribe-to-live-records';
 import { buildStubTimer } from './test-utils/build-stub-timer';
 import { createDeviceSession } from './test-utils/create-device-session';
+import type { ReadonlyDeep } from './types';
 
 function setupTest() {
   const follows = mock<(body: unknown) => void>();
@@ -189,6 +191,70 @@ test('it follows the log again at once when the browser comes back online during
   });
 
   expect(ctx.timer.countPending()).toBe(0);
+});
+
+test('it follows again from the last record it delivered, so a reconnect repeats no record', async () => {
+  const ctx = setupTest();
+  const onRecord = mock<(record: ReadonlyDeep<LogRecord>) => void>();
+
+  await createDeviceSession();
+
+  const first = await store.records.create({ kind: 'task.step_started', thread: 'k3vq8m2xpa' });
+
+  void subscribeToLiveRecords({
+    afterSequence: 0,
+    client: ctx.client,
+    onAvailability: mock<() => void>(),
+    onRecord,
+    signal: ctx.signal,
+    startTimer: ctx.timer.startTimer,
+    thread: 'k3vq8m2xpa',
+  });
+
+  await waitFor(() => {
+    expect(onRecord).toHaveBeenCalledOnce();
+  });
+
+  globalThis.dispatchEvent(new Event('online'));
+
+  await waitFor(() => {
+    expect(ctx.follows).toHaveBeenCalledTimes(2);
+  });
+
+  const second = await store.records.create({ kind: 'tool_called', thread: 'k3vq8m2xpa' });
+
+  await waitFor(() => {
+    expect(onRecord).toHaveBeenCalledTimes(2);
+  });
+
+  expect(ctx.follows.mock.calls.map(([body]) => body)).toStrictEqual([
+    { json: { afterSequence: 0, thread: 'k3vq8m2xpa' } },
+    { json: { afterSequence: first.sequence, thread: 'k3vq8m2xpa' } },
+  ]);
+
+  expect(onRecord.mock.calls.map(([record]) => record.sequence)).toStrictEqual([
+    first.sequence,
+    second.sequence,
+  ]);
+});
+
+test('it follows every thread when it names none', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  void subscribeToLiveRecords({
+    afterSequence: 4,
+    client: ctx.client,
+    onAvailability: mock<() => void>(),
+    onRecord: mock<() => void>(),
+    signal: ctx.signal,
+    startTimer: ctx.timer.startTimer,
+  });
+
+  await waitFor(() => {
+    expect(ctx.follows).toHaveBeenCalledExactlyOnceWith({ json: { afterSequence: 4 } });
+  });
 });
 
 test('it follows the log again at once when the page becomes visible during the longest pause', async () => {

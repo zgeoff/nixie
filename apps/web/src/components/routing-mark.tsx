@@ -1,9 +1,10 @@
-import type { ContractOutputs } from '@heynixie/contract';
 import { isFinishedState } from '@heynixie/task-control';
 import { useMutation } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { buildTaskHref } from '../build-task-href';
 import type { MessageRoute } from '../collect-message-routes';
+import { formatTaskName } from '../format-task-name';
 import { css } from '../styled-system/css';
 import type { LiveRecord } from '../use-live-records';
 import { useNixieClient } from '../use-nixie-client';
@@ -61,18 +62,6 @@ export function RoutingMark(props: RoutingMarkProps): ReactNode {
       )}
     </div>
   );
-}
-
-const conversationID = 'conversation';
-
-function buildTaskHref(taskID: string): string {
-  return taskID === conversationID ? '/' : `/tasks/${encodeURIComponent(taskID)}`;
-}
-
-type ListedTask = ContractOutputs['tasks']['list']['tasks'][number];
-
-function formatTaskName(tasks: readonly ListedTask[], taskID: string): string {
-  return tasks.find((task) => task.taskID === taskID)?.name ?? `task ${taskID}`;
 }
 
 interface MoveFormProps {

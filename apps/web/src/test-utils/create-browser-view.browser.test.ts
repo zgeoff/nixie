@@ -63,12 +63,17 @@ test.skipIf(browserSkip.isSkipped)(
 
     const profiles = await readdir(ctx.run.profilesDir);
 
-    const hasState = await Promise.all(
-      profiles.map((profile) =>
-        Bun.file(join(ctx.run.profilesDir, profile, 'Local State')).exists(),
-      ),
+    // Chrome delays its write of the Local State file, and a CI run found one folder without it, so
+    // the test counts the entries that Chrome makes in a profile folder as it starts.
+    const entryCounts = await Promise.all(
+      profiles.map(async (profile) => {
+        const entries = await readdir(join(ctx.run.profilesDir, profile));
+
+        return entries.length;
+      }),
     );
 
-    expect(hasState).toStrictEqual([true, true]);
+    expect(entryCounts).toSatisfyAll((count: number) => count > 0);
+    expect(entryCounts).toHaveLength(2);
   },
 );

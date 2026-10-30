@@ -162,7 +162,7 @@ test.skipIf(browserSkip.isSkipped)(
     await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
 
     await setBrowserFiles(ctx.view, {
-      selector: 'input[type=file][multiple]',
+      selector: 'input[type=file][multiple]:enabled',
       files: [
         {
           name: 'swatch.png',
@@ -229,5 +229,74 @@ test.skipIf(browserSkip.isSkipped)(
       { authorization: null, cookie: null, path: '/rpc/conversation/read' },
       { authorization: null, cookie: null, path: '/rpc/conversation/read' },
     ]);
+  },
+);
+
+test.skipIf(browserSkip.isSkipped)(
+  'it opens the conversation at a message that a hop-limit notice links, behind later records',
+  async () => {
+    const ctx = await setupTest();
+    const session = await store.sessions.create({});
+
+    await store.tasks.create({ name: 'Conversation', taskID: 'conversation' });
+    await store.tasks.create({ name: 'Garden plan', taskID: 'k3vq8m2xpa' });
+
+    await store.records.create({
+      kind: 'task_message',
+      taskMessage: {
+        from: 'k3vq8m2xpa',
+        fromName: 'Garden plan',
+        hop: 21,
+        kind: 'question',
+        messageID: 'm7q2x9k4pa',
+        text: 'Which bed gets the beans?',
+        to: 'conversation',
+        woke: false,
+      },
+      thread: 'conversation',
+    });
+
+    await Promise.all(
+      Array.from({ length: 120 }, () =>
+        store.records.create({ kind: 'task.step_started', thread: 'conversation' }),
+      ),
+    );
+
+    await store.records.create({
+      exchangeNotice: {
+        link: { label: 'Open the exchange', messageID: 'm7q2x9k4pa', taskID: 'conversation' },
+        text: 'Garden plan and Conversation exchanged 21 messages with no outside cause. New messages between them wait for the next one. Garden plan is waiting on Conversation.',
+      },
+      kind: 'task.exchange_limited',
+      thread: 'k3vq8m2xpa',
+    });
+
+    await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+    await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
+
+    await waitFor(
+      async () => {
+        const hasLink: unknown = await ctx.view.evaluate(
+          'document.querySelector(\'a[href="/#task-message-m7q2x9k4pa"]\') !== null',
+        );
+
+        expect(hasLink).toBeTrue();
+      },
+      { timeout: 10_000 },
+    );
+
+    await ctx.view.click('a[href="/#task-message-m7q2x9k4pa"]');
+
+    await waitFor(
+      async () => {
+        const isInView: unknown = await ctx.view.evaluate(
+          "(() => { const box = document.getElementById('task-message-m7q2x9k4pa')?.getBoundingClientRect(); return box !== undefined && box.top >= 0 && box.bottom <= innerHeight; })()",
+        );
+
+        expect(isInView).toBeTrue();
+      },
+      { timeout: 10_000 },
+    );
   },
 );

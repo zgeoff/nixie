@@ -105,6 +105,44 @@ test('it shows a kept moment on its own after the step that kept it', () => {
   ]);
 });
 
+test('it keeps a task message, an exchange notice and a stop each on its own line', () => {
+  const message = buildMockLogRecord({
+    kind: 'task_message',
+    sequence: 1,
+    taskMessage: {
+      from: 'k3vq8m2xpa',
+      fromName: 'Garden plan',
+      hop: 1,
+      kind: 'question',
+      messageID: 'm7q2x9k4pa',
+      text: 'Which bed gets the beans?',
+      to: 'conversation',
+      woke: true,
+    },
+  });
+
+  const notice = buildMockLogRecord({
+    exchangeNotice: {
+      link: { label: 'Open the exchange', messageID: 'm7q2x9k4pa', taskID: 'p7hd2wq9zn' },
+      text: 'Garden plan and Seed order exchanged 21 messages with no outside cause.',
+    },
+    kind: 'task.exchange_limited',
+    sequence: 2,
+  });
+
+  const stop = buildMockLogRecord({
+    kind: 'task.stopped',
+    sequence: 3,
+    stop: { cancelledActions: [] },
+  });
+
+  expect(buildActivity([message, notice, stop]).map((item) => item.kind)).toStrictEqual([
+    'taskMessage',
+    'exchange',
+    'stop',
+  ]);
+});
+
 test('it folds a record before a step into the step that follows it', () => {
   const created = buildMockLogRecord({
     kind: 'task.created',
