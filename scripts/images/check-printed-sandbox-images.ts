@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { $ } from 'bun';
+import { sandboxImagesSchema } from '../../apps/server/src/sandbox-images-schema.ts';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
 
@@ -29,7 +30,10 @@ async function runCLI(): Promise<void> {
 
   process.stdout.write(printed);
 
-  const images = parsePrintedImages(JSON.parse(printed));
+  const images = Object.entries(sandboxImagesSchema.parse(JSON.parse(printed))).map(
+    ([kind, image]) => ({ kind, name: image.name, ref: image.ref }),
+  );
+
   const writtenManifest: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const refs = Object.fromEntries(images.map((image) => [image.kind, image.ref]));
 
@@ -52,28 +56,6 @@ async function runCLI(): Promise<void> {
 
     process.exitCode = 1;
   }
-}
-
-interface PrintedImage {
-  readonly kind: string;
-  readonly ref: unknown;
-  readonly name: string;
-}
-
-function parsePrintedImages(value: unknown): PrintedImage[] {
-  if (!isRecord(value)) {
-    throw new Error('nixie sandbox-manifest printed no JSON object');
-  }
-
-  return Object.entries(value).map(([kind, entry]) => ({
-    kind,
-    ref: isRecord(entry) ? entry['ref'] : undefined,
-    name: isRecord(entry) && typeof entry['name'] === 'string' ? entry['name'] : '',
-  }));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 if (import.meta.main) {

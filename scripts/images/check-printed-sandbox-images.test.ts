@@ -98,6 +98,37 @@ test('it fails when nixie prints another ref than the manifest', async () => {
   );
 });
 
+test('it fails when nixie prints an image without its name', async () => {
+  const ctx = setupTest();
+
+  writeFileSync(
+    join(ctx.repoPath, 'apps', 'server', 'sandbox-manifest.json'),
+    '{"conversation":"r/nixie-conversation@sha256:aa11","fetch":"r/nixie-fetch@sha256:bb22"}\n',
+  );
+
+  createStubProgram(join(ctx.binPath, 'docker'), {
+    callsPath: ctx.callsPath,
+    answers: {
+      'run --rm --network none --read-only --entrypoint nixie r/nixie@sha256:cc33 sandbox-manifest':
+        {
+          stdout: JSON.stringify({
+            conversation: { ref: 'r/nixie-conversation@sha256:aa11' },
+            fetch: { ref: 'r/nixie-fetch@sha256:bb22', name: 'nixie-fetch-ba9876543210' },
+          }),
+        },
+    },
+  });
+
+  const result = await $`${process.execPath} ${ctx.scriptPath}`
+    .cwd(ctx.repoPath)
+    .env({ PATH: ctx.binPath, NIXIE: 'r/nixie@sha256:cc33', RUNNER_TEMP: ctx.runnerTemp })
+    .nothrow()
+    .quiet();
+
+  expect(result.exitCode).toBe(1);
+  expect(result.stderr.toString()).toInclude('"conversation"');
+});
+
 test('it fails when a sandbox image name does not follow its kind', async () => {
   const ctx = setupTest();
 

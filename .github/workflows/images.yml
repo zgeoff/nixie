@@ -68,6 +68,9 @@ jobs:
         with:
           bun-version-file: .bun-version
 
+      - name: Install
+        run: bun install --frozen-lockfile --ignore-scripts
+
       # the builder shares the host network, so it reaches the job's registry on localhost
       - name: Set up Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -147,9 +150,6 @@ jobs:
           NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
           WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
         run: bun run --silent ci:images:tag-rehearsal-images
-
-      - name: Install
-        run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Build release.json, check each image it names, and rehearse its upload
         env:
