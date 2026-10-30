@@ -55,8 +55,8 @@ test('it runs the command it is given', () => {
 
 test('it passes the command output and errors to the step log', () => {
   const ctx = setupTest();
-  const writeOutput = mock();
-  const writeError = mock();
+  const writeOutput = mock<(text: string) => void>();
+  const writeError = mock<(text: string) => void>();
 
   writeFileSync(ctx.summaryPath, '');
 
