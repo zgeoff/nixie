@@ -39,11 +39,14 @@ jobs:
         tsconfig*.json
         libs/contract/**
         libs/db/**
+        scripts/compatibility/**
+        scripts/lib/**
 
   compatibility:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,10 +68,7 @@ jobs:
           BASE:
             ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) ||
             github.sha }}
-        run: |
-          tag=$(git describe --tags --abbrev=0 --match 'v*' "$BASE" 2> /dev/null || true)
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "Last release: ${tag:-none yet}" >> "$GITHUB_STEP_SUMMARY"
+        run: bun run --silent ci:compatibility:find-last-release
 
       - name: Check that the contract check accepts only the breaks it lists
         run: .github/scripts/check-accepted-breaks.sh
@@ -80,20 +80,9 @@ jobs:
         if: steps.last.outputs.tag != ''
         env:
           TAG: ${{ steps.last.outputs.tag }}
-        run: |
-          bun run --cwd libs/contract openapi
-          git show "$TAG:libs/contract/openapi.json" > "$RUNNER_TEMP/last-openapi.json"
-          .github/scripts/check-contract-growth.sh "$RUNNER_TEMP/last-openapi.json" \
-            libs/contract/openapi.json libs/contract/accepted-breaks.txt
+        run: bun run --silent ci:compatibility:run-contract-growth-check
 
       - name: Check the migrations since the last release
         env:
           TAG: ${{ steps.last.outputs.tag }}
-        run: |
-          if [[ -n $TAG ]]; then
-            .github/scripts/read-released-schema.sh "$TAG" "$RUNNER_TEMP/released.json"
-            bun libs/db/src/run-migration-check.ts --released "$RUNNER_TEMP/released.json" \
-              --last-tag "$TAG" | tee -a "$GITHUB_STEP_SUMMARY"
-          else
-            bun libs/db/src/run-migration-check.ts | tee -a "$GITHUB_STEP_SUMMARY"
-          fi
+        run: bun run --silent ci:compatibility:run-migration-check

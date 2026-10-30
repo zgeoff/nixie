@@ -37,13 +37,15 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write
       id-token: write
       attestations: write
     outputs:
-      ref: ${{ steps.result.outputs.ref }}
+      ref:
+        ghcr.io/${{ github.repository_owner }}/${{ inputs.image }}@${{ steps.build.outputs.digest }}
     env:
       REPOSITORY: ghcr.io/${{ github.repository_owner }}/${{ inputs.image }}
     steps:
@@ -88,9 +90,6 @@ jobs:
           create-storage-record: false
 
       - name: Record the digest
-        id: result
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          echo "ref=$REPOSITORY@$DIGEST" >> "$GITHUB_OUTPUT"
-          echo "$REPOSITORY@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+        run: echo "$REPOSITORY@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
