@@ -705,6 +705,16 @@
         "zod": "4.6.7",
       },
     },
+    "research/installed-web-app-android": {
+      "name": "@heynixie/spike-installed-web-app-android",
+      "version": "0.0.0",
+      "dependencies": {
+        "zod": "4.6.7",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.3",
+      },
+    },
     "research/mcp-proxy-pin": {
       "name": "@heynixie/spike-mcp-proxy-pin",
       "version": "0.0.0",

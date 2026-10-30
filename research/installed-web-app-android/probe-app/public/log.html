@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/launcher-192.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>Results log</title>
+  </head>
+  <body>
+    <nav>
+      <a href="/">Home</a><a href="/block-1.html">Block 1</a><a href="/block-2.html">Block 2</a
+      ><a href="/block-6.html">Block 6</a><a href="/block-7.html">Block 7</a><a href="/log.html">Log</a>
+    </nav>
+    <h1>Results log</h1>
+    <p id="session" class="status">Session: loading</p>
+    <p>Every entry this session recorded, newest first.</p>
+    <ul id="log" class="log"></ul>
+    <script src="/probe.js"></script>
+    <script>
+      probe.start().then(() =>
+        probe.pollLog(['subscribed', 'push-sent', 'push-received', 'approve', 'share', 'sync']),
+      );
+    </script>
+  </body>
+</html>

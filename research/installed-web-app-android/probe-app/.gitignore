@@ -1,0 +1,2 @@
+# the VAPID key pair the probe server writes on its first start
+.vapid/

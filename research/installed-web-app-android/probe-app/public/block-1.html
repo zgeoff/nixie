@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/launcher-192.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>Block 1: push delivery</title>
+  </head>
+  <body>
+    <nav>
+      <a href="/">Home</a><a href="/block-1.html">Block 1</a><a href="/block-2.html">Block 2</a
+      ><a href="/block-6.html">Block 6</a><a href="/block-7.html">Block 7</a><a href="/log.html">Log</a>
+    </nav>
+    <h1>Block 1: push delivery</h1>
+    <p id="session" class="status">Session: loading</p>
+    <ol>
+      <li>Tap <b>Subscribe</b> and allow notifications.</li>
+      <li>To send from the phone, set the options and tap <b>Send to this phone</b>, then close the app within the delay.</li>
+      <li>To send while the phone sleeps, use the send page on the PC that runs the server.</li>
+      <li>The log shows each send, and each receipt with its delay in milliseconds.</li>
+    </ol>
+    <p id="permission" class="status">Permission: loading</p>
+    <button id="subscribe">Subscribe</button>
+    <p id="subscribe-result" class="status"></p>
+    <h2>Send to this phone</h2>
+    <label>Delay, seconds <input id="delay" type="number" min="0" max="3600" value="15" /></label>
+    <label
+      >Urgency
+      <select id="urgency">
+        <option>normal</option>
+        <option>high</option>
+        <option>low</option>
+        <option>very-low</option>
+      </select></label
+    >
+    <label>Tag <input id="tag" value="" placeholder="empty: no tag" /></label>
+    <label><input id="silent" type="checkbox" /> silent</label>
+    <label><input id="renotify" type="checkbox" /> renotify (needs a tag)</label>
+    <button id="send">Send to this phone</button>
+    <p id="send-result" class="status"></p>
+    <h2>Log</h2>
+    <ul id="log" class="log"></ul>
+    <script src="/probe.js"></script>
+    <script>
+      const showPermission = () =>
+        probe.show('#permission', `Permission: ${Notification.permission}`);
+
+      probe.start().then((config) => {
+        showPermission();
+        probe.pollLog(['subscribed', 'push-sent', 'push-received']);
+
+        document.querySelector('#subscribe').addEventListener('click', async () => {
+          const permission = await Notification.requestPermission();
+
+          showPermission();
+
+          if (permission !== 'granted') {
+            probe.show('#subscribe-result', `Not subscribed: permission ${permission}`);
+
+            return;
+          }
+
+          const registration = await navigator.serviceWorker.ready;
+          const existing = await registration.pushManager.getSubscription();
+          const key = config.vapidPublicKey;
+
+          // a subscription made under another server key cannot be reused
+          if (existing && existing.options.applicationServerKey) {
+            const existingKey = btoa(
+              String.fromCharCode(...new Uint8Array(existing.options.applicationServerKey)),
+            )
+              .replaceAll('+', '-')
+              .replaceAll('/', '_')
+              .replace(/=+$/, '');
+
+            if (existingKey !== key) {
+              await existing.unsubscribe();
+            }
+          }
+
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: key,
+          });
+
+          probe.show('#subscribe-result', await probe.post('/api/subscribe', subscription.toJSON()));
+        });
+
+        document.querySelector('#send').addEventListener('click', async () => {
+          probe.show(
+            '#send-result',
+            await probe.post('/api/push', {
+              delaySeconds: Number(document.querySelector('#delay').value),
+              urgency: document.querySelector('#urgency').value,
+              tag: document.querySelector('#tag').value,
+              silent: document.querySelector('#silent').checked,
+              renotify: document.querySelector('#renotify').checked,
+            }),
+          );
+        });
+      });
+    </script>
+  </body>
+</html>

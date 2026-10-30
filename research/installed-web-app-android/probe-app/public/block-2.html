@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/launcher-192.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>Block 2: Approve from a notification</title>
+  </head>
+  <body>
+    <nav>
+      <a href="/">Home</a><a href="/block-1.html">Block 1</a><a href="/block-2.html">Block 2</a
+      ><a href="/block-6.html">Block 6</a><a href="/block-7.html">Block 7</a><a href="/log.html">Log</a>
+    </nav>
+    <h1>Block 2: Approve from a notification</h1>
+    <p id="session" class="status">Session: loading</p>
+    <ol>
+      <li>Subscribe on block 1 first.</li>
+      <li>Tap <b>Send an approval push</b>, then close the app or lock the phone within the delay.</li>
+      <li>Tap <b>Approve</b> on the notification. A second notification shows the server's answer.</li>
+      <li>Open this page again: the log shows each approve call, with its outcome and whether the cookie came with it.</li>
+    </ol>
+    <p id="actions" class="status">Notification.maxActions: loading</p>
+    <label>Delay, seconds <input id="delay" type="number" min="0" max="3600" value="15" /></label>
+    <button id="send">Send an approval push</button>
+    <p id="send-result" class="status"></p>
+    <h2>Sign out</h2>
+    <p>
+      Makes the server forget this session, so the next Approve tap carries no valid session. Reload
+      the page and subscribe again on block 1 to start a new session.
+    </p>
+    <button id="sign-out">Sign out</button>
+    <p id="sign-out-result" class="status"></p>
+    <h2>Log</h2>
+    <ul id="log" class="log"></ul>
+    <script src="/probe.js"></script>
+    <script>
+      probe.show(
+        '#actions',
+        `Notification.maxActions: ${'maxActions' in Notification ? Notification.maxActions : 'not defined'}`,
+      );
+      probe.start().then(() => {
+        probe.pollLog(['approve', 'push-sent', 'push-received']);
+        document.querySelector('#sign-out').addEventListener('click', async () => {
+          probe.show('#sign-out-result', await probe.post('/api/sign-out', {}));
+        });
+        document.querySelector('#send').addEventListener('click', async () => {
+          probe.show(
+            '#send-result',
+            await probe.post('/api/push', {
+              title: 'Approve a test item?',
+              tag: 'approval',
+              urgency: 'high',
+              approve: true,
+              delaySeconds: Number(document.querySelector('#delay').value),
+            }),
+          );
+        });
+      });
+    </script>
+  </body>
+</html>

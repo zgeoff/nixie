@@ -220,6 +220,41 @@ paste spans spike left out.
   once the app is closed and the phone charges on Wi-Fi
   ([manifest updates](https://web.dev/articles/manifest-updates)).
 
+## Probe app
+
+The [probe app](probe-app/README.md) runs blocks 1, 2, 6 and 7 of the device checklist. Its build
+rests on these facts, read on 2026-10-30, and the device run checks each one:
+
+- Chrome's install criteria ask for a manifest with a name, a 192 px and a 512 px icon, a
+  `start_url` and a standalone display, served over HTTPS, and list no service worker
+  ([install criteria](https://web.dev/articles/install-criteria)). The probe app registers one for
+  push, Approve and sync.
+- `pushManager.subscribe()` needs `userVisibleOnly: true` and takes the server's P-256 key as a
+  base64 string
+  ([PushManager.subscribe](https://developer.mozilla.org/en-US/docs/Web/API/PushManager/subscribe)).
+  The probe server encrypts each payload as RFC 8291 gives and signs each send with a VAPID token
+  whose expiry lies within 24 hours ([RFC 8292](https://www.rfc-editor.org/rfc/rfc8292)).
+- `showNotification()` takes `actions` on Chrome for Android from 48, and `renotify` only with a
+  `tag`; MDN still marks `renotify`, `data` and `requireInteraction` experimental
+  ([showNotification](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration/showNotification)).
+  `Notification.maxActions` exists on Chrome for Android from 48
+  ([maxActions](https://developer.mozilla.org/en-US/docs/Web/API/Notification/maxActions_static)).
+- A notification tap opens no window by itself: the service worker calls `clients.openWindow()` or
+  `focus()`, which a notification click allows
+  ([openWindow](https://developer.mozilla.org/en-US/docs/Web/API/Clients/openWindow),
+  [focus](https://developer.mozilla.org/en-US/docs/Web/API/WindowClient/focus)). The probe's Approve
+  tap calls neither, so block 2 can record that no window opens.
+- MDN states that the server may take a share target's POST itself, with a 303 answer against a
+  resubmit, while Chrome's 2019 page shows only the service worker route
+  ([share_target](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Manifest/Reference/share_target)).
+  The spec drops a share target whose action lies outside the manifest's scope
+  ([Web Share Target](https://w3c.github.io/web-share-target/)). The probe's server takes the POST,
+  and block 6 records whether it carries the `SameSite=Lax` cookie.
+- The `sync` event and its `lastChance` flag run on Chrome for Android from 49, and a rejected sync
+  makes Chrome schedule a retry with back-off; no page gives the number of tries
+  ([Background Synchronization API](https://developer.mozilla.org/en-US/docs/Web/API/Background_Synchronization_API),
+  [background sync](https://developer.chrome.com/blog/background-sync)).
+
 ## Draft recommendation
 
 The recommendation waits on the device run. Each row names the device block that confirms it.
@@ -259,29 +294,40 @@ Each page's own date, as the page shows it; "none" marks a page with no date.
 | FCM message priority (firebase.google.com)              | 2026-10-28 |
 | notificationclick (MDN)                                 | 2026-10-26 |
 | Notifications standard (WHATWG)                         | 2026-10-19 |
+| showNotification (MDN)                                  | 2026-10-11 |
+| Clients.openWindow (MDN)                                | 2026-09-12 |
+| share_target (MDN)                                      | 2026-08-27 |
 | Notification prompts on Android (developer.chrome.com)  | 2026-07-22 |
 | RequestInit (MDN)                                       | 2026-06-26 |
+| Notification.maxActions (MDN)                           | 2026-05-31 |
+| WindowClient.focus (MDN)                                | 2025-11-30 |
 | launch_handler (MDN)                                    | 2025-11-13 |
 | Automatic notification permission removal (blog.google) | 2025-10-10 |
-| Shortcuts, PublicKeyCredential (MDN)                    | none       |
 | Navigation management (developer.chrome.com)            | 2025-08-19 |
 | Periodic background sync (developer.chrome.com)         | 2025-08-19 |
+| PushManager.subscribe (MDN)                             | 2025-06-23 |
 | Unwanted notifications (blog.chromium.org)              | 2025-05    |
 | DBSC (developer.chrome.com)                             | 2025-04-15 |
 | Declarative Web Push (webkit.org)                       | 2025-03-27 |
 | Tiptap issue 5911 (github.com)                          | 2024-12-04 |
 | Installation (web.dev)                                  | 2024-09-20 |
 | Manifest updates (web.dev)                              | 2024-09-19 |
+| Install criteria (web.dev)                              | 2024-09-19 |
+| Background Synchronization API, lastChance (MDN)        | 2024-04-22 |
 | Web push on iOS (webkit.org)                            | 2023-02-16 |
-| Persistent storage (web.dev)                            | 2020-05-12 |
 | Push overview (web.dev)                                 | 2020-11-10 |
+| Persistent storage (web.dev)                            | 2020-05-12 |
 | Web Share Target (developer.chrome.com)                 | 2019-11-08 |
 | Badging API (developer.chrome.com)                      | 2018-12-11 |
-| Site notification channels (androidpolice.com)          | 2017-07-28 |
-| WebAPKs (web.dev)                                       | 2017-05-21 |
-| Editing task force (lists.w3.org)                       | 2017-06    |
-| Subscribing a user, notification behaviour (web.dev)    | 2016-06-30 |
-| RFC 8030                                                | 2016-12    |
 | RFC 8291                                                | 2017-11    |
+| RFC 8292                                                | 2017-11    |
+| Site notification channels (androidpolice.com)          | 2017-07-28 |
+| Editing task force (lists.w3.org)                       | 2017-06    |
+| WebAPKs (web.dev)                                       | 2017-05-21 |
+| RFC 8030                                                | 2016-12    |
+| Subscribing a user, notification behaviour (web.dev)    | 2016-06-30 |
+| Background sync (developer.chrome.com)                  | 2015-12-08 |
+| Shortcuts, PublicKeyCredential (MDN)                    | none       |
 | SecureStore, SDK 58 (docs.expo.dev)                     | none       |
 | chromestatus entries                                    | none       |
+| Web Share Target spec (w3c.github.io)                   | none       |

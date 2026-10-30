@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/launcher-192.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>Block 6: share target</title>
+  </head>
+  <body>
+    <nav>
+      <a href="/">Home</a><a href="/block-1.html">Block 1</a><a href="/block-2.html">Block 2</a
+      ><a href="/block-6.html">Block 6</a><a href="/block-7.html">Block 7</a><a href="/log.html">Log</a>
+    </nav>
+    <h1>Block 6: share target</h1>
+    <p id="session" class="status">Session: loading</p>
+    <ol>
+      <li>Install the app, then share a web page, a photo or selected text from another app.</li>
+      <li>Pick <b>nixie probe</b> in the share sheet. This page opens and shows what arrived.</li>
+    </ol>
+    <h2>Last share</h2>
+    <p id="share" class="status">No share in this page's address.</p>
+    <h2>Log</h2>
+    <ul id="log" class="log"></ul>
+    <script src="/probe.js"></script>
+    <script>
+      probe.start().then(async () => {
+        const shareID = new URLSearchParams(location.search).get('share');
+
+        if (shareID) {
+          const response = await fetch(`/api/entries/${encodeURIComponent(shareID)}`);
+
+          probe.show('#share', JSON.stringify(await response.json(), null, 1));
+        }
+
+        probe.pollLog(['share']);
+      });
+    </script>
+  </body>
+</html>

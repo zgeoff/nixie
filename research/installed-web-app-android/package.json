@@ -1,0 +1,16 @@
+{
+  "name": "@heynixie/spike-installed-web-app-android",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "probe": "bun probe-app/server.ts",
+    "typecheck": "tsrs --noEmit"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3"
+  }
+}

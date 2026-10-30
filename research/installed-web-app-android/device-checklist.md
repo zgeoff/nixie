@@ -6,9 +6,10 @@ issue. The [draft recommendation](results.md#draft-recommendation) names the blo
 each of its rows.
 
 Blocks 1, 2, 6 and 7 need a service worker and manifest entries that the web client lacks, so they
-need the test app, which waits on a decision. The [device run](README.md#device-run) gives the 2
-options for it, and `<test_host>` stands for the host it runs on. Blocks 3, 4 and 5 run against your
-deployment, `<nixie_host>`, with no new code.
+run against the [probe app](probe-app/README.md), a test app in this folder. `<probe_host>` stands
+for the temporary public HTTPS host that the probe app's [Run it](probe-app/README.md#run-it) steps
+give, and the send page is the address the probe server prints on your PC. Blocks 3, 4 and 5 run
+against your deployment, `<nixie_host>`, with no new code.
 
 ## Before you start
 
@@ -25,42 +26,55 @@ deployment, `<nixie_host>`, with no new code.
 
 ## Block 1: push delivery
 
-Needs the test app, waiting on a decision. The test app at `<test_host>` holds a service worker that
-shows each push, a page with a **Subscribe** button, and a command that sends a push with a chosen
-`Urgency`, `tag`, `silent` and `renotify`.
+Runs against the probe app. Its block 1 page subscribes the phone and sends a push to it after a
+delay, and the send page on your PC sends a push with a chosen `Urgency`, `tag`, `silent` and
+`renotify` at any time. The service worker reports each push it receives, so the log on either page
+shows the delay from the send to the receipt.
 
-1. Install the test app as in "Before you start", open it, and tap **Subscribe**. Expect: Chrome's
-   notification prompt. Record: the prompt's form, and the result after you allow.
-2. Open **Settings > Apps > (the test app) > Notifications**. Record: whether the app has its own
+1. Open `https://<probe_host>/` in Chrome and install it as in "Before you start". Open
+   `chrome://webapks` and record whether an entry for `https://<probe_host>/` exists.
+2. Open the app from its icon, open **Block 1**, and tap **Subscribe**. Expect: Chrome's
+   notification prompt, then `Permission: granted` and a `200 {"subscribed":true}` line. Record: the
+   prompt's form, and the result after you allow.
+3. Open **Settings > Apps > nixie probe > Notifications**. Record: whether the app has its own
    notification settings, and the channels listed.
-3. Close the app from the recent apps screen, then send a push with `Urgency: normal`. Expect: a
-   notification within 10 s. Record: the delay.
-4. Turn the screen off, leave the phone still and unplugged for 60 min so it enters Doze, then send
-   one push with `Urgency: normal` and one with `Urgency: high`. Record: the delay of each, measured
-   from the send to the notification.
-5. Send 2 pushes with the same `tag`, the second with `silent: true`. Expect: one notification,
-   replaced without sound or vibration. Record: what you heard and saw.
-6. Send a push with the same `tag` and `renotify: true`. Expect: the notification replaced, with
-   sound. Record: what you heard.
-7. Turn on Do Not Disturb, then send a push with `Urgency: high`. Expect: no sound. Record: whether
+4. On the block 1 page, keep the delay at 15 s and the urgency at `normal`, tap **Send to this
+   phone**, then close the app from the recent apps screen. Expect: a notification within 10 s of
+   the send, with the send time in its body. Record: the `push-received` line's `phoneClockDelayMs`.
+5. Turn the screen off, leave the phone still and unplugged for 60 min so it enters Doze, then send
+   one push with `Urgency: normal` and one with `Urgency: high` from the send page. Record: the
+   `phoneClockDelayMs` of each, and the time each notification shows.
+6. From the send page, send 2 pushes with the tag `replace`, the second with **silent** ticked.
+   Expect: one notification, replaced without sound or vibration. Record: what you heard and saw.
+7. Send a push with the tag `replace` and **renotify** ticked. Expect: the notification replaced,
+   with sound. Record: what you heard.
+8. Turn on Do Not Disturb, then send a push with `Urgency: high`. Expect: no sound. Record: whether
    the app appears under the exceptions Do Not Disturb offers.
-8. Look at the app's icon with a notification unread. Expect: a dot, not a number. Record: dot,
+9. Look at the app's icon with a notification unread. Expect: a dot, not a number. Record: dot,
    number or nothing.
 
 ## Block 2: Approve from a notification
 
-Needs the test app, waiting on a decision. The test app holds a service worker whose
-`notificationclick` calls a test endpoint with the `x-nixie-client` header, and an endpoint that
-checks an `HttpOnly; Secure; SameSite=Lax` session cookie and logs each call.
+Runs against the probe app. An approval push carries an **Approve** and an **Open** button and a
+one-time token. A tap on **Approve** makes the service worker call the probe server with the
+`x-nixie-client` header and the session cookie, as nixie's API expects. The server checks the
+header, the `HttpOnly; Secure; SameSite=Lax` session cookie and the token, logs the call, and the
+service worker shows the answer as a second notification.
 
-1. Open the test app once so it sets the session cookie, then close it.
-2. Send a push with 2 actions, **Approve** and **Open**. Record: the buttons shown, and the value of
-   `Notification.maxActions` that the test page prints.
-3. Tap **Approve** with the phone unlocked. Expect: the endpoint logs one call with a valid session,
-   and no window opens. Record: the log line, and whether a window opened.
-4. Lock the phone, send the push again, and tap **Approve** on the lock screen. Record: whether
-   Android asks for an unlock before the call, and the endpoint's log line.
-5. Clear the site's data in Chrome, then repeat step 3. Expect: the endpoint logs a refused call.
+1. Subscribe on block 1, then open **Block 2**. Record: the value of `Notification.maxActions` that
+   the page prints.
+2. Tap **Send an approval push**, then close the app within the 15 s delay. Expect: a notification
+   with **Approve** and **Open**. Record: the buttons shown.
+3. Tap **Approve** with the phone unlocked. Expect: a second notification `Approved`, no window
+   opens, and the block 2 log shows an `approve` line with `"outcome": "approved"`,
+   `"cookieSent": true` and `"sessionKnown": true`. Record: the log line, and whether a window
+   opened.
+4. Send an approval push from the send page with **Approve and Open buttons** ticked, lock the
+   phone, and tap **Approve** on the lock screen. Record: whether Android asks for an unlock before
+   the call, and the log line.
+5. Send an approval push, then tap **Sign out** on the block 2 page, which makes the server forget
+   the session and clear the cookie, and tap **Approve** on the notification. Expect:
+   `Refused (401): no session`, and a log line on the send page with `"sessionKnown": false`.
    Record: the log line, and what the notification shows.
 
 ## Block 3: links
@@ -110,23 +124,28 @@ keyboard you can install, such as Gboard, Samsung Keyboard and SwiftKey.
 
 ## Block 6: share target
 
-Needs the test app, waiting on a decision. The test app holds a manifest `share_target` that takes
-text, a link and an image by POST, and a page that shows what arrived.
+Runs against the probe app. Its manifest holds a `share_target` that takes a title, text, a link and
+files by POST, and the probe server records each share and opens the block 6 page on it.
 
-1. Install the test app, wait for its WebAPK to update with the share target, then share a web page
-   from Chrome's share sheet. Expect: the test app in the share sheet. Record: present or absent,
-   and the fields that arrived, with the link's field.
+1. Install the probe app, then share a web page from Chrome's share sheet. Expect: **nixie probe**
+   in the share sheet, and the block 6 page with the share. Record: present or absent, and the
+   fields that arrived, with the field that holds the link.
 2. Share a photo from the gallery. Expect: the page shows the image's name, type and size. Record:
    what the page shows.
 3. Share selected text from another app. Record: the fields that arrived.
+4. On any share, record `cookieSent` and `secFetchSite`, which show whether the share's POST carried
+   the `SameSite=Lax` session cookie.
 
 ## Block 7: background sync
 
-Needs the test app, waiting on a decision. The test app holds a page that queues a message in
-IndexedDB and registers a `sync` event, and a service worker that sends the queue and logs each send
-on the server.
+Runs against the probe app. Its block 7 page queues a message in IndexedDB and registers a `sync`
+event, and the service worker sends the queue to the probe server, which logs each message once with
+its delay from the queue time.
 
-1. Turn on aeroplane mode, queue one message, and close the app.
-2. Wait 1 min, then turn off aeroplane mode. Expect: the server logs the send within 5 min, with the
-   app closed. Record: the delay.
-3. Repeat with the phone in battery saver. Record: the delay, or no send within 30 min.
+1. Open **Block 7**. Expect: `Background sync: supported`. Record: the line.
+2. Turn on aeroplane mode, tap **Queue**, and close the app. Expect: the message under **Waiting in
+   the outbox** before you close it.
+3. Wait 1 min, then turn off aeroplane mode. Expect: a `sync` line on the send page within 5 min,
+   with the app closed. Record: its `phoneClockDelayMs`, less the minute you waited offline.
+4. Repeat with the phone in battery saver. Record: the delay, or no send within 30 min, and
+   `lastChance` on the line.
