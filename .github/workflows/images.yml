@@ -42,11 +42,14 @@ jobs:
         guests/**
         libs/**
         modules/**
+        scripts/images/**
+        scripts/lib/**
 
   rehearse:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       registry:
         image: registry:3@sha256:ddf754342cfc8acc51a56d5d0ab6af06826461864460636d8bd5c546dab2a7b8
@@ -59,6 +62,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install
+        run: bun install --frozen-lockfile --ignore-scripts
 
       # the builder shares the host network, so it reaches the job's registry on localhost
       - name: Set up Buildx
@@ -98,9 +109,7 @@ jobs:
           CONVERSATION:
             ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
           FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
-        run: |
-          .github/scripts/build-sandbox-manifest.sh "$CONVERSATION" "$FETCH" > apps/server/sandbox-manifest.json
-          cat apps/server/sandbox-manifest.json
+        run: bun run --silent ci:images:write-sandbox-manifest
 
       - name: Build the nixie image
         id: nixie
@@ -113,20 +122,12 @@ jobs:
       - name: Check that the nixie image carries the sandbox manifest
         env:
           NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
-        run: |
-          docker run --rm --entrypoint cat "$NIXIE" /app/sandbox-manifest.json > "$RUNNER_TEMP/carried.json"
-          cat "$RUNNER_TEMP/carried.json"
-          diff <(jq -S . apps/server/sandbox-manifest.json) <(jq -S . "$RUNNER_TEMP/carried.json")
+        run: bun run --silent ci:images:check-carried-manifest
 
-      # the command a deployment's scripts run, through the nixie command on the image's PATH
       - name: Check that the nixie command prints the sandbox images
         env:
           NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
-        run: |
-          docker run --rm --network none --read-only --entrypoint nixie "$NIXIE" sandbox-manifest > "$RUNNER_TEMP/printed.json"
-          cat "$RUNNER_TEMP/printed.json"
-          diff <(jq -S 'map_values(.ref)' "$RUNNER_TEMP/printed.json") <(jq -S . apps/server/sandbox-manifest.json)
-          jq -e 'to_entries | all(.key as $kind | .value.name | test("^nixie-\($kind)-[0-9a-f]{12}$"))' "$RUNNER_TEMP/printed.json" > /dev/null
+        run: bun run --silent ci:images:check-printed-sandbox-images
 
       # with no network, so the check passes only on the model files the image carries
       - name: Check that the nixie image loads its encoder offline
@@ -148,27 +149,8 @@ jobs:
           FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
           NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
           WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
-        run: |
-          .github/scripts/tag-images.sh 0.0.0-rehearsal "$CONVERSATION" "$FETCH" "$WEB" "$NIXIE"
-          .github/scripts/tag-images.sh 0.0.0-rehearsal "$CONVERSATION" "$FETCH" "$WEB" "$NIXIE"
-          {
-            echo '| Image | Digest |'
-            echo '| ----- | ------ |'
-            printf "| \`%s\` | \`%s\` |\n" "${CONVERSATION%@*}" "${CONVERSATION#*@}" "${FETCH%@*}" "${FETCH#*@}" \
-              "${WEB%@*}" "${WEB#*@}" "${NIXIE%@*}" "${NIXIE#*@}"
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: bun run --silent ci:images:tag-rehearsal-images
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version-file: .bun-version
-
-      - name: Install
-        run: bun install --frozen-lockfile --ignore-scripts
-
-      # the release's assets stage on the rehearsal digests, with the summaries the notes stage
-      # writes: every image that release.json names must resolve its tag to its digest, and the
-      # upload script runs against a stand-in for gh
       - name: Build release.json, check each image it names, and rehearse its upload
         env:
           CONVERSATION:
@@ -176,27 +158,4 @@ jobs:
           FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
           NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
           WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
-        run: |
-          bun libs/db/src/run-migration-check.ts --summary "$RUNNER_TEMP/migrations.json" > /dev/null
-          bun apps/server/src/run-config-schema-check.ts --summary "$RUNNER_TEMP/config-schema.json" \
-            > /dev/null
-          bun apps/server/src/run-release-manifest.ts --version 0.0.0-rehearsal \
-            --commit "$GITHUB_SHA" --server "$NIXIE" --web "$WEB" --conversation "$CONVERSATION" \
-            --fetch "$FETCH" --migrations "$RUNNER_TEMP/migrations.json" \
-            --config-schema "$RUNNER_TEMP/config-schema.json" --out "$RUNNER_TEMP/release.json"
-          jq -r '.images[], .sandboxImages[]' "$RUNNER_TEMP/release.json" | while read -r ref; do
-            named=$(docker buildx imagetools inspect "${ref%@*}" --format '{{json .Manifest}}' | jq -r .digest)
-            if [[ $named != "${ref#*@}" ]]; then
-              echo "::error::release.json names $ref, but ${ref%@*} names $named"
-              exit 1
-            fi
-            echo "$ref resolves"
-          done
-          .github/scripts/check-publish-release-assets.sh "$RUNNER_TEMP/release.json"
-          {
-            echo '## release.json'
-            echo
-            echo '```json'
-            cat "$RUNNER_TEMP/release.json"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: bun run --silent ci:images:rehearse-release-assets

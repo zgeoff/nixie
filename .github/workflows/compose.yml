@@ -30,6 +30,7 @@ jobs:
     with:
       paths: |
         .github/workflows/compose.yml
+        .bun-version
         .dockerignore
         bun.lock
         bunfig.toml
@@ -42,6 +43,8 @@ jobs:
         libs/**
         modules/**
         preview/**
+        scripts/compose/**
+        scripts/lib/**
 
   recipe:
     needs: changes
@@ -54,38 +57,18 @@ jobs:
         with:
           persist-credentials: false
 
-      # a plain secrets file with a throwaway key, which the test build's stand-in for sops reads, and
-      # an invented age key; each is mode 0600 and owned by the runner's user, as a host's files are,
-      # so the start proves that setup hands both to nixie's user; the log and stop steps need both
-      # names to read compose.yaml, so this step runs before any step that can fail
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      # the log and stop steps need both file names to read compose.yaml, so this step runs before
+      # any step that can fail
       - name: Write the throwaway secrets
-        run: |
-          umask 077
-          key=$(head -c 32 /dev/urandom | base64)
-          printf 'deployment_key: %s\nmodel_credentials:\n  anthropic: invented-placeholder\n' "$key" > "$RUNNER_TEMP/secrets.yaml"
-          echo 'invented-age-key-for-the-compose-check' > "$RUNNER_TEMP/age.key"
-          {
-            echo "NIXIE_SECRETS_FILE=$RUNNER_TEMP/secrets.yaml"
-            echo "NIXIE_AGE_KEY_FILE=$RUNNER_TEMP/age.key"
-          } >> "$GITHUB_ENV"
+        run: bun run --silent ci:compose:write-throwaway-secrets
 
       - name: Check each pinned tag against its digest
-        run: |
-          grep -oE 'image: [^ ]+:[^ @]+@sha256:[0-9a-f]{64}' compose.yaml | sort -u | while read -r _ ref; do
-            name=${ref%@*}
-            pinned=${ref#*@}
-            actual=$(docker buildx imagetools inspect "$name" --format '{{json .Manifest.Digest}}' | tr -d '"')
-            if [[ $actual != "$pinned" ]]; then
-              echo "::error::$name resolves to $actual, and compose.yaml pins $pinned"
-              exit 1
-            fi
-            echo "$name@$pinned" | tee -a "$GITHUB_STEP_SUMMARY"
-          done
-          # every service in the recipe names its image by tag and digest
-          if grep -E '^\s+image:' compose.yaml | grep -vqE '@sha256:[0-9a-f]{64}$'; then
-            echo '::error::compose.yaml names an image without a tag and digest'
-            exit 1
-          fi
+        run: bun run --silent ci:compose:check-pinned-digests
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -107,20 +90,15 @@ jobs:
         run: docker compose -f compose.yaml -f ci/compose.yaml up --wait --wait-timeout 300
 
       - name: Check the health URL
-        run: |
-          curl --fail --silent --show-error http://127.0.0.1:8080/health/ready | tee -a "$GITHUB_STEP_SUMMARY"
-          curl --fail --silent --show-error --output /dev/null http://127.0.0.1:8080/
+        env:
+          ORIGIN: http://127.0.0.1:8080
+        run: bun run --silent ci:compose:check-health-url
 
-      # nixie's user reads the age key that sops would read, and setup gave it to that user alone
       - name: Check the age key
-        run: |
-          docker compose -f compose.yaml -f ci/compose.yaml exec -T nixie cat /etc/nixie/secrets/age.key | cmp - "$NIXIE_AGE_KEY_FILE"
-          docker compose -f compose.yaml -f ci/compose.yaml exec -T nixie stat -c '%a %u' /etc/nixie/secrets/age.key | grep -Fx '400 10001'
+        run: bun run --silent ci:compose:check-age-key
 
-      # a code is two groups of five characters, which enrol-code prints on its first line
       - name: Check the sign-in code
-        run: |
-          docker compose -f compose.yaml -f ci/compose.yaml run --rm enrol | grep -E '^[0-9A-Z]{5}-[0-9A-Z]{5}$'
+        run: bun run --silent ci:compose:check-sign-in-code recipe
 
       - name: Show the logs
         if: failure()

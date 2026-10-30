@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import type { SandboxImage } from '@heynixie/sandbox';
 import { z } from 'zod';
+import type { sandboxImagesSchema } from './sandbox-images-schema';
 
 const refSchema = z
   .string()
@@ -8,7 +9,7 @@ const refSchema = z
 
 const manifestSchema = z.strictObject({ conversation: refSchema, fetch: refSchema });
 
-export type SandboxImages = Readonly<Record<keyof z.infer<typeof manifestSchema>, SandboxImage>>;
+export type SandboxImages = Readonly<z.infer<typeof sandboxImagesSchema>>;
 
 export async function loadSandboxManifest(path: string): Promise<SandboxImages> {
   const text = await readFile(path, 'utf8');

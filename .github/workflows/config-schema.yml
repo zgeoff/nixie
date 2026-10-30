@@ -25,6 +25,7 @@ defaults:
 jobs:
   config-schema:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,11 +43,4 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
           TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          base="$RUNNER_TEMP/base-config.schema.json"
-          if git show "origin/$BASE:apps/server/config.schema.json" > "$base" 2> /dev/null; then
-            bun apps/server/src/run-config-schema-check.ts --released "$base" --last-tag "$BASE" \
-              --title "$TITLE" | tee -a "$GITHUB_STEP_SUMMARY"
-          else
-            bun apps/server/src/run-config-schema-check.ts --title "$TITLE" | tee -a "$GITHUB_STEP_SUMMARY"
-          fi
+        run: bun run --silent ci:config-schema:run-config-schema-check
