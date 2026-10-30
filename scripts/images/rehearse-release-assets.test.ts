@@ -35,7 +35,7 @@ test('it builds release.json from the rehearsal digests and rehearses its upload
   // the release.json that the stubbed manifest script would write
   writeFileSync(
     join(ctx.runnerTemp, 'release.json'),
-    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44"},"sandboxImages":{"fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22"}}\n',
+    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11","fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22"}}\n',
   );
 
   createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
@@ -44,11 +44,16 @@ test('it builds release.json from the rehearsal digests and rehearses its upload
   createStubProgram(join(ctx.binPath, 'docker'), {
     callsPath: ctx.callsPath,
     answers: {
-      'buildx imagetools inspect r/nixie:0.0.0-rehearsal --format {{json .Manifest}}': {
-        stdout: '{"digest":"sha256:dd44"}\n',
+      'buildx imagetools inspect r/nixie:0.0.0-rehearsal --format {{.Manifest.Digest}}': {
+        stdout: 'sha256:dd44\n',
       },
-      'buildx imagetools inspect r/nixie-fetch:0.0.0-rehearsal --format {{json .Manifest}}': {
-        stdout: '{"digest":"sha256:bb22"}\n',
+      'buildx imagetools inspect r/nixie-web:0.0.0-rehearsal --format {{.Manifest.Digest}}': {
+        stdout: 'sha256:cc33\n',
+      },
+      'buildx imagetools inspect r/nixie-conversation:0.0.0-rehearsal --format {{.Manifest.Digest}}':
+        { stdout: 'sha256:aa11\n' },
+      'buildx imagetools inspect r/nixie-fetch:0.0.0-rehearsal --format {{.Manifest.Digest}}': {
+        stdout: 'sha256:bb22\n',
       },
     },
   });
@@ -74,15 +79,17 @@ test('it builds release.json from the rehearsal digests and rehearses its upload
       `bun libs/db/src/run-migration-check.ts --summary ${ctx.runnerTemp}/migrations.json`,
       `bun apps/server/src/run-config-schema-check.ts --summary ${ctx.runnerTemp}/config-schema.json`,
       `bun apps/server/src/run-release-manifest.ts --version 0.0.0-rehearsal --commit a1b2c3 --server r/nixie@sha256:dd44 --web r/nixie-web@sha256:cc33 --conversation r/nixie-conversation@sha256:aa11 --fetch r/nixie-fetch@sha256:bb22 --migrations ${ctx.runnerTemp}/migrations.json --config-schema ${ctx.runnerTemp}/config-schema.json --out ${ctx.runnerTemp}/release.json`,
-      'docker buildx imagetools inspect r/nixie:0.0.0-rehearsal --format {{json .Manifest}}',
-      'docker buildx imagetools inspect r/nixie-fetch:0.0.0-rehearsal --format {{json .Manifest}}',
+      'docker buildx imagetools inspect r/nixie:0.0.0-rehearsal --format {{.Manifest.Digest}}',
+      'docker buildx imagetools inspect r/nixie-web:0.0.0-rehearsal --format {{.Manifest.Digest}}',
+      'docker buildx imagetools inspect r/nixie-conversation:0.0.0-rehearsal --format {{.Manifest.Digest}}',
+      'docker buildx imagetools inspect r/nixie-fetch:0.0.0-rehearsal --format {{.Manifest.Digest}}',
       `bash .github/scripts/check-publish-release-assets.sh ${ctx.runnerTemp}/release.json`,
       '',
     ].join('\n'),
   );
 
-  expect(readFileSync(ctx.summaryPath, 'utf8')).toBe(
-    '## release.json\n\n```json\n{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44"},"sandboxImages":{"fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22"}}\n```\n',
+  expect(readFileSync(ctx.summaryPath, 'utf8')).toStartWith(
+    '## release.json\n\n```json\n{"images":',
   );
 });
 
@@ -91,7 +98,7 @@ test('it fails, and uploads nothing, when a tag in release.json names another di
 
   writeFileSync(
     join(ctx.runnerTemp, 'release.json'),
-    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44"},"sandboxImages":{}}\n',
+    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11","fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22"}}\n',
   );
 
   createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
@@ -100,8 +107,8 @@ test('it fails, and uploads nothing, when a tag in release.json names another di
   createStubProgram(join(ctx.binPath, 'docker'), {
     callsPath: ctx.callsPath,
     answers: {
-      'buildx imagetools inspect r/nixie:0.0.0-rehearsal --format {{json .Manifest}}': {
-        stdout: '{"digest":"sha256:ee55"}\n',
+      'buildx imagetools inspect r/nixie:0.0.0-rehearsal --format {{.Manifest.Digest}}': {
+        stdout: 'sha256:ee55\n',
       },
     },
   });
@@ -127,4 +134,35 @@ test('it fails, and uploads nothing, when a tag in release.json names another di
   );
 
   expect(readFileSync(ctx.callsPath, 'utf8')).not.toInclude('check-publish-release-assets.sh');
+});
+
+test('it fails when release.json leaves out a sandbox image', async () => {
+  const ctx = setupTest();
+
+  writeFileSync(
+    join(ctx.runnerTemp, 'release.json'),
+    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11"}}\n',
+  );
+
+  createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
+  createStubProgram(join(ctx.binPath, 'bash'), { callsPath: ctx.callsPath });
+  createStubProgram(join(ctx.binPath, 'docker'), { callsPath: ctx.callsPath });
+
+  const result = await $`${process.execPath} ${ctx.scriptPath}`
+    .env({
+      PATH: ctx.binPath,
+      RUNNER_TEMP: ctx.runnerTemp,
+      GITHUB_STEP_SUMMARY: ctx.summaryPath,
+      GITHUB_SHA: 'a1b2c3',
+      CONVERSATION: 'r/nixie-conversation@sha256:aa11',
+      FETCH: 'r/nixie-fetch@sha256:bb22',
+      WEB: 'r/nixie-web@sha256:cc33',
+      NIXIE: 'r/nixie@sha256:dd44',
+    })
+    .nothrow()
+    .quiet();
+
+  expect(result.exitCode).toBe(1);
+  expect(result.stderr.toString()).toInclude('"fetch"');
+  expect(readFileSync(ctx.callsPath, 'utf8')).not.toInclude('docker');
 });

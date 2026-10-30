@@ -1,4 +1,6 @@
 import type { MigrationSummary } from '@heynixie/db';
+import type { z } from 'zod';
+import type { releaseImagesSchema } from './release-images-schema';
 
 interface ReleaseImages {
   readonly server: string;
@@ -21,20 +23,23 @@ export interface ReleaseManifestInputs {
 }
 
 export function buildReleaseManifest(inputs: ReleaseManifestInputs) {
+  const releaseImages: z.infer<typeof releaseImagesSchema> = {
+    images: {
+      server: toTaggedImage(inputs.images.server, inputs.version),
+      web: toTaggedImage(inputs.images.web, inputs.version),
+    },
+    sandboxImages: {
+      conversation: toTaggedImage(inputs.images.conversation, inputs.version),
+      fetch: toTaggedImage(inputs.images.fetch, inputs.version),
+    },
+  };
+
   return {
     format: 1,
     version: inputs.version,
     tag: `v${inputs.version}`,
     commit: inputs.commit,
-    images: {
-      server: toTaggedImage(inputs.images.server, inputs.version),
-      web: toTaggedImage(inputs.images.web, inputs.version),
-    },
-
-    sandboxImages: {
-      conversation: toTaggedImage(inputs.images.conversation, inputs.version),
-      fetch: toTaggedImage(inputs.images.fetch, inputs.version),
-    },
+    ...releaseImages,
     migrations: inputs.migrations,
     configSchema: { asset: 'config.schema.json', ...inputs.configSchema },
   };

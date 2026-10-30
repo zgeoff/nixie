@@ -1,6 +1,7 @@
 import { appendFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { $ } from 'bun';
+import { releaseImagesSchema } from '../../apps/server/src/release-images-schema.ts';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
 
@@ -34,18 +35,23 @@ async function runCLI(): Promise<void> {
   await $`bun ${releaseManifestPath} --version 0.0.0-rehearsal --commit ${getStepEnv(process.env, 'GITHUB_SHA')} --server ${getStepEnv(process.env, 'NIXIE')} --web ${getStepEnv(process.env, 'WEB')} --conversation ${getStepEnv(process.env, 'CONVERSATION')} --fetch ${getStepEnv(process.env, 'FETCH')} --migrations ${migrationsPath} --config-schema ${configSchemaPath} --out ${releasePath}`;
 
   const release = readFileSync(releasePath, 'utf8');
+  const releaseImages = releaseImagesSchema.parse(JSON.parse(release));
 
-  for (const ref of collectReleaseRefs(JSON.parse(release))) {
+  const refs = [
+    ...Object.values(releaseImages.images),
+    ...Object.values(releaseImages.sandboxImages),
+  ];
+
+  for (const ref of refs) {
     const [image = ''] = ref.split('@');
 
     const inspected =
-      await $`docker buildx imagetools inspect ${image} --format ${'{{json .Manifest}}'}`.text();
+      await $`docker buildx imagetools inspect ${image} --format ${'{{.Manifest.Digest}}'}`.text();
 
-    const manifest: unknown = JSON.parse(inspected);
-    const named = isRecord(manifest) ? manifest['digest'] : undefined;
+    const named = inspected.trim();
 
-    if (`${image}@${String(named)}` !== ref) {
-      console.log(`::error::release.json names ${ref}, but ${image} names ${String(named)}`);
+    if (`${image}@${named}` !== ref) {
+      console.log(`::error::release.json names ${ref}, but ${image} names ${named}`);
 
       process.exitCode = 1;
 
@@ -58,20 +64,6 @@ async function runCLI(): Promise<void> {
   await $`bash .github/scripts/check-publish-release-assets.sh ${releasePath}`;
 
   appendFileSync(summaryPath, `## release.json\n\n\`\`\`json\n${release}\`\`\`\n`);
-}
-
-function collectReleaseRefs(release: unknown): string[] {
-  if (!isRecord(release)) {
-    throw new Error('release.json holds no JSON object');
-  }
-
-  return [release['images'], release['sandboxImages']].flatMap((refs) =>
-    isRecord(refs) ? Object.values(refs).filter((ref) => typeof ref === 'string') : [],
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 if (import.meta.main) {
