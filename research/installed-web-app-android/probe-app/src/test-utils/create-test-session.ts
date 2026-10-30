@@ -30,5 +30,10 @@ export async function createTestSession(probe: PairableProbe): Promise<string> {
 
   await phone.pair({ code });
 
-  return (setCookies[0] ?? '').split(';')[0] ?? '';
+  // a pairing that the probe accepts always sets the cookie, so only a bug in it reaches this
+  if (setCookies.length !== 1) {
+    throw new Error(`the pairing answer set ${setCookies.length} cookies`);
+  }
+
+  return setCookies.join('').replace(/;.*$/s, '');
 }

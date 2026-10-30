@@ -1,3 +1,4 @@
+import { subscriptionSchema } from '../../src/contract.ts';
 import { replacePushSubscription } from '../replace-push-subscription.ts';
 import { formatCallError } from './format-call-error.ts';
 import { getElement } from './get-element.ts';
@@ -29,16 +30,13 @@ getElement('#subscribe', HTMLButtonElement).addEventListener('click', async () =
     page.registration.pushManager,
     page.vapidPublicKey,
   ).then(
-    (subscription) =>
-      page.client
-        .subscribe({
-          endpoint: subscription.endpoint ?? '',
-          keys: {
-            p256dh: subscription.keys?.['p256dh'] ?? '',
-            auth: subscription.keys?.['auth'] ?? '',
-          },
-        })
-        .then(() => 'Subscribed', formatCallError),
+    async (subscription) => {
+      const parsed = subscriptionSchema.safeParse(subscription);
+
+      return parsed.success
+        ? page.client.subscribe(parsed.data).then(() => 'Subscribed', formatCallError)
+        : `Not subscribed: the browser gave no endpoint or keys (${parsed.error.message})`;
+    },
     (error: unknown) => `Not subscribed: ${String(error)}`,
   );
 });

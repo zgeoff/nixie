@@ -28,11 +28,13 @@ test('it refuses a declared length over the limit before reading', async () => {
 test('it stops a streamed body with no declared length once it passes the limit', async () => {
   const chunk = new Uint8Array(1024);
   let pulls = 0;
+  const cancelled: unknown[] = [];
   const stream = new ReadableStream<Uint8Array>({
     pull: (controller) => {
       pulls += 1;
       controller.enqueue(chunk);
     },
+    cancel: (reason) => void cancelled.push(reason),
   });
 
   const result = await readCappedBody(
@@ -43,6 +45,7 @@ test('it stops a streamed body with no declared length once it passes the limit'
 
   expect(result).toStrictEqual({ kind: 'too-large' });
   expect(pulls).toBeLessThan(10);
+  expect(cancelled).toHaveLength(1);
 });
 
 test('it stops a body that is still arriving when the deadline passes', async () => {
@@ -81,16 +84,22 @@ test('it answers a stream that fails before its end as broken', async () => {
   expect(result).toStrictEqual({ kind: 'broken' });
 });
 
-test('it reads nothing once the deadline has passed', async () => {
+test('it reads nothing and cancels the body once the deadline has passed', async () => {
   const deadline = new AbortController();
+  const cancelled: unknown[] = [];
+  const stream = new ReadableStream<Uint8Array>({
+    start: (controller) => controller.enqueue(new Uint8Array(10)),
+    cancel: (reason) => void cancelled.push(reason),
+  });
 
   deadline.abort();
 
-  expect(
-    await readCappedBody(
-      new Request('http://probe.test/', { method: 'POST', body: 'hello' }),
-      4096,
-      deadline.signal,
-    ),
-  ).toStrictEqual({ kind: 'too-slow' });
+  const result = await readCappedBody(
+    new Request('http://probe.test/', { method: 'POST', body: stream }),
+    4096,
+    deadline.signal,
+  );
+
+  expect(result).toStrictEqual({ kind: 'too-slow' });
+  expect(cancelled).toHaveLength(1);
 });

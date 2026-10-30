@@ -30,11 +30,9 @@ export interface ProbeStore {
   removeReceipt: (pushID: string) => Promise<void>;
 }
 
-interface MessageRow extends OutboxMessage {
-  state: MessageState;
-  status?: number;
-  reason?: string;
-}
+type MessageRow =
+  | (OutboxMessage & { state: 'queued' | 'sent' })
+  | (RefusedMessage & { state: 'refused' });
 
 export function openProbeStore(factory: IDBFactory): ProbeStore {
   const opening = new Promise<IDBDatabase>((resolve, reject) => {
@@ -74,11 +72,13 @@ export function openProbeStore(factory: IDBFactory): ProbeStore {
   }
 
   // Reads the message's current state and writes its next one in a single transaction, and
-  // refuses a move that the transition table lacks.
+  // refuses a move that the transition table lacks. A new message starts from the given message,
+  // and every other move starts from the stored row.
   async function moveMessage(
     id: string,
     to: MessageState,
-    buildRow: (current: MessageRow | undefined) => MessageRow,
+    buildRow: (current: OutboxMessage) => MessageRow,
+    newMessage: OutboxMessage | null,
   ): Promise<void> {
     const db = await opening;
 
@@ -90,17 +90,19 @@ export function openProbeStore(factory: IDBFactory): ProbeStore {
 
       reading.addEventListener('success', () => {
         const current: unknown = reading.result;
-        const row = isMessageRow(current) ? current : undefined;
-        const from = row?.state ?? 'absent';
+        const row = isMessageRow(current) ? current : null;
+        const from = row === null ? 'absent' : row.state;
+        const start = row ?? newMessage;
 
-        if (!canMoveMessage(from, to)) {
+        // the transition table moves a message with no row only to queued, which passes a message
+        if (!canMoveMessage(from, to) || start === null) {
           refusal = new Error(`message ${id} cannot move from ${from} to ${to}`);
           transaction.abort();
 
           return;
         }
 
-        messages.put(buildRow(row));
+        messages.put(buildRow(start));
       });
       transaction.addEventListener('complete', () => resolve());
       transaction.addEventListener('abort', () => reject(refusal ?? transaction.error));
@@ -120,28 +122,34 @@ export function openProbeStore(factory: IDBFactory): ProbeStore {
   }
 
   return {
-    addMessage: (message) => moveMessage(message.id, 'queued', () => ({ ...message, state: 'queued' })),
+    addMessage: (message) =>
+      moveMessage(message.id, 'queued', (start) => ({ ...start, state: 'queued' }), message),
     listMessages: async () =>
       (await listRows('messages'))
         .filter(isMessageRow)
         .filter((row) => row.state === 'queued')
         .map((row) => ({ id: row.id, text: row.text, queuedAt: row.queuedAt })),
     markSent: (id) =>
-      moveMessage(id, 'sent', (current) => ({
+      moveMessage(
         id,
-        text: current?.text ?? '',
-        queuedAt: current?.queuedAt ?? 0,
-        state: 'sent',
-      })),
+        'sent',
+        (start) => ({ id, text: start.text, queuedAt: start.queuedAt, state: 'sent' }),
+        null,
+      ),
     refuseMessage: (id, status, reason) =>
-      moveMessage(id, 'refused', (current) => ({
+      moveMessage(
         id,
-        text: current?.text ?? '',
-        queuedAt: current?.queuedAt ?? 0,
-        state: 'refused',
-        status,
-        reason,
-      })),
+        'refused',
+        (start) => ({
+          id,
+          text: start.text,
+          queuedAt: start.queuedAt,
+          state: 'refused',
+          status,
+          reason,
+        }),
+        null,
+      ),
     listRefused: async () =>
       (await listRows('messages')).filter(isMessageRow).flatMap((row) =>
         row.state === 'refused'
@@ -150,8 +158,8 @@ export function openProbeStore(factory: IDBFactory): ProbeStore {
                 id: row.id,
                 text: row.text,
                 queuedAt: row.queuedAt,
-                status: row.status ?? 0,
-                reason: row.reason ?? '',
+                status: row.status,
+                reason: row.reason,
               },
             ]
           : [],
@@ -173,7 +181,13 @@ function isMessageRow(row: unknown): row is MessageRow {
     'queuedAt' in row &&
     typeof row.queuedAt === 'number' &&
     'state' in row &&
-    (row.state === 'queued' || row.state === 'sent' || row.state === 'refused')
+    (row.state === 'queued' ||
+      row.state === 'sent' ||
+      (row.state === 'refused' &&
+        'status' in row &&
+        typeof row.status === 'number' &&
+        'reason' in row &&
+        typeof row.reason === 'string'))
   );
 }
 

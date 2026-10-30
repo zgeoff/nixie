@@ -2,6 +2,36 @@ import { expect, test } from 'bun:test';
 import { IDBFactory } from 'fake-indexeddb';
 import { openProbeStore } from './open-probe-store.ts';
 
+test('it drops the 2 message stores of version 1 and keeps its stored receipts', async () => {
+  const factory = new IDBFactory();
+  const versionOne = Promise.withResolvers<IDBDatabase>();
+  const opening = factory.open('probe', 1);
+
+  opening.addEventListener('upgradeneeded', () => {
+    opening.result
+      .createObjectStore('receipts', { keyPath: 'pushID' })
+      .put({ pushID: '2d6f8a1c-3e5b-4c7d-9f0a-1b2c3d4e5f77', receivedAt: 3_000 });
+    opening.result.createObjectStore('outbox', { keyPath: 'id' });
+    opening.result.createObjectStore('refused', { keyPath: 'id' });
+  });
+  opening.addEventListener('success', () => versionOne.resolve(opening.result));
+  (await versionOne.promise).close();
+
+  const store = openProbeStore(factory);
+  const receipts = await store.listReceipts();
+  const versionTwo = Promise.withResolvers<IDBDatabase>();
+  const reopening = factory.open('probe');
+
+  reopening.addEventListener('success', () => versionTwo.resolve(reopening.result));
+
+  const database = await versionTwo.promise;
+
+  expect(receipts).toStrictEqual([
+    { pushID: '2d6f8a1c-3e5b-4c7d-9f0a-1b2c3d4e5f77', receivedAt: 3_000 },
+  ]);
+  expect([...database.objectStoreNames].toSorted()).toStrictEqual(['messages', 'receipts']);
+});
+
 test('it moves a refused message out of the outbox with its reason', async () => {
   const store = openProbeStore(new IDBFactory());
 

@@ -36,6 +36,15 @@ export const approvalSchema = z.object({ approvalID: z.uuid(), token: z.string()
 
 export type Approval = z.infer<typeof approvalSchema>;
 
+// A browser's push subscription, as PushSubscription.toJSON() gives it.
+export const subscriptionSchema = z.object({
+  endpoint: z.url().max(2048),
+  keys: z.object({
+    p256dh: z.string().min(1).max(200),
+    auth: z.string().min(1).max(100),
+  }),
+});
+
 // What the service worker receives in each push, encrypted for the subscription.
 export const pushPayloadSchema = z.object({
   pushID: z.uuid(),
@@ -56,17 +65,7 @@ export const probeContract = {
   pair: oc
     .input(z.object({ code: z.string().min(1).max(64) }))
     .output(z.object({ session: z.string() })),
-  subscribe: oc
-    .input(
-      z.object({
-        endpoint: z.url().max(2048),
-        keys: z.object({
-          p256dh: z.string().min(1).max(200),
-          auth: z.string().min(1).max(100),
-        }),
-      }),
-    )
-    .output(z.object({ subscribed: z.literal(true) })),
+  subscribe: oc.input(subscriptionSchema).output(z.object({ subscribed: z.literal(true) })),
   push: oc.input(pushInputSchema).output(
     z.object({
       pushID: z.uuid(),

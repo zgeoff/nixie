@@ -5,7 +5,7 @@ import { buildPushDelivery } from './build-push-delivery.ts';
 test('it sends nothing to a subscription whose session is gone', () => {
   expect(
     buildPushDelivery({
-      sessionKnown: false,
+      recipient: undefined,
       sessionToken: 'cookie-value-of-a-signed-out-phone',
       push: {
         title: 'nixie probe',
@@ -27,7 +27,7 @@ test('it sends nothing to a subscription whose session is gone', () => {
 test('it sends a payload with no approval for a push without Approve', () => {
   expect(
     buildPushDelivery({
-      sessionKnown: true,
+      recipient: { label: 'S-1a2b3c4d' },
       sessionToken: 'cookie-value-of-the-phone',
       push: {
         title: 'water the plants',
@@ -45,6 +45,7 @@ test('it sends a payload with no approval for a push without Approve', () => {
     }),
   ).toStrictEqual({
     kind: 'send',
+    recipient: { label: 'S-1a2b3c4d' },
     payload: {
       pushID: '0c4e7a2b-8d1f-4b6a-9e3c-5f7a9b1d3e55',
       sentAt: 1_000,
@@ -62,7 +63,7 @@ test('it sends a payload with no approval for a push without Approve', () => {
 test('it puts the approval token in the payload and keeps only its hash', () => {
   expect(
     buildPushDelivery({
-      sessionKnown: true,
+      recipient: { label: 'S-1a2b3c4d' },
       sessionToken: 'cookie-value-of-the-phone',
       push: {
         title: 'Approve a test item?',
@@ -80,6 +81,7 @@ test('it puts the approval token in the payload and keeps only its hash', () => 
     }),
   ).toStrictEqual({
     kind: 'send',
+    recipient: { label: 'S-1a2b3c4d' },
     payload: {
       pushID: '0c4e7a2b-8d1f-4b6a-9e3c-5f7a9b1d3e55',
       sentAt: 1_000,

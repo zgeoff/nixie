@@ -4,23 +4,9 @@ import { buildProbeClient } from '../client/build-probe-client.ts';
 import { makeProbeHandler } from './make-probe-handler.ts';
 import { createTestPhone } from './test-utils/create-test-phone.ts';
 import { createTestSession } from './test-utils/create-test-session.ts';
+import { startStubPushService } from './test-utils/start-stub-push-service.ts';
 
 async function setupTest() {
-  const received = mock((_body: Uint8Array<ArrayBuffer>, _headers: Headers) => {});
-  // the status the stand-in push service answers with; a test sets it in its arrange phase
-  const pushServiceAnswer = { status: 201 };
-  const pushService = Bun.serve({
-    hostname: '127.0.0.1',
-    port: 0,
-    fetch: async (request) => {
-      received(new Uint8Array(await request.arrayBuffer()), request.headers);
-
-      return new Response(null, { status: pushServiceAnswer.status });
-    },
-  });
-
-  onTestFinished(() => pushService.stop(true));
-
   const vapidPair = await crypto.subtle.generateKey(
     { name: 'ECDSA', namedCurve: 'P-256' },
     true,
@@ -30,6 +16,8 @@ async function setupTest() {
   const schedule = mock((_delayMs: number, _task: () => Promise<void>) => {});
   const writeError = mock((_message: string, _error: unknown) => {});
   const bodyDeadline = new AbortController();
+  // empty: a test adds the bundled scripts it requests
+  const clientAssets = new Map<string, Blob>();
   const answerRequest = makeProbeHandler({
     vapidKeys: {
       privateKey: vapidPair.privateKey,
@@ -39,8 +27,9 @@ async function setupTest() {
     },
     adminKey: 'test-admin-key',
     publicDirectory: join(import.meta.dir, '..', 'public'),
-    clientAssets: new Map([['sw.js', new Blob(['// worker'])]]),
-    isPushEndpointAllowed: (endpoint) => endpoint.origin === pushService.url.origin,
+    clientAssets,
+    // each test starts its own stub push service on a loopback port
+    isPushEndpointAllowed: (endpoint) => endpoint.hostname === '127.0.0.1',
     pushTransport: (url, init) => fetch(url, init),
     schedule,
     readPublicFile: async (path) => {
@@ -63,23 +52,21 @@ async function setupTest() {
     adminKey: 'test-admin-key',
     admin,
     clock,
-    received,
     schedule,
     writeError,
     bodyDeadline,
-    pushServiceAnswer,
-    stopPushService: () => pushService.stop(true),
-    endpoint: new URL('/push/phone', pushService.url).href,
+    clientAssets,
   };
 }
 
 test('it approves once with the token that the push carried', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   await phone.client.push({ approve: true, tag: 'approval' });
 
-  const push = await phone.readPush(ctx.received.mock.calls[0]?.[0] ?? new Uint8Array());
+  const push = await phone.readPush(pushService.received.mock.calls[0]?.[0] ?? new Uint8Array());
 
   if (push.approval === null) {
     throw new Error('the push carried no approval');
@@ -90,11 +77,12 @@ test('it approves once with the token that the push carried', async () => {
 
 test('it refuses a second approve with a token already used', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   await phone.client.push({ approve: true });
 
-  const push = await phone.readPush(ctx.received.mock.calls[0]?.[0] ?? new Uint8Array());
+  const push = await phone.readPush(pushService.received.mock.calls[0]?.[0] ?? new Uint8Array());
 
   if (push.approval === null) {
     throw new Error('the push carried no approval');
@@ -116,7 +104,8 @@ test.each([
   ['a token past 15 minutes', 'own', 'issued', 15 * 60 * 1000 + 1, 410, 'token expired'],
 ])('it refuses an approve with %s', async (_label, caller, token, laterMs, status, message) => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
   const cookies: Record<string, string> = {
     own: phone.cookie,
     other: await createTestSession(ctx),
@@ -126,7 +115,7 @@ test.each([
 
   await phone.client.push({ approve: true });
 
-  const push = await phone.readPush(ctx.received.mock.calls[0]?.[0] ?? new Uint8Array());
+  const push = await phone.readPush(pushService.received.mock.calls[0]?.[0] ?? new Uint8Array());
 
   if (push.approval === null) {
     throw new Error('the push carried no approval');
@@ -148,7 +137,8 @@ test.each([
 
 test('it refuses every API call without the x-nixie-client header', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   const response = await ctx.answerRequest(
     new Request('http://probe.test/rpc/log', { method: 'POST', headers: { cookie: phone.cookie } }),
@@ -160,7 +150,8 @@ test('it refuses every API call without the x-nixie-client header', async () => 
 
 test('it sends a push with the chosen urgency and a VAPID signature', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   const sent = await phone.client.push({
     urgency: 'high',
@@ -169,13 +160,13 @@ test('it sends a push with the chosen urgency and a VAPID signature', async () =
     renotify: true,
   });
 
-  const headers = ctx.received.mock.calls[0]?.[1];
+  const headers = pushService.received.mock.calls[0]?.[1];
 
   expect(sent).toStrictEqual({ pushID: expect.any(String), delaySeconds: 0, statuses: [201] });
   expect(headers?.get('urgency')).toBe('high');
   expect(headers?.get('content-encoding')).toBe('aes128gcm');
   expect(headers?.get('authorization')).toStartWith('vapid t=');
-  expect(await phone.readPush(ctx.received.mock.calls[0]?.[0] ?? new Uint8Array())).toStrictEqual({
+  expect(await phone.readPush(pushService.received.mock.calls[0]?.[0] ?? new Uint8Array())).toStrictEqual({
     pushID: sent.pushID,
     sentAt: Date.UTC(2026, 9, 30, 9, 0, 0),
     title: 'nixie probe',
@@ -189,9 +180,10 @@ test('it sends a push with the chosen urgency and a VAPID signature', async () =
 
 test('it passes a failed push send to the error log and answers it as status 0', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
-  ctx.stopPushService();
+  pushService.stop();
 
   const sent = await phone.client.push({});
 
@@ -201,37 +193,38 @@ test('it passes a failed push send to the error log and answers it as status 0',
 
 test('it sends a delayed push only when its scheduled task runs', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   const sent = await phone.client.push({ delaySeconds: 15 });
-  const sentBeforeTask = ctx.received.mock.calls.length;
+  const sentBeforeTask = pushService.received.mock.calls.length;
 
   await ctx.schedule.mock.calls[0]?.[1]();
 
   expect(sent).toStrictEqual({ pushID: expect.any(String), delaySeconds: 15, statuses: null });
   expect(ctx.schedule.mock.calls).toStrictEqual([[15_000, expect.any(Function)]]);
   expect(sentBeforeTask).toBe(0);
-  expect(ctx.received).toHaveBeenCalledTimes(1);
+  expect(pushService.received).toHaveBeenCalledTimes(1);
 });
 
 test('it sends nothing when a delayed push runs after its phone signed out', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   await phone.client.push({ delaySeconds: 15 });
   await phone.client.signOut();
   await ctx.schedule.mock.calls[0]?.[1]();
 
-  expect(ctx.received).not.toHaveBeenCalled();
+  expect(pushService.received).not.toHaveBeenCalled();
 });
 
 test.each([404, 410])(
   'it forgets a subscription when the push service answers %d',
   async (status) => {
     const ctx = await setupTest();
-    const phone = await createTestPhone(ctx, ctx.endpoint);
-
-    ctx.pushServiceAnswer.status = status;
+    const pushService = startStubPushService(status);
+    const phone = await createTestPhone(ctx, pushService.endpoint);
 
     const sent = await phone.client.push({});
 
@@ -242,9 +235,8 @@ test.each([404, 410])(
 
 test('it keeps a subscription when the push service answers 429', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
-
-  ctx.pushServiceAnswer.status = 429;
+  const pushService = startStubPushService(429);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   await phone.client.push({});
 
@@ -253,9 +245,10 @@ test('it keeps a subscription when the push service answers 429', async () => {
 
 test('it sends to every subscribed phone for the admin key', async () => {
   const ctx = await setupTest();
+  const pushService = startStubPushService(201);
 
-  await createTestPhone(ctx, ctx.endpoint);
-  await createTestPhone(ctx, `${ctx.endpoint}-second`);
+  await createTestPhone(ctx, pushService.endpoint);
+  await createTestPhone(ctx, `${pushService.endpoint}-second`);
 
   expect(await ctx.admin.push({})).toMatchObject({ statuses: [201, 201] });
 });
@@ -267,13 +260,14 @@ test.each([
   ['a cookie the server never issued', { cookie: 'probe_session=a-value-the-server-never-issued' }],
 ])('it refuses a push from a caller with %s', async (_label, headers) => {
   const ctx = await setupTest();
+  const pushService = startStubPushService(201);
 
-  await createTestPhone(ctx, ctx.endpoint);
+  await createTestPhone(ctx, pushService.endpoint);
 
   const caller = buildProbeClient({ origin: 'http://probe.test', headers, fetch: ctx.answerRequest });
 
   expect(caller.push({})).rejects.toMatchObject({ status: 401 });
-  expect(ctx.received).not.toHaveBeenCalled();
+  expect(pushService.received).not.toHaveBeenCalled();
 });
 
 test.each([
@@ -304,7 +298,8 @@ test.each([
 
 test('it refuses a subscription to an endpoint that another session holds', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
   const intruder = buildProbeClient({
     origin: 'http://probe.test',
     headers: { cookie: await createTestSession(ctx) },
@@ -312,7 +307,7 @@ test('it refuses a subscription to an endpoint that another session holds', asyn
   });
 
   const taking = intruder.subscribe({
-    endpoint: ctx.endpoint,
+    endpoint: pushService.endpoint,
     keys: { p256dh: 'key', auth: 'secret' },
   });
 
@@ -322,13 +317,14 @@ test('it refuses a subscription to an endpoint that another session holds', asyn
 
 test('it keeps the 5 newest subscriptions of a session and every other session', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
-  const other = await createTestPhone(ctx, `${ctx.endpoint}-other`);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
+  const other = await createTestPhone(ctx, `${pushService.endpoint}-other`);
 
   await Promise.all(
     Array.from({ length: 10 }, (_, index) =>
       other.client.subscribe({
-        endpoint: `${ctx.endpoint}-other-${index}`,
+        endpoint: `${pushService.endpoint}-other-${index}`,
         keys: { p256dh: 'key', auth: 'secret' },
       }),
     ),
@@ -404,7 +400,8 @@ test.each([
   ['no session', 'none', 401],
 ])('it refuses a log entry to a caller with %s', async (_label, caller, status) => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
   const form = new FormData();
 
   form.append('text', 'a private note');
@@ -440,7 +437,8 @@ test('it refuses a share that is no form', async () => {
 
 test('it records a synced message once and answers a repeat as a duplicate', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
   const message = {
     messageID: '6f1c2a54-93b7-4c1e-9d4e-2b8f0a7c5e11',
     text: 'buy more tea',
@@ -471,8 +469,9 @@ test('it records a synced message once and answers a repeat as a duplicate', asy
 
 test('it records a message that another session synced first under the same ID', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
-  const other = await createTestPhone(ctx, `${ctx.endpoint}-other`);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
+  const other = await createTestPhone(ctx, `${pushService.endpoint}-other`);
   const message = {
     messageID: '6f1c2a54-93b7-4c1e-9d4e-2b8f0a7c5e11',
     text: 'buy more tea',
@@ -514,8 +513,9 @@ test.each([
 
 test('it shows a session only its own log entries', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
-  const otherPhone = await createTestPhone(ctx, `${ctx.endpoint}-second`);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
+  const otherPhone = await createTestPhone(ctx, `${pushService.endpoint}-second`);
 
   const own = await phone.client.log();
   const other = await otherPhone.client.log();
@@ -527,9 +527,10 @@ test('it shows a session only its own log entries', async () => {
 
 test('it shows every log entry, newest first, for the admin key', async () => {
   const ctx = await setupTest();
+  const pushService = startStubPushService(201);
 
-  await createTestPhone(ctx, ctx.endpoint);
-  await createTestPhone(ctx, `${ctx.endpoint}-second`);
+  await createTestPhone(ctx, pushService.endpoint);
+  await createTestPhone(ctx, `${pushService.endpoint}-second`);
   await ctx.answerRequest(
     new Request('http://probe.test/share', { method: 'POST', body: new FormData() }),
   );
@@ -543,7 +544,8 @@ test('it shows every log entry, newest first, for the admin key', async () => {
 
 test('it keeps a phone log entry through a flood of anonymous shares and approve calls', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
   const anonymous = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
 
   for (let index = 0; index < 150; index += 1) {
@@ -565,8 +567,9 @@ test.each([
   ['a cookie the server never issued', { cookie: 'probe_session=a-value-the-server-never-issued' }],
 ])('it refuses the log to a caller with %s', async (_label, headers) => {
   const ctx = await setupTest();
+  const pushService = startStubPushService(201);
 
-  await createTestPhone(ctx, ctx.endpoint);
+  await createTestPhone(ctx, pushService.endpoint);
 
   const caller = buildProbeClient({ origin: 'http://probe.test', headers, fetch: ctx.answerRequest });
 
@@ -585,14 +588,16 @@ test.each([
 
 test('it refuses the subscription list to a phone with only its session', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   expect(phone.client.subscriptions()).rejects.toMatchObject({ status: 401 });
 });
 
 test('it forgets a session that signs out, with its subscriptions, and clears its cookie', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   const response = await ctx.answerRequest(
     new Request('http://probe.test/rpc/signOut', {
@@ -706,7 +711,8 @@ test('it drops a pairing code after 5 wrong tries', async () => {
 
 test('it refuses a pairing past 20 sessions and keeps every paired phone', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   for (let index = 0; index < 19; index += 1) {
     await createTestSession(ctx);
@@ -721,7 +727,8 @@ test('it refuses a pairing past 20 sessions and keeps every paired phone', async
 
 test('it replaces the session of a phone that pairs again', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
   const { code } = await ctx.admin.createPairing();
 
   await phone.client.pair({ code });
@@ -731,7 +738,8 @@ test('it replaces the session of a phone that pairs again', async () => {
 
 test('it starts no session for a flood of page requests, and a paired phone keeps working', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   const pages = await Promise.all(
     Array.from({ length: 2000 }, () => ctx.answerRequest(new Request('http://probe.test/'))),
@@ -745,10 +753,46 @@ test('it starts no session for a flood of page requests, and a paired phone keep
 test('it serves the bundled service worker from the root', async () => {
   const ctx = await setupTest();
 
+  ctx.clientAssets.set('sw.js', new Blob(['// worker']));
+
   const response = await ctx.answerRequest(new Request('http://probe.test/sw.js'));
 
   expect(response.headers.get('content-type')).toBe('text/javascript; charset=utf-8');
   expect(await response.text()).toBe('// worker');
+});
+
+test('it answers a script name outside the bundle as not found', async () => {
+  const ctx = await setupTest();
+
+  ctx.clientAssets.set('sw.js', new Blob(['// worker']));
+
+  const response = await ctx.answerRequest(new Request('http://probe.test/assets/missing.js'));
+
+  expect(response.status).toBe(404);
+});
+
+test('it frees each share slot when its share ends, refused or recorded', async () => {
+  const ctx = await setupTest();
+  const oversized = () =>
+    ctx.answerRequest(
+      new Request('http://probe.test/share', {
+        method: 'POST',
+        headers: { 'content-length': String(25 * 1024 * 1024 + 1) },
+        body: 'a short body',
+      }),
+    );
+
+  await oversized();
+  await oversized();
+  await ctx.answerRequest(
+    new Request('http://probe.test/share', { method: 'POST', body: new FormData() }),
+  );
+
+  const afterThree = await ctx.answerRequest(
+    new Request('http://probe.test/share', { method: 'POST', body: new FormData() }),
+  );
+
+  expect(afterThree.status).toBe(303);
 });
 
 test('it answers a missing public file as not found', async () => {
@@ -905,7 +949,8 @@ test('it records a share from a paired phone while 2 shares without a session ar
 
 test('it refuses an API call over 64 KiB before it parses it', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   const response = await ctx.answerRequest(
     new Request('http://probe.test/rpc/sync', {
@@ -920,7 +965,8 @@ test('it refuses an API call over 64 KiB before it parses it', async () => {
 
 test('it refuses an API call whose body stream fails after a whole call and runs nothing', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
   const call = JSON.stringify({
     json: {
       messageID: '6f1c2a54-93b7-4c1e-9d4e-2b8f0a7c5e11',
@@ -948,7 +994,8 @@ test('it refuses an API call whose body stream fails after a whole call and runs
 
 test('it logs one receipt for a push that a phone reports twice', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
   const sent = await phone.client.push({});
 
   const first = await phone.client.pushReceived({ pushID: sent.pushID, receivedAt: 1_000 });
@@ -966,7 +1013,8 @@ test.each([
   ['no session', 'none', 401],
 ])('it refuses a receipt for a push from a caller with %s', async (_label, caller, status) => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
   const sent = await phone.client.push({});
   const cookies: Record<string, string> = { other: await createTestSession(ctx), none: '' };
   const reporter = buildProbeClient({
@@ -982,7 +1030,8 @@ test.each([
 
 test('it refuses a push past 10 in progress for one session', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   await Promise.all(Array.from({ length: 10 }, () => phone.client.push({ delaySeconds: 60 })));
 
@@ -991,7 +1040,8 @@ test('it refuses a push past 10 in progress for one session', async () => {
 
 test('it takes a push from the admin while a session has 10 in progress', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   await Promise.all(Array.from({ length: 10 }, () => phone.client.push({ delaySeconds: 60 })));
 
@@ -1000,7 +1050,8 @@ test('it takes a push from the admin while a session has 10 in progress', async 
 
 test('it frees a push slot once a delayed push is sent', async () => {
   const ctx = await setupTest();
-  const phone = await createTestPhone(ctx, ctx.endpoint);
+  const pushService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, pushService.endpoint);
 
   await Promise.all(Array.from({ length: 10 }, () => phone.client.push({ delaySeconds: 60 })));
   await ctx.schedule.mock.calls[0]?.[1]();

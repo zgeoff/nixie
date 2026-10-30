@@ -30,6 +30,7 @@ export async function readCappedBody(
     return { kind: 'too-slow' };
   }
 
+  // a read that ends first leaves the listener on a closed stream, where a cancel does nothing
   deadline.addEventListener('abort', stopReading, { once: true });
 
   const chunks: Uint8Array[] = [];
@@ -43,8 +44,6 @@ export async function readCappedBody(
     }
 
     if (chunk === null) {
-      deadline.removeEventListener('abort', stopReading);
-
       return { kind: 'broken' };
     }
 
@@ -57,7 +56,6 @@ export async function readCappedBody(
     total += value.byteLength;
 
     if (total > maxBytes) {
-      deadline.removeEventListener('abort', stopReading);
       stopReading();
 
       return { kind: 'too-large' };
@@ -65,8 +63,6 @@ export async function readCappedBody(
 
     chunks.push(value);
   }
-
-  deadline.removeEventListener('abort', stopReading);
 
   const body = new Uint8Array(total);
   let offset = 0;

@@ -27,10 +27,8 @@ export function pickStaticResponse(pathname: string, publicRoot: string): Static
       : { kind: 'not-found' };
   }
 
-  const asset = /^\/(sw\.js|assets\/[\w-]+\.js)$/.exec(pathname);
-
-  if (asset !== null) {
-    return { kind: 'asset', name: asset[1] ?? '' };
+  if (/^\/(?:sw\.js|assets\/[\w-]+\.js)$/.test(pathname)) {
+    return { kind: 'asset', name: pathname.slice(1) };
   }
 
   const path = resolve(publicRoot, `.${pathname === '/' ? '/index.html' : pathname}`);
