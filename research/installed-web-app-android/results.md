@@ -238,6 +238,19 @@ The owner waived blocks 3 to 5, which run against a live deployment, in these wo
 grasping at straws a little here, and it's safe to say Android has properly implemented PWAs at this
 point." The rows for links, sessions and paste spans rest on the docs and nixie's code alone.
 
+### Probe app
+
+The probe app stays off `main`, on the
+[`installed-web-app-probe` branch](https://github.com/zgeoff/nixie/tree/f0886e8ddab1e6effa3907e9359b09b27867c370/research/installed-web-app-android),
+which is the starting point for a later test app. The branch holds the probe app in `probe-app/`,
+its README with the "Run it" commands that start it behind a temporary public HTTPS URL, and the
+device checklist with the probe app's steps for blocks 1, 2, 6 and 7.
+
+One review finding on the branch is open. The body reader's test of a declared length over the limit
+sends a body that is itself over the limit, so it cannot tell a refusal before the first byte from
+the limit on the stream. The fix declares a length over the limit with a short real body, and
+asserts that the reader read no byte of it.
+
 ## Recommendation
 
 The installed web app is nixie's Android client, and nixie builds no native Android app.
