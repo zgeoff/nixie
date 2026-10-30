@@ -2,8 +2,8 @@
 
 These steps confirm the [results](results.md) on a real phone with Chrome and the installed nixie
 web app. Run the blocks in order, and record each "Record" line in a copy of this file or in the
-issue. The [draft recommendation](results.md#draft-recommendation) names the block that confirms
-each of its rows.
+issue. The [recommendation](results.md#recommendation) names the block that confirms each of its
+rows.
 
 Blocks 1, 2, 6 and 7 need a service worker and manifest entries that the web client lacks, so they
 need the test app, which waits on a decision. The [device run](README.md#device-run) gives the 2
