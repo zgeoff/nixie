@@ -26,7 +26,7 @@ defaults:
 
 jobs:
   changes:
-    uses: zgeoff/tools/.github/workflows/paths-changed.yml@sync-v29
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@sync-v32
     with:
       paths: |
         .github/workflows/compose.yml
