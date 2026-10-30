@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { StartTimer } from '../start-platform-timer';
 import { css } from '../styled-system/css';
 import { useConversationRecords } from '../use-conversation-records';
@@ -17,6 +17,12 @@ export interface ConversationProps {
   readonly thread: string;
 
   readonly navigation?: ReactNode;
+
+  readonly taskHeader?: ReactNode;
+
+  readonly composerNotice?: ReactNode;
+
+  readonly messageID?: string;
 
   readonly startTimer?: StartTimer;
 }
@@ -44,15 +50,68 @@ const headerControls = css({
   marginInlineStart: 'auto',
 });
 
+const taskHeaderRow = css({
+  marginInline: 'auto',
+  maxWidth: '3xl',
+  paddingBlock: '2',
+  paddingInline: '4',
+});
+
+const composerNoticeRow = css({
+  color: 'textMuted',
+  fontSize: 'sm',
+  marginInline: 'auto',
+  maxWidth: '3xl',
+  paddingInline: '4',
+});
+
 const composerBar = css({
   borderTopWidth: '1px',
   paddingBlock: '3',
   '& > form': { marginInline: 'auto', maxWidth: '3xl', paddingInline: '4', width: 'full' },
 });
 
+const notice = css({
+  color: 'textMuted',
+  fontSize: 'sm',
+  marginInline: 'auto',
+  maxWidth: '3xl',
+  paddingBlock: '2',
+  paddingInline: '4',
+  width: 'full',
+});
+
 export function Conversation(props: ConversationProps): ReactNode {
   const liveOptions = props.startTimer === undefined ? {} : { startTimer: props.startTimer };
-  const conversation = useConversationRecords(props.thread, liveOptions);
+  const messageOptions = props.messageID === undefined ? {} : { messageID: props.messageID };
+
+  const conversation = useConversationRecords(props.thread, {
+    ...liveOptions,
+    ...messageOptions,
+  });
+
+  const messageID = props.messageID;
+
+  const isLinkedMessageShown = conversation.records.some(
+    (record) => record.taskMessage?.messageID === messageID,
+  );
+
+  const scrolledTo = useRef<string | undefined>(undefined);
+  const linkedMessageRef = useRef<HTMLLIElement | null>(null);
+
+  const linkedOptions =
+    messageID === undefined ? {} : { linkedMessage: { messageID, ref: linkedMessageRef } };
+
+  // The scroller keeps the view at its end as records arrive, and this effect runs after the
+  // scroller's, so the linked message wins.
+  useEffect(() => {
+    if (messageID === undefined || !isLinkedMessageShown || scrolledTo.current === messageID) {
+      return;
+    }
+
+    scrolledTo.current = messageID;
+    linkedMessageRef.current?.scrollIntoView({ block: 'center' });
+  }, [isLinkedMessageShown, messageID]);
 
   const outbox = useOutbox(conversation.forgottenClientMessageIDs, {
     resetSequence: conversation.liveResetSequence,
@@ -82,8 +141,19 @@ export function Conversation(props: ConversationProps): ReactNode {
             <ThemePicker />
           </div>
         </div>
+        {props.taskHeader === undefined ? null : (
+          <div className={taskHeaderRow}>{props.taskHeader}</div>
+        )}
       </header>
       {conversation.unavailable ? <LiveUpdatesNotice /> : null}
+      {conversation.isLinkedMessageFailed ? (
+        <p className={notice} role="alert">
+          The linked message did not load.{' '}
+          <button onClick={conversation.onLinkedMessageRetry} type="button">
+            Load it again
+          </button>
+        </p>
+      ) : null}
       <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
       <CompactionFailureNotice records={records} />
       {notices.isFailed ? <MemoryNoticesFailure onRetry={notices.retry} /> : null}
@@ -92,6 +162,7 @@ export function Conversation(props: ConversationProps): ReactNode {
         sends={sends}
       >
         <ConversationList
+          {...linkedOptions}
           entries={entries}
           notices={notices.notices}
           onDiscard={outbox.discard}
@@ -100,27 +171,25 @@ export function Conversation(props: ConversationProps): ReactNode {
         />
       </ConversationScroller>
       <div className={composerBar}>
-        <Composer
-          onSend={(message) => {
-            setSends(sends + 1);
+        {props.composerNotice === undefined ? (
+          <Composer
+            onSend={(message) => {
+              setSends(sends + 1);
 
-            outbox.add({ ...message, clientMessageId: crypto.randomUUID(), thread: props.thread });
-          }}
-        />
+              outbox.add({
+                ...message,
+                clientMessageId: crypto.randomUUID(),
+                thread: props.thread,
+              });
+            }}
+          />
+        ) : (
+          <div className={composerNoticeRow}>{props.composerNotice}</div>
+        )}
       </div>
     </main>
   );
 }
-
-const notice = css({
-  color: 'textMuted',
-  fontSize: 'sm',
-  marginInline: 'auto',
-  maxWidth: '3xl',
-  paddingBlock: '2',
-  paddingInline: '4',
-  width: 'full',
-});
 
 function LiveUpdatesNotice(): ReactNode {
   return (

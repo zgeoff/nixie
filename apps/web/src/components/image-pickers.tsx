@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { css } from '../styled-system/css';
+import { useIsHydrated } from '../use-is-hydrated';
 
 export interface ImagePickersProps {
   readonly onPick: (files: readonly File[]) => void;
@@ -21,7 +22,11 @@ const hiddenInput = css({
   width: '1px',
 });
 
+// The server render shows the pickers before React listens for a change, and a pick made then is
+// lost, so each picker waits for hydration.
 export function ImagePickers(props: ImagePickersProps): ReactNode {
+  const isHydrated = useIsHydrated();
+
   return (
     <>
       <label className={pickerButton}>
@@ -30,6 +35,7 @@ export function ImagePickers(props: ImagePickersProps): ReactNode {
           accept="image/*"
           capture="environment"
           className={hiddenInput}
+          disabled={!isHydrated}
           onChange={(event) => {
             props.onPick([...(event.target.files ?? [])]);
 
@@ -43,6 +49,7 @@ export function ImagePickers(props: ImagePickersProps): ReactNode {
         <input
           accept="image/*,.heic,.heif"
           className={hiddenInput}
+          disabled={!isHydrated}
           multiple
           onChange={(event) => {
             props.onPick([...(event.target.files ?? [])]);

@@ -1,4 +1,5 @@
 import { useConversationPage } from './use-conversation-page';
+import { useEarlierRecords } from './use-earlier-records';
 import type { LiveRecord, LiveRecordsOptions } from './use-live-records';
 import { useLiveRecords } from './use-live-records';
 
@@ -13,15 +14,24 @@ export interface ConversationRecords {
   readonly forgottenClientMessageIDs: readonly string[];
 
   readonly liveResetSequence: number | undefined;
+
+  readonly isLinkedMessageFailed: boolean;
+
+  readonly onLinkedMessageRetry: () => void;
+}
+
+export interface ConversationRecordsOptions extends LiveRecordsOptions {
+  readonly messageID?: string;
 }
 
 export function useConversationRecords(
   thread: string,
-  options: LiveRecordsOptions = {},
+  options: ConversationRecordsOptions = {},
 ): ConversationRecords {
   const page = useConversationPage(thread);
   const live = useLiveRecords(thread, page.data?.readAtSequence, options);
-  const merged = mergeRecords(page.data?.records ?? [], live.records);
+  const earlier = useEarlierRecords({ messageID: options.messageID, page: page.data, thread });
+  const merged = mergeRecords([...earlier.records, ...(page.data?.records ?? [])], live.records);
 
   if (page.data === undefined) {
     return {
@@ -31,6 +41,8 @@ export function useConversationRecords(
       unavailable: live.unavailable,
       forgottenClientMessageIDs: [],
       liveResetSequence: undefined,
+      isLinkedMessageFailed: false,
+      onLinkedMessageRetry: earlier.onRetry,
     };
   }
 
@@ -41,6 +53,8 @@ export function useConversationRecords(
     unavailable: live.unavailable,
     forgottenClientMessageIDs: merged.forgottenClientMessageIDs,
     liveResetSequence: live.records.findLast((record) => record.kind === 'log_reset')?.sequence,
+    isLinkedMessageFailed: earlier.isFailed,
+    onLinkedMessageRetry: earlier.onRetry,
   };
 }
 

@@ -205,9 +205,44 @@ message, or a new task with its name and brief, and sends one
 [checked move](./api.md#moving-a-message). When the task list fails to load, the form says so and
 offers to load it again, and a new task stays on offer meanwhile.
 
-A task's page at `/tasks/<task_id>` shows that task's thread in the conversation view. Its composer
-sends to that thread, so a message sent there lands in the task's inbox and never in the
-conversation's.
+## The task dashboard
+
+The dashboard at `/tasks` lists every open task in three groups: the conversation, the working tasks
+that are ready, running or waiting, and the held tasks that are paused, stopped or failed. A done or
+closed task leaves the list. Each task shows its name, which links to its page, its state, the time
+of its last activity, its brief, the task it waits on, the tasks that wait on it, and how many of
+its actions are queued and started.
+
+The dashboard reads the task list once and follows the live stream of every thread from the log
+sequence the list was read at. Each record that moves a task's state or last activity, such as a
+pause or a message of the user's, makes the dashboard read the list again. A dropped stream
+reconnects from the last sequence it delivered, as the conversation view's stream does, so the
+dashboard misses no change.
+
+Each task shows the controls that its runner offers and its state allows, as
+[controlling a task](./api.md#controlling-a-task) describes. Each control is a checked action, so a
+retry after a failure sends the same client action ID. A pause of a running task shows as requested
+until its step ends. A stop first lists the actions it cancels and the started ones that run to
+their outcome. The dashboard offers the confirm only once that list loads, so the user never cancels
+an action unseen. A close asks first too, because a closed task takes no more messages. The
+conversation offers no close.
+
+A task's page at `/tasks/<task_id>` shows that task's thread in the conversation view, under a
+header with the task's name, state and controls. The page reads that task on its own and never from
+the task list, which keeps only the most recently active tasks. Its composer sends to that thread,
+so a message sent there lands in the task's inbox and never in the conversation's. The composer
+shows only once the task's read succeeds, so a closed task's page keeps its thread readable with no
+composer, and a failed read shows the failure with a retry.
+
+A [task message](../core/tasks.md#task-messages) shows in its receiver's thread as a framed block
+with its sender's name, its kind and its hop, and with a mark when the message woke nobody. A
+message whose text a forget erased shows as forgotten. The exchange notice that the hop limit writes
+on the sender's thread shows who waits on whom, with a link that opens the receiver's page at the
+message that woke nobody, or the conversation's page when the conversation receives it. That page
+reads earlier pages of its thread until it holds the message, because its first page holds only the
+newest records, and then scrolls to the message. A failed read stops the reading and offers a retry,
+and only that retry reads the page again. A stop shows as a marker that lists the actions it
+cancelled.
 
 ## The outbox
 
@@ -260,15 +295,16 @@ message leaves no image on the device.
 ## Images
 
 The user attaches an image from a camera picker, a photo picker, a paste or a drop onto the message
-box. Each path passes the file through one normalizer before the composer holds it. The normalizer
-decodes the image in the browser, scales its long edge down to the contract's limit, and encodes it
-again, as PNG for a PNG, GIF or WebP and as JPEG for anything else. Encoding again drops the EXIF
-data, a photo's location included, and the device keeps only the scaled copy. A HEIC photo converts
-only where the browser decodes HEIC, as Safari does; elsewhere the composer leaves the image out and
-says so. The composer refuses an image past the contract's count, and one still past its size once
-scaled, with a notice in place of an error from the API. It scales the picked images one at a time
-and stops once the free slots hold images that read and fit, so a large selection never decodes
-every photo at full size before Send works again.
+box. Both pickers stay disabled until React hydrates the page, because the server render shows them
+before the page listens for a pick. Each path passes the file through one normalizer before the
+composer holds it. The normalizer decodes the image in the browser, scales its long edge down to the
+contract's limit, and encodes it again, as PNG for a PNG, GIF or WebP and as JPEG for anything else.
+Encoding again drops the EXIF data, a photo's location included, and the device keeps only the
+scaled copy. A HEIC photo converts only where the browser decodes HEIC, as Safari does; elsewhere
+the composer leaves the image out and says so. The composer refuses an image past the contract's
+count, and one still past its size once scaled, with a notice in place of an error from the API. It
+scales the picked images one at a time and stops once the free slots hold images that read and fit,
+so a large selection never decodes every photo at full size before Send works again.
 
 The composer shows each attached image as a thumbnail with a control that removes it, and the outbox
 shows the same thumbnails while a message waits. The thread reads each image of a sent message

@@ -33,6 +33,90 @@ async function setupTest() {
 }
 
 test.skipIf(browserSkip.isSkipped)(
+  'it shows a hop-limit notice on a task page that opens the exchange',
+  async () => {
+    const ctx = await setupTest();
+    const session = await store.sessions.create({});
+
+    await store.tasks.create({ name: 'Garden plan', taskID: 'k3vq8m2xpa' });
+    await store.tasks.create({ name: 'Seed order', taskID: 'p7hd2wq9zn' });
+
+    await store.records.create({
+      kind: 'task_message',
+      taskMessage: {
+        from: 'k3vq8m2xpa',
+        fromName: 'Garden plan',
+        hop: 21,
+        kind: 'question',
+        messageID: 'm7q2x9k4pa',
+        text: 'Which seeds came?',
+        to: 'p7hd2wq9zn',
+        woke: false,
+      },
+      thread: 'p7hd2wq9zn',
+    });
+
+    await Promise.all(
+      Array.from({ length: 120 }, () =>
+        store.records.create({ kind: 'task.step_started', thread: 'p7hd2wq9zn' }),
+      ),
+    );
+
+    await store.records.create({
+      exchangeNotice: {
+        link: { label: 'Open the exchange', messageID: 'm7q2x9k4pa', taskID: 'p7hd2wq9zn' },
+        text: 'Garden plan and Seed order exchanged 21 messages with no outside cause. New messages between them wait for the next one. Garden plan is waiting on Seed order.',
+      },
+      kind: 'task.exchange_limited',
+      thread: 'k3vq8m2xpa',
+    });
+
+    await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+    await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
+
+    await waitFor(
+      async () => {
+        const notice: unknown = await ctx.view.evaluate(
+          "document.querySelector('[role=note]')?.textContent ?? null",
+        );
+
+        expect(notice).toBe(
+          'Garden plan and Seed order exchanged 21 messages with no outside cause. New messages between them wait for the next one. Garden plan is waiting on Seed order. Open the exchange',
+        );
+      },
+      { timeout: 10_000 },
+    );
+
+    await ctx.view.click('a[href="/tasks/p7hd2wq9zn#task-message-m7q2x9k4pa"]');
+
+    await waitFor(
+      async () => {
+        const message: unknown = await ctx.view.evaluate(
+          "document.getElementById('task-message-m7q2x9k4pa')?.textContent ?? null",
+        );
+
+        expect(message).toBe(
+          'From Garden plan · question · hop 21 · did not wake its receiverWhich seeds came?',
+        );
+      },
+      { timeout: 10_000 },
+    );
+
+    await waitFor(
+      async () => {
+        const isInView: unknown = await ctx.view.evaluate(
+          "(() => { const box = document.getElementById('task-message-m7q2x9k4pa').getBoundingClientRect(); return box.top >= 0 && box.bottom <= innerHeight; })()",
+        );
+
+        expect(isInView).toBeTrue();
+      },
+      { timeout: 10_000 },
+    );
+  },
+);
+
+test.skipIf(browserSkip.isSkipped)(
   'it sends a message written on a task page to that task, not the conversation',
   async () => {
     const ctx = await setupTest();

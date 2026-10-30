@@ -112,11 +112,32 @@ const answerSchema = z.object({
   reason: z.string().optional(),
 });
 
+const taskMessageSchema = z.object({
+  from: z.string(),
+  fromName: z.string(),
+  hop: z.int().nonnegative().default(1),
+  kind: z.string().default('report'),
+  messageID: z.string().default(() => faker.string.alphanumeric({ length: 10, casing: 'lower' })),
+  replyTo: z.string().optional(),
+  text: z.string().optional(),
+  to: z.string().default('conversation'),
+  woke: z.boolean().default(true),
+});
+
+const exchangeNoticeSchema = z.object({
+  link: z.object({ label: z.string(), messageID: z.string(), taskID: z.string() }),
+  text: z.string(),
+});
+
+const listedActionSchema = z.object({ actionID: z.string(), tool: z.string() });
+const stopSchema = z.object({ cancelledActions: z.array(listedActionSchema) });
+
 const records = new Collection({
   schema: z.object({
     answer: answerSchema.optional(),
     compaction: compactionSchema.optional(),
     context: contextSchema.optional(),
+    exchangeNotice: exchangeNoticeSchema.optional(),
 
     forget: forgetSchema.optional(),
     kind: z.string().default('owner_message'),
@@ -130,8 +151,10 @@ const records = new Collection({
 
       return counter.lastSequence;
     }),
+    stop: stopSchema.optional(),
     summary: summarySchema.optional(),
     task: taskSchema.optional(),
+    taskMessage: taskMessageSchema.optional(),
     thread: z.string().default('conversation'),
     toolCall: toolCallSchema.optional(),
   }),

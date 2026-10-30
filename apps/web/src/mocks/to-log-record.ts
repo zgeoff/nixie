@@ -8,6 +8,9 @@ export function toLogRecord(record: StoredRecord): LogRecord {
   return {
     ...(record.compaction === undefined ? {} : { compaction: toLogCompaction(record.compaction) }),
     ...(record.context === undefined ? {} : { context: { ...record.context } }),
+    ...(record.exchangeNotice === undefined
+      ? {}
+      : { exchangeNotice: structuredClone(record.exchangeNotice) }),
     ...(record.forget === undefined ? {} : { forget: { ...record.forget } }),
     kind: record.kind,
     ...(record.message === undefined ? {} : { message: toLogMessage(record.message) }),
@@ -18,8 +21,14 @@ export function toLogRecord(record: StoredRecord): LogRecord {
       ? {}
       : { route: { ...record.route, messages: [...record.route.messages] } }),
     sequence: record.sequence,
+    ...(record.stop === undefined
+      ? {}
+      : { stop: { cancelledActions: record.stop.cancelledActions.map(toLogAction) } }),
     ...(record.summary === undefined ? {} : { summary: { ...record.summary } }),
     ...(record.task === undefined ? {} : { task: structuredClone(record.task) }),
+    ...(record.taskMessage === undefined
+      ? {}
+      : { taskMessage: structuredClone(record.taskMessage) }),
     thread: record.thread,
     ...(record.toolCall === undefined ? {} : { toolCall: structuredClone(record.toolCall) }),
   };
@@ -79,4 +88,10 @@ function toLogRecall(recall: NonNullable<StoredRecord['recall']>): LogRecall {
         : { itemID: item.itemID, score: item.score, version: item.version },
     ),
   };
+}
+
+type LogAction = NonNullable<LogRecord['stop']>['cancelledActions'][number];
+
+function toLogAction(action: Readonly<LogAction>): LogAction {
+  return { actionID: action.actionID, tool: action.tool };
 }

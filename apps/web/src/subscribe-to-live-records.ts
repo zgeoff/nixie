@@ -14,7 +14,7 @@ export interface SubscribeOptions {
   readonly signal: AbortSignal;
 
   readonly startTimer: StartTimer;
-  readonly thread: string;
+  readonly thread?: string;
 }
 
 const unavailableAfterFailures = 3;
@@ -108,7 +108,7 @@ async function tryStartRecordStream(
 ): Promise<RecordEvents | undefined> {
   try {
     return await options.client.records.follow(
-      { afterSequence, thread: options.thread },
+      { afterSequence, ...(options.thread === undefined ? {} : { thread: options.thread }) },
       { signal },
     );
   } catch {

@@ -1,7 +1,8 @@
-import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
+import { Link, createFileRoute, useLocation, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Conversation } from '../components/conversation';
 import { SignedInPage } from '../components/signed-in-page';
+import { parseLinkedMessage } from '../parse-linked-message';
 import { readSessionState } from '../read-session-state';
 import { css } from '../styled-system/css';
 
@@ -22,6 +23,8 @@ export const Route = createFileRoute('/')({
 function Home(): ReactNode {
   const data = Route.useLoaderData();
   const router = useRouter();
+  const messageID = useLocation({ select: (location) => parseLinkedMessage(location.hash) });
+  const messageOptions = messageID === undefined ? {} : { messageID };
 
   return (
     <SignedInPage
@@ -31,8 +34,12 @@ function Home(): ReactNode {
       session={data.session}
     >
       <Conversation
+        {...messageOptions}
         navigation={
           <nav className={css({ display: 'flex', gap: '3' })}>
+            <Link className={link} to="/tasks">
+              Tasks
+            </Link>
             <Link className={link} to="/memory">
               Memory
             </Link>

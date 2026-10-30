@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { Fragment } from 'react';
+import { match } from 'ts-pattern';
 import type { ActivityItem } from '../build-activity';
 import { buildActivity } from '../build-activity';
 import { buildNoticePlacement } from '../build-notice-placement';
@@ -12,12 +13,20 @@ import type { LiveRecord } from '../use-live-records';
 import type { OutboxEntry } from '../use-outbox';
 import type { RoutedTasks } from '../use-routed-tasks';
 import { useRoutedTasks } from '../use-routed-tasks';
+import { ExchangeNotice } from './exchange-notice';
 import { MemoryNotice } from './memory-notice';
 import { MomentKeptNotice } from './moment-kept-notice';
 import { OutboxItem } from './outbox-item';
 import { RecordItem } from './record-item';
 import { ResetMarker } from './reset-marker';
 import { StepGroup } from './step-group';
+import { StopMarker } from './stop-marker';
+import { TaskMessageBlock } from './task-message-block';
+
+interface LinkedMessage {
+  readonly messageID: string;
+  readonly ref: RefObject<HTMLLIElement | null>;
+}
 
 export interface ConversationListProps {
   readonly entries: readonly OutboxEntry[];
@@ -25,6 +34,8 @@ export interface ConversationListProps {
   readonly onDiscard: (clientMessageID: string) => void;
   readonly onRetry: (message: OutboxMessage) => Promise<void>;
   readonly records: readonly LiveRecord[];
+
+  readonly linkedMessage?: LinkedMessage;
 }
 
 const column = {
@@ -67,7 +78,12 @@ export function ConversationList(props: ConversationListProps): ReactNode {
       <ol aria-label="Conversation" className={css(column, messages)}>
         {activity.map((item, index) => (
           <Fragment key={item.kind === 'step' ? `step/${String(item.key)}` : item.record.sequence}>
-            <ActivityEntry item={item} routes={routes} taskList={taskList} />
+            <ActivityEntry
+              item={item}
+              linkedMessage={props.linkedMessage}
+              routes={routes}
+              taskList={taskList}
+            />
             {placement.get(index)?.map((notice) => (
               <MemoryNotice key={notice.noticeKey} notice={notice} />
             ))}
@@ -96,30 +112,34 @@ export function ConversationList(props: ConversationListProps): ReactNode {
 
 interface ActivityEntryProps {
   readonly item: ActivityItem;
+  readonly linkedMessage: LinkedMessage | undefined;
   readonly routes: ReadonlyMap<number, MessageRoute>;
   readonly taskList: RoutedTasks;
 }
 
 function ActivityEntry(props: ActivityEntryProps): ReactNode {
-  const item = props.item;
-
-  if (item.kind === 'message') {
-    return (
+  return match(props.item)
+    .with({ kind: 'message' }, (item) => (
       <RecordItem
         record={item.record}
         route={props.routes.get(item.record.sequence)}
         taskList={props.taskList}
       />
-    );
-  }
-
-  if (item.kind === 'reset') {
-    return <ResetMarker record={item.record} />;
-  }
-
-  if (item.kind === 'moment') {
-    return <MomentKeptNotice moment={item.moment} />;
-  }
-
-  return <StepGroup step={item} />;
+    ))
+    .with({ kind: 'reset' }, (item) => <ResetMarker record={item.record} />)
+    .with({ kind: 'moment' }, (item) => <MomentKeptNotice moment={item.moment} />)
+    .with({ kind: 'taskMessage' }, (item) => (
+      <TaskMessageBlock
+        message={item.message}
+        ref={
+          props.linkedMessage?.messageID === item.message.messageID
+            ? props.linkedMessage.ref
+            : undefined
+        }
+      />
+    ))
+    .with({ kind: 'exchange' }, (item) => <ExchangeNotice notice={item.notice} />)
+    .with({ kind: 'stop' }, (item) => <StopMarker stop={item.stop} />)
+    .with({ kind: 'step' }, (item) => <StepGroup step={item} />)
+    .exhaustive();
 }

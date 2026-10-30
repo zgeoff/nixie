@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useSyncExternalStore } from 'react';
+import { useIsHydrated } from '../use-is-hydrated';
 import type { LiveRecord } from '../use-live-records';
 import { markerRule } from './marker-rule';
 
@@ -7,14 +7,8 @@ export interface ResetMarkerProps {
   readonly record: LiveRecord;
 }
 
-// The server knows neither the browser's locale nor its time zone, so the server render and
-// hydration leave the time out, and the browser adds it.
 export function ResetMarker(props: ResetMarkerProps): ReactNode {
-  const isHydrated = useSyncExternalStore(
-    subscribeToNothing,
-    () => true,
-    () => false,
-  );
+  const isHydrated = useIsHydrated();
 
   return (
     <li>
@@ -23,10 +17,6 @@ export function ResetMarker(props: ResetMarkerProps): ReactNode {
       </p>
     </li>
   );
-}
-
-function subscribeToNothing(): () => void {
-  return () => {};
 }
 
 function formatResetTime(date: Date): string {
