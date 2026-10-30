@@ -4,6 +4,7 @@ import { $ } from 'bun';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
 import { writeStepValues } from '../lib/write-step-values.ts';
+import { buildReleaseNoteComparisons } from './build-release-note-comparisons.ts';
 
 const migrationCheckPath = 'libs/db/src/run-migration-check.ts';
 const configSchemaCheckPath = 'apps/server/src/run-config-schema-check.ts';
@@ -45,31 +46,23 @@ async function runCLI(): Promise<void> {
   const last = described.exitCode === 0 ? described.stdout.toString().trim() : '';
   const releasedSchemaPath = join(runnerTemp, 'released.json');
   const releasedConfigPath = join(runnerTemp, 'released-config.schema.json');
+  let hasConfigSchema = false;
 
   if (last !== '') {
+    hasConfigSchema = await writeReleasedConfig(last, releasedConfigPath);
+
     await $`bash .github/scripts/read-released-schema.sh ${last} ${releasedSchemaPath}`;
   }
 
-  const migrationCompare =
-    last === '' ? [] : ['--released', releasedSchemaPath, '--last-tag', last];
+  const comparisons = buildReleaseNoteComparisons({
+    tag: last,
+    hasConfigSchema,
+    releasedSchemaPath,
+    releasedConfigPath,
+  });
 
-  await $`bun ${migrationCheckPath} ${migrationCompare} --release-body ${bodyPath} --summary ${migrationsPath}`;
-
-  const releasedConfig =
-    last === ''
-      ? null
-      : await $`git show ${`${last}:apps/server/config.schema.json`}`.nothrow().quiet();
-
-  if (releasedConfig !== null && releasedConfig.exitCode === 0) {
-    writeFileSync(releasedConfigPath, releasedConfig.stdout);
-  }
-
-  const configCompare =
-    releasedConfig !== null && releasedConfig.exitCode === 0
-      ? ['--released', releasedConfigPath, '--last-tag', last]
-      : [];
-
-  await $`bun ${configSchemaCheckPath} ${configCompare} --release-body ${bodyPath} --summary ${configSchemaPath}`;
+  await $`bun ${migrationCheckPath} ${comparisons.migrations} --release-body ${bodyPath} --summary ${migrationsPath}`;
+  await $`bun ${configSchemaCheckPath} ${comparisons.configSchema} --release-body ${bodyPath} --summary ${configSchemaPath}`;
 
   writeStepValues(getStepEnv(process.env, 'GITHUB_OUTPUT'), {
     migrations: toCompactJSON(readFileSync(migrationsPath, 'utf8')),
@@ -81,6 +74,19 @@ async function runCLI(): Promise<void> {
   await $`gh release edit ${tag} --notes-file ${bodyPath}`;
 
   appendFileSync(getStepEnv(process.env, 'GITHUB_STEP_SUMMARY'), readFileSync(bodyPath, 'utf8'));
+}
+
+// A release from before the config schema was committed holds none, so this returns false.
+async function writeReleasedConfig(tag: string, path: string): Promise<boolean> {
+  const shown = await $`git show ${`${tag}:apps/server/config.schema.json`}`.nothrow().quiet();
+
+  if (shown.exitCode !== 0) {
+    return false;
+  }
+
+  writeFileSync(path, shown.stdout);
+
+  return true;
 }
 
 function toCompactJSON(text: string): string {

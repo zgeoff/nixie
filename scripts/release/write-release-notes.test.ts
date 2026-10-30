@@ -79,9 +79,9 @@ test('it checks both against the last release and appends the images to the note
     [
       'gh release view v0.59.0 --json body --jq .body',
       'git describe --tags --abbrev=0 --match v* a1b2c3^',
+      'git show v0.58.0:apps/server/config.schema.json',
       `bash .github/scripts/read-released-schema.sh v0.58.0 ${ctx.runnerTemp}/released.json`,
       `bun libs/db/src/run-migration-check.ts --released ${ctx.runnerTemp}/released.json --last-tag v0.58.0 --release-body ${ctx.runnerTemp}/body.md --summary ${ctx.runnerTemp}/migrations.json`,
-      'git show v0.58.0:apps/server/config.schema.json',
       `bun apps/server/src/run-config-schema-check.ts --released ${ctx.runnerTemp}/released-config.schema.json --last-tag v0.58.0 --release-body ${ctx.runnerTemp}/body.md --summary ${ctx.runnerTemp}/config-schema.json`,
       `gh release edit v0.59.0 --notes-file ${ctx.runnerTemp}/body.md`,
       '',
