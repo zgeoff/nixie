@@ -1,3 +1,4 @@
+import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { $ } from 'bun';
 import { getStepEnv } from '../lib/get-step-env.ts';
@@ -27,10 +28,13 @@ async function runCLI(): Promise<void> {
       runProgram(argv, { cwd: process.cwd(), env: process.env }),
     writeOutput: (text: string) => process.stdout.write(text),
     writeError: (text: string) => process.stderr.write(text),
+    appendSummary: (text: string) => {
+      appendFileSync(summaryPath, text);
+    },
   };
 
   if (tag === '') {
-    process.exitCode = runIntoSummary(check, summaryPath, io);
+    process.exitCode = runIntoSummary(check, io);
 
     return;
   }
@@ -39,11 +43,7 @@ async function runCLI(): Promise<void> {
 
   await $`bash .github/scripts/read-released-schema.sh ${tag} ${releasedPath}`;
 
-  process.exitCode = runIntoSummary(
-    [...check, '--released', releasedPath, '--last-tag', tag],
-    summaryPath,
-    io,
-  );
+  process.exitCode = runIntoSummary([...check, '--released', releasedPath, '--last-tag', tag], io);
 }
 
 if (import.meta.main) {

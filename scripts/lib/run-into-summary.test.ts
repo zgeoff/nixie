@@ -1,48 +1,25 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { expect, mock, test } from 'bun:test';
 import { runIntoSummary } from './run-into-summary.ts';
 
-function setupTest() {
-  const directory = mkdtempSync(join(tmpdir(), 'nixie-run-into-summary-'));
-
-  onTestFinished(() => {
-    rmSync(directory, { recursive: true, force: true });
+test('it returns the command exit code', () => {
+  const exitCode = runIntoSummary(['bun', 'run-check.ts', '--last-tag', 'v1.2.0'], {
+    runCommand: () => ({ exitCode: 1, stdout: 'No migrations since v1.2.0\n', stderr: '' }),
+    writeOutput: () => {},
+    writeError: () => {},
+    appendSummary: () => {},
   });
 
-  return { summaryPath: join(directory, 'summary') };
-}
-
-test('it appends the command output to the summary and returns its exit code', () => {
-  const ctx = setupTest();
-
-  writeFileSync(ctx.summaryPath, '# Checks\n');
-
-  const exitCode = runIntoSummary(
-    ['bun', 'run-check.ts', '--last-tag', 'v1.2.0'],
-    ctx.summaryPath,
-    {
-      runCommand: () => ({ exitCode: 1, stdout: 'No migrations since v1.2.0\n', stderr: '' }),
-      writeOutput: () => {},
-      writeError: () => {},
-    },
-  );
-
   expect(exitCode).toBe(1);
-  expect(readFileSync(ctx.summaryPath, 'utf8')).toBe('# Checks\nNo migrations since v1.2.0\n');
 });
 
 test('it runs the command it is given', () => {
-  const ctx = setupTest();
   const runCommand = mock(() => ({ exitCode: 0, stdout: '', stderr: '' }));
 
-  writeFileSync(ctx.summaryPath, '');
-
-  runIntoSummary(['bun', 'run-check.ts', '--last-tag', 'v1.2.0'], ctx.summaryPath, {
+  runIntoSummary(['bun', 'run-check.ts', '--last-tag', 'v1.2.0'], {
     runCommand,
     writeOutput: () => {},
     writeError: () => {},
+    appendSummary: () => {},
   });
 
   expect(runCommand).toHaveBeenCalledExactlyOnceWith([
@@ -53,14 +30,24 @@ test('it runs the command it is given', () => {
   ]);
 });
 
+test('it appends the command output to the summary', () => {
+  const appendSummary = mock<(text: string) => void>();
+
+  runIntoSummary(['bun', 'run-check.ts'], {
+    runCommand: () => ({ exitCode: 0, stdout: 'No migrations since v1.2.0\n', stderr: '' }),
+    writeOutput: () => {},
+    writeError: () => {},
+    appendSummary,
+  });
+
+  expect(appendSummary).toHaveBeenCalledExactlyOnceWith('No migrations since v1.2.0\n');
+});
+
 test('it passes the command output and errors to the step log', () => {
-  const ctx = setupTest();
   const writeOutput = mock<(text: string) => void>();
   const writeError = mock<(text: string) => void>();
 
-  writeFileSync(ctx.summaryPath, '');
-
-  runIntoSummary(['bun', 'run-check.ts'], ctx.summaryPath, {
+  runIntoSummary(['bun', 'run-check.ts'], {
     runCommand: () => ({
       exitCode: 1,
       stdout: 'The release reads no migration\n',
@@ -68,6 +55,7 @@ test('it passes the command output and errors to the step log', () => {
     }),
     writeOutput,
     writeError,
+    appendSummary: () => {},
   });
 
   expect(writeOutput).toHaveBeenCalledExactlyOnceWith('The release reads no migration\n');

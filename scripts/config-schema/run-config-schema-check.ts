@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { appendFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { $ } from 'bun';
 import { getStepEnv } from '../lib/get-step-env.ts';
@@ -29,6 +29,9 @@ async function runCLI(): Promise<void> {
       runProgram(argv, { cwd: process.cwd(), env: process.env }),
     writeOutput: (text: string) => process.stdout.write(text),
     writeError: (text: string) => process.stderr.write(text),
+    appendSummary: (text: string) => {
+      appendFileSync(summaryPath, text);
+    },
   };
 
   const shown = await $`git show ${`origin/${base}:apps/server/config.schema.json`}`
@@ -36,7 +39,7 @@ async function runCLI(): Promise<void> {
     .quiet();
 
   if (shown.exitCode !== 0) {
-    process.exitCode = runIntoSummary([...check, '--title', title], summaryPath, io);
+    process.exitCode = runIntoSummary([...check, '--title', title], io);
 
     return;
   }
@@ -47,7 +50,6 @@ async function runCLI(): Promise<void> {
 
   process.exitCode = runIntoSummary(
     [...check, '--released', basePath, '--last-tag', base, '--title', title],
-    summaryPath,
     io,
   );
 }
