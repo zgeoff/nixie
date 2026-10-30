@@ -61,6 +61,35 @@ test('it records each call as its file name and arguments, in order', async () =
   await $`${ghPath} release view "v1.2.3 notes"`.quiet();
 
   expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
-    'docker compose logs\ngh release view v1.2.3 notes\n',
+    "docker compose logs\ngh release view 'v1.2.3 notes'\n",
+  );
+});
+
+test('it tells one argument that holds a space from two arguments', async () => {
+  const ctx = setupTest();
+  const programPath = join(ctx.directoryPath, 'bin', 'bun');
+
+  createStubProgram(programPath, {
+    callsPath: ctx.callsPath,
+    answers: { "check.ts --title 'feat: add a key'": { stdout: 'one title\n' } },
+  });
+
+  const joined = await $`${programPath} check.ts --title ${'feat: add a key'}`.quiet();
+  const split = await $`${programPath} check.ts --title feat: add a key`.quiet();
+
+  expect(joined.stdout.toString()).toBe('one title\n');
+  expect(split.stdout.toString()).toBe('');
+});
+
+test("it quotes an argument's own single quote as a shell does", async () => {
+  const ctx = setupTest();
+  const programPath = join(ctx.directoryPath, 'bin', 'gh');
+
+  createStubProgram(programPath, { callsPath: ctx.callsPath });
+
+  await $`${programPath} pr edit --title ${"fix: the user's key"}`.quiet();
+
+  expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
+    `gh pr edit --title 'fix: the user'\\''s key'\n`,
   );
 });

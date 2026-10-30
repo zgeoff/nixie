@@ -37,7 +37,7 @@ test('it passes when nixie reads the same key, owned by its user alone', async (
       'compose -f compose.yaml -f ci/compose.yaml exec -T nixie cat /etc/nixie/secrets/age.key': {
         stdout: 'invented-age-key\n',
       },
-      'compose -f compose.yaml -f ci/compose.yaml exec -T nixie stat -c %a %u /etc/nixie/secrets/age.key':
+      "compose -f compose.yaml -f ci/compose.yaml exec -T nixie stat -c '%a %u' /etc/nixie/secrets/age.key":
         { stdout: '400 10001\n' },
     },
   });
@@ -89,7 +89,7 @@ test('it fails when another user can read the key', async () => {
       'compose -f compose.yaml -f ci/compose.yaml exec -T nixie cat /etc/nixie/secrets/age.key': {
         stdout: 'invented-age-key\n',
       },
-      'compose -f compose.yaml -f ci/compose.yaml exec -T nixie stat -c %a %u /etc/nixie/secrets/age.key':
+      "compose -f compose.yaml -f ci/compose.yaml exec -T nixie stat -c '%a %u' /etc/nixie/secrets/age.key":
         { stdout: '444 10001\n' },
     },
   });

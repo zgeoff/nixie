@@ -40,7 +40,7 @@ test('it checks the schema against the base, with the pull request title', async
   createStubProgram(join(ctx.binPath, 'bun'), {
     callsPath: ctx.callsPath,
     answers: {
-      [`apps/server/src/run-config-schema-check.ts --released ${ctx.runnerTemp}/base-config.schema.json --last-tag main --title feat(api)!: drop the legacy key`]:
+      [`apps/server/src/run-config-schema-check.ts --released ${ctx.runnerTemp}/base-config.schema.json --last-tag main --title 'feat(api)!: drop the legacy key'`]:
         { stdout: 'The config schema refuses a key the base accepts\n' },
     },
   });
@@ -93,7 +93,7 @@ test('it runs the check with only the title when the base holds no schema', asyn
   expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
     [
       'git show origin/main:apps/server/config.schema.json',
-      'bun apps/server/src/run-config-schema-check.ts --title feat(api): add a key',
+      "bun apps/server/src/run-config-schema-check.ts --title 'feat(api): add a key'",
       '',
     ].join('\n'),
   );
@@ -110,7 +110,7 @@ test('it fails with the exit code of the schema check', async () => {
   createStubProgram(join(ctx.binPath, 'bun'), {
     callsPath: ctx.callsPath,
     answers: {
-      'apps/server/src/run-config-schema-check.ts --title feat(api): add a key': { exitCode: 1 },
+      "apps/server/src/run-config-schema-check.ts --title 'feat(api): add a key'": { exitCode: 1 },
     },
   });
 

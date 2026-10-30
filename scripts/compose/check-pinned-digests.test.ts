@@ -46,10 +46,10 @@ test('it lists each pinned image in the summary when every tag resolves to its p
   createStubProgram(join(ctx.binPath, 'docker'), {
     callsPath: ctx.callsPath,
     answers: {
-      'buildx imagetools inspect caddy:2.11.7-alpine --format {{json .Manifest.Digest}}': {
+      "buildx imagetools inspect caddy:2.11.7-alpine --format '{{json .Manifest.Digest}}'": {
         stdout: `"sha256:${'a'.repeat(64)}"\n`,
       },
-      'buildx imagetools inspect ghcr.io/heynixie/nixie:0.58.0 --format {{json .Manifest.Digest}}':
+      "buildx imagetools inspect ghcr.io/heynixie/nixie:0.58.0 --format '{{json .Manifest.Digest}}'":
         { stdout: `"sha256:${'b'.repeat(64)}"\n` },
     },
   });
@@ -78,7 +78,7 @@ test('it fails, naming both digests, when a tag resolves to another digest', asy
   createStubProgram(join(ctx.binPath, 'docker'), {
     callsPath: ctx.callsPath,
     answers: {
-      'buildx imagetools inspect caddy:2.11.7-alpine --format {{json .Manifest.Digest}}': {
+      "buildx imagetools inspect caddy:2.11.7-alpine --format '{{json .Manifest.Digest}}'": {
         stdout: `"sha256:${'c'.repeat(64)}"\n`,
       },
     },
@@ -117,7 +117,7 @@ test('it fails when the recipe names an image without a digest', async () => {
   createStubProgram(join(ctx.binPath, 'docker'), {
     callsPath: ctx.callsPath,
     answers: {
-      'buildx imagetools inspect caddy:2.11.7-alpine --format {{json .Manifest.Digest}}': {
+      "buildx imagetools inspect caddy:2.11.7-alpine --format '{{json .Manifest.Digest}}'": {
         stdout: `"sha256:${'a'.repeat(64)}"\n`,
       },
     },
@@ -154,7 +154,7 @@ test('it inspects an image that two services pin only once', async () => {
   createStubProgram(join(ctx.binPath, 'docker'), {
     callsPath: ctx.callsPath,
     answers: {
-      'buildx imagetools inspect busybox:1.37 --format {{json .Manifest.Digest}}': {
+      "buildx imagetools inspect busybox:1.37 --format '{{json .Manifest.Digest}}'": {
         stdout: `"sha256:${'d'.repeat(64)}"\n`,
       },
     },
@@ -166,6 +166,6 @@ test('it inspects an image that two services pin only once', async () => {
     .quiet();
 
   expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
-    'docker buildx imagetools inspect busybox:1.37 --format {{json .Manifest.Digest}}\n',
+    "docker buildx imagetools inspect busybox:1.37 --format '{{json .Manifest.Digest}}'\n",
   );
 });
