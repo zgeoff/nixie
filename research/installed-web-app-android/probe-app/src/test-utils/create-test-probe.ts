@@ -52,7 +52,7 @@ export async function createTestProbe(): Promise<TestProbe> {
 
         return (await file.exists()) ? file : null;
       },
-      bodyDeadlineMs: 5000,
+      startBodyDeadline: () => new AbortController().signal,
       writeError: () => {},
       now: Date.now,
     }),

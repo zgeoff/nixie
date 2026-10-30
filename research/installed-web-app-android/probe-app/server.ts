@@ -22,7 +22,7 @@ const answerRequest = makeProbeHandler({
 
     return (await file.exists()) ? file : null;
   },
-  bodyDeadlineMs: 60_000,
+  startBodyDeadline: () => AbortSignal.timeout(60_000),
   writeError: (message, error) => console.error(message, error),
   now: Date.now,
 });

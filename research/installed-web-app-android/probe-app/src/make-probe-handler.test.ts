@@ -7,13 +7,15 @@ import { createTestSession } from './test-utils/create-test-session.ts';
 
 async function setupTest() {
   const received = mock((_body: Uint8Array<ArrayBuffer>, _headers: Headers) => {});
+  // the status the stand-in push service answers with; a test sets it in its arrange phase
+  const pushServiceAnswer = { status: 201 };
   const pushService = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
     fetch: async (request) => {
       received(new Uint8Array(await request.arrayBuffer()), request.headers);
 
-      return new Response(null, { status: 201 });
+      return new Response(null, { status: pushServiceAnswer.status });
     },
   });
 
@@ -27,6 +29,7 @@ async function setupTest() {
   const clock = { nowMs: Date.UTC(2026, 9, 30, 9, 0, 0) };
   const schedule = mock((_delayMs: number, _task: () => Promise<void>) => {});
   const writeError = mock((_message: string, _error: unknown) => {});
+  const bodyDeadline = new AbortController();
   const answerRequest = makeProbeHandler({
     vapidKeys: {
       privateKey: vapidPair.privateKey,
@@ -45,7 +48,7 @@ async function setupTest() {
 
       return (await file.exists()) ? file : null;
     },
-    bodyDeadlineMs: 1000,
+    startBodyDeadline: () => bodyDeadline.signal,
     writeError,
     now: () => clock.nowMs,
   });
@@ -63,6 +66,8 @@ async function setupTest() {
     received,
     schedule,
     writeError,
+    bodyDeadline,
+    pushServiceAnswer,
     stopPushService: () => pushService.stop(true),
     endpoint: new URL('/push/phone', pushService.url).href,
   };
@@ -207,6 +212,43 @@ test('it sends a delayed push only when its scheduled task runs', async () => {
   expect(ctx.schedule.mock.calls).toStrictEqual([[15_000, expect.any(Function)]]);
   expect(sentBeforeTask).toBe(0);
   expect(ctx.received).toHaveBeenCalledTimes(1);
+});
+
+test('it sends nothing when a delayed push runs after its phone signed out', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+
+  await phone.client.push({ delaySeconds: 15 });
+  await phone.client.signOut();
+  await ctx.schedule.mock.calls[0]?.[1]();
+
+  expect(ctx.received).not.toHaveBeenCalled();
+});
+
+test.each([404, 410])(
+  'it forgets a subscription when the push service answers %d',
+  async (status) => {
+    const ctx = await setupTest();
+    const phone = await createTestPhone(ctx, ctx.endpoint);
+
+    ctx.pushServiceAnswer.status = status;
+
+    const sent = await phone.client.push({});
+
+    expect(sent.statuses).toStrictEqual([status]);
+    expect(await ctx.admin.subscriptions()).toStrictEqual([]);
+  },
+);
+
+test('it keeps a subscription when the push service answers 429', async () => {
+  const ctx = await setupTest();
+  const phone = await createTestPhone(ctx, ctx.endpoint);
+
+  ctx.pushServiceAnswer.status = 429;
+
+  await phone.client.push({});
+
+  expect(await ctx.admin.subscriptions()).toHaveLength(1);
 });
 
 test('it sends to every subscribed phone for the admin key', async () => {
@@ -476,9 +518,11 @@ test('it shows a session only its own log entries', async () => {
   const otherPhone = await createTestPhone(ctx, `${ctx.endpoint}-second`);
 
   const own = await phone.client.log();
+  const other = await otherPhone.client.log();
 
-  expect(own).toMatchObject([{ kind: 'subscribed', detail: { pushService: expect.any(String) } }]);
-  expect(own[0]?.session).not.toBe((await otherPhone.client.log())[0]?.session);
+  expect(own).toMatchObject([{ kind: 'subscribed', session: expect.stringMatching(/^S-/) }]);
+  expect(other).toMatchObject([{ kind: 'subscribed', session: expect.stringMatching(/^S-/) }]);
+  expect(own[0]?.session).not.toBe(other[0]?.session);
 });
 
 test('it shows every log entry, newest first, for the admin key', async () => {
@@ -748,7 +792,7 @@ test('it refuses a share that declares a length over 25 MiB', async () => {
 test('it refuses a share whose body still arrives at the deadline', async () => {
   const ctx = await setupTest();
 
-  const response = await ctx.answerRequest(
+  const responding = ctx.answerRequest(
     new Request('http://probe.test/share', {
       method: 'POST',
       body: new ReadableStream<Uint8Array>({
@@ -757,7 +801,9 @@ test('it refuses a share whose body still arrives at the deadline', async () => 
     }),
   );
 
-  expect(response.status).toBe(408);
+  ctx.bodyDeadline.abort();
+
+  expect((await responding).status).toBe(408);
 });
 
 test('it keeps at most 2000 characters of a shared field and 20 shared files', async () => {

@@ -36,8 +36,9 @@ interface ProbeHandlerOptions {
   schedule: (delayMs: number, task: () => Promise<void>) => void;
   // a file from the public folder, or null when it does not exist
   readPublicFile: (path: string) => Promise<Blob | null>;
-  // how long a caller has to send a whole request body
-  bodyDeadlineMs: number;
+  // a signal that aborts when a caller has had long enough to send one whole request body; the
+  // server passes a timer, and a test aborts it when it chooses
+  startBodyDeadline: () => AbortSignal;
   writeError: (message: string, error: unknown) => void;
   now: () => number;
 }
@@ -541,11 +542,7 @@ export function makeProbeHandler(
     // the RPC handler reads the whole body before the contract checks its fields
     const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
     const read = hasBody
-      ? await readCappedBody(
-          request,
-          probeLimits.rpcBodyBytes,
-          AbortSignal.timeout(options.bodyDeadlineMs),
-        )
+      ? await readCappedBody(request, probeLimits.rpcBodyBytes, options.startBodyDeadline())
       : null;
 
     if (read !== null && read.kind !== 'read') {
@@ -598,7 +595,7 @@ export function makeProbeHandler(
     const read = await readCappedBody(
       request,
       probeLimits.shareBodyBytes,
-      AbortSignal.timeout(options.bodyDeadlineMs),
+      options.startBodyDeadline(),
     );
 
     if (read.kind !== 'read') {

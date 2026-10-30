@@ -40,7 +40,7 @@ test('it subscribes with a session cookie and reads a push sent to it', async ()
 
       return (await file.exists()) ? file : null;
     },
-    bodyDeadlineMs: 5000,
+    startBodyDeadline: () => new AbortController().signal,
     writeError: () => {},
     now: () => Date.UTC(2026, 9, 30, 9, 0, 0),
   });
