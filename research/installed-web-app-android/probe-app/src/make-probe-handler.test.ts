@@ -240,7 +240,9 @@ test('it keeps a subscription when the push service answers 429', async () => {
 
   await phone.client.push({});
 
-  expect(await ctx.admin.subscriptions()).toHaveLength(1);
+  expect(await ctx.admin.subscriptions()).toStrictEqual([
+    { session: (await phone.client.config()).session, pushService: new URL(pushService.endpoint).host },
+  ]);
 });
 
 test('it sends to every subscribed phone for the admin key', async () => {
@@ -315,26 +317,64 @@ test('it refuses a subscription to an endpoint that another session holds', asyn
   expect(await phone.client.push({})).toMatchObject({ statuses: [201] });
 });
 
-test('it keeps the 5 newest subscriptions of a session and every other session', async () => {
+test('it keeps the subscription of a phone while another session subscribes 10 times', async () => {
   const ctx = await setupTest();
-  const pushService = startStubPushService(201);
-  const phone = await createTestPhone(ctx, pushService.endpoint);
-  const other = await createTestPhone(ctx, `${pushService.endpoint}-other`);
+  const phoneService = startStubPushService(201);
+  const otherService = startStubPushService(201);
+  const phone = await createTestPhone(ctx, phoneService.endpoint);
+  const other = await createTestPhone(ctx, `${otherService.endpoint}-other`);
 
   await Promise.all(
     Array.from({ length: 10 }, (_, index) =>
       other.client.subscribe({
-        endpoint: `${pushService.endpoint}-other-${index}`,
+        endpoint: `${otherService.endpoint}-other-${index}`,
         keys: { p256dh: 'key', auth: 'secret' },
       }),
     ),
   );
 
-  const listed = await ctx.admin.subscriptions();
-  const phoneLabel = (await phone.client.config()).session;
+  const phoneEntry = {
+    session: (await phone.client.config()).session,
+    pushService: new URL(phoneService.endpoint).host,
+  };
+  const otherEntry = {
+    session: (await other.client.config()).session,
+    pushService: new URL(otherService.endpoint).host,
+  };
 
-  expect(listed).toHaveLength(6);
-  expect(listed.filter((entry) => entry.session === phoneLabel)).toHaveLength(1);
+  expect(await ctx.admin.subscriptions()).toStrictEqual([
+    phoneEntry,
+    otherEntry,
+    otherEntry,
+    otherEntry,
+    otherEntry,
+    otherEntry,
+  ]);
+});
+
+test('it keeps the 5 newest subscriptions of a session, with a renewed one as new', async () => {
+  const ctx = await setupTest();
+  const first = startStubPushService(201);
+  const second = startStubPushService(201);
+  const third = startStubPushService(201);
+  const fourth = startStubPushService(201);
+  const fifth = startStubPushService(201);
+  const sixth = startStubPushService(201);
+  const phone = await createTestPhone(ctx, first.endpoint);
+
+  for (const service of [second, third, fourth, fifth, first, sixth]) {
+    await phone.client.subscribe({ endpoint: service.endpoint, keys: { p256dh: 'key', auth: 'secret' } });
+  }
+
+  const session = (await phone.client.config()).session;
+
+  expect(await ctx.admin.subscriptions()).toStrictEqual([
+    { session, pushService: new URL(third.endpoint).host },
+    { session, pushService: new URL(fourth.endpoint).host },
+    { session, pushService: new URL(fifth.endpoint).host },
+    { session, pushService: new URL(first.endpoint).host },
+    { session, pushService: new URL(sixth.endpoint).host },
+  ]);
 });
 
 test('it records a share with its fields and files and sends the page to block 6', async () => {
@@ -713,6 +753,7 @@ test('it refuses a pairing past 20 sessions and keeps every paired phone', async
   const ctx = await setupTest();
   const pushService = startStubPushService(201);
   const phone = await createTestPhone(ctx, pushService.endpoint);
+  const label = (await phone.client.config()).session;
 
   for (let index = 0; index < 19; index += 1) {
     await createTestSession(ctx);
@@ -722,7 +763,8 @@ test('it refuses a pairing past 20 sessions and keeps every paired phone', async
   const anonymous = buildProbeClient({ origin: 'http://probe.test', fetch: ctx.answerRequest });
 
   expect(anonymous.pair({ code })).rejects.toMatchObject({ status: 409 });
-  expect((await phone.client.config()).session).toStartWith('S-');
+  expect(label).toStartWith('S-');
+  expect((await phone.client.config()).session).toBe(label);
 });
 
 test('it replaces the session of a phone that pairs again', async () => {
@@ -740,6 +782,7 @@ test('it starts no session for a flood of page requests, and a paired phone keep
   const ctx = await setupTest();
   const pushService = startStubPushService(201);
   const phone = await createTestPhone(ctx, pushService.endpoint);
+  const label = (await phone.client.config()).session;
 
   const pages = await Promise.all(
     Array.from({ length: 2000 }, () => ctx.answerRequest(new Request('http://probe.test/'))),
@@ -747,7 +790,8 @@ test('it starts no session for a flood of page requests, and a paired phone keep
 
   expect(pages.filter((page) => page.headers.has('set-cookie'))).toStrictEqual([]);
   expect(await phone.client.push({})).toMatchObject({ statuses: [201] });
-  expect((await phone.client.config()).session).toStartWith('S-');
+  expect(label).toStartWith('S-');
+  expect((await phone.client.config()).session).toBe(label);
 });
 
 test('it serves the bundled service worker from the root', async () => {

@@ -64,9 +64,7 @@ export function openProbeStore(factory: IDBFactory): ProbeStore {
     return new Promise((resolve, reject) => {
       const request = db.transaction(name, 'readonly').objectStore(name).getAll();
 
-      request.addEventListener('success', () =>
-        resolve(Array.isArray(request.result) ? request.result : []),
-      );
+      request.addEventListener('success', () => resolve(request.result));
       request.addEventListener('error', () => reject(request.error));
     });
   }
