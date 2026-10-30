@@ -21,6 +21,7 @@
     "@heynixie/prompts": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/skills": "workspace:*",
+    "@heynixie/task-control": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "@orpc/server": "catalog:",

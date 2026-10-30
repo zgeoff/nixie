@@ -1,11 +1,11 @@
 import { match } from 'ts-pattern';
+import { isControlAllowed } from './is-control-allowed';
 import type {
   ResumeState,
   TaskControl,
   TaskControlFacts,
   TaskControlPlan,
   TaskControlRefusal,
-  TaskState,
 } from './types';
 
 export function planTaskControl(
@@ -16,7 +16,7 @@ export function planTaskControl(
     return { reason: 'conversation_never_closes' };
   }
 
-  if (!canControl(control, facts)) {
+  if (!isControlAllowed(control, facts)) {
     return { reason: 'not_allowed', state: facts.state, isPauseRequested: facts.isPauseRequested };
   }
 
@@ -35,33 +35,6 @@ export function planTaskControl(
     .with('restart', () => ({ kind: 'task.restarted', nextState: pickResumeState(facts) }))
     .with('close', () => ({ kind: 'task.closed' }))
     .with('interrupt', () => ({ kind: 'task.interrupted' }))
-    .exhaustive();
-}
-
-const allowedControls: Readonly<Record<TaskState, readonly TaskControl[]>> = {
-  ready: ['pause', 'stop', 'close'],
-  running: ['pause', 'resume', 'stop', 'close', 'interrupt'],
-  waiting: ['pause', 'stop', 'close'],
-  paused: ['resume', 'stop', 'close'],
-  stopped: ['restart', 'close'],
-  failed: ['restart', 'close'],
-  done: ['close'],
-  closed: [],
-};
-
-function canControl(control: TaskControl, facts: TaskControlFacts): boolean {
-  if (!allowedControls[facts.state].includes(control)) {
-    return false;
-  }
-
-  if (facts.state !== 'running') {
-    return true;
-  }
-
-  return match(control)
-    .with('pause', () => !facts.isPauseRequested)
-    .with('resume', () => facts.isPauseRequested)
-    .with('stop', 'restart', 'close', 'interrupt', () => true)
     .exhaustive();
 }
 

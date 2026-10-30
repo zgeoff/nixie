@@ -11,6 +11,7 @@ export { createMemoryItem } from './create-memory-item';
 export type { ProposalRequest } from './create-proposal';
 export { createProposal } from './create-proposal';
 export { makeToolAllowRule } from './make-tool-allow-rule';
+export { registerFaultPointAction } from './register-fault-point-action';
 export type { MemoryTestRecordKind } from './memory-test-record-kind';
 export { readApprovalRecords } from './read-approval-records';
 export { readItemShortID } from './read-item-short-id';

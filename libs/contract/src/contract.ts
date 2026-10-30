@@ -80,8 +80,29 @@ const routeSchema = z.object({
   taskID: threadSchema,
 });
 
+const listedActionSchema = z.object({ actionID: z.string(), tool: z.string() });
+
+const taskMessageSchema = z.object({
+  from: threadSchema,
+  fromName: z.string(),
+  hop: z.int().nonnegative(),
+  kind: z.string(),
+  messageID: z.string(),
+  replyTo: z.string().optional(),
+  text: z.string().optional(),
+  to: threadSchema,
+  woke: z.boolean(),
+});
+
+const exchangeNoticeSchema = z.object({
+  link: z.object({ label: z.string(), messageID: z.string(), taskID: threadSchema }),
+  text: z.string(),
+});
+
 const recordSchema = z.object({
   compaction: compactionSchema.optional(),
+
+  exchangeNotice: exchangeNoticeSchema.optional(),
 
   compactionFailure: compactionFailureSchema.optional(),
 
@@ -113,10 +134,14 @@ const recordSchema = z.object({
   route: routeSchema.optional(),
   sequence: sequenceSchema,
 
+  stop: z.object({ cancelledActions: z.array(listedActionSchema) }).optional(),
+
   summary: summarySchema.optional(),
   thread: threadSchema,
 
   task: taskSchema.optional(),
+
+  taskMessage: taskMessageSchema.optional(),
 
   toolCall: toolCallSchema.optional(),
 });
@@ -159,14 +184,24 @@ const taskStateSchema = z.enum([
   'closed',
 ]);
 
+const taskControlSchema = z.enum(['pause', 'resume', 'stop', 'restart', 'close', 'interrupt']);
+const actionCountSchema = z.int().nonnegative();
+
 const listedTaskSchema = z.object({
+  actions: z.object({
+    cancelled: actionCountSchema,
+    queued: actionCountSchema,
+    started: actionCountSchema,
+  }),
   brief: z.string(),
+  controls: z.array(taskControlSchema),
   isPauseRequested: z.boolean(),
   isTakingMessages: z.boolean(),
   lastActivityAt: z.date(),
   name: z.string(),
   state: taskStateSchema,
   taskID: threadSchema,
+  waitingOn: threadSchema.optional(),
 });
 
 const controlledTaskSchema = z.object({
@@ -279,7 +314,22 @@ export const contract = {
       .output(z.object({ movedAt: z.date(), taskID: threadSchema })),
   },
   tasks: {
-    list: signedIn.output(z.object({ tasks: z.array(listedTaskSchema) })),
+    list: signedIn.output(
+      z.object({ readAtSequence: sequenceSchema, tasks: z.array(listedTaskSchema) }),
+    ),
+    read: signedIn
+      .errors({ TASK_NOT_FOUND: { message: 'No task has this ID', status: 404 } })
+      .input(z.object({ taskID: threadSchema }))
+      .output(listedTaskSchema),
+    readActions: signedIn
+      .errors({ TASK_NOT_FOUND: { message: 'No task has this ID', status: 404 } })
+      .input(z.object({ taskID: threadSchema }))
+      .output(
+        z.object({
+          queued: z.array(listedActionSchema),
+          started: z.array(listedActionSchema),
+        }),
+      ),
     pause: taskControl,
     resume: taskControl,
     stop: taskControl,

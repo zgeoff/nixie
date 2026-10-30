@@ -40,6 +40,11 @@ does not list. The API reads that failed result through the same check and shows
 the thread view shows the cancel and never a failure. A rerun of the step that the stop ended gets
 the cancelled action back, so a restart never sends it.
 
+The reads the API serves apply the same check. The task list counts each task's queued, started and
+cancelled actions, and the action read lists the queued actions that a stop would cancel apart from
+the started ones that would run on. A stop record on a thread lists the actions it cancelled, found
+by the stop's sequence on each action, so the view shows each stop with what it cancelled.
+
 ## Queuing a call
 
 The queue takes only a call that the [decision point](../policy/decision-point.md) allowed, under

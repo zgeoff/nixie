@@ -9,13 +9,19 @@ export { claimAction } from './claim-action';
 export type { QueuedAction } from './create-allowed-action';
 export { createAllowedAction } from './create-allowed-action';
 export { pickOutcome } from './pick-outcome';
+export { readActionCounts } from './read-action-counts';
 export { readCancelledActionIDs } from './read-cancelled-action-ids';
+export { readStopCancelledActions } from './read-stop-cancelled-actions';
+export type { TaskActions } from './read-task-actions';
+export { readTaskActions } from './read-task-actions';
 
 export type {
+  ActionCounts,
   ActionRow,
   ActionStatus,
   ActionsTables,
   AllowedCall,
+  ListedAction,
   ModelView,
   Outcome,
   OutcomeReason,

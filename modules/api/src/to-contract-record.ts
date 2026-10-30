@@ -1,3 +1,4 @@
+import type { ListedAction } from '@heynixie/actions';
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import { spanSchema } from '@heynixie/contract';
 import type { JSONObject, JSONValue, LogRecord, RecordKind } from '@heynixie/log';
@@ -14,10 +15,15 @@ import {
   modelTurnEndedCodec,
 } from '@heynixie/models';
 import { memoryRecalledCodec } from '@heynixie/sessions';
+import type { TaskProfile } from '@heynixie/tasks';
 import {
+  getTaskName,
   ownerMessageCodec,
+  renderExchangeNotice,
   taskCreatedCodec,
+  taskExchangeLimitedCodec,
   taskLeaseExpiredCodec,
+  taskMessageCodec,
   taskRevivedCodec,
   taskRouteCorrectedCodec,
   taskRoutedCodec,
@@ -31,9 +37,21 @@ import { z } from 'zod';
 
 const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.reply']);
 
+export interface RecordLookups {
+  readonly cancelledActionIDs: ReadonlySet<string>;
+  readonly stopCancelledActions: ReadonlyMap<number, readonly ListedAction[]>;
+  readonly taskDirectory: readonly TaskProfile[];
+}
+
+const noLookups: RecordLookups = {
+  cancelledActionIDs: new Set(),
+  stopCancelledActions: new Map(),
+  taskDirectory: [],
+};
+
 export function toContractRecord(
   record: LogRecord,
-  cancelledActionIDs: ReadonlySet<string> = new Set(),
+  lookups: RecordLookups = noLookups,
 ): ContractRecord | null {
   if (record.thread === null) {
     return null;
@@ -41,7 +59,13 @@ export function toContractRecord(
 
   const message = messageKinds.has(record.kind) ? toMessage(record) : undefined;
   const task = toTask(record);
-  const toolCall = toToolCall(record, cancelledActionIDs);
+  const toolCall = toToolCall(record, lookups.cancelledActionIDs);
+  const taskMessage = record.kind === 'task_message' ? toTaskMessage(record, lookups) : undefined;
+  const stop = record.kind === 'task.stopped' ? toStop(record, lookups) : undefined;
+
+  const exchangeNotice =
+    record.kind === 'task.exchange_limited' ? toExchangeNotice(record, lookups) : undefined;
+
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
   const rating = record.kind === 'memory.rated' ? toRating(record) : undefined;
   const moment = record.kind === 'moment_kept' ? toKeptMoment(record) : undefined;
@@ -50,6 +74,7 @@ export function toContractRecord(
   return {
     ...toSessionFields(record),
     ...toForget(record),
+    ...(exchangeNotice === undefined ? {} : { exchangeNotice }),
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
     ...(moment === undefined ? {} : { moment }),
@@ -58,8 +83,10 @@ export function toContractRecord(
     recordedAt: record.recordedAt,
     ...(route === undefined ? {} : { route }),
     sequence: record.sequence,
+    ...(stop === undefined ? {} : { stop }),
     thread: record.thread,
     ...(task === undefined ? {} : { task }),
+    ...(taskMessage === undefined ? {} : { taskMessage }),
     ...(toolCall === undefined ? {} : { toolCall }),
   };
 }
@@ -185,6 +212,82 @@ function toToolCall(
 
 function isJSONObject(value: JSONValue | undefined): value is JSONObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+type TaskMessage = NonNullable<ContractRecord['taskMessage']>;
+
+function toTaskMessage(record: LogRecord, lookups: RecordLookups): TaskMessage | undefined {
+  const message = taskMessageCodec.tryDecodePartial(record.payload);
+  const body = record.erasable.status === 'readable' ? record.erasable.fields['body'] : undefined;
+
+  if (
+    message?.messageID === undefined ||
+    message.from === undefined ||
+    message.to === undefined ||
+    message.kind === undefined ||
+    message.hop === undefined ||
+    message.woke === undefined
+  ) {
+    return undefined;
+  }
+
+  return {
+    from: message.from,
+    fromName: getTaskName({ directory: lookups.taskDirectory }, message.from),
+    hop: message.hop,
+    kind: message.kind,
+    messageID: message.messageID,
+    ...(message.replyTo === undefined || message.replyTo === null
+      ? {}
+      : { replyTo: message.replyTo }),
+    ...(typeof body === 'string' ? { text: body } : {}),
+    to: message.to,
+    woke: message.woke,
+  };
+}
+
+type Stop = NonNullable<ContractRecord['stop']>;
+
+function toStop(record: LogRecord, lookups: RecordLookups): Stop {
+  const cancelled = lookups.stopCancelledActions.get(record.sequence) ?? [];
+
+  return {
+    cancelledActions: cancelled.map((action) => ({ actionID: action.actionID, tool: action.tool })),
+  };
+}
+
+type ExchangeNotice = NonNullable<ContractRecord['exchangeNotice']>;
+
+function toExchangeNotice(record: LogRecord, lookups: RecordLookups): ExchangeNotice | undefined {
+  const notice = taskExchangeLimitedCodec.tryDecodePartial(record.payload);
+
+  if (
+    notice?.messageID === undefined ||
+    notice.stepKey === undefined ||
+    notice.from === undefined ||
+    notice.to === undefined ||
+    notice.hops === undefined ||
+    notice.waiting === undefined
+  ) {
+    return undefined;
+  }
+
+  const rendered = renderExchangeNotice(
+    { directory: lookups.taskDirectory },
+    {
+      messageID: notice.messageID,
+      stepKey: notice.stepKey,
+      from: notice.from,
+      to: notice.to,
+      hops: notice.hops,
+      waiting: notice.waiting,
+    },
+  );
+
+  return {
+    link: { label: rendered.link.label, messageID: rendered.link.messageID, taskID: notice.to },
+    text: rendered.text,
+  };
 }
 
 type Recall = NonNullable<ContractRecord['recall']>;

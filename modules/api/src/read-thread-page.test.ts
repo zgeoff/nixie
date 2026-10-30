@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { ActionsTables } from '@heynixie/actions';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { createConversationTask } from '@heynixie/tasks';
+import { withWriteTransaction, writeRecords, writeRecordsInTransaction } from '@heynixie/log';
+import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { readThreadPage } from './read-thread-page';
 import { createDeviceSession } from './test-utils/create-device-session';
@@ -125,6 +125,117 @@ test('it shows a failed tool result as cancelled when a stop cancelled its actio
     { callID: 'call-1', outcome: 'cancelled' },
     { callID: 'call-2', outcome: 'failed' },
   ]);
+});
+
+test('it lists on a stop the actions that stop cancelled, by its sequence', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const stop = await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'stop' });
+
+  invariant(stop.status === 'controlled');
+
+  await ctx.writer.db
+    .$extendTables<ActionsTables>()
+    .insertInto('actions')
+    .values([
+      {
+        action_id: 'b3f1c7e2-5a9d-4e61-8c2f-7d0a1e3b5c94',
+        task_id: 'conversation',
+        step_key: 'conversation:1',
+        action_hash: 'sha256:send-1',
+        tool: 'test.send',
+        status: 'pending',
+        attempt_count: 0,
+        attempt_open: 0,
+        next_attempt_at: 0,
+        reason: null,
+        queued_sequence: 1,
+        outcome_sequence: null,
+        cancelled_sequence: stop.sequence,
+        updated_sequence: stop.sequence,
+      },
+      {
+        action_id: 'e8a2d4f6-1b3c-4d5e-9f70-2a4c6e8b0d13',
+        task_id: 'conversation',
+        step_key: 'conversation:1',
+        action_hash: 'sha256:send-2',
+        tool: 'test.archive',
+        status: 'pending',
+        attempt_count: 0,
+        attempt_open: 0,
+        next_attempt_at: 0,
+        reason: null,
+        queued_sequence: 1,
+        outcome_sequence: null,
+        cancelled_sequence: stop.sequence - 1,
+        updated_sequence: stop.sequence,
+      },
+    ])
+    .execute();
+
+  const page = await readThreadPage(ctx.context, { thread: 'conversation' });
+
+  expect(page?.records.find((record) => record.kind === 'task.stopped')?.stop).toStrictEqual({
+    cancelledActions: [{ actionID: 'b3f1c7e2-5a9d-4e61-8c2f-7d0a1e3b5c94', tool: 'test.send' }],
+  });
+});
+
+test('it names the sender of a task message from a task the conversation started', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'task.created',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'k3x9m2p7qa',
+      payload: {
+        taskID: 'k3x9m2p7qa',
+        isConversation: false,
+        state: 'waiting',
+        startedBy: 'conversation',
+      },
+      erasable: { name: 'Garden plan', brief: 'Plan the beds.' },
+    },
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'm7q2x9k4pa',
+        from: 'k3x9m2p7qa',
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: 'task:k3x9m2p7qa',
+      },
+      erasable: { body: 'The beds are planned.' },
+    },
+  ]);
+
+  const page = await readThreadPage(ctx.context, { thread: 'conversation' });
+
+  expect(page?.records.find((record) => record.kind === 'task_message')?.taskMessage).toStrictEqual(
+    {
+      from: 'k3x9m2p7qa',
+      fromName: 'Garden plan',
+      hop: 1,
+      kind: 'report',
+      messageID: 'm7q2x9k4pa',
+      text: 'The beds are planned.',
+      to: 'conversation',
+      woke: true,
+    },
+  );
 });
 
 test('it reads a whole short thread with no earlier page', async () => {

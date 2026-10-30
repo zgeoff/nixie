@@ -34,6 +34,17 @@ export type ModelView =
   | { readonly status: 'unknown'; readonly actionID: string; readonly message: string }
   | { readonly status: 'cancelled'; readonly actionID: string; readonly message: string };
 
+export interface ListedAction {
+  readonly actionID: string;
+  readonly tool: string;
+}
+
+export interface ActionCounts {
+  readonly queued: number;
+  readonly started: number;
+  readonly cancelled: number;
+}
+
 interface ActionTable {
   readonly action_id: string;
   readonly task_id: string;

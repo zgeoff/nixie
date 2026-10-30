@@ -3,6 +3,7 @@ import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { store } from '../mocks/store';
 import { toLogRecord } from '../mocks/to-log-record';
+import { buildMockListedTask } from '../test-utils/build-mock-listed-task';
 import { buildMockLogRecord } from '../test-utils/build-mock-log-record';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -21,15 +22,7 @@ test('it marks a moved message with its task and the move', () => {
         isFailed: false,
         onRetry: () => {},
         tasks: [
-          {
-            brief: 'Buys what the garden needs.',
-            isPauseRequested: false,
-            isTakingMessages: true,
-            lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
-            name: 'Seed order',
-            state: 'waiting',
-            taskID: 'p7hd2wq9zn',
-          },
+          buildMockListedTask({ name: 'Seed order', state: 'waiting', taskID: 'p7hd2wq9zn' }),
         ],
       }}
     />,
@@ -79,51 +72,16 @@ test('it offers only the open tasks that take your messages, other than the curr
         isFailed: false,
         onRetry: () => {},
         tasks: [
-          {
-            brief: 'Buys what the garden needs.',
-            isPauseRequested: false,
-            isTakingMessages: true,
-            lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
-            name: 'Seed order',
-            state: 'waiting',
-            taskID: 'p7hd2wq9zn',
-          },
-          {
-            brief: 'Plans the vegetable beds.',
-            isPauseRequested: false,
-            isTakingMessages: true,
-            lastActivityAt: new Date('2026-10-14T08:00:00.000Z'),
-            name: 'Garden plan',
-            state: 'ready',
-            taskID: 'k3vq8m2xpa',
-          },
-          {
-            brief: 'Booked the tiler.',
-            isPauseRequested: false,
-            isTakingMessages: true,
-            lastActivityAt: new Date('2026-10-13T08:00:00.000Z'),
-            name: 'Tiler booking',
-            state: 'done',
-            taskID: 'r5bn1cy6tf',
-          },
-          {
-            brief: 'Compared the paint quotes.',
-            isPauseRequested: false,
-            isTakingMessages: true,
-            lastActivityAt: new Date('2026-10-13T08:30:00.000Z'),
-            name: 'Paint quotes',
-            state: 'closed',
-            taskID: 'w2jk7nd4hs',
-          },
-          {
-            brief: 'Saves what you say as memory.',
-            isPauseRequested: false,
+          buildMockListedTask({ name: 'Seed order', state: 'waiting', taskID: 'p7hd2wq9zn' }),
+          buildMockListedTask({ name: 'Garden plan', state: 'ready', taskID: 'k3vq8m2xpa' }),
+          buildMockListedTask({ name: 'Tiler booking', state: 'done', taskID: 'r5bn1cy6tf' }),
+          buildMockListedTask({ name: 'Paint quotes', state: 'closed', taskID: 'w2jk7nd4hs' }),
+          buildMockListedTask({
             isTakingMessages: false,
-            lastActivityAt: new Date('2026-10-13T07:00:00.000Z'),
             name: 'Memory writer',
             state: 'waiting',
             taskID: 'memory-writer',
-          },
+          }),
         ],
       }}
     />,
@@ -179,15 +137,7 @@ test('it moves the message to the task you pick', async () => {
         isFailed: false,
         onRetry: () => {},
         tasks: [
-          {
-            brief: garden.brief,
-            isPauseRequested: false,
-            isTakingMessages: true,
-            lastActivityAt: garden.lastActivityAt,
-            name: garden.name,
-            state: garden.state,
-            taskID: garden.taskID,
-          },
+          buildMockListedTask({ name: garden.name, state: garden.state, taskID: garden.taskID }),
         ],
       }}
     />,

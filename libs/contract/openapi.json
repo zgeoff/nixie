@@ -85,6 +85,39 @@
                               "trigger"
                             ]
                           },
+                          "exchangeNotice": {
+                            "type": "object",
+                            "properties": {
+                              "link": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "messageID": {
+                                    "type": "string"
+                                  },
+                                  "taskID": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": [
+                                  "label",
+                                  "messageID",
+                                  "taskID"
+                                ]
+                              },
+                              "text": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "link",
+                              "text"
+                            ]
+                          },
                           "compactionFailure": {
                             "type": "object",
                             "properties": {
@@ -341,6 +374,32 @@
                             "minimum": 0,
                             "maximum": 9007199254740991
                           },
+                          "stop": {
+                            "type": "object",
+                            "properties": {
+                              "cancelledActions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "actionID": {
+                                      "type": "string"
+                                    },
+                                    "tool": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "actionID",
+                                    "tool"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "cancelledActions"
+                            ]
+                          },
                           "summary": {
                             "type": "object",
                             "properties": {
@@ -407,6 +466,53 @@
                             },
                             "required": [
                               "taskID"
+                            ]
+                          },
+                          "taskMessage": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "fromName": {
+                                "type": "string"
+                              },
+                              "hop": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "kind": {
+                                "type": "string"
+                              },
+                              "messageID": {
+                                "type": "string"
+                              },
+                              "replyTo": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "to": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "woke": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "fromName",
+                              "hop",
+                              "kind",
+                              "messageID",
+                              "to",
+                              "woke"
                             ]
                           },
                           "toolCall": {
@@ -478,6 +584,39 @@
                               "required": [
                                 "preTokens",
                                 "trigger"
+                              ]
+                            },
+                            "exchangeNotice": {
+                              "type": "object",
+                              "properties": {
+                                "link": {
+                                  "type": "object",
+                                  "properties": {
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "messageID": {
+                                      "type": "string"
+                                    },
+                                    "taskID": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  },
+                                  "required": [
+                                    "label",
+                                    "messageID",
+                                    "taskID"
+                                  ]
+                                },
+                                "text": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "link",
+                                "text"
                               ]
                             },
                             "compactionFailure": {
@@ -736,6 +875,32 @@
                               "minimum": 0,
                               "maximum": 9007199254740991
                             },
+                            "stop": {
+                              "type": "object",
+                              "properties": {
+                                "cancelledActions": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "actionID": {
+                                        "type": "string"
+                                      },
+                                      "tool": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "actionID",
+                                      "tool"
+                                    ]
+                                  }
+                                }
+                              },
+                              "required": [
+                                "cancelledActions"
+                              ]
+                            },
                             "summary": {
                               "type": "object",
                               "properties": {
@@ -802,6 +967,53 @@
                               },
                               "required": [
                                 "taskID"
+                              ]
+                            },
+                            "taskMessage": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "fromName": {
+                                  "type": "string"
+                                },
+                                "hop": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "kind": {
+                                  "type": "string"
+                                },
+                                "messageID": {
+                                  "type": "string"
+                                },
+                                "replyTo": {
+                                  "type": "string"
+                                },
+                                "text": {
+                                  "type": "string"
+                                },
+                                "to": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "woke": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "fromName",
+                                "hop",
+                                "kind",
+                                "messageID",
+                                "to",
+                                "woke"
                               ]
                             },
                             "toolCall": {
@@ -2221,13 +2433,57 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "readAtSequence": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
                     "tasks": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
+                          "actions": {
+                            "type": "object",
+                            "properties": {
+                              "cancelled": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "queued": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "started": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "cancelled",
+                              "queued",
+                              "started"
+                            ]
+                          },
                           "brief": {
                             "type": "string"
+                          },
+                          "controls": {
+                            "type": "array",
+                            "items": {
+                              "enum": [
+                                "pause",
+                                "resume",
+                                "stop",
+                                "restart",
+                                "close",
+                                "interrupt"
+                              ],
+                              "type": "string"
+                            }
                           },
                           "isPauseRequested": {
                             "type": "boolean"
@@ -2260,10 +2516,17 @@
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 200
+                          },
+                          "waitingOn": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
                           }
                         },
                         "required": [
+                          "actions",
                           "brief",
+                          "controls",
                           "isPauseRequested",
                           "isTakingMessages",
                           "lastActivityAt",
@@ -2275,6 +2538,7 @@
                     }
                   },
                   "required": [
+                    "readAtSequence",
                     "tasks"
                   ]
                 }
@@ -2302,6 +2566,454 @@
                         "message": {
                           "type": "string",
                           "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/read": {
+      "post": {
+        "operationId": "tasks.read",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "taskID": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "taskID"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "actions": {
+                      "type": "object",
+                      "properties": {
+                        "cancelled": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "queued": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "started": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "cancelled",
+                        "queued",
+                        "started"
+                      ]
+                    },
+                    "brief": {
+                      "type": "string"
+                    },
+                    "controls": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "pause",
+                          "resume",
+                          "stop",
+                          "restart",
+                          "close",
+                          "interrupt"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "isPauseRequested": {
+                      "type": "boolean"
+                    },
+                    "isTakingMessages": {
+                      "type": "boolean"
+                    },
+                    "lastActivityAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "x-native-type": "date"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "enum": [
+                        "ready",
+                        "running",
+                        "waiting",
+                        "paused",
+                        "stopped",
+                        "done",
+                        "failed",
+                        "closed"
+                      ],
+                      "type": "string"
+                    },
+                    "taskID": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "waitingOn": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "required": [
+                    "actions",
+                    "brief",
+                    "controls",
+                    "isPauseRequested",
+                    "isTakingMessages",
+                    "lastActivityAt",
+                    "name",
+                    "state",
+                    "taskID"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "TASK_NOT_FOUND"
+                        },
+                        "status": {
+                          "const": 404
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "No task has this ID"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/readActions": {
+      "post": {
+        "operationId": "tasks.readActions",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "taskID": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "taskID"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "actionID": {
+                            "type": "string"
+                          },
+                          "tool": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "actionID",
+                          "tool"
+                        ]
+                      }
+                    },
+                    "started": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "actionID": {
+                            "type": "string"
+                          },
+                          "tool": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "actionID",
+                          "tool"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "queued",
+                    "started"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "TASK_NOT_FOUND"
+                        },
+                        "status": {
+                          "const": 404
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "No task has this ID"
                         },
                         "data": {}
                       },
@@ -15263,6 +15975,39 @@
                                     "trigger"
                                   ]
                                 },
+                                "exchangeNotice": {
+                                  "type": "object",
+                                  "properties": {
+                                    "link": {
+                                      "type": "object",
+                                      "properties": {
+                                        "label": {
+                                          "type": "string"
+                                        },
+                                        "messageID": {
+                                          "type": "string"
+                                        },
+                                        "taskID": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": [
+                                        "label",
+                                        "messageID",
+                                        "taskID"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "link",
+                                    "text"
+                                  ]
+                                },
                                 "compactionFailure": {
                                   "type": "object",
                                   "properties": {
@@ -15519,6 +16264,32 @@
                                   "minimum": 0,
                                   "maximum": 9007199254740991
                                 },
+                                "stop": {
+                                  "type": "object",
+                                  "properties": {
+                                    "cancelledActions": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "actionID": {
+                                            "type": "string"
+                                          },
+                                          "tool": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "actionID",
+                                          "tool"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "cancelledActions"
+                                  ]
+                                },
                                 "summary": {
                                   "type": "object",
                                   "properties": {
@@ -15585,6 +16356,53 @@
                                   },
                                   "required": [
                                     "taskID"
+                                  ]
+                                },
+                                "taskMessage": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "fromName": {
+                                      "type": "string"
+                                    },
+                                    "hop": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "kind": {
+                                      "type": "string"
+                                    },
+                                    "messageID": {
+                                      "type": "string"
+                                    },
+                                    "replyTo": {
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    },
+                                    "to": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "woke": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "fromName",
+                                    "hop",
+                                    "kind",
+                                    "messageID",
+                                    "to",
+                                    "woke"
                                   ]
                                 },
                                 "toolCall": {
@@ -15820,6 +16638,39 @@
                                     "trigger"
                                   ]
                                 },
+                                "exchangeNotice": {
+                                  "type": "object",
+                                  "properties": {
+                                    "link": {
+                                      "type": "object",
+                                      "properties": {
+                                        "label": {
+                                          "type": "string"
+                                        },
+                                        "messageID": {
+                                          "type": "string"
+                                        },
+                                        "taskID": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": [
+                                        "label",
+                                        "messageID",
+                                        "taskID"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "link",
+                                    "text"
+                                  ]
+                                },
                                 "compactionFailure": {
                                   "type": "object",
                                   "properties": {
@@ -16076,6 +16927,32 @@
                                   "minimum": 0,
                                   "maximum": 9007199254740991
                                 },
+                                "stop": {
+                                  "type": "object",
+                                  "properties": {
+                                    "cancelledActions": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "actionID": {
+                                            "type": "string"
+                                          },
+                                          "tool": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "actionID",
+                                          "tool"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "cancelledActions"
+                                  ]
+                                },
                                 "summary": {
                                   "type": "object",
                                   "properties": {
@@ -16142,6 +17019,53 @@
                                   },
                                   "required": [
                                     "taskID"
+                                  ]
+                                },
+                                "taskMessage": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "fromName": {
+                                      "type": "string"
+                                    },
+                                    "hop": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "kind": {
+                                      "type": "string"
+                                    },
+                                    "messageID": {
+                                      "type": "string"
+                                    },
+                                    "replyTo": {
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    },
+                                    "to": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "woke": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "fromName",
+                                    "hop",
+                                    "kind",
+                                    "messageID",
+                                    "to",
+                                    "woke"
                                   ]
                                 },
                                 "toolCall": {

@@ -5,6 +5,8 @@ import { match } from 'ts-pattern';
 import type { ReadonlyDeep } from '../types';
 import { mockImplementer } from './mock-implementer';
 import { mockMemoryRouter } from './mock-memory-router';
+import { readMockTaskActions } from './read-mock-task-actions';
+import { readMockTaskList } from './read-mock-task-list';
 import { requireMockSession } from './require-mock-session';
 import { store } from './store';
 import { toLogRecord } from './to-log-record';
@@ -210,13 +212,31 @@ export const mockAPIRouter = os.router({
     list: os.tasks.list.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      return {
-        tasks: store.tasks
-          .all()
-          .toSorted(
-            (left, right) => right.lastActivityAt.getTime() - left.lastActivityAt.getTime(),
-          ),
-      };
+      return readMockTaskList();
+    }),
+    read: os.tasks.read.handler((options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const task = readMockTaskList().tasks.find(
+        (listed) => listed.taskID === options.input.taskID,
+      );
+
+      if (task === undefined) {
+        throw options.errors.TASK_NOT_FOUND();
+      }
+
+      return task;
+    }),
+    readActions: os.tasks.readActions.handler((options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const actions = readMockTaskActions(options.input.taskID);
+
+      if (actions === null) {
+        throw options.errors.TASK_NOT_FOUND();
+      }
+
+      return actions;
     }),
     pause: os.tasks.pause.handler((options) => runMockControl('pause', options)),
     resume: os.tasks.resume.handler((options) => runMockControl('resume', options)),

@@ -23,7 +23,9 @@ test('it gives the tasks the API lists', async () => {
   await waitFor(() => {
     expect(hook.result.current.tasks).toStrictEqual([
       {
+        actions: { cancelled: 0, queued: 0, started: 0 },
         brief: garden.brief,
+        controls: ['pause', 'resume', 'stop', 'restart', 'close', 'interrupt'],
         isPauseRequested: false,
         isTakingMessages: true,
         lastActivityAt: garden.lastActivityAt,

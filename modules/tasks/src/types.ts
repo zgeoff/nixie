@@ -121,6 +121,7 @@ export type FaultPointID =
   | 'attempt.result.after'
   | 'timer.fire.before'
   | 'inbox.write.after'
+  | 'task_list.read.after'
   | 'recovery.step.1'
   | 'recovery.step.2'
   | 'recovery.step.3'
