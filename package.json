@@ -36,7 +36,7 @@
       "@impz/testing": "6.3.0",
       "@logtape/logtape": "2.4.2",
       "@modelcontextprotocol/client": "2.3.1",
-      "@modelcontextprotocol/server": "2.3.1",
+      "@modelcontextprotocol/server": "2.4.0",
       "@msw/data": "1.1.8",
       "@orpc/client": "1.16.0",
       "@orpc/contract": "1.16.0",
