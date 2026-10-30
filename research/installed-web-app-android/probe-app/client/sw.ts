@@ -1,11 +1,11 @@
 // The service worker's entry: it wires each event to a tested action and holds no logic of its own.
-import { z } from 'zod';
-import { approvalSchema, outboxSyncTag, pushPayloadSchema, receiptSyncTag } from '../src/contract.ts';
+import { outboxSyncTag, pushPayloadSchema, receiptSyncTag } from '../src/contract.ts';
 import { approveFromNotification } from './approve-from-notification.ts';
 import { buildProbeClient } from './build-probe-client.ts';
 import { drainOutbox } from './drain-outbox.ts';
 import { flushReceipts } from './flush-receipts.ts';
 import { openProbeStore } from './open-probe-store.ts';
+import { pickNotificationClick } from './pick-notification-click.ts';
 import { receivePush } from './receive-push.ts';
 import type { ProbeNotificationOptions } from './show-notification.ts';
 
@@ -39,7 +39,6 @@ const client = buildProbeClient({ origin: self.location.origin });
 const store = openProbeStore(self.indexedDB);
 const showNotification = (title: string, options: ProbeNotificationOptions) =>
   self.registration.showNotification(title, options);
-const notificationDataSchema = z.object({ approval: approvalSchema.nullable() });
 
 self.addEventListener('install', () => void self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
@@ -64,19 +63,14 @@ self.addEventListener('notificationclick', (event) => {
   }
 
   const action = 'action' in event && typeof event.action === 'string' ? event.action : '';
-  const { approval } = notificationDataSchema.parse(event.notification.data);
+  const click = pickNotificationClick(action, event.notification.data);
 
   event.notification.close();
-
-  if (action === 'approve' && approval !== null) {
-    event.waitUntil(
-      approveFromNotification(approval, event.notification.tag, client, showNotification),
-    );
-
-    return;
-  }
-
-  event.waitUntil(openPage(approval === null ? '/block-1.html' : '/block-2.html'));
+  event.waitUntil(
+    click.kind === 'approve'
+      ? approveFromNotification(click.approval, event.notification.tag, client, showNotification)
+      : openPage(click.page),
+  );
 });
 
 self.addEventListener('sync', (event) => {

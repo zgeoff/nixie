@@ -25,6 +25,7 @@ export async function approveFromNotification(
     icon: '/icons/launcher-192.png',
     badge: '/icons/badge-96.png',
     tag: tag === '' ? 'approve-result' : tag,
+    data: { approval: null, page: '/block-2.html' },
   });
 
   return outcome;

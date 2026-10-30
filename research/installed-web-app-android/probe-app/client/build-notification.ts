@@ -12,7 +12,10 @@ export function buildNotification(push: PushPayload): {
     body: `Sent ${sent}, urgency ${push.urgency}${push.approval === null ? '' : '. Approve or open.'}`,
     icon: '/icons/launcher-192.png',
     badge: '/icons/badge-96.png',
-    data: { pushID: push.pushID, approval: push.approval },
+    data: {
+      approval: push.approval,
+      page: push.approval === null ? '/block-1.html' : '/block-2.html',
+    },
     silent: push.silent,
   };
 

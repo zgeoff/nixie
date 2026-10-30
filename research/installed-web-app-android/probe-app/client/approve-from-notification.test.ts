@@ -33,6 +33,7 @@ test('it approves with the session cookie and shows the answer in place of the p
         icon: '/icons/launcher-192.png',
         badge: '/icons/badge-96.png',
         tag: 'approval',
+        data: { approval: null, page: '/block-2.html' },
       },
     ],
   ]);

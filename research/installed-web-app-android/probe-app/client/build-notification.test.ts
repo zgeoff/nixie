@@ -20,8 +20,8 @@ test('it gives an approval push its buttons, its tag and renotify', () => {
       icon: '/icons/launcher-192.png',
       badge: '/icons/badge-96.png',
       data: {
-        pushID: '3e8a6c10-5b2d-4f7e-9a1c-6d8e0f2a4b33',
         approval: { approvalID: '0b5b1f7e-3c2a-4d8e-9f10-1a2b3c4d5e6f', token: 'token' },
+        page: '/block-2.html',
       },
       silent: false,
       tag: 'approval',
