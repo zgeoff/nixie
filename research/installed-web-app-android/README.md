@@ -27,9 +27,9 @@ move earlier as web work?
 - The web client labels paste spans better than a native hook can, because the browser reports each
   edit's input type and a React Native text box does not.
 
-Draft, waiting on the device run: build web push, the share target and background sending of the
-outbox as web work, ahead of the native app, and keep the native app only for what the device run
-shows the web app cannot do.
+The installed web app is nixie's Android client. Build web push, Approve from a notification, the
+share target and background sending of the outbox as web work, and build no native Android app, as
+the [recommendation](results.md#recommendation) gives.
 
 ## Device run
 
@@ -48,10 +48,11 @@ checks the session cookie, which nixie lacks, so they wait on a choice between 2
 ## Results
 
 The [results](results.md) hold the sources with their dates, the findings for each question with
-nixie's code, and the draft recommendation. The device checklist holds the steps to run on a phone
-and what to record.
+nixie's code, the device run and the recommendation. The device checklist holds the steps to run on
+a phone and what to record.
 
 ## Untested
 
-Every finding comes from documentation and code. No step has run on a device. The
-[untested list](results.md#untested) gives the gaps the device run closes.
+Blocks 1, 2, 6 and 7 of the device run passed on a phone. The owner waived blocks 3 to 5, so the
+findings on links, sessions and paste spans rest on documentation and code. The
+[untested list](results.md#untested) gives the gaps.

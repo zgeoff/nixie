@@ -1,9 +1,10 @@
 # Results: what the installed web app can do on Android
 
 This report reads current browser and platform docs and nixie's code for each question in the
-[README](README.md), then drafts which pieces of the Android app move earlier as web work. Every
-finding waits on the [device checklist](device-checklist.md), and a claim that no current doc states
-is marked unconfirmed.
+[README](README.md), then recommends which pieces of the Android app move earlier as web work. The
+[device run](#device-run) confirmed blocks 1, 2, 6 and 7 of the
+[device checklist](device-checklist.md) on a phone, and the owner waived blocks 3 to 5. A claim that
+no current doc states is marked unconfirmed.
 
 ## Setup
 
@@ -45,9 +46,9 @@ sync.
   MDN lists `actions` on Chrome for Android from 53. Unconfirmed: Chrome's value of `maxActions` on
   Android, and an inline text reply, which the standard does not define.
 - A `fetch()` from the service worker sends same-origin cookies by default
-  ([RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/RequestInit)). Unconfirmed: no doc
-  states that a `SameSite=Lax` cookie rides a fetch that the worker starts from `notificationclick`,
-  and the device run checks it.
+  ([RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/RequestInit)). No doc states that
+  a `SameSite=Lax` cookie rides a fetch that the worker starts from `notificationclick`, and block 2
+  of the device run showed that it does.
 - The Badging API is unsupported on Android. Android shows a dot on the icon of an installed web app
   while a notification is unread, never a count
   ([Badging API](https://developer.chrome.com/docs/capabilities/web-apis/badging-api)).
@@ -220,33 +221,57 @@ paste spans spike left out.
   once the app is closed and the phone charges on Wi-Fi
   ([manifest updates](https://web.dev/articles/manifest-updates)).
 
-## Draft recommendation
+## Device run
 
-The recommendation waits on the device run. Each row names the device block that confirms it.
+The owner ran blocks 1, 2, 6 and 7 of the device checklist on an Android phone with Chrome, against
+the probe app installed from a temporary public HTTPS URL. All 4 blocks passed:
 
-| Piece                     | Draft                                                                  | Confirms    |
-| ------------------------- | ---------------------------------------------------------------------- | ----------- |
-| Push                      | Web work, ahead of native push and ahead of the Telegram notice        | Blocks 1, 2 |
-| Approve from notification | Web work for routine items; an always-ask item's button opens its card | Block 2     |
-| App Links                 | Covered by the minted WebAPK; drop from the Android app                | Block 3     |
-| Secure-store session      | Covered by the cookie; no change to the session design                 | Block 4     |
-| Native paste module       | Not needed while the Android client is the web app                     | Block 5     |
-| Share target              | Web work, new                                                          | Block 6     |
-| Background outbox sending | Web work, with the outbox in IndexedDB                                 | Block 7     |
-| Android app               | Hold until a device run shows a need the web app cannot meet           | All blocks  |
+- Block 1: a push arrived while the app was closed.
+- Block 2: Approve from a notification passed the server's header, cookie and token check.
+- Block 6: sharing into the installed app reached the server.
+- Block 7: background sync sent a queued message.
 
-The Android app would remain for a need outside this spike's questions, such as a home screen
-widget, a quick settings tile or voice with the screen locked.
+The run recorded a pass or a fail for each block, and none of the details that the
+[open questions](#open-questions-for-the-push-design) list.
+
+The owner waived blocks 3 to 5, which run against a live deployment, in these words: "I think we're
+grasping at straws a little here, and it's safe to say Android has properly implemented PWAs at this
+point." The rows for links, sessions and paste spans rest on the docs and nixie's code alone.
+
+## Recommendation
+
+The installed web app is nixie's Android client, and nixie builds no native Android app.
+
+| Piece                     | Decision                                                               | Evidence             |
+| ------------------------- | ---------------------------------------------------------------------- | -------------------- |
+| Push                      | Web work, ahead of native push and ahead of the Telegram notice        | Block 1              |
+| Approve from notification | Web work for routine items; an always-ask item's button opens its card | Block 2 and the docs |
+| App Links                 | Covered by the installed app's link capture; no App Links              | Docs; block 3 waived |
+| Secure-store session      | Covered by the cookie; no change to the session design                 | Docs; block 4 waived |
+| Native paste module       | None; the web client's span labels stand                               | Docs; block 5 waived |
+| Share target              | Web work, new                                                          | Block 6              |
+| Background outbox sending | Web work, with the outbox in IndexedDB                                 | Block 7              |
+| Android app               | None                                                                   | The rows above       |
+
+A home screen widget, a quick settings tile and voice with the screen locked fall outside this
+spike's questions, and only a native app gives them.
+
+## Open questions for the push design
+
+The device run recorded none of these, and the push design settles each one:
+
+- The delivery delay while the phone sits in Doze, for `Urgency: normal` and for `Urgency: high`.
+- Chrome's `Notification.maxActions` on Android.
+- Whether Android asks for an unlock before Approve acts from the lock screen.
+- Whether a share target's POST carries the `SameSite=Lax` session cookie.
+- The background sync delay with battery saver on.
+- Whether Google's server minted a WebAPK for the probe app's host, as `chrome://webapks` shows.
 
 ## Untested
 
-- Every finding above; no step has run on a phone.
+- Blocks 3 to 5, which the owner waived: links, sessions and paste spans on a live deployment.
 - Whether Google's server mints a WebAPK for a deployment's host, and for one only a private network
-  reaches.
-- Delivery while the phone sits in Doze, and the effect of `Urgency: high`.
-- Whether the session cookie rides a fetch from `notificationclick`, and whether Android asks for an
-  unlock before a button acts from the lock screen.
-- Chrome's `maxActions` on Android.
+  reaches. Without a WebAPK, Chrome adds a home screen shortcut, which captures no links.
 - Keyboards other than Gboard, such as Samsung Keyboard and SwiftKey.
 - iOS, which this spike reads but does not plan a run for.
 
