@@ -16,7 +16,6 @@ function setupTest() {
   const summaryPath = join(directory, 'summary');
 
   writeFileSync(callsPath, '');
-  writeFileSync(summaryPath, '# Checks\n');
 
   return { directoryPath: directory, callsPath, summaryPath };
 }
@@ -24,6 +23,8 @@ function setupTest() {
 test('it appends the command output to the summary and returns its exit code', async () => {
   const ctx = setupTest();
   const programPath = join(ctx.directoryPath, 'run-check');
+
+  writeFileSync(ctx.summaryPath, '# Checks\n');
 
   createStubProgram(programPath, {
     callsPath: ctx.callsPath,
