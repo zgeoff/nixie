@@ -53,6 +53,21 @@ jobs:
         with:
           persist-credentials: false
 
+      # a plain secrets file with a throwaway key, which the test build's stand-in for sops reads, and
+      # an invented age key; each is mode 0600 and owned by the runner's user, as a host's files are,
+      # so the start proves that setup hands both to nixie's user; the log and stop steps need both
+      # names to read compose.yaml, so this step runs before any step that can fail
+      - name: Write the throwaway secrets
+        run: |
+          umask 077
+          key=$(head -c 32 /dev/urandom | base64)
+          printf 'deployment_key: %s\nmodel_credentials:\n  anthropic: invented-placeholder\n' "$key" > "$RUNNER_TEMP/secrets.yaml"
+          echo 'invented-age-key-for-the-compose-check' > "$RUNNER_TEMP/age.key"
+          {
+            echo "NIXIE_SECRETS_FILE=$RUNNER_TEMP/secrets.yaml"
+            echo "NIXIE_AGE_KEY_FILE=$RUNNER_TEMP/age.key"
+          } >> "$GITHUB_ENV"
+
       - name: Check each pinned tag against its digest
         run: |
           grep -oE 'image: [^ ]+:[^ @]+@sha256:[0-9a-f]{64}' compose.yaml | sort -u | while read -r _ ref; do
@@ -70,20 +85,6 @@ jobs:
             echo '::error::compose.yaml names an image without a tag and digest'
             exit 1
           fi
-
-      # a plain secrets file with a throwaway key, which the test build's stand-in for sops reads, and
-      # an invented age key; each is mode 0600 and owned by the runner's user, as a host's files are,
-      # so the start proves that setup hands both to nixie's user
-      - name: Write the throwaway secrets
-        run: |
-          umask 077
-          key=$(head -c 32 /dev/urandom | base64)
-          printf 'deployment_key: %s\nmodel_credentials:\n  anthropic: invented-placeholder\n' "$key" > "$RUNNER_TEMP/secrets.yaml"
-          echo 'invented-age-key-for-the-compose-check' > "$RUNNER_TEMP/age.key"
-          {
-            echo "NIXIE_SECRETS_FILE=$RUNNER_TEMP/secrets.yaml"
-            echo "NIXIE_AGE_KEY_FILE=$RUNNER_TEMP/age.key"
-          } >> "$GITHUB_ENV"
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
