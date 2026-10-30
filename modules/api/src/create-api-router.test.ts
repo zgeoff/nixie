@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import type { ActionsTables } from '@heynixie/actions';
 import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
 import { writeRecords } from '@heynixie/log';
-import { createConversationTask } from '@heynixie/tasks';
+import { claimTask, createConversationTask, createTask } from '@heynixie/tasks';
 import { isDefinedError, safe } from '@orpc/client';
 import invariant from 'tiny-invariant';
 import { createEnrolmentCode } from './create-enrolment-code';
@@ -957,6 +957,122 @@ test('#records.follow resumes from the last event ID with exactly the records it
   const missed = await readEvents(secondConnection, 2);
 
   expect(missed.map((event) => event.record.message?.text)).toStrictEqual(['three', 'four']);
+});
+
+test('#records.follow resumes a task thread mid-step with exactly the records it missed', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const taskID = await createTask(ctx.context, 'Plan the beds.', 'k3x9m2p7qa');
+  const step = await claimTask(ctx.context, { holder: 'step-runner', leaseMs: 60_000 });
+
+  invariant(step);
+
+  const firstConnection = await laptopClient.records.follow({ afterSequence: 0, thread: taskID });
+  const seen = await readEvents(firstConnection, 2);
+
+  await firstConnection
+    .return(undefined)
+    .then(() =>
+      laptopClient.conversation.send({
+        clientMessageId: '00000000-0000-4000-8000-000000000001',
+        thread: taskID,
+        text: 'Put the beans in the north bed.',
+        spans: [{ start: 0, end: 31, source: 'typed' }],
+      }),
+    )
+    .then(() =>
+      laptopClient.conversation.send({
+        clientMessageId: '00000000-0000-4000-8000-000000000002',
+        thread: 'conversation',
+        text: 'What is on today?',
+        spans: [{ start: 0, end: 17, source: 'typed' }],
+      }),
+    )
+    .then(() =>
+      laptopClient.tasks.pause({ clientActionID: '2c4e6a8b-1d3f-4b5c-8e7a-9f0b1c2d3e4f', taskID }),
+    );
+
+  const secondConnection = await laptopClient.records.follow(
+    { afterSequence: 0, thread: taskID },
+    { lastEventId: String(seen.at(-1)?.record.sequence) },
+  );
+
+  const missed = await readEvents(secondConnection, 2);
+
+  expect(seen.map((event) => event.record.kind)).toStrictEqual([
+    'task.created',
+    'task.step_started',
+  ]);
+
+  expect(
+    missed.map((event) => ({ kind: event.record.kind, text: event.record.message?.text })),
+  ).toStrictEqual([
+    { kind: 'owner_message', text: 'Put the beans in the north bed.' },
+    { kind: 'task.pause_requested', text: undefined },
+  ]);
+});
+
+test('#records.follow streams a stop with the actions it cancelled', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const stopped = await laptopClient.tasks.stop({
+    clientActionID: '4e6a8c0d-2f4b-4d6e-8a9c-0b1d2e3f4a5b',
+    taskID: 'conversation',
+  });
+
+  const stop = await ctx.db
+    .selectFrom('records')
+    .select('sequence')
+    .where('kind', '=', 'task.stopped')
+    .executeTakeFirstOrThrow();
+
+  await ctx.writer.db
+    .$extendTables<ActionsTables>()
+    .insertInto('actions')
+    .values({
+      action_id: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24',
+      task_id: 'conversation',
+      step_key: 'conversation:1',
+      action_hash: 'sha256:send-1',
+      tool: 'test.send',
+      status: 'pending',
+      attempt_count: 0,
+      attempt_open: 0,
+      next_attempt_at: 0,
+      reason: null,
+      queued_sequence: 1,
+      outcome_sequence: null,
+      cancelled_sequence: stop.sequence,
+      updated_sequence: stop.sequence,
+    })
+    .execute();
+
+  const connection = await laptopClient.records.follow({
+    afterSequence: stop.sequence - 1,
+    thread: 'conversation',
+  });
+
+  const seen = await readEvents(connection, 1);
+
+  expect(stopped.state).toBe('stopped');
+
+  expect(seen.map((event) => event.record.stop)).toStrictEqual([
+    {
+      cancelledActions: [{ actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24', tool: 'test.send' }],
+    },
+  ]);
 });
 
 test('#records.follow ends with UNAUTHORIZED once the session is revoked', async () => {

@@ -90,6 +90,17 @@ export async function writeMockTaskControl(
     },
   });
 
+  if (plan.kind === 'task.stopped') {
+    await store.taskActions.updateMany(
+      (query) => query.where({ attempts: 0, isCancelled: false, taskID: task.taskID }),
+      {
+        data(draft) {
+          draft.isCancelled = true;
+        },
+      },
+    );
+  }
+
   await store.taskControlActions.create({
     clientActionID: input.clientActionID,
     control,

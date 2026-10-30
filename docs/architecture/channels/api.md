@@ -99,7 +99,9 @@ with the task's state, whether a pause waits on the running step, and when the c
 A control that the task's state does not allow gets `TASK_STATE_REFUSED` with the state it met, a
 close of the conversation gets `CONVERSATION_NEVER_CLOSES`, and a task that does not exist gets
 `TASK_NOT_FOUND`. A refusal keeps no result under its action ID, so a retry of the same action runs
-the control again against the state the task holds then.
+the control again against the state the task holds then. An action read lists a task's queued
+actions, which a stop cancels, apart from its started ones, which run on to their outcome, so a
+client shows what a stop does before the user confirms it.
 
 ## Sending a message
 
@@ -156,9 +158,15 @@ for a task that runs on its own schedule, and `ALREADY_THERE` for the task that 
 already. A client action whose write fails rolls the whole move back.
 
 A task list read returns the most recently active tasks up to a cap, each with its name, brief,
-state, last activity and whether it takes a message of the user's. The client names the task of each
-route from that list, so a route to a task past the cap shows the task's ID. A started task whose
-name the user forgot shows under its ID too.
+state, last activity, whether it takes a message of the user's, the task it waits on, the controls
+its runner offers and its [action counts](../core/actions.md#cancelled-actions). It also gives the
+log sequence it read at, which it reads before the tasks, so a client that follows the log from that
+sequence sees every change the list leaves out. Every task runs on the nixie runner, which offers
+all 6 controls, and a client shows only the controls that the runner offers and the task's state
+allows. The client names the task of each route from that list, so a route to a task past the cap
+shows the task's ID. A started task whose name the user forgot shows under its ID too. A task read
+returns one task with the same fields, whatever its place in the list, so a task's page shows a task
+past the cap.
 
 ## Reading and the live stream
 
@@ -172,7 +180,9 @@ resumes after that record, whatever start the input holds. The stream shows only
 to a thread, because session and refusal records belong to none and no client view shows them. A
 message record carries its text and spans while its key exists, and keeps its place with no text
 once the message is forgotten. Each forget record carries the sequence it forgets, so a client drops
-that message's text as the record arrives.
+that message's text as the record arrives. A task message carries its sender's name, kind, hop and
+body, an exchange notice carries its text with a link to the receiver's thread, and a stop carries
+the actions it cancelled. A page and the stream read them the same way.
 
 The API checks the caller's session before it opens the live stream and refuses a missing or revoked
 session with a plain 401, so a stream that opens is one the API accepted. A session revoked while

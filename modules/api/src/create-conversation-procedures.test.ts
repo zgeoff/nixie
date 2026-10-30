@@ -133,7 +133,9 @@ test('#conversation.move moves a message to a new task with the name and brief y
   const listed = await client.tasks.list({});
 
   expect(listed.tasks.find((task) => task.taskID === moved.taskID)).toStrictEqual({
+    actions: { cancelled: 0, queued: 0, started: 0 },
     brief: 'Books a plumber for the outside tap.',
+    controls: ['pause', 'resume', 'stop', 'restart', 'close', 'interrupt'],
     isPauseRequested: false,
     isTakingMessages: true,
     lastActivityAt: expect.toBeValidDate(),

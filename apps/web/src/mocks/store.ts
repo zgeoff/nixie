@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { nixieRunnerControls } from '@heynixie/task-control';
 import { Collection } from '@msw/data';
 import { z } from 'zod';
 
@@ -345,9 +346,12 @@ const moments = new Collection({
   }),
 });
 
+const taskControlSchema = z.enum(['pause', 'resume', 'stop', 'restart', 'close', 'interrupt']);
+
 const tasks = new Collection({
   schema: z.object({
     brief: z.string().default(() => faker.lorem.sentence()),
+    controls: z.array(taskControlSchema).default(() => [...nixieRunnerControls]),
     isPauseRequested: z.boolean().default(false),
     isTakingMessages: z.boolean().default(true),
     lastActivityAt: z.date().default(() => new Date()),
@@ -357,6 +361,17 @@ const tasks = new Collection({
       .enum(['ready', 'running', 'waiting', 'paused', 'stopped', 'done', 'failed', 'closed'])
       .default('waiting'),
     taskID: z.string().default(() => faker.string.alphanumeric({ length: 10, casing: 'lower' })),
+    waitingOn: z.string().optional(),
+  }),
+});
+
+const taskActions = new Collection({
+  schema: z.object({
+    actionID: z.uuid().default(() => faker.string.uuid()),
+    attempts: z.int().nonnegative().default(0),
+    isCancelled: z.boolean().default(false),
+    taskID: z.string(),
+    tool: z.string().default('test.send'),
   }),
 });
 
@@ -411,6 +426,7 @@ export const store = {
       forgetActions,
       moveActions,
       taskControlActions,
+      taskActions,
       tasks,
       memoryActions,
       memoryItems,
@@ -430,6 +446,7 @@ export const store = {
     counter.lastSequence = 0;
   },
   sessions,
+  taskActions,
   taskControlActions,
   tasks,
 };

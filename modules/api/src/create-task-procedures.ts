@@ -1,8 +1,17 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import type { TaskControl } from '@heynixie/tasks';
-import { readOwnerMessageTakers, readTaskDirectory, readTaskList } from '@heynixie/tasks';
+import { readActionCounts, readTaskActions } from '@heynixie/actions';
+import { nixieRunnerControls } from '@heynixie/task-control';
+import type { TaskControl, TasksTables } from '@heynixie/tasks';
+import {
+  readOwnerMessageTakers,
+  readTaskDirectory,
+  readTaskList,
+  waitAtFaultPoint,
+} from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { apiImplementer } from './api-implementer';
+import { readHeadSequence } from './read-head-sequence';
 import { requireCaller } from './require-caller';
 import type { APIContext } from './types';
 import type { CheckedTaskControlResult } from './write-checked-task-control';
@@ -17,32 +26,49 @@ export function createTaskProcedures(context: APIContext) {
     list: tasks.list.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      const directory = await readTaskDirectory(context, {
+      // The head comes first, so a client that follows the log from it misses no change that the
+      // list read below leaves out.
+      const readAtSequence = await readHeadSequence(context);
+
+      const messaging = await readTaskDirectory(context, {
         directory: context.settings.taskDirectory,
       });
 
-      const listed = await readTaskList(context, directory, {
-        callerID: null,
-        state: 'all',
-        limit: listLimit,
+      const listed = await readListedTasks(context, messaging.directory, listLimit);
+
+      return { tasks: listed, readAtSequence };
+    }),
+
+    read: tasks.read.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const messaging = await readTaskDirectory(context, {
+        directory: context.settings.taskDirectory,
       });
 
-      const takers = await readOwnerMessageTakers(
-        context,
-        listed.map((task) => task.id),
+      const profiles = messaging.directory.filter(
+        (profile) => profile.taskID === options.input.taskID,
       );
 
-      return {
-        tasks: listed.map((task) => ({
-          brief: task.brief,
-          isPauseRequested: task.isPauseRequested,
-          isTakingMessages: takers.has(task.id),
-          lastActivityAt: task.lastActivityAt,
-          name: task.name,
-          state: task.state,
-          taskID: task.id,
-        })),
-      };
+      const [task] = await readListedTasks(context, profiles, 1);
+
+      if (task === undefined) {
+        throw options.errors.TASK_NOT_FOUND();
+      }
+
+      return task;
+    }),
+
+    readActions: tasks.readActions.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      if (!(await probeTaskExists(context, options.input.taskID))) {
+        throw options.errors.TASK_NOT_FOUND();
+      }
+
+      const actions = await readTaskActions(context, options.input.taskID);
+
+      return { queued: [...actions.queued], started: [...actions.started] };
     }),
 
     pause: tasks.pause.handler((options) => runControl(context, 'pause', options)),
@@ -70,6 +96,55 @@ export function createTaskProcedures(context: APIContext) {
       return toControlledTask(result, options.errors);
     }),
   };
+}
+
+type TaskProfiles = Awaited<ReturnType<typeof readTaskDirectory>>['directory'];
+
+async function readListedTasks(context: APIContext, directory: TaskProfiles, limit: number) {
+  const listed = await readTaskList(
+    context,
+    { directory },
+    { callerID: null, state: 'all', limit },
+  );
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('task_list.read.after', { kind: 'task', id: null });
+  }
+
+  const taskIDs = listed.map((task) => task.id);
+
+  const takers = await readOwnerMessageTakers(context, taskIDs);
+  const counts = await readActionCounts(context, taskIDs);
+
+  return listed.map((task) => {
+    const actions = counts.get(task.id);
+
+    invariant(actions);
+
+    return {
+      actions,
+      brief: task.brief,
+      controls: [...nixieRunnerControls],
+      isPauseRequested: task.isPauseRequested,
+      isTakingMessages: takers.has(task.id),
+      lastActivityAt: task.lastActivityAt,
+      name: task.name,
+      state: task.state,
+      taskID: task.id,
+      waitingOn: task.waitingOn,
+    };
+  });
+}
+
+async function probeTaskExists(context: APIContext, taskID: string): Promise<boolean> {
+  const task = await context.log.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select('task_id')
+    .where('task_id', '=', taskID)
+    .executeTakeFirst();
+
+  return task !== undefined;
 }
 
 type ControlProcedure = Parameters<typeof apiImplementer.tasks.pause.handler>[0];

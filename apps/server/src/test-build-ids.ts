@@ -13,6 +13,7 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'attempt.result.after': 'attempt.result.after',
   'timer.fire.before': 'timer.fire.before',
   'inbox.write.after': 'inbox.write.after',
+  'task_list.read.after': 'task_list.read.after',
   'recovery.step.1': 'recovery.step.',
   'recovery.step.2': 'recovery.step.',
   'recovery.step.3': 'recovery.step.',

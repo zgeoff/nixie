@@ -332,7 +332,13 @@ test('it shows a failed tool result as cancelled when its action is among the ca
     erasable: { status: 'shredded' },
   });
 
-  expect(toContractRecord(record, new Set(['action-1']))?.toolCall).toStrictEqual({
+  const lookups = {
+    cancelledActionIDs: new Set(['action-1']),
+    stopCancelledActions: new Map(),
+    taskDirectory: [],
+  };
+
+  expect(toContractRecord(record, lookups)?.toolCall).toStrictEqual({
     callID: 'call-1',
     outcome: 'cancelled',
   });
@@ -692,5 +698,146 @@ test('it carries a destroyed moment with its IDs and no title', () => {
   expect(toContractRecord(record)?.moment).toStrictEqual({
     momentID: '5d1c9e2a-7b3f-4a6d-8c0e-1f2a3b4c5d6e',
     shortID: 'q4n8v2hw6t',
+  });
+});
+
+test('it carries a task message with its sender named from the directory', () => {
+  const record = buildMockLogRecord({
+    sequence: 16,
+    recordedAt: new Date('2026-10-10T12:00:07Z'),
+    kind: 'task_message',
+    thread: 'conversation',
+    payload: {
+      messageID: 'm7q2x9k4pa',
+      from: 'k3x9m2p7qa',
+      to: 'conversation',
+      kind: 'question',
+      replyTo: null,
+      onBehalfOf: [],
+      hop: 2,
+      hopLimit: 20,
+      wake: true,
+      woke: true,
+      opensWait: true,
+      source: 'task:k3x9m2p7qa',
+    },
+    erasable: { status: 'readable', fields: { body: 'Which bed gets the beans?' } },
+  });
+
+  const lookups = {
+    cancelledActionIDs: new Set<string>(),
+    stopCancelledActions: new Map(),
+    taskDirectory: [
+      {
+        taskID: 'k3x9m2p7qa',
+        name: 'Garden plan',
+        brief: 'Plan the beds.',
+        isWokenByMessages: true,
+      },
+    ],
+  };
+
+  expect(toContractRecord(record, lookups)?.taskMessage).toStrictEqual({
+    from: 'k3x9m2p7qa',
+    fromName: 'Garden plan',
+    hop: 2,
+    kind: 'question',
+    messageID: 'm7q2x9k4pa',
+    text: 'Which bed gets the beans?',
+    to: 'conversation',
+    woke: true,
+  });
+});
+
+test('it carries a forgotten task reply with the message it answers and no text', () => {
+  const record = buildMockLogRecord({
+    sequence: 17,
+    recordedAt: new Date('2026-10-10T12:00:08Z'),
+    kind: 'task_message',
+    thread: 'k3x9m2p7qa',
+    payload: {
+      messageID: 'p2w8r5t1ka',
+      from: 'conversation',
+      to: 'k3x9m2p7qa',
+      kind: 'reply',
+      replyTo: 'm7q2x9k4pa',
+      onBehalfOf: [],
+      hop: 3,
+      hopLimit: 20,
+      wake: true,
+      woke: false,
+      opensWait: false,
+      source: 'task:conversation',
+    },
+    erasable: { status: 'shredded' },
+  });
+
+  expect(toContractRecord(record)?.taskMessage).toStrictEqual({
+    from: 'conversation',
+    fromName: 'conversation',
+    hop: 3,
+    kind: 'reply',
+    messageID: 'p2w8r5t1ka',
+    replyTo: 'm7q2x9k4pa',
+    to: 'k3x9m2p7qa',
+    woke: false,
+  });
+});
+
+test('it renders an exchange notice that names both tasks and links to the receiver', () => {
+  const record = buildMockLogRecord({
+    sequence: 18,
+    recordedAt: new Date('2026-10-10T12:00:09Z'),
+    kind: 'task.exchange_limited',
+    thread: 'k3x9m2p7qa',
+    payload: {
+      messageID: 'm7q2x9k4pa',
+      stepKey: 'k3x9m2p7qa:4',
+      from: 'k3x9m2p7qa',
+      to: 'w5n1c8d3ra',
+      hops: 21,
+      waiting: { taskID: 'w5n1c8d3ra', onTaskID: 'k3x9m2p7qa' },
+    },
+  });
+
+  const lookups = {
+    cancelledActionIDs: new Set<string>(),
+    stopCancelledActions: new Map(),
+    taskDirectory: [
+      {
+        taskID: 'k3x9m2p7qa',
+        name: 'Garden plan',
+        brief: 'Plan the beds.',
+        isWokenByMessages: true,
+      },
+      { taskID: 'w5n1c8d3ra', name: 'Seed order', brief: 'Order seeds.', isWokenByMessages: true },
+    ],
+  };
+
+  expect(toContractRecord(record, lookups)?.exchangeNotice).toStrictEqual({
+    link: { label: 'Open the exchange', messageID: 'm7q2x9k4pa', taskID: 'w5n1c8d3ra' },
+    text: 'Garden plan and Seed order exchanged 21 messages with no outside cause. New messages between them wait for the next one. Seed order is waiting on Garden plan.',
+  });
+});
+
+test('it lists the actions a stop cancelled on its record', () => {
+  const record = buildMockLogRecord({
+    sequence: 19,
+    recordedAt: new Date('2026-10-10T12:00:10Z'),
+    kind: 'task.stopped',
+    thread: 'conversation',
+    payload: { taskID: 'conversation', stepKey: null, timerIDs: [], resumeState: 'waiting' },
+  });
+
+  const lookups = {
+    cancelledActionIDs: new Set<string>(),
+    stopCancelledActions: new Map([
+      [19, [{ actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24', tool: 'test.send' }]],
+    ]),
+    taskDirectory: [],
+  };
+
+  expect(toContractRecord(record, lookups)?.stop).toStrictEqual({
+    cancelledActions: [{ actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24', tool: 'test.send' }],
   });
 });

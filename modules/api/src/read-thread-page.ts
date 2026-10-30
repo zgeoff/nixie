@@ -1,7 +1,8 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import type { RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import { readCancelledToolResults } from './read-cancelled-tool-results';
+import { readHeadSequence } from './read-head-sequence';
+import { readRecordLookups } from './read-record-lookups';
 import { toContractRecord } from './to-contract-record';
 import type { APIContext, APITables } from './types';
 
@@ -36,18 +37,11 @@ export async function readThreadPage(
     return null;
   }
 
-  const last = await db
-    .selectFrom('records')
-    .select((expressionBuilder) =>
-      expressionBuilder.fn
-        .coalesce(expressionBuilder.fn.max('sequence'), expressionBuilder.lit(0))
-        .as('sequence'),
-    )
-    .executeTakeFirstOrThrow();
+  const head = await readHeadSequence(context);
 
   const window = await readPageWindow(context, {
     thread: input.thread,
-    before: Math.min(input.beforeSequence ?? Number.POSITIVE_INFINITY, last.sequence + 1),
+    before: Math.min(input.beforeSequence ?? Number.POSITIVE_INFINITY, head + 1),
     limit: input.limit ?? DEFAULT_LIMIT,
   });
 
@@ -60,16 +54,16 @@ export async function readThreadPage(
           thread: input.thread,
         });
 
-  const cancelled = await readCancelledToolResults(
+  const lookups = await readRecordLookups(
     context,
     entries.map((entry) => entry.record),
   );
 
   return {
     hasEarlier: window.hasEarlier,
-    readAtSequence: last.sequence,
-    records: entries.flatMap((entry) => toContractRecord(entry.record, cancelled) ?? []),
-    lastStepEnd: await readLastStepEnd(context, input.thread, last.sequence),
+    readAtSequence: head,
+    records: entries.flatMap((entry) => toContractRecord(entry.record, lookups) ?? []),
+    lastStepEnd: await readLastStepEnd(context, input.thread, head),
   };
 }
 
@@ -143,7 +137,7 @@ async function readLastStepEnd(
     return null;
   }
 
-  const cancelled = await readCancelledToolResults(context, [record]);
+  const lookups = await readRecordLookups(context, [record]);
 
-  return toContractRecord(record, cancelled);
+  return toContractRecord(record, lookups);
 }

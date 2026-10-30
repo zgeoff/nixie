@@ -3,6 +3,7 @@ import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { store } from '../mocks/store';
 import { toLogRecord } from '../mocks/to-log-record';
+import { buildMockListedTask } from '../test-utils/build-mock-listed-task';
 import { buildMockLogRecord } from '../test-utils/build-mock-log-record';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -36,15 +37,7 @@ test('it marks your message with the task it went to', () => {
         isFailed: false,
         onRetry: () => {},
         tasks: [
-          {
-            brief: 'Plans the vegetable beds.',
-            isPauseRequested: false,
-            isTakingMessages: true,
-            lastActivityAt: new Date('2026-10-14T09:00:00.000Z'),
-            name: 'Garden plan',
-            state: 'waiting',
-            taskID: 'k3vq8m2xpa',
-          },
+          buildMockListedTask({ name: 'Garden plan', state: 'waiting', taskID: 'k3vq8m2xpa' }),
         ],
       }}
     />,

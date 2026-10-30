@@ -1,9 +1,11 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import { subscribeToRecords } from '@heynixie/log';
-import { readCancelledToolResults } from './read-cancelled-tool-results';
+import invariant from 'tiny-invariant';
+import { readHeadSequence } from './read-head-sequence';
+import { readRecordLookups } from './read-record-lookups';
 import { sessionRevokedCodec } from './session-revoked-codec';
 import { toContractRecord } from './to-contract-record';
-import type { APIContext, APITables, Identity } from './types';
+import type { APIContext, Identity } from './types';
 
 interface ThreadRecordsOptions {
   readonly afterSequence: number;
@@ -18,20 +20,12 @@ export async function* subscribeToThreadRecords(
   caller: Identity,
   options: ThreadRecordsOptions,
 ): AsyncGenerator<ContractRecord, void, undefined> {
-  const head = await context.log.writer.db
-    .$extendTables<APITables>()
-    .selectFrom('records')
-    .select((expressionBuilder) =>
-      expressionBuilder.fn
-        .coalesce(expressionBuilder.fn.max('sequence'), expressionBuilder.lit(0))
-        .as('sequence'),
-    )
-    .executeTakeFirstOrThrow();
+  const head = await readHeadSequence(context);
 
   // a start past the head would skip the record that revokes the caller, so the stream reads from
   // the head at most
   const entries = subscribeToRecords(context.log, {
-    afterSequence: Math.min(options.afterSequence, head.sequence),
+    afterSequence: Math.min(options.afterSequence, head),
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   });
 
@@ -45,11 +39,15 @@ export async function* subscribeToThreadRecords(
       throw options.buildUnauthorized();
     }
 
-    const cancelled = await readCancelledToolResults(context, [record]);
+    const isShown =
+      record.thread !== null && (options.thread === undefined || record.thread === options.thread);
 
-    const visible = toContractRecord(record, cancelled);
+    if (isShown) {
+      const lookups = await readRecordLookups(context, [record]);
 
-    if (visible !== null && (options.thread === undefined || visible.thread === options.thread)) {
+      const visible = toContractRecord(record, lookups);
+
+      invariant(visible);
       yield visible;
     }
   }

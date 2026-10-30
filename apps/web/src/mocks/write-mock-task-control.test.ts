@@ -102,6 +102,26 @@ test('it returns a paused waiting task to waiting on a resume', async () => {
   expect(result).toMatchObject({ status: 'controlled', state: 'waiting' });
 });
 
+test('it cancels the unstarted actions of a task it stops and leaves a started one', async () => {
+  await store.tasks.create({ state: 'running', taskID: 'k3x9m2p7qa' });
+  await store.taskActions.create({ taskID: 'k3x9m2p7qa', tool: 'test.send' });
+  await store.taskActions.create({ attempts: 1, taskID: 'k3x9m2p7qa', tool: 'test.archive' });
+
+  await writeMockTaskControl('stop', {
+    clientActionID: '1a3c5e7f-9b2d-4f6a-8c0e-2d4f6a8b0c1e',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  expect(
+    store.taskActions
+      .all()
+      .map((action) => ({ isCancelled: action.isCancelled, tool: action.tool })),
+  ).toIncludeSameMembers([
+    { isCancelled: true, tool: 'test.send' },
+    { isCancelled: false, tool: 'test.archive' },
+  ]);
+});
+
 test('it refuses a client action ID that another control used', async () => {
   await store.tasks.create({ state: 'waiting', taskID: 'k3x9m2p7qa' });
 
