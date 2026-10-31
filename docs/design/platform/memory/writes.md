@@ -55,7 +55,7 @@ lets the call run and the proposal still waits for you.
 
 ## Who writes
 
-Memory has 2 write paths, and SDK compaction stays in place:
+Memory has 2 write paths:
 
 - **The conversation and tasks** call `memory.remember` and `memory.retire` during a turn, such as
   when you say "remember that I'm vegetarian now". These writes never wait for a batch.
@@ -63,6 +63,9 @@ Memory has 2 write paths, and SDK compaction stays in place:
   model reads your original messages in order, the replies, and the relevant current items. Its only
   tools are `memory.recall`, `memory.remember` and `memory.retire`, and it supplies an exact quote
   for each candidate.
+
+Compaction is not a write path: a compaction summary never becomes memory, as
+[compaction](context.md#compaction) covers.
 
 [The memory writer](../../../architecture/memory/writer.md) describes the built writer: its batch
 triggers, its sandbox, its sessions and how it publishes.
