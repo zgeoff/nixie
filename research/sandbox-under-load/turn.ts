@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import type { Options, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { cli, define } from 'gunshi';
+import { pickTurnExitCode } from './pick-turn-exit-code';
 
 const prompts = {
   rotation: [
@@ -45,13 +46,13 @@ const turnCommand = define({
     },
   },
   run: async (ctx) => {
-    await runScenario(ctx.values.scenario);
+    process.exitCode = await runScenario(ctx.values.scenario);
   },
 });
 
 await cli(process.argv.slice(2), turnCommand);
 
-async function runScenario(scenario: keyof typeof prompts): Promise<void> {
+async function runScenario(scenario: keyof typeof prompts): Promise<number> {
   const home = mkdtempSync(join(tmpdir(), 'nixie-spike-home-'));
   const options: Options = {
     tools: [],
@@ -73,14 +74,25 @@ async function runScenario(scenario: keyof typeof prompts): Promise<void> {
     cwd: home,
     env: buildEnv(home),
   };
+  const end = { scenario, succeeded: false, authenticationFailed: false };
+
   emit('query', { scenario });
   try {
     for await (const message of query({ prompt: prompts[scenario], options })) {
       writeMessage(message);
+      if (message.type === 'assistant' && message.error === 'authentication_failed') {
+        end.authenticationFailed = true;
+      }
+      if (message.type === 'result') {
+        end.succeeded = message.subtype === 'success' && !message.is_error;
+      }
     }
   } catch (error) {
+    end.succeeded = false;
     emit('thrown', { message: error instanceof Error ? error.message : String(error) });
   }
+
+  return pickTurnExitCode(end);
 }
 
 function readEnv(name: string): string {

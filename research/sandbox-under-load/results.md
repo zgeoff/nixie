@@ -133,7 +133,12 @@ arrives:
 4. It runs the rotation turn, then the parallel turn, each through `impz exec --require broker`.
 5. It saves `impz audit` for the imp, and checks every file it wrote for the token's value.
 6. It removes the imp and the secret on exit, on a failed step, and on `SIGINT` or `SIGTERM`. A
-   failed guest command fails the run.
+   failed guest command fails the run, and so does a turn that ends in error. The one exception is
+   the `authentication_failed` end that the rotation turn expects.
+
+[`plan-rotation.ts`](plan-rotation.ts) holds the rotation plan in the table below. The tests beside
+each file check the plan, the tool server's bearer check, the guest's exit code and the cleanup.
+`bun test` in this folder runs them, with a stub `impz` in place of the imp host.
 
 In the rotation turn the model calls `wait` 8 times in sequence, 4 s each, and the tool server
 starts each rotation at a fixed call:
