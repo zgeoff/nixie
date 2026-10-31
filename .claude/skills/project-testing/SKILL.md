@@ -25,6 +25,13 @@ Each line links the section that explains it.
 - [Shared harnesses](#shared-harnesses): a harness more than one server package uses lives in
   `libs/testing`; search it before writing one.
 
+## References
+
+- [The browser lane](./references/browser-lane.md): writing, running or debugging a
+  `*.browser.test.ts` suite.
+- [The nixie harnesses](./references/nixie-harnesses.md): a server suite that starts nixie, in
+  process or as a child process.
+
 ## Runs
 
 | Run                    | Command                                                        | Needs                                                                                           |
@@ -56,37 +63,7 @@ and CI, where the `CI` variable is set, fails them instead, so a run there never
 model. The spikes under `research/` and `docs/design/` run by hand, so the root
 [`bunfig.toml`](../../../bunfig.toml) skips them.
 
-The web app's browser suites, the `*.browser.test.ts` files, drive a headless Chrome or Chromium
-through `Bun.WebView`, so `bun test` needs one that Bun finds on `PATH`, in a standard install
-location, or at `BUN_CHROME_PATH`. GitHub's Ubuntu runners ship Chrome. `bun run test` leaves the
-browser suites out of the parallel run, and `test:browser`, the browser lane, runs them. The
-parallel run's ignore patterns repeat the root config's, because a pattern given on the command line
-replaces that list.
-
-The browser lane runs every suite on one setup. Its script runs
-[`run-browser-lane.ts`](../../../apps/web/src/test-utils/run-browser-lane.ts) under the shared
-cgroup memory cap, locally and on CI. That command builds the web client and the image module's
-bundle once into a folder for the run under `node_modules/.cache/nixie-browser-runs`, then runs
-`bun test --parallel=1`, which runs the files one after another and isolates each one. It names the
-run in `NIXIE_BROWSER_RUN_ID`, because the preload and the suites run again for each file. It
-removes the run's folders when the tests end, and its start removes those of a lane that died.
-
-The isolation stops each file's Chrome when the file ends, and the preload,
-[`start-browser.ts`](../../../apps/web/src/test-utils/start-browser.ts), starts the next file's
-Chrome before its first test, because a cold Chrome start on a fresh CI runner can outlast a test's
-limit. The preload also refuses a run with no build. Every suite opens its views through
-[`createBrowserView`](../../../apps/web/src/test-utils/create-browser-view.ts), because the first
-view's options set the file's one Chrome. It keeps each file's Chrome profile in a folder of its own
-in the run's folder. A test runs code in the page through
-[`runInPage`](../../../apps/web/src/test-utils/run-in-page.ts), which takes a typed function and a
-schema for its result, and keeps `view.evaluate` for a one-line expression.
-
-Chrome and Chromium stop at startup when the socket path under `TMPDIR` is too long for a Unix
-socket, and Bun starts Chrome with the environment its process started with. So the lane command
-sets `TMPDIR` for the test processes to a folder for the run, under `/tmp` when the host's `TMPDIR`
-is too long. Outside CI, each browser suite skips and prints why when no browser starts, through
-[`checkBrowserSkip`](../../../apps/web/src/test-utils/check-browser-skip.ts), and the preload runs
-the same check, so the run goes on. In CI the check fails the run instead.
+The web app's browser suites and their lane: [the browser lane](./references/browser-lane.md).
 
 Beside the browser suites, four lanes run suites that need a real system the parallel run cannot
 host. `bun run test` leaves each one out of the parallel run, and the Agent SDK and e2e lanes'
@@ -109,19 +86,6 @@ of its own. The pre-push hook runs no lane: its test job runs, through `bun run 
 tests beside the files the branch changes. A suite that spawns nixie, the web client or a build of
 either lives under `e2e/`. The web package exports the helpers those suites share from its test
 utils.
-
-[`startSpawnedNixie`](../../../e2e/test-utils/start-spawned-nixie.ts) in `e2e/` spawns the test
-build of the server's `serve` command as a child process and joins it to
-[`startCrashHarness`](../../../libs/testing/src/start-crash-harness.ts), which holds it at fault
-points, kills it, and restarts it. In a test build, the server waits at each fault point the test
-arms, runs on the harness clock, and adds a test connector with its send tool. Each start of nixie
-checks its action queue with an action on the `queue-check` thread, and that action reaches every
-action fault point. A crash suite therefore arms an action fault point only after the harness's
-queue-check wait returns, and keeps its assertions to the records of its own thread.
-
-The poisoned page journey in `e2e/` runs in process on the server's test harnesses instead, because
-the fetcher cannot reach a local page: it replays a recorded fetcher reply through a turn, then a
-writer batch.
 
 ## Preloads
 
@@ -192,20 +156,5 @@ A test of the imp port can run a real impd in the test process through `startTes
 and lifecycle on stand-ins for the VMs and the host, so the test needs no `/dev/kvm` and runs in the
 unit run.
 
-A server suite runs nixie in the test process through
-[`startInProcessNixie`](../../../apps/server/src/test-utils/start-in-process-nixie.ts), with the
-stub guest from
-[`buildStubGuestSandboxes`](../../../modules/sandbox/src/test-utils/build-stub-guest-sandboxes.ts)
-in place of the sandbox adapter, so a turn starts no guest and no Agent SDK. A test that checks what
-the model sees asserts on the turn frames the stub guest received. The stub never imitates the SDK's
-request to the model, because a copy of the SDK's logic drifts from it unseen. Each in-process start
-copies its data directory from a per-run template that
-[`writeMigratedData`](../../../apps/server/src/test-utils/write-migrated-data.ts) migrates once, so
-its first start runs no migration. A test of the migration from an empty data directory starts a
-writer of its own.
-
-The two nixie harnesses stay apart because each checks what the other cannot reach. The in-process
-harness hands a test the stub guest's frames, which a child process keeps to itself. The spawned
-harness puts a process boundary around nixie, so a suite can kill it, signal it, read its exit code
-and start it again on the same data directory. A suite that needs the real guest, a crash or a
-signal runs under `e2e/` on `startSpawnedNixie`, and every other server suite runs in process.
+A server suite runs nixie in process or as a spawned child:
+[the nixie harnesses](./references/nixie-harnesses.md) gives which one a suite takes.
