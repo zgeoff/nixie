@@ -163,8 +163,9 @@ request is in flight.
    CLAUDE_CODE_OAUTH_TOKEN=$(op read 'op://nixie/claude-code-oauth-token/credential') bun run spike
    ```
 
-   Expect: `token check: clean` as the last line, and no imp or secret named `nixie-spike-load` left
-   in `impz ls` and `impz secret ls`. Results land in `results/`, which git ignores.
+   Expect: `token check: clean` as the last line, no imp `nixie-spike-load` in `impz ls`, and no
+   secret `nixie-spike-load-model` in `impz secret ls`. Results land in `results/`, which git
+   ignores.
 
 6. Print the tables from the results: `bun run summary`. Expect: a timeline of the rotation turn,
    then the parallel calls table.
