@@ -15,26 +15,29 @@ captures facts from batches of turns, and what the client shows for a proposal a
 ## The gate as a rule lookup
 
 The memory gate is the [content gate](../../../architecture/memory/writes.md#the-content-gate) and
-the [retirement intent gate](../../../architecture/memory/writes.md#retirement-intent) together. Its
-checks are the quote check, the token check and the memory checker, a model that confirms your
-message asserts the memory. Your rules decide a memory write first, and the gate decides a write
-that no rule matches, under [0048](../../../decisions/0048-one-approval-system.md).
+the [retirement intent gate](../../../architecture/memory/writes.md#retirement-intent) together. The
+content gate, on `memory.remember` and `memory.edit`, runs the quote check, the token check and the
+memory checker, a model that confirms your message asserts the memory. The retirement intent gate,
+on `memory.retire`, runs a read check, the quote check and the memory checker, and no token check,
+because a retirement adds no text. Your rules decide a memory write first, and the gate decides a
+write that no rule matches, under [0048](../../../decisions/0048-one-approval-system.md).
 
 `memory.remember`, `memory.edit` and `memory.retire` declare the `memory_write` effect, whoever
 calls them: the conversation, a task or the memory writer. Each call goes through the
 [decision point](../policy/decision-point.md) like any other tool call, and the rules that match it
 decide what happens:
 
-| The rules for the write | What happens                                             |
-| ----------------------- | -------------------------------------------------------- |
-| A deny rule matches     | The decision point denies the call                       |
-| An ask rule matches     | The write becomes a memory proposal                      |
-| An allow rule matches   | The token check runs, and the other 2 checks are skipped |
-| No rule matches         | Every check of the gate runs                             |
+| The rules for the write | What happens                                     |
+| ----------------------- | ------------------------------------------------ |
+| A deny rule matches     | The decision point denies the call               |
+| An ask rule matches     | The write becomes a memory proposal              |
+| An allow rule matches   | Only the token check runs, on a remember or edit |
+| No rule matches         | Every check of the write's gate runs             |
 
 A deny rule's sentence reaches the model as the tool result, and an ask rule is the proposal's
-review reason. Under an allow rule, a write that fails the token check becomes a proposal, and one
-that passes applies at once. Every write that applies takes a notice with undo.
+review reason. Under an allow rule, a remember or an edit that fails the token check becomes a
+proposal, and one that passes applies at once. A retirement under an allow rule applies at once,
+because it has no token check. Every write that applies takes a notice with undo.
 
 For a memory write, the gate takes the place of the decision point's consent stage and its "no rule
 matched" stage, as [the pipeline](../policy/decision-point.md#the-pipeline) sets.
@@ -76,15 +79,19 @@ active.
 [The memory writer](../../../architecture/memory/writer.md#publishing) describes how a batch
 publishes in one transaction and how a crash at any point leaves it published once. The
 [offline batch spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/memory-batch/)
-tested this cursor under process kills.
+tested the writer's cursor under process kills.
 
 ## The gate for writer batches
 
 The writer's writes pass the same [content gate](../../../architecture/memory/writes.md) as a
-conversation write, with 2 differences. A batch write resolves the source record its candidate
-selected, instead of searching the thread's latest messages, and a quote outside that batch becomes
-a proposal. A job run has no messages from you, so every write from a job run is a proposal unless
-your allow rule covers job runs.
+conversation write, with 2 differences:
+
+- The gate resolves the one source record that a batch write's candidate selected, instead of
+  searching the thread's latest messages.
+- The gate makes a write whose quote lies outside that batch a proposal.
+
+A job run has no messages from you, so every write from a job run is a proposal unless your allow
+rule covers job runs.
 
 ## Dictated text
 
