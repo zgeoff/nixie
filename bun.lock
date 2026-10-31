@@ -14,7 +14,7 @@
         "@zgeoff/bun-test-react": "0.2.2",
         "@zgeoff/format-codemod": "0.3.4",
         "@zgeoff/oxlint-config": "0.7.4",
-        "@zgeoff/skill-gate": "0.2.9",
+        "@zgeoff/skill-gate": "0.2.11",
         "knip": "6.41.0",
         "lefthook": "2.2.2",
         "oxfmt": "0.72.0",
@@ -1939,6 +1939,8 @@
 
     "@xmldom/xmldom": ["@xmldom/xmldom@0.8.15", "", {}, "sha512-/5NV/vDALVFDXgLmfsy9TRCBlKwO2LNBFzpzvb9iIj+jR+eSc6DLYYvVOdivT/jm7MtU6TebYuRmzEOI7w40UA=="],
 
+    "@zgeoff/agent-hooks": ["@zgeoff/agent-hooks@0.1.1", "", { "bin": { "agent-hooks": "dist/cli.js" } }, "sha512-daR5x6N0bKbgIVb0B4Ftfre/4i2GBO+GLqx+vUtKB7UGdPwNmYRWzylbfieWsHoRePhUdh8HbQSLUthfsdrjug=="],
+
     "@zgeoff/bun-test-extended": ["@zgeoff/bun-test-extended@0.2.2", "", { "dependencies": { "jest-extended": "7.0.0", "jest-matcher-utils": "30.5.2" } }, "sha512-YQoZhzj8syJBlLZBeH65FBu+lDe9IbYxbs1nzy+w1vsVkaVgNIKl9RmA4K9V5BTLz2vQTBBRqAdDquA4hYxN4A=="],
 
     "@zgeoff/bun-test-react": ["@zgeoff/bun-test-react@0.2.2", "", { "dependencies": { "@happy-dom/global-registrator": "21.0.4", "@testing-library/jest-dom": "7.0.1", "happy-dom": "21.0.4" }, "peerDependencies": { "@testing-library/react": ">=16.0.0", "react": ">=19.0.0", "react-dom": ">=19.0.0", "zustand": ">=5.0.0" }, "optionalPeers": ["zustand"] }, "sha512-egSIb/NAnb9W8RJ3TuBqzEkjaaQREdCd8sP1rLhdSIhhJ3ATq2veY7GdBzmDihx4hsa7pOsDi/7bF1WbQ5N00w=="],
@@ -1949,7 +1951,7 @@
 
     "@zgeoff/oxlint-config": ["@zgeoff/oxlint-config@0.7.4", "", { "dependencies": { "@stylistic/eslint-plugin": "5.10.0" }, "peerDependencies": { "oxlint": ">=1.78.0" } }, "sha512-oB5tvqdWnBJv9KC/hFDifByCl8XOM1KdrOyz2ayRIadgm6ZNbLyo/9Q+snDfSM5NazcBNjEDWHhY+2VM15NjWA=="],
 
-    "@zgeoff/skill-gate": ["@zgeoff/skill-gate@0.2.9", "", {}, "sha512-Ojjoj3Co5bmBqjpUwyoI5w6GuR/HUnCS3/b87cXAQOE0KPfbtbmaffJBhYTvH+u8+Ky190yxjMRneD+JiTssMg=="],
+    "@zgeoff/skill-gate": ["@zgeoff/skill-gate@0.2.11", "", { "dependencies": { "@zgeoff/agent-hooks": "0.1.1" } }, "sha512-IKXyJLXMFt6n1TNhpzL7sYXXz79DrnuznljnlyrnI4NlWF1OWrBpdTVvH5zbUU3cx590T/c6ccd3GQAPVXjcSQ=="],
 
     "@zgeoff/std": ["@zgeoff/std@0.3.0", "", {}, "sha512-I9LBwkMr8uuNCAQ9/tIoObp09b8ixnNDp1f85T9Mm1Ox10nWbVrbiqoWkf+hATCt4iyYxvYIVXl4eUFLwZaU/g=="],
 
