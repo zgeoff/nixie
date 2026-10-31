@@ -40,6 +40,7 @@ const results = process.env.SPIKE_RESULTS ?? join(here, 'results');
 const toolsToken = crypto.randomUUID();
 const started = performance.now();
 const pending: Promise<void>[] = [];
+const creating: Promise<void>[] = [];
 const state = { scenario: 'setup', madeBox: false, madeSecret: false };
 
 await refuseExistingNames();
@@ -111,8 +112,10 @@ async function removeRunResources(): Promise<void> {
   await removeMadeResources();
 }
 
-// A rotation still running would store the secret again, so it ends before the removals start.
+// A creation or a rotation still running would store its resource after the removals, so each one
+// ends before they start.
 async function removeMadeResources(): Promise<void> {
+  await Promise.allSettled(creating.splice(0));
   await Promise.allSettled(pending.splice(0));
   await removeEachResource([
     ...(state.madeBox ? [() => runImp(['rm', box])] : []),
@@ -225,9 +228,31 @@ async function probeBroker(reason: string): Promise<void> {
   record('probe', 'models', { reason, status: Number(status) });
 }
 
+// A signal can arrive while impz creates a resource, so the teardown waits for the creation and then
+// sees its mark; a creation that would start after the teardown never runs.
+async function createResource(
+  args: string[],
+  input: string | undefined,
+  markMade: () => void,
+): Promise<void> {
+  if (teardown.running !== null) {
+    throw new Error('the run is stopping');
+  }
+  const creation = runImp(args, input).then(() => {
+    markMade();
+  });
+  creating.push(creation);
+  await creation;
+}
+
 async function prepareBox(): Promise<void> {
-  await runImp(['new', box, '--image', 'base', '--memory', '2g', '--no-backup', '--policy', 'public']);
-  state.madeBox = true;
+  await createResource(
+    ['new', box, '--image', 'base', '--memory', '2g', '--no-backup', '--policy', 'public'],
+    undefined,
+    () => {
+      state.madeBox = true;
+    },
+  );
   record('setup', 'created', { image: 'base' });
   const stage = join(work, 'stage', 'app');
   rmSync(stage, { recursive: true, force: true });
@@ -248,8 +273,9 @@ async function prepareBox(): Promise<void> {
 
   // nixie's conversation imp runs with egress none, and the broker still reaches the model host.
   await runImp(['policy', box, 'none']);
-  await runImp(['secret', 'add', secret, ...secretBinding], modelToken);
-  state.madeSecret = true;
+  await createResource(['secret', 'add', secret, ...secretBinding], modelToken, () => {
+    state.madeSecret = true;
+  });
   await runImp(['grant', box, secret]);
   record('setup', 'granted', { policy: 'none' });
 }
