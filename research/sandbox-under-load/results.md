@@ -131,8 +131,9 @@ arrives:
 3. It serves the tools on the host's loopback and opens `impz proxy --reverse`, so the guest reaches
    them at `http://127.0.0.1:8901/mcp`.
 4. It runs the rotation turn, then the parallel turn, each through `impz exec --require broker`.
-5. It saves `impz audit` for the imp, checks every file it wrote for the token's value, and removes
-   the imp and the secret on exit.
+5. It saves `impz audit` for the imp, and checks every file it wrote for the token's value.
+6. It removes the imp and the secret on exit, on a failed step, and on `SIGINT` or `SIGTERM`. A
+   failed guest command fails the run.
 
 In the rotation turn the model calls `wait` 8 times in sequence, 4 s each, and the tool server
 starts each rotation at a fixed call:

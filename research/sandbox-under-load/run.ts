@@ -50,14 +50,30 @@ const server = Bun.serve({
   fetch: answerRequest,
   idleTimeout: 0,
 });
-let proxy: ReturnType<typeof Bun.spawn> | null = null;
+const children = new Set<Bun.Subprocess>();
+const teardown: { running: Promise<void> | null } = { running: null };
+
+// Bun skips a pending finally block when a signal ends the process, so a signal runs the same
+// teardown first.
+for (const [signal, code] of [
+  ['SIGINT', 130],
+  ['SIGTERM', 143],
+] as const) {
+  process.once(signal, () => {
+    void removeRunResourcesOnce()
+      .catch((error: unknown) => console.error(String(error)))
+      .finally(() => process.exit(code));
+  });
+}
 
 try {
   await prepareBox();
-  proxy = Bun.spawn(['impz', 'proxy', box, '--reverse', `${guestToolsPort}:${server.port}`], {
-    stdout: Bun.file(join(work, 'proxy.log')),
-    stderr: Bun.file(join(work, 'proxy-error.log')),
-  });
+  children.add(
+    Bun.spawn(['impz', 'proxy', box, '--reverse', `${guestToolsPort}:${server.port}`], {
+      stdout: Bun.file(join(work, 'proxy.log')),
+      stderr: Bun.file(join(work, 'proxy-error.log')),
+    }),
+  );
   await waitForGuestRoute();
   await probeBroker('before the first turn');
   for (const scenario of ['rotation', 'parallel'] as const) {
@@ -70,8 +86,19 @@ try {
   writeResult('grants.txt', await runImp(['grants', box]));
   console.log(`token check: ${hasTokenLeak() ? 'the token is in a results file' : 'clean'}`);
 } finally {
-  proxy?.kill();
-  await proxy?.exited;
+  await removeRunResourcesOnce();
+}
+
+function removeRunResourcesOnce(): Promise<void> {
+  teardown.running ??= removeRunResources();
+  return teardown.running;
+}
+
+async function removeRunResources(): Promise<void> {
+  for (const child of children) {
+    child.kill();
+  }
+  await Promise.allSettled([...children].map((child) => child.exited));
   await server.stop(true);
   await removeMadeResources();
 }
@@ -275,6 +302,7 @@ async function runTurn(scenario: 'rotation' | 'parallel'): Promise<void> {
     ],
     { stdout: 'pipe', stderr: Bun.file(join(work, `${scenario}-stderr.log`)) },
   );
+  children.add(child);
   let buffered = '';
   for await (const chunk of child.stdout.pipeThrough(new TextDecoderStream())) {
     buffered += chunk;
@@ -284,7 +312,12 @@ async function runTurn(scenario: 'rotation' | 'parallel'): Promise<void> {
       recordGuestLine(line);
     }
   }
-  record('host', 'exited', { code: await child.exited });
+  const code = await child.exited;
+  children.delete(child);
+  record('host', 'exited', { code });
+  if (code !== 0) {
+    throw new Error(`the ${scenario} turn's impz exec exited ${code}; see ${scenario}-stderr.log`);
+  }
 }
 
 function recordGuestLine(line: string): void {
