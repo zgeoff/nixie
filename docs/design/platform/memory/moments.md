@@ -92,9 +92,9 @@ event log is append-only. A link goes with its memory item when that item is des
 | `moment.find`   | `read` | Searches titles, notes and reflections by keyword, or lists by date |
 | `moment.read`   | `read` | Returns the span in sequence order, a page at a time, with a cursor |
 
-The moment tools declare `note`, as the memory write tools do, so the starter rule `allow-notes`
-allows them, and a rule on `moment.keep` makes nixie ask first. A "keep this" in chat runs through
-the consent check like any request in your own words.
+The moment tools declare `note`, so the starter rule `allow-notes` allows them, and a rule on
+`moment.keep` makes nixie ask first. A "keep this" in chat runs through the consent check like any
+request in your own words.
 
 `moment.read` caps each page in tokens. **Why:** a span over a long task, such as an hour of web
 browsing, holds thousands of records with tool results.

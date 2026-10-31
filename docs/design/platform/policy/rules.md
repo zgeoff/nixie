@@ -5,7 +5,8 @@
   [0006](../../../decisions/0006-approval-record.md),
   [0013](../../../decisions/0013-definition-versioning.md),
   [0018](../../../decisions/0018-the-conversation-and-tasks.md),
-  [0020](../../../decisions/0020-deployment.md), [0028](../../../decisions/0028-policy-design.md)
+  [0020](../../../decisions/0020-deployment.md), [0028](../../../decisions/0028-policy-design.md),
+  [0048](../../../decisions/0048-one-approval-system.md)
 
 A rule is plain data in nixie's own format: it matches a tool call by its tool, effects, context,
 arguments and destinations, and gives one outcome: allow, ask or deny. Rules live in nixie's
@@ -17,21 +18,22 @@ for its life and a revision per edit, and code tells whether an edit widens acce
 
 Every field except the ID and the outcome is optional, and a missing match field matches every call.
 
-| Field          | Holds                                                           |
-| -------------- | --------------------------------------------------------------- |
-| `id`           | A stable slug, unique in the deployment                         |
-| `outcome`      | `allow`, `ask` or `deny`                                        |
-| `tools`        | Tool names, each exact or a pattern such as `mail.*`            |
-| `effects`      | Declared effects                                                |
-| `contexts`     | `conversation`, `task`, `job` or `coding`                       |
-| `jobs`         | Job IDs, for a rule that applies to some jobs only              |
-| `checks`       | Argument checks, each an argument path, an operator and a value |
-| `destinations` | Patterns that the call's destinations must match                |
-| `lift`         | For a lifting rule: a per-action cap and the budget it draws on |
-| `expires`      | When the rule stops matching, for a mandate                     |
-| `mandate`      | The mandate the rule belongs to                                 |
-| `cel`          | A CEL condition, for a rule the fixed checks cannot express     |
-| `note`         | Your own words about the rule                                   |
+| Field          | Holds                                                                                |
+| -------------- | ------------------------------------------------------------------------------------ |
+| `id`           | A stable slug, unique in the deployment                                              |
+| `outcome`      | `allow`, `ask` or `deny`                                                             |
+| `tools`        | Tool names, each exact or a pattern such as `mail.*`                                 |
+| `effects`      | Declared effects                                                                     |
+| `contexts`     | `conversation`, `task`, `job` or `coding`                                            |
+| `jobs`         | Job IDs, for a rule that applies to some jobs only                                   |
+| `checks`       | Argument checks, each an argument path, an operator and a value                      |
+| `destinations` | Patterns that the call's destinations must match                                     |
+| `sources`      | Content sources, for a `memory_write` rule: `owner`, `own_data`, `task` or `outside` |
+| `lift`         | For a lifting rule: a per-action cap and the budget it draws on                      |
+| `expires`      | When the rule stops matching, for a mandate                                          |
+| `mandate`      | The mandate the rule belongs to                                                      |
+| `cel`          | A CEL condition, for a rule the fixed checks cannot express                          |
+| `note`         | Your own words about the rule                                                        |
 
 Rule files in the definitions repo are YAML, checked against a JSON Schema that nixie generates from
 the rule format, both when the repo seeds the database and when nixie exports runtime rules.
@@ -191,7 +193,9 @@ tier. It has 8 rules:
 
 The always-ask set and the destination limits hold whatever the starter rules say, so the set is
 permissive inside those bounds. An effect the set does not mention, such as `device`, falls to "no
-rule matched" until you add a rule.
+rule matched" until you add a rule. No starter rule matches `memory_write`, so every memory write
+runs the full memory gate, as the
+[memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers.
 
 ### Jobs
 

@@ -1,7 +1,7 @@
 # 0037: Moments
 
 - Date: 2026-10-11
-- Updated: 2026-10-26
+- Updated: 2026-10-31
 - Status: decided
 - Design: [moments](../design/platform/memory/moments.md)
 
@@ -16,10 +16,11 @@ These choices settle moments:
 
 1. **A span, not a copy.** A moment refers to its records by sequence, and nixie never copies the
    text. A kept span blocks automatic pruning, and a forget always wins over it.
-2. **Your rules decide who keeps one.** The moment tools declare `note`, as the memory write tools
-   do, so nixie keeps moments on its own wherever your rules allow `note`. A model keeps a span of
-   its own thread only: the conversation alone keeps a moment from its conversation with you, a task
-   keeps one from its own work, and the memory writer neither keeps nor flags one.
+2. **Your rules decide who keeps one.** The moment tools declare `note`, as the harmless writes
+   inside nixie do under [0048](0048-one-approval-system.md), so nixie keeps moments on its own
+   wherever your rules allow `note`. A model keeps a span of its own thread only: the conversation
+   alone keeps a moment from its conversation with you, a task keeps one from its own work, and the
+   memory writer neither keeps nor flags one.
 3. **Only you write the note.** A model writes a title or a reflection, and each reflection carries
    its model ID and date. A model edits only its own reflections.
 4. **Keep first, reflect later.** `moment.keep` takes a title and refuses a reflection, and a model
@@ -74,7 +75,7 @@ These choices settle moments:
   that kept the moment.
 - **A weekly cap.** It stops a model that keeps too much, and refuses the moment that matters in a
   busy week.
-- **A new `moment` effect.** A moment write does the same as a memory write, so it shares `note`.
+- **A new `moment` effect.** A moment write is a harmless write inside nixie, so it shares `note`.
 - **Import of transcripts from outside nixie.** It would make the one moment that holds its own
   copy, with its own forget path, for conversations nixie never saw.
 
@@ -93,3 +94,5 @@ These choices settle moments:
   from its conversation with you and the memory writer takes no part; `moment.keep` takes a title
   and the reflection comes later; a soft weekly count shows in the events block, the status and the
   keep result.
+- 2026-10-31: the memory write tools declare `memory_write` under 0048, so a moment shares `note`
+  with the other harmless writes inside nixie, not with memory writes.
