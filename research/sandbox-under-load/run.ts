@@ -73,11 +73,22 @@ try {
   proxy?.kill();
   await proxy?.exited;
   await server.stop(true);
-  if (state.madeBox) {
-    await runImp(['rm', box]);
-  }
-  if (state.madeSecret) {
-    await runImp(['secret', 'rm', secret]);
+  await removeMadeResources();
+}
+
+// Each removal runs even when another fails, so a failed imp removal never leaves the model secret
+// stored in impd. A rotation still running would store the secret again, so it ends first.
+async function removeMadeResources(): Promise<void> {
+  await Promise.allSettled(pending.splice(0));
+  const removals = await Promise.allSettled([
+    state.madeBox ? runImp(['rm', box]) : Promise.resolve(''),
+    state.madeSecret ? runImp(['secret', 'rm', secret]) : Promise.resolve(''),
+  ]);
+  const failures = removals.flatMap((removal) =>
+    removal.status === 'rejected' ? [String(removal.reason)] : [],
+  );
+  if (failures.length > 0) {
+    throw new Error(`cleanup left resources in impd:\n${failures.join('\n')}`);
   }
 }
 
