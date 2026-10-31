@@ -55,14 +55,20 @@ fired. Last fired is a projection that decision records update.
 
 ### Matching
 
-A rule matches a call when every field it holds matches. Effects, list arguments and destinations
-read strictly in both directions:
+A rule matches a call when every field it holds matches. Effects, list arguments, destinations and
+content sources read strictly in both directions:
 
 - **An allow rule covers a call only when it covers all of it.** Its effects include every effect
-  the call has, a check on a list argument passes for every element, and every destination matches
-  one of its patterns. An allow rule for `read` and `fetch` never covers a tool that also sends.
+  the call has, a check on a list argument passes for every element, every destination matches one
+  of its patterns, and its `sources` hold every source of a memory write's content. An allow rule
+  for `read` and `fetch` never covers a tool that also sends, and an allow rule for `owner` never
+  covers a write that also holds `outside` content.
 - **A deny or ask rule catches a call when it catches any part of it.** One shared effect, one
-  element that passes a check, or one destination that matches is enough.
+  element that passes a check, one destination that matches, or one shared source is enough.
+
+How the host resolves a memory write's sources, `task` included, is open in
+[the rules core issue](https://linear.app/zgeoff/issue/GEO-1801). A write whose sources the host
+cannot resolve counts as `outside`, so no allow rule for trusted content covers it.
 
 ### Rendering
 

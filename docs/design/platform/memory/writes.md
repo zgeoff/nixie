@@ -37,8 +37,7 @@ review reason. Under an allow rule, a write that fails the token check becomes a
 that passes applies at once. Every write that applies takes a notice with undo.
 
 For a memory write, the gate takes the place of the decision point's consent stage and its "no rule
-matched" stage. The consent checker, which confirms that your message asked for an action, therefore
-never lets a direct "remember that" skip the quote check or the memory checker.
+matched" stage, as [the pipeline](../policy/decision-point.md#the-pipeline) sets.
 
 A rule on `memory_write` can match where the write's content came from, `owner`, `own_data`, `task`
 or `outside`, through the `sources` field of the [rule format](../policy/rules.md#the-rule-format).

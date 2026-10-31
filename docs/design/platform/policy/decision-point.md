@@ -35,6 +35,13 @@ last stage always decides, so every call gets exactly one decision.
 Within stages 3, 6 and 7 the strictest matching outcome wins, so rule order never matters, as
 [rules](rules.md#evaluation-order) covers.
 
+A call whose effects include `memory_write` never reaches stages 8 and 9. When no stage before them
+decides it, the memory gate decides it in their place, and the write applies at once or becomes a
+memory proposal, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)
+covers. **Why:** the gate's checks are the default for a memory write under
+[0048](../../../decisions/0048-one-approval-system.md), so consent never lets a direct "remember
+that" skip them.
+
 The caller's tool list at stage 2 is the job's list for a job run, and the subset its caller passed
 for a worker, so delegation only narrows. A connector tool on the list names the connections it may
 use, and stage 2 denies a call whose connection is not among them. Stage 2 also denies a call that
