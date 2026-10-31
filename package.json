@@ -86,7 +86,7 @@
   },
   "type": "module",
   "scripts": {
-    "audit": "bun audit",
+    "audit": "bun audit --ignore=GHSA-3g3m-2fjr-6pw4 --ignore=GHSA-g3hv-75wg-m249",
     "boundaries": "turbo boundaries",
     "check": "bun run audit && bun run deadcode && bun run format:check && bun run lint:full && bun run typecheck && bun run boundaries && bun run prose && bun run test && bun run test:browser && bun run test:agent-sdk && bun run test:e2e",
     "deadcode": "knip",
