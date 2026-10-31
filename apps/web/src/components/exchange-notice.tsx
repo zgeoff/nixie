@@ -8,7 +8,7 @@ export interface ExchangeNoticeProps {
 }
 
 const quiet = css({ color: 'textMuted', fontSize: 'sm' });
-const link = css({ color: 'link', textDecoration: 'underline' });
+const link = css({ color: 'link', textDecoration: 'underline', whiteSpace: 'nowrap' });
 
 export function ExchangeNotice(props: ExchangeNoticeProps): ReactNode {
   const notice = props.notice;
