@@ -5,7 +5,8 @@
   [0006](../../../decisions/0006-approval-record.md),
   [0013](../../../decisions/0013-definition-versioning.md),
   [0018](../../../decisions/0018-the-conversation-and-tasks.md),
-  [0020](../../../decisions/0020-deployment.md), [0028](../../../decisions/0028-policy-design.md)
+  [0020](../../../decisions/0020-deployment.md), [0028](../../../decisions/0028-policy-design.md),
+  [0048](../../../decisions/0048-one-approval-system.md)
 
 A rule is plain data in nixie's own format: it matches a tool call by its tool, effects, context,
 arguments and destinations, and gives one outcome: allow, ask or deny. Rules live in nixie's
@@ -27,6 +28,7 @@ Every field except the ID and the outcome is optional, and a missing match field
 | `jobs`         | Job IDs, for a rule that applies to some jobs only              |
 | `checks`       | Argument checks, each an argument path, an operator and a value |
 | `destinations` | Patterns that the call's destinations must match                |
+| `sources`      | For `memory_write`: `owner`, `own_data`, `task` or `outside`    |
 | `lift`         | For a lifting rule: a per-action cap and the budget it draws on |
 | `expires`      | When the rule stops matching, for a mandate                     |
 | `mandate`      | The mandate the rule belongs to                                 |
@@ -53,14 +55,20 @@ fired. Last fired is a projection that decision records update.
 
 ### Matching
 
-A rule matches a call when every field it holds matches. Effects, list arguments and destinations
-read strictly in both directions:
+A rule matches a call when every field it holds matches. Effects, list arguments, destinations and
+content sources read strictly in both directions:
 
 - **An allow rule covers a call only when it covers all of it.** Its effects include every effect
-  the call has, a check on a list argument passes for every element, and every destination matches
-  one of its patterns. An allow rule for `read` and `fetch` never covers a tool that also sends.
+  the call has, a check on a list argument passes for every element, every destination matches one
+  of its patterns, and its `sources` hold every source of a memory write's content. An allow rule
+  for `read` and `fetch` never covers a tool that also sends, and an allow rule for `owner` never
+  covers a write that also holds `outside` content.
 - **A deny or ask rule catches a call when it catches any part of it.** One shared effect, one
-  element that passes a check, or one destination that matches is enough.
+  element that passes a check, one destination that matches, or one shared source is enough.
+
+How the host resolves a memory write's sources, `task` included, is open in
+[the rules core issue](https://linear.app/zgeoff/issue/GEO-1801). A write whose sources the host
+cannot resolve counts as `outside`, so no allow rule for trusted content covers it.
 
 ### Rendering
 
@@ -191,7 +199,9 @@ tier. It has 8 rules:
 
 The always-ask set and the destination limits hold whatever the starter rules say, so the set is
 permissive inside those bounds. An effect the set does not mention, such as `device`, falls to "no
-rule matched" until you add a rule.
+rule matched" until you add a rule. No starter rule matches `memory_write`, so every memory write
+runs the full memory gate, as the
+[memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers.
 
 ### Jobs
 

@@ -5,7 +5,8 @@
   [0005](../../../decisions/0005-effects-and-taint.md),
   [0006](../../../decisions/0006-approval-record.md), [0008](../../../decisions/0008-auto-mode.md),
   [0013](../../../decisions/0013-definition-versioning.md),
-  [0028](../../../decisions/0028-policy-design.md)
+  [0028](../../../decisions/0028-policy-design.md),
+  [0048](../../../decisions/0048-one-approval-system.md)
 
 The decision point is the one function every nixie tool calls before it acts. It takes a tool call
 with its context and returns allow, ask or deny, with the stage and rule that decided and, for an
@@ -33,6 +34,13 @@ last stage always decides, so every call gets exactly one decision.
 
 Within stages 3, 6 and 7 the strictest matching outcome wins, so rule order never matters, as
 [rules](rules.md#evaluation-order) covers.
+
+A call whose effects include `memory_write` never reaches stages 8 and 9. When no stage before them
+decides it, the memory gate decides it in their place, and the write applies at once or becomes a
+memory proposal, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)
+covers. **Why:** the gate's checks are the default for a memory write under
+[0048](../../../decisions/0048-one-approval-system.md), so consent never lets a direct "remember
+that" skip them.
 
 The caller's tool list at stage 2 is the job's list for a job run, and the subset its caller passed
 for a worker, so delegation only narrows. A connector tool on the list names the connections it may
@@ -66,6 +74,7 @@ Every tool declares its effects in nixie's tool registry, and rules match on the
 | `read`          | Reads your data or nixie's own state                                       |
 | `fetch`         | Reads outside content, such as a web page or search results                |
 | `note`          | Writes inside nixie, such as a note, a memory proposal or a message to you |
+| `memory_write`  | Creates, edits or retires a memory item                                    |
 | `write`         | Changes data in your outside service that the service can restore          |
 | `delete`        | Removes data in your outside service for good                              |
 | `send`          | Reaches a person or service other than you                                 |
