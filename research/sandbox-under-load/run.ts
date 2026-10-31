@@ -230,7 +230,13 @@ async function prepareBox(): Promise<void> {
   const stage = join(work, 'stage', 'app');
   rmSync(stage, { recursive: true, force: true });
   mkdirSync(stage, { recursive: true });
-  for (const file of ['package.json', 'bun.lock', 'turn.ts', 'pick-turn-exit-code.ts']) {
+  for (const file of [
+    'package.json',
+    'bun.lock',
+    'turn.ts',
+    'build-message-event.ts',
+    'pick-turn-exit-code.ts',
+  ]) {
     cpSync(join(here, file), join(stage, file));
   }
   await runImp(['cp', process.execPath, `${box}:/usr/local/bin/bun`]);

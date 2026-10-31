@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import type { Options, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { cli, define } from 'gunshi';
+import { buildMessageEvent } from './build-message-event';
 import { pickTurnExitCode } from './pick-turn-exit-code';
 
 const prompts = {
@@ -129,58 +130,8 @@ function emit(event: string, fields: Record<string, unknown> = {}): void {
 }
 
 function writeMessage(message: SDKMessage): void {
-  if (message.type === 'system' && message.subtype === 'init') {
-    emit('init', {
-      cli: message.claude_code_version,
-      model: message.model,
-      mcp: message.mcp_servers.map((server) => `${server.name}:${server.status}`),
-      tools: message.tools,
-    });
-  } else if (message.type === 'system' && message.subtype === 'api_retry') {
-    emit('api_retry', {
-      attempt: message.attempt,
-      maxRetries: message.max_retries,
-      retryDelayMs: message.retry_delay_ms,
-      status: message.error_status,
-      error: message.error,
-    });
-  } else if (message.type === 'stream_event') {
-    writeStreamEvent(message.event.type);
-  } else if (message.type === 'assistant') {
-    emit('assistant', {
-      messageID: message.message.id,
-      blocks: message.message.content.map((block) => block.type),
-      toolUses: message.message.content.flatMap((block) =>
-        block.type === 'tool_use' ? [{ id: block.id, name: block.name, input: block.input }] : [],
-      ),
-      ...(message.error === undefined ? {} : { error: message.error }),
-    });
-  } else if (message.type === 'user') {
-    const content = message.message.content;
-    emit('tool_results', {
-      ids:
-        typeof content === 'string'
-          ? []
-          : content.flatMap((block) => (block.type === 'tool_result' ? [block.tool_use_id] : [])),
-    });
-  } else if (message.type === 'result') {
-    emit('result', {
-      subtype: message.subtype,
-      isError: message.is_error,
-      turns: message.num_turns,
-      durationMs: message.duration_ms,
-      apiMs: message.duration_api_ms,
-      costUSD: message.total_cost_usd,
-      ...(message.subtype === 'success' ? { text: message.result } : { errors: message.errors }),
-    });
-  } else if (message.type === 'system') {
-    emit('system', { subtype: message.subtype });
-  }
-}
-
-// The start and stop of each streamed response bracket one model request on the guest's clock.
-function writeStreamEvent(type: string): void {
-  if (type === 'message_start' || type === 'message_stop') {
-    emit(type);
+  const logged = buildMessageEvent(message);
+  if (logged !== null) {
+    emit(logged.event, logged.fields);
   }
 }
