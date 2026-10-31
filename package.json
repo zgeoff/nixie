@@ -144,7 +144,7 @@
     "@zgeoff/bun-test-extended": "0.2.2",
     "@zgeoff/bun-test-react": "0.2.2",
     "@zgeoff/format-codemod": "0.3.4",
-    "@zgeoff/oxlint-config": "0.7.4",
+    "@zgeoff/oxlint-config": "0.7.5",
     "@zgeoff/skill-gate": "0.2.9",
     "knip": "6.41.0",
     "lefthook": "2.2.2",
