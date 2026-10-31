@@ -14,33 +14,40 @@ captures facts from batches of turns, and what the client shows for a proposal a
 
 ## The gate as a rule lookup
 
-`memory.remember`, `memory.edit` and `memory.retire` declare the `memory_write` effect, from the
-conversation, a task and the memory writer, under
-[0048](../../../decisions/0048-one-approval-system.md). A write through one of them passes the
-[decision point](../policy/decision-point.md) like any other tool call, and the gate asks the rule
-engine first:
+The memory gate is the content gate and the retirement intent gate together. Your rules decide a
+memory write first, and the gate decides a write that no rule matches, under
+[0048](../../../decisions/0048-one-approval-system.md).
 
-| The rules for the write | What happens                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------- |
-| A deny rule matches     | The call is denied, and the model reads the rule's sentence                     |
-| An ask rule matches     | The write becomes a proposal, with your ask rule as its review reason           |
-| An allow rule matches   | The write applies at once after the token check, with a notice and undo         |
-| No rule matches         | The gate runs in full, as the architecture doc describes, and its checks decide |
+`memory.remember`, `memory.edit` and `memory.retire` declare the `memory_write` effect, whoever
+calls them: the conversation, a task or the memory writer. A call to one of them passes the
+[decision point](../policy/decision-point.md) like any other tool call, and the rules that match it
+decide what happens:
 
-A rule on `memory_write` can match the write's content source, `owner`, `own_data`, `task` or
-`outside`, through the `sources` field of the [rule format](../policy/rules.md#the-rule-format). No
-starter rule matches `memory_write`, so every write runs the full gate until you write a rule for
-it. For a memory write, the gate takes the place of the consent stage and the "no rule matched"
-stage, so a direct "remember that" still passes the quote check and the checker. **Why:** the gate's
-own checks are the default, and a rule that allows `outside` lets a page that the conversation
-fetched write a memory that every later prompt reads.
+| The rules for the write | What happens                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| A deny rule matches     | The decision point denies the call, and the model reads the rule's rendered sentence |
+| An ask rule matches     | The write becomes a memory proposal, with your ask rule as its review reason         |
+| An allow rule matches   | The write skips the quote check and the checker, and applies after the token check   |
+| No rule matches         | The memory gate runs every check, and the checks decide                              |
 
-An allow rule never skips the token check, as [0011](../../../decisions/0011-memory-writes.md)
-holds, so a write that fails it becomes a proposal whatever the rule says.
+An allow rule never skips the [token check](../../../architecture/memory/writes.md#the-token-check),
+so a write that fails it becomes a proposal whatever the rule says. A write that applies takes a
+notice with undo.
 
-The other memory writes keep `note`: a pin, an unpin, a rating, a comment, a consolidator suggestion
-and a self-note. Each is harmless or produces a proposal, so the starter rule `allow-notes` lets the
-call run and leaves its review in place.
+For a memory write, the gate takes the place of the decision point's consent stage and its "no rule
+matched" stage. A direct "remember that" therefore passes the quote check and the checker like any
+other write, and the consent checker never lets it skip them.
+
+A rule on `memory_write` can match where the write's content came from, `owner`, `own_data`, `task`
+or `outside`, through the `sources` field of the [rule format](../policy/rules.md#the-rule-format).
+No starter rule matches `memory_write`, so every memory write runs the full gate until you write a
+rule for it. **Why:** the conversation holds both web fetch and the memory tools, so a rule that
+allows `outside` lets a page that the conversation fetched write a memory that every later prompt
+reads.
+
+A pin, an unpin, a rating, a comment, a consolidator suggestion and a self-note declare `note`. Each
+one either changes nothing you rely on or produces a proposal, so the starter rule `allow-notes`
+lets the call run and the proposal still waits for you.
 
 ## Who writes
 
