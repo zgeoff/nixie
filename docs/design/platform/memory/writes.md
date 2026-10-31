@@ -20,12 +20,12 @@ conversation, a task and the memory writer, under
 [decision point](../policy/decision-point.md) like any other tool call, and the gate asks the rule
 engine first:
 
-| The rules for the write | What happens                                                                                               |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------- |
-| A deny rule matches     | The call is denied, and the model reads the rule's sentence                                                |
-| An ask rule matches     | The write becomes a proposal, with your ask rule as its review reason                                      |
-| An allow rule matches   | The write applies at once, with a notice and undo; the token check still runs, and a failure is a proposal |
-| No rule matches         | The gate runs in full, as the architecture doc describes, and its checks decide                            |
+| The rules for the write | What happens                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| A deny rule matches     | The call is denied, and the model reads the rule's sentence                     |
+| An ask rule matches     | The write becomes a proposal, with your ask rule as its review reason           |
+| An allow rule matches   | The write applies at once after the token check, with a notice and undo         |
+| No rule matches         | The gate runs in full, as the architecture doc describes, and its checks decide |
 
 A rule on `memory_write` can match the write's content source, `owner`, `own_data`, `task` or
 `outside`, through the `sources` field of the [rule format](../policy/rules.md#the-rule-format). No
@@ -35,9 +35,12 @@ stage, so a direct "remember that" still passes the quote check and the checker.
 own checks are the default, and a rule that allows `outside` lets a page that the conversation
 fetched write a memory that every later prompt reads.
 
-The other memory tools keep `note`: `memory.pin`, `memory.unpin`, `memory.rate` and
-`memory.comment`, consolidator suggestions and self-notes. A pin or a self-note still becomes a
-proposal under the starter rules, because the tool produces one.
+An allow rule never skips the token check, as [0011](../../../decisions/0011-memory-writes.md)
+holds, so a write that fails it becomes a proposal whatever the rule says.
+
+The other memory writes keep `note`: a pin, an unpin, a rating, a comment, a consolidator suggestion
+and a self-note. Each is harmless or produces a proposal, so the starter rule `allow-notes` lets the
+call run and leaves its review in place.
 
 ## Who writes
 
