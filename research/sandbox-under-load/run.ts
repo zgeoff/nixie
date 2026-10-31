@@ -9,9 +9,12 @@
 import { appendFileSync, cpSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { createMcpHandler } from '@modelcontextprotocol/server';
+import { match } from 'ts-pattern';
 import { createToolServer } from './create-tool-server';
 import type { ToolCall } from './create-tool-server';
 import { isToolsRequestAuthorized } from './is-tools-request-authorized';
+import { planRotation } from './plan-rotation';
+import type { RotationStep } from './plan-rotation';
 import { removeEachResource } from './remove-each-resource';
 
 const box = 'nixie-spike-load';
@@ -167,33 +170,24 @@ function answerRequest(request: Request): Promise<Response> {
   return handler.fetch(request);
 }
 
-// The rotation scenario forces each kind of rotation at a fixed tool call. Every other call only
-// waits.
 async function handleCall(call: ToolCall): Promise<void> {
   if (state.scenario !== 'rotation') {
     return;
   }
-  if (call.count === 2) {
-    // The CLI sends its next model request as soon as this call's result arrives, so 300 ms after
-    // the result the request is in flight: run 1 measured about 950 ms from result to stream end.
-    const resultMs = call.input.seconds * 1000;
-    pending.push(
-      Bun.sleep(resultMs + 300).then(() => rotate('valid', 'same value, model request in flight')),
-    );
-  } else if (call.count === 4) {
-    await rotate('junk', 'between model requests');
-    await probeBroker('junk value live');
-    await rotate('valid', 'between model requests');
-    await probeBroker('valid value back');
-  } else if (call.count === 6) {
-    await rotate('junk', 'across the next model request');
-    const restoreMs = call.input.seconds * 1000 + restoreAfterResultMs;
-    pending.push(
-      Bun.sleep(restoreMs).then(() =>
-        rotate('valid', `restore ${restoreAfterResultMs} ms after the result`),
-      ),
-    );
+  const steps = planRotation({ count: call.count, seconds: call.input.seconds }, restoreAfterResultMs);
+  for (const step of steps) {
+    await runRotationStep(step);
   }
+}
+
+async function runRotationStep(step: RotationStep): Promise<void> {
+  await match(step)
+    .with({ kind: 'rotate' }, (now) => rotate(now.value, now.reason))
+    .with({ kind: 'rotate-later' }, (later) => {
+      pending.push(Bun.sleep(later.delayMs).then(() => rotate(later.value, later.reason)));
+    })
+    .with({ kind: 'probe' }, (probe) => probeBroker(probe.reason))
+    .exhaustive();
 }
 
 async function rotate(value: 'valid' | 'junk', reason: string): Promise<void> {
