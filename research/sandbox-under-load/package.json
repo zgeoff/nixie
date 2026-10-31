@@ -6,6 +6,7 @@
   "scripts": {
     "spike": "bun run.ts",
     "summary": "bun summarize.ts",
+    "test": "bun test",
     "typecheck": "tsrs --noEmit"
   },
   "dependencies": {

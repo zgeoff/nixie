@@ -4,12 +4,14 @@
 // a reverse forward, writes every event to results/<scenario>.jsonl, and removes the imp and its
 // secret on exit. Env: CLAUDE_CODE_OAUTH_TOKEN (the model token, stored only in impd), SPIKE_WORK
 // (scratch directory), NIXIE_MODEL (default claude-haiku-5-5), SPIKE_RESTORE_MS (how long the junk
-// value stays after the 6th call's result, default 1000).
+// value stays after the 6th call's result, default 1000), SPIKE_RESULTS (the results directory,
+// default results/ beside this file).
 import { appendFileSync, cpSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { createToolServer } from './create-tool-server';
 import type { ToolCall } from './create-tool-server';
+import { removeEachResource } from './remove-each-resource';
 
 const box = 'nixie-spike-load';
 const secret = 'nixie-spike-load-model';
@@ -30,7 +32,7 @@ const work = readEnv('SPIKE_WORK');
 const model = process.env.NIXIE_MODEL ?? 'claude-haiku-5-5';
 const restoreAfterResultMs = Number(process.env.SPIKE_RESTORE_MS ?? '1000');
 const here = import.meta.dir;
-const results = join(here, 'results');
+const results = process.env.SPIKE_RESULTS ?? join(here, 'results');
 const toolsToken = crypto.randomUUID();
 const started = performance.now();
 const pending: Promise<void>[] = [];
@@ -103,20 +105,13 @@ async function removeRunResources(): Promise<void> {
   await removeMadeResources();
 }
 
-// Each removal runs even when another fails, so a failed imp removal never leaves the model secret
-// stored in impd. A rotation still running would store the secret again, so it ends first.
+// A rotation still running would store the secret again, so it ends before the removals start.
 async function removeMadeResources(): Promise<void> {
   await Promise.allSettled(pending.splice(0));
-  const removals = await Promise.allSettled([
-    state.madeBox ? runImp(['rm', box]) : Promise.resolve(''),
-    state.madeSecret ? runImp(['secret', 'rm', secret]) : Promise.resolve(''),
+  await removeEachResource([
+    ...(state.madeBox ? [() => runImp(['rm', box])] : []),
+    ...(state.madeSecret ? [() => runImp(['secret', 'rm', secret])] : []),
   ]);
-  const failures = removals.flatMap((removal) =>
-    removal.status === 'rejected' ? [String(removal.reason)] : [],
-  );
-  if (failures.length > 0) {
-    throw new Error(`cleanup left resources in impd:\n${failures.join('\n')}`);
-  }
 }
 
 function readEnv(name: string): string {
