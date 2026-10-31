@@ -26,7 +26,9 @@ pre-commit:
         - 'apps/web/src/styled-system/**'
         - 'research/**'
         - '**/dist/**'
+        - 'dist/**'
         - '**/coverage/**'
+        - 'coverage/**'
         - '.worktrees/**'
       run: node_modules/.bin/format-codemod --quiet {staged_files}
       stage_fixed: true
