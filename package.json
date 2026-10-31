@@ -131,7 +131,9 @@
     "ci:release:publish-release-json": "bun scripts/release/publish-release-json.ts",
     "ci:release:record-sandbox-manifest": "bun scripts/release/record-sandbox-manifest.ts",
     "ci:release:resolve-release": "bun scripts/release/resolve-release.ts",
-    "ci:release:write-release-notes": "bun scripts/release/write-release-notes.ts"
+    "ci:release:write-release-notes": "bun scripts/release/write-release-notes.ts",
+    "check:dependency-gates": "bun scripts/dependency-gates/run-dependency-gates-check.ts",
+    "check:uncommitted": "bun scripts/run-uncommitted-check.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
