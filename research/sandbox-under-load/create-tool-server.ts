@@ -35,10 +35,20 @@ export function createToolServer(hooks: ToolServerHooks): Server {
 
     counters.inFlight += 1;
     hooks.onEvent('call_start', { ...call, toolUseID, inFlight: counters.inFlight });
-    await hooks.onCall(call);
-    await Bun.sleep(input.seconds * 1000);
-    counters.inFlight -= 1;
-    hooks.onEvent('call_end', { count: call.count, toolUseID, inFlight: counters.inFlight });
+    const outcome = { failed: true };
+    try {
+      await hooks.onCall(call);
+      await Bun.sleep(input.seconds * 1000);
+      outcome.failed = false;
+    } finally {
+      counters.inFlight -= 1;
+      hooks.onEvent('call_end', {
+        count: call.count,
+        toolUseID,
+        inFlight: counters.inFlight,
+        failed: outcome.failed,
+      });
+    }
 
     return { content: [{ type: 'text' as const, text: `waited ${input.seconds} s for ${formatLabel(input)}` }] };
   });
