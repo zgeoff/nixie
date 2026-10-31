@@ -14,34 +14,36 @@ captures facts from batches of turns, and what the client shows for a proposal a
 
 ## The gate as a rule lookup
 
-The memory gate is the content gate and the retirement intent gate together. Your rules decide a
-memory write first, and the gate decides a write that no rule matches, under
-[0048](../../../decisions/0048-one-approval-system.md).
+The memory gate is the [content gate](../../../architecture/memory/writes.md#the-content-gate) and
+the [retirement intent gate](../../../architecture/memory/writes.md#retirement-intent) together. Its
+checks are the quote check, the token check and the memory checker, a model that confirms your
+message asserts the memory. Your rules decide a memory write first, and the gate decides a write
+that no rule matches, under [0048](../../../decisions/0048-one-approval-system.md).
 
 `memory.remember`, `memory.edit` and `memory.retire` declare the `memory_write` effect, whoever
-calls them: the conversation, a task or the memory writer. A call to one of them passes the
+calls them: the conversation, a task or the memory writer. Each call goes through the
 [decision point](../policy/decision-point.md) like any other tool call, and the rules that match it
 decide what happens:
 
-| The rules for the write | What happens                                                                         |
-| ----------------------- | ------------------------------------------------------------------------------------ |
-| A deny rule matches     | The decision point denies the call, and the model reads the rule's rendered sentence |
-| An ask rule matches     | The write becomes a memory proposal, with your ask rule as its review reason         |
-| An allow rule matches   | The write skips the quote check and the checker, and applies after the token check   |
-| No rule matches         | The memory gate runs every check, and the checks decide                              |
+| The rules for the write | What happens                                             |
+| ----------------------- | -------------------------------------------------------- |
+| A deny rule matches     | The decision point denies the call                       |
+| An ask rule matches     | The write becomes a memory proposal                      |
+| An allow rule matches   | The token check runs, and the other 2 checks are skipped |
+| No rule matches         | Every check of the gate runs                             |
 
-An allow rule never skips the [token check](../../../architecture/memory/writes.md#the-token-check),
-so a write that fails it becomes a proposal whatever the rule says. A write that applies takes a
-notice with undo.
+A deny rule's sentence reaches the model as the tool result, and an ask rule is the proposal's
+review reason. Under an allow rule, a write that fails the token check becomes a proposal, and one
+that passes applies at once. Every write that applies takes a notice with undo.
 
 For a memory write, the gate takes the place of the decision point's consent stage and its "no rule
-matched" stage. A direct "remember that" therefore passes the quote check and the checker like any
-other write, and the consent checker never lets it skip them.
+matched" stage. The consent checker, which confirms that your message asked for an action, therefore
+never lets a direct "remember that" skip the quote check or the memory checker.
 
 A rule on `memory_write` can match where the write's content came from, `owner`, `own_data`, `task`
 or `outside`, through the `sources` field of the [rule format](../policy/rules.md#the-rule-format).
 No starter rule matches `memory_write`, so every memory write runs the full gate until you write a
-rule for it. **Why:** the conversation holds both web fetch and the memory tools, so a rule that
+rule for it. **Why:** the gate's checks let your own typed words apply at once, and a rule that
 allows `outside` lets a page that the conversation fetched write a memory that every later prompt
 reads.
 
