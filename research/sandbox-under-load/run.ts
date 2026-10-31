@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { createToolServer } from './create-tool-server';
 import type { ToolCall } from './create-tool-server';
+import { isToolsRequestAuthorized } from './is-tools-request-authorized';
 import { removeEachResource } from './remove-each-resource';
 
 const box = 'nixie-spike-load';
@@ -157,7 +158,7 @@ function record(source: string, event: string, fields: Record<string, unknown> =
 }
 
 function answerRequest(request: Request): Promise<Response> {
-  if (request.headers.get('authorization') !== `Bearer ${toolsToken}`) {
+  if (!isToolsRequestAuthorized(request.headers.get('authorization'), toolsToken)) {
     return Promise.resolve(new Response('unauthorized', { status: 401 }));
   }
   if (new URL(request.url).pathname === '/ready') {
