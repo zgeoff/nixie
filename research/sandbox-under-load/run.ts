@@ -90,7 +90,9 @@ try {
   state.scenario = 'after';
   writeResult('audit.txt', await runImp(['audit', box]));
   writeResult('grants.txt', await runImp(['grants', box]));
-  console.log(`token check: ${hasTokenLeak() ? 'the token is in a results file' : 'clean'}`);
+  const leaked = hasTokenLeak();
+  console.log(`token check: ${leaked ? 'the token is in a results file' : 'clean'}`);
+  process.exitCode = leaked ? 1 : 0;
 } finally {
   await removeRunResourcesOnce();
 }
