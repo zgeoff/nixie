@@ -1,0 +1,16 @@
+{
+  "name": "@heynixie/spike-sandbox-under-load",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "spike": "bun run.ts",
+    "summary": "bun summarize.ts",
+    "typecheck": "tsrs --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.306",
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "4.6.7"
+  }
+}

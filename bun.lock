@@ -757,6 +757,15 @@
         "@types/bun": "1.4.3",
       },
     },
+    "research/sandbox-under-load": {
+      "name": "@heynixie/spike-sandbox-under-load",
+      "version": "0.0.0",
+      "dependencies": {
+        "@anthropic-ai/claude-agent-sdk": "0.3.306",
+        "@modelcontextprotocol/server": "2.4.0",
+        "zod": "4.6.7",
+      },
+    },
     "research/start-session-forwarding": {
       "name": "@heynixie/spike-start-session-forwarding",
       "version": "0.0.0",
@@ -1122,6 +1131,8 @@
     "@heynixie/spike-policy-rules": ["@heynixie/spike-policy-rules@workspace:research/policy-rules"],
 
     "@heynixie/spike-replica-encryption": ["@heynixie/spike-replica-encryption@workspace:research/replica-encryption"],
+
+    "@heynixie/spike-sandbox-under-load": ["@heynixie/spike-sandbox-under-load@workspace:research/sandbox-under-load"],
 
     "@heynixie/spike-start-session-forwarding": ["@heynixie/spike-start-session-forwarding@workspace:research/start-session-forwarding"],
 
