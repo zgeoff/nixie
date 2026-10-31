@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.58.1](https://github.com/zgeoff/nixie/compare/v0.58.0...v0.58.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **deps:** update @modelcontextprotocol/client to v2.4.0 ([#751](https://github.com/zgeoff/nixie/issues/751)) ([ff2ad4e](https://github.com/zgeoff/nixie/commit/ff2ad4e1414076bb47e35db873b023c9599fd17b))
+* **deps:** update @modelcontextprotocol/server to v2.4.0 ([#752](https://github.com/zgeoff/nixie/issues/752)) ([85e83fa](https://github.com/zgeoff/nixie/commit/85e83fac28258d8e9f937141987f2597ed4bd81b))
+* **hooks:** exclude top-level paths from format-codemod too ([#762](https://github.com/zgeoff/nixie/issues/762)) ([fe2892c](https://github.com/zgeoff/nixie/commit/fe2892c0baff8c677bdbbf855477d19a84d66c74))
+
 ## [0.58.0](https://github.com/zgeoff/nixie/compare/v0.57.1...v0.58.0) (2026-10-30)
 
 
