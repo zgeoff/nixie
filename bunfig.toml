@@ -29,9 +29,6 @@ minimumReleaseAgeExcludes = [
   "@zgeoff/oxlint-config",
   "@zgeoff/skill-gate",
   "@zgeoff/std",
-  # body-parser 2.4.0 fixes GHSA-27r3-jxmh-p828 and skips the gate so the audit
-  # passes now; this entry comes out on 2026-10-29, once 2.4.0 is 7 days old
-  "body-parser",
 ]
 
 [test]
