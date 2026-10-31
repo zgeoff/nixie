@@ -8,9 +8,8 @@ description:
 
 # nixie test harnesses
 
-This skill holds the runs, preloads, and harnesses particular to this repo, the variables that drive
-them, and where to find them. It describes the code as it is. The rules for writing tests live in
-the shared testing skill, and nothing here relaxes them.
+Below are nixie's runs, preloads and harnesses, the variables that drive them, and links to their
+code. The shared testing skill holds the rules for writing tests, and nothing here relaxes them.
 
 ## Key rules
 
@@ -67,13 +66,13 @@ config's, because a pattern given on the command line replaces that list.
 Before you write, run or debug a `*.browser.test.ts` suite, read
 [the browser lane](./references/browser-lane.md).
 
-Beside the browser suites, four lanes run suites that need a real system the parallel run cannot
-host. `bun run test` leaves each one out of the parallel run, and the Agent SDK and e2e lanes'
-scripts run their files one at a time. The imp and model API lanes run outside CI, as [Runs](#runs)
-gives.
+Five lanes run suites that need a real system the parallel run cannot host. `bun run test` leaves
+each one out of the parallel run, and the browser, Agent SDK and e2e lanes' scripts run their files
+one at a time. The imp and model API lanes run outside CI, as [Runs](#runs) gives.
 
 | Lane      | Files                 | Real system                                                   | Script           | Limit per test     |
 | --------- | --------------------- | ------------------------------------------------------------- | ---------------- | ------------------ |
+| browser   | `*.browser.test.ts`   | A headless Chrome or Chromium, through `Bun.WebView`          | `test:browser`   | 10 s               |
 | Agent SDK | `*.agent-sdk.test.ts` | The Agent SDK's CLI as a subprocess, against a scripted model | `test:agent-sdk` | 5 s, Bun's default |
 | e2e       | every suite in `e2e/` | The built nixie or web client, driven from outside            | `test:e2e`       | 15 s               |
 | imp       | `*.imp.test.ts`       | A real impd on a host with `/dev/kvm`                         | `test:imp`       | 14 s               |
@@ -91,8 +90,7 @@ utils.
 
 ## Preloads
 
-The unit run leaves isolation off because a fresh global object for each file costs time and memory,
-and the preloads' resets already return shared state to a clean baseline after each test.
+The unit run leaves isolation off because a fresh global object for each file costs time and memory.
 
 A preload's body runs once for each worker. Under `--parallel=N --no-isolate` with N of 2 or more,
 Bun runs a preload's `beforeAll` and `afterAll` around each file, and otherwise once for the run. So
@@ -158,6 +156,5 @@ A test of the imp port can run a real impd in the test process through `startTes
 and lifecycle on stand-ins for the VMs and the host, so the test needs no `/dev/kvm` and runs in the
 unit run.
 
-Before you start nixie in a server suite, or write a crash suite that arms fault points, read
-[the nixie harnesses](./references/nixie-harnesses.md) to pick in process or a spawned child
-process.
+Before you start nixie in a test, in process or as a child process, read
+[the nixie harnesses](./references/nixie-harnesses.md).
