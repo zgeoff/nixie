@@ -3,9 +3,7 @@
 The web app's browser suites, the `*.browser.test.ts` files, drive a headless Chrome or Chromium
 through `Bun.WebView`, so `bun test` needs one that Bun finds on `PATH`, in a standard install
 location, or at `BUN_CHROME_PATH`. GitHub's Ubuntu runners ship Chrome. `bun run test` leaves the
-browser suites out of the parallel run, and `test:browser`, the browser lane, runs them. The
-parallel run's ignore patterns repeat the root config's, because a pattern given on the command line
-replaces that list.
+browser suites out of the parallel run, and `test:browser`, the browser lane, runs them.
 
 The browser lane runs every suite on one setup. Its script runs
 [`run-browser-lane.ts`](../../../../apps/web/src/test-utils/run-browser-lane.ts) under the shared

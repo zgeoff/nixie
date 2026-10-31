@@ -29,8 +29,8 @@ Each line links the section that explains it.
 
 - [The browser lane](./references/browser-lane.md): writing, running or debugging a
   `*.browser.test.ts` suite.
-- [The nixie harnesses](./references/nixie-harnesses.md): a server suite that starts nixie, in
-  process or as a child process.
+- [The nixie harnesses](./references/nixie-harnesses.md): starting nixie in a server suite, in
+  process or as a spawned child process, or writing a crash suite that arms fault points.
 
 ## Runs
 
@@ -61,9 +61,11 @@ test that passes only after another file fails. A failure prints the run's `--se
 with that flag to repeat its order. Plain `bun test` skips those suites when the files are missing,
 and CI, where the `CI` variable is set, fails them instead, so a run there never passes without the
 model. The spikes under `research/` and `docs/design/` run by hand, so the root
-[`bunfig.toml`](../../../bunfig.toml) skips them.
+[`bunfig.toml`](../../../bunfig.toml) skips them. The parallel run's ignore patterns repeat the root
+config's, because a pattern given on the command line replaces that list.
 
-The web app's browser suites and their lane: [the browser lane](./references/browser-lane.md).
+Before you write, run or debug a `*.browser.test.ts` suite, read
+[the browser lane](./references/browser-lane.md).
 
 Beside the browser suites, four lanes run suites that need a real system the parallel run cannot
 host. `bun run test` leaves each one out of the parallel run, and the Agent SDK and e2e lanes'
@@ -156,5 +158,6 @@ A test of the imp port can run a real impd in the test process through `startTes
 and lifecycle on stand-ins for the VMs and the host, so the test needs no `/dev/kvm` and runs in the
 unit run.
 
-A server suite runs nixie in process or as a spawned child:
-[the nixie harnesses](./references/nixie-harnesses.md) gives which one a suite takes.
+Before you start nixie in a server suite, or write a crash suite that arms fault points, read
+[the nixie harnesses](./references/nixie-harnesses.md) to pick in process or a spawned child
+process.
