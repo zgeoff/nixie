@@ -288,6 +288,7 @@ async function runTurn(scenario: 'rotation' | 'parallel'): Promise<void> {
       `NIXIE_MODEL=${model}`,
       'bun',
       '/app/turn.ts',
+      '--scenario',
       scenario,
     ],
     { stdout: 'pipe', stderr: Bun.file(join(work, `${scenario}-stderr.log`)) },

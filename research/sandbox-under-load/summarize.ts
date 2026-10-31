@@ -2,6 +2,7 @@
 // Usage: bun summarize.ts [results_dir], with results/ beside this file by default.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { cli, define } from 'gunshi';
 import { z } from 'zod';
 
 const EVENT_SCHEMA = z.looseObject({
@@ -12,12 +13,27 @@ const EVENT_SCHEMA = z.looseObject({
 
 type RunEvent = z.infer<typeof EVENT_SCHEMA>;
 
-const results = process.argv[2] ?? join(import.meta.dir, 'results');
+const summaryCommand = define({
+  name: 'summary',
+  description: "Prints the rotation timeline and the parallel calls table from a run's results",
+  args: {
+    results: {
+      type: 'positional',
+      required: false,
+      description: 'the results directory, results/ beside this file by default',
+    },
+  },
+  run: (ctx) => {
+    const results = ctx.values.results ?? join(import.meta.dir, 'results');
 
-console.log(formatRotation(readEvents('rotation')));
-console.log(formatParallel(readEvents('parallel')));
+    console.log(formatRotation(readEvents(results, 'rotation')));
+    console.log(formatParallel(readEvents(results, 'parallel')));
+  },
+});
 
-function readEvents(scenario: string): RunEvent[] {
+await cli(process.argv.slice(2), summaryCommand);
+
+function readEvents(results: string, scenario: string): RunEvent[] {
   return readFileSync(join(results, `${scenario}.jsonl`), 'utf8')
     .split('\n')
     .filter((line) => line !== '')

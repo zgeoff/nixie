@@ -1,12 +1,13 @@
 // One long turn inside the imp, with nixie's options: every built-in tool off and nixie's tools over
 // HTTP MCP. It prints one JSON line per event as it happens, and the host stamps each line on
-// arrival. Usage: bun turn.ts rotation|parallel. Env: SPIKE_TOOLS_URL, SPIKE_TOOLS_TOKEN,
+// arrival. Usage: bun turn.ts --scenario rotation|parallel. Env: SPIKE_TOOLS_URL, SPIKE_TOOLS_TOKEN,
 // NIXIE_MODEL, and the broker's variables that impz exec --require broker sets.
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Options, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
+import { cli, define } from 'gunshi';
 
 const prompts = {
   rotation: [
@@ -31,44 +32,55 @@ const brokerVariables = [
   'SSL_CERT_FILE',
   'NODE_EXTRA_CA_CERTS',
 ];
-const scenario = readScenario(process.argv[2]);
-const home = mkdtempSync(join(tmpdir(), 'nixie-spike-home-'));
-const options: Options = {
-  tools: [],
-  allowedTools: ['mcp__nixie'],
-  permissionMode: 'dontAsk',
-  settingSources: [],
-  strictMcpConfig: true,
-  includePartialMessages: true,
-  maxTurns: 20,
-  model: process.env.NIXIE_MODEL ?? 'claude-haiku-5-5',
-  mcpServers: {
-    nixie: {
-      type: 'http',
-      url: readEnv('SPIKE_TOOLS_URL'),
-      headers: { authorization: `Bearer ${readEnv('SPIKE_TOOLS_TOKEN')}` },
-      alwaysLoad: true,
+const started = performance.now();
+const turnCommand = define({
+  name: 'turn',
+  description: 'Runs one spike turn inside the imp and prints its events as JSON lines',
+  args: {
+    scenario: {
+      type: 'enum',
+      choices: ['rotation', 'parallel'] as const,
+      required: true,
+      description: 'the turn to run',
     },
   },
-  cwd: home,
-  env: buildEnv(home),
-};
-const started = performance.now();
+  run: async (ctx) => {
+    await runScenario(ctx.values.scenario);
+  },
+});
 
-emit('query', { scenario });
-try {
-  for await (const message of query({ prompt: prompts[scenario], options })) {
-    writeMessage(message);
-  }
-} catch (error) {
-  emit('thrown', { message: error instanceof Error ? error.message : String(error) });
-}
+await cli(process.argv.slice(2), turnCommand);
 
-function readScenario(value: string | undefined): keyof typeof prompts {
-  if (value === 'rotation' || value === 'parallel') {
-    return value;
+async function runScenario(scenario: keyof typeof prompts): Promise<void> {
+  const home = mkdtempSync(join(tmpdir(), 'nixie-spike-home-'));
+  const options: Options = {
+    tools: [],
+    allowedTools: ['mcp__nixie'],
+    permissionMode: 'dontAsk',
+    settingSources: [],
+    strictMcpConfig: true,
+    includePartialMessages: true,
+    maxTurns: 20,
+    model: process.env.NIXIE_MODEL ?? 'claude-haiku-5-5',
+    mcpServers: {
+      nixie: {
+        type: 'http',
+        url: readEnv('SPIKE_TOOLS_URL'),
+        headers: { authorization: `Bearer ${readEnv('SPIKE_TOOLS_TOKEN')}` },
+        alwaysLoad: true,
+      },
+    },
+    cwd: home,
+    env: buildEnv(home),
+  };
+  emit('query', { scenario });
+  try {
+    for await (const message of query({ prompt: prompts[scenario], options })) {
+      writeMessage(message);
+    }
+  } catch (error) {
+    emit('thrown', { message: error instanceof Error ? error.message : String(error) });
   }
-  throw new Error('usage: bun turn.ts rotation|parallel');
 }
 
 function readEnv(name: string): string {
