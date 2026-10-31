@@ -1,5 +1,7 @@
 import { basename, dirname, posix } from 'node:path';
 import { parseLaneLimits } from './parse-lane-limits.ts';
+import type { ShellWord } from './parse-shell-words.ts';
+import { parseShellWords } from './parse-shell-words.ts';
 import type { RunProgram } from './run-program.ts';
 import { runProgram } from './run-program.ts';
 
@@ -271,12 +273,18 @@ function collectScriptFindings(
     const lane = name.startsWith('test:') ? name.slice('test:'.length) : null;
     const limit = pickLaneLimit(limits, lane);
 
-    return collectTimeoutValues(command)
-      .filter((timeoutMs) => timeoutMs > limit.limitMs)
-      .map((timeoutMs) => ({
-        path,
-        message: `script "${name}" passes --timeout=${timeoutMs} to bun test, above the ${limit.limitMs} ms limit of the ${limit.lane} lane; ${slowTestsHint}`,
-      }));
+    return collectTimeoutValues(command).flatMap((timeoutMs) => {
+      const breach = findTimeoutBreach(timeoutMs, limit);
+
+      return breach === undefined
+        ? []
+        : [
+            {
+              path,
+              message: `script "${name}" passes --timeout=${timeoutMs} to bun test, ${breach}; ${slowTestsHint}`,
+            },
+          ];
+    });
   });
 }
 
@@ -299,38 +307,66 @@ function pickLaneLimit(limits: ReadonlyMap<string, number>, lane: string | null)
     : { lane, limitMs };
 }
 
-const assignmentPattern = /^[A-Za-z_][A-Za-z0-9_]*=/u;
-
 // A wrapper such as `bash with-home.sh bun test` runs the words after it, and these only print them.
 const printCommands = new Set(['echo', 'printf']);
 
-// `--timeout 20000` and `--timeout=20000` both reach `bun test`, and a quoted word, such as a name
-// pattern, is a value rather than a flag. A shell runs a quoted command name as the bare one.
+// The `bun test` options that need a value take the next word whole, even one that starts with
+// `--timeout`, as `bun test --help` lists them.
+const valueOptions = new Set([
+  '-t',
+  '--test-name-pattern',
+  '--timeout',
+  '--rerun-each',
+  '--retry',
+  '--seed',
+  '--coverage-reporter',
+  '--coverage-dir',
+  '--reporter',
+  '--reporter-outfile',
+  '--max-concurrency',
+  '--path-ignore-patterns',
+  '--parallel-delay',
+  '--shard',
+  '--timings',
+]);
+
+// `--timeout 20000` and `--timeout=20000` both reach `bun test`, and the shell removes any quotes or
+// escapes from either form before Bun reads it. Bun reads each word after `--` as a file filter.
 function collectTimeoutValues(command: string): number[] {
   const values: number[] = [];
 
-  for (const words of parseShellCommands(command)) {
-    const name = words.find((word) => word.isQuoted || !assignmentPattern.test(word.text));
+  for (const words of collectShellCommands(parseShellWords(command))) {
+    const name = words.find((word) => !word.isAssignment);
 
     if (name !== undefined && printCommands.has(name.text)) {
       continue;
     }
 
-    const start = words.findIndex(
-      (word, index) => word.text === 'bun' && words[index + 1]?.text === 'test',
-    );
+    const texts = words.map((word) => word.text);
+    const start = findTestArgsStart(texts);
 
-    if (start === -1) {
+    if (start === null) {
       continue;
     }
 
-    const args = words.slice(start + 2);
+    const args = texts.slice(start);
 
-    for (const [index, word] of args.entries()) {
-      if (isBareWord(word, '--timeout')) {
-        values.push(toTimeoutMs(args[index + 1]?.text));
-      } else if (!word.isQuoted && word.text.startsWith('--timeout=')) {
-        values.push(toTimeoutMs(word.text.slice('--timeout='.length)));
+    for (let index = 0; index < args.length; index += 1) {
+      const arg = args[index] ?? '';
+
+      if (arg === '--') {
+        break;
+      }
+
+      const value = arg === '--timeout' ? args[index + 1] : findTimeoutFlagValue(arg);
+      const timeoutMs = value === undefined ? null : parseTimeoutMs(value);
+
+      if (timeoutMs !== null) {
+        values.push(timeoutMs);
+      }
+
+      if (valueOptions.has(arg)) {
+        index += 1;
       }
     }
   }
@@ -338,80 +374,54 @@ function collectTimeoutValues(command: string): number[] {
   return values;
 }
 
-interface ShellWord {
-  readonly text: string;
+function collectShellCommands(words: readonly ShellWord[]): ShellWord[][] {
+  const commands: ShellWord[][] = [[]];
 
-  // Any part of the word sat inside quotes or behind a backslash.
-  readonly isQuoted: boolean;
-}
-
-function parseShellCommands(command: string): ShellWord[][] {
-  const commands: ShellWord[][] = [];
-  let words: ShellWord[] = [];
-  let text = '';
-  let isQuoted = false;
-  let hasWord = false;
-  let quote: string | null = null;
-
-  const endWord = () => {
-    if (hasWord) {
-      words.push({ text, isQuoted });
-    }
-
-    text = '';
-    isQuoted = false;
-    hasWord = false;
-  };
-
-  for (let index = 0; index < command.length; index += 1) {
-    const character = command.charAt(index);
-
-    if (quote !== null) {
-      if (character === quote) {
-        quote = null;
-      } else {
-        text += character;
-      }
-    } else if (character === "'" || character === '"') {
-      quote = character;
-      isQuoted = true;
-      hasWord = true;
-    } else if (character === '\\') {
-      index += 1;
-      text += command.charAt(index);
-      isQuoted = true;
-      hasWord = true;
-    } else if (/\s/u.test(character)) {
-      endWord();
-    } else if (character === ';' || character === '|' || character === '&') {
-      endWord();
-
-      commands.push(words);
-
-      words = [];
-
-      if (command.charAt(index + 1) === character) {
-        index += 1;
-      }
+  for (const word of words) {
+    if (word.isOperator) {
+      commands.push([]);
     } else {
-      text += character;
-      hasWord = true;
+      commands.at(-1)?.push(word);
     }
   }
-
-  endWord();
-
-  commands.push(words);
 
   return commands;
 }
 
-function isBareWord(word: ShellWord | undefined, text: string): boolean {
-  return word !== undefined && !word.isQuoted && word.text === text;
+// Bun runs its test subcommand only when each option before it takes the `--name=value` form, so
+// `bun --cwd pkg test` runs no test.
+function findTestArgsStart(texts: readonly string[]): number | null {
+  for (const [index, text] of texts.entries()) {
+    const subcommand =
+      text === 'bun' ? texts.findIndex((word, at) => at > index && !word.startsWith('-')) : -1;
+
+    if (subcommand !== -1 && texts[subcommand] === 'test') {
+      return subcommand + 1;
+    }
+  }
+
+  return null;
 }
 
-function toTimeoutMs(value: string | undefined): number {
-  return Number(value?.replaceAll('_', ''));
+function findTimeoutFlagValue(arg: string): string | undefined {
+  return arg.startsWith('--timeout=') ? arg.slice('--timeout='.length) : undefined;
+}
+
+// Bun 1.4 reads digits and underscores, and `0` turns the timeout off. It runs an empty value with
+// the default timeout, and refuses any other value before a test runs.
+function parseTimeoutMs(value: string): number | null {
+  return /^[\d_]+$/u.test(value) && /\d/u.test(value) ? Number(value.replaceAll('_', '')) : null;
+}
+
+// Bun runs a test with no timeout at all when the timeout is 0.
+function findTimeoutBreach(timeoutMs: number, limit: LaneLimit): string | undefined {
+  const limitText = `the ${limit.limitMs} ms limit of the ${limit.lane} lane`;
+
+  if (timeoutMs === 0) {
+    return `which turns the timeout off, past ${limitText}`;
+  }
+
+  return timeoutMs > limit.limitMs ? `above ${limitText}` : undefined;
 }
 
 function collectBunfigFindings(path: string, text: string, limit: LaneLimit): TestTimeoutFinding[] {
@@ -423,16 +433,20 @@ function collectBunfigFindings(path: string, text: string, limit: LaneLimit): Te
     'timeout',
   );
 
-  if (typeof timeoutMs !== 'number' || timeoutMs <= limit.limitMs) {
+  if (typeof timeoutMs !== 'number') {
     return [];
   }
 
-  return [
-    {
-      path,
-      message: `[test] timeout = ${timeoutMs} raises every test above the ${limit.limitMs} ms limit of the ${limit.lane} lane; ${slowTestsHint}`,
-    },
-  ];
+  const breach = findTimeoutBreach(timeoutMs, limit);
+
+  return breach === undefined
+    ? []
+    : [
+        {
+          path,
+          message: `[test] timeout = ${timeoutMs} applies to every test, ${breach}; ${slowTestsHint}`,
+        },
+      ];
 }
 
 // git lists paths with forward slashes on every platform
