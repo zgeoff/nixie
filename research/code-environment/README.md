@@ -22,9 +22,9 @@ holds Bun and Claude Code, plus the same runtimes and toolbox.
 - Each of the 3 programs sums 20 invented orders per region, and uses more of its language's
   standard library or the toolbox, such as SQLite, zip, gzip and jq. Each one ran 5 times in each
   image, and all 30 code runs printed the expected report.
-- A Python program can import only the standard library, so imports of numpy, pandas and requests
-  failed. A Node.js program can also `require` the 869 libraries that Debian's npm package installs,
-  such as lodash. With no network, every pip and npm install failed.
+- numpy, pandas and requests are absent from both images, so a Python program that imports one of
+  them fails. A Node.js program can also `require` the 869 libraries that Debian's npm package
+  installs, such as lodash. With no network, every pip and npm install failed.
 - The code image holds 453 MiB of files, and a host pulls 115 MB of compressed layers for it. The
   worker image holds 1147 MiB, and a host pulls 428 MB for it.
 - npm brings 182 MiB of the code image's files. A third image, the code image without npm, holds 271

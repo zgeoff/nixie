@@ -2,7 +2,7 @@
 
 This spike runs a report program in Node.js, Python and shell in nixie's code and worker images,
 probes what each image holds, and measures the size of each image. All 3 programs ran in both
-images, under the code tool's limits. A Python program can import only the standard library, and a
+images, under the code tool's limits. numpy, pandas and requests are absent from both images, and a
 Node.js program can also load the 869 libraries that Debian's npm package installs. The code image
 holds 453 MiB of files and the worker image 1147 MiB, and npm brings 182 MiB of the code image's
 files. Both images ship Node.js 20, whose upstream support ended on 2026-04-30.
