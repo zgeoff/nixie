@@ -37,8 +37,9 @@ whether to add numpy and pandas, before the code tool ships.
 
 ## Run it
 
-Run the script on any machine with Docker, from this folder. It refuses to start when an image named
-`spike-ce-*` exists, so that its cleanup never removes an image it did not build.
+Run the script from this folder, on a machine whose Docker uses the containerd image store, which
+the pull sizes need. It refuses to start when an image named `spike-ce-*` exists, so that its
+cleanup never removes an image it did not build.
 
 ```bash
 bash run.sh

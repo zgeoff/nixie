@@ -28,6 +28,8 @@ const probes = [
   { name: 'python pandas', command: 'python3 -c "import pandas"' },
   { name: 'python requests', command: 'python3 -c "import requests"' },
   { name: 'node lodash', command: "node -e \"require('lodash')\"" },
+  { name: 'user', command: 'id -un' },
+  { name: 'node libraries', command: 'ls /usr/share/nodejs | wc -l' },
   { name: 'pip install', command: 'pip install --user requests' },
   { name: 'pip install in a venv', command: 'python3 -m venv /tmp/venv && /tmp/venv/bin/pip install --timeout 5 --retries 0 requests' },
   { name: 'npm install', command: 'cd /tmp && npm install --fetch-retries 0 --fetch-timeout 5000 lodash' },
@@ -84,8 +86,9 @@ async function runInImage(image: string, command: string[]) {
   const child = Bun.spawn(
     [
       'docker', 'run', '--rm', ...limits,
-      '--tmpfs', '/work/out:uid=1000,gid=1000',
-      '--tmpfs', '/tmp:uid=1000,gid=1000,exec',
+      // Mode 1777 lets each image's own user write, whatever its uid.
+      '--tmpfs', '/work/out:mode=1777',
+      '--tmpfs', '/tmp:mode=1777,exec',
       '--volume', `${join(import.meta.dir, 'programs')}:/work/in:ro`,
       '--entrypoint', 'bash', image, '-c', timer, 'timer', ...command,
     ],

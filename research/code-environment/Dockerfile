@@ -3,8 +3,10 @@
 # code image and the worker image install the same runtime versions.
 FROM debian:trixie-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4
 
+# NPM= builds the no-npm image, which keeps everything else.
+ARG NPM=npm
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends nodejs npm python3 python3-pip python3-venv \
+  && apt-get install -y --no-install-recommends nodejs ${NPM} python3 python3-pip python3-venv \
     jq ripgrep file less procps findutils gawk sed grep coreutils ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 

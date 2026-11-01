@@ -48,7 +48,7 @@ The toolbox is 12 Debian packages:
 | code         | [`Dockerfile`](Dockerfile): Debian, the runtimes and the toolbox, run as an unprivileged user                                 |
 | conversation | the conversation guest's [`Dockerfile`](../../guests/conversation/Dockerfile)                                                 |
 | worker       | the [worker spike's `Dockerfile`](../worker-cold-start/Dockerfile) with `RUNTIMES=yes`, on the conversation image             |
-| no-npm       | [`Dockerfile.size`](Dockerfile.size) with the code image's packages, less npm                                                 |
+| no-npm       | [`Dockerfile`](Dockerfile) with `NPM=` set empty: the code image less npm, run as the same user                               |
 | 5 group      | [`Dockerfile.size`](Dockerfile.size) with one package group each: node, node and npm, python, python and pip, and the toolbox |
 
 The worker spike is the [worker cold start spike](../worker-cold-start/README.md), which built the
@@ -93,40 +93,43 @@ milliseconds, from a warm page cache.
 
 | Image  | Program | Right | Total median | Total p90 | Program median | Program p90 |
 | ------ | ------- | ----: | -----------: | --------: | -------------: | ----------: |
-| code   | node    |   5/5 |          388 |       459 |             76 |          82 |
-| code   | python  |   5/5 |          339 |       405 |             22 |          23 |
-| code   | shell   |   5/5 |          299 |       378 |              8 |           9 |
-| worker | node    |   5/5 |          402 |       452 |             77 |          85 |
-| worker | python  |   5/5 |          338 |       399 |             23 |          26 |
-| worker | shell   |   5/5 |          330 |       392 |              9 |          12 |
-| no-npm | node    |   5/5 |          433 |       517 |             74 |          79 |
-| no-npm | python  |   5/5 |          376 |       451 |             22 |          24 |
-| no-npm | shell   |   5/5 |          360 |       396 |              8 |           8 |
+| code   | node    |   5/5 |          358 |       391 |             72 |          82 |
+| code   | python  |   5/5 |          311 |       321 |             22 |          24 |
+| code   | shell   |   5/5 |          301 |       346 |              8 |           9 |
+| worker | node    |   5/5 |          387 |       505 |             73 |         173 |
+| worker | python  |   5/5 |          309 |       362 |             22 |          46 |
+| worker | shell   |   5/5 |          310 |       326 |              8 |          20 |
+| no-npm | node    |   5/5 |          390 |       419 |             75 |          79 |
+| no-npm | python  |   5/5 |          326 |       382 |             21 |          24 |
+| no-npm | shell   |   5/5 |          305 |       323 |              8 |           9 |
 
-Docker's own container start takes most of each total.
+Docker's own container start takes most of each total. The worker image's 3 program p90s all come
+from round 1, its first code runs, and rounds 2 to 5 match the code image.
 
 Each probe gave the same outcome in the code and worker images:
 
-| Probe                                                                                    | Outcome     | Cause                               |
-| ---------------------------------------------------------------------------------------- | ----------- | ----------------------------------- |
-| `node -e 0`                                                                              | 50 to 60 ms | the Node.js process start           |
-| `python3 -c pass`                                                                        | 8 to 9 ms   | the Python process start            |
-| `node:zlib`, `node:crypto`, `node:worker_threads`, `node:child_process`                  | load        |                                     |
-| `node:sqlite`                                                                            | fails       | Node.js 20 has no `node:sqlite`     |
-| Python's `csv`, `decimal`, `hashlib`, `json`, `sqlite3`, `statistics`, `zipfile`, `venv` | import      |                                     |
-| Python's `numpy`, `pandas`, `requests`                                                   | fail        | not installed                       |
-| `require('lodash')`                                                                      | loads       | Debian's npm package installs it    |
-| `npm --version`                                                                          | 9.2.0       |                                     |
-| `pip install --user requests`                                                            | refused     | the system Python is managed by apt |
-| `pip install requests` in a new venv                                                     | fails       | no network                          |
-| `npm install lodash`                                                                     | fails       | no network                          |
-| `curl https://example.com/`                                                              | fails       | no network                          |
+| Probe                                                                                    | Outcome         | Cause                               |
+| ---------------------------------------------------------------------------------------- | --------------- | ----------------------------------- |
+| `node -e 0`                                                                              | 50 to 51 ms     | the Node.js process start           |
+| `python3 -c pass`                                                                        | 8 ms            | the Python process start            |
+| `id -un`                                                                                 | `code`, `nixie` | each image's own unprivileged user  |
+| `ls /usr/share/nodejs \| wc -l`                                                          | 896             | Node.js libraries from Debian       |
+| `node:zlib`, `node:crypto`, `node:worker_threads`, `node:child_process`                  | load            |                                     |
+| `node:sqlite`                                                                            | fails           | Node.js 20 has no `node:sqlite`     |
+| Python's `csv`, `decimal`, `hashlib`, `json`, `sqlite3`, `statistics`, `zipfile`, `venv` | import          |                                     |
+| Python's `numpy`, `pandas`, `requests`                                                   | fail            | not installed                       |
+| `require('lodash')`                                                                      | loads           | Debian's npm package installs it    |
+| `npm --version`                                                                          | 9.2.0           |                                     |
+| `pip install --user requests`                                                            | refused         | the system Python is managed by apt |
+| `pip install requests` in a new venv                                                     | fails           | no network                          |
+| `npm install lodash`                                                                     | fails           | no network                          |
+| `curl https://example.com/`                                                              | fails           | no network                          |
 
 The code image holds 896 Node.js libraries in `/usr/share/nodejs`, where Node.js resolves a
 `require`. Debian's npm package brings 869 of them, such as lodash, chalk, glob, semver and yargs,
-and the `nodejs` package brings the other 27. In the no-npm image, `require('lodash')` fails, and
-`npm --version` and `npm install` fail with `npm: command not found`. Every other probe gave the
-same outcome there.
+and the `nodejs` package brings the other 27, the count in the no-npm image. In the no-npm image,
+`require('lodash')` fails, and `npm --version` and `npm install` fail with `npm: command not found`.
+Every other probe gave the same outcome there.
 
 The code image does not need npm for a program that uses only Node.js's own modules. A program that
 loads one of npm's 869 libraries needs npm's package, and a code run cannot install anything else.
