@@ -10,6 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, onTestFinished, test } from 'bun:test';
+// @boundaries-ignore a spike imports the repo's condition wait by path
 import { waitForCondition } from '../../libs/testing/src/wait-for-condition';
 
 // The stub stands in for impz: it records each call, answers the reads the script makes, fails
