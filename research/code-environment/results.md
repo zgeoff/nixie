@@ -106,7 +106,8 @@ milliseconds, from a warm page cache.
 Docker's own container start takes most of each total. The worker image's 3 program p90s all come
 from round 1, its first code runs, and rounds 2 to 5 match the code image.
 
-Each probe gave the same outcome in the code and worker images:
+Each probe gave the same outcome in the code and worker images, except `id -un`, which prints each
+image's own user:
 
 | Probe                                                                                    | Outcome         | Cause                               |
 | ---------------------------------------------------------------------------------------- | --------------- | ----------------------------------- |
