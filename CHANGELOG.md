@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.59.0](https://github.com/zgeoff/nixie/compare/v0.58.1...v0.59.0) (2026-11-01)
+
+
+### Features
+
+* **research:** run programs in the code and worker images and size them ([#774](https://github.com/zgeoff/nixie/issues/774)) ([a71ebdf](https://github.com/zgeoff/nixie/commit/a71ebdfc5ecc967eb526b87385b9b9deed7762d9))
+
+
+### Bug Fixes
+
+* **deps:** update @zgeoff/std to v0.3.1 ([#768](https://github.com/zgeoff/nixie/issues/768)) ([9f9a187](https://github.com/zgeoff/nixie/commit/9f9a187a087f3d6faa87b799b6ba1b16d0454d94))
+
 ## [0.58.1](https://github.com/zgeoff/nixie/compare/v0.58.0...v0.58.1) (2026-10-31)
 
 
