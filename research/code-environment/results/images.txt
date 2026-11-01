@@ -1,0 +1,11 @@
+image disk content_bytes root_files_kib packages
+spike-ce-base 120MB 29865681 85632 78
+spike-ce-conversation 1.16GB 343585909 799824 80
+spike-ce-code 591MB 114527455 463552 499
+spike-ce-no-npm 380MB 94377567 277076 149
+spike-ce-worker 1.64GB 427797779 1175004 499
+spike-ce-size-node 260MB 66058561 189272 93
+spike-ce-size-pip 196MB 49340909 141472 101
+spike-ce-size-python 168MB 41817557 122648 92
+spike-ce-size-toolbox 168MB 40819337 122436 119
+spike-ce-size-npm 527MB 99447211 416044 460

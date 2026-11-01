@@ -1,0 +1,26 @@
+{
+  "east": {
+    "orders": 5,
+    "revenue_cents": 23999,
+    "top_item": "blanket",
+    "units": 9
+  },
+  "north": {
+    "orders": 5,
+    "revenue_cents": 24074,
+    "top_item": "lantern",
+    "units": 12
+  },
+  "south": {
+    "orders": 5,
+    "revenue_cents": 32372,
+    "top_item": "blanket",
+    "units": 10
+  },
+  "west": {
+    "orders": 5,
+    "revenue_cents": 33222,
+    "top_item": "lantern",
+    "units": 13
+  }
+}

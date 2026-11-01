@@ -23,6 +23,7 @@ lists the variable.
 | Spike                                                   | What it answers                                                                                                          |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | [cache-lifetime](cache-lifetime/)                       | which CLI setting writes 1-hour prompt cache entries, and a turn after a pause under each lifetime                       |
+| [code-environment](code-environment/)                   | Node.js, Python and shell programs in the code and worker images, and the size of each image and package group           |
 | [connector-account-pick](connector-account-pick/)       | whether the model passes the ID of the connector account that a message names                                            |
 | [consent-checker](consent-checker/)                     | how often the consent checker credits consent wrongly or misses it, on one deployment's own messages                     |
 | [encoder](encoder/)                                     | which small local embedding model to ship, by retrieval quality, CPU time, memory and image size                         |

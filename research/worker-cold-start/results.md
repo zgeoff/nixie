@@ -161,5 +161,7 @@ path.
 - An `impz image build` of either image, and its conversion time into impd's disk format.
 - A worker turn with nixie's tools over MCP, which the imp worker spike measured at about 20 ms more
   to init.
-- A worker that runs code: a Node.js or Python start from the worker image's cold disk.
+- A Node.js or Python start from the worker image's cold disk. The
+  [code environment spike](../code-environment/README.md) runs programs in the worker image from a
+  warm page cache only.
 - Fresh fetch sandboxes started in parallel, and their memory on the host.

@@ -662,6 +662,10 @@
         "@types/bun": "1.4.3",
       },
     },
+    "research/code-environment": {
+      "name": "@heynixie/spike-code-environment",
+      "version": "0.0.0",
+    },
     "research/connector-account-pick": {
       "name": "@heynixie/spike-connector-account-pick",
       "version": "0.0.0",
@@ -1109,6 +1113,8 @@
     "@heynixie/skills": ["@heynixie/skills@workspace:modules/skills"],
 
     "@heynixie/spike-cache-lifetime": ["@heynixie/spike-cache-lifetime@workspace:research/cache-lifetime"],
+
+    "@heynixie/spike-code-environment": ["@heynixie/spike-code-environment@workspace:research/code-environment"],
 
     "@heynixie/spike-connector-account-pick": ["@heynixie/spike-connector-account-pick@workspace:research/connector-account-pick"],
 
