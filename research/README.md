@@ -39,6 +39,7 @@ lists the variable.
 | [paste-spans](paste-spans/)                             | which spans of a message you pasted, kept right through edits                                                            |
 | [policy-rules](policy-rules/)                           | one decision per call whatever the rule order, a stable snapshot hash, and prompts by cause                              |
 | [replica-encryption](replica-encryption/)               | Litestream through a host crypt gateway, process outages, and a restore without the database                             |
+| [sandbox-under-load](sandbox-under-load/)               | a token rotation during a long turn under imp's broker, and parallel tool calls over HTTP MCP                            |
 | [sdk-first-token](sdk-first-token/)                     | the time from the prompt to the first streamed token, on a live and on a new process                                     |
 | [sdk-long-hold](sdk-long-hold/)                         | hook time limits, long holds, and `defer` across processes                                                               |
 | [sdk-reasoning](sdk-reasoning/)                         | what nixie receives of the model's reasoning under its options, and its storage cost                                     |
