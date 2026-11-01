@@ -1,0 +1,7 @@
+# One package group on the code image's base, so the size of each group shows apart from the others.
+# run.sh builds it once per group with PACKAGES set to that group's packages.
+FROM debian:trixie-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4
+ARG PACKAGES
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ${PACKAGES} \
+  && rm -rf /var/lib/apt/lists/*
