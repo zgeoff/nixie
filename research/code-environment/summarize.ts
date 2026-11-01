@@ -9,7 +9,7 @@ const programRuns = readLines('programs');
 const probeRuns = readLines('probes');
 
 console.log('## Programs\n');
-console.log('| Image | Program | Runs | Exit 0 and right report | Run median | Run p90 | Program median | Program p90 |');
+console.log('| Image | Program | Code runs | Right | Total median | Total p90 | Program median | Program p90 |');
 console.log('| --- | --- | --: | --: | --: | --: | --: | --: |');
 for (const image of new Set(programRuns.map((run) => String(run.image)))) {
   for (const program of new Set(programRuns.map((run) => String(run.program)))) {

@@ -1,16 +1,16 @@
 ## Programs
 
-| Image                | Program | Runs | Exit 0 and right report | Run median | Run p90 | Program median | Program p90 |
-| -------------------- | ------- | ---: | ----------------------: | ---------: | ------: | -------------: | ----------: |
-| spike-ce-code        | node    |    5 |                       5 |        388 |     459 |             76 |          82 |
-| spike-ce-code        | python  |    5 |                       5 |        339 |     405 |             22 |          23 |
-| spike-ce-code        | shell   |    5 |                       5 |        299 |     378 |              8 |           9 |
-| spike-ce-worker      | node    |    5 |                       5 |        402 |     452 |             77 |          85 |
-| spike-ce-worker      | python  |    5 |                       5 |        338 |     399 |             23 |          26 |
-| spike-ce-worker      | shell   |    5 |                       5 |        330 |     392 |              9 |          12 |
-| spike-ce-size-no-npm | node    |    5 |                       5 |        433 |     517 |             74 |          79 |
-| spike-ce-size-no-npm | python  |    5 |                       5 |        376 |     451 |             22 |          24 |
-| spike-ce-size-no-npm | shell   |    5 |                       5 |        360 |     396 |              8 |           8 |
+| Image                | Program | Code runs | Right | Total median | Total p90 | Program median | Program p90 |
+| -------------------- | ------- | --------: | ----: | -----------: | --------: | -------------: | ----------: |
+| spike-ce-code        | node    |         5 |     5 |          388 |       459 |             76 |          82 |
+| spike-ce-code        | python  |         5 |     5 |          339 |       405 |             22 |          23 |
+| spike-ce-code        | shell   |         5 |     5 |          299 |       378 |              8 |           9 |
+| spike-ce-worker      | node    |         5 |     5 |          402 |       452 |             77 |          85 |
+| spike-ce-worker      | python  |         5 |     5 |          338 |       399 |             23 |          26 |
+| spike-ce-worker      | shell   |         5 |     5 |          330 |       392 |              9 |          12 |
+| spike-ce-size-no-npm | node    |         5 |     5 |          433 |       517 |             74 |          79 |
+| spike-ce-size-no-npm | python  |         5 |     5 |          376 |       451 |             22 |          24 |
+| spike-ce-size-no-npm | shell   |         5 |     5 |          360 |       396 |              8 |           8 |
 
 ## Probes
 
