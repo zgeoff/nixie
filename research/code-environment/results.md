@@ -1,22 +1,28 @@
 # Spike results: the code environment
 
-The [sandbox adapter design](../../docs/design/platform/connectors/sandbox-adapter.md#images) lists
-2 images that run code. The code image is the sandbox for a code run from the conversation or a
-task: Debian with Node.js, Python and a toolbox of jq, ripgrep, grep and the common Linux file and
-text tools. The worker image is the conversation image, which holds Bun and Claude Code for a model
-turn, plus the same runtimes and toolbox, because a worker runs its code in its own sandbox. This
-spike runs the same report program in Node.js, Python and shell in both images, probes what each
-image holds and refuses, and measures each image's size.
-
-All 3 programs ran in both images, under the code tool's limits. Python holds only its standard
-library, and Node.js loads the 869 libraries that Debian's npm package installs, such as lodash. A
-code run cannot install a package, because it has no network. The code image holds 453 MiB of files,
-and npm brings 182 MiB of them.
+This spike runs a report program in Node.js, Python and shell in nixie's code and worker images,
+probes what each image holds, and measures the size of each image. All 3 programs ran in both
+images, under the code tool's limits. A Python program can import only the standard library, and a
+Node.js program can also load the 869 libraries that Debian's npm package installs. The code image
+holds 453 MiB of files and the worker image 1147 MiB, and npm brings 182 MiB of the code image's
+files. Both images ship Node.js 20, whose upstream support ended on 2026-04-30.
 
 ## Question
 
 1. Do the code and worker images run representative Node.js, Python and shell programs?
 2. How large is each image?
+
+The code tool runs a program that the model writes, under the limits in the
+[coding design](../../docs/design/platform/connectors/coding.md#the-code-tool): no network, 1 vCPU,
+1 GiB of memory, and no swap. The
+[sandbox adapter design](../../docs/design/platform/connectors/sandbox-adapter.md#images) lists 2
+images for it:
+
+- **The code image** is the sandbox for a code run from the conversation or a task: Debian with
+  Node.js, Python and a toolbox of jq, ripgrep, grep and the common Linux file and text tools.
+- **The worker image** is the conversation image, which holds Bun and Claude Code for a model turn,
+  with the same runtimes and toolbox added. A worker runs its code in its own sandbox, so its image
+  needs the runtimes too.
 
 ## Setup
 
@@ -33,30 +39,28 @@ and npm brings 182 MiB of them.
 The toolbox is 12 Debian packages:
 `jq ripgrep file less procps findutils gawk sed grep coreutils ca-certificates curl`.
 
+### Images
+
 [`run.sh`](run.sh) builds these images:
 
-- the code image, from [`Dockerfile`](Dockerfile), which runs as an unprivileged user and holds no
-  Bun or Claude Code;
-- the conversation image, from the conversation guest's own Dockerfile in the same checkout;
-- the worker image, from the worker cold start spike's
-  [`Dockerfile`](../worker-cold-start/Dockerfile) with `RUNTIMES=yes`, on that conversation image;
-- 6 size images from [`Dockerfile.size`](Dockerfile.size). Each one installs a single package group
-  on the code image's Debian base, so each group's size shows apart from the others.
+| Image        | Built from                                                                                                                    |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| code         | [`Dockerfile`](Dockerfile): Debian, the runtimes and the toolbox, run as an unprivileged user                                 |
+| conversation | the conversation guest's [`Dockerfile`](../../guests/conversation/Dockerfile)                                                 |
+| worker       | the [worker spike's `Dockerfile`](../worker-cold-start/Dockerfile) with `RUNTIMES=yes`, on the conversation image             |
+| no-npm       | [`Dockerfile.size`](Dockerfile.size) with the code image's packages, less npm                                                 |
+| 5 group      | [`Dockerfile.size`](Dockerfile.size) with one package group each: node, node and npm, python, python and pip, and the toolbox |
 
-The no-npm size image installs the code image's packages less npm. It runs the programs too, so it
-shows whether the code image needs npm.
+The worker spike is the [worker cold start spike](../worker-cold-start/README.md), which built the
+worker image first. A group image puts one package group alone on the Debian base, so the group's
+size shows apart from the others.
 
-[`bench.ts`](bench.ts) runs each program 5 times in each of the code, worker and no-npm images, and
-reverses the order of the images on every second sample. Then it runs each probe once in each of
-those images. Each code run is a new container under the code tool's default limits from the
-[coding design](../../docs/design/platform/connectors/coding.md#the-code-tool): no network, 1 vCPU,
-1 GiB of memory and no swap. The programs and their input are mounted read-only, and each program
-writes its files to a tmpfs.
+### Programs and probes
 
 Each program reads the same 20 invented orders from [`orders.csv`](programs/orders.csv) and prints
 the order count, units, revenue and top item per region as one JSON line. A code run counts as right
 when it exits 0 and its line equals [`expected.json`](programs/expected.json). Each program also
-uses more of its language's standard library:
+uses more of its language's standard library or the toolbox:
 
 - [`report.mjs`](programs/report.mjs) writes the report through `node:zlib` and checks the round
   trip, and writes a `node:crypto` digest;
@@ -65,15 +69,26 @@ uses more of its language's standard library:
 - [`report.sh`](programs/report.sh) checks the input with `file` and ripgrep, sums it with awk and
   sort, and builds the report with jq.
 
-[`summarize.ts`](summarize.ts) prints the median and the 90th percentile (nearest rank) of each
-cell. The [`results`](results/) folder holds every code run's line, the image sizes and the summary.
+A probe is a one-line command that checks one thing an image holds or refuses, such as an import or
+an install.
+
+[`bench.ts`](bench.ts) runs 5 rounds. Each round runs every program once in each of the code, worker
+and no-npm images, and every second round takes the images in reverse order. Then `bench.ts` runs
+each probe once in each of those images. Each code run is a new container under the code tool's
+limits. The programs and their input are mounted read-only, and each program writes its files to a
+tmpfs.
+
+[`summarize.ts`](summarize.ts) prints the tables, and the [`results`](results/) folder holds every
+code run's line, the image sizes and the summary.
 
 ## Answer
 
 ### 1. Representative programs
 
-Each cell holds 5 code runs. The total time counts from before `docker run` to the container's exit.
-The program time counts inside the container, from the program's start to its exit. All times are in
+All 45 code runs printed the expected report, in every image. Each row holds one program in one
+image, over its 5 code runs. The total time counts from before `docker run` to the container's exit,
+and the program time counts inside the container, from the program's start to its exit. The p90 is
+the nearest-rank 90th percentile, which with 5 code runs is the slowest one. All times are in
 milliseconds, from a warm page cache.
 
 | Image  | Program | Right | Total median | Total p90 | Program median | Program p90 |
@@ -88,34 +103,33 @@ milliseconds, from a warm page cache.
 | no-npm | python  |   5/5 |          376 |       451 |             22 |          24 |
 | no-npm | shell   |   5/5 |          360 |       396 |              8 |           8 |
 
-Docker's own container start takes most of each total. The program time includes the runtime's own
-start: the start probes, `node -e 0` and `python3 -c pass`, took 50 to 60 ms and 8 to 9 ms in every
-image.
+Docker's own container start takes most of each total.
 
-Each probe gives the same outcome in the code and worker images:
+Each probe gave the same outcome in the code and worker images:
 
-| Probe                                                                                    | Outcome                                                   |
-| ---------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `node:zlib`, `node:crypto`, `node:worker_threads`, `node:child_process`                  | load                                                      |
-| `node:sqlite`                                                                            | fails: Node.js 20 has no `node:sqlite`                    |
-| Python's `csv`, `decimal`, `hashlib`, `json`, `sqlite3`, `statistics`, `zipfile`, `venv` | import                                                    |
-| Python's `numpy`, `pandas`, `requests`                                                   | fail with `ModuleNotFoundError`                           |
-| Node.js `require('lodash')`                                                              | loads, from `/usr/share/nodejs`, which Debian's npm fills |
-| `npm --version`                                                                          | prints 9.2.0                                              |
-| `pip install --user requests`                                                            | refused: the system Python is externally managed          |
-| `pip install requests` in a new venv                                                     | fails: no version found, with no network                  |
-| `npm install lodash`                                                                     | fails with no network                                     |
-| `curl https://example.com/`                                                              | fails: the host name does not resolve                     |
+| Probe                                                                                    | Outcome     | Cause                               |
+| ---------------------------------------------------------------------------------------- | ----------- | ----------------------------------- |
+| `node -e 0`                                                                              | 50 to 60 ms | the Node.js process start           |
+| `python3 -c pass`                                                                        | 8 to 9 ms   | the Python process start            |
+| `node:zlib`, `node:crypto`, `node:worker_threads`, `node:child_process`                  | load        |                                     |
+| `node:sqlite`                                                                            | fails       | Node.js 20 has no `node:sqlite`     |
+| Python's `csv`, `decimal`, `hashlib`, `json`, `sqlite3`, `statistics`, `zipfile`, `venv` | import      |                                     |
+| Python's `numpy`, `pandas`, `requests`                                                   | fail        | not installed                       |
+| `require('lodash')`                                                                      | loads       | Debian's npm package installs it    |
+| `npm --version`                                                                          | 9.2.0       |                                     |
+| `pip install --user requests`                                                            | refused     | the system Python is managed by apt |
+| `pip install requests` in a new venv                                                     | fails       | no network                          |
+| `npm install lodash`                                                                     | fails       | no network                          |
+| `curl https://example.com/`                                                              | fails       | no network                          |
 
-The code image holds 896 Node.js libraries in `/usr/share/nodejs`, and Node.js resolves a `require`
-there. Debian's npm package brings 869 of them, such as lodash, chalk, glob, semver and yargs, and
-the `nodejs` package brings the other 27. In the no-npm image, `require('lodash')` fails, and
-`npm --version` and `npm install` both fail with `npm: command not found`. Every other probe gives
-the same outcome there.
+The code image holds 896 Node.js libraries in `/usr/share/nodejs`, where Node.js resolves a
+`require`. Debian's npm package brings 869 of them, such as lodash, chalk, glob, semver and yargs,
+and the `nodejs` package brings the other 27. In the no-npm image, `require('lodash')` fails, and
+`npm --version` and `npm install` fail with `npm: command not found`. Every other probe gave the
+same outcome there.
 
-So the code and worker images run a program that uses its language's standard library, the toolbox,
-or one of the Node.js libraries that npm brings. A Python program that imports a third-party package
-fails, and the model cannot install one in a code run.
+The code image does not need npm for a program that uses only Node.js's own modules. A program that
+loads one of npm's 869 libraries needs npm's package, and a code run cannot install anything else.
 
 Both images get Node.js 20.19.2 from Debian 13. Node.js 20 reached the end of its upstream support
 on 2026-04-30, by the
@@ -124,28 +138,27 @@ supported Node.js needs a source other than Debian 13's own package.
 
 ### 2. Image sizes
 
-The table counts each image 3 ways:
+The code image holds 453 MiB of files, and the worker image 1147 MiB. The table counts each image 3
+ways:
 
-- **Files** counts every file in the image's root with `du`, in MiB. It is the size of the image
-  unpacked.
+- **Files** counts every file in the image's root with `du`, in MiB: the image unpacked.
 - **Pull** counts the compressed layers that a registry stores and a host pulls, in MB.
-- **Docker disk** is the size that `docker images` prints, which the worker cold start spike
-  recorded. On the containerd image store, it counts both the unpacked files and the compressed
-  layers.
+- **Docker disk** is the size that `docker images` prints, the same measure as in the worker spike.
+  On the containerd image store, it counts both the unpacked files and the compressed layers.
 
 | Image        | Files (MiB) | Pull (MB) | Docker disk | Debian packages |
 | ------------ | ----------: | --------: | ----------: | --------------: |
 | Debian base  |          84 |        30 |      120 MB |              78 |
 | code         |         453 |       115 |      591 MB |             499 |
-| code, no npm |         271 |        94 |      380 MB |             149 |
+| no-npm       |         271 |        94 |      380 MB |             149 |
 | conversation |         781 |       344 |     1.16 GB |              80 |
 | worker       |        1147 |       428 |     1.64 GB |             499 |
 
 The worker image's runtimes and toolbox add 366 MiB of files and 84 MB of pull to the conversation
-image, and 480 MB of Docker disk. The worker cold start spike recorded the same 480 MB gap, on a
-conversation image of 1.03 GB with Agent SDK 0.3.290.
+image, and 480 MB of Docker disk. The worker spike measured the same 480 MB on a conversation image
+of 1.03 GB, so the runtimes' size held while the conversation image grew.
 
-Each package group on the Debian base alone:
+Each group image, on the Debian base alone:
 
 | Group          | Packages                           | Files (MiB) | Over the base (MiB) |
 | -------------- | ---------------------------------- | ----------: | ------------------: |
@@ -156,9 +169,8 @@ Each package group on the Debian base alone:
 | toolbox        | the toolbox's 12 packages          |         120 |                  36 |
 
 npm brings 350 of the code image's 499 Debian packages, among them `node-gyp`, Python and the
-Node.js and OpenSSL headers. On the base alone, npm adds 221 MiB over Node.js. In the code image,
-dropping npm saves only 182 MiB, because Python comes in with pip as well. A code run has no
-network, so npm can install nothing there, and the 3 programs run the same without it.
+Node.js and OpenSSL headers. On the base alone, npm adds 221 MiB over Node.js. The no-npm image
+keeps Python for pip, which npm would bring otherwise, so it is 182 MiB smaller than the code image.
 
 ## Untested
 

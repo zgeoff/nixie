@@ -19,7 +19,7 @@ declare -A groups=(
   [toolbox]="jq ripgrep file less procps findutils gawk sed grep coreutils ca-certificates curl"
 )
 # The code image's packages less npm, which a code run cannot use with no network.
-groups[no-npm]="nodejs python3 python3-pip python3-venv ${groups[toolbox]}"
+groups["no-npm"]="nodejs python3 python3-pip python3-venv ${groups[toolbox]}"
 
 names=(spike-ce-base "$conversation" "$code" "$worker")
 for group in "${!groups[@]}"; do

@@ -1,38 +1,44 @@
 # Spike: the code environment
 
-This spike runs Node.js, Python and shell programs in nixie's code image and worker image, and
-measures the size of each image. It informs whether the image contents and sizes in the
+This spike runs a report program in Node.js, Python and shell in nixie's code and worker images,
+under the code tool's limits, and measures the size of each image. It informs whether the image
+contents and sizes in the
 [sandbox adapter design](../../docs/design/platform/connectors/sandbox-adapter.md#images) are
-enough. The code image is Debian with Node.js, Python and a toolbox of jq, ripgrep, grep and the
-common Linux file and text tools. The worker image is the conversation image, which holds Bun and
-Claude Code, plus the same runtimes and toolbox.
+enough.
 
 ## Question
 
 Do the code and worker images run representative Node.js, Python and shell programs, and how large
 is each image?
 
+The code tool runs a program that the model writes, with no network, 1 vCPU and 1 GiB of memory. For
+the conversation or a task, it runs the program in a fresh sandbox from the code image: Debian with
+Node.js, Python and a toolbox of jq, ripgrep, grep and the common Linux file and text tools. A
+worker runs the program in its own sandbox, from the worker image: the conversation image, which
+holds Bun and Claude Code, plus the same runtimes and toolbox.
+
 ## Answer
 
-- All 3 programs ran in both images under the code tool's limits: no network, 1 vCPU and 1 GiB of
-  memory. Each of the 30 code runs exited 0 and printed the report that the spike expects.
-- Python holds only its standard library, so imports of numpy, pandas and requests failed. Node.js
-  also loads the 869 libraries that Debian's npm package installs, such as lodash. Each pip and npm
-  install failed, because a code run has no network.
+- Each of the 3 programs sums 20 invented orders per region, and uses more of its language's
+  standard library or the toolbox, such as SQLite, zip, gzip and jq. Each one ran 5 times in each
+  image, and all 30 code runs printed the expected report.
+- A Python program can import only the standard library, so imports of numpy, pandas and requests
+  failed. A Node.js program can also `require` the 869 libraries that Debian's npm package installs,
+  such as lodash. With no network, every pip and npm install failed.
 - The code image holds 453 MiB of files, and a host pulls 115 MB of compressed layers for it. The
-  worker image holds 1147 MiB and pulls 428 MB, and its runtimes and toolbox add 366 MiB of files.
-- npm brings 182 MiB of the code image's files. The spike built the code image without npm, which
-  holds 271 MiB and runs all 3 programs.
+  worker image holds 1147 MiB, and a host pulls 428 MB for it.
+- npm brings 182 MiB of the code image's files. A third image, the code image without npm, holds 271
+  MiB and ran the 3 programs with the same results.
 - Both images ship Node.js 20.19.2 from Debian 13, and upstream support for Node.js 20 ended on
   2026-04-30.
 
-Drop npm and the Node.js libraries it brings from the code image, and pick a supported Node.js line
-and any Python data packages before the code tool ships.
+Drop npm and its Node.js libraries from the code image, move to a supported Node.js line, and decide
+whether to add numpy and pandas, before the code tool ships.
 
 ## Run it
 
 Run the script on any machine with Docker, from this folder. It refuses to start when an image named
-`spike-ce-*` exists, and it removes its images on exit.
+`spike-ce-*` exists, so that its cleanup never removes an image it did not build.
 
 ```bash
 bash run.sh
@@ -48,4 +54,5 @@ The [results](results.md) hold the code run, probe and size tables, and the
 ## Untested
 
 The spike timed no Node.js or Python process start from a cold page cache, and it ran nothing in an
-imp, the microVM that runs each sandbox. The [untested list](results.md#untested) gives the rest.
+imp, the microVM that runs each nixie sandbox. The [untested list](results.md#untested) gives the
+rest.
