@@ -1,6 +1,6 @@
-import { open, rename, rm, writeFile } from 'node:fs/promises';
+import { open, rename, writeFile } from 'node:fs/promises';
 import type { ClaimFileLock } from '@heynixie/async';
-import { claimFileLock } from '@heynixie/async';
+import { claimFileLock, removeFile } from '@heynixie/async';
 import type { BackupFileReads } from '@heynixie/wire';
 import { localBackupFileReads } from '@heynixie/wire';
 
@@ -17,7 +17,7 @@ export const localJobFiles: JobFiles = {
   writeFile: (path, text) => writeFile(path, text),
   renameFile: (from, to) => rename(from, to),
   writeToDisk,
-  removeFile: (path) => rm(path, { force: true }),
+  removeFile,
   claimFileLock,
 };
 
