@@ -37,9 +37,9 @@ metadata:
   `@heynixie/mock-server`, as
   [the web client's preload](../../../apps/web/src/mocks/test-preload.ts) does. The shared
   [server and its lifecycle](../testing/references/http.md#the-server-and-its-lifecycle) section
-  lists every package's handlers in the MSW server's `handlers` option. In nixie, each package's
-  preload adds its handlers after the MSW server starts, and `addMockHandlers` keeps the MSW
-  server's catch-all handler after them.
+  lists every package's handlers in the MSW server's `handlers` option. In nixie,
+  `@heynixie/mock-server` builds the one MSW server with only its catch-all handler, each package's
+  preload adds its own handlers to it, and `addMockHandlers` keeps the catch-all handler last.
 - Send a test's real requests only to a loopback host, a host under the reserved `.test` domain or a
   `data:` URL. The catch-all handler passes those three through, and fails every other unmatched
   request with `Failed to fetch`. The same shared section passes only loopback hosts, but no DNS
@@ -60,9 +60,8 @@ metadata:
   one. A whole-server build takes seconds and runs a unit test past its limit.
 - Add each pattern you add to `pathIgnorePatterns` in [`bunfig.toml`](../../../bunfig.toml) to the
   `test` script as well. A `--path-ignore-patterns` flag replaces the config's list.
-- Put each reset of shared state in a preload that [`bunfig.toml`](../../../bunfig.toml) lists,
-  never in a helper module. A hook that an imported module registers binds only to the first file
-  that imports it.
+- Never register a reset hook in a helper module. A hook that an imported module registers binds
+  only to the first file that imports it.
 
 ## The live lanes
 
@@ -87,6 +86,5 @@ metadata:
 - Move a harness to [`libs/testing`](../../../libs/testing/src/) once a second server package needs
   it. That lib is `server-only`, as the [code layout](../../../docs/architecture/code-layout.md)
   defines, so a guest keeps its test helpers in its own package.
-- Put a suite that spawns nixie, the web client or a build of either under `e2e/`. Import the
-  helpers it shares with the browser suites from
+- Import the helpers that an `e2e/` suite shares with the browser suites from
   [`@heynixie/web/test-utils`](../../../apps/web/src/test-utils/index.ts).

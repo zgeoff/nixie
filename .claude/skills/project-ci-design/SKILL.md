@@ -30,4 +30,3 @@ metadata:
 - Add a path to the `paths` of the `changes` job in `compose.yml` when the recipe in
   `deploy/compose/`, or the test build of nixie that the job starts in it, reads a new file. A
   missing path lets a pull request that breaks the recipe skip the check and merge.
-- Expect every push to `main` to run the job, whatever changed, so `main` catches a missing path.
