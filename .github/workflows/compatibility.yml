@@ -52,6 +52,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # the migration check extracts the whole tree of the last release with git archive
+          filter: ''
           persist-credentials: false
 
       - name: Set up Bun
