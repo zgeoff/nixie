@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { stopProcesses } from '@heynixie/testing';
 import { runWebBuildOnce } from '@heynixie/web/test-utils';
 
 test('it builds the web server entry once and shares it', async () => {
@@ -88,9 +89,13 @@ test('it removes the build of a test process that has exited before it builds', 
 });
 
 test('it builds again for the next caller after a build fails', async () => {
+  const cleanup = new AsyncDisposableStack();
+
+  onTestFinished(() => cleanup.disposeAsync());
+
   const tempDir = await mkdtemp(join(tmpdir(), 'nixie-web-build-retry-'));
 
-  onTestFinished(() => rm(tempDir, { recursive: true, force: true }));
+  cleanup.defer(() => rm(tempDir, { recursive: true, force: true }));
 
   await writeFile(join(tempDir, 'not-a-folder'), '');
 
@@ -119,14 +124,15 @@ test('it builds again for the next caller after a build fails', async () => {
     ],
     {
       cwd: import.meta.dir,
+      detached: true,
       env: { ...process.env, NIXIE_WEB_BUILDS_DIR: join(tempDir, 'builds') },
       stderr: 'pipe',
       stdout: 'ignore',
     },
   );
 
-  onTestFinished(() => {
-    child.kill();
+  cleanup.defer(() => {
+    stopProcesses([child.pid]);
   });
 
   const [exitCode, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()]);
