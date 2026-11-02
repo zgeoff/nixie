@@ -233,6 +233,7 @@ jobs:
         with:
           ref: ${{ needs.resolve.outputs.sha }}
           fetch-depth: 0
+          filter: blob:none
           persist-credentials: false
 
       - name: Set up Bun
