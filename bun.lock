@@ -203,6 +203,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/actions": "workspace:*",
+        "@heynixie/async": "workspace:*",
         "@heynixie/backup": "workspace:*",
         "@heynixie/backup-job": "workspace:*",
         "@heynixie/clock": "workspace:*",

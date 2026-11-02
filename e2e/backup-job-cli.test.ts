@@ -1,9 +1,11 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { claimFileLock } from '@heynixie/async';
 import { createStagedSet, createStubRestic } from '@heynixie/backup-job/test-utils';
 import { stopProcesses } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { readBackupJobBundle } from './test-utils/read-backup-job-bundle';
 
 async function setupTest() {
@@ -89,6 +91,50 @@ test('it exits 1 and logs the failed set when restic fails to prune for run', as
 
   expect(exitCode).toBe(1);
   expect(output).toInclude('backup.set_failed');
+});
+
+test('it exits 0 and logs the held lock when another pass holds staging for run', async () => {
+  const ctx = await setupTest();
+
+  await createStagedSet({
+    stagingDir: join(ctx.dataDir, 'backup'),
+    sequence: 1,
+    kind: 'scheduled',
+    isComplete: true,
+  });
+
+  await writeFile(join(ctx.dataDir, 'backup', 'job.lock'), '');
+
+  const lock = claimFileLock(join(ctx.dataDir, 'backup', 'job.lock'), 'exclusive');
+
+  invariant(lock);
+
+  onTestFinished(() => {
+    lock.release();
+  });
+
+  const child = Bun.spawn([process.execPath, ctx.bundle, 'run'], {
+    env: {
+      NIXIE_BACKUP_STAGING_DIR: join(ctx.dataDir, 'backup'),
+      NIXIE_BACKUP_RESTIC: ctx.restic,
+      NIXIE_BACKUP_DATA_REPOSITORY: join(ctx.dataDir, 'repos', 'data'),
+      NIXIE_BACKUP_DATA_PASSWORD: 'data-pass',
+      NIXIE_BACKUP_KEY_REPOSITORY: join(ctx.dataDir, 'repos', 'keys'),
+      NIXIE_BACKUP_KEY_PASSWORD: 'key-pass',
+    },
+    detached: true,
+    stdout: 'pipe',
+    stderr: 'inherit',
+  });
+
+  onTestFinished(() => {
+    stopProcesses([child.pid]);
+  });
+
+  const [output, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
+
+  expect(exitCode).toBe(0);
+  expect(output).toInclude('backup.pass_locked');
 });
 
 test('it exits 1 and names the variable when the job has no key repo', async () => {
