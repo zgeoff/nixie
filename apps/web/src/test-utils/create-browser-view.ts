@@ -1,9 +1,9 @@
 import { join } from 'node:path';
 import { findBrowserRun } from './find-browser-run';
 
-// `bun test --parallel=1` runs the files one after another in one process, and its isolation
-// stops each file's Chrome and loads this module again for the next file. A new Chrome on the last
-// one's profile can start before the last one lets go of it, so each file's Chrome gets its own.
+// Bun runs one Chrome for each process that loads this module, and a test's child process loads it
+// in the same run. Chrome refuses a profile that another Chrome still holds, so each load gets its
+// own.
 const profileName = crypto.randomUUID();
 
 // The first view's options win, so every view opens here. The sandbox needs user namespaces that a

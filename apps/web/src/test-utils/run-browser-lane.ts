@@ -25,9 +25,8 @@ interface BrowserLaneOptions {
   ) => Promise<number>;
 }
 
-// `bun test --parallel=1` isolates each file, so the preload runs again for each one, and the
-// builds and the run ID come from here, once per run. Bun starts Chrome with the environment the
-// test process started with, so Chrome's TMPDIR is set here too.
+// Bun starts Chrome with the environment the test process started with, so Chrome's TMPDIR, and
+// the run ID that names the builds for the preload and the suites, are set before it starts.
 export async function runBrowserLane(
   testArgs: readonly string[],
   options: BrowserLaneOptions,

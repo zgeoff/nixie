@@ -1,7 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { stopProcesses } from '@heynixie/testing';
 import { runWebBuildOnce } from '@heynixie/web/test-utils';
 
 test('it builds the web server entry once and shares it', async () => {
@@ -85,6 +86,59 @@ test('it removes the build of a test process that has exited before it builds', 
   expect(exitCode).toBe(0);
   expect(buildsAfter).toHaveLength(1);
   expect(buildsAfter).not.toContain(String(exited.pid));
+});
+
+test('it builds again for the next caller after a build fails', async () => {
+  const cleanup = new AsyncDisposableStack();
+
+  onTestFinished(() => cleanup.disposeAsync());
+
+  const tempDir = await mkdtemp(join(tmpdir(), 'nixie-web-build-retry-'));
+
+  cleanup.defer(() => rm(tempDir, { recursive: true, force: true }));
+
+  await writeFile(join(tempDir, 'not-a-folder'), '');
+
+  const preloadPath = join(tempDir, 'fail-first-build.ts');
+
+  await writeFile(
+    preloadPath,
+    `const { runWebBuildOnce } = await import(${JSON.stringify(join(import.meta.dir, '..', '..', 'apps', 'web', 'src', 'test-utils', 'run-web-build-once.ts'))});
+    const buildsDir = process.env.NIXIE_WEB_BUILDS_DIR;
+    process.env.NIXIE_WEB_BUILDS_DIR = ${JSON.stringify(join(tempDir, 'not-a-folder', 'builds'))};
+    await runWebBuildOnce().then(() => process.exit(3), () => undefined);
+    process.env.NIXIE_WEB_BUILDS_DIR = buildsDir;`,
+  );
+
+  // the lane's limit stops at this process, so the child run takes it on its own command line
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      'test',
+      '--timeout=15000',
+      '--preload',
+      preloadPath,
+      join(import.meta.dir, 'run-web-build-once.test.ts'),
+      '-t',
+      'it builds the web server entry once and shares it',
+    ],
+    {
+      cwd: import.meta.dir,
+      detached: true,
+      env: { ...process.env, NIXIE_WEB_BUILDS_DIR: join(tempDir, 'builds') },
+      stderr: 'pipe',
+      stdout: 'ignore',
+    },
+  );
+
+  cleanup.defer(() => {
+    stopProcesses([child.pid]);
+  });
+
+  const [exitCode, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()]);
+
+  expect(stderr).toInclude('\n 1 pass\n');
+  expect(exitCode).toBe(0);
 });
 
 // This cap still refuses Node's wasm trap handler reservation, and a lower one leaves some Node
