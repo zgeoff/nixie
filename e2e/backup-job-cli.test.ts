@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createStagedSet, createStubRestic } from '@heynixie/backup-job/test-utils';
+import { stopProcesses } from '@heynixie/testing';
 import { readBackupJobBundle } from './test-utils/read-backup-job-bundle';
 
 async function setupTest() {
@@ -35,8 +36,13 @@ test('it publishes the staged sets once and exits 0 for run', async () => {
       NIXIE_BACKUP_KEY_REPOSITORY: join(ctx.dataDir, 'repos', 'keys'),
       NIXIE_BACKUP_KEY_PASSWORD: 'key-pass',
     },
+    detached: true,
     stdout: 'pipe',
     stderr: 'inherit',
+  });
+
+  onTestFinished(() => {
+    stopProcesses([child.pid]);
   });
 
   const [output, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
@@ -60,8 +66,13 @@ test('it exits 1 and names the variable when the job has no key repo', async () 
       NIXIE_BACKUP_DATA_REPOSITORY: join(ctx.dataDir, 'repos', 'data'),
       NIXIE_BACKUP_DATA_PASSWORD: 'data-pass',
     },
+    detached: true,
     stdout: 'pipe',
     stderr: 'inherit',
+  });
+
+  onTestFinished(() => {
+    stopProcesses([child.pid]);
   });
 
   const [output, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
