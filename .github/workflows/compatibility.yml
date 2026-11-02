@@ -25,7 +25,7 @@ defaults:
 
 jobs:
   changes:
-    uses: zgeoff/tools/.github/workflows/paths-changed.yml@bafbfb087ef4495ace20b448775beb6f55486a4c # main
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@931e0b748396d6ed4bca8531eacba01cc506dcb0 # main
     with:
       paths: |
         .github/workflows/compatibility.yml
