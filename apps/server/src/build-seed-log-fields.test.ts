@@ -168,7 +168,7 @@ test('it logs the message of a refused seed whose definitions directory is not c
     inForceContentHash: null,
     inForceSnapshotHash: null,
     error: 'Error',
-    message: `ENOENT: no such file or directory, lstat '${ctx.root}'`,
+    message: `ENOENT: no such file or directory, realpath '${ctx.root}'`,
   });
 });
 
