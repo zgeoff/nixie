@@ -19,7 +19,7 @@ metadata:
   [`build-sqlite-worker-dialect.ts`](../../../libs/db/src/build-sqlite-worker-dialect.ts) defines
   nixie's `executeQuery`.
 
-## Exempt names
+## The function-verb lint rule
 
 - Add each such name to the `exemptNames` option of the `zgeoff/function-verb` lint rule in
   [`.oxlintrc.json`](../../../.oxlintrc.json), in the commit that adds the method. The rule exempts
