@@ -3,10 +3,14 @@ import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ContractClient } from '@heynixie/contract';
 import { clientHeaderName } from '@heynixie/contract';
-import { createTestClient, runHostCommand, sendClientMessage } from '@heynixie/server/test-utils';
+import {
+  createTestClient,
+  runHostCommand,
+  sendClientMessage,
+  startSpawnedNixie,
+} from '@heynixie/server/test-utils';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
-import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 test('it backs up a running server and restores it into an empty data directory through the nixie executable, and the restarted server reads its messages with the deployment key', async () => {
   const nixie = await startSpawnedNixie();

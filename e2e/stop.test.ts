@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
-import { createTestClient } from '@heynixie/server/test-utils';
+import { createTestClient, startSpawnedNixie } from '@heynixie/server/test-utils';
 import { waitForCondition } from '@heynixie/testing';
-import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 test('it stops claiming steps on SIGTERM, lets the turn in flight commit and exits 0', async () => {
   const nixie = await startSpawnedNixie();

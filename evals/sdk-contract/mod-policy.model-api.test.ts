@@ -1,60 +1,31 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Options } from '@anthropic-ai/claude-agent-sdk';
+import {
+  buildContractEnv,
+  collectToolCalls,
+  runModPolicyProbe,
+} from '@heynixie/conversation/sdk-contract';
 import invariant from 'tiny-invariant';
-import { buildContractEnv } from '../test-utils/build-contract-env';
-import { collectToolCalls } from '../test-utils/collect-tool-calls';
-import { runContractQuery } from '../test-utils/run-contract-query';
 
 // Each probe calls the model on the subscription, so only a contract run enables it. Bun 1.4.2's
 // skipIf takes a boolean and has no in-body skip.
 const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 
-// The CLI writes type files into each mod it loads, so the probe loads a copy and never the
-// committed mods.
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-contract-mods-'));
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  const options: Options = {
-    cwd: directory,
-    model: 'claude-haiku-5-5',
-    settingSources: [],
-    tools: ['Bash'],
-    allowedTools: ['Bash'],
-    permissionMode: 'default',
-    permissionPrompts: 'none',
-    maxTurns: 10,
-    env: buildContractEnv(process.env, directory),
-  };
-
-  return { directory, options };
+  return { target: { directory, env: buildContractEnv(process.env, directory) } };
 }
 
 test.skipIf(!isContractRun)(
   'it lets a policy mod deny, rewrite and answer a tool call, and deny one that a rule allowed',
   async () => {
     const ctx = await setupTest();
-
-    const mods = join(ctx.directory, 'mods');
-
-    await cp(join(import.meta.dir, 'mods'), mods, { recursive: true });
-
-    const run = await runContractQuery({
-      prompt:
-        'Run each of these shell commands with the Bash tool, one tool call per command, one after ' +
-        'another, never in parallel. Do not retry or change any command.\n' +
-        '1. echo plain MARK_NONE\n2. echo blocked MARK_DENY\n3. echo original MARK_REWRITE\n' +
-        '4. echo original MARK_ANSWER\n5. echo original MARK_ANSWER_TEXT\n6. echo checked MARK_CHECK\n' +
-        'Then reply DONE.',
-      options: {
-        ...ctx.options,
-        plugins: [{ type: 'local', path: join(mods, 'nixie-policy') }],
-      },
-    });
+    const run = await runModPolicyProbe(ctx.target, 'policy');
 
     const init = run.messages.find(
       (message) => message.type === 'system' && message.subtype === 'init',
@@ -116,20 +87,7 @@ test.skipIf(!isContractRun)(
   'it leaves the mod command out of the session start when the mod throws as it loads',
   async () => {
     const ctx = await setupTest();
-
-    const mods = join(ctx.directory, 'mods');
-
-    await cp(join(import.meta.dir, 'mods'), mods, { recursive: true });
-
-    const run = await runContractQuery({
-      prompt:
-        'Run this shell command with the Bash tool, and do not retry or change it: ' +
-        '`echo first MARK_DENY`. Then reply DONE.',
-      options: {
-        ...ctx.options,
-        plugins: [{ type: 'local', path: join(mods, 'nixie-throw-load') }],
-      },
-    });
+    const run = await runModPolicyProbe(ctx.target, 'throw-load');
 
     const init = run.messages.find(
       (message) => message.type === 'system' && message.subtype === 'init',
@@ -155,20 +113,7 @@ test.skipIf(!isContractRun)(
   'it denies a tool call when a hook throws and its registration has a catch handler',
   async () => {
     const ctx = await setupTest();
-
-    const mods = join(ctx.directory, 'mods');
-
-    await cp(join(import.meta.dir, 'mods'), mods, { recursive: true });
-
-    const run = await runContractQuery({
-      prompt:
-        'Run this shell command with the Bash tool, and do not retry or change it: ' +
-        '`echo first MARK_NONE`. Then reply DONE.',
-      options: {
-        ...ctx.options,
-        plugins: [{ type: 'local', path: join(mods, 'nixie-throw-hook-catch') }],
-      },
-    });
+    const run = await runModPolicyProbe(ctx.target, 'throw-hook-catch');
 
     expect(collectToolCalls(run.messages)).toStrictEqual([
       {
@@ -186,25 +131,13 @@ test.skipIf(!isContractRun)(
   16_000,
 );
 
+// The stub-model suite leaves this case out: the CLI waits out its own hooks-worker watchdog, about
+// 9 s, before it drops the mod, past the Agent SDK lane's 5 s limit.
 test.skipIf(!isContractRun)(
   'it drops the mod command from the session when a hook wedges the hooks worker',
   async () => {
     const ctx = await setupTest();
-
-    const mods = join(ctx.directory, 'mods');
-
-    await cp(join(import.meta.dir, 'mods'), mods, { recursive: true });
-
-    const run = await runContractQuery({
-      prompt:
-        'Run these two shell commands with the Bash tool, one tool call each, one after the other, ' +
-        'and do not retry or change them: `echo first MARK_BLOCK`, then `echo second MARK_DENY`. ' +
-        'Then reply DONE.',
-      options: {
-        ...ctx.options,
-        plugins: [{ type: 'local', path: join(mods, 'nixie-busy-loop') }],
-      },
-    });
+    const run = await runModPolicyProbe(ctx.target, 'busy-loop');
 
     const init = run.messages.find(
       (message) => message.type === 'system' && message.subtype === 'init',

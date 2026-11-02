@@ -9,8 +9,6 @@ export interface TestBundle extends ReleaseBundle {
   readonly mainText: string;
 }
 
-const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
-
 const bundleSchema = z.object({
   files: z.array(z.string()),
   testBuildIDs: z.array(z.string()),
@@ -19,17 +17,7 @@ const bundleSchema = z.object({
 // A bundle of the whole server takes seconds, and a test that built one ran past the unit limit
 // beside the other workers, so the test script writes both bundles before the unit run starts.
 export async function readTestBundle(isTestBuild: boolean): Promise<TestBundle> {
-  const directory = await createRunTemplate({
-    name: isTestBuild ? 'nixie-test-bundle' : 'nixie-release-bundle',
-    root: repoRoot,
-    parentDir: join(repoRoot, 'node_modules', '.cache', 'nixie-test-bundles'),
-    inputs: ['{apps,modules,libs,adapters,guests}/*/src/**/*', '*/*/package.json', 'bun.lock'],
-    write: async (building) => {
-      const bundle = await writeReleaseBundle(join(building, 'out'), isTestBuild);
-
-      await Bun.write(join(building, 'bundle.json'), JSON.stringify(bundle));
-    },
-  });
+  const directory = await writeBundleTemplate(isTestBuild);
 
   const entry = join(directory, 'out', 'main.js');
 
@@ -41,4 +29,20 @@ export async function readTestBundle(isTestBuild: boolean): Promise<TestBundle> 
   ]);
 
   return { ...bundle, entry, mainText };
+}
+
+const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
+
+function writeBundleTemplate(isTestBuild: boolean): Promise<string> {
+  return createRunTemplate({
+    name: isTestBuild ? 'nixie-test-bundle' : 'nixie-release-bundle',
+    root: repoRoot,
+    parentDir: join(repoRoot, 'node_modules', '.cache', 'nixie-test-bundles'),
+    inputs: ['{apps,modules,libs,adapters,guests}/*/src/**/*', '*/*/package.json', 'bun.lock'],
+    write: async (building) => {
+      const bundle = await writeReleaseBundle(join(building, 'out'), isTestBuild);
+
+      await Bun.write(join(building, 'bundle.json'), JSON.stringify(bundle));
+    },
+  });
 }

@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { startSpawnedNixie } from '@heynixie/server/test-utils';
 import invariant from 'tiny-invariant';
-import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 async function setupTest() {
   const nixie = await startSpawnedNixie();

@@ -51,7 +51,7 @@ async function createIsolationAdapter(
   defer(() => rm(directory, { recursive: true, force: true }));
   startStubToolEndpoint(join(directory, 'tools.sock'));
 
-  await createTestSecret(options);
+  await createTestSecret(options, defer);
 
   const sandboxes = buildSandboxTracker(
     buildImpSandboxAdapter({
@@ -68,7 +68,10 @@ async function createIsolationAdapter(
   return { createSandbox: sandboxes.create };
 }
 
-async function createTestSecret(options: IsolationAdapterOptions): Promise<void> {
+async function createTestSecret(
+  options: IsolationAdapterOptions,
+  defer: (cleanup: () => Promise<void>) => void,
+): Promise<void> {
   const name = options.secret;
 
   const held = await options.port.readSecretHosts(name);
@@ -85,7 +88,7 @@ async function createTestSecret(options: IsolationAdapterOptions): Promise<void>
     scheme: 'raw',
   });
 
-  onTestFinished(async () => {
+  defer(async () => {
     await Promise.allSettled([added]);
 
     const left = await options.port.readSecretHosts(name);

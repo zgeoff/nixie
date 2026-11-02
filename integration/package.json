@@ -1,0 +1,15 @@
+{
+  "name": "@heynixie/integration",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsrs --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/memory": "workspace:*",
+    "@heynixie/server": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
+    "tiny-invariant": "catalog:"
+  }
+}

@@ -53,16 +53,13 @@
       "error",
       {
         "zones": {
-          // the SDK contract suite and its helpers drive the Agent SDK itself, to check it, and the
-          // memory checker and writer evals swap the brokered key for the local login
+          // the SDK contract suite drives the Agent SDK itself, to check it, and the memory checker
+          // and writer evals swap the brokered key for the local login
           "agent-sdk": [
             "guests/conversation/**",
             "evals/sdk-contract/**",
             "evals/memory-checker/run-memory-checker-eval.ts",
-            "evals/memory-writer/run-memory-writer-eval.ts",
-            "evals/test-utils/collect-tool-calls*.ts",
-            "evals/test-utils/run-contract-query*.ts",
-            "evals/test-utils/start-input-stream*.ts"
+            "evals/memory-writer/run-memory-writer-eval.ts"
           ],
           "imp-client": ["adapters/sandbox-imp/**"],
           "db": ["libs/db/**"]

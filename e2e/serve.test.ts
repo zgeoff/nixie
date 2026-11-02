@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
-import { createTestClient } from '@heynixie/server/test-utils';
+import { createTestClient, startSpawnedNixie } from '@heynixie/server/test-utils';
 import { waitForCondition } from '@heynixie/testing';
-import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
 test('it answers a message through the real guest and keeps its text out of the data files and the output', async () => {
   const nixie = await startSpawnedNixie();

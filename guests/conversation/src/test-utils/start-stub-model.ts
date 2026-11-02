@@ -12,6 +12,8 @@ type ScriptedMessage = (
   readonly inputTokens?: number;
   readonly cacheReadTokens?: number;
   readonly cacheWriteTokens?: number;
+  readonly isEndless?: boolean;
+  readonly isOutputCapped?: boolean;
   readonly thinking?: {
     readonly summary: string;
     readonly signature: string;
@@ -26,6 +28,9 @@ type ScriptedReply =
     }
   | {
       readonly authFailure: string;
+    }
+  | {
+      readonly notFound: string;
     };
 
 const stubMessageSchema = z.looseObject({ role: z.string(), content: z.unknown() });
@@ -57,12 +62,18 @@ export interface StubModel {
   readonly requests: readonly StubModelRequest[];
 
   readonly addReplies: (...replies: readonly ScriptedReply[]) => void;
+  readonly setCharactersPerToken: (rate: number) => void;
   readonly stop: () => Promise<void>;
+}
+
+interface StubScript {
+  readonly replies: ScriptedReply[];
+  charactersPerToken: number | null;
 }
 
 export function startStubModel(): StubModel {
   const requests: StubModelRequest[] = [];
-  const script: ScriptedReply[] = [];
+  const script: StubScript = { replies: [], charactersPerToken: null };
 
   const answerRequest = async (request: Request) => {
     const recorded = await readRequest(request);
@@ -82,7 +93,10 @@ export function startStubModel(): StubModel {
     url: `http://127.0.0.1:${server.port}`,
     requests,
     addReplies: (...replies) => {
-      script.push(...replies);
+      script.replies.push(...replies);
+    },
+    setCharactersPerToken: (rate) => {
+      script.charactersPerToken = rate;
     },
     stop: async () => {
       await server.stop(true);
@@ -100,16 +114,16 @@ async function readRequest(request: Request): Promise<StubModelRequest> {
   };
 }
 
-function renderResponse(request: StubModelRequest, script: ScriptedReply[]): Response {
+function renderResponse(request: StubModelRequest, script: StubScript): Response {
   if (request.path === '/v1/messages/count_tokens') {
-    return Response.json({ input_tokens: 10 });
+    return Response.json({ input_tokens: buildTokenCount(request, script.charactersPerToken) });
   }
 
   if (request.path !== '/v1/messages' || request.body === null) {
     return new Response('not found', { status: 404 });
   }
 
-  const reply = script.shift() ?? { refusal: 'the stub model has no reply left' };
+  const reply = script.replies.shift() ?? { refusal: 'the stub model has no reply left' };
 
   if ('refusal' in reply) {
     return renderRefusal(reply.refusal);
@@ -119,9 +133,21 @@ function renderResponse(request: StubModelRequest, script: ScriptedReply[]): Res
     return renderAuthFailure(reply.authFailure);
   }
 
+  if ('notFound' in reply) {
+    return renderNotFound(reply.notFound);
+  }
+
   const model = request.body.model ?? 'stub';
 
   return request.body.stream === true ? renderStream(reply, model) : renderWhole(reply, model);
+}
+
+function buildTokenCount(request: StubModelRequest, charactersPerToken: number | null): number {
+  if (charactersPerToken === null) {
+    return 10;
+  }
+
+  return Math.ceil(JSON.stringify(request.body?.messages ?? []).length / charactersPerToken);
 }
 
 function renderRefusal(message: string): Response {
@@ -138,13 +164,20 @@ function renderAuthFailure(message: string): Response {
   );
 }
 
+function renderNotFound(message: string): Response {
+  return Response.json(
+    { type: 'error', error: { type: 'not_found_error', message } },
+    { status: 404 },
+  );
+}
+
 function renderStream(reply: ScriptedMessage, model: string): Response {
   const block = buildBlock(reply);
   const isTool = 'toolUse' in reply;
   const thinkingEvents = buildThinkingStreamEvents(reply.thinking);
   const index = thinkingEvents.length === 0 ? 0 : 1;
 
-  const events = [
+  const opening = [
     {
       type: 'message_start',
       message: {
@@ -171,10 +204,13 @@ function renderStream(reply: ScriptedMessage, model: string): Response {
         ? { type: 'input_json_delta', partial_json: JSON.stringify(reply.toolUse.input) }
         : { type: 'text_delta', text: reply.text },
     },
+  ];
+
+  const closing = [
     { type: 'content_block_stop', index },
     {
       type: 'message_delta',
-      delta: { stop_reason: isTool ? 'tool_use' : 'end_turn', stop_sequence: null },
+      delta: { stop_reason: pickStopReason(reply), stop_sequence: null },
 
       usage: {
         output_tokens: 5,
@@ -186,9 +222,19 @@ function renderStream(reply: ScriptedMessage, model: string): Response {
     { type: 'message_stop' },
   ];
 
+  const headers = { 'content-type': 'text/event-stream' };
+
+  if (reply.isEndless !== true) {
+    return new Response(renderEvents([...opening, ...closing]), { headers });
+  }
+
   return new Response(
-    events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(''),
-    { headers: { 'content-type': 'text/event-stream' } },
+    new ReadableStream({
+      start: (controller) => {
+        controller.enqueue(new TextEncoder().encode(renderEvents(opening)));
+      },
+    }),
+    { headers },
   );
 }
 
@@ -244,6 +290,18 @@ function buildUsage(reply: ScriptedMessage, outputTokens: number): Record<string
   };
 }
 
+function pickStopReason(reply: ScriptedMessage): string {
+  if (reply.isOutputCapped === true) {
+    return 'max_tokens';
+  }
+
+  return 'toolUse' in reply ? 'tool_use' : 'end_turn';
+}
+
+function renderEvents(events: readonly StreamEvent[]): string {
+  return events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join('');
+}
+
 function renderWhole(reply: ScriptedMessage, model: string): Response {
   const block = buildBlock(reply);
   const thinking = reply.thinking;
@@ -254,7 +312,7 @@ function renderWhole(reply: ScriptedMessage, model: string): Response {
     role: 'assistant',
     model,
     content: thinking === undefined ? [block] : [buildThinkingBlock(thinking), block],
-    stop_reason: 'toolUse' in reply ? 'tool_use' : 'end_turn',
+    stop_reason: pickStopReason(reply),
     stop_sequence: null,
     usage: {
       ...buildUsage(reply, 5),

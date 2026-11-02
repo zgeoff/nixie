@@ -3,12 +3,10 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { runCheckQuery } from '@heynixie/conversation';
+import type { CheckerCall, CheckerReport, CheckerSample } from '@heynixie/memory/evals';
+import { buildCheckerEvalInput, loadCheckerCorpus } from '@heynixie/memory/evals';
 import { renderPrompt } from '@heynixie/prompts';
 import { makeChecker } from '@heynixie/sessions';
-import { buildCheckerEvalInput } from '../test-utils/build-checker-eval-input';
-import type { CheckerSample } from '../test-utils/load-checker-corpus';
-import { loadCheckerCorpus } from '../test-utils/load-checker-corpus';
-import type { CheckerCall, CheckerReport } from '../test-utils/load-checker-report';
 
 const model = 'claude-sonnet-5-5';
 const effort = 'low';

@@ -1,11 +1,13 @@
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
+import type { LabelledCall } from '@heynixie/memory/evals';
+import {
+  buildCheckerEvalInput,
+  collectLabelledCalls,
+  loadCheckerCorpus,
+  loadCheckerReport,
+} from '@heynixie/memory/evals';
 import { renderPrompt } from '@heynixie/prompts';
-import { buildCheckerEvalInput } from '../test-utils/build-checker-eval-input';
-import type { LabelledCall } from '../test-utils/collect-labelled-calls';
-import { collectLabelledCalls } from '../test-utils/collect-labelled-calls';
-import { loadCheckerCorpus } from '../test-utils/load-checker-corpus';
-import { loadCheckerReport } from '../test-utils/load-checker-report';
 
 interface SetupConfig {
   readonly name:

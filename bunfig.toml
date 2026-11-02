@@ -8,20 +8,12 @@ exact = true
 # supply-chain guard: only install versions published >= 7 days ago
 minimumReleaseAge = 604800
 
-# @maschwenk/tsrslint 0.1.6 (published 2026-10-26) ages past the gate ~2026-11-02 — remove then
-# @maschwenk/tsrslint-linux-x64 0.1.6 (published 2026-10-26) ages past the gate ~2026-11-02 — remove then
-# @maschwenk/tsrslint-linux-arm64 0.1.6 (published 2026-10-26) ages past the gate ~2026-11-02 — remove then
-# @maschwenk/tsrslint-darwin-arm64 0.1.6 (published 2026-10-26) ages past the gate ~2026-11-02 — remove then
 # first-party packages skip the gate; their own dependencies stay behind it.
 # Renovate bumps @zgeoff and @impz packages as soon as they publish, so each
 # one nixie uses needs an entry here, or bun install refuses the bump.
 minimumReleaseAgeExcludes = [
   "@impz/client",
   "@impz/testing",
-  "@maschwenk/tsrslint",
-  "@maschwenk/tsrslint-darwin-arm64",
-  "@maschwenk/tsrslint-linux-arm64",
-  "@maschwenk/tsrslint-linux-x64",
   "@zgeoff/agent-hooks",
   "@zgeoff/bun-test-extended",
   "@zgeoff/bun-test-react",
@@ -40,10 +32,12 @@ pathIgnorePatterns = ["docs/design/**", "research/**"]
 preload = [
   "./libs/testing/src/define-test-build.ts",
   "./libs/testing/src/set-test-tmpdir.ts",
+  "./libs/testing/src/keep-native-web-socket.ts",
   "@zgeoff/bun-test-extended",
   "@zgeoff/bun-test-react",
   "./libs/testing/src/restore-native-form-data.ts",
   "./libs/testing/src/restore-native-base64.ts",
+  "./libs/testing/src/restore-native-web-socket.ts",
   "./libs/mock-server/src/start-mock-server.ts",
   "./apps/web/src/mocks/test-preload.ts",
   "./adapters/definitions-github/src/mocks/test-preload.ts",

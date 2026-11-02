@@ -35,6 +35,7 @@ adapters/          one outside system each, named <interface>-<system> (sandbox-
 guests/            programs that run inside a sandbox; reach nixie only through libs/wire
 libs/              shared code that belongs to no domain
 e2e/               whole-program suites
+integration/       in-process suites of one flow across several packages
 evals/             checks committed evaluation reports against the code
 research/<name>/   spikes: a Bun package each, indexed in research/README.md; CI typechecks
                    those in the workspace and runs none, and product code never imports them
@@ -76,8 +77,8 @@ Boundaries:
 
 The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package:
 
-- The Agent SDK: `guests/conversation`. The SDK contract suite and its eval helpers in `evals/` may
-  import it too, because they check the SDK itself.
+- The Agent SDK: `guests/conversation`. The SDK contract suite in `evals/` may import it too,
+  because it checks the SDK itself.
 - imp's client: `adapters/sandbox-imp`.
 - `bun:sqlite` and the Kysely dialect: `libs/db`.
 

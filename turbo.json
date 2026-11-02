@@ -54,8 +54,15 @@
       "e2e": {
         "dependencies": { "allow": ["app", "client", "sidecar", "module", "adapter", "lib"] }
       },
+      // the in-process suites run one flow across several packages on the server's test harnesses,
+      // and nothing depends on them
+      "integration": {
+        "dependencies": { "allow": ["app", "module", "adapter", "lib"] }
+      },
       "server-only": {
-        "dependents": { "allow": ["app", "module", "adapter", "server-only", "eval", "e2e"] }
+        "dependents": {
+          "allow": ["app", "module", "adapter", "server-only", "eval", "e2e", "integration"]
+        }
       }
     }
   }

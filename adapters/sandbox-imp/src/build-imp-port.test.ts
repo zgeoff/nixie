@@ -1,7 +1,11 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { TEST_TOKEN, startTestImpd } from '@impz/testing';
+import invariant from 'tiny-invariant';
 import { buildImpPort } from './build-imp-port';
+import { attachTestGuests } from './test-utils/attach-test-guests';
+import { setupIsolationAdapter } from './test-utils/setup-isolation-adapter';
 import { startStubImpd } from './test-utils/start-stub-impd';
 
 test('it refuses to read the features of an impd whose version the client does not speak', () => {
@@ -145,6 +149,109 @@ test('it reads the features of a real impd that runs in the test process', async
     publicEgress: true,
     isEgressEnforced: true,
     hasBackupOptOut: true,
+  });
+});
+
+test('it lets a conversation imp reach the tool endpoint through the reverse forward', async () => {
+  const impd = await startTestImpd();
+
+  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+
+  // The adapter's cleanup removes its imps and its secret through impd, so impd stops after it.
+  const started = setupIsolationAdapter({
+    port: guested.port,
+    removeSecret: async (name) => {
+      await impd.client.secrets.delete({ name });
+    },
+    publicEgress: null,
+    secret: 'nixie-test-tide',
+  });
+
+  onTestFinished(impd.stop);
+
+  const isolation = await started;
+
+  await impd.seedImage('tide-image');
+
+  const sandbox = await isolation.createSandbox(
+    buildMockSandboxSpec({
+      kind: 'conversation',
+      image: 'tide-image',
+      grants: [buildMockGrantSpec({ secret: 'nixie-test-tide', host: 'api.anthropic.com' })],
+      toolRoute: true,
+    }),
+  );
+
+  const route = await sandbox.toolRoute();
+
+  invariant(route);
+
+  const stream = await guested.getGuest(sandbox.id).connect(Number(new URL(route.url).port));
+
+  stream.write('GET /mcp HTTP/1.0\r\nHost: tools\r\nAuthorization: Bearer run-token\r\n\r\n');
+
+  const chunks = await stream.toArray();
+
+  const response = Buffer.concat(chunks).toString();
+  const body = response.slice(response.indexOf('\r\n\r\n') + 4);
+
+  expect(JSON.parse(body)).toStrictEqual({
+    path: '/mcp',
+    authorization: 'Bearer run-token',
+  });
+});
+
+test('it reopens the tool route of a conversation imp after a sleep and a wake', async () => {
+  const impd = await startTestImpd();
+
+  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+
+  // The adapter's cleanup removes its imps and its secret through impd, so impd stops after it.
+  const started = setupIsolationAdapter({
+    port: guested.port,
+    removeSecret: async (name) => {
+      await impd.client.secrets.delete({ name });
+    },
+    publicEgress: null,
+    secret: 'nixie-test-tide',
+  });
+
+  onTestFinished(impd.stop);
+
+  const isolation = await started;
+
+  await impd.seedImage('tide-image');
+
+  const sandbox = await isolation.createSandbox(
+    buildMockSandboxSpec({
+      kind: 'conversation',
+      image: 'tide-image',
+      grants: [buildMockGrantSpec({ secret: 'nixie-test-tide', host: 'api.anthropic.com' })],
+      toolRoute: true,
+    }),
+  );
+
+  invariant(sandbox.suspension.kind === 'memory');
+
+  await sandbox.suspension.sleep();
+  await sandbox.suspension.wake();
+
+  const route = await sandbox.toolRoute();
+
+  invariant(route);
+
+  const stream = await guested.getGuest(sandbox.id).connect(Number(new URL(route.url).port));
+
+  stream.write('GET /mcp HTTP/1.0\r\nHost: tools\r\nAuthorization: Bearer run-token\r\n\r\n');
+
+  const chunks = await stream.toArray();
+
+  const response = Buffer.concat(chunks).toString();
+  const body = response.slice(response.indexOf('\r\n\r\n') + 4);
+
+  expect(JSON.parse(body)).toStrictEqual({
+    path: '/mcp',
+    authorization: 'Bearer run-token',
   });
 });
 

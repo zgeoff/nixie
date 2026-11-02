@@ -153,9 +153,9 @@ below, and planned work lives in Linear.
 - [Run the Agent SDK contract suite](runbooks/sdk-contract-suite.md) — run the probes against the
   model, and act on one that fails
 - [Run the imp isolation tests](runbooks/imp-isolation-tests.md) — what a conversation imp and a
-  public imp reach, on a host with impd
+  fetch sandbox reach, on a host with impd
 - [The Agent SDK contract suite](../evals/sdk-contract/README.md) — the SDK behaviours nixie relies
-  on, checked against the model on every SDK bump
+  on, checked against a stub model on every pull request and against the model on every SDK bump
 
 ## Design
 

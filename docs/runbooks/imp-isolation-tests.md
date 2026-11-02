@@ -1,34 +1,22 @@
 # Run the imp isolation tests
 
-The isolation tests in `adapters/sandbox-imp/src/build-imp-port.imp.test.ts` check what a
-conversation imp reaches through the imp adapter on the real impd port. Through the reverse forward
-it reaches the tool endpoint. Through the broker it reaches only the model host. Every direct
-connection fails: the internet, the model host, impd, the gateway, the metadata service and
-`100.100.100.100`. With the host addresses set, a further test checks that a public imp reaches the
-internet and never a host address or impd. The tests skip unless the variables below are set, and
-they need a host with `/dev/kvm` and impd.
-
-A guest cannot resolve impd's name or the model host's, so a probe of either name fails at the
-lookup whatever the network allows. The machine that runs the tests resolves each name, and the
-guest probes each address. A direct probe passes only on curl's exit for a refused connection (7) or
-a dropped one (28), never on a failed lookup. The tests that expect refusals also probe the imp's
-own tool route, which must answer, so a guest that reaches nothing at all fails them.
+The test in `adapters/sandbox-imp/src/build-imp-port.imp.test.ts` checks that a conversation imp
+made through the imp adapter on a real impd reaches the model host through the broker. The test
+skips unless the variables below are set, and it needs a host with `/dev/kvm` and impd. The imp
+port's other cases run in the unit run on the test impd from `@impz/testing`, and impz's own e2e
+suites check that an imp reaches nothing else.
 
 1. Start an impd that you can create imps and secrets on, and get a token with manage scope for it.
-2. Import an image that holds `sh`, `curl` and `ip`, such as `ubuntu:24.04` with `curl` installed.
-3. Run the tests from `adapters/sandbox-imp`:
+2. Import an image that holds `sh` and `curl`, such as `ubuntu:24.04` with `curl` installed.
+3. Run the test from `adapters/sandbox-imp`:
 
    ```bash
    cd adapters/sandbox-imp
    NIXIE_IMP_TEST_URL=<impd_url> \
    NIXIE_IMP_TEST_TOKEN=<impd_token> \
    NIXIE_IMP_TEST_IMAGE=<image_name> \
-   NIXIE_IMP_TEST_HOST_ADDRESSES=<host_addresses> \
    bun run test:imp
    ```
-
-   Leave out `NIXIE_IMP_TEST_HOST_ADDRESSES` to skip the public egress test. It takes the same list
-   that impd reads from `IMP_HOST_ADDRESSES`.
 
 Expect `0 fail`, with no skipped test. The package's `test:imp` script runs its `*.imp.test.ts`
 files under the imp lane's limit per test.

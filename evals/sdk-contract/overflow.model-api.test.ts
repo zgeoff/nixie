@@ -2,14 +2,11 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Options } from '@anthropic-ai/claude-agent-sdk';
-import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
-import invariant from 'tiny-invariant';
-import { z } from 'zod';
-import { buildContractEnv } from '../test-utils/build-contract-env';
-import { buildFiller } from '../test-utils/build-filler';
-import { loadSessionTranscript } from '../test-utils/load-session-transcript';
-import { runContractQuery } from '../test-utils/run-contract-query';
+import {
+  buildContractEnv,
+  runOverflowForkProbe,
+  runOverflowProbe,
+} from '@heynixie/conversation/sdk-contract';
 
 // Each probe calls the model on the subscription, so only a contract run enables it. Bun 1.4.2's
 // skipIf takes a boolean and has no in-body skip.
@@ -20,58 +17,14 @@ async function setupTest() {
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  const pages = createSdkMcpServer({
-    name: 'pages',
-    version: '0.0.0',
-    tools: [
-      tool('read_page', 'Reads one page of the harbour log.', { page: z.number().int() }, (args) =>
-        Promise.resolve({
-          content: [{ type: 'text', text: buildFiller(4000, `page ${args.page}`) }],
-        }),
-      ),
-    ],
-  });
-
-  const options: Options = {
-    cwd: directory,
-    model: 'claude-haiku-5-5',
-    settingSources: [],
-    tools: [],
-    allowedTools: ['mcp__pages'],
-    mcpServers: { pages },
-    permissionMode: 'dontAsk',
-    systemPrompt: 'You are a terse assistant in a test. Follow the instructions exactly.',
-    settings: { autoCompactEnabled: false, autoCompactWindow: 100_000 },
-    env: {
-      ...buildContractEnv(process.env, directory),
-
-      CLAUDE_CODE_BLOCKING_LIMIT_OVERRIDE: '24000',
-      MAX_MCP_OUTPUT_TOKENS: '100000',
-    },
-  };
-
-  return { directory, options };
+  return { target: { directory, env: buildContractEnv(process.env, directory) } };
 }
 
 test.skipIf(!isContractRun)(
   'it ends a turn whose tool calls pass the CLI limit with a blocking_limit result and no compaction',
   async () => {
     const ctx = await setupTest();
-
-    const first = await runContractQuery({
-      prompt: `Here are harbour notes to keep in mind:\n${buildFiller(14_000, 'note')}\nReply with OK only.`,
-      options: ctx.options,
-    });
-
-    const firstResult = first.messages.findLast((message) => message.type === 'result');
-
-    invariant(firstResult);
-
-    const run = await runContractQuery({
-      prompt:
-        'Use read_page to read pages 1, 2, 3 and 4, one call at a time and in that order. Then reply DONE.',
-      options: { ...ctx.options, resume: firstResult.session_id },
-    });
+    const run = await runOverflowProbe(ctx.target, 'tool-calls');
 
     expect(run.messages.at(-1)).toMatchObject({
       type: 'result',
@@ -92,49 +45,21 @@ test.skipIf(!isContractRun)(
   'it drops a failed overflow turn from a fork at the last committed boundary',
   async () => {
     const ctx = await setupTest();
+    const run = await runOverflowForkProbe(ctx.target);
 
-    const first = await runContractQuery({
-      prompt: `Here are harbour notes to keep in mind:\n${buildFiller(14_000, 'note')}\nReply with OK only.`,
-      options: ctx.options,
+    const forkResult = run.fork.messages.at(-1);
+
+    expect(run.seed.messages.at(-1)).toMatchObject({
+      type: 'result',
+      terminal_reason: 'blocking_limit',
     });
 
-    const boundary = first.messages.findLast((message) => message.type === 'assistant');
-
-    invariant(boundary);
-
-    const failed = await runContractQuery({
-      prompt:
-        'Use read_page to read pages 1, 2, 3 and 4, one call at a time and in that order. Then reply DONE.',
-      options: { ...ctx.options, resume: boundary.session_id },
-    });
-
-    const failedResult = failed.messages.at(-1);
-
-    const original = await loadSessionTranscript(ctx.directory, boundary.session_id);
-
-    const fork = await runContractQuery({
-      prompt: 'Reply with OK only.',
-      options: {
-        ...ctx.options,
-        resume: boundary.session_id,
-        resumeSessionAt: boundary.uuid,
-        forkSession: true,
-      },
-    });
-
-    const forkResult = fork.messages.at(-1);
-
-    invariant(forkResult?.type === 'result');
-
-    const forked = await loadSessionTranscript(ctx.directory, forkResult.session_id);
-
-    expect(failedResult).toMatchObject({ type: 'result', terminal_reason: 'blocking_limit' });
-    expect(JSON.stringify(original)).toInclude('Prompt is too long');
-    expect(JSON.stringify(original)).toInclude('"type":"tool_use"');
-    expect(forkResult).toMatchObject({ subtype: 'success', is_error: false });
-    expect(forkResult.session_id).not.toBe(boundary.session_id);
-    expect(JSON.stringify(forked)).not.toInclude('Prompt is too long');
-    expect(JSON.stringify(forked)).not.toInclude('"type":"tool_use"');
+    expect(JSON.stringify(run.original)).toInclude('Prompt is too long');
+    expect(JSON.stringify(run.original)).toInclude('"type":"tool_use"');
+    expect(forkResult).toMatchObject({ type: 'result', subtype: 'success', is_error: false });
+    expect(forkResult?.session_id).not.toBe(run.sessionID);
+    expect(JSON.stringify(run.forked)).not.toInclude('Prompt is too long');
+    expect(JSON.stringify(run.forked)).not.toInclude('"type":"tool_use"');
   },
   22_000,
 );
@@ -143,19 +68,7 @@ test.skipIf(!isContractRun)(
   'it ends a turn that the model API refuses for length with a prompt_too_long result',
   async () => {
     const ctx = await setupTest();
-
-    const run = await runContractQuery({
-      prompt: `${buildFiller(1_050_000, 'note')}\nReply with OK only.`,
-      options: {
-        ...ctx.options,
-        env: {
-          ...ctx.options.env,
-
-          // The CLI's limit sits past the model's 1,000,000-token window, so the API refuses first.
-          CLAUDE_CODE_BLOCKING_LIMIT_OVERRIDE: '10000000',
-        },
-      },
-    });
+    const run = await runOverflowProbe(ctx.target, 'model-window');
 
     expect(run.messages.at(-1)).toMatchObject({
       type: 'result',
@@ -172,11 +85,7 @@ test.skipIf(!isContractRun)(
   'it ends a turn for a model that does not exist with api_error, never an overflow reason',
   async () => {
     const ctx = await setupTest();
-
-    const run = await runContractQuery({
-      prompt: 'Reply with OK only.',
-      options: { ...ctx.options, model: 'claude-nonesuch-9' },
-    });
+    const run = await runOverflowProbe(ctx.target, 'unknown-model');
 
     expect(run.messages.at(-1)).toMatchObject({
       type: 'result',
@@ -191,14 +100,7 @@ test.skipIf(!isContractRun)(
   'it ends a turn that reaches the output cap with api_error, never an overflow reason',
   async () => {
     const ctx = await setupTest();
-
-    const run = await runContractQuery({
-      prompt: 'Write a 400-word story about a lighthouse.',
-      options: {
-        ...ctx.options,
-        env: { ...ctx.options.env, CLAUDE_CODE_MAX_OUTPUT_TOKENS: '16' },
-      },
-    });
+    const run = await runOverflowProbe(ctx.target, 'output-cap');
 
     expect(run.messages.at(-1)).toMatchObject({
       type: 'result',

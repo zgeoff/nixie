@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
+import { runOracle, startSpawnedNixie } from '@heynixie/server/test-utils';
 import invariant from 'tiny-invariant';
-import { runOracle } from '../test-utils/run-oracle';
-import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
 
 async function setupTest() {
   const nixie = await startSpawnedNixie();

@@ -18,6 +18,7 @@
       "deploy/pulumi-k8s",
       "evals",
       "e2e",
+      "integration",
       "research/*",
       "!research/encoder",
       "!research/fetch-headless",

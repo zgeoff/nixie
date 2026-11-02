@@ -6,6 +6,12 @@ fails the suite. The probes run Haiku 5.5 with options that mirror the guest's, 
 directory of their own, and read the stream, the hooks and the session transcript rather than the
 model's prose wherever the SDK exposes the answer.
 
+Each probe is a function in the conversation guest's
+[sdk-contract](../../guests/conversation/src/sdk-contract/) folder. This suite runs it against the
+model, and the guest's Agent SDK tests run it against a stub model on every pull request. Only this
+suite runs `model-grant`, because only the real broker replaces the placeholder credential, and the
+`mod-policy` case where a hook wedges the hooks worker, because the CLI's watchdog takes about 10 s.
+
 ## The probes
 
 - `overflow`: with auto-compaction off, a turn past the context window ends in an `is_error` result
@@ -49,22 +55,16 @@ model's prose wherever the SDK exposes the answer.
 - `mod-policy`: a Claude Code mod loaded into a query denies, rewrites and answers tool calls, and a
   catch handler turns a throwing hook into a deny. The mod's command is missing from the session
   when the mod throws as it loads, and leaves it when a hook wedges the hooks worker. No nixie code
-  loads a mod, and the probe keeps that option checked.
+  loads a mod, and the probe keeps that option checked. Its mods live in the guest's
+  [mods](../../guests/conversation/src/sdk-contract/mods/) folder.
 - `model-grant`: a turn whose only credential is the placeholder that `buildModelGrant` sets, in
   either auth header's variable, gets its answer through the broker, because the broker replaces the
   header on each request it carries.
   [Model profiles](../../docs/architecture/core/model-profiles.md) give each model loop that grant.
 
-The [mods](mods/) folder holds the probe's mods. The suite copies them into its config directory
-before the CLI loads them, because the CLI writes type files into each mod it loads.
-
 ## Run it
 
 The [SDK contract suite runbook](../../docs/runbooks/sdk-contract-suite.md) gives the credential the
-probes read, the command, and what to do when a probe fails on a new SDK version.
-
-## The check on SDK bumps
-
-The deployment repo's preview service runs the suite in a sandbox on each pull request that changes
-the SDK version, and posts the result as the `sdk-contract` commit status. No credential for the
-suite lives in this repo or its CI.
+probes read, the command, and what to do when a probe fails on a new SDK version. The deployment
+repo's preview service runs the suite on each pull request that changes the SDK version, and posts
+the result as the `sdk-contract` commit status, so no credential for it lives in this repo's CI.
