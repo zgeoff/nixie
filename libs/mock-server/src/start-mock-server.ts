@@ -4,24 +4,7 @@ import { mockServer } from './mock-server';
 // Bun runs a preload's beforeAll and afterAll once for each file under `--parallel --no-isolate`,
 // and once for the whole run otherwise, so the server starts in the one and stops in the other.
 beforeAll(() => {
-  mockServer.listen({
-    // The web server suites call a stub API and the built Start server on loopback ports, which MSW
-    // must pass through. No DNS answers the reserved .test domain, so a test site there never
-    // reaches the network, and a data URL holds its own contents.
-    onUnhandledRequest: (request, print) => {
-      const url = new URL(request.url);
-
-      if (
-        url.protocol === 'data:' ||
-        ['127.0.0.1', '[::1]', 'localhost'].includes(url.hostname) ||
-        url.hostname.endsWith('.test')
-      ) {
-        return;
-      }
-
-      print.error();
-    },
-  });
+  mockServer.listen({ onUnhandledRequest: 'error' });
 });
 
 afterEach(() => {

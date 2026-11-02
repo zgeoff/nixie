@@ -126,10 +126,11 @@ The root [`bunfig.toml`](../../../bunfig.toml) preloads, in order:
 
 A package adds its handlers with `addMockHandlers` from `@heynixie/mock-server` and never starts an
 MSW server of its own: a second server attaches to the first one's fetch interceptor, so both read
-each request's body, and the first one's close stops the second. The MSW server passes an unmatched
-request to a loopback host, to a host under the reserved `.test` domain or to a `data:` URL through
-in silence. It logs an error for every other unmatched request and still sends it on. The web server
-suites call stub APIs on loopback ports, the fetcher's suites call test sites under `.test`, and
+each request's body, and the first one's close stops the second. The MSW server's last handler,
+which `addMockHandlers` keeps last, passes an unmatched request to a loopback host, to a host under
+the reserved `.test` domain or to a `data:` URL through. It refuses every other unmatched request,
+so that `fetch` fails with `Failed to fetch` and never reaches the network. The web server suites
+call stub APIs on loopback ports, the fetcher's suites call test sites under `.test`, and
 `@impz/testing` loads its wasm module from a `data:` URL.
 
 ## The test build
