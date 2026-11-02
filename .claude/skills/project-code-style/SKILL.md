@@ -14,8 +14,8 @@ metadata:
 ## Departures
 
 - Keep the name of a method that a library calls by that name, such as `executeQuery`, which Kysely
-  calls on a database connection. The [Banned verbs](../code-style/SKILL.md#banned-verbs) rule bans
-  `execute`, but the library decides the name.
+  calls on a database connection. [code-style](../code-style/SKILL.md) bans `execute`, but the
+  library decides the name.
   [`build-sqlite-worker-dialect.ts`](../../../libs/db/src/build-sqlite-worker-dialect.ts) defines
   nixie's `executeQuery`.
 
