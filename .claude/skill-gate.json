@@ -9,6 +9,8 @@
     {
       "match": "**/*.md",
       "skills": ["docs-writing", "project-docs-writing"]
-    }
+    },
+    { "match": "**/skills/*/SKILL.md", "skills": ["skill-writing", "docs-writing", "deslop"] },
+    { "match": "**/skills/*/references/**", "skills": ["skill-writing", "docs-writing", "deslop"] }
   ]
 }
