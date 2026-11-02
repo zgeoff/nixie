@@ -77,12 +77,13 @@ a repo on GitHub, which the deployment names with its ref and its read-only depl
 
 A deployment that sets a backup gets a CronJob that runs the backup job in the release's
 `nixie-backup` image, pinned by its tag and digest, with the backup repositories and their passwords
-from a Secret of a fixed name. The job mounts only the staging folder of nixie's data volume, which
-an init container creates first, because the kubelet creates a missing subpath owned by root. The
-job runs as nixie's user, so a restore leaves files nixie can open. The Secret holds no deployment
-key, and nixie's pod mounts none of the backup Secret. A deployment may name its own image, or a
-backup script that replaces the job and that runs from a ConfigMap of a fixed name, because a
-restore Job outside the component mounts both by name.
+from a Secret of a fixed name. The job's container mounts only the staging folder of nixie's data
+volume. An init container that holds no secret mounts the whole volume and creates that folder
+first, because the kubelet creates a missing subpath owned by root. The job runs as nixie's user, so
+a restore leaves files nixie can open. The Secret holds no deployment key, and nixie's pod mounts
+none of the backup Secret. A deployment may name its own image, or a backup script that replaces the
+job and that runs from a ConfigMap of a fixed name, because a restore Job outside the component
+mounts both by name.
 
 The deployment passes the namespace, the images, the configuration text, the encrypted secrets file,
 the age key, the volume's storage class and the backup's schedule. The namespace, its network
