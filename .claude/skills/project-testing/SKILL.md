@@ -3,8 +3,8 @@ name: project-testing
 description:
   "nixie's test facts, the shared testing rules it replaces for the model API lane and the MSW
   server, and its own test topics: the unit run's prerequisites, the live lanes, the test build,
-  where a harness lives, the browser lane and the nixie harnesses. Load it beside testing before you
-  design, write, run or review a nixie test."
+  where a harness lives, the browser lane, the e2e and restic lanes and the nixie harnesses. Load it
+  beside testing before you design, write, run or review a nixie test."
 metadata:
   kind: rule-set
 ---
