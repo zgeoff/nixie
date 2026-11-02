@@ -17,6 +17,17 @@ export interface NixieTables {
     readonly updated_sequence: number;
     readonly cancelled_sequence: number | null;
   };
+  readonly backup_sets: {
+    readonly sequence: number;
+    readonly kind: string;
+    readonly state: string;
+    readonly log_head: number;
+    readonly staged_at: number;
+    readonly received_at: number | null;
+    readonly data_snapshot_id: string | null;
+    readonly key_snapshot_id: string | null;
+    readonly receipt: string | null;
+  };
   readonly client_actions: {
     readonly client_action_id: string;
     readonly procedure: string;

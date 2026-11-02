@@ -1129,6 +1129,21 @@
         }
       },
       "additionalProperties": false
+    },
+    "backup": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "interval_minutes": {
+          "default": 60,
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": [

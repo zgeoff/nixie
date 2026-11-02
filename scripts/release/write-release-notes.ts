@@ -27,7 +27,7 @@ async function runCLI(): Promise<void> {
   const sha = getStepEnv(process.env, 'SHA');
   const runnerTemp = getStepEnv(process.env, 'RUNNER_TEMP');
 
-  const images = ['CONVERSATION', 'FETCH', 'NIXIE', 'WEB'].map((name) =>
+  const images = ['CONVERSATION', 'FETCH', 'BACKUP', 'NIXIE', 'WEB'].map((name) =>
     getStepEnv(process.env, name),
   );
 

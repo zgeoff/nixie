@@ -1,6 +1,7 @@
 import { actionCancelMigration } from './action-cancel-migration';
 import { actionsMigration } from './actions-migration';
 import { apiMigration } from './api-migration';
+import { backupSetsMigration } from './backup-sets-migration';
 import { definitionSeedRepositoryMigration } from './definition-seed-repository-migration';
 import { definitionsMigration } from './definitions-migration';
 import { eventLogMigration } from './event-log-migration';
@@ -54,6 +55,7 @@ export const nixieSchema: BuildSchema = {
     memorySubjectChangesMigration,
     taskControlsMigration,
     actionCancelMigration,
+    backupSetsMigration,
   ],
   oldestReader: 25,
 };

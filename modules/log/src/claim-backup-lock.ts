@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import type { FileLockMode } from './claim-file-lock';
+import type { FileLockMode } from '@heynixie/async';
 import type { DataStorage } from './data-storage';
 import type { WriterLock } from './types';
 

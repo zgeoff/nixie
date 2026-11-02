@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { startFaultPointFailure } from './test-utils/start-fault-point-failure';
+import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { startNextTestMemory } from './test-utils/start-next-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { CleanupSessions } from './types';

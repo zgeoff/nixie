@@ -1,10 +1,11 @@
 # Cuts a nixie release. On every push to main, release-please opens or updates the release pull
 # request, and merging it creates the v<version> tag and the GitHub release. The release commit then
-# goes through one stage per job, each after the one before succeeds: the sandbox images, the nixie
-# image with their digests, the web image, the migrations and the config schema in the release
-# notes, a pull of each sandbox image with no credentials, the version tag on every image, and the
-# counting proxy binary, release.json, config.schema.json and definitions-manifest.schema.json
-# assets, and last the Kubernetes component and the API contract on npm at the release's version.
+# goes through one stage per job, each after the one before succeeds: the sandbox images and the
+# backup image, the nixie image with the sandbox digests, the web image, the migrations and the
+# config schema in the release notes, a pull of each sandbox image with no credentials, the version
+# tag on every image, and the counting proxy binary, release.json, config.schema.json and
+# definitions-manifest.schema.json assets, and last the Kubernetes component, with the backup image
+# as its backup job's default, and the API contract on npm at the release's version.
 #
 # A manual run on a release tag rebuilds that release from its commit. Re-running the failed
 # jobs of a run resumes from the stage that failed with the same digests.
@@ -149,6 +150,19 @@ jobs:
       dockerfile: guests/fetch/Dockerfile
       sha: ${{ needs.resolve.outputs.sha }}
 
+  backup:
+    needs: resolve
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/release-image.yml
+    with:
+      image: nixie-backup
+      dockerfile: apps/backup-job/Dockerfile
+      sha: ${{ needs.resolve.outputs.sha }}
+
   sandbox-manifest:
     name: Release the sandbox manifest
     needs: [resolve, conversation, fetch]
@@ -216,7 +230,7 @@ jobs:
 
   notes:
     name: Write the release notes
-    needs: [resolve, conversation, fetch, nixie, web]
+    needs: [resolve, conversation, fetch, backup, nixie, web]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
@@ -253,6 +267,7 @@ jobs:
           SHA: ${{ needs.resolve.outputs.sha }}
           CONVERSATION: ${{ needs.conversation.outputs.ref }}
           FETCH: ${{ needs.fetch.outputs.ref }}
+          BACKUP: ${{ needs.backup.outputs.ref }}
           NIXIE: ${{ needs.nixie.outputs.ref }}
           WEB: ${{ needs.web.outputs.ref }}
         run: bun run --silent ci:release:write-release-notes
@@ -281,7 +296,7 @@ jobs:
 
   tag:
     name: Tag the release images
-    needs: [resolve, check-pulls, conversation, fetch, nixie, web]
+    needs: [resolve, check-pulls, conversation, fetch, backup, nixie, web]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
@@ -310,14 +325,16 @@ jobs:
           VERSION: ${{ needs.resolve.outputs.version }}
           CONVERSATION: ${{ needs.conversation.outputs.ref }}
           FETCH: ${{ needs.fetch.outputs.ref }}
+          BACKUP: ${{ needs.backup.outputs.ref }}
           NIXIE: ${{ needs.nixie.outputs.ref }}
           WEB: ${{ needs.web.outputs.ref }}
-        run: .github/scripts/tag-images.sh "$VERSION" "$CONVERSATION" "$FETCH" "$WEB" "$NIXIE"
+        run: |
+          .github/scripts/tag-images.sh "$VERSION" "$CONVERSATION" "$FETCH" "$BACKUP" "$WEB" "$NIXIE"
 
   # last, so a reader that finds release.json finds every image under its version tag
   assets:
     name: Publish the release assets
-    needs: [resolve, notes, tag, conversation, fetch, nixie, web]
+    needs: [resolve, notes, tag, conversation, fetch, backup, nixie, web]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
@@ -356,6 +373,7 @@ jobs:
           SHA: ${{ needs.resolve.outputs.sha }}
           CONVERSATION: ${{ needs.conversation.outputs.ref }}
           FETCH: ${{ needs.fetch.outputs.ref }}
+          BACKUP: ${{ needs.backup.outputs.ref }}
           NIXIE: ${{ needs.nixie.outputs.ref }}
           WEB: ${{ needs.web.outputs.ref }}
           MIGRATIONS: ${{ needs.notes.outputs.migrations }}
@@ -366,7 +384,7 @@ jobs:
   # carries its tag; each package publishes in its own job, so one that fails leaves the other's
   npm-package:
     name: Publish ${{ matrix.package }} at the release version
-    needs: [resolve, assets]
+    needs: [resolve, assets, backup]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
@@ -404,4 +422,5 @@ jobs:
         env:
           PACKAGE: ${{ matrix.package }}
           VERSION: ${{ needs.resolve.outputs.version }}
+          BACKUP_IMAGE: ${{ needs.backup.outputs.ref }}
         run: .github/scripts/publish-npm-package.sh "$PACKAGE" "$VERSION"

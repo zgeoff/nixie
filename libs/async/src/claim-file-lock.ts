@@ -2,17 +2,20 @@ import type { Pointer } from 'bun:ffi';
 import { FFIType, dlopen, read } from 'bun:ffi';
 import { closeSync, existsSync, openSync } from 'node:fs';
 import invariant from 'tiny-invariant';
-import type { WriterLock } from './types';
 
 export type FileLockMode = 'shared' | 'exclusive';
 
-export type ClaimFileLock = (path: string, mode: FileLockMode) => WriterLock | null;
+export interface FileLock {
+  readonly release: () => void;
+}
+
+export type ClaimFileLock = (path: string, mode: FileLockMode) => FileLock | null;
 
 const LOCK_SH = 1;
 const LOCK_EX = 2;
 const LOCK_NB = 4;
 
-export function claimFileLock(path: string, mode: FileLockMode): WriterLock | null {
+export function claimFileLock(path: string, mode: FileLockMode): FileLock | null {
   const fd = openSync(path, 'r');
   const libc = readLibc();
   const operation = (mode === 'shared' ? LOCK_SH : LOCK_EX) | LOCK_NB;

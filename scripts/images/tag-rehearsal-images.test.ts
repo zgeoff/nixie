@@ -37,6 +37,7 @@ test('it tags every image twice, sandbox images first and nixie last', async () 
       GITHUB_STEP_SUMMARY: ctx.summaryPath,
       CONVERSATION: 'r/nixie-conversation@sha256:aa11',
       FETCH: 'r/nixie-fetch@sha256:bb22',
+      BACKUP: 'r/nixie-backup@sha256:ab12',
       WEB: 'r/nixie-web@sha256:cc33',
       NIXIE: 'r/nixie@sha256:dd44',
     })
@@ -47,8 +48,8 @@ test('it tags every image twice, sandbox images first and nixie last', async () 
 
   expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
     [
-      'bash .github/scripts/tag-images.sh 0.0.0-rehearsal r/nixie-conversation@sha256:aa11 r/nixie-fetch@sha256:bb22 r/nixie-web@sha256:cc33 r/nixie@sha256:dd44',
-      'bash .github/scripts/tag-images.sh 0.0.0-rehearsal r/nixie-conversation@sha256:aa11 r/nixie-fetch@sha256:bb22 r/nixie-web@sha256:cc33 r/nixie@sha256:dd44',
+      'bash .github/scripts/tag-images.sh 0.0.0-rehearsal r/nixie-conversation@sha256:aa11 r/nixie-fetch@sha256:bb22 r/nixie-backup@sha256:ab12 r/nixie-web@sha256:cc33 r/nixie@sha256:dd44',
+      'bash .github/scripts/tag-images.sh 0.0.0-rehearsal r/nixie-conversation@sha256:aa11 r/nixie-fetch@sha256:bb22 r/nixie-backup@sha256:ab12 r/nixie-web@sha256:cc33 r/nixie@sha256:dd44',
       '',
     ].join('\n'),
   );
@@ -65,6 +66,7 @@ test('it lists each image and its digest in the summary', async () => {
       GITHUB_STEP_SUMMARY: ctx.summaryPath,
       CONVERSATION: 'r/nixie-conversation@sha256:aa11',
       FETCH: 'r/nixie-fetch@sha256:bb22',
+      BACKUP: 'r/nixie-backup@sha256:ab12',
       WEB: 'r/nixie-web@sha256:cc33',
       NIXIE: 'r/nixie@sha256:dd44',
     })
@@ -76,6 +78,7 @@ test('it lists each image and its digest in the summary', async () => {
       '| ----- | ------ |',
       '| `r/nixie-conversation` | `sha256:aa11` |',
       '| `r/nixie-fetch` | `sha256:bb22` |',
+      '| `r/nixie-backup` | `sha256:ab12` |',
       '| `r/nixie-web` | `sha256:cc33` |',
       '| `r/nixie` | `sha256:dd44` |',
       '',
@@ -89,7 +92,7 @@ test('it stops, and writes no summary, when the first tag run fails', async () =
   createStubProgram(join(ctx.binPath, 'bash'), {
     callsPath: ctx.callsPath,
     answers: {
-      '.github/scripts/tag-images.sh 0.0.0-rehearsal r/nixie-conversation@sha256:aa11 r/nixie-fetch@sha256:bb22 r/nixie-web@sha256:cc33 r/nixie@sha256:dd44':
+      '.github/scripts/tag-images.sh 0.0.0-rehearsal r/nixie-conversation@sha256:aa11 r/nixie-fetch@sha256:bb22 r/nixie-backup@sha256:ab12 r/nixie-web@sha256:cc33 r/nixie@sha256:dd44':
         { exitCode: 1 },
     },
   });
@@ -100,6 +103,7 @@ test('it stops, and writes no summary, when the first tag run fails', async () =
       GITHUB_STEP_SUMMARY: ctx.summaryPath,
       CONVERSATION: 'r/nixie-conversation@sha256:aa11',
       FETCH: 'r/nixie-fetch@sha256:bb22',
+      BACKUP: 'r/nixie-backup@sha256:ab12',
       WEB: 'r/nixie-web@sha256:cc33',
       NIXIE: 'r/nixie@sha256:dd44',
     })

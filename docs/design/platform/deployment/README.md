@@ -6,8 +6,8 @@ records the split between the nixie repo, the definitions repo and the deploymen
 
 - [Deployment](deployment.md) — the first build, the host, the images, secrets, seeding the
   definitions, health, and Kubernetes
-- [Backup and restore](backup-and-restore.md) — the backup sidecar, Restic snapshots, the key repo
-  and forget, the offsite replica, and restoring on a new host
+- [Backup and restore](backup-and-restore.md) — the backup job, Restic snapshots, the key repo and
+  forget, the offsite replica, and restoring on a new host
 - [Release pipeline](release-pipeline.md) — the worker, code and backup images, pinned binary
   updates, the rollback test, Renovate and attestation verification
 - [Upgrades](upgrades.md) — the pin and the bot, delivery to the host, a release on the host,

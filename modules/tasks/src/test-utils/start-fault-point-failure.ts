@@ -1,6 +1,6 @@
 import { onTestFinished } from 'bun:test';
-import type { FaultPointID } from '@heynixie/tasks';
-import { setFaultPointHandler } from '@heynixie/tasks';
+import { setFaultPointHandler } from '../set-fault-point-handler';
+import type { FaultPointID } from '../types';
 
 export function startFaultPointFailure(id: FaultPointID, contextID?: string): void {
   const arrivals = { count: 0 };

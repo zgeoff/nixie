@@ -3,8 +3,8 @@ name: project-testing
 description:
   "nixie's test facts, the shared testing rules it replaces for the model API lane and the MSW
   server, and its own test topics: the unit run's prerequisites, the live lanes, the test build,
-  where a harness lives, the browser lane and the nixie harnesses. Load it beside testing before you
-  design, write, run or review a nixie test."
+  where a harness lives, the browser lane, the e2e and restic lanes and the nixie harnesses. Load it
+  beside testing before you design, write, run or review a nixie test."
 metadata:
   kind: rule-set
 ---
@@ -15,6 +15,8 @@ metadata:
 
 - [The browser lane](./references/browser-lane.md): read it before you write, run or debug a
   `*.browser.test.ts` suite.
+- [The e2e and restic lanes](./references/e2e-and-restic-lanes.md): read it before you write, run or
+  debug a suite under `e2e/`, including a `*.restic.test.ts` suite.
 - [The nixie harnesses](./references/nixie-harnesses.md): read it before you start nixie in a test,
   in process or as a child process, or write a crash suite that arms fault points.
 
