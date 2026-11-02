@@ -34,7 +34,10 @@ test('it copies the restic out of the backup image and runs the lane on it', asy
     answers: { 'create r/nixie-backup@sha256:ab12': { stdout: 'c0ffee\n' } },
   });
 
-  createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
+  createStubProgram(join(ctx.binPath, 'bun'), {
+    callsPath: ctx.callsPath,
+    recordedEnvNames: ['NIXIE_RESTIC_BINARY'],
+  });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
     .env({ PATH: ctx.binPath, BACKUP: 'r/nixie-backup@sha256:ab12', RUNNER_TEMP: ctx.runnerTemp })
@@ -48,7 +51,7 @@ test('it copies the restic out of the backup image and runs the lane on it', asy
       'docker create r/nixie-backup@sha256:ab12',
       `docker cp c0ffee:/usr/local/bin/restic ${ctx.runnerTemp}/restic`,
       'docker rm c0ffee',
-      'bun run test:restic',
+      `bun run test:restic NIXIE_RESTIC_BINARY=${ctx.runnerTemp}/restic`,
       '',
     ].join('\n'),
   );

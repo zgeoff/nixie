@@ -65,6 +65,40 @@ test('it records each call as its file name and arguments, in order', async () =
   );
 });
 
+test('it records each named variable of the call after its arguments, empty when unset', async () => {
+  const ctx = setupTest();
+  const programPath = join(ctx.directoryPath, 'bin', 'bun');
+
+  createStubProgram(programPath, {
+    callsPath: ctx.callsPath,
+    recordedEnvNames: ['NIXIE_RESTIC_BINARY', 'NIXIE_UNSET_VARIABLE'],
+  });
+
+  await $`${programPath} run test:restic`.env({ NIXIE_RESTIC_BINARY: '/runner/restic' }).quiet();
+
+  expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
+    'bun run test:restic NIXIE_RESTIC_BINARY=/runner/restic NIXIE_UNSET_VARIABLE=\n',
+  );
+});
+
+test('it answers a call by its arguments alone when it records variables', async () => {
+  const ctx = setupTest();
+  const programPath = join(ctx.directoryPath, 'bin', 'bun');
+
+  createStubProgram(programPath, {
+    callsPath: ctx.callsPath,
+    answers: { 'run test:restic': { exitCode: 4 } },
+    recordedEnvNames: ['NIXIE_RESTIC_BINARY'],
+  });
+
+  const result = await $`${programPath} run test:restic`
+    .env({ NIXIE_RESTIC_BINARY: '/runner/restic' })
+    .nothrow()
+    .quiet();
+
+  expect(result.exitCode).toBe(4);
+});
+
 test('it tells one argument that holds a space from two arguments', async () => {
   const ctx = setupTest();
   const programPath = join(ctx.directoryPath, 'bin', 'bun');

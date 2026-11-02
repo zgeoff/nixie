@@ -14,6 +14,10 @@ export interface StubProgramOptions {
 
   // Keyed by the call's arguments; a call with no key prints nothing and exits 0.
   readonly answers?: Readonly<Record<string, StubAnswer>>;
+
+  // Each named variable adds `<name>=<value>` to the call's line, after its arguments, with an
+  // empty value when the call's environment lacks it.
+  readonly recordedEnvNames?: readonly string[];
 }
 
 export function createStubProgram(path: string, options: Readonly<StubProgramOptions>): void {
@@ -27,7 +31,8 @@ export function createStubProgram(path: string, options: Readonly<StubProgramOpt
       `const answers = ${JSON.stringify(options.answers ?? {})};`,
       `const formatStubArgument = ${formatStubArgument.toString()};`,
       "const key = process.argv.slice(2).map(formatStubArgument).join(' ');",
-      `appendFileSync(${JSON.stringify(options.callsPath)}, ${JSON.stringify(`${basename(path)} `)} + key + '\\n');`,
+      `const recorded = ${JSON.stringify(options.recordedEnvNames ?? [])}.map((name) => ' ' + formatStubArgument(name + '=' + (process.env[name] ?? ''))).join('');`,
+      `appendFileSync(${JSON.stringify(options.callsPath)}, ${JSON.stringify(`${basename(path)} `)} + key + recorded + '\\n');`,
       'const answer = answers[key] ?? {};',
       "process.stdout.write(answer.stdout ?? '');",
       'process.exit(answer.exitCode ?? 0);',
