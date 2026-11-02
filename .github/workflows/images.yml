@@ -40,6 +40,7 @@ jobs:
         tsconfig*.json
         adapters/**
         apps/**
+        e2e/**
         guests/**
         libs/**
         modules/**
