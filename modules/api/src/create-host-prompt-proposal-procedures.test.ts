@@ -184,7 +184,7 @@ test('#approve stores the edited files in place of the proposed ones, and record
   expect(approvals).toStrictEqual([
     {
       entry: '{"safety":"prompts/compaction-safety.md"}',
-      files: '[{"path":"prompts/compaction-safety.md","text":"Answer in one line.\\n"}]',
+      files: String.raw`[{"path":"prompts/compaction-safety.md","text":"Answer in one line.\n"}]`,
     },
   ]);
 
