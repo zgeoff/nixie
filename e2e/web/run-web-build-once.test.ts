@@ -92,7 +92,6 @@ test('it builds again for the next caller after a build fails', async () => {
 
   onTestFinished(() => rm(tempDir, { recursive: true, force: true }));
 
-  // a builds folder under a plain file, so the first build fails to make its folder
   await writeFile(join(tempDir, 'not-a-folder'), '');
 
   const preloadPath = join(tempDir, 'fail-first-build.ts');
