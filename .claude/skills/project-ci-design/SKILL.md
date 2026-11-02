@@ -1,9 +1,9 @@
 ---
 name: project-ci-design
 description:
-  "nixie's test budget and required checks, and the one ci-design rule that nixie replaces: the
-  Compose recipe check is required, yet a pull request skips it when it changes no file the recipe
-  reads. Load it beside ci-design before you add or change a workflow, a job or a step in nixie."
+  "nixie's test budget and required checks, and how to keep the required Compose recipe check true
+  to the files it reads. Load it beside ci-design before you add or change a workflow, a job or a
+  step in nixie."
 metadata:
   kind: rule-set
 ---
@@ -19,14 +19,13 @@ metadata:
 
 ## Departures
 
-- Keep the `recipe` job of [`compose.yml`](../../../.github/workflows/compose.yml) a required check
-  that a pull request skips when it changes none of the job's paths. The Jobs section of
-  [ci-design](../ci-design/SKILL.md) tells you to make a required check of your own always run,
-  because GitHub counts a skipped required check as a pass. Here a skip is the right result: a pull
-  request that changes none of those paths can't change whether the recipe starts.
+None.
 
 ## The Compose recipe
 
-- Add a path to the `paths` of the `changes` job in `compose.yml` when the recipe in
-  `deploy/compose/`, or the test build of nixie that the job starts in it, reads a new file. A
-  missing path lets a pull request that breaks the recipe skip the check and merge.
+- Add a path to the `paths` of the `changes` job in
+  [`compose.yml`](../../../.github/workflows/compose.yml) when the recipe in `deploy/compose/`, or
+  the test build of nixie that the job starts in it, reads a new file. The required `recipe` job
+  always runs, but it skips each of its steps when no listed path changed, so a missing path lets a
+  pull request that breaks the recipe pass the check and merge.
+- Gate each new step of the `recipe` job on `env.RECIPE_CHANGED == 'true'`, as the others are.

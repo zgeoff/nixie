@@ -2,9 +2,10 @@
 # that digest under that tag, then starts the recipe with CI's overlay, which swaps nixie's release
 # image for the test build on the test sandbox, because the release image leaves the test sandbox
 # out. It checks that nixie's health URL answers ready through the recipe's origin, and that the
-# enrol service prints a sign-in code. A pull request runs it only when it changes a file the recipe
-# or the test build reads, and runs the digest check only when it changes the recipe or that check;
-# every push to main runs it in full.
+# enrol service prints a sign-in code. The recipe job is a required check, and GitHub counts a
+# skipped job as a pass, so the job runs on every pull request; on a pull request that changes no
+# file the recipe or the test build reads, each of its steps skips. A pull request runs the digest
+# check only when it changes the recipe or that check; every push to main runs it in full.
 name: Compose
 
 on:
@@ -58,18 +59,29 @@ jobs:
         scripts/compose/check-pinned-digests.ts
         scripts/lib/**
 
+  # a required check, so the job always runs and its steps skip instead; != 'false', so a failed
+  # changes job still runs the recipe
   recipe:
     needs: [changes, pins]
-    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      RECIPE_CHANGED: ${{ needs.changes.outputs.changed != 'false' }}
     steps:
+      - name: Report the skip
+        if: ${{ env.RECIPE_CHANGED != 'true' }}
+        working-directory: .
+        run: echo "This change touches no file the recipe reads, so the recipe check skips."
+
       - name: Checkout
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Set up Bun
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: .bun-version
@@ -77,17 +89,20 @@ jobs:
       # the log and stop steps need both file names to read compose.yaml, so this step runs before
       # any step that can fail
       - name: Write the throwaway secrets
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
         run: bun run --silent ci:compose:write-throwaway-secrets
 
       - name: Check each pinned tag against its digest
-        if: ${{ needs.pins.outputs.changed != 'false' }}
+        if: ${{ env.RECIPE_CHANGED == 'true' && needs.pins.outputs.changed != 'false' }}
         run: bun run --silent ci:compose:check-pinned-digests
 
       - name: Set up Buildx
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       # the test build shares its layers with the Preview workflow's, through the preview scope
       - name: Build the test build
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
         uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
         with:
           source: ./deploy/compose
@@ -100,23 +115,27 @@ jobs:
             nixie.cache-to=type=gha,mode=max,scope=preview
 
       - name: Start the recipe
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
         run: docker compose -f compose.yaml -f ci/compose.yaml up --wait --wait-timeout 300
 
       - name: Check the health URL
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
         env:
           ORIGIN: http://127.0.0.1:8080
         run: bun run --silent ci:compose:check-health-url
 
       - name: Check the age key
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
         run: bun run --silent ci:compose:check-age-key
 
       - name: Check the sign-in code
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
         run: bun run --silent ci:compose:check-sign-in-code recipe
 
       - name: Show the logs
-        if: failure()
+        if: ${{ failure() && env.RECIPE_CHANGED == 'true' }}
         run: docker compose -f compose.yaml -f ci/compose.yaml logs --no-color
 
       - name: Stop the recipe
-        if: always()
+        if: ${{ always() && env.RECIPE_CHANGED == 'true' }}
         run: docker compose -f compose.yaml -f ci/compose.yaml down --volumes
