@@ -31,24 +31,27 @@ export async function writeSnapshotSet(
 
   invariant(created, 'each set takes a sequence above every set directory in staging');
 
-  // the schedule tries again after a failed copy, so a failed set leaves neither its copies nor a
-  // staging row behind; once the marker exists the job may be shipping the set, so a later failure
-  // leaves it for the restart to reconcile
-  const manifest = await writeSetCopies(context, kind, started, directory).catch(
-    async (error: unknown) => {
-      await files.removeFile(directory);
+  const markerPath = join(directory, backupSetLayout.marker);
 
-      await withWriteTransaction(context.writer, (tx) =>
-        writeBackupSetState(tx, started.sequence, 'abandoned'),
-      );
+  // the schedule tries again after a failed set, so a set that fails before its marker leaves
+  // neither its copies nor a staging row behind; once the marker exists the job may be shipping the
+  // set, so a later failure leaves it for the restart to reconcile
+  const manifest = await writeMarkedSet(context, kind, started, directory).catch(
+    async (error: unknown) => {
+      const isMarked = await files.probeFile(markerPath);
+
+      if (!isMarked) {
+        await files.removeFile(directory);
+
+        await withWriteTransaction(context.writer, (tx) =>
+          writeBackupSetState(tx, started.sequence, 'abandoned'),
+        );
+      }
 
       throw error;
     },
   );
 
-  const markerPath = join(directory, backupSetLayout.marker);
-
-  await files.writeFile(markerPath, '');
   await files.writeFileToDisk(markerPath);
   await files.writeDirectoryToDisk(directory);
 
@@ -104,6 +107,19 @@ async function createSetRow(
 
     return { sequence, stagedAt };
   });
+}
+
+async function writeMarkedSet(
+  context: BackupContext,
+  kind: BackupSetKind,
+  started: StartedSet,
+  directory: string,
+): Promise<BackupSetManifest> {
+  const manifest = await writeSetCopies(context, kind, started, directory);
+
+  await context.storage.files.writeFile(join(directory, backupSetLayout.marker), '');
+
+  return manifest;
 }
 
 async function writeSetCopies(

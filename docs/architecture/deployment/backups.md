@@ -38,11 +38,11 @@ before it creates its folder. nixie copies the pair with the same check that the
 every record that the log copy keeps readable. It then writes the manifest with each copy's size and
 checksum, and writes the `complete` marker last, with an fsync of each file and of the folder.
 
-A copy that fails before the marker removes its set folder and moves its row to abandoned, so the
-schedule's next try starts from a clean staging folder. A restart does the same for every set folder
-that a crash left without its marker. A marked folder whose row never reached staged moves to
-staged, because its copies passed every check before the marker. A crash at any point therefore
-leaves either a set the job may ship or no set at all.
+A set that fails before its marker exists, in its copy or in the marker's own write, removes its set
+folder and moves its row to abandoned, so the schedule's next try starts from a clean staging
+folder. A restart does the same for every set folder that a crash left without its marker. A marked
+folder whose row never reached staged moves to staged, because its copies passed every check before
+the marker. A crash at any point therefore leaves either a set the job may ship or no set at all.
 
 ## The backup job
 

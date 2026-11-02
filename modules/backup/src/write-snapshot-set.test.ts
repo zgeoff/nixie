@@ -118,12 +118,33 @@ test('it removes the copies and abandons the set when the copy fails before its 
   expect(rows.rows).toStrictEqual([{ state: 'abandoned' }]);
 });
 
+test('it removes the copies and abandons the set when the marker write fails', async () => {
+  const ctx = await setupTest();
+
+  const context = {
+    writer: ctx.writer,
+    storage: buildStubFailingStorage(localDataStorage, 'complete', 'write'),
+  };
+
+  const failure = await writeSnapshotSet(context, 'scheduled').then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  const staging = await readdir(join(ctx.dataDir, 'backup'));
+  const rows = await sql`select state from backup_sets`.execute(ctx.writer.db);
+
+  expect(failure).toMatchObject({ message: 'the stub fails the write of complete' });
+  expect(staging).toStrictEqual([]);
+  expect(rows.rows).toStrictEqual([{ state: 'abandoned' }]);
+});
+
 test('it keeps a set whose marker exists when a later step fails, for the job may be shipping it', async () => {
   const ctx = await setupTest();
 
   const context = {
     writer: ctx.writer,
-    storage: buildStubFailingStorage(localDataStorage, 'complete'),
+    storage: buildStubFailingStorage(localDataStorage, 'complete', 'fsync'),
   };
 
   const failure = await writeSnapshotSet(context, 'scheduled').then(
