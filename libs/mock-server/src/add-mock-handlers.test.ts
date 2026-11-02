@@ -35,3 +35,18 @@ test('it keeps the handlers that were there before', async () => {
 
   expect(text).toBe('high');
 });
+
+test('it answers an added handler before refusing unmatched requests', async () => {
+  const handlersBefore = mockServer.listHandlers();
+
+  onTestFinished(() => {
+    mockServer.resetHandlers(...handlersBefore);
+  });
+
+  addMockHandlers(http.get('https://harbour.example/tide', () => HttpResponse.text('high')));
+
+  const response = await fetch('https://harbour.example/tide');
+  const text = await response.text();
+
+  expect(text).toBe('high');
+});
