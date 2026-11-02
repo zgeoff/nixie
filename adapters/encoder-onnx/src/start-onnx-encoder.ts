@@ -46,7 +46,7 @@ export async function startONNXEncoder(modelDir: string): Promise<ONNXEncoder> {
     }
 
     if (!(pooled.data instanceof Float32Array)) {
-      throw new Error(
+      throw new TypeError(
         `the encoder model's sentence_embedding output is ${pooled.type}, not float32`,
       );
     }

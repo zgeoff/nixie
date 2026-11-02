@@ -21,7 +21,7 @@ const ratingInput = {
     note: {
       type: 'string',
       maxLength: 200,
-      pattern: '^[^\\r\\n]*$',
+      pattern: String.raw`^[^\r\n]*$`,
       description: 'one line on why',
     },
   },

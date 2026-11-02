@@ -112,7 +112,7 @@ test('it records an approval that names you, and stores the override for the exp
       prompt_id: 'compaction',
       thread: 'conversation',
       entry: '{"safety":"prompts/compaction-safety.md"}',
-      files: '[{"path":"prompts/compaction-safety.md","text":"Answer with the summary alone.\\n"}]',
+      files: String.raw`[{"path":"prompts/compaction-safety.md","text":"Answer with the summary alone.\n"}]`,
       state: 'current',
       approved_at: 1000,
       updated_at: 1000,
@@ -206,9 +206,8 @@ test('it approves edited files and entry in place of the proposal, checks them, 
 
   expect(approvals).toStrictEqual([
     {
-      entry:
-        '{"safety":"prompts/compaction-safety.md","_template":"{{ parts.instruction }}\\n\\n{{ parts.safety }}"}',
-      files: '[{"path":"prompts/compaction-safety.md","text":"Answer in one paragraph.\\n"}]',
+      entry: String.raw`{"safety":"prompts/compaction-safety.md","_template":"{{ parts.instruction }}\n\n{{ parts.safety }}"}`,
+      files: String.raw`[{"path":"prompts/compaction-safety.md","text":"Answer in one paragraph.\n"}]`,
     },
   ]);
 });
