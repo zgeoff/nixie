@@ -6,6 +6,11 @@
       "description": "happy-dom stays at the version @zgeoff/bun-test-react pins, so the test preload loads one copy of it. Lift this rule once a bun-test-react release ships happy-dom 20.14.6 (zgeoff/tools#178).",
       "matchPackageNames": ["happy-dom"],
       "allowedVersions": "<=20.14.5"
+    },
+    {
+      "description": "Hold msw below 3. msw 3 intercepts fetch at node:net, which Bun's own fetch never uses, so the test mock server catches nothing under Bun and the tests reach the real network. Lift this rule once msw's fetch interception works under Bun.",
+      "matchPackageNames": ["msw"],
+      "allowedVersions": "<3"
     }
   ]
 }
