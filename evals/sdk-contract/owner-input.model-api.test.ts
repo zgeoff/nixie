@@ -102,8 +102,10 @@ test.skipIf(!isContractRun)(
     const ownerUUID = randomUUID();
     const host: { interrupt: Promise<unknown> | null } = { interrupt: null };
 
+    // The CLI refuses a command that starts with a sleep of 25 s or more, so the call would end
+    // before the interrupt.
     ctx.input.send(
-      'Run this shell command with the Bash tool: `sleep 30 && echo step-1`. Then reply DONE.',
+      'Run this shell command with the Bash tool: `sleep 20 && echo step-1`. Then reply DONE.',
     );
 
     const run = await runContractQuery({
