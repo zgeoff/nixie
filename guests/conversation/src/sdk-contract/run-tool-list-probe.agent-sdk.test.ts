@@ -98,16 +98,15 @@ test('it closes its tool server when the test finishes', async () => {
   const ctx = await setupTest();
 
   ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_wait', input: {} } },
     { toolUse: { name: 'mcp__nixie__note_read', input: { name: 'groceries' } } },
-    { text: 'DONE' },
-    { toolUse: { name: 'mcp__nixie__note_read', input: { noteID: 'n7k2' } } },
     { text: 'DONE' },
   );
 
-  const probe = await runToolListProbe(ctx.target, 'resumed-session');
+  const probe = await runToolListProbe(ctx.target, 'mid-turn-silent');
 
-  onTestFinished(async () => {
-    await expect(fetch(probe.toolsURL, { method: 'POST' })).rejects.toThrow();
+  onTestFinished(() => {
+    expect(fetch(probe.toolsURL, { method: 'POST' })).rejects.toThrow();
   });
 });
 
