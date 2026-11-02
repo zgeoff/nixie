@@ -206,5 +206,7 @@ test.skipIf(!isContractRun)(
       errors: [expect.stringMatching(/^No conversation found with session ID: /u)],
     });
   },
-  5000,
+
+  // The CLI's cold start in a fresh checkout took 5.9 s once, against 0.4 s warm.
+  12_000,
 );
