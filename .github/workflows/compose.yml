@@ -134,35 +134,13 @@ jobs:
         if: ${{ env.RECIPE_CHANGED == 'true' }}
         run: bun run --silent ci:compose:check-sign-in-code recipe
 
-      # nixie stages a set at start, the backup container ships it, and nixie records its receipt on
-      # its next pass, within its 60 s poll
       - name: Check that a backup set ships
         if: ${{ env.RECIPE_CHANGED == 'true' }}
-        run: |
-          for _ in $(seq 60); do
-            if docker compose -f compose.yaml -f ci/compose.yaml logs --no-color nixie | grep -F '"backup.set_published"'; then
-              docker compose -f compose.yaml -f ci/compose.yaml logs --no-color nixie | grep -F '"backup.set_published"' | tee -a "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo '::error::nixie recorded no published backup set within 300 s'
-          exit 1
+        run: bun run --silent ci:compose:check-backup-published
 
-      # the backup passwords reach only the backup container, and nixie's secrets never reach it
       - name: Check the backup credentials stay apart
         if: ${{ env.RECIPE_CHANGED == 'true' }}
-        run: |
-          config=$(docker compose -f compose.yaml -f ci/compose.yaml config --format json)
-          if jq -e '.services.nixie.environment // {} | keys | any(startswith("NIXIE_BACKUP_"))' <<< "$config"; then
-            echo '::error::the nixie service holds a backup variable'
-            exit 1
-          fi
-          if jq -e '.services["nixie-backup"].volumes | any(.source == "secrets")' <<< "$config"; then
-            echo '::error::the nixie-backup service mounts the secrets volume'
-            exit 1
-          fi
-          jq -e '.services["nixie-backup"].volumes | length == 1 and .[0].source == "data" and .[0].volume.subpath == "backup"' <<< "$config"
+        run: bun run --silent ci:compose:check-backup-credentials
 
       - name: Show the logs
         if: ${{ failure() && env.RECIPE_CHANGED == 'true' }}

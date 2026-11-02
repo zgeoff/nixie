@@ -172,15 +172,10 @@ jobs:
           WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
         run: bun run --silent ci:images:tag-rehearsal-images
 
-      # the restic the image carries, so the lane proves the forget against the binary that ships
       - name: Run the restic lane on the backup image's restic
         env:
           BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
-        run: |
-          container=$(docker create "$BACKUP")
-          docker cp "$container:/usr/local/bin/restic" "$RUNNER_TEMP/restic"
-          docker rm "$container" > /dev/null
-          NIXIE_RESTIC_BINARY="$RUNNER_TEMP/restic" bun run test:restic
+        run: bun run --silent ci:images:run-restic-lane
 
       - name: Build release.json, check each image it names, and rehearse its upload
         env:
