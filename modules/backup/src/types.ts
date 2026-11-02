@@ -27,6 +27,7 @@ export type BackupTables = CheckedTables<
     records: {
       readonly sequence: number;
       readonly kind: string;
+      readonly payload: string;
     };
   }>,
   'records'

@@ -35,6 +35,36 @@ test('it reads a forget as due once its record is newer than every set copy', as
   });
 });
 
+test.each([
+  ['a message forget', true, 'record.forgotten', '{"sequence":4,"thread":"thread-a"}'],
+  [
+    'a finished moment destroy',
+    true,
+    'moment_destroyed',
+    '{"momentID":"moment-a","version":2,"stage":"done"}',
+  ],
+  [
+    'a started moment destroy',
+    false,
+    'moment_destroyed',
+    '{"momentID":"moment-a","version":2,"stage":"started"}',
+  ],
+])(
+  'it reads whether a forget is due after %s as %p',
+  async (_label, isForgetDue, kind, payload) => {
+    const log = await startTestLog();
+
+    await withWriteTransaction(log.writer, async (tx) => {
+      await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+      values (9, 1798761600000, ${kind}, 'snapshot-a', ${payload})`.execute(tx);
+    });
+
+    const due = await readBackupDue(log.writer);
+
+    expect(due.isForgetDue).toBe(isForgetDue);
+  },
+);
+
 test('it reads a forget as covered by a set whose copy started after it', async () => {
   const log = await startTestLog();
 
