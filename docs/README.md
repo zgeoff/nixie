@@ -291,6 +291,8 @@ Rules, effects, taint, approvals and auto-mode.
   starter set with notices for jobs
 - [0043: Budgets for paid tools](decisions/0043-paid-tool-budgets.md) — a budget per paid tool,
   charged before each call, with a push at the limit
+- [0048: One approval system](decisions/0048-one-approval-system.md) — one record, one answer path
+  and one place for rules, and memory's write gate as the default behind rules on `memory_write`
 
 ### Memory
 

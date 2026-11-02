@@ -1,7 +1,7 @@
 # 0011: Which memory writes skip review
 
 - Date: 2026-10-08
-- Updated: 2026-10-22
+- Updated: 2026-10-31
 - Status: decided
 - Design: [memory writes](../design/platform/memory/writes.md)
 - Research:
@@ -19,15 +19,15 @@ A memory write applies at once, with a notice and undo, only when all 3 checks p
    the quote and the pasted spans marked, and the memory, and never the rest of the conversation, so
    it can tell a statement from a question, a negation or a quotation.
 
-An allow rule of yours that names a memory write tool also lets a write through that tool apply at
-once, with a notice and undo, in the contexts the rule names, such as the conversation but not job
-runs. A rule that names `memory.remember` covers new items, and a rule that names `memory.edit`
-covers changes to items, so allowing one kind of write never allows the other. A rule that matches
-the `note` effect alone, such as the starter rule that allows notes, lets the call run and leaves
-the checks in place. No starter rule names the tool, and creating such a rule is a widening, so it
-asks once. Check 2 still runs under that rule: every destination-like token in the memory appears
-word for word in text you typed or in your definitions, and a write that fails it is a proposal
-whatever the rule says.
+These checks are the default when no rule matches the write. Remember, edit and retire declare the
+`memory_write` effect under [0048](0048-one-approval-system.md), and an allow rule of yours that
+matches a memory write lets the write apply at once, with a notice and undo, in the contexts the
+rule names, such as the conversation but not job runs. A rule that names `memory.remember` covers
+new items, and a rule that names `memory.edit` covers changes to items, so allowing one kind of
+write never allows the other. No starter rule matches `memory_write`, and creating such a rule is a
+widening, so it asks once. Check 2 still runs under that rule: every destination-like token in the
+memory appears word for word in text you typed or in your definitions, and a write that fails it is
+a proposal whatever the rule says.
 
 Every other memory write is a proposal, including a write the checker rejects, is unsure about or
 cannot reach. The memory reads as text the model wrote, with your quote kept as its evidence.
@@ -136,3 +136,5 @@ you answer when you choose, singly or through the approval digest from
 - 2026-10-22: nixie pins an existing item through `memory.pin`, a proposal unless an allow rule
   names the tool, and unpins at once through `memory.unpin`. `memory.remember` takes no pin, and
   nixie sees the pinned count and the core's tokens against its budget.
+- 2026-10-31: remember, edit and retire declare `memory_write` under 0048, so these checks are the
+  default when no rule matches, and the starter rule that allows notes no longer reaches them.
