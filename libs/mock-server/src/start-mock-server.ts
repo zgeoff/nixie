@@ -7,11 +7,15 @@ beforeAll(() => {
   mockServer.listen({
     // The web server suites call a stub API and the built Start server on loopback ports, which MSW
     // must pass through. No DNS answers the reserved .test domain, so a test site there never
-    // reaches the network.
+    // reaches the network, and a data URL holds its own contents.
     onUnhandledRequest: (request, print) => {
-      const hostname = new URL(request.url).hostname;
+      const url = new URL(request.url);
 
-      if (['127.0.0.1', '[::1]', 'localhost'].includes(hostname) || hostname.endsWith('.test')) {
+      if (
+        url.protocol === 'data:' ||
+        ['127.0.0.1', '[::1]', 'localhost'].includes(url.hostname) ||
+        url.hostname.endsWith('.test')
+      ) {
         return;
       }
 
