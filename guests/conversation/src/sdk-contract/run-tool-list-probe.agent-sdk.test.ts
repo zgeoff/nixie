@@ -94,6 +94,23 @@ test('it lists a tool in its first form at the next step of a turn when the serv
   ]);
 });
 
+test('it closes its tool server when the test finishes', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_read', input: { name: 'groceries' } } },
+    { text: 'DONE' },
+    { toolUse: { name: 'mcp__nixie__note_read', input: { noteID: 'n7k2' } } },
+    { text: 'DONE' },
+  );
+
+  const probe = await runToolListProbe(ctx.target, 'resumed-session');
+
+  onTestFinished(async () => {
+    await expect(fetch(probe.toolsURL, { method: 'POST' })).rejects.toThrow();
+  });
+});
+
 test('it fails a mid-turn run whose model ends the turn before it calls note_wait', async () => {
   const ctx = await setupTest();
 

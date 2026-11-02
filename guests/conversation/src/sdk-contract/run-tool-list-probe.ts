@@ -17,6 +17,7 @@ import type { ProbeTarget } from './types';
 export interface ToolListRun {
   readonly calls: readonly StubToolCall[];
   readonly run: ContractRun;
+  readonly toolsURL: string;
 }
 
 export async function runToolListProbe(
@@ -54,7 +55,7 @@ export async function runToolListProbe(
     )
     .exhaustive();
 
-  return { calls: [...tools.calls], run };
+  return { calls: [...tools.calls], run, toolsURL: tools.config.url };
 }
 
 const changedForm = {
